@@ -37,6 +37,7 @@ import {
   getValueStep,
 } from "metabase/static-viz/components/XYChart/utils";
 import { GoalLine } from "metabase/static-viz/components/XYChart/GoalLine";
+import Values from "./Values";
 
 export interface XYChartProps {
   width: number;
@@ -221,10 +222,6 @@ export const XYChart = ({
           yScaleLeft={yScaleLeft}
           yScaleRight={yScaleRight}
           xAccessor={xScale.lineAccessor}
-          showValues={Boolean(settings.show_values)}
-          valueFormatter={valueFormatter}
-          valueProps={valueProps}
-          valueStep={linesValueStep}
         />
 
         {settings.goal && (
@@ -235,6 +232,23 @@ export const XYChart = ({
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             y={defaultYScale!(settings.goal.value)}
             color={style.goalColor}
+          />
+        )}
+
+        {settings.show_values && (
+          <Values
+            series={series}
+            formatter={(value: number): string =>
+              formatNumber(
+                value,
+                maybeAssoc(settings.y.format, "compact", compact),
+              )
+            }
+            valueProps={valueProps}
+            xScale={xScale}
+            yScaleLeft={yScaleLeft}
+            yScaleRight={yScaleRight}
+            innerWidth={innerWidth}
           />
         )}
       </Group>

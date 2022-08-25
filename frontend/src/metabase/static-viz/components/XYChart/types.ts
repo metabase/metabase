@@ -93,3 +93,5 @@ export type ChartStyle = {
   };
   goalColor: string;
 };
+
+export type XYAccessor = (datum: SeriesDatum) => number;
