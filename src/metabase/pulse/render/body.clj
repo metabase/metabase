@@ -421,7 +421,7 @@
                                                    :position    "relative"
                                                    :top         "-4px"})} "•"]]
                      [:td {:style (style/style {:padding-right "30px"})}
-                    label]
+                      label]
                    [:td percentage]])))]
     (if (< (count legend-entries) 8)
       (table-fn legend-entries)
@@ -457,15 +457,17 @@
              :src   (:image-src image-bundle)}]
       (donut-legend
         (mapv (fn [row]
-                {:percentage (percentages (first row))
-                 :color      (legend-colors (first row))
-                 :label      (if (= (first row) "Other")
-                               "Other"
-                               (datetime/format-temporal-str
-                                 timezone-id
-                                 (first row)
-                                 (x-axis-rowfn cols)
-                                 label-viz-settings))})
+                (let [label (first row)]
+                  {:percentage (percentages (first row))
+                   :color      (legend-colors (first row))
+                   :label      (if (or (datetime/temporal-string? label)
+                                       (number? (read-string label)))
+                                 (datetime/format-temporal-str
+                                   timezone-id
+                                   (first row)
+                                   (x-axis-rowfn cols)
+                                   label-viz-settings)
+                                 label)}))
               rows))]}))
 
 (s/defmethod render :progress :- common/RenderedPulseCard

@@ -11,6 +11,13 @@
            java.time.Period
            java.time.temporal.Temporal))
 
+(defn temporal-string?
+  [s]
+  (boolean
+    (try
+      (u.date/parse s)
+      (catch Exception _e false))))
+
 (defn- reformat-temporal-str [timezone-id s new-format-string]
   (t/format new-format-string (u.date/parse s timezone-id)))
 

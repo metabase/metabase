@@ -28,7 +28,7 @@
                                   (mt/mbql-query checkins
                                     {:aggregation [[:count]]
                                      :breakout    [!month.date]}))
-                                 [:td _ "November 2015"])))))
+                                 [:td _ "November, 2015"])))))
 
 (deftest render-error-test
   (testing "gives us a proper error if we have erroring card"
