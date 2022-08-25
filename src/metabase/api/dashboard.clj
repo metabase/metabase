@@ -5,6 +5,7 @@
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
             [medley.core :as m]
+            [metabase.actions.execution :as actions.execution]
             [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
             [metabase.api.common.validation :as validation]
@@ -688,8 +689,7 @@
       (into {} (for [field-id filtered-field-ids]
                  [field-id (sort (chain-filter/filterable-field-ids field-id filtering-field-ids))])))))
 
-
-;;; ---------------------------------- Running the query associated with a Dashcard ----------------------------------
+;;; ---------------------------------- Executing the action associated with a Dashcard -------------------------------
 
 (def ParameterWithID
   "Schema for a parameter map with an string `:id`."
@@ -697,6 +697,15 @@
     {:id       su/NonBlankString
      s/Keyword s/Any}
     "value must be a parameter map with an 'id' key"))
+
+
+(api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/action/:action-id/execute"
+  "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it."
+  [dashboard-id dashcard-id action-id :as {{:keys [parameters], :as _body} :body}]
+  {parameters (s/maybe [ParameterWithID])}
+  (actions.execution/execute-dashcard! action-id dashboard-id dashcard-id parameters))
+
+;;; ---------------------------------- Running the query associated with a Dashcard ----------------------------------
 
 (api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it."

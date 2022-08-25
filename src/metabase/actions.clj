@@ -27,9 +27,15 @@
   :visibility :public
   :database-local :only)
 
+(defn check-actions-enabled
+  "Function that checks that the [[metabase.actions/experimental-enable-actions]] feature flag is enabled, and
+  throws a 400 response if not"
+  []
+  (api/check (experimental-enable-actions) 400 (i18n/tru "Actions are not enabled.")))
+
 (defn +check-actions-enabled
   "Ring middleware that checks that the [[metabase.actions/experimental-enable-actions]] feature flag is enabled, and
-  returns a 403 Unauthorized response "
+  returns a 400 response if not"
   [handler]
   (fn [request respond raise]
     (if (experimental-enable-actions)
