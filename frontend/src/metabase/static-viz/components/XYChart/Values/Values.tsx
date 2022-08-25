@@ -149,5 +149,13 @@ function getSeriesTransformer(
       });
   }
 
+  if (type === "bar") {
+    return values =>
+      values.map(value => {
+        const isNegative = getY(value.datum) < 0;
+        return { ...value, flipped: isNegative };
+      });
+  }
+
   return values => values;
 }

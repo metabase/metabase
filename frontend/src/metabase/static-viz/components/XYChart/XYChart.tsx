@@ -199,11 +199,6 @@ export const XYChart = ({
             yScaleRight={yScaleRight}
             xAccessor={xScale.barAccessor}
             bandwidth={xScale.bandwidth}
-            showValues={Boolean(settings.show_values)}
-            valueFormatter={valueFormatter}
-            valueProps={valueProps}
-            valueStep={barsValueStep}
-            xAxisYPos={yMin - margin.top}
           />
         )}
         <AreaSeries

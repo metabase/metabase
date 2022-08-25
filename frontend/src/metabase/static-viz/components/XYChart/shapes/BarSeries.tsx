@@ -4,15 +4,11 @@ import { Group } from "@visx/group";
 import { scaleBand } from "@visx/scale";
 import { PositionScale } from "@visx/shape/lib/types";
 import { getY } from "metabase/static-viz/components/XYChart/utils";
-import { Text } from "@visx/text";
 
 import type {
   Series,
   SeriesDatum,
 } from "metabase/static-viz/components/XYChart/types";
-import type { TextProps } from "@visx/text";
-
-const VALUES_MARGIN = 6;
 
 interface BarSeriesProps {
   series: Series[];
@@ -20,11 +16,6 @@ interface BarSeriesProps {
   yScaleRight: PositionScale | null;
   xAccessor: (datum: SeriesDatum) => number;
   bandwidth: number;
-  showValues: boolean;
-  valueFormatter: (value: number) => string;
-  valueProps: Partial<TextProps>;
-  valueStep: number;
-  xAxisYPos: number;
 }
 
 export const BarSeries = ({
@@ -33,11 +24,6 @@ export const BarSeries = ({
   yScaleRight,
   xAccessor,
   bandwidth,
-  showValues,
-  valueFormatter,
-  valueProps,
-  valueStep,
-  xAxisYPos,
 }: BarSeriesProps) => {
   const innerBarScaleDomain = series.map((_, index) => index);
 
@@ -79,41 +65,6 @@ export const BarSeries = ({
                   x={x}
                   y={y}
                 />
-              );
-            })}
-            {/* Render all data point values last so they stay on top of the chart elements making them more legible */}
-            {series.data.map((datum, index) => {
-              const groupX = xAccessor(datum);
-              const innerX = innerBarScale(seriesIndex) ?? 0;
-
-              const x = groupX + innerX;
-              const width = innerBarScale.bandwidth();
-
-              const yValue = yScale(getY(datum)) ?? 0;
-              const isNegative = getY(datum) < 0;
-
-              const bottomTextYPos =
-                yValue + VALUES_MARGIN + (valueProps.fontSize as number);
-              const isOverflownXAxis = isNegative && bottomTextYPos > xAxisYPos;
-              const shouldFlipYPosition = isNegative && !isOverflownXAxis;
-              const y = shouldFlipYPosition
-                ? yValue + VALUES_MARGIN
-                : yValue - VALUES_MARGIN;
-
-              return (
-                showValues &&
-                index % valueStep === 0 && (
-                  <Text
-                    x={x + width / 2}
-                    y={y}
-                    width={width}
-                    textAnchor="middle"
-                    verticalAnchor={shouldFlipYPosition ? "start" : "end"}
-                    {...valueProps}
-                  >
-                    {valueFormatter(getY(datum))}
-                  </Text>
-                )
               );
             })}
           </Fragment>
