@@ -59,7 +59,7 @@ If you want to display filtered data in an embedded dashboard or SQL question, a
 4. Select **Locked** for each parameter that should pre-filter your data, without displaying a filter widget on the embed.
 5. Add values for the filter under **Preview locked parameters**.
 
-**Locked** parameters will apply the selected filter values to your original dashboard or SQL question, but they won't be displayed as as filter widgets on your embed.
+**Locked** parameters will apply the selected filter values to your original dashboard or SQL question, but they won't be displayed as as filter widgets on your embed. You can use locked parameters to display filtered data based on attributes captured by your web server (such as a user's login). See the [reference apps repo](https://github.com/metabase/embedding-reference-apps) for more examples.
 
 Note that you can only add filter values that match the filter type on the _original_ dashboard or SQL question. For example, if you have a text box filter on your original dashboard or SQL question, you'll only be able to add a single filter value to your locked parameter. If you want to provide multiple filter values to the parameter, you'll need to change the original filter to a [dropdown filter](../dashboards/filters#choosing-between-a-dropdown-or-autocomplete-for-your-filter) first.
 
