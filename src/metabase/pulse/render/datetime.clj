@@ -3,6 +3,7 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [java-time :as t]
+            [metabase.public-settings :as public-settings]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [trs tru]]
             [metabase.util.schema :as su]
@@ -26,37 +27,14 @@
   (t/format new-format-string (u.date/parse s timezone-id)))
 
 (defn- day-of-week
-  [s abbreviate]
-  (get-in
-    {"1" {:full (tru "Sunday") :abbreviated (tru "Sun")}
-     "2" {:full (tru "Monday") :abbreviated (tru "Mon")}
-     "3" {:full (tru "Tuesday") :abbreviated (tru "Tue")}
-     "4" {:full (tru "Wednesday") :abbreviated (tru "Wed")}
-     "5" {:full (tru "Thursday") :abbreviated (tru "Thu")}
-     "6" {:full (tru "Friday") :abbreviated (tru "Fri")}
-     "7" {:full (tru "Saturday") :abbreviated (tru "Sat")}}
-    (if abbreviate
-      [s :abbreviated]
-      [s :full])))
+  [n abbreviate]
+  (let [fmtr (java.time.format.DateTimeFormatter/ofPattern (if abbreviate "EEE" "EEEE"))]
+    (.format fmtr (java.time.DayOfWeek/of n))))
 
 (defn- month-of-year
-  [s abbreviate]
-  (get-in
-    {"1"  {:full (tru "January") :abbreviated (tru "Jan")}
-     "2"  {:full (tru "February") :abbreviated (tru "Feb")}
-     "3"  {:full (tru "March") :abbreviated (tru "Mar")}
-     "4"  {:full (tru "April") :abbreviated (tru "Apr")}
-     "5"  {:full (tru "May") :abbreviated (tru "May")}
-     "6"  {:full (tru "June") :abbreviated (tru "Jun")}
-     "7"  {:full (tru "July") :abbreviated (tru "Jul")}
-     "8"  {:full (tru "August") :abbreviated (tru "Aug")}
-     "9"  {:full (tru "September") :abbreviated (tru "Sep")}
-     "10" {:full (tru "October") :abbreviated (tru "Oct")}
-     "11" {:full (tru "November") :abbreviated (tru "Nov")}
-     "12" {:full (tru "December") :abbreviated (tru "Dec")}}
-    (if abbreviate
-      [s :abbreviated]
-      [s :full])))
+  [n abbreviate]
+  (let [fmtr (java.time.format.DateTimeFormatter/ofPattern (if abbreviate "MMM" "MMMM"))]
+    (.format fmtr (java.time.Month/of n))))
 
 (defn- x-of-y
   "Format an integer as x-th of y, for example, 2nd week of year."
@@ -70,7 +48,7 @@
 
 (defn- hour-of-day
   [s time-style]
-  (let [n (int (read-string s))
+  (let [n  (parse-long s)
         ts (u.date/parse "2022-01-01-00:00:00")]
     (u.date/format time-style (t/plus ts (t/hours n)))))
 
@@ -79,6 +57,7 @@
   column `:unit`."
   ([timezone-id s col] (format-temporal-str timezone-id s col {}))
   ([timezone-id s col col-viz-settings]
+   (java.util.Locale/setDefault (java.util.Locale. (public-settings/site-locale)))
    (let [{date-style :date_style
           abbreviate :date_abbreviate
           time-style :time_style} col-viz-settings]
@@ -102,8 +81,9 @@
              :quarter (reformat-temporal-str timezone-id s "QQQ - yyyy")
              :year    (reformat-temporal-str timezone-id s "YYYY")
 
-             :day-of-week     (day-of-week s abbreviate) ;; s is just a number as a string here
-             :month-of-year   (month-of-year s abbreviate)
+             ;; s is just a number as a string here
+             :day-of-week     (day-of-week (parse-long s) abbreviate)
+             :month-of-year   (month-of-year (parse-long s) abbreviate)
              :quarter-of-year (format "Q%s" s)
              :hour-of-day     (hour-of-day s (str/replace (or time-style "h a") #"A" "a"))
 

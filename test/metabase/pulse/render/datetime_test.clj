@@ -84,7 +84,7 @@
       (is (= "44th"
              (datetime/format-temporal-str "UTC" "44" {:unit :week-of-year}))))
     (testing :day-of-week
-      (is (= "Wednesday"
+      (is (= "Thursday"
              (datetime/format-temporal-str "UTC" "4" {:unit :day-of-week}))))
     (testing :month-of-year
       (is (= "May"

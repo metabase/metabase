@@ -460,7 +460,7 @@
                   {:percentage (percentages (first row))
                    :color      (legend-colors (first row))
                    :label      (if (or (datetime/temporal-string? label)
-                                       (number? (read-string label)))
+                                       (boolean (parse-long label)))
                                  (datetime/format-temporal-str
                                    timezone-id
                                    (first row)
