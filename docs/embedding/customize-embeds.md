@@ -8,7 +8,7 @@ redirect_from:
 
 {% include plans-blockquote.html feature="Advanced embedding features" %}
 
-Some paid plans give you additional customization options for [embedded items](../administration-guide//13-embedding.md).
+Some paid plans give you additional customization options for [embedded items](./introduction.md).
 
 ## Remove the "Powered by Metabase" banner
 
@@ -40,7 +40,7 @@ You can remove the export icon from charts. Note that removing the icon here doe
 
 ## Further reading
 
-- [Embedding Metabase in other applications](../administration-guide/13-embedding.md)
+- [Embedding Metabase in other applications](./introduction.md)
 - [White labeling Metabase](./whitelabeling.md)
 - [Fonts](./fonts.md)
 - [Learn embedding](https://www.metabase.com/learn/embedding)

@@ -36,7 +36,7 @@ For example, in the column below, the empty cells could contain either:
 |                    | No feedback.                                            |
 | I like your style. | I like your style.                                      |
 
-Combine `isempty` with the [`case` expression](./case) to replace empty strings with something more descriptive.
+Combine `isempty` with the [`case` expression](./case.md) to replace empty strings with something more descriptive.
 
 Let's say that the second row's blank cell is actually an empty string, so `isempty` will return `true`. The `case` statement evaluates `true` to return the first output "No feedback".
 
@@ -55,8 +55,8 @@ The first row's blank cell doesn't have an empty string, but because it's blank,
 ## Limitations
 
 - In Metabase, you must combine `isempty` with another expression that accepts boolean arguments (i.e., `true` or `false`).
-- `isempty` only accepts one value at a time. If you need to deal with empty strings from multiple columns, you'll need to use multiple `isempty` expressions with the [case expression](./case).
-- If `isempty` doesn't seem to do anything to your blank cells, you might have `null` values. Try the [`isnull` expression](./isnull) instead.
+- `isempty` only accepts one value at a time. If you need to deal with empty strings from multiple columns, you'll need to use multiple `isempty` expressions with the [case expression](./case.md).
+- If `isempty` doesn't seem to do anything to your blank cells, you might have `null` values. Try the [`isnull` expression](./isnull.md) instead.
 
 ## Converting a function into an `isempty` expression
 
@@ -122,9 +122,9 @@ case(isempty([Feedback]), "No feedback.", [Feedback])
 - [Custom expressions documentation][custom-expressions-doc]
 - [Custom expressions tutorial][custom-expressions-learn]
 
-[custom-expressions-doc]: ../expressions
-[custom-expressions-learn]: /learn/questions/custom-expressions
-[data-types]: /learn/databases/data-types-overview#examples-of-data-types
-[notebook-editor-def]: /glossary/notebook_editor
+[custom-expressions-doc]: ../expressions.md
+[custom-expressions-learn]: https://www.metabase.com/learn/questions/custom-expressions
+[data-types]: https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types
+[notebook-editor-def]: https://www.metabase.com/glossary/notebook_editor
 [numpy]: https://numpy.org/doc/
 [pandas]: https://pandas.pydata.org/pandas-docs/stable/
