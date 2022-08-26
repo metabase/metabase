@@ -200,6 +200,7 @@ export default class AggregationPopover extends Component {
         items: aggregationItems,
       });
     }
+
     // "Common Metrics" a.k.a. saved metrics
     if (metricItems.length > 0) {
       sections.push({
