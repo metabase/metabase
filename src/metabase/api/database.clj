@@ -432,12 +432,12 @@
 
 ;; TODO: include saved questions in this
 ;; TODO: make more efficient by taking in the set of models / saved questions referenced by the query in the editor
-(defn- autocomplete-model-columns [db-id search-string limit match-type tagged-question-ids]
+(defn- autocomplete-model-columns [db-id search-string limit match-type tagged-card-ids]
   (->> (db/select [Card :name :result_metadata]
          :%lower.result_metadata         [:like (match-search-string :substring search-string)]
          :database_id                    db-id
          {:limit limit
-          :where [:in :id tagged-question-ids]})
+          :where [:in :id tagged-card-ids]})
        (mapcat (fn [{:keys [result_metadata name]}]
                  (map (fn [metadata]
                         (merge metadata
@@ -502,11 +502,11 @@
 
 (s/defn ^:private autocomplete-suggestions
   "match-string is a string that will be used with ilike. The it will be lowercased by autocomplete-{tables,fields}. "
-  [db-id match-string match-type :- (apply s/enum (disj autocomplete-matching-options :off)) tagged-question-ids]
+  [db-id match-string match-type :- (apply s/enum (disj autocomplete-matching-options :off)) tagged-card-ids]
   (let [limit         50
         tables        (filter mi/can-read? (autocomplete-tables db-id match-string limit match-type))
         fields        (readable-fields-only (autocomplete-fields db-id match-string limit match-type))
-        model-columns (readable-model-columns-only (autocomplete-model-columns db-id match-string limit match-type tagged-question-ids))]
+        model-columns (readable-model-columns-only (autocomplete-model-columns db-id match-string limit match-type tagged-card-ids))]
     (autocomplete-results tables fields model-columns limit)))
 
 (defsetting native-query-autocomplete-match-style
@@ -535,15 +535,15 @@
   Tables are returned in the format `[table_name \"Table\"]`;
   When Fields have a semantic_type, they are returned in the format `[field_name \"table_name base_type semantic_type\"]`
   When Fields lack a semantic_type, they are returned in the format `[field_name \"table_name base_type\"]`"
-  [id prefix substring tagged-question-ids]
+  [id prefix substring tagged-card-ids]
   (api/read-check Database id)
-  (let [parsed-tagged-question-ids (map read-string (str/split tagged-question-ids #","))]
+  (let [parsed-tagged-card-ids (map read-string (str/split tagged-card-ids #","))]
     (try
       (cond
         substring
-        (autocomplete-suggestions id substring :substring parsed-tagged-question-ids)
+        (autocomplete-suggestions id substring :substring parsed-tagged-card-ids)
         prefix
-        (autocomplete-suggestions id prefix :prefix parsed-tagged-question-ids)
+        (autocomplete-suggestions id prefix :prefix parsed-tagged-card-ids)
         :else
         (throw (ex-info "must include prefix or substring" {})))
       (catch Throwable t

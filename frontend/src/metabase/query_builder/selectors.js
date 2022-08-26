@@ -839,16 +839,20 @@ export const getAutocompleteResultsFn = state => {
     return null;
   }
 
-  return function autocompleteResults(query) {
+  return function autocompleteResults(searchString) {
     const dbId = state.qb.card?.dataset_query?.database;
     if (!dbId) {
       return [];
     }
 
+    const query = getQuery(state);
+    const templateTags = query.templateTagsWithoutSnippets();
+    const taggedCardIds = templateTags.map(tag => tag["card-id"]);
     const apiCall = MetabaseApi.db_autocomplete_suggestions({
       dbId,
-      query,
+      searchString,
       matchStyle,
+      taggedCardIds: taggedCardIds.join(","),
     });
     return apiCall;
   };
