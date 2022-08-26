@@ -430,23 +430,23 @@
      :left-join [[:metabase_table :table] [:= :table.id :metabase_field.table_id]]
      :limit     limit}))
 
-;; TODO: include saved questions in this
-;; TODO: make more efficient by taking in the set of models / saved questions referenced by the query in the editor
-(defn- autocomplete-model-columns [db-id search-string limit match-type tagged-card-ids]
-  (->> (db/select [Card :name :result_metadata]
-         :%lower.result_metadata         [:like (match-search-string :substring search-string)]
-         :database_id                    db-id
-         {:where [:in :id tagged-card-ids]
-          :limit limit})
-       (mapcat (fn [{:keys [result_metadata name]}]
-                 (map (fn [metadata]
-                        (merge metadata
-                               {:card_name name}))
-                      result_metadata)))
-       (filter (fn [metadata]
-                 (re-find (re-pattern (case match-type
-                                        :prefix    (str "(?i)^" search-string)
-                                        :substring (str "(?i)" search-string))) (:name metadata))))))
+(defn- autocomplete-model-columns
+  [db-id search-string limit match-type tagged-card-ids]
+  (when (seq tagged-card-ids)
+    (->> (db/select [Card :name :result_metadata]
+           :%lower.result_metadata         [:like (match-search-string :substring search-string)]
+           :database_id                    db-id
+           {:where [:in :id tagged-card-ids]
+            :limit limit})
+         (mapcat (fn [{:keys [result_metadata name]}]
+                   (map (fn [metadata]
+                          (merge metadata
+                                 {:card_name name}))
+                        result_metadata)))
+         (filter (fn [metadata]
+                   (re-find (re-pattern (case match-type
+                                          :prefix    (str "(?i)^" search-string)
+                                          :substring (str "(?i)" search-string))) (:name metadata)))))))
 
 (defmulti format-autocomplete-result
   "Format an autocomplete result for the client."
@@ -533,7 +533,9 @@
   When Fields lack a semantic_type, they are returned in the format `[field_name \"table_name base_type\"]`"
   [id prefix substring tagged-card-ids]
   (api/read-check Database id)
-  (let [parsed-tagged-card-ids (map read-string (str/split tagged-card-ids #","))]
+  (let [parsed-tagged-card-ids (if (str/blank? tagged-card-ids)
+                                 []
+                                 (map parse-long (str/split tagged-card-ids #",")))]
     (try
       (cond
         substring
