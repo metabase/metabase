@@ -91,10 +91,10 @@ On startup, Metabase will perform the upgrade automatically. Once Metabase has c
 
 ## Upgrading Metabase Cloud
 
-If you're on a [Metabase Cloud](/pricing) plan, your Metabase will upgrade automatically with each new release; no action needed on your end. There's usually a short period of time (typically a week or so), between when Metabase announces a new release and when the Cloud team starts rolling out the new version on Metabase Cloud. This buffer just gives the Cloud team some time to make sure the upgrades go smoothly.
+If you're on a [Metabase Cloud](https://www.metabase.com/pricing) plan, your Metabase will upgrade automatically with each new release; no action needed on your end. There's usually a short period of time (typically a week or so), between when Metabase announces a new release and when the Cloud team starts rolling out the new version on Metabase Cloud. This buffer just gives the Cloud team some time to make sure the upgrades go smoothly.
 
 ## Upgrading Metabase on other platforms
 
-- [Upgrading AWS Elastic Beanstalk deployments](running-metabase-on-elastic-beanstalk.html#deploying-new-versions-of-metabase-on-elastic-beanstalk)
-- [Upgrading Azure Web Apps deployments](running-metabase-on-azure.html#additional-configurations)
-- [Upgrading Heroku deployments](running-metabase-on-heroku.html#deploying-new-versions-of-metabase)
+- [Upgrading AWS Elastic Beanstalk deployments](running-metabase-on-elastic-beanstalk.md#deploying-new-versions-of-metabase-on-elastic-beanstalk)
+- [Upgrading Azure Web Apps deployments](running-metabase-on-azure.md#additional-configurations)
+- [Upgrading Heroku deployments](running-metabase-on-heroku.md#deploying-new-versions-of-metabase)

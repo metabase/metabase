@@ -24,7 +24,7 @@ Force all traffic to use HTTPS via redirect, if the site can serve over HTTPS.
 
 _Default: disabled_.
 
-For example, if you are serving your Metabase application at "example.com", and you enable HTTPS redirect, when a user enters an address like "example.com/data" in their browser's address bar, the user will be automatically redirected to a secure connection at "https://example.com/data".
+For example, if you are serving your Metabase application at "example.com", and you enable HTTPS redirect, when a user enters an address like "example.com/data" in their browser's address bar, the user will be automatically redirected to a secure connection at `https://example.com/data`.
 
 > Note: if you haven't set up HTTPS on your server, Metabase will not let you enable HTTPS redirect. Instead, you'll get a warning saying "It looks like HTTPS is not properly configured."
 
@@ -40,7 +40,7 @@ _Setting the default timezone will not change the timezone of any data in your d
 
 ### Anonymous Tracking
 
-This option turns determines whether or not you allow [anonymous data about your usage of Metabase](../information-collection.md) to be sent back to us to help us improve the product. _Your database’s data is never tracked or sent_.
+This option turns determines whether or not you allow [anonymous data about your usage of Metabase](../installation-and-operation/information-collection.md) to be sent back to us to help us improve the product. _Your database’s data is never tracked or sent_.
 
 ### Enable X-rays
 

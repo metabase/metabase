@@ -54,7 +54,7 @@ With some paid plans, you have more options to help orchestrate lots of people a
 
 [azure-ad]: ./saml-azure.md
 [google-sign-in]: ./google-and-ldap.md#enabling-google-sign-in
-[jwt]: ./authenticating-with-jwt
+[jwt]: ./authenticating-with-jwt.md
 [ldap]: ./google-and-ldap.md#enabling-ldap-authentication
 [ldap-group-membership-filter]: ./google-and-ldap.md#ldap-group-membership-filter
 [ldap-user-attributes]: ./google-and-ldap.md#syncing-user-attributes-with-ldap
@@ -63,7 +63,8 @@ With some paid plans, you have more options to help orchestrate lots of people a
 [saml-auth0]: ./saml-auth0.md
 [saml-google]: ./saml-google.md
 [saml-keycloak]: ./saml-keycloak.md
-[sso-def]: /glossary/sso
+[sso-def]: https://www.metabase.com/glossary/sso
 
-## [Accessibility](.//accessibility.md)
+## [Accessibility](./accessibility.md)
 
+Notes on Metabase's accessibility.

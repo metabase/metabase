@@ -220,6 +220,6 @@ If you find yourself using the same saved question as a starting point for multi
 ## Further reading
 
 - [Visualize results](../sharing/visualizing-results.md).
-- [Asking questions](/learn/questions)
+- [Asking questions](https://www.metabase.com/learn/questions)
 
 [model]: ../../data-modeling/models.md

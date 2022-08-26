@@ -122,14 +122,14 @@ This enables Metabase to scan for additional field values during syncs allowing 
 
 {% include plans-blockquote.html feature="Database-specific caching" %}
 
-How long to keep question results. By default, Metabase will use the value you supply on the [cache settings page](../../administration-guide/14-caching.md), but if this database has other factors that influence the freshness of data, it could make sense to set a custom duration. You can also choose custom durations on individual questions or dashboards to help improve performance.
+How long to keep question results. By default, Metabase will use the value you supply on the [cache settings page](../../configuring-metabase/caching.md), but if this database has other factors that influence the freshness of data, it could make sense to set a custom duration. You can also choose custom durations on individual questions or dashboards to help improve performance.
 
 Options are:
 
 - **Use instance default (TTL)**. TTL is time to live, meaning how long the cache remains valid before Metabase should run the query again.
 - **Custom**.
 
-If you are on a paid plan, you can also set cache duration per questions. See [Advanced caching controls](../../enterprise-guide/cache.md).
+If you are on a paid plan, you can also set cache duration per questions. See [Advanced caching controls](../../configuring-metabase/caching.md#advanced-caching-controls).
 
 ### Save your database configuration
 
@@ -143,17 +143,17 @@ To connect to a data source stored in Google Drive (like a Google Sheet) first m
 
 ### Share your Google Drive source with the service account
 
-While viewing your Drive file, (e.g., a Google Sheet), click the **Share** button in the top right. In the text box labeled **Add people or groups**, paste in the email of your service account, which you can find on the [Service Accounts page](https://console.cloud.google.com/projectselector2/iam-admin/serviceaccounts?supportedpurview=project) in the Google Cloud Console. 
+While viewing your Drive file, (e.g., a Google Sheet), click the **Share** button in the top right. In the text box labeled **Add people or groups**, paste in the email of your service account, which you can find on the [Service Accounts page](https://console.cloud.google.com/projectselector2/iam-admin/serviceaccounts?supportedpurview=project) in the Google Cloud Console.
 
 That email address will look something like `service-account-name@your-project-name.iam.gserviceaccount.com`, with the your service account and project names filled in accordingly.
 
-Choose **Viewer** from the dropdown, uncheck the **Notify people** option, and click **Share**. 
+Choose **Viewer** from the dropdown, uncheck the **Notify people** option, and click **Share**.
 
 ### Create an external table in BigQuery that points to your Google Drive source
 
-If you don't already have a BigQuery dataset, [create one](https://cloud.google.com/bigquery/docs/datasets). 
+If you don't already have a BigQuery dataset, [create one](https://cloud.google.com/bigquery/docs/datasets).
 
-Next, using the Google Cloud Console, [create an external table](https://cloud.google.com/bigquery/external-data-drive?hl=en#creating_and_querying_a_permanent_external_table) within your BigQuery dataset that points to your Google Sheet. 
+Next, using the Google Cloud Console, [create an external table](https://cloud.google.com/bigquery/external-data-drive?hl=en#creating_and_querying_a_permanent_external_table) within your BigQuery dataset that points to your Google Sheet.
 
 Be sure to specify the correct **Drive URI** and file format.
 
@@ -173,11 +173,11 @@ FROM [my_dataset.my_table]
 
 ## Troubleshooting
 
-If you're having trouble with your BigQuery connection, you can check out this [troubleshooting guide](../../troubleshooting-guide/bigquery-drive) that covers BigQuery issues, [this one](../../troubleshooting-guide/datawarehouse) on data warehouse connections, or visit [Metabase's discussion forum](https://discourse.metabase.com/search?q=bigquery) to see if someone has encountered and resolved a similar issue.
+If you're having trouble with your BigQuery connection, you can check out this [troubleshooting guide](../../troubleshooting-guide/bigquery-drive.md) that covers BigQuery issues, [this one](../../troubleshooting-guide/datawarehouse.md) on data warehouse connections, or visit [Metabase's discussion forum](https://discourse.metabase.com/search?q=bigquery) to see if someone has encountered and resolved a similar issue.
 
 ## Further reading
 
-- [Managing databases](https://www.metabase.com/docs/latest/administration-guide/01-managing-databases.html)
-- [Metadata editing](https://www.metabase.com/docs/latest/administration-guide/03-metadata-editing.html)
+- [Managing databases](../../databases/connecting.md)
+- [Metadata editing](../../data-modeling/metadata-editing.md)
 - [Models](../../data-modeling/models.md)
-- [Setting data access permissions](https://www.metabase.com/docs/latest/administration-guide/05-setting-permissions.html)
+- [Setting data access permissions](../../permissions/data.md)

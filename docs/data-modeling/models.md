@@ -152,7 +152,7 @@ To refresh a model's cached results, go to the model and click on the **i** info
 
 ### View model caching logs
 
-You can view the logs for model caching by clicking on the **gear** icon in the upper right and selecting **Admin settings** > **Tools** > **Model caching logs**. See [Admin tools](../enterprise-guide/tools.md).
+You can view the logs for model caching by clicking on the **gear** icon in the upper right and selecting **Admin settings** > **Tools** > **Model caching logs**. See [Admin tools](../usage-and-performance-tools/tools.md).
 
 ### Caching individual models
 
@@ -168,6 +168,6 @@ On some paid plans, you can also toggle caching on or off for individual models.
 [column-type]: ./field-types.md
 [cte]: https://www.metabase.com/learn/sql-questions/sql-cte
 [measures-dimensions]: https://www.metabase.com/learn/databases/dimensions-and-measures
-[question]: ../users-guide/04-asking-questions.md
-[learn-models]: /learn/getting-started/models
-[troubleshooting-models]: ../troubleshooting-guide/models.html
+[question]: ../questions/start.md
+[learn-models]: https://www.metabase.com/learn/getting-started/models
+[troubleshooting-models]: ../troubleshooting-guide/models.md

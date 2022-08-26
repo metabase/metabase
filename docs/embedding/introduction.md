@@ -17,7 +17,7 @@ An important distinction to keep in mind is the difference between Metabase and 
 
 ### Parameters
 
-Some dashboards and questions have the ability to accept [parameters](../users-guide/13-sql-parameters). In dashboards, these are synonymous with [dashboard filters](../dashboards/filters.md). For example, if you have a dashboard with a filter on `Publisher ID`, this can be specified as a parameter when embedding, so that you could insert the dashboard filtered down to a specific `Publisher ID`.
+Some dashboards and questions have the ability to accept [parameters](../questions/native-editor/sql-parameters.md). In dashboards, these are synonymous with [dashboard filters](../dashboards/filters.md). For example, if you have a dashboard with a filter on `Publisher ID`, this can be specified as a parameter when embedding, so that you could insert the dashboard filtered down to a specific `Publisher ID`.
 
 SQL-based questions with template variables can also accept parameters for each variable. So for a query like:
 
@@ -75,7 +75,7 @@ In order for the embedding to work, you'll need to hit **Publish**. You'll need 
 
 Metabase provides code samples for common frontend template languages, as well as some common backend web frameworks and languages. You can also use these code samples as starting points for writing your own versions in other platforms.
 
-If you want to remove the **Powered by Metabase** label, you'll need to upgrade to a [paid plan](/pricing).
+If you want to remove the **Powered by Metabase** label, you'll need to upgrade to a [paid plan](https://www.metabase.com/pricing).
 
 ## Embedding charts and dashboards with locked parameters
 
@@ -162,4 +162,4 @@ Paid plans include additional features for [customizing the appearance](./custom
 
 ## Further reading
 
-- [Embedding track](/learn/embedding) in Learn Metabase.
+- [Embedding track](https://www.metabase.com/learn/embedding) in Learn Metabase.
