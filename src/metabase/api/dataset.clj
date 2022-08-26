@@ -41,11 +41,12 @@
     source-card-id))
 
 (defn- run-query-async
-  [{:keys [database metadata], :as query}
-   & {:keys [context export-format qp-runner]
-      :or   {context       :ad-hoc
-             export-format :api
-             qp-runner     qp/process-query-and-save-with-max-results-constraints!}}]
+  [{:keys [database], :as query}
+   & {:keys [dataset-metadata context export-format qp-runner]
+      :or   {dataset-metadata nil
+             context          :ad-hoc
+             export-format    :api
+             qp-runner        qp/process-query-and-save-with-max-results-constraints!}}]
   (when (and (not= (:type query) "internal")
              (not= database mbql.s/saved-questions-virtual-database-id))
     (when-not database
@@ -60,12 +61,9 @@
   (let [source-card-id   (query->source-card-id query)
         source-card      (when source-card-id
                            (db/select-one [Card :result_metadata :dataset] :id source-card-id))
-        dataset-metadata (cond
-                           (:dataset source-card)
-                           (:result_metadata source-card)
-
-                           metadata
-                           (map mbql.normalize/normalize-source-metadata metadata))
+        dataset-metadata (if (and (:dataset source-card) dataset-metadata)
+                           (qp.util/combine-metadata (:result_metadata source-card) dataset-metadata)
+                           (or (:result_metadata source-card) dataset-metadata nil))
         info             (cond-> {:executed-by api/*current-user-id*
                                   :context     context
                                   :card-id     source-card-id}
@@ -77,11 +75,17 @@
         (qp-runner query info context)))))
 
 (api/defendpoint ^:streaming POST "/"
-  "Execute a query and retrieve the results in the usual format."
-  [:as {{:keys [database metadata] :as query} :body}]
-  {database        (s/maybe s/Int)
-   metadata        (s/maybe qr/ResultsMetadata)}
-  (run-query-async (update-in query [:middleware :js-int-to-string?] (fnil identity true))))
+  "Execute a query and retrieve the results in the usual format.
+  Optional passing `dataset-metadata` to override the metadata returned by running the query."
+  [:as {{:keys [database dataset-metadata] :as query} :body}]
+  {database         (s/maybe s/Int)
+   dataset-metadata (s/maybe qr/ResultsMetadata)}
+  (let [query            (dissoc query :dataset-metadata)
+        dataset-metadata (when dataset-metadata
+                           (map mbql.normalize/normalize-source-metadata dataset-metadata))]
+    (run-query-async
+      (update-in query [:middleware :js-int-to-string?] (fnil identity true))
+      :dataset-metadata dataset-metadata)))
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
 
