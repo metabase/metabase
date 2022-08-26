@@ -19,6 +19,20 @@
     (is (= test-max-results
            (-> (limit {:type :native}) mt/rows count)))))
 
+(deftest disable-max-results-test
+  (testing "Apply `absolute-max-results` limit in the default case"
+    (let [query {:type :query
+                 :query {}}]
+      (is (= {:type  :query
+              :query {:limit                qp.i/absolute-max-results
+                      ::limit/original-limit nil}}
+             (limit/add-default-limit query)))))
+  (testing "Don't apply the `absolute-max-results` limit when `disable-max-results` is used."
+    (let [query (limit/disable-max-results {:type :query
+                                            :query {}})]
+      (is (= query
+             (limit/add-default-limit query))))))
+
 (deftest max-results-constraint-test
   (testing "Apply an arbitrary max-results on the query and ensure our results size is appropriately constrained"
     (is (= 1234
