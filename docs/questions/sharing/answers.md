@@ -81,7 +81,7 @@ You can set up questions to run periodically and notify you if the results are i
 [alerts]: ./alerts.md
 [archiving-items]: ../../exploration-and-organization/collections.md#archiving-items
 [caching]: ../../configuring-metabase/caching.md
-[collections]: ../../users-guide/collections.md
+[collections]: ../../exploration-and-organization/collections.md
 [collection-permissions]: ../../permissions/collections.md
 [dashboards]: ../../dashboards/start.md
 [model]: ../../data-modeling/models.md

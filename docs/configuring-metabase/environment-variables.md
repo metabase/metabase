@@ -108,7 +108,7 @@ Type: string<br>
 Default: `"Lato"`<br>
 Since: v44.0
 
-Change the font used in Metabase. See [fonts](../enterprise-guide/fonts.md).
+Change the font used in Metabase. See [fonts](../embedding/fonts.md).
 
 ### `MB_APPLICATION_FONT_FILES`
 
@@ -134,7 +134,7 @@ Tell Metabase which font files to use for different styles. Example value:
 ]
 ```
 
-See [fonts](../enterprise-guide/fonts.md).
+See [fonts](../embedding/fonts.md).
 
 ### `MB_APPLICATION_LOGO_URL`
 

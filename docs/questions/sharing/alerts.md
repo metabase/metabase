@@ -9,7 +9,7 @@ Whether you're keeping track of revenue, users, or negative reviews, there are o
 
 ## Getting alerts
 
-To start using alerts, someone on your team who's an administrator will need to make sure that [email integration](../../administration-guide/02-setting-up-email.md) or Slack is set up first.
+To start using alerts, someone on your team who's an administrator will need to make sure that [email integration](../../configuring-metabase/email.md) or Slack is set up first.
 
 ## Types of alerts
 
@@ -67,7 +67,7 @@ If you're an administrator of your Metabase instance, you'll be able to see and 
 
 You can add any Metabase user, email address, or even a Slack channel as a recipient of an alert. Admins can add or remove recipients on any alert, even ones that they did not create themselves.
 
-Here's more information about [setting up email integration](../../administration-guide/02-setting-up-email.md) and [setting up Slack integration](../../administration-guide/09-setting-up-slack.md).
+Here's more information about [setting up email integration](../../configuring-metabase/email.md) and [setting up Slack integration](../../configuring-metabase/slack.md).
 
 ## Stopping alerts
 
@@ -82,4 +82,4 @@ There are a few ways alerts can be stopped:
 
 {% include plans-blockquote.html feature="Audit logs" %}
 
-To view a list of all alerts and dashboard subscriptions that people have set up in your Metabase, click on the **gear** icon in the upper right and select **Admin settings** > **Audit** > **Subscriptions & Alerts**. See [Audit logs](../../enterprise-guide/audit.md).
+To view a list of all alerts and dashboard subscriptions that people have set up in your Metabase, click on the **gear** icon in the upper right and select **Admin settings** > **Audit** > **Subscriptions & Alerts**. See [Audit logs](../../usage-and-performance-tools/audit.md).

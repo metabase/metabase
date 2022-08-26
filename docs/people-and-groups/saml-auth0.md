@@ -11,7 +11,7 @@ redirect_from:
 1. [Configure SAML in Auth0](#working-in-the-auth0-console) (the identity provider).
 2. [Configure SAML in Metabase](./authenticating-with-saml.md#enabling-saml-authentication-in-metabase) (the service provider).
 
-For more information, check out our guide for [authenticating with SAML](../enterprise-guide/authenticating-with-saml.html).
+For more information, check out our guide for [authenticating with SAML](./authenticating-with-saml.md).
 
 ## Working in the Auth0 console
 
@@ -79,4 +79,4 @@ Save your settings, then [enable SAML](authenticating-with-saml.md) in Metabase,
 
 ## Troubleshooting SAML issues
 
-- [SAML troubleshooting page](../troubleshooting-guide/saml.html).
+- [SAML troubleshooting page](../troubleshooting-guide/saml.md).
