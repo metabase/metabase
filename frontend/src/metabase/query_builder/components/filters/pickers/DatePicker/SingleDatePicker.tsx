@@ -31,8 +31,8 @@ const SingleDatePicker = ({
     selectAll={selectAll}
     onChange={value => onFilterChange([op, field, value])}
     onClear={() => onFilterChange([op, field, setTimeComponent(value)])}
+    hasCalendar
     hideTimeSelectors={hideTimeSelectors}
-    calendar
   />
 );
 

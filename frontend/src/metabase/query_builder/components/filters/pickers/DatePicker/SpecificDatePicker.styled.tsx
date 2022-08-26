@@ -27,6 +27,6 @@ export const DateInputContainer = styled.div`
   align-items: center;
   width: 100%;
   margin-bottom: 1rem;
-  border: 1px solid ${color("border")};
+  border: 1px solid ${color("brand")};
   border-radius: 0.5rem;
 `;

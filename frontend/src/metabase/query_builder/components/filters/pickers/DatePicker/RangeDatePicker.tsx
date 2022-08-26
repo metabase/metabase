@@ -41,6 +41,7 @@ export const BetweenPicker = ({
             value={endValue}
             primaryColor={primaryColor}
             hideTimeSelectors={hideTimeSelectors}
+            onChange={value => onFilterChange([op, field, startValue, value])}
             onClear={() =>
               onFilterChange([
                 op,
@@ -49,7 +50,6 @@ export const BetweenPicker = ({
                 setTimeComponent(endValue),
               ])
             }
-            onChange={value => onFilterChange([op, field, startValue, value])}
           />
         </div>
       </TimeContainer>

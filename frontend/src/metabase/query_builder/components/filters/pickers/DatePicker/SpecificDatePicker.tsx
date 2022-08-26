@@ -14,44 +14,42 @@ import {
   DateInputContainer,
 } from "./SpecificDatePicker.styled";
 
-type Props = {
+interface SpecificDatePickerProps {
   className?: string;
-  primaryColor?: string;
-  calendar?: boolean;
-  selectAll?: SelectAll;
-
-  hideTimeSelectors?: boolean;
   value: string;
+  primaryColor?: string;
+  selectAll?: SelectAll;
+  hasCalendar?: boolean;
+  hideTimeSelectors?: boolean;
   onChange: (startValue: string | null, endValue?: string) => void;
   onClear?: () => void;
-};
+}
 
-const SpecificDatePicker = (props: Props) => {
-  const onChange = (
-    date?: string | Moment,
-    hours?: number | null,
-    minutes?: number | null,
-  ) => {
-    props.onChange(setTimeComponent(date, hours, minutes));
-  };
-
-  const {
-    value,
-    calendar,
-    hideTimeSelectors,
-    onClear,
-    className,
-    selectAll,
-    primaryColor,
-  } = props;
+const SpecificDatePicker = ({
+  className,
+  value,
+  primaryColor,
+  selectAll,
+  hasCalendar,
+  hideTimeSelectors,
+  onClear,
+  onChange,
+}: SpecificDatePickerProps) => {
   const [showCalendar, setShowCalendar] = React.useState(true);
-
   const { hours, minutes, date } = getTimeComponent(value);
 
   const showTimeSelectors =
     !hideTimeSelectors &&
     typeof hours === "number" &&
     typeof minutes === "number";
+
+  const handleChange = (
+    date?: string | Moment,
+    hours?: number | null,
+    minutes?: number | null,
+  ) => {
+    onChange(setTimeComponent(date, hours, minutes));
+  };
   const dateFormat = getDateStyleFromSettings() || "MM/DD/YYYY";
 
   return (
@@ -63,14 +61,14 @@ const SpecificDatePicker = (props: Props) => {
           onBlurChange={({ target: { value } }: any) => {
             const date = moment(value, dateFormat);
             if (date.isValid()) {
-              onChange(date, hours, minutes);
+              handleChange(date, hours, minutes);
             } else {
-              onChange();
+              handleChange();
             }
           }}
         />
 
-        {calendar && (
+        {hasCalendar && (
           <CalendarIcon
             name="calendar"
             onClick={() => setShowCalendar(!showCalendar)}
@@ -85,20 +83,22 @@ const SpecificDatePicker = (props: Props) => {
             onClear={onClear}
             hours={hours}
             minutes={minutes}
-            onChangeHours={(hours: number) => onChange(date, hours, minutes)}
+            onChangeHours={(hours: number) =>
+              handleChange(date, hours, minutes)
+            }
             onChangeMinutes={(minutes: number) =>
-              onChange(date, hours, minutes)
+              handleChange(date, hours, minutes)
             }
           />
         </div>
       )}
 
-      {calendar && (
+      {hasCalendar && (
         <ExpandingContent isOpen={showCalendar}>
           <Calendar
             selected={date}
             initial={date || moment()}
-            onChange={value => onChange(value, hours, minutes)}
+            onChange={value => handleChange(value, hours, minutes)}
             isRangePicker={false}
             selectAll={selectAll}
             primaryColor={primaryColor}
