@@ -15,5 +15,4 @@ jobs:
       folder-path: 'docs'
       check-modified-files-only: 'yes'
       config-file: 'mlc_config.json'
-
       
