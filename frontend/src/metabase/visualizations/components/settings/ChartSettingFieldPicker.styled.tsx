@@ -8,7 +8,7 @@ export const ChartSettingFieldPickerRoot = styled.div`
   align-items: center;
   border: 1px solid ${color("border")};
   border-radius: 0.5rem;
-  padding-right: 1.125rem;
+  padding-right: 1rem;
 
   ${SelectButton.Root} {
     border: none;
@@ -22,7 +22,7 @@ export const ChartSettingFieldPickerRoot = styled.div`
   }
 
   ${SelectButton.Content} {
-    font-size: 0.75rem;
+    font-size: 0.875rem;
     line-height: 1rem;
     margin-right: 0.25rem;
   }

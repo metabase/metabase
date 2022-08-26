@@ -31,7 +31,7 @@ const ColumnItem = ({
 }) => (
   <ColumnItemRoot draggable={draggable} onClick={onClick}>
     <ColumnItemContainer>
-      {draggable && <ColumnItemDragHandle name="grabber2" />}
+      {draggable && <ColumnItemDragHandle name="grabber2" size={12} />}
       <ColumnItemContent>
         <ColumnItemSpan>{title}</ColumnItemSpan>
         {onEdit && <ActionIcon icon="ellipsis" onClick={onEdit} />}
