@@ -9,6 +9,7 @@ import { color, lighten } from "metabase/lib/colors";
 import {
   breakpointMaxSmall,
   breakpointMinSmall,
+  breakpointMinLarge,
   space,
 } from "metabase/styled-components/theme";
 import { SidebarLink } from "./SidebarItems";
@@ -156,4 +157,19 @@ export const AddYourOwnDataLink = styled(SidebarLink)`
 
 export const ExitDataAppButton = styled(Button)`
   margin-left: ${space(2)};
+`;
+
+export const DataAppActionsContainer = styled(SidebarSection)`
+  display: flex;
+  align-items: center;
+`;
+
+export const DataAppActionButton = styled(Button)`
+  padding: 0.6rem 1rem;
+
+  ${breakpointMinLarge} {
+    & {
+      padding: 0.85rem 1rem;
+    }
+  }
 `;

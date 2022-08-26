@@ -5,6 +5,9 @@ import { LocationDescriptor } from "history";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
+import ButtonGroup from "metabase/core/components/ButtonGroup";
+import Tooltip from "metabase/components/Tooltip";
+
 import * as Urls from "metabase/lib/urls";
 
 import { DataApp } from "metabase-types/api";
@@ -12,6 +15,8 @@ import { State } from "metabase-types/store";
 
 import { MainNavbarProps, SelectedItem } from "./types";
 import {
+  DataAppActionsContainer,
+  DataAppActionButton,
   ExitDataAppButton,
   PaddedSidebarLink,
   SidebarContentRoot,
@@ -72,12 +77,19 @@ function DataAppNavbarView({
           </PaddedSidebarLink>
         ))}
       </SidebarSection>
-      <SidebarSection>
+      <DataAppActionsContainer>
+        <ButtonGroup>
+          <Tooltip tooltip={t`Add`}>
+            <DataAppActionButton icon="add" onlyIcon />
+          </Tooltip>
+          <Tooltip tooltip={t`Settings`}>
+            <DataAppActionButton icon="gear" onlyIcon />
+          </Tooltip>
+        </ButtonGroup>
         <ExitDataAppButton
-          small
           onClick={handleExitApp}
         >{t`Exit app`}</ExitDataAppButton>
-      </SidebarSection>
+      </DataAppActionsContainer>
     </SidebarContentRoot>
   );
 }
