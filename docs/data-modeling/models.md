@@ -127,7 +127,7 @@ To create the schema in your database, in your Metabase click on the **gear** ic
 
 ![Cache models UI](./images/cache-model-schema.png)
 
-If the credentials you've given Metabase to connect to your database are permissive, Metabase should do all the work for you: Metabase will check if the schema exists, or otherwise attempt to create it. 
+If the credentials you've given Metabase to connect to your database are permissive, Metabase should do all the work for you: Metabase will check if the schema exists, or otherwise attempt to create it.
 
 If the connection's credentials lack the necessary permissions to create the schema in your database, you'll need to create the schema in the database yourself. Click on the info button to view the name of the schema that you'll need to create in your database to store your cached models. In the above image, the schema name is "metabase_cache_134ba_7", but your schema name will differ. Once you've created that schema, ensure that the credentials Metabase uses can manage and write to that schema. Make sure that you name the schema exactly as the tooltip in Metabase suggests.
 
@@ -147,7 +147,7 @@ To refresh a model's cached results, go to the model and click on the **i** info
 
 ### View model caching logs
 
-You can view the logs for model caching by clicking on the **gear** icon in the upper right and selecting **Admin settings** > **Tools** > **Model caching logs**. See [Admin tools](../enterprise-guide/tools.md).
+You can view the logs for model caching by clicking on the **gear** icon in the upper right and selecting **Admin settings** > **Tools** > **Model caching logs**. See [Admin tools](../usage-and-performance-tools/tools.md).
 
 ### Caching individual models
 
@@ -166,6 +166,6 @@ If you're having trouble with your model, go to the [Models troubleshooting guid
 [column-type]: ./field-types.md
 [cte]: https://www.metabase.com/learn/sql-questions/sql-cte
 [measures-dimensions]: https://www.metabase.com/learn/databases/dimensions-and-measures
-[question]: ../users-guide/04-asking-questions.md
-[learn-models]: /learn/getting-started/models
-[troubleshooting-models]: ../troubleshooting-guide/models.html
+[question]: ../questions/start.md
+[learn-models]: https://www.metabase.com/learn/getting-started/models
+[troubleshooting-models]: ../troubleshooting-guide/models.md

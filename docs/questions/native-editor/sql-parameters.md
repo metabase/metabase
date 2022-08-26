@@ -4,7 +4,7 @@ redirect_from:
   - /docs/latest/users-guide/13-sql-parameters
 ---
 
-# SQL variables 
+# SQL variables
 
 You can create SQL templates by adding variables to your SQL queries in the [Native/SQL editor][sql-editor]. These variables will create filter widgets that you can use to change the variable's value in the query. You can also add parameters to your question's URL to set the filters' values, so that when the question loads, those values are inserted into the variables.
 
@@ -102,7 +102,7 @@ WHERE true
   [[AND {% raw %}{{category}}{% endraw %}]]
 ```
 
-That last clause uses a Field filter (note the lack of a column in the `AND` clause). When using a field filter, you must exclude the column in the query; you need to map the variable in the side panel. 
+That last clause uses a Field filter (note the lack of a column in the `AND` clause). When using a field filter, you must exclude the column in the query; you need to map the variable in the side panel.
 
 If you're using MongoDB, you can make an clause optional like so:
 
@@ -135,7 +135,7 @@ Or with multiple optional filters:
 
 ## Setting a default value in the filter widget
 
-In the variables sidebar, you can set a default value for your variable. This value will be inserted into the corresponding filter widget by default (even if the filter widget is empty). You'll need to insert a new value into the filter widget to override the default. 
+In the variables sidebar, you can set a default value for your variable. This value will be inserted into the corresponding filter widget by default (even if the filter widget is empty). You'll need to insert a new value into the filter widget to override the default.
 
 ## Setting complex default values in the query
 
@@ -281,8 +281,8 @@ Learn how to [refer to a saved question in a SQL query](referencing-saved-questi
 
 [sql-editor]: ./writing-sql.md
 [dashboard-filters]: ../../dashboards/filters.md
-[field-filter]: /learn/sql-questions/field-filters.html
-[sql-variables]: /learn/sql-questions/sql-variables.html
+[field-filter]: https://www.metabase.com/learn/sql-questions/field-filters.html
+[sql-variables]: https://www.metabase.com/learn/sql-questions/sql-variables.html
 [troubleshooting-filters]: ../../troubleshooting-guide/filters.md
 [troubleshooting-sql]: ../../troubleshooting-guide/sql.md
-[basic-input]: /learn/sql-questions/sql-variables.html#basic-input-variable-text
+[basic-input]: https://www.metabase.com/learn/sql-questions/sql-variables.html#basic-input-variable-text

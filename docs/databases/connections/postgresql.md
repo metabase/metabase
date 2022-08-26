@@ -99,7 +99,7 @@ The problem is that if the keys in the JSON vary record to record, the first fiv
 Metabase can create tables with model data in your database and refresh them on a schedule you define. Metabase's connection's credentials to that database must be able to read and write to the schema displayed in the info tooltip.
 
 See [Models](../../data-modeling/models.md).
-
-[ssl-modes]: https://jdbc.postgresql.org/documentation/head/ssl-client
+-
+[ssl-modes]: https://jdbc.postgresql.org/documentation/head/ssl-client.html
 [ssh-tunnel]: ../ssh-tunnel.md
 

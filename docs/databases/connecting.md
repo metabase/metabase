@@ -27,8 +27,8 @@ Although connection details differ database to database, in general you'll need 
 Metabase supports many different databases and data sources, with different levels of support.
 
 - [Official](#officially-supported-databases) (this page)
-- [Partner](../developers-guide-drivers.md)
-- [Community](../developers-guide-drivers.md)
+- [Partner](../developers-guide/partner-and-community-drivers.md)
+- [Community](../developers-guide/partner-and-community-drivers.md)
 
 ### Officially supported databases
 
@@ -148,5 +148,5 @@ If you're having trouble with your database connection, you can check out this [
 
 - [Metadata editing](../data-modeling/metadata-editing.md).
 - [Models](../data-modeling/models.md).
-- [Setting data access permissions](../administration-guide/05-setting-permissions.md).
+- [Setting data access permissions](../permissions/data.md).
 

@@ -39,7 +39,7 @@ Optional: to view the logs as Metabase initializes, run:
 docker logs -f metabase
 ```
 
-Once the Metabase startup completes, you can access your Metabase at [localhost:3000](http://localhost:3000).
+Once the Metabase startup completes, you can access your Metabase at `http://localhost:3000`.
 
 To run Metabase on a different port, say port 12345:
 
@@ -256,7 +256,7 @@ secrets:
      file: db_user.txt
 ```
 
-We currently support the following [environment variables](../configuring-metabase/environment-variables.html) to be used as secrets:
+We currently support the following [environment variables](../configuring-metabase/environment-variables.md) to be used as secrets:
 
 - MB_DB_USER
 - MB_DB_PASS
@@ -274,4 +274,4 @@ See Running Metabase in the [Troubleshooting guide](../troubleshooting-guide/run
 
 ## Continue to setup
 
-Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](../setting-up-metabase.md).
+Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](../configuring-metabase/setting-up-metabase.md).

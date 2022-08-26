@@ -41,7 +41,7 @@ If you can't connect to the database with another application, the problem is pr
 
 **Steps to take:**
 
-If your connection isn't working, go to [Troubleshooting database connections](./datawarehouse.html). 
+If your connection isn't working, go to [Troubleshooting database connections](./datawarehouse.md).
 
 ## Does the table exist?
 
@@ -104,10 +104,10 @@ If you can’t solve your problem using the troubleshooting guides:
 - Search or ask the [Metabase community][discourse].
 - Search for [known bugs or limitations][known-issues].
 
-[data-browser]: /learn/getting-started/data-browser.html
-[data-model]: ../administration-guide/03-metadata-editing.html
+[data-browser]: https://www.metabase.com/learn/getting-started/data-browser
+[data-model]: ../data-modeling/metadata-editing.md
 [discourse]: https://discourse.metabase.com/
-[known-issues]: ./known-issues.html
-[troubleshooting-permissions]: ./permissions.html
-[troubleshooting-sandboxing]: ./sandboxing.html
-[troubleshooting-view-edit]: ./cant-view-or-edit.html
+[known-issues]: ./known-issues.md
+[troubleshooting-permissions]: ./permissions.md
+[troubleshooting-sandboxing]: ./sandboxing.md
+[troubleshooting-view-edit]: ./cant-view-or-edit.md

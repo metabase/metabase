@@ -112,9 +112,9 @@ This expression will return a list of strings containing User Group names that t
 
 For common issues, go to [Troubleshooting SAML][troubleshooting-saml].
 
-[enabling-saml-in-metabase]: ./authenticating-with-saml#enabling-saml-authentication-in-metabase
+[enabling-saml-in-metabase]: ./authenticating-with-saml.md#enabling-saml-authentication-in-metabase
 [okta-saml-docs]: https://help.okta.com/en-us/Content/Topics/Apps/Apps_App_Integration_Wizard_SAML.htm
 [okta-create-attribute-statement]: https://support.okta.com/help/s/article/How-to-define-and-configure-a-custom-SAML-attribute-statement
-[saml-doc]: ../enterprise-guide/authenticating-with-saml.html
+[saml-doc]: ./authenticating-with-saml.md
 [site-url]: ../configuring-metabase/settings.md#site-url
-[troubleshooting-saml]: ../troubleshooting-guide/saml.html
+[troubleshooting-saml]: ../troubleshooting-guide/saml.md

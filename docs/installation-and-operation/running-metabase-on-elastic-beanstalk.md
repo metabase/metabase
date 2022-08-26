@@ -121,7 +121,7 @@ Now go to the Capacity section and click **Edit**.
 
 ![Elastic Beanstalk Networking configuration](images/EBCapacity.png)
 
-The only change you need to do here is to reduce the number of Instances from 4 (the default number) to 1, as we still haven't created a centralized database where Metabase will save all of its configurations and will be using only the embedded H2 database which lives __inside__ the Metabase container and [is *not recommended* for production workloads](configuring-application-database.html) as there will be no way to backup and maintain that database. **When your instance is restarted for any reason you'll lose all your Metabase data**. If you are just doing a quick trial of Metabase that may be okay but otherwise you would like to start [creating your database engine in RDS separately](creating-RDS-database-on-AWS.html) or deploy one a separate server. You can take a look at the [Metabase at Scale](https://www.metabase.com/learn/data-diet/analytics/metabase-at-scale.html) article we wrote about how you can build redundant and scalable Metabase architectures.
+The only change you need to do here is to reduce the number of Instances from 4 (the default number) to 1, as we still haven't created a centralized database where Metabase will save all of its configurations and will be using only the embedded H2 database which lives __inside__ the Metabase container and [is *not recommended* for production workloads](configuring-application-database.md) as there will be no way to backup and maintain that database. **When your instance is restarted for any reason you'll lose all your Metabase data**. If you are just doing a quick trial of Metabase that may be okay but otherwise you would like to start [creating your database engine in RDS separately](creating-RDS-database-on-AWS.md) or deploy one a separate server. You can take a look at the [Metabase at Scale](https://www.metabase.com/learn/data-diet/analytics/metabase-at-scale) article we wrote about how you can build redundant and scalable Metabase architectures.
 
 ![Elastic Beanstalk Networking configuration](images/EBCapacityModified.png)
 
@@ -137,7 +137,7 @@ When it's all done you should see something like this:
 
 To see your new Metabase instance, simply click on the link under your environment name in the top-left (it will end with `.elasticbeanstalk.com`)
 
-Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](../setting-up-metabase.md).
+Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](../configuring-metabase/setting-up-metabase.md).
 
 # Optional extras
 
@@ -152,7 +152,7 @@ There are many ways to customize your Elastic Beanstalk deployment, but commonly
 
 When you hit the `Create App` button, AWS Elastic Beanstalk creates a CloudFormation template.  This template means that the database will be created with the Elastic Beanstalk stack, and removed when you remove the application.
 
-If you want to use a production-grade database based on best practices to persist all Metabase configurations you have to [create one in RDS separately](creating-RDS-database-on-AWS.html) or manage your own on a separate server and then connect the Elastic Beanstalk instance/s with the RDS database through [environment variables](#set-or-change-environment-variables).
+If you want to use a production-grade database based on best practices to persist all Metabase configurations you have to [create one in RDS separately](creating-RDS-database-on-AWS.md) or manage your own on a separate server and then connect the Elastic Beanstalk instance/s with the RDS database through [environment variables](#set-or-change-environment-variables).
 
 If you want to continue on this path and you know what you are doing, then: look for the **Database** configuration pane as below. and click on the `Edit` button.
 
@@ -186,10 +186,10 @@ When you click `Next` a new tab will open in your browser and you will be prompt
 
 ## Set or change environment variables
 
-In order to configure environment variables for your Elastic Beanstalk deployment (e.g., [to connect the deployment to a separate RDS database](creating-RDS-database-on-AWS.html)), click on your Metabase environment in Elastic Beanstak, go to Configuration → Software, and look for the Environment Properties in the bottom.
+In order to configure environment variables for your Elastic Beanstalk deployment (e.g., [to connect the deployment to a separate RDS database](creating-RDS-database-on-AWS.md)), click on your Metabase environment in Elastic Beanstak, go to Configuration → Software, and look for the Environment Properties in the bottom.
 
 
-In the Environment Properties section, you'll be able to set or change the variables for [configuring your Metabase deployment](https://metabase.com/docs/latest/operations-guide/environment-variables.html).
+In the Environment Properties section, you'll be able to set or change the variables for [configuring your Metabase deployment](../configuring-metabase/environment-variables.md).
 
 ![EB Environment Variables](images/EBEnvVariables.png)
 
