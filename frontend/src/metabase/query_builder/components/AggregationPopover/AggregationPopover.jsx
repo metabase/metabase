@@ -125,7 +125,7 @@ export default class AggregationPopover extends Component {
         choosingField: true,
       });
     } else {
-      // this includse picking a METRIC or picking an aggregation which doesn't require a field
+      // this includes picking a METRIC or picking an aggregation which doesn't require a field
       this.commitAggregation(item.value);
     }
   };
