@@ -31,14 +31,16 @@ export default class DimensionList extends Component {
   };
 
   UNSAFE_componentWillMount() {
-    this._updateSections(this.props.sections);
+    this.updateSections(this.props.sections);
   }
+
   UNSAFE_componentWillReceiveProps(nextProps) {
     if (this.props.sections !== nextProps.sections) {
-      this._updateSections(nextProps.sections);
+      this.updateSections(nextProps.sections);
     }
   }
-  _updateSections(sections) {
+
+  updateSections(sections) {
     this.setState({
       sections: (sections || []).map(section => ({
         ...section,
@@ -51,7 +53,7 @@ export default class DimensionList extends Component {
     });
   }
 
-  _getDimensions() {
+  getDimensions() {
     return (
       this.props.dimensions ||
       (this.props.dimension ? [this.props.dimension] : [])
@@ -59,7 +61,7 @@ export default class DimensionList extends Component {
   }
 
   itemIsSelected = item => {
-    const dimensions = this._getDimensions();
+    const dimensions = this.getDimensions();
     const { dimension } = item;
     return (
       item.dimension &&
@@ -159,7 +161,7 @@ export default class DimensionList extends Component {
   };
 
   renderSubDimensionTrigger(otherDimension, multiSelect) {
-    const dimensions = this._getDimensions();
+    const dimensions = this.getDimensions();
     const subDimension =
       _.find(dimensions, dimension =>
         dimension.isSameBaseDimension(otherDimension),
@@ -177,7 +179,7 @@ export default class DimensionList extends Component {
     );
   }
 
-  _getDimensionFromItem(item) {
+  getDimensionFromItem(item) {
     const {
       enableSubDimensions,
       useOriginalDimension,
@@ -211,21 +213,21 @@ export default class DimensionList extends Component {
       // ensure if we select the same item we don't reset the subdimension
       onChangeDimension(dimension, item);
     } else if (item.dimension) {
-      onChangeDimension(this._getDimensionFromItem(item), item);
+      onChangeDimension(this.getDimensionFromItem(item), item);
     } else if (onChangeOther) {
       onChangeOther(item);
     }
   };
 
   handleAdd = item => {
-    const dimension = this._getDimensionFromItem(item);
+    const dimension = this.getDimensionFromItem(item);
     if (dimension && this.props.onAddDimension) {
       this.props.onAddDimension(dimension, item);
     }
   };
 
   handleRemove = item => {
-    const dimension = this._getDimensionFromItem(item);
+    const dimension = this.getDimensionFromItem(item);
     if (dimension && this.props.onRemoveDimension) {
       this.props.onRemoveDimension(dimension, item);
     }
