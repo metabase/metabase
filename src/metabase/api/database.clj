@@ -430,7 +430,7 @@
      :left-join [[:metabase_table :table] [:= :table.id :metabase_field.table_id]]
      :limit     limit}))
 
-(defn- autocomplete-model-columns
+(defn- autocomplete-card-columns
   [db-id search-string limit match-type tagged-card-ids]
   (when (seq tagged-card-ids)
     (->> (db/select [Card :name :result_metadata]
@@ -438,6 +438,7 @@
            :database_id                    db-id
            {:where [:in :id tagged-card-ids]
             :limit limit})
+         (filter mi/can-read?)
          (mapcat (fn [{:keys [result_metadata name]}]
                    (map (fn [metadata]
                           (merge metadata
@@ -466,7 +467,7 @@
              (when semantic_type
                (str " " semantic_type)))])
 
-(defmethod format-autocomplete-result :model-column
+(defmethod format-autocomplete-result :card-column
   [[_ {:keys [card_name base_type semantic_type name]}]]
   [name (str card_name
              " "
@@ -474,21 +475,15 @@
              (when semantic_type
                (str " " semantic_type)))])
 
-(defn- autocomplete-results [tables fields model-columns limit]
-  (let [taken-tables        (take (- limit (/ (+ (count fields) (count model-columns)) 2)) tables)
-        taken-fields        fields
-        taken-model-columns model-columns]
+(defn- autocomplete-results [tables fields card-columns limit]
+  (let [taken-tables       (take (- limit (/ (+ (count fields) (count card-columns)) 2)) tables)
+        taken-fields       fields
+        taken-card-columns card-columns]
     (->> (concat (map #(vector :table %) taken-tables)
                  (map #(vector :field %) taken-fields)
-                 (map #(vector :model-column %) taken-model-columns))
+                 (map #(vector :card-column %) taken-card-columns))
          (take limit)
          (map format-autocomplete-result))))
-
-;; TODO: Do I need this?
-(defn readable-model-columns-only
-  "Checks if each field for the model column is readable and returns only readable fields"
-  [model-columns]
-  model-columns)
 
 (def ^:private autocomplete-matching-options
   "Valid options for the autocomplete types. Can match on a substring (\"%input%\"), on a prefix (\"input%\"), or reject
@@ -499,11 +494,11 @@
 (s/defn ^:private autocomplete-suggestions
   "match-string is a string that will be used with ilike. The it will be lowercased by autocomplete-{tables,fields}. "
   [db-id match-string match-type :- (apply s/enum (disj autocomplete-matching-options :off)) tagged-card-ids]
-  (let [limit         50
-        tables        (filter mi/can-read? (autocomplete-tables db-id match-string limit match-type))
-        fields        (readable-fields-only (autocomplete-fields db-id match-string limit match-type))
-        model-columns (readable-model-columns-only (autocomplete-model-columns db-id match-string limit match-type tagged-card-ids))]
-    (autocomplete-results tables fields model-columns limit)))
+  (let [limit        50
+        tables       (filter mi/can-read? (autocomplete-tables db-id match-string limit match-type))
+        fields       (readable-fields-only (autocomplete-fields db-id match-string limit match-type))
+        card-columns (autocomplete-card-columns db-id match-string limit match-type tagged-card-ids)]
+    (autocomplete-results tables fields card-columns limit)))
 
 (defsetting native-query-autocomplete-match-style
   (deferred-tru
