@@ -260,6 +260,12 @@ function getSeriesTransformer(
 
   return values => values;
 }
+
+interface Position {
+  xPos: number;
+  yPos: number;
+}
+
 function fixValuesCollisions(
   multiSeriesValues: (Value & {
     serie: HydratedSeries;
@@ -271,7 +277,8 @@ function fixValuesCollisions(
 ) {
   // prevent collision by mutating each item inside the list
   // Same logic as in https://github.com/metabase/metabase/blob/fa6ee214e9b8d2fb4cccf4fc88dc1701face777b/frontend/src/metabase/visualizations/lib/chart_values.js#L351
-  _.chain(multiSeriesValues.flat())
+  _.chain(multiSeriesValues)
+    .flatten()
     .flatten()
     .map(value => {
       const { xAccessor, yAccessor } = getXyAccessors(
@@ -302,43 +309,55 @@ function fixValuesCollisions(
     })
     .each(group => {
       const sortedByY = _.sortBy(group, value => value.position.yPos);
-      const indexOffset = 1;
-      sortedByY.slice(indexOffset).forEach((value, index) => {
+
+      // Fix first value collision only with X-axis since in viz chart
+      // we started fixing collisions from the second value.
+      // https://github.com/metabase/metabase/blob/93350352b92265bb84be6249bce101fe8c89f7d1/frontend/src/metabase/visualizations/lib/chart_values.js#L366
+      fixValueCollision([], sortedByY[0]);
+
+      // Fix both value collision and X-axis starting from the second value.
+      const INDEX_OFFSET = 1;
+      sortedByY.slice(INDEX_OFFSET).forEach((value, index) => {
         const otherValues = [
-          ...group.slice(0, index + indexOffset),
-          ...group.slice(index + indexOffset + 1),
+          ...group.slice(0, index + INDEX_OFFSET),
+          ...group.slice(index + INDEX_OFFSET + 1),
         ].map(value => value.position);
 
-        if (hasCollisions(otherValues, value.position, xAxisYPos)) {
-          if (
-            hasCollisions(otherValues, value.alternativePosition, xAxisYPos)
-          ) {
-            value.originalValue.hidden = true;
-          } else {
-            value.position = value.alternativePosition;
-            value.originalValue.flipped = !value.originalValue.flipped;
-          }
-        }
+        fixValueCollision(otherValues, value);
       });
     });
+
+  function fixValueCollision(
+    otherValues: Position[],
+    value: {
+      position: Position;
+      alternativePosition: Position;
+      originalValue: Value;
+    },
+  ) {
+    if (hasCollisions(otherValues, value.position, xAxisYPos)) {
+      if (hasCollisions(otherValues, value.alternativePosition, xAxisYPos)) {
+        value.originalValue.hidden = true;
+      } else {
+        value.position = value.alternativePosition;
+        value.originalValue.flipped = !value.originalValue.flipped;
+      }
+    }
+  }
 
   return multiSeriesValues;
 }
 
 const MIN_SPACING = 20;
 function hasCollisions(
-  otherValues: { yPos: number }[],
-  value: {
-    yPos: number;
-  },
+  otherValues: Position[],
+  value: Position,
   xAxisYPos: number,
 ) {
   const minDistanceFromOtherValues = Math.min(
-    ...[...otherValues, { yPos: xAxisYPos + MIN_SPACING }].map(
-      distanceFrom(value),
-    ),
+    ...otherValues.map(distanceFrom(value)),
   );
-  return minDistanceFromOtherValues < MIN_SPACING;
+  return minDistanceFromOtherValues < MIN_SPACING || value.yPos > xAxisYPos;
 }
 
 function distanceFrom(value: { yPos: number }) {
