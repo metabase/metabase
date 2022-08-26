@@ -12,7 +12,6 @@ export interface MainNavbarOwnProps {
 export interface MainNavbarDispatchProps {
   openNavbar: () => void;
   closeNavbar: () => void;
-  onChangeLocation: (location: LocationDescriptor) => void;
 }
 
 export type MainNavbarProps = MainNavbarOwnProps & MainNavbarDispatchProps;
