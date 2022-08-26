@@ -106,19 +106,19 @@ export default class AggregationPopover extends Component {
     const aggregation = this._getAggregation();
 
     if (dimension) {
-      if (item.aggregation && item.aggregation.requiresField) {
+      if (item.aggregation?.requiresField) {
         this.commitAggregation(
           AGGREGATION.setField(item.value, dimension.mbql()),
         );
       }
     } else if (item.custom) {
       // use the existing aggregation if it's valid
-      const value = aggregation && aggregation.isValid() ? aggregation : null;
+      const value = aggregation?.isValid() ? aggregation : null;
       this.setState({
         aggregation: value,
         editingAggregation: true,
       });
-    } else if (item.aggregation && item.aggregation.requiresField) {
+    } else if (item.aggregation?.requiresField) {
       // check if this aggregation requires a field, if so then force user to pick that now, otherwise we are done
       this.setState({
         aggregation: item.value,
@@ -147,7 +147,7 @@ export default class AggregationPopover extends Component {
     const { aggregationOperators, query, dimension, showRawData } = this.props;
     return (
       aggregationOperators ||
-      (dimension && dimension.aggregationOperators()) ||
+      dimension?.aggregationOperators() ||
       query.table().aggregationOperators()
     ).filter(agg => showRawData || agg.short !== "rows");
   }
@@ -158,7 +158,7 @@ export default class AggregationPopover extends Component {
   }
 
   renderItemExtra(item, itemIndex) {
-    if (item.aggregation && item.aggregation.description) {
+    if (item.aggregation?.description) {
       return (
         <div className="p1">
           <Tooltip tooltip={item.aggregation.description}>
@@ -365,7 +365,7 @@ export default class AggregationPopover extends Component {
           renderSectionIcon={s => <Icon name={s.icon} size={18} />}
           renderItemExtra={this.renderItemExtra.bind(this)}
           getItemClassName={item =>
-            item.metric && item.metric.archived ? "text-medium" : null
+            item.metric?.archived ? "text-medium" : null
           }
           onChangeSection={(section, sectionIndex) => {
             if (section.custom) {
