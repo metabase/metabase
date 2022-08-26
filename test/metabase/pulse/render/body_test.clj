@@ -469,7 +469,7 @@
 
 (deftest series-with-color-test
   (testing "Check if single x-axis combo series can convert colors"
-    (is (= [{:name "NumPurchased", :color "#a7cf7b", :type :bar, :data [[1.25 20] [5.0 10] [10.0 1]], :yAxisPosition "left"}]
+    (is (= [{:name "NumPurchased", :color "#a7cf7b", :type :bar, :data [[10.0 1] [5.0 10] [1.25 20]], :yAxisPosition "left"}]
            (#'body/single-x-axis-combo-series
             :bar
             [[[10.0] [1]] [[5.0] [10]] [[1.25] [20]]]
