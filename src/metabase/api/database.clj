@@ -431,12 +431,15 @@
      :limit     limit}))
 
 (defn- autocomplete-card-columns
-  [db-id search-string limit match-type tagged-card-ids]
-  (when (seq tagged-card-ids)
+  "Returns a list of card column metadata given the `search-string` and a set of card ids.
+   The search-string is matched against column names in the result_metadata of the cards.
+  Each result contains all the metadata for the column, and the name of the card."
+  [db-id search-string limit match-type card-ids]
+  (when (seq card-ids)
     (->> (db/select [Card :name :result_metadata :collection_id]
            :%lower.result_metadata         [:like (match-search-string :substring search-string)]
            :database_id                    db-id
-           {:where [:in :id tagged-card-ids]
+           {:where [:in :id card-ids]
             :limit limit})
          (filter mi/can-read?)
          (mapcat (fn [{:keys [result_metadata name]}]
@@ -447,7 +450,8 @@
          (filter (fn [column-metadata]
                    (re-find (re-pattern (case match-type
                                           :prefix    (str "(?i)^" search-string)
-                                          :substring (str "(?i)" search-string))) (:name column-metadata)))))))
+                                          :substring (str "(?i)" search-string))) (:name column-metadata))))
+         (sort-by :name))))
 
 (defmulti format-autocomplete-result
   "Format an autocomplete result for the client."
@@ -475,13 +479,16 @@
              (when semantic_type
                (str " " semantic_type)))])
 
-(defn- autocomplete-results [tables fields card-columns limit]
-  (let [taken-tables       (take (- limit (/ (+ (count fields) (count card-columns)) 2)) tables)
-        taken-fields       fields
-        taken-card-columns card-columns]
-    (->> (concat (map #(vector :table %) taken-tables)
-                 (map #(vector :field %) taken-fields)
-                 (map #(vector :card-column %) taken-card-columns))
+(defn- autocomplete-results
+  "Returns ordered and formatted autocomplete results for the client to display."
+  [tables fields card-columns limit]
+  (let [;; Limit the number of tables according to the number of fields and columns
+        max-tables-count (- limit (/ (+ (count fields)
+                                        (count card-columns))
+                                     2))]
+    (->> (concat (map #(vector :table %) (take max-tables-count tables))
+                 (map #(vector :field %) fields)
+                 (map #(vector :card-column %) card-columns))
          (take limit)
          (map format-autocomplete-result))))
 
