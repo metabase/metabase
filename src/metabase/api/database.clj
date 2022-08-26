@@ -475,9 +475,9 @@
                (str " " semantic_type)))])
 
 (defn- autocomplete-results [tables fields model-columns limit]
-  (let [taken-tables        (take 5 tables)
-        taken-fields        (take 5 fields)
-        taken-model-columns (take 5 model-columns)]
+  (let [taken-tables        (take (- limit (/ (+ (count fields) (count model-columns)) 2)) tables)
+        taken-fields        fields
+        taken-model-columns model-columns]
     (->> (concat (map #(vector :table %) taken-tables)
                  (map #(vector :field %) taken-fields)
                  (map #(vector :model-column %) taken-model-columns))
