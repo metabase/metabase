@@ -1299,7 +1299,7 @@ class QuestionInner {
       const queryWithParameters = {
         ...query,
         parameters,
-        metadata: this._card.result_metadata,
+        "dataset-metadata": this._card.result_metadata,
       };
 
       const ifCancelled = cancelDeferred
