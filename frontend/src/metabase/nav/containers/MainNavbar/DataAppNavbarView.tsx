@@ -67,15 +67,17 @@ function DataAppNavbarView({
         <SidebarHeadingWrapper>
           <SidebarHeading>{dataApp.collection.name}</SidebarHeading>
         </SidebarHeadingWrapper>
-        {appPages.map(page => (
-          <PaddedSidebarLink
-            key={page.id}
-            url={Urls.dataAppPage(dataApp, page)}
-            isSelected={dataAppPage?.id === page.id}
-          >
-            {page.name}
-          </PaddedSidebarLink>
-        ))}
+        <ul>
+          {appPages.map(page => (
+            <PaddedSidebarLink
+              key={page.id}
+              url={Urls.dataAppPage(dataApp, page)}
+              isSelected={dataAppPage?.id === page.id}
+            >
+              {page.name}
+            </PaddedSidebarLink>
+          ))}
+        </ul>
       </SidebarSection>
       <DataAppActionsContainer>
         <ButtonGroup>
