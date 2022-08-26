@@ -205,6 +205,7 @@ export const XYChart = ({
             yScaleRight={yScaleRight}
             innerWidth={innerWidth}
             areStacked={settings.stacking === "stack"}
+            xAxisYPos={yMin - margin.top}
           />
         )}
       </Group>

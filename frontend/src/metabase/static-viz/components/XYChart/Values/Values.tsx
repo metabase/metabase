@@ -2,11 +2,12 @@ import React from "react";
 import _ from "underscore";
 
 import { Text } from "@visx/text";
-import { PositionScale } from "@visx/shape/lib/types";
+import { scaleBand } from "@visx/scale";
 
 import { getValueStep, getY } from "../utils";
 
 import type { TextProps } from "@visx/text";
+import type { AnyScaleBand, PositionScale } from "@visx/shape/lib/types";
 import type {
   HydratedSeries,
   SeriesDatum,
@@ -27,9 +28,11 @@ interface ValuesProps {
   yScaleRight: PositionScale | null;
   innerWidth: number;
   areStacked: boolean;
+  xAxisYPos: number;
 }
 
 interface XScale {
+  bandwidth?: number;
   lineAccessor: XYAccessor<SeriesDatum>;
   barAccessor?: XYAccessor<SeriesDatum>;
 }
@@ -49,7 +52,24 @@ export default function Values({
   yScaleRight,
   innerWidth,
   areStacked,
+  xAxisYPos,
 }: ValuesProps) {
+  const containBars = Boolean(xScale.bandwidth);
+  const barSeriesIndexMap = new WeakMap();
+  let innerBarScale: AnyScaleBand | undefined = undefined;
+  if (containBars && xScale.bandwidth) {
+    const innerBarScaleDomain = series
+      .filter(series => series.type === "bar")
+      .map((barSerie, index) => {
+        barSeriesIndexMap.set(barSerie, index);
+        return index;
+      });
+    innerBarScale = scaleBand({
+      domain: innerBarScaleDomain,
+      range: [0, xScale.bandwidth],
+    });
+  }
+
   const multiSeriesValues = series.map(serie => {
     const singleSerieValues = getValues(serie, areStacked, xScale);
     return singleSerieValues.map(value => {
@@ -64,7 +84,21 @@ export default function Values({
     });
   });
 
-  const collisionFreeMultiSeriesValues = fixValuesCollisions(multiSeriesValues);
+  function getBarXOffset(serie: HydratedSeries) {
+    if (containBars && innerBarScale) {
+      const innerX = innerBarScale(barSeriesIndexMap.get(serie)) ?? 0;
+      const width = innerBarScale.bandwidth();
+      return innerX + width / 2;
+    }
+
+    return 0;
+  }
+
+  const collisionFreeMultiSeriesValues = fixValuesCollisions(
+    multiSeriesValues,
+    xAxisYPos,
+    getBarXOffset,
+  );
 
   return (
     <>
@@ -88,6 +122,7 @@ export default function Values({
               value.serie.type,
               value.xScale,
               value.yScale,
+              getBarXOffset(value.serie),
               value.flipped,
             );
 
@@ -160,22 +195,27 @@ function getXyAccessors(
   type: VisualizationType,
   xScale: XScale,
   yScale: PositionScale,
+  barXOffset: number,
   flipped?: boolean,
 ): {
   xAccessor: XYAccessor;
   yAccessor: XYAccessor;
 } {
   return {
-    xAccessor: getXAccessor(type, xScale),
+    xAccessor: getXAccessor(type, xScale, barXOffset),
     yAccessor: (datum, overriddenFlipped = flipped) =>
       (yScale(getY(datum)) ?? 0) +
       (overriddenFlipped ? FLIPPED_VALUES_MARGIN : -VALUES_MARGIN),
   };
 }
 
-function getXAccessor(type: VisualizationType, xScale: XScale): XYAccessor {
+function getXAccessor(
+  type: VisualizationType,
+  xScale: XScale,
+  barXOffset: number,
+): XYAccessor {
   if (type === "bar") {
-    return xScale.barAccessor as XYAccessor;
+    return datum => (xScale.barAccessor as XYAccessor)(datum) + barXOffset;
   }
   if (type === "line" || type === "area") {
     return xScale.lineAccessor;
@@ -226,6 +266,8 @@ function fixValuesCollisions(
     xScale: XScale;
     yScale: PositionScale;
   })[][],
+  xAxisYPos: number,
+  getBarXOffset: (serie: HydratedSeries) => number,
 ) {
   // prevent collision by mutating each item inside the list
   // Same logic as in https://github.com/metabase/metabase/blob/fa6ee214e9b8d2fb4cccf4fc88dc1701face777b/frontend/src/metabase/visualizations/lib/chart_values.js#L351
@@ -236,6 +278,7 @@ function fixValuesCollisions(
         value.serie.type,
         value.xScale,
         value.yScale,
+        getBarXOffset(value.serie),
         value.flipped,
       );
 
@@ -266,8 +309,10 @@ function fixValuesCollisions(
           ...group.slice(index + indexOffset + 1),
         ].map(value => value.position);
 
-        if (hasCollisions(otherValues, value.position)) {
-          if (hasCollisions(otherValues, value.alternativePosition)) {
+        if (hasCollisions(otherValues, value.position, xAxisYPos)) {
+          if (
+            hasCollisions(otherValues, value.alternativePosition, xAxisYPos)
+          ) {
             value.originalValue.hidden = true;
           } else {
             value.position = value.alternativePosition;
@@ -286,9 +331,12 @@ function hasCollisions(
   value: {
     yPos: number;
   },
+  xAxisYPos: number,
 ) {
   const minDistanceFromOtherValues = Math.min(
-    ...otherValues.map(distanceFrom(value)),
+    ...[...otherValues, { yPos: xAxisYPos + MIN_SPACING }].map(
+      distanceFrom(value),
+    ),
   );
   return minDistanceFromOtherValues < MIN_SPACING;
 }
