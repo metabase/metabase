@@ -149,7 +149,7 @@ export default class AggregationPopover extends Component {
       aggregationOperators ||
       dimension?.aggregationOperators() ||
       query.table().aggregationOperators()
-    ).filter(agg => showRawData || agg.short !== "rows");
+    ).filter(aggregation => showRawData || aggregation.short !== "rows");
   }
 
   itemIsSelected(item) {
@@ -362,7 +362,7 @@ export default class AggregationPopover extends Component {
           sections={sections}
           onChange={this.onPickAggregation}
           itemIsSelected={this.itemIsSelected.bind(this)}
-          renderSectionIcon={s => <Icon name={s.icon} size={18} />}
+          renderSectionIcon={section => <Icon name={section.icon} size={18} />}
           renderItemExtra={this.renderItemExtra.bind(this)}
           getItemClassName={item =>
             item.metric?.archived ? "text-medium" : null
