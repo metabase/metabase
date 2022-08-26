@@ -321,17 +321,22 @@
                             [3 105 "Fantastic Wool Shirt"   "Fantastic Wool Shirt"]]
                            (mt/rows (qp/process-query q3))))))))))))))
 
+
+(defn- do-with-card-with-query
+  [query card-option thunk]
+  (mt/with-temp Card [card (merge {:dataset_query   query
+                                   :result_metadata (get-in (qp/process-query query)
+                                                            [:data :results_metadata :columns])}
+                                  card-option)]
+    (thunk card)))
+
 (defmacro with-card-with-query
   "Like [[mt/with-temp]] for card but run the query to get the result_metadata and create a card with it.
   Bind the created card to `card-binding`."
   {:style/indent 2}
-  [query [card-binding & [card-option]] & body]
-  `(mt/with-temp ~Card [card# (merge {:dataset_query   ~query
-                                      :result_metadata (get-in (qp/process-query ~query)
-                                                               [:data :results_metadata :columns])}
-                                     ~card-option)]
-     ((fn [~card-binding]
-        ~@body) card#)))
+  [query [card-binding card-option] & body]
+  `(do-with-card-with-query ~query ~card-option (fn [~card-binding]
+                                                  ~@body)))
 
 (deftest nested-questions-with-custom-remapping-test
   (testing "question with source is a question with a custom remapping column should work (#23449)"
