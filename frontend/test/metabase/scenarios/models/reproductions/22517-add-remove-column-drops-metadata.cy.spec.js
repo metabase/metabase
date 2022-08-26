@@ -1,7 +1,6 @@
-import { restore } from "__support__/e2e/helpers";
-import { openDetailsSidebar } from "../helpers/e2e-models-helpers";
+import { openQuestionActions, restore } from "__support__/e2e/helpers";
 
-describe.skip("issue 22517", () => {
+describe("issue 22517", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     cy.intercept("PUT", "/api/card/*").as("updateMetadata");
@@ -18,9 +17,9 @@ describe.skip("issue 22517", () => {
       { visitQuestion: true },
     );
 
-    openDetailsSidebar();
+    openQuestionActions();
 
-    cy.findByText("Customize metadata").click();
+    cy.findByText("Edit metadata").click();
     cy.wait(["@cardQuery", "@cardQuery"]);
 
     renameColumn("ID", "Foo");
@@ -29,8 +28,8 @@ describe.skip("issue 22517", () => {
     cy.wait("@updateMetadata");
   });
 
-  it("adding or removging a column should not drop previously edited metadata (metabase#22517)", () => {
-    openDetailsSidebar();
+  it("adding or removing a column should not drop previously edited metadata (metabase#22517)", () => {
+    openQuestionActions();
 
     cy.findByText("Edit query definition").click();
     cy.wait(["@cardQuery", "@cardQuery"]);
