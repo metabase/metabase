@@ -432,11 +432,12 @@
 
 ;; TODO: include saved questions in this
 ;; TODO: make more efficient by taking in the set of models / saved questions referenced by the query in the editor
-(defn- autocomplete-model-columns [db-id search-string limit match-type]
+(defn- autocomplete-model-columns [db-id search-string limit match-type tagged-question-ids]
   (->> (db/select [Card :name :result_metadata]
          :%lower.result_metadata         [:like (match-search-string :substring search-string)]
          :database_id                    db-id
-         {:limit limit})
+         {:limit limit
+          :where [:in :id tagged-question-ids]})
        (mapcat (fn [{:keys [result_metadata name]}]
                  (map (fn [metadata]
                         (merge metadata
@@ -447,16 +448,9 @@
                                         :prefix    (str "(?i)^" search-string)
                                         :substring (str "(?i)" search-string))) (:name metadata))))))
 
-(defn- autocomplete-fields [db-id search-string limit match-type]
-  (db/select [Field :name :base_type :semantic_type :id :table_id [:table.name :table_name]]
-    :metabase_field.active          true
-    :%lower.metabase_field.name     [:like (match-search-string match-type search-string)]
-    :metabase_field.visibility_type [:not-in ["sensitive" "retired"]]
-    :table.db_id                    db-id
-    {:order-by  [[:%lower.metabase_field.name :asc]
-                 [:%lower.table.name :asc]]
-     :left-join [[:metabase_table :table] [:= :table.id :metabase_field.table_id]]
-     :limit     limit}))
+(comment
+  (autocomplete-model-columns 1 "product" 50 :substring [258104])
+  )
 
 (defmulti format-autocomplete-result
   "Format an autocomplete result for the client."
@@ -508,11 +502,11 @@
 
 (s/defn ^:private autocomplete-suggestions
   "match-string is a string that will be used with ilike. The it will be lowercased by autocomplete-{tables,fields}. "
-  [db-id match-string match-type :- (apply s/enum (disj autocomplete-matching-options :off))]
+  [db-id match-string match-type :- (apply s/enum (disj autocomplete-matching-options :off)) tagged-question-ids]
   (let [limit         50
         tables        (filter mi/can-read? (autocomplete-tables db-id match-string limit match-type))
         fields        (readable-fields-only (autocomplete-fields db-id match-string limit match-type))
-        model-columns (readable-model-columns-only (autocomplete-model-columns db-id match-string limit match-type))]
+        model-columns (readable-model-columns-only (autocomplete-model-columns db-id match-string limit match-type tagged-question-ids))]
     (autocomplete-results tables fields model-columns limit)))
 
 (defsetting native-query-autocomplete-match-style
@@ -541,18 +535,19 @@
   Tables are returned in the format `[table_name \"Table\"]`;
   When Fields have a semantic_type, they are returned in the format `[field_name \"table_name base_type semantic_type\"]`
   When Fields lack a semantic_type, they are returned in the format `[field_name \"table_name base_type\"]`"
-  [id prefix substring]
+  [id prefix substring tagged-question-ids]
   (api/read-check Database id)
-  (try
-    (cond
-      substring
-      (autocomplete-suggestions id substring :substring)
-      prefix
-      (autocomplete-suggestions id prefix :prefix)
-      :else
-      (throw (ex-info "must include prefix or substring" {})))
-    (catch Throwable t
-      (log/warn "Error with autocomplete: " (.getMessage t)))))
+  (let [parsed-tagged-question-ids (map read-string (str/split tagged-question-ids #","))]
+    (try
+      (cond
+        substring
+        (autocomplete-suggestions id substring :substring parsed-tagged-question-ids)
+        prefix
+        (autocomplete-suggestions id prefix :prefix parsed-tagged-question-ids)
+        :else
+        (throw (ex-info "must include prefix or substring" {})))
+      (catch Throwable t
+        (log/warn "Error with autocomplete: " (.getMessage t))))))
 
 
 ;;; ------------------------------------------ GET /api/database/:id/fields ------------------------------------------
