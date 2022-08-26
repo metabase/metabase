@@ -38,7 +38,6 @@ class Dashboard extends Component {
     loadDashboardParams: PropTypes.func,
     location: PropTypes.object,
 
-    isDataApp: PropTypes.bool,
     isFullscreen: PropTypes.bool,
     isNightMode: PropTypes.bool,
     isSharing: PropTypes.bool,
@@ -319,7 +318,6 @@ class Dashboard extends Component {
                       {...this.props}
                       isNightMode={shouldRenderAsNightMode}
                       onEditingChange={this.setEditing}
-                      isDataApp={this.props.isDataApp}
                     />
                   ) : (
                     <DashboardEmptyState

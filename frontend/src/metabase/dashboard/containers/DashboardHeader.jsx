@@ -182,7 +182,6 @@ class DashboardHeader extends Component {
       parametersWidget,
       isBookmarked,
       isAdmin,
-      isDataApp,
       isEditing,
       isFullscreen,
       isEditable,
@@ -238,7 +237,7 @@ class DashboardHeader extends Component {
         </Tooltip>,
       );
 
-      if (isAdmin && isDataApp) {
+      if (isAdmin && dashboard.is_app_page) {
         buttons.push(
           <Tooltip key="add-action-button" tooltip={t`Add action button`}>
             <a
