@@ -19,6 +19,7 @@ interface SpecificDatePickerProps {
   value: string;
   primaryColor?: string;
   selectAll?: SelectAll;
+  isActive?: boolean;
   hasCalendar?: boolean;
   hideTimeSelectors?: boolean;
   onFocus?: () => void;
@@ -31,6 +32,7 @@ const SpecificDatePicker = ({
   value,
   primaryColor,
   selectAll,
+  isActive,
   hasCalendar,
   hideTimeSelectors,
   onFocus,
@@ -56,7 +58,7 @@ const SpecificDatePicker = ({
 
   return (
     <div className={className} data-testid="specific-date-picker">
-      <DateInputContainer>
+      <DateInputContainer isActive={isActive}>
         <DateInput
           placeholder={moment().format(dateFormat)}
           value={date ? date.format(dateFormat) : ""}

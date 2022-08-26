@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import moment from "moment-timezone";
+import moment, { Moment } from "moment-timezone";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import { setTimeComponent } from "metabase/lib/query_time";
 import Calendar from "metabase/components/Calendar";
@@ -22,7 +22,7 @@ export const BetweenPicker = ({
   hideTimeSelectors,
   onFilterChange,
 }: BetweenPickerProps) => {
-  const [isStartDatActive, setIsStartDateActive] = useState(true);
+  const [isStartDateActive, setIsStartDateActive] = useState(true);
 
   const handleStartDateFocus = useCallback(() => {
     setIsStartDateActive(true);
@@ -32,23 +32,32 @@ export const BetweenPicker = ({
     setIsStartDateActive(false);
   }, []);
 
-  const handleDateRangeChange = useCallback(
-    (startValue: string | null, endValue: string | null) => {
-      onFilterChange([op, field, startValue, endValue]);
+  const handleDateClick = useCallback(
+    (newValue: string, newDate: Moment) => {
+      if (isStartDateActive) {
+        onFilterChange([op, field, newValue, null]);
+      } else if (newDate.isBefore(startValue)) {
+        onFilterChange([op, field, newValue, startValue]);
+      } else {
+        onFilterChange([op, field, startValue, newValue]);
+      }
+      setIsStartDateActive(isActive => !isActive);
     },
-    [op, field, onFilterChange],
+    [op, field, startValue, isStartDateActive, onFilterChange],
   );
 
   const handleStartDateChange = useCallback(
-    (value: string | null) => {
-      onFilterChange([op, field, value, endValue]);
+    (newValue: string | null) => {
+      onFilterChange([op, field, newValue, endValue]);
+      setIsStartDateActive(isActive => !isActive);
     },
     [op, field, endValue, onFilterChange],
   );
 
   const handleEndDateChange = useCallback(
-    (value: string | null) => {
-      onFilterChange([op, field, startValue, value]);
+    (newValue: string | null) => {
+      onFilterChange([op, field, startValue, newValue]);
+      setIsStartDateActive(isActive => !isActive);
     },
     [op, field, startValue, onFilterChange],
   );
@@ -69,7 +78,9 @@ export const BetweenPicker = ({
           <SpecificDatePicker
             value={startValue}
             primaryColor={primaryColor}
+            isActive={isStartDateActive}
             hideTimeSelectors={hideTimeSelectors}
+            onFocus={handleStartDateFocus}
             onChange={handleStartDateChange}
           />
         </div>
@@ -77,7 +88,9 @@ export const BetweenPicker = ({
           <SpecificDatePicker
             value={endValue}
             primaryColor={primaryColor}
+            isActive={!isStartDateActive}
             hideTimeSelectors={hideTimeSelectors}
+            onFocus={handleEndDateFocus}
             onChange={handleEndDateChange}
             onClear={handleEndDateClear}
           />
@@ -90,7 +103,7 @@ export const BetweenPicker = ({
           initial={startValue}
           selected={startValue && moment(startValue)}
           selectedEnd={endValue && moment(endValue)}
-          onChange={handleDateRangeChange}
+          onDateClick={handleDateClick}
         />
       </div>
     </div>

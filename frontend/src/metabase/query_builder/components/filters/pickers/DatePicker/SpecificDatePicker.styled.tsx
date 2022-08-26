@@ -22,11 +22,16 @@ export const DateInput = styled(InputBlurChange)`
   background: none;
 `;
 
-export const DateInputContainer = styled.div`
+interface DateInputContainerProps {
+  isActive?: boolean;
+}
+
+export const DateInputContainer = styled.div<DateInputContainerProps>`
   display: flex;
   align-items: center;
   width: 100%;
   margin-bottom: 1rem;
-  border: 1px solid ${color("brand")};
+  border: 1px solid
+    ${({ isActive }) => (isActive ? color("brand") : color("border"))};
   border-radius: 0.5rem;
 `;
