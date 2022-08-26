@@ -305,5 +305,14 @@ const getProps = (
   onUpdateCollection: jest.fn(),
   onCreateBookmark: jest.fn(),
   onDeleteBookmark: jest.fn(),
+  location: {
+    pathname: `/collection/1`,
+    search: "",
+    query: {},
+    hash: "",
+    state: {},
+    action: "PUSH",
+    key: "1",
+  },
   ...opts,
 });
