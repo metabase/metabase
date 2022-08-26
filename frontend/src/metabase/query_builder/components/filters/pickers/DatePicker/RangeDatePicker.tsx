@@ -5,7 +5,7 @@ import { setTimeComponent } from "metabase/lib/query_time";
 import Calendar from "metabase/components/Calendar";
 import SingleDatePicker, { SingleDatePickerProps } from "./SingleDatePicker";
 import SpecificDatePicker from "./SpecificDatePicker";
-import { TimeContainer } from "./RangeDatePicker.styled";
+import { DateContainer, DateDivider } from "./RangeDatePicker.styled";
 
 interface BetweenPickerProps {
   className?: string;
@@ -73,29 +73,26 @@ export const BetweenPicker = ({
 
   return (
     <div className={className} data-testid="between-date-picker">
-      <TimeContainer>
-        <div>
-          <SpecificDatePicker
-            value={startValue}
-            primaryColor={primaryColor}
-            isActive={isStartDateActive}
-            hideTimeSelectors={hideTimeSelectors}
-            onFocus={handleStartDateFocus}
-            onChange={handleStartDateChange}
-          />
-        </div>
-        <div>
-          <SpecificDatePicker
-            value={endValue}
-            primaryColor={primaryColor}
-            isActive={!isStartDateActive}
-            hideTimeSelectors={hideTimeSelectors}
-            onFocus={handleEndDateFocus}
-            onChange={handleEndDateChange}
-            onClear={handleEndDateClear}
-          />
-        </div>
-      </TimeContainer>
+      <DateContainer>
+        <SpecificDatePicker
+          value={startValue}
+          primaryColor={primaryColor}
+          isActive={isStartDateActive}
+          hideTimeSelectors={hideTimeSelectors}
+          onFocus={handleStartDateFocus}
+          onChange={handleStartDateChange}
+        />
+        <DateDivider>–</DateDivider>
+        <SpecificDatePicker
+          value={endValue}
+          primaryColor={primaryColor}
+          isActive={!isStartDateActive}
+          hideTimeSelectors={hideTimeSelectors}
+          onFocus={handleEndDateFocus}
+          onChange={handleEndDateChange}
+          onClear={handleEndDateClear}
+        />
+      </DateContainer>
       <div className="Calendar--noContext">
         <Calendar
           isRangePicker
