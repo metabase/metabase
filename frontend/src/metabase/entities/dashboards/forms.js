@@ -2,36 +2,50 @@ import { t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_CACHING } from "metabase/plugins";
 
-const FORM_FIELDS = [
-  {
+function createNameField() {
+  return {
     name: "name",
     title: t`Name`,
     placeholder: t`What is the name of your dashboard?`,
     autoFocus: true,
     validate: name => (!name ? t`Name is required` : null),
-  },
-  {
+  };
+}
+
+function createDescriptionField() {
+  return {
     name: "description",
     title: t`Description`,
     type: "text",
     placeholder: t`It's optional but oh, so helpful`,
-  },
-  {
+  };
+}
+
+function createCollectionIdField() {
+  return {
     name: "collection_id",
     title: t`Which collection should this go in?`,
     type: "collection",
     validate: collectionId =>
       collectionId === undefined ? t`Collection is required` : null,
-  },
-];
+  };
+}
+
+function createForm() {
+  return [
+    createNameField(),
+    createDescriptionField(),
+    createCollectionIdField(),
+  ];
+}
 
 export default {
   create: {
-    fields: FORM_FIELDS,
+    fields: createForm,
   },
   edit: {
     fields: () => {
-      const fields = [...FORM_FIELDS];
+      const fields = [...createForm()];
       if (
         MetabaseSettings.get("enable-query-caching") &&
         PLUGIN_CACHING.cacheTTLFormField
@@ -44,5 +58,24 @@ export default {
       }
       return fields;
     },
+  },
+  dataAppPage: {
+    fields: () => [
+      {
+        ...createNameField(),
+        placeholder: t`What is the name of your page?`,
+      },
+      createDescriptionField(),
+      {
+        ...createCollectionIdField(),
+        type: "hidden",
+      },
+      {
+        name: "is_app_page",
+        type: "hidden",
+        initial: true,
+        normalize: () => true,
+      },
+    ],
   },
 };
