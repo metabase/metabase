@@ -508,7 +508,7 @@
 
 (s/defn ^:private autocomplete-suggestions
   "match-string is a string that will be used with ilike. The it will be lowercased by autocomplete-{tables,fields}. "
-  [db-id match-string match-type :- (apply s/enum autocomplete-matching-options)]
+  [db-id match-string match-type :- (apply s/enum (disj autocomplete-matching-options :off))]
   (let [limit         50
         tables        (filter mi/can-read? (autocomplete-tables db-id match-string limit match-type))
         fields        (readable-fields-only (autocomplete-fields db-id match-string limit match-type))
