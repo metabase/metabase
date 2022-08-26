@@ -172,11 +172,11 @@ export default class AggregationPopover extends Component {
   }
 
   renderMetricTooltip(metric) {
+    const content = <QueryDefinitionTooltip type="metric" object={metric} />;
+
     return (
       <div className="p1">
-        <Tooltip
-          tooltip={<QueryDefinitionTooltip type="metric" object={metric} />}
-        >
+        <Tooltip tooltip={content}>
           <span className="QuestionTooltipTarget" />
         </Tooltip>
       </div>
