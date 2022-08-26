@@ -98,4 +98,7 @@ export type ChartStyle = {
 
 export type XYAccessor<
   T extends SeriesDatum | StackedDatum = SeriesDatum | StackedDatum,
-> = (datum: T extends SeriesDatum ? SeriesDatum : StackedDatum) => number;
+> = (
+  datum: T extends SeriesDatum ? SeriesDatum : StackedDatum,
+  flipped?: boolean,
+) => number;

@@ -1,5 +1,9 @@
-import { Text } from "@visx/text";
 import React from "react";
+import _ from "underscore";
+
+import { Text } from "@visx/text";
+import { PositionScale } from "@visx/shape/lib/types";
+
 import { getValueStep, getY } from "../utils";
 
 import type { TextProps } from "@visx/text";
@@ -10,7 +14,6 @@ import type {
   VisualizationType,
   XYAccessor,
 } from "../types";
-import { PositionScale } from "@visx/shape/lib/types";
 
 const VALUES_MARGIN = 6;
 const FLIPPED_VALUES_MARGIN = VALUES_MARGIN + 8;
@@ -28,6 +31,7 @@ interface ValuesProps {
 
 interface XScale {
   lineAccessor: XYAccessor<SeriesDatum>;
+  barAccessor?: XYAccessor<SeriesDatum>;
 }
 
 interface Value {
@@ -46,30 +50,48 @@ export default function Values({
   innerWidth,
   areStacked,
 }: ValuesProps) {
+  const multiSeriesValues = series.map(serie => {
+    const singleSerieValues = getValues(serie, areStacked, xScale);
+    return singleSerieValues.map(value => {
+      return {
+        ...value,
+        serie,
+        xScale,
+        yScale: (serie.yAxisPosition === "left"
+          ? yScaleLeft
+          : yScaleRight) as PositionScale,
+      };
+    });
+  });
+
+  const collisionFreeMultiSeriesValues = fixValuesCollisions(multiSeriesValues);
+
   return (
     <>
-      {series.map(serie => {
-        const { values } = getValues(serie, areStacked);
-        const compact = getCompact(serie);
+      {collisionFreeMultiSeriesValues.map((singleSerieValues, seriesIndex) => {
+        const compact = getCompact(series[seriesIndex]);
         const valueStep = getValueStep(
-          [serie],
+          series,
+          seriesIndex,
           value => formatter(value, compact),
           valueProps,
           innerWidth,
         );
+        return singleSerieValues
+          .filter((_, index) => index % valueStep === 0)
+          .map((value, index) => {
+            if (value.hidden) {
+              return null;
+            }
 
-        const yScale = (
-          serie.yAxisPosition === "left" ? yScaleLeft : yScaleRight
-        ) as PositionScale;
-        return values.map((value, index) => {
-          const { xAccessor, yAccessor } = getXyAccessors(
-            serie.type,
-            xScale,
-            yScale,
-            value.flipped,
-          );
-          return (
-            index % valueStep === 0 && (
+            const { xAccessor, yAccessor } = getXyAccessors(
+              value.serie.type,
+              value.xScale,
+              value.yScale,
+              value.flipped,
+            );
+
+            return (
               <>
                 <Text
                   key={index}
@@ -94,9 +116,8 @@ export default function Values({
                   {formatter(getY(value.datum), compact)}
                 </Text>
               </>
-            )
-          );
-        });
+            );
+          });
       })}
     </>
   );
@@ -114,7 +135,7 @@ export default function Values({
   }
 }
 
-function getValues(serie: HydratedSeries, areStacked: boolean) {
+function getValues(serie: HydratedSeries, areStacked: boolean, xScale: XScale) {
   const data = getData(serie, areStacked);
   const values = getSeriesTransformer(serie.type)(
     data.map(datum => {
@@ -124,7 +145,7 @@ function getValues(serie: HydratedSeries, areStacked: boolean) {
     }),
   );
 
-  return { values };
+  return values;
 }
 
 function getData(serie: HydratedSeries, areStacked: boolean) {
@@ -145,11 +166,25 @@ function getXyAccessors(
   yAccessor: XYAccessor;
 } {
   return {
-    xAccessor: xScale.lineAccessor,
-    yAccessor: datum =>
+    xAccessor: getXAccessor(type, xScale),
+    yAccessor: (datum, overriddenFlipped = flipped) =>
       (yScale(getY(datum)) ?? 0) +
-      (flipped ? FLIPPED_VALUES_MARGIN : -VALUES_MARGIN),
+      (overriddenFlipped ? FLIPPED_VALUES_MARGIN : -VALUES_MARGIN),
   };
+}
+
+function getXAccessor(type: VisualizationType, xScale: XScale): XYAccessor {
+  if (type === "bar") {
+    return xScale.barAccessor as XYAccessor;
+  }
+  if (type === "line" || type === "area") {
+    return xScale.lineAccessor;
+  }
+  exhaustiveCheck(type);
+}
+
+function exhaustiveCheck(param: never): never {
+  throw new Error("Should not reach here");
 }
 
 function getSeriesTransformer(
@@ -184,4 +219,81 @@ function getSeriesTransformer(
   }
 
   return values => values;
+}
+function fixValuesCollisions(
+  multiSeriesValues: (Value & {
+    serie: HydratedSeries;
+    xScale: XScale;
+    yScale: PositionScale;
+  })[][],
+) {
+  // prevent collision by mutating each item inside the list
+  // Same logic as in https://github.com/metabase/metabase/blob/fa6ee214e9b8d2fb4cccf4fc88dc1701face777b/frontend/src/metabase/visualizations/lib/chart_values.js#L351
+  _.chain(multiSeriesValues.flat())
+    .flatten()
+    .map(value => {
+      const { xAccessor, yAccessor } = getXyAccessors(
+        value.serie.type,
+        value.xScale,
+        value.yScale,
+        value.flipped,
+      );
+
+      return {
+        originalValue: value,
+        serie: value.serie,
+        datum: value.datum,
+        position: {
+          xPos: xAccessor(value.datum),
+          yPos: yAccessor(value.datum),
+        },
+        alternativePosition: {
+          xPos: xAccessor(value.datum),
+          yPos: yAccessor(value.datum, !value.flipped),
+        },
+        hidden: false,
+      };
+    })
+    .groupBy(positionedValue => {
+      return positionedValue.position.xPos;
+    })
+    .each(group => {
+      const sortedByY = _.sortBy(group, value => value.position.yPos);
+      const indexOffset = 1;
+      sortedByY.slice(indexOffset).forEach((value, index) => {
+        const otherValues = [
+          ...group.slice(0, index + indexOffset),
+          ...group.slice(index + indexOffset + 1),
+        ].map(value => value.position);
+
+        if (hasCollisions(otherValues, value.position)) {
+          if (hasCollisions(otherValues, value.alternativePosition)) {
+            value.originalValue.hidden = true;
+          } else {
+            value.position = value.alternativePosition;
+            value.originalValue.flipped = !value.originalValue.flipped;
+          }
+        }
+      });
+    });
+
+  return multiSeriesValues;
+}
+
+const MIN_SPACING = 20;
+function hasCollisions(
+  otherValues: { yPos: number }[],
+  value: {
+    yPos: number;
+  },
+) {
+  const minDistanceFromOtherValues = Math.min(
+    ...otherValues.map(distanceFrom(value)),
+  );
+  return minDistanceFromOtherValues < MIN_SPACING;
+}
+
+function distanceFrom(value: { yPos: number }) {
+  return (comparedValue: { yPos: number }) =>
+    Math.abs(comparedValue.yPos - value.yPos);
 }
