@@ -312,12 +312,14 @@ class DashboardHeader extends Component {
     }
 
     if (!isFullscreen && !isEditing) {
-      extraButtons.push({
-        title: t`Enter fullscreen`,
-        icon: "expand",
-        action: e => onFullscreenChange(!isFullscreen, !e.altKey),
-        event: `Dashboard;Fullscreen Mode;${!isFullscreen}`,
-      });
+      if (!dashboard.is_app_page) {
+        extraButtons.push({
+          title: t`Enter fullscreen`,
+          icon: "expand",
+          action: e => onFullscreenChange(!isFullscreen, !e.altKey),
+          event: `Dashboard;Fullscreen Mode;${!isFullscreen}`,
+        });
+      }
 
       extraButtons.push({
         title: t`Duplicate`,
