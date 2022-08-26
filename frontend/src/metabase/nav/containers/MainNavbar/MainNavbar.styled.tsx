@@ -31,7 +31,6 @@ export const Sidebar = styled.aside<{ isOpen: boolean }>`
   position: relative;
   flex-shrink: 0;
   align-items: center;
-  padding: 0.5rem 0;
   background-color: ${color("white")};
 
   overflow: auto;
@@ -57,7 +56,6 @@ export const NavRoot = styled.nav<{ isOpen: boolean }>`
 
   overflow-x: hidden;
   overflow-y: auto;
-  padding-bottom: 4rem;
 
   opacity: ${props => (props.isOpen ? 1 : 0)};
   transition: opacity 0.2s;
