@@ -65,9 +65,6 @@ export default class FunnelNormal extends Component {
 
     let remaining = rows[0][metricIndex];
 
-    console.log(cols, metricIndex);
-    console.log(rows);
-
     rows.map((row, rowIndex) => {
       remaining -= infos[rowIndex].value - row[metricIndex];
 
