@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
+import Button from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 
@@ -8,6 +9,7 @@ import { color, lighten } from "metabase/lib/colors";
 import {
   breakpointMaxSmall,
   breakpointMinSmall,
+  breakpointMinLarge,
   space,
 } from "metabase/styled-components/theme";
 import { SidebarLink } from "./SidebarItems";
@@ -127,16 +129,8 @@ export const LoadingTitle = styled.h2`
   margin-top: ${space(1)};
 `;
 
-export const HomePageLink = styled(SidebarLink)`
-  padding-left: 12px;
-`;
-
-export const BrowseLink = styled(SidebarLink)`
-  padding-left: 14px;
-`;
-
-export const DataAppLink = styled(SidebarLink)`
-  padding-left: 14px;
+export const PaddedSidebarLink = styled(SidebarLink)`
+  padding-left: ${space(2)};
 `;
 
 export const AddYourOwnDataLink = styled(SidebarLink)`
@@ -157,6 +151,25 @@ export const AddYourOwnDataLink = styled(SidebarLink)`
 
     svg {
       color: ${color("brand-light")} !important;
+    }
+  }
+`;
+
+export const ExitDataAppButton = styled(Button)`
+  margin-left: ${space(2)};
+`;
+
+export const DataAppActionsContainer = styled(SidebarSection)`
+  display: flex;
+  align-items: center;
+`;
+
+export const DataAppActionButton = styled(Button)`
+  padding: 0.6rem 1rem;
+
+  ${breakpointMinLarge} {
+    & {
+      padding: 0.85rem 1rem;
     }
   }
 `;

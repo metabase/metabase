@@ -12,6 +12,11 @@ export const ColumnItemRoot = styled.div`
   border-radius: 0.5rem;
   background: ${color("white")};
 
+  &.dragging {
+    cursor: grabbing;
+    pointer-events: auto !important;
+  }
+
   ${props =>
     props.draggable &&
     `

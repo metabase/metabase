@@ -26,6 +26,7 @@ import _ from "underscore";
 import cx from "classnames";
 
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
+import { ChartSettingOrderedRows } from "metabase/visualizations/components/settings/ChartSettingOrderedRows";
 
 const propTypes = {
   headerIcon: PropTypes.shape(iconPropTypes),
@@ -109,6 +110,36 @@ export default class Funnel extends Component {
       useRawSeries: true,
       showColumnSetting: true,
     }),
+    "funnel.rows": {
+      section: t`Data`,
+      widget: ChartSettingOrderedRows,
+      isValid: (series, settings) => {
+        const funnelRows = settings["funnel.rows"];
+
+        if (!funnelRows || !_.isArray(funnelRows)) {
+          return false;
+        }
+        if (!funnelRows.every(setting => setting.rowIndex !== undefined)) {
+          return false;
+        }
+
+        return (
+          funnelRows.every(setting => series[setting.rowIndex]) &&
+          funnelRows.length === series.length
+        );
+      },
+
+      getDefault: transformedSeries => {
+        return transformedSeries.map(s => ({
+          name: s.card.name,
+          rowIndex: s.card.rowIndex,
+          enabled: true,
+        }));
+      },
+      getProps: transformedSeries => ({
+        rows: transformedSeries.map(s => s.card),
+      }),
+    },
     ...metricSetting("funnel.metric", {
       section: t`Data`,
       title: t`Measure`,
@@ -158,12 +189,13 @@ export default class Funnel extends Component {
       dimensionIndex >= 0 &&
       metricIndex >= 0
     ) {
-      return rows.map(row => ({
+      return rows.map((row, index) => ({
         card: {
           ...card,
           name: formatValue(row[dimensionIndex], {
             column: cols[dimensionIndex],
           }),
+          rowIndex: index,
           _transformed: true,
         },
         data: {
