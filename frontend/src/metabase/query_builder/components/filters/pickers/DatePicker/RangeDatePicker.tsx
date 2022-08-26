@@ -9,21 +9,20 @@ import { setTimeComponent } from "metabase/lib/query_time";
 import SingleDatePicker, { SingleDatePickerProps } from "./SingleDatePicker";
 import SpecificDatePicker from "./SpecificDatePicker";
 
-type BetweenPickerProps = {
+interface BetweenPickerProps {
   className?: string;
-  primaryColor?: string;
   filter: Filter;
-  onFilterChange: (filter: any[]) => void;
-
+  primaryColor?: string;
   hideTimeSelectors?: boolean;
-};
+  onFilterChange: (filter: any[]) => void;
+}
 
 export const BetweenPicker = ({
   className,
   filter: [op, field, startValue, endValue],
-  onFilterChange,
-  hideTimeSelectors,
   primaryColor,
+  hideTimeSelectors,
+  onFilterChange,
 }: BetweenPickerProps) => {
   return (
     <div className={className} data-testid="between-date-picker">
