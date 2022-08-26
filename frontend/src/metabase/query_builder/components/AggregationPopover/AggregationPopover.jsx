@@ -280,40 +280,47 @@ export default class AggregationPopover extends Component {
     }));
   }
 
-  render() {
-    let { query, dimension, showMetrics } = this.props;
-
-    const table = query.table();
-
-    if (dimension) {
-      showMetrics = false;
-    }
-
-    const { choosingField, editingAggregation } = this.state;
-    const aggregation = AGGREGATION.getContent(this.state.aggregation);
-    const selectedAggregation = this.getSelectedAggregation(table, aggregation);
-
-    const aggregationItems = this.getAggregationItems();
+  getMetrics(table, selectedAggregation) {
+    const { dimension, showMetrics } = this.props;
+    const maybeOveriddenShowMetrics = dimension ? false : showMetrics;
 
     // we only want to consider active metrics, with the ONE exception that if the currently selected aggregation is a
     // retired metric then we include it in the list to maintain continuity
-    const metrics = table.metrics
-      ? table.metrics.filter(metric =>
-          showMetrics
-            ? !metric.archived ||
-              (selectedAggregation && selectedAggregation.id === metric.id)
-            : // GA metrics are more like columns, so they should be displayed even when showMetrics is false
-              metric.googleAnalyics,
-        )
-      : [];
-    const metricItems = metrics.map(metric => ({
+
+    const filter = metric =>
+      maybeOveriddenShowMetrics
+        ? !metric.archived ||
+          (selectedAggregation && selectedAggregation.id === metric.id)
+        : // GA metrics are more like columns, so they should be displayed even when showMetrics is false
+          metric.googleAnalyics;
+
+    if (table.metrics) {
+      return table.metrics.filter(filter);
+    }
+
+    return [];
+  }
+
+  getMetricItems(table, selectedAggregation) {
+    const metrics = this.getMetrics(table, selectedAggregation);
+
+    return metrics.map(metric => ({
       name: metric.name,
       value: ["metric", metric.id],
       isSelected: aggregation =>
         AGGREGATION.getMetric(aggregation) === metric.id,
       metric: metric,
     }));
+  }
 
+  render() {
+    const { query } = this.props;
+    const table = query.table();
+    const { choosingField, editingAggregation } = this.state;
+    const aggregation = AGGREGATION.getContent(this.state.aggregation);
+    const selectedAggregation = this.getSelectedAggregation(table, aggregation);
+    const aggregationItems = this.getAggregationItems();
+    const metricItems = this.getMetricItems(table, selectedAggregation);
     const sections = this.getSections(table, aggregationItems, metricItems);
 
     if (editingAggregation) {
