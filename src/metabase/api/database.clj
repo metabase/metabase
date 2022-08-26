@@ -491,7 +491,7 @@
                  (map #(vector :field %) fields)
                  (map #(vector :card-column %) card-columns))
          (map format-autocomplete-result)
-         (distinct)
+         distinct
          (take limit))))
 
 (def ^:private autocomplete-matching-options
