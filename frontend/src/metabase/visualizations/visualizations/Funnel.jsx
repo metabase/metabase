@@ -105,10 +105,11 @@ export default class Funnel extends Component {
     ...columnSettings({ hidden: true }),
     ...dimensionSetting("funnel.dimension", {
       section: t`Data`,
-      title: t`Step`,
+      title: t`Column with steps`,
       dashboard: false,
       useRawSeries: true,
       showColumnSetting: true,
+      marginBottom: "0.625rem",
     }),
     "funnel.rows": {
       section: t`Data`,

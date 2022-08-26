@@ -5,7 +5,10 @@ import cx from "classnames";
 import _ from "underscore";
 import { keyForColumn } from "metabase/lib/dataset";
 import ChartSettingSelect from "./ChartSettingSelect";
-import { SettingsIcon } from "./ChartSettingFieldPicker.styled";
+import {
+  SettingsIcon,
+  ChartSettingFieldPickerRoot,
+} from "./ChartSettingFieldPicker.styled";
 
 const ChartSettingFieldPicker = ({
   value,
@@ -25,7 +28,7 @@ const ChartSettingFieldPicker = ({
     }
   }
   return (
-    <div className={cx(className, "flex align-center")}>
+    <ChartSettingFieldPickerRoot className={cx(className)}>
       <ChartSettingSelect
         className="flex-full"
         value={value}
@@ -34,10 +37,11 @@ const ChartSettingFieldPicker = ({
         placeholder={t`Select a field`}
         placeholderNoOptions={t`No valid fields`}
         isInitiallyOpen={value === undefined}
+        hiddenIcons
       />
       {columnKey && (
         <SettingsIcon
-          name="gear"
+          name="ellipsis"
           onClick={() => {
             onShowWidget({
               id: "column_settings",
@@ -53,7 +57,7 @@ const ChartSettingFieldPicker = ({
         name="close"
         onClick={onRemove}
       />
-    </div>
+    </ChartSettingFieldPickerRoot>
   );
 };
 
