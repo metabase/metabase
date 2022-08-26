@@ -197,13 +197,22 @@ export default class NativeQuery extends AtomicQuery {
     const isDataset = question?.isDataset();
 
     if (isDataset) {
-      const fields = question.getResultMetadata().map(metadata => {
-        return new Field({
-          ...metadata,
-          metadata: this.metadata(),
-          query: this,
+      const fields = question
+        .getResultMetadata()
+        .map(questionSpecificFieldMetadata => {
+          const field = this.metadata().field(questionSpecificFieldMetadata.id);
+
+          const newField = field
+            ? field.merge(fieldMetadata)
+            : new Field({
+                ...fieldMetadata,
+                source: "fields",
+              });
+          newField.query = this;
+          newField.metadata = this.metadata();
+
+          return newField;
         });
-      });
 
       return new Table({
         id: `card__${question.id()}`,
