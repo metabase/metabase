@@ -40,17 +40,25 @@ export default class DimensionList extends Component {
     }
   }
 
-  updateSections(sections) {
-    this.setState({
-      sections: (sections || []).map(section => ({
-        ...section,
-        items: section.items.map(item => ({
-          ...item,
-          name: item.name || item.dimension?.displayName(),
-          icon: item.icon || item.dimension?.icon(),
-        })),
-      })),
-    });
+  buildUpdatedSectionItems(items) {
+    return items.map(item => ({
+      ...item,
+      name: item.name || item.dimension?.displayName(),
+      icon: item.icon || item.dimension?.icon(),
+    }));
+  }
+
+  updateSections(sections = []) {
+    const sectionsForNewState = sections.map(section => ({
+      ...section,
+      items: this.buildUpdatedSectionItems(section.items),
+    }));
+
+    const newState = {
+      sections: sectionsForNewState,
+    };
+
+    this.setState(newState);
   }
 
   getDimensions() {
@@ -102,7 +110,6 @@ export default class DimensionList extends Component {
 
     return (
       <div className="Field-extra flex align-center">
-        {/* {item.segment && this.renderSegmentTooltip(item.segment)} */}
         {item.dimension?.tag && (
           <span className="h5 text-light px1">{item.dimension.tag}</span>
         )}
