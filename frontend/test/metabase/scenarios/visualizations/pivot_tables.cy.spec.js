@@ -294,12 +294,12 @@ describe("scenarios > visualizations > pivot tables", () => {
 
     cy.log("Collapse the options panel");
     cy.icon("chevronup").click();
-    cy.findByText(/Formatting/).should("not.exist");
+    cy.findByText("Formatting").should("not.exist");
     cy.findByText(/See options/).should("not.exist");
 
     cy.log("Expand it again");
     cy.icon("chevrondown").first().click();
-    cy.findByText(/Formatting/);
+    cy.findByText("Formatting");
     cy.findByText(/See options/);
   });
 
@@ -340,7 +340,7 @@ describe("scenarios > visualizations > pivot tables", () => {
       .parent()
       .findAllByText(/Count/)
       .click();
-    cy.findByText(/Formatting/);
+    cy.findByText("Formatting");
     cy.findByText(/See options/).click();
 
     cy.log("New panel for the column options");
@@ -370,7 +370,7 @@ describe("scenarios > visualizations > pivot tables", () => {
       .findAllByText(/Count/)
       .click();
 
-    cy.findByText(/Formatting/);
+    cy.findByText("Formatting");
     cy.findByText(/Sort order/).should("not.exist");
   });
 
