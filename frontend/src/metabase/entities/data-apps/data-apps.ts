@@ -8,7 +8,7 @@ import { Collection, DataApp } from "metabase-types/api";
 
 import { DEFAULT_COLLECTION_COLOR_ALIAS } from "../collections/constants";
 
-import { createForm } from "./forms";
+import { createNewAppForm, createAppSettingsForm } from "./forms";
 import { getDataAppIcon, isDataAppCollection } from "./utils";
 
 type EditableDataAppParams = Pick<
@@ -52,8 +52,11 @@ const DataApps = createEntity({
   },
 
   forms: {
-    details: {
-      fields: createForm,
+    create: {
+      fields: createNewAppForm,
+    },
+    settings: {
+      fields: createAppSettingsForm,
     },
   },
 });
