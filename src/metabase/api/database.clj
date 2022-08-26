@@ -436,8 +436,8 @@
   (->> (db/select [Card :name :result_metadata]
          :%lower.result_metadata         [:like (match-search-string :substring search-string)]
          :database_id                    db-id
-         {:limit limit
-          :where [:in :id tagged-card-ids]})
+         {:where [:in :id tagged-card-ids]
+          :limit limit})
        (mapcat (fn [{:keys [result_metadata name]}]
                  (map (fn [metadata]
                         (merge metadata
@@ -447,10 +447,6 @@
                  (re-find (re-pattern (case match-type
                                         :prefix    (str "(?i)^" search-string)
                                         :substring (str "(?i)" search-string))) (:name metadata))))))
-
-(comment
-  (autocomplete-model-columns 1 "product" 50 :substring [258104])
-  )
 
 (defmulti format-autocomplete-result
   "Format an autocomplete result for the client."
