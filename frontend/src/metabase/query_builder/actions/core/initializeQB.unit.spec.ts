@@ -121,6 +121,10 @@ async function setup({
     xhrMock.get(`/api/card/${card.id}`, {
       body: JSON.stringify(card),
     });
+
+    jest
+      .spyOn(CardLib, "loadCard")
+      .mockReturnValue(Promise.resolve({ ...card }));
   }
 
   return baseSetup({ location, params, ...opts });
@@ -437,6 +441,10 @@ describe("QB Actions > initializeQB", () => {
         xhrMock.get(`/api/card/${originalQuestion.id()}`, {
           body: JSON.stringify(originalQuestion.card()),
         });
+
+        jest
+          .spyOn(CardLib, "loadCard")
+          .mockReturnValueOnce(Promise.resolve({ ...originalQuestion.card() }));
 
         return setup({ question: q, ...opts });
       }

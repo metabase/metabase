@@ -345,13 +345,14 @@ class StructuredQueryInner extends AtomicQuery {
           },
         ];
 
-        return new Field({
+        const newField = new Field({
           ...column,
           id,
           source: "fields",
-          query: sourceQuery,
-          metadata: this.metadata(),
         });
+        newField.query = sourceQuery;
+        newField.metadata = this.metadata();
+        return newField;
       });
 
       return new Table({
@@ -374,12 +375,16 @@ class StructuredQueryInner extends AtomicQuery {
         const sourceQuestionResultMetadata =
           sourceQuestion?.getResultMetadata() ?? [];
         const fields = sourceQuestionResultMetadata.map(fieldMetadata => {
-          return new Field({
-            ...fieldMetadata,
-            source: "fields",
-            query: sourceQuestion.query(),
-            metadata: this.metadata(),
-          });
+          const field = this.metadata().field(fieldMetadata.id);
+          const newField = field
+            ? field.merge(fieldMetadata)
+            : new Field({
+                ...fieldMetadata,
+                source: "fields",
+              });
+          newField.query = sourceQuestion.query();
+          newField.metadata = this.metadata();
+          return newField;
         });
 
         return new Table({
@@ -404,7 +409,12 @@ class StructuredQueryInner extends AtomicQuery {
         const questionSpecificFieldMetadata = sourceQuestionResultMetadata.find(
           metadata => metadata.id === field.id || metadata.name === field.name,
         );
-        return new Field(merge(field, questionSpecificFieldMetadata));
+
+        const newField = questionSpecificFieldMetadata
+          ? field.merge(questionSpecificFieldMetadata)
+          : field;
+
+        return newField;
       });
 
       return new Table({

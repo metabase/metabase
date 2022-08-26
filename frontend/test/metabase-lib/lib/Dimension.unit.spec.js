@@ -1016,7 +1016,9 @@ describe("Dimension", () => {
         );
         const unsavedQuestionBasedOnCard = questionWithResultMetadata
           .composeThisQuery()
-          .setResultsMetadata([]);
+          .setResultsMetadata({
+            columns: [],
+          });
 
         const fieldDimensionUsingIdProp = Dimension.parseMBQL(
           ["field", ORDERS.ID.id, null],

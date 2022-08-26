@@ -917,6 +917,7 @@ export class FieldDimension extends Dimension {
       const tableField = _.findWhere(this._query.table()?.fields, {
         [identifierProp]: fieldIdentifier,
       });
+
       if (tableField) {
         return tableField;
       }

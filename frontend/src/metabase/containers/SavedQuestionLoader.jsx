@@ -90,8 +90,7 @@ export class SavedQuestionLoader extends React.Component {
     try {
       this.setState({ loading: true, error: null });
       // get the saved question via the card API
-      const action = await this.propsfetchQuestion({ id: questionId });
-      const card = Questions.HACK_getObjectFromAction(action);
+      const card = await this.props.fetchQuestion(questionId);
 
       // pass the retrieved card to load any necessary metadata
       // (tables, source db, segments, etc) into
@@ -129,9 +128,14 @@ function mapStateToProps(state) {
   };
 }
 
-const mapDispatchToProps = {
-  loadMetadataForCard,
-  fetchQuestion: Questions.actions.fetch,
+const mapDispatchToProps = dispatch => {
+  return {
+    loadMetadataForCard: card => dispatch(loadMetadataForCard(card)),
+    fetchQuestion: async id => {
+      const action = await dispatch(Questions.actions.fetch({ id }));
+      return Questions.HACK_getObjectFromAction(action);
+    },
+  };
 };
 
 export default connect(
