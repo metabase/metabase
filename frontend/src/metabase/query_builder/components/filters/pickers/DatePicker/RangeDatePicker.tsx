@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import React from "react";
 
 import Calendar from "metabase/components/Calendar";
@@ -6,12 +5,7 @@ import Calendar from "metabase/components/Calendar";
 import moment from "moment-timezone";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import { TimeContainer } from "./RangeDatePicker.styled";
-import {
-  hasTimeComponent,
-  setTimeComponent,
-  TIME_SELECTOR_DEFAULT_HOUR,
-  TIME_SELECTOR_DEFAULT_MINUTE,
-} from "metabase/lib/query_time";
+import { setTimeComponent } from "metabase/lib/query_time";
 import SingleDatePicker, { SingleDatePickerProps } from "./SingleDatePicker";
 import SpecificDatePicker from "./SpecificDatePicker";
 
@@ -31,14 +25,6 @@ export const BetweenPicker = ({
   hideTimeSelectors,
   primaryColor,
 }: BetweenPickerProps) => {
-  let endDatetime = endValue;
-  if (hasTimeComponent(startValue) && !hasTimeComponent(endValue)) {
-    endDatetime = setTimeComponent(
-      endValue,
-      TIME_SELECTOR_DEFAULT_HOUR,
-      TIME_SELECTOR_DEFAULT_MINUTE,
-    );
-  }
   return (
     <div className={className} data-testid="between-date-picker">
       <TimeContainer>
