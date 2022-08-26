@@ -1,16 +1,18 @@
-/* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
 
 import { getDateStyleFromSettings } from "metabase/lib/time";
 import Calendar, { SelectAll } from "metabase/components/Calendar";
-import InputBlurChange from "metabase/components/InputBlurChange";
 import ExpandingContent from "metabase/components/ExpandingContent";
 import HoursMinutesInput from "./HoursMinutesInput";
 
 import moment, { Moment } from "moment-timezone";
 import { getTimeComponent, setTimeComponent } from "metabase/lib/query_time";
-import { CalendarIcon } from "./SpecificDatePicker.styled";
+import {
+  CalendarIcon,
+  DateInput,
+  DateInputContainer,
+} from "./SpecificDatePicker.styled";
 
 type Props = {
   className?: string;
@@ -24,7 +26,7 @@ type Props = {
   onClear?: () => void;
 };
 
-const SpecificDatePicker: React.FC<Props> = props => {
+const SpecificDatePicker = (props: Props) => {
   const onChange = (
     date?: string | Moment,
     hours?: number | null,
@@ -54,13 +56,9 @@ const SpecificDatePicker: React.FC<Props> = props => {
 
   return (
     <div className={className} data-testid="specific-date-picker">
-      <div className="mb2 full bordered rounded flex align-center">
-        <InputBlurChange
+      <DateInputContainer>
+        <DateInput
           placeholder={moment().format(dateFormat)}
-          className="borderless full p1 h3"
-          style={{
-            outline: "none",
-          }}
           value={date ? date.format(dateFormat) : ""}
           onBlurChange={({ target: { value } }: any) => {
             const date = moment(value, dateFormat);
@@ -79,7 +77,7 @@ const SpecificDatePicker: React.FC<Props> = props => {
             tooltip={showCalendar ? t`Hide calendar` : t`Show calendar`}
           />
         )}
-      </div>
+      </DateInputContainer>
 
       {showTimeSelectors && (
         <div>
