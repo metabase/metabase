@@ -1,20 +1,22 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
-import { color, alpha } from "metabase/lib/colors";
-import { Collection } from "react-virtualized";
+import { color, alpha, darken } from "metabase/lib/colors";
 
-const EMPHASIZED_BG_COLOR = "#F8FAFB";
-
-const CELL_HEIGHT = 30;
+export const CELL_HEIGHT = 30;
 
 export const RowToggleIconRoot = styled.div`
   display: flex;
   align-items: center;
   cursor: pointer;
-  color: ${color("text-light")};
+  color: ${color("white")};
+  padding: 4px;
+  border-radius: 4px;
+  background-color: ${color("text-light")};
+  transition: all 200ms;
+  outline: none;
 
   &:hover {
-    color: ${color("brand")};
+    background-color: ${darken("text-light", 0.2)};
   }
 `;
 
@@ -24,17 +26,23 @@ interface PivotTableCellProps {
   isNightMode?: boolean;
   isBorderedHeader?: boolean;
   hasTopBorder?: boolean;
+  isTransparent?: boolean;
 }
 
 const getCellBackgroundColor = ({
   isEmphasized,
   isNightMode,
+  isTransparent,
 }: Partial<PivotTableCellProps>) => {
+  if (isTransparent) {
+    return "transparent";
+  }
+
   if (!isEmphasized) {
     return isNightMode ? alpha("bg-black", 0.1) : color("white");
   }
 
-  return isNightMode ? color("bg-black") : EMPHASIZED_BG_COLOR;
+  return isNightMode ? color("bg-black") : alpha("border", 0.25);
 };
 
 const getColor = ({ isNightMode }: PivotTableCellProps) => {
@@ -54,10 +62,10 @@ export const PivotTableCell = styled.div<PivotTableCellProps>`
   font-weight: ${props => (props.isBold ? "bold" : "normal")};
   cursor: ${props => (props.onClick ? "pointer" : "default")};
   color: ${getColor};
-  border-right: 1px solid ${getBorderColor};
+  box-shadow: -1px 0 0 0 ${getBorderColor} inset;
   border-bottom: 1px solid
     ${props =>
-      props.isBorderedHeader ? color("bg-black") : getBorderColor(props)};
+      props.isBorderedHeader ? color("bg-dark") : getBorderColor(props)};
   background-color: ${getCellBackgroundColor};
   ${props =>
     props.hasTopBorder &&
@@ -68,7 +76,7 @@ export const PivotTableCell = styled.div<PivotTableCellProps>`
     `}
 
   &:hover {
-    background-color: ${alpha("brand", 0.1)};
+    background-color: ${color("border")};
   }
 `;
 
@@ -77,26 +85,29 @@ interface PivotTableTopLeftCellsContainerProps {
 }
 
 export const PivotTableTopLeftCellsContainer = styled.div<PivotTableTopLeftCellsContainerProps>`
+  display: flex;
+  align-items: flex-end;
+  box-shadow: -1px 0 0 0 ${getBorderColor} inset;
   background-color: ${props =>
     getCellBackgroundColor({
       isEmphasized: true,
       isNightMode: props.isNightMode,
     })};
-  display: flex;
-  align-items: flex-end;
-  border-right: 1px solid ${getBorderColor};
 `;
 
-interface HeaderCellsCollectionProps {
+interface PivotTableRootProps {
+  isDashboard?: boolean;
   isNightMode?: boolean;
 }
 
-export const HeaderCellsCollection = styled(
-  Collection,
-)<HeaderCellsCollectionProps>`
-  background-color: ${props =>
-    getCellBackgroundColor({
-      isEmphasized: true,
-      isNightMode: props.isNightMode,
-    })};
+export const PivotTableRoot = styled.div<PivotTableRootProps>`
+  height: 100%;
+  font-size: 0.875em;
+
+  ${props =>
+    props.isDashboard
+      ? css`
+          border-top: 1px solid ${getBorderColor(props)};
+        `
+      : null}
 `;

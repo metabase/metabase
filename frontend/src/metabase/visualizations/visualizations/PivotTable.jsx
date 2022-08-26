@@ -6,7 +6,6 @@ import _ from "underscore";
 import { getIn, updateIn } from "icepick";
 import { Grid, Collection, ScrollSync, AutoSizer } from "react-virtualized";
 
-import { darken, lighten } from "metabase/lib/colors";
 import { getScrollBarSize } from "metabase/lib/dom";
 import ChartSettingsTableFormatting from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 
@@ -28,27 +27,12 @@ import { findDOMNode } from "react-dom";
 import { connect } from "react-redux";
 import { PLUGIN_SELECTORS } from "metabase/plugins";
 import {
+  PivotTableRoot,
   PivotTableCell,
   PivotTableTopLeftCellsContainer,
-  HeaderCellsCollection,
   RowToggleIconRoot,
+  CELL_HEIGHT,
 } from "./PivotTable.styled";
-
-const getBgLightColor = (hasCustomColors, isNightMode) => {
-  if (isNightMode) {
-    return lighten("bg-black", 0.3);
-  }
-
-  return hasCustomColors ? darken("white", 0.01) : lighten("brand", 0.65);
-};
-
-const getBgDarkColor = (hasCustomColors, isNightMode) => {
-  if (isNightMode) {
-    return lighten("bg-black", 0.1);
-  }
-
-  return hasCustomColors ? darken("white", 0.035) : lighten("brand", 0.6);
-};
 
 const partitions = [
   {
@@ -76,7 +60,6 @@ const partitions = [
 
 // cell width and height for normal body cells
 const CELL_WIDTH = 100;
-const CELL_HEIGHT = 30;
 // the left header has a wider cell width and some additional spacing on the left to align with the title
 const LEFT_HEADER_LEFT_SPACING = 24;
 const LEFT_HEADER_CELL_WIDTH = 145;
@@ -273,6 +256,7 @@ class PivotTable extends Component {
       hasCustomColors,
       onUpdateVisualizationSettings,
       isNightMode,
+      isDashboard,
     } = this.props;
     if (data == null || !data.cols.some(isPivotGroupColumn)) {
       return null;
@@ -420,7 +404,7 @@ class PivotTable extends Component {
     );
 
     return (
-      <div className="no-outline text-small full-height">
+      <PivotTableRoot isDashboard={isDashboard} isNightMode={isNightMode}>
         <ScrollSync>
           {({ onScroll, scrollLeft, scrollTop }) => (
             <div className="full-height flex flex-column">
@@ -438,6 +422,7 @@ class PivotTable extends Component {
                       isEmphasized
                       isBold
                       isBorderedHeader
+                      isTransparent
                       hasTopBorder={topHeaderRows > 1}
                       isNightMode={isNightMode}
                       value={this.getColumnTitle(rowIndex)}
@@ -467,7 +452,7 @@ class PivotTable extends Component {
                   ))}
                 </PivotTableTopLeftCellsContainer>
                 {/* top header */}
-                <HeaderCellsCollection
+                <Collection
                   ref={e => (this.topHeaderRef = e)}
                   className="scroll-hide-all"
                   isNightMode={isNightMode}
@@ -528,7 +513,7 @@ class PivotTable extends Component {
             </div>
           )}
         </ScrollSync>
-      </div>
+      </PivotTableRoot>
     );
   }
 
@@ -606,13 +591,6 @@ function RowToggleIcon({
 
   return (
     <RowToggleIconRoot
-      style={{
-        padding: "4px",
-        borderRadius: "4px",
-        backgroundColor: isCollapsed
-          ? getBgLightColor(hasCustomColors, isNightMode)
-          : getBgDarkColor(hasCustomColors, isNightMode),
-      }}
       onClick={e => {
         e.stopPropagation();
         updateSettings({
@@ -635,6 +613,7 @@ function Cell({
   isEmphasized,
   isNightMode,
   isBorderedHeader,
+  isTransparent,
   hasTopBorder,
   onClick,
 }) {
@@ -645,6 +624,7 @@ function Cell({
       isEmphasized={isEmphasized}
       isBorderedHeader={isBorderedHeader}
       hasTopBorder={hasTopBorder}
+      isTransparent={isTransparent}
       style={{
         ...style,
         ...(backgroundColor
