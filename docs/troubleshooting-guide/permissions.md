@@ -32,7 +32,7 @@ If you have a different issue, see [related problems](#do-you-have-a-different-p
 
 - [A user group has the wrong access to a table or schema][table-schema-access].
 - [Getting a "permission denied" error message][permission-denied].
-- [Checking someone's access to a table or schema][check-permissions].
+- [Checking someone's access to a table or schema](./data-permissions.md#checking-someones-access-to-a-table-or-schema)
 
 
 ## Do you have a different problem?
@@ -49,7 +49,6 @@ If you can’t solve your problem using the troubleshooting guides:
 
 
 [admin-permissions]: ../permissions/start.md
-[check-permissions]: ./data-permissions.md#checking-someones-access-to-a-table-or-schema
 [collection-permissions]: ../permissions/collections.md
 [collections-restricted-data]: ./data-permissions.md#a-user-group-can-view-collections-that-contain-restricted-data
 [connecting-database]: ../databases/connecting.md
