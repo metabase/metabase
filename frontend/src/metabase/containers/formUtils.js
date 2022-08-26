@@ -101,6 +101,10 @@ export function cleanObject(object) {
   return result;
 }
 
+export function isNestedFieldName(name) {
+  return name.includes(".");
+}
+
 export function getMaybeNestedValue(obj, fieldName) {
   const isNestedField = fieldName.includes(".");
   return isNestedField ? getIn(obj, fieldName.split(".")) : obj[fieldName];
