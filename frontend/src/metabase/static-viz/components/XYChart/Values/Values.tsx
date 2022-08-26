@@ -319,8 +319,8 @@ function fixValuesCollisions(
       const INDEX_OFFSET = 1;
       sortedByY.slice(INDEX_OFFSET).forEach((value, index) => {
         const otherValues = [
-          ...group.slice(0, index + INDEX_OFFSET),
-          ...group.slice(index + INDEX_OFFSET + 1),
+          ...sortedByY.slice(0, index + INDEX_OFFSET),
+          ...sortedByY.slice(index + INDEX_OFFSET + 1),
         ].map(value => value.position);
 
         fixValueCollision(otherValues, value);
