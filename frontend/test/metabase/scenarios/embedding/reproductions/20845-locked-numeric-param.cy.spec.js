@@ -1,4 +1,22 @@
-import { restore, visitEmbeddedPage } from "__support__/e2e/helpers";
+import {
+  restore,
+  visitEmbeddedPage,
+  visitDashboard,
+  visitQuestion,
+} from "__support__/e2e/helpers";
+
+const dashboardFilter = {
+  name: "Equal to",
+  slug: "equal_to",
+  id: "c269ebe1",
+  type: "number/=",
+  sectionId: "number",
+};
+
+const dashboardDetails = {
+  name: "25031",
+  parameters: [dashboardFilter],
+};
 
 const defaultFilterValues = [undefined, "10"];
 
@@ -7,7 +25,7 @@ defaultFilterValues.forEach(value => {
     ? "and the required filter with the default value"
     : "";
 
-  describe("issue 20845", () => {
+  describe("issue 20845, 25031", () => {
     beforeEach(() => {
       cy.intercept("PUT", "/api/card/*").as("publishChanges");
 
@@ -16,36 +34,54 @@ defaultFilterValues.forEach(value => {
 
       const questionDetails = getQuestionDetails(value);
 
-      cy.createNativeQuestion(questionDetails, {
-        visitQuestion: true,
-        wrapId: true,
-      });
+      cy.createNativeQuestionAndDashboard({
+        questionDetails,
+        dashboardDetails,
+      }).then(({ body: { id, dashboard_id, card_id } }) => {
+        cy.wrap(card_id).as("questionId");
+        cy.wrap(dashboard_id).as("dashboardId");
 
-      cy.icon("share").click();
-      cy.findByText("Embed this question in an application").click();
+        visitQuestion(card_id);
 
-      cy.findByText("Disabled").click();
-      cy.findByText("Locked").click();
-
-      cy.findByText("Preview Locked Parameters")
-        .parent()
-        .within(() => {
-          cy.findByPlaceholderText("Qty locked").type("15{enter}");
+        // Connect dashbaord filter to the card
+        cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
+          cards: [
+            {
+              card_id,
+              id,
+              row: 0,
+              col: 0,
+              sizeX: 12,
+              sizeY: 10,
+              parameter_mappings: [
+                {
+                  parameter_id: dashboardFilter.id,
+                  card_id,
+                  target: ["variable", ["template-tag", "qty_locked"]],
+                },
+              ],
+            },
+          ],
         });
-
-      cy.button("Publish").click();
-      cy.wait(["@publishChanges", "@publishChanges"]);
-
-      cy.signOut();
+      });
     });
 
-    it(`locked parameter should work with numeric values ${conditionalPartOfTestTitle} (metabase#20845)`, () => {
-      // This issue is not possible to reproduce using UI from this point on.
-      // We have to manually send the payload in order to make sure it works for both strings and integers.
-      ["string", "integer"].forEach(type => {
-        cy.log(`Make sure it works with ${type.toUpperCase()} in the payload`);
+    it(`QUESTION: locked parameter should work with numeric values ${conditionalPartOfTestTitle} (metabase#20845, metabase#25031)`, () => {
+      cy.get("@questionId").then(questionId => {
+        cy.request("PUT", `/api/card/${questionId}`, {
+          enable_embedding: true,
+          embedding_params: {
+            qty_locked: "locked",
+          },
+        });
 
-        cy.get("@questionId").then(questionId => {
+        // This issue is not possible to reproduce using UI from this point on.
+        // We have to manually send the payload in order to make sure it works for both strings and integers.
+        ["string", "integer"].forEach(type => {
+          cy.log(
+            `Make sure it works with ${type.toUpperCase()} in the payload`,
+          );
+
           visitEmbeddedPage({
             resource: { question: questionId },
             params: {
@@ -56,6 +92,41 @@ defaultFilterValues.forEach(value => {
 
         cy.findByTestId("column-header").should("contain", "COUNT(*)");
         cy.findByTestId("cell-data").should("contain", "5");
+      });
+    });
+
+    it.skip(`DASHBOARD: locked parameter should work with numeric values ${conditionalPartOfTestTitle} (metabase#25031)`, () => {
+      cy.get("@dashboardId").then(dashboardId => {
+        visitDashboard(dashboardId);
+        cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+          enable_embedding: true,
+          embedding_params: {
+            [dashboardFilter.slug]: "locked",
+          },
+        });
+
+        // This issue is not possible to reproduce using UI from this point on.
+        // We have to manually send the payload in order to make sure it works for both strings and integers.
+        ["string", "integer"].forEach(type => {
+          cy.log(
+            `Make sure it works with ${type.toUpperCase()} in the payload`,
+          );
+
+          const payload = {
+            resource: { dashboard: dashboardId },
+            params: {
+              [dashboardFilter.slug]: type === "string" ? "15" : 15, // IMPORTANT: integer
+            },
+          };
+
+          visitEmbeddedPage(payload);
+
+          // wait for the results to load
+          cy.contains(dashboardDetails.name);
+          cy.get(".CardVisualization")
+            .should("contain", "COUNT(*)")
+            .and("contain", "5");
+        });
       });
     });
   });
@@ -79,7 +150,8 @@ function getQuestionDetails(defaultValue = undefined) {
           default: defaultValue,
         },
       },
-      query: "select count(*) from orders where quantity={{qty_locked}}",
+      query:
+        "select count(*) from orders where true [[AND quantity={{qty_locked}}]]",
     },
   };
 }
