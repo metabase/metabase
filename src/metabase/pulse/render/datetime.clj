@@ -8,9 +8,11 @@
             [metabase.util.i18n :refer [trs tru]]
             [metabase.util.schema :as su]
             [schema.core :as s])
-  (:import java.time.format.DateTimeFormatter
+  (:import com.ibm.icu.text.RuleBasedNumberFormat
+           java.time.format.DateTimeFormatter
            java.time.Period
-           java.time.temporal.Temporal))
+           java.time.temporal.Temporal
+           java.util.Locale))
 
 (defn temporal-string?
   "Returns `true` if the string `s` is parseable as a datetime.
@@ -38,13 +40,9 @@
 
 (defn- x-of-y
   "Format an integer as x-th of y, for example, 2nd week of year."
-  [int-str]
-  (let [n (int (read-string int-str))]
-    (case (mod n 10)
-      1 (tru "{0}st" n)
-      2 (tru "{0}nd" n)
-      3 (tru "{0}rd" n)
-      (tru "{0}th" n))))
+  [n]
+  (let [nf (RuleBasedNumberFormat. (Locale. (public-settings/site-locale)) RuleBasedNumberFormat/ORDINAL)]
+    (.format nf n)))
 
 (defn- hour-of-day
   [s time-style]
@@ -57,7 +55,7 @@
   column `:unit`."
   ([timezone-id s col] (format-temporal-str timezone-id s col {}))
   ([timezone-id s col col-viz-settings]
-   (java.util.Locale/setDefault (java.util.Locale. (public-settings/site-locale)))
+   (Locale/setDefault (Locale. (public-settings/site-locale)))
    (let [{date-style :date_style
           abbreviate :date_abbreviate
           time-style :time_style} col-viz-settings]
@@ -87,7 +85,7 @@
              :quarter-of-year (format "Q%s" s)
              :hour-of-day     (hour-of-day s (str/replace (or time-style "h a") #"A" "a"))
 
-             (:week-of-year :minute-of-hour :day-of-month :day-of-year) (x-of-y s)
+             (:week-of-year :minute-of-hour :day-of-month :day-of-year) (x-of-y (parse-long s))
              ;; TODO: probably shouldn't even be showing sparkline for x-of-y groupings?
 
              ;; for everything else return in this format
