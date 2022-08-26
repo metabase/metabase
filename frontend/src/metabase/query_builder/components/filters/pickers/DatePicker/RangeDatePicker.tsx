@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useState } from "react";
 
 import Calendar from "metabase/components/Calendar";
 
@@ -24,6 +24,46 @@ export const BetweenPicker = ({
   hideTimeSelectors,
   onFilterChange,
 }: BetweenPickerProps) => {
+  const [isStartDatActive, setIsStartDateActive] = useState(true);
+
+  const handleStartDateFocus = useCallback(() => {
+    setIsStartDateActive(true);
+  }, []);
+
+  const handleEndDateFocus = useCallback(() => {
+    setIsStartDateActive(false);
+  }, []);
+
+  const handleDateRangeChange = useCallback(
+    (startValue: string | null, endValue: string | null) => {
+      onFilterChange([op, field, startValue, endValue]);
+    },
+    [op, field, onFilterChange],
+  );
+
+  const handleStartDateChange = useCallback(
+    (value: string | null) => {
+      onFilterChange([op, field, value, endValue]);
+    },
+    [op, field, endValue, onFilterChange],
+  );
+
+  const handleEndDateChange = useCallback(
+    (value: string | null) => {
+      onFilterChange([op, field, startValue, value]);
+    },
+    [op, field, startValue, onFilterChange],
+  );
+
+  const handleEndDateClear = useCallback(() => {
+    onFilterChange([
+      op,
+      field,
+      setTimeComponent(startValue),
+      setTimeComponent(endValue),
+    ]);
+  }, [op, field, startValue, endValue, onFilterChange]);
+
   return (
     <div className={className} data-testid="between-date-picker">
       <TimeContainer>
@@ -32,7 +72,7 @@ export const BetweenPicker = ({
             value={startValue}
             primaryColor={primaryColor}
             hideTimeSelectors={hideTimeSelectors}
-            onChange={value => onFilterChange([op, field, value, endValue])}
+            onChange={handleStartDateChange}
           />
         </div>
         <div>
@@ -40,15 +80,8 @@ export const BetweenPicker = ({
             value={endValue}
             primaryColor={primaryColor}
             hideTimeSelectors={hideTimeSelectors}
-            onChange={value => onFilterChange([op, field, startValue, value])}
-            onClear={() =>
-              onFilterChange([
-                op,
-                field,
-                setTimeComponent(startValue),
-                setTimeComponent(endValue),
-              ])
-            }
+            onChange={handleEndDateChange}
+            onClear={handleEndDateClear}
           />
         </div>
       </TimeContainer>
@@ -59,9 +92,7 @@ export const BetweenPicker = ({
           initial={startValue}
           selected={startValue && moment(startValue)}
           selectedEnd={endValue && moment(endValue)}
-          onChange={(startValue, endValue) =>
-            onFilterChange([op, field, startValue, endValue])
-          }
+          onChange={handleDateRangeChange}
         />
       </div>
     </div>

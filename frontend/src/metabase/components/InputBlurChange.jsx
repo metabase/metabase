@@ -22,6 +22,7 @@ export default class InputBlurChange extends Component {
     className: PropTypes.string,
     name: PropTypes.string,
     placeholder: PropTypes.string,
+    onFocus: PropTypes.func,
     onChange: PropTypes.func,
     onBlurChange: PropTypes.func,
   };

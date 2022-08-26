@@ -21,6 +21,7 @@ interface SpecificDatePickerProps {
   selectAll?: SelectAll;
   hasCalendar?: boolean;
   hideTimeSelectors?: boolean;
+  onFocus?: () => void;
   onChange: (startValue: string | null, endValue?: string) => void;
   onClear?: () => void;
 }
@@ -32,8 +33,9 @@ const SpecificDatePicker = ({
   selectAll,
   hasCalendar,
   hideTimeSelectors,
-  onClear,
+  onFocus,
   onChange,
+  onClear,
 }: SpecificDatePickerProps) => {
   const [showCalendar, setShowCalendar] = React.useState(true);
   const { hours, minutes, date } = getTimeComponent(value);
@@ -58,6 +60,7 @@ const SpecificDatePicker = ({
         <DateInput
           placeholder={moment().format(dateFormat)}
           value={date ? date.format(dateFormat) : ""}
+          onFocus={onFocus}
           onBlurChange={({ target: { value } }: any) => {
             const date = moment(value, dateFormat);
             if (date.isValid()) {
