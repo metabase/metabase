@@ -5,8 +5,8 @@ import * as Urls from "metabase/lib/urls";
 import DataApps from "metabase/entities/data-apps";
 import Search from "metabase/entities/search";
 
-import { DataApp } from "metabase-types/api";
-import { State } from "metabase-types/store";
+import type { DataApp } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import { MainNavbarProps, MainNavbarOwnProps, SelectedItem } from "./types";
 import NavbarLoadingView from "./NavbarLoadingView";

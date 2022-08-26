@@ -1,6 +1,6 @@
 import React from "react";
 import { withRouter } from "react-router";
-import { Location } from "history";
+import type { Location } from "history";
 
 import * as Urls from "metabase/lib/urls";
 

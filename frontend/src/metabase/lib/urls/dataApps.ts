@@ -1,6 +1,6 @@
 import slugg from "slugg";
 
-import { DataApp, Dashboard } from "metabase-types/api";
+import type { DataApp, Dashboard } from "metabase-types/api";
 
 import { appendSlug } from "./utils";
 

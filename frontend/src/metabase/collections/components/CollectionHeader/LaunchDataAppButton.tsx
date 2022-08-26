@@ -8,8 +8,8 @@ import Link from "metabase/core/components/Link";
 import * as Urls from "metabase/lib/urls";
 import DataApps from "metabase/entities/data-apps";
 
-import { Collection, DataApp } from "metabase-types/api";
-import { State } from "metabase-types/store";
+import type { Collection, DataApp } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 interface OwnProps {
   collection: Collection;

@@ -8,7 +8,7 @@ import Tooltip from "metabase/components/Tooltip";
 
 import * as Urls from "metabase/lib/urls";
 
-import { DataApp } from "metabase-types/api";
+import type { DataApp } from "metabase-types/api";
 
 import { MainNavbarProps, SelectedItem } from "./types";
 import {

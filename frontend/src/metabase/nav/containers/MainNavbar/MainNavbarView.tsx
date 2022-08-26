@@ -2,8 +2,6 @@ import React, { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { Bookmark, Collection, DataApp, User } from "metabase-types/api";
-
 import { IconProps } from "metabase/components/Icon";
 import { Tree } from "metabase/components/tree";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
@@ -15,6 +13,8 @@ import {
 import { getDataAppIcon } from "metabase/entities/data-apps";
 import { isSmallScreen } from "metabase/lib/dom";
 import * as Urls from "metabase/lib/urls";
+
+import type { Bookmark, Collection, DataApp, User } from "metabase-types/api";
 
 import { SelectedItem } from "./types";
 import BookmarkList from "./BookmarkList";

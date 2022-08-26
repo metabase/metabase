@@ -1,5 +1,5 @@
 import React, { useCallback } from "react";
-import { LocationDescriptor } from "history";
+import type { LocationDescriptor } from "history";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
@@ -7,8 +7,8 @@ import * as Urls from "metabase/lib/urls";
 
 import DataApps from "metabase/entities/data-apps";
 
-import { DataApp as IDataApp } from "metabase-types/api";
-import { State } from "metabase-types/store";
+import type { DataApp as IDataApp } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 interface OwnProps {
   onClose: () => void;

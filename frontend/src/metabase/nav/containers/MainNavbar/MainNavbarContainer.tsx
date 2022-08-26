@@ -7,8 +7,8 @@ import Modal from "metabase/components/Modal";
 
 import * as Urls from "metabase/lib/urls";
 
-import { Bookmark, Collection, DataApp, User } from "metabase-types/api";
-import { State } from "metabase-types/store";
+import type { Bookmark, Collection, DataApp, User } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import DataApps, { isDataAppCollection } from "metabase/entities/data-apps";
 import Bookmarks, { getOrderedBookmarks } from "metabase/entities/bookmarks";

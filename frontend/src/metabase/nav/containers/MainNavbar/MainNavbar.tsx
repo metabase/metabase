@@ -10,9 +10,9 @@ import { coerceCollectionId } from "metabase/collections/utils";
 import { getQuestion } from "metabase/query_builder/selectors";
 import { getDashboard } from "metabase/dashboard/selectors";
 
-import Question from "metabase-lib/lib/Question";
-import { Dashboard } from "metabase-types/api";
-import { State } from "metabase-types/store";
+import type Question from "metabase-lib/lib/Question";
+import type { Dashboard } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import DataAppNavbarContainer from "./DataAppNavbarContainer";
 import MainNavbarContainer from "./MainNavbarContainer";
