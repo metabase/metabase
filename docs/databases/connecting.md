@@ -27,32 +27,32 @@ Although connection details differ database to database, in general you'll need 
 Metabase supports many different databases and data sources, with different levels of support.
 
 - [Official](#officially-supported-databases) (this page)
-- [Partner](../developers-guide-drivers.html)
-- [Community](../developers-guide-drivers.html)
+- [Partner](../developers-guide-drivers.md)
+- [Community](../developers-guide-drivers.md)
 
 The following databases have official drivers maintained by the Metabase team. Customers on [paid plans](https://www.metabase.com/pricing/) will get official support.
 
-- [BigQuery](./connections/bigquery.html) (Google Cloud Platform)
+- [BigQuery](./connections/bigquery.md) (Google Cloud Platform)
 - Druid
-- [Google Analytics](./connections/google-analytics.html)
+- [Google Analytics](./connections/google-analytics.md)
 - H2
-- [MongoDB (version 3.6 or higher)](./connections/mongodb.html) <!-- MongoDB supported version is from https://www.mongodb.com/support-policy -->
-- [MySQL (version 5.7 or higher, as well as MariaDB version 10.2 or higher)](./connections/mysql.html)
-- [Oracle](./connections/oracle.html)
-- [PostgreSQL](connections/postgresql.html)
+- [MongoDB (version 3.6 or higher)](./connections/mongodb.md) <!-- MongoDB supported version is from https://www.mongodb.com/support-policy -->
+- [MySQL (version 5.7 or higher, as well as MariaDB version 10.2 or higher)](./connections/mysql.md)
+- [Oracle](./connections/oracle.md)
+- [PostgreSQL](connections/postgresql.md)
 - Presto
 - Redshift (Amazon Web Services)
-- [Snowflake](./connections/snowflake.html)
+- [Snowflake](./connections/snowflake.md)
 - SparkSQL
-- [SQL Server](./connections/sql-server.html)
+- [SQL Server](./connections/sql-server.md)
 - SQLite
-- [Vertica](./connections/vertica.html)
+- [Vertica](./connections/vertica.md)
 
 ## Connecting to databases hosted by a cloud provider
 
 For provider-specific connection details, like connecting to a PostgreSQL data warehouse on RDS:
 
-- [AWS's Relational Database Service (RDS)](./connections/aws-rds.html)
+- [AWS's Relational Database Service (RDS)](./connections/aws-rds.md)
 
 ## Database connection options
 
@@ -74,7 +74,7 @@ Metabase automatically tries to connect to databases with SSL first, then withou
 
 ### Use an SSH tunnel for database connections
 
-See our [guide to SSH tunneling](./ssh-tunnel.html).
+See our [guide to SSH tunneling](./ssh-tunnel.md).
 
 ### Additional JDBC connection string options
 
@@ -172,10 +172,13 @@ You can also delete a database from the database list: hover over the row with t
 
 ## Troubleshooting
 
-If you're having trouble with your database connection, you can check out this [troubleshooting guide](../troubleshooting-guide/datawarehouse.html), or visit [Metabase's discussion forum](https://discourse.metabase.com/) to see if someone has encountered and resolved a similar issue.
+- [Troubleshooting database connections](../troubleshooting-guide/datawarehouse.md).
+- [Troubleshooting syncs, scans, and fingerprinting](../troubleshooting-guide/sync-fingerprint-scan.md).
+- Search or ask the [Metabase community](https://discourse.metabase.com/).
+- Search for [known bugs or limitations](../troubleshooting-guide/known-issues.md).
 
 ## Further reading
 
 - [Metadata editing](../data-modeling/metadata-editing.html).
-- [Models](../data-modeling/models.html).
 - [Setting data access permissions](../administration-guide/05-setting-permissions.html).
+- [Metabase at scale](https://www.metabase.com/learn/administration/metabase-at-scale).
