@@ -433,21 +433,21 @@
 (defn- autocomplete-card-columns
   [db-id search-string limit match-type tagged-card-ids]
   (when (seq tagged-card-ids)
-    (->> (db/select [Card :name :result_metadata]
+    (->> (db/select [Card :name :result_metadata :collection_id]
            :%lower.result_metadata         [:like (match-search-string :substring search-string)]
            :database_id                    db-id
            {:where [:in :id tagged-card-ids]
             :limit limit})
          (filter mi/can-read?)
          (mapcat (fn [{:keys [result_metadata name]}]
-                   (map (fn [metadata]
-                          (merge metadata
+                   (map (fn [column-metadata]
+                          (merge column-metadata
                                  {:card_name name}))
                         result_metadata)))
-         (filter (fn [metadata]
+         (filter (fn [column-metadata]
                    (re-find (re-pattern (case match-type
                                           :prefix    (str "(?i)^" search-string)
-                                          :substring (str "(?i)" search-string))) (:name metadata)))))))
+                                          :substring (str "(?i)" search-string))) (:name column-metadata)))))))
 
 (defmulti format-autocomplete-result
   "Format an autocomplete result for the client."
