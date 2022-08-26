@@ -1,4 +1,8 @@
 import React from "react";
+import { withRouter } from "react-router";
+import { Location } from "history";
+
+import * as Urls from "metabase/lib/urls";
 
 import { isDataAppCollection } from "metabase/entities/data-apps";
 
@@ -14,6 +18,7 @@ import { HeaderActions, HeaderRoot } from "./CollectionHeader.styled";
 
 export interface CollectionHeaderProps {
   collection: Collection;
+  location: Location;
   isAdmin: boolean;
   isBookmarked: boolean;
   isPersonalCollectionChild: boolean;
@@ -24,6 +29,7 @@ export interface CollectionHeaderProps {
 
 const CollectionHeader = ({
   collection,
+  location,
   isAdmin,
   isBookmarked,
   isPersonalCollectionChild,
@@ -38,9 +44,10 @@ const CollectionHeader = ({
         onUpdateCollection={onUpdateCollection}
       />
       <HeaderActions data-testid="collection-menu">
-        {isDataAppCollection(collection) && (
-          <LaunchDataAppButton collection={collection} />
-        )}
+        {isDataAppCollection(collection) &&
+          Urls.isDataAppPreviewPath(location.pathname) && (
+            <LaunchDataAppButton collection={collection} />
+          )}
         <CollectionTimeline collection={collection} />
         <CollectionBookmark
           collection={collection}
@@ -59,4 +66,4 @@ const CollectionHeader = ({
   );
 };
 
-export default CollectionHeader;
+export default withRouter(CollectionHeader);
