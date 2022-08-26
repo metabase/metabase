@@ -29,7 +29,7 @@ function ActionCreatorComponent({
   question: passedQuestion,
 }: {
   metadata: Metadata;
-  question: Question;
+  question?: Question;
 }) {
   const [question, setQuestion] = useState(
     passedQuestion ?? newQuestion(metadata),
