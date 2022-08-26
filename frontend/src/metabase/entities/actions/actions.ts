@@ -1,10 +1,11 @@
 import { createEntity } from "metabase/lib/entities";
 
-import { saveForm } from "./forms";
-
 import type Question from "metabase-lib/lib/Question";
+import type { ActionFormSettings } from "metabase/writeback/types";
+
 import { CardApi } from "metabase/services";
-import { ActionFormSettings } from "metabase/writeback/types";
+
+import { saveForm } from "./forms";
 
 type ActionParams = {
   name: string;
@@ -14,24 +15,28 @@ type ActionParams = {
   formSettings: ActionFormSettings;
 };
 
-const createAction = async ({
-  name,
-  description,
-  question,
-  collection_id,
-  formSettings = {},
-}: ActionParams) => {
-  return CardApi.create({
-    ...question.card(),
+const getAPIFn =
+  (apifn: (args: any) => Promise<any>) =>
+  ({
     name,
     description,
-    parameters: question.parameters(),
-    is_write: true,
-    display: "table",
-    visualization_settings: formSettings,
+    question,
     collection_id,
-  });
-};
+    formSettings = {},
+  }: ActionParams) =>
+    apifn({
+      ...question.card(),
+      name,
+      description,
+      parameters: question.parameters(),
+      is_write: true,
+      display: "table",
+      visualization_settings: formSettings,
+      collection_id,
+    });
+
+const createAction = getAPIFn(CardApi.create);
+const updateAction = getAPIFn(CardApi.update);
 
 const Actions = createEntity({
   name: "actions",
@@ -39,6 +44,7 @@ const Actions = createEntity({
   path: "/api/action",
   api: {
     create: createAction,
+    update: updateAction,
   },
   forms: {
     saveForm,

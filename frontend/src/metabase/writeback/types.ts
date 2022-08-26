@@ -60,6 +60,8 @@ export interface HttpActionTemplate {
   parameter_mappings: Record<ParameterId, ParameterTarget>;
 }
 
+export type WritebackRowAction = WritebackActionBase & RowAction;
+export type WritebackHttpAction = WritebackActionBase & HttpAction;
 export type WritebackAction = WritebackActionBase & (RowAction | HttpAction);
 
 export interface WritebackActionEmitter {
