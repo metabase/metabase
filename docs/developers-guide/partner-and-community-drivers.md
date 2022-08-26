@@ -1,7 +1,7 @@
 ---
 title: Partner and community drivers
 redirect_from:
-  - /docs/latest/developers-guide/partner-and-community-drivers
+  - /docs/latest/developers-guide-drivers
 ---
 
 # Partner and community drivers
