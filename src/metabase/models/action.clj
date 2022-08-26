@@ -99,7 +99,7 @@
                        :description description
                        :disabled (::disabled card)
                        :card (dissoc card ::disabled)}
-                      (select-keys card [:parameters :parameter_mappings])))))
+                      (select-keys card [:parameters :parameter_mappings :visualization_settings])))))
             actions))))
 
 (defn- normalize-http-actions [actions]
@@ -112,7 +112,8 @@
                    (merge
                      {:disabled false
                       :parameters []
-                      :parameter_mappings {}}
+                      :parameter_mappings {}
+                      :visualization_settings {}}
                      (select-keys http-action [:name :description :template :response_handle :error_handle])
                      (select-keys (:template http-action) [:parameters :parameter_mappings])))))
            actions))))
