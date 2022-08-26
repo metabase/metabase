@@ -1,4 +1,4 @@
---
+---
 title: Setting up email
 redirect_from:
   - /docs/latest/administration-guide/02-setting-up-email.html
