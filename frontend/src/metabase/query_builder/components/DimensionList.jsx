@@ -44,8 +44,8 @@ export default class DimensionList extends Component {
         ...section,
         items: section.items.map(item => ({
           ...item,
-          name: item.name || (item.dimension && item.dimension.displayName()),
-          icon: item.icon || (item.dimension && item.dimension.icon()),
+          name: item.name || item.dimension?.displayName(),
+          icon: item.icon || item.dimension?.icon(),
         })),
       })),
     });
@@ -63,9 +63,9 @@ export default class DimensionList extends Component {
     const { dimension } = item;
     return (
       item.dimension &&
-      _.any(dimensions, d => {
+      _.any(dimensions, dimensionEntry => {
         // sometimes `dimension` has a join-alias and `d` doesn't -- with/without is equivalent in this scenario
-        return d.isSameBaseDimension(dimension.withoutJoinAlias());
+        return dimensionEntry.isSameBaseDimension(dimension.withoutJoinAlias());
       })
     );
   };
@@ -84,9 +84,8 @@ export default class DimensionList extends Component {
 
     const subDimensions =
       enableSubDimensions &&
-      item.dimension &&
       // Do not display sub dimension if this is an FK (metabase#16787)
-      !item.dimension.field().isFK() &&
+      !item.dimension?.field().isFK() &&
       !surpressSubDimensions &&
       item.dimension.dimensions();
 
@@ -95,17 +94,17 @@ export default class DimensionList extends Component {
     const sectionDimension = dimension
       ? dimension
       : _.find(
-          this._getDimensions(),
-          d => d.field() === item.dimension.field(),
+          this.getDimensions(),
+          dimensionToFind => dimensionToFind.field() === item.dimension.field(),
         );
 
     return (
       <div className="Field-extra flex align-center">
         {/* {item.segment && this.renderSegmentTooltip(item.segment)} */}
-        {item.dimension && item.dimension.tag && (
+        {item.dimension?.tag && (
           <span className="h5 text-light px1">{item.dimension.tag}</span>
         )}
-        {subDimensions && subDimensions.length > 0 ? (
+        {subDimensions?.length > 0 ? (
           <PopoverWithTrigger
             className={this.props.className}
             hasArrow={false}
@@ -162,9 +161,10 @@ export default class DimensionList extends Component {
   renderSubDimensionTrigger(otherDimension, multiSelect) {
     const dimensions = this._getDimensions();
     const subDimension =
-      _.find(dimensions, d => d.isSameBaseDimension(otherDimension)) ||
-      otherDimension.defaultDimension();
-    const name = subDimension ? subDimension.subTriggerDisplayName() : null;
+      _.find(dimensions, dimension =>
+        dimension.isSameBaseDimension(otherDimension),
+      ) || otherDimension.defaultDimension();
+    const name = subDimension?.subTriggerDisplayName() ?? null;
 
     return (
       <FieldListGroupingTrigger
@@ -218,16 +218,16 @@ export default class DimensionList extends Component {
   };
 
   handleAdd = item => {
-    const d = this._getDimensionFromItem(item);
-    if (d && this.props.onAddDimension) {
-      this.props.onAddDimension(d, item);
+    const dimension = this._getDimensionFromItem(item);
+    if (dimension && this.props.onAddDimension) {
+      this.props.onAddDimension(dimension, item);
     }
   };
 
   handleRemove = item => {
-    const d = this._getDimensionFromItem(item);
-    if (d && this.props.onRemoveDimension) {
-      this.props.onRemoveDimension(d, item);
+    const dimension = this._getDimensionFromItem(item);
+    if (dimension && this.props.onRemoveDimension) {
+      this.props.onRemoveDimension(dimension, item);
     }
   };
 
