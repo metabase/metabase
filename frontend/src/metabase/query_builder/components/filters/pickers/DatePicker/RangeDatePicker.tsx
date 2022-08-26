@@ -1,13 +1,11 @@
 import React, { useCallback, useState } from "react";
-
-import Calendar from "metabase/components/Calendar";
-
 import moment from "moment-timezone";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
-import { TimeContainer } from "./RangeDatePicker.styled";
 import { setTimeComponent } from "metabase/lib/query_time";
+import Calendar from "metabase/components/Calendar";
 import SingleDatePicker, { SingleDatePickerProps } from "./SingleDatePicker";
 import SpecificDatePicker from "./SpecificDatePicker";
+import { TimeContainer } from "./RangeDatePicker.styled";
 
 interface BetweenPickerProps {
   className?: string;
