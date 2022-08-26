@@ -25,7 +25,7 @@ defaultFilterValues.forEach(value => {
     ? "and the required filter with the default value"
     : "";
 
-  describe("issue 20845, 25031", () => {
+  describe("issues 20845, 25031", () => {
     beforeEach(() => {
       cy.intercept("PUT", "/api/card/*").as("publishChanges");
 
@@ -66,7 +66,7 @@ defaultFilterValues.forEach(value => {
       });
     });
 
-    it(`QUESTION: locked parameter should work with numeric values ${conditionalPartOfTestTitle} (metabase#20845, metabase#25031)`, () => {
+    it(`QUESTION: locked parameter should work with numeric values ${conditionalPartOfTestTitle} (metabase#20845)`, () => {
       cy.get("@questionId").then(questionId => {
         cy.request("PUT", `/api/card/${questionId}`, {
           enable_embedding: true,
