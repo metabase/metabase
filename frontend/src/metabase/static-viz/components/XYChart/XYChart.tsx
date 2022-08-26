@@ -147,69 +147,6 @@ export const XYChart = ({
 
   return (
     <svg width={width} height={height + legendHeight}>
-      <Group top={margin.top} left={xMin}>
-        {defaultYScale && (
-          <GridRows
-            scale={defaultYScale}
-            width={innerWidth}
-            strokeDasharray="4"
-          />
-        )}
-
-        {xScale.barAccessor && xScale.bandwidth && (
-          <BarSeries
-            series={bars}
-            yScaleLeft={yScaleLeft}
-            yScaleRight={yScaleRight}
-            xAccessor={xScale.barAccessor}
-            bandwidth={xScale.bandwidth}
-          />
-        )}
-        <AreaSeries
-          series={areas}
-          yScaleLeft={yScaleLeft}
-          yScaleRight={yScaleRight}
-          xAccessor={xScale.lineAccessor}
-          areStacked={settings.stacking === "stack"}
-        />
-        <LineSeries
-          series={lines}
-          yScaleLeft={yScaleLeft}
-          yScaleRight={yScaleRight}
-          xAccessor={xScale.lineAccessor}
-        />
-
-        {settings.goal && (
-          <GoalLine
-            label={settings.goal.label}
-            x1={0}
-            x2={innerWidth}
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            y={defaultYScale!(settings.goal.value)}
-            color={style.goalColor}
-          />
-        )}
-
-        {settings.show_values && (
-          <Values
-            series={series}
-            formatter={(value: number, compact: boolean): string =>
-              formatNumber(
-                value,
-                maybeAssoc(settings.y.format, "compact", compact),
-              )
-            }
-            valueProps={valueProps}
-            xScale={xScale}
-            yScaleLeft={yScaleLeft}
-            yScaleRight={yScaleRight}
-            innerWidth={innerWidth}
-            areStacked={settings.stacking === "stack"}
-            xAxisYPos={yMin - margin.top}
-          />
-        )}
-      </Group>
-
       {yScaleLeft && (
         <AxisLeft
           hideTicks
@@ -282,6 +219,69 @@ export const XYChart = ({
         lineHeight={style.legend.lineHeight}
         fontSize={style.legend.fontSize}
       />
+
+      <Group top={margin.top} left={xMin}>
+        {defaultYScale && (
+          <GridRows
+            scale={defaultYScale}
+            width={innerWidth}
+            strokeDasharray="4"
+          />
+        )}
+
+        {xScale.barAccessor && xScale.bandwidth && (
+          <BarSeries
+            series={bars}
+            yScaleLeft={yScaleLeft}
+            yScaleRight={yScaleRight}
+            xAccessor={xScale.barAccessor}
+            bandwidth={xScale.bandwidth}
+          />
+        )}
+        <AreaSeries
+          series={areas}
+          yScaleLeft={yScaleLeft}
+          yScaleRight={yScaleRight}
+          xAccessor={xScale.lineAccessor}
+          areStacked={settings.stacking === "stack"}
+        />
+        <LineSeries
+          series={lines}
+          yScaleLeft={yScaleLeft}
+          yScaleRight={yScaleRight}
+          xAccessor={xScale.lineAccessor}
+        />
+
+        {settings.goal && (
+          <GoalLine
+            label={settings.goal.label}
+            x1={0}
+            x2={innerWidth}
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            y={defaultYScale!(settings.goal.value)}
+            color={style.goalColor}
+          />
+        )}
+
+        {settings.show_values && (
+          <Values
+            series={series}
+            formatter={(value: number, compact: boolean): string =>
+              formatNumber(
+                value,
+                maybeAssoc(settings.y.format, "compact", compact),
+              )
+            }
+            valueProps={valueProps}
+            xScale={xScale}
+            yScaleLeft={yScaleLeft}
+            yScaleRight={yScaleRight}
+            innerWidth={innerWidth}
+            areStacked={settings.stacking === "stack"}
+            xAxisYPos={yMin - margin.top}
+          />
+        )}
+      </Group>
     </svg>
   );
 };
