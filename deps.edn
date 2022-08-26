@@ -181,7 +181,8 @@
                                                            :exclusions  [org.clojure/clojure
                                                                          org.clojure/clojurescript]}
     ring/ring-mock                                        {:mvn/version "0.4.0"}
-    talltale/talltale                                     {:mvn/version "0.5.8"}}
+    talltale/talltale                                     {:mvn/version "0.5.8"}
+    lambdaisland/deep-diff2                               {:mvn/version "2.3.127"}}
 
    :extra-paths ["dev/src" "local/src" "test" "shared/test" "test_resources"]
    :jvm-opts    ["-Dmb.run.mode=dev"
