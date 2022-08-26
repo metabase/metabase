@@ -981,7 +981,7 @@
                     {:model "DashboardCard" :id dc1-2-eid}]
                    [{:model "Card" :id c1-1-eid}]
                    [{:model "Card" :id c1-2-eid}]}
-                 (->> (extract/extract-subtree {:target ["Dashboard" dash1-id]})
+                 (->> (extract/extract-subtrees {:targets [["Dashboard" dash1-id]]})
                       (map serdes.base/serdes-path)
                       set))))
 
@@ -993,7 +993,7 @@
                     {:model "DashboardCard" :id dc2-2-eid}]
                    [{:model "Card" :id c2-1-eid}]
                    [{:model "Card" :id c2-2-eid}]}
-                 (->> (extract/extract-subtree {:target ["Dashboard" dash2-id]})
+                 (->> (extract/extract-subtrees {:targets [["Dashboard" dash2-id]]})
                       (map serdes.base/serdes-path)
                       set))))
 
@@ -1005,7 +1005,7 @@
                     {:model "DashboardCard" :id dc3-2-eid}]
                    [{:model "Card" :id c3-1-eid}]
                    [{:model "Card" :id c3-2-eid}]}
-                 (->> (extract/extract-subtree {:target ["Dashboard" dash3-id]})
+                 (->> (extract/extract-subtrees {:targets [["Dashboard" dash3-id]]})
                       (map serdes.base/serdes-path)
                       set)))))
 
@@ -1039,16 +1039,16 @@
                                   [{:model "Card"          :id c1-3-eid}]}]
           (testing "grandchild collection has all its own contents"
             (is (= grandchild-paths ; Includes the third card not found in the collection
-                   (->> (extract/extract-subtree {:target ["Collection" coll3-id]})
+                   (->> (extract/extract-subtrees {:targets [["Collection" coll3-id]]})
                         (map serdes.base/serdes-path)
                         set))))
           (testing "middle collection has all its own plus the grandchild and its contents"
             (is (= (set/union middle-paths grandchild-paths)
-                   (->> (extract/extract-subtree {:target ["Collection" coll2-id]})
+                   (->> (extract/extract-subtrees {:targets [["Collection" coll2-id]]})
                         (map serdes.base/serdes-path)
                         set))))
           (testing "grandparent collection has all its own plus the grandchild and middle collections with contents"
             (is (= (set/union grandparent-paths middle-paths grandchild-paths)
-                   (->> (extract/extract-subtree {:target ["Collection" coll1-id]})
+                   (->> (extract/extract-subtrees {:targets [["Collection" coll1-id]]})
                         (map serdes.base/serdes-path)
                         set)))))))))

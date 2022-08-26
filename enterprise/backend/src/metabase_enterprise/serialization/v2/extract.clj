@@ -23,8 +23,8 @@
                         :when (model-pred model)]
                     (serdes.base/extract-all model opts)))))
 
-(defn- descendants-closure [target]
-  (loop [to-chase #{target}
+(defn- descendants-closure [targets]
+  (loop [to-chase (set targets)
          chased   #{}]
     (let [[m i :as item] (first to-chase)
           desc           (serdes.base/serdes-descendants m i)
@@ -34,16 +34,16 @@
         chased
         (recur to-chase chased)))))
 
-(defn extract-subtree
-  "Extracts the targeted entity and all its descendants into a reducible stream of extracted maps.
+(defn extract-subtrees
+  "Extracts the targeted entities and all their descendants into a reducible stream of extracted maps.
 
-  The targeted entity is specified as a `[\"SomeModel\" database-id]` pair.
+  The targeted entities are specified as a list of `[\"SomeModel\" database-id]` pairs.
 
-  [[serdes.base/serdes-descendants]] is recursively called on this entity and all its descendants, until the complete
-  transitive closure of its descendants are found. This produces a set of `[\"ModelName\" id]` pairs, which entities
-  are then extracted the same way as [[extract-metabase]]."
-  [{:keys [target] :as opts}]
-  (let [closure  (descendants-closure target)
+  [[serdes.base/serdes-descendants]] is recursively called on these entities and all their descendants, until the
+  complete transitive closure of all descendants is found. This produces a set of `[\"ModelName\" id]` pairs, which
+  entities are then extracted the same way as [[extract-metabase]]."
+  [{:keys [targets] :as opts}]
+  (let [closure  (descendants-closure targets)
         by-model (->> closure
                      (group-by first)
                      (m/map-vals #(set (map second %))))]
