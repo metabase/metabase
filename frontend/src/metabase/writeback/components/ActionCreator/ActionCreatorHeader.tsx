@@ -18,7 +18,7 @@ type Props = {
   type: ActionType;
   onChangeType?: (type: ActionType) => void;
 
-  onCommit: () => void;
+  onSave: () => void;
   canSave: boolean;
 };
 
@@ -28,7 +28,7 @@ export const ActionCreatorHeader = ({
   type,
   onChangeType,
   canSave,
-  onCommit,
+  onSave,
 }: Props) => {
   const OPTS = [
     { value: "query", name: t`Query`, disabled: true },
@@ -47,7 +47,7 @@ export const ActionCreatorHeader = ({
       <SaveButton
         borderless
         disabled={!canSave}
-        onClick={canSave ? onCommit : undefined}
+        onClick={canSave ? onSave : undefined}
       >
         {t`Save`}
       </SaveButton>

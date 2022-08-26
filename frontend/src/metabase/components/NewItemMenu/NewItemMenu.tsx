@@ -87,7 +87,7 @@ const NewItemMenu = ({
 
       // we should probably get more granular with who sees this
       items.push({
-        title: "Action",
+        title: t`Action`,
         icon: "play",
         link: "/action/create",
         event: `${analyticsContext};New Action Click;`,

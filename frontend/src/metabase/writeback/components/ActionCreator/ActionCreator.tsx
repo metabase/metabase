@@ -2,8 +2,13 @@ import React, { useState, useEffect } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
-import type { ActionType } from "metabase/writeback/types";
+import { getMetadata } from "metabase/selectors/metadata";
+import type NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import type { State } from "metabase-types/store";
+import type Question from "metabase-lib/lib/Question";
+import type Metadata from "metabase-lib/lib/metadata/Metadata";
 
+import SaveActionModal from "./SaveActionModal";
 import { ActionCreatorHeader } from "./ActionCreatorHeader";
 import { QueryActionEditor } from "./QueryActionEditor";
 import { FormCreator } from "./FormCreator";
@@ -13,13 +18,7 @@ import {
   ActionCreatorBodyContainer,
 } from "./ActionCreator.styled";
 
-import { getMetadata } from "metabase/selectors/metadata";
-
-import type { State } from "metabase-types/store";
-import type Question from "metabase-lib/lib/Question";
-
 import { newQuestion } from "./utils";
-import SaveActionModal from "./SaveActionModal";
 
 const mapStateToProps = (state: State) => ({
   metadata: getMetadata(state),
@@ -29,7 +28,7 @@ function ActionCreatorComponent({
   metadata,
   question: passedQuestion,
 }: {
-  metadata: any;
+  metadata: Metadata;
   question: Question;
 }) {
   const [question, setQuestion] = useState(
@@ -45,20 +44,20 @@ function ActionCreatorComponent({
     return null;
   }
 
+  const query = question.query() as NativeQuery;
+
   return (
     <ActionCreatorRoot>
       <ActionCreatorHeader
         type="query"
         name={question.displayName() ?? t`New Action`}
         onChangeName={newName => setQuestion(q => q.setDisplayName(newName))}
-        onCommit={() => setShowSaveModal(true)}
+        onSave={() => setShowSaveModal(true)}
         canSave={question.query().canRun()}
       />
       <ActionCreatorBodyContainer>
         <QueryActionEditor question={question} setQuestion={setQuestion} />
-        {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
-        {/* @ts-ignore */}
-        <FormCreator tags={question.query()?.templateTagsWithoutSnippets()} />
+        <FormCreator tags={query?.templateTagsWithoutSnippets()} />
       </ActionCreatorBodyContainer>
       {showSaveModal && (
         <SaveActionModal
@@ -70,7 +69,4 @@ function ActionCreatorComponent({
   );
 }
 
-export const ActionCreator = connect(
-  mapStateToProps,
-  null,
-)(ActionCreatorComponent);
+export const ActionCreator = connect(mapStateToProps)(ActionCreatorComponent);

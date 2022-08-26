@@ -72,11 +72,10 @@ class NativeQueryEditor extends Component {
 
   UNSAFE_componentWillMount() {
     const { question, setIsNativeEditorOpen, isInitiallyOpen } = this.props;
-    if (setIsNativeEditorOpen) {
-      setIsNativeEditorOpen(
-        !question || !question.isSaved() || isInitiallyOpen,
-      );
-    }
+
+    setIsNativeEditorOpen?.(
+      !question || !question.isSaved() || isInitiallyOpen,
+    );
   }
 
   componentDidMount() {
@@ -165,8 +164,8 @@ class NativeQueryEditor extends Component {
   }
 
   componentWillUnmount() {
-    if (this.props.cancelQueryOnLeave && this.props.cancelQuery) {
-      this.props.cancelQuery();
+    if (this.props.cancelQueryOnLeave) {
+      this.props.cancelQuery?.();
     }
     document.removeEventListener("keydown", this.handleKeyDown);
     document.removeEventListener("contextmenu", this.handleRightClick);

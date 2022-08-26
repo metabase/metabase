@@ -84,7 +84,7 @@ export default function SaveActionModal({
             <Form>
               <div>
                 <FormField
-                  reqyuired
+                  required
                   autoFocus
                   name="name"
                   title={t`Name`}

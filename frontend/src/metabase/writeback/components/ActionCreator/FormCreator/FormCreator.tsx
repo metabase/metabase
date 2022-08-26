@@ -1,6 +1,10 @@
 import React from "react";
 import { t } from "ttag";
 
+import Icon from "metabase/components/Icon";
+
+import type { TemplateTag } from "metabase-types/types/Query";
+
 import {
   FormItemWrapper,
   FormCreatorWrapper,
@@ -9,10 +13,6 @@ import {
   FormSettings,
   EmptyFormPlaceholderWrapper,
 } from "./FormCreator.styled";
-
-import Icon from "metabase/components/Icon";
-
-import type { TemplateTag } from "metabase-types/types/Query";
 
 export function FormCreator({ tags }: { tags: TemplateTag[] }) {
   return (

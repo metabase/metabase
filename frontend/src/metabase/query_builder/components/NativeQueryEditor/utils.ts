@@ -12,6 +12,9 @@ function getLinesForHeight(height: number) {
 }
 
 const FRACTION_OF_TOTAL_VIEW_HEIGHT = 0.4;
+
+// the query editor needs a fixed pixel height for now
+// until we extract the resizable component
 const FULL_HEIGHT = 500;
 
 // This determines the max height that the editor *automatically* takes.
