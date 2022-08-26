@@ -183,66 +183,15 @@ export default class AggregationPopover extends Component {
     );
   }
 
-  render() {
-    let { query, dimension, showCustom, showMetrics, alwaysExpanded } =
-      this.props;
-
-    const table = query.table();
-    const aggregationOperators = this._getAvailableAggregations();
-
-    if (dimension) {
-      showCustom = false;
-      showMetrics = false;
-    }
-    if (!table.database.hasFeature("expression-aggregations")) {
-      showCustom = false;
-    }
-
-    const { choosingField, editingAggregation } = this.state;
-    const aggregation = AGGREGATION.getContent(this.state.aggregation);
-
-    let selectedAggregation;
-    if (AGGREGATION.isMetric(aggregation)) {
-      selectedAggregation = _.findWhere(table.metrics, {
-        id: AGGREGATION.getMetric(aggregation),
-      });
-    } else if (AGGREGATION.isStandard(aggregation)) {
-      selectedAggregation = _.findWhere(aggregationOperators, {
-        short: AGGREGATION.getOperator(aggregation),
-      });
-    }
-
-    const aggregationItems = aggregationOperators.map(aggregation => ({
-      name: dimension
-        ? aggregation.name.replace("of ...", "")
-        : aggregation.name,
-      value: [aggregation.short, ...aggregation.fields.map(field => null)],
-      isSelected: agg =>
-        AGGREGATION.isStandard(agg) &&
-        AGGREGATION.getOperator(agg) === aggregation.short,
-      aggregation: aggregation,
-    }));
-
-    // we only want to consider active metrics, with the ONE exception that if the currently selected aggregation is a
-    // retired metric then we include it in the list to maintain continuity
-    const metrics = table.metrics
-      ? table.metrics.filter(metric =>
-          showMetrics
-            ? !metric.archived ||
-              (selectedAggregation && selectedAggregation.id === metric.id)
-            : // GA metrics are more like columns, so they should be displayed even when showMetrics is false
-              metric.googleAnalyics,
-        )
-      : [];
-    const metricItems = metrics.map(metric => ({
-      name: metric.name,
-      value: ["metric", metric.id],
-      isSelected: aggregation =>
-        AGGREGATION.getMetric(aggregation) === metric.id,
-      metric: metric,
-    }));
-
+  getSections(table, aggregationItems, metricItems) {
+    const { alwaysExpanded, dimension, showCustom } = this.props;
     const sections = [];
+
+    const maybeOveriddenShowCustomProp =
+      dimension || !table.database.hasFeature("expression-aggregations")
+        ? false
+        : showCustom;
+
     // "Basic Metrics", e.x. count, sum, avg, etc
     if (aggregationItems.length > 0) {
       sections.push({
@@ -266,14 +215,16 @@ export default class AggregationPopover extends Component {
         aggregationItems,
         item => COMMON_AGGREGATIONS.has(item.aggregation.short),
       );
+
       // move COMMON_AGGREGATIONS into the "common metrics" section
       sections[0].items = basicAggregationItems;
       sections[1].items = [...commonAggregationItems, ...metricItems];
+
       // swap the order of the sections so "common metrics" are first
       sections.reverse();
     }
 
-    if (showCustom) {
+    if (maybeOveriddenShowCustomProp) {
       // add "custom" as it's own section
       sections.push({
         name: CUSTOM_SECTION_NAME,
@@ -294,6 +245,75 @@ export default class AggregationPopover extends Component {
     if (sections.length === 1) {
       sections[0].name = null;
     }
+
+    return sections;
+  }
+
+  getSelectedAggregation(table, aggregation) {
+    const aggregationOperators = this._getAvailableAggregations();
+
+    if (AGGREGATION.isMetric(aggregation)) {
+      return _.findWhere(table.metrics, {
+        id: AGGREGATION.getMetric(aggregation),
+      });
+    }
+
+    return _.findWhere(aggregationOperators, {
+      short: AGGREGATION.getOperator(aggregation),
+    });
+  }
+
+  getAggregationItems() {
+    const { dimension } = this.props;
+    const aggregationOperators = this._getAvailableAggregations();
+
+    return aggregationOperators.map(aggregation => ({
+      name: dimension
+        ? aggregation.name.replace("of ...", "")
+        : aggregation.name,
+      value: [aggregation.short, ...aggregation.fields.map(field => null)],
+      isSelected: agg =>
+        AGGREGATION.isStandard(agg) &&
+        AGGREGATION.getOperator(agg) === aggregation.short,
+      aggregation: aggregation,
+    }));
+  }
+
+  render() {
+    let { query, dimension, showMetrics } = this.props;
+
+    const table = query.table();
+
+    if (dimension) {
+      showMetrics = false;
+    }
+
+    const { choosingField, editingAggregation } = this.state;
+    const aggregation = AGGREGATION.getContent(this.state.aggregation);
+    const selectedAggregation = this.getSelectedAggregation(table, aggregation);
+
+    const aggregationItems = this.getAggregationItems();
+
+    // we only want to consider active metrics, with the ONE exception that if the currently selected aggregation is a
+    // retired metric then we include it in the list to maintain continuity
+    const metrics = table.metrics
+      ? table.metrics.filter(metric =>
+          showMetrics
+            ? !metric.archived ||
+              (selectedAggregation && selectedAggregation.id === metric.id)
+            : // GA metrics are more like columns, so they should be displayed even when showMetrics is false
+              metric.googleAnalyics,
+        )
+      : [];
+    const metricItems = metrics.map(metric => ({
+      name: metric.name,
+      value: ["metric", metric.id],
+      isSelected: aggregation =>
+        AGGREGATION.getMetric(aggregation) === metric.id,
+      metric: metric,
+    }));
+
+    const sections = this.getSections(table, aggregationItems, metricItems);
 
     if (editingAggregation) {
       return (
