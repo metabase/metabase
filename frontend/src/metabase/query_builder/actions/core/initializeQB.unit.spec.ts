@@ -693,12 +693,6 @@ describe("QB Actions > initializeQB", () => {
       };
     }
 
-    it("redirects to new question flow if missing any options", async () => {
-      const redirectSpy = jest.spyOn(navigation, "redirectToNewQuestionFlow");
-      await setupBlank();
-      expect(redirectSpy).toHaveBeenCalledTimes(1);
-    });
-
     it("constructs a card based on provided 'db' param", async () => {
       const expectedCard = Question.create({
         databaseId: SAMPLE_DATABASE?.id,
