@@ -38,7 +38,7 @@ If you have a different issue, see [related problems](#do-you-have-a-different-p
 ## Do you have a different problem?
 
 - [I can't save my question or dashboard][proxies].
-- [I can't see my tables][cant-see-tables].
+- [I can't see my tables](./cant-see-tables.md).
 
 ## Are you still stuck?
 
@@ -49,7 +49,6 @@ If you can’t solve your problem using the troubleshooting guides:
 
 
 [admin-permissions]: ../permissions/start.md
-[cant-see-tables]: cant-see-tables.md
 [check-permissions]: ./data-permissions.md#checking-someones-access-to-a-table-or-schema
 [collection-permissions]: ../permissions/collections.md
 [collections-restricted-data]: ./data-permissions.md#a-user-group-can-view-collections-that-contain-restricted-data
