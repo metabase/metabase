@@ -14,5 +14,4 @@ jobs:
       use-quiet-mode: 'yes'
       folder-path: 'docs'
       check-modified-files-only: 'yes'
-      config-file: 'mlc_config.json'
-      
+      config-file: 'mlc_config.json' 
