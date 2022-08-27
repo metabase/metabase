@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { jt } from "ttag";
 import { getIn } from "icepick";
 
 import Icon from "metabase/components/Icon";
@@ -16,6 +15,7 @@ import Sidebar from "metabase/dashboard/components/Sidebar";
 
 import { clickBehaviorOptions, getClickBehaviorOptionName } from "./utils";
 import ActionOptions from "./ActionOptions";
+import ClickBehaviorSidebarHeader from "./ClickBehaviorSidebarHeader";
 import CrossfilterOptions from "./CrossfilterOptions";
 import LinkOptions from "./LinkOptions";
 import TableClickBehaviorView from "./TableClickBehaviorView";
@@ -23,10 +23,8 @@ import TypeSelector from "./TypeSelector";
 import { SidebarItemWrapper } from "./SidebarItem";
 import {
   CloseIconContainer,
-  Heading,
   SidebarContent,
   SidebarContentBordered,
-  SidebarHeader,
   SidebarIconWrapper,
 } from "./ClickBehaviorSidebar.styled";
 
@@ -177,39 +175,11 @@ class ClickBehaviorSidebar extends React.Component {
         onCancel={this.handleCancel}
         closeIsDisabled={!clickBehaviorIsValid(clickBehavior)}
       >
-        <SidebarHeader>
-          {selectedColumn == null ? (
-            <Heading>{jt`Click behavior for ${(
-              <span className="text-brand">{dashcard.card.name}</span>
-            )}`}</Heading>
-          ) : (
-            <div
-              onClick={this.unsetSelectedColumn}
-              className="flex align-center text-brand-hover cursor-pointer"
-            >
-              <div
-                className="bordered"
-                style={{
-                  marginRight: 8,
-                  paddingTop: 4,
-                  paddingBottom: 4,
-                  paddingRight: 6,
-                  paddingLeft: 6,
-                  borderRadius: 4,
-                }}
-              >
-                <Icon name="chevronleft" className="text-medium" size={12} />
-              </div>
-              <Heading>
-                {jt`Click behavior for ${(
-                  <span className="text-brand">
-                    {selectedColumn.display_name}
-                  </span>
-                )}`}
-              </Heading>
-            </div>
-          )}
-        </SidebarHeader>
+        <ClickBehaviorSidebarHeader
+          dashcard={dashcard}
+          selectedColumn={selectedColumn}
+          hasSelectedColumn={selectedColumn != null}
+        />
         <div>
           {showTypeSelector ? (
             <SidebarContent>
