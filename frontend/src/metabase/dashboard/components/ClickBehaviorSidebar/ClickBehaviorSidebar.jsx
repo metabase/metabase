@@ -828,12 +828,7 @@ function QuestionDashboardPicker({ dashcard, clickBehavior, updateSettings }) {
   );
 }
 
-const CustomLinkText = ({
-  clickBehavior,
-  dashcard,
-  parameters,
-  updateSettings,
-}) => {
+const CustomLinkText = ({ clickBehavior, updateSettings }) => {
   return (
     <div className="mt2 mb1">
       <Heading>{t`Customize link text (optional)`}</Heading>
