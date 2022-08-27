@@ -89,6 +89,7 @@ export interface ArbitraryCustomDestinationClickBehavior {
 export interface WritebackActionClickBehavior {
   type: "action";
   action: EntityId;
+  emitter_id: EntityId;
   parameterMapping?: ClickBehaviorParameterMapping;
 }
 

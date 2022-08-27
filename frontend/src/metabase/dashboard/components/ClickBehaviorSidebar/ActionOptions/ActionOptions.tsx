@@ -5,6 +5,13 @@ import { t } from "ttag";
 import Actions from "metabase/entities/actions";
 
 import ClickMappings from "metabase/dashboard/components/ClickMappings";
+import { WritebackAction } from "metabase/writeback/types";
+
+import type {
+  DashboardOrderedCard,
+  ClickBehavior,
+  WritebackActionClickBehavior,
+} from "metabase-types/api";
 
 import { SidebarItem } from "../SidebarItem";
 import { Heading, SidebarContent } from "../ClickBehaviorSidebar.styled";
@@ -14,7 +21,19 @@ import {
   ActionDescription,
 } from "./ActionOptions.styled";
 
-const ActionOption = ({ name, description, isSelected, onClick }) => {
+interface ActionOptionProps {
+  name: string;
+  description?: string | null;
+  isSelected: boolean;
+  onClick: () => void;
+}
+
+const ActionOption = ({
+  name,
+  description,
+  isSelected,
+  onClick,
+}: ActionOptionProps) => {
   return (
     <ActionSidebarItem
       onClick={onClick}
@@ -30,7 +49,17 @@ const ActionOption = ({ name, description, isSelected, onClick }) => {
   );
 };
 
-function ActionOptions({ dashcard, clickBehavior, updateSettings }) {
+interface ActionOptionsProps {
+  dashcard: DashboardOrderedCard;
+  clickBehavior: WritebackActionClickBehavior;
+  updateSettings: (settings: ClickBehavior) => void;
+}
+
+function ActionOptions({
+  dashcard,
+  clickBehavior,
+  updateSettings,
+}: ActionOptionsProps) {
   const handleActionSelected = useCallback(
     action => {
       updateSettings({
@@ -46,7 +75,7 @@ function ActionOptions({ dashcard, clickBehavior, updateSettings }) {
     <SidebarContent>
       <Heading className="text-medium">{t`Pick an action`}</Heading>
       <Actions.ListLoader>
-        {({ actions }) => {
+        {({ actions }: { actions: WritebackAction[] }) => {
           const selectedAction = actions.find(
             action => action.id === clickBehavior.action,
           );
