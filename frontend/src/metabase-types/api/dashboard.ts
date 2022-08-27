@@ -41,3 +41,53 @@ export type DashboardParameterMapping = {
   parameter_id: ParameterId;
   target: ParameterTarget;
 };
+
+// Used to set values for question filters
+// Example: "[\"dimension\",[\"field\",17,null]]"
+type StringifiedDimension = string;
+
+type ClickBehaviorParameterMapping = Record<
+  ParameterId | StringifiedDimension,
+  {
+    id: ParameterId | StringifiedDimension;
+    source: {
+      id: ParameterId | StringifiedDimension;
+      name: string;
+      type: "column" | "parameter";
+    };
+    target: {
+      id: ParameterId | StringifiedDimension;
+      type: "parameter" | "dimension";
+    };
+  }
+>;
+
+export interface CrossFilterClickBehavior {
+  type: "crossfilter";
+  parameterMapping?: ClickBehaviorParameterMapping;
+}
+
+export interface CustomDestinationClickBehavior {
+  type: "link";
+  linkType: "dashboard" | "question";
+  targetId: EntityId;
+  parameterMapping?: ClickBehaviorParameterMapping;
+}
+
+export interface ArbitraryCustomDestinationClickBehavior {
+  type: "link";
+  linkType: "url";
+  linkTemplate: string;
+}
+
+export interface WritebackActionClickBehavior {
+  type: "action";
+  action: EntityId;
+  parameterMapping?: ClickBehaviorParameterMapping;
+}
+
+export type ClickBehavior =
+  | CrossFilterClickBehavior
+  | CustomDestinationClickBehavior
+  | ArbitraryCustomDestinationClickBehavior
+  | WritebackActionClickBehavior;
