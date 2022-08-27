@@ -225,7 +225,12 @@ export default class Table extends Component {
         ],
         settings,
       ) {
-        return makeCellBackgroundGetter(rows, cols, settings);
+        return makeCellBackgroundGetter(
+          rows,
+          cols,
+          settings["table.column_formatting"] ?? [],
+          settings["table.pivot"],
+        );
       },
       readDependencies: ["table.column_formatting", "table.pivot"],
     },

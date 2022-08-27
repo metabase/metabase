@@ -248,6 +248,10 @@ class PivotTable extends Component {
     this.topHeaderRef && this.topHeaderRef.recomputeCellSizesAndPositions();
   }
 
+  componentDidMount() {
+    this.grid = this.bodyRef && findDOMNode(this.bodyRef);
+  }
+
   render() {
     const {
       settings,
@@ -262,7 +266,7 @@ class PivotTable extends Component {
       return null;
     }
 
-    const grid = this.bodyRef && findDOMNode(this.bodyRef);
+    const grid = this.grid;
 
     // In cases where there are horizontal scrollbars are visible AND the data grid has to scroll vertically as well,
     // the left sidebar and the main grid can get out of ScrollSync due to slightly differing heights

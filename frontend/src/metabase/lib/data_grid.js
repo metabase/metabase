@@ -184,7 +184,8 @@ export function multiLevelPivot(data, settings) {
   const colorGetter = makeCellBackgroundGetter(
     pivotData[primaryRowsKey],
     columns,
-    settings,
+    settings["table.column_formatting"] ?? [],
+    true,
   );
 
   const getRowSection = createRowSectionGetter({
