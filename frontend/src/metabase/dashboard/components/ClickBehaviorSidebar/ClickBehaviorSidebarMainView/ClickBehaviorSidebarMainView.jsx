@@ -68,7 +68,7 @@ function ClickBehaviorSidebarMainView({
   );
 
   return (
-    <div>
+    <>
       <SidebarContentBordered>
         <SidebarItem.Selectable
           onClick={handleShowTypeSelector}
@@ -90,7 +90,7 @@ function ClickBehaviorSidebarMainView({
         parameters={parameters}
         updateSettings={updateSettings}
       />
-    </div>
+    </>
   );
 }
 
