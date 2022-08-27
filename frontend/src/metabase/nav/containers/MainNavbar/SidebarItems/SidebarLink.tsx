@@ -13,7 +13,7 @@ import {
   FullWidthButton,
 } from "./SidebarItems.styled";
 
-interface Props {
+interface SidebarLinkProps {
   children: string;
   url?: string;
   icon?: string | IconProps | React.ReactElement;
@@ -51,7 +51,7 @@ function SidebarLink({
   left = null,
   right = null,
   ...props
-}: Props) {
+}: SidebarLinkProps) {
   const renderIcon = useCallback(() => {
     if (!icon) {
       return null;
@@ -92,6 +92,8 @@ function SidebarLink({
     </NodeRoot>
   );
 }
+
+export type { SidebarLinkProps };
 
 export default Object.assign(SidebarLink, {
   NameContainers: [ItemName, TreeNode.NameContainer],
