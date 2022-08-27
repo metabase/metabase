@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import InputBlurChange from "metabase/components/InputBlurChange";
 
-import { Heading } from "./ClickBehaviorSidebar.styled";
+import { Heading } from "../ClickBehaviorSidebar.styled";
 
 const CustomLinkText = ({ clickBehavior, updateSettings }) => {
   return (
