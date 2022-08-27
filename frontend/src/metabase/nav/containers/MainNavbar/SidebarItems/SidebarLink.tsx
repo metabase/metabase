@@ -11,6 +11,8 @@ import {
   NodeRoot,
   SidebarIcon,
   FullWidthButton,
+  LeftElementContainer,
+  RightElementContainer,
 } from "./SidebarItems.styled";
 
 interface SidebarLinkProps {
@@ -83,12 +85,16 @@ function SidebarLink({
       onMouseDown={disableImageDragging}
       {...props}
     >
-      {React.isValidElement(left) && left}
+      {React.isValidElement(left) && (
+        <LeftElementContainer>{left}</LeftElementContainer>
+      )}
       <Content>
         {icon && renderIcon()}
         <NameContainer>{children}</NameContainer>
       </Content>
-      {React.isValidElement(right) && right}
+      {React.isValidElement(right) && (
+        <RightElementContainer>{right}</RightElementContainer>
+      )}
     </NodeRoot>
   );
 }
@@ -97,4 +103,6 @@ export type { SidebarLinkProps };
 
 export default Object.assign(SidebarLink, {
   NameContainers: [ItemName, TreeNode.NameContainer],
+  LeftElement: LeftElementContainer,
+  RightElement: RightElementContainer,
 });
