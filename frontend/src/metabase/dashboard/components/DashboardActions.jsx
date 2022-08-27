@@ -32,7 +32,7 @@ export const getDashboardActions = (
     hasNightModeToggle,
   },
 ) => {
-  if (dashboard.is_app_page) {
+  if (dashboard?.is_app_page) {
     return [];
   }
 
