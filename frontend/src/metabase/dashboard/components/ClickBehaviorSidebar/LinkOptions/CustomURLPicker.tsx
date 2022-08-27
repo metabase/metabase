@@ -1,7 +1,5 @@
-/* eslint-disable react/prop-types */
 import React, { useCallback } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import InputBlurChange from "metabase/components/InputBlurChange";
 import ModalContent from "metabase/components/ModalContent";
@@ -12,19 +10,37 @@ import {
   clickBehaviorIsValid,
 } from "metabase/lib/click-behavior";
 
+import type { UiParameter } from "metabase/parameters/types";
+import {
+  ArbitraryCustomDestinationClickBehavior,
+  ClickBehavior,
+  DashboardOrderedCard,
+} from "metabase-types/api";
+
 import CustomLinkText from "./CustomLinkText";
 import { SidebarItem } from "../SidebarItem";
 
 import ValuesYouCanReference from "./ValuesYouCanReference";
-import { CustomURLPickerIcon, CustomURLPickerName } from "./LinkOptions.styled";
-import { FormDescription, DoneButton } from "./CustomURLPicker.styled";
+import {
+  FormDescription,
+  DoneButton,
+  PickerIcon,
+  PickerItemName,
+} from "./CustomURLPicker.styled";
+
+interface Props {
+  dashcard: DashboardOrderedCard;
+  clickBehavior: ArbitraryCustomDestinationClickBehavior;
+  parameters: UiParameter[];
+  updateSettings: (settings: ClickBehavior) => void;
+}
 
 function CustomURLPicker({
   clickBehavior,
   updateSettings,
   dashcard,
   parameters,
-}) {
+}: Props) {
   const hasLinkTemplate = clickBehavior.linkTemplate != null;
   const canSelect = clickBehaviorIsValid(clickBehavior);
 
@@ -41,6 +57,9 @@ function CustomURLPicker({
   const handleReset = useCallback(() => {
     updateSettings({
       type: clickBehavior.type,
+
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
       linkType: null,
     });
   }, [clickBehavior, updateSettings]);
@@ -50,17 +69,17 @@ function CustomURLPicker({
       isInitiallyOpen={!hasLinkTemplate}
       triggerElement={
         <SidebarItem.Selectable isSelected padded={false}>
-          <CustomURLPickerIcon name="link" />
+          <PickerIcon name="link" />
           <SidebarItem.Content>
-            <CustomURLPickerName>
+            <PickerItemName>
               {hasLinkTemplate ? clickBehavior.linkTemplate : t`URL`}
-            </CustomURLPickerName>
+            </PickerItemName>
             <SidebarItem.CloseIcon onClick={handleReset} />
           </SidebarItem.Content>
         </SidebarItem.Selectable>
       }
     >
-      {({ onClose }) => (
+      {({ onClose }: { onClose: () => void }) => (
         <ModalContent
           title={t`Enter a URL to link to`}
           onClose={hasLinkTemplate ? onClose : null}

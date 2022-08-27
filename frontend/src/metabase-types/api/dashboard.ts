@@ -6,8 +6,10 @@ import {
 } from "metabase-types/types/Parameter";
 import { CardId, SavedCard } from "metabase-types/types/Card";
 
+export type DashboardId = number;
+
 export interface Dashboard {
-  id: number;
+  id: DashboardId;
   collection_id: number | null;
   name: string;
   description: string | null;
@@ -68,6 +70,11 @@ export type ClickBehaviorType =
   | "crossfilter"
   | "link";
 
+export type CustomDestinationClickBehaviorLinkType =
+  | "dashboard"
+  | "question"
+  | "url";
+
 export interface CrossFilterClickBehavior {
   type: "crossfilter";
   parameterMapping?: ClickBehaviorParameterMapping;
@@ -84,6 +91,7 @@ export interface ArbitraryCustomDestinationClickBehavior {
   type: "link";
   linkType: "url";
   linkTemplate: string;
+  linkTextTemplate?: string;
 }
 
 export interface WritebackActionClickBehavior {

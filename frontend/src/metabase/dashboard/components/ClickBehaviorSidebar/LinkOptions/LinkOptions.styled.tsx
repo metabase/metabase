@@ -10,15 +10,6 @@ export const LinkTargetEntityPickerContent = styled.div`
   ${sidebarItemPaddingStyle};
 `;
 
-export const CustomURLPickerIcon = styled(SidebarItem.Icon)`
-  border-color: transparent;
-  margin-left: 8px;
-`;
-
-export const CustomURLPickerName = styled(SidebarItem.Name)`
-  padding-right: 1rem;
-`;
-
 export const SelectedEntityPickerIcon = styled(SidebarItem.Icon)`
   border-color: transparent;
 `;
