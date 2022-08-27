@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { t, jt, ngettext, msgid } from "ttag";
+import { t, jt } from "ttag";
 import { getIn } from "icepick";
 import _ from "underscore";
 import cx from "classnames";
@@ -17,7 +17,6 @@ import {
   isTableDisplay,
   clickBehaviorIsValid,
 } from "metabase/lib/click-behavior";
-import { getIconForField } from "metabase/lib/schema_metadata";
 import { keyForColumn } from "metabase/lib/dataset";
 
 import Actions from "metabase/entities/actions";
@@ -32,6 +31,7 @@ import ClickMappings, {
   clickTargetObjectType,
 } from "metabase/dashboard/components/ClickMappings";
 
+import Column from "./Column";
 import CustomLinkText from "./CustomLinkText";
 import LinkOption from "./LinkOption";
 import ValuesYouCanReference from "./ValuesYouCanReference";
@@ -74,52 +74,6 @@ function getClickBehaviorOptionName(value, dashcard) {
   }
   return t`Unknown`;
 }
-
-const LinkTargetName = ({ clickBehavior: { linkType, targetId } }) => (
-  <span>
-    {linkType === "url" ? (
-      t`URL`
-    ) : linkType === "question" ? (
-      <span>
-        {'"'}
-        <Questions.Name id={targetId} />
-        {'"'}
-      </span>
-    ) : linkType === "dashboard" ? (
-      <span>
-        {'"'}
-        <Dashboards.Name id={targetId} />
-        {'"'}
-      </span>
-    ) : (
-      "Unknown"
-    )}
-  </span>
-);
-
-const Column = ({ column, clickBehavior, onClick }) => (
-  <SidebarItemWrapper onClick={onClick} style={{ ...SidebarItemStyle }}>
-    <SidebarIconWrapper>
-      <Icon name={getIconForField(column)} color={color("brand")} size={18} />
-    </SidebarIconWrapper>
-    <div>
-      <h4>
-        {clickBehavior && clickBehavior.type === "crossfilter"
-          ? (n =>
-              ngettext(
-                msgid`${column.display_name} updates ${n} filter`,
-                `${column.display_name} updates ${n} filters`,
-                n,
-              ))(Object.keys(clickBehavior.parameterMapping || {}).length)
-          : clickBehavior && clickBehavior.type === "link"
-          ? jt`${column.display_name} goes to ${(
-              <LinkTargetName clickBehavior={clickBehavior} />
-            )}`
-          : column.display_name}
-      </h4>
-    </div>
-  </SidebarItemWrapper>
-);
 
 const BehaviorOption = ({
   option,
