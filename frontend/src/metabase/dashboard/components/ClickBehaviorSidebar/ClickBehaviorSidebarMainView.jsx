@@ -21,12 +21,14 @@ function ClickBehaviorSidebarMainView({
   dashboard,
   dashcard,
   parameters,
+  handleShowTypeSelector,
+  updateSettings,
 }) {
   return (
     <div>
       <SidebarContentBordered>
         <SidebarItemWrapper
-          onClick={() => this.setState({ showTypeSelector: true })}
+          onClick={handleShowTypeSelector}
           style={{
             backgroundColor: color("brand"),
             color: color("white"),
@@ -56,21 +58,21 @@ function ClickBehaviorSidebarMainView({
           clickBehavior={clickBehavior}
           dashcard={dashcard}
           parameters={parameters}
-          updateSettings={this.updateSettings}
+          updateSettings={updateSettings}
         />
       ) : clickBehavior.type === "crossfilter" ? (
         <CrossfilterOptions
           clickBehavior={clickBehavior}
           dashboard={dashboard}
           dashcard={dashcard}
-          updateSettings={this.updateSettings}
+          updateSettings={updateSettings}
         />
       ) : clickBehavior.type === "action" ? (
         <ActionOptions
           clickBehavior={clickBehavior}
           dashcard={dashcard}
           parameters={parameters}
-          updateSettings={this.updateSettings}
+          updateSettings={updateSettings}
         />
       ) : null}
     </div>
