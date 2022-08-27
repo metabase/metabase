@@ -5,28 +5,15 @@ import { getIn } from "icepick";
 import _ from "underscore";
 import cx from "classnames";
 
-import { color } from "metabase/lib/colors";
-
 import AccordionList from "metabase/core/components/AccordionList";
 import Button from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import ModalContent from "metabase/components/ModalContent";
 import InputBlurChange from "metabase/components/InputBlurChange";
+import ModalContent from "metabase/components/ModalContent";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
-import Actions from "metabase/entities/actions";
-import Dashboards from "metabase/entities/dashboards";
-import DashboardPicker from "metabase/containers/DashboardPicker";
-import Questions from "metabase/entities/questions";
-import QuestionPicker from "metabase/containers/QuestionPicker";
-import Sidebar from "metabase/dashboard/components/Sidebar";
-import ClickMappings, {
-  withUserAttributes,
-  clickTargetObjectType,
-  isMappableColumn,
-} from "metabase/dashboard/components/ClickMappings";
-
+import { color } from "metabase/lib/colors";
 import {
   hasActionsMenu,
   isTableDisplay,
@@ -34,6 +21,20 @@ import {
 } from "metabase/lib/click-behavior";
 import { getIconForField } from "metabase/lib/schema_metadata";
 import { keyForColumn } from "metabase/lib/dataset";
+
+import Actions from "metabase/entities/actions";
+import Dashboards from "metabase/entities/dashboards";
+import Questions from "metabase/entities/questions";
+
+import DashboardPicker from "metabase/containers/DashboardPicker";
+import QuestionPicker from "metabase/containers/QuestionPicker";
+
+import Sidebar from "metabase/dashboard/components/Sidebar";
+import ClickMappings, {
+  withUserAttributes,
+  clickTargetObjectType,
+  isMappableColumn,
+} from "metabase/dashboard/components/ClickMappings";
 
 import {
   SidebarItemWrapper,
