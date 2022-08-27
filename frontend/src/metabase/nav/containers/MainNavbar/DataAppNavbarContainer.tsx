@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { t } from "ttag";
 import { LocationDescriptor } from "history";
 
@@ -22,12 +22,16 @@ const LIMIT = 100;
 
 type NavbarModal = "MODAL_APP_SETTINGS" | "MODAL_NEW_PAGE" | null;
 
-interface Props extends MainNavbarProps {
+interface DataAppNavbarContainerProps extends MainNavbarProps {
   dataApp: DataApp;
-  loading: boolean;
+  items: any[];
   selectedItems: SelectedItem[];
   onChangeLocation: (location: LocationDescriptor) => void;
 }
+
+type DataAppNavbarContainerLoaderProps = DataAppNavbarContainerProps & {
+  dataApp?: DataApp;
+};
 
 type SearchRenderProps = {
   list: any[];
@@ -36,22 +40,11 @@ type SearchRenderProps = {
 
 function DataAppNavbarContainer({
   dataApp,
-  loading: loadingDataApp,
+  items,
   onChangeLocation,
   ...props
-}: Props) {
+}: DataAppNavbarContainerProps) {
   const [modal, setModal] = useState<NavbarModal>(null);
-
-  const collectionContentQuery = useMemo(() => {
-    if (!dataApp) {
-      return {};
-    }
-    return {
-      collection: dataApp.collection_id,
-      models: FETCHING_SEARCH_MODELS,
-      limit: LIMIT,
-    };
-  }, [dataApp]);
 
   const onEditAppSettings = useCallback(() => {
     setModal("MODAL_APP_SETTINGS");
@@ -95,33 +88,46 @@ function DataAppNavbarContainer({
     return null;
   }, [dataApp, modal, closeModal, onChangeLocation]);
 
-  if (loadingDataApp) {
+  return (
+    <>
+      <DataAppNavbarView
+        {...props}
+        dataApp={dataApp}
+        items={items}
+        onNewPage={onNewPage}
+        onEditAppSettings={onEditAppSettings}
+      />
+      {modal && <Modal onClose={closeModal}>{renderModalContent()}</Modal>}
+    </>
+  );
+}
+
+function DataAppNavbarContainerLoader({
+  dataApp,
+  ...props
+}: DataAppNavbarContainerLoaderProps) {
+  if (!dataApp) {
     return <NavbarLoadingView />;
   }
 
   return (
-    <>
-      <Search.ListLoader
-        query={collectionContentQuery}
-        loadingAndErrorWrapper={false}
-      >
-        {({ list = [], loading: loadingAppContent }: SearchRenderProps) => {
-          if (loadingAppContent) {
-            return <NavbarLoadingView />;
-          }
-          return (
-            <DataAppNavbarView
-              {...props}
-              dataApp={dataApp}
-              items={list}
-              onEditAppSettings={onEditAppSettings}
-              onNewPage={onNewPage}
-            />
-          );
-        }}
-      </Search.ListLoader>
-      {modal && <Modal onClose={closeModal}>{renderModalContent()}</Modal>}
-    </>
+    <Search.ListLoader
+      query={{
+        collection: dataApp.collection_id,
+        models: FETCHING_SEARCH_MODELS,
+        limit: LIMIT,
+      }}
+      loadingAndErrorWrapper={false}
+    >
+      {({ list = [], loading: loadingAppContent }: SearchRenderProps) => {
+        if (loadingAppContent) {
+          return <NavbarLoadingView />;
+        }
+        return (
+          <DataAppNavbarContainer {...props} dataApp={dataApp} items={list} />
+        );
+      }}
+    </Search.ListLoader>
   );
 }
 
@@ -129,4 +135,6 @@ function getDataAppId(state: State, props: MainNavbarOwnProps) {
   return Urls.extractEntityId(props.params.slug);
 }
 
-export default DataApps.load({ id: getDataAppId })(DataAppNavbarContainer);
+export default DataApps.load({ id: getDataAppId })(
+  DataAppNavbarContainerLoader,
+);
