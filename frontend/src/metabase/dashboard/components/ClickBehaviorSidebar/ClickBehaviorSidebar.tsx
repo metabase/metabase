@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { getIn } from "icepick";
 
@@ -13,13 +12,27 @@ import { usePrevious } from "metabase/hooks/use-previous";
 
 import Sidebar from "metabase/dashboard/components/Sidebar";
 
+import type { UiParameter } from "metabase/parameters/types";
+import type {
+  Dashboard,
+  DashboardOrderedCard,
+  DashCardId,
+  CardId,
+  ClickBehavior,
+  DatasetData,
+} from "metabase-types/api";
+import type { Column } from "metabase-types/types/Dataset";
+
 import ClickBehaviorSidebarHeader from "./ClickBehaviorSidebarHeader";
 import ClickBehaviorSidebarMainView from "./ClickBehaviorSidebarMainView";
 import TableClickBehaviorView from "./TableClickBehaviorView";
 import TypeSelector from "./TypeSelector";
 import { SidebarContent } from "./ClickBehaviorSidebar.styled";
 
-function getClickBehaviorForColumn(dashcard, column) {
+function getClickBehaviorForColumn(
+  dashcard: DashboardOrderedCard,
+  column: Column,
+) {
   return getIn(dashcard, [
     "visualization_settings",
     "column_settings",
@@ -28,8 +41,31 @@ function getClickBehaviorForColumn(dashcard, column) {
   ]);
 }
 
-function shouldShowTypeSelector(clickBehavior) {
+function shouldShowTypeSelector(clickBehavior?: ClickBehavior) {
   return !clickBehavior || clickBehavior.type == null;
+}
+
+type VizSettings = Record<string, unknown>;
+
+interface Props {
+  dashboard: Dashboard;
+  dashcard: DashboardOrderedCard;
+  dashcardData: Record<DashCardId, Record<CardId, DatasetData>>;
+  parameters: UiParameter[];
+  hideClickBehaviorSidebar: () => void;
+  onUpdateDashCardColumnSettings: (
+    id: DashCardId,
+    columnKey: string,
+    settings?: VizSettings | null,
+  ) => void;
+  onUpdateDashCardVisualizationSettings: (
+    id: DashCardId,
+    settings?: VizSettings | null,
+  ) => void;
+  onReplaceAllDashCardVisualizationSettings: (
+    id: DashCardId,
+    settings?: VizSettings | null,
+  ) => void;
 }
 
 function ClickBehaviorSidebar({
@@ -41,17 +77,25 @@ function ClickBehaviorSidebar({
   onUpdateDashCardColumnSettings,
   onUpdateDashCardVisualizationSettings,
   onReplaceAllDashCardVisualizationSettings,
-}) {
-  const [isTypeSelectorVisible, setTypeSelectorVisible] = useState(null);
-  const [selectedColumn, setSelectedColumn] = useState(null);
-  const [originalVizSettings, setOriginalVizSettings] = useState(null);
-  const [originalColumnVizSettings, setOriginalColumnVizSettings] =
-    useState(null);
+}: Props) {
+  const [isTypeSelectorVisible, setTypeSelectorVisible] = useState<
+    boolean | null
+  >(null);
+
+  const [selectedColumn, setSelectedColumn] = useState<Column | null>(null);
+
+  const [originalVizSettings, setOriginalVizSettings] = useState<
+    VizSettings | undefined | null
+  >(null);
+
+  const [originalColumnVizSettings, setOriginalColumnVizSettings] = useState<
+    VizSettings | undefined | null
+  >(null);
 
   const previousDashcard = usePrevious(dashcard);
   const hasSelectedColumn = selectedColumn != null;
 
-  const clickBehavior = useMemo(() => {
+  const clickBehavior: ClickBehavior | undefined = useMemo(() => {
     if (isTableDisplay(dashcard) && !hasSelectedColumn) {
       return;
     }
@@ -162,7 +206,7 @@ function ClickBehaviorSidebar({
         <TableClickBehaviorView
           columns={columns}
           dashcard={dashcard}
-          getClickBehaviorForColumn={column =>
+          getClickBehaviorForColumn={(column: Column) =>
             getClickBehaviorForColumn(dashcard, column)
           }
           onColumnClick={handleColumnSelected}
