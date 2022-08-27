@@ -130,10 +130,9 @@ class ClickBehaviorSidebar extends React.Component {
     this.props.hideClickBehaviorSidebar();
   };
 
-  render() {
-    const { dashboard, dashcard, parameters, hideClickBehaviorSidebar } =
-      this.props;
-    const { selectedColumn } = this.state;
+  renderContent = () => {
+    const { dashboard, dashcard, parameters } = this.props;
+    const { selectedColumn, showTypeSelector } = this.state;
 
     const clickBehavior = this.getClickBehavior() || { type: "menu" };
 
@@ -145,18 +144,47 @@ class ClickBehaviorSidebar extends React.Component {
           getClickBehaviorForColumn={column =>
             this.getClickBehaviorForColumn(this.props, column)
           }
-          canClose={clickBehaviorIsValid(clickBehavior)}
           onColumnClick={this.setSelectedColumn}
-          onCancel={this.handleCancel}
-          onClose={hideClickBehaviorSidebar}
         />
       );
     }
 
-    const { showTypeSelector } = this.state;
+    if (showTypeSelector) {
+      return (
+        <SidebarContent>
+          <TypeSelector
+            clickBehavior={clickBehavior}
+            dashcard={dashcard}
+            parameters={this.props.parameters}
+            updateSettings={this.updateSettings}
+            moveToNextPage={() => this.setState({ showTypeSelector: false })}
+          />
+        </SidebarContent>
+      );
+    }
+
+    return (
+      <ClickBehaviorSidebarMainView
+        clickBehavior={clickBehavior}
+        dashboard={dashboard}
+        dashcard={dashcard}
+        parameters={parameters}
+        handleShowTypeSelector={() => this.setState({ showTypeSelector: true })}
+        updateSettings={this.updateSettings}
+      />
+    );
+  };
+
+  render() {
+    const { dashcard, hideClickBehaviorSidebar } = this.props;
+    const { selectedColumn, showTypeSelector } = this.state;
+
+    const clickBehavior = this.getClickBehavior() || { type: "menu" };
+
     if (showTypeSelector === null) {
       return null;
     }
+
     return (
       <Sidebar
         onClose={hideClickBehaviorSidebar}
@@ -169,32 +197,7 @@ class ClickBehaviorSidebar extends React.Component {
           hasSelectedColumn={selectedColumn != null}
           onUnsetColumn={this.unsetSelectedColumn}
         />
-        <div>
-          {showTypeSelector ? (
-            <SidebarContent>
-              <TypeSelector
-                clickBehavior={clickBehavior}
-                dashcard={dashcard}
-                parameters={this.props.parameters}
-                updateSettings={this.updateSettings}
-                moveToNextPage={() =>
-                  this.setState({ showTypeSelector: false })
-                }
-              />
-            </SidebarContent>
-          ) : (
-            <ClickBehaviorSidebarMainView
-              clickBehavior={clickBehavior}
-              dashboard={dashboard}
-              dashcard={dashcard}
-              parameters={parameters}
-              handleShowTypeSelector={() =>
-                this.setState({ showTypeSelector: true })
-              }
-              updateSettings={this.updateSettings}
-            />
-          )}
-        </div>
+        <div>{this.renderContent()}</div>
       </Sidebar>
     );
   }

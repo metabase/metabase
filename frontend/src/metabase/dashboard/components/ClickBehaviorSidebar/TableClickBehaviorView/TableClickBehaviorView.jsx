@@ -5,10 +5,7 @@ import _ from "underscore";
 
 import { hasActionsMenu } from "metabase/lib/click-behavior";
 
-import Sidebar from "metabase/dashboard/components/Sidebar";
-
 import Column from "./Column";
-import { Heading, SidebarHeader } from "../ClickBehaviorSidebar.styled";
 
 const COLUMN_SORTING_ORDER_BY_CLICK_BEHAVIOR_TYPE = [
   "link",
@@ -30,10 +27,7 @@ function TableClickBehaviorView({
   columns,
   dashcard,
   getClickBehaviorForColumn,
-  canClose,
   onColumnClick,
-  onCancel,
-  onClose,
 }) {
   const groupedColumns = useMemo(() => {
     const withClickBehaviors = columns.map(column => ({
@@ -82,14 +76,7 @@ function TableClickBehaviorView({
     [dashcard, renderColumn],
   );
 
-  return (
-    <Sidebar onClose={onClose} onCancel={onCancel} closeIsDisabled={!canClose}>
-      <SidebarHeader>
-        <Heading className="text-paragraph">{t`On-click behavior for each column`}</Heading>
-      </SidebarHeader>
-      <div>{groupedColumns.map(renderColumnGroup)}</div>
-    </Sidebar>
-  );
+  return <>{groupedColumns.map(renderColumnGroup)}</>;
 }
 
 export default TableClickBehaviorView;
