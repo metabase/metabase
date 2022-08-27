@@ -10,6 +10,7 @@ function ClickBehaviorSidebarHeader({
   dashcard,
   selectedColumn,
   hasSelectedColumn,
+  onUnsetColumn,
 }) {
   return (
     <SidebarHeader>
@@ -19,7 +20,7 @@ function ClickBehaviorSidebarHeader({
         )}`}</Heading>
       ) : (
         <div
-          onClick={this.unsetSelectedColumn}
+          onClick={onUnsetColumn}
           className="flex align-center text-brand-hover cursor-pointer"
         >
           <div

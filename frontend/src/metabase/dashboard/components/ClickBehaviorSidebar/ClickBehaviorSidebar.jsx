@@ -167,6 +167,7 @@ class ClickBehaviorSidebar extends React.Component {
           dashcard={dashcard}
           selectedColumn={selectedColumn}
           hasSelectedColumn={selectedColumn != null}
+          onUnsetColumn={this.unsetSelectedColumn}
         />
         <div>
           {showTypeSelector ? (
@@ -187,6 +188,10 @@ class ClickBehaviorSidebar extends React.Component {
               dashboard={dashboard}
               dashcard={dashcard}
               parameters={parameters}
+              handleShowTypeSelector={() =>
+                this.setState({ showTypeSelector: true })
+              }
+              updateSettings={this.updateSettings}
             />
           )}
         </div>
