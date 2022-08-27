@@ -3,7 +3,6 @@ import React, { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import Button from "metabase/core/components/Button";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import ModalContent from "metabase/components/ModalContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
@@ -18,6 +17,7 @@ import { SidebarItem } from "../SidebarItem";
 
 import ValuesYouCanReference from "./ValuesYouCanReference";
 import { CustomURLPickerIcon, CustomURLPickerName } from "./LinkOptions.styled";
+import { FormDescription, DoneButton } from "./CustomURLPicker.styled";
 
 function CustomURLPicker({
   clickBehavior,
@@ -25,6 +25,19 @@ function CustomURLPicker({
   dashcard,
   parameters,
 }) {
+  const hasLinkTemplate = clickBehavior.linkTemplate != null;
+  const canSelect = clickBehaviorIsValid(clickBehavior);
+
+  const handleLinkTemplateChange = useCallback(
+    e => {
+      updateSettings({
+        ...clickBehavior,
+        linkTemplate: e.target.value,
+      });
+    },
+    [clickBehavior, updateSettings],
+  );
+
   const handleReset = useCallback(() => {
     updateSettings({
       type: clickBehavior.type,
@@ -34,13 +47,13 @@ function CustomURLPicker({
 
   return (
     <ModalWithTrigger
-      isInitiallyOpen={clickBehavior.linkTemplate == null}
+      isInitiallyOpen={!hasLinkTemplate}
       triggerElement={
         <SidebarItem.Selectable isSelected padded={false}>
           <CustomURLPickerIcon name="link" />
           <SidebarItem.Content>
             <CustomURLPickerName>
-              {clickBehavior.linkTemplate ? clickBehavior.linkTemplate : t`URL`}
+              {hasLinkTemplate ? clickBehavior.linkTemplate : t`URL`}
             </CustomURLPickerName>
             <SidebarItem.CloseIcon onClick={handleReset} />
           </SidebarItem.Content>
@@ -50,20 +63,17 @@ function CustomURLPicker({
       {({ onClose }) => (
         <ModalContent
           title={t`Enter a URL to link to`}
-          onClose={clickBehavior.targetId != null ? onClose : null}
+          onClose={hasLinkTemplate ? onClose : null}
         >
-          <div className="mb1">{t`You can insert the value of a column or dashboard filter using its name, like this: {{some_column}}`}</div>
+          <FormDescription>
+            {t`You can insert the value of a column or dashboard filter using its name, like this: {{some_column}}`}
+          </FormDescription>
           <InputBlurChange
             autoFocus
-            className="input block full"
-            placeholder={t`e.g. http://acme.com/id/\{\{user_id\}\}`}
             value={clickBehavior.linkTemplate}
-            onChange={e =>
-              updateSettings({
-                ...clickBehavior,
-                linkTemplate: e.target.value,
-              })
-            }
+            placeholder={t`e.g. http://acme.com/id/\{\{user_id\}\}`}
+            onChange={handleLinkTemplateChange}
+            className="input block full"
           />
           {isTableDisplay(dashcard) && (
             <CustomLinkText
@@ -72,14 +82,11 @@ function CustomURLPicker({
             />
           )}
           <ValuesYouCanReference dashcard={dashcard} parameters={parameters} />
-          <div className="flex">
-            <Button
-              primary
-              onClick={() => onClose()}
-              className="ml-auto mt2"
-              disabled={!clickBehaviorIsValid(clickBehavior)}
-            >{t`Done`}</Button>
-          </div>
+          <DoneButton
+            primary
+            onClick={onClose}
+            disabled={canSelect}
+          >{t`Done`}</DoneButton>
         </ModalContent>
       )}
     </ModalWithTrigger>

@@ -35,15 +35,17 @@ function LinkTypeOptions({ onSelect }) {
 }
 
 function LinkOptions({ clickBehavior, updateSettings, dashcard, parameters }) {
-  const onSelectLinkType = type =>
+  const hasSelectedLinkType = clickBehavior.linkType != null;
+
+  const handleSelectLinkType = type =>
     updateSettings({ type: clickBehavior.type, linkType: type });
 
   return (
     <SidebarContent>
       <p className="text-medium mt3 mb1">{t`Link to`}</p>
       <div>
-        {clickBehavior.linkType == null ? (
-          <LinkTypeOptions onSelect={onSelectLinkType} />
+        {!hasSelectedLinkType ? (
+          <LinkTypeOptions onSelect={handleSelectLinkType} />
         ) : clickBehavior.linkType === "url" ? (
           <CustomURLPicker
             clickBehavior={clickBehavior}
@@ -56,7 +58,7 @@ function LinkOptions({ clickBehavior, updateSettings, dashcard, parameters }) {
         )}
       </div>
       <div className="mt1">
-        {clickBehavior.linkType != null && clickBehavior.linkType !== "url" && (
+        {hasSelectedLinkType && clickBehavior.linkType !== "url" && (
           <div>
             <QuestionDashboardPicker
               dashcard={dashcard}

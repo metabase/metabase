@@ -5,40 +5,17 @@ import { jt } from "ttag";
 import Icon from "metabase/components/Icon";
 
 import { Heading, SidebarHeader } from "../ClickBehaviorSidebar.styled";
+import {
+  ColumnClickBehaviorHeader,
+  ChevronIconContainer,
+  ItemName,
+} from "./ClickBehaviorSidebarHeader.styled";
 
 function DefaultHeader({ children }) {
   return (
     <Heading>{jt`Click behavior for ${(
-      <span className="text-brand">{children}</span>
+      <ItemName>{children}</ItemName>
     )}`}</Heading>
-  );
-}
-
-function ColumnClickBehaviorHeader({ children, onUnsetColumn }) {
-  return (
-    <div
-      onClick={onUnsetColumn}
-      className="flex align-center text-brand-hover cursor-pointer"
-    >
-      <div
-        className="bordered"
-        style={{
-          marginRight: 8,
-          paddingTop: 4,
-          paddingBottom: 4,
-          paddingRight: 6,
-          paddingLeft: 6,
-          borderRadius: 4,
-        }}
-      >
-        <Icon name="chevronleft" className="text-medium" size={12} />
-      </div>
-      <Heading>
-        {jt`Click behavior for ${(
-          <span className="text-brand">{children}</span>
-        )}`}
-      </Heading>
-    </div>
   );
 }
 
@@ -50,12 +27,15 @@ function ClickBehaviorSidebarHeader({
 }) {
   return (
     <SidebarHeader>
-      {!hasSelectedColumn ? (
-        <DefaultHeader>{dashcard.card.name}</DefaultHeader>
-      ) : (
-        <ColumnClickBehaviorHeader onUnsetColumn={onUnsetColumn}>
-          {selectedColumn.display_name}
+      {hasSelectedColumn ? (
+        <ColumnClickBehaviorHeader onClick={onUnsetColumn}>
+          <ChevronIconContainer>
+            <Icon name="chevronleft" size={12} />
+          </ChevronIconContainer>
+          <DefaultHeader>{selectedColumn.display_name}</DefaultHeader>
         </ColumnClickBehaviorHeader>
+      ) : (
+        <DefaultHeader>{dashcard.card.name}</DefaultHeader>
       )}
     </SidebarHeader>
   );
