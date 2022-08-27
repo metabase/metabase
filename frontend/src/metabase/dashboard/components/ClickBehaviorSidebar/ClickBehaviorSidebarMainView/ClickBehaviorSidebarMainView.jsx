@@ -3,16 +3,16 @@ import React from "react";
 
 import Icon from "metabase/components/Icon";
 
-import { clickBehaviorOptions, getClickBehaviorOptionName } from "./utils";
-import ActionOptions from "./ActionOptions";
-import CrossfilterOptions from "./CrossfilterOptions";
-import LinkOptions from "./LinkOptions";
-import { SidebarItem } from "./SidebarItem";
+import { clickBehaviorOptions, getClickBehaviorOptionName } from "../utils";
+import ActionOptions from "../ActionOptions";
+import CrossfilterOptions from "../CrossfilterOptions";
+import LinkOptions from "../LinkOptions";
+import { SidebarItem } from "../SidebarItem";
 import {
   CloseIconContainer,
   SidebarContentBordered,
   SidebarIconWrapper,
-} from "./ClickBehaviorSidebar.styled";
+} from "../ClickBehaviorSidebar.styled";
 
 function ClickBehaviorOptions({
   clickBehavior,

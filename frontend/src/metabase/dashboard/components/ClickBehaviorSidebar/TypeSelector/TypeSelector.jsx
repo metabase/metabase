@@ -1,14 +1,14 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import React, { useCallback } from "react";
 import _ from "underscore";
 
 import Icon from "metabase/components/Icon";
 
 import { color } from "metabase/lib/colors";
 
-import { clickBehaviorOptions, getClickBehaviorOptionName } from "./utils";
-import { SidebarItem } from "./SidebarItem";
-import { SidebarIconWrapper } from "./ClickBehaviorSidebar.styled";
+import { clickBehaviorOptions, getClickBehaviorOptionName } from "../utils";
+import { SidebarItem } from "../SidebarItem";
+import { SidebarIconWrapper } from "../ClickBehaviorSidebar.styled";
 
 const BehaviorOption = ({
   option,
@@ -47,23 +47,28 @@ function TypeSelector({
   parameters,
   moveToNextPage,
 }) {
+  const handleSelect = useCallback(
+    value => {
+      if (value !== clickBehavior.type) {
+        updateSettings(value === "menu" ? undefined : { type: value });
+      } else if (value !== "menu") {
+        moveToNextPage();
+      }
+    },
+    [clickBehavior, updateSettings, moveToNextPage],
+  );
+
   return (
     <div>
       {clickBehaviorOptions.map(({ value, icon }) => (
         <div key={value} className="mb1">
           <BehaviorOption
-            onClick={() => {
-              if (value !== clickBehavior.type) {
-                updateSettings(value === "menu" ? undefined : { type: value });
-              } else if (value !== "menu") {
-                moveToNextPage(); // if it didn't change, we need to advance here rather than in `componentDidUpdate`
-              }
-            }}
-            icon={icon}
             option={getClickBehaviorOptionName(value, dashcard)}
-            hasNextStep={value !== "menu"}
             selected={clickBehavior.type === value}
             disabled={value === "crossfilter" && parameters.length === 0}
+            onClick={() => handleSelect(value)}
+            icon={icon}
+            hasNextStep={value !== "menu"}
           />
         </div>
       ))}

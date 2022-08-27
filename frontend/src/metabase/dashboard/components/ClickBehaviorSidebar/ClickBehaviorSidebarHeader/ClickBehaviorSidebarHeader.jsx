@@ -4,7 +4,7 @@ import { jt } from "ttag";
 
 import Icon from "metabase/components/Icon";
 
-import { Heading, SidebarHeader } from "./ClickBehaviorSidebar.styled";
+import { Heading, SidebarHeader } from "../ClickBehaviorSidebar.styled";
 
 function DefaultHeader({ children }) {
   return (
