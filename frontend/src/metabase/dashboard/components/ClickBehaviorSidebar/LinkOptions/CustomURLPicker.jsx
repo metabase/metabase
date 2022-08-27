@@ -85,7 +85,7 @@ function CustomURLPicker({
           <DoneButton
             primary
             onClick={onClose}
-            disabled={canSelect}
+            disabled={!canSelect}
           >{t`Done`}</DoneButton>
         </ModalContent>
       )}
