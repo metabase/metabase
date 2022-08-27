@@ -1,10 +1,12 @@
-/* eslint-disable react/prop-types */
 import React, { useCallback } from "react";
 import { t, jt } from "ttag";
 
 import Icon from "metabase/components/Icon";
 
 import { isTableDisplay } from "metabase/lib/click-behavior";
+
+import type { DashboardOrderedCard } from "metabase-types/api";
+import type { Column } from "metabase-types/types/Dataset";
 
 import { Heading, SidebarHeader } from "../ClickBehaviorSidebar.styled";
 import {
@@ -13,7 +15,7 @@ import {
   ItemName,
 } from "./ClickBehaviorSidebarHeader.styled";
 
-function DefaultHeader({ children }) {
+function DefaultHeader({ children }: { children: string }) {
   return (
     <Heading>{jt`Click behavior for ${(
       <ItemName>{children}</ItemName>
@@ -21,15 +23,20 @@ function DefaultHeader({ children }) {
   );
 }
 
+interface Props {
+  dashcard: DashboardOrderedCard;
+  selectedColumn?: Column | null;
+  onUnsetColumn: () => void;
+}
+
 function ClickBehaviorSidebarHeader({
   dashcard,
   selectedColumn,
-  hasSelectedColumn,
   onUnsetColumn,
-}) {
+}: Props) {
   const renderContent = useCallback(() => {
     if (isTableDisplay(dashcard)) {
-      if (hasSelectedColumn) {
+      if (selectedColumn) {
         return (
           <ColumnClickBehaviorHeader onClick={onUnsetColumn}>
             <ChevronIconContainer>
@@ -42,7 +49,7 @@ function ClickBehaviorSidebarHeader({
       return <Heading>{t`On-click behavior for each column`}</Heading>;
     }
     return <DefaultHeader>{dashcard.card.name}</DefaultHeader>;
-  }, [dashcard, selectedColumn, hasSelectedColumn, onUnsetColumn]);
+  }, [dashcard, selectedColumn, onUnsetColumn]);
 
   return <SidebarHeader>{renderContent()}</SidebarHeader>;
 }
