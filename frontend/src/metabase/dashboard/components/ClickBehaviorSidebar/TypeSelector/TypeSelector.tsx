@@ -1,13 +1,24 @@
-/* eslint-disable react/prop-types */
 import React, { useCallback } from "react";
-import _ from "underscore";
 
 import Icon from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";
+
+import type { UiParameter } from "metabase/parameters/types";
+import type { DashboardOrderedCard, ClickBehavior } from "metabase-types/api";
+
 import { clickBehaviorOptions, getClickBehaviorOptionName } from "../utils";
 import { SidebarItem } from "../SidebarItem";
 
 import { BehaviorOptionIcon } from "./TypeSelector.styled";
+
+interface BehaviorOptionProps {
+  option: string;
+  icon: string;
+  hasNextStep: boolean;
+  selected: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+}
 
 const BehaviorOption = ({
   option,
@@ -16,7 +27,7 @@ const BehaviorOption = ({
   hasNextStep,
   selected,
   disabled,
-}) => (
+}: BehaviorOptionProps) => (
   <SidebarItem.Selectable
     isSelected={selected}
     onClick={onClick}
@@ -38,13 +49,21 @@ const BehaviorOption = ({
   </SidebarItem.Selectable>
 );
 
+interface TypeSelectorProps {
+  dashcard: DashboardOrderedCard;
+  clickBehavior: ClickBehavior;
+  parameters: UiParameter[];
+  updateSettings: (settings?: ClickBehavior) => void;
+  moveToNextPage: () => void;
+}
+
 function TypeSelector({
-  updateSettings,
-  clickBehavior,
   dashcard,
+  clickBehavior,
   parameters,
+  updateSettings,
   moveToNextPage,
-}) {
+}: TypeSelectorProps) {
   const handleSelect = useCallback(
     value => {
       if (value !== clickBehavior.type) {
