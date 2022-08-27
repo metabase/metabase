@@ -20,13 +20,13 @@ import ClickMappings, {
   clickTargetObjectType,
 } from "metabase/dashboard/components/ClickMappings";
 
-import { SidebarItemClasses, SidebarItemStyle } from "./SidebarItem";
+import { SidebarItemClasses, SidebarItemStyle } from "../SidebarItem";
 import {
   CloseIconContainer,
   Heading,
   SidebarIconWrapper,
   SidebarItem,
-} from "./ClickBehaviorSidebar.styled";
+} from "../ClickBehaviorSidebar.styled";
 
 function QuestionDashboardPicker({ dashcard, clickBehavior, updateSettings }) {
   const isDash = clickBehavior.linkType === "dashboard";
