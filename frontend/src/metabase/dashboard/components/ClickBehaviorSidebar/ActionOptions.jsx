@@ -2,6 +2,7 @@
 import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
+import styled from "@emotion/styled";
 
 import Icon from "metabase/components/Icon";
 
@@ -11,24 +12,24 @@ import Actions from "metabase/entities/actions";
 
 import ClickMappings from "metabase/dashboard/components/ClickMappings";
 
-import { SidebarItemWrapper, SidebarItemStyle } from "./SidebarItem";
+import { SidebarItem } from "./SidebarItem";
 import {
   Heading,
   SidebarContent,
   SidebarIconWrapper,
 } from "./ClickBehaviorSidebar.styled";
 
+const ActionSidebarItem = styled(SidebarItem.Selectable)`
+  align-items: ${props => (props.hasDescription ? "flex-start" : "center")};
+  margin-top: 2px;
+`;
+
 const ActionOption = ({ name, description, isSelected, onClick }) => {
   return (
-    <SidebarItemWrapper
+    <ActionSidebarItem
       onClick={onClick}
-      style={{
-        ...SidebarItemStyle,
-        backgroundColor: isSelected ? color("brand") : "transparent",
-        color: isSelected ? color("white") : "inherit",
-        alignItems: description ? "flex-start" : "center",
-        marginTop: "2px",
-      }}
+      isSelected={isSelected}
+      hasDescription={!!description}
     >
       <SidebarIconWrapper>
         <Icon
@@ -47,7 +48,7 @@ const ActionOption = ({ name, description, isSelected, onClick }) => {
           </span>
         )}
       </div>
-    </SidebarItemWrapper>
+    </ActionSidebarItem>
   );
 };
 

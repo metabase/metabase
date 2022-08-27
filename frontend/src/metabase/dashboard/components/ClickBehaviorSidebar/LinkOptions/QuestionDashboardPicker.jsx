@@ -25,8 +25,8 @@ import {
   CloseIconContainer,
   Heading,
   SidebarIconWrapper,
-  SidebarItem,
 } from "../ClickBehaviorSidebar.styled";
+import { LinkTargetEntityPickerContent } from "./LinkOptions.styled";
 
 function PickerControl({ isDash, clickBehavior, onCancel }) {
   const Entity = isDash ? Dashboards : Questions;
@@ -58,7 +58,7 @@ function PickerControl({ isDash, clickBehavior, onCancel }) {
       className={cx(SidebarItemClasses, "overflow-hidden")}
       style={CONTAINER_STYLE}
     >
-      <SidebarItem style={ITEM_STYLE}>
+      <LinkTargetEntityPickerContent style={ITEM_STYLE}>
         <SidebarIconWrapper style={{ borderColor: "transparent" }}>
           <Icon name={isDash ? "dashboard" : "bar"} />
         </SidebarIconWrapper>
@@ -66,7 +66,7 @@ function PickerControl({ isDash, clickBehavior, onCancel }) {
           {renderLabel()}
           <Icon name="chevrondown" size={12} className="ml-auto" />
         </div>
-      </SidebarItem>
+      </LinkTargetEntityPickerContent>
       <CloseIconContainer onClick={onCancel}>
         <Icon name="close" size={12} />
       </CloseIconContainer>

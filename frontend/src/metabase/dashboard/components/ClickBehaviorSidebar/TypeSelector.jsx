@@ -7,7 +7,7 @@ import Icon from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";
 
 import { clickBehaviorOptions, getClickBehaviorOptionName } from "./utils";
-import { SidebarItemWrapper, SidebarItemStyle } from "./SidebarItem";
+import { SidebarItem } from "./SidebarItem";
 import { SidebarIconWrapper } from "./ClickBehaviorSidebar.styled";
 
 const BehaviorOption = ({
@@ -18,12 +18,8 @@ const BehaviorOption = ({
   selected,
   disabled,
 }) => (
-  <SidebarItemWrapper
-    style={{
-      ...SidebarItemStyle,
-      backgroundColor: selected ? color("brand") : "transparent",
-      color: selected ? color("white") : "inherit",
-    }}
+  <SidebarItem.Selectable
+    isSelected={selected}
     onClick={onClick}
     disabled={disabled}
   >
@@ -41,7 +37,7 @@ const BehaviorOption = ({
         </span>
       )}
     </div>
-  </SidebarItemWrapper>
+  </SidebarItem.Selectable>
 );
 
 function TypeSelector({

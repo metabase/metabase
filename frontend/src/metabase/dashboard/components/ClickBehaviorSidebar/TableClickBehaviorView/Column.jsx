@@ -11,7 +11,7 @@ import { getIconForField } from "metabase/lib/schema_metadata";
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
 
-import { SidebarItemWrapper, SidebarItemStyle } from "../SidebarItem";
+import { SidebarItem } from "../SidebarItem";
 import { SidebarIconWrapper } from "../ClickBehaviorSidebar.styled";
 
 function Quoted({ children }) {
@@ -70,7 +70,7 @@ function ClickBehaviorDescription({ column, clickBehavior }) {
 }
 
 const Column = ({ column, clickBehavior, onClick }) => (
-  <SidebarItemWrapper onClick={onClick} style={{ ...SidebarItemStyle }}>
+  <SidebarItem onClick={onClick}>
     <SidebarIconWrapper>
       <Icon name={getIconForField(column)} color={color("brand")} size={18} />
     </SidebarIconWrapper>
@@ -82,7 +82,7 @@ const Column = ({ column, clickBehavior, onClick }) => (
         />
       </h4>
     </div>
-  </SidebarItemWrapper>
+  </SidebarItem>
 );
 
 export default Column;
