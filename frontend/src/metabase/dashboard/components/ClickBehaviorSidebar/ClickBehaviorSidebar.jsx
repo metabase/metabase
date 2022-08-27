@@ -34,6 +34,12 @@ import {
 } from "metabase/lib/click-behavior";
 import { getIconForField } from "metabase/lib/schema_metadata";
 import { keyForColumn } from "metabase/lib/dataset";
+
+import {
+  SidebarItemWrapper,
+  SidebarItemClasses,
+  SidebarItemStyle,
+} from "./SidebarItem";
 import {
   CloseIconContainer,
   Heading,
@@ -68,27 +74,6 @@ function getClickBehaviorOptionName(value, dashcard) {
   }
   return t`Unknown`;
 }
-
-const SidebarItemClasses =
-  "border-brand-hover bordered border-transparent rounded flex align-center cursor-pointer overflow-hidden";
-const SidebarItemStyle = {
-  paddingTop: 8,
-  paddingBottom: 8,
-  paddingLeft: 12,
-  paddingRight: 12,
-};
-
-const SidebarItemWrapper = ({ children, onClick, style, disabled }) => (
-  <div
-    className={cx(SidebarItemClasses, { disabled })}
-    onClick={!disabled && onClick}
-    style={{
-      ...style,
-    }}
-  >
-    {children}
-  </div>
-);
 
 const LinkTargetName = ({ clickBehavior: { linkType, targetId } }) => (
   <span>
