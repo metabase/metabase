@@ -2,9 +2,13 @@ import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import { color } from "metabase/lib/colors";
 
-const disabledCSS = css`
+const disabledStyle = css`
   pointer-events: none;
   opacity: 0.4;
+`;
+
+export const sidebarItemPaddingStyle = css`
+  padding: 8px 12px;
 `;
 
 export const BaseSidebarItemRoot = styled.div<{
@@ -21,13 +25,9 @@ export const BaseSidebarItemRoot = styled.div<{
 
   cursor: pointer;
 
-  ${({ disabled }) => disabled && disabledCSS}
+  ${({ disabled }) => disabled && disabledStyle}
 
-  ${({ padded = true }) =>
-    padded &&
-    css`
-      padding: 8px 12px;
-    `}
+  ${({ padded = true }) => padded && sidebarItemPaddingStyle}
 
   &:hover {
     border-color: ${color("brand")};

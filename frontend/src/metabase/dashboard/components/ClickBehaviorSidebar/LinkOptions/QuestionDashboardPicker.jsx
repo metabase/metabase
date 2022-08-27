@@ -7,8 +7,6 @@ import Icon from "metabase/components/Icon";
 import ModalContent from "metabase/components/ModalContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 
-import { color } from "metabase/lib/colors";
-
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
 
@@ -19,6 +17,7 @@ import ClickMappings, {
   clickTargetObjectType,
 } from "metabase/dashboard/components/ClickMappings";
 
+import { SidebarItem } from "../SidebarItem";
 import {
   CloseIconContainer,
   Heading,
@@ -37,24 +36,9 @@ function PickerControl({ isDash, clickBehavior, onCancel }) {
     return isDash ? t`Pick a dashboard...` : t`Pick a question...`;
   }, [isDash, clickBehavior]);
 
-  const CONTAINER_STYLE = {
-    backgroundColor: color("brand"),
-    color: color("white"),
-  };
-
-  const ITEM_STYLE = {
-    paddingTop: 8,
-    paddingBottom: 8,
-    paddingLeft: 12,
-    paddingRight: 12,
-  };
-
   return (
-    <div
-      className="border-brand-hover bordered border-transparent rounded flex align-center cursor-pointer overflow-hidden"
-      style={CONTAINER_STYLE}
-    >
-      <LinkTargetEntityPickerContent style={ITEM_STYLE}>
+    <SidebarItem.Selectable isSelected padded={false}>
+      <LinkTargetEntityPickerContent>
         <SidebarIconWrapper style={{ borderColor: "transparent" }}>
           <Icon name={isDash ? "dashboard" : "bar"} />
         </SidebarIconWrapper>
@@ -66,7 +50,7 @@ function PickerControl({ isDash, clickBehavior, onCancel }) {
       <CloseIconContainer onClick={onCancel}>
         <Icon name="close" size={12} />
       </CloseIconContainer>
-    </div>
+    </SidebarItem.Selectable>
   );
 }
 
