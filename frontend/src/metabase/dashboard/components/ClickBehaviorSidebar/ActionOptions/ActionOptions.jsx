@@ -21,7 +21,7 @@ const ActionOption = ({ name, description, isSelected, onClick }) => {
       isSelected={isSelected}
       hasDescription={!!description}
     >
-      <ActionSidebarItemIcon name="bolt" />
+      <ActionSidebarItemIcon name="bolt" isSelected={isSelected} />
       <div>
         <SidebarItem.Name>{name}</SidebarItem.Name>
         {description && <ActionDescription>{description}</ActionDescription>}
