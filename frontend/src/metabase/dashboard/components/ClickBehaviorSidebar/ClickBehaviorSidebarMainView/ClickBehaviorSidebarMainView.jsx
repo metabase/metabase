@@ -1,17 +1,14 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
-import Icon from "metabase/components/Icon";
-
 import { clickBehaviorOptions, getClickBehaviorOptionName } from "../utils";
 import ActionOptions from "../ActionOptions";
 import CrossfilterOptions from "../CrossfilterOptions";
 import LinkOptions from "../LinkOptions";
 import { SidebarItem } from "../SidebarItem";
 import {
-  CloseIconContainer,
   SidebarContentBordered,
-  SidebarIconWrapper,
+  SelectedClickBehaviorItemIcon,
 } from "../ClickBehaviorSidebar.styled";
 
 function ClickBehaviorOptions({
@@ -78,17 +75,11 @@ function ClickBehaviorSidebarMainView({
           isSelected
           padded={false}
         >
-          <SidebarIconWrapper
-            style={{ borderColor: "transparent", paddingLeft: 12 }}
-          >
-            <Icon name={clickBehaviorIcon} />
-          </SidebarIconWrapper>
-          <div className="flex align-center full">
-            <h4>{clickBehaviorOptionName}</h4>
-            <CloseIconContainer>
-              <Icon name="close" size={12} />
-            </CloseIconContainer>
-          </div>
+          <SelectedClickBehaviorItemIcon name={clickBehaviorIcon} />
+          <SidebarItem.Content>
+            <SidebarItem.Name>{clickBehaviorOptionName}</SidebarItem.Name>
+            <SidebarItem.CloseIcon />
+          </SidebarItem.Content>
         </SidebarItem.Selectable>
       </SidebarContentBordered>
 

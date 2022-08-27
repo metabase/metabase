@@ -1,10 +1,9 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import React, { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import Button from "metabase/core/components/Button";
-import Icon from "metabase/components/Icon";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import ModalContent from "metabase/components/ModalContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
@@ -16,12 +15,9 @@ import {
 
 import CustomLinkText from "./CustomLinkText";
 import { SidebarItem } from "../SidebarItem";
-import {
-  CloseIconContainer,
-  SidebarIconWrapper,
-} from "../ClickBehaviorSidebar.styled";
 
 import ValuesYouCanReference from "./ValuesYouCanReference";
+import { CustomURLPickerIcon, CustomURLPickerName } from "./LinkOptions.styled";
 
 function CustomURLPicker({
   clickBehavior,
@@ -29,31 +25,25 @@ function CustomURLPicker({
   dashcard,
   parameters,
 }) {
+  const handleReset = useCallback(() => {
+    updateSettings({
+      type: clickBehavior.type,
+      linkType: null,
+    });
+  }, [clickBehavior, updateSettings]);
+
   return (
     <ModalWithTrigger
       isInitiallyOpen={clickBehavior.linkTemplate == null}
       triggerElement={
-        <SidebarItem.Selectable isSelected>
-          <SidebarIconWrapper
-            style={{ borderColor: "transparent", marginLeft: 8 }}
-          >
-            <Icon name="link" />
-          </SidebarIconWrapper>
-          <div className="flex align-center full">
-            <h4 className="pr1">
+        <SidebarItem.Selectable isSelected padded={false}>
+          <CustomURLPickerIcon name="link" />
+          <SidebarItem.Content>
+            <CustomURLPickerName>
               {clickBehavior.linkTemplate ? clickBehavior.linkTemplate : t`URL`}
-            </h4>
-            <CloseIconContainer
-              onClick={() =>
-                updateSettings({
-                  type: clickBehavior.type,
-                  linkType: null,
-                })
-              }
-            >
-              <Icon name="close" size={12} />
-            </CloseIconContainer>
-          </div>
+            </CustomURLPickerName>
+            <SidebarItem.CloseIcon onClick={handleReset} />
+          </SidebarItem.Content>
         </SidebarItem.Selectable>
       }
     >
