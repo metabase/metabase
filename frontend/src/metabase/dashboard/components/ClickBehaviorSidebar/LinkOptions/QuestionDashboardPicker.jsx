@@ -2,7 +2,6 @@
 import React, { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
 import ModalContent from "metabase/components/ModalContent";
@@ -20,7 +19,6 @@ import ClickMappings, {
   clickTargetObjectType,
 } from "metabase/dashboard/components/ClickMappings";
 
-import { SidebarItemClasses, SidebarItemStyle } from "../SidebarItem";
 import {
   CloseIconContainer,
   Heading,
@@ -40,22 +38,20 @@ function PickerControl({ isDash, clickBehavior, onCancel }) {
   }, [isDash, clickBehavior]);
 
   const CONTAINER_STYLE = {
-    marginLeft: SidebarItemStyle.marginLeft,
-    marginRight: SidebarItemStyle.marginRight,
     backgroundColor: color("brand"),
     color: color("white"),
   };
 
   const ITEM_STYLE = {
-    paddingLeft: SidebarItemStyle.paddingLeft,
-    paddingRight: SidebarItemStyle.paddingRight,
-    paddingTop: SidebarItemStyle.paddingTop,
-    paddingBottom: SidebarItemStyle.paddingBottom,
+    paddingTop: 8,
+    paddingBottom: 8,
+    paddingLeft: 12,
+    paddingRight: 12,
   };
 
   return (
     <div
-      className={cx(SidebarItemClasses, "overflow-hidden")}
+      className="border-brand-hover bordered border-transparent rounded flex align-center cursor-pointer overflow-hidden"
       style={CONTAINER_STYLE}
     >
       <LinkTargetEntityPickerContent style={ITEM_STYLE}>
