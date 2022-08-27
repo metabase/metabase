@@ -15,16 +15,17 @@ import {
   clickBehaviorIsValid,
 } from "metabase/lib/click-behavior";
 
-import CustomLinkText from "./CustomLinkText";
-import LinkOption from "./LinkOption";
-import ValuesYouCanReference from "./ValuesYouCanReference";
-import QuestionDashboardPicker from "./QuestionDashboardPicker";
-import { SidebarItemWrapper } from "./SidebarItem";
+import CustomLinkText from "../CustomLinkText";
+import QuestionDashboardPicker from "../QuestionDashboardPicker";
+import { SidebarItemWrapper } from "../SidebarItem";
 import {
   CloseIconContainer,
   SidebarContent,
   SidebarIconWrapper,
-} from "./ClickBehaviorSidebar.styled";
+} from "../ClickBehaviorSidebar.styled";
+
+import LinkOption from "./LinkOption";
+import ValuesYouCanReference from "./ValuesYouCanReference";
 
 function LinkOptions({ clickBehavior, updateSettings, dashcard, parameters }) {
   const linkTypeOptions = [
