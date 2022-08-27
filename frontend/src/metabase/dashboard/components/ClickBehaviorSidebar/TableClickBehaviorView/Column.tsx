@@ -1,7 +1,5 @@
-/* eslint-disable react/prop-types */
 import React from "react";
 import { t, jt, ngettext, msgid } from "ttag";
-import _ from "underscore";
 
 import { color } from "metabase/lib/colors";
 import { getIconForField } from "metabase/lib/schema_metadata";
@@ -9,9 +7,16 @@ import { getIconForField } from "metabase/lib/schema_metadata";
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
 
+import type {
+  ClickBehavior,
+  CustomDestinationClickBehavior,
+  EntityCustomDestinationClickBehavior,
+} from "metabase-types/api";
+import type { Column as IColumn } from "metabase-types/types/Dataset";
+
 import { SidebarItem } from "../SidebarItem";
 
-function Quoted({ children }) {
+function Quoted({ children }: { children: React.ReactNode }) {
   return (
     <span>
       {'"'}
@@ -21,18 +26,19 @@ function Quoted({ children }) {
   );
 }
 
-const LinkTargetName = ({ clickBehavior: { linkType, targetId } }) => {
-  if (linkType === "url") {
+const getLinkTargetName = (clickBehavior: CustomDestinationClickBehavior) => {
+  const { targetId } = clickBehavior as EntityCustomDestinationClickBehavior;
+  if (clickBehavior.linkType === "url") {
     return t`URL`;
   }
-  if (linkType === "question") {
+  if (clickBehavior.linkType === "question") {
     return (
       <Quoted>
         <Questions.Name id={targetId} />
       </Quoted>
     );
   }
-  if (linkType === "dashboard") {
+  if (clickBehavior.linkType === "dashboard") {
     return (
       <Quoted>
         <Dashboards.Name id={targetId} />
@@ -42,7 +48,13 @@ const LinkTargetName = ({ clickBehavior: { linkType, targetId } }) => {
   return t`Unknown`;
 };
 
-function ClickBehaviorDescription({ column, clickBehavior }) {
+function getClickBehaviorDescription({
+  column,
+  clickBehavior,
+}: {
+  column: IColumn;
+  clickBehavior: ClickBehavior;
+}) {
   if (!clickBehavior) {
     return column.display_name;
   }
@@ -58,15 +70,21 @@ function ClickBehaviorDescription({ column, clickBehavior }) {
   }
 
   if (clickBehavior.type === "link") {
-    return jt`${column.display_name} goes to ${(
-      <LinkTargetName clickBehavior={clickBehavior} />
+    return jt`${column.display_name} goes to ${getLinkTargetName(
+      clickBehavior,
     )}`;
   }
 
   return column.display_name;
 }
 
-const Column = ({ column, clickBehavior, onClick }) => (
+interface ColumnProps {
+  column: IColumn;
+  clickBehavior: ClickBehavior;
+  onClick: () => void;
+}
+
+const Column = ({ column, clickBehavior, onClick }: ColumnProps) => (
   <SidebarItem onClick={onClick}>
     <SidebarItem.Icon
       name={getIconForField(column)}
@@ -75,10 +93,7 @@ const Column = ({ column, clickBehavior, onClick }) => (
     />
     <div>
       <SidebarItem.Name>
-        <ClickBehaviorDescription
-          column={column}
-          clickBehavior={clickBehavior}
-        />
+        {getClickBehaviorDescription({ column, clickBehavior })}
       </SidebarItem.Name>
     </div>
   </SidebarItem>

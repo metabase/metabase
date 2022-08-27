@@ -62,12 +62,18 @@ type ClickBehaviorParameterMapping = Record<
   }
 >;
 
+export type ClickBehaviorType =
+  | "action"
+  | "actionMenu"
+  | "crossfilter"
+  | "link";
+
 export interface CrossFilterClickBehavior {
   type: "crossfilter";
   parameterMapping?: ClickBehaviorParameterMapping;
 }
 
-export interface CustomDestinationClickBehavior {
+export interface EntityCustomDestinationClickBehavior {
   type: "link";
   linkType: "dashboard" | "question";
   targetId: EntityId;
@@ -86,8 +92,11 @@ export interface WritebackActionClickBehavior {
   parameterMapping?: ClickBehaviorParameterMapping;
 }
 
+export type CustomDestinationClickBehavior =
+  | EntityCustomDestinationClickBehavior
+  | ArbitraryCustomDestinationClickBehavior;
+
 export type ClickBehavior =
   | CrossFilterClickBehavior
   | CustomDestinationClickBehavior
-  | ArbitraryCustomDestinationClickBehavior
   | WritebackActionClickBehavior;
