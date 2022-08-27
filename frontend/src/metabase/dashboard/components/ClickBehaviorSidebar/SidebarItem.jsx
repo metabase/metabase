@@ -2,6 +2,11 @@
 import React from "react";
 import cx from "classnames";
 
+import {
+  BaseSidebarItemRoot,
+  SelectableSidebarItemRoot,
+} from "./SidebarItem.styled";
+
 export const SidebarItemClasses =
   "border-brand-hover bordered border-transparent rounded flex align-center cursor-pointer overflow-hidden";
 
@@ -23,3 +28,14 @@ export const SidebarItemWrapper = ({ children, onClick, style, disabled }) => (
     {children}
   </div>
 );
+
+export function SidebarItem({ as = BaseSidebarItemRoot, ...props }) {
+  const Element = as;
+  return <Element {...props} />;
+}
+
+function SelectableSidebarItem(props) {
+  return <SidebarItem {...props} as={SelectableSidebarItemRoot} />;
+}
+
+SidebarItem.Selectable = SelectableSidebarItem;

@@ -3,13 +3,11 @@ import React from "react";
 
 import Icon from "metabase/components/Icon";
 
-import { color } from "metabase/lib/colors";
-
 import { clickBehaviorOptions, getClickBehaviorOptionName } from "./utils";
 import ActionOptions from "./ActionOptions";
 import CrossfilterOptions from "./CrossfilterOptions";
 import LinkOptions from "./LinkOptions";
-import { SidebarItemWrapper } from "./SidebarItem";
+import { SidebarItem } from "./SidebarItem";
 import {
   CloseIconContainer,
   SidebarContentBordered,
@@ -75,12 +73,10 @@ function ClickBehaviorSidebarMainView({
   return (
     <div>
       <SidebarContentBordered>
-        <SidebarItemWrapper
+        <SidebarItem.Selectable
           onClick={handleShowTypeSelector}
-          style={{
-            backgroundColor: color("brand"),
-            color: color("white"),
-          }}
+          isSelected
+          padded={false}
         >
           <SidebarIconWrapper
             style={{ borderColor: "transparent", paddingLeft: 12 }}
@@ -93,7 +89,7 @@ function ClickBehaviorSidebarMainView({
               <Icon name="close" size={12} />
             </CloseIconContainer>
           </div>
-        </SidebarItemWrapper>
+        </SidebarItem.Selectable>
       </SidebarContentBordered>
 
       <ClickBehaviorOptions

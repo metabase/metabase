@@ -1,12 +1,6 @@
 import styled from "@emotion/styled";
 import { color, darken } from "metabase/lib/colors";
 
-export const SidebarItem = styled.div`
-  display: flex;
-  align-items: center;
-  width: 100%;
-`;
-
 export const CloseIconContainer = styled.span`
   margin-left: auto;
   padding: 1rem;

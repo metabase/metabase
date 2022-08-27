@@ -9,14 +9,13 @@ import InputBlurChange from "metabase/components/InputBlurChange";
 import ModalContent from "metabase/components/ModalContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 
-import { color } from "metabase/lib/colors";
 import {
   isTableDisplay,
   clickBehaviorIsValid,
 } from "metabase/lib/click-behavior";
 
 import CustomLinkText from "./CustomLinkText";
-import { SidebarItemWrapper } from "../SidebarItem";
+import { SidebarItem } from "../SidebarItem";
 import {
   CloseIconContainer,
   SidebarIconWrapper,
@@ -34,12 +33,7 @@ function CustomURLPicker({
     <ModalWithTrigger
       isInitiallyOpen={clickBehavior.linkTemplate == null}
       triggerElement={
-        <SidebarItemWrapper
-          style={{
-            backgroundColor: color("brand"),
-            color: color("white"),
-          }}
-        >
+        <SidebarItem.Selectable isSelected>
           <SidebarIconWrapper
             style={{ borderColor: "transparent", marginLeft: 8 }}
           >
@@ -60,7 +54,7 @@ function CustomURLPicker({
               <Icon name="close" size={12} />
             </CloseIconContainer>
           </div>
-        </SidebarItemWrapper>
+        </SidebarItem.Selectable>
       }
     >
       {({ onClose }) => (
