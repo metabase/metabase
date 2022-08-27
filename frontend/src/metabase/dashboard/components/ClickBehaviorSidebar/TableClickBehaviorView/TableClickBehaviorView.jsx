@@ -8,7 +8,7 @@ import { hasActionsMenu } from "metabase/lib/click-behavior";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 
 import Column from "./Column";
-import { Heading, SidebarHeader } from "./ClickBehaviorSidebar.styled";
+import { Heading, SidebarHeader } from "../ClickBehaviorSidebar.styled";
 
 function TableClickBehaviorView({
   columns,

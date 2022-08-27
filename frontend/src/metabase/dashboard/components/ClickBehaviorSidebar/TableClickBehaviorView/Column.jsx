@@ -11,8 +11,8 @@ import { getIconForField } from "metabase/lib/schema_metadata";
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
 
-import { SidebarItemWrapper, SidebarItemStyle } from "./SidebarItem";
-import { SidebarIconWrapper } from "./ClickBehaviorSidebar.styled";
+import { SidebarItemWrapper, SidebarItemStyle } from "../SidebarItem";
+import { SidebarIconWrapper } from "../ClickBehaviorSidebar.styled";
 
 function Quoted({ children }) {
   return (
