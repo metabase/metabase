@@ -19,11 +19,11 @@ import {
 import { keyForColumn } from "metabase/lib/dataset";
 
 import Sidebar from "metabase/dashboard/components/Sidebar";
-import ClickMappings from "metabase/dashboard/components/ClickMappings";
 
 import { clickBehaviorOptions, getClickBehaviorOptionName } from "./utils";
 import ActionOptions from "./ActionOptions";
 import Column from "./Column";
+import CrossfilterOptions from "./CrossfilterOptions";
 import CustomLinkText from "./CustomLinkText";
 import LinkOption from "./LinkOption";
 import TypeSelector from "./TypeSelector";
@@ -334,27 +334,6 @@ class ClickBehaviorSidebar extends React.Component {
       </Sidebar>
     );
   }
-}
-
-function CrossfilterOptions({
-  clickBehavior,
-  dashboard,
-  dashcard,
-  updateSettings,
-}) {
-  return (
-    <SidebarContent>
-      <Heading className="text-medium">{t`Pick one or more filters to update`}</Heading>
-      <ClickMappings
-        object={dashboard}
-        dashcard={dashcard}
-        isDash
-        clickBehavior={clickBehavior}
-        updateSettings={updateSettings}
-        excludeParametersSources
-      />
-    </SidebarContent>
-  );
 }
 
 function LinkOptions({ clickBehavior, updateSettings, dashcard, parameters }) {
