@@ -1,3 +1,4 @@
+import { EntityId } from "metabase-types/types";
 import {
   ParameterTarget,
   ParameterId,
@@ -22,12 +23,17 @@ export interface Dashboard {
   is_app_page?: boolean;
 }
 
+export type DashCardId = EntityId;
+
 export type DashboardOrderedCard = {
-  id: number;
+  id: DashCardId;
   card: SavedCard;
   card_id: CardId;
   parameter_mappings?: DashboardParameterMapping[] | null;
   series?: SavedCard[];
+  visualization_settings?: {
+    [key: string]: unknown;
+  };
 };
 
 export type DashboardParameterMapping = {
