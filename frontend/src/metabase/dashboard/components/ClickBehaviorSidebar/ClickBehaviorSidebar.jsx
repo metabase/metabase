@@ -34,7 +34,15 @@ import {
 } from "metabase/lib/click-behavior";
 import { getIconForField } from "metabase/lib/schema_metadata";
 import { keyForColumn } from "metabase/lib/dataset";
-import { CloseIconContainer, SidebarItem } from "./ClickBehaviorSidebar.styled";
+import {
+  CloseIconContainer,
+  Heading,
+  SidebarContent,
+  SidebarContentBordered,
+  SidebarHeader,
+  SidebarIconWrapper,
+  SidebarItem,
+} from "./ClickBehaviorSidebar.styled";
 
 const clickBehaviorOptions = [
   { value: "menu", icon: "popover" },
@@ -61,27 +69,6 @@ function getClickBehaviorOptionName(value, dashcard) {
   return t`Unknown`;
 }
 
-const Heading = ({ children }) => (
-  <h4
-    className="text-dark"
-    style={{ paddingTop: 22, paddingBottom: 16, marginBottom: 8 }}
-  >
-    {children}
-  </h4>
-);
-
-const SidebarContent = ({ children }) => (
-  <div style={{ paddingLeft: 32, paddingRight: 32 }}>{children}</div>
-);
-const SidebarContentBordered = ({ children }) => (
-  <div
-    className="border-bottom pb2"
-    style={{ paddingLeft: 32, paddingRight: 32 }}
-  >
-    {children}
-  </div>
-);
-
 const SidebarItemClasses =
   "border-brand-hover bordered border-transparent rounded flex align-center cursor-pointer overflow-hidden";
 const SidebarItemStyle = {
@@ -96,30 +83,6 @@ const SidebarItemWrapper = ({ children, onClick, style, disabled }) => (
     className={cx(SidebarItemClasses, { disabled })}
     onClick={!disabled && onClick}
     style={{
-      ...style,
-    }}
-  >
-    {children}
-  </div>
-);
-
-const SidebarHeader = ({ children }) => (
-  <div
-    className="border-bottom"
-    style={{ paddingLeft: 32, paddingRight: 36, marginBottom: 16 }}
-  >
-    {children}
-  </div>
-);
-
-const SidebarIconWrapper = ({ children, style }) => (
-  <div
-    className="flex justify-center align-center bordered rounded flex-no-shrink"
-    style={{
-      borderColor: "#F2F2F2",
-      width: 36,
-      height: 36,
-      marginRight: 10,
       ...style,
     }}
   >
