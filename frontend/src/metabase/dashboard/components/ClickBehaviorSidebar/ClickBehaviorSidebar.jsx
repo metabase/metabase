@@ -33,6 +33,7 @@ import ClickMappings, {
 } from "metabase/dashboard/components/ClickMappings";
 
 import CustomLinkText from "./CustomLinkText";
+import LinkOption from "./LinkOption";
 import ValuesYouCanReference from "./ValuesYouCanReference";
 import {
   SidebarItemWrapper,
@@ -150,17 +151,6 @@ const BehaviorOption = ({
           <Icon name="chevronright" size={12} />
         </span>
       )}
-    </div>
-  </SidebarItemWrapper>
-);
-
-const LinkOption = ({ option, icon, onClick }) => (
-  <SidebarItemWrapper onClick={onClick} style={{ ...SidebarItemStyle }}>
-    <SidebarIconWrapper>
-      <Icon name={icon} color={color("brand")} />
-    </SidebarIconWrapper>
-    <div>
-      <h4>{option}</h4>
     </div>
   </SidebarItemWrapper>
 );
