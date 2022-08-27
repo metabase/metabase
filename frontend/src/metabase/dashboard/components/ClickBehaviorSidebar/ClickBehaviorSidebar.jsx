@@ -25,26 +25,32 @@ class ClickBehaviorSidebar extends React.Component {
   };
 
   componentDidUpdate(prevProps, prevState) {
-    if (this.props.dashcard.id !== prevProps.dashcard.id) {
-      this.setState({
-        originalVizSettings: this.props.dashcard.visualization_settings,
-      });
+    const { dashcard } = this.props;
+    const { dashcard: previousDashcard } = prevProps;
+    const { selectedColumn } = this.state;
+    const { selectedColumn: previousSelectedColumn } = prevState;
+
+    const hasSelectedColumn = selectedColumn != null;
+    const pickedAnotherDashcard = dashcard.id !== previousDashcard.id;
+    const selectedAnotherColumn = selectedColumn !== previousSelectedColumn;
+
+    if (pickedAnotherDashcard) {
+      this.setState({ originalVizSettings: dashcard.visualization_settings });
     }
-    if (
-      this.props.dashcard.id !== prevProps.dashcard.id &&
-      this.state.selectedColumn != null
-    ) {
+
+    if (pickedAnotherDashcard && hasSelectedColumn) {
       this.unsetSelectedColumn();
     }
-    if (
-      this.props.dashcard.id !== prevProps.dashcard.id ||
-      this.state.selectedColumn !== prevState.selectedColumn
-    ) {
+
+    if (pickedAnotherDashcard || selectedAnotherColumn) {
       this.showTypeSelectorIfNeeded();
     } else {
-      const curr = this.getClickBehavior() || {};
-      const prev = this.getClickBehavior(prevProps) || {};
-      if (curr.type !== prev.type && curr.type != null) {
+      const clickBehavior = this.getClickBehavior() || {};
+      const previousClickBehavior = this.getClickBehavior(prevProps) || {};
+      const changedClickBehaviorType =
+        clickBehavior.type != null &&
+        clickBehavior.type !== previousClickBehavior.type;
+      if (changedClickBehaviorType) {
         // move to next screen if the type was just changed
         this.setState({ showTypeSelector: false });
       }
@@ -52,11 +58,10 @@ class ClickBehaviorSidebar extends React.Component {
   }
 
   componentDidMount() {
+    const { dashcard } = this.props;
     this.showTypeSelectorIfNeeded();
-    if (this.props.dashcard) {
-      this.setState({
-        originalVizSettings: this.props.dashcard.visualization_settings,
-      });
+    if (dashcard) {
+      this.setState({ originalVizSettings: dashcard.visualization_settings });
     }
   }
 
@@ -69,9 +74,13 @@ class ClickBehaviorSidebar extends React.Component {
   };
 
   unsetSelectedColumn = () => {
-    if (!clickBehaviorIsValid(this.getClickBehavior())) {
-      this.updateSettings(this.state.originalColumnVizSettings);
+    const { originalColumnVizSettings } = this.state;
+    const clickBehavior = this.getClickBehavior();
+
+    if (!clickBehaviorIsValid(clickBehavior)) {
+      this.updateSettings(originalColumnVizSettings);
     }
+
     this.setState({ originalColumnVizSettings: null, selectedColumn: null });
   };
 
@@ -123,11 +132,22 @@ class ClickBehaviorSidebar extends React.Component {
   };
 
   handleCancel = () => {
-    this.props.onReplaceAllDashCardVisualizationSettings(
-      this.props.dashcard.id,
-      this.state.originalVizSettings,
-    );
-    this.props.hideClickBehaviorSidebar();
+    const {
+      dashcard,
+      onReplaceAllDashCardVisualizationSettings,
+      hideClickBehaviorSidebar,
+    } = this.props;
+    const { originalVizSettings } = this.state;
+    onReplaceAllDashCardVisualizationSettings(dashcard.id, originalVizSettings);
+    hideClickBehaviorSidebar();
+  };
+
+  showTypeSelector = () => {
+    this.setState({ showTypeSelector: true });
+  };
+
+  hideTypeSelector = () => {
+    this.setState({ showTypeSelector: false });
   };
 
   renderContent = () => {
@@ -155,9 +175,9 @@ class ClickBehaviorSidebar extends React.Component {
           <TypeSelector
             clickBehavior={clickBehavior}
             dashcard={dashcard}
-            parameters={this.props.parameters}
+            parameters={parameters}
             updateSettings={this.updateSettings}
-            moveToNextPage={() => this.setState({ showTypeSelector: false })}
+            moveToNextPage={this.hideTypeSelector}
           />
         </SidebarContent>
       );
@@ -169,7 +189,7 @@ class ClickBehaviorSidebar extends React.Component {
         dashboard={dashboard}
         dashcard={dashcard}
         parameters={parameters}
-        handleShowTypeSelector={() => this.setState({ showTypeSelector: true })}
+        handleShowTypeSelector={this.showTypeSelector}
         updateSettings={this.updateSettings}
       />
     );
@@ -178,6 +198,7 @@ class ClickBehaviorSidebar extends React.Component {
   render() {
     const { dashcard, hideClickBehaviorSidebar } = this.props;
     const { selectedColumn, showTypeSelector } = this.state;
+    const hasSelectedColumn = selectedColumn != null;
 
     const clickBehavior = this.getClickBehavior() || { type: "menu" };
 
@@ -194,7 +215,7 @@ class ClickBehaviorSidebar extends React.Component {
         <ClickBehaviorSidebarHeader
           dashcard={dashcard}
           selectedColumn={selectedColumn}
-          hasSelectedColumn={selectedColumn != null}
+          hasSelectedColumn={hasSelectedColumn}
           onUnsetColumn={this.unsetSelectedColumn}
         />
         <div>{this.renderContent()}</div>
