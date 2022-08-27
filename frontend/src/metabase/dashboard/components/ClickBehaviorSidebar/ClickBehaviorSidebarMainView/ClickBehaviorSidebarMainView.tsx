@@ -22,7 +22,7 @@ interface ClickBehaviorOptionsProps {
   dashboard: Dashboard;
   dashcard: DashboardOrderedCard;
   parameters: UiParameter[];
-  updateSettings: (settings: ClickBehavior) => void;
+  updateSettings: (settings: Partial<ClickBehavior>) => void;
 }
 
 function ClickBehaviorOptions({
@@ -70,7 +70,7 @@ interface ClickBehaviorSidebarMainViewProps {
   dashcard: DashboardOrderedCard;
   parameters: UiParameter[];
   handleShowTypeSelector: () => void;
-  updateSettings: (settings: ClickBehavior) => void;
+  updateSettings: (settings: Partial<ClickBehavior>) => void;
 }
 
 function ClickBehaviorSidebarMainView({

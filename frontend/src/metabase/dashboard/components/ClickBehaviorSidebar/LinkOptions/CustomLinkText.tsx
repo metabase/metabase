@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import InputBlurChange from "metabase/components/InputBlurChange";
 
-import {
+import type {
   ArbitraryCustomDestinationClickBehavior,
   ClickBehavior,
 } from "metabase-types/api";

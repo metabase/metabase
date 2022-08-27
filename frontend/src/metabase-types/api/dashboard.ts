@@ -101,11 +101,19 @@ export interface WritebackActionClickBehavior {
   parameterMapping?: ClickBehaviorParameterMapping;
 }
 
+// Makes click handler use default drills
+// This is virtual, i.e. if a card has no clickBehavior,
+// it'd behave as if it's an "actionMenu"
+export type ActionMenuClickBehavior = {
+  type: "actionMenu";
+};
+
 export type CustomDestinationClickBehavior =
   | EntityCustomDestinationClickBehavior
   | ArbitraryCustomDestinationClickBehavior;
 
 export type ClickBehavior =
+  | ActionMenuClickBehavior
   | CrossFilterClickBehavior
   | CustomDestinationClickBehavior
   | WritebackActionClickBehavior;

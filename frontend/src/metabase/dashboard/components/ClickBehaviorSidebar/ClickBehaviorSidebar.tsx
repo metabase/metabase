@@ -198,7 +198,7 @@ function ClickBehaviorSidebar({
   ]);
 
   const renderContent = useCallback(() => {
-    const finalClickBehavior = clickBehavior || { type: "menu" };
+    const finalClickBehavior = clickBehavior || { type: "actionMenu" };
 
     if (isTableDisplay(dashcard) && !hasSelectedColumn) {
       const columns = getIn(dashcardData, [dashcard.card_id, "data", "cols"]);
@@ -259,7 +259,6 @@ function ClickBehaviorSidebar({
       <ClickBehaviorSidebarHeader
         dashcard={dashcard}
         selectedColumn={selectedColumn}
-        hasSelectedColumn={hasSelectedColumn}
         onUnsetColumn={handleUnsetSelectedColumn}
       />
       <div>{renderContent()}</div>

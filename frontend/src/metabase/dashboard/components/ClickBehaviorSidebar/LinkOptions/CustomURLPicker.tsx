@@ -11,7 +11,7 @@ import {
 } from "metabase/lib/click-behavior";
 
 import type { UiParameter } from "metabase/parameters/types";
-import {
+import type {
   ArbitraryCustomDestinationClickBehavior,
   ClickBehavior,
   DashboardOrderedCard,
