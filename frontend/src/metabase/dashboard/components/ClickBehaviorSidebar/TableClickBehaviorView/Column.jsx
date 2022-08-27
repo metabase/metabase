@@ -3,8 +3,6 @@ import React from "react";
 import { t, jt, ngettext, msgid } from "ttag";
 import _ from "underscore";
 
-import Icon from "metabase/components/Icon";
-
 import { color } from "metabase/lib/colors";
 import { getIconForField } from "metabase/lib/schema_metadata";
 
@@ -12,7 +10,6 @@ import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
 
 import { SidebarItem } from "../SidebarItem";
-import { SidebarIconWrapper } from "../ClickBehaviorSidebar.styled";
 
 function Quoted({ children }) {
   return (
@@ -71,16 +68,18 @@ function ClickBehaviorDescription({ column, clickBehavior }) {
 
 const Column = ({ column, clickBehavior, onClick }) => (
   <SidebarItem onClick={onClick}>
-    <SidebarIconWrapper>
-      <Icon name={getIconForField(column)} color={color("brand")} size={18} />
-    </SidebarIconWrapper>
+    <SidebarItem.Icon
+      name={getIconForField(column)}
+      color={color("brand")}
+      size={18}
+    />
     <div>
-      <h4>
+      <SidebarItem.Name>
         <ClickBehaviorDescription
           column={column}
           clickBehavior={clickBehavior}
         />
-      </h4>
+      </SidebarItem.Name>
     </div>
   </SidebarItem>
 );

@@ -3,19 +3,14 @@ import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import Icon from "metabase/components/Icon";
-
 import { color } from "metabase/lib/colors";
 
 import Actions from "metabase/entities/actions";
 
 import ClickMappings from "metabase/dashboard/components/ClickMappings";
 
-import {
-  Heading,
-  SidebarContent,
-  SidebarIconWrapper,
-} from "../ClickBehaviorSidebar.styled";
+import { SidebarItem } from "../SidebarItem";
+import { Heading, SidebarContent } from "../ClickBehaviorSidebar.styled";
 import { ActionSidebarItem } from "./ActionOptions.styled";
 
 const ActionOption = ({ name, description, isSelected, onClick }) => {
@@ -25,12 +20,10 @@ const ActionOption = ({ name, description, isSelected, onClick }) => {
       isSelected={isSelected}
       hasDescription={!!description}
     >
-      <SidebarIconWrapper>
-        <Icon
-          name="bolt"
-          color={isSelected ? color("text-white") : color("brand")}
-        />
-      </SidebarIconWrapper>
+      <SidebarItem.Icon
+        name="bolt"
+        color={isSelected ? color("text-white") : color("brand")}
+      />
       <div>
         <h4>{name}</h4>
         {description && (

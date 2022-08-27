@@ -18,12 +18,12 @@ import ClickMappings, {
 } from "metabase/dashboard/components/ClickMappings";
 
 import { SidebarItem } from "../SidebarItem";
+import { Heading } from "../ClickBehaviorSidebar.styled";
 import {
-  CloseIconContainer,
-  Heading,
-  SidebarIconWrapper,
-} from "../ClickBehaviorSidebar.styled";
-import { LinkTargetEntityPickerContent } from "./LinkOptions.styled";
+  LinkTargetEntityPickerContent,
+  SelectedEntityPickerIcon,
+  SelectedEntityPickerContent,
+} from "./LinkOptions.styled";
 
 function PickerControl({ isDash, clickBehavior, onCancel }) {
   const Entity = isDash ? Dashboards : Questions;
@@ -39,17 +39,13 @@ function PickerControl({ isDash, clickBehavior, onCancel }) {
   return (
     <SidebarItem.Selectable isSelected padded={false}>
       <LinkTargetEntityPickerContent>
-        <SidebarIconWrapper style={{ borderColor: "transparent" }}>
-          <Icon name={isDash ? "dashboard" : "bar"} />
-        </SidebarIconWrapper>
-        <div className="flex align-center full text-bold">
+        <SelectedEntityPickerIcon name={isDash ? "dashboard" : "bar"} />
+        <SelectedEntityPickerContent>
           {renderLabel()}
           <Icon name="chevrondown" size={12} className="ml-auto" />
-        </div>
+        </SelectedEntityPickerContent>
       </LinkTargetEntityPickerContent>
-      <CloseIconContainer onClick={onCancel}>
-        <Icon name="close" size={12} />
-      </CloseIconContainer>
+      <SidebarItem.CloseIcon onClick={onCancel} />
     </SidebarItem.Selectable>
   );
 }

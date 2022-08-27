@@ -3,12 +3,11 @@ import React, { useCallback } from "react";
 import _ from "underscore";
 
 import Icon from "metabase/components/Icon";
-
 import { color } from "metabase/lib/colors";
-
 import { clickBehaviorOptions, getClickBehaviorOptionName } from "../utils";
 import { SidebarItem } from "../SidebarItem";
-import { SidebarIconWrapper } from "../ClickBehaviorSidebar.styled";
+
+import { BehaviorOptionIcon } from "./TypeSelector.styled";
 
 const BehaviorOption = ({
   option,
@@ -23,20 +22,19 @@ const BehaviorOption = ({
     onClick={onClick}
     disabled={disabled}
   >
-    <SidebarIconWrapper style={{ borderColor: selected && "transparent" }}>
-      <Icon
-        name={selected ? "check" : icon}
-        color={selected ? color("white") : color("brand")}
-      />
-    </SidebarIconWrapper>
-    <div className="flex align-center full">
-      <h4>{option}</h4>
+    <BehaviorOptionIcon
+      name={selected ? "check" : icon}
+      color={selected ? color("white") : color("brand")}
+      isSelected={selected}
+    />
+    <SidebarItem.Content>
+      <SidebarItem.Name>{option}</SidebarItem.Name>
       {hasNextStep && (
         <span className="ml-auto">
           <Icon name="chevronright" size={12} />
         </span>
       )}
-    </div>
+    </SidebarItem.Content>
   </SidebarItem.Selectable>
 );
 
