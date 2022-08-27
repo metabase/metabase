@@ -1,8 +1,8 @@
-import React from "react";
+import React, { useMemo } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 
-import ButtonGroup from "metabase/core/components/ButtonGroup";
+import EntityMenu from "metabase/components/EntityMenu";
 import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/components/Tooltip";
 
@@ -11,6 +11,7 @@ import * as Urls from "metabase/lib/urls";
 import type { DataApp } from "metabase-types/api";
 
 import {
+  ActionGroup,
   DataAppActionsContainer,
   DataAppActionButton,
   ExitDataAppButton,
@@ -23,20 +24,36 @@ interface Props {
 }
 
 function DataAppActionPanel({ dataApp, onNewPage, onEditAppSettings }: Props) {
+  const addMenuItems = useMemo(
+    () => [
+      {
+        title: t`Page`,
+        icon: "document",
+        action: onNewPage,
+      },
+    ],
+    [onNewPage],
+  );
+
   return (
     <DataAppActionsContainer>
-      <ButtonGroup>
-        <Tooltip tooltip={t`Add`}>
-          <DataAppActionButton icon="add" onClick={onNewPage} onlyIcon />
-        </Tooltip>
-        <Tooltip tooltip={t`Settings`}>
-          <DataAppActionButton
-            icon="gear"
-            onClick={onEditAppSettings}
-            onlyIcon
+      <ActionGroup>
+        <ActionGroup.Cell>
+          <EntityMenu
+            items={addMenuItems}
+            trigger={
+              <Tooltip tooltip={t`Add`}>
+                <DataAppActionButton icon="add" />
+              </Tooltip>
+            }
           />
-        </Tooltip>
-      </ButtonGroup>
+        </ActionGroup.Cell>
+        <ActionGroup.Cell>
+          <Tooltip tooltip={t`Settings`}>
+            <DataAppActionButton icon="gear" />
+          </Tooltip>
+        </ActionGroup.Cell>
+      </ActionGroup>
       <ExitDataAppButton
         as={Link}
         to={Urls.dataApp(dataApp, { mode: "preview" })}
