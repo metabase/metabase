@@ -3,7 +3,6 @@ import React from "react";
 import { t, jt } from "ttag";
 import { getIn } from "icepick";
 import _ from "underscore";
-import cx from "classnames";
 
 import Button from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";
@@ -19,16 +18,8 @@ import {
 } from "metabase/lib/click-behavior";
 import { keyForColumn } from "metabase/lib/dataset";
 
-import Dashboards from "metabase/entities/dashboards";
-import Questions from "metabase/entities/questions";
-
-import DashboardPicker from "metabase/containers/DashboardPicker";
-import QuestionPicker from "metabase/containers/QuestionPicker";
-
 import Sidebar from "metabase/dashboard/components/Sidebar";
-import ClickMappings, {
-  clickTargetObjectType,
-} from "metabase/dashboard/components/ClickMappings";
+import ClickMappings from "metabase/dashboard/components/ClickMappings";
 
 import { clickBehaviorOptions, getClickBehaviorOptionName } from "./utils";
 import ActionOptions from "./ActionOptions";
@@ -37,11 +28,8 @@ import CustomLinkText from "./CustomLinkText";
 import LinkOption from "./LinkOption";
 import TypeSelector from "./TypeSelector";
 import ValuesYouCanReference from "./ValuesYouCanReference";
-import {
-  SidebarItemWrapper,
-  SidebarItemClasses,
-  SidebarItemStyle,
-} from "./SidebarItem";
+import QuestionDashboardPicker from "./QuestionDashboardPicker";
+import { SidebarItemWrapper } from "./SidebarItem";
 import {
   CloseIconContainer,
   Heading,
@@ -49,7 +37,6 @@ import {
   SidebarContentBordered,
   SidebarHeader,
   SidebarIconWrapper,
-  SidebarItem,
 } from "./ClickBehaviorSidebar.styled";
 
 class ClickBehaviorSidebar extends React.Component {
@@ -494,116 +481,6 @@ function LinkOptions({ clickBehavior, updateSettings, dashcard, parameters }) {
         )}
       </div>
     </SidebarContent>
-  );
-}
-
-function QuestionDashboardPicker({ dashcard, clickBehavior, updateSettings }) {
-  const isDash = clickBehavior.linkType === "dashboard";
-  const Entity = isDash ? Dashboards : Questions;
-  const Picker = isDash ? DashboardPicker : QuestionPicker;
-  return (
-    <div>
-      <div className="pb1">
-        <ModalWithTrigger
-          triggerElement={
-            <div
-              className={cx(SidebarItemClasses, "overflow-hidden")}
-              style={{
-                marginLeft: SidebarItemStyle.marginLeft,
-                marginRight: SidebarItemStyle.marginRight,
-                backgroundColor: color("brand"),
-                color: color("white"),
-              }}
-            >
-              <SidebarItem
-                style={{
-                  paddingLeft: SidebarItemStyle.paddingLeft,
-                  paddingRight: SidebarItemStyle.paddingRight,
-                  paddingTop: SidebarItemStyle.paddingTop,
-                  paddingBottom: SidebarItemStyle.paddingBottom,
-                }}
-              >
-                <SidebarIconWrapper style={{ borderColor: "transparent" }}>
-                  <Icon name={isDash ? "dashboard" : "bar"} />
-                </SidebarIconWrapper>
-                <div className="flex align-center full text-bold">
-                  {clickBehavior.targetId == null ? (
-                    isDash ? (
-                      t`Pick a dashboard...`
-                    ) : (
-                      t`Pick a question...`
-                    )
-                  ) : (
-                    <Entity.Name id={clickBehavior.targetId} />
-                  )}
-                  <Icon name="chevrondown" size={12} className="ml-auto" />
-                </div>
-              </SidebarItem>
-              <CloseIconContainer
-                onClick={() =>
-                  updateSettings({
-                    type: clickBehavior.type,
-                    linkType: null,
-                  })
-                }
-              >
-                <Icon name="close" size={12} />
-              </CloseIconContainer>
-            </div>
-          }
-          isInitiallyOpen={clickBehavior.targetId == null}
-        >
-          {({ onClose }) => (
-            <ModalContent
-              title={
-                isDash
-                  ? t`Pick a dashboard to link to`
-                  : t`Pick a question to link to`
-              }
-              onClose={clickBehavior.targetId != null ? onClose : null}
-            >
-              <Picker
-                value={clickBehavior.targetId}
-                onChange={targetId => {
-                  updateSettings({
-                    ...clickBehavior,
-                    ...(targetId !== clickBehavior.targetId
-                      ? { parameterMapping: {} }
-                      : {}),
-                    targetId,
-                  });
-                  onClose();
-                }}
-              />
-            </ModalContent>
-          )}
-        </ModalWithTrigger>
-      </div>
-      {clickBehavior.targetId != null && (
-        <Entity.Loader id={clickBehavior.targetId}>
-          {({ object }) => (
-            <div className="pt1">
-              <Heading>
-                {
-                  {
-                    dashboard: t`Pass values to this dashboard's filters (optional)`,
-                    native: t`Pass values to this question's variables (optional)`,
-                    gui: t`Pass values to filter this question (optional)`,
-                  }[clickTargetObjectType(object)]
-                }
-              </Heading>
-              <ClickMappings
-                object={object}
-                dashcard={dashcard}
-                isDash={isDash}
-                clickBehavior={clickBehavior}
-                updateSettings={updateSettings}
-              />
-            </div>
-          )}
-        </Entity.Loader>
-      )}
-    </div>
   );
 }
 
