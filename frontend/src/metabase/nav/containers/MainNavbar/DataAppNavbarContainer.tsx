@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import { LocationDescriptor } from "history";
 
@@ -6,7 +6,7 @@ import Modal from "metabase/components/Modal";
 
 import * as Urls from "metabase/lib/urls";
 
-import DataApps from "metabase/entities/data-apps";
+import DataApps, { getDataAppHomePageId } from "metabase/entities/data-apps";
 import Dashboards from "metabase/entities/dashboards";
 import Search from "metabase/entities/search";
 
@@ -19,6 +19,11 @@ import DataAppNavbarView from "./DataAppNavbarView";
 
 const FETCHING_SEARCH_MODELS = ["dashboard", "dataset", "card"];
 const LIMIT = 100;
+
+function isAtDataAppHomePage(selectedItems: SelectedItem[]) {
+  const [selectedItem] = selectedItems;
+  return selectedItems.length === 1 && selectedItem.type === "data-app";
+}
 
 type NavbarModal = "MODAL_APP_SETTINGS" | "MODAL_NEW_PAGE" | null;
 
@@ -41,10 +46,32 @@ type SearchRenderProps = {
 function DataAppNavbarContainer({
   dataApp,
   items,
+  selectedItems,
   onChangeLocation,
   ...props
 }: DataAppNavbarContainerProps) {
   const [modal, setModal] = useState<NavbarModal>(null);
+
+  const finalSelectedItems: SelectedItem[] = useMemo(() => {
+    const isHomepage = isAtDataAppHomePage(selectedItems);
+
+    // Once a data app is launched, the first view is going to be the app homepage
+    // Homepage is an app page specified by a user or picked automatically (just the first one)
+    // The homepage doesn't have a regular page path like /a/1/page/1, but an app one like /a/1
+    // So we need to overwrite the selectedItems list here and specify the homepage
+    if (isHomepage) {
+      return [
+        {
+          type: "data-app-page",
+          id: getDataAppHomePageId(
+            items.filter(item => item.model === "dashboard"),
+          ),
+        },
+      ];
+    }
+
+    return selectedItems;
+  }, [items, selectedItems]);
 
   const onEditAppSettings = useCallback(() => {
     setModal("MODAL_APP_SETTINGS");
@@ -94,6 +121,7 @@ function DataAppNavbarContainer({
         {...props}
         dataApp={dataApp}
         items={items}
+        selectedItems={finalSelectedItems}
         onNewPage={onNewPage}
         onEditAppSettings={onEditAppSettings}
       />
