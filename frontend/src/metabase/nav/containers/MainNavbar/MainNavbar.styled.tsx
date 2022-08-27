@@ -171,21 +171,3 @@ export const DataAppActionButton = styled(Button)`
     }
   }
 `;
-
-export const DataAppNewButton = styled(Button)`
-  color: ${color("brand")};
-  margin-left: 1rem;
-  padding: 0.5rem 0.5rem;
-
-  &:hover {
-    color: ${color("brand")};
-  }
-
-  .Icon {
-    color: ${color("brand")};
-  }
-`;
-
-DataAppNewButton.defaultProps = {
-  borderless: true,
-};

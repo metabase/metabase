@@ -18,15 +18,16 @@ import {
 
 interface Props {
   dataApp: DataApp;
+  onNewPage: () => void;
   onEditAppSettings: () => void;
 }
 
-function DataAppActionPanel({ dataApp, onEditAppSettings }: Props) {
+function DataAppActionPanel({ dataApp, onNewPage, onEditAppSettings }: Props) {
   return (
     <DataAppActionsContainer>
       <ButtonGroup>
         <Tooltip tooltip={t`Add`}>
-          <DataAppActionButton icon="add" onlyIcon />
+          <DataAppActionButton icon="add" onClick={onNewPage} onlyIcon />
         </Tooltip>
         <Tooltip tooltip={t`Settings`}>
           <DataAppActionButton
