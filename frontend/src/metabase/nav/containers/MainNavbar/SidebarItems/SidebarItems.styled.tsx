@@ -9,7 +9,7 @@ import Link from "metabase/core/components/Link";
 
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 
-import { darken, color, lighten, alpha } from "metabase/lib/colors";
+import { darken, color, alpha } from "metabase/lib/colors";
 
 export const SidebarIcon = styled(Icon)<{
   color?: string | null;
@@ -72,13 +72,13 @@ NodeRoot.defaultProps = {
   hasDefaultIconStyle: true,
 };
 
+export const collectionDragAndDropHoverStyle = css`
+  color: ${color("text-white")};
+  background-color: ${color("brand")};
+`;
+
 export const CollectionNodeRoot = styled(NodeRoot)<{ hovered?: boolean }>`
-  ${props =>
-    props.hovered &&
-    css`
-      color: ${color("text-white")};
-      background-color: ${color("brand")};
-    `}
+  ${props => props.hovered && collectionDragAndDropHoverStyle}
 `;
 
 const itemContentStyle = css`
