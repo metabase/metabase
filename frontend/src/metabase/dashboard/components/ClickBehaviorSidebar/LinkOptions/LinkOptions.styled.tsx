@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { sidebarItemPaddingStyle } from "../SidebarItem.styled";
+import { sidebarItemPaddingStyle } from "../SidebarItem/SidebarItem.styled";
 
 export const LinkTargetEntityPickerContent = styled.div`
   display: flex;
