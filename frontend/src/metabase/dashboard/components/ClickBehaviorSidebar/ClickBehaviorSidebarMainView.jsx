@@ -16,6 +16,46 @@ import {
   SidebarIconWrapper,
 } from "./ClickBehaviorSidebar.styled";
 
+function ClickBehaviorOptions({
+  clickBehavior,
+  dashboard,
+  dashcard,
+  parameters,
+  updateSettings,
+}) {
+  if (clickBehavior.type === "link") {
+    return (
+      <LinkOptions
+        clickBehavior={clickBehavior}
+        dashcard={dashcard}
+        parameters={parameters}
+        updateSettings={updateSettings}
+      />
+    );
+  }
+  if (clickBehavior.type === "crossfilter") {
+    return (
+      <CrossfilterOptions
+        clickBehavior={clickBehavior}
+        dashboard={dashboard}
+        dashcard={dashcard}
+        updateSettings={updateSettings}
+      />
+    );
+  }
+  if (clickBehavior.type === "action") {
+    return (
+      <ActionOptions
+        clickBehavior={clickBehavior}
+        dashcard={dashcard}
+        parameters={parameters}
+        updateSettings={updateSettings}
+      />
+    );
+  }
+  return null;
+}
+
 function ClickBehaviorSidebarMainView({
   clickBehavior,
   dashboard,
@@ -24,6 +64,14 @@ function ClickBehaviorSidebarMainView({
   handleShowTypeSelector,
   updateSettings,
 }) {
+  const clickBehaviorOptionName = getClickBehaviorOptionName(
+    clickBehavior.type,
+    dashcard,
+  );
+  const { icon: clickBehaviorIcon } = clickBehaviorOptions.find(
+    o => o.value === clickBehavior.type,
+  );
+
   return (
     <div>
       <SidebarContentBordered>
@@ -37,15 +85,10 @@ function ClickBehaviorSidebarMainView({
           <SidebarIconWrapper
             style={{ borderColor: "transparent", paddingLeft: 12 }}
           >
-            <Icon
-              name={
-                clickBehaviorOptions.find(o => o.value === clickBehavior.type)
-                  .icon
-              }
-            />
+            <Icon name={clickBehaviorIcon} />
           </SidebarIconWrapper>
           <div className="flex align-center full">
-            <h4>{getClickBehaviorOptionName(clickBehavior.type, dashcard)}</h4>
+            <h4>{clickBehaviorOptionName}</h4>
             <CloseIconContainer>
               <Icon name="close" size={12} />
             </CloseIconContainer>
@@ -53,28 +96,13 @@ function ClickBehaviorSidebarMainView({
         </SidebarItemWrapper>
       </SidebarContentBordered>
 
-      {clickBehavior.type === "link" ? (
-        <LinkOptions
-          clickBehavior={clickBehavior}
-          dashcard={dashcard}
-          parameters={parameters}
-          updateSettings={updateSettings}
-        />
-      ) : clickBehavior.type === "crossfilter" ? (
-        <CrossfilterOptions
-          clickBehavior={clickBehavior}
-          dashboard={dashboard}
-          dashcard={dashcard}
-          updateSettings={updateSettings}
-        />
-      ) : clickBehavior.type === "action" ? (
-        <ActionOptions
-          clickBehavior={clickBehavior}
-          dashcard={dashcard}
-          parameters={parameters}
-          updateSettings={updateSettings}
-        />
-      ) : null}
+      <ClickBehaviorOptions
+        clickBehavior={clickBehavior}
+        dashboard={dashboard}
+        dashcard={dashcard}
+        parameters={parameters}
+        updateSettings={updateSettings}
+      />
     </div>
   );
 }
