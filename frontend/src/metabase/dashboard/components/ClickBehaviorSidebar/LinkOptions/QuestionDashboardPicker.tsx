@@ -1,7 +1,5 @@
-/* eslint-disable react/prop-types */
 import React, { useCallback } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import Icon from "metabase/components/Icon";
 import ModalContent from "metabase/components/ModalContent";
@@ -17,6 +15,16 @@ import ClickMappings, {
   clickTargetObjectType,
 } from "metabase/dashboard/components/ClickMappings";
 
+import type {
+  Dashboard,
+  DashboardId,
+  DashboardOrderedCard,
+  Card,
+  CardId,
+  ClickBehavior,
+  EntityCustomDestinationClickBehavior,
+} from "metabase-types/api";
+
 import { SidebarItem } from "../SidebarItem";
 import { Heading } from "../ClickBehaviorSidebar.styled";
 import {
@@ -25,7 +33,15 @@ import {
   SelectedEntityPickerContent,
 } from "./LinkOptions.styled";
 
-function PickerControl({ isDash, clickBehavior, onCancel }) {
+function PickerControl({
+  isDash,
+  clickBehavior,
+  onCancel,
+}: {
+  isDash: boolean;
+  clickBehavior: EntityCustomDestinationClickBehavior;
+  onCancel: () => void;
+}) {
   const Entity = isDash ? Dashboards : Questions;
 
   const renderLabel = useCallback(() => {
@@ -34,7 +50,7 @@ function PickerControl({ isDash, clickBehavior, onCancel }) {
       return <Entity.Name id={clickBehavior.targetId} />;
     }
     return isDash ? t`Pick a dashboard...` : t`Pick a question...`;
-  }, [isDash, clickBehavior]);
+  }, [Entity, isDash, clickBehavior]);
 
   return (
     <SidebarItem.Selectable isSelected padded={false}>
@@ -50,7 +66,7 @@ function PickerControl({ isDash, clickBehavior, onCancel }) {
   );
 }
 
-function getTargetClickMappingsHeading(entity) {
+function getTargetClickMappingsHeading(entity: Card | Dashboard) {
   return {
     dashboard: t`Pass values to this dashboard's filters (optional)`,
     native: t`Pass values to this question's variables (optional)`,
@@ -63,11 +79,16 @@ function TargetClickMappings({
   clickBehavior,
   dashcard,
   updateSettings,
+}: {
+  isDash: boolean;
+  clickBehavior: EntityCustomDestinationClickBehavior;
+  dashcard: DashboardOrderedCard;
+  updateSettings: (settings: Partial<ClickBehavior>) => void;
 }) {
   const Entity = isDash ? Dashboards : Questions;
   return (
     <Entity.Loader id={clickBehavior.targetId}>
-      {({ object }) => (
+      {({ object }: { object: Card | Dashboard }) => (
         <div className="pt1">
           <Heading>{getTargetClickMappingsHeading(object)}</Heading>
           <ClickMappings
@@ -83,7 +104,15 @@ function TargetClickMappings({
   );
 }
 
-function QuestionDashboardPicker({ dashcard, clickBehavior, updateSettings }) {
+function QuestionDashboardPicker({
+  dashcard,
+  clickBehavior,
+  updateSettings,
+}: {
+  dashcard: DashboardOrderedCard;
+  clickBehavior: EntityCustomDestinationClickBehavior;
+  updateSettings: (settings: Partial<ClickBehavior>) => void;
+}) {
   const isDash = clickBehavior.linkType === "dashboard";
   const hasSelectedTarget = clickBehavior.targetId != null;
   const Picker = isDash ? DashboardPicker : QuestionPicker;
@@ -106,6 +135,9 @@ function QuestionDashboardPicker({ dashcard, clickBehavior, updateSettings }) {
   const handleResetLinkTargetType = useCallback(() => {
     updateSettings({
       type: clickBehavior.type,
+
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
       linkType: null,
     });
   }, [clickBehavior, updateSettings]);
@@ -127,14 +159,16 @@ function QuestionDashboardPicker({ dashcard, clickBehavior, updateSettings }) {
           }
           isInitiallyOpen={!hasSelectedTarget}
         >
-          {({ onClose }) => (
+          {({ onClose }: { onClose: () => void }) => (
             <ModalContent
               title={pickerModalTitle}
               onClose={hasSelectedTarget ? onClose : null}
             >
+              {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
+              {/* @ts-ignore */}
               <Picker
                 value={clickBehavior.targetId}
-                onChange={targetId => {
+                onChange={(targetId: CardId | DashboardId) => {
                   handleSelectLinkTargetEntityId(targetId);
                   onClose();
                 }}
