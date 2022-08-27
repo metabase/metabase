@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
-import Icon from "metabase/components/Icon";
+import Icon, { IconProps } from "metabase/components/Icon";
 
 import {
   Name,
@@ -12,7 +12,7 @@ import {
   SelectableSidebarItemRoot,
 } from "./SidebarItem.styled";
 
-function ItemIcon({ className, ...props }) {
+function ItemIcon({ className, ...props }: { className?: string } & IconProps) {
   return (
     <IconContainer className={className}>
       <Icon {...props} />
@@ -20,7 +20,13 @@ function ItemIcon({ className, ...props }) {
   );
 }
 
-function CloseIcon({ className, onClick }) {
+function CloseIcon({
+  className,
+  onClick,
+}: {
+  className?: string;
+  onClick?: React.MouseEventHandler;
+}) {
   return (
     <CloseIconContainer className={className} onClick={onClick}>
       <Icon name="close" size={12} />
@@ -28,12 +34,26 @@ function CloseIcon({ className, onClick }) {
   );
 }
 
-export function SidebarItem({ as = BaseSidebarItemRoot, ...props }) {
+interface SidebarItemProps extends React.HTMLAttributes<HTMLDivElement> {
+  as?: React.ComponentType<any>;
+  disabled?: boolean;
+  padded?: boolean;
+  children: React.ReactNode;
+}
+
+export function SidebarItem({
+  as = BaseSidebarItemRoot,
+  ...props
+}: SidebarItemProps) {
   const Element = as;
   return <Element {...props} />;
 }
 
-function SelectableSidebarItem(props) {
+interface SelectableSidebarItem extends Omit<SidebarItemProps, "as"> {
+  isSelected: boolean;
+}
+
+function SelectableSidebarItem(props: SelectableSidebarItem) {
   return <SidebarItem {...props} as={SelectableSidebarItemRoot} />;
 }
 
