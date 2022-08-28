@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { createAction } from "metabase/lib/redux";
 import { EmittersApi } from "metabase/services";
 import { addUndo } from "metabase/redux/undo";
 
@@ -21,6 +22,18 @@ import { DashboardWithCards, DashCard } from "metabase-types/types/Dashboard";
 import { fetchCardData } from "./actions";
 import { getCardData } from "../selectors";
 import { isVirtualDashCard } from "../utils";
+
+export const OPEN_ACTION_PARAMETERS_MODAL =
+  "metabase/data-app/OPEN_ACTION_PARAMETERS_MODAL";
+export const openActionParametersModal = createAction(
+  OPEN_ACTION_PARAMETERS_MODAL,
+);
+
+export const CLOSE_ACTION_PARAMETERS_MODAL =
+  "metabase/data-app/CLOSE_ACTION_PARAMETERS_MODAL";
+export const closeActionParametersModal = createAction(
+  CLOSE_ACTION_PARAMETERS_MODAL,
+);
 
 export type InsertRowFromDataAppPayload = InsertRowPayload & {
   dashCard: DashCard;
