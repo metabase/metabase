@@ -41,11 +41,13 @@
   The gtap-attributes is a list with 2 elements:
   1. card-id - for GTAP that use a saved question
   2. a map:
-    - with key is the user-attribute that applied to the table that `field` is in
-    - value is the user-attribute of current user corresponding to the key
+    if query is mbql query:
+      - with key is the user-attribute that applied to the table that `field` is in
+      - value is the user-attribute of current user corresponding to the key
+    for native query, this map will be the login-attributes of user
 
   For example we have an GTAP rules
-  {:card_id              1
+  {:card_id              1 ;; a mbql query
    :attribute_remappings {\"State\" [:dimension [:field 3 nil]]}}
 
   And users with login-attributes {\"State\" \"CA\"}
