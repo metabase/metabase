@@ -80,6 +80,12 @@ import {
   getDatasetQueryParams,
 } from "../utils";
 
+import {
+  ADD_CARD_TO_DASH,
+  setDashboardAttributes,
+  setDashCardAttributes,
+  updateDashcardId,
+} from "./core";
 import { setSidebar, closeSidebar } from "./ui";
 
 const DATASET_SLOW_TIMEOUT = 15 * 1000;
@@ -101,22 +107,6 @@ export const SET_EDITING_DASHBOARD = "metabase/dashboard/SET_EDITING_DASHBOARD";
 export const FETCH_DASHBOARD = "metabase/dashboard/FETCH_DASHBOARD";
 export const SAVE_DASHBOARD_AND_CARDS =
   "metabase/dashboard/SAVE_DASHBOARD_AND_CARDS";
-export const SET_DASHBOARD_ATTRIBUTES =
-  "metabase/dashboard/SET_DASHBOARD_ATTRIBUTES";
-
-export const ADD_CARD_TO_DASH = "metabase/dashboard/ADD_CARD_TO_DASH";
-export const REMOVE_CARD_FROM_DASH = "metabase/dashboard/REMOVE_CARD_FROM_DASH";
-export const SET_DASHCARD_ATTRIBUTES =
-  "metabase/dashboard/SET_DASHCARD_ATTRIBUTES";
-export const SET_MULTIPLE_DASHCARD_ATTRIBUTES =
-  "metabase/dashboard/SET_MULTIPLE_DASHCARD_ATTRIBUTES";
-export const UPDATE_DASHCARD_VISUALIZATION_SETTINGS =
-  "metabase/dashboard/UPDATE_DASHCARD_VISUALIZATION_SETTINGS";
-export const UPDATE_DASHCARD_VISUALIZATION_SETTINGS_FOR_COLUMN =
-  "metabase/dashboard/UPDATE_DASHCARD_VISUALIZATION_SETTINGS_FOR_COLUMN";
-export const REPLACE_ALL_DASHCARD_VISUALIZATION_SETTINGS =
-  "metabase/dashboard/REPLACE_ALL_DASHCARD_VISUALIZATION_SETTINGS";
-export const UPDATE_DASHCARD_ID = "metabase/dashboard/UPDATE_DASHCARD_ID";
 
 export const FETCH_DASHBOARD_CARD_DATA =
   "metabase/dashboard/FETCH_DASHBOARD_CARD_DATA";
@@ -217,12 +207,6 @@ export const openAddQuestionSidebar = () => dispatch => {
 export const markNewCardSeen = createAction(MARK_NEW_CARD_SEEN);
 export const showAddParameterPopover = createAction(SHOW_ADD_PARAMETER_POPOVER);
 export const hideAddParameterPopover = createAction(HIDE_ADD_PARAMETER_POPOVER);
-// these operations don't get saved to server immediately
-export const setDashboardAttributes = createAction(SET_DASHBOARD_ATTRIBUTES);
-export const setDashCardAttributes = createAction(SET_DASHCARD_ATTRIBUTES);
-export const setMultipleDashCardAttributes = createAction(
-  SET_MULTIPLE_DASHCARD_ATTRIBUTES,
-);
 
 function generateTemporaryDashcardId() {
   return Math.random();
@@ -492,13 +476,6 @@ export const saveDashboardAndCards = createThunkAction(
       dispatch(fetchDashboard(dashboard.id, null)); // disable using query parameters when saving
     };
   },
-);
-
-export const removeCardFromDashboard = createAction(REMOVE_CARD_FROM_DASH);
-
-const updateDashcardId = createAction(
-  UPDATE_DASHCARD_ID,
-  (oldDashcardId, newDashcardId) => ({ oldDashcardId, newDashcardId }),
 );
 
 export const clearCardData = createAction(
@@ -862,19 +839,6 @@ export const UPDATE_EMBEDDING_PARAMS =
 export const updateEmbeddingParams = createAction(
   UPDATE_EMBEDDING_PARAMS,
   ({ id }, embedding_params) => DashboardApi.update({ id, embedding_params }),
-);
-
-export const onUpdateDashCardVisualizationSettings = createAction(
-  UPDATE_DASHCARD_VISUALIZATION_SETTINGS,
-  (id, settings) => ({ id, settings }),
-);
-export const onUpdateDashCardColumnSettings = createAction(
-  UPDATE_DASHCARD_VISUALIZATION_SETTINGS_FOR_COLUMN,
-  (id, column, settings) => ({ id, column, settings }),
-);
-export const onReplaceAllDashCardVisualizationSettings = createAction(
-  REPLACE_ALL_DASHCARD_VISUALIZATION_SETTINGS,
-  (id, settings) => ({ id, settings }),
 );
 
 export const setParameterMapping = createThunkAction(
