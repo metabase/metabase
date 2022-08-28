@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { assoc, assocIn, dissocIn, getIn } from "icepick";
 import _ from "underscore";
 
@@ -62,7 +61,7 @@ import {
   getLoadingDashCards,
   getDashboardParameterValuesCache,
   getParameters,
-} from "./selectors";
+} from "../selectors";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 import {
@@ -79,7 +78,7 @@ import {
   getDashboardType,
   fetchDataOrError,
   getDatasetQueryParams,
-} from "./utils";
+} from "../utils";
 
 const DATASET_SLOW_TIMEOUT = 15 * 1000;
 

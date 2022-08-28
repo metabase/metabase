@@ -19,8 +19,8 @@ import {
 import { DashboardWithCards, DashCard } from "metabase-types/types/Dashboard";
 
 import { fetchCardData } from "./actions";
-import { getCardData } from "./selectors";
-import { isVirtualDashCard } from "./utils";
+import { getCardData } from "../selectors";
+import { isVirtualDashCard } from "../utils";
 
 export type InsertRowFromDataAppPayload = InsertRowPayload & {
   dashCard: DashCard;
