@@ -5,7 +5,7 @@ const os = require("os");
 const path = require("path");
 const { spawn } = require("child_process");
 
-const fetch = require("isomorphic-fetch");
+const fetch = require("node-fetch");
 
 const CypressBackend = {
   createServer(port = 4000) {

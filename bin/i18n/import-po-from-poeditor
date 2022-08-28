@@ -9,7 +9,7 @@
 const fs = require("fs");
 const fsp = fs.promises;
 const https = require("https");
-const fetch = require("isomorphic-fetch");
+const fetch = require("node-fetch");
 const url = require("url");
 
 const POEDITOR_API_TOKEN = process.env["POEDITOR_API_TOKEN"];
@@ -25,7 +25,9 @@ async function main(args) {
   const other = [];
 
   // list available languages
-  const { result: { languages } } = await poeditor("languages/list");
+  const {
+    result: { languages },
+  } = await poeditor("languages/list");
   for (const language of languages) {
     const code = (aliases[language.code] || language.code)
       // use "zh-TW" rather than "zh-tw"
@@ -35,7 +37,9 @@ async function main(args) {
       wanted.delete(code);
       console.log(`Downloading: ${code}  (${language.percentage}%)`);
       // start an export
-      const { result: { url } } = await poeditor("projects/export", {
+      const {
+        result: { url },
+      } = await poeditor("projects/export", {
         language: language.code,
         type: "po",
       });
