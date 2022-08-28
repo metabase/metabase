@@ -80,6 +80,8 @@ import {
   getDatasetQueryParams,
 } from "../utils";
 
+import { setSidebar, closeSidebar } from "./ui";
+
 const DATASET_SLOW_TIMEOUT = 15 * 1000;
 
 // normalizr schemas
@@ -148,9 +150,6 @@ export const HIDE_ADD_PARAMETER_POPOVER =
 export const FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE =
   "metabase/dashboard/FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE";
 
-export const SET_SIDEBAR = "metabase/dashboard/SET_SIDEBAR";
-export const CLOSE_SIDEBAR = "metabase/dashboard/CLOSE_SIDEBAR";
-
 export const SET_SHOW_LOADING_COMPLETE_FAVICON =
   "metabase/dashboard/SET_SHOW_LOADING_COMPLETE_FAVICON";
 export const SET_DOCUMENT_TITLE = "metabase/dashboard/SET_DOCUMENT_TITLE";
@@ -162,9 +161,6 @@ export const SET_LOADING_DASHCARDS_COMPLETE =
 export const initialize = createAction(INITIALIZE);
 export const reset = createAction(RESET);
 export const setEditingDashboard = createAction(SET_EDITING_DASHBOARD);
-
-export const setSidebar = createAction(SET_SIDEBAR);
-export const closeSidebar = createAction(CLOSE_SIDEBAR);
 
 export const setShowLoadingCompleteFavicon = createAction(
   SET_SHOW_LOADING_COMPLETE_FAVICON,
