@@ -487,9 +487,9 @@
                                              (count card-columns))
                                           limit)
                                      2))]
-    (->> (concat (map #(vector :table %) (take max-tables-count tables))
-                 (map #(vector :field %) fields)
-                 (map #(vector :card-column %) card-columns))
+    (->> (concat (map #(vector :card-column %) card-columns)
+                 (map #(vector :table %) (take max-tables-count tables))
+                 (map #(vector :field %) fields))
          (map format-autocomplete-result)
          distinct
          (take limit))))
