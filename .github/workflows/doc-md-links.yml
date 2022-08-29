@@ -7,5 +7,5 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@master
-      - uses: gaurav-nelson/github-action-markdown-link-check@v1
-        run: 'find docs -name \*.md -print0 | xargs -0 -n1 markdown-link-check'
+      - name: Lint docs
+        run: yarn run doc-lint-links

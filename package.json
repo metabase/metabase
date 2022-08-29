@@ -315,7 +315,8 @@
     "prepare": "husky install",
     "storybook": "start-storybook -p 6006",
     "build-storybook": "build-storybook",
-    "chromatic": "chromatic"
+    "chromatic": "chromatic",
+    "doc-lint-links": "find docs -name *.md -print0 | xargs -0 -n1 markdown-link-check"
   },
   "lint-staged": {
     "+(enterprise|frontend)/**/*.css": [
