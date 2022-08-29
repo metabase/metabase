@@ -62,12 +62,12 @@ export default class DimensionList extends Component {
 
   itemIsSelected = item => {
     const dimensions = this.getDimensions();
-    const { dimension } = item;
     return (
       item.dimension &&
-      _.any(dimensions, dimensionEntry => {
-        // sometimes `dimension` has a join-alias and `d` doesn't -- with/without is equivalent in this scenario
-        return dimensionEntry.isSameBaseDimension(dimension.withoutJoinAlias());
+      _.any(dimensions, dimension => {
+        // sometimes `item.dimension` has a join-alias and `dimension` doesn't
+        // with/without is equivalent in this scenario
+        return dimension.isSameBaseDimension(item.dimension.withoutJoinAlias());
       })
     );
   };
