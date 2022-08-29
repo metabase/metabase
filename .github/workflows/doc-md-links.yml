@@ -7,5 +7,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@master
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
       - name: Lint docs
         run: yarn run doc-lint-links
