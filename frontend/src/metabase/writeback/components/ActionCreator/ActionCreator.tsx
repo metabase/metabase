@@ -3,16 +3,19 @@ import { t } from "ttag";
 import { connect } from "react-redux";
 
 import { getMetadata } from "metabase/selectors/metadata";
+import Actions from "metabase/entities/actions";
+
 import type NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import type { State } from "metabase-types/store";
 import type Question from "metabase-lib/lib/Question";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
+import type { WritebackAction } from "metabase/writeback/types";
 
-import SaveActionModal from "./SaveActionModal";
+import Modal from "metabase/components/Modal";
+
 import { ActionCreatorHeader } from "./ActionCreatorHeader";
 import { QueryActionEditor } from "./QueryActionEditor";
 import { FormCreator } from "./FormCreator";
-
 import {
   ActionCreatorRoot,
   ActionCreatorBodyContainer,
@@ -29,7 +32,7 @@ function ActionCreatorComponent({
   question: passedQuestion,
 }: {
   metadata: Metadata;
-  question?: Question;
+  question: Question;
 }) {
   const [question, setQuestion] = useState(
     passedQuestion ?? newQuestion(metadata),
@@ -46,6 +49,13 @@ function ActionCreatorComponent({
 
   const query = question.query() as NativeQuery;
 
+  const afterSave = (action: WritebackAction) => {
+    setQuestion(
+      question.setDisplayName(action.name).setDescription(action.description),
+    );
+    setTimeout(() => setShowSaveModal(false), 1000);
+  };
+
   return (
     <ActionCreatorRoot>
       <ActionCreatorHeader
@@ -60,10 +70,19 @@ function ActionCreatorComponent({
         <FormCreator tags={query?.templateTagsWithoutSnippets()} />
       </ActionCreatorBodyContainer>
       {showSaveModal && (
-        <SaveActionModal
-          question={question}
-          onClose={() => setShowSaveModal(false)}
-        />
+        <Modal>
+          <Actions.ModalForm
+            form={Actions.forms.saveForm}
+            action={{
+              name: question.displayName(),
+              description: question.description(),
+              collection_id: question.collectionId(),
+              question,
+            }}
+            onSaved={afterSave}
+            onClose={() => setShowSaveModal(false)}
+          />
+        </Modal>
       )}
     </ActionCreatorRoot>
   );
