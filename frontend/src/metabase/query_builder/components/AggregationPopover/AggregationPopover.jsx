@@ -149,7 +149,10 @@ export default class AggregationPopover extends Component {
       aggregationOperators ||
       dimension?.aggregationOperators() ||
       query.table().aggregationOperators()
-    ).filter(aggregation => showRawData || aggregation.short !== "rows");
+    ).filter(
+      aggregationOperator =>
+        showRawData || aggregationOperator.short !== "rows",
+    );
   }
 
   itemIsSelected(item) {
@@ -187,7 +190,7 @@ export default class AggregationPopover extends Component {
     const { alwaysExpanded, dimension, showCustom } = this.props;
     const sections = [];
 
-    const maybeOveriddenShowCustomProp =
+    const maybeOverriddenShowCustomProp =
       dimension || !table.database.hasFeature("expression-aggregations")
         ? false
         : showCustom;
@@ -225,7 +228,7 @@ export default class AggregationPopover extends Component {
       sections.reverse();
     }
 
-    if (maybeOveriddenShowCustomProp) {
+    if (maybeOverriddenShowCustomProp) {
       // add "custom" as it's own section
       sections.push({
         name: CUSTOM_SECTION_NAME,
@@ -282,13 +285,13 @@ export default class AggregationPopover extends Component {
 
   getMetrics(table, selectedAggregation) {
     const { dimension, showMetrics } = this.props;
-    const maybeOveriddenShowMetrics = dimension ? false : showMetrics;
+    const maybeOverriddenShowMetrics = dimension ? false : showMetrics;
 
     // we only want to consider active metrics, with the ONE exception that if the currently selected aggregation is a
     // retired metric then we include it in the list to maintain continuity
 
     const filter = metric =>
-      maybeOveriddenShowMetrics
+      maybeOverriddenShowMetrics
         ? !metric.archived ||
           (selectedAggregation && selectedAggregation.id === metric.id)
         : // GA metrics are more like columns, so they should be displayed even when showMetrics is false
