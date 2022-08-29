@@ -7,6 +7,7 @@
             [clojure.string :as str]
             [clojure.test :refer :all]
             [medley.core :as m]
+            [metabase.api.dataset :as api.dataset]
             [metabase.api.pivots :as api.pivots]
             [metabase.driver :as driver]
             [metabase.http-client :as client]
@@ -106,6 +107,29 @@
                   :started_at   true
                   :running_time true}
                  (format-response (most-recent-query-execution-for-query query)))))))))
+
+(deftest override-metadata-query-test
+  (testing "POST /api/dataset"
+    (testing "when running a query with `:dataset-metadata`, make sure the end columns metadata get combined with it (#22517)"
+      (let [dataset-metadata [{:name          "ID"
+                               :display_name  "VENUES ID CAPITALIZED"
+                               :description   "normal venues id but capitalized"
+                               :semantic_type "type/FK" ;; originally is type/PK
+                               :base_type     "type/BigInteger"
+                               :field_ref     ["field" (mt/id :venues :id) nil]}]
+            query            (assoc (mt/mbql-query venues {:fields [$id]})
+                                    :dataset-metadata dataset-metadata)]
+        (is (= dataset-metadata
+               (->> (mt/user-http-request :rasta :post 202 "dataset" query)
+                    mt/cols
+                    (map #(select-keys % [:name :display_name :description :base_type :field_ref :semantic_type])))))
+
+        (testing "We shouldn't keep the dataset-metadata inside query when running it"
+          (let [run-query-async api.dataset/run-query-async]
+            (with-redefs [api.dataset/run-query-async (fn [query & opts]
+                                                        (assert (nil? (:dataset-metadata query)))
+                                                        (run-query-async query opts))]
+              (mt/user-http-request :rasta :post 202 "dataset" query))))))))
 
 (deftest failure-test
   ;; clear out recent query executions!

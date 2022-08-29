@@ -19,8 +19,8 @@
             [metabase.query-processor.pivot :as qp.pivot]
             [metabase.query-processor.streaming :as qp.streaming]
             [metabase.query-processor.util :as qp.util]
-            [metabase.sync.analyze.query-results :as qr]
             [metabase.shared.models.visualization-settings :as mb.viz]
+            [metabase.sync.analyze.query-results :as qr]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
             [metabase.util.schema :as su]
@@ -40,7 +40,8 @@
     (api/read-check Card source-card-id)
     source-card-id))
 
-(defn- run-query-async
+(defn run-query-async
+  "Run a query asynchronously."
   [{:keys [database], :as query}
    & {:keys [dataset-metadata context export-format qp-runner]
       :or   {dataset-metadata nil
@@ -76,7 +77,8 @@
 
 (api/defendpoint ^:streaming POST "/"
   "Execute a query and retrieve the results in the usual format.
-  Optional passing `dataset-metadata` to override the metadata returned by running the query."
+
+  Optionally passing `dataset-metadata` to blend an user edits metadata with the runtime computed metadata."
   [:as {{:keys [database dataset-metadata] :as query} :body}]
   {database         (s/maybe s/Int)
    dataset-metadata (s/maybe qr/ResultsMetadata)}
