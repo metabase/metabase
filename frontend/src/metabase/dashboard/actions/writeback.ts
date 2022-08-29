@@ -19,9 +19,9 @@ import {
 
 import { DashboardWithCards, DashCard } from "metabase-types/types/Dashboard";
 
-import { fetchCardData } from "./actions";
 import { getCardData } from "../selectors";
 import { isVirtualDashCard } from "../utils";
+import { fetchCardData } from "./data-fetching";
 
 export const OPEN_ACTION_PARAMETERS_MODAL =
   "metabase/data-app/OPEN_ACTION_PARAMETERS_MODAL";

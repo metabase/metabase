@@ -1,5 +1,14 @@
 import { createAction } from "metabase/lib/redux";
 
+export const INITIALIZE = "metabase/dashboard/INITIALIZE";
+export const initialize = createAction(INITIALIZE);
+
+export const RESET = "metabase/dashboard/RESET";
+export const reset = createAction(RESET);
+
+export const SET_EDITING_DASHBOARD = "metabase/dashboard/SET_EDITING_DASHBOARD";
+export const setEditingDashboard = createAction(SET_EDITING_DASHBOARD);
+
 export const SET_DASHBOARD_ATTRIBUTES =
   "metabase/dashboard/SET_DASHBOARD_ATTRIBUTES";
 export const setDashboardAttributes = createAction(SET_DASHBOARD_ATTRIBUTES);

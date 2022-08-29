@@ -1,57 +1,17 @@
 import _ from "underscore";
 
-import { createAction, createThunkAction } from "metabase/lib/redux";
+import { createAction } from "metabase/lib/redux";
 
 import Questions from "metabase/entities/questions";
-
-import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
 import { createCard } from "metabase/lib/card";
 
 import { ADD_CARD_TO_DASH } from "./core";
-import {
-  fetchDashboard,
-  fetchDashboardCardData,
-  fetchCardData,
-} from "./data-fetching";
+import { fetchCardData } from "./data-fetching";
 import { loadMetadataForDashboard } from "./metadata";
-import { setSidebar, closeSidebar } from "./ui";
-
-// action constants
-
-export const INITIALIZE = "metabase/dashboard/INITIALIZE";
-export const RESET = "metabase/dashboard/RESET";
-
-export const SET_EDITING_DASHBOARD = "metabase/dashboard/SET_EDITING_DASHBOARD";
 
 export const MARK_NEW_CARD_SEEN = "metabase/dashboard/MARK_NEW_CARD_SEEN";
-
-export const initialize = createAction(INITIALIZE);
-export const reset = createAction(RESET);
-export const setEditingDashboard = createAction(SET_EDITING_DASHBOARD);
-
-export const showClickBehaviorSidebar = dashcardId => dispatch => {
-  if (dashcardId != null) {
-    dispatch(
-      setSidebar({
-        name: SIDEBAR_NAME.clickBehavior,
-        props: { dashcardId },
-      }),
-    );
-  } else {
-    dispatch(closeSidebar());
-  }
-};
-
-export const openAddQuestionSidebar = () => dispatch => {
-  dispatch(
-    setSidebar({
-      name: SIDEBAR_NAME.addQuestion,
-    }),
-  );
-};
-
 export const markNewCardSeen = createAction(MARK_NEW_CARD_SEEN);
 
 function generateTemporaryDashcardId() {
@@ -144,15 +104,3 @@ export const addActionButtonDashCardToDashboard = ({ dashId }) => {
     dashcardOverrides: dashcardOverrides,
   });
 };
-
-export const REVERT_TO_REVISION = "metabase/dashboard/REVERT_TO_REVISION";
-export const revertToRevision = createThunkAction(
-  REVERT_TO_REVISION,
-  revision => {
-    return async dispatch => {
-      await revision.revert();
-      await dispatch(fetchDashboard(revision.model_id, null));
-      await dispatch(fetchDashboardCardData({ reload: false, clear: true }));
-    };
-  },
-);
