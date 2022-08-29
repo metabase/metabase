@@ -16,11 +16,6 @@
   justify-content: center;
 }
 
-:local .Donut {
-  flex: 1;
-  height: 100%;
-}
-
 :local .Detail {
   display: flex;
   flex-direction: column;
