@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
-import cx from "classnames";
 import _ from "underscore";
 import { keyForColumn } from "metabase/lib/dataset";
 import ChartSettingSelect from "./ChartSettingSelect";
@@ -28,7 +27,7 @@ const ChartSettingFieldPicker = ({
     }
   }
   return (
-    <ChartSettingFieldPickerRoot className={cx(className)}>
+    <ChartSettingFieldPickerRoot className={className}>
       <ChartSettingSelect
         className="flex-full"
         value={value}
@@ -52,11 +51,13 @@ const ChartSettingFieldPicker = ({
           }}
         />
       )}
-      <SettingsIcon
-        data-testid={`remove-${value}`}
-        name="close"
-        onClick={onRemove}
-      />
+      {onRemove && (
+        <SettingsIcon
+          data-testid={`remove-${value}`}
+          name="close"
+          onClick={onRemove}
+        />
+      )}
     </ChartSettingFieldPickerRoot>
   );
 };

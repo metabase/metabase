@@ -34,8 +34,6 @@ export const SettingsIcon = styled(Icon)`
   cursor: pointer;
   visibility: ${props => (props.onClick ? "visible" : "hidden")};
 
-  display: ${props => (props.onClick ? "block" : "none")};
-
   &:hover {
     color: ${color("brand")};
   }
