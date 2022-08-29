@@ -5,7 +5,7 @@ import React, {
   HTMLAttributes,
   Ref,
   useCallback,
-  useLayoutEffect,
+  useEffect,
   useState,
   useRef,
 } from "react";
@@ -48,7 +48,7 @@ const EditableText = forwardRef(function EditableText(
   const submitOnBlur = useRef(true);
   const previousInitialValue = usePrevious(initialValue);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (initialValue && initialValue !== previousInitialValue) {
       setInputValue(initialValue);
     }
