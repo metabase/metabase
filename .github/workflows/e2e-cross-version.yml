@@ -1,7 +1,6 @@
 name: E2E Cross-version Tests
 
 on:
-  push:
   schedule:
     - cron: '0 9 * * 0'
 
@@ -90,7 +89,7 @@ jobs:
           --spec frontend/test/metabase/scenarios/cross-version/target/**/*.cy.spec.js
     - name: Upload Cypress Artifacts upon failure
       uses: actions/upload-artifact@v2
-      if: always()
+      if: failure()
       with:
         name: cypress-artifacts-${{ matrix.version.source}}-to-${{ matrix.version.target }}
         path: |
