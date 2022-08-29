@@ -23,7 +23,7 @@ type Props = {
     startMoment: Moment,
     endMoment?: Moment | null,
   ) => void;
-  onDateClick?: (date: string, dateMoment: Moment) => void;
+  onChangeDate?: (date: string, dateMoment: Moment) => void;
   isRangePicker?: boolean;
   primaryColor?: string;
 };
@@ -98,7 +98,7 @@ export default class Calendar extends Component<Props, State> {
       }
     }
 
-    this.props.onDateClick?.(date.format("YYYY-MM-DD"), date);
+    this.props.onChangeDate?.(date.format("YYYY-MM-DD"), date);
   };
 
   previous = () => {

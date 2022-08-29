@@ -100,7 +100,7 @@ export const BetweenPicker = ({
           initial={endValue}
           selected={startValue && moment(startValue)}
           selectedEnd={endValue && moment(endValue)}
-          onDateClick={handleDateClick}
+          onChangeDate={handleDateClick}
         />
       </div>
     </div>
