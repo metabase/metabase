@@ -136,8 +136,8 @@ const MetadataTable = ({
       </div>
       {!isSynced && (
         <TableSyncMessage>
-          {t`This table was omitted during the database sync process.`}{" "}
-          {t`Make it Queryable to scan its fields for the first time.`}
+          {t`The table was hidden during the initial sync.`}{" "}
+          {t`You need to make it Queryable so we can sync this table and its columns.`}
         </TableSyncMessage>
       )}
       <div className="mx1 border-bottom">
