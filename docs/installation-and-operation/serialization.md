@@ -61,8 +61,6 @@ The `--on-error` flag allows you to specify whether the load process should keep
 
 Both of these flags are optional.
 
----
-
-To learn more, check out [Serialization: preloading dashboards in a new Metabase instance](https://www.metabase.com/blog/serialization/index.html).
+To learn more, check out [Serialization: preloading dashboards in a new Metabase instance](https://www.metabase.com/learn/administration/serialization).
 
 Still need help? Feel free to reach out to us at [support@metabase.com](mailto:support@metabase.com).

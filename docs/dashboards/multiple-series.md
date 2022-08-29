@@ -97,4 +97,4 @@ Now go forth and start letting your data get to know each other!
 
 ## Further reading
 
-- [Time series comparisons](https://www.metabase.com/blog/Time-Series-Comparisons/index.html).
+- [Time series comparisons](https://www.metabase.com/learn/questions/time-series-comparisons)

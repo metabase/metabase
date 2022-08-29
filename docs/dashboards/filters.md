@@ -10,7 +10,7 @@ redirect_from:
 
 Have you ever found yourself in a situation where it seems like you need to create nearly identical copies of the same dashboard, with just one different variable? Maybe you have an Earnings dashboard, but you want to see the data for each city your business is in, or maybe you have a KPI dashboard that you want to see broken out by month.
 
-Instead of creating duplicate dashboards, you can use dashboard filters to create simple toggles to change a variable for cards on a dashboard.
+Instead of creating duplicate dashboards, you can add filter widgets to let people change variables for cards on a dashboard.
 
 ## Adding a new filter
 
