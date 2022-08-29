@@ -106,6 +106,7 @@ export function isNestedFieldName(name) {
 }
 
 export function getMaybeNestedValue(obj, fieldName) {
-  const isNestedField = fieldName.includes(".");
-  return isNestedField ? getIn(obj, fieldName.split(".")) : obj[fieldName];
+  return isNestedFieldName(fieldName)
+    ? getIn(obj, fieldName.split("."))
+    : obj[fieldName];
 }
