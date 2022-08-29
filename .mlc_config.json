@@ -1,9 +1,4 @@
 {
-  "ignorePatterns": [
-    {
-        "pattern": "\{\{.*\}\}"
-    }
-  ],
   "timeout": "20s",
   "retryOn429": true,
   "retryCount": 5,
