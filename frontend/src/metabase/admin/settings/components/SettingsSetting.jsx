@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { assocIn } from "icepick";
 
 import SettingHeader from "./SettingHeader";
 import { t } from "ttag";
@@ -26,14 +25,17 @@ const SETTING_WIDGET_MAP = {
   text: SettingText,
 };
 
-const updatePlaceholderForEnvironmentVars = props => {
+const updatePropsForEnvironmentVars = props => {
   if (props && props.setting && props.setting.is_env_setting) {
-    return assocIn(
-      props,
-      ["setting", "placeholder"],
-      t`Using ` + props.setting.env_name,
-    );
+    return {
+      setting: {
+        ...props.setting,
+        placeholder: t`Using ` + props.setting.env_name,
+      },
+      disabled: true,
+    };
   }
+
   return props;
 };
 
@@ -63,7 +65,7 @@ export default class SettingsSetting extends Component {
     const widgetProps = {
       ...setting.getProps?.(setting),
       ...setting.props,
-      ...updatePlaceholderForEnvironmentVars(this.props),
+      ...updatePropsForEnvironmentVars(this.props),
     };
 
     return (
