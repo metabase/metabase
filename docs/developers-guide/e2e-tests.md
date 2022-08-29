@@ -71,6 +71,10 @@ One great feature of Cypress is that you can use the Chrome inspector after each
 ### Putting the wrong HTML template in the Uberjar
 `yarn build` and `yarn build-hot` each overwrite an HTML template to reference the correct Javascript files. If you run `yarn build` before building an Uberjar for Cypress tests, you won’t see changes to your Javascript reflected even if you then start `yarn build-hot`.
 
+### Running Cypress on M1 machines
+
+You might run into problems when running Cypress on M1 machine.
+This is caused by the `@bahmutov/cypress-esbuild-preprocessor` that is using `esbuild` as a dependency. The error might look [like this](https://github.com/evanw/esbuild/issues/1819#issuecomment-1018771557). [The solution](https://github.com/evanw/esbuild/issues/1819#issuecomment-1080720203) is to install NodeJS using one of the Node version managers like [nvm](https://github.com/nvm-sh/nvm) or [n](https://github.com/tj/n).
 
 ## DB Snapshots
 
