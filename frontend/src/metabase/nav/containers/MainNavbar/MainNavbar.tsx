@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
+import { LocationDescriptor } from "history";
 
 import * as Urls from "metabase/lib/urls";
 import { closeNavbar, openNavbar } from "metabase/redux/app";
@@ -30,7 +31,10 @@ interface StateProps {
   dashboard?: Dashboard;
 }
 
-type Props = MainNavbarProps & StateProps;
+type Props = MainNavbarProps &
+  StateProps & {
+    onChangeLocation: (location: LocationDescriptor) => void;
+  };
 
 function mapStateToProps(state: State) {
   return {
