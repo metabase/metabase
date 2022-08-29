@@ -1,0 +1,17 @@
+name: Check Markdown links
+
+on:
+  push:
+    paths:
+      - docs/**
+jobs:
+  markdown-link-check:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@master
+      - uses: gaurav-nelson/github-action-markdown-link-check@v1
+    with:
+      use-quiet-mode: "yes"
+      folder-path: "docs"
+      check-modified-files-only: "yes"
+      config-file: ".mlc_config.json"
