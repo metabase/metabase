@@ -6,7 +6,7 @@ title: Permissions
 
 Metabase has a simple, but powerful permissions system.
 
-## [Permissions introduction](./introductin.md)
+## [Permissions introduction](./introduction.md)
 
 Get a lay of the permissions land.
 
