@@ -31,10 +31,11 @@ interface StateProps {
   dashboard?: Dashboard;
 }
 
-type Props = MainNavbarProps &
-  StateProps & {
-    onChangeLocation: (location: LocationDescriptor) => void;
-  };
+interface DispatchProps {
+  onChangeLocation: (location: LocationDescriptor) => void;
+}
+
+type Props = MainNavbarProps & StateProps & DispatchProps;
 
 function mapStateToProps(state: State) {
   return {
@@ -172,7 +173,7 @@ function MainNavbar({
 
 export default connect<
   StateProps,
-  MainNavbarDispatchProps,
+  MainNavbarDispatchProps & DispatchProps,
   MainNavbarOwnProps,
   State
 >(
