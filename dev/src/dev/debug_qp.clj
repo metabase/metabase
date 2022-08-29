@@ -191,7 +191,7 @@
                                        :function-symbol nil
                                        :class-delimiter nil
                                        :class-name      nil}}))
-  (println ""))
+  (println))
 
 (defn- debug-query-changes [middleware-var middleware]
   (fn [next-middleware]
