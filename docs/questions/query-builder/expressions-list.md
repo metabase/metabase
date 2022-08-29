@@ -466,6 +466,6 @@ Additionally, **Presto** only provides _approximate_ results for `Median` and `P
 
 If you're using or maintaining a third-party database driver, please [refer to the wiki](https://github.com/metabase/metabase/wiki/What's-new-in-0.35.0-for-Metabase-driver-authors) to see how your driver might be impacted.
 
-See [Custom expressions in the notebook editor](https://www.metabase.com/blog/custom-expressions/index.html) to learn more.
+See [Custom expressions in the notebook editor](https://www.metabase.com/learn/questions/custom-expressions) to learn more.
 
 [expressions]: ./expressions.md

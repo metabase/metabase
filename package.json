@@ -225,6 +225,7 @@
     "jest-watch-typeahead": "^0.6.4",
     "jsonwebtoken": "^8.5.1",
     "lint-staged": "^12.3.2",
+    "markdown-link-check": "^3.10.2",
     "mini-css-extract-plugin": "^1.6.0",
     "mockdate": "^2.0.2",
     "mutationobserver-shim": "^0.3.7",
@@ -314,7 +315,8 @@
     "prepare": "husky install",
     "storybook": "start-storybook -p 6006",
     "build-storybook": "build-storybook",
-    "chromatic": "chromatic"
+    "chromatic": "chromatic",
+    "docs-lint-links": "find docs -type f -name '*.md' -print0 | xargs -0 markdown-link-check --quiet --config .mlc_config.json"
   },
   "lint-staged": {
     "+(enterprise|frontend)/**/*.css": [

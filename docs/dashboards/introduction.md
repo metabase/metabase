@@ -58,7 +58,7 @@ Click the **eye** icon to see what your formatted Markdown will look like when y
 
 ![Result](images/result.png)
 
-To learn more, see [Fun with Markdown in your dashboards](https://www.metabase.com/blog/markdown-in-dashboards).
+To learn more, see [Fun with Markdown in your dashboards](https://www.metabase.com/learn/dashboards/markdown).
 
 ### Including variables in text cards
 
@@ -116,9 +116,7 @@ After a while, your team might accumulate a lot of dashboards. To make it easier
 
 After you've made your ideal dashboard, you may want to put the dashboard on a TV to help keep your team up to date throughout the day.
 
-To enter fullscreen mode, click the **fullscreen** icon in the top right of the dashboard (the icon with the arrows pointing in opposite directions).
-
-Once you've entered fullscreen mode, you can also switch the dashboard into "Night mode" for higher contrast.
+To enter fullscreen mode, click the **fullscreen** icon in the top right of the dashboard (the icon with the arrows pointing in opposite directions). Once you've entered fullscreen mode, you can also switch the dashboard into "Night mode" for higher contrast.
 
 ![Night mode](images/dark-mode.png)
 
@@ -195,4 +193,4 @@ Some tips:
 - [Interactive dashboards](./interactive.md)
 - [Dashboard charts with multiple series](./multiple-series.md)
 - [Dashboard subscriptions](./subscriptions.md)
-- [Making dashboards faster](https://www.metabase.com/blog/faster-dashboards/index.html)
+- [Making dashboards faster](https://www.metabase.com/learn/administration/making-dashboards-faster)
