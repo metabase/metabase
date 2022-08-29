@@ -2,6 +2,7 @@ import Database from "metabase-lib/lib/metadata/Database";
 import Schema from "metabase-lib/lib/metadata/Schema";
 import Table from "metabase-lib/lib/metadata/Table";
 import { EntityId, PermissionSubject } from "../types";
+import { ConcreteTableId } from "metabase-types/api";
 
 export const getDatabaseEntityId = (databaseEntity: Database) => ({
   databaseId: databaseEntity.id,
@@ -15,7 +16,7 @@ export const getSchemaEntityId = (schemaEntity: Schema) => ({
 export const getTableEntityId = (tableEntity: Table) => ({
   databaseId: tableEntity.db_id,
   schemaName: tableEntity.schema_name,
-  tableId: tableEntity.id,
+  tableId: tableEntity.id as ConcreteTableId,
 });
 
 export const isTableEntityId = (entityId: Partial<EntityId>) =>

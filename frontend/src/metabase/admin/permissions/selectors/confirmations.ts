@@ -6,7 +6,7 @@ import {
   getNativePermission,
   getSchemasPermission,
 } from "metabase/admin/permissions/utils/graph";
-import { Group, GroupsPermissions } from "metabase-types/api";
+import { Group, GroupsPermissions, ConcreteTableId } from "metabase-types/api";
 import { EntityId } from "../types";
 import Database from "metabase-lib/lib/metadata/Database";
 
@@ -139,7 +139,7 @@ export function getRevokingAccessToAllTablesWarningModal(
     const allTableEntityIds = database.tables.map(table => ({
       databaseId: table.db_id,
       schemaName: table.schema_name || "",
-      tableId: table.id,
+      tableId: table.id as ConcreteTableId,
     }));
 
     // Show the warning only if user tries to revoke access to the very last table of all schemas

@@ -11,6 +11,8 @@ import { singularize } from "metabase/lib/formatting";
 import { getAggregationOperators } from "metabase/lib/schema_metadata";
 import { createLookupByProperty, memoizeClass } from "metabase-lib/lib/utils";
 import { TableId } from "metabase-types/types/Table";
+import { isVirtualCardId } from "metabase/lib/saved-questions/saved-questions";
+
 /**
  * @typedef { import("./metadata").SchemaName } SchemaName
  * @typedef { import("./metadata").EntityType } EntityType

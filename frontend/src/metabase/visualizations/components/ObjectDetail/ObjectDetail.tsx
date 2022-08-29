@@ -7,7 +7,7 @@ import { isPK } from "metabase/lib/schema_metadata";
 import Table from "metabase-lib/lib/metadata/Table";
 
 import { State } from "metabase-types/store";
-import { ForeignKey } from "metabase-types/api";
+import { ForeignKey, ConcreteTableId } from "metabase-types/api";
 import { DatasetData } from "metabase-types/types/Dataset";
 import { ObjectId, OnVisualizationClickType } from "./types";
 
@@ -15,6 +15,7 @@ import Button from "metabase/core/components/Button";
 import { NotFound } from "metabase/containers/ErrorPages";
 import { useOnMount } from "metabase/hooks/use-on-mount";
 import { usePrevious } from "metabase/hooks/use-previous";
+import { isVirtualCardId } from "metabase/lib/saved-questions";
 
 import Tables from "metabase/entities/tables";
 import {
@@ -159,8 +160,8 @@ export function ObjectDetailFn({
       return;
     }
 
-    if (table && table.fks == null) {
-      fetchTableFks(table.id);
+    if (table && table.fks == null && !isVirtualCardId(table.id)) {
+      fetchTableFks(table.id as ConcreteTableId);
     }
     // load up FK references
     if (tableForeignKeys) {

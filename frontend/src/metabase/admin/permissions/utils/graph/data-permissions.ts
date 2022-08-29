@@ -5,7 +5,7 @@ import {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_PERMISSION_VALUE,
   PLUGIN_ADVANCED_PERMISSIONS,
 } from "metabase/plugins";
-import { GroupsPermissions } from "metabase-types/api";
+import { GroupsPermissions, ConcreteTableId } from "metabase-types/api";
 import Database from "metabase-lib/lib/metadata/Database";
 import Table from "metabase-lib/lib/metadata/Table";
 import {
@@ -202,7 +202,7 @@ export function downgradeNativePermissionsIfNeeded(
 const metadataTableToTableEntityId = (table: Table) => ({
   databaseId: table.db_id,
   schemaName: table.schema_name || "",
-  tableId: table.id,
+  tableId: table.id as ConcreteTableId,
 });
 
 // TODO Atte Keinänen 6/24/17 See if this method could be simplified

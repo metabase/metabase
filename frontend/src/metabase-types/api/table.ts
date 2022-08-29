@@ -2,7 +2,10 @@ import { ForeignKey } from "./foreign-key";
 import { Database } from "./database";
 import { Field } from "./field";
 
-export type TableId = number | string; // can be string for virtual questions (e.g. "card__17")
+export type ConcreteTableId = number;
+export type VirtualTableId = string;
+
+export type TableId = ConcreteTableId | VirtualTableId; // can be string for virtual questions (e.g. "card__17")
 
 export type VisibilityType =
   | null
