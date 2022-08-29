@@ -25,12 +25,12 @@ export function startNewCard(type, databaseId, tableId) {
 
 // load a card either by ID or from a base64 serialization.  if both are present then they are merged, which the serialized version taking precedence
 // TODO: move to redux
-export async function loadCard(cardId, dispatch) {
+export async function loadCard(cardId, { dispatch, getState }) {
   try {
-    const action = await dispatch(
-      Questions.actions.fetch({ id: cardId }, { reload: true }),
-    );
-    const card = Questions.HACK_getObjectFromAction(action);
+    await dispatch(Questions.actions.fetch({ id: cardId }, { reload: true }));
+    const card = Questions.selectors.getObject(getState(), {
+      entityId: cardId,
+    });
     return card;
   } catch (error) {
     console.log("error loading card", error);
