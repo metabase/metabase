@@ -75,4 +75,4 @@ Show the Metabase lighthouse image on the home and login pages.
 
 ## Further reading
 
-- [Brand your Metabase](https://www.metabase.com/blog/white-label/index.html).
+- [Brand your Metabase](https://www.metabase.com/learn/embedding/brand)
