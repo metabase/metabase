@@ -298,7 +298,7 @@ class QuestionInner {
    * @returns boolean
    */
   isDataset() {
-    return this._card && this._card.dataset;
+    return this._card?.dataset;
   }
 
   isPersisted() {
@@ -1296,11 +1296,7 @@ class QuestionInner {
         this.metadata(),
       );
 
-      const queryWithParameters = {
-        ...query,
-        parameters,
-        "dataset-metadata": this._card.result_metadata,
-      };
+      const payload = this.buildDatasetQueryPayload(query, parameters);
 
       const ifCancelled = cancelDeferred
         ? {
@@ -1308,8 +1304,23 @@ class QuestionInner {
           }
         : {};
 
-      return endpoint(queryWithParameters, ifCancelled);
+      return endpoint(payload, ifCancelled);
     };
+  }
+
+  buildDatasetQueryPayload(query, parameters) {
+    const payload = {
+      ...query,
+      parameters,
+    };
+
+    const resultMetadata = this._card?.result_metadata;
+
+    if (this.isDataset() && resultMetadata) {
+      payload["dataset-metadata"] = resultMetadata;
+    }
+
+    return payload;
   }
 
   getUrlWithParameters(parameters, parameterValues, { objectId, clean } = {}) {
