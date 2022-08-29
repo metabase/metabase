@@ -5,8 +5,8 @@ import d3 from "d3";
 import _ from "underscore";
 import styles from "./PieChart.css";
 import { t } from "ttag";
-import ChartTooltip from "../components/ChartTooltip";
-import ChartWithLegend from "../components/ChartWithLegend";
+import ChartTooltip from "../../components/ChartTooltip";
+import ChartWithLegend from "../../components/ChartWithLegend";
 
 import {
   ChartSettingsError,
@@ -27,11 +27,13 @@ import { formatValue } from "metabase/lib/formatting";
 import { color } from "metabase/lib/colors";
 import { getColorsForValues } from "metabase/lib/colors/charts";
 
-import { Label } from "./PieChart.styled";
+import { PieArc } from "./PieArc";
 
+const SIDE_PADDING = 24;
+const MAX_LABEL_FONT_SIZE = 20;
+const MIN_LABEL_FONT_SIZE = 14;
 const MAX_PIE_SIZE = 550;
 
-const OUTER_RADIUS = 50; // within 100px canvas
 const INNER_RADIUS_RATIO = 3 / 5;
 
 const PAD_ANGLE = (Math.PI / 180) * 1; // 1 degree in radians
@@ -249,6 +251,8 @@ export default class PieChart extends Component {
       className,
       gridSize,
       settings,
+      width,
+      height,
     } = this.props;
 
     const [
@@ -316,11 +320,17 @@ export default class PieChart extends Component {
       slices.push(otherSlice);
     }
 
-    const decimals = computeMaxDecimalsForValues(
-      slices.map(s => s.percentage),
-      { style: "percent", maximumSignificantDigits: 3 },
-    );
-    const formatPercent = percent =>
+    const percentages = slices.map(s => s.percentage);
+    const legendDecimals = computeMaxDecimalsForValues(percentages, {
+      style: "percent",
+      maximumSignificantDigits: 3,
+    });
+    const labelsDecimals = computeMaxDecimalsForValues(percentages, {
+      style: "percent",
+      maximumSignificantDigits: 2,
+    });
+
+    const formatPercent = (percent, decimals) =>
       formatValue(percent, {
         column: cols[metricIndex],
         number_separators: settings.column(cols[metricIndex]).number_separators,
@@ -333,7 +343,7 @@ export default class PieChart extends Component {
     const legendTitles = slices.map(slice => [
       slice.key === "Other" ? slice.key : formatDimension(slice.key, true),
       settings["pie.show_legend_perecent"]
-        ? formatPercent(slice.percentage)
+        ? formatPercent(slice.percentage, legendDecimals)
         : undefined,
     ]);
     const legendColors = slices.map(slice => slice.color);
@@ -348,6 +358,13 @@ export default class PieChart extends Component {
       slices.push(otherSlice);
     }
 
+    const side = Math.min(Math.min(width, height) - SIDE_PADDING, MAX_PIE_SIZE);
+    const outerRadius = side / 2;
+    const labelFontSize = Math.max(
+      (MAX_LABEL_FONT_SIZE * side) / MAX_PIE_SIZE,
+      MIN_LABEL_FONT_SIZE,
+    );
+
     const pie = d3.layout
       .pie()
       .sort(null)
@@ -355,8 +372,8 @@ export default class PieChart extends Component {
       .value(d => d.value);
     const arc = d3.svg
       .arc()
-      .outerRadius(OUTER_RADIUS)
-      .innerRadius(OUTER_RADIUS * INNER_RADIUS_RATIO);
+      .outerRadius(outerRadius)
+      .innerRadius(outerRadius * INNER_RADIUS_RATIO);
 
     function hoverForIndex(index, event) {
       const slice = slices[index];
@@ -389,7 +406,7 @@ export default class PieChart extends Component {
               ? [
                   {
                     key: t`Percentage`,
-                    value: formatPercent(slice.percentage),
+                    value: formatPercent(slice.percentage, legendDecimals),
                   },
                 ]
               : [],
@@ -472,60 +489,56 @@ export default class PieChart extends Component {
           <div className={cx(styles.Chart, "layout-centered")}>
             <svg
               data-testid="pie-chart"
-              className={cx(styles.Donut, "m1")}
-              viewBox="0 0 100 100"
+              width={side}
+              height={side}
               style={{ maxWidth: MAX_PIE_SIZE, maxHeight: MAX_PIE_SIZE }}
             >
-              <g ref={this.chartGroup} transform="translate(50,50)">
+              <g
+                ref={this.chartGroup}
+                transform={`translate(${outerRadius},${outerRadius})`}
+              >
                 {pie(slices).map((slice, index) => {
                   const sliceData = slices[index];
-                  const label = formatPercent(sliceData.percentage);
+                  const label = formatPercent(
+                    sliceData.percentage,
+                    labelsDecimals,
+                  );
 
                   return (
-                    <>
-                      <path
-                        data-testid="slice"
-                        key={index}
-                        d={arc(slice)}
-                        fill={slices[index].color}
-                        opacity={
-                          hovered &&
-                          hovered.index != null &&
-                          hovered.index !== index
-                            ? 0.3
-                            : 1
-                        }
-                        onMouseMove={e =>
-                          onHoverChange &&
-                          onHoverChange(hoverForIndex(index, e))
-                        }
-                        onMouseLeave={() =>
-                          onHoverChange && onHoverChange(null)
-                        }
-                        className={cx({
-                          "cursor-pointer": getSliceIsClickable(index),
-                        })}
-                        onClick={
-                          // We use a ternary here because using
-                          // `condition && function` yields a console warning.
-                          getSliceIsClickable(index)
-                            ? e =>
-                                onVisualizationClick({
-                                  ...getSliceClickObject(index),
-                                  event: event.nativeEvent,
-                                })
-                            : undefined
-                        }
-                      />
-                      {shouldRenderLabels && (
-                        <Label
-                          dy={1}
-                          transform={`translate(${arc.centroid(slice)})`}
-                        >
-                          {label}
-                        </Label>
-                      )}
-                    </>
+                    <PieArc
+                      key={index}
+                      shouldRenderLabel={shouldRenderLabels}
+                      d3Arc={arc}
+                      slice={slice}
+                      label={label}
+                      labelFontSize={labelFontSize}
+                      fill={sliceData.color}
+                      opacity={
+                        hovered &&
+                        hovered.index != null &&
+                        hovered.index !== index
+                          ? 0.3
+                          : 1
+                      }
+                      onMouseMove={e =>
+                        onHoverChange?.(hoverForIndex(index, e))
+                      }
+                      onMouseLeave={() => onHoverChange?.(null)}
+                      className={cx({
+                        "cursor-pointer": getSliceIsClickable(index),
+                      })}
+                      onClick={
+                        // We use a ternary here because using
+                        // `condition && function` yields a console warning.
+                        getSliceIsClickable(index)
+                          ? e =>
+                              onVisualizationClick({
+                                ...getSliceClickObject(index),
+                                event: e.nativeEvent,
+                              })
+                          : undefined
+                      }
+                    />
                   );
                 })}
               </g>
