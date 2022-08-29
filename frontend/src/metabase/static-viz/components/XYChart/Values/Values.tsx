@@ -17,6 +17,7 @@ import type {
 } from "../types";
 
 const VALUES_MARGIN = 6;
+const VALUES_STROKE_MARGIN = 3;
 const FLIPPED_VALUES_MARGIN = VALUES_MARGIN + 8;
 
 interface ValuesProps {
@@ -357,7 +358,10 @@ function hasCollisions(
   const minDistanceFromOtherValues = Math.min(
     ...otherValues.map(distanceFrom(value)),
   );
-  return minDistanceFromOtherValues < MIN_SPACING || value.yPos > xAxisYPos;
+  return (
+    minDistanceFromOtherValues < MIN_SPACING ||
+    value.yPos + VALUES_STROKE_MARGIN > xAxisYPos
+  );
 }
 
 function distanceFrom(value: { yPos: number }) {
