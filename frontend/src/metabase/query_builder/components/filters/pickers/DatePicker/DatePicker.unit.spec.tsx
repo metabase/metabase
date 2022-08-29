@@ -168,7 +168,7 @@ describe("DatePicker", () => {
         render(<DatePickerStateWrapper filter={filter} />);
 
         userEvent.click(screen.getByText(new RegExp(type, "i")));
-        await screen.findByTestId(`${type}-date-picker`);
+        await screen.findAllByTestId(`${type}-date-picker`);
       });
     });
 
@@ -235,6 +235,7 @@ describe("DatePicker", () => {
             <DatePickerStateWrapper filter={filter} onChange={changeSpy} />,
           );
           userEvent.click(screen.getByText(/specific dates/i));
+          userEvent.click(screen.getByText("On"));
           await screen.findByTestId(`specific-date-picker`);
           userEvent.click(screen.getByText(new RegExp(description, "i")));
           const dateField = screen.getByText("21");
@@ -243,7 +244,7 @@ describe("DatePicker", () => {
           expect(changeSpy).toHaveBeenLastCalledWith([
             operator,
             CREATED_AT_FIELD,
-            "2020-05-21",
+            "2020-04-21",
           ]);
         });
       });
@@ -259,27 +260,27 @@ describe("DatePicker", () => {
         const dateField1 = screen.getByText("17");
         const dateField2 = screen.getByText("19");
 
-        userEvent.click(dateField1); // end range
         userEvent.click(dateField1); // begin range, clears end range
         userEvent.click(dateField2); // end range
 
         expect(changeSpy).toHaveBeenLastCalledWith([
           "between",
           CREATED_AT_FIELD,
-          "2020-05-17",
-          "2020-05-19",
+          "2020-04-17",
+          "2020-04-19",
         ]);
       });
 
       it("can navigate between months on the calendar using arrows", async () => {
         render(<DatePickerStateWrapper filter={filter} />);
         userEvent.click(screen.getByText(/specific/i));
+        userEvent.click(screen.getByText("On"));
 
+        await screen.findByText("April 2020");
+        userEvent.click(await screen.getByLabelText(/chevronright/i));
         await screen.findByText("May 2020");
         userEvent.click(await screen.getByLabelText(/chevronright/i));
         await screen.findByText("June 2020");
-        userEvent.click(await screen.getByLabelText(/chevronright/i));
-        await screen.findByText("July 2020");
       });
     });
 
