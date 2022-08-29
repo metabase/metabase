@@ -69,8 +69,7 @@
                                   :context     context
                                   :card-id     source-card-id}
                            dataset-metadata
-                           (assoc :metadata/dataset-metadata dataset-metadata))
-        query             (dissoc query :metadata)]
+                           (assoc :metadata/dataset-metadata dataset-metadata))]
     (binding [qp.perms/*card-id* source-card-id]
       (qp.streaming/streaming-response [context export-format]
         (qp-runner query info context)))))
@@ -78,7 +77,8 @@
 (api/defendpoint ^:streaming POST "/"
   "Execute a query and retrieve the results in the usual format.
 
-  Optionally passing `dataset-metadata` to blend an user edits metadata with the runtime computed metadata."
+  Optionally passing `dataset-metadata` to blend an user edits metadata with the runtime computed metadata.
+  This parameter is meant to be used for editting Models's query only."
   [:as {{:keys [database dataset-metadata] :as query} :body}]
   {database         (s/maybe s/Int)
    dataset-metadata (s/maybe qr/ResultsMetadata)}
