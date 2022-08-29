@@ -10,7 +10,7 @@ redirect_from:
 - [Connecting to supported databases](#connecting-to-supported-databases)
 - [Connecting to databases hosted by a cloud provider](#connecting-to-databases-hosted-by-a-cloud-provider)
 - [Database connection options](#database-connection-options)
-- [Database syncing and scanning](#database-syncing-and-scanning)
+- [Syncing and scanning databases](#syncing-and-scanning-databases)
 - [Deleting databases](#deleting-databases)
 - [Troubleshooting](#troubleshooting)
 
@@ -84,7 +84,7 @@ By default, Metabase will execute a query as soon as you choose an grouping opti
 
 ### Choose when Metabase syncs and scans
 
-Turn this option **ON** to manage the queries that Metabase uses to stay up to date with your database. For more information, see [Database syncing and scanning](#database-syncing-and-scanning).
+Turn this option **ON** to manage the queries that Metabase uses to stay up to date with your database. For more information, see [Syncing and scanning databases](#syncing-and-scanning-databases).
 
 ### Scheduling database syncs
 
@@ -109,7 +109,7 @@ Turn this option **ON** from **Advanced options** to scan a _sample_ of values e
 
 A fingerprinting query examines the first 10,000 rows from each column and uses that data to guesstimate how many unique values each column has, what the minimum and maximum values are for numeric and timestamp columns, and so on. If you turn this option **OFF**, Metabase will only fingerprint your columns once during setup.
 
-## Database syncing and scanning
+## Syncing and scanning databases
 
 Metabase runs sync and scan queries in order to show tables and columns, populate dropdown menus with the right values, and suggest helpful visualizations. Metabase does _not_ copy any data from your database---it only maintains lists of the tables and columns.
 
@@ -125,7 +125,7 @@ A Metabase **scan** query caches the column _values_ for filter dropdowns by loo
 
 When Metabase first connects to your database, it performs a **scan** to determine the metadata of the columns in your tables and automatically assign each column a [semantic type]().
 
-During the scan, Metabase also takes a sample of each table to look for URLs, JSON, encoded strings, etc. You can map table and column metadata to new values from **Admin settings** > **Data model**. For more on editing metadata, check out [the Data Model page: editing metadata](../data-modeling/metadata-editing.html).
+During the scan, Metabase also takes a sample of each table to look for URLs, JSON, encoded strings, etc. You can map table and column metadata to new values from **Admin settings** > **Data model**. For more on editing metadata, check out [the Data Model page: editing metadata](../data-modeling/metadata-editing.md).
 
 ### Manually syncing table and column names
 
@@ -152,7 +152,7 @@ To scan values from a specific column:
 
 ### Clearing cached values
 
-To forget the data that Metabase has stored from previous [database scans](#database-syncing-and-scanning):
+To forget the data that Metabase has stored from previous [database scans](#syncing-and-scanning-databases):
 
 1. Go to **Admin settings** > **Data model** > your database.
 2. Select the table.
@@ -179,6 +179,6 @@ Go to **Admin settings** > **Databases** > your database and click **Remove this
 
 ## Further reading
 
-- [Metadata editing](../data-modeling/metadata-editing.html).
-- [Setting data access permissions](../administration-guide/05-setting-permissions.html).
+- [Metadata editing](../data-modeling/metadata-editing.md).
+- [Setting data access permissions](../administration-guide/05-setting-permissions.md).
 - [Metabase at scale](https://www.metabase.com/learn/administration/metabase-at-scale).

@@ -6,7 +6,7 @@ redirect_from:
 
 # Partner and community drivers
 
-In addition to our [Officially supported drivers](../databases/connecting.md#officially-supported-databases), many people build and maintain drivers for database integrations.
+In addition to our [Officially supported drivers](../databases/connecting.md#connecting-to-supported-databases), many people build and maintain drivers for database integrations.
 
 We have two types of third-party drivers:
 
