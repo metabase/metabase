@@ -2260,7 +2260,7 @@
 (defmacro ^:private with-actions-enabled {:style/indent 0} [& body]
   `(do-with-actions-enabled (fn [] ~@body)))
 
-(defn- test-update-is-write-card [{:keys [user query status-code before-fn result-fn]
+(defn- test-update-is-write-card [{:keys [user query status-code before-fn result-fn get-fn]
                                    :or   {user  :crowberto
                                           query (mt/native-query {:query "UPDATE whatever SET whatever = {{whatever}};"})}}]
   (testing "PUT /api/card/:id"
@@ -2274,7 +2274,7 @@
           (when before-fn
             (before-fn (db/select-one Card :id card-id)))
           (let [result (mt/user-http-request user :put status-code (str "card/" card-id) {:is_write new-value})]
-            (result-fn result))
+            (result-fn result new-value))
           (let [fail?          (>= status-code 400)
                 expected-value (if fail?
                                  initial-value
@@ -2283,8 +2283,11 @@
               (is (= expected-value
                      (db/select-one-field :is_write Card :id card-id))))
             (testing "GET /api/card/:id value"
-              (is (partial= {:is_write expected-value}
-                            (mt/user-http-request :crowberto :get 200 (str "card/" card-id)))))
+              (let [get-result (mt/user-http-request :crowberto :get 200 (str "card/" card-id))]
+                (is (partial= {:is_write expected-value}
+                              get-result))
+                (when get-fn
+                  (get-fn get-result expected-value))))
             (when fail?
               (testing "\nNo-op update should be allowed."
                 (is (some? (mt/user-http-request user :put 200 (str "card/" card-id) {:is_write initial-value})))))))))))
@@ -2297,7 +2300,7 @@
       (let [result (mt/user-http-request user :post status-code "card" (merge (mt/with-temp-defaults Card)
                                                                               {:is_write      true
                                                                                :dataset_query query}))]
-        (result-fn result)
+        (result-fn result true)
         (when (map? result)
           (when-let [card-id (:id result)]
             (let [fail? (>= status-code 400)]
@@ -2313,7 +2316,7 @@
       (doseq [f [test-update-is-write-card
                  test-create-is-write-card]]
         (f {:status-code 400
-            :result-fn   (fn [result]
+            :result-fn   (fn [result _]
                            (is (= {:errors {:is_write "Cannot mark Saved Question as 'is_write': Actions are not enabled."}}
                                   result)))})))))
 
@@ -2326,7 +2329,7 @@
       (doseq [f [test-update-is-write-card
                  test-create-is-write-card]]
         (f {:status-code 400
-            :result-fn   (fn [result]
+            :result-fn   (fn [result _]
                            (is (schema= {:errors {:is_write #"Cannot mark Saved Question as 'is_write': Actions are not enabled for Database [\d,]+\."}}
                                         result)))})))))
 
@@ -2342,7 +2345,7 @@
       (doseq [f [test-update-is-write-card
                  test-create-is-write-card]]
         (f {:status-code 400
-            :result-fn   (fn [result]
+            :result-fn   (fn [result _]
                            (is (schema= {:errors {:is_write #"Cannot mark Saved Question as 'is_write': Actions are not enabled for Database [\d,]+\."}}
                                         result)))})))))
 
@@ -2380,11 +2383,21 @@
   (with-actions-enabled
     (doseq [f [test-update-is-write-card
                test-create-is-write-card]]
-      ;; TODO -- Setting `is_write` also needs to create the `Action` and `QueryAction`. Unsetting should delete those
-      ;; rows. Add tests for these once that code is in place.
       (f {:status-code 200
-          :result-fn            (fn [result]
-                                  (is (map? result)))}))))
+          :get-fn (fn [result is-write]
+                    (if is-write
+                      (is (contains? result :action_id))
+                      (is (not (contains? result :action_id)))))
+          :result-fn (fn [result is-write]
+                       (if is-write
+                         (do
+                           (is (contains? result :action_id))
+                           (is (some? (db/select-one 'QueryAction :card_id (:id result)))))
+                         (do
+                           (is (not (contains? result :action_id)))
+                           (is (nil? (db/select-one 'QueryAction :card_id (:id result))))))
+                       (is (map? result)))}))))
+
 (defn- do-with-persistence-setup [f]
   ;; mt/with-temp-scheduler actually just reuses the current scheduler. The scheduler factory caches by name set in
   ;; the resources/quartz.properties file and we reuse that scheduler
