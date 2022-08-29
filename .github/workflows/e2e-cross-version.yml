@@ -92,7 +92,7 @@ jobs:
       uses: actions/upload-artifact@v2
       if: always()
       with:
-        name: cypress-artifacts-{{ matrix.version.source}}-to-{{ matrix.version.target }}
+        name: cypress-artifacts-${{ matrix.version.source}}-to-${{ matrix.version.target }}
         path: |
           ./cypress
         if-no-files-found: ignore
