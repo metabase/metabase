@@ -23,6 +23,12 @@ import {
 
 import { newQuestion } from "./utils";
 
+interface SaveActionFormData {
+  name?: string | null;
+  description?: string | null;
+  collection_id?: number | null;
+}
+
 const mapStateToProps = (state: State) => ({
   metadata: getMetadata(state),
 });
@@ -38,6 +44,26 @@ function ActionCreatorComponent({
     passedQuestion ?? newQuestion(metadata),
   );
   const [showSaveModal, setShowSaveModal] = useState(false);
+
+  const handleSave = async (questionData: SaveActionFormData) => {
+    const newQuestion = question
+      .setDisplayName(questionData.name)
+      .setDescription(questionData.description)
+      .setCollectionId(questionData.collection_id);
+
+    const response = await CardApi.create({
+      ...newQuestion.card(),
+      parameters: newQuestion.parameters(),
+      is_write: true,
+      display: "table",
+      visualization_settings: {},
+    });
+
+    if (response) {
+      setTimeout(() => setShowSaveModal(false), 1000);
+      // redirect somewhere?
+    }
+  };
 
   useEffect(() => {
     setQuestion(passedQuestion ?? newQuestion(metadata));
