@@ -11,7 +11,7 @@ Dashboard subscriptions are a great way to keep you and your team up to date on 
 
 ## Enabling dashboard subscriptions
 
-To enable dashboard subscriptions, your administrators will need to have set up email or Slack for your Metabase. See [Setting up email](https://www.metabase.com/docs/latest/administration-guide/02-setting-up-email.html) or [Setting up Slack](https://www.metabase.com/docs/latest/administration-guide/09-setting-up-slack.html).
+To enable dashboard subscriptions, your administrators will need to have set up email or Slack for your Metabase. See [Setting up email](../configuring-metabase/email.md) or [Setting up Slack](../configuring-metabase/slack.md).
 
 ## Setting up a dashboard subscription
 

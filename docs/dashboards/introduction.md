@@ -58,7 +58,7 @@ Click the **eye** icon to see what your formatted Markdown will look like when y
 
 ![Result](images/result.png)
 
-To learn more, see [Fun with Markdown in your dashboards](https://www.metabase.com/blog/markdown-in-dashboards).
+To learn more, see [Fun with Markdown in your dashboards](https://www.metabase.com/learn/dashboards/markdown).
 
 ### Including variables in text cards
 
@@ -195,4 +195,4 @@ Some tips:
 - [Interactive dashboards](./interactive.md)
 - [Dashboard charts with multiple series](./multiple-series.md)
 - [Dashboard subscriptions](./subscriptions.md)
-- [Making dashboards faster](https://www.metabase.com/blog/faster-dashboards/index.html)
+- [Making dashboards faster](https://www.metabase.com/learn/administration/making-dashboards-faster)
