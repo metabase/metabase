@@ -19,7 +19,7 @@ export const saveForm = {
       normalize: (description: string) => description || null, // expected to be nil or non-empty string
     },
     {
-      name: "parent_id",
+      name: "collection_id",
       title: t`Collection it's saved in`,
       type: "collection",
     },
