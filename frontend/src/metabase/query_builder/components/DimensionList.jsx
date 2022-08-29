@@ -74,7 +74,6 @@ export default class DimensionList extends Component {
 
   renderItemExtra = (item, itemIndex, isSelected) => {
     const {
-      dimension,
       enableSubDimensions,
       preventNumberSubDimensions,
       onAddDimension,
@@ -93,11 +92,11 @@ export default class DimensionList extends Component {
 
     const multiSelect = !!(onAddDimension || onRemoveDimension);
 
-    const sectionDimension = dimension
-      ? dimension
+    const sectionDimension = this.props.dimension
+      ? this.props.dimension
       : _.find(
           this.getDimensions(),
-          dimensionToFind => dimensionToFind.field() === item.dimension.field(),
+          dimension => dimension.field() === item.dimension.field(),
         );
 
     return (
