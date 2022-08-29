@@ -63,23 +63,45 @@ const BulkFilterModal = ({
     [searchQuery, sections],
   );
 
-  const handleAddFilter = useCallback((filter: Filter) => {
-    setQuery(filter.add());
-    setIsChanged(true);
-  }, []);
+  const handleAddFilter = useCallback(
+    (filter: Filter) => {
+      const oldQuery = getQuery(question);
+      if (oldQuery.sourceQuery() && !filter.query().sourceQuery()) {
+        setQuery(oldQuery.setSourceQuery(filter.add()));
+      } else {
+        setQuery(filter.add());
+      }
+      setIsChanged(true);
+    },
+    [question],
+  );
 
   const handleChangeFilter = useCallback(
     (filter: Filter, newFilter: Filter) => {
-      setQuery(filter.replace(newFilter));
+      const newQuery = filter.replace(newFilter);
+      const oldQuery = getQuery(question);
+      if (oldQuery.sourceQuery() && !newQuery.sourceQuery()) {
+        setQuery(oldQuery.setSourceQuery(newQuery));
+      } else {
+        setQuery(newQuery);
+      }
       setIsChanged(true);
     },
-    [],
+    [question],
   );
 
-  const handleRemoveFilter = useCallback((filter: Filter) => {
-    setQuery(filter.remove());
-    setIsChanged(true);
-  }, []);
+  const handleRemoveFilter = useCallback(
+    (filter: Filter) => {
+      const oldQuery = getQuery(question);
+      if (oldQuery.sourceQuery() && !filter.query().sourceQuery()) {
+        setQuery(oldQuery.setSourceQuery(filter.remove()));
+      } else {
+        setQuery(filter.remove());
+      }
+      setIsChanged(true);
+    },
+    [question],
+  );
 
   const handleClearSegments = useCallback(() => {
     setQuery(query.clearSegments());
@@ -87,10 +109,16 @@ const BulkFilterModal = ({
   }, [query]);
 
   const handleApplyQuery = useCallback(() => {
-    const preCleanedQuery = fixBetweens(query);
-    preCleanedQuery.clean().update(undefined, { run: true });
+    const newQuery = fixBetweens(query);
+    const oldQuery = getQuery(question);
+    if (oldQuery.sourceQuery() && !newQuery.sourceQuery()) {
+      oldQuery.setSourceQuery(newQuery).update(undefined, { run: true });
+    } else {
+      newQuery.clean().update(undefined, { run: true });
+    }
+    newQuery.clean().update(undefined, { run: true });
     onClose?.();
-  }, [query, onClose]);
+  }, [question, query, onClose]);
 
   const clearFilters = () => {
     setQuery(query.clearFilters());

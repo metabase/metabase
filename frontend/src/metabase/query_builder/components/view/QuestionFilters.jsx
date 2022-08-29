@@ -135,7 +135,7 @@ export function FilterHeader({ question, expanded }) {
           >
             <FilterPopover
               isTopLevel
-              query={query}
+              query={filter.query()}
               filter={filter}
               onChangeFilter={newFilter => {
                 const filterQuery = filter.query();
