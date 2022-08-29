@@ -941,7 +941,7 @@ describeEE("formatting > sandboxes", () => {
       cy.contains("37.65");
     });
 
-    it.skip("unsaved/dirty query should work on linked table column with multiple dimensions and remapping (metabase#15106)", () => {
+    it("unsaved/dirty query should work on linked table column with multiple dimensions and remapping (metabase#15106)", () => {
       cy.server();
       cy.route("POST", "/api/dataset").as("dataset");
 
