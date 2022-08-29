@@ -137,9 +137,19 @@ export function FilterHeader({ question, expanded }) {
               isTopLevel
               query={query}
               filter={filter}
-              onChangeFilter={newFilter =>
-                newFilter.replace().update(null, { run: true })
-              }
+              onChangeFilter={newFilter => {
+                const filterQuery = filter.query();
+                const newQuery = filterQuery.updateFilter(
+                  filter.index(),
+                  newFilter,
+                );
+                if (query.sourceQuery() === filterQuery) {
+                  return query
+                    .setSourceQuery(newQuery)
+                    .update(null, { run: true });
+                }
+                return newQuery.update(null, { run: true });
+              }}
               className="scroll-y"
             />
           </PopoverWithTrigger>
