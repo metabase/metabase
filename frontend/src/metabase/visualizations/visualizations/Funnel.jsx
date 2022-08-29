@@ -77,7 +77,7 @@ export default class Funnel extends Component {
     ["Tiers Page", 700],
     ["Trial Form", 200],
     ["Trial Confirmation", 40],
-  ].map(row => ({
+  ].map((row, index) => ({
     card: {
       display: "funnel",
       visualization_settings: {
@@ -85,6 +85,7 @@ export default class Funnel extends Component {
         "funnel.dimension": "Total Sessions",
       },
       dataset_query: { type: "null" },
+      rowIndex: index,
     },
     data: {
       rows: [row],
