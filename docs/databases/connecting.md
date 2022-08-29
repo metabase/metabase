@@ -24,13 +24,9 @@ Although connection details differ database to database, in general you'll need 
 
 ## Connecting to supported databases
 
-Metabase supports many different databases and data sources, with different levels of support.
+The databases listed below have official drivers maintained by the Metabase team. Customers on [paid plans](https://www.metabase.com/pricing/) will get official support.
 
-- [Official](#officially-supported-databases) (this page)
-- [Partner](../developers-guide-drivers.md)
-- [Community](../developers-guide-drivers.md)
-
-The following databases have official drivers maintained by the Metabase team. Customers on [paid plans](https://www.metabase.com/pricing/) will get official support.
+If you don't see your database listed here, see [partner and community drivers](../developers-guide.md/partner-and-community-drivers#partner-drivers).
 
 - [BigQuery](./connections/bigquery.md) (Google Cloud Platform)
 - Druid
@@ -78,24 +74,24 @@ See our [guide to SSH tunneling](./ssh-tunnel.md).
 
 ### Additional JDBC connection string options
 
-Some databases allow you to append options to the connection string Metabase will use to connect to your database.
+Some databases allow you to append options to the connection string that Metabase uses to connect to your database.
 
 ### Re-run queries for simple explorations
 
-Turn this option **OFF** from **Advanced options** if people want to click **Run** (the play button) before applying Summarize or Filter options.
+Turn this option **OFF** if people want to click **Run** (the play button) before applying any [Summarize](../questions/query-builder/introduction.md#grouping-your-metrics) or filter selections.
 
-By default, Metabase will execute a query as soon as you choose an option from Summarize or Filter. If your database is slow, you may want to disable auto-run to avoid running into a load icon every time a Summarize or Filter option is clicked.
+By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [action menu](https://www.metabase.com/glossary/action_menu). If your database is slow, you may want to disable re-running to avoid loading data on each click.
 
 ### Choose when Metabase syncs and scans
 
-Turn this option **ON** from **Advanced options** to manage the queries that Metabase uses to stay up to date with your database. For more information, see [Database syncing and scanning](#database-syncing-and-scanning).
+Turn this option **ON** to manage the queries that Metabase uses to stay up to date with your database. For more information, see [Database syncing and scanning](#database-syncing-and-scanning).
 
 ### Scheduling database syncs
 
 If you've selected **Choose when syncs and scans happen** > **ON**, you'll see the following options under **Database syncing**:
 
-- Scan: set the frequency of the [sync query](#how-database-syncs-work) to hourly (default) or daily.
-- Time: when the sync query will run against your database (in the timezone of the server where your Metabase app is running).
+- **Scan** sets the frequency of the [sync query](#how-database-syncs-work) to hourly (default) or daily.
+- **at** sets the time when your sync query will run against your database (in the timezone of the server where your Metabase app is running).
 
 ### Scheduling database scans
 
@@ -104,14 +100,14 @@ If you've selected **Choose when syncs and scans happen** > **ON**, you'll see t
 ![Scanning options](./images/scanning-options.png)
 
 - **Regularly, on a schedule** allows you to run [scan queries](#how-database-scans-work) at a frequency that matches the rate of change to your database. The time is set in the timezone of the server where your Metabase app is running. This is the best option for a small database, or tables with distinct values that get updated often.
-- **Only when adding a new filter widget** is a great option if you have a relatively large database, but you still want to enable dashboard and SQL/native query filters. With this option enabled, Metabase will only scan and cache the values of the field or fields that are required whenever a new filter is added to a dashboard or SQL/native question. For example, if you were to add a dashboard category filter, mapped to one field called `Customer ID` and another one called `ID`, only those two fields would be scanned at the moment the filter is saved.
-- **Never, I'll do this manually if I need to** is an option for databases that are either prohibitively large, or which never really have new values added. Use the **Re-scan field values now** button to run a manual scan and bring your filter values up to date.
+- **Only when adding a new filter widget** is a great option if you want scan queries to run on demand. Turning this option **ON** means that Metabase will only scan and cache the values of the field(s) that are used when a new filter is added to a dashboard or SQL question.
+- **Never, I'll do this manually if I need to** is an option for databases that are either prohibitively large, or which never really have new values added. Use the [Re-scan field values now](#manually-scanning-column-values) button to run a manual scan and bring your filter values up to date.
 
 ### Periodically refingerprint tables
 
-Turn this option **ON** from **Advanced options** to _scan a sample_ of values every time a sync is run.
+Turn this option **ON** from **Advanced options** to scan a _sample_ of values every time a [sync](#how-database-syncs-work) is run.
 
-A fingerprinting query examines the first 10,000 rows from each column and uses that data to guesstimate how many unique values each column has, what the minimum and maximum values are for numeric and timestamp columns, and so on. Metabase only fingerprints each column once, unless you explicitly tells it to fingerprint the column again, or in the rare event that a new release of Metabase changes the fingerprinting logic.
+A fingerprinting query examines the first 10,000 rows from each column and uses that data to guesstimate how many unique values each column has, what the minimum and maximum values are for numeric and timestamp columns, and so on. If you turn this option **OFF**, Metabase will only fingerprint your columns once during setup.
 
 ## Database syncing and scanning
 
@@ -138,23 +134,31 @@ During the scan, Metabase also takes a sample of each table to look for URLs, JS
 
 ![Database Manual Sync](./images/DatabaseManualSync.png)
 
-### Manually scanning column values for filter menus
+### Manually scanning column values
 
 To scan values from all the columns in a table:
 
-1. Go to **Admin settings** > **Data model**.
-2. Select the table that you want to update from your database.
-3. Click **Re-scan this table**.
+1. Go to **Admin settings** > **Data model** > your database.
+2. Select the table that you want to bring up to date with your database.
+3. Click the **gear icon** at the top of the page.
+4. Click **Re-scan this table**.
 
 To scan values from a specific column:
 
-1. Go to **Admin settings** > **Data model**.
-2. Select the table and find the column you want to update from your database.
-3. Click **Re-scan this field**.
+1. Go to **Admin settings** > **Data model** > your database.
+2. Select the table and find the column you want bring up to date with your database.
+3. Click the **gear icon** in the panel for that column.
+4. Click **Re-scan this field**.
 
 ### Clearing cached values
 
-Click **Discard cached field values** to forget the data that Metabase has stored from previous [database scans](#database-syncing-and-scanning).
+To forget the data that Metabase has stored from previous [database scans](#database-syncing-and-scanning):
+
+1. Go to **Admin settings** > **Data model** > your database.
+2. Select the table.
+3. Optional: select the column.
+4. Click the **gear icon**.
+5. Click **Discard cached field values**.
 
 ![Re-scan options](./images/re-scan-options.png)
 
@@ -162,18 +166,14 @@ Click **Discard cached field values** to forget the data that Metabase has store
 
 **Caution: Deleting a database is irreversible! All saved questions and dashboard cards based on the database will be deleted as well!**
 
-To delete a database from Metabase, click on **Remove this database** from the database detail screen.
+Go to **Admin settings** > **Databases** > your database and click **Remove this database**.
 
 ![Database Manual Sync](./images/DatabaseManualSync.png)
 
-You can also delete a database from the database list: hover over the row with the database you want to remove and click the **Delete** button that appears.
-
-![deletedatabasebutton](./images/DatabaseDeleteButton.png)
-
 ## Troubleshooting
 
-- [Troubleshooting database connections](../troubleshooting-guide/datawarehouse.md).
-- [Troubleshooting syncs, scans, and fingerprinting](../troubleshooting-guide/sync-fingerprint-scan.md).
+- [Troubleshooting database connections](../troubleshooting-guide/datawarehouse.md)
+- [Troubleshooting syncs, scans, and fingerprinting](../troubleshooting-guide/sync-fingerprint-scan.md)
 - Search or ask the [Metabase community](https://discourse.metabase.com/).
 - Search for [known bugs or limitations](../troubleshooting-guide/known-issues.md).
 
