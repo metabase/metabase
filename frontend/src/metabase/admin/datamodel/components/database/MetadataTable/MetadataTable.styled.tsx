@@ -71,3 +71,8 @@ export const TableDescription = styled.div`
   border: 1px solid transparent;
   margin-top: -1px;
 `;
+
+export const TableSyncMessage = styled.div`
+  color: ${color("text-medium")};
+  margin-left: 0.5rem;
+`;

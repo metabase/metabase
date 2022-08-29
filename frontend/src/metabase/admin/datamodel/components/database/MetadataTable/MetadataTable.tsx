@@ -6,6 +6,7 @@ import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import withTableMetadataLoaded from "metabase/admin/datamodel/hoc/withTableMetadataLoaded";
 import Radio from "metabase/core/components/Radio";
+import { isSyncCompleted } from "metabase/lib/syncing";
 import { DatabaseEntity, TableEntity } from "metabase-types/entities";
 import { State } from "metabase-types/store";
 
@@ -17,6 +18,7 @@ import {
   TableName,
   TableNameInput,
   VisibilityType,
+  TableSyncMessage,
 } from "./MetadataTable.styled";
 import { Field } from "metabase-types/api/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
@@ -64,6 +66,7 @@ const MetadataTable = ({
   };
 
   const isHidden = !!table.visibility_type;
+  const isSynced = isSyncCompleted(table);
 
   if (!table) {
     return null;
@@ -131,6 +134,12 @@ const MetadataTable = ({
           )}
         </span>
       </div>
+      {!isSynced && (
+        <TableSyncMessage>
+          {t`This table was omitted during the database sync process.`}{" "}
+          {t`Make it Queryable to scan its fields for the first time.`}
+        </TableSyncMessage>
+      )}
       <div className="mx1 border-bottom">
         <Radio
           colorScheme="default"
