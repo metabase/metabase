@@ -197,7 +197,7 @@ export default class Table extends Component {
       }),
     },
     "table.column_widths": {},
-    "table.column_formatting": {
+    [DataGrid.COLUMN_FORMATTING_SETTING]: {
       section: t`Conditional Formatting`,
       widget: ChartSettingsTableFormatting,
       default: [],
@@ -228,11 +228,11 @@ export default class Table extends Component {
         return makeCellBackgroundGetter(
           rows,
           cols,
-          settings["table.column_formatting"] ?? [],
+          settings[DataGrid.COLUMN_FORMATTING_SETTING] ?? [],
           settings["table.pivot"],
         );
       },
-      readDependencies: ["table.column_formatting", "table.pivot"],
+      readDependencies: [DataGrid.COLUMN_FORMATTING_SETTING, "table.pivot"],
     },
   };
 

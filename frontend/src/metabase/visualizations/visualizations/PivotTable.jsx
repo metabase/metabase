@@ -17,6 +17,7 @@ import {
   COLUMN_SPLIT_SETTING,
   COLUMN_SORT_ORDER,
   COLUMN_SHOW_TOTALS,
+  COLUMN_FORMATTING_SETTING,
   isPivotGroupColumn,
   multiLevelPivot,
 } from "metabase/lib/data_grid";
@@ -180,10 +181,47 @@ class PivotTable extends Component {
         return addMissingCardBreakouts(setting, card);
       },
     },
-    "table.column_formatting": {
+    [COLUMN_FORMATTING_SETTING]: {
       section: t`Conditional Formatting`,
       widget: ChartSettingsTableFormatting,
       default: [],
+      getDefault: ([{ data }], settings) => {
+        const columnFormats = settings[COLUMN_FORMATTING_SETTING] ?? [];
+
+        return columnFormats
+          .map(columnFormat => {
+            const hasOnlyFormattableColumns = columnFormat.columns
+              .map(columnName =>
+                data.cols.find(column => column.name === columnName),
+              )
+              .filter(Boolean)
+              .every(isFormattablePivotColumn);
+
+            if (!hasOnlyFormattableColumns) {
+              return null;
+            }
+
+            return {
+              ...columnFormat,
+              highlight_row: false,
+            };
+          })
+          .filter(Boolean);
+      },
+      isValid: ([{ data }], settings) => {
+        const columnFormats = settings[COLUMN_FORMATTING_SETTING] ?? [];
+
+        return columnFormats.every(columnFormat => {
+          const hasOnlyFormattableColumns = columnFormat.columns
+            .map(columnName =>
+              data.cols.find(column => column.name === columnName),
+            )
+            .filter(Boolean)
+            .every(isFormattablePivotColumn);
+
+          return hasOnlyFormattableColumns && !columnFormat.highlight_row;
+        });
+      },
       getProps: series => ({
         canHighlightRow: false,
         cols: series[0].data.cols.filter(isFormattablePivotColumn),
@@ -623,6 +661,7 @@ function Cell({
 }) {
   return (
     <PivotTableCell
+      data-testid="pivot-table-cell"
       isNightMode={isNightMode}
       isBold={isBold}
       isEmphasized={isEmphasized}

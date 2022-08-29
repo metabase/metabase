@@ -372,6 +372,7 @@ const RuleEditor = ({
           </Select>
           {hasOperand && isNumericRule ? (
             <NumericInput
+              data-testid="conditional-formatting-value-input"
               className={INPUT_CLASSNAME}
               type="number"
               value={rule.value}
@@ -379,6 +380,7 @@ const RuleEditor = ({
             />
           ) : hasOperand ? (
             <input
+              data-testid="conditional-formatting-value-input"
               className={INPUT_CLASSNAME}
               value={rule.value}
               onChange={e => onChange({ ...rule, value: e.target.value })}
