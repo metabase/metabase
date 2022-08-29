@@ -2355,7 +2355,7 @@
      {:before-fn   (fn [{card-id :id}]
                      (db/update! Card card-id :dataset true))
       :status-code 400
-      :result-fn   (fn [result]
+      :result-fn   (fn [result _]
                      (is (= {:errors {:is_write "Cannot mark Saved Question as 'is_write': Saved Question is a Dataset."}}
                             result)))})))
 
@@ -2365,7 +2365,7 @@
                test-create-is-write-card]]
       (f {:status-code 403
           :user                 :rasta
-          :result-fn            (fn [result]
+          :result-fn            (fn [result _]
                                   (is (= "You don't have permissions to do that."
                                          result)))}))))
 
@@ -2375,7 +2375,7 @@
                test-create-is-write-card]]
       (f {:status-code 400
           :query       (mt/mbql-query venues)
-          :result-fn   (fn [result]
+          :result-fn   (fn [result _]
                          (is (schema= {:errors {:is_write #"Cannot mark Saved Question as 'is_write': Query must be a native query."}}
                                       result)))}))))
 
