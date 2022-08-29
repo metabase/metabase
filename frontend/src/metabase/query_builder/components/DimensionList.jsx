@@ -40,25 +40,17 @@ export default class DimensionList extends Component {
     }
   }
 
-  buildUpdatedSectionItems(items) {
-    return items.map(item => ({
-      ...item,
-      name: item.name || item.dimension?.displayName(),
-      icon: item.icon || item.dimension?.icon(),
-    }));
-  }
-
   updateSections(sections = []) {
-    const sectionsForNewState = sections.map(section => ({
-      ...section,
-      items: this.buildUpdatedSectionItems(section.items),
-    }));
-
-    const newState = {
-      sections: sectionsForNewState,
-    };
-
-    this.setState(newState);
+    this.setState({
+      sections: sections.map(section => ({
+        ...section,
+        items: section.items.map(item => ({
+          ...item,
+          name: item.name || item.dimension?.displayName(),
+          icon: item.icon || item.dimension?.icon(),
+        })),
+      })),
+    });
   }
 
   getDimensions() {
