@@ -44,6 +44,12 @@ interface Value {
   hidden?: boolean;
 }
 
+interface MultiSeriesValue extends Value {
+  serie: HydratedSeries;
+  xScale: XScale;
+  yScale: PositionScale;
+}
+
 export default function Values({
   series,
   formatter,
@@ -71,8 +77,8 @@ export default function Values({
     });
   }
 
-  const multiSeriesValues = series.map(serie => {
-    const singleSerieValues = getValues(serie, areStacked, xScale);
+  const multiSeriesValues: MultiSeriesValue[][] = series.map(serie => {
+    const singleSerieValues = getValues(serie, areStacked);
     return singleSerieValues.map(value => {
       return {
         ...value,
@@ -87,6 +93,8 @@ export default function Values({
 
   function getBarXOffset(serie: HydratedSeries) {
     if (containBars && innerBarScale) {
+      // Use the same logic when rendering <BarSeries />, as bar charts can display values in groups.
+      // https://github.com/metabase/metabase/blob/44fa5e5cc1ee7c43c24774d2fd19ef16d8b40bfa/frontend/src/metabase/static-viz/components/XYChart/shapes/BarSeries.tsx#L61
       const innerX = innerBarScale(barSeriesIndexMap.get(serie)) ?? 0;
       const width = innerBarScale.bandwidth();
       return innerX + width / 2;
@@ -95,7 +103,7 @@ export default function Values({
     return 0;
   }
 
-  const collisionFreeMultiSeriesValues = fixValuesCollisions(
+  const verticalOverlappingFreeValues = fixVerticalOverlappingValues(
     multiSeriesValues,
     xAxisYPos,
     getBarXOffset,
@@ -103,85 +111,91 @@ export default function Values({
 
   return (
     <>
-      {collisionFreeMultiSeriesValues.map((singleSerieValues, seriesIndex) => {
+      {verticalOverlappingFreeValues.map((singleSerieValues, seriesIndex) => {
         const compact = getCompact(series[seriesIndex]);
-        const valueStep = getValueStep(
-          series,
+
+        return fixHorizontalOverlappingValues(
           seriesIndex,
-          value => formatter(value, compact),
-          valueProps,
-          innerWidth,
-        );
-        return singleSerieValues
-          .filter((_, index) => index % valueStep === 0)
-          .map((value, index) => {
-            if (value.hidden) {
-              return null;
-            }
+          compact,
+          singleSerieValues,
+        ).map((value, index) => {
+          if (value.hidden) {
+            return null;
+          }
 
-            const { xAccessor, yAccessor } = getXyAccessors(
-              value.serie.type,
-              value.xScale,
-              value.yScale,
-              getBarXOffset(value.serie),
-              value.flipped,
-            );
+          const { xAccessor, yAccessor } = getXyAccessors(
+            value.serie.type,
+            value.xScale,
+            value.yScale,
+            getBarXOffset(value.serie),
+            value.flipped,
+          );
 
-            return (
-              <>
-                <Text
-                  key={index}
-                  x={xAccessor(value.datum)}
-                  y={yAccessor(value.datum)}
-                  textAnchor="middle"
-                  verticalAnchor="end"
-                  {...valueProps}
-                >
-                  {formatter(getY(value.datum), compact)}
-                </Text>
-                <Text
-                  key={index}
-                  x={xAccessor(value.datum)}
-                  y={yAccessor(value.datum)}
-                  textAnchor="middle"
-                  verticalAnchor="end"
-                  {...valueProps}
-                  stroke={undefined}
-                  strokeWidth={undefined}
-                >
-                  {formatter(getY(value.datum), compact)}
-                </Text>
-              </>
-            );
-          });
+          return (
+            <>
+              {/* Render 2 text elements instead of one as a workaround for BE environment that doesn't support `paint-order` CSS property */}
+              <Text
+                key={index}
+                x={xAccessor(value.datum)}
+                y={yAccessor(value.datum)}
+                textAnchor="middle"
+                verticalAnchor="end"
+                {...valueProps}
+              >
+                {formatter(getY(value.datum), compact)}
+              </Text>
+              <Text
+                key={index}
+                x={xAccessor(value.datum)}
+                y={yAccessor(value.datum)}
+                textAnchor="middle"
+                verticalAnchor="end"
+                {...valueProps}
+                stroke={undefined}
+                strokeWidth={undefined}
+              >
+                {formatter(getY(value.datum), compact)}
+              </Text>
+            </>
+          );
+        });
       })}
     </>
   );
 
-  function getCompact(s: HydratedSeries) {
+  function getCompact(serie: HydratedSeries) {
     // Use the same logic as in https://github.com/metabase/metabase/blob/1276595f073883853fed219ac185d0293ced01b8/frontend/src/metabase/visualizations/lib/chart_values.js#L178-L179
     const getAvgLength = (compact: boolean) => {
-      const lengths = s.data.map(
+      const lengths = serie.data.map(
         ([_, yValue]) => formatter(yValue, compact).length,
       );
       return lengths.reduce((sum, l) => sum + l, 0) / lengths.length;
     };
-    const compact = getAvgLength(true) < getAvgLength(false) - 3;
-    return compact;
+
+    return getAvgLength(true) < getAvgLength(false) - 3;
+  }
+
+  function fixHorizontalOverlappingValues(
+    seriesIndex: number,
+    compact: boolean,
+    singleSerieValues: MultiSeriesValue[],
+  ) {
+    const valueStep = getValueStep(
+      series,
+      seriesIndex,
+      value => formatter(value, compact),
+      valueProps,
+      innerWidth,
+    );
+
+    return singleSerieValues.filter((_, index) => index % valueStep === 0);
   }
 }
 
-function getValues(serie: HydratedSeries, areStacked: boolean, xScale: XScale) {
+function getValues(serie: HydratedSeries, areStacked: boolean): Value[] {
   const data = getData(serie, areStacked);
-  const values = getSeriesTransformer(serie.type)(
-    data.map(datum => {
-      return {
-        datum,
-      };
-    }),
-  );
 
-  return values;
+  return transformDataToValues(serie.type, data);
 }
 
 function getData(serie: HydratedSeries, areStacked: boolean) {
@@ -228,38 +242,40 @@ function exhaustiveCheck(param: never): never {
   throw new Error("Should not reach here");
 }
 
-function getSeriesTransformer(
+function transformDataToValues(
   type: VisualizationType,
-): <T extends Value>(values: T[]) => Value[] {
+  data: (SeriesDatum | StackedDatum)[],
+): Value[] {
   if (type === "line") {
-    return values =>
-      values.map((value, index) => {
-        // Use the similar logic as presented in https://github.com/metabase/metabase/blob/3f4ca9c70bd263a7579613971ea8d7c47b1f776e/frontend/src/metabase/visualizations/lib/chart_values.js#L130
-        const previousValue = values[index - 1];
-        const nextValue = values[index + 1];
-        const showLabelBelow =
-          // first point or prior is greater than y
-          (index === 0 || getY(previousValue.datum) > getY(value.datum)) &&
-          // last point point or next is greater than y
-          (index >= values.length - 1 ||
-            getY(nextValue.datum) > getY(value.datum));
+    return data.map((datum, index) => {
+      // Use the similar logic as presented in https://github.com/metabase/metabase/blob/3f4ca9c70bd263a7579613971ea8d7c47b1f776e/frontend/src/metabase/visualizations/lib/chart_values.js#L130
+      const previousValue = data[index - 1];
+      const nextValue = data[index + 1];
+      const showLabelBelow =
+        // first point or prior is greater than y
+        (index === 0 || getY(previousValue) > getY(datum)) &&
+        // last point point or next is greater than y
+        (index >= data.length - 1 || getY(nextValue) > getY(datum));
 
-        return {
-          ...value,
-          flipped: showLabelBelow,
-        };
-      });
+      return {
+        datum,
+        flipped: showLabelBelow,
+      };
+    });
   }
 
   if (type === "bar") {
-    return values =>
-      values.map(value => {
-        const isNegative = getY(value.datum) < 0;
-        return { ...value, flipped: isNegative };
-      });
+    return data.map(datum => {
+      const isNegative = getY(datum) < 0;
+      return { datum, flipped: isNegative };
+    });
   }
 
-  return values => values;
+  return data.map(datum => {
+    return {
+      datum,
+    };
+  });
 }
 
 interface Position {
@@ -267,12 +283,8 @@ interface Position {
   yPos: number;
 }
 
-function fixValuesCollisions(
-  multiSeriesValues: (Value & {
-    serie: HydratedSeries;
-    xScale: XScale;
-    yScale: PositionScale;
-  })[][],
+function fixVerticalOverlappingValues(
+  multiSeriesValues: MultiSeriesValue[][],
   xAxisYPos: number,
   getBarXOffset: (serie: HydratedSeries) => number,
 ) {
@@ -302,7 +314,6 @@ function fixValuesCollisions(
           xPos: xAccessor(value.datum),
           yPos: yAccessor(value.datum, !value.flipped),
         },
-        hidden: false,
       };
     })
     .groupBy(positionedValue => {
@@ -311,8 +322,9 @@ function fixValuesCollisions(
     .each(group => {
       const sortedByY = _.sortBy(group, value => value.position.yPos);
 
-      // Fix first value collision only with X-axis since in viz chart
+      // Fix first value collision only with X-axis since in viz app,
       // we started fixing collisions from the second value.
+      // So the first value stays in place.
       // https://github.com/metabase/metabase/blob/93350352b92265bb84be6249bce101fe8c89f7d1/frontend/src/metabase/visualizations/lib/chart_values.js#L366
       fixValueCollision([], sortedByY[0]);
 
@@ -364,7 +376,6 @@ function hasCollisions(
   );
 }
 
-function distanceFrom(value: { yPos: number }) {
-  return (comparedValue: { yPos: number }) =>
-    Math.abs(comparedValue.yPos - value.yPos);
+function distanceFrom(value: Position) {
+  return (comparedValue: Position) => Math.abs(comparedValue.yPos - value.yPos);
 }
