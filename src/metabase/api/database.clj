@@ -482,17 +482,12 @@
 (defn- autocomplete-results
   "Returns ordered and formatted autocomplete results for the client to display."
   [tables fields card-columns limit]
-  (let [;; Limit the number of tables according to the number of fields and columns
-        max-tables-count (- limit (/ (min (+ (count fields)
-                                             (count card-columns))
-                                          limit)
-                                     2))]
-    (->> (concat (map #(vector :card-column %) card-columns)
-                 (map #(vector :table %) (take max-tables-count tables))
-                 (map #(vector :field %) fields))
-         (map format-autocomplete-result)
-         distinct
-         (take limit))))
+  (->> (concat (map #(vector :card-column %) card-columns)
+               (map #(vector :table %) tables)
+               (map #(vector :field %) fields))
+       (map format-autocomplete-result)
+       distinct
+       (take limit)))
 
 (def ^:private autocomplete-matching-options
   "Valid options for the autocomplete types. Can match on a substring (\"%input%\"), on a prefix (\"input%\"), or reject

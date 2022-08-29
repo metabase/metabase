@@ -355,41 +355,37 @@
       (testing " handles large numbers of tables and fields sensibly with prefix"
         (mt/with-model-cleanup [Field Table Card Database]
           (let [tmp-db (db/insert! Database {:name "Temp Autocomplete Pagination DB" :engine "h2" :details "{}"})]
-            ;; insert more than 50 temporary tables and fields
-            (doseq [i (range 60)]
+            ;; insert less than 50 temporary tables and fields
+            (doseq [i (range 30)]
               (let [tmp-tbl (db/insert! Table {:name (format "My Table %d" i) :db_id (u/the-id tmp-db) :active true})]
                 (db/insert! Field {:name (format "My Field %d" i) :table_id (u/the-id tmp-tbl) :base_type "type/Text" :database_type "varchar"})))
-            (let [card-ids (for [i (range 60)]
+            (let [card-ids (for [i (range 30)]
                              (:id (db/insert! Card (merge (mt/with-temp-defaults Card)
                                                           {:name            (format "My Card %d" i)
                                                            :database_id     (u/the-id tmp-db)
                                                            :result_metadata [{:name (format "My Test Card Column %d" i)}]}))))]
               ;; for each type-specific prefix, we should get 50 fields
-              (is (= 50 (count (prefix-fn (u/the-id tmp-db) "My Field" card-ids))))
-              (is (= 50 (count (prefix-fn (u/the-id tmp-db) "My Table" card-ids))))
-              (is (= 50 (count (prefix-fn (u/the-id tmp-db) "My Test Card Column" card-ids))))
+              (is (= 30 (count (prefix-fn (u/the-id tmp-db) "My Field" card-ids))))
+              (is (= 30 (count (prefix-fn (u/the-id tmp-db) "My Table" card-ids))))
+              (is (= 30 (count (prefix-fn (u/the-id tmp-db) "My Test Card Column" card-ids))))
               (testing "Only returns matches for the specified set of card ids"
                 (is (= 10 (count (prefix-fn (u/the-id tmp-db) "My Test Card Column" (take 10 card-ids))))))
-              (testing "Limit table results if there are matches for fields or card columns"
-                (let [my-results (prefix-fn (u/the-id tmp-db) "My" [])]
+              (testing "Limit total results"
+                (let [my-results (prefix-fn (u/the-id tmp-db) "My" card-ids)]
                   (is (= 50 (count my-results)))
-                  (is (= 25 (-> (filter #(str/starts-with? % "My Field") (map first my-results))
+                  (is (= 30 (-> (filter #(str/starts-with? % "My Test Card Column") (map first my-results))
                                 count)))
-                  (is (= 25 (-> (filter #(str/starts-with? % "My Table") (map first my-results))
-                                count))))
-                (let [my-results (prefix-fn (u/the-id tmp-db) "My T" card-ids)]
-                  (is (= 50 (count my-results)))
-                  (is (= 25 (-> (filter #(str/starts-with? % "My Test Card Column") (map first my-results))
+                  (is (= 20 (-> (filter #(str/starts-with? % "My Table") (map first my-results))
                                 count)))
-                  (is (= 25 (-> (filter #(str/starts-with? % "My Table") (map first my-results))
-                                count)))))
+                  (is (= 0 (-> (filter #(str/starts-with? % "My Field") (map first my-results))
+                               count)))))
               (testing "Only returns matches for the specified set of card ids"
                 (is (= 10 (count (prefix-fn (u/the-id tmp-db) "My Test Card Column" (take 10 card-ids))))))
               (testing " behaves differently with search and prefix query params"
                 (is (= 0 (count (prefix-fn (u/the-id tmp-db) "a" []))))
-                (is (= 50 (count (substring-fn (u/the-id tmp-db) "a" []))))
+                (is (= 30 (count (substring-fn (u/the-id tmp-db) "a" []))))
                 ;; setting both uses search:
-                (is (= 50 (count (mt/user-http-request :rasta :get 200
+                (is (= 30 (count (mt/user-http-request :rasta :get 200
                                                        (format "database/%d/autocomplete_suggestions" (u/the-id tmp-db))
                                                        :prefix "a"
                                                        :substring "a"))))))))))))
