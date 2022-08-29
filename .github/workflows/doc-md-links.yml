@@ -1,7 +1,9 @@
 name: Lint doc Markdown links
 
-on: [push]
-
+on:
+  push:
+    paths:
+      - 'docs/*'
 jobs:
   markdown-link-check:
     runs-on: ubuntu-20.04
