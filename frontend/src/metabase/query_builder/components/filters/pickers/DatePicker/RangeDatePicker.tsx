@@ -7,9 +7,9 @@ import SingleDatePicker, { SingleDatePickerProps } from "./SingleDatePicker";
 import SpecificDatePicker from "./SpecificDatePicker";
 import { DateContainer, DateDivider } from "./RangeDatePicker.styled";
 
-interface BetweenPickerProps {
+export interface BetweenPickerProps {
   className?: string;
-  filter: Filter;
+  filter: Filter | any[];
   primaryColor?: string;
   hideTimeSelectors?: boolean;
   onFilterChange: (filter: any[]) => void;
