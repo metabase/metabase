@@ -97,7 +97,7 @@ export const BetweenPicker = ({
         <Calendar
           isRangePicker
           primaryColor={primaryColor}
-          initial={startValue}
+          initial={endValue}
           selected={startValue && moment(startValue)}
           selectedEnd={endValue && moment(endValue)}
           onDateClick={handleDateClick}
