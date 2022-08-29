@@ -1,4 +1,4 @@
-name: Check Markdown links
+name: Lint doc Markdown links
 
 on: [push]
 
@@ -8,8 +8,8 @@ jobs:
     steps:
       - uses: actions/checkout@master
       - uses: gaurav-nelson/github-action-markdown-link-check@v1
-      with:
-        use-quiet-mode: "yes"
-        folder-path: "docs"
-        check-modified-files-only: "yes"
-        config-file: ".mlc_config.json"
+        with:
+          use-quiet-mode: "yes"
+          folder-path: "docs"
+          check-modified-files-only: "yes"
+          config-file: ".mlc_config.json"
