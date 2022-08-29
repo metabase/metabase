@@ -244,7 +244,7 @@ describe("DatePicker", () => {
           expect(changeSpy).toHaveBeenLastCalledWith([
             operator,
             CREATED_AT_FIELD,
-            "2020-04-21",
+            "2020-05-21",
           ]);
         });
       });
@@ -266,8 +266,8 @@ describe("DatePicker", () => {
         expect(changeSpy).toHaveBeenLastCalledWith([
           "between",
           CREATED_AT_FIELD,
-          "2020-04-17",
-          "2020-04-19",
+          "2020-05-17",
+          "2020-05-19",
         ]);
       });
 
@@ -276,11 +276,11 @@ describe("DatePicker", () => {
         userEvent.click(screen.getByText(/specific/i));
         userEvent.click(screen.getByText("On"));
 
-        await screen.findByText("April 2020");
-        userEvent.click(await screen.getByLabelText(/chevronright/i));
         await screen.findByText("May 2020");
         userEvent.click(await screen.getByLabelText(/chevronright/i));
         await screen.findByText("June 2020");
+        userEvent.click(await screen.getByLabelText(/chevronright/i));
+        await screen.findByText("July 2020");
       });
     });
 
