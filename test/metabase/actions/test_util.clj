@@ -128,7 +128,8 @@
                                                                                             :required     true}}}}
                                            :name          "Query Example"
                                            :parameters    [{:id "id" :type "number"}]
-                                           :is_write      true}
+                                           :is_write      true
+                                           :visualization_settings {:inline true}}
                                           (dissoc options-map :type))]]
       (let [action-id (db/select-one-field :action_id QueryAction :card_id card-id)]
         (f {:query-action-card-id card-id
