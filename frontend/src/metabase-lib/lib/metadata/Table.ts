@@ -4,11 +4,13 @@
 import Question from "../Question";
 import Schema from "./Schema";
 import Base from "./Base";
+import Field from "./Field";
+import Database from "./Database";
+import Metadata from "./Metadata";
 import { singularize } from "metabase/lib/formatting";
 import { getAggregationOperators } from "metabase/lib/schema_metadata";
 import { createLookupByProperty, memoizeClass } from "metabase-lib/lib/utils";
-import Field from "./Field";
-
+import { TableId } from "metabase-types/types/Table";
 /**
  * @typedef { import("./metadata").SchemaName } SchemaName
  * @typedef { import("./metadata").EntityType } EntityType
@@ -18,14 +20,17 @@ import Field from "./Field";
 /** This is the primary way people interact with tables */
 
 class TableInner extends Base {
-  id: number;
+  id: TableId;
   description?: string;
   fks?: any[];
   schema?: Schema;
+  name: string;
   display_name: string;
   schema_name: string;
   db_id: number;
   fields: Field[];
+  metadata?: Metadata;
+  db?: Database | undefined | null;
 
   hasSchema() {
     return (this.schema_name && this.db && this.db.schemas.length > 1) || false;

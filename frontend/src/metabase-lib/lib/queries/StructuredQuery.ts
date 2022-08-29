@@ -11,7 +11,7 @@ import {
 } from "metabase/lib/expressions/format";
 import { isCompatibleAggregationOperatorForField } from "metabase/lib/schema_metadata";
 import _ from "underscore";
-import { chain, updateIn, merge } from "icepick";
+import { chain, updateIn } from "icepick";
 import { t } from "ttag";
 import { memoizeClass } from "metabase-lib/lib/utils";
 import {
@@ -51,10 +51,8 @@ import Table from "../metadata/Table";
 import Field from "../metadata/Field";
 import { TYPE } from "metabase/lib/types";
 import { fieldRefForColumn } from "metabase/lib/dataset";
-import {
-  isVirtualCardId,
-  getQuestionIdFromVirtualTableId,
-} from "metabase/lib/saved-questions/saved-questions";
+
+import { getStructuredQueryTable } from "./utils/structured-query-table";
 
 type DimensionFilter = (dimension: Dimension) => boolean;
 type FieldFilter = (filter: Field) => boolean;
@@ -331,105 +329,7 @@ class StructuredQueryInner extends AtomicQuery {
    * @returns the table object, if a table is selected and loaded.
    */
   table(): Table {
-    const question = this.question();
-    const isDataset = question?.isDataset() ?? false;
-    const sourceQuery = this.sourceQuery();
-
-    if (sourceQuery) {
-      const fields = sourceQuery.columns().map(column => {
-        const id = [
-          "field",
-          column.name,
-          {
-            "base-type": column.base_type,
-          },
-        ];
-
-        const newField = new Field({
-          ...column,
-          id,
-          source: "fields",
-        });
-        newField.query = sourceQuery;
-        newField.metadata = this.metadata();
-        return newField;
-      });
-
-      return new Table({
-        id: this.sourceTableId(),
-        name: "",
-        display_name: "",
-        db: sourceQuery.database(),
-        fields,
-        segments: [],
-        metrics: [],
-        metadata: this.metadata(),
-      });
-    }
-
-    const sourceTableId = this.sourceTableId();
-    if (isVirtualCardId(sourceTableId)) {
-      const virtualTableId = getQuestionIdFromVirtualTableId(sourceTableId);
-      const sourceQuestion = this.metadata().question(virtualTableId);
-      if (sourceQuestion) {
-        const sourceQuestionResultMetadata =
-          sourceQuestion?.getResultMetadata() ?? [];
-        const fields = sourceQuestionResultMetadata.map(fieldMetadata => {
-          const field = this.metadata().field(fieldMetadata.id);
-          const newField = field
-            ? field.merge(fieldMetadata)
-            : new Field({
-                ...fieldMetadata,
-                source: "fields",
-              });
-          newField.query = sourceQuestion.query();
-          newField.metadata = this.metadata();
-          return newField;
-        });
-
-        return new Table({
-          id: sourceTableId,
-          name: sourceQuestion.displayName(),
-          display_name: sourceQuestion.displayName(),
-          db: sourceQuestion.database(),
-          fields,
-          segments: [],
-          metrics: [],
-          metadata: this.metadata(),
-        });
-      }
-    }
-
-    if (isDataset) {
-      const table = this.metadata().table(this.sourceTableId());
-      const tableFields = table?.fields ?? [];
-      const sourceQuestionResultMetadata = question.getResultMetadata() ?? [];
-
-      const mergedFields = tableFields.map(field => {
-        const questionSpecificFieldMetadata = sourceQuestionResultMetadata.find(
-          metadata => metadata.id === field.id || metadata.name === field.name,
-        );
-
-        const newField = questionSpecificFieldMetadata
-          ? field.merge(questionSpecificFieldMetadata)
-          : field;
-
-        return newField;
-      });
-
-      return new Table({
-        id: this.sourceTableId(),
-        name: question.displayName(),
-        display_name: question.displayName(),
-        db: question.database(),
-        fields: mergedFields,
-        segments: [],
-        metrics: [],
-      });
-    }
-
-    const table = this.metadata().table(sourceTableId);
-    return table;
+    return getStructuredQueryTable(this);
   }
 
   /**

@@ -105,7 +105,7 @@ export default class Metadata extends Base {
     return (fieldId != null && this.fields[fieldId]) || null;
   }
 
-  question(cardId) {
+  question(cardId): Question | null {
     return (cardId != null && this.questions[cardId]) || null;
   }
 

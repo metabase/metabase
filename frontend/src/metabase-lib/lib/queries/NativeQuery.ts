@@ -4,7 +4,6 @@ import { t } from "ttag";
 
 import Database from "metabase-lib/lib/metadata/Database";
 import Table from "metabase-lib/lib/metadata/Table";
-import Field from "metabase-lib/lib/metadata/Field";
 import { countLines } from "metabase/lib/string";
 import { humanize } from "metabase/lib/formatting";
 import Utils from "metabase/lib/utils";
@@ -29,6 +28,8 @@ import Variable, { TemplateTagVariable } from "../Variable";
 import { createTemplateTag } from "metabase-lib/lib/queries/TemplateTag";
 import DimensionOptions from "../DimensionOptions";
 import ValidationError from "metabase-lib/lib/ValidationError";
+
+import { getNativeQueryTable } from "./utils/native-query-table";
 
 type DimensionFilter = (dimension: Dimension) => boolean;
 type VariableFilter = (variable: Variable) => boolean;
@@ -190,51 +191,8 @@ export default class NativeQuery extends AtomicQuery {
     );
   }
 
-  table(): Table | null | undefined {
-    const database = this.database();
-    const collection = this.collection();
-    const question = this.question();
-    const isDataset = question?.isDataset();
-
-    if (isDataset) {
-      const fields = question
-        .getResultMetadata()
-        .map(questionSpecificFieldMetadata => {
-          const field = this.metadata().field(questionSpecificFieldMetadata.id);
-
-          const newField = field
-            ? field.merge(fieldMetadata)
-            : new Field({
-                ...fieldMetadata,
-                source: "fields",
-              });
-          newField.query = this;
-          newField.metadata = this.metadata();
-
-          return newField;
-        });
-
-      return new Table({
-        id: `card__${question.id()}`,
-        name: question.displayName(),
-        display_name: question.displayName(),
-        db: question.database(),
-        fields,
-        segments: [],
-        metrics: [],
-        metadata: this.metadata(),
-      });
-    }
-
-    if (!database || !collection) {
-      return null;
-    }
-
-    return (
-      _.findWhere(database.tables, {
-        name: collection,
-      }) || null
-    );
+  table(): Table | null {
+    return getNativeQueryTable(this);
   }
 
   queryText(): string {

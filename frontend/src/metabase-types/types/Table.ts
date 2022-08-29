@@ -11,7 +11,10 @@ import { Metric } from "./Metric";
 import { DatabaseId } from "./Database";
 import { ForeignKey } from "../api/foreign-key";
 
-export type TableId = number;
+export type ConcreteTableId = number;
+export type VirtualTableId = string;
+
+export type TableId = ConcreteTableId | VirtualTableId;
 export type SchemaName = string;
 
 type TableVisibilityType = string; // FIXME
