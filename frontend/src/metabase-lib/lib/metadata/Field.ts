@@ -58,6 +58,7 @@ class FieldInner extends Base {
   fingerprint?: FieldFingerprint;
   base_type: string | null;
   table?: Table;
+  table_id?: Table["id"];
   target?: Field;
   has_field_values?: "list" | "search" | "none";
   values: any[];

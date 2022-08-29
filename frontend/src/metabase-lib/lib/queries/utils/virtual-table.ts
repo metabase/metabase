@@ -29,6 +29,7 @@ export function createVirtualTable({
   table.metadata = metadata;
   table.fields.forEach(field => {
     field.table = table;
+    field.table_id = table.id;
   });
 
   return table;
