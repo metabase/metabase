@@ -186,8 +186,11 @@ export default class AggregationPopover extends Component {
     );
   }
 
-  getSections(table, aggregationItems, metricItems) {
+  getSections(table, selectedAggregation) {
     const { alwaysExpanded, dimension, showCustom } = this.props;
+    const aggregationItems = this.getAggregationItems();
+    const metricItems = this.getMetricItems(table, selectedAggregation);
+
     const sections = [];
 
     const maybeOverriddenShowCustomProp =
@@ -322,9 +325,7 @@ export default class AggregationPopover extends Component {
     const { choosingField, editingAggregation } = this.state;
     const aggregation = AGGREGATION.getContent(this.state.aggregation);
     const selectedAggregation = this.getSelectedAggregation(table, aggregation);
-    const aggregationItems = this.getAggregationItems();
-    const metricItems = this.getMetricItems(table, selectedAggregation);
-    const sections = this.getSections(table, aggregationItems, metricItems);
+    const sections = this.getSections(table, selectedAggregation);
 
     if (editingAggregation) {
       return (
