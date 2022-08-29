@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import { merge } from "icepick";
+import { assocIn, getIn, merge } from "icepick";
 
 // eslint-disable-next-line import/named
 import { Formik, FormikProps, FormikErrors, FormikHelpers } from "formik";
@@ -16,7 +16,12 @@ import {
 
 import FormikFormViewAdapter from "./FormikFormViewAdapter";
 import useInlineFields from "./useInlineFields";
-import { makeFormObject, cleanObject } from "../formUtils";
+import {
+  makeFormObject,
+  cleanObject,
+  isNestedFieldName,
+  getMaybeNestedValue,
+} from "../formUtils";
 
 interface FormContainerProps<Values extends BaseFieldValues> {
   form?: FormObject<Values>;
@@ -125,12 +130,26 @@ function Form<Values extends BaseFieldValues>({
 
   const initialValues = useMemo(() => {
     const fieldNames = formObject.fieldNames(values);
+    const [nestedFieldNames, regularFieldNames] = _.partition(
+      fieldNames,
+      isNestedFieldName,
+    );
 
-    const filteredInitialValues: FieldValues = {};
+    let filteredInitialValues: FieldValues = {};
+
     Object.keys(initialValuesProp || {}).forEach(fieldName => {
-      if (fieldNames.includes(fieldName)) {
+      if (regularFieldNames.includes(fieldName)) {
         filteredInitialValues[fieldName] = initialValuesProp[fieldName];
       }
+    });
+
+    nestedFieldNames.forEach(nestedFieldName => {
+      const fieldValuePath = (nestedFieldName as string).split(".");
+      filteredInitialValues = assocIn(
+        filteredInitialValues,
+        fieldValuePath,
+        getIn(initialValuesProp, fieldValuePath),
+      );
     });
 
     return merge(formObject.initial(values), filteredInitialValues);

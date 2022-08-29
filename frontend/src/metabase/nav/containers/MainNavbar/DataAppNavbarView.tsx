@@ -26,9 +26,15 @@ interface Props extends MainNavbarProps {
   dataApp: DataApp;
   items: any[];
   selectedItems: SelectedItem[];
+  onEditAppSettings: () => void;
 }
 
-function DataAppNavbarView({ dataApp, items, selectedItems }: Props) {
+function DataAppNavbarView({
+  dataApp,
+  items,
+  selectedItems,
+  onEditAppSettings,
+}: Props) {
   const appPages = useMemo(
     () => items.filter(item => item.model === "dashboard"),
     [items],
@@ -63,7 +69,11 @@ function DataAppNavbarView({ dataApp, items, selectedItems }: Props) {
             <DataAppActionButton icon="add" onlyIcon />
           </Tooltip>
           <Tooltip tooltip={t`Settings`}>
-            <DataAppActionButton icon="gear" onlyIcon />
+            <DataAppActionButton
+              icon="gear"
+              onClick={onEditAppSettings}
+              onlyIcon
+            />
           </Tooltip>
         </ButtonGroup>
         <ExitDataAppButton

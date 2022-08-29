@@ -1,4 +1,7 @@
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
+import { t } from "ttag";
+
+import Modal from "metabase/components/Modal";
 
 import * as Urls from "metabase/lib/urls";
 
@@ -14,6 +17,8 @@ import DataAppNavbarView from "./DataAppNavbarView";
 
 const FETCHING_SEARCH_MODELS = ["dashboard", "dataset", "card"];
 const LIMIT = 100;
+
+type NavbarModal = "MODAL_APP_SETTINGS" | null;
 
 interface Props extends MainNavbarProps {
   dataApp: DataApp;
@@ -31,6 +36,8 @@ function DataAppNavbarContainer({
   loading: loadingDataApp,
   ...props
 }: Props) {
+  const [modal, setModal] = useState<NavbarModal>(null);
+
   const collectionContentQuery = useMemo(() => {
     if (!dataApp) {
       return {};
@@ -42,22 +49,54 @@ function DataAppNavbarContainer({
     };
   }, [dataApp]);
 
+  const onEditAppSettings = useCallback(() => {
+    setModal("MODAL_APP_SETTINGS");
+  }, []);
+
+  const closeModal = useCallback(() => setModal(null), []);
+
+  const renderModalContent = useCallback(() => {
+    if (modal === "MODAL_APP_SETTINGS") {
+      return (
+        <DataApps.ModalForm
+          form={DataApps.forms.settings}
+          title={t`Settings`}
+          dataApp={dataApp}
+          onClose={closeModal}
+          onSaved={closeModal}
+          submitTitle={t`Save`}
+        />
+      );
+    }
+    return null;
+  }, [dataApp, modal, closeModal]);
+
   if (loadingDataApp) {
     return <NavbarLoadingView />;
   }
 
   return (
-    <Search.ListLoader
-      query={collectionContentQuery}
-      loadingAndErrorWrapper={false}
-    >
-      {({ list = [], loading: loadingAppContent }: SearchRenderProps) => {
-        if (loadingAppContent) {
-          return <NavbarLoadingView />;
-        }
-        return <DataAppNavbarView {...props} dataApp={dataApp} items={list} />;
-      }}
-    </Search.ListLoader>
+    <>
+      <Search.ListLoader
+        query={collectionContentQuery}
+        loadingAndErrorWrapper={false}
+      >
+        {({ list = [], loading: loadingAppContent }: SearchRenderProps) => {
+          if (loadingAppContent) {
+            return <NavbarLoadingView />;
+          }
+          return (
+            <DataAppNavbarView
+              {...props}
+              dataApp={dataApp}
+              items={list}
+              onEditAppSettings={onEditAppSettings}
+            />
+          );
+        }}
+      </Search.ListLoader>
+      {modal && <Modal onClose={closeModal}>{renderModalContent()}</Modal>}
+    </>
   );
 }
 

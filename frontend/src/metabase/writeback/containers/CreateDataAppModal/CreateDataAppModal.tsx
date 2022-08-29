@@ -35,7 +35,7 @@ function CreateDataAppModal({ onClose, onChangeLocation }: Props) {
 
   return (
     <DataApps.ModalForm
-      form={DataApps.forms.details}
+      form={DataApps.forms.create}
       onSaved={handleSave}
       onClose={onClose}
     />

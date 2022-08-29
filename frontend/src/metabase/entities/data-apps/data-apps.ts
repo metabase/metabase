@@ -2,13 +2,13 @@ import { color } from "metabase/lib/colors";
 import { createEntity } from "metabase/lib/entities";
 
 import { DataAppSchema } from "metabase/schema";
-import { DataAppsApi } from "metabase/services";
+import { CollectionsApi, DataAppsApi } from "metabase/services";
 
 import { Collection, DataApp } from "metabase-types/api";
 
 import { DEFAULT_COLLECTION_COLOR_ALIAS } from "../collections/constants";
 
-import { createForm } from "./forms";
+import { createNewAppForm, createAppSettingsForm } from "./forms";
 import { getDataAppIcon, isDataAppCollection } from "./utils";
 
 type EditableDataAppParams = Pick<
@@ -19,6 +19,10 @@ type EditableDataAppParams = Pick<
 
 type CreateDataAppParams = Partial<EditableDataAppParams> &
   Pick<EditableDataAppParams, "name">;
+
+type UpdateDataAppParams = Pick<DataApp, "id" | "collection_id"> & {
+  collection: Pick<Collection, "name" | "description">;
+};
 
 const DataApps = createEntity({
   name: "dataApps",
@@ -45,6 +49,15 @@ const DataApps = createEntity({
         },
       });
     },
+    update: async ({
+      id,
+      collection,
+      collection_id,
+      ...rest
+    }: UpdateDataAppParams) => {
+      await CollectionsApi.update({ ...collection, id: collection_id });
+      return DataAppsApi.update({ id, ...rest });
+    },
   },
 
   objectSelectors: {
@@ -52,8 +65,11 @@ const DataApps = createEntity({
   },
 
   forms: {
-    details: {
-      fields: createForm,
+    create: {
+      fields: createNewAppForm,
+    },
+    settings: {
+      fields: createAppSettingsForm,
     },
   },
 });
