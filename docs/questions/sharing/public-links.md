@@ -11,12 +11,12 @@ Sometimes you'll want to share a dashboard or question you've saved with someone
 
 ## Turning public links on
 
-![Enable public sharing](./images/enable-public-sharing.png)
+![Enable public sharing](../images/enable-public-sharing.png)
 First things first, you'll need to go to the Admin Panel and enable public sharing. In the future, you'll see dashboards and questions you've shared listed here, and you'll be able to revoke any public links that you no longer want to be used.
 
 ## Enable sharing on your dashboard or saved question
 
-![Enable sharing](./images/enable-links.png)
+![Enable sharing](../images/enable-links.png)
 
 Next, exit the Admin Panel and go to question that you want to share, then click on the `Sharing and Embedding` icon in the bottom-right of the screen (it looks like an arrow pointing up and to the right). Then click on the toggle to enable public sharing for this question.
 
@@ -69,5 +69,5 @@ To specify multiple values for filters, though, you'll need to separate them wit
 ## Further reading
 
 - [Publishing data visualizations to the web](https://www.metabase.com/learn/embedding/embedding-charts-and-dashboards).
-- [Appearance documentation](../configuring-metabase/appearance.md).
-- [Embedding documentation](../embedding/start.md).
+- [Customizing Metabase's appearance](../../configuring-metabase/appearance.md).
+- [Embedding introduction](../../embedding/start.md).

@@ -134,7 +134,7 @@ Tell Metabase which font files to use for different styles. Example value:
 ]
 ```
 
-See [fonts](../embedding/fonts.md).
+See [fonts](../configuring-metabase/fonts.md).
 
 ### `MB_APPLICATION_LOGO_URL`
 

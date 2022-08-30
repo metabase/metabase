@@ -36,4 +36,4 @@ You'll need to put an iframe on your website to act as a window to your Metabase
 - [Strategies for delivering customer-facing analytics](https://www.metabase.com/learn/embedding/embedding-overview).
 - [Publishing data visualizations to the web](https://www.metabase.com/learn/embedding/embedding-charts-and-dashboards).
 - [Multi-tenant self-service analytics](https://www.metabase.com/learn/embedding/multi-tenant-self-service-analytics).
-- [Customizing Metabase's appearance](./appearance.md).
+- [Customizing Metabase's appearance](../configuring-metabase/appearance.md).

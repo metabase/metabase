@@ -4,7 +4,7 @@ title: Parameters for signed embeds
 
 # Parameters for signed embeds
 
-Parameters are pieces of information that are passed between Metabase and your website via the [embedding URL](./signed-embedding#adding-the-embedding-url-to-your-website). You can use parameters to specify how Metabase items should look and behave inside the iframe on your website.
+Parameters are pieces of information that are passed between Metabase and your website via the [embedding URL](./signed-embedding.md#adding-the-embedding-url-to-your-website). You can use parameters to specify how Metabase items should look and behave inside the iframe on your website.
 
 Parameters are added to the end of your embedding URL:
 
@@ -14,9 +14,9 @@ your_embedding_url?parameter_name=value
 
 ## Adding a filter widget to a signed embed
 
-You can add [filter widgets](/glossary/filter_widget) to embedded dashboards or SQL questions.
+You can add [filter widgets](https://www.metabase.com/glossary/filter_widget) to embedded dashboards or SQL questions.
 
-1. Go to your dashboard or SQL question. Make sure you've set up a [dashboard filter](../dashboards/filters) or [SQL variable](/questions/native-editor/sql-parameters).
+1. Go to your dashboard or SQL question. Make sure you've set up a [dashboard filter](../dashboards/filters.md) or [SQL variable](../questions/native-editor/sql-parameters.md).
 2. Click on the **sharing icon** > **Embed this item in an application**.
 3. Under **Parameters**, you'll find the names of your dashboard filters or SQL variables.
 4. Select **Editable** for each parameter that should get a filter widget on your embed.
@@ -43,7 +43,7 @@ To specify default values for more than one filter, separate them with ampersand
 your_embedding_url?breakfast=Scrambled_eggs&lunch=Grilled_cheese
 ```
 
-If the original dashboard's filter widget accepts multiple values (i.e., it's a [dropdown filter](../dashboards/filters#choosing-between-a-dropdown-or-autocomplete-for-your-filter), not a text box filter), you can set multiple default values:
+If the original dashboard's filter widget accepts multiple values (i.e., it's a [dropdown filter](../dashboards/filters.md#choosing-between-a-dropdown-or-autocomplete-for-your-filter), not a text box filter), you can set multiple default values:
 
 ```
 your_embedding_url?breakfast=Scrambled_eggs&breakfast=Bacon
@@ -61,7 +61,7 @@ If you want to display filtered data in an embedded dashboard or SQL question, a
 
 **Locked** parameters will apply the selected filter values to your original dashboard or SQL question, but they won't be displayed as as filter widgets on your embed. You can use locked parameters to display filtered data based on attributes captured by your web server (such as a user's login). See the [reference apps repo](https://github.com/metabase/embedding-reference-apps) for more examples.
 
-Note that you can only add filter values that match the filter type on the _original_ dashboard or SQL question. For example, if you have a text box filter on your original dashboard or SQL question, you'll only be able to add a single filter value to your locked parameter. If you want to provide multiple filter values to the parameter, you'll need to change the original filter to a [dropdown filter](../dashboards/filters#choosing-between-a-dropdown-or-autocomplete-for-your-filter) first.
+Note that you can only add filter values that match the filter type on the _original_ dashboard or SQL question. For example, if you have a text box filter on your original dashboard or SQL question, you'll only be able to add a single filter value to your locked parameter. If you want to provide multiple filter values to the parameter, you'll need to change the original filter to a [dropdown filter](../dashboards/filters.md#choosing-between-a-dropdown-or-autocomplete-for-your-filter) first.
 
 ## Hiding filter widgets from a signed embed
 
@@ -95,7 +95,7 @@ You can change the appearance of an embedded item by adding parameters with the 
 | titled         | true, false              |
 | theme          | null, transparent, night |
 
-Preview the changes from your question or dashboard's [embedded appearance settings](./signed-embedding#customizing-the-appearance-of-signed-embeds).
+Preview the changes from your question or dashboard's [embedded appearance settings](./signed-embedding.md#customizing-the-appearance-of-signed-embeds).
 
 For example, the following embedding URL will display an embedded item in dark mode, with its original title, and without a border:
 
