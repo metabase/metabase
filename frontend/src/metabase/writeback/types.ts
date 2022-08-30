@@ -35,7 +35,7 @@ export interface WritebackActionBase {
   "created-at": string;
 }
 
-export interface RowAction {
+export interface QueryAction {
   type: "query";
   card: WritebackActionCard;
   card_id: number;
@@ -60,9 +60,9 @@ export interface HttpActionTemplate {
   parameter_mappings: Record<ParameterId, ParameterTarget>;
 }
 
-export type WritebackRowAction = WritebackActionBase & RowAction;
+export type WritebackQueryAction = WritebackActionBase & QueryAction;
 export type WritebackHttpAction = WritebackActionBase & HttpAction;
-export type WritebackAction = WritebackActionBase & (RowAction | HttpAction);
+export type WritebackAction = WritebackActionBase & (QueryAction | HttpAction);
 
 export interface WritebackActionEmitter {
   id: number;

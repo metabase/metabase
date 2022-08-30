@@ -5,12 +5,13 @@ import { connect } from "react-redux";
 
 import Actions from "metabase/entities/actions";
 import { getMetadata } from "metabase/selectors/metadata";
+import { createQuestionFromAction } from "metabase/writeback/selectors";
 import Question from "metabase-lib/lib/Question";
 
 import type NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import type { State } from "metabase-types/store";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
-import type { WritebackRowAction } from "metabase/writeback/types";
+import type { WritebackQueryAction } from "metabase/writeback/types";
 
 import Modal from "metabase/components/Modal";
 
@@ -28,27 +29,25 @@ import { SavedCard } from "metabase-types/types/Card";
 
 const mapStateToProps = (
   state: State,
-  { action }: { action: WritebackRowAction },
+  { action }: { action: WritebackQueryAction },
 ) => ({
   metadata: getMetadata(state),
-  question: action
-    ? new Question(action.card, getMetadata(state)).setParameters(
-        action.parameters,
-      )
-    : undefined,
+  question: action ? createQuestionFromAction(state, action) : undefined,
   actionId: action ? action.id : undefined,
 });
+
+interface ActionCreatorProps {
+  metadata: Metadata;
+  question?: Question;
+  actionId?: number;
+  push: (url: string) => void;
+}
 
 function ActionCreatorComponent({
   metadata,
   question: passedQuestion,
   actionId,
-}: {
-  metadata: Metadata;
-  question?: Question;
-  actionId?: number;
-  push: (url: string) => void;
-}) {
+}: ActionCreatorProps) {
   const [question, setQuestion] = useState(
     passedQuestion ?? newQuestion(metadata),
   );
@@ -72,6 +71,8 @@ function ActionCreatorComponent({
     // because the backend doesnt give us an action id yet
   };
 
+  const handleClose = () => setShowSaveModal(false);
+
   const isNew = !actionId && !(question.card() as SavedCard).id;
 
   return (
@@ -88,7 +89,7 @@ function ActionCreatorComponent({
         <FormCreator tags={query?.templateTagsWithoutSnippets()} />
       </ActionCreatorBodyContainer>
       {showSaveModal && (
-        <Modal>
+        <Modal onClose={handleClose}>
           <Actions.ModalForm
             title={isNew ? t`New action` : t`Save action`}
             form={Actions.forms.saveForm}
@@ -100,7 +101,7 @@ function ActionCreatorComponent({
               question,
             }}
             onSaved={afterSave}
-            onClose={() => setShowSaveModal(false)}
+            onClose={handleClose}
           />
         </Modal>
       )}
@@ -109,6 +110,8 @@ function ActionCreatorComponent({
 }
 
 export const ActionCreator = _.compose(
-  Actions.load({ id: (state: State, props: any) => props.actionId }),
+  Actions.load({
+    id: (state: State, props: { actionId?: number }) => props.actionId,
+  }),
   connect(mapStateToProps),
 )(ActionCreatorComponent);
