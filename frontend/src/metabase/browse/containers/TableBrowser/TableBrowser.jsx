@@ -2,8 +2,7 @@ import { connect } from "react-redux";
 import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
 import { isSyncInProgress } from "metabase/lib/syncing";
-import Databases from "metabase/entities/databases";
-import Tables from "metabase/entities/tables";
+import Table from "metabase/entities/tables";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getXraysEnabled } from "metabase/selectors/settings";
 import { RELOAD_INTERVAL } from "../../constants";
@@ -23,8 +22,8 @@ const getSchemaName = props => {
   return props.schemaName || props.params.schemaName;
 };
 
-const getReloadInterval = (state, { database }, tables = []) => {
-  if (isSyncInProgress(database) && tables.some(t => isSyncInProgress(t))) {
+const getReloadInterval = (state, props, tables = []) => {
+  if (tables.some(t => !t.visibility_type && isSyncInProgress(t))) {
     return RELOAD_INTERVAL;
   } else {
     return 0;
@@ -37,10 +36,7 @@ const getTableUrl = (table, metadata) => {
 };
 
 export default _.compose(
-  Databases.load({
-    id: (state, props) => getDatabaseId(props),
-  }),
-  Tables.loadList({
+  Table.loadList({
     query: (state, props) => ({
       dbId: getDatabaseId(props),
       schemaName: getSchemaName(props),
