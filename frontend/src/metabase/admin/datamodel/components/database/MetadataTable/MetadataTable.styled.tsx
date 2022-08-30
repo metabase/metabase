@@ -72,7 +72,25 @@ export const TableDescription = styled.div`
   margin-top: -1px;
 `;
 
-export const TableSyncMessage = styled.div`
-  color: ${color("text-medium")};
-  margin-left: 0.5rem;
+export const VisibilityWarning = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 2rem;
+`;
+
+export const VisibilityWarningTitle = styled.div`
+  color: ${color("text-dark")};
+  font-size: 1.25rem;
+  font-weight: bold;
+  line-height: 1.5rem;
+  margin-bottom: 0.5rem;
+`;
+
+export const VisibilityWarningDescription = styled.div`
+  color: ${color("text-dark")};
+  line-height: 1.5rem;
+  margin-bottom: 1.5rem;
+  max-width: 25rem;
+  text-align: center;
 `;

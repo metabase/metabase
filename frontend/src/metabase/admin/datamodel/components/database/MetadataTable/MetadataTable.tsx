@@ -17,11 +17,14 @@ import {
   TableDescriptionInput,
   TableName,
   TableNameInput,
+  VisibilityWarning,
+  VisibilityWarningDescription,
+  VisibilityWarningTitle,
   VisibilityType,
-  TableSyncMessage,
 } from "./MetadataTable.styled";
 import { Field } from "metabase-types/api/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import Button from "metabase/core/components/Button";
 
 const getDescriptionPlaceholder = () => t`No table description yet`;
 
@@ -134,12 +137,6 @@ const MetadataTable = ({
           )}
         </span>
       </div>
-      {!isSynced && (
-        <TableSyncMessage>
-          {t`The table was hidden during the initial sync.`}{" "}
-          {t`You need to make it Queryable so we can sync this table and its columns.`}
-        </TableSyncMessage>
-      )}
       <div className="mx1 border-bottom">
         <Radio
           colorScheme="default"
@@ -163,6 +160,19 @@ const MetadataTable = ({
             />
           )}
         </div>
+      )}
+      {!isSynced && isHidden && (
+        <VisibilityWarning>
+          <VisibilityWarningTitle>
+            {t`This table hasn’t been synced yet`}
+          </VisibilityWarningTitle>
+          <VisibilityWarningDescription>
+            {t`It was automatically marked as Hidden during the initial sync of this database. Do you want to make it queryable and sync it?`}
+          </VisibilityWarningDescription>
+          <Button onClick={() => handlePropertyUpdate("visibility_type", null)}>
+            {t`Change to Queryable and sync it`}
+          </Button>
+        </VisibilityWarning>
       )}
     </div>
   );
