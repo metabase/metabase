@@ -48,6 +48,9 @@ function ClickBehaviorSidebar({
   const [originalColumnVizSettings, setOriginalColumnVizSettings] =
     useState(null);
 
+  const previousDashcard = usePrevious(dashcard);
+  const hasSelectedColumn = selectedColumn != null;
+
   const clickBehavior = useMemo(() => {
     if (isTableDisplay(dashcard) && !hasSelectedColumn) {
       return;
@@ -63,9 +66,6 @@ function ClickBehaviorSidebar({
     () => clickBehaviorIsValid(clickBehavior),
     [clickBehavior],
   );
-
-  const previousDashcard = usePrevious(dashcard);
-  const hasSelectedColumn = selectedColumn != null;
 
   const handleChangeSettings = useCallback(
     nextClickBehavior => {
