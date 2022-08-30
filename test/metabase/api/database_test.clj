@@ -337,12 +337,12 @@
                     (mt/user-http-request :rasta :get 200
                                           (format "database/%d/autocomplete_suggestions" db-id)
                                           :prefix prefix
-                                          :tagged-card-ids (str/join "," card-ids)))
+                                          :referenced-card-ids (str/join "," card-ids)))
         substring-fn (fn [db-id search card-ids]
                        (mt/user-http-request :rasta :get 200
                                              (format "database/%d/autocomplete_suggestions" db-id)
                                              :substring search
-                                             :tagged-card-ids (str/join "," card-ids)))]
+                                             :referenced-card-ids (str/join "," card-ids)))]
     (testing "GET /api/database/:id/autocomplete_suggestions"
       (doseq [[prefix expected] {"u"   [["USERS" "Table"]
                                         ["USER_ID" "CHECKINS :type/Integer :type/FK"]]
@@ -363,7 +363,8 @@
                              (:id (db/insert! Card (merge (mt/with-temp-defaults Card)
                                                           {:name            (format "My Card %d" i)
                                                            :database_id     (u/the-id tmp-db)
-                                                           :result_metadata [{:name (format "My Test Card Column %d" i)}]}))))]
+                                                           :result_metadata [{:name (format "My Test Card Column %d" i)}]
+                                                           :archived        false}))))]
               ;; for each type-specific prefix, we should get 50 fields
               (is (= 30 (count (prefix-fn (u/the-id tmp-db) "My Field" card-ids))))
               (is (= 30 (count (prefix-fn (u/the-id tmp-db) "My Table" card-ids))))
