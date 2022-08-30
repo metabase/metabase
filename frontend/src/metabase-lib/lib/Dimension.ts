@@ -835,120 +835,52 @@ export class FieldDimension extends Dimension {
     }
   }
 
-  _getFieldMetadataFromSavedDataset() {
+  _findMatchingQueryField() {
     const identifierProp = this._getIdentifierProp();
-    const questionAssociatedWithDimension = this.query()?.question();
-    if (
-      questionAssociatedWithDimension?.isSaved() &&
-      questionAssociatedWithDimension.isDataset()
-    ) {
-      const fieldMetadata = _.findWhere(
-        questionAssociatedWithDimension.getResultMetadata(),
-        {
-          [identifierProp]: this.fieldIdOrName(),
-        },
-      );
-
-      return fieldMetadata;
+    const fieldIdentifier = this.fieldIdOrName();
+    if (this._query) {
+      const queryTableFields = this._query.table()?.fields;
+      return _.findWhere(queryTableFields, {
+        [identifierProp]: fieldIdentifier,
+      });
     }
   }
 
-  _getFieldMetadataFromNestedDataset() {
-    const identifierProp = this._getIdentifierProp();
-    const virtualTableCardId = getQuestionIdFromVirtualTableId(
-      this.query()?.sourceTableId?.(),
-    );
-    if (virtualTableCardId != null) {
-      const question = this._metadata?.question(virtualTableCardId);
-      const fieldMetadata = question?.isDataset()
-        ? _.findWhere(question.getResultMetadata(), {
-            [identifierProp]: this.fieldIdOrName(),
-          })
-        : undefined;
-
-      return fieldMetadata;
-    }
-  }
-
-  _getFieldMetadataFromQueryTable() {
-    const identifierProp = this._getIdentifierProp();
-    const table = this.query()?.table();
-    return _.findWhere(table?.fields, {
-      [identifierProp]: this.fieldIdOrName(),
+  _createFallbackField(): Field {
+    return this._createField({
+      id: this.isIntegerFieldId() ? this.fieldIdOrName() : this.mbql(),
+      field_ref: this.mbql(),
+      name: this.isStringFieldName() && this.fieldIdOrName(),
+      display_name: this.fieldIdOrName(),
+      base_type: this.getOption("base-type"),
     });
-  }
-
-  _combineFieldWithExtraMetadata(field: Field | undefined, fieldMetadata) {
-    if (field) {
-      if (!fieldMetadata || field === fieldMetadata) {
-        return field;
-      }
-
-      const fieldObject = merge(
-        field instanceof Field ? field.getPlainObject() : field,
-        fieldMetadata instanceof Field
-          ? fieldMetadata.getPlainObject()
-          : fieldMetadata,
-      );
-      return this._createField(fieldObject, { hydrate: true });
-    }
-
-    if (fieldMetadata) {
-      if (fieldMetadata instanceof Field) {
-        return fieldMetadata;
-      }
-
-      return this._createField(fieldMetadata);
-    }
   }
 
   field(): Field {
     // If a Field is cached on the FieldDimension instance, we can shortwire this method and
     // return the cached Field.
-    const cachedField = this._getTrustedFieldCachedOnInstance();
-    if (cachedField) {
-      return cachedField;
+    const locallyCachedField = this._getTrustedFieldCachedOnInstance();
+    if (locallyCachedField) {
+      return locallyCachedField;
     }
 
-    let fieldMetadata;
-
-    // Models contain custom metadata for fields, but when these fields have integer ids,
-    // they are clobbered by the metadata from the real table that the card is based on,
-    // so we need to check the result_metadata of the nested card and merge it with the
-    // Field that exists in the Metadata object.
-    if (this.isIntegerFieldId()) {
-      fieldMetadata =
-        this._getFieldMetadataFromSavedDataset() ||
-        this._getFieldMetadataFromNestedDataset();
+    // Prioritize pulling a `field` from the Dimenion's associated query (if one exists)
+    // because it might have locally overriding metadata on it.
+    const fieldFromQuery = this._findMatchingQueryField();
+    if (fieldFromQuery) {
+      return fieldFromQuery;
     }
 
-    // In scenarios where the Field id is not an integer, we need to grab the Field from the
-    // query's table, because the Field won't exist in the Metadata object (and string Field ids
-    // are not sufficiently unique to be stored properly in the Metadata object).
-    fieldMetadata = fieldMetadata || this._getFieldMetadataFromQueryTable();
-
-    // The `fieldMetadata` object may have metadata that overrides the regular field object
-    // (e.g. a custom field display name or description on a model)
-    const field = this._metadata?.field(this.fieldIdOrName());
-    const combinedField = this._combineFieldWithExtraMetadata(
-      field,
-      fieldMetadata,
-    );
-
-    if (combinedField) {
-      return combinedField;
+    const fieldFromGlobalState = this._metadata?.field(this.fieldIdOrName());
+    if (fieldFromGlobalState) {
+      return fieldFromGlobalState;
     }
 
+    // Hitting this return statement means that there is a bug.
+    // This primarily serves as a way to guarantee that this function returns a Field to avoid errors in dependent code.
     // Despite being unable to find a field, we _might_ still have enough data to know a few things about it.
     // For example, if we have an mbql field reference, it might contain a `base-type`
-    return this._createField({
-      id: this.isIntegerFieldId() ? this.fieldIdOrName() : this.mbql(),
-      name: this.isStringFieldName() && this.fieldIdOrName(),
-      // NOTE: this display_name will likely be incorrect
-      // if a `FieldDimension` isn't associated with a query then we don't know which table it belongs to
-      display_name: this._fieldIdOrName,
-      base_type: this.getOption("base-type"),
-    });
+    return this._createFallbackField();
   }
 
   tableId() {
