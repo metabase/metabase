@@ -1,9 +1,9 @@
 import React from "react";
 import _ from "underscore";
 
-import { Text } from "@visx/text";
 import { scaleBand } from "@visx/scale";
 
+import OutlinedText from "metabase/static-viz/components/Text/OutlinedText";
 import { getValueStep, getY } from "../utils";
 
 import type { TextProps } from "@visx/text";
@@ -127,31 +127,16 @@ export default function Values({
           );
 
           return (
-            <>
-              {/* Render 2 text elements instead of one as a workaround for BE environment that doesn't support `paint-order` CSS property */}
-              <Text
-                key={index}
-                x={xAccessor(value.datum)}
-                y={yAccessor(value.datum)}
-                textAnchor="middle"
-                verticalAnchor="end"
-                {...valueProps}
-              >
-                {formatter(getY(value.datum), compact)}
-              </Text>
-              <Text
-                key={index}
-                x={xAccessor(value.datum)}
-                y={yAccessor(value.datum)}
-                textAnchor="middle"
-                verticalAnchor="end"
-                {...valueProps}
-                stroke={undefined}
-                strokeWidth={undefined}
-              >
-                {formatter(getY(value.datum), compact)}
-              </Text>
-            </>
+            <OutlinedText
+              key={index}
+              x={xAccessor(value.datum)}
+              y={yAccessor(value.datum)}
+              textAnchor="middle"
+              verticalAnchor="end"
+              {...valueProps}
+            >
+              {formatter(getY(value.datum), compact)}
+            </OutlinedText>
           );
         });
       })}
