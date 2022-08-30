@@ -153,6 +153,7 @@
     cards))
 
 (defn dashcard-action
+  "Hydrates action from DashboardCard"
   {:batched-hydrate :dashcard/action}
   [dashcards]
   (if-let [action-ids (not-empty (keep :action_id dashcards))]
