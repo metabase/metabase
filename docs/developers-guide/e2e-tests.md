@@ -92,3 +92,18 @@ Cypress records videos of each test run, which can be helpful in debugging. Addi
 
 These files can be found under the “Artifacts” tab in Circle:
 ![Circle CI Artifacts tab](https://user-images.githubusercontent.com/691495/72190614-f5995380-33cd-11ea-875e-4203d6dcf1c1.png)
+
+## Running Cypress tests against EE version of Metabase
+
+Make sure you have a valid enterprise token prior to running Cypress. We have a special `describe` block called `describeEE` that will conditionally skip or run tests based on the existence of two environment variables (`MB_EDITION` and `MB_PREMIUM_EMBEDDING_TOKEN`).
+
+```
+MB_EDITION=ee MB_PREMIUM_EMBEDDING_TOKEN=xxxxxx yarn test-cypress-open
+```
+
+If you navigate to the `/admin/settings/license` page, the license input field should be disabled and already populated. It should say: "Using MB_PREMIUM_EMBEDDING_TOKEN".
+
+_Note:_
+
+- If tests under `describeEE` block are greyed out and not running, make sure you entered the environment variables correctly.
+- If tests start running but the enterprise features are missing first make sure that the token is still valid and/or that it includes a certain feature. If everything with the token seems to be ok the only remaining solution is to kill all Java processes with `killall java` and to restart Cypress.
