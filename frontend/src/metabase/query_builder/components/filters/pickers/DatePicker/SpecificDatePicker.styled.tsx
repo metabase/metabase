@@ -34,4 +34,8 @@ export const DateInputContainer = styled.div<DateInputContainerProps>`
   border: 1px solid
     ${({ isActive }) => (isActive ? color("brand") : color("border"))};
   border-radius: 0.5rem;
+
+  &:focus-within {
+    border-color: ${color("brand")};
+  }
 `;

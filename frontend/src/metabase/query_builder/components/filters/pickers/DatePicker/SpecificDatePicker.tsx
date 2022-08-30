@@ -22,6 +22,7 @@ interface SpecificDatePickerProps {
   isActive?: boolean;
   hasCalendar?: boolean;
   hideTimeSelectors?: boolean;
+  autoFocus?: boolean;
   onFocus?: () => void;
   onChange: (startValue: string | null, endValue?: string) => void;
   onClear?: () => void;
@@ -35,6 +36,7 @@ const SpecificDatePicker = ({
   isActive,
   hasCalendar,
   hideTimeSelectors,
+  autoFocus,
   onFocus,
   onChange,
   onClear,
@@ -62,6 +64,7 @@ const SpecificDatePicker = ({
         <DateInput
           placeholder={moment().format(dateFormat)}
           value={date ? date.format(dateFormat) : ""}
+          autoFocus={autoFocus}
           onFocus={onFocus}
           onBlurChange={({ target: { value } }: any) => {
             const date = moment(value, dateFormat);

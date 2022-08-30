@@ -79,6 +79,7 @@ export const BetweenPicker = ({
           primaryColor={primaryColor}
           isActive={isStartDateActive}
           hideTimeSelectors={hideTimeSelectors}
+          autoFocus
           onFocus={handleStartDateFocus}
           onChange={handleStartDateChange}
         />
