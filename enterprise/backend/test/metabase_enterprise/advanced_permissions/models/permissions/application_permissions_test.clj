@@ -32,7 +32,7 @@
 
 ;;; ------------------------------------------------- Update Graph --------------------------------------------------
 
-(defmacro with-new-group-and-current-graph
+(defmacro ^:private with-new-group-and-current-graph
   "Create a new group-id and bind it with the `current-graph`."
   [group-id-binding current-graph-binding & body]
   `(mt/with-temp* [PermissionsGroup [{group-id# :id}]]
