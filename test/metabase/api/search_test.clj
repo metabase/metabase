@@ -6,7 +6,7 @@
             [metabase.api.search :as api.search]
             [metabase.models
              :refer
-             [Card CardBookmark Collection Dashboard DashboardBookmark DashboardCard
+             [App Card CardBookmark Collection Dashboard DashboardBookmark DashboardCard
               Database Metric PermissionsGroup PermissionsGroupMembership Pulse PulseCard
               Segment Table]]
             [metabase.models.permissions :as perms]
@@ -22,9 +22,10 @@
   {:id                         true
    :description                nil
    :archived                   false
-   :collection                 {:id false :name nil :authority_level nil}
+   :collection                 {:id false :name nil :authority_level nil :app_id false}
    :collection_authority_level nil
    :collection_position        nil
+   :app_id                     false
    :moderated_status           nil
    :context                    nil
    :dashboardcard_count        nil
@@ -54,15 +55,13 @@
 
 (defn- make-result
   [name & kvs]
-  (merge
-   default-search-row
-   {:name name}
-   (apply array-map kvs)))
+  (apply assoc default-search-row :name name kvs))
 
 (def ^:private test-collection (make-result "collection test collection"
                                             :bookmark false
                                             :model "collection"
-                                            :collection {:id true, :name true :authority_level nil}
+                                            :collection {:id true, :name true :authority_level nil
+                                                         :app_id false}
                                             :updated_at false))
 
 (defn- default-search-results []
@@ -95,7 +94,7 @@
 
 (defn- default-results-with-collection []
   (on-search-types #{"dashboard" "pulse" "card" "dataset"}
-                   #(assoc % :collection {:id true, :name true :authority_level nil})
+                   #(assoc % :collection {:id true, :name true :authority_level nil :app_id false})
                    (default-search-results)))
 
 (defn- do-with-search-items [search-string in-root-collection? f]
@@ -610,3 +609,17 @@
       (is (= ["Another SQL query"]
              (->> (search-request-data :rasta :q "aggregation")
                   (map :name)))))))
+
+(deftest app-test
+  (testing "App collections should come with app_id set"
+    (with-search-items-in-collection {:keys [collection]} "test"
+      (mt/with-temp App [_app {:collection_id (:id collection)}]
+        (is (= (mapv
+                (fn [result]
+                  (cond-> result
+                    (not (#{"metric" "segment"} (:model result)))
+                    (assoc-in [:collection :app_id] true)
+                    (= (:model result) "collection")
+                    (assoc :app_id true)))
+                (default-results-with-collection))
+               (search-request-data :rasta :q "test")))))))
