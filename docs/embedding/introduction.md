@@ -1,12 +1,12 @@
 ---
-title: Introduction
+title: Introduction to embedding
 redirect_from:
   - /docs/latest/administration-guide/13-embedding
 ---
 
-# Introduction
+# Introduction to embedding
 
-Embedding allows people to view your Metabase app inside another web app (such as your company's website).
+You can embed Metabase tables, charts, and dashboards—even Metabase's query builder—in your website or application.
 
 [Signed embedding](./signed-embedding.md) (also known as standalone embedding) and [full-app embedding](./full-app-embedding.md) are _secure_ ways to share your data with specific groups of people outside of your organization.
 
@@ -14,11 +14,11 @@ If you'd like to share your data with the good people of the internet, you can c
 
 ## How embedding works
 
-You'll need to put an iframe on your website to act as a window to your Metabase app. Then, you can configure things like:
+You'll need to put an iframe on your website to act as a window to your Metabase app. Different configurations of that embedded iframe will let you:
 
-- what Metabase charts and dashboards to display in the iframe,
-- whether people need to sign in to view those charts and dashboards, and
-- how much people can interact with your data (using Metabase features that are accessible through the iframe).
+- [set up public access](../questions/sharing/public-links.md) to charts and dashboards,
+- [require sign-in](./signed-embedding.md) to view personalized versions of those charts and dashboards, or
+- [integrate with SSO and data permissions](./full-app-embedding.md) to enable self-service access to the underlying data.
 
 ## Comparison of embedding types
 
