@@ -1,15 +1,19 @@
 ---
-title: White labeling Metabase
+title: Appearance
 redirect_from:
   - /docs/latest/administration-guide/whitelabeling
   - /docs/latest/enterprise-guide/whitelabeling
+  - /docs/latest/enterprise-guide/customize-embeds
+  - /docs/latest/embedding/whitelabeling
+  - /docs/latest/embedding/fonts
+  - /docs/latest/embedding/customize-embeds
 ---
 
-# White labeling Metabase
+# Appearance
 
-{% include plans-blockquote.html feature="White labeling" %}
+{% include plans-blockquote.html feature="Custom appearance" %}
 
-White labeling lets you customize Metabase's appearance so that it matches your company’s branding.
+Appearance setttings give you the option to white label Metabase to match your company’s branding.
 
 ## Changing Metabase's appearance
 
@@ -75,4 +79,6 @@ Show the Metabase lighthouse image on the home and login pages.
 
 ## Further reading
 
-- [Brand your Metabase](https://www.metabase.com/learn/embedding/brand)
+- [Customer-facing analytics](https://www.metabase.com/learn/embedding/).
+- [Embedding introduction](../embedding/start.md).
+- [Brand your Metabase](https://www.metabase.com/learn/embedding/brand).
