@@ -336,11 +336,13 @@
   :whitespace-linter
   {:deps       {com.github.camsaul/whitespace-linter {:sha "912644a2b9cc91edcce31a6fa997c46479341a1d"}}
    :ns-default whitespace-linter
+   :exec-fn    whitespace-linter/lint
    :exec-args  {:paths            ["./.dir-locals.el"
                                    "./deps.edn"
                                    "./package.json"
                                    "./shadow-cljs.edn"
                                    ".circleci"
+                                   ".clj-kondo"
                                    ".github"
                                    "bin"
                                    "enterprise"
@@ -365,7 +367,9 @@
                                    "frontend/src/cljs"
                                    "frontend/test/metabase/lib/urls\\.unit\\.spec\\.js$"
                                    "frontend/test/metabase/lib/formatting\\.unit\\.spec\\.js$"
-                                   "shared/src/metabase/shared/util/currency\\.cljc$"]}}
+                                   "shared/src/metabase/shared/util/currency\\.cljc$"
+                                   "#.+#$"
+                                   "\\.transit\\.json$"]}}
 
   ;; clojure -X:dev:ee:ee-dev:test:cloverage
   :cloverage

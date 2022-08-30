@@ -95,21 +95,6 @@
   `(let [~x nil]
      ~@body))
 
-(defmacro with-two-top-level-bindings
-  "Helper for macros that have a shape like
-
-    (my-macro x y
-      ...)
-
-    =>
-
-    (let [x nil, y nil]
-      ...)"
-  [x y & body]
-  `(let [~x nil
-         ~y nil]
-     ~@body))
-
 (defmacro with-ignored-first-arg
   "For macros like
 
@@ -122,9 +107,4 @@
 
   where the first arg ought to be ignored for linting purposes."
   [_x & body]
-  `(do ~@body))
-
-(defmacro do*
-  "Like [[clojure.core/do]] but doesn't cause Kondo to complain about redundant dos."
-  [& body]
   `(do ~@body))

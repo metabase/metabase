@@ -267,7 +267,7 @@
     metabase.plugins.initialize                                     plugins.init
     metabase.public-settings                                        public-settings
     metabase.public-settings.premium-features                       premium-features
-    metabase.pulse                                                  pulse ; NB some conflicts with metabase.models.pulse
+    metabase.pulse                                                  pulse              ; NB some conflicts with metabase.models.pulse
     metabase.pulse.markdown                                         markdown
     metabase.pulse.render                                           render
     metabase.pulse.render.body                                      body
@@ -417,8 +417,9 @@
   potemkin/deftype+                                                               clojure.core/deftype
   toucan.db/with-call-counting                                                    clojure.core/fn
 
-  metabase.api.dashboard-test/let-url                               clojure.core/let
-  metabase.api.search-test/do-test-users clojure.core/let
+  metabase.api.dashboard-test/let-url                         clojure.core/let
+  metabase.api.search-test/do-test-users                      clojure.core/let
+  metabase.models.collection-test/with-collection-in-location clojure.core/let
 
   }
 
@@ -554,20 +555,21 @@
    metabase.test/test-drivers                                        hooks.common/do*
    metabase.test/with-non-admin-groups-no-root-collection-perms      hooks.common/do*
 
-   metabase.api.search-test/with-search-items-in-collection hooks.metabase.api.search-test/with-search-items-in-collection
+   metabase.api.search-test/with-search-items-in-collection                                                                  hooks.metabase.api.search-test/with-search-items-in-collection
+   metabase.api.collection-test/with-french-user-and-personal-collection                                                     hooks.common/with-two-top-level-bindings
+   metabase-enterprise.advanced-permissions.models.permissions.application-permissions-test/with-new-group-and-current-graph hooks.common/with-two-top-level-bindings
    }
 
   :macroexpand
   {
-   metabase-enterprise.advanced-permissions.models.permissions.application-permissions-test/with-new-group-and-current-graph macros.common/with-two-top-level-bindings
-   metabase-enterprise.serialization.test-util/with-world                                                                    macros.metabase-enterprise.serialization.test-util/with-world
-   metabase.api.alert-test/with-alert-in-collection                                                                          macros.common/with-four-bindings
-   metabase.api.card-test/with-ordered-items                                                                                 macros.metabase.api.card-test/with-ordered-items
-   metabase.api.card-test/with-persistence-setup                                                                             macros.common/with-one-top-level-binding
-   metabase.api.card-test/with-temp-native-card                                                                              macros.common/with-two-bindings
-   metabase.api.card-test/with-temp-native-card-with-params                                                                  macros.common/with-two-bindings
-   metabase.api.collection-test/with-collection-hierarchy                                                                    macros.metabase.api.collection-test/with-collection-hierarchy
-   metabase.api.collection-test/with-french-user-and-personal-collection                                                     macros.common/with-two-top-level-bindings
+   metabase-enterprise.serialization.test-util/with-world   macros.metabase-enterprise.serialization.test-util/with-world
+   metabase.api.alert-test/with-alert-in-collection         macros.common/with-four-bindings
+   metabase.api.card-test/with-ordered-items                macros.metabase.api.card-test/with-ordered-items
+   metabase.api.card-test/with-persistence-setup            macros.common/with-one-top-level-binding
+   metabase.api.card-test/with-temp-native-card             macros.common/with-two-bindings
+   metabase.api.card-test/with-temp-native-card-with-params macros.common/with-two-bindings
+   metabase.api.collection-test/with-collection-hierarchy   macros.metabase.api.collection-test/with-collection-hierarchy
+
    metabase.api.collection-test/with-some-children-of-collection                                                             macros.metabase.api.collection-test/with-some-children-of-collection
    metabase.api.common/define-routes                                                                                         macros.metabase.api.common/define-routes
    metabase.api.dashboard-test/with-chain-filter-fixtures                                                                    macros.common/let-one-with-optional-value
@@ -597,6 +599,12 @@
    metabase.test/with-column-remappings                                                                                      macros.common/with-ignored-first-arg
    metabase.test/with-temp-env-var-value                                                                                     macros.metabase.test.util/with-temp-env-var-value
    metabase.test/with-temporary-raw-setting-values                                                                           macros.metabase.test.util/with-temporary-raw-setting-values
+   metabase.models.collection-test/with-personal-and-impersonal-collections macros.common/with-two-bindings
+   metabase.models.params.chain-filter-test/chain-filter macros.metabase.models.params.chain-filter-test/chain-filter
+   metabase.models.params.chain-filter-test/chain-filter-search macros.metabase.models.params.chain-filter-test/chain-filter
+
+   metabase.models.pulse-test/with-dashboard-subscription-in-collection macros.common/with-four-bindings
+   metabase.models.user-test/with-groups macros.metabase.models.user-test/with-groups
 
    toucan.models/defmodel                          macros.toucan.models/defmodel
    clojurewerkz.quartzite.jobs/build               macros.quartz/build-job
