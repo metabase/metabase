@@ -1,10 +1,10 @@
 (ns metabase.api.revision-test
   (:require [clojure.test :refer :all]
-            [metabase.models.card :refer [Card serialize-instance]]
+            [metabase.models.card :refer [Card]]
             [metabase.models.collection :refer [Collection]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :refer [DashboardCard]]
-            [metabase.models.revision :refer [push-revision! Revision revisions]]
+            [metabase.models.revision :as revision :refer [push-revision! Revision revisions]]
             [metabase.test :as mt]
             [metabase.test.data.users :as test.users]
             [metabase.test.fixtures :as fixtures]
@@ -96,7 +96,7 @@
                  :model        (:name Card)
                  :model_id     id
                  :user_id      (test.users/user->id :rasta)
-                 :object       (serialize-instance Card (:id card) card)
+                 :object       (revision/serialize-instance Card (:id card) card)
                  :message      "because i wanted to"
                  :is_creation  false
                  :is_reversion true)

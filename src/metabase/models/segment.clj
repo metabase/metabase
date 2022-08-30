@@ -52,31 +52,27 @@
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
-(defn- serialize-segment [_ _ instance]
+(defmethod revision/serialize-instance Segment
+  [_model _id instance]
   (dissoc instance :created_at :updated_at))
 
-(defn- diff-segments [this segment1 segment2]
+(defmethod revision/diff-map Segment
+  [model segment1 segment2]
   (if-not segment1
     ;; this is the first version of the segment
     (m/map-vals (fn [v] {:after v}) (select-keys segment2 [:name :description :definition]))
     ;; do our diff logic
-    (let [base-diff (revision/default-diff-map this
-                                               (select-keys segment1 [:name :description :definition])
-                                               (select-keys segment2 [:name :description :definition]))]
+    (let [base-diff ((get-method revision/diff-map :default)
+                     model
+                     (select-keys segment1 [:name :description :definition])
+                     (select-keys segment2 [:name :description :definition]))]
       (cond-> (merge-with merge
                           (m/map-vals (fn [v] {:after v}) (:after base-diff))
                           (m/map-vals (fn [v] {:before v}) (:before base-diff)))
-              (or (get-in base-diff [:after :definition])
-                  (get-in base-diff [:before :definition])) (assoc :definition {:before (get-in segment1 [:definition])
-                                                                                :after  (get-in segment2 [:definition])})))))
+        (or (get-in base-diff [:after :definition])
+            (get-in base-diff [:before :definition])) (assoc :definition {:before (get-in segment1 [:definition])
+                                                                          :after  (get-in segment2 [:definition])})))))
 
-
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Segment)
-  revision/IRevisioned
-  (merge
-   revision/IRevisionedDefaults
-   {:serialize-instance serialize-segment
-    :diff-map           diff-segments}))
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
 

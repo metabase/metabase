@@ -12,6 +12,7 @@
             [metabase.models.permissions :as perms]
             [metabase.models.pulse :refer [Pulse]]
             [metabase.models.pulse-card :refer [PulseCard]]
+            [metabase.models.revision :as revision]
             [metabase.models.serialization.hash :as serdes.hash]
             [metabase.models.table :refer [Table]]
             [metabase.models.user :as user]
@@ -42,17 +43,19 @@
                             :id      true
                             :card_id true
                             :series  true}]}
-           (update (dashboard/serialize-dashboard dashboard) :cards (fn [[{:keys [id card_id series], :as card}]]
-                                                                      [(assoc card
-                                                                              :id      (= dashcard-id id)
-                                                                              :card_id (= card-id card_id)
-                                                                              :series  (= [series-id-1 series-id-2] series))]))))))
+           (update (revision/serialize-instance Dashboard (:id dashboard) dashboard)
+                   :cards
+                   (fn [[{:keys [id card_id series], :as card}]]
+                     [(assoc card
+                             :id      (= dashcard-id id)
+                             :card_id (= card-id card_id)
+                             :series  (= [series-id-1 series-id-2] series))]))))))
 
 
 (deftest diff-dashboards-str-test
   (is (= "renamed it from \"Diff Test\" to \"Diff Test Changed\" and added a description."
-         (#'dashboard/diff-dashboards-str
-          nil
+         (revision/diff-str
+          Dashboard
           {:name        "Diff Test"
            :description nil
            :cards       []}
@@ -61,8 +64,8 @@
            :cards       []})))
 
   (is (= "added a card."
-         (#'dashboard/diff-dashboards-str
-          nil
+         (revision/diff-str
+          Dashboard
           {:name        "Diff Test"
            :description nil
            :cards       []}
@@ -77,8 +80,8 @@
                           :series  []}]})))
 
   (is (= "changed the cache ttl from \"333\" to \"1227\", rearranged the cards, modified the series on card 1 and added some series to card 2."
-         (#'dashboard/diff-dashboards-str
-          nil
+         (revision/diff-str
+          Dashboard
           {:name        "Diff Test"
            :description nil
            :cache_ttl   333
@@ -131,7 +134,7 @@
                                 :description "something"
                                 :cache_ttl   nil
                                 :cards       []}
-          serialized-dashboard (dashboard/serialize-dashboard dashboard)]
+          serialized-dashboard (revision/serialize-instance Dashboard (:id dashboard) dashboard)]
       (testing "original state"
         (is (= {:name         "Test Dashboard"
                 :description  nil
@@ -150,25 +153,27 @@
           :name        "Revert Test"
           :description "something")
         (testing "capture updated Dashboard state"
-          (is (= empty-dashboard
-                 (dashboard/serialize-dashboard (db/select-one Dashboard :id dashboard-id))))))
+          (let [dashboard (db/select-one Dashboard :id dashboard-id)]
+            (is (= empty-dashboard
+                   (revision/serialize-instance Dashboard (:id dashboard) dashboard))))))
       (testing "now do the reversion; state should return to original"
-        (#'dashboard/revert-dashboard! nil dashboard-id (test.users/user->id :crowberto) serialized-dashboard)
-        (is (= {:name         "Test Dashboard"
-                :description  nil
-                :cache_ttl    nil
-                :cards        [{:sizeX   2
-                                :sizeY   2
-                                :row     0
-                                :col     0
-                                :id      false
-                                :card_id true
-                                :series  true}]}
-               (update (dashboard/serialize-dashboard (db/select-one Dashboard :id dashboard-id)) :cards check-ids))))
+        (revision/revert-to-revision! Dashboard dashboard-id (test.users/user->id :crowberto) serialized-dashboard)
+        (is (= {:name        "Test Dashboard"
+                :description nil
+                :cache_ttl   nil
+                :cards       [{:sizeX   2
+                               :sizeY   2
+                               :row     0
+                               :col     0
+                               :id      false
+                               :card_id true
+                               :series  true}]}
+               (update (revision/serialize-instance Dashboard dashboard-id (db/select-one Dashboard :id dashboard-id))
+                       :cards check-ids))))
       (testing "revert back to the empty state"
-        (#'dashboard/revert-dashboard! nil dashboard-id (test.users/user->id :crowberto) empty-dashboard)
+        (revision/revert-to-revision! Dashboard dashboard-id (test.users/user->id :crowberto) empty-dashboard)
         (is (= empty-dashboard
-               (dashboard/serialize-dashboard (db/select-one Dashboard :id dashboard-id))))))))
+               (revision/serialize-instance Dashboard dashboard-id (db/select-one Dashboard :id dashboard-id))))))))
 
 (deftest public-sharing-test
   (testing "test that a Dashboard's :public_uuid comes back if public sharing is enabled..."

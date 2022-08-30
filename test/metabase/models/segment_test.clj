@@ -1,6 +1,7 @@
 (ns metabase.models.segment-test
   (:require [clojure.test :refer :all]
             [metabase.models.database :refer [Database]]
+            [metabase.models.revision :as revision]
             [metabase.models.segment :as segment :refer [Segment]]
             [metabase.models.serialization.hash :as serdes.hash]
             [metabase.models.table :refer [Table]]
@@ -67,7 +68,7 @@
             :entity_id               (:entity_id segment)
             :definition              {:filter [:> [:field 4 nil] "2014-10-19"]}
             :archived                false}
-           (into {} (-> (#'segment/serialize-segment Segment (:id segment) segment)
+           (into {} (-> (revision/serialize-instance Segment (:id segment) segment)
                         (update :id boolean)
                         (update :table_id boolean)))))))
 
@@ -82,7 +83,7 @@
                           :after  "BBB"}
             :name        {:before "Toucans in the rainforest"
                           :after  "Something else"}}
-           (#'segment/diff-segments
+           (revision/diff-map
             Segment
             segment
             (assoc segment
@@ -93,7 +94,7 @@
   (testing "test case where definition doesn't change"
     (is (= {:name {:before "A"
                    :after  "B"}}
-           (#'segment/diff-segments
+           (revision/diff-map
             Segment
             {:name        "A"
              :description "Unchanged"
@@ -106,7 +107,7 @@
     (is (= {:name        {:after "A"}
             :description {:after "Unchanged"}
             :definition  {:after {:filter [:and [:> [:field 4 nil] "2014-10-19"]]}}}
-           (#'segment/diff-segments
+           (revision/diff-map
             Segment
             nil
             {:name        "A"
@@ -116,7 +117,7 @@
   (testing "removals only"
     (is (= {:definition {:before {:filter [:and [:> [:field 4 nil] "2014-10-19"] [:= 5 "yes"]]}
                          :after  {:filter [:and [:> [:field 4 nil] "2014-10-19"]]}}}
-           (#'segment/diff-segments
+           (revision/diff-map
             Segment
             {:name        "A"
              :description "Unchanged"

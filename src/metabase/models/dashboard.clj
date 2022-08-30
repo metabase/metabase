@@ -149,18 +149,16 @@
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
-(defn serialize-dashboard
-  "Serialize a Dashboard for use in a Revision."
-  [dashboard]
+(defmethod revision/serialize-instance Dashboard
+  [_model _id dashboard]
   (-> dashboard
       (select-keys [:description :name :cache_ttl])
       (assoc :cards (vec (for [dashboard-card (ordered-cards dashboard)]
                            (-> (select-keys dashboard-card [:sizeX :sizeY :row :col :id :card_id])
                                (assoc :series (mapv :id (dashboard-card/series dashboard-card)))))))))
 
-(defn- revert-dashboard!
-  "Revert a Dashboard to the state defined by `serialized-dashboard`."
-  [_ dashboard-id user-id serialized-dashboard]
+(defmethod revision/revert-to-revision! Dashboard
+  [_model dashboard-id user-id serialized-dashboard]
   ;; Update the dashboard description / name / permissions
   (db/update! Dashboard dashboard-id, (dissoc serialized-dashboard :cards))
   ;; Now update the cards as needed
@@ -188,9 +186,8 @@
 
   serialized-dashboard)
 
-(defn- diff-dashboards-str
-  "Describe the difference between two Dashboard instances."
-  [_ dashboard1 dashboard2]
+(defmethod revision/diff-str Dashboard
+  [_model dashboard1 dashboard2]
   (let [[removals changes]  (diff dashboard1 dashboard2)
         check-series-change (fn [idx card-changes]
                               (when (and (:series card-changes)
@@ -230,13 +227,6 @@
         (concat (map-indexed check-series-change (:cards changes)))
         (->> (filter identity)
              build-sentence))))
-
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Dashboard)
-  revision/IRevisioned
-  (merge revision/IRevisionedDefaults
-         {:serialize-instance  (fn [_ _ dashboard] (serialize-dashboard dashboard))
-          :revert-to-revision! revert-dashboard!
-          :diff-str            diff-dashboards-str}))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
