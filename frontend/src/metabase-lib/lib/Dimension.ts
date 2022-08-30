@@ -2,7 +2,6 @@
 // @ts-nocheck
 import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
-import { merge } from "icepick";
 import { stripId, FK_SYMBOL } from "metabase/lib/formatting";
 import { TYPE } from "metabase/lib/types";
 import { TemplateTagVariable } from "metabase-lib/lib/Variable";
@@ -27,7 +26,6 @@ import ValidationError, {
 import { IconName } from "metabase-types/types";
 import { getFieldValues, getRemappings } from "metabase/lib/query/field";
 import { DATETIME_UNITS, formatBucketing } from "metabase/lib/query_time";
-import { getQuestionIdFromVirtualTableId } from "metabase/lib/saved-questions";
 import Aggregation from "metabase-lib/lib/queries/structured/Aggregation";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
