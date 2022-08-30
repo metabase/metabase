@@ -441,7 +441,7 @@
 (deftest update-dashboard-change-collection-id-test
   (testing "PUT /api/dashboard/:id"
     (testing "Can we change the Collection a Dashboard is in (assuming we have the permissions to do so)?"
-      (dashboard-test/with-dash-in-collection [db collection dash]
+      (dashboard-test/with-dash-in-collection [_db collection dash]
         (mt/with-temp Collection [new-collection]
           ;; grant Permissions for both new and old collections
           (doseq [coll [collection new-collection]]
@@ -454,7 +454,7 @@
 
     (testing "if we don't have the Permissions for the old collection, we should get an Exception"
       (mt/with-non-admin-groups-no-root-collection-perms
-        (dashboard-test/with-dash-in-collection [db collection dash]
+        (dashboard-test/with-dash-in-collection [_db _collection dash]
           (mt/with-temp Collection [new-collection]
             ;; grant Permissions for only the *new* collection
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) new-collection)
@@ -465,7 +465,7 @@
 
     (testing "if we don't have the Permissions for the new collection, we should get an Exception"
       (mt/with-non-admin-groups-no-root-collection-perms
-        (dashboard-test/with-dash-in-collection [db collection dash]
+        (dashboard-test/with-dash-in-collection [_db collection dash]
           (mt/with-temp Collection [new-collection]
             ;; grant Permissions for only the *old* collection
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
@@ -742,7 +742,7 @@
 (deftest copy-dashboard-into-correct-collection-test
   (testing "POST /api/dashboard/:id/copy"
     (testing "Ensure the correct collection is set when copying"
-      (dashboard-test/with-dash-in-collection [db collection dash]
+      (dashboard-test/with-dash-in-collection [_db collection dash]
         (mt/with-temp Collection [new-collection]
           ;; grant Permissions for both new and old collections
           (doseq [coll [collection new-collection]]
@@ -1656,27 +1656,25 @@
                 (testing (format "\nGET %s" (pr-str url))
                   (is (= expected
                          (mt/user-http-request :rasta :get 200 url))))))]
-      (with-chain-filter-fixtures [{{dashboard-id :id} :dashboard}]
-        (mt/$ids
-          (testing (format "\nvenues.price = %d categories.name = %d\n" %venues.price %categories.name)
-            (result= {%venues.price [%categories.name]}
-                     {:filtered [%venues.price], :filtering [%categories.name]})
-            (testing "Multiple Field IDs for each param"
-              (result= {%venues.price    (sort [%venues.price %categories.name])
-                        %categories.name (sort [%venues.price %categories.name])}
-                       {:filtered [%venues.price %categories.name], :filtering [%categories.name %venues.price]}))
-            (testing "filtered-ids cannot be nil"
-              (is (= {:errors {:filtered (str "value must satisfy one of the following requirements:"
-                                              " 1) value must be a valid integer greater than zero."
-                                              " 2) value must be an array. Each value must be a valid integer greater than zero."
-                                              " The array cannot be empty.")}}
-                     (mt/user-http-request :rasta :get 400 (url [] [%categories.name]))))))))
+      (mt/$ids
+        (testing (format "\nvenues.price = %d categories.name = %d\n" %venues.price %categories.name)
+          (result= {%venues.price [%categories.name]}
+                   {:filtered [%venues.price], :filtering [%categories.name]})
+          (testing "Multiple Field IDs for each param"
+            (result= {%venues.price    (sort [%venues.price %categories.name])
+                      %categories.name (sort [%venues.price %categories.name])}
+                     {:filtered [%venues.price %categories.name], :filtering [%categories.name %venues.price]}))
+          (testing "filtered-ids cannot be nil"
+            (is (= {:errors {:filtered (str "value must satisfy one of the following requirements:"
+                                            " 1) value must be a valid integer greater than zero."
+                                            " 2) value must be an array. Each value must be a valid integer greater than zero."
+                                            " The array cannot be empty.")}}
+                   (mt/user-http-request :rasta :get 400 (url [] [%categories.name])))))))
       (testing "should check perms for the Fields in question"
-        (with-chain-filter-fixtures [{{dashboard-id :id} :dashboard}]
-          (mt/with-temp-copy-of-db
-            (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :get 403 (mt/$ids (url [%venues.price] [%categories.name])))))))))))
+        (mt/with-temp-copy-of-db
+          (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (mt/$ids (url [%venues.price] [%categories.name]))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

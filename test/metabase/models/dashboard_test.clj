@@ -222,10 +222,10 @@
 
 (defmacro with-dash-in-collection
   "Execute `body` with a Dashboard in a Collection. Dashboard will contain one Card in a Database."
-  {:style/indent 1}
+  {:style/indent :defn}
   [[db-binding collection-binding dash-binding] & body]
   `(do-with-dash-in-collection
-    (fn [~db-binding ~collection-binding ~dash-binding]
+    (fn [~(or db-binding '_) ~(or collection-binding '_) ~(or dash-binding '_)]
       ~@body)))
 
 (deftest perms-test

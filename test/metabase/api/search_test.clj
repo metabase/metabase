@@ -349,7 +349,7 @@
   (testing "User should only see results in the collection they have access to"
     (mt/with-non-admin-groups-no-root-collection-perms
       (with-search-items-in-collection {coll-1 :collection} "test"
-        (with-search-items-in-collection {coll-2 :collection} "test2"
+        (with-search-items-in-collection _ "test2"
           (mt/with-temp* [PermissionsGroup           [group]
                           PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]]
             (perms/grant-collection-read-permissions! group (u/the-id coll-1))

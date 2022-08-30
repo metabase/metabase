@@ -26,7 +26,7 @@
 
 (defmacro ^:private with-collection-hierarchy
   "Totally-rad macro that creates a Collection hierarchy and grants the All Users group perms for all the Collections
-  you've bound. See docs for `metabase.models.collection-test/with-collection-hierarchy` for more details."
+  you've bound. See docs for [[metabase.models.collection-test/with-collection-hierarchy]] for more details."
   {:style/indent 1}
   [collection-bindings & body]
   {:pre [(vector? collection-bindings)
@@ -90,7 +90,7 @@
                     sort)))))
 
     (testing "Personal Collection's name and slug should be returned in user's locale"
-      (with-french-user-and-personal-collection user collection
+      (with-french-user-and-personal-collection user _collection
         (is (= [{:name "Collection personnelle de Taco Bell"
                  :slug "collection_personnelle_de_taco_bell"}]
                (->> (mt/user-http-request user :get 200 "collection")

@@ -372,7 +372,7 @@
 
 (defmacro with-pulse-in-collection
   "Execute `body` with a temporary Pulse, in a Collection, containing a single Card."
-  {:style/indent 1}
+  {:style/indent :defn}
   [[db-binding collection-binding pulse-binding card-binding] & body]
   `(do-with-pulse-in-collection
     (fn [~(or db-binding '_) ~(or collection-binding '_) ~(or pulse-binding '_) ~(or card-binding '_)]

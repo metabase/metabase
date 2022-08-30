@@ -964,7 +964,7 @@
 
 (deftest update-card-validation-test
   (testing "PUT /api/card"
-    (with-temp-native-card-with-params [db card]
+    (with-temp-native-card-with-params [_db card]
       (testing  "You cannot update a model to have variables"
         (is (= "A model made from a native SQL question cannot have a variable or field filter."
                (mt/user-http-request :rasta :put 400 (format "card/%d" (:id card)) {:dataset true})))))))
@@ -987,6 +987,7 @@
 
 (defmacro with-ordered-items
   "Macro for creating many sequetial collection_position model instances, putting each in `collection`"
+  {:style/indent :defn}
   [collection model-and-name-syms & body]
   `(mt/with-temp* ~(vec (mapcat (fn [idx [model-instance name-sym]]
                                   [model-instance [name-sym {:name                (name name-sym)
