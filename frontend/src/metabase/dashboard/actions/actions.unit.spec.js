@@ -1,5 +1,6 @@
 import { DashboardApi } from "metabase/services";
 
+import { SIDEBAR_NAME } from "../constants";
 import {
   setSidebar,
   SET_SIDEBAR,
@@ -13,8 +14,7 @@ import {
   SET_DASHBOARD_ATTRIBUTES,
   fetchDashboardParameterValuesWithCache,
   FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE,
-} from "./actions";
-import { SIDEBAR_NAME } from "./constants";
+} from "./index";
 
 DashboardApi.parameterSearch = jest.fn();
 DashboardApi.parameterValues = jest.fn();
