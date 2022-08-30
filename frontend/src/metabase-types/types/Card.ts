@@ -33,6 +33,7 @@ export type SavedCard<Query = DatasetQuery> = UnsavedCard<Query> & {
   public_uuid: string;
   cache_ttl?: number | null;
   archived?: boolean;
+  collection_id?: number | null;
 
   // Only for native queries
   is_write?: boolean;

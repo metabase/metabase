@@ -13,6 +13,7 @@ const DataSourceSelectorsPropTypes = {
   readOnly: PropTypes.bool,
   setDatabaseId: PropTypes.func,
   setTableId: PropTypes.func,
+  requireWriteback: PropTypes.bool,
 };
 
 const PopulatedDataSourceSelectorsPropTypes = {
@@ -23,6 +24,7 @@ const PopulatedDataSourceSelectorsPropTypes = {
   readOnly: PropTypes.bool,
   setDatabaseId: PropTypes.func,
   setTableId: PropTypes.func,
+  requireWriteback: PropTypes.bool,
 };
 
 const DatabaseSelectorPropTypes = {
@@ -30,6 +32,7 @@ const DatabaseSelectorPropTypes = {
   databases: PropTypes.array,
   readOnly: PropTypes.bool,
   setDatabaseId: PropTypes.func,
+  requireWriteback: PropTypes.bool,
 };
 
 const SingleDatabaseNamePropTypes = {
@@ -53,6 +56,7 @@ const DataSourceSelectors = ({
   readOnly,
   setDatabaseId,
   setTableId,
+  requireWriteback = false,
 }) => {
   const database = query.database();
   const databases = query.metadata().databasesList({ savedQuestions: false });
@@ -69,6 +73,7 @@ const DataSourceSelectors = ({
       readOnly={readOnly}
       setDatabaseId={setDatabaseId}
       setTableId={setTableId}
+      requireWriteback={requireWriteback}
     />
   );
 };
@@ -82,6 +87,7 @@ const PopulatedDataSourceSelectors = ({
   readOnly,
   setDatabaseId,
   setTableId,
+  requireWriteback = false,
 }) => {
   const dataSourceSelectors = [];
 
@@ -98,6 +104,7 @@ const PopulatedDataSourceSelectors = ({
         key="db_selector"
         readOnly={readOnly}
         setDatabaseId={setDatabaseId}
+        requireWriteback={requireWriteback}
       />,
     );
   } else if (database) {
@@ -127,7 +134,13 @@ const checkIfThereAreMultipleDatabases = (database, databases) =>
   database == null ||
   (databases.length > 1 && databases.some(db => db.id === database.id));
 
-const DatabaseSelector = ({ database, databases, readOnly, setDatabaseId }) => (
+const DatabaseSelector = ({
+  database,
+  databases,
+  readOnly,
+  setDatabaseId,
+  requireWriteback = false,
+}) => (
   <div className="GuiBuilder-section GuiBuilder-data flex align-center ml2">
     <DatabaseDataSelector
       databases={databases}
@@ -135,6 +148,7 @@ const DatabaseSelector = ({ database, databases, readOnly, setDatabaseId }) => (
       setDatabaseFn={setDatabaseId}
       isInitiallyOpen={database == null}
       readOnly={readOnly}
+      requireWriteback={requireWriteback}
     />
   </div>
 );

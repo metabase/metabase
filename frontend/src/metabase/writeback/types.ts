@@ -35,7 +35,7 @@ export interface WritebackActionBase {
   "created-at": string;
 }
 
-export interface RowAction {
+export interface QueryAction {
   type: "query";
   card: WritebackActionCard;
   card_id: number;
@@ -60,7 +60,9 @@ export interface HttpActionTemplate {
   parameter_mappings: Record<ParameterId, ParameterTarget>;
 }
 
-export type WritebackAction = WritebackActionBase & (RowAction | HttpAction);
+export type WritebackQueryAction = WritebackActionBase & QueryAction;
+export type WritebackHttpAction = WritebackActionBase & HttpAction;
+export type WritebackAction = WritebackActionBase & (QueryAction | HttpAction);
 
 export interface WritebackActionEmitter {
   id: number;
@@ -112,3 +114,8 @@ export type ParametersMappedToValues = Record<
   ParameterId,
   { type: string; value: string | number }
 >;
+
+// we will tighten this up when we figure out what the form settings should look like
+export type ActionFormSettings = {
+  [key: string]: any;
+};
