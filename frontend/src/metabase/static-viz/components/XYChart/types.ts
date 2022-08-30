@@ -1,5 +1,6 @@
-import { DateFormatOptions } from "metabase/static-viz/lib/dates";
-import { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
+import type { DateFormatOptions } from "metabase/static-viz/lib/dates";
+import type { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
+import type { ScaleBand, ScaleLinear, ScaleTime } from "d3-scale";
 
 export type Range = [number, number];
 export type ContiniousDomain = [number, number];
@@ -102,3 +103,14 @@ export type XYAccessor<
   datum: T extends SeriesDatum ? SeriesDatum : StackedDatum,
   flipped?: boolean,
 ) => number;
+
+export interface XScale<T = any> {
+  scale: T extends ScaleBand<string | number>
+    ? ScaleBand<string | number>
+    : T extends ScaleTime<number, number, never>
+    ? ScaleTime<number, number, never>
+    : ScaleLinear<number, number, never>;
+  bandwidth?: number;
+  lineAccessor: XYAccessor<SeriesDatum>;
+  barAccessor?: XYAccessor<SeriesDatum>;
+}

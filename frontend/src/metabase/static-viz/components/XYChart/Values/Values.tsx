@@ -13,6 +13,7 @@ import type {
   SeriesDatum,
   StackedDatum,
   VisualizationType,
+  XScale,
   XYAccessor,
 } from "../types";
 
@@ -30,12 +31,6 @@ interface ValuesProps {
   innerWidth: number;
   areStacked: boolean;
   xAxisYPos: number;
-}
-
-interface XScale {
-  bandwidth?: number;
-  lineAccessor: XYAccessor<SeriesDatum>;
-  barAccessor?: XYAccessor<SeriesDatum>;
 }
 
 interface Value {
