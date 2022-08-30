@@ -477,8 +477,10 @@ export class UnconnectedDataSelector extends Component {
     } = this.state;
 
     const invalidSchema =
-      selectedSchema?.database.id !== selectedDatabase?.id &&
-      selectedSchema?.database.id !== SAVED_QUESTIONS_VIRTUAL_DB_ID;
+      selectedDatabase &&
+      selectedSchema &&
+      selectedSchema.database.id !== selectedDatabase.id &&
+      selectedSchema.database.id !== SAVED_QUESTIONS_VIRTUAL_DB_ID;
 
     const onStepMissingSchemaAndTable =
       !selectedSchema &&
@@ -567,7 +569,7 @@ export class UnconnectedDataSelector extends Component {
       this.props.selectedDatabaseId == null
     ) {
       const databases = this.getDatabases();
-      if (databases?.length === 1) {
+      if (databases && databases.length === 1) {
         this.onChangeDatabase(databases[0]);
       }
     }
@@ -577,7 +579,7 @@ export class UnconnectedDataSelector extends Component {
       this.props.selectedSchemaId == null
     ) {
       const { schemas } = this.state;
-      if (schemas?.length === 1) {
+      if (schemas && schemas.length === 1) {
         this.onChangeSchema(schemas[0]);
       }
     }
@@ -630,7 +632,7 @@ export class UnconnectedDataSelector extends Component {
     const nextStep = this.getNextStep();
     if (!nextStep) {
       await this.setStateWithComputedState(stateChange);
-      this.popover.current?.toggle();
+      this.popover.current && this.popover.current.toggle();
     } else {
       await this.switchToStep(nextStep, stateChange, skipSteps);
     }
@@ -784,7 +786,7 @@ export class UnconnectedDataSelector extends Component {
     }
 
     if (this.props.setDatabaseFn) {
-      this.props.setDatabaseFn(database?.id);
+      this.props.setDatabaseFn(database && database.id);
     }
 
     if (this.state.selectedDatabaseId != null) {
@@ -792,12 +794,12 @@ export class UnconnectedDataSelector extends Component {
       // data before advancing to the next step.
       await this.previousStep();
     }
-    await this.nextStep({ selectedDatabaseId: database?.id });
+    await this.nextStep({ selectedDatabaseId: database && database.id });
   };
 
   onChangeSchema = async schema => {
     // NOTE: not really any need to have a setSchemaFn since schemas are just a namespace
-    await this.nextStep({ selectedSchemaId: schema?.id });
+    await this.nextStep({ selectedSchemaId: schema && schema.id });
   };
 
   onChangeTable = async table => {
@@ -1094,7 +1096,8 @@ export class UnconnectedDataSelector extends Component {
               (isPickerOpen ? (
                 <SavedQuestionPicker
                   collectionName={
-                    selectedTable?.schema &&
+                    selectedTable &&
+                    selectedTable.schema &&
                     getSchemaName(selectedTable.schema.id)
                   }
                   isDatasets={selectedDataBucketId === DATA_BUCKET.DATASETS}
@@ -1271,6 +1274,9 @@ const DatabasePicker = ({
       }}
       itemIsClickable={
         requireWriteback ? item => item.writebackEnabled : undefined
+      }
+      itemIsSelected={item =>
+        selectedDatabase && item.database.id === selectedDatabase.id
       }
       renderItemIcon={() => (
         <Icon className="Icon text-default" name="database" size={18} />
