@@ -68,7 +68,7 @@ Below each edit entry in the timeline, you can click on **Revert** to reinstate 
 
 ## Sharing questions with public links
 
-If your Metabase administrator has enabled [public sharing](../../embedding/public-links.md) on a saved question or dashboard, you can go to that question or dashboard and click on the sharing icon to find its public links. Public links can be viewed by anyone, even if they don't have access to Metabase. You can also use the public embedding code to embed your question or dashboard in a simple web page or blog post.
+If your Metabase administrator has enabled [public sharing](../../questions/sharing/public-links.md) on a saved question or dashboard, you can go to that question or dashboard and click on the sharing icon to find its public links. Public links can be viewed by anyone, even if they don't have access to Metabase. You can also use the public embedding code to embed your question or dashboard in a simple web page or blog post.
 
 ![Share icon](../images/share-icon.png)
 
