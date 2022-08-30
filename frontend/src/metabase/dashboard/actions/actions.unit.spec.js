@@ -14,7 +14,7 @@ import {
   SET_DASHBOARD_ATTRIBUTES,
   fetchDashboardParameterValuesWithCache,
   FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE,
-} from "./actions";
+} from "./index";
 
 DashboardApi.parameterSearch = jest.fn();
 DashboardApi.parameterValues = jest.fn();
