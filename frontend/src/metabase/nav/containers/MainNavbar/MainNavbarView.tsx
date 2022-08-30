@@ -2,8 +2,6 @@ import React, { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { Bookmark, Collection, DataApp, User } from "metabase-types/api";
-
 import { IconProps } from "metabase/components/Icon";
 import { Tree } from "metabase/components/tree";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
@@ -16,17 +14,17 @@ import { getDataAppIcon } from "metabase/entities/data-apps";
 import { isSmallScreen } from "metabase/lib/dom";
 import * as Urls from "metabase/lib/urls";
 
+import type { Bookmark, Collection, DataApp, User } from "metabase-types/api";
+
 import { SelectedItem } from "./types";
 import BookmarkList from "./BookmarkList";
 import { SidebarCollectionLink, SidebarLink } from "./SidebarItems";
 import {
   AddYourOwnDataLink,
-  BrowseLink,
   CollectionMenuList,
   CollectionsMoreIcon,
   CollectionsMoreIconContainer,
-  DataAppLink,
-  HomePageLink,
+  PaddedSidebarLink,
   SidebarContentRoot,
   SidebarHeading,
   SidebarHeadingWrapper,
@@ -97,14 +95,14 @@ function MainNavbarView({
       <div>
         <SidebarSection>
           <ul>
-            <HomePageLink
+            <PaddedSidebarLink
               isSelected={nonEntityItem?.url === "/"}
               icon="home"
               onClick={onItemSelect}
               url="/"
             >
               {t`Home`}
-            </HomePageLink>
+            </PaddedSidebarLink>
           </ul>
         </SidebarSection>
 
@@ -142,26 +140,26 @@ function MainNavbarView({
             </SidebarHeadingWrapper>
             <ul>
               {dataApps.map(app => (
-                <DataAppLink
+                <PaddedSidebarLink
                   key={`app-${app.id}`}
                   icon={getDataAppIcon(app)}
-                  url={Urls.dataApp(app)}
+                  url={Urls.dataApp(app, { mode: "preview" })}
                   isSelected={dataAppItem?.id === app.id}
                 >
                   {app.collection.name}
-                </DataAppLink>
+                </PaddedSidebarLink>
               ))}
             </ul>
           </SidebarSection>
         )}
 
-        <ul>
-          {hasDataAccess && (
-            <SidebarSection>
-              <SidebarHeadingWrapper>
-                <SidebarHeading>{t`Data`}</SidebarHeading>
-              </SidebarHeadingWrapper>
-              <BrowseLink
+        {hasDataAccess && (
+          <SidebarSection>
+            <SidebarHeadingWrapper>
+              <SidebarHeading>{t`Data`}</SidebarHeading>
+            </SidebarHeadingWrapper>
+            <ul>
+              <PaddedSidebarLink
                 icon="database"
                 url={BROWSE_URL}
                 isSelected={nonEntityItem?.url?.startsWith(BROWSE_URL)}
@@ -169,7 +167,7 @@ function MainNavbarView({
                 data-metabase-event="NavBar;Data Browse"
               >
                 {t`Browse data`}
-              </BrowseLink>
+              </PaddedSidebarLink>
               {!hasOwnDatabase && isAdmin && (
                 <AddYourOwnDataLink
                   icon="add"
@@ -183,9 +181,9 @@ function MainNavbarView({
                   {t`Add your own data`}
                 </AddYourOwnDataLink>
               )}
-            </SidebarSection>
-          )}
-        </ul>
+            </ul>
+          </SidebarSection>
+        )}
       </div>
     </SidebarContentRoot>
   );

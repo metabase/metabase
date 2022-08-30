@@ -7,12 +7,19 @@ import {
   isPersonalCollection,
   canonicalCollectionId,
 } from "metabase/collections/utils";
+import {
+  getDataAppIcon,
+  isDataAppCollection,
+} from "metabase/entities/data-apps/utils";
 
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 
 import { ROOT_COLLECTION, PERSONAL_COLLECTIONS } from "./constants";
 
 export function getCollectionIcon(collection, { tooltip = "default" } = {}) {
+  if (isDataAppCollection(collection)) {
+    return getDataAppIcon();
+  }
   if (collection.id === PERSONAL_COLLECTIONS.id) {
     return { name: "group" };
   }

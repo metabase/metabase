@@ -12,7 +12,7 @@ redirect_from:
 
 **Dashboards** group questions and present them on a single page. You can think of dashboards as shareable reports that feature a set of related questions. You can set up [subscriptions to dashboards](./subscriptions.md) via email or Slack to receive the exported results of the dashboard's questions.
 
-A dashboard comprises a set of cards arranged on a grid. These cards can be questions - such as [tables, charts, or maps](../questions/sharing/visualizing-results.md) - or they can be [text boxes](/learn/dashboards/markdown).
+A dashboard comprises a set of cards arranged on a grid. These cards can be questions - such as [tables, charts, or maps](../questions/sharing/visualizing-results.md) - or they can be [text boxes](https://www.metabase.com/learn/dashboards/markdown).
 
 You can add [filter widgets to dashboards](./filters.md) that filter data identically across multiple questions, and [customize what happens when people click on a chart or a table](./interactive.md).
 
@@ -20,7 +20,7 @@ You can make as many dashboards as you want. Go nuts.
 
 ## How to create a dashboard
 
-In the top right of the screen, click the **+** icon to open the **Create** menu, and select **New Dashboard**. Give your new dashboard a name and a description, choose which [collections](../users-guide/collections.md) the dashboard should go in, then click **Create**, and Metabase will take you to your shiny new dashboard.
+In the top right of the screen, click the **+** icon to open the **Create** menu, and select **New Dashboard**. Give your new dashboard a name and a description, choose which [collections](../exploration-and-organization/collections.md) the dashboard should go in, then click **Create**, and Metabase will take you to your shiny new dashboard.
 
 ![Create Dashboard](images/create.png)
 
@@ -58,7 +58,7 @@ Click the **eye** icon to see what your formatted Markdown will look like when y
 
 ![Result](images/result.png)
 
-To learn more, see [Fun with Markdown in your dashboards](https://www.metabase.com/blog/markdown-in-dashboards).
+To learn more, see [Fun with Markdown in your dashboards](https://www.metabase.com/learn/dashboards/markdown).
 
 ### Including variables in text cards
 
@@ -116,9 +116,7 @@ After a while, your team might accumulate a lot of dashboards. To make it easier
 
 After you've made your ideal dashboard, you may want to put the dashboard on a TV to help keep your team up to date throughout the day.
 
-To enter fullscreen mode, click the **fullscreen** icon in the top right of the dashboard (the icon with the arrows pointing in opposite directions).
-
-Once you've entered fullscreen mode, you can also switch the dashboard into "Night mode" for higher contrast.
+To enter fullscreen mode, click the **fullscreen** icon in the top right of the dashboard (the icon with the arrows pointing in opposite directions). Once you've entered fullscreen mode, you can also switch the dashboard into "Night mode" for higher contrast.
 
 ![Night mode](images/dark-mode.png)
 
@@ -148,7 +146,7 @@ If your Metabase administrator has enabled [public sharing](../questions/sharing
 
 ![Share icon](./images/share-icon.png)
 
-Public links can be viewed by anyone, even if they don't have access to Metabase. You can also use the public embedding code to embed your question or dashboard in a simple web page or blog post. Check out examples of simple apps with embedded dashboards in our [embedding-reference-apps repository](https://github.com/metabase/embedding-reference-apps). To learn more about [embedding](../administration-guide/13-embedding.md), check out our article on [How to use Metabase to deliver analytics to your customers](https://www.metabase.com/blog/external-facing-analytics), as well as an article on how to combine branding, Single Sign-On, full app embedding, and data sandboxing to deliver [multi-tenant, self-service analytics](https://www.metabase.com/blog/embedding).
+Public links can be viewed by anyone, even if they don't have access to Metabase. You can also use the public embedding code to embed your question or dashboard in a simple web page or blog post. Check out examples of simple apps with embedded dashboards in our [embedding-reference-apps repository](https://github.com/metabase/embedding-reference-apps). To learn more about [embedding](../embedding/introduction.md), check out our article on [How to use Metabase to deliver analytics to your customers](https://www.metabase.com/blog/external-facing-analytics), as well as an article on how to combine branding, Single Sign-On, full app embedding, and data sandboxing to deliver [multi-tenant, self-service analytics](https://www.metabase.com/blog/embedding).
 
 ## Configuring a dashboard through its URL
 
@@ -195,4 +193,4 @@ Some tips:
 - [Interactive dashboards](./interactive.md)
 - [Dashboard charts with multiple series](./multiple-series.md)
 - [Dashboard subscriptions](./subscriptions.md)
-- [Making dashboards faster](https://www.metabase.com/blog/faster-dashboards/index.html)
+- [Making dashboards faster](https://www.metabase.com/learn/administration/making-dashboards-faster)

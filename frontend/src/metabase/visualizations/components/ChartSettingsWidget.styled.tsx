@@ -11,12 +11,13 @@ export const Root = styled.div<{
   disabled?: boolean;
   noPadding?: boolean;
   inline?: boolean;
+  marginBottom?: string;
 }>`
   ${props =>
     !props.noPadding &&
     css`
-      margin-left: 2em;
-      margin-right: 2em;
+      margin-left: 2rem;
+      margin-right: 2rem;
     `}
 
   ${props =>
@@ -28,7 +29,7 @@ export const Root = styled.div<{
   ${props =>
     !props.hidden &&
     css`
-      margin-bottom: 1.5em;
+      margin-bottom: ${props.marginBottom || "1.5em"};
     `}
 
   ${props =>
@@ -64,7 +65,7 @@ export const Root = styled.div<{
 export const Title = styled.label<VariantProp>`
   display: flex;
   align-items: center;
-  margin-bottom: 0.5em;
+  margin-bottom: 1rem;
 
   ${props =>
     props.variant === "default" &&

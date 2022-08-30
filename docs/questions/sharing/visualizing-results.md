@@ -18,7 +18,7 @@ In Metabase, an answer to a question can be visualized in a number of ways:
 - [Pivot table](#pivot-table)
 - [Line chart](#line-bar-and-area-charts)
 - [Bar chart](#line-bar-and-area-charts)
-- [Combo chart](#line-plus-bar-charts)
+- [Combo chart](#combo-charts)
 - [Waterfall chart](#waterfall-charts)
 - [Row chart](#row-charts)
 - [Area chart](#line-bar-and-area-charts)
@@ -158,7 +158,7 @@ Pivot tables are not currently available for the following databases in Metabase
 - Google Analytics
 - MongoDB
 
-Pivot tables work for simple and custom questions with summarized data for all other [officially supported databases](../../databases/connecting.md#officially-supported-databases). They don't work for questions that lack aggregate data, and they don't work for questions written in SQL, as Metabase would need to modify your SQL code in order to calculate subtotals. If you really need to use SQL, the workaround here is to create your question in two steps: first do all the complex things you need to do in SQL, save the results as a question, then use that saved SQL question as the starting point for a new GUI question which summarizes that data.
+Pivot tables work for simple and custom questions with summarized data for all other [officially supported databases](../../databases/connecting.md#connecting-to-supported-databases). They don't work for questions that lack aggregate data, and they don't work for questions written in SQL, as Metabase would need to modify your SQL code in order to calculate subtotals. If you really need to use SQL, the workaround here is to create your question in two steps: first do all the complex things you need to do in SQL, save the results as a question, then use that saved SQL question as the starting point for a new GUI question which summarizes that data.
 
 In the settings for the Pivot Table visualization, you can assign fields to one of three "buckets":
 
@@ -204,7 +204,7 @@ Learn more about [Bar charts](https://www.metabase.com/learn/basics/visualizing-
 
 ![Trend lines](../images/trend-lines.png)
 
-### Combo charts <a name="line-plus-bar-charts"></a>
+### Combo charts 
 
 Combo charts let you combine bars and lines (or areas) on the same chart.
 
@@ -311,7 +311,7 @@ For example, I might have an Opportunities table, and I could create a question 
 
 When you select the **Map** visualization setting, Metabase will automatically try and pick the best kind of map to use based on the table or result set. Here are the maps that Metabase uses:
 
-- **United States Map**. Creating a map of the United States from your data requires your results to include a `State` column that contains [two-letter state codes](https://about.usps.com/who/profile/history/state-abbreviations.html) (e.g., "AK" for Alaska, "VT" for Vermont, and so on). This column with state codes lets you do things like visualize the count of people broken out by state, with darker states representing more people.
+- **United States Map**. Creating a map of the United States from your data requires your results to include a `State` column that contains [two-letter state codes](https://about.usps.com/who/profile/history/state-abbreviations.htm) (e.g., "AK" for Alaska, "VT" for Vermont, and so on). This column with state codes lets you do things like visualize the count of people broken out by state, with darker states representing more people.
 - **World Map**. To visualize your results in the format of a map of the world broken out by country, your result must contain a column with two-letter country codes. (E.g., count of users by country.)
 
 ![Region map](../images/map.png)

@@ -87,6 +87,10 @@
   and the Action's `:card`."
   [{{:keys [card]} :action, emitter-id :id, :as emitter} :- HydratedQueryEmitter
    parameters]
+  (when-not card
+    (throw (ex-info (tru "No Query Action found for Emitter {0}. Only Query Actions are supported at this point in time."
+                         emitter-id)
+                    {:status-code 400, :emitter emitter})))
   (when-not (:is_write card)
     (throw (ex-info (tru "Cannot execute emitter {0}: Card {1} is not marked as `is_write`"
                          emitter-id

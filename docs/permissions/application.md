@@ -35,8 +35,8 @@ Settings access defines which groups can view and edit the settings under the Ad
 
 Monitoring access sets permissions on the following Admin tabs:
 
-- [Tools](../enterprise-guide/tools.md)
-- [Auditing](../enterprise-guide/audit.md)
+- [Tools](../usage-and-performance-tools/tools.md)
+- [Auditing](../usage-and-performance-tools/audit.md)
 - [Troubleshooting](../troubleshooting-guide/index.md)
 
 ## Subscriptions and alerts

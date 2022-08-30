@@ -182,7 +182,6 @@ class DashboardHeader extends Component {
       parametersWidget,
       isBookmarked,
       isAdmin,
-      isDataApp,
       isEditing,
       isFullscreen,
       isEditable,
@@ -238,7 +237,7 @@ class DashboardHeader extends Component {
         </Tooltip>,
       );
 
-      if (isAdmin && isDataApp) {
+      if (isAdmin && dashboard.is_app_page) {
         buttons.push(
           <Tooltip key="add-action-button" tooltip={t`Add action button`}>
             <a
@@ -300,7 +299,10 @@ class DashboardHeader extends Component {
 
     if (!isFullscreen && !isEditing && canEdit) {
       buttons.push(
-        <Tooltip key="edit-dashboard" tooltip={t`Edit dashboard`}>
+        <Tooltip
+          key="edit-dashboard"
+          tooltip={dashboard.is_app_page ? t`Edit page` : t`Edit dashboard`}
+        >
           <DashboardHeaderButton
             key="edit"
             data-metabase-event="Dashboard;Edit"
@@ -313,12 +315,14 @@ class DashboardHeader extends Component {
     }
 
     if (!isFullscreen && !isEditing) {
-      extraButtons.push({
-        title: t`Enter fullscreen`,
-        icon: "expand",
-        action: e => onFullscreenChange(!isFullscreen, !e.altKey),
-        event: `Dashboard;Fullscreen Mode;${!isFullscreen}`,
-      });
+      if (!dashboard.is_app_page) {
+        extraButtons.push({
+          title: t`Enter fullscreen`,
+          icon: "expand",
+          action: e => onFullscreenChange(!isFullscreen, !e.altKey),
+          event: `Dashboard;Fullscreen Mode;${!isFullscreen}`,
+        });
+      }
 
       extraButtons.push({
         title: t`Duplicate`,
@@ -406,7 +410,11 @@ class DashboardHeader extends Component {
         isNavBarOpen={this.props.isNavBarOpen}
         headerButtons={this.getHeaderButtons()}
         editWarning={this.getEditWarning(dashboard)}
-        editingTitle={t`You're editing this dashboard.`}
+        editingTitle={
+          dashboard.is_app_page
+            ? t`You're editing this page.`
+            : t`You're editing this dashboard.`
+        }
         editingButtons={this.getEditingButtons()}
         setDashboardAttribute={setDashboardAttribute}
         onLastEditInfoClick={() => setSidebar({ name: SIDEBAR_NAME.info })}

@@ -6,7 +6,7 @@ redirect_from:
 
 # Encrypting your database connection details at rest
 
-Metabase stores connection information for the various databases you add in the [Metabase application database](/glossary/application_database). To prevent bad actors from being able to access these details if they were to gain access to the application DB, Metabase can automatically encrypt them with AES256 + SHA512 when they are saved, and decrypt them on-the-fly whenever they are needed.
+Metabase stores connection information for the various databases you add in the [Metabase application database](https://www.metabase.com/glossary/application_database). To prevent bad actors from being able to access these details if they were to gain access to the application DB, Metabase can automatically encrypt them with AES256 + SHA512 when they are saved, and decrypt them on-the-fly whenever they are needed.
 
 - [Creating an encryption key](#creating-an-encryption-key)
   - [Example commands for creating and adding a key](#example-commands-for-creating-and-adding-a-key)
@@ -24,7 +24,7 @@ Metabase stores connection information for the various databases you add in the 
 
 ### Example commands for creating and adding a key
 
-1. You can use `openssl` to generate a cryptographically-secure, randomly-generated 32-character key. 
+1. You can use `openssl` to generate a cryptographically-secure, randomly-generated 32-character key.
    ```
    openssl rand -base64 32
    ```
@@ -49,7 +49,7 @@ If you added databases before setting the `MB_ENCRYPTION_SECRET_KEY` value, you 
 
 ## Rotating an encryption key
 
-1. We recommend that you [backup](../operations-guide/backing-up-metabase-application-data.md) your data before doing a key rotation.
+1. We recommend that you [backup](../installation-and-operation/backing-up-metabase-application-data.md) your data before doing a key rotation.
 2. Stop running your Metabase app.
 3. Run the CLI command `rotate-encryption-key`.
    - Set the current encryption key as `MB_ENCRYPTION_SECRET_KEY`.

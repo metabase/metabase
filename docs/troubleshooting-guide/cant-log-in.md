@@ -75,8 +75,8 @@ If you can’t solve your problem using the troubleshooting guides:
 - Search or ask the [Metabase community][discourse].
 - Search for [known bugs or limitations][known-issues].
 
-[cloud-docs]: /cloud/docs/
-[config-settings]: ../administration-guide/08-configuration-settings.html
+[cloud-docs]: https://www.metabase.com/cloud/docs/
+[config-settings]: ../configuring-metabase/settings.md
 [discourse]: https://discourse.metabase.com/
 [help-premium]: https://www.metabase.com/help-premium/
 [how-to-delete-an-account]: ../people-and-groups/managing.md#deleting-an-account
@@ -91,6 +91,6 @@ If you can’t solve your problem using the troubleshooting guides:
 [reset-store-password]: https://store.metabase.com/forgot-password
 [saml-docs]: ../people-and-groups/authenticating-with-saml.md
 [sandboxing]: ./sandboxing.md
-[sso-gloss]: /glossary/sso
+[sso-gloss]: https://www.metabase.com/glossary/sso
 [troubleshooting-ldap]: ./ldap.md
 [troubleshooting-saml]: ./saml.md

@@ -26,7 +26,11 @@ export default class FunnelNormal extends Component {
     const dimensionIndex = 0;
     const metricIndex = 1;
     const cols = series[0].data.cols;
-    const rows = series.map(s => s.data.rows[0]);
+    const rows = settings["funnel.rows"]
+      ? settings["funnel.rows"]
+          .filter(fr => fr.enabled)
+          .map(fr => series[fr.rowIndex].data.rows[0])
+      : series.map(s => s.data.rows[0]);
 
     const isNarrow = gridSize && gridSize.width < 7;
     const isShort = gridSize && gridSize.height <= 5;
@@ -134,7 +138,7 @@ export default class FunnelNormal extends Component {
               {formatMetric(rows[0][metricIndex])}
             </div>
             <div className={styles.Subtitle}>
-              {getFriendlyName(cols[dimensionIndex])}
+              {getFriendlyName(cols[metricIndex])}
             </div>
           </div>
           {/* This part of code in used only to share height between .Start and .Graph columns. */}

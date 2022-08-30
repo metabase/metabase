@@ -43,12 +43,12 @@ If you can’t solve your problem using the troubleshooting guides:
 
 [admin-permissions]: ../permissions/introduction.md
 [block-access]: ../permissions/data.md#block-access
-[cant-see-tables]: ./cant-see-tables.html
+[cant-see-tables]: ./cant-see-tables.md
 [collection-permissions]: ../permissions/collections.md
 [data-permissions]: ../permissions/data.md
 [discourse]: https://discourse.metabase.com/
 [known-issues]: ./known-issues.md
-[learn-permissions]: /learn/permissions/index.html
+[learn-permissions]: https://www.metabase.com/learn/permissions/index.html
 [permission-denied]: ./data-permissions.md#getting-a-permission-denied-error-message
 [proxies]: ./proxies.md
 [sql-access]: ./data-permissions.md#a-user-group-cant-access-the-sql-editor

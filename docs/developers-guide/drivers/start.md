@@ -10,8 +10,8 @@ So here's the scenario: you love Metabase. It's changed your life. But you have 
 
 Before you start building a driver from scratch, see if one already exists that you could contribute to:
 
-- [Officially supported databases](https://www.metabase.com/docs/latest/administration-guide/01-managing-databases.html#officially-supported-databases)
-- [Community databases](https://www.metabase.com/docs/latest/developers-guide-drivers.html#how-to-use-a-community-built-driver)
+- [Officially supported databases](../../databases/connecting.md#connecting-to-supported-databases)
+- [Community databases](../partner-and-community-drivers.md#community-drivers)
 
 ## Setting up
 
@@ -21,7 +21,7 @@ Having an in-depth understanding of Clojure is less important when writing JDBC-
 
 ## Writing a driver
 
-Try to avoid skipping right to whichever page you think will give you the code you'll need to copy-pasta. While Metabase drivers are often fairly small (some as little as fifty lines of code), you should put some careful thought into deciding what goes into those fifty lines. You'll have an easier time writing the driver, and end up with a better one. 
+Try to avoid skipping right to whichever page you think will give you the code you'll need to copy-pasta. While Metabase drivers are often fairly small (some as little as fifty lines of code), you should put some careful thought into deciding what goes into those fifty lines. You'll have an easier time writing the driver, and end up with a better one.
 
 1. [Driver basics](basics.md)
 2. [Plugin manifests](plugins.md)

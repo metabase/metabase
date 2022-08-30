@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import _ from "underscore";
-import { getIn } from "icepick";
 
 // eslint-disable-next-line import/named
 import { FormikProps } from "formik";
@@ -11,6 +10,7 @@ import { usePrevious } from "metabase/hooks/use-previous";
 
 import { BaseFieldValues, FormField } from "metabase-types/forms";
 
+import { getMaybeNestedValue } from "../formUtils";
 import FormView from "./FormView";
 
 type FormProps<Values extends BaseFieldValues> = Omit<
@@ -33,14 +33,6 @@ type FormProps<Values extends BaseFieldValues> = Omit<
   | "onChangeField"
   | "submitFailed"
 >;
-
-function getMaybeNestedValue<Value = string>(
-  obj: Record<string, Value>,
-  fieldName: string,
-): Value {
-  const isNestedField = fieldName.includes(".");
-  return isNestedField ? getIn(obj, fieldName.split(".")) : obj[fieldName];
-}
 
 interface FormikFormViewAdapterOwnProps<Values> {
   onValuesChange: (values: Values) => void;
@@ -88,7 +80,7 @@ function FormikFormViewAdapter<Values extends BaseFieldValues>({
     const value = getMaybeNestedValue(values, name);
     const initialValue = getMaybeNestedValue(initialValues, name);
     const error = getMaybeNestedValue(errors as Record<string, string>, name);
-    const isTouched = !!getMaybeNestedValue<boolean>(
+    const isTouched = !!getMaybeNestedValue(
       touched as Record<string, boolean>,
       name,
     );

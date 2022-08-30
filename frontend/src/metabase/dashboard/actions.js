@@ -536,7 +536,7 @@ export const fetchDashboardCardData = createThunkAction(
 
 const loadingComplete = createThunkAction(
   SET_LOADING_DASHCARDS_COMPLETE,
-  () => dispatch => {
+  () => (dispatch, getState) => {
     dispatch(setShowLoadingCompleteFavicon(true));
     if (!document.hidden) {
       dispatch(setDocumentTitle(""));
@@ -544,7 +544,11 @@ const loadingComplete = createThunkAction(
         dispatch(setShowLoadingCompleteFavicon(false));
       }, 3000);
     } else {
-      dispatch(setDocumentTitle(t`Your dashboard is ready`));
+      const dashboard = getDashboardComplete(getState());
+      const message = dashboard.is_app_age
+        ? t`Your page is ready`
+        : t`Your dashboard is ready`;
+      dispatch(setDocumentTitle(message));
       document.addEventListener(
         "visibilitychange",
         () => {

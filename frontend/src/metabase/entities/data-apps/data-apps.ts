@@ -8,8 +8,8 @@ import { Collection, DataApp } from "metabase-types/api";
 
 import { DEFAULT_COLLECTION_COLOR_ALIAS } from "../collections/constants";
 
-import { createForm } from "./forms";
-import { getDataAppIcon } from "./utils";
+import { createNewAppForm, createAppSettingsForm } from "./forms";
+import { getDataAppIcon, isDataAppCollection } from "./utils";
 
 type EditableDataAppParams = Pick<
   DataApp,
@@ -19,6 +19,10 @@ type EditableDataAppParams = Pick<
 
 type CreateDataAppParams = Partial<EditableDataAppParams> &
   Pick<EditableDataAppParams, "name">;
+
+type UpdateDataAppParams = Pick<DataApp, "id" | "collection_id"> & {
+  collection: Pick<Collection, "name" | "description">;
+};
 
 const DataApps = createEntity({
   name: "dataApps",
@@ -36,16 +40,23 @@ const DataApps = createEntity({
       description,
       ...dataAppProps
     }: CreateDataAppParams) => {
-      const collection = await CollectionsApi.create({
-        name,
-        description: description || null,
-        parent_id: null, // apps should always live in root collection
-        color: color(DEFAULT_COLLECTION_COLOR_ALIAS),
-      });
       return DataAppsApi.create({
         ...dataAppProps,
-        collection_id: collection.id,
+        collection: {
+          name,
+          description: description || null,
+          color: color(DEFAULT_COLLECTION_COLOR_ALIAS),
+        },
       });
+    },
+    update: async ({
+      id,
+      collection,
+      collection_id,
+      ...rest
+    }: UpdateDataAppParams) => {
+      await CollectionsApi.update({ ...collection, id: collection_id });
+      return DataAppsApi.update({ id, ...rest });
     },
   },
 
@@ -54,12 +65,15 @@ const DataApps = createEntity({
   },
 
   forms: {
-    details: {
-      fields: createForm,
+    create: {
+      fields: createNewAppForm,
+    },
+    settings: {
+      fields: createAppSettingsForm,
     },
   },
 });
 
-export { getDataAppIcon };
+export { getDataAppIcon, isDataAppCollection };
 
 export default DataApps;
