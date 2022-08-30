@@ -2,12 +2,7 @@ import React from "react";
 import { t } from "ttag";
 
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import {
-  ActionFormSettings,
-  FieldSettings,
-  FieldType,
-  InputType,
-} from "metabase/writeback/types";
+import { FieldSettings, FieldType, InputType } from "metabase/writeback/types";
 
 import Radio from "metabase/core/components/Radio";
 import Icon from "metabase/components/Icon";
@@ -46,7 +41,7 @@ export function FormCreatorPopoverBody({
   onChange,
 }: {
   fieldSettings: FieldSettings;
-  onChange: (fieldSettings: any) => void;
+  onChange: (fieldSettings: FieldSettings) => void;
 }) {
   const updateFieldType = (newFieldType: FieldType) =>
     onChange({
@@ -61,7 +56,7 @@ export function FormCreatorPopoverBody({
     });
 
   return (
-    <SettingsPopoverBody>
+    <SettingsPopoverBody data-testid="field-settings-popover">
       <FieldTypeSelect
         value={fieldSettings.fieldType}
         onChange={updateFieldType}
@@ -80,7 +75,7 @@ function FieldTypeSelect({
   onChange,
 }: {
   value: FieldType;
-  onChange: (InputType: InputType) => void;
+  onChange: (newFieldType: FieldType) => void;
 }) {
   return (
     <FieldTypeWrapper>
@@ -102,7 +97,7 @@ function InputTypeSelect({
 }: {
   value: InputType;
   fieldType: FieldType;
-  onChange: (newFieldType: FieldType) => void;
+  onChange: (newInputType: InputType) => void;
 }) {
   return (
     <Radio
