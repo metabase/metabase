@@ -8,23 +8,21 @@ import withTableMetadataLoaded from "metabase/admin/datamodel/hoc/withTableMetad
 import Radio from "metabase/core/components/Radio";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { DatabaseEntity, TableEntity } from "metabase-types/entities";
+import { TableVisibilityType } from "metabase-types/api";
 import { State } from "metabase-types/store";
 
 import ColumnsList from "../ColumnsList";
 import MetadataSchema from "../MetadataSchema";
+import TableSyncWarning from "../TableSyncWarning";
 import {
   TableDescription,
   TableDescriptionInput,
   TableName,
   TableNameInput,
-  VisibilityWarning,
-  VisibilityWarningDescription,
-  VisibilityWarningTitle,
   VisibilityType,
 } from "./MetadataTable.styled";
 import { Field } from "metabase-types/api/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import Button from "metabase/core/components/Button";
 
 const getDescriptionPlaceholder = () => t`No table description yet`;
 
@@ -68,8 +66,13 @@ const MetadataTable = ({
     handlePropertyUpdate("description", event.target.value);
   };
 
+  const handleVisibilityTypeChange = (visibilityType: TableVisibilityType) => {
+    handlePropertyUpdate("visibility_type", visibilityType);
+  };
+
   const isHidden = !!table.visibility_type;
   const isSynced = isSyncCompleted(table);
+  const hasFields = table.fields && table.fields.length > 0;
 
   if (!table) {
     return null;
@@ -161,18 +164,8 @@ const MetadataTable = ({
           )}
         </div>
       )}
-      {!isSynced && isHidden && (
-        <VisibilityWarning>
-          <VisibilityWarningTitle>
-            {t`This table hasn’t been synced yet`}
-          </VisibilityWarningTitle>
-          <VisibilityWarningDescription>
-            {t`It was automatically marked as Hidden during the initial sync of this database. Do you want to make it queryable and sync it?`}
-          </VisibilityWarningDescription>
-          <Button onClick={() => handlePropertyUpdate("visibility_type", null)}>
-            {t`Change to Queryable and sync it`}
-          </Button>
-        </VisibilityWarning>
+      {!isSynced && isHidden && !hasFields && (
+        <TableSyncWarning onVisibilityTypeChange={handleVisibilityTypeChange} />
       )}
     </div>
   );
