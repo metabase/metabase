@@ -22,7 +22,7 @@ Alternatively, if you just want to check the in-product links to make sure they 
 yarn run lint-docs-links
 ```
 
-You can view both commands in the [package.json](../../package.json) file under `scripts`.
+You can view both commands in the [package.json](https://github.com/metabase/metabase/blob/master/package.json) file under `scripts`.
 
 ## Style guide
 
