@@ -15,6 +15,7 @@ import "ace/snippets/mysql";
 import "ace/snippets/pgsql";
 import "ace/snippets/sqlserver";
 import "ace/snippets/json";
+import "ace/ext-searchbox";
 import _ from "underscore";
 import { ResizableBox } from "react-resizable";
 
