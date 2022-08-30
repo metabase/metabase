@@ -10,7 +10,7 @@ What is embedding, and how does it work?
 
 ## [Signed embedding](./signed-embedding.md)
 
-Display interactive charts and dashboards on your website while securing the underlying data.
+Also known as standalone embedding. Display interactive charts and dashboards on your website while securing the underlying data.
 
 ## [Full-app embedding](./full-app-embedding.md)
 

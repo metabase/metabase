@@ -4,9 +4,11 @@ title: Parameters for signed embeds
 
 # Parameters for signed embeds
 
+Also known as: parameters for standalone embeds.
+
 Parameters are pieces of information that are passed between Metabase and your website via the [embedding URL](./signed-embedding.md#adding-the-embedding-url-to-your-website). You can use parameters to specify how Metabase items should look and behave inside the iframe on your website.
 
-Parameters are added to the end of your embedding URL:
+Parameters are added to the end of your embedding URL, like this:
 
 ```
 your_embedding_url?parameter_name=value
@@ -20,12 +22,13 @@ You can add [filter widgets](https://www.metabase.com/glossary/filter_widget) to
 2. Click on the **sharing icon** > **Embed this item in an application**.
 3. Under **Parameters**, you'll find the names of your dashboard filters or SQL variables.
 4. Select **Editable** for each parameter that should get a filter widget on your embed.
+5. Click **Publish** to save your changes.
 
 **Editable** parameters are responsible for passing filter values from the embedded filter widget (displayed on the iframe) through to the filters on your original dashboard or SQL question (in your Metabase).
 
 ## Populating an embedded filter widget with a default value
 
-If you want to set a default value for your [embedded filter widget](#adding-a-filter-widget-to-a-signed-embed), you can pass that value to the corresponding parameter name in your embedding URL. Note that:
+If you want to set a default value for your [embedded filter widget](#adding-a-filter-widget-to-a-signed-embed), you can pass that default value to the corresponding parameter name in the embedding URL. Note that:
 
 - Parameter _names_ are lowercase.
 - Parameter _values_ are case-sensitive (they must match your data).
@@ -56,10 +59,11 @@ If you want to display filtered data in an embedded dashboard or SQL question, a
 1. Go to your dashboard or SQL question. Make sure you've set up a [dashboard filter](../dashboards/filters.md) or [SQL variable](../questions/native-editor/sql-parameters.md).
 2. Click on the **sharing icon** > **Embed this item in an application**.
 3. Under **Parameters**, you'll find the names of your dashboard filters or SQL variables.
-4. Select **Locked** for each parameter that should pre-filter your data, without displaying a filter widget on the embed.
+4. Select **Locked** for each parameter that should pre-filter your data.
 5. Add values for the filter under **Preview locked parameters**.
+6. Click **Publish** to save your changes.
 
-**Locked** parameters will apply the selected filter values to your original dashboard or SQL question, but they won't be displayed as as filter widgets on your embed. You can use locked parameters to display filtered data based on attributes captured by your web server (such as a user's login). See the [reference apps repo](https://github.com/metabase/embedding-reference-apps) for more examples.
+**Locked** parameters will apply the selected filter values to your original dashboard or SQL question, but they won't be displayed as filter widgets on your embed. You can use locked parameters to display filtered data based on attributes captured by your web server (such as a user's login). See the [reference apps repo](https://github.com/metabase/embedding-reference-apps) for more examples.
 
 Note that you can only add filter values that match the filter type on the _original_ dashboard or SQL question. For example, if you have a text box filter on your original dashboard or SQL question, you'll only be able to add a single filter value to your locked parameter. If you want to provide multiple filter values to the parameter, you'll need to change the original filter to a [dropdown filter](../dashboards/filters.md#choosing-between-a-dropdown-or-autocomplete-for-your-filter) first.
 
