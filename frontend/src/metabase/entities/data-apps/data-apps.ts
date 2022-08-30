@@ -9,7 +9,7 @@ import { Collection, DataApp } from "metabase-types/api";
 import { DEFAULT_COLLECTION_COLOR_ALIAS } from "../collections/constants";
 
 import { createNewAppForm, createAppSettingsForm } from "./forms";
-import { getDataAppIcon, isDataAppCollection } from "./utils";
+import { getDataAppIcon } from "./utils";
 
 type EditableDataAppParams = Pick<
   DataApp,
@@ -74,6 +74,5 @@ const DataApps = createEntity({
   },
 });
 
-export { getDataAppIcon, isDataAppCollection };
-
+export * from "./utils";
 export default DataApps;

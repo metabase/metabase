@@ -6,7 +6,7 @@ import Modal from "metabase/components/Modal";
 
 import * as Urls from "metabase/lib/urls";
 
-import DataApps from "metabase/entities/data-apps";
+import DataApps, { getDataAppHomePageId } from "metabase/entities/data-apps";
 import Dashboards from "metabase/entities/dashboards";
 import Search from "metabase/entities/search";
 
@@ -20,14 +20,23 @@ import DataAppNavbarView from "./DataAppNavbarView";
 const FETCHING_SEARCH_MODELS = ["dashboard", "dataset", "card"];
 const LIMIT = 100;
 
+function isAtDataAppHomePage(selectedItems: SelectedItem[]) {
+  const [selectedItem] = selectedItems;
+  return selectedItems.length === 1 && selectedItem.type === "data-app";
+}
+
 type NavbarModal = "MODAL_APP_SETTINGS" | "MODAL_NEW_PAGE" | null;
 
-interface Props extends MainNavbarProps {
+interface DataAppNavbarContainerProps extends MainNavbarProps {
   dataApp: DataApp;
-  loading: boolean;
+  items: any[];
   selectedItems: SelectedItem[];
   onChangeLocation: (location: LocationDescriptor) => void;
 }
+
+type DataAppNavbarContainerLoaderProps = DataAppNavbarContainerProps & {
+  dataApp?: DataApp;
+};
 
 type SearchRenderProps = {
   list: any[];
@@ -36,22 +45,33 @@ type SearchRenderProps = {
 
 function DataAppNavbarContainer({
   dataApp,
-  loading: loadingDataApp,
+  items,
+  selectedItems,
   onChangeLocation,
   ...props
-}: Props) {
+}: DataAppNavbarContainerProps) {
   const [modal, setModal] = useState<NavbarModal>(null);
 
-  const collectionContentQuery = useMemo(() => {
-    if (!dataApp) {
-      return {};
+  const finalSelectedItems: SelectedItem[] = useMemo(() => {
+    const isHomepage = isAtDataAppHomePage(selectedItems);
+
+    // Once a data app is launched, the first view is going to be the app homepage
+    // Homepage is an app page specified by a user or picked automatically (just the first one)
+    // The homepage doesn't have a regular page path like /a/1/page/1, but an app one like /a/1
+    // So we need to overwrite the selectedItems list here and specify the homepage
+    if (isHomepage) {
+      return [
+        {
+          type: "data-app-page",
+          id: getDataAppHomePageId(
+            items.filter(item => item.model === "dashboard"),
+          ),
+        },
+      ];
     }
-    return {
-      collection: dataApp.collection_id,
-      models: FETCHING_SEARCH_MODELS,
-      limit: LIMIT,
-    };
-  }, [dataApp]);
+
+    return selectedItems;
+  }, [items, selectedItems]);
 
   const onEditAppSettings = useCallback(() => {
     setModal("MODAL_APP_SETTINGS");
@@ -95,33 +115,47 @@ function DataAppNavbarContainer({
     return null;
   }, [dataApp, modal, closeModal, onChangeLocation]);
 
-  if (loadingDataApp) {
+  return (
+    <>
+      <DataAppNavbarView
+        {...props}
+        dataApp={dataApp}
+        items={items}
+        selectedItems={finalSelectedItems}
+        onNewPage={onNewPage}
+        onEditAppSettings={onEditAppSettings}
+      />
+      {modal && <Modal onClose={closeModal}>{renderModalContent()}</Modal>}
+    </>
+  );
+}
+
+function DataAppNavbarContainerLoader({
+  dataApp,
+  ...props
+}: DataAppNavbarContainerLoaderProps) {
+  if (!dataApp) {
     return <NavbarLoadingView />;
   }
 
   return (
-    <>
-      <Search.ListLoader
-        query={collectionContentQuery}
-        loadingAndErrorWrapper={false}
-      >
-        {({ list = [], loading: loadingAppContent }: SearchRenderProps) => {
-          if (loadingAppContent) {
-            return <NavbarLoadingView />;
-          }
-          return (
-            <DataAppNavbarView
-              {...props}
-              dataApp={dataApp}
-              items={list}
-              onEditAppSettings={onEditAppSettings}
-              onNewPage={onNewPage}
-            />
-          );
-        }}
-      </Search.ListLoader>
-      {modal && <Modal onClose={closeModal}>{renderModalContent()}</Modal>}
-    </>
+    <Search.ListLoader
+      query={{
+        collection: dataApp.collection_id,
+        models: FETCHING_SEARCH_MODELS,
+        limit: LIMIT,
+      }}
+      loadingAndErrorWrapper={false}
+    >
+      {({ list = [], loading: loadingAppContent }: SearchRenderProps) => {
+        if (loadingAppContent) {
+          return <NavbarLoadingView />;
+        }
+        return (
+          <DataAppNavbarContainer {...props} dataApp={dataApp} items={list} />
+        );
+      }}
+    </Search.ListLoader>
   );
 }
 
@@ -129,4 +163,6 @@ function getDataAppId(state: State, props: MainNavbarOwnProps) {
   return Urls.extractEntityId(props.params.slug);
 }
 
-export default DataApps.load({ id: getDataAppId })(DataAppNavbarContainer);
+export default DataApps.load({ id: getDataAppId })(
+  DataAppNavbarContainerLoader,
+);
