@@ -434,7 +434,7 @@
   "Returns a list of card column metadata given the `search-string` and a set of card ids.
    The search-string is matched against column names in the result_metadata of the cards.
   Each result contains all the metadata for the column, and the name of the card."
-  [db-id search-string limit match-type card-ids]
+  [db-id search-string card-ids limit match-type]
   (when (seq card-ids)
     (->> (db/select [Card :name :result_metadata :collection_id]
            :%lower.result_metadata         [:like (match-search-string :substring search-string)]
