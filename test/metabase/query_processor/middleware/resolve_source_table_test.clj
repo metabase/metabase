@@ -9,19 +9,8 @@
 (defn- resolve-source-tables [query]
   (qp.resolve-source-table/resolve-source-tables query))
 
-(defn- do-with-store-contents [f]
-  ;; force creation of test data DB so things don't get left in the cache before running tests below
-  (mt/id)
-  (qp.store/with-store
-    (qp.store/fetch-and-store-database! (mt/id))
-    (f)
-    (mt/store-contents)))
-
-(defmacro ^:private with-store-contents {:style/indent 0} [& body]
-  `(do-with-store-contents (fn [] ~@body)))
-
 (defn- resolve-and-return-store-contents [query]
-  (with-store-contents
+  (mt/with-store-contents
     (resolve-source-tables query)))
 
 (deftest basic-test

@@ -14,8 +14,10 @@
 
 (defn resolve-fields
   "Resolve all field referenced in the `query`, and store them in the QP Store."
-  [query]
-  (let [ids (into (set (mbql.u/match (:query query) [:field (id :guard integer?) _] id))
+  [{:keys [info] :as query}]
+  (let [ids (into (set (concat
+                         (mbql.u/match (:query query) [:field (id :guard integer?) _] id)
+                         (mbql.u/match (:metadata/dataset-metadata info) [:field (id :guard integer?) _] id)))
                   (comp cat (keep :id))
                   (mbql.u/match (:query query) {:source-metadata source-metadata} source-metadata))]
     (try

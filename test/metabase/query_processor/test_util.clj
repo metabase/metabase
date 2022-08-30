@@ -166,3 +166,17 @@
   "Override the determined results timezone ID and execute `body`. Intended primarily for REPL and test usage."
   [timezone-id & body]
   `(do-with-results-timezone-id ~timezone-id (fn [] ~@body)))
+
+
+(defn do-with-store-contents [f]
+  "Impl for `with-store-contents`"
+  ;; force creation of test data DB so things don't get left in the cache before running tests below
+  (data/id)
+  (qp.store/with-store
+    (qp.store/fetch-and-store-database! (data/id))
+    (f)
+    (store-contents)))
+
+(defmacro with-store-contents {:style/indent 0} [& body]
+  "Execute `body` then returns the content of the stores."
+  `(do-with-store-contents (fn [] ~@body)))

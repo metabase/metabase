@@ -153,7 +153,8 @@
   with-database-timezone-id
   with-everything-store
   with-report-timezone-id
-  with-results-timezone-id]
+  with-results-timezone-id
+  with-store-contents]
 
  [sql-jdbc.tu
   sql-jdbc-drivers]

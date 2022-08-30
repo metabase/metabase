@@ -129,7 +129,24 @@
             (with-redefs [api.dataset/run-query-async (fn [query & opts]
                                                         (assert (nil? (:dataset-metadata query)))
                                                         (run-query-async query opts))]
-              (mt/user-http-request :rasta :post 202 "dataset" query))))))))
+              (mt/user-http-request :rasta :post 202 "dataset" query))))))
+
+    (testing "should run successfully even if dataset-metadata contains fields that is not in the query"
+      (let [;; We're querying venues but this dataset-metadata contains a user-id
+            ;; This is to simulate the cases where `dataset-metadata` sent from FE can
+            ;; contains fields that are not resolved anywhere in our query.
+            ;; Since we're allowing this behavior of sending custom dataset-metadata
+            ;; we expect the query to run successfully.
+            dataset-metadata [{:name          "ID"
+                               :display_name  "USER ID CAPITALIZED"
+                               :description   "User id"
+                               :semantic_type "type/FK"
+                               :base_type     "type/BigInteger"
+                               :field_ref     ["field" (mt/id :users :id) nil]}]
+            query            (assoc (mt/mbql-query venues {:fields [$id]})
+                                    :dataset-metadata dataset-metadata)]
+        (mt/user-http-request :rasta :post 202 "dataset" query)))))
+
 
 (deftest failure-test
   ;; clear out recent query executions!
