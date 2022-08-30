@@ -138,3 +138,16 @@
       (for [{emitter-id :id, :as emitter} emitters]
         (some-> emitter (assoc :action (get actions-by-id (get action-id-by-emitter-id emitter-id))))))
     emitters))
+
+(defn cards-by-action-id
+  "Hydrates action_id from Card for is_write cards"
+  {:batched-hydrate :card/action-id}
+  [cards]
+  (if-let [card-id->action-id (not-empty (db/select-field->field
+                                           :card_id :action_id
+                                           'QueryAction
+                                           :card_id [:in (map :id cards)]))]
+
+    (for [card cards]
+      (m/assoc-some card :action_id (get card-id->action-id (:id card))))
+    cards))
