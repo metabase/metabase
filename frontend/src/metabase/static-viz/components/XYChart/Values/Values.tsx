@@ -112,7 +112,7 @@ export default function Values({
   return (
     <>
       {verticalOverlappingFreeValues.map((singleSerieValues, seriesIndex) => {
-        const compact = getCompact(series[seriesIndex]);
+        const compact = getCompact(singleSerieValues.map(value => value.datum));
 
         return fixHorizontalOverlappingValues(
           seriesIndex,
@@ -163,11 +163,11 @@ export default function Values({
     </>
   );
 
-  function getCompact(serie: HydratedSeries) {
+  function getCompact(data: (SeriesDatum | StackedDatum)[]) {
     // Use the same logic as in https://github.com/metabase/metabase/blob/1276595f073883853fed219ac185d0293ced01b8/frontend/src/metabase/visualizations/lib/chart_values.js#L178-L179
     const getAvgLength = (compact: boolean) => {
-      const lengths = serie.data.map(
-        ([_, yValue]) => formatter(yValue, compact).length,
+      const lengths = data.map(
+        ([_, yValue]) => formatter(Number(yValue), compact).length,
       );
       return lengths.reduce((sum, l) => sum + l, 0) / lengths.length;
     };
