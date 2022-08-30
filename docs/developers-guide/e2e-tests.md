@@ -95,7 +95,10 @@ These files can be found under the “Artifacts” tab in Circle:
 
 ## Running Cypress tests against EE version of Metabase
 
-Make sure you have a valid enterprise token prior to running Cypress. We have a special `describe` block called `describeEE` that will conditionally skip or run tests based on the existence of two environment variables (`MB_EDITION` and `MB_PREMIUM_EMBEDDING_TOKEN`).
+Prior to running Cypress, make sure you have a valid enterprise token. We have a special `describe` block called `describeEE` that will conditionally skip or run tests based on the existence of two environment variables:
+
+- `MB_EDITION`
+- `MB_PREMIUM_EMBEDDING_TOKEN`
 
 ```
 MB_EDITION=ee MB_PREMIUM_EMBEDDING_TOKEN=xxxxxx yarn test-cypress-open
