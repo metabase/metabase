@@ -53,7 +53,7 @@ your_embedding_url?breakfast=Scrambled_eggs&breakfast=Bacon
 
 If you want to display filtered data in an embedded dashboard or SQL question, and _prevent_ people from viewing or changing that filter:
 
-1. Go to your dashboard or SQL question. Make sure you've set up a [dashboard filter](../dashboards/filters) or [SQL variable](/questions/native-editor/sql-parameters).
+1. Go to your dashboard or SQL question. Make sure you've set up a [dashboard filter](../dashboards/filters.md) or [SQL variable](../questions/native-editor/sql-parameters.md).
 2. Click on the **sharing icon** > **Embed this item in an application**.
 3. Under **Parameters**, you'll find the names of your dashboard filters or SQL variables.
 4. Select **Locked** for each parameter that should pre-filter your data, without displaying a filter widget on the embed.
