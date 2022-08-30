@@ -82,6 +82,11 @@ const cardWithResultMetadata = {
   ],
 };
 
+const questionWithResultMetadata = new Question(
+  cardWithResultMetadata,
+  metadata,
+);
+
 const PRODUCT_CATEGORY_FIELD_ID = 21;
 
 const ORDERS_USER_ID_FIELD = metadata.field(ORDERS.USER_ID.id).getPlainObject();
@@ -107,6 +112,11 @@ ORDERS_DATASET.card().id = 111;
 // It isn't actually possible to overwrite metadata for non-models,
 // it's just needed to test it's only possible for models
 const ORDERS_WITH_OVERWRITTEN_METADATA = ORDERS_DATASET.setDataset(false);
+
+metadata.questions = {
+  [ORDERS_DATASET.card().id]: ORDERS_DATASET,
+  [cardWithResultMetadata.id]: questionWithResultMetadata,
+};
 
 describe("Dimension", () => {
   describe("STATIC METHODS", () => {
@@ -984,10 +994,6 @@ describe("Dimension", () => {
   describe("Dimension connected to saved question with result_metadata", () => {
     describe("field", () => {
       it("should return a Field with properties from the field in the question's result_metadata", () => {
-        const questionWithResultMetadata = new Question(
-          cardWithResultMetadata,
-          metadata,
-        );
         const fieldDimensionUsingIdProp = Dimension.parseMBQL(
           ["field", ORDERS.ID.id, null],
           metadata,
@@ -1016,7 +1022,9 @@ describe("Dimension", () => {
         );
         const unsavedQuestionBasedOnCard = questionWithResultMetadata
           .composeThisQuery()
-          .setResultsMetadata([]);
+          .setResultsMetadata({
+            columns: [],
+          });
 
         const fieldDimensionUsingIdProp = Dimension.parseMBQL(
           ["field", ORDERS.ID.id, null],
