@@ -108,4 +108,5 @@ If you navigate to the `/admin/settings/license` page, the license input field s
 
 
 - If tests under `describeEE` block are greyed out and not running, make sure you entered the environment variables correctly.
-- If tests start running but the enterprise features are missing first make sure that the token is still valid and/or that it includes a certain feature. If everything with the token seems to be ok the only remaining solution is to kill all Java processes with `killall java` and to restart Cypress.
+- If tests start running but the enterprise features are missing: make sure that the token is still valid. 
+- If everything with the token seems to be okay, go nuclear and destroy all Java processes: run `killall java` and restart Cypress.
