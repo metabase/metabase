@@ -192,6 +192,29 @@
                 body))]
     {:node node*}))
 
+(defn let-with-optional-value-for-last-binding
+  "This is exactly like [[clojure.core/let]] but the right-hand side of the *last* binding, `value`, is optional.
+
+    (some-macro [x] ...)
+    =>
+    (let [x nil] ...)
+
+    (some-macro [x 100] ...)
+    =>
+    (let [x 100] ...)"
+  [{{[_ {bindings :children} & body] :children} :node}]
+  (let [node* (hooks/list-node
+               (list*
+                (hooks/token-node 'let)
+                (hooks/vector-node
+                 (into []
+                       (comp (partition-all 2)
+                             (mapcat (fn [[binding value]]
+                                       [binding (or value (hooks/token-node 'nil))])))
+                       bindings))
+                body))]
+    {:node node*}))
+
 (defn with-ignored-first-arg
   "For macros like
 

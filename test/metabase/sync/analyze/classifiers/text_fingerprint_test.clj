@@ -1,6 +1,7 @@
 (ns metabase.sync.analyze.classifiers.text-fingerprint-test
   (:require [clojure.test :refer :all]
-            [metabase.models.field :as field]
+            [metabase.models.field :as field :refer [Field]]
+            [metabase.models.interface :as mi]
             [metabase.sync.analyze.classifiers.text-fingerprint :as classifiers.text-fingerprint]))
 
 (def can-edit? #'classifiers.text-fingerprint/can-edit-semantic-type?)
@@ -33,7 +34,7 @@
 (deftest infer-semantic-type-test
   (let [fingerprint       {:type {:type/Text {:percent-json threshold}}}
         state-fingerprint {:type {:type/Text {:percent-state lower-threshold}}}
-        field             (field/map->FieldInstance {:name "field" :base_type :type/Text})]
+        field             (mi/instance Field {:name "field" :base_type :type/Text})]
     (testing "can infer a semantic type from text fingerprints"
       (is (= :type/SerializedJSON
              (:semantic_type (classifiers.text-fingerprint/infer-semantic-type field fingerprint))))
