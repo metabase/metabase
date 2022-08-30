@@ -465,4 +465,21 @@ describe("Field", () => {
       });
     });
   });
+
+  describe("merge", () => {
+    it("should return a new field instance merged with the provided metadata", () => {
+      const field = new Field({
+        id: 1,
+      });
+      const mergedField = field.merge({ foo: "bar" });
+
+      expect(mergedField.id).toBe(1);
+      expect(mergedField.foo).toBe("bar");
+
+      expect(mergedField.getPlainObject()).toEqual({
+        id: 1,
+        foo: "bar",
+      });
+    });
+  });
 });

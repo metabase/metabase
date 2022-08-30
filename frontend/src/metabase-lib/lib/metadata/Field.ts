@@ -2,6 +2,8 @@
 // @ts-nocheck
 import _ from "underscore";
 import moment from "moment-timezone";
+import { merge } from "icepick";
+
 import { createLookupByProperty, memoizeClass } from "metabase-lib/lib/utils";
 import { formatField, stripId } from "metabase/lib/formatting";
 import { getFieldValues } from "metabase/lib/query/field";
@@ -434,6 +436,19 @@ class FieldInner extends Base {
     });
   }
 
+  merge(overridingMetadata: Field | Record<string, unknown>) {
+    const override =
+      overridingMetadata instanceof Field
+        ? overridingMetadata.getPlainObject()
+        : overridingMetadata;
+
+    const plainObject = this.getPlainObject() || {};
+    const mergedPlainObject = merge(plainObject, override);
+    const newField = new Field({ ...this, ...mergedPlainObject });
+    newField._plainObject = mergedPlainObject;
+
+    return newField;
+  }
   /**
    * Returns a FKDimension for this field and the provided field
    * @param {Field} foreignField
