@@ -37,38 +37,36 @@ interface InputOptionsMap {
   category: InputOptionType[];
 }
 
+const textInputs: InputOptionType[] = [
+  {
+    value: "longtext",
+    name: t`long text`,
+  },
+  {
+    value: "text",
+    name: t`text`,
+  },
+];
+
+const selectInputs: InputOptionType[] = [
+  {
+    value: "dropdown",
+    name: t`dropdown`,
+  },
+  {
+    value: "inline-select",
+    name: t`inline select`,
+  },
+];
+
 export const inputTypes: InputOptionsMap = {
-  text: [
-    {
-      value: "text",
-      name: t`text`,
-    },
-    {
-      value: "longtext",
-      name: t`long text`,
-    },
-    {
-      value: "dropdown",
-      name: t`dropdown`,
-    },
-    {
-      value: "inline-select",
-      name: t`inline select`,
-    },
-  ],
+  text: [...textInputs, ...selectInputs],
   number: [
     {
       value: "number",
       name: t`number`,
     },
-    {
-      value: "dropdown",
-      name: t`dropdown`,
-    },
-    {
-      value: "inline-select",
-      name: t`inline select`,
-    },
+    ...selectInputs,
   ],
   date: [
     {
@@ -88,14 +86,5 @@ export const inputTypes: InputOptionsMap = {
       name: t`quarter + year`,
     },
   ],
-  category: [
-    {
-      value: "dropdown",
-      name: t`dropdown`,
-    },
-    {
-      value: "inline-select",
-      name: t`inline select`,
-    },
-  ],
+  category: [...selectInputs],
 };
