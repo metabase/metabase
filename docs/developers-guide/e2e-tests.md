@@ -103,7 +103,6 @@ MB_EDITION=ee MB_PREMIUM_EMBEDDING_TOKEN=xxxxxx yarn test-cypress-open
 
 If you navigate to the `/admin/settings/license` page, the license input field should be disabled and already populated. It should say: "Using MB_PREMIUM_EMBEDDING_TOKEN".
 
-_Note:_
 
 - If tests under `describeEE` block are greyed out and not running, make sure you entered the environment variables correctly.
 - If tests start running but the enterprise features are missing first make sure that the token is still valid and/or that it includes a certain feature. If everything with the token seems to be ok the only remaining solution is to kill all Java processes with `killall java` and to restart Cypress.
