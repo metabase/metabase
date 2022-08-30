@@ -153,15 +153,6 @@
                                                   (json/generate-string (public-settings/application-colors))))]
     (svg-string->bytes svg-string)))
 
-(defn categorical-area
-  "Clojure entrypoint to render a categorical area chart. Rows should be tuples of [stringable numeric-value]. Labels is a
-  map of {:left \"left-label\" :botton \"bottom-label\"}. Returns a byte array of a png file."
-  [rows labels settings]
-  (let [svg-string (.asString (js/execute-fn-name @context "categorical_area" rows
-                                                  (map (fn [[k v]] [(name k) v]) labels)
-                                                  (json/generate-string settings)))]
-    (svg-string->bytes svg-string)))
-
 (defn categorical-donut
   "Clojure entrypoint to render a categorical donut chart. Rows should be tuples of [category numeric-value]. Returns a
   byte array of a png file"
