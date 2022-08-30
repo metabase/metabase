@@ -437,10 +437,10 @@
   [db-id search-string card-ids limit match-type]
   (when (seq card-ids)
     (->> (db/select [Card :name :result_metadata :collection_id]
-           :%lower.result_metadata         [:like (match-search-string :substring search-string)]
-           :database_id                    db-id
-           :id [:in card-ids]
-            :limit limit})
+           :id          [:in card-ids]
+           :database_id db-id
+           :archived    false
+           {:limit limit})
          (filter mi/can-read?)
          (mapcat (fn [{:keys [result_metadata name]}]
                    (map (fn [column-metadata]
@@ -497,11 +497,11 @@
 
 (s/defn ^:private autocomplete-suggestions
   "match-string is a string that will be used with ilike. The it will be lowercased by autocomplete-{tables,fields}. "
-  [db-id match-string match-type :- (apply s/enum (disj autocomplete-matching-options :off)) tagged-card-ids]
+  [db-id match-string match-type :- (apply s/enum (disj autocomplete-matching-options :off)) card-ids]
   (let [limit        50
         tables       (filter mi/can-read? (autocomplete-tables db-id match-string limit match-type))
         fields       (readable-fields-only (autocomplete-fields db-id match-string limit match-type))
-        card-columns (autocomplete-card-columns db-id match-string limit match-type tagged-card-ids)]
+        card-columns (autocomplete-card-columns db-id match-string card-ids limit match-type)]
     (autocomplete-results tables fields card-columns limit)))
 
 (defsetting native-query-autocomplete-match-style
@@ -524,23 +524,24 @@
   "Return a list of autocomplete suggestions for a given `prefix`, or `substring`. Should only specify one, but
   `substring` will have priority if both are present.
 
-  This is intened for use with the ACE Editor when the User is typing raw SQL. Suggestions include matching `Tables`
-  and `Fields` in this `Database`.
+  This is intended for use with the ACE Editor when the User is typing raw SQL. Suggestions include matching `Tables` or
+  columns in this `Database`. A column can either be a `Field` from a `Table`, a column from a saved question, or a column of
+  a model. Only the columns from models and questions in `referenced-query-ids` are returned.
 
   Tables are returned in the format `[table_name \"Table\"]`;
-  When Fields have a semantic_type, they are returned in the format `[field_name \"table_name base_type semantic_type\"]`
-  When Fields lack a semantic_type, they are returned in the format `[field_name \"table_name base_type\"]`"
-  [id prefix substring tagged-card-ids]
+  When columns have a semantic_type, they are returned in the format `[field_name \"table_name base_type semantic_type\"]`
+  When columns lack a semantic_type, they are returned in the format `[field_name \"table_name base_type\"]`"
+  [id prefix substring referenced-card-ids]
   (api/read-check Database id)
-  (let [parsed-tagged-card-ids (if (str/blank? tagged-card-ids)
-                                 []
-                                 (map parse-long (str/split tagged-card-ids #",")))]
+  (let [parsed-referenced-card-ids (if (str/blank? referenced-card-ids)
+                                     []
+                                     (map parse-long (str/split referenced-card-ids #",")))]
     (try
       (cond
         substring
-        (autocomplete-suggestions id substring :substring parsed-tagged-card-ids)
+        (autocomplete-suggestions id substring :substring parsed-referenced-card-ids)
         prefix
-        (autocomplete-suggestions id prefix :prefix parsed-tagged-card-ids)
+        (autocomplete-suggestions id prefix :prefix parsed-referenced-card-ids)
         :else
         (throw (ex-info "must include prefix or substring" {})))
       (catch Throwable t

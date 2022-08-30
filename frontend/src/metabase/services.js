@@ -261,7 +261,7 @@ export const MetabaseApi = {
   db_fields: GET("/api/database/:dbId/fields"),
   db_idfields: GET("/api/database/:dbId/idfields"),
   db_autocomplete_suggestions: GET(
-    "/api/database/:dbId/autocomplete_suggestions?:matchStyle=:searchString&tagged-card-ids=:taggedCardIds",
+    "/api/database/:dbId/autocomplete_suggestions?:matchStyle=:searchString&referenced-card-ids=:referencedCardIds",
   ),
   db_sync_schema: POST("/api/database/:dbId/sync_schema"),
   db_dismiss_sync_spinner: POST("/api/database/:dbId/dismiss_spinner"),

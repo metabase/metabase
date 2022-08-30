@@ -847,12 +847,12 @@ export const getAutocompleteResultsFn = state => {
 
     const query = getQuery(state);
     const templateTags = query.templateTagsWithoutSnippets();
-    const taggedCardIds = templateTags.map(tag => tag["card-id"]);
+    const referencedCardIds = templateTags.map(tag => tag["card-id"]);
     const apiCall = MetabaseApi.db_autocomplete_suggestions({
       dbId,
       searchString,
       matchStyle,
-      taggedCardIds: taggedCardIds.join(","),
+      referencedCardIds: referencedCardIds.join(","),
     });
     return apiCall;
   };
