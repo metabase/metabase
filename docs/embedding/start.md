@@ -14,7 +14,7 @@ Display interactive charts and dashboards on your website while securing the und
 
 ## [Full-app embedding](./full-app-embedding.md)
 
-Put all of Metabase (including the [query builder](/glossary/query_builder)) in your app to give people secure self-serve access to data.
+Put all of Metabase (including the [query builder](../questions/query-builder/introduction#the-query-builder)) in your app to give people secure self-serve access to data.
 
 ## [Appearance](../configuring-metabase/appearance.md)
 

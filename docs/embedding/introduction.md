@@ -22,18 +22,18 @@ You'll need to put an iframe on your website to act as a window to your Metabase
 
 ## Comparison of embedding types
 
-|                                                                                                         | [Public](../questions/sharing/public-links.md#public-embed) | [Signed](./signed-embedding.md) | [Full-app](./full-app-embedding.md) |
-| --------------------------------------------------------------------------------------------------------| ------------------------------------------------------------| ------------------------------- | ----------------------------------- |
-| Display charts and dashboards                                                                           | ✅                                                          | ✅                               | ✅                                  |
-| Display interactive [filter widgets](/glossary/filter_widget)                                           | ✅                                                          | ✅                               | ✅                                  |
-| Restrict data with [locked filters](./signed-embedding-parameters#pre-filtering-data-in-a-signed-embed) | ❌                                                          | ✅                               | ❌                                  |
-| Restrict data with [sandboxes](../permissions/data-sandboxes)                                           | ❌                                                          | ❌                               | ✅                                  |
-| Drill-down using the [action menu](/glossary/action_menu)                                               | ❌                                                          | ❌                               | ✅                                  |
-| Self-serve via [query builder](/glossary/query_builder)                                                 | ❌                                                          | ❌                               | ✅                                  |
+|                                                                                                            | [Public](../questions/sharing/public-links.md#public-embed) | [Signed](./signed-embedding.md) | [Full-app](./full-app-embedding.md) |
+| -----------------------------------------------------------------------------------------------------------| ------------------------------------------------------------| ------------------------------- | ----------------------------------- |
+| Display charts and dashboards                                                                              | ✅                                                          | ✅                               | ✅                                  |
+| Display interactive [filter widgets](https://www.metabase.com/glossary/filter_widget)                      | ✅                                                          | ✅                               | ✅                                  |
+| Restrict data with [locked filters](./signed-embedding-parameters.md#pre-filtering-data-in-a-signed-embed) | ❌                                                          | ✅                               | ❌                                  |
+| Restrict data with [sandboxes](../permissions/data-sandboxes.md)                                           | ❌                                                          | ❌                               | ✅                                  |
+| Drill-down using the [action menu](https://www.metabase.com/glossary/action_menu)                          | ❌                                                          | ❌                               | ✅                                  |
+| Self-serve via [query builder](https://www.metabase.com/glossary/query_builder)                            | ❌                                                          | ❌                               | ✅                                  |
 
 ## Further reading
 
-- [Strategies for delivering customer-facing analytics](/learn/embedding/embedding-overview).
-- [Publishing data visualizations to the web](/learn/embedding/embedding-charts-and-dashboards).
-- [Multi-tenant self-service analytics](/learn/embedding/multi-tenant-self-service-analytics).
-- [Appearance documentation](../configuring-metabase/appearance)
+- [Strategies for delivering customer-facing analytics](https://www.metabase.com/learn/embedding/embedding-overview).
+- [Publishing data visualizations to the web](https://www.metabase.com/learn/embedding/embedding-charts-and-dashboards).
+- [Multi-tenant self-service analytics](https://www.metabase.com/learn/embedding/multi-tenant-self-service-analytics).
+- [Customizing Metabase's appearance](./appearance.md).

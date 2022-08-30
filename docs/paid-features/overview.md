@@ -40,8 +40,7 @@ Paid plans include more ways to manage permissions, including data sandboxing, w
 You can embed all of Metabase in your app.
 
 - [Embedding the entire Metabase app in your app](../embedding/full-app-embedding.md)
-- [Customizing how Metabase looks with white labeling](../embedding/whitelabeling.md)
-- [Customizing embedded items](../embedding//customize-embeds.md)
+- [Customizing Metabase's appearance](./appearance.md)
 
 ## Dashboard subscription customization
 

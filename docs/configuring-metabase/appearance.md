@@ -25,7 +25,7 @@ You can change every place in the app that says “Metabase” to something like
 
 ## Font
 
-This is the primary font used in charts and throughout the Metabase application (your "instance font"). See [Fonts](./fonts.html).
+This is the primary font used in charts and throughout the Metabase application (your "instance font"). See [Fonts](./fonts.md).
 
 ## Color palette
 
@@ -79,6 +79,6 @@ Show the Metabase lighthouse image on the home and login pages.
 
 ## Further reading
 
-- [Customer-facing analytics](/learn/embedding/).
-- [Embedding documentation](../embedding/start).
-- [Brand your Metabase](https://www.metabase.com/learn/embedding/brand)
+- [Customer-facing analytics](https://www.metabase.com/learn/embedding/).
+- [Embedding introduction](../embedding/start.md).
+- [Brand your Metabase](https://www.metabase.com/learn/embedding/brand).

@@ -26,7 +26,7 @@ In the case of a dashboard, the button is located on the top right of the page.
 
 Copy and share the public link URL with whomever you please. The public link URL will display static results of your question or dashboard, so visitors won't be able to drill-down into the underlying data on their own.
 
-However, public URLs preserve [custom click behavior](../../dashboards/interactive). If you like, you can share specific drill-down views by linking to other questions or dashboards.
+However, public URLs preserve [custom click behavior](../../dashboards/interactive.md). If you like, you can share specific drill-down views by linking to other questions or dashboards.
 
 ## Public embed
 
@@ -68,6 +68,6 @@ To specify multiple values for filters, though, you'll need to separate them wit
 
 ## Further reading
 
-- [Publishing data visualizations to the web](/learn/embedding/embedding-charts-and-dashboards).
-- [Appearance documentation](../configuring-metabase/appearance).
-- [Embedding documentation](../embedding/start).
+- [Publishing data visualizations to the web](https://www.metabase.com/learn/embedding/embedding-charts-and-dashboards).
+- [Appearance documentation](../configuring-metabase/appearance.md).
+- [Embedding documentation](../embedding/start.md).
