@@ -82,7 +82,7 @@ your_embedding_url#hide_parameters=breakfast,lunch
 You can also simultaneously assign a parameter a default value _and_ hide its filter widget:
 
 ```
-your_embedding_url?breakfast=scrambled_eggs#hide_parameters=breakfast
+your_embedding_url?breakfast=Scrambled_eggs#hide_parameters=breakfast
 ```
 
 ## Customizing the appearance of a signed embed
@@ -105,6 +105,6 @@ your_embedding_url#theme=night&titled=true&bordered=false
 
 ## Further reading
 
-- [Signed embedding documentation](./signed-embedding).
-- [Strategies for delivering customer-facing analytics](/learn/embedding/embedding-overview).
-- [Publishing data visualizations to the web](/learn/embedding/embedding-charts-and-dashboards).
+- [Signed embedding documentation](./signed-embedding.md).
+- [Strategies for delivering customer-facing analytics](https://www.metabase.com/learn/embedding/embedding-overview).
+- [Publishing data visualizations to the web](https://www.metabase.com/learn/embedding/embedding-charts-and-dashboards).

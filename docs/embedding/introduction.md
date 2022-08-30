@@ -8,9 +8,9 @@ redirect_from:
 
 Embedding allows people to view your Metabase app inside another web app (such as your company's website).
 
-[Signed embedding](./signed-embedding) and [full-app embedding](./full-app-embedding) are _secure_ ways to share your data with specific groups of people outside of your organization.
+[Signed embedding](./signed-embedding.md) and [full-app embedding](./full-app-embedding.md) are _secure_ ways to share your data with specific groups of people outside of your organization.
 
-If you'd like to share your data with the good people of the internet, you can create a [public link](../questions/sharing/public-links) and embed that directly on your website.
+If you'd like to share your data with the good people of the internet, you can create a [public link](../questions/sharing/public-links.md) and embed that directly on your website.
 
 ## How embedding works
 
@@ -22,14 +22,14 @@ You'll need to put an iframe on your website to act as a window to your Metabase
 
 ## Comparison of embedding types
 
-|                                                                                                         | [Public](../questions/sharing/public-links#public-embed) | [Signed](./signed-embedding) | [Full-app](./full-app-embedding) |
-| --------------------------------------------------------------------------------------------------------| -------------------------------------------------------- | ---------------------------- | -------------------------------- |
-| Display charts and dashboards                                                                           | ✅                                                       | ✅                           | ✅                               |
-| Display interactive [filter widgets](/glossary/filter_widget)                                           | ✅                                                       | ✅                           | ✅                               |
-| Restrict data with [locked filters](./signed-embedding-parameters#pre-filtering-data-in-a-signed-embed) | ❌                                                       | ✅                           | ❌                               |
-| Restrict data with [sandboxes](../permissions/data-sandboxes)                                           | ❌                                                       | ❌                           | ✅                               |
-| Drill-down using the [action menu](/glossary/action_menu)                                               | ❌                                                       | ❌                           | ✅                               |
-| Self-serve via [query builder](/glossary/query_builder)                                                 | ❌                                                       | ❌                           | ✅                               |
+|                                                                                                         | [Public](../questions/sharing/public-links.md#public-embed) | [Signed](./signed-embedding.md) | [Full-app](./full-app-embedding.md) |
+| --------------------------------------------------------------------------------------------------------| ------------------------------------------------------------| ------------------------------- | ----------------------------------- |
+| Display charts and dashboards                                                                           | ✅                                                          | ✅                               | ✅                                  |
+| Display interactive [filter widgets](/glossary/filter_widget)                                           | ✅                                                          | ✅                               | ✅                                  |
+| Restrict data with [locked filters](./signed-embedding-parameters#pre-filtering-data-in-a-signed-embed) | ❌                                                          | ✅                               | ❌                                  |
+| Restrict data with [sandboxes](../permissions/data-sandboxes)                                           | ❌                                                          | ❌                               | ✅                                  |
+| Drill-down using the [action menu](/glossary/action_menu)                                               | ❌                                                          | ❌                               | ✅                                  |
+| Self-serve via [query builder](/glossary/query_builder)                                                 | ❌                                                          | ❌                               | ✅                                  |
 
 ## Further reading
 

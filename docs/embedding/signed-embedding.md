@@ -12,21 +12,23 @@ To restrict data in signed embeds for specific people or groups, set up [locked 
 
 ## How signed embedding works
 
-If you allow people to interact with your Metabase through the iframe (i.e., you have interactive charts, not static ones), your web server will need to make requests to Metabase for updated data.
+If you want to set up interactive Metabase filters in your iframe, your web server will need to make requests to Metabase for updated data each time a website visitor updates the filter widget.
 
-To ask for updated data from Metabase, your web server will generate a new Metabase [embedding URL](#adding-the-embedding-url-to-your-website). For example, when a website visitor enters a value in an [embedded filter widget](./signed-embedding-parameters#adding-a-filter-widget-to-a-signed-embed), your web server will generate a new embedding URL with an extra parameter:
+To ask for updated data from Metabase, your web server will generate a new Metabase [embedding URL](#adding-the-embedding-url-to-your-website). For example, if a website visitor enters the value "true" in an [embedded filter widget](./signed-embedding-parameters#adding-a-filter-widget-to-a-signed-embed), your web server will generate a new embedding URL with an extra parameter:
 
 ```
-your_metabase_embedding_url?filter=value
+your_metabase_embedding_url?filter=true
 ```
 
 To prevent people from editing the embedding URL to get access to other parts of your Metabase (e.g., by changing the parameter to `filter=company_secrets`), your web server will add a signed JWT to the new embedding URL:
 
 ```
-your_metabase_embedding_url/your_signed_jwt?filter=value
+your_metabase_embedding_url/your_signed_jwt?filter=true
 ```
 
 The signed JWT is generated using your [Metabase secret key](#regenerating-the-secret-key). It tells Metabase that the request for filtered data can be trusted, so it's safe to display the results at the new embedding URL.
+
+If you want to embed charts with more interactivity, like [drill-down](https://www.metabase.com/learn/questions/drill-through) and [self-service querying](../questions/query-builder/introduction.md), see [Full-app embedding](./full-app-embedding.md) 
 
 ## Enabling the embedding feature in Metabase
 
@@ -40,7 +42,7 @@ The signed JWT is generated using your [Metabase secret key](#regenerating-the-s
 1. Go to the question or dashboard that you want to embed in your website.
 2. Click on the **sharing icon** (square with an arrow pointing to the top right).
 3. Select **Embed this item in an application**.
-4. Optional: [Change the appearance of the embed](#customizing-the-appearance-of-signed-embeds).
+4. Optional: [Preview the appearance of the embed](#customizing-the-appearance-of-signed-embeds).
 5. Optional: [Add parameters to the embed](./signed-embedding-parameters).
 6. Click **Publish**.
 
@@ -94,14 +96,11 @@ You can find a list of all embedded questions and dashboards from **Admin settin
 
 You can change how an embedded question or dashboard looks in an iframe (which won't change how it looks in your Metabase instance).
 
-- Border: Add a border around the whole question or dashboard.
-- Title: Display your question or dashboard's title in the iframe.
-- Theme: Change the background and text colors---light (default), transparent (no background), or night (dark mode).
+1. Optional: Preview the appearance changes from your question or dashboard's embedding settings (**sharing icon** > **Embed this item in an application**).
+2. Optional: Click **Code** to find the updated server code snippet in the top block.
+3. Change the [parameters](./signed-embedding-parameters#customizing-the-appearance-of-a-signed-embed) in your actual server code.
 
-1. Optional: Preview the appearance changes from your question or dashboard's embedding settings (**sharing icon** > **Embed this item in an application**). This will update the code snippet for your server (**Code** > top block).
-2. Change the [parameters](./signed-embedding-parameters#customizing-the-appearance-of-a-signed-embed) in your server code.
-
-For global appearance settings, such as the colors and fonts used across your entire Metabase instance, see [Appearance](../configuring-metabase/appearance).
+For global appearance settings, such as the colors and fonts used across your entire Metabase instance, see [Customizing Metabase's appearance](../configuring-metabase/appearance).
 
 ## Removing the "Powered by Metabase" banner
 
@@ -126,7 +125,7 @@ Dashboards are a fixed aspect ratio, so if you'd like to ensure they're automati
 
 ## Further reading
 
-- [Parameters for signed embeds](./signed-embedding-parameters).
-- [Strategies for delivering customer-facing analytics](/learn/embedding/embedding-overview).
-- [Publishing data visualizations to the web](/learn/embedding/embedding-charts-and-dashboards).
-- [Appearance documentation](../configuring-metabase/appearance).
+- [Parameters for signed embeds](./signed-embedding-parameters.md).
+- [Strategies for delivering customer-facing analytics](https://www.metabase.com/learn/embedding/embedding-overview).
+- [Publishing data visualizations to the web](https://www.metabase.com/learn/embedding/embedding-charts-and-dashboards).
+- [Customizing Metabase's appearance](./appearance.md)

@@ -126,6 +126,6 @@ In addition to the [included fonts](#included-fonts), if you set a custom font f
 
 ## Further reading
 
-- [Appearance documentation](./appearance)
-- [Customer-facing analytics](/learn/embedding)
-- [Embedding documentation](../embedding/start)
+- [Customizing Metabase's appearance](./appearance.md)
+- [Customer-facing analytics](https://www.metabase.com/learn/embedding/)
+- [Embedding documentation](../embedding/start.md)

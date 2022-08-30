@@ -24,7 +24,7 @@ Set up Slack for Alerts and Dashboard subscriptions.
 
 Set language, datetime, and currency settings.
 
-## [Appearance](./appearance.html)
+## [Appearance](./appearance.md)
 
 Customize colors, fonts, and other visual elements.
 
