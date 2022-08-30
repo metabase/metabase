@@ -8,4 +8,5 @@ export {
   hueRotate,
   isLight,
   isDark,
+  getTextColorForBackground,
 } from "./palette";

@@ -1,5 +1,6 @@
 import React, { SVGAttributes, useEffect, useRef, useState } from "react";
 import d3 from "d3";
+import { getTextColorForBackground } from "metabase/lib/colors";
 import { Label } from "./PieArc.styled";
 import { getMaxLabelDimension } from "./utils";
 
@@ -43,6 +44,8 @@ export const PieArc = ({
     setIsLabelVisible(isLabelVisible);
   }, [d3Arc, shouldRenderLabel, slice]);
 
+  const labelColor = rest.fill && getTextColorForBackground(rest.fill);
+
   return (
     <>
       <path data-testid="slice" d={d3Arc(slice)} {...rest} />
@@ -53,6 +56,7 @@ export const PieArc = ({
           ref={labelRef}
           dy={4}
           transform={labelTransform}
+          fill={labelColor}
         >
           {label}
         </Label>

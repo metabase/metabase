@@ -46,6 +46,9 @@ export default class PieChart extends Component {
   constructor(props) {
     super(props);
 
+    this.state = { width: 0, height: 0 };
+
+    this.chartContainer = React.createRef();
     this.chartDetail = React.createRef();
     this.chartGroup = React.createRef();
   }
@@ -229,7 +232,28 @@ export default class PieChart extends Component {
     },
   };
 
-  componentDidUpdate() {
+  updateChartViewportSize = () => {
+    const { width, height } =
+      this.chartContainer.current.getBoundingClientRect();
+
+    this.setState({
+      width,
+      height,
+    });
+  };
+
+  componentDidMount() {
+    this.updateChartViewportSize();
+  }
+
+  componentDidUpdate(prevProps) {
+    if (
+      prevProps.width !== this.props.width ||
+      prevProps.height !== this.props.height
+    ) {
+      this.updateChartViewportSize();
+    }
+
     requestAnimationFrame(() => {
       const groupElement = this.chartGroup.current;
       const detailElement = this.chartDetail.current;
@@ -251,9 +275,9 @@ export default class PieChart extends Component {
       className,
       gridSize,
       settings,
-      width,
-      height,
     } = this.props;
+
+    const { width, height } = this.state;
 
     const [
       {
@@ -361,7 +385,7 @@ export default class PieChart extends Component {
     const side = Math.min(Math.min(width, height) - SIDE_PADDING, MAX_PIE_SIZE);
     const outerRadius = side / 2;
     const labelFontSize = Math.max(
-      (MAX_LABEL_FONT_SIZE * side) / MAX_PIE_SIZE,
+      MAX_LABEL_FONT_SIZE * (side / MAX_PIE_SIZE),
       MIN_LABEL_FONT_SIZE,
     );
 
@@ -486,7 +510,10 @@ export default class PieChart extends Component {
             </div>
             <div className={styles.Title}>{title}</div>
           </div>
-          <div className={cx(styles.Chart, "layout-centered")}>
+          <div
+            ref={this.chartContainer}
+            className={cx(styles.Chart, "layout-centered")}
+          >
             <svg
               data-testid="pie-chart"
               width={side}
@@ -498,9 +525,8 @@ export default class PieChart extends Component {
                 transform={`translate(${outerRadius},${outerRadius})`}
               >
                 {pie(slices).map((slice, index) => {
-                  const sliceData = slices[index];
                   const label = formatPercent(
-                    sliceData.percentage,
+                    slice.data.percentage,
                     labelsDecimals,
                   );
 
@@ -512,7 +538,7 @@ export default class PieChart extends Component {
                       slice={slice}
                       label={label}
                       labelFontSize={labelFontSize}
-                      fill={sliceData.color}
+                      fill={slice.data.color}
                       opacity={
                         hovered &&
                         hovered.index != null &&
