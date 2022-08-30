@@ -439,7 +439,7 @@
     (->> (db/select [Card :name :result_metadata :collection_id]
            :%lower.result_metadata         [:like (match-search-string :substring search-string)]
            :database_id                    db-id
-           {:where [:in :id card-ids]
+           :id [:in card-ids]
             :limit limit})
          (filter mi/can-read?)
          (mapcat (fn [{:keys [result_metadata name]}]
