@@ -19,6 +19,7 @@ export const FormItemWrapper = styled.div`
 
 export const FormSettings = styled.div`
   display: flex;
+  gap: ${space(2)};
   align-items: center;
   justify-content: space-between;
 `;

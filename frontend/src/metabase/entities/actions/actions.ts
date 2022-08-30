@@ -22,7 +22,7 @@ const getAPIFn =
     description,
     question,
     collection_id,
-    formSettings = {},
+    formSettings,
   }: ActionParams) =>
     apifn({
       ...question.card(),

@@ -27,6 +27,7 @@ import {
 
 import { newQuestion } from "./utils";
 import { SavedCard } from "metabase-types/types/Card";
+import { ActionFormSettings } from "metabase/writeback/types";
 
 const mapStateToProps = (
   state: State,
@@ -57,6 +58,9 @@ function ActionCreatorComponent({
   const [question, setQuestion] = useState(
     passedQuestion ?? newQuestion(metadata),
   );
+  const [formSettings, setFormSettings] = useState<
+    ActionFormSettings | undefined
+  >(undefined);
   const [showSaveModal, setShowSaveModal] = useState(false);
 
   useEffect(() => {
@@ -93,7 +97,13 @@ function ActionCreatorComponent({
       />
       <ActionCreatorBodyContainer>
         <QueryActionEditor question={question} setQuestion={setQuestion} />
-        <FormCreator tags={query?.templateTagsWithoutSnippets()} />
+        <FormCreator
+          tags={query?.templateTagsWithoutSnippets()}
+          formSettings={
+            question?.card()?.visualization_settings as ActionFormSettings
+          }
+          onChange={setFormSettings}
+        />
       </ActionCreatorBodyContainer>
       {showSaveModal && (
         <Modal onClose={handleClose}>
@@ -105,6 +115,7 @@ function ActionCreatorComponent({
               name: question.displayName(),
               description: question.description(),
               collection_id: question.collectionId(),
+              formSettings,
               question,
             }}
             onSaved={afterSave}
