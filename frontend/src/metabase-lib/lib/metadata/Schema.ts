@@ -2,8 +2,8 @@
 // @ts-nocheck
 import Base from "./Base";
 import { titleize, humanize } from "metabase/lib/formatting";
-import Database from "./Database";
-import Table from "./Table";
+import type Database from "./Database";
+import type Table from "./Table";
 /**
  * Wrapper class for a {@link Database} schema. Contains {@link Table}s.
  */
