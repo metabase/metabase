@@ -19,7 +19,7 @@ import Database from "./Database";
 
 export default class Metadata extends Base {
   databases: Database[];
-
+  questions: { [id: string]: Question };
   /**
    * @deprecated this won't be sorted or filtered in a meaningful way
    * @returns {Database[]}

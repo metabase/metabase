@@ -38,6 +38,7 @@ import { Field as FieldRef } from "metabase-types/types/Query";
 import { FieldDimension } from "../Dimension";
 import Table from "./Table";
 import Base from "./Base";
+import Metadata from "./Metadata";
 
 export const LONG_TEXT_MIN = 80;
 
@@ -62,7 +63,7 @@ class FieldInner extends Base {
   target?: Field;
   has_field_values?: "list" | "search" | "none";
   values: any[];
-  metadata?: any;
+  metadata?: Metadata;
   query?: any;
 
   getId() {
