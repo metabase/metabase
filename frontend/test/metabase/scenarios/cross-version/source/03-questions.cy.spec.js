@@ -33,7 +33,7 @@ it("should create questions", () => {
   cy.contains("3.71");
 
   cy.findByText("Save").click();
-  cy.findByLabelText("Name").clear().type("Best Sold Products Rating");
+  cy.findByLabelText("Name").clear().type("Rating of Best-selling Products");
   cy.findByLabelText("Description").type(
     "The average rating of our top selling products broken down into categories.",
     { delay: 0 },

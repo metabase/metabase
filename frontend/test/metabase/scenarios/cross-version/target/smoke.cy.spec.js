@@ -11,8 +11,45 @@ describe(`smoke test the migration to the version ${version}`, () => {
 
     cy.findByPlaceholderText("Search…");
 
+    // Question 1
     cy.visit("/collection/root");
-    cy.findByText("Best Sold Products Rating");
-    cy.findByText("Quarterly Revenue");
+    cy.findByText("Quarterly Revenue").click();
+    cy.get("circle");
+    cy.get(".line");
+    cy.findByText("Goal");
+    cy.get(".x-axis-label").invoke("text").should("eq", "Created At");
+    cy.get(".y-axis-label").invoke("text").should("eq", "Revenue");
+    cy.get(".x.axis .tick")
+      .should("contain", "Q1 - 2017")
+      .and("contain", "Q1 - 2018")
+      .and("contain", "Q1 - 2019")
+      .and("contain", "Q1 - 2020");
+
+    cy.get(".y.axis .tick")
+      .should("contain", "20,000")
+      .and("contain", "100,000")
+      .and("contain", "140,000");
+
+    // Question 2
+    cy.visit("/collection/root");
+    cy.findByText("Rating of Best-selling Products").click();
+
+    cy.get(".bar").should("have.length", 4);
+    cy.get(".x.axis .tick")
+      .should("contain", "Gizmo")
+      .and("contain", "Gadget")
+      .and("contain", "Doohickey")
+      .and("contain", "Widget");
+
+    cy.get(".value-labels")
+      .should("contain", "3.27")
+      .and("contain", "3.3")
+      .and("contain", "3.71")
+      .and("contain", "3.4");
+
+    cy.get(".x-axis-label").invoke("text").should("eq", "Products → Category");
+    cy.get(".y-axis-label")
+      .invoke("text")
+      .should("eq", "Average of Products → Rating");
   });
 });
