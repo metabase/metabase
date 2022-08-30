@@ -5,7 +5,9 @@ import type StructuredQuery from "../StructuredQuery";
 import type NativeQuery from "../NativeQuery";
 import { createVirtualTable, createVirtualField } from "./virtual-table";
 
-export function getNestedCardTable(structuredQuery: StructuredQuery): Table {
+export function getNestedCardTable(
+  structuredQuery: StructuredQuery,
+): Table | null {
   const sourceTableId = structuredQuery.sourceTableId();
   const metadata = structuredQuery.metadata();
 
@@ -40,11 +42,12 @@ export function getNestedCardTable(structuredQuery: StructuredQuery): Table {
     });
   }
 
-  // fallback to guarantee this function returns a Table
-  return createVirtualTable({ metadata });
+  return null;
 }
 
-export function getDatasetTable(query: StructuredQuery | NativeQuery) {
+export function getDatasetTable(
+  query: StructuredQuery | NativeQuery,
+): Table | null {
   const question = query.question();
   const composedDatasetQuestion = question.composeDataset();
 
