@@ -317,10 +317,12 @@ const APPROXIMATE_MAX_VALUE_CHAR_LENGTH = 7;
 const MAX_SERIES_LENGTH = 15;
 function getValuesLeftOffset(
   settings: ChartSettings,
-  series: HydratedSeries[],
+  multipleSeries: HydratedSeries[],
   valueCharSize: number,
 ) {
-  const maxSeriesLength = Math.max(...series.map(serie => serie.data.length));
+  const maxSeriesLength = Math.max(
+    ...multipleSeries.map(series => series.data.length),
+  );
   if (settings.show_values && maxSeriesLength > MAX_SERIES_LENGTH) {
     return valueCharSize * (APPROXIMATE_MAX_VALUE_CHAR_LENGTH / 2);
   }

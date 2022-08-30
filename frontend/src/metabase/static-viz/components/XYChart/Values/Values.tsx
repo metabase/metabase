@@ -45,13 +45,13 @@ interface Value {
 }
 
 interface MultiSeriesValue extends Value {
-  serie: HydratedSeries;
+  series: HydratedSeries;
   xScale: XScale;
   yScale: PositionScale;
 }
 
 export default function Values({
-  series,
+  series: multipleSeries,
   formatter,
   valueProps,
   xScale,
@@ -65,7 +65,7 @@ export default function Values({
   const barSeriesIndexMap = new WeakMap();
   let innerBarScale: AnyScaleBand | undefined = undefined;
   if (containBars && xScale.bandwidth) {
-    const innerBarScaleDomain = series
+    const innerBarScaleDomain = multipleSeries
       .filter(series => series.type === "bar")
       .map((barSerie, index) => {
         barSeriesIndexMap.set(barSerie, index);
@@ -77,25 +77,25 @@ export default function Values({
     });
   }
 
-  const multiSeriesValues: MultiSeriesValue[][] = series.map(serie => {
-    const singleSerieValues = getValues(serie, areStacked);
+  const multiSeriesValues: MultiSeriesValue[][] = multipleSeries.map(series => {
+    const singleSerieValues = getValues(series, areStacked);
     return singleSerieValues.map(value => {
       return {
         ...value,
-        serie,
+        series,
         xScale,
-        yScale: (serie.yAxisPosition === "left"
+        yScale: (series.yAxisPosition === "left"
           ? yScaleLeft
           : yScaleRight) as PositionScale,
       };
     });
   });
 
-  function getBarXOffset(serie: HydratedSeries) {
+  function getBarXOffset(series: HydratedSeries) {
     if (containBars && innerBarScale) {
       // Use the same logic when rendering <BarSeries />, as bar charts can display values in groups.
       // https://github.com/metabase/metabase/blob/44fa5e5cc1ee7c43c24774d2fd19ef16d8b40bfa/frontend/src/metabase/static-viz/components/XYChart/shapes/BarSeries.tsx#L61
-      const innerX = innerBarScale(barSeriesIndexMap.get(serie)) ?? 0;
+      const innerX = innerBarScale(barSeriesIndexMap.get(series)) ?? 0;
       const width = innerBarScale.bandwidth();
       return innerX + width / 2;
     }
@@ -124,10 +124,10 @@ export default function Values({
           }
 
           const { xAccessor, yAccessor } = getXyAccessors(
-            value.serie.type,
+            value.series.type,
             value.xScale,
             value.yScale,
-            getBarXOffset(value.serie),
+            getBarXOffset(value.series),
             value.flipped,
           );
 
@@ -181,7 +181,7 @@ export default function Values({
     singleSerieValues: MultiSeriesValue[],
   ) {
     const valueStep = getValueStep(
-      series,
+      multipleSeries,
       seriesIndex,
       value => formatter(value, compact),
       valueProps,
@@ -192,18 +192,18 @@ export default function Values({
   }
 }
 
-function getValues(serie: HydratedSeries, areStacked: boolean): Value[] {
-  const data = getData(serie, areStacked);
+function getValues(series: HydratedSeries, areStacked: boolean): Value[] {
+  const data = getData(series, areStacked);
 
-  return transformDataToValues(serie.type, data);
+  return transformDataToValues(series.type, data);
 }
 
-function getData(serie: HydratedSeries, areStacked: boolean) {
-  if (serie.type === "area" && areStacked) {
-    return serie.stackedData as StackedDatum[];
+function getData(series: HydratedSeries, areStacked: boolean) {
+  if (series.type === "area" && areStacked) {
+    return series.stackedData as StackedDatum[];
   }
 
-  return serie.data;
+  return series.data;
 }
 
 function getXyAccessors(
@@ -286,7 +286,7 @@ interface Position {
 function fixVerticalOverlappingValues(
   multiSeriesValues: MultiSeriesValue[][],
   xAxisYPos: number,
-  getBarXOffset: (serie: HydratedSeries) => number,
+  getBarXOffset: (series: HydratedSeries) => number,
 ) {
   // prevent collision by mutating each item inside the list
   // Same logic as in https://github.com/metabase/metabase/blob/fa6ee214e9b8d2fb4cccf4fc88dc1701face777b/frontend/src/metabase/visualizations/lib/chart_values.js#L351
@@ -295,17 +295,15 @@ function fixVerticalOverlappingValues(
     .flatten()
     .map(value => {
       const { xAccessor, yAccessor } = getXyAccessors(
-        value.serie.type,
+        value.series.type,
         value.xScale,
         value.yScale,
-        getBarXOffset(value.serie),
+        getBarXOffset(value.series),
         value.flipped,
       );
 
       return {
         originalValue: value,
-        serie: value.serie,
-        datum: value.datum,
         position: {
           xPos: xAccessor(value.datum),
           yPos: yAccessor(value.datum),
