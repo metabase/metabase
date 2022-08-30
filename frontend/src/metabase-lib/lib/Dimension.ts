@@ -857,13 +857,6 @@ export class FieldDimension extends Dimension {
   }
 
   field(): Field {
-    // If a Field is cached on the FieldDimension instance, we can shortwire this method and
-    // return the cached Field.
-    const locallyCachedField = this._getTrustedFieldCachedOnInstance();
-    if (locallyCachedField) {
-      return locallyCachedField;
-    }
-
     // Prioritize pulling a `field` from the Dimenion's associated query (if one exists)
     // because it might have locally overriding metadata on it.
     const fieldFromQuery = this._findMatchingQueryField();
