@@ -31,6 +31,7 @@ import {
   PEOPLE,
   PRODUCTS,
   state as entitiesState,
+  metadata,
 } from "__support__/sample_database_fixture";
 
 import * as navigation from "../navigation";
@@ -69,6 +70,12 @@ async function setup({
   shouldUpdateUrl,
   shouldStartAdHocQuestion,
 }: SetupOpts) {
+  if (originalQuestion.id()) {
+    metadata.questions = {
+      [originalQuestion.id()]: originalQuestion,
+    };
+  }
+
   const dispatch = jest.fn().mockReturnValue({ mock: "mock" });
 
   const queryResult = createMockDataset({
@@ -289,7 +296,6 @@ describe("QB Actions > updateQuestion", () => {
         describe(questionType, () => {
           it("turns question into ad-hoc", async () => {
             const { result } = await setup({ question });
-
             expect(result.card.id).toBeUndefined();
             expect(result.card.name).toBeUndefined();
             expect(result.card.description).toBeUndefined();
