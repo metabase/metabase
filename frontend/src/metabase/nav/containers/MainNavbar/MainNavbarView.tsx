@@ -27,7 +27,6 @@ import {
   CollectionMenuList,
   CollectionsMoreIcon,
   CollectionsMoreIconContainer,
-  DataAppLinkContainer,
   PaddedSidebarLink,
   SidebarContentRoot,
   SidebarHeading,
