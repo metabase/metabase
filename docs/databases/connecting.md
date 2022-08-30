@@ -180,5 +180,5 @@ Go to **Admin settings** > **Databases** > your database and click **Remove this
 ## Further reading
 
 - [Metadata editing](../data-modeling/metadata-editing.md).
-- [Setting data access permissions](../administration-guide/05-setting-permissions.md).
+- [Setting data access permissions](../permissions/data.md).
 - [Metabase at scale](https://www.metabase.com/learn/administration/metabase-at-scale).
