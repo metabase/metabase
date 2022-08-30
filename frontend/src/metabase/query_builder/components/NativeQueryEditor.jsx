@@ -4,6 +4,7 @@ import React, { Component } from "react";
 import cx from "classnames";
 import "ace/ace";
 import "ace/ext-language_tools";
+import "ace/ext-searchbox";
 import "ace/mode-sql";
 import "ace/mode-mysql";
 import "ace/mode-pgsql";
@@ -15,7 +16,6 @@ import "ace/snippets/mysql";
 import "ace/snippets/pgsql";
 import "ace/snippets/sqlserver";
 import "ace/snippets/json";
-import "ace/ext-searchbox";
 import _ from "underscore";
 import { ResizableBox } from "react-resizable";
 
