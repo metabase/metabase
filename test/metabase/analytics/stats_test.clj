@@ -143,7 +143,7 @@
                   Pulse        [a1 {:alert_condition "rows", :alert_first_only false}]
                   Pulse        [a2 {:alert_condition "rows", :alert_first_only true}]
                   Pulse        [a3 {:alert_condition "goal", :alert_first_only false}]
-                  Pulse        [a4 {:alert_condition "goal", :alert_first_only false, :alert_above_goal true}]
+                  Pulse        [_  {:alert_condition "goal", :alert_first_only false, :alert_above_goal true}]
                   ;; Alert 1 is Email, Alert 2 is Email & Slack, Alert 3 is Slack-only
                   PulseChannel [_ {:pulse_id (u/the-id a1), :channel_type "email"}]
                   PulseChannel [_ {:pulse_id (u/the-id a1), :channel_type "email"}]
