@@ -5,6 +5,8 @@ import type Database from "metabase-lib/lib/metadata/Database";
 import type Field from "metabase-lib/lib/metadata/Field";
 
 import type {
+  DashboardOrderedCard,
+  Database as IDatabase,
   WritebackAction,
   ParametersMappedToValues,
   ParametersSourceTargetMap,
@@ -13,8 +15,7 @@ import type {
   ActionClickBehavior,
   ActionParameterTuple,
 } from "metabase-types/api";
-import type { Database as IDatabase } from "metabase-types/api/database";
-import type { DashCard } from "metabase-types/types/Dashboard";
+import type { SavedCard } from "metabase-types/types/Card";
 import type { Parameter, ParameterId } from "metabase-types/types/Parameter";
 
 const DB_WRITEBACK_FEATURE = "actions";
@@ -68,8 +69,13 @@ export const isEditableField = (field: Field) => {
   return true;
 };
 
-export const isActionButtonDashCard = (dashCard: DashCard) =>
-  dashCard.visualization_settings?.virtual_card?.display === "action-button";
+export const isActionButtonCard = (card: SavedCard) =>
+  card?.display === "action-button";
+
+export const isActionButtonDashCard = (dashCard: DashboardOrderedCard) =>
+  isActionButtonCard(
+    dashCard.visualization_settings?.virtual_card as SavedCard,
+  );
 
 export function getActionParameterType(parameter: Parameter) {
   const { type } = parameter;
