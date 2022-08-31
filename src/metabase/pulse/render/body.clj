@@ -578,8 +578,8 @@
   Use the combo charts for every chart-type in line area bar because we get multiple chart series for cheaper this way."
   [chart-type render-type _timezone-id card dashcard {:keys [cols rows viz-settings] :as data}]
   (let [viz-settings     (merge viz-settings (:visualization_settings dashcard))
-        x-axis-rowfn     (ui-logic/mult-x-axis-rowfn card data)
-        y-axis-rowfn     (ui-logic/mult-y-axis-rowfn card data)
+        x-axis-rowfn     (or (ui-logic/mult-x-axis-rowfn card data) #(vector (first %)))
+        y-axis-rowfn     (or (ui-logic/mult-y-axis-rowfn card data) #(vector (second %)))
         x-rows           (filter some? (map x-axis-rowfn rows))
         y-rows           (filter some? (map y-axis-rowfn rows))
         joined-rows      (map vector x-rows y-rows)

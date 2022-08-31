@@ -85,7 +85,8 @@
         (#{:pin_map :state :country} display-type)
         (chart-type nil "display-type is %s" display-type)
 
-        (#{:area
+        (#{:line
+           :area
            :bar
            :combo
            :funnel
@@ -119,9 +120,6 @@
              (number-field? @col-2)
              (= display-type :pie))
         (chart-type :categorical/donut "result has two cols (%s and %s (number))" (col-description @col-1) (col-description @col-2))
-
-        (= display-type :line)
-        (chart-type display-type "display-type is %s" display-type)
 
         :else
         (chart-type :table "no other chart types match")))))
