@@ -12,9 +12,10 @@ import type {
   ActionClickExtraData,
   ActionClickBehavior,
   ActionParameterTuple,
-} from "metabase-types/api/writeback";
+  DashboardOrderedCard,
+} from "metabase-types/api";
+import type { SavedCard } from "metabase-types/types/Card";
 import type { Database as IDatabase } from "metabase-types/types/Database";
-import type { DashCard } from "metabase-types/types/Dashboard";
 import type { Parameter, ParameterId } from "metabase-types/types/Parameter";
 
 const DB_WRITEBACK_FEATURE = "actions";
@@ -68,8 +69,13 @@ export const isEditableField = (field: Field) => {
   return true;
 };
 
-export const isActionButtonDashCard = (dashCard: DashCard) =>
-  dashCard.visualization_settings?.virtual_card?.display === "action-button";
+export const isActionButtonCard = (card: SavedCard) =>
+  card?.display === "action-button";
+
+export const isActionButtonDashCard = (dashCard: DashboardOrderedCard) =>
+  isActionButtonCard(
+    dashCard.visualization_settings?.virtual_card as SavedCard,
+  );
 
 export function getActionParameterType(parameter: Parameter) {
   const { type } = parameter;
