@@ -111,7 +111,9 @@ export const getXTickProps = (
 
   const textBaseline = Math.floor(tickFontSize / 2);
   const transform = shouldRotate
-    ? `rotate(-45, ${x} ${y}) translate(${textBaseline}, 0)`
+    ? `rotate(-90, ${x} ${y}) translate(${textBaseline}, ${Math.floor(
+        tickFontSize / 3,
+      )})`
     : undefined;
 
   const textAnchor = shouldRotate ? "end" : "middle";
