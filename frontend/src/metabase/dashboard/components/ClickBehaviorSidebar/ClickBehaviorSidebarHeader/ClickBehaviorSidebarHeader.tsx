@@ -31,17 +31,17 @@ interface Props {
 
 function HeaderContent({ dashcard, selectedColumn, onUnsetColumn }: Props) {
   if (isTableDisplay(dashcard)) {
-    if (!selectedColumn) {
-      return <Heading>{t`On-click behavior for each column`}</Heading>;
+    if (selectedColumn) {
+      return (
+        <ColumnClickBehaviorHeader onClick={onUnsetColumn}>
+          <ChevronIconContainer>
+            <Icon name="chevronleft" size={12} />
+          </ChevronIconContainer>
+          <DefaultHeader>{selectedColumn.display_name}</DefaultHeader>
+        </ColumnClickBehaviorHeader>
+      );
     }
-    return (
-      <ColumnClickBehaviorHeader onClick={onUnsetColumn}>
-        <ChevronIconContainer>
-          <Icon name="chevronleft" size={12} />
-        </ChevronIconContainer>
-        <DefaultHeader>{selectedColumn.display_name}</DefaultHeader>
-      </ColumnClickBehaviorHeader>
-    );
+    return <Heading>{t`On-click behavior for each column`}</Heading>;
   }
 
   return <DefaultHeader>{dashcard.card.name}</DefaultHeader>;
