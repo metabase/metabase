@@ -10,7 +10,6 @@ import type {
   DashboardOrderedCard,
   ClickBehavior,
   WritebackAction,
-  WritebackActionClickBehavior,
 } from "metabase-types/api";
 
 import { SidebarItem } from "../SidebarItem";
@@ -51,8 +50,8 @@ const ActionOption = ({
 
 interface ActionOptionsProps {
   dashcard: DashboardOrderedCard;
-  clickBehavior: WritebackActionClickBehavior;
-  updateSettings: (settings: ClickBehavior) => void;
+  clickBehavior: ClickBehavior;
+  updateSettings: (settings: Partial<ClickBehavior>) => void;
 }
 
 function ActionOptions({
@@ -61,11 +60,9 @@ function ActionOptions({
   updateSettings,
 }: ActionOptionsProps) {
   const handleActionSelected = useCallback(
-    action => {
+    (action: WritebackAction) => {
       updateSettings({
         type: clickBehavior.type,
-        emitter_id: clickBehavior.emitter_id,
-        action: action.id,
       });
     },
     [clickBehavior, updateSettings],
@@ -76,9 +73,7 @@ function ActionOptions({
       <Heading className="text-medium">{t`Pick an action`}</Heading>
       <Actions.ListLoader>
         {({ actions }: { actions: WritebackAction[] }) => {
-          const selectedAction = actions.find(
-            action => action.id === clickBehavior.action,
-          );
+          const selectedAction = null;
           return (
             <>
               {actions.map(action => (
@@ -86,7 +81,7 @@ function ActionOptions({
                   key={action.id}
                   name={action.name}
                   description={action.description}
-                  isSelected={clickBehavior.action === action.id}
+                  isSelected={false}
                   onClick={() => handleActionSelected(action)}
                 />
               ))}
