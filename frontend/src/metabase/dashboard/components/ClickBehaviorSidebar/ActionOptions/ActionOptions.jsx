@@ -1,57 +1,47 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import React, { useCallback } from "react";
 import { t } from "ttag";
-import _ from "underscore";
-
-import Icon from "metabase/components/Icon";
-
-import { color } from "metabase/lib/colors";
 
 import Actions from "metabase/entities/actions";
 
 import ClickMappings from "metabase/dashboard/components/ClickMappings";
 
-import { SidebarItemWrapper, SidebarItemStyle } from "./SidebarItem";
+import { SidebarItem } from "../SidebarItem";
+import { Heading, SidebarContent } from "../ClickBehaviorSidebar.styled";
 import {
-  Heading,
-  SidebarContent,
-  SidebarIconWrapper,
-} from "./ClickBehaviorSidebar.styled";
+  ActionSidebarItem,
+  ActionSidebarItemIcon,
+  ActionDescription,
+} from "./ActionOptions.styled";
 
 const ActionOption = ({ name, description, isSelected, onClick }) => {
   return (
-    <SidebarItemWrapper
+    <ActionSidebarItem
       onClick={onClick}
-      style={{
-        ...SidebarItemStyle,
-        backgroundColor: isSelected ? color("brand") : "transparent",
-        color: isSelected ? color("white") : "inherit",
-        alignItems: description ? "flex-start" : "center",
-        marginTop: "2px",
-      }}
+      isSelected={isSelected}
+      hasDescription={!!description}
     >
-      <SidebarIconWrapper>
-        <Icon
-          name="bolt"
-          color={isSelected ? color("text-white") : color("brand")}
-        />
-      </SidebarIconWrapper>
+      <ActionSidebarItemIcon name="bolt" isSelected={isSelected} />
       <div>
-        <h4>{name}</h4>
-        {description && (
-          <span
-            className={isSelected ? "text-white" : "text-medium"}
-            style={{ width: "95%", marginTop: "2px" }}
-          >
-            {description}
-          </span>
-        )}
+        <SidebarItem.Name>{name}</SidebarItem.Name>
+        {description && <ActionDescription>{description}</ActionDescription>}
       </div>
-    </SidebarItemWrapper>
+    </ActionSidebarItem>
   );
 };
 
 function ActionOptions({ dashcard, clickBehavior, updateSettings }) {
+  const handleActionSelected = useCallback(
+    action => {
+      updateSettings({
+        type: clickBehavior.type,
+        emitter_id: clickBehavior.emitter_id,
+        action: action.id,
+      });
+    },
+    [clickBehavior, updateSettings],
+  );
+
   return (
     <SidebarContent>
       <Heading className="text-medium">{t`Pick an action`}</Heading>
@@ -68,13 +58,7 @@ function ActionOptions({ dashcard, clickBehavior, updateSettings }) {
                   name={action.name}
                   description={action.description}
                   isSelected={clickBehavior.action === action.id}
-                  onClick={() =>
-                    updateSettings({
-                      type: clickBehavior.type,
-                      action: action.id,
-                      emitter_id: clickBehavior.emitter_id,
-                    })
-                  }
+                  onClick={() => handleActionSelected(action)}
                 />
               ))}
               {selectedAction && (

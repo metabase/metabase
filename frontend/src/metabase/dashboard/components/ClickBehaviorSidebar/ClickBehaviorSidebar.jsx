@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { getIn } from "icepick";
 
 import {
@@ -7,6 +7,9 @@ import {
   clickBehaviorIsValid,
 } from "metabase/lib/click-behavior";
 import { keyForColumn } from "metabase/lib/dataset";
+
+import { useOnMount } from "metabase/hooks/use-on-mount";
+import { usePrevious } from "metabase/hooks/use-previous";
 
 import Sidebar from "metabase/dashboard/components/Sidebar";
 
@@ -16,188 +19,208 @@ import TableClickBehaviorView from "./TableClickBehaviorView";
 import TypeSelector from "./TypeSelector";
 import { SidebarContent } from "./ClickBehaviorSidebar.styled";
 
-class ClickBehaviorSidebar extends React.Component {
-  state = {
-    showTypeSelector: null,
-    selectedColumn: null,
-    originalVizSettings: null,
-    originalColumnVizSettings: null,
-  };
+function getClickBehaviorForColumn(dashcard, column) {
+  return getIn(dashcard, [
+    "visualization_settings",
+    "column_settings",
+    keyForColumn(column),
+    "click_behavior",
+  ]);
+}
 
-  componentDidUpdate(prevProps, prevState) {
-    if (this.props.dashcard.id !== prevProps.dashcard.id) {
-      this.setState({
-        originalVizSettings: this.props.dashcard.visualization_settings,
-      });
+function shouldShowTypeSelector(clickBehavior) {
+  return !clickBehavior || clickBehavior.type == null;
+}
+
+function ClickBehaviorSidebar({
+  dashboard,
+  dashcard,
+  dashcardData,
+  parameters,
+  hideClickBehaviorSidebar,
+  onUpdateDashCardColumnSettings,
+  onUpdateDashCardVisualizationSettings,
+  onReplaceAllDashCardVisualizationSettings,
+}) {
+  const [isTypeSelectorVisible, setTypeSelectorVisible] = useState(null);
+  const [selectedColumn, setSelectedColumn] = useState(null);
+  const [originalVizSettings, setOriginalVizSettings] = useState(null);
+  const [originalColumnVizSettings, setOriginalColumnVizSettings] =
+    useState(null);
+
+  const previousDashcard = usePrevious(dashcard);
+  const hasSelectedColumn = selectedColumn != null;
+
+  const clickBehavior = useMemo(() => {
+    if (isTableDisplay(dashcard) && !hasSelectedColumn) {
+      return;
     }
-    if (
-      this.props.dashcard.id !== prevProps.dashcard.id &&
-      this.state.selectedColumn != null
-    ) {
-      this.unsetSelectedColumn();
-    }
-    if (
-      this.props.dashcard.id !== prevProps.dashcard.id ||
-      this.state.selectedColumn !== prevState.selectedColumn
-    ) {
-      this.showTypeSelectorIfNeeded();
+    if (hasSelectedColumn) {
+      return getClickBehaviorForColumn(dashcard, selectedColumn);
     } else {
-      const curr = this.getClickBehavior() || {};
-      const prev = this.getClickBehavior(prevProps) || {};
-      if (curr.type !== prev.type && curr.type != null) {
-        // move to next screen if the type was just changed
-        this.setState({ showTypeSelector: false });
+      return getIn(dashcard, ["visualization_settings", "click_behavior"]);
+    }
+  }, [dashcard, selectedColumn, hasSelectedColumn]);
+
+  const isValidClickBehavior = useMemo(
+    () => clickBehaviorIsValid(clickBehavior),
+    [clickBehavior],
+  );
+
+  const handleChangeSettings = useCallback(
+    nextClickBehavior => {
+      const { id } = dashcard;
+
+      if (selectedColumn == null) {
+        onUpdateDashCardVisualizationSettings(id, {
+          click_behavior: nextClickBehavior,
+        });
+      } else {
+        onUpdateDashCardColumnSettings(id, keyForColumn(selectedColumn), {
+          click_behavior: nextClickBehavior,
+        });
+      }
+
+      const changedType = nextClickBehavior.type !== clickBehavior?.type;
+      if (changedType) {
+        // move to next screen
+        setTypeSelectorVisible(false);
+      }
+    },
+    [
+      dashcard,
+      clickBehavior,
+      selectedColumn,
+      onUpdateDashCardColumnSettings,
+      onUpdateDashCardVisualizationSettings,
+    ],
+  );
+
+  const handleColumnSelected = useCallback(
+    column => {
+      const originalColumnVizSettings = getClickBehaviorForColumn(
+        dashcard,
+        column,
+      );
+      setSelectedColumn(column);
+      setOriginalColumnVizSettings(originalColumnVizSettings);
+    },
+    [dashcard],
+  );
+
+  const handleUnsetSelectedColumn = useCallback(() => {
+    if (!isValidClickBehavior) {
+      handleChangeSettings(originalColumnVizSettings);
+    }
+    setOriginalColumnVizSettings(null);
+    setSelectedColumn(null);
+  }, [isValidClickBehavior, originalColumnVizSettings, handleChangeSettings]);
+
+  const handleCancel = useCallback(() => {
+    onReplaceAllDashCardVisualizationSettings(dashcard.id, originalVizSettings);
+    hideClickBehaviorSidebar();
+  }, [
+    dashcard,
+    originalVizSettings,
+    hideClickBehaviorSidebar,
+    onReplaceAllDashCardVisualizationSettings,
+  ]);
+
+  useOnMount(() => {
+    if (shouldShowTypeSelector(clickBehavior)) {
+      setTypeSelectorVisible(true);
+    }
+    if (dashcard) {
+      setOriginalVizSettings(dashcard.visualization_settings);
+    }
+  });
+
+  useEffect(() => {
+    if (!previousDashcard) {
+      return;
+    }
+
+    if (dashcard.id !== previousDashcard.id) {
+      setOriginalVizSettings(dashcard.visualization_settings);
+      if (hasSelectedColumn) {
+        handleUnsetSelectedColumn();
       }
     }
-  }
+  }, [
+    dashcard,
+    previousDashcard,
+    hasSelectedColumn,
+    handleUnsetSelectedColumn,
+  ]);
 
-  componentDidMount() {
-    this.showTypeSelectorIfNeeded();
-    if (this.props.dashcard) {
-      this.setState({
-        originalVizSettings: this.props.dashcard.visualization_settings,
-      });
-    }
-  }
+  const renderContent = useCallback(() => {
+    const finalClickBehavior = clickBehavior || { type: "menu" };
 
-  setSelectedColumn = selectedColumn => {
-    const originalColumnVizSettings = this.getClickBehaviorForColumn(
-      this.props,
-      selectedColumn,
-    );
-    this.setState({ selectedColumn, originalColumnVizSettings });
-  };
-
-  unsetSelectedColumn = () => {
-    if (!clickBehaviorIsValid(this.getClickBehavior())) {
-      this.updateSettings(this.state.originalColumnVizSettings);
-    }
-    this.setState({ originalColumnVizSettings: null, selectedColumn: null });
-  };
-
-  getClickBehavior(props = this.props) {
-    const { dashcard } = props;
-    const { selectedColumn } = this.state;
-    if (isTableDisplay(dashcard) && selectedColumn == null) {
-      return undefined;
-    }
-    if (selectedColumn == null) {
-      return getIn(dashcard, ["visualization_settings", "click_behavior"]);
-    } else {
-      return this.getClickBehaviorForColumn(props, selectedColumn);
-    }
-  }
-
-  getClickBehaviorForColumn(props, column) {
-    return getIn(props.dashcard, [
-      "visualization_settings",
-      "column_settings",
-      keyForColumn(column),
-      "click_behavior",
-    ]);
-  }
-
-  getColumns() {
-    const { dashcard, dashcardData } = this.props;
-    return getIn(dashcardData, [dashcard.card_id, "data", "cols"]);
-  }
-
-  showTypeSelectorIfNeeded() {
-    const { type } = this.getClickBehavior() || {};
-    this.setState({ showTypeSelector: type == null });
-  }
-
-  updateSettings = (
-    click_behavior,
-    { props = this.props, state = this.state } = {},
-  ) => {
-    const { selectedColumn } = state;
-    const { id } = props.dashcard;
-    if (selectedColumn == null) {
-      props.onUpdateDashCardVisualizationSettings(id, { click_behavior });
-    } else {
-      props.onUpdateDashCardColumnSettings(id, keyForColumn(selectedColumn), {
-        click_behavior,
-      });
-    }
-  };
-
-  handleCancel = () => {
-    this.props.onReplaceAllDashCardVisualizationSettings(
-      this.props.dashcard.id,
-      this.state.originalVizSettings,
-    );
-    this.props.hideClickBehaviorSidebar();
-  };
-
-  render() {
-    const { dashboard, dashcard, parameters, hideClickBehaviorSidebar } =
-      this.props;
-    const { selectedColumn } = this.state;
-
-    const clickBehavior = this.getClickBehavior() || { type: "menu" };
-
-    if (isTableDisplay(dashcard) && selectedColumn == null) {
+    if (isTableDisplay(dashcard) && !hasSelectedColumn) {
+      const columns = getIn(dashcardData, [dashcard.card_id, "data", "cols"]);
       return (
         <TableClickBehaviorView
-          columns={this.getColumns()}
+          columns={columns}
           dashcard={dashcard}
           getClickBehaviorForColumn={column =>
-            this.getClickBehaviorForColumn(this.props, column)
+            getClickBehaviorForColumn(dashcard, column)
           }
-          canClose={clickBehaviorIsValid(clickBehavior)}
-          onColumnClick={this.setSelectedColumn}
-          onCancel={this.handleCancel}
-          onClose={hideClickBehaviorSidebar}
+          onColumnClick={handleColumnSelected}
         />
       );
     }
 
-    const { showTypeSelector } = this.state;
-    if (showTypeSelector === null) {
-      return null;
+    if (isTypeSelectorVisible) {
+      return (
+        <SidebarContent>
+          <TypeSelector
+            clickBehavior={finalClickBehavior}
+            dashcard={dashcard}
+            parameters={parameters}
+            updateSettings={handleChangeSettings}
+            moveToNextPage={() => setTypeSelectorVisible(false)}
+          />
+        </SidebarContent>
+      );
     }
+
     return (
-      <Sidebar
-        onClose={hideClickBehaviorSidebar}
-        onCancel={this.handleCancel}
-        closeIsDisabled={!clickBehaviorIsValid(clickBehavior)}
-      >
-        <ClickBehaviorSidebarHeader
-          dashcard={dashcard}
-          selectedColumn={selectedColumn}
-          hasSelectedColumn={selectedColumn != null}
-          onUnsetColumn={this.unsetSelectedColumn}
-        />
-        <div>
-          {showTypeSelector ? (
-            <SidebarContent>
-              <TypeSelector
-                clickBehavior={clickBehavior}
-                dashcard={dashcard}
-                parameters={this.props.parameters}
-                updateSettings={this.updateSettings}
-                moveToNextPage={() =>
-                  this.setState({ showTypeSelector: false })
-                }
-              />
-            </SidebarContent>
-          ) : (
-            <ClickBehaviorSidebarMainView
-              clickBehavior={clickBehavior}
-              dashboard={dashboard}
-              dashcard={dashcard}
-              parameters={parameters}
-              handleShowTypeSelector={() =>
-                this.setState({ showTypeSelector: true })
-              }
-              updateSettings={this.updateSettings}
-            />
-          )}
-        </div>
-      </Sidebar>
+      <ClickBehaviorSidebarMainView
+        clickBehavior={finalClickBehavior}
+        dashboard={dashboard}
+        dashcard={dashcard}
+        parameters={parameters}
+        handleShowTypeSelector={() => setTypeSelectorVisible(true)}
+        updateSettings={handleChangeSettings}
+      />
     );
-  }
+  }, [
+    dashboard,
+    dashcard,
+    dashcardData,
+    clickBehavior,
+    parameters,
+    hasSelectedColumn,
+    isTypeSelectorVisible,
+    handleChangeSettings,
+    handleColumnSelected,
+  ]);
+
+  return (
+    <Sidebar
+      onClose={hideClickBehaviorSidebar}
+      onCancel={handleCancel}
+      closeIsDisabled={!isValidClickBehavior}
+    >
+      <ClickBehaviorSidebarHeader
+        dashcard={dashcard}
+        selectedColumn={selectedColumn}
+        hasSelectedColumn={hasSelectedColumn}
+        onUnsetColumn={handleUnsetSelectedColumn}
+      />
+      <div>{renderContent()}</div>
+    </Sidebar>
+  );
 }
 
 export default ClickBehaviorSidebar;
