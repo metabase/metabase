@@ -6,8 +6,8 @@ import Banner from "metabase/components/Banner";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { useLicense } from "metabase/admin/settings/hooks/use-license";
 
-const UNPAID_ERROR = t`We couldn't process payment for your account. Please [review your payment settings](https://store.metabase.com/) to avoid service interruptions.`;
-const PAST_DUE_ERROR = t`Pro features won’t work right now due to lack of payment. [Review your payment settings to restore Pro functionality](https://store.metabase.com/).`;
+const UNPAID_ERROR = t`⚠️ We couldn't process payment for your account. Please [review your payment settings](https://store.metabase.com/) to avoid service interruptions.`;
+const PAST_DUE_ERROR = t`⚠️ Pro features won’t work right now due to lack of payment. [Review your payment settings to restore Pro functionality](https://store.metabase.com/).`;
 
 const mapStateToProps = state => ({
   isAdmin: getUserIsAdmin(state),
