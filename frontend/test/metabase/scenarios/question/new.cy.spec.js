@@ -22,7 +22,7 @@ describe("scenarios > question > new", () => {
   });
 
   describe("data picker", () => {
-    it("data selector popover should not be too small (metabase#15591)", () => {
+    it.skip("data selector popover should not be too small (metabase#15591)", () => {
       // Add 10 more databases
       for (let i = 0; i < 10; i++) {
         cy.request("POST", "/api/database", {
