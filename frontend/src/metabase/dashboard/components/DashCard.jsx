@@ -27,6 +27,8 @@ import DashCardParameterMapper from "./DashCardParameterMapper";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
 
+import { isActionButtonCard } from "metabase/writeback/utils";
+
 import cx from "classnames";
 import _ from "underscore";
 import { getIn } from "icepick";
@@ -177,7 +179,7 @@ export default class DashCard extends Component {
       parameterValues,
     );
 
-    const isActionButton = mainCard.display === "action-button";
+    const isActionButton = isActionButtonCard(mainCard);
 
     const hideBackground =
       !isEditing &&
@@ -381,7 +383,7 @@ const DashCardActionButtons = ({
         />,
       );
     }
-    if (!isVirtualDashCard || card.display === "action-button") {
+    if (!isVirtualDashCard || isActionButtonCard(card)) {
       buttons.push(
         <Tooltip key="click-behavior-tooltip" tooltip={t`Click behavior`}>
           <a
