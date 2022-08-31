@@ -11,44 +11,29 @@
     (let [base-params {:name "App collection"
                        :color "#123456"}]
       (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
-        (testing "Create app in non-root collection"
+        (testing "parent_id is ignored when creating apps"
           (mt/with-temp* [Collection [{collection-id :id}]]
             (let [coll-params (assoc base-params :parent_id collection-id)
                   response (mt/user-http-request :crowberto :post 200 "app" {:collection coll-params})]
               (is (pos-int? (:id response)))
               (is (pos-int? (:collection_id response)))
-              (is (partial= (assoc base-params :location (format "/%d/" collection-id))
+              (is (partial= (assoc base-params :location "/")
                             (:collection response))))))
-        (testing "Create aoo in the root"
+        (testing "Create app in the root"
           (let [response (mt/user-http-request :crowberto :post 200 "app" {:collection base-params})]
             (is (pos-int? (:id response)))
             (is (pos-int? (:collection_id response)))
             (is (partial= (assoc base-params :location "/")
                           (:collection response)))))
-        (testing "Collection permissions"
-          (mt/with-non-admin-groups-no-root-collection-perms
-            (mt/with-temp* [Collection [{collection-id :id}]]
-              (let [coll-params (assoc base-params :parent_id collection-id)]
-                (is (= "You don't have permissions to do that."
-                       (mt/user-http-request :rasta :post 403 "app" {:collection coll-params}))))))
-          (mt/with-temp* [Collection [{collection-id :id}]]
-            (let [coll-params (assoc base-params :parent_id collection-id)
-                  response (mt/user-http-request :rasta :post 200 "app" {:collection coll-params})]
-              (is (pos-int? (:id response)))
-              (is (pos-int? (:collection_id response)))
-              (is (partial= (assoc base-params :location (format "/%d/" collection-id))
-                            (:collection response))))))
         (testing "With initial dashboard and nav_items"
-          (mt/with-temp* [Collection [{collection-id :id}]
-                          Dashboard [{dashboard-id :id}]]
-            (let [coll-params (assoc base-params :parent_id collection-id)
-                  nav_items [{:options {:click_behavior {}}}]]
-              (is (partial= {:collection (assoc base-params :location (format "/%d/" collection-id))
+          (mt/with-temp Dashboard [{dashboard-id :id}]
+            (let [nav_items [{:options {:click_behavior {}}}]]
+              (is (partial= {:collection (assoc base-params :location "/")
                              :dashboard_id dashboard-id
                              :nav_items nav_items}
-                            (mt/user-http-request :crowberto :post 200 "app" {:collection coll-params
-                                                                              :dashboard_id dashboard-id
-                                                                              :nav_items nav_items}))))))))))
+                            (mt/user-http-request :rasta :post 200 "app" {:collection base-params
+                                                                          :dashboard_id dashboard-id
+                                                                          :nav_items nav_items}))))))))))
 
 (deftest update-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
@@ -57,8 +42,7 @@
       (mt/with-temp* [Collection [{collection_id :id}]
                       App [{app_id :id} (assoc app-data :collection_id collection_id)]
                       Dashboard [{dashboard_id :id}]]
-        (let [expected (merge app-data {:collection_id collection_id
-                                        :dashboard_id dashboard_id})]
+        (let [expected (assoc app-data :collection_id collection_id :dashboard_id dashboard_id)]
           (testing "setting the dashboard_id doesn't affect the other fields"
             (is (partial= expected
                           (mt/user-http-request :crowberto :put 200 (str "app/" app_id) {:dashboard_id dashboard_id}))))
