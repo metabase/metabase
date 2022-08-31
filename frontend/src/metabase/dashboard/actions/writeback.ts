@@ -244,7 +244,6 @@ export const deleteManyRowsFromDataApp = (
 
 export type ExecuteRowActionPayload = {
   dashboard: DashboardWithCards;
-  emitterId: number;
   parameters: Record<string, unknown>;
 };
 
