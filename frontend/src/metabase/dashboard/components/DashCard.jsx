@@ -27,8 +27,6 @@ import DashCardParameterMapper from "./DashCardParameterMapper";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
 
-import ActionsLinkingControl from "metabase/writeback/components/ActionsLinkingControl";
-
 import cx from "classnames";
 import _ from "underscore";
 import { getIn } from "icepick";
@@ -213,9 +211,6 @@ export default class DashCard extends Component {
               hasError={!!errorMessage}
               onRemove={onRemove}
               onAddSeries={onAddSeries}
-              onUpdateVisualizationSettings={
-                this.props.onUpdateVisualizationSettings
-              }
               onReplaceAllVisualizationSettings={
                 this.props.onReplaceAllVisualizationSettings
               }
@@ -225,7 +220,6 @@ export default class DashCard extends Component {
               isPreviewing={this.state.isPreviewingCard}
               onPreviewToggle={this.handlePreviewToggle}
               dashboard={dashboard}
-              metadata={metadata}
             />
           </DashboardCardActionsPanel>
         ) : null}
@@ -355,13 +349,11 @@ const DashCardActionButtons = ({
   hasError,
   onRemove,
   onAddSeries,
-  onUpdateVisualizationSettings,
   onReplaceAllVisualizationSettings,
   showClickBehaviorSidebar,
   onPreviewToggle,
   isPreviewing,
   dashboard,
-  metadata,
 }) => {
   const buttons = [];
 
@@ -413,18 +405,6 @@ const DashCardActionButtons = ({
         />,
       );
     }
-  }
-
-  if (card.display === "actions") {
-    buttons.push(
-      <ActionsLinkingControl
-        key="connect-actions"
-        card={card}
-        dashboard={dashboard}
-        metadata={metadata}
-        onUpdateVisualizationSettings={onUpdateVisualizationSettings}
-      />,
-    );
   }
 
   return (
