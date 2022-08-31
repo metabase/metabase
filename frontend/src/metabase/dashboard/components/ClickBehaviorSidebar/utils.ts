@@ -1,14 +1,28 @@
 import { t } from "ttag";
+
 import { hasActionsMenu } from "metabase/lib/click-behavior";
 
-export const clickBehaviorOptions = [
+import type {
+  ClickBehaviorType,
+  DashboardOrderedCard,
+} from "metabase-types/api";
+
+type ClickBehaviorOption = {
+  value: ClickBehaviorType | "menu";
+  icon: string;
+};
+
+export const clickBehaviorOptions: ClickBehaviorOption[] = [
   { value: "menu", icon: "popover" },
   { value: "link", icon: "link" },
   { value: "crossfilter", icon: "filter" },
   { value: "action", icon: "play" },
 ];
 
-export function getClickBehaviorOptionName(value, dashcard) {
+export function getClickBehaviorOptionName(
+  value: ClickBehaviorType | "menu",
+  dashcard: DashboardOrderedCard,
+) {
   if (value === "menu") {
     return hasActionsMenu(dashcard)
       ? t`Open the Metabase actions menu`
