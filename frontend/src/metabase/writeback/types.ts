@@ -8,11 +8,9 @@ import {
   ParameterValueOrArray,
 } from "metabase-types/types/Parameter";
 
-export type WritebackActionCard = SavedCard<NativeDatasetQuery> & {
-  is_write: true;
-};
-
 export type ActionParameterTuple = [string, Parameter];
+
+export type WritebackActionType = "http" | "query";
 
 export interface WritebackActionBase {
   id: number;
@@ -23,9 +21,14 @@ export interface WritebackActionBase {
   "created-at": string;
 }
 
+type QueryActionCard = SavedCard<NativeDatasetQuery> & {
+  is_write: true;
+  action_id: number;
+};
+
 export interface QueryAction {
   type: "query";
-  card: WritebackActionCard;
+  card: QueryActionCard;
   card_id: number;
 }
 
@@ -62,8 +65,6 @@ export interface WritebackActionEmitter {
   updated_at: string;
   created_at: string;
 }
-
-export type ActionType = "http" | "query";
 
 export type ParameterMappings = Record<ParameterId, ParameterTarget>;
 
