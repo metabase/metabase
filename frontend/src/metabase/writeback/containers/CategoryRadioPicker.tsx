@@ -8,7 +8,7 @@ import { useOnMount } from "metabase/hooks/use-on-mount";
 
 import { State } from "metabase-types/store";
 
-import { CategoryWidgetProps as CategoryWidgetOwnProps } from "../types";
+import { CategoryWidgetProps as CategoryWidgetOwnProps } from "../internalTypes";
 
 interface CategoryWidgetStateProps {
   fieldValues: unknown[][];

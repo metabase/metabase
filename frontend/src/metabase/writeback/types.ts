@@ -1,5 +1,3 @@
-import Field from "metabase-lib/lib/metadata/Field";
-
 import { SavedCard, NativeDatasetQuery } from "metabase-types/types/Card";
 import { DashboardWithCards } from "metabase-types/types/Dashboard";
 import { Column } from "metabase-types/types/Dataset";
@@ -9,16 +7,6 @@ import {
   ParameterTarget,
   ParameterValueOrArray,
 } from "metabase-types/types/Parameter";
-
-export interface CategoryWidgetProps {
-  field: {
-    value: string;
-    onChange: (value: string) => void;
-  };
-  formField: {
-    fieldInstance: Field;
-  };
-}
 
 export type WritebackActionCard = SavedCard<NativeDatasetQuery> & {
   is_write: true;
