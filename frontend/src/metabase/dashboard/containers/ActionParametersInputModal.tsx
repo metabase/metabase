@@ -6,7 +6,6 @@ import ModalContent from "metabase/components/ModalContent";
 
 import ActionParametersInputForm from "metabase/writeback/containers/ActionParametersInputForm";
 
-import type { WritebackActionEmitter } from "metabase-types/api";
 import type { DashboardWithCards } from "metabase-types/types/Dashboard";
 import type { State } from "metabase-types/store";
 
@@ -14,7 +13,7 @@ import { closeActionParametersModal } from "../actions";
 import { getEmitterParametersFormProps } from "../selectors";
 
 type DataAppDashboard = DashboardWithCards & {
-  emitters?: WritebackActionEmitter[];
+  emitters?: any[];
 };
 
 interface OwnProps {

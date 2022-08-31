@@ -55,17 +55,6 @@ export type WritebackQueryAction = WritebackActionBase & QueryAction;
 export type WritebackHttpAction = WritebackActionBase & HttpAction;
 export type WritebackAction = WritebackActionBase & (QueryAction | HttpAction);
 
-export interface WritebackActionEmitter {
-  id: number;
-  dashboard_id: number;
-  action: WritebackAction & {
-    emitter_id: number;
-  };
-  parameter_mappings: Record<ParameterId, ParameterTarget>;
-  updated_at: string;
-  created_at: string;
-}
-
 export type ParameterMappings = Record<ParameterId, ParameterTarget>;
 
 export type ActionClickBehaviorData = {
