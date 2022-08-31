@@ -10,12 +10,14 @@ type VariantProp = { variant?: "default" | "form-field" };
 export const Root = styled.div<{
   disabled?: boolean;
   noPadding?: boolean;
+  inline?: boolean;
+  marginBottom?: string;
 }>`
   ${props =>
     !props.noPadding &&
     css`
-      margin-left: 2em;
-      margin-right: 2em;
+      margin-left: 2rem;
+      margin-right: 2rem;
     `}
 
   ${props =>
@@ -27,7 +29,7 @@ export const Root = styled.div<{
   ${props =>
     !props.hidden &&
     css`
-      margin-bottom: 1.5em;
+      margin-bottom: ${props.marginBottom || "1.5em"};
     `}
 
   ${props =>
@@ -35,6 +37,19 @@ export const Root = styled.div<{
     css`
       pointer-events: none;
       opacity: 0.4;
+    `}
+  ${props =>
+    props.inline &&
+    css`
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: center;
+
+      ${Title} {
+        display: inline-flex;
+        margin-bottom: 0;
+      }
     `}
 
   input, .AdminSelect {
@@ -50,7 +65,7 @@ export const Root = styled.div<{
 export const Title = styled.label<VariantProp>`
   display: flex;
   align-items: center;
-  margin-bottom: 0.5em;
+  margin-bottom: 1rem;
 
   ${props =>
     props.variant === "default" &&

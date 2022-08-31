@@ -121,6 +121,7 @@ export type VisualizationProps = {
   onHoverChange: (hoverObject?: HoverObject) => void;
   onVisualizationClick: (clickObject?: ClickObject) => void;
   visualizationIsClickable: (clickObject?: ClickObject) => boolean;
+  getExtraDataForClick?: (clickObject?: ClickObject) => Record<string, unknown>;
   onChangeCardAndRun: OnChangeCardAndRun;
 
   onUpdateVisualizationSettings: (settings: Record<string, any>) => void;

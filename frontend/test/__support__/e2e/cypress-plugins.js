@@ -15,12 +15,16 @@
  * @type {boolean}
  */
 const hasEnterpriseToken =
-  process.env["ENTERPRISE_TOKEN"] && process.env["MB_EDITION"] === "ee";
+  process.env["MB_PREMIUM_EMBEDDING_TOKEN"] &&
+  process.env["MB_EDITION"] === "ee";
 
 const hasSnowplowMicro = process.env["MB_SNOWPLOW_AVAILABLE"];
 const snowplowMicroUrl = process.env["MB_SNOWPLOW_URL"];
 
 const isQaDatabase = process.env["QA_DB_ENABLED"];
+
+const sourceVersion = process.env["CROSS_VERSION_SOURCE"];
+const targetVersion = process.env["CROSS_VERSION_TARGET"];
 
 // This function is called when a project is opened or re-opened (e.g. due to
 // the project's config changing)
@@ -71,6 +75,8 @@ module.exports = (on, config) => {
   config.env.HAS_ENTERPRISE_TOKEN = hasEnterpriseToken;
   config.env.HAS_SNOWPLOW_MICRO = hasSnowplowMicro;
   config.env.SNOWPLOW_MICRO_URL = snowplowMicroUrl;
+  config.env.SOURCE_VERSION = sourceVersion;
+  config.env.TARGET_VERSION = targetVersion;
 
   return config;
 };

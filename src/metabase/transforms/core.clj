@@ -6,6 +6,7 @@
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :refer [Field]]
+            [metabase.models.interface :as mi]
             [metabase.models.table :as table :refer [Table]]
             [metabase.query-processor :as qp]
             [metabase.transforms.materialize :as tf.materialize]
@@ -83,7 +84,7 @@
 (s/defn ^:private ->source-table-reference
   "Serialize `entity` into a form suitable as `:source-table` value."
   [entity :- SourceEntity]
-  (if (instance? (type Table) entity)
+  (if (mi/instance-of? Table entity)
     (u/the-id entity)
     (str "card__" (u/the-id entity))))
 
@@ -126,7 +127,7 @@
     (assoc bindings name {:entity     (tf.materialize/make-card-for-step! step query)
                           :dimensions (infer-resulting-dimensions local-bindings step query)})))
 
-(def ^:private Tableset [(type Table)])
+(def ^:private Tableset [(mi/InstanceOf Table)])
 
 (s/defn ^:private find-tables-with-domain-entity :- Tableset
   [tableset :- Tableset, domain-entity-spec :- DomainEntitySpec]

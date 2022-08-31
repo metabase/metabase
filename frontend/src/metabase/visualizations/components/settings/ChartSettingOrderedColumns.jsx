@@ -3,45 +3,13 @@ import React, { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import {
-  SortableContainer,
-  SortableElement,
-} from "metabase/components/sortable";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import { keyForColumn, findColumnForColumnSetting } from "metabase/lib/dataset";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 
 import ColumnItem from "./ColumnItem";
 
-const SortableColumn = SortableElement(
-  ({ columnSetting, getColumnName, onEdit, onRemove }) => (
-    <ColumnItem
-      title={getColumnName(columnSetting)}
-      onEdit={onEdit ? () => onEdit(columnSetting) : null}
-      onRemove={onRemove ? () => onRemove(columnSetting) : null}
-      draggable
-    />
-  ),
-);
-
-const SortableColumnList = SortableContainer(
-  ({ columnSettings, getColumnName, onEdit, onRemove }) => {
-    return (
-      <div>
-        {columnSettings.map((columnSetting, index) => (
-          <SortableColumn
-            key={`item-${index}`}
-            index={columnSetting.index}
-            columnSetting={columnSetting}
-            getColumnName={getColumnName}
-            onEdit={onEdit}
-            onRemove={onRemove}
-          />
-        ))}
-      </div>
-    );
-  },
-);
+import { ChartSettingOrderedItems } from "./ChartSettingOrderedItems";
 
 export default class ChartSettingOrderedColumns extends Component {
   handleEnable = columnSetting => {
@@ -116,11 +84,10 @@ export default class ChartSettingOrderedColumns extends Component {
 
     return (
       <div className="list">
-        <div>{t`Click and drag to change their order`}</div>
         {enabledColumns.length > 0 ? (
-          <SortableColumnList
-            columnSettings={enabledColumns}
-            getColumnName={this.getColumnName}
+          <ChartSettingOrderedItems
+            items={enabledColumns}
+            getItemName={this.getColumnName}
             onEdit={this.handleEdit}
             onRemove={this.handleDisable}
             onSortEnd={this.handleSortEnd}

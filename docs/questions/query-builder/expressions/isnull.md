@@ -34,7 +34,7 @@ In Metabase tables, `null`s are displayed as blank cells. For example, in the Fe
 |                    |                                                             |
 | I like your style. | I like your style.                                          |
 
-Combine `isnull` with the [`case` expression](./case) to replace "unknown" information with something more descriptive.
+Combine `isnull` with the [`case` expression](./case.md) to replace "unknown" information with something more descriptive.
 
 Let's say that the first row's blank cell is actually a `null`, so `isnull` will return `true`. The `case` statement evaluates `true` to return the first output "Unknown feedback".
 
@@ -53,8 +53,8 @@ The second row's blank cell doesn't have a `null`, but we're not sure what's in 
 ## Limitations
 
 - In Metabase, you must combine `isnull` with another expression that accepts boolean arguments (i.e., `true` or `false`).
-- `isnull` only accepts one value at a time. If you need to deal with blank cells across multiple columns, see the [coalesce expression](./coalesce).
-- If `isnull` doesn't seem to do anything to your blank cells, you might have empty strings. Try the [`isempty` expression](./isempty) instead.
+- `isnull` only accepts one value at a time. If you need to deal with blank cells across multiple columns, see the [coalesce expression](./coalesce.md).
+- If `isnull` doesn't seem to do anything to your blank cells, you might have empty strings. Try the [`isempty` expression](./isempty.md) instead.
 
 ## Converting a function into an `isnull` expression
 
@@ -125,8 +125,8 @@ case(isnull([Feedback]), "Unknown feedback.", [Feedback])
 - [Custom expressions tutorial][custom-expressions-learn]
 
 [custom-expressions-doc]: ../expressions.md
-[custom-expressions-learn]: /learn/questions/custom-expressions
-[data-types]: /learn/databases/data-types-overview#examples-of-data-types
-[notebook-editor-def]: /glossary/notebook_editor
+[custom-expressions-learn]: https://www.metabase.com/learn/questions/custom-expressions
+[data-types]: https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types
+[notebook-editor-def]: https://www.metabase.com/glossary/notebook_editor
 [numpy]: https://numpy.org/doc/
 [pandas]: https://pandas.pydata.org/pandas-docs/stable/

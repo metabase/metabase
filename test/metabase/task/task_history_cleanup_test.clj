@@ -28,7 +28,7 @@
                   (#'cleanup-task/task-history-cleanup!))
                 (thunk)))
             (task-history-tasks []
-              (set (map :task (TaskHistory))))]
+              (set (map :task (db/select TaskHistory))))]
       (testing "Basic run of the cleanup task when it needs to remove rows. Should also add a TaskHistory row once complete"
         (do-with-tasks
          {:rows-to-keep 2}

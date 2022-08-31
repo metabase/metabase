@@ -35,7 +35,7 @@
 (defn- identifier
   ([table-key]
    (mt/with-everything-store
-     (sql.qp/->honeysql (or driver/*driver* :h2) (Table (mt/id table-key)))))
+     (sql.qp/->honeysql (or driver/*driver* :h2) (db/select-one Table :id (mt/id table-key)))))
 
   ([table-key field-key]
    (let [field-id   (mt/id table-key field-key)
@@ -247,7 +247,7 @@
     (testing "When querying with full permissions, no changes should be made"
       (mt/with-gtaps {:gtaps      {:venues (venues-category-mbql-gtap-def)}
                       :attributes {"cat" 50}}
-        (perms/grant-permissions! &group (perms/table-query-path (Table (mt/id :venues))))
+        (perms/grant-permissions! &group (perms/table-query-path (db/select-one Table :id (mt/id :venues))))
         (is (= [[100]]
                (run-venues-count-query)))))
 
@@ -948,7 +948,7 @@
                                       {:orders   {:remappings {:user_id [:dimension $orders.user_id]}}
                                        :products {:remappings {:user_cat [:dimension $products.category]}}})
                         :attributes {:user_id 1, :user_cat "Widget"}}
-          (perms/grant-permissions! &group (perms/table-query-path (Table (mt/id :people))))
+          (perms/grant-permissions! &group (perms/table-query-path (db/select-one Table :id (mt/id :people))))
           (is (= (->> [["Twitter" nil      0 401.51]
                        ["Twitter" "Widget" 0 498.59]
                        [nil       nil      1 401.51]

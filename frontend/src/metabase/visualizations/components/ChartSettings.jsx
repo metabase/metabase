@@ -297,10 +297,10 @@ class ChartSettings extends Component {
     return (
       <div className={cx(className, "flex flex-column")}>
         {showSectionPicker && (
-          <div className="flex flex-no-shrink pl4 pt2 pb1">{sectionPicker}</div>
+          <div className="flex flex-no-shrink pl4 pb1">{sectionPicker}</div>
         )}
         {noPreview ? (
-          <div className="full-height relative scroll-y scroll-show pt3 pb4">
+          <div className="full-height relative scroll-y scroll-show pt2 pb4">
             {widgetList}
           </div>
         ) : (

@@ -1,0 +1,12 @@
+{
+  "testFiles": "**/*.cy.spec.js",
+  "integrationFolder": "frontend/test/metabase/scenarios/cross-version/target/",
+  "pluginsFile": "frontend/test/__support__/e2e/cypress-plugins.js",
+  "supportFile": "frontend/test/__support__/e2e/cypress.js",
+  "baseUrl": "http://localhost:3001",
+  "videoUploadOnPasses": false,
+  "chromeWebSecurity": false,
+  "modifyObstructiveCode": false,
+  "viewportHeight": 800,
+  "viewportWidth": 1280
+}

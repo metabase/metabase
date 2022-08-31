@@ -7,6 +7,11 @@ import {
   scaleTime,
 } from "@visx/scale";
 import {
+  getX,
+  getY,
+} from "metabase/static-viz/components/XYChart/utils/series";
+
+import type {
   SeriesDatum,
   XAxisType,
   ContiniousDomain,
@@ -15,17 +20,14 @@ import {
   YAxisType,
   HydratedSeries,
   StackedDatum,
+  XScale,
 } from "metabase/static-viz/components/XYChart/types";
-import {
-  getX,
-  getY,
-} from "metabase/static-viz/components/XYChart/utils/series";
 
 export const createXScale = (
   series: Series[],
   range: Range,
   axisType: XAxisType,
-) => {
+): XScale => {
   const hasBars = series.some(series => series.type === "bar");
   const isOrdinal = axisType === "ordinal";
 

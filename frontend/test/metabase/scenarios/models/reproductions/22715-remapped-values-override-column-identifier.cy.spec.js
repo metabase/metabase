@@ -35,6 +35,10 @@ describe("filtering based on the remapped column name should result in a correct
       mapColumnTo({ table: "Orders", column: "ID" });
 
       cy.findByText("ALIAS_CREATED_AT").click();
+
+      // Without this Cypress fails to remap the column because an element becomes detached from the DOM.
+      // This is caused by the DatasetFieldMetadataSidebar component rerendering mulitple times.
+      cy.wait(5000);
       mapColumnTo({ table: "Orders", column: "Created At" });
 
       // Make sure the column name updated before saving

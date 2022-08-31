@@ -18,6 +18,10 @@ Admins can edit the metadata for tables and fields in your database.
 
 Field types dictate how Metabase displays its data, as well as the column’s special functionality, if any.
 
+## [Setting default formatting for your data](./field-types.md)
+
+Define formatting and display defaults for numbers, currencies, datetimes, and more.
+
 ## [Creating segments and metrics](./segments-and-metrics.md)
 
 Admins can define segments to create official filters for your data, and metrics for official aggregations.

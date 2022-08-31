@@ -186,6 +186,7 @@
             view-nm      "late_binding_view"
             qual-view-nm (str redshift.test/session-schema-name "." view-nm)]
         (mt/with-temp Database [database {:engine :redshift, :details db-details}]
+         (try
           ;; create a table with a CHARACTER VARYING and a NUMERIC column, and a late bound view that selects from it
           (redshift.test/execute!
            (str "DROP TABLE IF EXISTS %1$s;%n"
@@ -203,8 +204,46 @@
             (is (= [{:name "numeric_col",   :database_type "numeric(10,2)",         :base_type :type/Decimal}
                     {:name "weird_varchar", :database_type "character varying(50)", :base_type :type/Text}]
                    (map
-                    (partial into {})
-                    (db/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]}))))))))))
+                    mt/derecordize
+                    (db/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]})))))
+          (finally
+            (redshift.test/execute! (str "DROP TABLE IF EXISTS %s;%n"
+                                         "DROP VIEW IF EXISTS %s;")
+                                    qual-tbl-nm
+                                    qual-view-nm))))))))
+
+(deftest redshift-lbv-sync-error-test
+  (mt/test-driver
+    :redshift
+    (testing "Late-binding view with with data types that cause a JDBC error can still be synced succesfully (#21215)"
+      (let [db-details   (tx/dbdef->connection-details :redshift nil nil)
+            view-nm      "weird_late_binding_view"
+            qual-view-nm (str redshift.test/session-schema-name "." view-nm)]
+       (mt/with-temp Database [database {:engine :redshift, :details db-details}]
+         (try
+           (redshift.test/execute!
+            (str "CREATE OR REPLACE VIEW %1$s AS ("
+                 "WITH test_data AS (SELECT 'open' AS shop_status UNION ALL SELECT 'closed' AS shop_status) "
+                 "SELECT NULL as raw_null, "
+                 "'hello' as raw_var, "
+                 "CASE WHEN shop_status = 'open' THEN 11387.133 END AS case_when_numeric_inc_nulls "
+                 "FROM test_data) WITH NO SCHEMA BINDING;")
+            qual-view-nm)
+           (sync/sync-database! database)
+           (is (contains?
+                (db/select-field :name Table :db_id (u/the-id database)) ; the new view should have been synced without errors
+                view-nm))
+           (let [table-id (db/select-one-id Table :db_id (u/the-id database), :name view-nm)]
+             ;; and its columns' :base_type should have been identified correctly
+             (is (= [{:name "case_when_numeric_inc_nulls", :database_type "numeric", :base_type :type/Decimal}
+                     {:name "raw_null",                    :database_type "varchar", :base_type :type/Text}
+                     {:name "raw_var",                     :database_type "varchar", :base_type :type/Text}]
+                    (map
+                     mt/derecordize
+                     (db/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]})))))
+           (finally
+             (redshift.test/execute! (str "DROP VIEW IF EXISTS %s;")
+                                     qual-view-nm))))))))
 
 (deftest filtered-syncable-schemas-test
   (mt/test-driver :redshift

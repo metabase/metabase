@@ -1,27 +1,24 @@
+import { init } from "server-text-width";
+import { CHAR_SIZES, CHAR_SIZES_FONT_SIZE } from "../constants/char-sizes";
+
 const CHAR_ELLIPSES = "…";
 const DEFAULT_FONT_WEIGHT = 400;
 
-// TODO: Replace this rough simple approximation with a correct one
-const getCharWidth = (fontSize: number, fontWeight: number) => {
-  const fontWeightDivider = Math.sqrt(fontWeight / DEFAULT_FONT_WEIGHT);
-
-  if (fontSize <= 12) {
-    return fontSize / (2.15 * fontWeightDivider);
-  }
-
-  if (fontSize <= 16) {
-    return fontSize / (1.84 * fontWeightDivider);
-  }
-
-  return fontSize / (1.7 * fontWeightDivider);
-};
+export const { getTextWidth } = init(CHAR_SIZES);
 
 export const measureText = (
   text: string,
   fontSize: number,
   fontWeight = DEFAULT_FONT_WEIGHT,
 ) => {
-  return text.length * getCharWidth(fontSize, fontWeight);
+  const sizeFactor = fontSize / CHAR_SIZES_FONT_SIZE;
+
+  const baseWidth = getTextWidth(text, {
+    fontSize: `${CHAR_SIZES_FONT_SIZE}px`,
+    fontWeight: fontWeight.toString(),
+  });
+
+  return sizeFactor * baseWidth;
 };
 
 export const measureTextHeight = (fontSize: number) => {

@@ -10,6 +10,7 @@
             [metabase.db.data-migrations :refer [DataMigrations]]
             [metabase.db.setup :as mdb.setup]
             [metabase.models :refer [Activity
+                                     App
                                      ApplicationPermissionsRevision
                                      BookmarkOrdering
                                      Card
@@ -23,6 +24,7 @@
                                      DashboardCardSeries
                                      Database
                                      Dimension
+                                     Emitter
                                      Field
                                      FieldValues
                                      LoginHistory
@@ -96,11 +98,13 @@
    Card
    CardBookmark
    DashboardBookmark
+   Emitter
    CollectionBookmark
    BookmarkOrdering
    DashboardCard
    DashboardCardSeries
    Activity
+   App
    Pulse
    PulseCard
    PulseChannel

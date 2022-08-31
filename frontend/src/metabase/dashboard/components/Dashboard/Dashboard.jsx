@@ -321,6 +321,7 @@ class Dashboard extends Component {
                     />
                   ) : (
                     <DashboardEmptyState
+                      isDataApp={dashboard.is_app_page}
                       isNightMode={shouldRenderAsNightMode}
                     />
                   )}

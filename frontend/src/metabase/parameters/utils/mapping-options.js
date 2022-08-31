@@ -8,8 +8,6 @@ import {
   variableFilterForParameter,
 } from "./filters";
 
-import { isVirtualDashCard } from "metabase/dashboard/utils";
-
 import { tag_names } from "cljs/metabase.shared.parameters.parameters";
 
 function buildStructuredQuerySectionOptions(section) {
@@ -58,9 +56,14 @@ export function getParameterMappingOptions(
   card,
   dashcard = null,
 ) {
-  if (dashcard && isVirtualDashCard(dashcard)) {
+  if (dashcard && card.display === "text") {
     const tagNames = tag_names(dashcard.visualization_settings.text || "");
     return tagNames ? tagNames.map(buildTextTagOption) : [];
+  }
+
+  if (card.display === "action-button") {
+    // action cards don't have parameters
+    return [];
   }
 
   if (!card.dataset_query) {

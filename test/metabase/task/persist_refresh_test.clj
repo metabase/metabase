@@ -3,7 +3,11 @@
             [clojurewerkz.quartzite.conversion :as qc]
             [java-time :as t]
             [medley.core :as m]
+            [metabase.driver.ddl.interface :as ddl.i]
             [metabase.models :refer [Card Database PersistedInfo TaskHistory]]
+            [metabase.models.persisted-info :as persisted-info]
+            [metabase.query-processor :as qp]
+            [metabase.query-processor.interface :as qp.i]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.task.persist-refresh :as pr]
             [metabase.test :as mt]
@@ -75,8 +79,8 @@
   [& dbs]
   (let [ids  (into #{} (map u/the-id dbs))]
     (m/map-vals
-      #(select-keys % [:data :schedule :key])
-      (select-keys (pr/job-info-by-db-id) ids))))
+     #(select-keys % [:data :schedule :key])
+     (select-keys (pr/job-info-by-db-id) ids))))
 
 (deftest reschedule-refresh-test
   (mt/with-temp-scheduler
@@ -189,6 +193,34 @@
                                        :task "unpersist-tables"
                                        {:order-by [[:id :desc]]}))))))))
 
-(comment
-  (run-tests)
-  )
+(deftest persisted-models-max-rows-test
+  (testing "Persisted models should have the full number of rows of the underlying query,
+            not limited by `absolute-max-results` (#24793)"
+    (with-redefs [qp.i/absolute-max-results 3]
+      (mt/dataset daily-bird-counts
+        (mt/test-driver :postgres
+          (mt/with-temporary-setting-values [:persisted-models-enabled true]
+            (db/update! Database (mt/id) :options {:persist-models-enabled true})
+            (mt/with-temp* [Card          [model {:dataset       true
+                                                  :database_id   (mt/id)
+                                                  :query_type    :query
+                                                  :dataset_query {:database (mt/id)
+                                                                  :type     :query
+                                                                  :query    {:source-table (mt/id :bird-count)}}}]]
+              (let [;; Get the number of rows before the model is persisted
+                    query-on-top       {:database (mt/id)
+                                        :type     :query
+                                        :query    {:aggregation  [[:count]]
+                                                   :source-table (str "card__" (:id model))}}
+                    [[num-rows-query]] (mt/rows (qp/process-query query-on-top))
+                    ;; Create PersistedInfo for model
+                    [persisted-info-id] (persisted-info/ready-unpersisted-models! (mt/id))]
+                ;; Persist the model
+                (ddl.i/check-can-persist (db/select-one Database :id (mt/id)))
+                (#'pr/refresh-individual! persisted-info-id (var-get #'pr/dispatching-refresher))
+                 ;; Check the number of rows is the same after persisting
+                (let [query-on-top {:database (mt/id)
+                                    :type     :query
+                                    :query    {:aggregation [[:count]]
+                                               :source-table (str "card__" (:id model))}}]
+                  (is (= [[num-rows-query]] (mt/rows (qp/process-query query-on-top)))))))))))))

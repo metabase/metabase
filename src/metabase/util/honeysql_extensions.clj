@@ -324,3 +324,9 @@
 (defmethod pprint/simple-dispatch honeysql.types.SqlCall
   [call]
   (pprint/write-out (pretty/pretty call)))
+
+(defmethod hformat/format-clause :returning [[_ fields] _]
+  (->> (flatten fields)
+       (map hformat/to-sql)
+       (hformat/comma-join)
+       (str "RETURNING ")))

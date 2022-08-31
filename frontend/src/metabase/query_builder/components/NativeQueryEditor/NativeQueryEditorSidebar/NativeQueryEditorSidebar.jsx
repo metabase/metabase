@@ -14,12 +14,12 @@ import {
 } from "./NativeQueryEditorSidebar.styled";
 
 const propTypes = {
-  cancelQuery: PropTypes.func.isRequired,
-  isResultDirty: PropTypes.bool.isRequired,
-  isRunnable: PropTypes.bool.isRequired,
-  isRunning: PropTypes.bool.isRequired,
+  cancelQuery: PropTypes.func,
+  isResultDirty: PropTypes.bool,
+  isRunnable: PropTypes.bool,
+  isRunning: PropTypes.bool,
   nativeEditorSelectedText: PropTypes.string,
-  runQuery: PropTypes.func.isRequired,
+  runQuery: PropTypes.func,
   snippetCollections: PropTypes.array,
   snippets: PropTypes.array,
 };
@@ -56,6 +56,8 @@ const NativeQueryEditorSidebar = props => {
     return command + " " + shortcut;
   };
 
+  const canRunQuery = runQuery && cancelQuery;
+
   return (
     <Container>
       <DataReferenceButton {...props} size={ICON_SIZE} className="mt3" />
@@ -63,15 +65,17 @@ const NativeQueryEditorSidebar = props => {
       {showSnippetSidebarButton && (
         <SnippetSidebarButton {...props} size={ICON_SIZE} className="mt3" />
       )}
-      <RunButtonWithTooltipStyled
-        disabled={!isRunnable}
-        isRunning={isRunning}
-        isDirty={isResultDirty}
-        onRun={runQuery}
-        onCancel={cancelQuery}
-        compact
-        getTooltip={getTooltip}
-      />
+      {!!canRunQuery && (
+        <RunButtonWithTooltipStyled
+          disabled={!isRunnable}
+          isRunning={isRunning}
+          isDirty={isResultDirty}
+          onRun={runQuery}
+          onCancel={cancelQuery}
+          compact
+          getTooltip={getTooltip}
+        />
+      )}
     </Container>
   );
 };

@@ -151,7 +151,7 @@
           :description "something")
         (testing "capture updated Dashboard state"
           (is (= empty-dashboard
-                 (dashboard/serialize-dashboard (Dashboard dashboard-id))))))
+                 (dashboard/serialize-dashboard (db/select-one Dashboard :id dashboard-id))))))
       (testing "now do the reversion; state should return to original"
         (#'dashboard/revert-dashboard! nil dashboard-id (test.users/user->id :crowberto) serialized-dashboard)
         (is (= {:name         "Test Dashboard"
@@ -164,11 +164,11 @@
                                 :id      false
                                 :card_id true
                                 :series  true}]}
-               (update (dashboard/serialize-dashboard (Dashboard dashboard-id)) :cards check-ids))))
+               (update (dashboard/serialize-dashboard (db/select-one Dashboard :id dashboard-id)) :cards check-ids))))
       (testing "revert back to the empty state"
         (#'dashboard/revert-dashboard! nil dashboard-id (test.users/user->id :crowberto) empty-dashboard)
         (is (= empty-dashboard
-               (dashboard/serialize-dashboard (Dashboard dashboard-id))))))))
+               (dashboard/serialize-dashboard (db/select-one Dashboard :id dashboard-id))))))))
 
 (deftest public-sharing-test
   (testing "test that a Dashboard's :public_uuid comes back if public sharing is enabled..."
@@ -253,7 +253,7 @@
       (let [rastas-personal-collection (collection/user->personal-collection (test.users/user->id :rasta))]
         (binding [api/*current-user-id*              (test.users/user->id :rasta)
                   api/*current-user-permissions-set* (-> :rasta test.users/user->id user/permissions-set atom)]
-          (let [dashboard       (magic/automagic-analysis (Table (mt/id :venues)) {})
+          (let [dashboard       (magic/automagic-analysis (db/select-one Table :id (mt/id :venues)) {})
                 saved-dashboard (dashboard/save-transient-dashboard! dashboard (u/the-id rastas-personal-collection))]
             (is (= (db/count DashboardCard :dashboard_id (u/the-id saved-dashboard))
                    (-> dashboard :ordered_cards count)))))))))

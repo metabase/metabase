@@ -88,7 +88,7 @@
 (defn setting-exists-in-db?
   "Returns a boolean indicating whether a setting has a value stored in the application DB."
   [setting-name]
-  (boolean (Setting :key (name setting-name))))
+  (boolean (db/select-one Setting :key (name setting-name))))
 
 (defn- test-assert-setting-has-tag [setting-var expected-tag]
   (let [{:keys [tag arglists]} (meta setting-var)]

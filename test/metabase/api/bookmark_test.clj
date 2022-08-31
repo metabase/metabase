@@ -7,6 +7,7 @@
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :refer [Collection]]
             [metabase.models.dashboard :refer [Dashboard]]
+            [metabase.models.interface :as mi]
             [metabase.test :as mt]
             [metabase.util :as u]
             [toucan.db :as db]))
@@ -56,17 +57,17 @@
 (defn bookmark-models [user-id & models]
   (doseq [model models]
     (cond
-      (instance? (class Collection) model)
+      (mi/instance-of? Collection model)
       (db/insert! CollectionBookmark
                   {:user_id user-id
                    :collection_id (u/the-id model)})
 
-      (instance? (class Card) model)
+      (mi/instance-of? Card model)
       (db/insert! CardBookmark
                   {:user_id user-id
                    :card_id (u/the-id model)})
 
-      (instance? (class Dashboard) model)
+      (mi/instance-of? Dashboard model)
       (db/insert! DashboardBookmark
                   {:user_id user-id
                    :dashboard_id (u/the-id model)})

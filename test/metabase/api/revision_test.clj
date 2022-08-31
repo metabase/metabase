@@ -32,7 +32,7 @@
 
 (defn- create-dashboard-revision! [dash is-creation? user]
   (push-revision!
-    :object       (Dashboard (:id dash))
+    :object       (db/select-one Dashboard :id (:id dash))
     :entity       Dashboard
     :id           (:id dash)
     :user-id      (test.users/user->id user)

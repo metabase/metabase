@@ -180,6 +180,12 @@ export const CollectionsApi = {
   updateGraph: PUT("/api/collection/graph"),
 };
 
+export const DataAppsApi = {
+  list: GET("/api/app"),
+  create: POST("/api/app"),
+  update: PUT("/api/app/:id"),
+};
+
 const PIVOT_PUBLIC_PREFIX = "/api/public/pivot/";
 
 export const PublicApi = {
@@ -523,3 +529,18 @@ function setParamsEndpoints(prefix) {
     prefix + "/dashboard/:dashId/params/:paramId/search/:query",
   );
 }
+
+export const ActionsApi = {
+  create: POST("/api/action/row/create"),
+  update: POST("/api/action/row/update"),
+  delete: POST("/api/action/row/delete"),
+  bulkUpdate: POST("/api/action/bulk/update/:tableId"),
+  bulkDelete: POST("/api/action/bulk/delete/:tableId"),
+};
+
+export const EmittersApi = {
+  create: POST("/api/emitter"),
+  update: PUT("/api/emitter/:id"),
+  delete: DELETE("/api/emitter/:id"),
+  execute: POST("/api/emitter/:id/execute"),
+};

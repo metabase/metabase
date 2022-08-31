@@ -10,7 +10,7 @@
 
 (models/defmodel PulseCard :pulse_card)
 
-(u/strict-extend (class PulseCard)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class PulseCard)
   models/IModel
   (merge models/IModelDefaults
          {:properties (constantly {:entity_id true})})

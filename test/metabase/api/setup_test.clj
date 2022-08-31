@@ -108,7 +108,7 @@
             (with-setup {:invite {:email email, :first_name first-name, :last_name last-name}
                          :user {:first_name invitor-first-name}
                          :site_name "Metabase"}
-              (let [invited-user (User :email email)]
+              (let [invited-user (db/select-one User :email email)]
                 (is (= (:first_name invited-user) first-name))
                 (is (= (:last_name invited-user) last-name))
                 (is (:is_superuser invited-user))
