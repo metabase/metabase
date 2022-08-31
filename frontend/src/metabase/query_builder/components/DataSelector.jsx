@@ -23,6 +23,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import MetabaseSettings from "metabase/lib/settings";
 import { getSchemaName } from "metabase/lib/schema";
 import { isSyncCompleted } from "metabase/lib/syncing";
+import { isDatabaseWritebackEnabled } from "metabase/writeback/utils";
 
 import Databases from "metabase/entities/databases";
 import Schemas from "metabase/entities/schemas";
@@ -274,6 +275,7 @@ export class UnconnectedDataSelector extends Component {
     hasTableSearch: PropTypes.bool,
     canChangeDatabase: PropTypes.bool,
     containerClassName: PropTypes.string,
+    requireWriteback: PropTypes.bool,
 
     // from search entity list loader
     allError: PropTypes.bool,
@@ -826,7 +828,10 @@ export class UnconnectedDataSelector extends Component {
 
     return (
       <span
-        className={className || "px2 py2 text-bold cursor-pointer text-default"}
+        className={
+          className ||
+          "px2 py2 text-bold cursor-pointer text-default flex-no-shrink"
+        }
         style={style}
       >
         {React.createElement(getTriggerElementContent, {
@@ -880,6 +885,7 @@ export class UnconnectedDataSelector extends Component {
       onChangeField: this.onChangeField,
 
       // misc
+      requireWriteback: this.props.requireWriteback,
       isLoading: this.state.isLoading,
       hasNextStep: !!this.getNextStep(),
       onBack: this.getPreviousStep() ? this.previousStep : null,
@@ -1224,6 +1230,7 @@ const DatabasePicker = ({
   hasNextStep,
   onBack,
   hasInitialFocus,
+  requireWriteback = false,
 }) => {
   if (databases.length === 0) {
     return <DataSelectorLoading />;
@@ -1233,6 +1240,7 @@ const DatabasePicker = ({
     {
       items: databases.map((database, index) => ({
         name: database.name,
+        writebackEnabled: isDatabaseWritebackEnabled(database),
         index,
         database: database,
       })),
@@ -1258,6 +1266,9 @@ const DatabasePicker = ({
         }
         return false;
       }}
+      itemIsClickable={
+        requireWriteback ? item => item.writebackEnabled : undefined
+      }
       itemIsSelected={item =>
         selectedDatabase && item.database.id === selectedDatabase.id
       }

@@ -4,9 +4,6 @@ import { routerReducer as routing, routerMiddleware } from "react-router-redux";
 import { PLUGIN_REDUX_MIDDLEWARES } from "metabase/plugins";
 
 import promise from "redux-promise";
-import logger from "redux-logger";
-
-import { DEBUG } from "metabase/lib/debug";
 
 /**
  * Provides the same functionality as redux-thunk and augments the dispatch method with
@@ -40,7 +37,6 @@ export function getStore(reducers, history, intialState, enhancer = a => a) {
   const middleware = [
     thunkWithDispatchAction,
     promise,
-    ...(DEBUG ? [logger] : []),
     ...(history ? [routerMiddleware(history)] : []),
     ...PLUGIN_REDUX_MIDDLEWARES,
   ];

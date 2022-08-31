@@ -1,11 +1,5 @@
 import React from "react";
-import {
-  act,
-  renderWithProviders,
-  screen,
-  waitFor,
-  waitForElementToBeRemoved,
-} from "__support__/ui";
+import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import userEvent from "@testing-library/user-event";
 import mock from "xhr-mock";
 
@@ -47,25 +41,6 @@ const setup = async (question, originalQuestion) => {
   const onCreateMock = jest.fn(() => Promise.resolve());
   const onSaveMock = jest.fn(() => Promise.resolve());
   const onCloseMock = jest.fn();
-
-  const db = question.database().getPlainObject();
-  const collectionId =
-    question?.collectionId?.() || originalQuestion?.collectionId?.();
-  const collectionIdPath = collectionId || "root";
-
-  mock.get(`/api/database/${db.id}`, {
-    body: JSON.stringify(db),
-  });
-  mock.get(`/api/collection/${collectionIdPath}`, {
-    body: JSON.stringify({}),
-  });
-
-  const settingsState = {
-    values: {
-      "experimental-actions-enabled": false,
-    },
-  };
-
   renderWithProviders(
     <SaveQuestionModal
       card={question.card()}
@@ -75,19 +50,8 @@ const setup = async (question, originalQuestion) => {
       onSave={onSaveMock}
       onClose={onCloseMock}
     />,
-    {
-      reducers: {
-        settings: () => settingsState,
-        storeInitialState: {
-          settings: settingsState,
-        },
-      },
-    },
   );
-
-  await waitForElementToBeRemoved(() => screen.queryByText(/Loading/i));
   await waitFor(() => screen.getByRole("button", { name: "Save" }));
-
   return { onSaveMock, onCreateMock, onCloseMock };
 };
 

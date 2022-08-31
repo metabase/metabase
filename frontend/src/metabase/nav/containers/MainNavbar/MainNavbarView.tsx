@@ -10,7 +10,6 @@ import {
   getCollectionIcon,
   PERSONAL_COLLECTIONS,
 } from "metabase/entities/collections";
-import { getDataAppIcon } from "metabase/entities/data-apps";
 import { isSmallScreen } from "metabase/lib/dom";
 import * as Urls from "metabase/lib/urls";
 
@@ -18,7 +17,11 @@ import type { Bookmark, Collection, DataApp, User } from "metabase-types/api";
 
 import { SelectedItem } from "./types";
 import BookmarkList from "./BookmarkList";
-import { SidebarCollectionLink, SidebarLink } from "./SidebarItems";
+import {
+  SidebarCollectionLink,
+  SidebarDataAppLink,
+  SidebarLink,
+} from "./SidebarItems";
 import {
   AddYourOwnDataLink,
   CollectionMenuList,
@@ -140,14 +143,11 @@ function MainNavbarView({
             </SidebarHeadingWrapper>
             <ul>
               {dataApps.map(app => (
-                <PaddedSidebarLink
+                <SidebarDataAppLink
                   key={`app-${app.id}`}
-                  icon={getDataAppIcon(app)}
-                  url={Urls.dataApp(app, { mode: "preview" })}
+                  dataApp={app}
                   isSelected={dataAppItem?.id === app.id}
-                >
-                  {app.collection.name}
-                </PaddedSidebarLink>
+                />
               ))}
             </ul>
           </SidebarSection>

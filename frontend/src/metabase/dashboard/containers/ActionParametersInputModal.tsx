@@ -4,11 +4,11 @@ import { connect } from "react-redux";
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
 
-import { WritebackActionEmitter } from "metabase/writeback/types";
 import ActionParametersInputForm from "metabase/writeback/containers/ActionParametersInputForm";
 
-import { DashboardWithCards } from "metabase-types/types/Dashboard";
-import { State } from "metabase-types/store";
+import type { WritebackActionEmitter } from "metabase-types/api";
+import type { DashboardWithCards } from "metabase-types/types/Dashboard";
+import type { State } from "metabase-types/store";
 
 import { closeActionParametersModal } from "../actions";
 import { getEmitterParametersFormProps } from "../selectors";
