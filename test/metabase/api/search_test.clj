@@ -617,9 +617,7 @@
         (is (= (mapv
                 (fn [result]
                   (cond-> result
-                    (not (#{"metric" "segment"} (:model result)))
-                    (assoc-in [:collection :app_id] true)
-                    (= (:model result) "collection")
-                    (assoc :app_id true)))
+                    (not (#{"metric" "segment"} (:model result))) (assoc-in [:collection :app_id] true)
+                    (= (:model result) "collection")              (assoc :app_id true)))
                 (default-results-with-collection))
                (search-request-data :rasta :q "test")))))))
