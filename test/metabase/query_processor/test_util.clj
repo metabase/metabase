@@ -168,8 +168,9 @@
   `(do-with-results-timezone-id ~timezone-id (fn [] ~@body)))
 
 
-(defn do-with-store-contents [f]
+(defn do-with-store-contents
   "Impl for `with-store-contents`"
+  [f]
   ;; force creation of test data DB so things don't get left in the cache before running tests below
   (data/id)
   (qp.store/with-store
@@ -177,6 +178,8 @@
     (f)
     (store-contents)))
 
-(defmacro with-store-contents {:style/indent 0} [& body]
+(defmacro with-store-contents
   "Execute `body` then returns the content of the stores."
+  {:style/indent 0}
+  [& body]
   `(do-with-store-contents (fn [] ~@body)))

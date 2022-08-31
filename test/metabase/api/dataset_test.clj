@@ -110,7 +110,7 @@
 
 (deftest override-metadata-query-test
   (testing "POST /api/dataset"
-    (testing "when running a query with `:dataset-metadata`, make sure the end columns metadata get combined with it (#22517)"
+    (testing "when `:dataset-metadata` is passed in the body, make sure the returned columns metadata get combined with it (#22517)"
       (let [dataset-metadata [{:name          "ID"
                                :display_name  "VENUES ID CAPITALIZED"
                                :description   "normal venues id but capitalized"
@@ -142,11 +142,9 @@
                                :description   "User id"
                                :semantic_type "type/FK"
                                :base_type     "type/BigInteger"
-                               :field_ref     ["field" (mt/id :users :id) nil]}]
-            query            (assoc (mt/mbql-query venues {:fields [$id]})
-                                    :dataset-metadata dataset-metadata)]
-        (mt/user-http-request :rasta :post 202 "dataset" query)))))
-
+                               :field_ref     ["field" (mt/id :users :id) nil]}]]
+        (mt/user-http-request :rasta :post 202 "dataset" (assoc (mt/mbql-query venues {:fields [$id]})
+                                                          :dataset-metadata dataset-metadata))))))
 
 (deftest failure-test
   ;; clear out recent query executions!

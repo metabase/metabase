@@ -78,7 +78,7 @@
   "Execute a query and retrieve the results in the usual format.
 
   Optionally passing `dataset-metadata` to blend an user edits metadata with the runtime computed metadata.
-  This parameter is meant to be used for editting Models's query only."
+  This parameter is meant to be used when editing Models's query."
   [:as {{:keys [database dataset-metadata] :as query} :body}]
   {database         (s/maybe s/Int)
    dataset-metadata (s/maybe qr/ResultsMetadata)}
