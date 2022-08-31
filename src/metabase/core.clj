@@ -14,6 +14,7 @@
             [metabase.models.user :refer [User]]
             [metabase.plugins :as plugins]
             [metabase.plugins.classloader :as classloader]
+            [metabase.prometheus :as prometheus]
             [metabase.public-settings :as public-settings]
             [metabase.sample-data :as sample-data]
             [metabase.server :as server]
@@ -79,6 +80,7 @@
   ;; to a Shutdown hook of some sort instead of having here
   (task/stop-scheduler!)
   (server/stop-web-server!)
+  (prometheus/stop-web-server)
   (log/info (trs "Metabase Shutdown COMPLETE")))
 
 (defn- init!*
@@ -100,6 +102,12 @@
   (log/info (trs "Setting up and migrating Metabase DB. Please sit tight, this may take a minute..."))
   (mdb/setup-db!)
   (init-status/set-progress! 0.5)
+
+  (when (prometheus/prometheus-server-port)
+    (log/info (trs "Setting up prometheus metrics"))
+    (prometheus/setup-metrics!)
+    (prometheus/start-web-server!)
+    (init-status/set-progress! 0.6))
 
   ;; run a very quick check to see if we are doing a first time installation
   ;; the test we are using is if there is at least 1 User in the database

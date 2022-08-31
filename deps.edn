@@ -15,6 +15,7 @@
                                                            org.bouncycastle/bcprov-jdk15on]}
   buddy/buddy-sign                          {:mvn/version "3.4.333"}            ; JSON Web Tokens; High-Level message signing library
   cheshire/cheshire                         {:mvn/version "5.10.2"}             ; fast JSON encoding (used by Ring JSON middleware)
+  clj-commons/iapetos                       {:mvn/version "0.1.12"}             ; prometheus metrics
   clj-http/clj-http                         {:mvn/version "3.12.3"              ; HTTP client
                                              :exclusions  [commons-codec/commons-codec
                                                            commons-io/commons-io
@@ -61,6 +62,7 @@
                                                            org.flatland/ordered
                                                            org.yaml/snakeyaml]}
   io.github.resilience4j/resilience4j-retry {:mvn/version "1.7.1"}              ; Support for retrying operations
+  io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
   joda-time/joda-time                       {:mvn/version "2.10.13"}
   kixi/stats                                {:mvn/version "0.4.4"               ; Various statistic measures implemented as transducers
                                              :exclusions  [org.clojure/data.avl]}
