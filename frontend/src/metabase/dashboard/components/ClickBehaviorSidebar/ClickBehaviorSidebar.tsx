@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { getIn } from "icepick";
 
@@ -13,23 +12,46 @@ import { usePrevious } from "metabase/hooks/use-previous";
 
 import Sidebar from "metabase/dashboard/components/Sidebar";
 
-import ClickBehaviorSidebarHeader from "./ClickBehaviorSidebarHeader";
-import ClickBehaviorSidebarMainView from "./ClickBehaviorSidebarMainView";
-import TableClickBehaviorView from "./TableClickBehaviorView";
-import TypeSelector from "./TypeSelector";
-import { SidebarContent } from "./ClickBehaviorSidebar.styled";
+import type { UiParameter } from "metabase/parameters/types";
+import type {
+  Dashboard,
+  DashboardOrderedCard,
+  DashCardId,
+  CardId,
+  ClickBehavior,
+  DatasetData,
+} from "metabase-types/api";
+import type { Column } from "metabase-types/types/Dataset";
 
-function getClickBehaviorForColumn(dashcard, column) {
-  return getIn(dashcard, [
-    "visualization_settings",
-    "column_settings",
-    keyForColumn(column),
-    "click_behavior",
-  ]);
+import { getClickBehaviorForColumn } from "./utils";
+import ClickBehaviorSidebarContent from "./ClickBehaviorSidebarContent";
+import ClickBehaviorSidebarHeader from "./ClickBehaviorSidebarHeader";
+
+function shouldShowTypeSelector(clickBehavior?: ClickBehavior) {
+  return !clickBehavior || clickBehavior.type == null;
 }
 
-function shouldShowTypeSelector(clickBehavior) {
-  return !clickBehavior || clickBehavior.type == null;
+type VizSettings = Record<string, unknown>;
+
+interface Props {
+  dashboard: Dashboard;
+  dashcard: DashboardOrderedCard;
+  dashcardData: Record<DashCardId, Record<CardId, DatasetData>>;
+  parameters: UiParameter[];
+  hideClickBehaviorSidebar: () => void;
+  onUpdateDashCardColumnSettings: (
+    id: DashCardId,
+    columnKey: string,
+    settings?: VizSettings | null,
+  ) => void;
+  onUpdateDashCardVisualizationSettings: (
+    id: DashCardId,
+    settings?: VizSettings | null,
+  ) => void;
+  onReplaceAllDashCardVisualizationSettings: (
+    id: DashCardId,
+    settings?: VizSettings | null,
+  ) => void;
 }
 
 function ClickBehaviorSidebar({
@@ -41,17 +63,25 @@ function ClickBehaviorSidebar({
   onUpdateDashCardColumnSettings,
   onUpdateDashCardVisualizationSettings,
   onReplaceAllDashCardVisualizationSettings,
-}) {
-  const [isTypeSelectorVisible, setTypeSelectorVisible] = useState(null);
-  const [selectedColumn, setSelectedColumn] = useState(null);
-  const [originalVizSettings, setOriginalVizSettings] = useState(null);
-  const [originalColumnVizSettings, setOriginalColumnVizSettings] =
-    useState(null);
+}: Props) {
+  const [isTypeSelectorVisible, setTypeSelectorVisible] = useState<
+    boolean | null
+  >(null);
+
+  const [selectedColumn, setSelectedColumn] = useState<Column | null>(null);
+
+  const [originalVizSettings, setOriginalVizSettings] = useState<
+    VizSettings | undefined | null
+  >(null);
+
+  const [originalColumnVizSettings, setOriginalColumnVizSettings] = useState<
+    VizSettings | undefined | null
+  >(null);
 
   const previousDashcard = usePrevious(dashcard);
   const hasSelectedColumn = selectedColumn != null;
 
-  const clickBehavior = useMemo(() => {
+  const clickBehavior: ClickBehavior | undefined = useMemo(() => {
     if (isTableDisplay(dashcard) && !hasSelectedColumn) {
       return;
     }
@@ -153,59 +183,6 @@ function ClickBehaviorSidebar({
     handleUnsetSelectedColumn,
   ]);
 
-  const renderContent = useCallback(() => {
-    const finalClickBehavior = clickBehavior || { type: "menu" };
-
-    if (isTableDisplay(dashcard) && !hasSelectedColumn) {
-      const columns = getIn(dashcardData, [dashcard.card_id, "data", "cols"]);
-      return (
-        <TableClickBehaviorView
-          columns={columns}
-          dashcard={dashcard}
-          getClickBehaviorForColumn={column =>
-            getClickBehaviorForColumn(dashcard, column)
-          }
-          onColumnClick={handleColumnSelected}
-        />
-      );
-    }
-
-    if (isTypeSelectorVisible) {
-      return (
-        <SidebarContent>
-          <TypeSelector
-            clickBehavior={finalClickBehavior}
-            dashcard={dashcard}
-            parameters={parameters}
-            updateSettings={handleChangeSettings}
-            moveToNextPage={() => setTypeSelectorVisible(false)}
-          />
-        </SidebarContent>
-      );
-    }
-
-    return (
-      <ClickBehaviorSidebarMainView
-        clickBehavior={finalClickBehavior}
-        dashboard={dashboard}
-        dashcard={dashcard}
-        parameters={parameters}
-        handleShowTypeSelector={() => setTypeSelectorVisible(true)}
-        updateSettings={handleChangeSettings}
-      />
-    );
-  }, [
-    dashboard,
-    dashcard,
-    dashcardData,
-    clickBehavior,
-    parameters,
-    hasSelectedColumn,
-    isTypeSelectorVisible,
-    handleChangeSettings,
-    handleColumnSelected,
-  ]);
-
   return (
     <Sidebar
       onClose={hideClickBehaviorSidebar}
@@ -215,10 +192,22 @@ function ClickBehaviorSidebar({
       <ClickBehaviorSidebarHeader
         dashcard={dashcard}
         selectedColumn={selectedColumn}
-        hasSelectedColumn={hasSelectedColumn}
         onUnsetColumn={handleUnsetSelectedColumn}
       />
-      <div>{renderContent()}</div>
+      <div>
+        <ClickBehaviorSidebarContent
+          dashboard={dashboard}
+          dashcard={dashcard}
+          dashcardData={dashcardData}
+          parameters={parameters}
+          clickBehavior={clickBehavior}
+          isTypeSelectorVisible={isTypeSelectorVisible}
+          hasSelectedColumn={hasSelectedColumn}
+          onColumnSelected={handleColumnSelected}
+          onSettingsChange={handleChangeSettings}
+          onTypeSelectorVisibilityChange={setTypeSelectorVisible}
+        />
+      </div>
     </Sidebar>
   );
 }

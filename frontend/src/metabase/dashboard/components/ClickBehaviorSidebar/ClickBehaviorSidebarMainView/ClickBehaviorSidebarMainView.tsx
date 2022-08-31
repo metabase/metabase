@@ -1,5 +1,11 @@
-/* eslint-disable react/prop-types */
 import React from "react";
+
+import type { UiParameter } from "metabase/parameters/types";
+import type {
+  Dashboard,
+  DashboardOrderedCard,
+  ClickBehavior,
+} from "metabase-types/api";
 
 import { clickBehaviorOptions, getClickBehaviorOptionName } from "../utils";
 import ActionOptions from "../ActionOptions";
@@ -11,13 +17,21 @@ import {
   SelectedClickBehaviorItemIcon,
 } from "../ClickBehaviorSidebar.styled";
 
+interface ClickBehaviorOptionsProps {
+  clickBehavior: ClickBehavior;
+  dashboard: Dashboard;
+  dashcard: DashboardOrderedCard;
+  parameters: UiParameter[];
+  updateSettings: (settings: Partial<ClickBehavior>) => void;
+}
+
 function ClickBehaviorOptions({
   clickBehavior,
   dashboard,
   dashcard,
   parameters,
   updateSettings,
-}) {
+}: ClickBehaviorOptionsProps) {
   if (clickBehavior.type === "link") {
     return (
       <LinkOptions
@@ -43,12 +57,20 @@ function ClickBehaviorOptions({
       <ActionOptions
         clickBehavior={clickBehavior}
         dashcard={dashcard}
-        parameters={parameters}
         updateSettings={updateSettings}
       />
     );
   }
   return null;
+}
+
+interface ClickBehaviorSidebarMainViewProps {
+  clickBehavior: ClickBehavior;
+  dashboard: Dashboard;
+  dashcard: DashboardOrderedCard;
+  parameters: UiParameter[];
+  handleShowTypeSelector: () => void;
+  updateSettings: (settings: Partial<ClickBehavior>) => void;
 }
 
 function ClickBehaviorSidebarMainView({
@@ -58,12 +80,12 @@ function ClickBehaviorSidebarMainView({
   parameters,
   handleShowTypeSelector,
   updateSettings,
-}) {
+}: ClickBehaviorSidebarMainViewProps) {
   const clickBehaviorOptionName = getClickBehaviorOptionName(
     clickBehavior.type,
     dashcard,
   );
-  const { icon: clickBehaviorIcon } = clickBehaviorOptions.find(
+  const currentOption = clickBehaviorOptions.find(
     o => o.value === clickBehavior.type,
   );
 
@@ -75,7 +97,9 @@ function ClickBehaviorSidebarMainView({
           isSelected
           padded={false}
         >
-          <SelectedClickBehaviorItemIcon name={clickBehaviorIcon} />
+          <SelectedClickBehaviorItemIcon
+            name={currentOption?.icon || "unknown"}
+          />
           <SidebarItem.Content>
             <SidebarItem.Name>{clickBehaviorOptionName}</SidebarItem.Name>
             <SidebarItem.CloseIcon />

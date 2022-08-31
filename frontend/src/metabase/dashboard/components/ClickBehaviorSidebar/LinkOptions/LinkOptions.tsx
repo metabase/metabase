@@ -1,7 +1,5 @@
-/* eslint-disable react/prop-types */
-import React from "react";
+import React, { useCallback } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { isTableDisplay } from "metabase/lib/click-behavior";
 
@@ -9,17 +7,35 @@ import CustomLinkText from "./CustomLinkText";
 import QuestionDashboardPicker from "./QuestionDashboardPicker";
 import { SidebarContent } from "../ClickBehaviorSidebar.styled";
 
+import type { UiParameter } from "metabase/parameters/types";
+import type {
+  DashboardOrderedCard,
+  ArbitraryCustomDestinationClickBehavior,
+  ClickBehavior,
+  CustomDestinationClickBehavior,
+  CustomDestinationClickBehaviorLinkType,
+} from "metabase-types/api";
+
 import CustomURLPicker from "./CustomURLPicker";
 import LinkOption from "./LinkOption";
 import ValuesYouCanReference from "./ValuesYouCanReference";
 
-function LinkTypeOptions({ onSelect }) {
-  const linkTypeOptions = [
+type LinkTypeOption = {
+  type: CustomDestinationClickBehaviorLinkType;
+  icon: string;
+  name: string;
+};
+
+function LinkTypeOptions({
+  onSelect,
+}: {
+  onSelect: (type: CustomDestinationClickBehaviorLinkType) => void;
+}) {
+  const linkTypeOptions: LinkTypeOption[] = [
     { type: "dashboard", icon: "dashboard", name: t`Dashboard` },
     { type: "question", icon: "bar", name: t`Saved question` },
     { type: "url", icon: "link", name: t`URL` },
   ];
-
   return (
     <>
       {linkTypeOptions.map(({ type, icon, name }) => (
@@ -34,11 +50,25 @@ function LinkTypeOptions({ onSelect }) {
   );
 }
 
-function LinkOptions({ clickBehavior, updateSettings, dashcard, parameters }) {
+interface Props {
+  clickBehavior: CustomDestinationClickBehavior;
+  dashcard: DashboardOrderedCard;
+  parameters: UiParameter[];
+  updateSettings: (settings: Partial<ClickBehavior>) => void;
+}
+
+function LinkOptions({
+  clickBehavior,
+  dashcard,
+  parameters,
+  updateSettings,
+}: Props) {
   const hasSelectedLinkType = clickBehavior.linkType != null;
 
-  const handleSelectLinkType = type =>
-    updateSettings({ type: clickBehavior.type, linkType: type });
+  const handleSelectLinkType = useCallback(
+    type => updateSettings({ type: clickBehavior.type, linkType: type }),
+    [clickBehavior, updateSettings],
+  );
 
   return (
     <SidebarContent>
@@ -53,9 +83,7 @@ function LinkOptions({ clickBehavior, updateSettings, dashcard, parameters }) {
             dashcard={dashcard}
             parameters={parameters}
           />
-        ) : (
-          <div></div>
-        )}
+        ) : null}
       </div>
       <div className="mt1">
         {hasSelectedLinkType && clickBehavior.linkType !== "url" && (
@@ -69,7 +97,9 @@ function LinkOptions({ clickBehavior, updateSettings, dashcard, parameters }) {
               <div>
                 <CustomLinkText
                   updateSettings={updateSettings}
-                  clickBehavior={clickBehavior}
+                  clickBehavior={
+                    clickBehavior as unknown as ArbitraryCustomDestinationClickBehavior
+                  }
                 />
                 <ValuesYouCanReference
                   dashcard={dashcard}
