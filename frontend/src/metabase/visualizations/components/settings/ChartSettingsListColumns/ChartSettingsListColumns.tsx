@@ -1,9 +1,4 @@
-import React, {
-  useCallback,
-  ChangeEvent,
-  useRef,
-  HtmlHTMLAttributes,
-} from "react";
+import React, { useCallback, ChangeEvent, useRef } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 

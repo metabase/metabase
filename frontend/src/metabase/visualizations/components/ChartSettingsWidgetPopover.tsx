@@ -34,8 +34,8 @@ export const ChartSettingsWidgetPopover = ({
               key={`${widget.id}`}
               {...widget}
               props={{
-                ...(widget.props || {}),
-                ...(currentWidget.props || {}),
+                ...widget.props,
+                ...currentWidget.props,
               }}
               hidden={false}
               {...extraWidgetProps}
