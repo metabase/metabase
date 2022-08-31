@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
 import { createAction } from "metabase/lib/redux";
-import { EmittersApi } from "metabase/services";
 import { addUndo } from "metabase/redux/undo";
 
 import {
@@ -251,15 +250,13 @@ export type ExecuteRowActionPayload = {
 
 export const executeRowAction = ({
   dashboard,
-  emitterId,
   parameters,
 }: ExecuteRowActionPayload) => {
   return async function (dispatch: any) {
     try {
-      const result = await EmittersApi.execute({
-        id: emitterId,
-        parameters,
-      });
+      const result = {
+        "rows-affected": 0,
+      };
       if (result["rows-affected"] > 0) {
         dashboard.ordered_cards
           .filter(dashCard => !isVirtualDashCard(dashCard))

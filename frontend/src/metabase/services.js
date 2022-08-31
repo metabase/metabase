@@ -537,10 +537,3 @@ export const ActionsApi = {
   bulkUpdate: POST("/api/action/bulk/update/:tableId"),
   bulkDelete: POST("/api/action/bulk/delete/:tableId"),
 };
-
-export const EmittersApi = {
-  create: POST("/api/emitter"),
-  update: PUT("/api/emitter/:id"),
-  delete: DELETE("/api/emitter/:id"),
-  execute: POST("/api/emitter/:id/execute"),
-};
