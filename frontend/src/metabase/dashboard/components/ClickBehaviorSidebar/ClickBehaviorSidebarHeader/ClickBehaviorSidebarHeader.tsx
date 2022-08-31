@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React from "react";
 import { t, jt } from "ttag";
 
 import Icon from "metabase/components/Icon";
@@ -29,29 +29,30 @@ interface Props {
   onUnsetColumn: () => void;
 }
 
-function ClickBehaviorSidebarHeader({
-  dashcard,
-  selectedColumn,
-  onUnsetColumn,
-}: Props) {
-  const renderContent = useCallback(() => {
-    if (isTableDisplay(dashcard)) {
-      if (selectedColumn) {
-        return (
-          <ColumnClickBehaviorHeader onClick={onUnsetColumn}>
-            <ChevronIconContainer>
-              <Icon name="chevronleft" size={12} />
-            </ChevronIconContainer>
-            <DefaultHeader>{selectedColumn.display_name}</DefaultHeader>
-          </ColumnClickBehaviorHeader>
-        );
-      }
+function HeaderContent({ dashcard, selectedColumn, onUnsetColumn }: Props) {
+  if (isTableDisplay(dashcard)) {
+    if (!selectedColumn) {
       return <Heading>{t`On-click behavior for each column`}</Heading>;
     }
-    return <DefaultHeader>{dashcard.card.name}</DefaultHeader>;
-  }, [dashcard, selectedColumn, onUnsetColumn]);
+    return (
+      <ColumnClickBehaviorHeader onClick={onUnsetColumn}>
+        <ChevronIconContainer>
+          <Icon name="chevronleft" size={12} />
+        </ChevronIconContainer>
+        <DefaultHeader>{selectedColumn.display_name}</DefaultHeader>
+      </ColumnClickBehaviorHeader>
+    );
+  }
 
-  return <SidebarHeader>{renderContent()}</SidebarHeader>;
+  return <DefaultHeader>{dashcard.card.name}</DefaultHeader>;
+}
+
+function ClickBehaviorSidebarHeader(props: Props) {
+  return (
+    <SidebarHeader>
+      <HeaderContent {...props} />
+    </SidebarHeader>
+  );
 }
 
 export default ClickBehaviorSidebarHeader;
