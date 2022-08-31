@@ -4,16 +4,16 @@ redirect_from:
   - /docs/latest/administration-guide/12-public-links
 ---
 
-## Sharing questions using public links
+# Sharing questions using public links
 
 Sometimes you'll want to share a dashboard or question you've saved with someone that isn't a part of your organization or company, or someone who doesn't need access to your full Metabase instance. Metabase lets administrators create public links and simple embeds to let you do just that.
 
-### Turning public links on
+## Turning public links on
 
 ![Enable public sharing](./images/enable-public-sharing.png)
 First things first, you'll need to go to the Admin Panel and enable public sharing. In the future, you'll see dashboards and questions you've shared listed here, and you'll be able to revoke any public links that you no longer want to be used.
 
-### Enable sharing on your dashboard or saved question
+## Enable sharing on your saved question or dashboard
 
 ![Enable sharing](./images/enable-links.png)
 
@@ -21,11 +21,24 @@ Next, exit the Admin Panel and go to question that you want to share, then click
 
 In the case of a dashboard, the button is located on the top right of the page.
 
-### Copy, paste, and share!
+## Copy, paste, and share!
 
 Now just copy and share the public link URL with whomever you please. If you want to embed your dashboard or question in a simple web page or blog post, then copy and paste the iframe snippet to your destination of choice.
 
-### Assigning values to filters or hiding them via the URL
+## Public exports for question results in CSV, XLSX, JSON
+
+To create a public link to download the results of a question:
+
+- Click on the **Sharing and embedding** icon for the question,
+- Enable sharing,
+- Then, below the **Public link** option, click on the format you want (CSV, XLSX, or JSON). Metabase will update the link based on your selection.
+- Copy the link and test it out to confirm that the link downloads the expected format.
+
+![Public export](./images/public-export.png)
+
+This public link export option is only available for questions, not dashboards.
+
+## Assigning values to filters or hiding them via the URL
 
 This is a bit more advanced, but if you're embedding a dashboard or question in an iframe and it has one or more filter widgets on it, you can give those filters values and even hide one or more filters by adding some options to the end of the URL. (You could also do this when just sharing a link, but note that if you do that, the person you're sharing the link with could of course directly edit the URL to change the filters' values, or to change which filters are hidden or not.)
 
