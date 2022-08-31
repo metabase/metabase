@@ -83,9 +83,7 @@ function LinkOptions({
             dashcard={dashcard}
             parameters={parameters}
           />
-        ) : (
-          <div></div>
-        )}
+        ) : null}
       </div>
       <div className="mt1">
         {hasSelectedLinkType && clickBehavior.linkType !== "url" && (
