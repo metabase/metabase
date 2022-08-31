@@ -23,23 +23,9 @@ import type {
 } from "metabase-types/api";
 import type { Column } from "metabase-types/types/Dataset";
 
+import { getClickBehaviorForColumn } from "./utils";
+import ClickBehaviorSidebarContent from "./ClickBehaviorSidebarContent";
 import ClickBehaviorSidebarHeader from "./ClickBehaviorSidebarHeader";
-import ClickBehaviorSidebarMainView from "./ClickBehaviorSidebarMainView";
-import TableClickBehaviorView from "./TableClickBehaviorView";
-import TypeSelector from "./TypeSelector";
-import { SidebarContent } from "./ClickBehaviorSidebar.styled";
-
-function getClickBehaviorForColumn(
-  dashcard: DashboardOrderedCard,
-  column: Column,
-) {
-  return getIn(dashcard, [
-    "visualization_settings",
-    "column_settings",
-    keyForColumn(column),
-    "click_behavior",
-  ]);
-}
 
 function shouldShowTypeSelector(clickBehavior?: ClickBehavior) {
   return !clickBehavior || clickBehavior.type == null;
@@ -197,59 +183,6 @@ function ClickBehaviorSidebar({
     handleUnsetSelectedColumn,
   ]);
 
-  const renderContent = useCallback(() => {
-    const finalClickBehavior = clickBehavior || { type: "actionMenu" };
-
-    if (isTableDisplay(dashcard) && !hasSelectedColumn) {
-      const columns = getIn(dashcardData, [dashcard.card_id, "data", "cols"]);
-      return (
-        <TableClickBehaviorView
-          columns={columns}
-          dashcard={dashcard}
-          getClickBehaviorForColumn={(column: Column) =>
-            getClickBehaviorForColumn(dashcard, column)
-          }
-          onColumnClick={handleColumnSelected}
-        />
-      );
-    }
-
-    if (isTypeSelectorVisible) {
-      return (
-        <SidebarContent>
-          <TypeSelector
-            clickBehavior={finalClickBehavior}
-            dashcard={dashcard}
-            parameters={parameters}
-            updateSettings={handleChangeSettings}
-            moveToNextPage={() => setTypeSelectorVisible(false)}
-          />
-        </SidebarContent>
-      );
-    }
-
-    return (
-      <ClickBehaviorSidebarMainView
-        clickBehavior={finalClickBehavior}
-        dashboard={dashboard}
-        dashcard={dashcard}
-        parameters={parameters}
-        handleShowTypeSelector={() => setTypeSelectorVisible(true)}
-        updateSettings={handleChangeSettings}
-      />
-    );
-  }, [
-    dashboard,
-    dashcard,
-    dashcardData,
-    clickBehavior,
-    parameters,
-    hasSelectedColumn,
-    isTypeSelectorVisible,
-    handleChangeSettings,
-    handleColumnSelected,
-  ]);
-
   return (
     <Sidebar
       onClose={hideClickBehaviorSidebar}
@@ -261,7 +194,20 @@ function ClickBehaviorSidebar({
         selectedColumn={selectedColumn}
         onUnsetColumn={handleUnsetSelectedColumn}
       />
-      <div>{renderContent()}</div>
+      <div>
+        <ClickBehaviorSidebarContent
+          dashboard={dashboard}
+          dashcard={dashcard}
+          dashcardData={dashcardData}
+          parameters={parameters}
+          clickBehavior={clickBehavior}
+          isTypeSelectorVisible={isTypeSelectorVisible}
+          hasSelectedColumn={hasSelectedColumn}
+          onColumnSelected={handleColumnSelected}
+          onSettingsChange={handleChangeSettings}
+          onTypeSelectorVisibilityChange={setTypeSelectorVisible}
+        />
+      </div>
     </Sidebar>
   );
 }
