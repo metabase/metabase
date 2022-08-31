@@ -9,6 +9,7 @@ const UNABLE_TO_VALIDATE_TOKEN = t`We're having trouble validating your token. P
 
 export type TokenStatus = {
   validUntil: Date;
+  validStatus: string;
   isValid: boolean;
   isTrial: boolean;
   features: string[];
@@ -55,6 +56,7 @@ export const useLicense = (onActivated?: () => void) => {
         const response = await StoreApi.tokenStatus();
         setTokenStatus({
           validUntil: new Date(response["valid-thru"]),
+          validStatus: response.status,
           isValid: response.valid,
           isTrial: response.trial,
           features: response.features,
