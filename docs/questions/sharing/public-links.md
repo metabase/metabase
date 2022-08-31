@@ -37,7 +37,7 @@ To create a public link to download the results of a question:
 - Then, below the **Public link** option, click on the format you want (CSV, XLSX, or JSON). Metabase will update the link based on your selection.
 - Copy the link and test it out to confirm that the link downloads the expected format.
 
-![Public export](./images/public-export.png)
+![Public export](../images/public-export.png)
 
 This public link export option is only available for questions, not dashboards.
 
