@@ -6,7 +6,6 @@ import type Field from "metabase-lib/lib/metadata/Field";
 
 import type {
   WritebackAction,
-  ParameterMappings,
   ParametersMappedToValues,
   ParametersSourceTargetMap,
   ActionClickBehaviorData,
@@ -72,12 +71,6 @@ export const isEditableField = (field: Field) => {
 export const isActionButtonDashCard = (dashCard: DashCard) =>
   dashCard.visualization_settings?.virtual_card?.display === "action-button";
 
-export const getActionButtonEmitterId = (dashCard: DashCard) =>
-  dashCard.visualization_settings?.click_behavior?.emitter_id;
-
-export const getActionButtonActionId = (dashCard: DashCard) =>
-  dashCard.visualization_settings?.click_behavior?.action;
-
 export function getActionParameterType(parameter: Parameter) {
   const { type } = parameter;
   if (type === "category") {
@@ -107,20 +100,6 @@ function getParametersFromTuples(
     return parameter;
   });
 }
-
-export const getActionEmitterParameterMappings = (action: WritebackAction) => {
-  const parameters = getParametersFromTuples(action.parameters);
-  const parameterMappings: ParameterMappings = {};
-
-  parameters.forEach(parameter => {
-    parameterMappings[parameter.id] = [
-      "variable",
-      ["template-tag", parameter.slug],
-    ];
-  });
-
-  return parameterMappings;
-};
 
 export function getActionParameters(
   parameterMapping: ParametersSourceTargetMap = {},
