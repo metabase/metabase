@@ -13,7 +13,6 @@ export function getNestedCardTable(
 
   const questionId = getQuestionIdFromVirtualTableId(sourceTableId);
   const sourceQuestion = metadata.question(questionId);
-
   if (sourceQuestion) {
     const sourceQuestionResultMetadata = sourceQuestion.getResultMetadata();
     const sourceQuestionQuery = sourceQuestion.query();
@@ -42,7 +41,10 @@ export function getNestedCardTable(
     });
   }
 
-  return null;
+  // `card__123` tables are technically accessible via `metabase.table("card__123")`,
+  // but the `fields` on the table may be incorrect.
+  // see (metabase#25141)
+  return metadata.table(sourceTableId);
 }
 
 export function getDatasetTable(
