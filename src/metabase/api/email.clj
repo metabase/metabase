@@ -77,15 +77,27 @@
              (name (mb-to-smtp-settings k))
              (str/upper-case v))])))
 
+(defn- env-var-values-by-email-setting
+  "Returns a map of setting names (keywords) and env var values.
+   If an env var is not set, the setting is not included in the result."
+  []
+  (into {}
+        (for [setting-name (keys mb-to-smtp-settings)
+              :let         [value (setting/env-var-value setting-name)]
+              :when        (some? value)]
+          [setting-name value])))
+
 (api/defendpoint PUT "/"
   "Update multiple email Settings. You must be a superuser or have `setting` permission to do this."
   [:as {settings :body}]
   {settings su/Map}
   (validation/check-has-application-permission :setting)
-  ;; the frontend has access to an obfuscated version of the password. Watch for whether it sent us a new password or
-  ;; the obfuscated version
-  (let [obfuscated? (and (:email-smtp-password settings) (email/email-smtp-password)
+  (let [;; the frontend has access to an obfuscated version of the password. Watch for whether it sent us a new password or
+        ;; the obfuscated version
+        obfuscated? (and (:email-smtp-password settings) (email/email-smtp-password)
                          (= (:email-smtp-password settings) (setting/obfuscate-value (email/email-smtp-password))))
+        ;; override `nil` values in the request with environment variables
+        settings    (merge settings (env-var-values-by-email-setting))
         settings    (-> (cond-> settings
                           obfuscated?
                           (assoc :email-smtp-password (email/email-smtp-password)))
@@ -94,7 +106,7 @@
         settings    (cond-> settings
                       (string? (:port settings))     (update :port #(Long/parseLong ^String %))
                       (string? (:security settings)) (update :security keyword))
-        response (email/test-smtp-connection settings)]
+        response    (email/test-smtp-connection settings)]
     (if-not (::email/error response)
       ;; test was good, save our settings
       (cond-> (assoc (setting/set-many! (set/rename-keys response (set/map-invert mb-to-smtp-settings)))
