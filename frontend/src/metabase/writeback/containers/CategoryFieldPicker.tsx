@@ -1,7 +1,7 @@
 import React from "react";
 
 import CategoryFieldInput from "../components/CategoryFieldInput";
-import { CategoryWidgetProps } from "../internalTypes";
+import { CategoryWidgetProps } from "../types";
 
 import CategoryRadioPicker from "./CategoryRadioPicker";
 
