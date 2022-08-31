@@ -85,7 +85,6 @@ class ChartSettings extends Component {
 
   // allows a widget to temporarily replace itself with a different widget
   handleShowWidget = (widget, ref) => {
-    console.log(ref);
     this.setState({ popoverRef: ref });
     this.setState({ currentWidget: widget });
   };
@@ -214,24 +213,6 @@ class ChartSettings extends Component {
           sectionNames[0];
 
     const visibleWidgets = sections[currentSection] || [];
-    // let popupWidgets = currentWidget && widgetsById[currentWidget.id];
-    // let visiblePopupWidgets;
-
-    // console.log(widgetsById, currentWidget);
-
-    // if (popupWidget) {
-    //   popupWidget = {
-    //     ...popupWidget,
-    //     hidden: false,
-    //     props: {
-    //       ...(popupWidget.props || {}),
-    //       ...(currentWidget.props || {}),
-    //     },
-    //   };
-    //   visiblePopupWidgets = [popupWidget];
-    // } else {
-    //   visiblePopupWidgets = [];
-    // }
 
     // This checks whether the current section contains a column settings widget
     // at the top level. If it does, we avoid hiding the section tabs and
@@ -249,15 +230,6 @@ class ChartSettings extends Component {
       currentSectionHasColumnSettings,
     };
 
-    const widgetList = visibleWidgets.map(widget => (
-      <ChartSettingsWidget
-        key={`${widget.id}`}
-        {...widget}
-        {...extraWidgetProps}
-        setSidebarPropsOverride={setSidebarPropsOverride}
-      />
-    ));
-
     const sectionPicker = (
       <SectionContainer>
         <Radio
@@ -271,6 +243,15 @@ class ChartSettings extends Component {
         />
       </SectionContainer>
     );
+
+    const widgetList = visibleWidgets.map(widget => (
+      <ChartSettingsWidget
+        key={`${widget.id}`}
+        {...widget}
+        {...extraWidgetProps}
+        setSidebarPropsOverride={setSidebarPropsOverride}
+      />
+    ));
 
     const onReset =
       !_.isEqual(settings, {}) && (settings || {}).virtual_card == null // resetting virtual cards wipes the text and broke the UI (metabase#14644)
@@ -356,21 +337,6 @@ class ChartSettings extends Component {
           extraWidgetProps={extraWidgetProps}
           setSidebarPropsOverride={setSidebarPropsOverride}
         />
-        {/* <TippyPopover
-          reference={popoverRef}
-          content={
-            <div className="full-height relative scroll-y scroll-show pt3 pb4">
-              <ChartSettingsWidgetList
-                widgets={visiblePopupWidgets}
-                extraWidgetProps={extraWidgetProps}
-                setSidebarPropsOverride={setSidebarPropsOverride}
-              />
-            </div>
-          }
-          visible={!!popoverRef}
-          onClose={this.handleEndShowWidget}
-          placement="right"
-        /> */}
       </div>
     );
   }

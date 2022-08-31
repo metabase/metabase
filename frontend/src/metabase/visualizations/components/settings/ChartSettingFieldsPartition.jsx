@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import React, { useRef } from "react";
 import cx from "classnames";
 import { t } from "ttag";
 import { DragSource, DropTarget } from "react-dnd";
@@ -86,11 +86,17 @@ function SortOrderOption({ value, onChange }) {
 }
 
 function FormattingOptions({ onEdit }) {
+  const settingsRef = useRef(null);
+
+  const handleOnEdit = () => {
+    onEdit(settingsRef);
+  };
   return (
     <FormattingOptionsRoot>
       <Text>{t`Formatting`}</Text>
       <Text
-        onClick={onEdit}
+        ref={settingsRef}
+        onClick={handleOnEdit}
         className="text-brand text-bold cursor-pointer"
       >{t`See options…`}</Text>
     </FormattingOptionsRoot>
@@ -143,14 +149,17 @@ class ChartSettingFieldsPartition extends React.Component {
     return columnSettings && columnSettings[settingName];
   };
 
-  handleEditFormatting = column => {
+  handleEditFormatting = (column, ref) => {
     if (column) {
-      this.props.onShowWidget({
-        id: "column_settings",
-        props: {
-          initialKey: keyForColumn(column),
+      this.props.onShowWidget(
+        {
+          id: "column_settings",
+          props: {
+            initialKey: keyForColumn(column),
+          },
         },
-      });
+        ref,
+      );
     }
   };
   updateDisplayedValue = displayedValue =>
@@ -303,9 +312,9 @@ class ColumnInner extends React.Component {
     const { expanded } = this.state;
     this.setState({ expanded: !expanded });
   };
-  handleEditFormatting = () => {
+  handleEditFormatting = settingsRef => {
     const { column, onEditFormatting } = this.props;
-    onEditFormatting && onEditFormatting(column);
+    onEditFormatting && onEditFormatting(column, settingsRef);
   };
   render() {
     const {

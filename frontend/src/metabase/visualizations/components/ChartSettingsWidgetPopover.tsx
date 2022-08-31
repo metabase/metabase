@@ -6,11 +6,11 @@ import { PopoverRoot, PopoverTitle } from "./ChartSettingsWidgetPopover.styled";
 
 interface Widget {
   id: string;
-  props: {};
+  props: Record<string, unknown>;
 }
 
 interface ChartSettingsWidgetPopoverProps {
-  anchor: HTMLAnchorElement;
+  anchor: HTMLElement;
   handleEndShowWidget: () => void;
   widgets: [Widget];
   currentWidget: Widget;
@@ -57,6 +57,17 @@ export const ChartSettingsWidgetPopover = ({
       visible={!!anchor && popoverWidgets.length > 0}
       onClose={handleEndShowWidget}
       placement="right"
+      offset={[10, 10]}
+      popperOptions={{
+        modifiers: [
+          {
+            name: "preventOverflow",
+            options: {
+              padding: 16,
+            },
+          },
+        ],
+      }}
     />
   );
 };

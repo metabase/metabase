@@ -1,4 +1,9 @@
-import React, { useCallback, ChangeEvent } from "react";
+import React, {
+  useCallback,
+  ChangeEvent,
+  useRef,
+  HtmlHTMLAttributes,
+} from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -30,7 +35,7 @@ interface Props {
   columns: Column[];
   question: Question;
   onChange: (value: SettingValue) => void;
-  onShowWidget: (config: unknown) => void;
+  onShowWidget: (config: unknown, ref: HTMLElement | null) => void;
 }
 
 type ListColumnSlot = "left" | "right";
@@ -54,6 +59,8 @@ function ChartSettingsListColumns({
   onChange,
   onShowWidget,
 }: Props) {
+  const settingsRef = useRef(null);
+
   const onChangeColumn = useCallback(
     (slot: ListColumnSlot, index: number, val: FieldIdOrFieldRef) => {
       onChange({
@@ -76,12 +83,15 @@ function ChartSettingsListColumns({
           _.isEqual(column.field_ref, fieldIdOrFieldRef),
       );
       if (column) {
-        onShowWidget({
-          id: "column_settings",
-          props: {
-            initialKey: keyForColumn(column),
+        onShowWidget(
+          {
+            id: "column_settings",
+            props: {
+              initialKey: keyForColumn(column),
+            },
           },
-        });
+          settingsRef.current,
+        );
       }
     },
     [columns, onShowWidget],
@@ -113,6 +123,7 @@ function ChartSettingsListColumns({
             }}
           />
           <Button
+            ref={settingsRef}
             icon="gear"
             onlyIcon
             disabled={fieldIdOrFieldRef === null}
