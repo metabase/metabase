@@ -110,15 +110,14 @@
         response         (email/test-smtp-connection settings)]
     (if-not (::email/error response)
       ;; test was good, save our settings
-      (let [;; except don't update settings derived from environment variables
-            settings-with-corrections (apply dissoc response (keys env-var-settings))
-            [_ corrections]           (data/diff settings settings-with-corrections)]
-       (cond-> (assoc (setting/set-many! (-> settings-with-corrections
-                                             (set/rename-keys (set/map-invert mb-to-smtp-settings))))
-                      :with-corrections  (-> corrections
-                                             (set/rename-keys (set/map-invert mb-to-smtp-settings))
-                                             humanize-email-corrections))
-         obfuscated? (update :email-smtp-password setting/obfuscate-value)))
+      (let [[_ corrections] (data/diff settings response)
+            new-settings    (set/rename-keys response (set/map-invert mb-to-smtp-settings))]
+        ;; don't update settings if they are set by environment variables
+        (setting/set-many! (apply dissoc new-settings (keys env-var-settings)))
+        (cond-> (assoc new-settings :with-corrections (-> corrections
+                                                          (set/rename-keys (set/map-invert mb-to-smtp-settings))
+                                                          humanize-email-corrections))
+          obfuscated? (update :email-smtp-password setting/obfuscate-value)))
       ;; test failed, return response message
       {:status 400
        :body   (humanize-error-messages response)})))
