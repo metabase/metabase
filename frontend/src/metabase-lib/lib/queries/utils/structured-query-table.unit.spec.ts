@@ -213,11 +213,11 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
     );
 
     it("should return a virtual table based on the nested query", () => {
-      expect(table?.getPlainObject()).toEqual({
-        display_name: "",
-        id: 3,
-        name: "",
-      });
+      expect(table?.getPlainObject()).toEqual(
+        expect.objectContaining({
+          ...PRODUCTS.getPlainObject(),
+        }),
+      );
     });
 
     it("should contain fields", () => {

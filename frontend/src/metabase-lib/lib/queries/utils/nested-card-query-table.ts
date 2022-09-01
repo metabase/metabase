@@ -4,7 +4,11 @@ import type Field from "metabase-lib/lib/metadata/Field";
 import type Question from "metabase-lib/lib/Question";
 import type StructuredQuery from "../StructuredQuery";
 import type NativeQuery from "../NativeQuery";
-import { createVirtualField, createVirtualTable } from "./virtual-table";
+import {
+  createVirtualField,
+  createVirtualTable,
+  createTableCloneWithOverridedMetadata,
+} from "./virtual-table";
 
 // This function expects a `sourceTableId` to exist in the `metadata.table` cache
 // It also expects the card associated with the `sourceTableId` to exist in the `metadata.question` cache
@@ -26,6 +30,13 @@ export function getNestedCardTable(query: StructuredQuery): Table | null {
     return createTableCloneWithOverridedMetadata(nestedCardTable, fields);
   }
 
+  // There are scenarios (and possible race conditions) in the application where
+  // the nested card table might not be available, but if we have access to a Question
+  // with result_metadata then we might as well use it to create virtual fields
+  if (nestedQuestion) {
+    return createVirtualTableUsingQuestionMetadata(nestedQuestion);
+  }
+
   return null;
 }
 
@@ -35,22 +46,10 @@ export function getDatasetTable(
   query: StructuredQuery | NativeQuery,
 ): Table | null {
   const question = query.question();
-  const metadata = query.metadata();
   const composedDatasetQuestion = question.composeDataset();
   const composedQuestionQuery =
     composedDatasetQuestion.query() as StructuredQuery;
-
-  // This probably isn't loaded into state yet, but worth checking because
-  // the Table will have more field metadata on it than the question's result_metadata alone
-  const nestedCardSourceTableId = composedQuestionQuery.sourceTableId();
-  if (metadata.table(nestedCardSourceTableId)) {
-    return getNestedCardTable(composedQuestionQuery);
-  }
-
-  return createVirtualTableUsingQuestionMetadata(
-    composedDatasetQuestion,
-    composedQuestionQuery,
-  );
+  return getNestedCardTable(composedQuestionQuery);
 }
 
 // Using the `nestedCardTable` fields as a base, override the field object with matching metadata found in the Question's result_metadata array
@@ -84,31 +83,19 @@ function isEqualAndDefined(a: unknown, b: unknown): boolean {
   return a != null && b != null && a === b;
 }
 
-function createTableCloneWithOverridedMetadata(
-  nestedCardTable: Table,
-  fields: Field[],
-): Table {
-  const clonedTable = nestedCardTable.clone();
-  clonedTable.fields = fields;
-  clonedTable.getPlainObject().fields = fields.map(field => field.id);
-  return clonedTable;
-}
-
-function createVirtualTableUsingQuestionMetadata(
-  question: Question,
-  originalQuery: StructuredQuery,
-): Table {
+function createVirtualTableUsingQuestionMetadata(question: Question): Table {
   const metadata = question.metadata();
   const questionResultMetadata = question.getResultMetadata();
   const questionDisplayName = question.displayName() as string;
-  const sourceTableId = originalQuery.sourceTableId();
+  const query = question.query() as StructuredQuery;
+  const sourceTableId = query.sourceTableId();
   const fields = questionResultMetadata.map((fieldMetadata: any) => {
     const field = metadata.field(fieldMetadata.id);
     const virtualField = field
       ? field.clone(fieldMetadata)
       : createVirtualField(fieldMetadata);
 
-    virtualField.query = originalQuery;
+    virtualField.query = query;
     virtualField.metadata = metadata;
 
     return virtualField;
