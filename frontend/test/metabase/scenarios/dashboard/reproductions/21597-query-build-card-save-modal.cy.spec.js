@@ -56,7 +56,9 @@ describe("display the relevant error message in save question modal (metabase#21
     cy.visit("/");
     openNativeEditor({
       databaseName,
-    }).type("SELECT COUNT(*) FROM PRODUCTS WHERE {{}{{}FILTER}}");
+    }).type("SELECT COUNT(*) FROM PRODUCTS WHERE {{FILTER}}", {
+      parseSpecialCharSequences: false,
+    });
 
     cy.findByTestId("select-button").click();
     popover().within(() => {
