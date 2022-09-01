@@ -199,7 +199,7 @@ Share and connect with other Metabasers.
 
 ### [Premium features](./paid-features/start.md)
 
-Some [Metabase plans](/pricing) offer additional features.
+Some [Metabase plans](https://www.metabase.com/pricing) offer additional features.
 
 ### [Metabase Cloud](https://www.metabase.com/cloud/docs)
 
@@ -225,7 +225,7 @@ We tweet stuff.
 
 Follow us on GitHub.
 
-### [Developers guide](developers-guide/start.md)
+### [Developers guide](./developers-guide/start.md)
 
 Contribute to the Metabase open source project!
 
