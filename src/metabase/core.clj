@@ -80,7 +80,7 @@
   ;; to a Shutdown hook of some sort instead of having here
   (task/stop-scheduler!)
   (server/stop-web-server!)
-  (prometheus/stop-web-server)
+  (prometheus/shutdown!)
   (log/info (trs "Metabase Shutdown COMPLETE")))
 
 (defn- init!*
@@ -105,8 +105,7 @@
 
   (when (prometheus/prometheus-server-port)
     (log/info (trs "Setting up prometheus metrics"))
-    (prometheus/setup-metrics!)
-    (prometheus/start-web-server!)
+    (prometheus/setup!)
     (init-status/set-progress! 0.6))
 
   ;; run a very quick check to see if we are doing a first time installation
