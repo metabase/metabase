@@ -15,6 +15,8 @@ export const PublicNavbarRoot = styled.nav`
   height: ${APP_BAR_HEIGHT};
   display: flex;
   align-items: center;
+  position: fixed;
+  width: 100%;
   justify-content: space-between;
 `;
 
