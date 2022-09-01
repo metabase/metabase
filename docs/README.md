@@ -173,7 +173,7 @@ Metabase's reference documentation.
 
 ### Troubleshooting
 
-- [Get unstuck](./troubleshooting/index.md)
+- [Get unstuck](./troubleshooting-guide/index.md)
 
 ## Getting help
 
