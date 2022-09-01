@@ -96,7 +96,7 @@ export function applyChartTimeseriesXAxis(
   const firstSeries = _.find(series, s => !datasetContainsNoResults(s.data));
 
   // setup an x-axis where the dimension is a timeseries
-  const dimensionColumn = firstSeries.data.cols[0];
+  let dimensionColumn = firstSeries.data.cols[0];
 
   // compute the data interval
   const dataInterval = xInterval;
@@ -116,6 +116,10 @@ export function applyChartTimeseriesXAxis(
       chart.settings["graph.x_axis.gridLine_enabled"],
     );
 
+    if (dimensionColumn.unit == null && dataInterval.interval !== "ms") {
+      dimensionColumn = { ...dimensionColumn, unit: dataInterval.interval };
+    }
+
     const waterfallTotalX =
       firstSeries.card.display === "waterfall" &&
       chart.settings["waterfall.show_total"]
@@ -124,7 +128,7 @@ export function applyChartTimeseriesXAxis(
 
     // special handling for weeks
     // TODO: are there any other cases where we should do this?
-    let tickFormatUnit = dimensionColumn.unit ?? dataInterval.interval;
+    let tickFormatUnit = dimensionColumn.unit;
     tickFormat = timestamp => {
       const { column, ...columnSettings } =
         chart.settings.column(dimensionColumn);
