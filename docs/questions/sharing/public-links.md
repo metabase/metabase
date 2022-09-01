@@ -14,7 +14,7 @@ Sometimes you'll want to share a dashboard or question you've saved with someone
 ![Enable public sharing](../images/enable-public-sharing.png)
 First things first, you'll need to go to the Admin Panel and enable public sharing. In the future, you'll see dashboards and questions you've shared listed here, and you'll be able to revoke any public links that you no longer want to be used.
 
-## Enable sharing on your dashboard or saved question
+## Enable sharing on your saved question or dashboard
 
 ![Enable sharing](../images/enable-links.png)
 
@@ -27,6 +27,19 @@ In the case of a dashboard, the button is located on the top right of the page.
 Copy and share the public link URL with whomever you please. The public link URL will display static results of your question or dashboard, so visitors won't be able to drill-down into the underlying data on their own.
 
 However, public URLs preserve [custom click behavior](../../dashboards/interactive.md). If you like, you can share specific drill-down views by linking to other questions or dashboards.
+
+## Public exports for question results in CSV, XLSX, JSON
+
+To create a public link to download the results of a question:
+
+- Click on the **Sharing and embedding** icon for the question,
+- Enable sharing,
+- Then, below the **Public link** option, click on the format you want (CSV, XLSX, or JSON). Metabase will update the link based on your selection.
+- Copy the link and test it out to confirm that the link downloads the expected format.
+
+![Public export](../images/public-export.png)
+
+This public link export option is only available for questions, not dashboards.
 
 ## Public embed
 
