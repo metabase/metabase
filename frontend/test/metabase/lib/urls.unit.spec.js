@@ -1,4 +1,5 @@
 import {
+  bookmark,
   browseDatabase,
   collection,
   dashboard,
@@ -216,6 +217,51 @@ describe("urls", () => {
           personal_owner_id: 1,
         }),
       ).toBe("/collection/1-john-doe-s-personal-collection");
+    });
+  });
+
+  describe("bookmarks", () => {
+    it("returns card bookmark path", () => {
+      expect(
+        bookmark({
+          id: "card-5",
+          dataset: false,
+          name: "Orders",
+          type: "card",
+        }),
+      ).toBe("/card/5-orders");
+    });
+
+    it("returns model bookmark path", () => {
+      expect(
+        bookmark({
+          id: "card-1",
+          dataset: true,
+          name: "Product",
+          type: "card",
+        }),
+      ).toBe("/card/1-product");
+    });
+
+    it("returns dashboard bookmark path", () => {
+      expect(
+        bookmark({
+          id: "dashboard-3",
+          name: "Shop Stats",
+          type: "dashboard",
+        }),
+      ).toBe("/dashboard/3-shop-stats");
+    });
+
+    it("returns collection bookmark path", () => {
+      expect(
+        bookmark({
+          id: "collection-8",
+          item_id: 8,
+          name: "Growth",
+          type: "collection",
+        }),
+      ).toBe("/collection/8-growth");
     });
   });
 
