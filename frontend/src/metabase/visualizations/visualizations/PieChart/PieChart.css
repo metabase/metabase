@@ -12,11 +12,8 @@
 
 :local .Chart {
   display: flex;
-}
-
-:local .Donut {
-  flex: 1;
-  height: 100%;
+  align-items: center;
+  justify-content: center;
 }
 
 :local .Detail {
