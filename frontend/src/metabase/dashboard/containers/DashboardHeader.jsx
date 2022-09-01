@@ -13,6 +13,9 @@ import Button from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 import EntityMenu from "metabase/components/EntityMenu";
+import Popover from "metabase/components/Popover";
+import { trackStructEvent } from "metabase/lib/analytics";
+import "./DashboardHeader.css";
 
 import Bookmark from "metabase/entities/bookmarks";
 
@@ -59,6 +62,7 @@ class DashboardHeader extends Component {
 
   state = {
     modal: null,
+    showMediaModal: false,
   };
 
   static propTypes = {
@@ -76,6 +80,9 @@ class DashboardHeader extends Component {
 
     addCardToDashboard: PropTypes.func.isRequired,
     addTextDashCardToDashboard: PropTypes.func.isRequired,
+    addImageDashCardToDashboard: PropTypes.func.isRequired,
+    addVideoDashCardToDashboard: PropTypes.func.isRequired,
+    addTabsDashCardToDashboard: PropTypes.func.isRequired,
     fetchDashboard: PropTypes.func.isRequired,
     saveDashboardAndCards: PropTypes.func.isRequired,
     setDashboardAttribute: PropTypes.func.isRequired,
@@ -108,13 +115,16 @@ class DashboardHeader extends Component {
   onAddTextBox() {
     this.props.addTextDashCardToDashboard({ dashId: this.props.dashboard.id });
   }
-
-  onAddActionButton() {
-    this.props.addActionButtonDashCardToDashboard({
-      dashId: this.props.dashboard.id,
-    });
+  onAddImageBox() {
+    this.props.addImageDashCardToDashboard({ dashId: this.props.dashboard.id });
   }
 
+  onAddVideoBox() {
+    this.props.addVideoDashCardToDashboard({ dashId: this.props.dashboard.id });
+  }
+  onAddTabs() {
+    this.props.addTabsDashCardToDashboard({ dashId: this.props.dashboard.id });
+  }
   onDoneEditing() {
     this.props.onEditingChange(false);
   }
@@ -181,7 +191,6 @@ class DashboardHeader extends Component {
       dashboard,
       parametersWidget,
       isBookmarked,
-      isAdmin,
       isEditing,
       isFullscreen,
       isEditable,
@@ -195,6 +204,7 @@ class DashboardHeader extends Component {
       isShowingDashboardInfoSidebar,
       closeSidebar,
     } = this.props;
+    const { showMediaModal } = this.state;
 
     const canEdit = dashboard.can_write && isEditable && !!dashboard;
 
@@ -217,44 +227,49 @@ class DashboardHeader extends Component {
             isActive={showAddQuestionSidebar}
             onClick={onToggleAddQuestionSidebar}
             data-metabase-event="Dashboard;Add Card Sidebar"
-          >
-            Add Chart
-          </DashboardHeaderButton>
+          />
         </Tooltip>,
       );
 
       // Add text card button
       buttons.push(
-        <Tooltip key="add-a-text-box" tooltip={t`Add a text box`}>
-          <a
-            data-metabase-event="Dashboard;Add Text Box"
-            key="add-text"
-            className="text-brand-hover cursor-pointer"
-            onClick={() => this.onAddTextBox()}
-          >
-            <DashboardHeaderButton>
-              <Icon name="string" size={18} />
-            </DashboardHeaderButton>
-          </a>
-        </Tooltip>,
-      );
-
-      if (isAdmin && dashboard.is_app_page) {
-        buttons.push(
-          <Tooltip key="add-action-button" tooltip={t`Add action button`}>
+        <span>
+          <Tooltip key="add-a-text-box" tooltip={t`Add more visualization`}>
             <a
-              data-metabase-event="Dashboard;Add Action Button"
-              key="add-action-button"
+              data-metabase-event="Dashboard;Add Text Box"
+              key="add-text"
               className="text-brand-hover cursor-pointer"
-              onClick={() => this.onAddActionButton()}
+              onClick={() => {
+                this.setState({ showMediaModal: true });
+                trackStructEvent("click Add Media Box");
+              }}
             >
               <DashboardHeaderButton>
-                <Icon name="play" size={18} />
+                <Icon name="add_data" size={18} />
               </DashboardHeaderButton>
             </a>
-          </Tooltip>,
-        );
-      }
+          </Tooltip>
+          ,{showMediaModal && this.renderMediaPopover()}
+        </span>,
+      );
+      // buttons.push(
+      //   <span>
+      //     <Button
+      //       onlyIcon
+      //       className="ml1 Question-header-btn-new"
+      //       iconColor="#7A819B"
+      //       icon="string"
+      //       iconSize={16}
+      //       onClick={() => {
+      //         this.setState({ showMediaModal: true });
+      //         trackStructEvent("click Add Media Box");
+      //       }}
+      //     >
+      //       Add a media box
+      //     </Button>
+      //     {showMediaModal && this.renderMediaPopover()}
+      //   </span>,
+      // );
 
       const {
         isAddParameterPopoverOpen,
@@ -386,6 +401,62 @@ class DashboardHeader extends Component {
 
     return buttons;
   }
+
+  renderMediaPopoverItem = (type, onclick) => {
+    return (
+      <div
+        className="dashboard-header__media-popover-item cursor-pointer brand-hover"
+        onClick={onclick}
+      >
+        {type}
+      </div>
+    );
+  };
+
+  renderMediaPopover = () => {
+    const mediaData = [
+      {
+        type: "Text",
+        onclick: () => {
+          this.onAddTextBox();
+        },
+      },
+      {
+        type: "Image",
+        onclick: () => {
+          this.onAddImageBox();
+        },
+      },
+      {
+        type: "Video",
+        onclick: () => {
+          this.onAddVideoBox();
+        },
+      },
+      {
+        type: "Tabs",
+        onclick: () => {
+          this.onAddTabs();
+        },
+      },
+    ];
+    return (
+      <Popover
+        onClose={() => this.setState({ showMediaModal: false })}
+        verticalAttachments={["top", "bottom"]}
+      >
+        <li className="dashboard-header__media-popover">
+          {mediaData.map(data => {
+            return this.renderMediaPopoverItem(data.type, () => {
+              data.onclick();
+              this.setState({ showMediaModal: false });
+              trackStructEvent(`click Add ${data.type} Box`);
+            });
+          })}
+        </li>
+      </Popover>
+    );
+  };
 
   render() {
     const {

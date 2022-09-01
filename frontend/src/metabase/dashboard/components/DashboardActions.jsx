@@ -32,10 +32,6 @@ export const getDashboardActions = (
     hasNightModeToggle,
   },
 ) => {
-  if (dashboard?.is_app_page) {
-    return [];
-  }
-
   const isPublicLinksEnabled = MetabaseSettings.get("enable-public-sharing");
   const isEmbeddingEnabled = MetabaseSettings.get("enable-embedding");
 
@@ -47,7 +43,10 @@ export const getDashboardActions = (
   // dashcardData only contains question cards, text ones don't appear here
   const hasDataCards =
     hasCards &&
-    dashboard.ordered_cards.some(dashCard => dashCard.card.display !== "text");
+    dashboard.ordered_cards.some(
+      dashCard =>
+        dashCard.card.display !== "text" && dashCard.card.display !== "image",
+    );
 
   const canShareDashboard = hasCards;
   const canCreateSubscription = hasDataCards && canManageSubscriptions;

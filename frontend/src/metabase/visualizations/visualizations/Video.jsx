@@ -1,11 +1,13 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import styles from "./Text/Text.css";
-import "./Image.css";
+
 import cx from "classnames";
 import { t } from "ttag";
-import querystring from "querystring";
-export default class Image extends Component {
+
+import ItemVideo from "metabase/dashboard/Recommendations/ItemVideo";
+
+export default class Video extends Component {
   props;
   state;
 
@@ -18,9 +20,9 @@ export default class Image extends Component {
     };
   }
 
-  static uiName = "Image";
-  static identifier = "image";
-  static iconName = "image";
+  static uiName = "Video";
+  static identifier = "video";
+  static iconName = "video";
 
   static disableSettingsConfig = false;
   static noHeader = true;
@@ -28,7 +30,7 @@ export default class Image extends Component {
   static hidden = true;
   static supportPreviewing = true;
 
-  static minSize = { width: 2, height: 1 };
+  static minSize = { width: 4, height: 1 };
 
   static checkRenderable() {
     // text can always be rendered, nothing needed here
@@ -52,13 +54,6 @@ export default class Image extends Component {
       widget: "toggle",
       default: true,
     },
-    "dashcard.params": {
-      section: t`Display`,
-      title: t`URL from query params`,
-      dashboard: true,
-      widget: "toggle",
-      default: false,
-    },
   };
 
   handleTextChange(text) {
@@ -67,30 +62,21 @@ export default class Image extends Component {
 
   preventDragging = e => e.stopPropagation();
 
-  renderImage = ({ settings }) => {
-    const params = querystring.parse(window.location.search.replace("?", ""));
-    if (!settings.text && !settings["dashcard.params"]) {
+  renderVideo = ({ settings }) => {
+    if (!settings.text) {
       return null;
     }
-    if (settings["dashcard.params"] && !params) {
-      return null;
-    }
-    return (
-      <img
-        className="profile-photo"
-        src={settings["dashcard.params"] ? params.image : settings.text}
-        alt="NFTLake Analytics"
-      />
-    );
+    return <ItemVideo item={{ mediaUrl: settings.text }} />;
   };
 
   render() {
     const { className, settings, isEditing } = this.props;
+
     if (isEditing) {
       return (
         <div className={cx(className, styles.Text)}>
           {this.props.isPreviewing ? (
-            <React.Fragment>{this.renderImage({ settings })}</React.Fragment>
+            <React.Fragment>{this.renderVideo({ settings })}</React.Fragment>
           ) : (
             <div className="full flex-full flex flex-column">
               <textarea
@@ -99,11 +85,7 @@ export default class Image extends Component {
                   styles["text-card-textarea"],
                 )}
                 name="text"
-                placeholder={t`${
-                  settings["dashcard.params"]
-                    ? "In case of query url will always pick from {{image}}"
-                    : "Type or paste Image url here"
-                }`}
+                placeholder={t`Type or paste video url here, only YouTube videos are supported now, e.g. https://www.youtube.com/watch?v=yL1o7axk1pg`}
                 value={settings.text}
                 onChange={e => this.handleTextChange(e.target.value)}
                 // Prevents text cards from dragging when you actually want to select text
@@ -114,7 +96,7 @@ export default class Image extends Component {
                 className="absolute footprint-secondary-text2"
                 style={{ bottom: 10, right: 20 }}
               >
-                Image
+                Video
               </span>
             </div>
           )}
@@ -130,7 +112,7 @@ export default class Image extends Component {
             pl0: !settings["dashcard.background"],
           })}
         >
-          {this.renderImage({ settings })}
+          {this.renderVideo({ settings })}
         </div>
       );
     }
