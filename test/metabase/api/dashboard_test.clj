@@ -1859,7 +1859,7 @@
             (is (partial= {:action_id action-id}
                           (mt/user-http-request :crowberto :post 200 (format "dashboard/%s/cards" dashboard-id)
                                                 {:sizeX 1 :sizeY 1 :row 1 :col 1 :action_id action-id})))
-            (is (partial= {:ordered_cards [{:action_id action-id}]}
+            (is (partial= {:ordered_cards [{:action_id action-id :action {:id action-id}}]}
                           (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id))))))
         (testing "Updating dashcard action"
           (mt/with-temp* [Dashboard [{dashboard-id :id}]
@@ -1867,7 +1867,7 @@
             (is (partial= {:status "ok"}
                           (mt/user-http-request :crowberto :put 200 (format "dashboard/%s/cards" dashboard-id)
                                                 {:cards [(assoc dashcard :action_id action-id)]})))
-            (is (partial= {:ordered_cards [{:action_id action-id}]}
+            (is (partial= {:ordered_cards [{:action_id action-id :action {:id action-id}}]}
                           (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id))))))))))
 
 (deftest dashcard-query-action-execution-test

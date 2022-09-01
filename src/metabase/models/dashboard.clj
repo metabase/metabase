@@ -446,3 +446,8 @@
 (defmethod serdes.base/serdes-dependencies "Dashboard"
   [{:keys [collection_id]}]
   [[{:model "Collection" :id collection_id}]])
+
+(defmethod serdes.base/serdes-descendants "Dashboard" [_model-name id]
+  ;; Return the set of DashboardCards that belong to this dashboard.
+  (set (for [dc-id (db/select-ids 'DashboardCard :dashboard_id id)]
+         ["DashboardCard" dc-id])))

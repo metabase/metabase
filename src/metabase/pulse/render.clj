@@ -203,7 +203,7 @@
                    content]}))
 
 (s/defn render-pulse-card-to-png :- bytes
-  "Render a `pulse-card` as a PNG. `data` is the `:data` from a QP result (I think...)"
+  "Render a `pulse-card` as a PNG. `data` is the `:data` from a QP result."
   [timezone-id :- (s/maybe s/Str) pulse-card result width]
   (png/render-html-to-png (render-pulse-card :inline timezone-id pulse-card nil result) width))
 

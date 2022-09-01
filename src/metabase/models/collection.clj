@@ -964,6 +964,16 @@
   [(cond-> (serdes.base/infer-self-path "Collection" coll)
      slug  (assoc :label slug))])
 
+(defmethod serdes.base/serdes-descendants "Collection" [_model-name id]
+  (let [location    (db/select-one-field :location Collection :id id)
+        child-colls (set (for [child-id (db/select-ids Collection {:where [:like :location (str location id "/%")]})]
+                           ["Collection" child-id]))
+        dashboards  (set (for [dash-id (db/select-ids 'Dashboard :collection_id id)]
+                           ["Dashboard" dash-id]))
+        cards       (set (for [card-id (db/select-ids 'Card      :collection_id id)]
+                           ["Card" card-id]))]
+    (set/union child-colls dashboards cards)))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Perms Checking Helper Fns                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
