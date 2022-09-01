@@ -25,16 +25,7 @@ describe("scenarios > question > new", () => {
     it("data selector popover should not be too small (metabase#15591)", () => {
       // Add 10 more databases
       for (let i = 0; i < 10; i++) {
-        cy.request("POST", "/api/database", {
-          engine: "h2",
-          name: "Sample" + i,
-          details: {
-            db: "zip:./target/uberjar/metabase.jar!/sample-database.db;USER=GUEST;PASSWORD=guest",
-          },
-          auto_run_queries: false,
-          is_full_sync: false,
-          schedules: {},
-        });
+        cy.addH2SampleDatabase({ name: "Sample" + i });
       }
 
       startNewQuestion();
