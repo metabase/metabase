@@ -10,6 +10,7 @@
             [iapetos.collector.ring :as collector.ring]
             [iapetos.core :as prometheus]
             [metabase.models.setting :as setting :refer [defsetting]]
+            [metabase.server :as server]
             [metabase.util.i18n :refer [trs]]
             [potemkin :as p]
             [potemkin.types :as p.types]
@@ -19,6 +20,7 @@
             MemoryPoolsExports
             StandardExports
             ThreadExports]
+           io.prometheus.client.jetty.JettyStatisticsCollector
            org.eclipse.jetty.server.Server))
 
 (defsetting prometheus-server-port
@@ -54,6 +56,10 @@
                      :name      "jvm_threads"}
                     (ThreadExports.))])
 
+(defn- jetty-collectors
+  []
+  [(JettyStatisticsCollector. (.getHandler (server/instance)))])
+
 (defn- setup-metrics!
   "Instrument the application. Conditionally done when some setting is set. If [[prometheus-server-port]] is not set it
   will throw."
@@ -61,7 +67,8 @@
   (log/info (trs "Starting prometheus metrics collector"))
   (let [registry (prometheus/collector-registry registry-name)]
     (apply prometheus/register registry
-           (jvm-collectors))))
+           (concat (jvm-collectors)
+                   (jetty-collectors)))))
 
 (defn- start-web-server!
   "Start the prometheus web-server. If [[prometheus-server-port]] is not set it will throw."
