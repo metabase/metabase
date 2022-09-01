@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import React, { useCallback } from "react";
 import { t } from "ttag";
 
@@ -12,41 +11,8 @@ import type {
   WritebackAction,
 } from "metabase-types/api";
 
-import { SidebarItem } from "../SidebarItem";
 import { Heading, SidebarContent } from "../ClickBehaviorSidebar.styled";
-import {
-  ActionSidebarItem,
-  ActionSidebarItemIcon,
-  ActionDescription,
-} from "./ActionOptions.styled";
-
-interface ActionOptionProps {
-  name: string;
-  description?: string | null;
-  isSelected: boolean;
-  onClick: () => void;
-}
-
-const ActionOption = ({
-  name,
-  description,
-  isSelected,
-  onClick,
-}: ActionOptionProps) => {
-  return (
-    <ActionSidebarItem
-      onClick={onClick}
-      isSelected={isSelected}
-      hasDescription={!!description}
-    >
-      <ActionSidebarItemIcon name="bolt" isSelected={isSelected} />
-      <div>
-        <SidebarItem.Name>{name}</SidebarItem.Name>
-        {description && <ActionDescription>{description}</ActionDescription>}
-      </div>
-    </ActionSidebarItem>
-  );
-};
+import ActionOptionItem from "./ActionOptionItem";
 
 interface ActionOptionsProps {
   dashcard: DashboardOrderedCard;
@@ -77,7 +43,7 @@ function ActionOptions({
           return (
             <>
               {actions.map(action => (
-                <ActionOption
+                <ActionOptionItem
                   key={action.id}
                   name={action.name}
                   description={action.description}
