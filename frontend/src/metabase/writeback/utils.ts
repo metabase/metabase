@@ -3,9 +3,9 @@ import { TYPE } from "metabase/lib/types";
 import type Database from "metabase-lib/lib/metadata/Database";
 import type Field from "metabase-lib/lib/metadata/Field";
 
+import type { DashboardOrderedCard } from "metabase-types/api";
 import type { SavedCard } from "metabase-types/types/Card";
 import type { Database as IDatabase } from "metabase-types/types/Database";
-import type { Parameter } from "metabase-types/types/Parameter";
 
 const DB_WRITEBACK_FEATURE = "actions";
 const DB_WRITEBACK_SETTING = "database-enable-actions";
@@ -66,10 +66,10 @@ export const isActionButtonDashCard = (dashCard: DashboardOrderedCard) =>
     dashCard.visualization_settings?.virtual_card as SavedCard,
   );
 
-export function getActionParameterType(parameter: Parameter) {
-  const { type } = parameter;
-  if (type === "category") {
-    return "string/=";
-  }
-  return type;
-}
+export const isActionButtonWithMappedAction = (
+  dashCard: DashboardOrderedCard,
+) => {
+  return (
+    isActionButtonDashCard(dashCard) && typeof dashCard.action_id === "number"
+  );
+};
