@@ -26,6 +26,7 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 import Snippets from "metabase/entities/snippets";
 import SnippetCollections from "metabase/entities/snippet-collections";
 import SnippetModal from "metabase/query_builder/components/template_tags/SnippetModal";
+import Questions from "metabase/entities/questions";
 import { ResponsiveParametersList } from "./ResponsiveParametersList";
 import NativeQueryEditorSidebar from "./NativeQueryEditor/NativeQueryEditorSidebar";
 import VisibilityToggler from "./NativeQueryEditor/VisibilityToggler";
@@ -287,14 +288,41 @@ class NativeQueryEditor extends Component {
           }
 
           // transform results of the API call into what ACE expects
-          const js_results = results.map(function (result) {
-            return {
-              name: result[0],
-              value: result[0],
-              meta: result[1],
-            };
-          });
-          callback(null, js_results);
+          const jsResults = results.map(result => ({
+            name: result[0],
+            value: result[0],
+            meta: result[1],
+          }));
+          callback(null, jsResults);
+        } catch (error) {
+          console.log("error getting autocompletion data", error);
+          callback(null, []);
+        }
+      },
+    });
+
+    aceLanguageTools.addCompleter({
+      getCompletions: async (_editor, _session, _pos, prefix, callback) => {
+        try {
+          const { query } = this.props;
+          const templateTags = query.templateTagsWithoutSnippets();
+          const referencedQuestionIds = templateTags.map(tag => tag["card-id"]);
+          const referencedQuestions = referencedQuestionIds.map(questionId =>
+            query.metadata().question(questionId),
+          );
+          const results = referencedQuestions.flatMap(question =>
+            question._card.result_metadata.map(column => [
+              column.name,
+              `${question._card.name} :${column.base_type}`,
+            ]),
+          );
+          // transform results of the API call into what ACE expects
+          const jsResults = results.map(result => ({
+            name: result,
+            value: result[0],
+            meta: result[1],
+          }));
+          callback(null, jsResults);
         } catch (error) {
           console.log("error getting autocompletion data", error);
           callback(null, []);
@@ -526,6 +554,17 @@ class NativeQueryEditor extends Component {
 
 export default _.compose(
   ExplicitSize(),
+  Questions.loadList({
+    // At the moment I'm loading all questions, but ideally I'd only load questions that are tagged in the query, like this:
+    // query: (state, { query }) => {
+    //     const templateTags = query.templateTagsWithoutSnippets();
+    //     const referencedQuestionIds = templateTags.map(tag => tag["card-id"]);
+    //   return {
+    //     ids: referencedQuestionIds,
+    //   };
+    // },
+    loadingAndErrorWrapper: false,
+  }),
   Snippets.loadList({ loadingAndErrorWrapper: false }),
   SnippetCollections.loadList({ loadingAndErrorWrapper: false }),
 )(NativeQueryEditor);
