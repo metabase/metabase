@@ -4235,8 +4235,8 @@ msgstr "Ngành, loại, mẫu, đánh giá,..."
 msgid "Account settings"
 msgstr "Cài đặt tài khoản"
 
-#: frontend/src/metabase/nav/components/PublicNavbar/PublicNavbar.tsx:59
-#: frontend/src/metabase/nav/components/PublicNavbar/PublicNavbar.tsx:99
+#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:59
+#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:99
 msgid "Exit admin"
 msgstr "Thoát người quản lý"
 
@@ -4279,7 +4279,7 @@ msgstr "là nhãn hiệu của"
 msgid "and is built with care in San Francisco, CA"
 msgstr "và được xây dựng cẩn thận ở San Francisco, CA"
 
-#: frontend/src/metabase/nav/components/PublicNavbar/PublicNavbar.tsx:37
+#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:37
 msgid "Metabase Admin"
 msgstr "Quản trị viên Metabase"
 

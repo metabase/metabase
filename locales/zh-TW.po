@@ -4234,8 +4234,8 @@ msgstr "類別、類型、模型、評分等"
 msgid "Account settings"
 msgstr "帳號設定"
 
-#: frontend/src/metabase/nav/components/PublicNavbar/PublicNavbar.tsx:59
-#: frontend/src/metabase/nav/components/PublicNavbar/PublicNavbar.tsx:99
+#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:59
+#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:99
 msgid "Exit admin"
 msgstr "退出系統管理"
 
@@ -4278,7 +4278,7 @@ msgstr "是 Metabase Inc 的註冊商標"
 msgid "and is built with care in San Francisco, CA"
 msgstr "在加州舊金山精心設計"
 
-#: frontend/src/metabase/nav/components/PublicNavbar/PublicNavbar.tsx:37
+#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:37
 msgid "Metabase Admin"
 msgstr "Metabase 系統管理員"
 

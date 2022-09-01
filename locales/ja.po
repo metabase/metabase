@@ -4234,8 +4234,8 @@ msgstr "カテゴリー、タイプ、モデル、レーティング等"
 msgid "Account settings"
 msgstr "アカウント設定"
 
-#: frontend/src/metabase/nav/components/PublicNavbar/PublicNavbar.tsx:59
-#: frontend/src/metabase/nav/components/PublicNavbar/PublicNavbar.tsx:99
+#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:59
+#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:99
 msgid "Exit admin"
 msgstr "管理画面から離れる"
 
@@ -4278,7 +4278,7 @@ msgstr "は右記の会社が有する商標です"
 msgid "and is built with care in San Francisco, CA"
 msgstr "カリフォルニアのサンフランシスコで制作されています"
 
-#: frontend/src/metabase/nav/components/PublicNavbar/PublicNavbar.tsx:37
+#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:37
 msgid "Metabase Admin"
 msgstr "Metabase管理者"
 
@@ -13465,7 +13465,7 @@ msgstr "データベース{0}に対する定期タスクのスケジューリン
 msgid "All elements must be distinct."
 msgstr "全ての項目が一意でなければなりません"
 
-#:
+#: 
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "含めたい列を選ぶ"
@@ -17891,12 +17891,12 @@ msgstr "{0} {1}"
 msgid "{1}"
 msgstr "{1}"
 
-#:
+#: 
 msgctxt "This is a new information message on the new pulse creation page."
 msgid "Pulses are being phased out"
 msgstr "パルスは廃止予定です"
 
-#:
+#: 
 msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "代わりに{0}を設定できるようになりました。Pulses は将来のリリースで削除し、まだ持っているものは移行するようにします。"
@@ -17905,7 +17905,7 @@ msgstr "代わりに{0}を設定できるようになりました。Pulses は�
 msgid "dashboard subscriptions"
 msgstr "ダッシュボード購読"
 
-#:
+#: 
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "サブスクリプションの{0}チャートは、ダッシュボードと同じように表示されません。{1}"
 
@@ -18054,7 +18054,7 @@ msgid "Set up {0} source database and run migrations..."
 msgstr "{0}ソースデータベースを設定して移行を実行する..."
 
 #. make sure the dest DB is up-to-date
-#.
+#. 
 #. don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
 #: metabase/cmd/copy.clj:343
 msgid "Set up {0} target database and run migrations..."

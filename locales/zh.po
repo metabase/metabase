@@ -4235,8 +4235,8 @@ msgstr "类别、类型、型号、评级等。"
 msgid "Account settings"
 msgstr "帐户设置"
 
-#: frontend/src/metabase/nav/components/PublicNavbar/PublicNavbar.tsx:59
-#: frontend/src/metabase/nav/components/PublicNavbar/PublicNavbar.tsx:99
+#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:59
+#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:99
 msgid "Exit admin"
 msgstr "退出管理"
 
@@ -4279,7 +4279,7 @@ msgstr "是一个商标的"
 msgid "and is built with care in San Francisco, CA"
 msgstr "并在加利福尼亚州的旧金山精心打造。"
 
-#: frontend/src/metabase/nav/components/PublicNavbar/PublicNavbar.tsx:37
+#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:37
 msgid "Metabase Admin"
 msgstr "Metabase管理后台"
 
