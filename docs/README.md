@@ -7,7 +7,11 @@ redirect_from:
   - /docs/latest/operations-guide
 ---
 
-## Getting started
+# Metabase documentation
+
+## First steps
+
+### Getting started
 
 - [Getting started](https://www.metabase.com/learn/getting-started/getting-started)
 - [A tour of Metabase](https://www.metabase.com/learn/getting-started/tour-of-metabase)
@@ -20,9 +24,11 @@ redirect_from:
 
 ## Tutorials and guides
 
-- [Learn Metabase](https://www.metabase.com/learn) has a ton of articles on how to use Metabase and level up as a data analyst.
+- [Learn Metabase](https://www.metabase.com/learn) has a ton of articles on how to use Metabase, data best practices, and more.
 
-## Installation and operation
+## Topics
+
+### Installation and operation
 
 - [Overview](./installation-and-operation/start.md)
 - [Installing Metabase](./installation-and-operation/installing-metabase.md)
@@ -36,18 +42,18 @@ redirect_from:
 - [Supported browsers](./installation-and-operation/supported-browsers.md)
 - [Some info on privacy and GDPR](./installation-and-operation/privacy.md)
 
-## Asking questions
+### Asking questions
 
 - [Overview](./questions/start.md)
 
-### Query builder
+#### Query builder
 
 - [Asking questions](./questions/query-builder/introduction.md)
 - [Custom expressions](./questions/query-builder/expressions.md)
 - [List of expressions: aggregations and functions](./questions/query-builder/expressions-list.md)
 - [Joining data](./questions/query-builder//join.md)
 
-### SQL and native queries
+#### SQL and native queries
 
 - [The native SQL editor](./questions/native-editor/writing-sql.md)
 - [Viewing metadata](./questions/native-editor/data-model-reference.md)
@@ -56,14 +62,14 @@ redirect_from:
 - [SQL snippets](./questions/native-editor/sql-snippets.md)
 - [SQL snippet folder permissions](./permissions/snippets.md)
 
-### Sharing
+#### Sharing
 
 - [Sharing answers](./questions/sharing/answers.md)
 - [Visualizing data](./questions/sharing/visualizing-results.md)
 - [Setting and getting alerts](./questions/sharing/alerts.md)
 - [Public links](./questions/sharing/public-links.md)
 
-## Dashboards
+### Dashboards
 
 - [Overview](./dashboards/start.md)
 - [Creating dashboards](./dashboards/introduction.md)
@@ -72,7 +78,7 @@ redirect_from:
 - [Dashboard charts with multiple series](./dashboards/multiple-series.md)
 - [Setting up dashboard subscriptions](./dashboards/subscriptions.md)
 
-## Data modeling
+### Data modeling
 
 - [Overview](./data-modeling/start.md)
 - [Models](./data-modeling/models.md)
@@ -81,14 +87,14 @@ redirect_from:
 - [Default formatting](./data-modeling/formatting.md)
 - [Creating segments and metrics](./data-modeling/segments-and-metrics.md)
 
-## Finding things and keeping organized
+### Finding things and keeping organized
 
 - [Overview](./exploration-and-organization/start.md)
 - [Basic exploration](./exploration-and-organization/exploration.md)
 - [Collections](./exploration-and-organization/collections.md)
 - [Events and timelines](./exploration-and-organization/events-and-timelines.md)
 
-## People and groups
+### People and groups
 
 - [Overview](./people-and-groups/start.md)
 - [Editing your account settings](./people-and-groups/account-settings.md)
@@ -97,7 +103,7 @@ redirect_from:
 - [Session expiration](./people-and-groups/changing-session-expiration.md)
 - [Google Sign-In or LDAP](./people-and-groups/google-and-ldap.md)
 
-### Paid SSO options
+#### Paid SSO options
 
 - [JWT](./people-and-groups/authenticating-with-jwt.md)
 - [SAML](./people-and-groups/authenticating-with-saml.md)
@@ -107,7 +113,7 @@ redirect_from:
   - [Keycloak](./people-and-groups/saml-keycloak.md)
   - [Okta](./people-and-groups/saml-okta.md)
 
-## Permissions
+### Permissions
 
 - [Overview](./permissions/start.md)
 - [Permissions introduction](./permissions/introduction.md)
@@ -117,7 +123,7 @@ redirect_from:
 - [Sandboxing data based on user attributes](./permissions/data-sandboxes.md)
 - [SQL snippets folder permissions](./permissions/snippets.md)
 
-## Embedding questions and dashboards
+### Embedding questions and dashboards
 
 - [Overview](./embedding/start.md)
 - [Embedding introduction](./embedding/introduction.md)
@@ -125,7 +131,7 @@ redirect_from:
 - [Full-app embedding](./embedding/full-app-embedding.md)
 - [Embedding example apps](https://github.com/metabase/embedding-reference-apps)
 
-## Databases
+### Databases
 
 - [Overview](./databases/start.md)
 - [Adding data sources](./databases/connecting.md)
@@ -133,7 +139,7 @@ redirect_from:
 - [SSH tunneling](./databases/ssh-tunnel.md)
 - [SSL certificate](./databases/ssl-certificates.md)
 
-## Configuring Metabase
+### Configuring Metabase
 
 - [Overview](./configuring-metabase/start.md)
 - [Setting up Metabase](./configuring-metabase/setting-up-metabase.md)
@@ -149,26 +155,24 @@ redirect_from:
 - [Custom map settings](./configuring-metabase/custom-maps.md)
 - [Customizing the Metabase Jetty Webserver](./configuring-metabase/customizing-jetty-webserver.md)
 
-## Usage and performance tools
+### Usage and performance tools
 
 - [Overview](./usage-and-performance-tools/start.md)
 - [Auditing tools](./usage-and-performance-tools/audit.md)
 - [Tracking query errors](./usage-and-performance-tools/tools.md)
 
-## Metabase API
+### Metabase API
 
 - [API reference](./api-documentation.md)
 - [API tutorial](https://www.metabase.com/learn/administration/metabase-api)
 
-## Premium features
+### Troubleshooting
 
-The Enterprise and Pro plans of Metabase offer additional features.
+- [Get unstuck](./troubleshooting/start.md)
 
-- [Overview](./paid-features/start.md)
-- [Getting and activating the Enterprise edition](./paid-features/activating-the-enterprise-edition.md)
-- [List of premium features](./paid-features/overview.md)
+## More resources
 
-## Metabase community
+### Metabase community
 
 - [Metabase forum](https://discourse.metabase.com/)
 - [Community stories](https://www.metabase.com/community)
@@ -176,12 +180,20 @@ The Enterprise and Pro plans of Metabase offer additional features.
 - [Metabase Blog](https://www.metabase.com/blog)
 - [Source code repository on GitHub](https://github.com/metabase/metabase)
 
-## [Developers guide](developers-guide/start.md)
+### Premium features
+
+Some [Metabase plans](/pricing) offer additional features.
+
+- [Overview](./paid-features/start.md)
+- [Getting and activating the Enterprise edition](./paid-features/activating-the-enterprise-edition.md)
+- [List of premium features](./paid-features/overview.md)
+
+### [Developers guide](developers-guide/start.md)
 
 Contribute to the Metabase open source project!
 
-## [Metabase Cloud](https://www.metabase.com/cloud/docs)
+### [Metabase Cloud](https://www.metabase.com/cloud/docs)
 
-## [Data and Business Intelligence Glossary](https://www.metabase.com/glossary)
+### [Data and Business Intelligence Glossary](https://www.metabase.com/glossary)
 
 Data jargon explained.
