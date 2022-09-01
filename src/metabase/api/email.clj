@@ -96,25 +96,29 @@
         ;; the obfuscated version
         obfuscated? (and (:email-smtp-password settings) (email/email-smtp-password)
                          (= (:email-smtp-password settings) (setting/obfuscate-value (email/email-smtp-password))))
-        ;; override `nil` values in the request with environment variables
-        settings    (merge settings (env-var-values-by-email-setting))
-        settings    (-> (cond-> settings
-                          obfuscated?
-                          (assoc :email-smtp-password (email/email-smtp-password)))
-                        (select-keys (keys mb-to-smtp-settings))
-                        (set/rename-keys mb-to-smtp-settings))
-        settings    (cond-> settings
-                      (string? (:port settings))     (update :port #(Long/parseLong ^String %))
-                      (string? (:security settings)) (update :security keyword))
-        response    (email/test-smtp-connection settings)]
+        ;; override `nil` values in the request with environment variables for testing the SMTP connection
+        env-var-settings (env-var-values-by-email-setting)
+        settings         (merge settings env-var-settings)
+        settings         (-> (cond-> settings
+                               obfuscated?
+                               (assoc :email-smtp-password (email/email-smtp-password)))
+                             (select-keys (keys mb-to-smtp-settings))
+                             (set/rename-keys mb-to-smtp-settings))
+        settings         (cond-> settings
+                           (string? (:port settings))     (update :port #(Long/parseLong ^String %))
+                           (string? (:security settings)) (update :security keyword))
+        response         (email/test-smtp-connection settings)]
     (if-not (::email/error response)
       ;; test was good, save our settings
-      (cond-> (assoc (setting/set-many! (set/rename-keys response (set/map-invert mb-to-smtp-settings)))
-                     :with-corrections  (let [[_ corrections] (data/diff settings response)]
-                                          (-> corrections
-                                              (set/rename-keys (set/map-invert mb-to-smtp-settings))
-                                              humanize-email-corrections)))
-        obfuscated? (update :email-smtp-password setting/obfuscate-value))
+      (let [;; except don't update settings derived from environment variables
+            settings-with-corrections (apply dissoc response (keys env-var-settings))
+            [_ corrections]           (data/diff settings settings-with-corrections)]
+       (cond-> (assoc (setting/set-many! (-> settings-with-corrections
+                                             (set/rename-keys (set/map-invert mb-to-smtp-settings))))
+                      :with-corrections  (-> corrections
+                                             (set/rename-keys (set/map-invert mb-to-smtp-settings))
+                                             humanize-email-corrections))
+         obfuscated? (update :email-smtp-password setting/obfuscate-value)))
       ;; test failed, return response message
       {:status 400
        :body   (humanize-error-messages response)})))
