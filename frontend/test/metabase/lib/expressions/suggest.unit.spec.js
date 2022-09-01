@@ -146,7 +146,6 @@ describe("metabase/lib/expression/suggest", () => {
         ).toEqual(
           [
             { text: "True", type: "literal" },
-            { text: "[Expensive Things]", type: "segments" },
             { text: "[Total] ", type: "fields" },
             { text: "timeSpan(", type: "functions" },
             { text: "trim(", type: "functions" },

@@ -5,11 +5,7 @@ import type { Field as FieldRef } from "metabase-types/types/Query";
 import { isVirtualCardId } from "metabase/lib/saved-questions";
 
 import type StructuredQuery from "../StructuredQuery";
-import {
-  createVirtualTable,
-  createVirtualField,
-  createTableCloneWithOverridedMetadata,
-} from "./virtual-table";
+import { createVirtualTable, createVirtualField } from "./virtual-table";
 import { getDatasetTable, getNestedCardTable } from "./nested-card-query-table";
 
 export function getStructuredQueryTable(query: StructuredQuery): Table | null {
@@ -69,14 +65,12 @@ function getSourceQueryTable(query: StructuredQuery): Table {
   const sourceTableId = sourceQuery.sourceTableId() as Table["id"];
   const table = sourceQuery.table();
 
-  if (table) {
-    return createTableCloneWithOverridedMetadata(table, fields);
-  }
-
   return createVirtualTable({
     id: sourceTableId,
     db: sourceQuery.database(),
     fields,
     metadata: sourceQuery.metadata(),
+    display_name: table?.display_name || "",
+    name: table?.name || "",
   });
 }
