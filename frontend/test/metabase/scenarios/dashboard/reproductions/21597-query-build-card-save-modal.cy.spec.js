@@ -7,9 +7,11 @@ import {
 } from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 const databaseName = "Sample Database";
 const databaseCopyName = `${databaseName} copy`;
+const secondDatabaseId = SAMPLE_DB_ID + 1;
 
 const { PRODUCTS } = SAMPLE_DATABASE;
 
@@ -67,7 +69,7 @@ describe("display the relevant error message in save question modal (metabase#21
       cy.findByText("Save").click();
       cy.wait("@saveNativeQuestion");
       cy.findByText(
-        `Invalid Field Filter: Field ${PRODUCTS.CATEGORY} "PRODUCTS"."CATEGORY" belongs to Database 1 "${databaseName}", but the query is against Database 2 "${databaseCopyName}"`,
+        `Invalid Field Filter: Field ${PRODUCTS.CATEGORY} "PRODUCTS"."CATEGORY" belongs to Database ${SAMPLE_DB_ID} "${databaseName}", but the query is against Database ${secondDatabaseId} "${databaseCopyName}"`,
       );
     });
   });
