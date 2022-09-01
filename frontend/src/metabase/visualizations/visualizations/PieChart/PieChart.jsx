@@ -233,12 +233,18 @@ export default class PieChart extends Component {
   };
 
   updateChartViewportSize = () => {
-    const { width, height } =
-      this.chartContainer.current.getBoundingClientRect();
+    requestAnimationFrame(() => {
+      if (!this.chartContainer.current) {
+        return;
+      }
 
-    this.setState({
-      width,
-      height,
+      const { width, height } =
+        this.chartContainer.current.getBoundingClientRect();
+
+      this.setState({
+        width,
+        height,
+      });
     });
   };
 
@@ -247,13 +253,6 @@ export default class PieChart extends Component {
   }
 
   componentDidUpdate(prevProps) {
-    if (
-      prevProps.width !== this.props.width ||
-      prevProps.height !== this.props.height
-    ) {
-      this.updateChartViewportSize();
-    }
-
     requestAnimationFrame(() => {
       const groupElement = this.chartGroup.current;
       const detailElement = this.chartDetail.current;
@@ -263,6 +262,13 @@ export default class PieChart extends Component {
         detailElement.classList.remove("hide");
       }
     });
+
+    if (
+      prevProps.width !== this.props.width ||
+      prevProps.height !== this.props.height
+    ) {
+      this.updateChartViewportSize();
+    }
   }
 
   render() {
@@ -389,6 +395,7 @@ export default class PieChart extends Component {
       MIN_LABEL_FONT_SIZE,
     );
 
+    /** @type {d3.layout.Pie<typeof slices[number]>} */
     const pie = d3.layout
       .pie()
       .sort(null)
