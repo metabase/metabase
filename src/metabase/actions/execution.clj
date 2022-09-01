@@ -5,6 +5,7 @@
     [metabase.actions :as actions]
     [metabase.actions.http-action :as http-action]
     [metabase.api.common :as api]
+    [metabase.mbql.normalize :as mbql.normalize]
     [metabase.models :refer [Dashboard DashboardCard]]
     [metabase.models.action :as action]
     [metabase.query-processor.error-type :as qp.error-type]
@@ -36,19 +37,36 @@
       :value  \"12\"}]
 
   before passing to the QP code."
-  [parameters parameter-mappings]
-  (let [mappings-by-id (m/index-by :parameter_id parameter-mappings)]
-    (mapv (fn [{param-id :id :as parameter}]
-            (let [target (or (get-in mappings-by-id [param-id :target])
-                             (throw (ex-info (tru "No parameter mapping found for parameter {0}. Found: {1}"
+  [incoming-parameters parameter-mappings destination-parameters]
+  (let [destination-parameters-by-target (m/index-by :target destination-parameters)
+        mappings-by-id (m/index-by :parameter_id parameter-mappings)]
+    (mapv (fn [{param-id :id param-target :target :as parameter}]
+            (let [mapped-target (get-in mappings-by-id [param-id :target])
+                  target (cond
+                           (and param-id mapped-target)
+                           mapped-target
+
+                           param-id
+                           (throw (ex-info (tru "No parameter mapping found for parameter {0}. Found: {1}"
                                                   (pr-str param-id)
                                                   (pr-str (set (map :parameter_id parameter-mappings))))
                                              {:status-code 400
                                               :type        qp.error-type/invalid-parameter
-                                              :parameters  parameters
-                                              :mappings    parameter-mappings})))]
+                                              :parameters  incoming-parameters
+                                              :mappings    parameter-mappings}))
+
+                           param-target
+                           param-target)]
+              (when-not (contains? destination-parameters-by-target target)
+                (throw (ex-info (tru "No destination parameter found for target {0}. Found: {1}"
+                                     (pr-str target)
+                                     (pr-str (set (keys destination-parameters-by-target))))
+                                {:status-code 400
+                                 :type qp.error-type/invalid-parameter
+                                 :parameters incoming-parameters
+                                 :destination-parameters destination-parameters})))
               (assoc parameter :target target)))
-          parameters)))
+          incoming-parameters)))
 
 (defn- execute-query-action!
   "Execute a `QueryAction` with parameters as passed in from an
@@ -98,7 +116,9 @@
         _ (log/tracef "Mapping parameters\n\n%s\nwith mappings\n\n%s"
                       (u/pprint-to-str incoming-parameters)
                       (u/pprint-to-str (:parameter_mappings dashcard)))
-        parameters (map-parameters incoming-parameters (:parameter_mappings dashcard))]
+        parameters (map-parameters (mbql.normalize/normalize-fragment [:parameters] incoming-parameters)
+                                   (:parameter_mappings dashcard)
+                                   (:parameters action))]
     (case action-type
       :query
       (execute-query-action! action parameters)
