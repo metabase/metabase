@@ -303,8 +303,8 @@
 
   For further details look at frontend/src/metabase/static-viz/XYChart/types.ts"
   [x-col y-col labels {::mb.viz/keys [column-settings] :as viz-settings}]
-  (let [default-format {:number_style "decimal"
-                        :currency "USD"
+  (let [default-format {:number_style   "decimal"
+                        :currency       "USD"
                         :currency_style "symbol"}
         x-col-settings (or (settings-from-column x-col column-settings) {})
         y-col-settings (or (settings-from-column y-col column-settings) {})
@@ -319,13 +319,14 @@
         default-x-type (if (isa? (:effective_type x-col) :type/Temporal)
                          "timeseries"
                          "ordinal")]
-    {:colors   (public-settings/application-colors)
-     :stacking (if (:stackable.stack_type viz-settings) "stack" "none")
-     :x        {:type (or (:graph.x_axis.scale viz-settings) default-x-type)
-                :format x-format}
-     :y        {:type (or (:graph.y_axis.scale viz-settings) "linear")
-                :format y-format}
-     :labels   labels}))
+    {:colors      (public-settings/application-colors)
+     :stacking    (if (:stackable.stack_type viz-settings) "stack" "none")
+     :show_values (boolean (:graph.show_values viz-settings))
+     :x           {:type   (or (:graph.x_axis.scale viz-settings) default-x-type)
+                   :format x-format}
+     :y           {:type   (or (:graph.y_axis.scale viz-settings) "linear")
+                   :format y-format}
+     :labels      labels}))
 
 (defn- set-default-stacked
   "Default stack type is stacked for area chart with more than one metric.
@@ -615,8 +616,8 @@
   Use the combo charts for every chart-type in line area bar because we get multiple chart series for cheaper this way."
   [chart-type render-type _timezone-id card dashcard {:keys [cols rows viz-settings] :as data}]
   (let [viz-settings     (merge viz-settings (:visualization_settings dashcard))
-        x-axis-rowfn     (ui-logic/mult-x-axis-rowfn card data)
-        y-axis-rowfn     (ui-logic/mult-y-axis-rowfn card data)
+        x-axis-rowfn     (or (ui-logic/mult-x-axis-rowfn card data) #(vector (first %)))
+        y-axis-rowfn     (or (ui-logic/mult-y-axis-rowfn card data) #(vector (second %)))
         x-rows           (filter some? (map x-axis-rowfn rows))
         y-rows           (filter some? (map y-axis-rowfn rows))
         joined-rows      (mapv vector x-rows y-rows)
