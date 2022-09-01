@@ -18,7 +18,8 @@
             GarbageCollectorExports
             MemoryPoolsExports
             StandardExports
-            ThreadExports]))
+            ThreadExports]
+           org.eclipse.jetty.server.Server))
 
 (defsetting prometheus-server-port
   "Port to serve prometheus status from. If set"
@@ -81,7 +82,7 @@
 (p/defrecord+ PrometheusSystem [registry web-server]
   PrometheusActions
   (stop-web-server [_this]
-    (when-let [web-server web-server]
+    (when-let [^Server web-server web-server]
       (.stop web-server))))
 
 (defn- make-prometheus-system
