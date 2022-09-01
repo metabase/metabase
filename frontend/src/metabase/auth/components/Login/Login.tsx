@@ -24,7 +24,7 @@ const Login = ({
 
   return (
     <AuthLayout>
-      <LoginTitle>{t`Sign in to NFTLake`}</LoginTitle>
+      <LoginTitle>{t`Sign in to NFTRover`}</LoginTitle>
       {selection && selection.Panel && (
         <LoginPanel>
           <selection.Panel redirectUrl={redirectUrl} />

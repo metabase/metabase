@@ -79,7 +79,7 @@ export default class Image extends Component {
       <img
         className="profile-photo"
         src={settings["dashcard.params"] ? params.image : settings.text}
-        alt="NFTLake Analytics"
+        alt="NFTRover Analytics"
       />
     );
   };

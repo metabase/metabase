@@ -29,7 +29,7 @@ export const PublicNavbar = ({
       <PublicLogoLink to="/admin" data-metabase-event="Navbar;Logo">
         <PublicLogoContainer>
           <LogoIcon className="text-brand my2" dark />
-          <PublicLogoText>{t`NFTLake`}</PublicLogoText>
+          <PublicLogoText>{t`NFTRover`}</PublicLogoText>
         </PublicLogoContainer>
       </PublicLogoLink>
 
