@@ -39,6 +39,7 @@ import {
 import SavedQuestionPicker from "./saved-question-picker/SavedQuestionPicker";
 import DataSelectorLoading from "./DataSelectorLoading";
 import DataSelectorSectionHeader from "./DataSelectorSectionHeader";
+import FieldPicker from "./DataSelectorFieldPicker";
 import {
   DataSelectorSection,
   DataBucketList,
@@ -1516,73 +1517,3 @@ const TablePicker = ({
     );
   }
 };
-
-class FieldPicker extends Component {
-  render() {
-    const {
-      isLoading,
-      fields,
-      selectedTable,
-      selectedField,
-      onChangeField,
-      onBack,
-      hasFiltering,
-      hasInitialFocus,
-    } = this.props;
-
-    const header = (
-      <span className="flex align-center">
-        <span
-          className="flex align-center text-slate cursor-pointer"
-          onClick={onBack}
-        >
-          <Icon name="chevronleft" size={18} />
-          <span className="ml1 text-wrap">
-            {selectedTable?.display_name || t`Fields`}
-          </span>
-        </span>
-      </span>
-    );
-
-    if (isLoading) {
-      return <DataSelectorLoading header={header} />;
-    }
-
-    const sections = [
-      {
-        name: header,
-        items: fields.map(field => ({
-          name: field.display_name,
-          field: field,
-        })),
-      },
-    ];
-
-    return (
-      <div style={{ width: 300, overflowY: "auto" }}>
-        <AccordionList
-          id="FieldPicker"
-          key="fieldPicker"
-          className="text-brand"
-          hasInitialFocus={hasInitialFocus}
-          sections={sections}
-          maxHeight={Infinity}
-          width="100%"
-          searchable={hasFiltering}
-          onChange={item => onChangeField(item.field)}
-          itemIsSelected={item =>
-            item.field && selectedField
-              ? item.field.id === selectedField.id
-              : false
-          }
-          itemIsClickable={item => item.field}
-          renderItemIcon={item =>
-            item.field ? (
-              <Icon name={item.field.dimension().icon()} size={18} />
-            ) : null
-          }
-        />
-      </div>
-    );
-  }
-}
