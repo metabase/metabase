@@ -3,6 +3,7 @@ import {
   popover,
   modal,
   openNativeEditor,
+  addPostgresDatabase,
 } from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -22,7 +23,7 @@ describe("display the relevant error message in save question modal (metabase#21
     cy.intercept("POST", "/api/card").as("saveNativeQuestion");
 
     // Second DB (copy)
-    cy.addH2SampleDatabase({ name: databaseCopyName });
+    addPostgresDatabase(databaseCopyName);
 
     // Create a native query and run it
     openNativeEditor({
