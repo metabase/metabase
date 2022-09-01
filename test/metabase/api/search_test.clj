@@ -600,15 +600,17 @@
 (deftest card-dataset-query-test
   (testing "Search results should match a native query's dataset_query column, but not an MBQL query's one."
     ;; https://github.com/metabase/metabase/issues/24132
-    (mt/with-temp* [Card [_mbql-card   {:name          "Venues Count"
-                                        :query_type    "query"
-                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
-                    Card [_native-card {:name          "Another SQL query"
-                                        :query_type    "native"
-                                        :dataset_query (mt/native-query {:query "SELECT COUNT(1) AS aggregation FROM venues"})}]]
-      (is (= ["Another SQL query"]
-             (->> (search-request-data :rasta :q "aggregation")
-                  (map :name)))))))
+    (let [native-card {:name          "Another SQL query"
+                       :query_type    "native"
+                       :dataset_query (mt/native-query {:query "SELECT COUNT(1) AS aggregation FROM venues"})}]
+      (mt/with-temp* [Card [_mbql-card   {:name          "Venues Count"
+                                          :query_type    "query"
+                                          :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+                      Card [_native-card native-card]
+                      Card [_dataset     (assoc native-card :name "Dataset" :dataset true)]]
+        (is (= ["Another SQL query" "Dataset"]
+               (->> (search-request-data :rasta :q "aggregation")
+                    (map :name))))))))
 
 (deftest app-test
   (testing "App collections should come with app_id set"

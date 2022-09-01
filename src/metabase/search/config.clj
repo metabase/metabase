@@ -78,6 +78,10 @@
    :dataset_query
    :description])
 
+(defmethod searchable-columns-for-model "dataset"
+  [_]
+  (searchable-columns-for-model "card"))
+
 (defmethod searchable-columns-for-model "dashboard"
   [_]
   [:name
