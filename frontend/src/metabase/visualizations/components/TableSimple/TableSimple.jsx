@@ -201,7 +201,7 @@ function TableSimple({
       <ContentContainer>
         <TableContainer className="scroll-show scroll-show--hover">
           <Table className="fullscreen-normal-text fullscreen-night-text">
-            <thead ref={headerRef}>
+            <thead ref={headerRef} className>
               <tr>{cols.map(renderColumnHeader)}</tr>
             </thead>
             <tbody>{paginatedRowIndexes.map(renderRow)}</tbody>
