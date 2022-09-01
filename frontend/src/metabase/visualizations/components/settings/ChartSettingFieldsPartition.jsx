@@ -146,7 +146,7 @@ class ChartSettingFieldsPartition extends React.Component {
     return columnSettings && columnSettings[settingName];
   };
 
-  handleEditFormatting = (column, ref) => {
+  handleEditFormatting = (column, targetElement) => {
     if (column) {
       this.props.onShowWidget(
         {
@@ -155,7 +155,7 @@ class ChartSettingFieldsPartition extends React.Component {
             initialKey: keyForColumn(column),
           },
         },
-        ref,
+        targetElement,
       );
     }
   };
@@ -309,9 +309,9 @@ class ColumnInner extends React.Component {
     const { expanded } = this.state;
     this.setState({ expanded: !expanded });
   };
-  handleEditFormatting = settingsRef => {
+  handleEditFormatting = targetElement => {
     const { column, onEditFormatting } = this.props;
-    onEditFormatting && onEditFormatting(column, settingsRef);
+    onEditFormatting && onEditFormatting(column, targetElement);
   };
   render() {
     const {

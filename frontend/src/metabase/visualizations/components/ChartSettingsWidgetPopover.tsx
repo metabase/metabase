@@ -1,6 +1,7 @@
 import React from "react";
+import { t } from "ttag";
+
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-import ChartSettingsWidget from "./ChartSettingsWidget";
 
 import { PopoverRoot, PopoverTitle } from "./ChartSettingsWidgetPopover.styled";
 
@@ -25,7 +26,7 @@ export const ChartSettingsWidgetPopover = ({
       reference={anchor}
       content={
         <PopoverRoot>
-          <PopoverTitle>Settings</PopoverTitle>
+          <PopoverTitle>{t`Settings`}</PopoverTitle>
           {widget}
         </PopoverRoot>
       }

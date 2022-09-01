@@ -15,7 +15,7 @@ interface SortableItem {
 
 interface SortableColumnFunctions<T> {
   onRemove?: (item: T) => void;
-  onEdit?: (item: T, ref?: HTMLElement) => void;
+  onEdit?: (item: T, targetElement?: HTMLElement) => void;
   onClick?: (item: T) => void;
   onAdd?: (item: T) => void;
   onEnable?: (item: T) => void;
