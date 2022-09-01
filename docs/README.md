@@ -11,10 +11,23 @@ redirect_from:
 
 ## First steps
 
-### Getting started
+### [Installing Metabase](./installation-and-operation/installing-metabase.md)
 
-- [Getting started](https://www.metabase.com/learn/getting-started/getting-started)
-- [A tour of Metabase](https://www.metabase.com/learn/getting-started/tour-of-metabase)
+Run as a JAR, using Docker, or on Metabase Cloud.
+
+### [Setting up Metabase](./configuring-metabase/setting-up-metabase.md)
+
+Once installed, set up your Metabase and connect to your data.
+
+### [Getting started](https://www.metabase.com/learn/getting-started/getting-started)
+
+With your data connected, get started asking questions, creating dashboards, and sharing your work.
+
+### [A tour of Metabase](https://www.metabase.com/learn/getting-started/tour-of-metabase)
+
+Metabase is a deep product with a lot of tools to simplify business intelligence, from embeddable charts and interactive dashboards, to GUI and SQL editors, to auditing and data sandboxing, and more.
+
+## Quick links
 
 ## Troubleshooting and getting help
 
@@ -26,7 +39,9 @@ redirect_from:
 
 - [Learn Metabase](https://www.metabase.com/learn) has a ton of articles on how to use Metabase, data best practices, and more.
 
-## Topics
+## Documentation topics
+
+Metabase's reference documentation.
 
 ### Installation and operation
 
@@ -193,6 +208,8 @@ Some [Metabase plans](/pricing) offer additional features.
 Contribute to the Metabase open source project!
 
 ### [Metabase Cloud](https://www.metabase.com/cloud/docs)
+
+For docs specific to Metabase Cloud plans.
 
 ### [Data and Business Intelligence Glossary](https://www.metabase.com/glossary)
 
