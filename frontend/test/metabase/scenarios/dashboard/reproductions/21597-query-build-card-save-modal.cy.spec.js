@@ -24,9 +24,7 @@ describe("display the relevant error message in save question modal (metabase#21
     // Second DB (copy)
     cy.addH2SampleDatabase({ name: databaseCopyName });
 
-    // Create a native query
-    // and run it
-    cy.visit("/");
+    // Create a native query and run it
     openNativeEditor({
       databaseName,
     }).type("SELECT COUNT(*) FROM PRODUCTS WHERE {{FILTER}}", {
