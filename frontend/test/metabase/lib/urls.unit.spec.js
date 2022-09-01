@@ -263,6 +263,18 @@ describe("urls", () => {
         }),
       ).toBe("/collection/8-growth");
     });
+
+    it("returns data app bookmark path", () => {
+      expect(
+        bookmark({
+          id: "collection-3",
+          item_id: 3,
+          name: "Shop",
+          type: "collection",
+          app_id: 14,
+        }),
+      ).toBe("/apps/14-shop");
+    });
   });
 
   describe("extractEntityId", () => {
