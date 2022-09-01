@@ -1884,12 +1884,23 @@
                                        dashboard-id
                                        dashcard-id
                                        action-id)]
-              (is (partial= {:rows-affected 1}
-                            (mt/user-http-request :crowberto :post 200 execute-path
-                                                  {:parameters [{:id "my_id" :type "id" :value 1}]})))
-              (is (= [1 "Bird Shop"]
-                     (mt/first-row
-                       (mt/run-mbql-query categories {:filter [:= $id 1]}))))
+              (testing "Dashcard parameter"
+                (is (partial= {:rows-affected 1}
+                              (mt/user-http-request :crowberto :post 200 execute-path
+                                                    {:parameters [{:id "my_id" :type "id" :value 1}]})))
+                (is (= [1 "Shop"]
+                       (mt/first-row
+                         (mt/run-mbql-query categories {:filter [:= $id 1]})))))
+              (testing "Extra target parameter"
+                (is (partial= {:rows-affected 1}
+                              (mt/user-http-request :crowberto :post 200 execute-path
+                                                    {:parameters [{:id "my_id" :type "id" :value 1}
+                                                                  {:target [:variable [:template-tag "name"]]
+                                                                   :type "text"
+                                                                   :value "Bird"}]})))
+                (is (= [1 "Bird Shop"]
+                       (mt/first-row
+                         (mt/run-mbql-query categories {:filter [:= $id 1]})))))
               (testing "Should affect 0 rows if id is out of range"
                 (is (= {:rows-affected 0}
                        (mt/user-http-request :crowberto :post 200 execute-path
