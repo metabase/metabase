@@ -618,6 +618,15 @@
                 (fn [result]
                   (cond-> result
                     (not (#{"metric" "segment"} (:model result))) (assoc-in [:collection :app_id] true)
-                    (= (:model result) "collection")              (assoc :app_id true)))
+                    (= (:model result) "collection")              (assoc :model "app" :app_id true)))
                 (default-results-with-collection))
                (search-request-data :rasta :q "test")))))))
+
+(deftest page-test
+  (testing "Search results should pages with model \"page\""
+    (mt/with-temp* [Dashboard [_page {:name        "Page"
+                                      :description "Contains important text!"
+                                      :is_app_page true}]]
+      (is (partial= [{:name "Page"
+                      :model "page"}]
+                    (search-request-data :rasta :q "important text"))))))
