@@ -90,7 +90,7 @@
 (defn text-node? [x]
   (and (vector? x) (= (first x) "#text")))
 
-(deftest timelineseries-line-test
+#_(deftest timelineseries-line-test
   (let [rows     [[#t "2020" 2]
                   [#t "2021" 3]]
         labels   {:left "count" :bottom "year"}
@@ -118,7 +118,7 @@
           (is (= true (s/valid? spec text-nodes))
               text-nodes))))))
 
-(deftest timelineseries-bar-test
+#_(deftest timelineseries-bar-test
   (let [rows     [[#t "2020" 2]
                   [#t "2021" 3]]
         labels   {:left "count" :bottom "year"}
@@ -146,7 +146,7 @@
           (is (= true (s/valid? spec text-nodes))
               text-nodes))))))
 
-(deftest area-test
+#_(deftest area-test
   (let [tl-rows    [[#t "2020" 2]
                     [#t "2021" 3]]
         cat-rows   [["bob" 2]
