@@ -1,22 +1,11 @@
 import { TYPE } from "metabase/lib/types";
-import { formatSourceForTarget } from "metabase/lib/click-behavior";
 
 import type Database from "metabase-lib/lib/metadata/Database";
 import type Field from "metabase-lib/lib/metadata/Field";
 
-import type {
-  WritebackAction,
-  ParametersMappedToValues,
-  ParametersSourceTargetMap,
-  ActionClickBehaviorData,
-  ActionClickExtraData,
-  ActionClickBehavior,
-  ActionParameterTuple,
-  DashboardOrderedCard,
-} from "metabase-types/api";
 import type { SavedCard } from "metabase-types/types/Card";
 import type { Database as IDatabase } from "metabase-types/types/Database";
-import type { Parameter, ParameterId } from "metabase-types/types/Parameter";
+import type { Parameter } from "metabase-types/types/Parameter";
 
 const DB_WRITEBACK_FEATURE = "actions";
 const DB_WRITEBACK_SETTING = "database-enable-actions";
@@ -83,89 +72,4 @@ export function getActionParameterType(parameter: Parameter) {
     return "string/=";
   }
   return type;
-}
-
-function isParametersTuple(
-  listOrListOfTuples: ActionParameterTuple[] | Parameter[],
-): listOrListOfTuples is ActionParameterTuple[] {
-  const [sample] = listOrListOfTuples;
-  if (!sample) {
-    return false;
-  }
-  return Array.isArray(sample);
-}
-
-function getParametersFromTuples(
-  parameterTuples: ActionParameterTuple[] | Parameter[],
-): Parameter[] {
-  if (!isParametersTuple(parameterTuples)) {
-    return parameterTuples;
-  }
-  return parameterTuples.map(tuple => {
-    const [, parameter] = tuple;
-    return parameter;
-  });
-}
-
-export function getActionParameters(
-  parameterMapping: ParametersSourceTargetMap = {},
-  {
-    data,
-    extraData,
-    clickBehavior,
-  }: {
-    data: ActionClickBehaviorData;
-    extraData: ActionClickExtraData;
-    clickBehavior: ActionClickBehavior;
-  },
-) {
-  const action = extraData.actions[clickBehavior.action];
-
-  const parameters = getParametersFromTuples(action.parameters);
-  const parameterValuesMap: ParametersMappedToValues = {};
-
-  Object.values(parameterMapping).forEach(({ id, source, target }) => {
-    const targetParameter = parameters.find(parameter => parameter.id === id);
-    if (targetParameter) {
-      const result = formatSourceForTarget(source, target, {
-        data,
-        extraData,
-        clickBehavior,
-      });
-      // For some reason it's sometimes [1] and sometimes just 1
-      const value = Array.isArray(result) ? result[0] : result;
-
-      parameterValuesMap[id] = {
-        value,
-        type: getActionParameterType(targetParameter),
-      };
-    }
-  });
-
-  return parameterValuesMap;
-}
-
-export function getNotProvidedActionParameters(
-  action: WritebackAction,
-  parameterValuesMap: ParametersMappedToValues,
-) {
-  const parameters = getParametersFromTuples(action.parameters);
-  const mappedParameterIDs = Object.keys(parameterValuesMap);
-
-  const emptyParameterIDs: ParameterId[] = [];
-  mappedParameterIDs.forEach(parameterId => {
-    const { value } = parameterValuesMap[parameterId];
-    if (value === undefined) {
-      emptyParameterIDs.push(parameterId);
-    }
-  });
-
-  return parameters.filter(parameter => {
-    if ("default" in parameter) {
-      return false;
-    }
-    const isNotMapped = !mappedParameterIDs.includes(parameter.id);
-    const isMappedButNoValue = emptyParameterIDs.includes(parameter.id);
-    return isNotMapped || isMappedButNoValue;
-  });
 }
