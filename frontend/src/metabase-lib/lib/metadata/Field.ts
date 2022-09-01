@@ -32,11 +32,14 @@ import {
   getIconForField,
   getFilterOperators,
 } from "metabase/lib/schema_metadata";
-import { FieldFingerprint } from "metabase-types/api/field";
-import { Field as FieldRef } from "metabase-types/types/Query";
 import { FieldDimension } from "../Dimension";
-import Table from "./Table";
 import Base from "./Base";
+import type { FieldFingerprint } from "metabase-types/api/field";
+import type { Field as FieldRef } from "metabase-types/types/Query";
+import type StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import type NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import type Table from "./Table";
+import type Metadata from "./Metadata";
 
 export const LONG_TEXT_MIN = 80;
 
@@ -57,9 +60,14 @@ class FieldInner extends Base {
   fingerprint?: FieldFingerprint;
   base_type: string | null;
   table?: Table;
+  table_id?: Table["id"];
   target?: Field;
   has_field_values?: "list" | "search" | "none";
   values: any[];
+  metadata?: Metadata;
+
+  // added when creating "virtual fields" that are associated with a given query
+  query?: StructuredQuery | NativeQuery;
 
   getId() {
     if (Array.isArray(this.id)) {

@@ -37,6 +37,7 @@ export type SavedCard<Query = DatasetQuery> = UnsavedCard<Query> & {
 
   // Only for native queries
   is_write?: boolean;
+  action_id?: number;
 };
 
 export type Card<Query = DatasetQuery> = SavedCard<Query> | UnsavedCard<Query>;

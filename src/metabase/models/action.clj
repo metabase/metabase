@@ -151,3 +151,13 @@
     (for [card cards]
       (m/assoc-some card :action_id (get card-id->action-id (:id card))))
     cards))
+
+(defn dashcard-action
+  "Hydrates action from DashboardCard"
+  {:batched-hydrate :dashcard/action}
+  [dashcards]
+  (if-let [action-ids (not-empty (keep :action_id dashcards))]
+    (let [actions-by-id (m/index-by :id (select-actions :id [:in action-ids]))]
+      (for [dashcard dashcards]
+        (m/assoc-some dashcard :action (get actions-by-id (:action_id dashcard)))))
+    dashcards))

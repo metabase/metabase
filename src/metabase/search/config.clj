@@ -122,6 +122,7 @@
 (defmethod columns-for-model "card"
   [_]
   (conj default-columns :collection_id :collection_position :dataset_query
+        [:collection_app.collection_id :collection_app_id]
         [:collection.name :collection_name]
         [:collection.authority_level :collection_authority_level]
         [{:select   [:status]
@@ -140,6 +141,7 @@
 (defmethod columns-for-model "dashboard"
   [_]
   (conj default-columns :collection_id :collection_position bookmark-col
+        [:collection_app.collection_id :collection_app_id]
         [:collection.name :collection_name]
         [:collection.authority_level :collection_authority_level]))
 
@@ -149,12 +151,18 @@
 
 (defmethod columns-for-model "pulse"
   [_]
-  [:id :name :collection_id [:collection.name :collection_name]])
+  [:id :name :collection_id
+   [:collection_app.collection_id :collection_app_id]
+   [:collection.name :collection_name]])
 
 (defmethod columns-for-model "collection"
   [_]
-  (conj (remove #{:updated_at} default-columns) [:collection.id :collection_id] [:name :collection_name]
+  (conj (remove #{:updated_at} default-columns)
+        [:collection.id :collection_id]
+        [:name :collection_name]
         [:authority_level :collection_authority_level]
+        [:app.id :app_id]
+        [:app.id :collection_app_id]
         bookmark-col))
 
 (defmethod columns-for-model "segment"

@@ -1,5 +1,6 @@
 (ns metabase-enterprise.serialization.v2.extract-test
   (:require [cheshire.core :as json]
+            [clojure.set :as set]
             [clojure.test :refer :all]
             [metabase-enterprise.serialization.test-util :as ts]
             [metabase-enterprise.serialization.v2.extract :as extract]
@@ -863,3 +864,191 @@
                      [{:model "Card"  :id card1-eid}]
                      [{:model "DashboardCard" :id dashcard-eid}]}
                    (set (serdes.base/serdes-dependencies ser))))))))))
+
+(deftest selective-serialization-basic-test
+  (ts/with-empty-h2-app-db
+    (ts/with-temp-dpc [User       [{mark-id :id}              {:first_name "Mark"
+                                                               :last_name  "Knopfler"
+                                                               :email      "mark@direstrai.ts"}]
+                       Collection [{coll1-id   :id
+                                    coll1-eid  :entity_id}    {:name "Some Collection"}]
+                       Collection [{coll2-id   :id
+                                    coll2-eid  :entity_id}    {:name     "Nested Collection"
+                                                               :location (str "/" coll1-id "/")}]
+                       Collection [{coll3-id   :id
+                                    coll3-eid  :entity_id}    {:name     "Grandchild Collection"
+                                                               :location (str "/" coll1-id "/" coll2-id "/")}]
+
+                       Database   [{db-id      :id}           {:name "My Database"}]
+                       Table      [{no-schema-id :id}         {:name "Schemaless Table" :db_id db-id}]
+                       Field      [_                          {:name "Some Field" :table_id no-schema-id}]
+                       Table      [{schema-id    :id}         {:name        "Schema'd Table"
+                                                               :db_id       db-id
+                                                               :schema      "PUBLIC"}]
+                       Field      [_                          {:name "Other Field" :table_id schema-id}]
+
+                       ;; One dashboard and three cards in each of the three collections:
+                       ;; Two cards contained in the dashboard and one freestanding.
+                       Dashboard  [{dash1-id     :id
+                                    dash1-eid    :entity_id}  {:name          "Dashboard 1"
+                                                               :collection_id coll1-id
+                                                               :creator_id    mark-id}]
+                       Card       [{c1-1-id  :id
+                                    c1-1-eid :entity_id}      {:name          "Question 1-1"
+                                                               :database_id   db-id
+                                                               :table_id      no-schema-id
+                                                               :collection_id coll1-id
+                                                               :creator_id    mark-id}]
+                       Card       [{c1-2-id  :id
+                                    c1-2-eid :entity_id}      {:name          "Question 1-2"
+                                                               :database_id   db-id
+                                                               :table_id      schema-id
+                                                               :collection_id coll1-id
+                                                               :creator_id    mark-id}]
+                       Card       [{c1-3-eid :entity_id}      {:name          "Question 1-3"
+                                                               :database_id   db-id
+                                                               :table_id      schema-id
+                                                               :collection_id coll1-id
+                                                               :creator_id    mark-id}]
+
+                       DashboardCard [{dc1-1-eid :entity_id}  {:card_id      c1-1-id
+                                                               :dashboard_id dash1-id}]
+                       DashboardCard [{dc1-2-eid :entity_id}  {:card_id      c1-2-id
+                                                               :dashboard_id dash1-id}]
+
+                       ;; Second dashboard, in the middle collection.
+                       Dashboard  [{dash2-id     :id
+                                    dash2-eid    :entity_id}  {:name          "Dashboard 2"
+                                                               :collection_id coll2-id
+                                                               :creator_id    mark-id}]
+                       Card       [{c2-1-id  :id
+                                    c2-1-eid :entity_id}      {:name          "Question 2-1"
+                                                               :database_id   db-id
+                                                               :table_id      no-schema-id
+                                                               :collection_id coll2-id
+                                                               :creator_id    mark-id}]
+                       Card       [{c2-2-id  :id
+                                    c2-2-eid :entity_id}      {:name          "Question 2-2"
+                                                               :database_id   db-id
+                                                               :table_id      schema-id
+                                                               :collection_id coll2-id
+                                                               :creator_id    mark-id}]
+                       Card       [{c2-3-eid :entity_id}      {:name          "Question 2-3"
+                                                               :database_id   db-id
+                                                               :table_id      schema-id
+                                                               :collection_id coll2-id
+                                                               :creator_id    mark-id}]
+
+                       DashboardCard [{dc2-1-eid :entity_id}  {:card_id      c2-1-id
+                                                               :dashboard_id dash2-id}]
+                       DashboardCard [{dc2-2-eid :entity_id}  {:card_id      c2-2-id
+                                                               :dashboard_id dash2-id}]
+
+                       ;; Third dashboard, in the grandchild collection.
+                       Dashboard  [{dash3-id     :id
+                                    dash3-eid    :entity_id}  {:name          "Dashboard 3"
+                                                               :collection_id coll3-id
+                                                               :creator_id    mark-id}]
+                       Card       [{c3-1-id  :id
+                                    c3-1-eid :entity_id}      {:name          "Question 3-1"
+                                                               :database_id   db-id
+                                                               :table_id      no-schema-id
+                                                               :collection_id coll3-id
+                                                               :creator_id    mark-id}]
+                       Card       [{c3-2-id  :id
+                                    c3-2-eid :entity_id}      {:name          "Question 3-2"
+                                                               :database_id   db-id
+                                                               :table_id      schema-id
+                                                               :collection_id coll3-id
+                                                               :creator_id    mark-id}]
+                       Card       [{c3-3-eid :entity_id}      {:name          "Question 3-3"
+                                                               :database_id   db-id
+                                                               :table_id      schema-id
+                                                               :collection_id coll3-id
+                                                               :creator_id    mark-id}]
+
+                       DashboardCard [{dc3-1-eid :entity_id}  {:card_id      c3-1-id
+                                                               :dashboard_id dash3-id}]
+                       DashboardCard [{dc3-2-eid :entity_id}  {:card_id      c3-2-id
+                                                               :dashboard_id dash3-id}]]
+
+      (testing "selecting a dashboard gets its dashcards and cards as well"
+        (testing "grandparent dashboard"
+          (is (= #{[{:model "Dashboard" :id dash1-eid}]
+                   [{:model "Dashboard" :id dash1-eid}
+                    {:model "DashboardCard" :id dc1-1-eid}]
+                   [{:model "Dashboard" :id dash1-eid}
+                    {:model "DashboardCard" :id dc1-2-eid}]
+                   [{:model "Card" :id c1-1-eid}]
+                   [{:model "Card" :id c1-2-eid}]}
+                 (->> (extract/extract-subtrees {:targets [["Dashboard" dash1-id]]})
+                      (map serdes.base/serdes-path)
+                      set))))
+
+        (testing "middle dashboard"
+          (is (= #{[{:model "Dashboard" :id dash2-eid}]
+                   [{:model "Dashboard" :id dash2-eid}
+                    {:model "DashboardCard" :id dc2-1-eid}]
+                   [{:model "Dashboard" :id dash2-eid}
+                    {:model "DashboardCard" :id dc2-2-eid}]
+                   [{:model "Card" :id c2-1-eid}]
+                   [{:model "Card" :id c2-2-eid}]}
+                 (->> (extract/extract-subtrees {:targets [["Dashboard" dash2-id]]})
+                      (map serdes.base/serdes-path)
+                      set))))
+
+        (testing "grandchild dashboard"
+          (is (= #{[{:model "Dashboard" :id dash3-eid}]
+                   [{:model "Dashboard" :id dash3-eid}
+                    {:model "DashboardCard" :id dc3-1-eid}]
+                   [{:model "Dashboard" :id dash3-eid}
+                    {:model "DashboardCard" :id dc3-2-eid}]
+                   [{:model "Card" :id c3-1-eid}]
+                   [{:model "Card" :id c3-2-eid}]}
+                 (->> (extract/extract-subtrees {:targets [["Dashboard" dash3-id]]})
+                      (map serdes.base/serdes-path)
+                      set)))))
+
+      (testing "selecting a collection gets all its contents"
+        (let [grandchild-paths  #{[{:model "Collection"    :id coll3-eid :label "grandchild_collection"}]
+                                  [{:model "Dashboard"     :id dash3-eid}]
+                                  [{:model "Dashboard"     :id dash3-eid}
+                                   {:model "DashboardCard" :id dc3-1-eid}]
+                                  [{:model "Dashboard"     :id dash3-eid}
+                                   {:model "DashboardCard" :id dc3-2-eid}]
+                                  [{:model "Card"          :id c3-1-eid}]
+                                  [{:model "Card"          :id c3-2-eid}]
+                                  [{:model "Card"          :id c3-3-eid}]}
+              middle-paths      #{[{:model "Collection"    :id coll2-eid :label "nested_collection"}]
+                                  [{:model "Dashboard"     :id dash2-eid}]
+                                  [{:model "Dashboard"     :id dash2-eid}
+                                   {:model "DashboardCard" :id dc2-1-eid}]
+                                  [{:model "Dashboard"     :id dash2-eid}
+                                   {:model "DashboardCard" :id dc2-2-eid}]
+                                  [{:model "Card"          :id c2-1-eid}]
+                                  [{:model "Card"          :id c2-2-eid}]
+                                  [{:model "Card"          :id c2-3-eid}]}
+              grandparent-paths #{[{:model "Collection"    :id coll1-eid :label "some_collection"}]
+                                  [{:model "Dashboard"     :id dash1-eid}]
+                                  [{:model "Dashboard"     :id dash1-eid}
+                                   {:model "DashboardCard" :id dc1-1-eid}]
+                                  [{:model "Dashboard"     :id dash1-eid}
+                                   {:model "DashboardCard" :id dc1-2-eid}]
+                                  [{:model "Card"          :id c1-1-eid}]
+                                  [{:model "Card"          :id c1-2-eid}]
+                                  [{:model "Card"          :id c1-3-eid}]}]
+          (testing "grandchild collection has all its own contents"
+            (is (= grandchild-paths ; Includes the third card not found in the collection
+                   (->> (extract/extract-subtrees {:targets [["Collection" coll3-id]]})
+                        (map serdes.base/serdes-path)
+                        set))))
+          (testing "middle collection has all its own plus the grandchild and its contents"
+            (is (= (set/union middle-paths grandchild-paths)
+                   (->> (extract/extract-subtrees {:targets [["Collection" coll2-id]]})
+                        (map serdes.base/serdes-path)
+                        set))))
+          (testing "grandparent collection has all its own plus the grandchild and middle collections with contents"
+            (is (= (set/union grandparent-paths middle-paths grandchild-paths)
+                   (->> (extract/extract-subtrees {:targets [["Collection" coll1-id]]})
+                        (map serdes.base/serdes-path)
+                        set)))))))))

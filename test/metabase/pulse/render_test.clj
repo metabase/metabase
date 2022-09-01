@@ -23,12 +23,12 @@
     (render-pulse-card card)))
 
 (deftest render-test
-  (testing "if the pulse rendered correctly it will have this one row that says \"November 2015\" (not sure why)"
+  (testing "if the pulse rendered correctly it will have an img tag."
     (is (some? (mbql.u/match-one (render-results
                                   (mt/mbql-query checkins
                                     {:aggregation [[:count]]
                                      :breakout    [!month.date]}))
-                                 [:td _ "November 2015"])))))
+                                 [:img _])))))
 
 (deftest render-error-test
   (testing "gives us a proper error if we have erroring card"
@@ -91,7 +91,7 @@
                                           :rows [["A" 2]]})))
 
   ;; timeseries line chart
-  (is (= :sparkline
+  (is (= :line
          (render/detect-pulse-chart-type {:display :line}
                                          {}
                                          {:cols [{:base_type :type/Temporal}
@@ -99,7 +99,7 @@
                                           :rows [[#t "2020" 2]
                                                  [#t "2021" 3]]})))
   ;; Category line chart
-  (is (= :sparkline
+  (is (= :line
          (render/detect-pulse-chart-type {:display :line}
                                          {}
                                          {:cols [{:base_type :type/Text}

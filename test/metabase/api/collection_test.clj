@@ -1470,6 +1470,14 @@
                    (update :id integer?)
                    (update :entity_id string?))))))
 
+    (testing "I shouldn't be allowed to move an App away from root."
+      (mt/with-temp* [Collection [collection-a]
+                      App [_app {:collection_id (:id collection-a)}]
+                      Collection [collection-b]]
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection-a))
+                                     {:parent_id (u/the-id collection-b)})))))
+
     (testing "I shouldn't be allowed to move the Collection without proper perms."
       (testing "If I want to move A into B, I should need permissions for both A and B"
         (mt/with-non-admin-groups-no-root-collection-perms

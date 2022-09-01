@@ -24,6 +24,7 @@ redirect_from:
 
 ## Installation and operation
 
+- [Overview](./installation-and-operation/start.md)
 - [Installing Metabase](./installation-and-operation/installing-metabase.md)
 - [How to upgrade Metabase](./installation-and-operation/upgrading-metabase.md)
 - [Application database](./installation-and-operation/configuring-application-database.md)
@@ -60,6 +61,7 @@ redirect_from:
 - [Sharing answers](./questions/sharing/answers.md)
 - [Visualizing data](./questions/sharing/visualizing-results.md)
 - [Setting and getting alerts](./questions/sharing/alerts.md)
+- [Public links](./questions/sharing/public-links.md)
 
 ## Dashboards
 
@@ -118,11 +120,9 @@ redirect_from:
 ## Embedding questions and dashboards
 
 - [Overview](./embedding/start.md)
-- [Embedding Metabase in other applications](./embedding/introduction.md)
-- [Public links for dashboards and questions](./embedding/public-links.md)
-- [Customizing the appearance of embedded items](./embedding/customize-embeds.md)
-- [Embedding the entire Metabase app in your own web app](./embedding/full-app-embedding.md)
-- [White labeling charts (branding)](./embedding/whitelabeling.md)
+- [Embedding introduction](./embedding/introduction.md)
+- [Signed embedding](./embedding/signed-embedding.md)
+- [Full-app embedding](./embedding/full-app-embedding.md)
 - [Embedding example apps](https://github.com/metabase/embedding-reference-apps)
 
 ## Databases
@@ -144,6 +144,7 @@ redirect_from:
 - [Configuring logging](./configuring-metabase/log-configuration.md)
 - [Handling timezones](./configuring-metabase/timezones.md)
 - [Localization](./configuring-metabase/localization.md)
+- [Appearance](./configuring-metabase/appearance.md)
 - [Caching query results](./configuring-metabase/caching.md)
 - [Custom map settings](./configuring-metabase/custom-maps.md)
 - [Customizing the Metabase Jetty Webserver](./configuring-metabase/customizing-jetty-webserver.md)

@@ -1,14 +1,10 @@
 import { TYPE } from "metabase/lib/types";
 import { formatSourceForTarget } from "metabase/lib/click-behavior";
 
-import Database from "metabase-lib/lib/metadata/Database";
-import Field from "metabase-lib/lib/metadata/Field";
+import type Database from "metabase-lib/lib/metadata/Database";
+import type Field from "metabase-lib/lib/metadata/Field";
 
-import { Database as IDatabase } from "metabase-types/types/Database";
-import { DashCard } from "metabase-types/types/Dashboard";
-import { Parameter, ParameterId } from "metabase-types/types/Parameter";
-
-import {
+import type {
   WritebackAction,
   ParameterMappings,
   ParametersMappedToValues,
@@ -17,7 +13,10 @@ import {
   ActionClickExtraData,
   ActionClickBehavior,
   ActionParameterTuple,
-} from "./types";
+} from "metabase-types/api/writeback";
+import type { Database as IDatabase } from "metabase-types/types/Database";
+import type { DashCard } from "metabase-types/types/Dashboard";
+import type { Parameter, ParameterId } from "metabase-types/types/Parameter";
 
 const DB_WRITEBACK_FEATURE = "actions";
 const DB_WRITEBACK_SETTING = "database-enable-actions";
