@@ -24,6 +24,7 @@ redirect_from:
 
 ## Installation and operation
 
+- [Overview](./installation-and-operation/start.md)
 - [Installing Metabase](./installation-and-operation/installing-metabase.md)
 - [How to upgrade Metabase](./installation-and-operation/upgrading-metabase.md)
 - [Application database](./installation-and-operation/configuring-application-database.md)
