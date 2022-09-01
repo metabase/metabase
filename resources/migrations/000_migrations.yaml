@@ -12741,7 +12741,7 @@ databaseChangeLog:
         - renameColumn:
             tableName: report_dashboardcard
             columnDataType: int
-            oldColumnName: size_y
+            oldColumnName: sizeY
             newColumnName: size_y
 
   - changeSet:
