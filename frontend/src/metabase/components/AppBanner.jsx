@@ -6,8 +6,8 @@ import Banner from "metabase/components/Banner";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { useLicense } from "metabase/admin/settings/hooks/use-license";
 
-const UNPAID_ERROR = t`⚠️ We couldn't process payment for your account. Please [review your payment settings](https://store.metabase.com/) to avoid service interruptions.`;
-const PAST_DUE_ERROR = t`⚠️ Pro features won’t work right now due to lack of payment. [Review your payment settings to restore Pro functionality](https://store.metabase.com/).`;
+const PAST_DUE_ERROR = t`⚠️ We couldn't process payment for your account. Please [review your payment settings](https://store.metabase.com/) to avoid service interruptions.`;
+const UNPAID_ERROR = t`⚠️ Pro features won’t work right now due to lack of payment. [Review your payment settings to restore Pro functionality](https://store.metabase.com/).`;
 
 const mapStateToProps = state => ({
   isAdmin: getUserIsAdmin(state),
@@ -20,11 +20,11 @@ const AppBanner = ({ isAdmin }) => {
     isAdmin &&
     tokenStatus != null &&
     (tokenStatus.validStatus === "unpaid" ||
-      tokenStatus.validStatus === "past_due")
+      tokenStatus.validStatus === "past-due")
   ) {
     const errorMessage = {
+      "past-due": PAST_DUE_ERROR,
       unpaid: UNPAID_ERROR,
-      past_due: PAST_DUE_ERROR,
     }[tokenStatus.validStatus];
     return <Banner>{errorMessage}</Banner>;
   } else {
