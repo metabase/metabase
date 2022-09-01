@@ -19,28 +19,10 @@ describe("display the relevant error message in save question modal (metabase#21
   });
 
   it("duplicates the Sample Database DB", () => {
-    cy.intercept("POST", "/api/database").as("createDatabase");
     cy.intercept("POST", "/api/card").as("saveNativeQuestion");
 
     // Second DB (copy)
-    cy.visit("/");
-    cy.icon("gear").click();
-    cy.findByText("Admin settings").click();
-    cy.findByText("Databases").click();
-    cy.findByText("Add database").click();
-
-    cy.get(".Form-field").findByTestId("select-button").first().click();
-    cy.findByText("H2").click();
-    cy.get(`input[name="name"]`).type(databaseCopyName);
-    cy.get(`input[name="details.db"]`).type(
-      "./resources/sample-database.db;USER=GUEST;PASSWORD=guest",
-    );
-
-    cy.button("Save").should("not.be.disabled").click();
-
-    cy.wait("@createDatabase");
-    cy.findByText("We're taking a look at your database!");
-    cy.findByText("Explore sample data");
+    cy.addH2SampleDatabase({ name: databaseCopyName });
 
     // Create a native query
     // and run it
