@@ -29,18 +29,6 @@ With your data connected, get started asking questions, creating dashboards, and
 
 Metabase is a deep product with a lot of tools to simplify business intelligence, from embeddable charts and interactive dashboards, to GUI and SQL editors, to auditing and data sandboxing, and more.
 
-## Quick links
-
-## Troubleshooting and getting help
-
-- [Troubleshooting guides](troubleshooting-guide/index.md)
-- [Metabase forum](https://discourse.metabase.com/)
-- [Configuring logging](./configuring-metabase/log-configuration.md)
-
-## Tutorials and guides
-
-- [Learn Metabase](https://www.metabase.com/learn) has a ton of articles on how to use Metabase, data best practices, and more.
-
 ## Documentation topics
 
 Metabase's reference documentation.
@@ -185,34 +173,61 @@ Metabase's reference documentation.
 
 ### Troubleshooting
 
-- [Get unstuck](./troubleshooting/start.md)
+- [Get unstuck](./troubleshooting/index.md)
+
+## Getting help
+
+### Troubleshooting
+
+- [Troubleshooting guides](troubleshooting-guide/index.md)
+- [Metabase forum](https://discourse.metabase.com/)
+- [Configuring logging](./configuring-metabase/log-configuration.md)
+
+### [Tutorials and guides](https://www.metabase.com/learn)
+
+[Learn Metabase](https://www.metabase.com/learn) has a ton of articles on how to use Metabase, data best practices, and more.
 
 ## More resources
 
-### [Metabase community](https://discourse.metabase.com)
+### [Learn Metabase](https://www.metabase.com/learn)
 
-- [Metabase forum](https://discourse.metabase.com/)
-- [Community stories](https://www.metabase.com/community)
-- [Case studies](https://www.metabase.com/case_studies/)
-- [Metabase Blog](https://www.metabase.com/blog)
-- [Source code repository on GitHub](https://github.com/metabase/metabase)
-- [Metabase Twitter](https://twitter.com/metabase)
+Guides on working with data.
 
-### [Premium features](/paid-features/start.md)
+### [Discussion](https://discourse.metabase.com)
+
+Share and connect with other Metabasers.
+
+### [Premium features](./paid-features/start.md)
 
 Some [Metabase plans](/pricing) offer additional features.
-
-- [Overview](./paid-features/start.md)
-- [Getting and activating the Enterprise edition](./paid-features/activating-the-enterprise-edition.md)
-- [List of premium features](./paid-features/overview.md)
-
-### [Developers guide](developers-guide/start.md)
-
-Contribute to the Metabase open source project!
 
 ### [Metabase Cloud](https://www.metabase.com/cloud/docs)
 
 For docs specific to Metabase Cloud plans.
+
+### [Community stories](https://www.metabase.com/community)
+
+Practical advice from our community.
+
+### [Metabase blog](https://www.metabase.com/blog)
+
+News, updates, and ideas.
+
+### [Customers](https://www.metabase.com/case_studies)
+
+Real companies, real data, real stories.
+
+### [Metabase Twitter](https://twitter.com/metabase)
+
+We tweet stuff. 
+
+### [Source code repository on GitHub](https://github.com/metabase/metabase)
+
+Follow us on GitHub.
+
+### [Developers guide](developers-guide/start.md)
+
+Contribute to the Metabase open source project!
 
 ### [Data and Business Intelligence Glossary](https://www.metabase.com/glossary)
 
