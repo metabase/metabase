@@ -29,6 +29,8 @@ export const AdminNavbar = ({
   path: currentPath,
   adminPaths,
 }: AdminNavbarProps) => {
+  console.log(currentPath);
+  console.log(adminPaths);
   return (
     <AdminNavbarRoot className="Nav">
       <AdminLogoLink to="/admin" data-metabase-event="Navbar;Logo">

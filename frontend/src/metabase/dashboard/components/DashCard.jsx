@@ -194,7 +194,7 @@ export default class DashCard extends Component {
 
     return (
       <DashCardRoot
-        className="Card rounded flex flex-column hover-parent hover--visibility"
+        className="Card flex flex-column hover-parent hover--visibility"
         style={
           hideBackground
             ? { border: 0, background: "transparent", boxShadow: "none" }

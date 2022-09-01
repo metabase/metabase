@@ -1,5 +1,5 @@
-export const GRID_WIDTH = 25;
-export const GRID_ASPECT_RATIO = 4 / 3;
+export const GRID_WIDTH = 24;
+export const GRID_ASPECT_RATIO = 3 / 3;
 
 const MOBILE_BREAKPOINT = 752;
 
@@ -15,7 +15,7 @@ export const GRID_COLUMNS = {
 
 export const DEFAULT_CARD_SIZE = { width: 3, height: 3 };
 
-export const MIN_ROW_HEIGHT = 25;
+export const MIN_ROW_HEIGHT = 54;
 
 // returns the first available position from left to right, top to bottom,
 // based on the existing cards,  item size, and grid width

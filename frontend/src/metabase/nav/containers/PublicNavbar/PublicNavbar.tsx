@@ -26,7 +26,10 @@ export const PublicNavbar = ({
 }: AdminNavbarProps) => {
   return (
     <PublicNavbarRoot className="Nav">
-      <PublicLogoLink to="/admin" data-metabase-event="Navbar;Logo">
+      <PublicLogoLink
+        to="/public/dashboard/1d797208-ea63-4c7b-b276-dc68315bc705"
+        data-metabase-event="Navbar;Logo"
+      >
         <PublicLogoContainer>
           <LogoIcon className="text-brand my2" dark />
           <PublicLogoText>{t`NFTRover`}</PublicLogoText>

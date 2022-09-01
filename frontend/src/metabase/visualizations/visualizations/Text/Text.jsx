@@ -91,6 +91,13 @@ export default class Text extends Component {
       widget: "toggle",
       default: true,
     },
+    "dashcard.background-color": {
+      section: t`Display`,
+      title: t`Show background`,
+      dashboard: true,
+      widget: "input",
+      getDefault: "null",
+    },
   };
 
   handleTextChange(text) {

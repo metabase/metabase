@@ -24,8 +24,8 @@ const DEFAULT_OPTIONS = {
 const SOLANA_DASHBOARD_ID = "a111b496-1c4a-400f-8566-a42e7fdbd173";
 const ETH_DASHBOARD_ID = "10538a2c-07f3-4a5d-a992-425df0060380";
 const HOME_DASHBOARD_ID = "1d797208-ea63-4c7b-b276-dc68315bc705";
+const PODIUM_DASHBOARD_ID = "bede377c-52e4-4987-b683-73746905e58e";
 
-const siteUrl = MetabaseSettings.get("site-url");
 class EmbedFrame extends Component {
   state = {
     innerScroll: true,
@@ -33,17 +33,22 @@ class EmbedFrame extends Component {
       {
         key: "home",
         name: "Home",
-        path: `${siteUrl}/public/dashboard/${HOME_DASHBOARD_ID}`,
+        path: `/public/dashboard/${HOME_DASHBOARD_ID}`,
       },
       {
         key: "eth",
         name: "Ethereum",
-        path: `${siteUrl}/public/dashboard/${ETH_DASHBOARD_ID}`,
+        path: `/public/dashboard/${ETH_DASHBOARD_ID}`,
       },
       {
         key: "sol",
         name: "Solana",
-        path: `${siteUrl}/public/dashboard/${SOLANA_DASHBOARD_ID}`,
+        path: `/public/dashboard/${SOLANA_DASHBOARD_ID}`,
+      },
+      {
+        key: "pod",
+        name: "Podium",
+        path: `/public/dashboard/${PODIUM_DASHBOARD_ID}`,
       },
     ],
   };
