@@ -15,13 +15,13 @@ const secondDatabaseId = SAMPLE_DB_ID + 1;
 
 const { PRODUCTS } = SAMPLE_DATABASE;
 
-describe("display the relevant error message in save question modal (metabase#21597)", () => {
+describe("issue 21597", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
   });
 
-  it("duplicates the Sample Database DB", () => {
+  it("display the relevant error message in save question modal (metabase#21597)", () => {
     cy.intercept("POST", "/api/card").as("saveNativeQuestion");
 
     // Second DB (copy)
