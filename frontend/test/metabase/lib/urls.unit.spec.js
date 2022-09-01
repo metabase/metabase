@@ -229,7 +229,7 @@ describe("urls", () => {
           name: "Orders",
           type: "card",
         }),
-      ).toBe("/card/5-orders");
+      ).toBe("/question/5-orders");
     });
 
     it("returns model bookmark path", () => {
@@ -240,7 +240,7 @@ describe("urls", () => {
           name: "Product",
           type: "card",
         }),
-      ).toBe("/card/1-product");
+      ).toBe("/model/1-product");
     });
 
     it("returns dashboard bookmark path", () => {

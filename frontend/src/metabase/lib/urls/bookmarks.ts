@@ -4,7 +4,16 @@ import { Bookmark } from "metabase-types/api";
 
 import { appendSlug } from "./utils";
 
-export function bookmark({ id, type, name }: Bookmark) {
-  const [, idInteger] = id.split("-");
-  return `/${type}/${appendSlug(idInteger, slugg(name))}`;
+function getBookmarkBasePath(bookmark: Bookmark) {
+  if (bookmark.type === "card") {
+    return bookmark.dataset ? "model" : "question";
+  }
+  return bookmark.type;
+}
+
+export function bookmark(bookmark: Bookmark) {
+  const [, itemId] = bookmark.id.split("-");
+  const basePath = getBookmarkBasePath(bookmark);
+  const itemPath = appendSlug(itemId, slugg(bookmark.name));
+  return `/${basePath}/${itemPath}`;
 }

@@ -9,6 +9,9 @@ export interface Bookmark {
   name: string;
   type: BookmarkType;
 
+  // For questions and models
+  dataset?: boolean;
+
   // For data app collections
   app_id?: number;
 }
