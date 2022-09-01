@@ -383,3 +383,10 @@
        (set/union (serdes.util/mbql-deps dataset_query))
        (set/union (serdes.util/visualization-settings-deps visualization_settings))
        vec))
+
+(defmethod serdes.base/serdes-descendants "Card" [_model-name id]
+  (let [card (db/select-one Card :id id)
+        source-table (some-> card :dataset_query :query :source-table)]
+    (when (and (string? source-table)
+               (.startsWith ^String source-table "card__"))
+      #{["Card" (Integer/parseInt (.substring ^String source-table 6))]})))

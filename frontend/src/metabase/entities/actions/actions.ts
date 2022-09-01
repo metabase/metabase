@@ -1,7 +1,7 @@
 import { createEntity } from "metabase/lib/entities";
 
 import type Question from "metabase-lib/lib/Question";
-import type { ActionFormSettings } from "metabase/writeback/types";
+import type { ActionFormSettings } from "metabase-types/api";
 
 import { CardApi } from "metabase/services";
 

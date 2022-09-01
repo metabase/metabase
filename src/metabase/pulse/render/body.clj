@@ -535,7 +535,7 @@
           card-type     (or (series-setting viz-settings y-col-key :display)
                             chart-type
                             (nth default-combo-chart-types idx))
-          selected-rows (sort-by first (map #(vector (ffirst %) (nth (second %) idx)) joined-rows))
+          selected-rows (mapv #(vector (ffirst %) (nth (second %) idx)) joined-rows)
           y-axis-pos    (or (series-setting viz-settings y-col-key :axis)
                             (nth (default-y-pos viz-settings) idx))]
      {:name          card-name
@@ -555,7 +555,7 @@
         groups       (keys grouped-rows)]
     (for [[idx group-key] (map-indexed vector groups)]
       (let [row-group          (get grouped-rows group-key)
-            selected-row-group (sort-by first (map #(vector (ffirst %) (first (second %))) row-group))
+            selected-row-group (mapv #(vector (ffirst %) (first (second %))) row-group)
             card-name          (or (series-setting viz-settings group-key :name)
                                    group-key)
             card-color         (or (series-setting viz-settings group-key :color)
@@ -581,7 +581,7 @@
         y-axis-rowfn     (ui-logic/mult-y-axis-rowfn card data)
         x-rows           (filter some? (map x-axis-rowfn rows))
         y-rows           (filter some? (map y-axis-rowfn rows))
-        joined-rows      (map vector x-rows y-rows)
+        joined-rows      (mapv vector x-rows y-rows)
         viz-settings     (set-default-stacked viz-settings card)
         [x-cols y-cols]  ((juxt x-axis-rowfn y-axis-rowfn) (vec cols))
 

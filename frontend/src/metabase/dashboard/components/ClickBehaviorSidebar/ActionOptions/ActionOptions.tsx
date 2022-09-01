@@ -5,11 +5,11 @@ import { t } from "ttag";
 import Actions from "metabase/entities/actions";
 
 import ClickMappings from "metabase/dashboard/components/ClickMappings";
-import { WritebackAction } from "metabase/writeback/types";
 
 import type {
   DashboardOrderedCard,
   ClickBehavior,
+  WritebackAction,
   WritebackActionClickBehavior,
 } from "metabase-types/api";
 
