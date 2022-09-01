@@ -14,6 +14,8 @@ describe(`smoke test the migration to the version ${version}`, () => {
     // Question 1
     cy.visit("/collection/root");
     cy.findByText("Quarterly Revenue").click();
+    cy.findByText("It's okay to play around with saved questions");
+    cy.button("Okay").click();
     cy.get("circle");
     cy.get(".line");
     cy.findByText("Goal");
