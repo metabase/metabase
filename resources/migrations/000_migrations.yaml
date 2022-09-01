@@ -12722,6 +12722,89 @@ databaseChangeLog:
             constraintName: fk_report_dashboardcard_ref_action_id
             onDelete: CASCADE
 
+  - changeSet:
+      id: v45.00-028
+      author: camsaul
+      comment: Added 0.45.0 -- rename DashboardCard sizeX to size_x. See https://github.com/metabase/metabase/issues/16344
+      changes:
+        - renameColumn:
+            tableName: report_dashboardcard
+            columnDataType: int
+            oldColumnName: sizeX
+            newColumnName: size_x
+
+  - changeSet:
+      id: v45.00-029
+      author: camsaul
+      comment: Added 0.45.0 -- rename DashboardCard size_y to size_y. See https://github.com/metabase/metabase/issues/16344
+      changes:
+        - renameColumn:
+            tableName: report_dashboardcard
+            columnDataType: int
+            oldColumnName: size_y
+            newColumnName: size_y
+
+  - changeSet:
+      id: v45.00-030
+      author: camsaul
+      comment: Added 0.45.0 -- add default value to DashboardCard size_x -- this was previously done by Toucan
+      changes:
+        - addDefaultValue:
+            tableName: report_dashboardcard
+            columnName: size_x
+            defaultValue: 2
+
+  - changeSet:
+      id: v45.00-031
+      author: camsaul
+      comment: Added 0.45.0 -- add default value to DashboardCard size_y -- this was previously done by Toucan
+      changes:
+        - addDefaultValue:
+            tableName: report_dashboardcard
+            columnName: size_y
+            defaultValue: 2
+
+  - changeSet:
+      id: v45.00-032
+      author: camsaul
+      comment: Added 0.45.0 -- add default value for DashboardCard created_at
+      changes:
+        - addDefaultValue:
+            tableName: report_dashboardcard
+            columnName: created_at
+            defaultValueComputed: current_timestamp
+
+  - changeSet:
+      id: v45.00-033
+      author: camsaul
+      comment: Added 0.45.0 -- add default value for DashboardCard updated_at
+      changes:
+        - addDefaultValue:
+            tableName: report_dashboardcard
+            columnName: updated_at
+            defaultValueComputed: current_timestamp
+
+  - changeSet:
+      id: v45.00-034
+      author: camsaul
+      comment: Added 0.45.0 -- add default value for DashboardCard parameter_mappings
+      changes:
+        - addDefaultValue:
+            tableName: report_dashboardcard
+            columnName: parameter_mappings
+            defaultValue: '[]'
+
+  - changeSet:
+      id: v45.00-035
+      author: camsaul
+      comment: Added 0.45.0 -- add default value for DashboardCard visualization_settings
+      changes:
+        - addDefaultValue:
+            tableName: report_dashboardcard
+            columnName: visualization_settings
+            defaultValue: '{}'
+
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

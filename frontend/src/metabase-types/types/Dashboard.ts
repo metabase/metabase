@@ -54,8 +54,8 @@ export type DashCard<CardType = SavedCard> = {
 
   col: number;
   row: number;
-  sizeY: number;
-  sizeX: number;
+  size_y: number;
+  size_x: number;
 
   isAdded?: boolean;
   isDirty?: boolean;

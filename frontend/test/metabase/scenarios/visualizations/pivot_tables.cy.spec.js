@@ -516,8 +516,8 @@ describe("scenarios > visualizations > pivot tables", () => {
                     card_id: QUESTION_ID,
                     row: 0,
                     col: 0,
-                    sizeX: 12,
-                    sizeY: 8,
+                    size_x: 12,
+                    size_y: 8,
                   },
                 ],
               });
@@ -576,8 +576,8 @@ describe("scenarios > visualizations > pivot tables", () => {
                     card_id: QUESTION_ID,
                     row: 0,
                     col: 0,
-                    sizeX: 12,
-                    sizeY: 8,
+                    size_x: 12,
+                    size_y: 8,
                   },
                 ],
               });

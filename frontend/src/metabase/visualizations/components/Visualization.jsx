@@ -444,7 +444,7 @@ class Visualization extends React.PureComponent {
       (showTitle &&
         hasHeaderContent &&
         (loading || error || noResults || isHeaderEnabled)) ||
-      (replacementContent && (dashcard.sizeY !== 1 || isMobile));
+      (replacementContent && (dashcard.size_y !== 1 || isMobile));
 
     return (
       <div
