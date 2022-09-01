@@ -16,7 +16,7 @@ interface ChartSettingsWidgetPopoverProps {
   widget: Widget;
 }
 
-export const ChartSettingsWidgetPopover = ({
+const ChartSettingsWidgetPopover = ({
   anchor,
   handleEndShowWidget,
   widget,
@@ -47,3 +47,5 @@ export const ChartSettingsWidgetPopover = ({
     />
   );
 };
+
+export default ChartSettingsWidgetPopover;

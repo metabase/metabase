@@ -30,7 +30,7 @@ interface Props {
   columns: Column[];
   question: Question;
   onChange: (value: SettingValue) => void;
-  onShowWidget: (config: unknown, ref: HTMLElement | null) => void;
+  onShowWidget: (config: unknown, targetElement: HTMLElement | null) => void;
 }
 
 type ListColumnSlot = "left" | "right";

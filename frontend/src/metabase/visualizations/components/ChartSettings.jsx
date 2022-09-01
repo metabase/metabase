@@ -10,7 +10,7 @@ import Radio from "metabase/core/components/Radio";
 import { SectionContainer, SectionWarnings } from "./ChartSettings.styled";
 
 import Visualization from "metabase/visualizations/components/Visualization";
-import { ChartSettingsWidgetPopover } from "./ChartSettingsWidgetPopover";
+import ChartSettingsWidgetPopover from "./ChartSettingsWidgetPopover";
 import ChartSettingsWidget from "./ChartSettingsWidget";
 
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
@@ -27,28 +27,26 @@ import {
 // section names are localized
 const DEFAULT_TAB_PRIORITY = [t`Display`];
 
-const popoverWidget = (widgets, currentWidget, extraWidgetProps) => {
-  return (
-    currentWidget &&
-    [widgets.find(widget => widget.id === currentWidget.id)]
-      .map(widget => {
-        if (widget) {
-          return (
-            <ChartSettingsWidget
-              key={widget.id}
-              {...widget}
-              props={{
-                ...widget.props,
-                ...currentWidget.props,
-              }}
-              hidden={false}
-              {...extraWidgetProps}
-            />
-          );
-        }
-      })
-      .filter(w => !!w)
-  );
+const getPopoverWidget = (widgets, currentWidget, extraWidgetProps) => {
+  const widget =
+    currentWidget && widgets.find(widget => widget.id === currentWidget.id);
+
+  if (widget) {
+    return (
+      <ChartSettingsWidget
+        key={widget.id}
+        {...widget}
+        props={{
+          ...widget.props,
+          ...currentWidget.props,
+        }}
+        hidden={false}
+        {...extraWidgetProps}
+      />
+    );
+  }
+
+  return undefined;
 };
 
 const withTransientSettingState = ComposedComponent =>
@@ -355,11 +353,8 @@ class ChartSettings extends Component {
         )}
         <ChartSettingsWidgetPopover
           anchor={popoverRef}
-          widget={popoverWidget(widgets, currentWidget, extraWidgetProps)}
+          widget={getPopoverWidget(widgets, currentWidget, extraWidgetProps)}
           handleEndShowWidget={this.handleEndShowWidget}
-          currentWidget={currentWidget}
-          extraWidgetProps={extraWidgetProps}
-          setSidebarPropsOverride={setSidebarPropsOverride}
         />
       </div>
     );
