@@ -51,6 +51,10 @@ import Table from "../metadata/Table";
 import Field from "../metadata/Field";
 import { TYPE } from "metabase/lib/types";
 import { fieldRefForColumn } from "metabase/lib/dataset";
+import {
+  isVirtualCardId,
+  getQuestionIdFromVirtualTableId,
+} from "metabase/lib/saved-questions";
 
 import { getStructuredQueryTable } from "./utils/structured-query-table";
 
@@ -1371,7 +1375,7 @@ class StructuredQueryInner extends AtomicQuery {
             f.parent_id == null
           );
         })
-        .sortBy(d => d.displayName().toLowerCase())
+        .sortBy(d => d.displayName()?.toLowerCase())
         .sortBy(d => {
           const type = d.field().semantic_type;
           return type === TYPE.PK ? 0 : type === TYPE.Name ? 1 : 2;
@@ -1636,6 +1640,13 @@ class StructuredQueryInner extends AtomicQuery {
         id: tableId,
         foreignTables,
       });
+
+      if (isVirtualCardId(tableId)) {
+        addDependency({
+          type: "question",
+          id: getQuestionIdFromVirtualTableId(tableId),
+        });
+      }
     }
 
     // any explicitly joined tables

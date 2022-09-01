@@ -7,7 +7,8 @@ import {
   SAMPLE_DATABASE,
 } from "__support__/sample_database_fixture";
 import Question from "metabase-lib/lib/Question";
-import type Field from "metabase-lib/lib/metadata/Field";
+import Table from "metabase-lib/lib/metadata/Table";
+import Field from "metabase-lib/lib/metadata/Field";
 
 import type StructuredQuery from "../StructuredQuery";
 import { getStructuredQueryTable } from "./structured-query-table";
@@ -42,28 +43,8 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
         name: "Base question",
         result_metadata: [
           {
-            name: "boolean",
-            display_name: "boolean",
-            base_type: "type/Boolean",
-            effective_type: "type/Boolean",
-            semantic_type: null,
-            field_ref: [
-              "field",
-              "boolean",
-              {
-                "base-type": "type/Boolean",
-              },
-            ],
-          },
-          {
-            base_type: "type/Text",
-            display_name: "Foo",
-            effective_type: "type/Text",
-            field_ref: ["expression", "Foo"],
-            id: ["field", "Foo", { "base-type": "type/Text" }],
             name: "Foo",
-            semantic_type: null,
-            table_id: "card__1",
+            display_name: "~*~ Foo ~*~",
           },
           {
             id: PRODUCTS.CATEGORY.id,
@@ -74,65 +55,75 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
       metadata,
     );
 
+    const NESTED_CARD_TABLE = new Table({
+      id: "card__1",
+      display_name: BASE_QUESTION.displayName(),
+      name: BASE_QUESTION.displayName(),
+    });
+    NESTED_CARD_TABLE.fields = [
+      new Field({
+        name: "boolean",
+        display_name: "boolean",
+        base_type: "type/Boolean",
+        effective_type: "type/Boolean",
+        semantic_type: null,
+        field_ref: [
+          "field",
+          "boolean",
+          {
+            "base-type": "type/Boolean",
+          },
+        ],
+      }),
+      new Field({
+        base_type: "type/Text",
+        display_name: "Foo",
+        effective_type: "type/Text",
+        field_ref: ["expression", "Foo"],
+        id: ["field", "Foo", { "base-type": "type/Text" }],
+        name: "Foo",
+        semantic_type: null,
+        table_id: "card__1",
+      }),
+      PRODUCTS.CATEGORY,
+    ];
+
     metadata.questions = {
       [NESTED_CARD_QUESTION.id()]: NESTED_CARD_QUESTION,
       [BASE_QUESTION.id()]: BASE_QUESTION,
     };
+
+    metadata.tables[NESTED_CARD_TABLE.id] = NESTED_CARD_TABLE;
 
     const table = getStructuredQueryTable(
       NESTED_CARD_QUESTION.query() as StructuredQuery,
     );
 
     it("should return a table", () => {
-      expect(table).toBeDefined();
+      expect(table).toBeInstanceOf(Table);
     });
 
     it("should return a virtual table based on the nested card", () => {
-      expect(table?.getPlainObject()).toEqual({
-        display_name: "Base question",
-        id: "card__1",
-        name: "Base question",
-      });
+      expect(table?.getPlainObject()).toEqual(
+        NESTED_CARD_TABLE.getPlainObject(),
+      );
     });
 
     it("should contain fields created by merging the underlying concrete table fields with field metadata found on the card object", () => {
+      const [boolField, expressionField, categoryField] = table?.fields || [];
       expect(table?.fields.map(field => field.getPlainObject())).toEqual([
         {
-          base_type: "type/Boolean",
-          display_name: "boolean",
-          effective_type: "type/Boolean",
-          field_ref: [
-            "field",
-            "boolean",
-            {
-              "base-type": "type/Boolean",
-            },
-          ],
-          name: "boolean",
-          semantic_type: null,
-          source: "fields",
+          ...boolField.getPlainObject(),
+          source: "nested",
         },
         {
-          base_type: "type/Text",
-          display_name: "Foo",
-          effective_type: "type/Text",
-          field_ref: ["expression", "Foo"],
-          id: [
-            "field",
-            "Foo",
-            {
-              "base-type": "type/Text",
-            },
-          ],
-          name: "Foo",
-          semantic_type: null,
-          source: "fields",
-          table_id: "card__1",
+          ...expressionField.getPlainObject(),
+          source: "nested",
+          display_name: "~*~ Foo ~*~",
         },
         {
-          ...PRODUCTS.CATEGORY.getPlainObject(),
-          description:
-            "The type of product, valid values include: Doohickey, Gadget, Gizmo and Widget",
+          ...categoryField.getPlainObject(),
+          source: "nested",
           display_name: "~*~ Category ~*~",
         },
       ]);
@@ -162,9 +153,22 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
       });
     ORDERS_DATASET.card().id = 3;
 
+    const ORDERS_DATASET_TABLE = new Table({
+      id: "card__3",
+      display_name: ORDERS_DATASET.displayName(),
+      name: ORDERS_DATASET.displayName(),
+    });
+    ORDERS_DATASET_TABLE.fields = [
+      // Note that this SHOULD be identical to OVERWRITTEN_USER_ID_FIELD_METADATA
+      // but this mimics the bug metabase#25141
+      ORDERS.USER_ID,
+    ];
+
     metadata.questions = {
       [ORDERS_DATASET.id()]: ORDERS_DATASET,
     };
+
+    metadata.tables[ORDERS_DATASET_TABLE.id] = ORDERS_DATASET_TABLE;
 
     const table = getStructuredQueryTable(ORDERS_DATASET.query());
     it("should return a virtual table using the given query's question", () => {
@@ -172,12 +176,13 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
         display_name: "Dataset Question",
         id: "card__3",
         name: "Dataset Question",
+        fields: [ORDERS.USER_ID.id],
       });
     });
 
     it("should contain fields created by merging the underlying concrete table fields with field metadata found on the dataset card object", () => {
       expect(table?.fields.map(field => field.getPlainObject())).toEqual([
-        OVERWRITTEN_USER_ID_FIELD_METADATA,
+        { ...OVERWRITTEN_USER_ID_FIELD_METADATA, source: "nested" },
       ]);
     });
   });

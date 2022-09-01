@@ -6,6 +6,7 @@ import {
   SAMPLE_DATABASE,
 } from "__support__/sample_database_fixture";
 import Question from "metabase-lib/lib/Question";
+import Table from "metabase-lib/lib/metadata/Table";
 import type NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
 import { getNativeQueryTable } from "./native-query-table";
@@ -35,9 +36,19 @@ describe("metabase-lib/queries/utils/native-query-table", () => {
         columns: [PRODUCT_ID_WITH_OVERRIDING_METADATA],
       });
 
+    const nestedNativeDatasetTable = new Table({
+      id: "card__1",
+      display_name: nativeDatasetQuestion.displayName(),
+      name: nativeDatasetQuestion.displayName(),
+    });
+    // Note that this SHOULD be identical to PRODUCT_ID_WITH_OVERRIDING_METADATA
+    // but this mimics the bug metabase#25141
+    nestedNativeDatasetTable.fields = [PRODUCTS.ID];
+
     metadata.questions = {
       [nativeDatasetQuestion.id()]: nativeDatasetQuestion,
     };
+    metadata.tables[nestedNativeDatasetTable.id] = nestedNativeDatasetTable;
 
     const table = getNativeQueryTable(
       nativeDatasetQuestion.query() as NativeQuery,
@@ -48,12 +59,16 @@ describe("metabase-lib/queries/utils/native-query-table", () => {
         display_name: "Native Dataset Question",
         id: "card__1",
         name: "Native Dataset Question",
+        fields: [PRODUCTS.ID.id],
       });
     });
 
     it("should contain fields created by merging the underlying concrete table fields with field metadata found on the dataset card object", () => {
       expect(table?.fields.map(field => field.getPlainObject())).toEqual([
-        PRODUCT_ID_WITH_OVERRIDING_METADATA,
+        {
+          ...PRODUCT_ID_WITH_OVERRIDING_METADATA,
+          source: "nested",
+        },
       ]);
     });
   });

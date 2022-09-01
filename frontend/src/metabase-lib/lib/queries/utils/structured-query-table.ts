@@ -8,35 +8,37 @@ import type StructuredQuery from "../StructuredQuery";
 import { createVirtualTable, createVirtualField } from "./virtual-table";
 import { getDatasetTable, getNestedCardTable } from "./nested-card-query-table";
 
-export function getStructuredQueryTable(
-  structuredQuery: StructuredQuery,
-): Table | null {
-  const sourceQuery = structuredQuery.sourceQuery();
+export function getStructuredQueryTable(query: StructuredQuery): Table | null {
+  const sourceQuery = query.sourceQuery();
   // 1. Query has a source query. Use the source query as a table.
   if (sourceQuery) {
-    return getSourceQueryTable(sourceQuery);
+    return getSourceQueryTable(query);
   }
 
   // 2. Query has a source table that is a nested card.
-  const sourceTableId = structuredQuery.sourceTableId();
+  const sourceTableId = query.sourceTableId();
   if (isVirtualCardId(sourceTableId)) {
-    return getNestedCardTable(structuredQuery);
+    return getNestedCardTable(query);
   }
 
   // 3. The query's question is a dataset.
-  const question = structuredQuery.question();
+  const question = query.question();
   const isDataset = question?.isDataset() ?? false;
   if (isDataset) {
-    return getDatasetTable(structuredQuery);
+    return getDatasetTable(query);
   }
 
   // 4. The query's table is a concrete table, assuming one exists in `metadata`.
-  return structuredQuery.metadata().table(sourceTableId);
+  // Faiure to find a table at this point indicates that there is a bug.
+  return query.metadata().table(sourceTableId);
 }
 
-function getFieldsForSourceQueryTable(query: StructuredQuery): Field[] {
-  const metadata = query.metadata();
-  return query.columns().map(column => {
+function getFieldsForSourceQueryTable(
+  originalQuery: StructuredQuery,
+  sourceQuery: StructuredQuery,
+): Field[] {
+  const metadata = originalQuery.metadata();
+  return sourceQuery.columns().map(column => {
     // Not sure why we build out `id` like this, but it's what the old code did
     const id: FieldRef = [
       "field",
@@ -49,7 +51,7 @@ function getFieldsForSourceQueryTable(query: StructuredQuery): Field[] {
     const virtualField = createVirtualField({
       ...column,
       id,
-      query,
+      query: originalQuery,
       metadata,
     });
 
@@ -57,8 +59,9 @@ function getFieldsForSourceQueryTable(query: StructuredQuery): Field[] {
   });
 }
 
-function getSourceQueryTable(sourceQuery: StructuredQuery): Table {
-  const fields = getFieldsForSourceQueryTable(sourceQuery);
+function getSourceQueryTable(query: StructuredQuery): Table {
+  const sourceQuery = query.sourceQuery() as StructuredQuery;
+  const fields = getFieldsForSourceQueryTable(query, sourceQuery);
 
   return createVirtualTable({
     id: sourceQuery.sourceTableId() as number,

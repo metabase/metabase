@@ -2,7 +2,6 @@
 // @ts-nocheck
 import _ from "underscore";
 import moment from "moment-timezone";
-import { merge } from "icepick";
 
 import { createLookupByProperty, memoizeClass } from "metabase-lib/lib/utils";
 import { formatField, stripId } from "metabase/lib/formatting";
@@ -34,7 +33,7 @@ import {
   getIconForField,
   getFilterOperators,
 } from "metabase/lib/schema_metadata";
-import { FieldDimension } from "../Dimension";
+import Dimension, { FieldDimension } from "../Dimension";
 import Base from "./Base";
 import type { FieldFingerprint } from "metabase-types/api/field";
 import type { Field as FieldRef } from "metabase-types/types/Query";
@@ -68,6 +67,7 @@ class FieldInner extends Base {
   has_field_values?: "list" | "search" | "none";
   values: any[];
   metadata?: Metadata;
+  source?: string;
 
   // added when creating "virtual fields" that are associated with a given query
   query?: StructuredQuery | NativeQuery;
@@ -279,6 +279,10 @@ class FieldInner extends Base {
     }
   }
 
+  // 1. `_fieldInstance` is passed in so that we can shortwire any subsequent calls to `field()` form the dimension instance
+  // 2. The distinction between "fields" and "dimensions" is fairly fuzzy, and this method is "wrong" in the sense that
+  // The `ref` of this Field instance MIGHT be something like ["aggregation", "count"] which means that we should
+  // instantiate an AggregationDimension, not a FieldDimension, but there are bugs with that route, and this seems to work for now...
   dimension() {
     const ref = this.reference();
     const fieldDimension = new FieldDimension(
@@ -436,19 +440,18 @@ class FieldInner extends Base {
     });
   }
 
-  merge(overridingMetadata: Field | Record<string, unknown>) {
-    const override =
-      overridingMetadata instanceof Field
-        ? overridingMetadata.getPlainObject()
-        : overridingMetadata;
+  clone(metadata) {
+    if (metadata instanceof Field) {
+      throw new Error("`metadata` arg must be a plain object");
+    }
 
-    const plainObject = this.getPlainObject() || {};
-    const mergedPlainObject = merge(plainObject, override);
-    const newField = new Field({ ...this, ...mergedPlainObject });
-    newField._plainObject = mergedPlainObject;
+    const plainObject = this.getPlainObject();
+    const newField = new Field({ ...this, ...metadata });
+    newField._plainObject = { ...plainObject, ...metadata };
 
     return newField;
   }
+
   /**
    * Returns a FKDimension for this field and the provided field
    * @param {Field} foreignField
