@@ -43,11 +43,13 @@
 (def model-to-db-model
   "Mapping from string model to the Toucan model backing it."
   {"dashboard"  Dashboard
+   "page"       Dashboard
    "metric"     Metric
    "segment"    Segment
    "card"       Card
    "dataset"    Card
    "collection" Collection
+   "app"        Collection
    "table"      Table
    "pulse"      Pulse
    "database"   Database})
@@ -55,7 +57,7 @@
 (def all-models
   "All valid models to search for. The order of this list also influences the order of the results: items earlier in the
   list will be ranked higher."
-  ["dashboard" "metric" "segment" "card" "dataset" "collection" "table" "pulse" "database"])
+  ["dashboard" "page" "metric" "segment" "card" "dataset" "collection" "app" "table" "pulse" "database"])
 
 (def ^:const displayed-columns
   "All of the result components that by default are displayed by the frontend."
@@ -76,10 +78,18 @@
    :dataset_query
    :description])
 
+(defmethod searchable-columns-for-model "dataset"
+  [_]
+  (searchable-columns-for-model "card"))
+
 (defmethod searchable-columns-for-model "dashboard"
   [_]
   [:name
    :description])
+
+(defmethod searchable-columns-for-model "page"
+  [_]
+  (searchable-columns-for-model "dashboard"))
 
 (defmethod searchable-columns-for-model "database"
   [_]
