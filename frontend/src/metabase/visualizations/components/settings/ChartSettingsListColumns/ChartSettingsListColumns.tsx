@@ -1,4 +1,4 @@
-import React, { useCallback, ChangeEvent, useRef } from "react";
+import React, { useCallback, ChangeEvent } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -54,8 +54,6 @@ function ChartSettingsListColumns({
   onChange,
   onShowWidget,
 }: Props) {
-  const settingsRef = useRef(null);
-
   const onChangeColumn = useCallback(
     (slot: ListColumnSlot, index: number, val: FieldIdOrFieldRef) => {
       onChange({
@@ -71,7 +69,7 @@ function ChartSettingsListColumns({
   );
 
   const onColumnSettingsClick = useCallback(
-    fieldIdOrFieldRef => {
+    (fieldIdOrFieldRef, targetElement) => {
       const column = columns.find(
         column =>
           column.id === fieldIdOrFieldRef ||
@@ -85,7 +83,7 @@ function ChartSettingsListColumns({
               initialKey: keyForColumn(column),
             },
           },
-          settingsRef.current,
+          targetElement,
         );
       }
     },
@@ -118,11 +116,10 @@ function ChartSettingsListColumns({
             }}
           />
           <Button
-            ref={settingsRef}
             icon="gear"
             onlyIcon
             disabled={fieldIdOrFieldRef === null}
-            onClick={() => onColumnSettingsClick(fieldIdOrFieldRef)}
+            onClick={e => onColumnSettingsClick(fieldIdOrFieldRef, e.target)}
           />
         </ColumnItemContainer>
       ))}
@@ -141,7 +138,7 @@ function ChartSettingsListColumns({
             icon="gear"
             onlyIcon
             disabled={fieldIdOrFieldRef === null}
-            onClick={() => onColumnSettingsClick(fieldIdOrFieldRef)}
+            onClick={e => onColumnSettingsClick(fieldIdOrFieldRef, e.target)}
           />
         </ColumnItemContainer>
       ))}

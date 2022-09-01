@@ -27,6 +27,30 @@ import {
 // section names are localized
 const DEFAULT_TAB_PRIORITY = [t`Display`];
 
+const popoverWidget = (widgets, currentWidget, extraWidgetProps) => {
+  return (
+    currentWidget &&
+    [widgets.find(widget => widget.id === currentWidget.id)]
+      .map(widget => {
+        if (widget) {
+          return (
+            <ChartSettingsWidget
+              key={widget.id}
+              {...widget}
+              props={{
+                ...widget.props,
+                ...currentWidget.props,
+              }}
+              hidden={false}
+              {...extraWidgetProps}
+            />
+          );
+        }
+      })
+      .filter(w => !!w)
+  );
+};
+
 const withTransientSettingState = ComposedComponent =>
   class extends React.Component {
     static displayName = `withTransientSettingState[${
@@ -246,7 +270,7 @@ class ChartSettings extends Component {
 
     const widgetList = visibleWidgets.map(widget => (
       <ChartSettingsWidget
-        key={`${widget.id}`}
+        key={widget.id}
         {...widget}
         {...extraWidgetProps}
         setSidebarPropsOverride={setSidebarPropsOverride}
@@ -331,7 +355,7 @@ class ChartSettings extends Component {
         )}
         <ChartSettingsWidgetPopover
           anchor={popoverRef}
-          widgets={widgets}
+          widget={popoverWidget(widgets, currentWidget, extraWidgetProps)}
           handleEndShowWidget={this.handleEndShowWidget}
           currentWidget={currentWidget}
           extraWidgetProps={extraWidgetProps}

@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { useRef } from "react";
+import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { keyForColumn } from "metabase/lib/dataset";
@@ -19,8 +19,6 @@ const ChartSettingFieldPicker = ({
   columns,
   showColumnSetting,
 }) => {
-  const settingsRef = useRef(null);
-
   let columnKey;
   if (value && showColumnSetting && columns) {
     const column = _.findWhere(columns, { name: value });
@@ -43,8 +41,7 @@ const ChartSettingFieldPicker = ({
       {columnKey && (
         <SettingsIcon
           name="ellipsis"
-          ref={settingsRef}
-          onClick={() => {
+          onClick={e => {
             onShowWidget(
               {
                 id: "column_settings",
@@ -52,7 +49,7 @@ const ChartSettingFieldPicker = ({
                   initialKey: columnKey,
                 },
               },
-              settingsRef.current,
+              e.target,
             );
           }}
         />

@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { useRef } from "react";
+import React from "react";
 import cx from "classnames";
 import { t } from "ttag";
 import { DragSource, DropTarget } from "react-dnd";
@@ -86,16 +86,13 @@ function SortOrderOption({ value, onChange }) {
 }
 
 function FormattingOptions({ onEdit }) {
-  const settingsRef = useRef(null);
-
-  const handleOnEdit = () => {
-    onEdit(settingsRef);
+  const handleOnEdit = e => {
+    onEdit(e.target);
   };
   return (
     <FormattingOptionsRoot>
       <Text>{t`Formatting`}</Text>
       <Text
-        ref={settingsRef}
         onClick={handleOnEdit}
         className="text-brand text-bold cursor-pointer"
       >{t`See options…`}</Text>

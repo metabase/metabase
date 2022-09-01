@@ -40,7 +40,11 @@ const SortableColumn = SortableElement(function SortableColumn<
   return (
     <ColumnItem
       title={getItemName(item)}
-      onEdit={onEdit ? (ref?: HTMLElement) => onEdit(item, ref) : null}
+      onEdit={
+        onEdit
+          ? (targetElement?: HTMLElement) => onEdit(item, targetElement)
+          : null
+      }
       onRemove={onRemove && item.enabled ? () => onRemove(item) : null}
       onClick={onClick ? () => onClick(item) : null}
       onAdd={onAdd ? () => onAdd(item) : null}

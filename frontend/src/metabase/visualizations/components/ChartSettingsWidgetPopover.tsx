@@ -12,49 +12,24 @@ interface Widget {
 interface ChartSettingsWidgetPopoverProps {
   anchor: HTMLElement;
   handleEndShowWidget: () => void;
-  widgets: [Widget];
-  currentWidget: Widget;
-  extraWidgetProps: [];
+  widget: Widget;
 }
 
 export const ChartSettingsWidgetPopover = ({
   anchor,
   handleEndShowWidget,
-  widgets,
-  currentWidget,
-  extraWidgetProps,
+  widget,
 }: ChartSettingsWidgetPopoverProps) => {
-  const popoverWidgets =
-    currentWidget &&
-    [widgets.find(widget => widget.id === currentWidget.id)]
-      .map(widget => {
-        if (widget) {
-          return (
-            <ChartSettingsWidget
-              key={`${widget.id}`}
-              {...widget}
-              props={{
-                ...widget.props,
-                ...currentWidget.props,
-              }}
-              hidden={false}
-              {...extraWidgetProps}
-            />
-          );
-        }
-      })
-      .filter(w => !!w);
-
   return (
     <TippyPopover
       reference={anchor}
       content={
         <PopoverRoot>
           <PopoverTitle>Settings</PopoverTitle>
-          {popoverWidgets}
+          {widget}
         </PopoverRoot>
       }
-      visible={!!anchor && popoverWidgets.length > 0}
+      visible={!!anchor}
       onClose={handleEndShowWidget}
       placement="right"
       offset={[10, 10]}

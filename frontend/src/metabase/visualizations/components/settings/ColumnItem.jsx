@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { useRef } from "react";
+import React from "react";
 
 import {
   ColumnItemIcon,
@@ -10,21 +10,15 @@ import {
   ColumnItemDragHandle,
 } from "./ColumnItem.styled";
 
-const ActionIcon = React.forwardRef(function ActionIcon(
-  { icon, onClick },
-  ref,
-) {
-  return (
-    <ColumnItemIcon
-      ref={ref}
-      name={icon}
-      onClick={e => {
-        e.stopPropagation();
-        onClick();
-      }}
-    />
-  );
-});
+const ActionIcon = ({ icon, onClick }) => (
+  <ColumnItemIcon
+    name={icon}
+    onClick={e => {
+      e.stopPropagation();
+      onClick(e.target);
+    }}
+  />
+);
 
 const ColumnItem = ({
   title,
@@ -35,25 +29,13 @@ const ColumnItem = ({
   onEnable,
   draggable,
 }) => {
-  const settingsRef = useRef(null);
-
-  const handleOnEdit = () => {
-    onEdit(settingsRef.current);
-  };
-
   return (
     <ColumnItemRoot draggable={draggable} onClick={onClick}>
       <ColumnItemContainer>
         {draggable && <ColumnItemDragHandle name="grabber2" size={12} />}
         <ColumnItemContent>
           <ColumnItemSpan>{title}</ColumnItemSpan>
-          {onEdit && (
-            <ActionIcon
-              icon="ellipsis"
-              onClick={handleOnEdit}
-              ref={settingsRef}
-            />
-          )}
+          {onEdit && <ActionIcon icon="ellipsis" onClick={onEdit} />}
           {onAdd && <ActionIcon icon="add" onClick={onAdd} />}
           {onRemove && <ActionIcon icon="eye_filled" onClick={onRemove} />}
           {onEnable && <ActionIcon icon="eye_crossed_out" onClick={onEnable} />}
