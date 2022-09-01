@@ -622,13 +622,21 @@
                     (not (#{"metric" "segment"} (:model result))) (assoc-in [:collection :app_id] true)
                     (= (:model result) "collection")              (assoc :model "app" :app_id true)))
                 (default-results-with-collection))
-               (search-request-data :rasta :q "test")))))))
+               (search-request-data :rasta :q "test"))))))
+  (testing "App collections should filterable as \"app\""
+    (mt/with-temp* [Collection [collection {:name "App collection to find"}]
+                    App [_ {:collection_id (:id collection)}]
+                    Collection [_ {:name "Another collection to find"}]]
+      (is (partial= [(assoc (select-keys collection [:name])
+                            :model "app")]
+             (search-request-data :rasta :q "find" :models "app"))))))
 
 (deftest page-test
   (testing "Search results should pages with model \"page\""
-    (mt/with-temp* [Dashboard [_page {:name        "Page"
-                                      :description "Contains important text!"
-                                      :is_app_page true}]]
-      (is (partial= [{:name "Page"
-                      :model "page"}]
-                    (search-request-data :rasta :q "important text"))))))
+    (mt/with-temp* [Dashboard [_ {:name "Not a page but contains important text!"}]
+                    Dashboard [page {:name        "Page"
+                                     :description "Contains important text!"
+                                     :is_app_page true}]]
+      (is (partial= [(assoc (select-keys page [:name :description])
+                            :model "page")]
+                    (search-request-data :rasta :q "important text" :models "page"))))))
