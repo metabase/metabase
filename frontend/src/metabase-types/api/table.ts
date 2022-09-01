@@ -4,7 +4,7 @@ import { Field } from "./field";
 
 export type TableId = number | string; // can be string for virtual questions (e.g. "card__17")
 
-export type VisibilityType =
+export type TableVisibilityType =
   | null
   | "details-only"
   | "hidden"
@@ -24,6 +24,6 @@ export interface Table {
   schema: string;
   fks?: ForeignKey[];
   schema_name?: string;
-  visibility_type: VisibilityType;
+  visibility_type: TableVisibilityType;
   fields?: Field[];
 }
