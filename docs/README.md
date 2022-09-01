@@ -9,6 +9,8 @@ redirect_from:
 
 # Metabase documentation
 
+Metabase is an open-source business intelligence platform. You can use Metabase to ask questions about your data, or embed Metabase in your app to let your customers explore their data on their own.
+
 ## First steps
 
 ### [Installing Metabase](./installation-and-operation/installing-metabase.md)
@@ -187,15 +189,16 @@ Metabase's reference documentation.
 
 ## More resources
 
-### Metabase community
+### [Metabase community](https://discourse.metabase.com)
 
 - [Metabase forum](https://discourse.metabase.com/)
 - [Community stories](https://www.metabase.com/community)
 - [Case studies](https://www.metabase.com/case_studies/)
 - [Metabase Blog](https://www.metabase.com/blog)
 - [Source code repository on GitHub](https://github.com/metabase/metabase)
+- [Metabase Twitter](https://twitter.com/metabase)
 
-### Premium features
+### [Premium features](/paid-features/start.md)
 
 Some [Metabase plans](/pricing) offer additional features.
 
