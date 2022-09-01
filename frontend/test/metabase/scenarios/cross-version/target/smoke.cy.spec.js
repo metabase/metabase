@@ -2,6 +2,8 @@ import { version } from "./cross-version-target-helpers";
 
 describe(`smoke test the migration to the version ${version}`, () => {
   it("should already be set up", () => {
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+
     cy.visit("/");
     cy.findByText("Sign in to Metabase");
 
@@ -14,8 +16,11 @@ describe(`smoke test the migration to the version ${version}`, () => {
     // Question 1
     cy.visit("/collection/root");
     cy.findByText("Quarterly Revenue").click();
+    cy.wait("@cardQuery");
+
     cy.findByText("It's okay to play around with saved questions");
     cy.button("Okay").click();
+
     cy.get("circle");
     cy.get(".line");
     cy.findByText("Goal");
@@ -35,6 +40,7 @@ describe(`smoke test the migration to the version ${version}`, () => {
     // Question 2
     cy.visit("/collection/root");
     cy.findByText("Rating of Best-selling Products").click();
+    cy.wait("@cardQuery");
 
     cy.get(".bar").should("have.length", 4);
     cy.get(".x.axis .tick")
