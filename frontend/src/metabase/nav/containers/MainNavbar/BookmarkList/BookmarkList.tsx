@@ -14,7 +14,7 @@ import Tooltip from "metabase/components/Tooltip";
 
 import { Bookmark } from "metabase-types/api";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-import Bookmarks from "metabase/entities/bookmarks";
+import Bookmarks, { isDataAppBookmark } from "metabase/entities/bookmarks";
 import * as Urls from "metabase/lib/urls";
 
 import { SelectedItem } from "../types";
@@ -52,6 +52,20 @@ interface BookmarkItemProps {
 const BOOKMARKS_INITIALLY_VISIBLE =
   localStorage.getItem("shouldDisplayBookmarks") !== "false";
 
+function isBookmarkSelected(bookmark: Bookmark, selectedItem?: SelectedItem) {
+  if (!selectedItem) {
+    return false;
+  }
+  if (isDataAppBookmark(bookmark)) {
+    return (
+      selectedItem.type === "data-app" && selectedItem.id === bookmark.app_id
+    );
+  }
+  return (
+    bookmark.type === selectedItem.type && bookmark.item_id === selectedItem.id
+  );
+}
+
 const BookmarkItem = ({
   bookmark,
   index,
@@ -60,9 +74,7 @@ const BookmarkItem = ({
   onSelect,
   onDeleteBookmark,
 }: BookmarkItemProps) => {
-  const { id, item_id, name, type } = bookmark;
-  const isSelected =
-    selectedItem && selectedItem.type === type && selectedItem.id === item_id;
+  const isSelected = isBookmarkSelected(bookmark, selectedItem);
   const url = Urls.bookmark(bookmark);
   const icon = Bookmarks.objectSelectors.getIcon(bookmark);
   const onRemove = () => onDeleteBookmark(bookmark);
@@ -74,7 +86,7 @@ const BookmarkItem = ({
   return (
     <SortableBookmarkItem index={index} key={bookmark.id}>
       <SidebarBookmarkItem
-        key={`bookmark-${id}`}
+        key={`bookmark-${bookmark.id}`}
         url={url}
         icon={icon}
         isSelected={isSelected}
@@ -90,7 +102,7 @@ const BookmarkItem = ({
           </button>
         }
       >
-        {name}
+        {bookmark.name}
       </SidebarBookmarkItem>
     </SortableBookmarkItem>
   );

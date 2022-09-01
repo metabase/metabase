@@ -1,5 +1,7 @@
 import slugg from "slugg";
 
+import { isDataAppBookmark } from "metabase/entities/bookmarks";
+
 import { Bookmark, DataApp } from "metabase-types/api";
 
 import { dataApp } from "./dataApps";
@@ -10,10 +12,6 @@ function getBookmarkBasePath(bookmark: Bookmark) {
     return bookmark.dataset ? "model" : "question";
   }
   return bookmark.type;
-}
-
-function isDataAppBookmark(bookmark: Bookmark) {
-  return bookmark.type === "collection" && typeof bookmark.app_id === "number";
 }
 
 export function bookmark(bookmark: Bookmark) {
