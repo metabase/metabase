@@ -29,6 +29,7 @@ describe("display the relevant error message in save question modal (metabase#21
     openNativeEditor({
       databaseName,
     }).type("SELECT COUNT(*) FROM PRODUCTS WHERE {{FILTER}}", {
+      delay: 0,
       parseSpecialCharSequences: false,
     });
 
@@ -62,9 +63,7 @@ describe("display the relevant error message in save question modal (metabase#21
     // Try to save the native query
     cy.findByTestId("qb-header-action-panel").findByText("Save").click();
     modal().within(() => {
-      cy.findByPlaceholderText("What is the name of your card?").type(
-        "The question name",
-      );
+      cy.findByPlaceholderText("What is the name of your card?").type("Q");
       cy.findByText("Save").click();
       cy.wait("@saveNativeQuestion");
       cy.findByText(
