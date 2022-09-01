@@ -8,15 +8,13 @@ import {
   ParameterValueOrArray,
 } from "metabase-types/types/Parameter";
 
-export type ActionParameterTuple = [string, Parameter];
-
 export type WritebackActionType = "http" | "query";
 
 export interface WritebackActionBase {
   id: number;
   name: string;
   description: string | null;
-  parameters: ActionParameterTuple[];
+  parameters: Parameter[];
   "updated-at": string;
   "created-at": string;
 }
