@@ -16,20 +16,11 @@ describe("display the relevant error message in save question modal (metabase#21
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.server();
   });
 
   it("duplicates the Sample Database DB", () => {
-    cy.route({
-      method: "POST",
-      url: "/api/database",
-      delay: 1000,
-    }).as("createDatabase");
-    cy.route({
-      method: "POST",
-      url: "/api/card",
-      delay: 1000,
-    }).as("saveNativeQuestion");
+    cy.intercept("POST", "/api/database").as("createDatabase");
+    cy.intercept("POST", "/api/card").as("saveNativeQuestion");
 
     // Second DB (copy)
     cy.visit("/");
