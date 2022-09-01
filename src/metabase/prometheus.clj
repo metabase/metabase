@@ -3,7 +3,7 @@
             [iapetos.collector :as collector]
             [iapetos.collector.ring :as collector.ring]
             [iapetos.core :as prometheus]
-            [metabase.models.setting :refer [defsetting]]
+            [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util.i18n :refer [trs]]
             [ring.adapter.jetty :as ring-jetty])
   (:import [io.prometheus.client.hotspot
@@ -17,7 +17,14 @@
   :type       :integer
   :visibility :internal
   ;; settable only through environmental variable
-  :setter     :none)
+  :setter     :none
+  :getter     (fn reading-prometheus-port-setting []
+                (let [parse (fn [raw-value]
+                              (if-let [parsed (parse-long raw-value)]
+                                parsed
+                                (log/warn (trs "MB_PROMETHEUS_SERVER_PORT value of ''{0}'' is not parseable as an integer."
+                                               raw-value))))]
+                  (setting/get-raw-value :prometheus-server-port integer? parse))))
 
 (defonce ^{:doc "Registry for prometheus metrics"} registry nil)
 
