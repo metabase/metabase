@@ -1,4 +1,7 @@
-import { getQuestionIdFromVirtualTableId } from "metabase/lib/saved-questions";
+import {
+  getQuestionIdFromVirtualTableId,
+  getQuestionVirtualTableId,
+} from "metabase/lib/saved-questions";
 import type Table from "metabase-lib/lib/metadata/Table";
 import type Field from "metabase-lib/lib/metadata/Field";
 import type Question from "metabase-lib/lib/Question";
@@ -87,8 +90,7 @@ function createVirtualTableUsingQuestionMetadata(question: Question): Table {
   const metadata = question.metadata();
   const questionResultMetadata = question.getResultMetadata();
   const questionDisplayName = question.displayName() as string;
-  const query = question.query() as StructuredQuery;
-  const sourceTableId = query.sourceTableId();
+  const query = question.query() as StructuredQuery | NativeQuery;
   const fields = questionResultMetadata.map((fieldMetadata: any) => {
     const field = metadata.field(fieldMetadata.id);
     const virtualField = field
@@ -102,7 +104,7 @@ function createVirtualTableUsingQuestionMetadata(question: Question): Table {
   });
 
   return createVirtualTable({
-    id: sourceTableId as string,
+    id: getQuestionVirtualTableId(question.card()),
     name: questionDisplayName,
     display_name: questionDisplayName,
     db: question?.database(),
