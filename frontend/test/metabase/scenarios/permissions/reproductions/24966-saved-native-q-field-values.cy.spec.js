@@ -3,6 +3,7 @@ import {
   visitQuestion,
   visitDashboard,
   filterWidget,
+  describeEE,
 } from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -44,7 +45,7 @@ const dashboardFilter = {
 
 const dashboardDetails = { parameters: [dashboardFilter] };
 
-describe("issue 24966", () => {
+describeEE("issue 24966", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

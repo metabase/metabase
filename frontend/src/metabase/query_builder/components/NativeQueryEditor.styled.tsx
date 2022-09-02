@@ -8,6 +8,35 @@ export const NativeQueryEditorRoot = styled.div`
     color: ${color("text-dark")};
   }
 
+  .ace_search {
+    font-family: Lato;
+    background-color: ${color("bg-light")};
+    color: ${color("text-dark")};
+    border-color: ${color("border")};
+    padding-bottom: 2px;
+  }
+
+  .ace_search_field,
+  .ace_searchbtn,
+  .ace_button {
+    background-color: ${color("white")};
+    border-radius: 5px;
+    border: 1px solid ${color("border")};
+  }
+
+  .ace_nomatch {
+    border-radius: 5px;
+    outline: 1px solid ${color("error")};
+  }
+
+  .ace_searchbtn {
+    margin-left: 2px;
+  }
+
+  .ace_button {
+    padding: 2px 4px;
+  }
+
   .ace_editor .ace_keyword {
     color: ${color("saturated-purple")};
   }

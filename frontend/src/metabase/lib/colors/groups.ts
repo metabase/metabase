@@ -48,6 +48,9 @@ export const getPreferredColor = (key: string) => {
     case "active":
     case "profit":
       return color("success");
+    case "cancel":
+    case "canceled":
+    case "cancelled":
     case "error":
     case "fail":
     case "failed":
