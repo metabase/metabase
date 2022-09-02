@@ -31,8 +31,6 @@ const PATHS_WITH_COLLECTION_BREADCRUMBS = [
   /\/dashboard\//,
 ];
 const PATHS_WITH_QUESTION_LINEAGE = [/\/question/, /\/model/];
-const PAST_DUE_ERROR = t`⚠️ We couldn't process payment for your account. Please [review your payment settings](https://store.metabase.com/) to avoid service interruptions.`;
-const UNPAID_ERROR = t`⚠️ Pro features won’t work right now due to lack of payment. [Review your payment settings](https://store.metabase.com/) to restore Pro functionality.`;
 
 export const getRouterPath = (state: State, props: RouterProps) => {
   return props.location.pathname;
@@ -157,7 +155,7 @@ export const getSettings = createSelector(
   settings => settings.values,
 );
 
-export const getBannerMessage = createSelector(
+export const getBannerMessageDescriptor = createSelector(
   [getUserIsAdmin, getSettings],
   (isAdmin, settings) => {
     const tokenStatus = settings["token-status"];
@@ -166,10 +164,7 @@ export const getBannerMessage = createSelector(
       tokenStatus != null &&
       (tokenStatus.status === "unpaid" || tokenStatus.status === "past-due")
     ) {
-      return {
-        "past-due": PAST_DUE_ERROR,
-        unpaid: UNPAID_ERROR,
-      }[tokenStatus.status];
+      return tokenStatus.status;
     }
   },
 );
