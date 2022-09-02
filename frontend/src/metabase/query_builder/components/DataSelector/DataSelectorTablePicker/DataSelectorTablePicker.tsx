@@ -1,5 +1,4 @@
 import React from "react";
-import cx from "classnames";
 import { t } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
@@ -10,14 +9,15 @@ import AccordionList from "metabase/core/components/AccordionList";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import DataSelectorSectionHeader from "../DataSelectorSectionHeader";
 
+import { DataSelectorSection as Section } from "../DataSelector.styled";
 import {
   DataSelectorTablePickerContainer as Container,
-  DataSelectorTablePickerSection as Section,
   DataSelectorTablePickerHeaderContainer as HeaderContainer,
   DataSelectorTablePickerHeaderClickable as HeaderClickable,
   DataSelectorTablePickerHeaderDatabaseName as HeaderDatabaseName,
   DataSelectorTablePickerHeaderSchemaName as HeaderSchemaName,
   LinkToDocsContainer,
+  NoTablesFound,
 } from "./DataSelectorTablePicker.styled";
 
 import type { Database } from "metabase-types/api/database";
@@ -43,10 +43,6 @@ type HeaderProps = Pick<
   DataSelectorTablePickerProps,
   "schemas" | "selectedSchema" | "selectedDatabase" | "onBack"
 >;
-
-type Item = {
-  table: Table;
-};
 
 const DataSelectorTablePicker = ({
   schemas,
@@ -94,14 +90,18 @@ const DataSelectorTablePicker = ({
       },
     ];
 
-    const checkIfItemIsClickable = (item: Item) =>
-      item.table && isSyncCompleted(item.table);
+    const checkIfItemIsClickable = ({ table }: { table: Table }) =>
+      table && isSyncCompleted(table);
 
-    const checkIfItemIsSelected = (item: Item) =>
-      item.table && selectedTable ? item.table.id === selectedTable.id : false;
+    const checkIfItemIsSelected = ({ table }: { table: Table }) =>
+      table && selectedTable ? table.id === selectedTable.id : false;
 
-    const renderItemIcon = (item: Item) =>
-      item.table ? <Icon name="table2" size={18} /> : null;
+    const renderItemIcon = ({ table }: { table: Table }) =>
+      table ? <Icon name="table2" size={18} /> : null;
+
+    const handleChange = ({ table }: { table: Table }) => onChangeTable(table);
+
+    const isSearchable = hasFiltering && tables.length >= minTablesToShowSearch;
 
     return (
       <Container>
@@ -113,8 +113,8 @@ const DataSelectorTablePicker = ({
           sections={sections}
           maxHeight={Infinity}
           width="100%"
-          searchable={hasFiltering && tables.length >= minTablesToShowSearch}
-          onChange={(item: Item) => onChangeTable(item.table)}
+          searchable={isSearchable}
+          onChange={handleChange}
           itemIsSelected={checkIfItemIsSelected}
           itemIsClickable={checkIfItemIsClickable}
           renderItemIcon={renderItemIcon}
@@ -127,11 +127,10 @@ const DataSelectorTablePicker = ({
       </Container>
     );
   } else {
-    // this is a database with no tables!
     return (
       <Section>
         <DataSelectorSectionHeader header={header} />
-        <div className="p4 text-centered">{t`No tables found in this database.`}</div>
+        <NoTablesFound>{t`No tables found in this database.`}</NoTablesFound>
       </Section>
     );
   }

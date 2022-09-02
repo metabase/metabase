@@ -9,10 +9,6 @@ export const DataSelectorTablePickerContainer = styled.div`
   width: 300px;
 `;
 
-export const DataSelectorTablePickerSection = styled.section`
-  width: 300px;
-`;
-
 export const DataSelectorTablePickerHeaderContainer = styled.div`
   align-items: center;
   display: flex;
@@ -47,5 +43,10 @@ export const LinkToDocsContainer = styled.div`
   background-color: ${color("bg-light")};
   border-top: 1px solid ${color("border")};
   padding: ${space(2)};
+  text-align: center;
+`;
+
+export const NoTablesFound = styled.div`
+  padding: ${space(4)};
   text-align: center;
 `;
