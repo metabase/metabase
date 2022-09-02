@@ -302,10 +302,13 @@ class NativeQueryEditor extends Component {
     });
 
     aceLanguageTools.addCompleter({
-      getCompletions: async (_editor, _session, _pos, prefix, callback) => {
+      getCompletions: (_editor, _session, _pos, prefix, callback) => {
+        // Gets all the column names from tagged questions, and hands them to a callback provided by ace's autocomplete component for display.
+        // TODO: Move this processing to a place that gets called when the column names from tagged questions change.
+        // This function runs every time the user types a character, which we don't need to do.
         try {
           const { query } = this.props;
-          const templateTags = query.templateTagsWithoutSnippets();
+          const templateTags = query.templateTagsWithoutSnippets(); // If this hasn't changed, we shouldn't need to run the following every time
           const referencedQuestionIds = templateTags.map(tag => tag["card-id"]);
           const resultsForAce = referencedQuestionIds.flatMap(questionId => {
             const question = query.metadata().question(questionId);
