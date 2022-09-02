@@ -13,7 +13,7 @@ export const SettingErrorMessage = styled.div`
   padding-top: 0.5rem;
 `;
 
-export const SettingPlaceholderMessage = styled.div`
+export const SettingEnvVarMessage = styled.div`
   color: ${color("text-dark")};
   font-weight: bold;
 `;

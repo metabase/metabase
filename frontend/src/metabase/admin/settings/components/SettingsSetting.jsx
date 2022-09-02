@@ -14,7 +14,7 @@ import SettingSelect from "./widgets/SettingSelect";
 import SettingText from "./widgets/SettingText";
 import { settingToFormFieldId } from "./../../settings/utils";
 import {
-  SettingPlaceholderMessage,
+  SettingEnvVarMessage,
   SettingErrorMessage,
   SettingWarningMessage,
 } from "./SettingsSetting.styled";
@@ -66,9 +66,9 @@ export default class SettingsSetting extends Component {
         )}
         <div className="flex">
           {setting.is_env_setting ? (
-            <SettingPlaceholderMessage>
+            <SettingEnvVarMessage>
               {t`Using ` + setting.env_name}
-            </SettingPlaceholderMessage>
+            </SettingEnvVarMessage>
           ) : (
             <Widget id={settingId} {...widgetProps} />
           )}
