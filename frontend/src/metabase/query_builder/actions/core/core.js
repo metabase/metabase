@@ -14,9 +14,9 @@ import { cardIsEquivalent, cardQueryIsEquivalent } from "metabase/meta/Card";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 
 import { openUrl } from "metabase/redux/app";
-import { setRequestUnloaded } from "metabase/redux/requests";
 
 import Questions from "metabase/entities/questions";
+import Databases from "metabase/entities/databases";
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 
 import { trackNewQuestionSaved } from "../../analytics";
@@ -179,10 +179,10 @@ export const apiCreateQuestion = question => {
       .setResultsMetadata(resultsMetadata)
       .reduxCreate(dispatch);
 
-    // remove the databases in the store that are used to populate the QB databases list.
-    // This is done when saving a Card because the newly saved card will be eligible for use as a source query
-    // so we want the databases list to be re-fetched next time we hit "New Question" so it shows up
-    dispatch(setRequestUnloaded(["entities", "databases"]));
+    const databases = Databases.selectors.getList(getState());
+    if (databases && !databases.some(d => d.is_saved_questions)) {
+      dispatch({ type: Databases.actionTypes.INVALIDATE_LISTS_ACTION });
+    }
 
     dispatch(updateUrl(createdQuestion.card(), { dirty: false }));
     MetabaseAnalytics.trackStructEvent(
@@ -230,11 +230,6 @@ export const apiUpdateQuestion = (question, { rerunQuery = false } = {}) => {
     // reload the question alerts for the current question
     // (some of the old alerts might be removed during update)
     await dispatch(fetchAlertsForQuestion(updatedQuestion.id()));
-
-    // remove the databases in the store that are used to populate the QB databases list.
-    // This is done when saving a Card because the newly saved card will be eligible for use as a source query
-    // so we want the databases list to be re-fetched next time we hit "New Question" so it shows up
-    dispatch(setRequestUnloaded(["entities", "databases"]));
 
     MetabaseAnalytics.trackStructEvent(
       "QueryBuilder",
