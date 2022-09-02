@@ -8,10 +8,6 @@ import SelectList from "metabase/components/SelectList";
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
-export const DataSelectorSection = styled.section`
-  width: 300px;
-`;
-
 export const DataBucketIcon = styled(Icon)`
   margin-top: 2px;
   color: ${color("text-dark")} !important;
