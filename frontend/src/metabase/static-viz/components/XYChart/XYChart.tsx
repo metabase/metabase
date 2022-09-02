@@ -203,6 +203,16 @@ export const XYChart = ({
       />
 
       <Group left={valuesLeftOffset}>
+        <Group top={margin.top} left={xMin}>
+          {defaultYScale && (
+            <GridRows
+              scale={defaultYScale}
+              width={calculatedInnerWidth}
+              strokeDasharray="4"
+            />
+          )}
+        </Group>
+
         <AxisBottom
           scale={xScale.scale}
           label={areXTicksRotated ? undefined : settings.labels.bottom}
@@ -233,14 +243,6 @@ export const XYChart = ({
         />
 
         <Group top={margin.top} left={xMin}>
-          {defaultYScale && (
-            <GridRows
-              scale={defaultYScale}
-              width={calculatedInnerWidth}
-              strokeDasharray="4"
-            />
-          )}
-
           {xScale.barAccessor && xScale.bandwidth && (
             <BarSeries
               series={bars}
