@@ -37,6 +37,8 @@
 ;;; |                                                TOKEN VALIDATION                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(declare premium-embedding-token)
+
 (defn- active-user-count []
   ;; NOTE: models.user imports public settings, which imports this namespace,
   ;; so we can't import the User model here.
@@ -72,7 +74,8 @@
                   (http/get {:query-params {:users     (active-user-count)
                                             :site-uuid (setting/get :site-uuid-for-premium-features-token-checks)}})
                   :body
-                  (json/parse-string keyword))
+                  (json/parse-string keyword)
+                  (assoc :status "unpaid"))
           ;; if there was an error fetching the token, log it and return a generic message about the
           ;; token being invalid. This message will get displayed in the Settings page in the admin panel so
           ;; we do not want something complicated
@@ -118,6 +121,11 @@
   (memoize/ttl valid-token->features*
     :ttl/threshold valid-token-recheck-interval-ms))
 
+(defsetting token-status
+  (deferred-tru "Cached token status for premium features. This is to avoid an API request on the the first page load.")
+  :type       :json
+  :setter     :none
+  :getter     (fn [] (fetch-token-status (premium-embedding-token))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             SETTING & RELATED FNS                                              |
