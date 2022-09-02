@@ -14,8 +14,10 @@ import SettingSelect from "./widgets/SettingSelect";
 import SettingText from "./widgets/SettingText";
 import { settingToFormFieldId } from "./../../settings/utils";
 import {
+  SettingContent,
   SettingEnvVarMessage,
   SettingErrorMessage,
+  SettingRoot,
   SettingWarningMessage,
 } from "./SettingsSetting.styled";
 
@@ -60,11 +62,11 @@ export default class SettingsSetting extends Component {
 
     return (
       // TODO - this formatting needs to be moved outside this component
-      <li className="m2 mb4">
+      <SettingRoot>
         {!setting.noHeader && (
           <SettingHeader id={settingId} setting={setting} />
         )}
-        <div className="flex">
+        <SettingContent>
           {setting.is_env_setting ? (
             <SettingEnvVarMessage>
               {t`Using ` + setting.env_name}
@@ -72,14 +74,14 @@ export default class SettingsSetting extends Component {
           ) : (
             <Widget id={settingId} {...widgetProps} />
           )}
-        </div>
+        </SettingContent>
         {errorMessage && (
           <SettingErrorMessage>{errorMessage}</SettingErrorMessage>
         )}
         {setting.warning && (
           <SettingWarningMessage>{setting.warning}</SettingWarningMessage>
         )}
-      </li>
+      </SettingRoot>
     );
   }
 }
