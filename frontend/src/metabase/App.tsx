@@ -52,7 +52,7 @@ const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
 interface AppStateProps {
   errorPage: AppErrorDescriptor | null;
   isAdminApp: boolean;
-  bannerMessage: string | null;
+  bannerMessage?: string;
   isAppBarVisible: boolean;
   isNavBarVisible: boolean;
 }
