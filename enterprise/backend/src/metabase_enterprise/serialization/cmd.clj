@@ -73,6 +73,7 @@
   ; TODO This should be restored, but there's no manifest or other meta file written by v2 dumps.
   ;(when-not (load/compatible? path)
   ;  (log/warn (trs "Dump was produced using a different version of Metabase. Things may break!")))
+  (log/info (trs "Loading serialized Metabase files from {0}" path))
   (v2.load/load-metabase (v2.ingest/ingest-yaml path)))
 
 (defn load

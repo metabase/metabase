@@ -67,17 +67,21 @@
 ;; -------------------------------------------------- Tables ---------------------------------------------------------
 (defn export-table-fk
   "Given a numeric `table_id`, return a portable table reference.
+  If the `table_id` is `nil`, return `nil`. This is legal for a native question.
   That has the form `[db-name schema table-name]`, where the `schema` might be nil.
   [[import-table-fk]] is the inverse."
   [table-id]
-  (let [{:keys [db_id name schema]} (db/select-one 'Table :id table-id)
-        db-name                     (db/select-one-field :name 'Database :id db_id)]
-    [db-name schema name]))
+  (when table-id
+    (let [{:keys [db_id name schema]} (db/select-one 'Table :id table-id)
+          db-name                     (db/select-one-field :name 'Database :id db_id)]
+      [db-name schema name])))
 
 (defn import-table-fk
-  "Given a `table_id` as exported by [[export-table-fk]], resolve it back into a numeric `table_id`."
-  [[db-name schema table-name]]
-  (db/select-one-field :id 'Table :name table-name :schema schema :db_id (db/select-one-field :id 'Database :name db-name)))
+  "Given a `table_id` as exported by [[export-table-fk]], resolve it back into a numeric `table_id`.
+  The input might be nil, in which case so is the output. This is legal for a native question."
+  [[db-name schema table-name :as table-id]]
+  (when table-id
+    (db/select-one-field :id 'Table :name table-name :schema schema :db_id (db/select-one-field :id 'Database :name db-name))))
 
 (defn table->path
   "Given a `table_id` as exported by [[export-table-fk]], turn it into a `[{:model ...}]` path for the Table.
@@ -201,10 +205,10 @@
     ;; handle legacy `:field-id` forms encoded prior to 0.39.0
     ;; and also *current* expresion forms used in parameter mapping dimensions
     ;; example relevant clause - [:dimension [:fk-> [:field-id 1] [:field-id 2]]]
-    [:field-id (fully-qualified-name :guard string?)]
+    [(:or :field-id "field-id") (fully-qualified-name :guard string?)]
     (mbql-fully-qualified-names->ids* [:field fully-qualified-name nil])
 
-    [:field (fully-qualified-name :guard vector?) opts]
+    [(:or :field "field") (fully-qualified-name :guard vector?) opts]
     [:field (import-field-fk fully-qualified-name) (mbql-fully-qualified-names->ids* opts)]
 
     ;; source-field is also used within parameter mapping dimensions
@@ -217,15 +221,27 @@
         (assoc :database (db/select-one-id 'Database :name fully-qualified-name))
         mbql-fully-qualified-names->ids*) ; Process other keys
 
-    [:metric (fully-qualified-name :guard serdes.base/entity-id?)]
+    {:card-id (entity-id :guard (every-pred string? serdes.base/entity-id?))}
+    (-> &match
+        (assoc :card-id (import-fk entity-id 'Card))
+        mbql-fully-qualified-names->ids*) ; Process other keys
+
+    [(:or :metric "metric") (fully-qualified-name :guard serdes.base/entity-id?)]
     [:metric (import-fk fully-qualified-name 'Metric)]
 
-    [:segment (fully-qualified-name :guard serdes.base/entity-id?)]
+    [(:or :segment "segment") (fully-qualified-name :guard serdes.base/entity-id?)]
     [:segment (import-fk fully-qualified-name 'Segment)]
 
     (_ :guard (every-pred map? #(vector? (:source-table %))))
     (-> &match
         (assoc :source-table (import-table-fk (:source-table &match)))
+        mbql-fully-qualified-names->ids*)
+
+    (_ :guard (every-pred map?
+                          #(string? (:source-table %))
+                          #(serdes.base/entity-id? (:source-table %))))
+    (-> &match
+        (assoc :source-table (str "card__" (import-fk (:source-table &match) 'Card)))
         mbql-fully-qualified-names->ids*))) ;; process other keys
 
 (defn- mbql-fully-qualified-names->ids
