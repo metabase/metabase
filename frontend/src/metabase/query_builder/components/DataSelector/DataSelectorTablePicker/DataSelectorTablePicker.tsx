@@ -38,6 +38,11 @@ type DataSelectorTablePickerProps = {
   onChangeTable: (table: Table) => void;
 };
 
+type HeaderProps = Pick<
+  DataSelectorTablePickerProps,
+  "schemas" | "selectedSchema" | "selectedDatabase" | "onBack"
+>;
+
 type Item = {
   table: Table;
 };
@@ -56,7 +61,7 @@ const DataSelectorTablePicker = ({
   minTablesToShowSearch = 10,
   hasInitialFocus,
 }: DataSelectorTablePickerProps) => {
-  // In case DataSelector props get reseted
+  // In case DataSelector props get reset
   if (!selectedDatabase) {
     if (onBack) {
       onBack();
@@ -65,17 +70,14 @@ const DataSelectorTablePicker = ({
   }
 
   const isSavedQuestionList = selectedDatabase.is_saved_questions;
-  const header = (
-    <HeaderContainer>
-      <HeaderClickable onClick={onBack}>
-        {onBack && <Icon name="chevronleft" size={18} />}
-        <HeaderDatabaseName>{selectedDatabase.name}</HeaderDatabaseName>
-      </HeaderClickable>
 
-      {selectedSchema?.name && schemas.length > 1 && (
-        <HeaderSchemaName>- {selectedSchema.displayName()}</HeaderSchemaName>
-      )}
-    </HeaderContainer>
+  const header = (
+    <Header
+      onBack={onBack}
+      schemas={schemas}
+      selectedDatabase={selectedDatabase}
+      selectedSchema={selectedSchema}
+    />
   );
 
   if (tables.length > 0 || isLoading) {
@@ -145,5 +147,23 @@ const DataSelectorTablePicker = ({
     );
   }
 };
+
+const Header = ({
+  onBack,
+  schemas,
+  selectedDatabase,
+  selectedSchema,
+}: HeaderProps) => (
+  <HeaderContainer>
+    <HeaderClickable onClick={onBack}>
+      {onBack && <Icon name="chevronleft" size={18} />}
+      <HeaderDatabaseName>{selectedDatabase.name}</HeaderDatabaseName>
+    </HeaderClickable>
+
+    {selectedSchema?.name && schemas.length > 1 && (
+      <HeaderSchemaName>- {selectedSchema.displayName()}</HeaderSchemaName>
+    )}
+  </HeaderContainer>
+);
 
 export default DataSelectorTablePicker;
