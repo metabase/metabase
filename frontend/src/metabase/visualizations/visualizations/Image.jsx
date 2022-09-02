@@ -1,237 +1,138 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
-import ReactDOM from "react-dom";
-import { t } from "ttag";
-import { formatValue } from "metabase/lib/formatting";
-import { isNumeric } from "metabase/lib/schema_metadata";
-import Icon from "metabase/components/Icon";
-import IconBorder from "metabase/components/IconBorder";
-import { color } from "metabase/lib/colors";
-
-import _ from "underscore";
-
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
-
-import Color from "color";
+import styles from "./Text/Text.css";
+import "./Image.css";
 import cx from "classnames";
+import { t } from "ttag";
+import querystring from "querystring";
+export default class Image extends Component {
+  props;
+  state;
 
-const BORDER_RADIUS = 5;
-const MAX_BAR_HEIGHT = 65;
-
-export default class Progress extends Component {
   constructor(props) {
     super(props);
 
-    this.containerRef = React.createRef();
-    this.labelRef = React.createRef();
-    this.pointerRef = React.createRef();
-    this.barRef = React.createRef();
+    this.state = {
+      text: "",
+      fontSize: 1,
+    };
   }
 
-  static uiName = t`Image`;
-  static identifier = "Image";
-  static iconName = "Image";
+  static uiName = "Image";
+  static identifier = "image";
+  static iconName = "image";
 
-  static minSize = { width: 3, height: 3 };
+  static disableSettingsConfig = false;
+  static noHeader = true;
+  static supportsSeries = false;
+  static hidden = true;
+  static supportPreviewing = true;
 
-  static isSensible({ cols, rows }) {
-    return rows.length === 1 && cols.length === 1;
-  }
+  static minSize = { width: 2, height: 1 };
 
-  static checkRenderable([
-    {
-      data: { cols, rows },
-    },
-  ]) {
-    if (!isNumeric(cols[0])) {
-      throw new Error(t`Progress visualization requires a number.`);
-    }
+  static checkRenderable() {
+    // text can always be rendered, nothing needed here
   }
 
   static settings = {
-    ...columnSettings({
-      getColumns: (
-        [
-          {
-            data: { cols },
-          },
-        ],
-        settings,
-      ) => [
-        _.find(cols, col => col.name === settings["scalar.field"]) || cols[0],
-      ],
-    }),
-    "progress.goal": {
-      section: t`Display`,
-      title: t`Goal`,
-      widget: "number",
-      default: 0,
+    "card.title": {
+      dashboard: false,
     },
-    "progress.color": {
+    "card.description": {
+      dashboard: false,
+    },
+    text: {
+      value: "",
+      default: "",
+    },
+    "dashcard.background": {
       section: t`Display`,
-      title: t`Color`,
-      widget: "color",
-      default: color("accent1"),
+      title: t`Show background`,
+      dashboard: true,
+      widget: "toggle",
+      default: true,
+    },
+    "dashcard.params": {
+      section: t`Display`,
+      title: t`URL from query params`,
+      dashboard: true,
+      widget: "toggle",
+      default: false,
     },
   };
 
-  componentDidMount() {
-    this.componentDidUpdate();
+  handleTextChange(text) {
+    this.props.onUpdateVisualizationSettings({ text: text });
   }
 
-  componentDidUpdate() {
-    const component = ReactDOM.findDOMNode(this);
-    const pointer = this.pointerRef.current;
-    const label = this.labelRef.current;
-    const container = this.containerRef.current;
-    const bar = this.barRef.current;
+  preventDragging = e => e.stopPropagation();
 
-    // Safari not respecting `height: 25%` so just do it here ¯\_(ツ)_/¯
-    bar.style.height = Math.min(MAX_BAR_HEIGHT, component.offsetHeight) + "px";
-
-    if (this.props.gridSize && this.props.gridSize.height < 4) {
-      pointer.parentNode.style.display = "none";
-      label.parentNode.style.display = "none";
-      // no need to do the rest of the repositioning
-      return;
-    } else {
-      pointer.parentNode.style.display = null;
-      label.parentNode.style.display = null;
+  renderImage = ({ settings }) => {
+    const params = querystring.parse(window.location.search.replace("?", ""));
+    if (!settings.text && !settings["dashcard.params"]) {
+      return null;
     }
-
-    // reset the pointer transform for these computations
-    pointer.style.transform = null;
-
-    // position the label
-    const containerWidth = container.offsetWidth;
-    const labelWidth = label.offsetWidth;
-    const pointerWidth = pointer.offsetWidth;
-    const pointerCenter = pointer.offsetLeft + pointerWidth / 2;
-    const minOffset = -pointerWidth / 2 + BORDER_RADIUS;
-    if (pointerCenter - labelWidth / 2 < minOffset) {
-      label.style.left = minOffset + "px";
-      label.style.right = null;
-    } else if (pointerCenter + labelWidth / 2 > containerWidth - minOffset) {
-      label.style.left = null;
-      label.style.right = minOffset + "px";
-    } else {
-      label.style.left = pointerCenter - labelWidth / 2 + "px";
-      label.style.right = null;
+    if (settings["dashcard.params"] && !params) {
+      return null;
     }
-
-    // shift pointer at ends inward to line up with border radius
-    if (pointerCenter < BORDER_RADIUS) {
-      pointer.style.transform = "translate(" + BORDER_RADIUS + "px,0)";
-    } else if (pointerCenter > containerWidth - 5) {
-      pointer.style.transform = "translate(-" + BORDER_RADIUS + "px,0)";
-    }
-  }
+    return (
+      <img
+        className="profile-photo"
+        src={settings["dashcard.params"] ? params.image : settings.text}
+        alt="NFTRover Analytics"
+      />
+    );
+  };
 
   render() {
-    const {
-      series: [
-        {
-          data: { rows, cols },
-        },
-      ],
-      settings,
-      onVisualizationClick,
-      visualizationIsClickable,
-    } = this.props;
-    const value = rows[0] && typeof rows[0][0] === "number" ? rows[0][0] : 0;
-    const column = cols[0];
-    const goal = settings["progress.goal"] || 0;
-
-    const mainColor = settings["progress.color"];
-    const lightColor = Color(mainColor).lighten(0.25).rgb().string();
-    const darkColor = Color(mainColor).darken(0.3).rgb().string();
-
-    const progressColor = mainColor;
-    const restColor = value > goal ? darkColor : lightColor;
-    const arrowColor = value > goal ? darkColor : mainColor;
-
-    const barPercent = Math.max(0, value < goal ? value / goal : goal / value);
-    const arrowPercent = Math.max(0, value < goal ? value / goal : 1);
-
-    let barMessage;
-    if (value === goal) {
-      barMessage = t`Goal met`;
-    } else if (value > goal) {
-      barMessage = t`Goal exceeded`;
-    }
-
-    const clicked = { value, column, settings };
-    const isClickable = visualizationIsClickable(clicked);
-
-    return (
-      <div className={cx(this.props.className, "flex layout-centered")}>
-        <div
-          className="flex-full full-height flex flex-column justify-center"
-          style={{ padding: 10, paddingTop: 0 }}
-        >
-          <div
-            ref={this.containerRef}
-            className="relative text-bold text-medium"
-            style={{ height: 20 }}
-          >
-            <div ref={this.labelRef} style={{ position: "absolute" }}>
-              {formatValue(value, settings.column(column))}
+    const { className, settings, isEditing } = this.props;
+    if (isEditing) {
+      return (
+        <div className={cx(className, styles.Text)}>
+          {this.props.isPreviewing ? (
+            <React.Fragment>{this.renderImage({ settings })}</React.Fragment>
+          ) : (
+            <div className="full flex-full flex flex-column">
+              <textarea
+                className={cx(
+                  "full flex-full flex flex-column bg-light bordered drag-disabled",
+                  styles["text-card-textarea"],
+                )}
+                name="text"
+                placeholder={t`${
+                  settings["dashcard.params"]
+                    ? "In case of query url will always pick from {{image}}"
+                    : "Type or paste Image url here"
+                }`}
+                value={settings.text}
+                onChange={e => this.handleTextChange(e.target.value)}
+                // Prevents text cards from dragging when you actually want to select text
+                // See: https://github.com/metabase/metabase/issues/17039
+                onMouseDown={this.preventDragging}
+              />
+              <span
+                className="absolute footprint-secondary-text2"
+                style={{ bottom: 10, right: 20 }}
+              >
+                Image
+              </span>
             </div>
-          </div>
-          <div className="relative" style={{ height: 10, marginBottom: 5 }}>
-            <div
-              ref={this.pointerRef}
-              style={{
-                width: 0,
-                height: 0,
-                position: "absolute",
-                left: arrowPercent * 100 + "%",
-                marginLeft: -10,
-                borderLeft: "10px solid transparent",
-                borderRight: "10px solid transparent",
-                borderTop: "10px solid " + arrowColor,
-              }}
-            />
-          </div>
-          <div
-            ref={this.barRef}
-            className={cx("relative", { "cursor-pointer": isClickable })}
-            style={{
-              backgroundColor: restColor,
-              borderRadius: BORDER_RADIUS,
-              overflow: "hidden",
-            }}
-            data-testid="progress-bar"
-            onClick={
-              isClickable &&
-              (e => onVisualizationClick({ ...clicked, event: e.nativeEvent }))
-            }
-          >
-            <div
-              style={{
-                backgroundColor: progressColor,
-                width: barPercent * 100 + "%",
-                height: "100%",
-              }}
-            />
-            {barMessage && (
-              <div className="flex align-center absolute spread text-white text-bold px2">
-                <IconBorder borderWidth={2}>
-                  <Icon name="check" size={14} />
-                </IconBorder>
-                <div className="pl2">{barMessage}</div>
-              </div>
-            )}
-          </div>
-          <div className="mt1">
-            <span className="float-left">0</span>
-            <span className="float-right">{t`Goal ${formatValue(
-              goal,
-              settings.column(column),
-            )}`}</span>
-          </div>
+          )}
         </div>
-      </div>
-    );
+      );
+    } else {
+      return (
+        <div
+          ref={r => (this.chartRef = r)}
+          className={cx(className, styles.Text, {
+            /* if the card is not showing a background we should adjust the left
+             * padding to help align the titles with the wrapper */
+            pl0: !settings["dashcard.background"],
+          })}
+        >
+          {this.renderImage({ settings })}
+        </div>
+      );
+    }
   }
 }

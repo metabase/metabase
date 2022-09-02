@@ -1,0 +1,17 @@
+.dashboard-header {
+  padding: 18px 0;
+}
+
+.dashboard-header__media-popover {
+  width: 170px;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-header__media-popover-item {
+  padding: 12px;
+  width: 100%;
+  text-align: center;
+}

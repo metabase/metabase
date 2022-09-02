@@ -43,7 +43,10 @@ export const getDashboardActions = (
   // dashcardData only contains question cards, text ones don't appear here
   const hasDataCards =
     hasCards &&
-    dashboard.ordered_cards.some(dashCard => dashCard.card.display !== "text");
+    dashboard.ordered_cards.some(
+      dashCard =>
+        dashCard.card.display !== "text" && dashCard.card.display !== "image",
+    );
 
   const canShareDashboard = hasCards;
   const canCreateSubscription = hasDataCards && canManageSubscriptions;

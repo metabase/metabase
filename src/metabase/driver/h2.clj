@@ -7,6 +7,7 @@
             [metabase.db.spec :as mdb.spec]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
+            [metabase.driver.h2.actions :as h2.actions]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -21,6 +22,9 @@
   (:import [java.sql Clob ResultSet ResultSetMetaData]
            java.time.OffsetTime))
 
+;; method impls live in this namespace
+(comment h2.actions/keep-me)
+
 (driver/register! :h2, :parent :sql-jdbc)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -29,8 +33,12 @@
 
 (doseq [[feature supported?] {:full-join               false
                               :regex                   false
-                              :percentile-aggregations false}]
-  (defmethod driver/supports? [:h2 feature] [_ _] supported?))
+                              :percentile-aggregations false
+                              :actions                 true
+                              :actions/custom          true}]
+  (defmethod driver/database-supports? [:h2 feature]
+    [_driver _feature _database]
+    supported?))
 
 (defmethod driver/connection-properties :h2
   [_]

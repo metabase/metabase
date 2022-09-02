@@ -16,7 +16,7 @@ describe("#22206 adding and removing columns doesn't duplicate columns", () => {
     cy.findByTestId("sidebar-content")
       .findByText("Subtotal")
       .parent()
-      .find(".Icon-close")
+      .find(".Icon-eye_filled")
       .click();
 
     // rerun query

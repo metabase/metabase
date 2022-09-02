@@ -854,7 +854,7 @@
 
 ;;; -------------------------------------------------- source-table --------------------------------------------------
 
-(defmethod ->honeysql [:sql (class Table)]
+(defmethod ->honeysql [:sql Table]
   [driver table]
   (let [{table-name :name, schema :schema} table]
     (->honeysql driver (hx/identifier :table schema table-name))))
@@ -1003,7 +1003,7 @@
   prefix-field-alias])
 
 ;; deprecated, but we'll keep it here for now for backwards compatibility.
-(defmethod ->honeysql [:sql (type Field)]
+(defmethod ->honeysql [:sql Field]
   [driver field]
   (deprecated/log-deprecation-warning driver "->honeysql [:sql (class Field)]" "0.42.0")
   (->honeysql driver [:field (:id field) nil]))

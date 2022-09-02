@@ -10,7 +10,7 @@
 
 .home-footer {
   display: flex;
-  width: 1440px;
+  width: 100%;
   justify-content: center;
 }
 
@@ -114,9 +114,21 @@
     width: 100%;
   }
 }
-
-@media screen and (--footprint-breakpoint-max-mobile) {
-  .home-footer-container {
-    display: none;
+@media screen and (max-width: 900px) {
+  .home-footer {
+    flex-direction: column;
+  }
+  .home-footer-left {
+    width: 100%;
+  }
+  .home-footer-right {
+    width: 100%;
+  }
+}
+@media screen and (max-width: 500px) {
+  .home-footer-right {
+    width: 100%;
+    flex-direction: column;
+    text-align: center;
   }
 }

@@ -4,6 +4,7 @@
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
             [metabase.mbql.normalize :as mbql.normalize]
+            [metabase.models.action :as action]
             [metabase.models.collection :as collection]
             [metabase.models.field-values :as field-values]
             [metabase.models.interface :as mi]
@@ -25,6 +26,9 @@
             [toucan.models :as models]))
 
 (models/defmodel Card :report_card)
+
+;;; You can read/write a Card if you can read/write its parent Collection
+(derive Card ::perms/use-parent-collection-perms)
 
 
 ;;; -------------------------------------------------- Hydration --------------------------------------------------
@@ -190,6 +194,25 @@
                            :query-database        query-db-id
                            :field-filter-database field-db-id})))))))
 
+(defn- create-actions-when-is-writable! [{is-write? :is_write card-id :id}]
+  (when is-write?
+    (when-not (db/select-one action/QueryAction :card_id card-id)
+      (action/insert! {:card_id card-id :type :query}))))
+
+(defn- delete-actions-when-not-writable! [{is-write? :is_write card-id :id}]
+  (when (not is-write?)
+    (db/delete! action/QueryAction :card_id card-id)))
+
+(defn- assert-valid-model
+  "Check that the card is a valid model if being saved as one. Throw an exception if not."
+  [{:keys [dataset dataset_query]}]
+  (when dataset
+    (let [template-tag-types (->> (vals (get-in dataset_query [:native :template-tags]))
+                                  (map (comp keyword :type)))]
+      (when (some (complement #{:card :snippet}) template-tag-types)
+        (throw (ex-info (tru "A model made from a native SQL question cannot have a variable or field filter.")
+                        {:status-code 400}))))))
+
 ;; TODO -- consider whether we should validate the Card query when you save/update it??
 (defn- pre-insert [card]
   (let [defaults {:parameters         []
@@ -200,6 +223,7 @@
      (check-for-circular-source-query-references card)
      (check-field-filter-fields-are-from-correct-database card)
      ;; TODO: add a check to see if all id in :parameter_mappings are in :parameters
+     (assert-valid-model card)
      (params/assert-valid-parameters card)
      (params/assert-valid-parameter-mappings card)
      (collection/check-collection-namespace Card (:collection_id card)))))
@@ -210,7 +234,8 @@
   (u/prog1 card
     (when-let [field-ids (seq (params/card->template-tag-field-ids card))]
       (log/info "Card references Fields in params:" field-ids)
-      (field-values/update-field-values-for-on-demand-dbs! field-ids))))
+      (field-values/update-field-values-for-on-demand-dbs! field-ids))
+    (create-actions-when-is-writable! card)))
 
 (defonce
   ^{:doc "Atom containing a function used to check additional sandboxing constraints for Metabase Enterprise Edition.
@@ -227,36 +252,46 @@
   ;; TODO - don't we need to be doing the same permissions check we do in `pre-insert` if the query gets changed? Or
   ;; does that happen in the `PUT` endpoint?
   (u/prog1 changes
-    ;; if the Card is archived, then remove it from any Dashboards
-    (when archived?
-      (db/delete! 'DashboardCard :card_id id))
-    ;; if the template tag params for this Card have changed in any way we need to update the FieldValues for
-    ;; On-Demand DB Fields
-    (when (get-in changes [:dataset_query :native])
-      (let [old-param-field-ids (params/card->template-tag-field-ids (db/select-one [Card :dataset_query] :id id))
-            new-param-field-ids (params/card->template-tag-field-ids changes)]
-        (when (and (seq new-param-field-ids)
-                   (not= old-param-field-ids new-param-field-ids))
-          (let [newly-added-param-field-ids (set/difference new-param-field-ids old-param-field-ids)]
-            (log/info "Referenced Fields in Card params have changed. Was:" old-param-field-ids
-                      "Is Now:" new-param-field-ids
-                      "Newly Added:" newly-added-param-field-ids)
-            ;; Now update the FieldValues for the Fields referenced by this Card.
-            (field-values/update-field-values-for-on-demand-dbs! newly-added-param-field-ids)))))
-    ;; make sure this Card doesn't have circular source query references if we're updating the query
-    (when (:dataset_query changes)
-      (check-for-circular-source-query-references changes))
-    ;; Make sure any native query template tags match the DB in the query.
-    (check-field-filter-fields-are-from-correct-database changes)
-    ;; Make sure the Collection is in the default Collection namespace (e.g. as opposed to the Snippets Collection namespace)
-    (collection/check-collection-namespace Card (:collection_id changes))
-    (params/assert-valid-parameters changes)
-    (params/assert-valid-parameter-mappings changes)
-    ;; additional checks (Enterprise Edition only)
-    (@pre-update-check-sandbox-constraints changes)))
+    (let [;; Fetch old card data if necessary, and share the data between multiple checks.
+          old-card-info (when (or (:dataset changes)
+                                  (get-in changes [:dataset_query :native]))
+                          (db/select-one [Card :dataset_query :dataset] :id id))]
+      ;; if the Card is archived, then remove it from any Dashboards
+      (when archived?
+        (db/delete! 'DashboardCard :card_id id))
+      ;; if the template tag params for this Card have changed in any way we need to update the FieldValues for
+      ;; On-Demand DB Fields
+      (when (get-in changes [:dataset_query :native])
+        (let [old-param-field-ids (params/card->template-tag-field-ids old-card-info)
+              new-param-field-ids (params/card->template-tag-field-ids changes)]
+          (when (and (seq new-param-field-ids)
+                     (not= old-param-field-ids new-param-field-ids))
+            (let [newly-added-param-field-ids (set/difference new-param-field-ids old-param-field-ids)]
+              (log/info "Referenced Fields in Card params have changed. Was:" old-param-field-ids
+                        "Is Now:" new-param-field-ids
+                        "Newly Added:" newly-added-param-field-ids)
+              ;; Now update the FieldValues for the Fields referenced by this Card.
+              (field-values/update-field-values-for-on-demand-dbs! newly-added-param-field-ids)))))
+      ;; make sure this Card doesn't have circular source query references if we're updating the query
+      (when (:dataset_query changes)
+        (check-for-circular-source-query-references changes))
+      ;; Make sure any native query template tags match the DB in the query.
+      (check-field-filter-fields-are-from-correct-database changes)
+      ;; Make sure the Collection is in the default Collection namespace (e.g. as opposed to the Snippets Collection namespace)
+      (collection/check-collection-namespace Card (:collection_id changes))
+      (params/assert-valid-parameters changes)
+      (params/assert-valid-parameter-mappings changes)
+      ;; additional checks (Enterprise Edition only)
+      (@pre-update-check-sandbox-constraints changes)
+      ;; create Action and QueryAction when is_write is set true
+      (create-actions-when-is-writable! changes)
+      ;; delete Action and QueryAction when is_write is set false
+      (delete-actions-when-not-writable! changes)
+      (assert-valid-model (merge old-card-info changes)))))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (defn- pre-delete [{:keys [id]}]
+  (db/delete! 'QueryAction :card_id id)
   (db/delete! 'ModerationReview :moderated_item_type "card", :moderated_item_id id)
   (db/delete! 'Revision :model "Card", :model_id id))
 
@@ -270,7 +305,7 @@
   :in mi/json-in
   :out result-metadata-out)
 
-(u/strict-extend (class Card)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Card)
   models/IModel
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:card])
@@ -291,10 +326,6 @@
           :post-insert    post-insert
           :pre-delete     pre-delete
           :post-select    public-settings/remove-public-uuid-if-public-sharing-is-disabled})
-
-  ;; You can read/write a Card if you can read/write its parent Collection
-  mi/IObjectPermissions
-  perms/IObjectPermissionsForParentCollection
 
   revision/IRevisioned
   (assoc revision/IRevisionedDefaults

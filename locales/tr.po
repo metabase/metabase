@@ -4247,8 +4247,8 @@ msgstr "Kategori, Tip, Model, Değerlendirme, vb."
 msgid "Account settings"
 msgstr "Hesap ayarları"
 
-#: frontend/src/metabase/nav/components/PublicNavbar/PublicNavbar.tsx:59
-#: frontend/src/metabase/nav/components/PublicNavbar/PublicNavbar.tsx:99
+#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:59
+#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:99
 msgid "Exit admin"
 msgstr "Yönetim panelinden çık"
 
@@ -4291,7 +4291,7 @@ msgstr "bir Ticari markasıdır"
 msgid "and is built with care in San Francisco, CA"
 msgstr "ve San Francisco, CA'da özenle inşa edilmiştir"
 
-#: frontend/src/metabase/nav/components/PublicNavbar/PublicNavbar.tsx:37
+#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:37
 msgid "Metabase Admin"
 msgstr "Metabase Yöneticisi"
 

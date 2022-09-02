@@ -124,8 +124,8 @@
             ["The Apple Pan"]
             ["Wurstküche"]
             ["Brite Spot Family Restaurant"]]
-           (take 5 (metadata-queries/table-rows-sample (Table (mt/id :venues))
-                     [(Field (mt/id :venues :name))]
+           (take 5 (metadata-queries/table-rows-sample (db/select-one Table :id (mt/id :venues))
+                     [(db/select-one Field :id (mt/id :venues :name))]
                      (constantly conj)))))))
 
 

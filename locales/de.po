@@ -4247,8 +4247,8 @@ msgstr "Kategorie, Typ, Modell, Bewertung, usw."
 msgid "Account settings"
 msgstr "Kontoeinstellungen"
 
-#: frontend/src/metabase/nav/components/PublicNavbar/PublicNavbar.tsx:59
-#: frontend/src/metabase/nav/components/PublicNavbar/PublicNavbar.tsx:99
+#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:59
+#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:99
 msgid "Exit admin"
 msgstr "Verlasse Administration"
 
@@ -4291,7 +4291,7 @@ msgstr "ist ein Warenzeichen von"
 msgid "and is built with care in San Francisco, CA"
 msgstr "und wird mit Sorgfalt in San Francisco, CA gebaut"
 
-#: frontend/src/metabase/nav/components/PublicNavbar/PublicNavbar.tsx:37
+#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:37
 msgid "Metabase Admin"
 msgstr "Metabase Administrator"
 

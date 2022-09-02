@@ -5,6 +5,7 @@
             [metabase-enterprise.serialization.v2.extract :as extract]
             [metabase-enterprise.serialization.v2.storage.yaml :as storage.yaml]
             [metabase.models.collection :refer [Collection]]
+            [toucan.db :as db]
             [yaml.core :as yaml]))
 
 (defn- dir->file-set [dir]
@@ -32,12 +33,12 @@
                 "A few top-level files are expected"))
 
           (testing "the Collections properly exported"
-            (is (= (-> (into {} (Collection (:id parent)))
+            (is (= (-> (into {} (db/select-one Collection :id (:id parent)))
                        (dissoc :id :location)
                        (assoc :parent_id nil))
                    (yaml/from-file (io/file dump-dir "Collection" parent-filename))))
 
-            (is (= (-> (into {} (Collection (:id child)))
+            (is (= (-> (into {} (db/select-one Collection :id (:id child)))
                        (dissoc :id :location)
                        (assoc :parent_id (:entity_id parent)))
                    (yaml/from-file (io/file dump-dir "Collection" child-filename))))))))))

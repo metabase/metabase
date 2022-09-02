@@ -4,6 +4,7 @@
             [metabase.domain-entities.specs :refer [domain-entity-specs MBQL]]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.card :refer [Card]]
+            [metabase.models.interface :as mi]
             [metabase.models.table :as table :refer [Table]]
             [metabase.util :as u]
             [schema.core :as s]))
@@ -24,10 +25,11 @@
 
 (def SourceEntity
   "A source for a card. Can be either a table or another card."
-  (s/cond-pre (type Table) (type Card)))
+  (s/cond-pre (mi/InstanceOf Table) (mi/InstanceOf Card)))
 
 (def Bindings
-  "Top-level lexical context mapping source names to their corresponding entity and constituent dimensions. See also `DimensionBindings`."
+  "Top-level lexical context mapping source names to their corresponding entity and constituent dimensions. See also
+  `DimensionBindings`."
   {SourceName {(s/optional-key :entity)     SourceEntity
                (s/required-key :dimensions) DimensionBindings}})
 

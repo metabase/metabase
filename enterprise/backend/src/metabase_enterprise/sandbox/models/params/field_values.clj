@@ -9,7 +9,8 @@
             [metabase.models.field-values :as field-values]
             [metabase.models.params.field-values :as params.field-values]
             [metabase.public-settings.premium-features :refer [defenterprise]]
-            [toucan.db :as db]))
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]))
 
 (comment api/keep-me)
 
@@ -32,7 +33,7 @@
       (row-level-restrictions/assert-one-gtap-per-table gtaps)
       ;; there shold be only one gtap per table and we only need one table here
       ;; see docs in [[metabase.models.permissions]] for more info
-      (first gtaps))))
+      (hydrate (first gtaps) :card))))
 
 (defn- field->gtap-attributes-for-current-user
   "Returns the gtap attributes for current user that applied to `field`.
@@ -40,16 +41,18 @@
   The gtap-attributes is a list with 2 elements:
   1. card-id - for GTAP that use a saved question
   2. a map:
-    - with key is the user-attribute that applied to the table that `field` is in
-    - value is the user-attribute of current user corresponding to the key
+    if query is mbql query:
+      - with key is the user-attribute that applied to the table that `field` is in
+      - value is the user-attribute of current user corresponding to the key
+    for native query, this map will be the login-attributes of user
 
   For example we have an GTAP rules
-  {:card_id              1
+  {:card_id              1 ;; a mbql query
    :attribute_remappings {\"State\" [:dimension [:field 3 nil]]}}
 
   And users with login-attributes {\"State\" \"CA\"}
 
-  ;; (field-id->gtap-attributes-for-current-user (Field 3))
+  ;; (field-id->gtap-attributes-for-current-user (db/select-one Field :id 3))
   ;; -> [1, {\"State\" \"CA\"}]"
   [{:keys [table_id] :as _field}]
   (when-let [gtap (table-id->gtap table_id)]
@@ -57,11 +60,17 @@
           attribute_remappings (:attribute_remappings gtap)
           field-ids            (db/select-field :id Field :table_id table_id)]
       [(:card_id gtap)
-       (into {} (for [[k v] attribute_remappings
-                      ;; get attribute that map to fields of the same table
-                      :when (contains? field-ids
-                                       (mbql.u/match-one v [:dimension [:field field-id _]] field-id))]
-                  {k (get login-attributes k)}))])))
+       (if (= :native (get-in gtap [:card :query_type]))
+         ;; For sandbox that uses native query, we can't narrow down to the exact attribute
+         ;; that affect the current table. So we just hash the whole login-attributes of users.
+         ;; This makes hashing a bit less efficient but it ensures that user get a new hash
+         ;; if they change login attributes
+         login-attributes
+         (into {} (for [[k v] attribute_remappings
+                        ;; get attribute that map to fields of the same table
+                        :when (contains? field-ids
+                                         (mbql.u/match-one v [:dimension [:field field-id _]] field-id))]
+                    {k (get login-attributes k)})))])))
 
 (defenterprise get-or-create-field-values-for-current-user!*
   "Fetch cached FieldValues for a `field`, creating them if needed if the Field should have FieldValues. These

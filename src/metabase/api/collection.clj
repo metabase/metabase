@@ -65,7 +65,7 @@
           (cond->> collections
             (mi/can-read? root)
             (cons root))))
-      (hydrate collections :can_write)
+      (hydrate collections :can_write :app_id)
       ;; remove the :metabase.models.collection.root/is-root? tag since FE doesn't need it
       ;; and for personal collections we translate the name to user's locale
       (for [collection collections]
@@ -104,17 +104,18 @@
                               (db/reducible-query {:select    [:collection_id :dataset]
                                                    :modifiers [:distinct]
                                                    :from      [:report_card]
-                                                   :where     [:= :archived false]}))]
-    (->> (db/select Collection
-                    {:where [:and
-                             (when exclude-archived
-                               [:= :archived false])
-                             [:= :namespace namespace]
-                             (collection/visible-collection-ids->honeysql-filter-clause
-                              :id
-                              (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
-         (map collection/personal-collection-with-ui-details)
-         (collection/collections->tree coll-type-ids))))
+                                                   :where     [:= :archived false]}))
+        colls (db/select Collection
+                {:where [:and
+                         (when exclude-archived
+                           [:= :archived false])
+                         [:= :namespace namespace]
+                         (collection/visible-collection-ids->honeysql-filter-clause
+                          :id
+                          (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
+        colls (map collection/personal-collection-with-ui-details colls)
+        colls (hydrate colls :app_id)]
+    (collection/collections->tree coll-type-ids colls)))
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
 
@@ -604,7 +605,7 @@
   [collection :- collection/CollectionWithLocationAndIDOrRoot]
   (-> collection
       collection/personal-collection-with-ui-details
-      (hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write)))
+      (hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write :app_id)))
 
 (api/defendpoint GET "/:id"
   "Fetch a specific Collection with standard details added"
@@ -719,18 +720,12 @@
   Root Collection perms."
   [collection-id]
   (api/write-check (if collection-id
-                     (Collection collection-id)
+                     (db/select-one Collection :id collection-id)
                      collection/root-collection)))
 
-(api/defendpoint POST "/"
-  "Create a new Collection."
-  [:as {{:keys [name color description parent_id namespace authority_level]} :body}]
-  {name            su/NonBlankString
-   color           collection/hex-color-regex
-   description     (s/maybe su/NonBlankString)
-   parent_id       (s/maybe su/IntGreaterThanZero)
-   namespace       (s/maybe su/NonBlankString)
-   authority_level collection/AuthorityLevel}
+(defn create-collection!
+  "Create a new collection."
+  [{:keys [name color description parent_id namespace authority_level]}]
   ;; To create a new collection, you need write perms for the location you are going to be putting it in...
   (write-check-collection-or-root-collection parent_id)
   ;; Now create the new Collection :)
@@ -745,6 +740,17 @@
       :namespace   namespace}
      (when parent_id
        {:location (collection/children-location (db/select-one [Collection :location :id] :id parent_id))}))))
+
+(api/defendpoint POST "/"
+  "Create a new Collection."
+  [:as {{:keys [name color description parent_id namespace authority_level] :as body} :body}]
+  {name            su/NonBlankString
+   color           collection/hex-color-regex
+   description     (s/maybe su/NonBlankString)
+   parent_id       (s/maybe su/IntGreaterThanZero)
+   namespace       (s/maybe su/NonBlankString)
+   authority_level collection/AuthorityLevel}
+  (create-collection! body))
 
 ;; TODO - I'm not 100% sure it makes sense that moving a Collection requires a special call to `move-collection!`,
 ;; while archiving is handled automatically as part of the `pre-update` logic when you change a Collection's
@@ -823,7 +829,7 @@
     ;; if we *did* end up archiving this Collection, we most post a few notifications
     (maybe-send-archived-notificaitons! collection-before-update collection-updates))
   ;; finally, return the updated object
-  (-> (Collection id)
+  (-> (db/select-one Collection :id id)
       (hydrate :parent_id)))
 
 ;;; ------------------------------------------------ GRAPH ENDPOINTS -------------------------------------------------

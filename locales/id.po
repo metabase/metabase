@@ -4247,8 +4247,8 @@ msgstr "Kategori, jenis, model, peringkat, dll."
 msgid "Account settings"
 msgstr "Pengaturan akun"
 
-#: frontend/src/metabase/nav/components/PublicNavbar/PublicNavbar.tsx:59
-#: frontend/src/metabase/nav/components/PublicNavbar/PublicNavbar.tsx:99
+#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:59
+#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:99
 msgid "Exit admin"
 msgstr "Keluar dari Admin."
 
@@ -4291,7 +4291,7 @@ msgstr "adalah merek dagang dari"
 msgid "and is built with care in San Francisco, CA"
 msgstr "dan dibangun dengan hati-hati di San Francisco, CA"
 
-#: frontend/src/metabase/nav/components/PublicNavbar/PublicNavbar.tsx:37
+#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:37
 msgid "Metabase Admin"
 msgstr "Metabase Admin."
 

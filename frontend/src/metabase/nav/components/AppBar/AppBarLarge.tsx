@@ -55,14 +55,14 @@ const AppBarLarge = ({
           {isQuestionLineageVisible ? (
             <QuestionLineage />
           ) : isCollectionPathVisible ? (
-            <CollectionBreadcrumbs collectionId={collectionId} />
+            <CollectionBreadcrumbs />
           ) : null}
         </AppBarInfoContainer>
       </AppBarLeftContainer>
       {(isSearchVisible || isNewButtonVisible || isProfileLinkVisible) && (
         <AppBarRightContainer>
           {isSearchVisible && <SearchBar />}
-          {isNewButtonVisible && <NewItemButton />}
+          {isNewButtonVisible && <NewItemButton collectionId={collectionId} />}
           {isProfileLinkVisible && (
             <AppBarProfileLinkContainer>
               <ProfileLink user={currentUser} onLogout={onLogout} />

@@ -26,6 +26,7 @@ import _ from "underscore";
 import cx from "classnames";
 
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
+import { ChartSettingOrderedRows } from "metabase/visualizations/components/settings/ChartSettingOrderedRows";
 
 const propTypes = {
   headerIcon: PropTypes.shape(iconPropTypes),
@@ -76,7 +77,7 @@ export default class Funnel extends Component {
     ["Tiers Page", 700],
     ["Trial Form", 200],
     ["Trial Confirmation", 40],
-  ].map(row => ({
+  ].map((row, index) => ({
     card: {
       display: "funnel",
       visualization_settings: {
@@ -84,6 +85,7 @@ export default class Funnel extends Component {
         "funnel.dimension": "Total Sessions",
       },
       dataset_query: { type: "null" },
+      rowIndex: index,
     },
     data: {
       rows: [row],
@@ -104,11 +106,42 @@ export default class Funnel extends Component {
     ...columnSettings({ hidden: true }),
     ...dimensionSetting("funnel.dimension", {
       section: t`Data`,
-      title: t`Step`,
+      title: t`Column with steps`,
       dashboard: false,
       useRawSeries: true,
       showColumnSetting: true,
+      marginBottom: "0.625rem",
     }),
+    "funnel.rows": {
+      section: t`Data`,
+      widget: ChartSettingOrderedRows,
+      isValid: (series, settings) => {
+        const funnelRows = settings["funnel.rows"];
+
+        if (!funnelRows || !_.isArray(funnelRows)) {
+          return false;
+        }
+        if (!funnelRows.every(setting => setting.rowIndex !== undefined)) {
+          return false;
+        }
+
+        return (
+          funnelRows.every(setting => series[setting.rowIndex]) &&
+          funnelRows.length === series.length
+        );
+      },
+
+      getDefault: transformedSeries => {
+        return transformedSeries.map(s => ({
+          name: s.card.name,
+          rowIndex: s.card.rowIndex,
+          enabled: true,
+        }));
+      },
+      getProps: transformedSeries => ({
+        rows: transformedSeries.map(s => s.card),
+      }),
+    },
     ...metricSetting("funnel.metric", {
       section: t`Data`,
       title: t`Measure`,
@@ -158,12 +191,13 @@ export default class Funnel extends Component {
       dimensionIndex >= 0 &&
       metricIndex >= 0
     ) {
-      return rows.map(row => ({
+      return rows.map((row, index) => ({
         card: {
           ...card,
           name: formatValue(row[dimensionIndex], {
             column: cols[dimensionIndex],
           }),
+          rowIndex: index,
           _transformed: true,
         },
         data: {

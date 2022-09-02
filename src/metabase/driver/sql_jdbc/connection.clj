@@ -7,10 +7,13 @@
             [metabase.connection-pool :as connection-pool]
             [metabase.driver :as driver]
             [metabase.models.database :refer [Database]]
+            [metabase.models.interface :as mi]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
+            [metabase.util.schema :as su]
             [metabase.util.ssh :as ssh]
+            [schema.core :as s]
             [toucan.db :as db])
   (:import com.mchange.v2.c3p0.DataSources
            javax.sql.DataSource))
@@ -22,7 +25,11 @@
 (defmulti connection-details->spec
   "Given a Database `details-map`, return an unpooled JDBC connection spec. Driver authors should implement this method,
   but you probably shouldn't be *USE* this method directly! If you want a pooled connection spec (which you almost
-  certainly do), use [[db->pooled-connection-spec]] instead."
+  certainly do), use [[db->pooled-connection-spec]] instead.
+
+  DO NOT USE THIS METHOD DIRECTLY UNLESS YOU KNOW WHAT YOU ARE DOING! THIS RETURNS AN UNPOOLED CONNECTION SPEC! IF YOU
+  WANT A CONNECTION SPEC FOR RUNNING QUERIES USE [[db->pooled-connection-spec]] INSTEAD WHICH WILL RETURN A *POOLED*
+  CONNECTION SPEC."
   {:arglists '([driver details-map])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
@@ -133,11 +140,10 @@
   database-id->jdbc-spec-hash
   (atom {}))
 
-(defn- jdbc-spec-hash
+(s/defn ^:private jdbc-spec-hash
   "Computes a hash value for the JDBC connection spec based on `database`'s `:details` map, for the purpose of
   determining if details changed and therefore the existing connection pool needs to be invalidated."
-  [{driver :engine, :keys [details], :as database}]
-  {:pre [(or nil? (instance? (type Database) database))]}
+  [{driver :engine, :keys [details], :as database} :- (s/maybe su/Map)]
   (when (some? database)
     (hash (connection-details->spec driver details))))
 
@@ -190,7 +196,8 @@
     (u/id db-or-id-or-spec)
     (let [database-id (u/the-id db-or-id-or-spec)
           ;; we need the Database instance no matter what (in order to compare details hash with cached value)
-          db          (or (and (instance? (type Database) db-or-id-or-spec) db-or-id-or-spec) ; passed in
+          db          (or (when (mi/instance-of? Database db-or-id-or-spec)
+                            db-or-id-or-spec) ; passed in
                           (db/select-one [Database :id :engine :details] :id database-id)     ; look up by ID
                           (throw (ex-info (tru "Database {0} does not exist." database-id)
                                    {:status-code 404

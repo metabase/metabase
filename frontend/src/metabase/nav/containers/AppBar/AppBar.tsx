@@ -1,10 +1,10 @@
 import { connect } from "react-redux";
 import { withRouter } from "react-router";
 import _ from "underscore";
+import Collections from "metabase/entities/collections";
 import { logout } from "metabase/auth/actions";
 import { closeNavbar, getIsNavbarOpen, toggleNavbar } from "metabase/redux/app";
 import {
-  getCollectionId,
   getIsCollectionPathVisible,
   getIsNewButtonVisible,
   getIsProfileLinkVisible,
@@ -12,13 +12,13 @@ import {
   getIsSearchVisible,
   RouterProps,
 } from "metabase/selectors/app";
+import { getUser } from "metabase/selectors/user";
 import { State } from "metabase-types/store";
 import AppBar from "../../components/AppBar";
-import { getUser } from "metabase/selectors/user";
 
 const mapStateToProps = (state: State, props: RouterProps) => ({
   currentUser: getUser(state),
-  collectionId: getCollectionId(state),
+  collectionId: Collections.selectors.getInitialCollectionId(state, props),
   isNavBarOpen: getIsNavbarOpen(state),
   isSearchVisible: getIsSearchVisible(state),
   isNewButtonVisible: getIsNewButtonVisible(state),

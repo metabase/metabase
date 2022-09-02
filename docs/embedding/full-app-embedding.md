@@ -29,7 +29,7 @@ Once you do, you'll see a set of options:
 
 - **Embedding the entire Metabase app:** Here's where you'll enter the base URLs of the web applications that you want to allow to embed Metabase. This value will be used to populate the `Content-Security-Policy` HTTP header's [`frame-ancestors` directive](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/frame-ancestors), and should follow the same format.
   For example, `https://*.metabase.com http://my-web-app.example.com:8080/`. Leaving this empty will default to a `frame-ancestors` value of `'none'`.
-  If you're a fancy person, you can specify this URL in the environment variable [`MB_EMBEDDING_APP_ORIGIN`](../operations-guide/environment-variables.md#mb_embedding_app_origin).
+  If you're a fancy person, you can specify this URL in the environment variable [`MB_EMBEDDING_APP_ORIGIN`](../configuring-metabase/environment-variables.md#mb_embedding_app_origin).
 
 ### Note on incognito mode
 
@@ -158,7 +158,7 @@ When signing JWTs for either SSO (i.e., in full-app embedding) or standalone que
 
 ## Further reading
 
-- [White labeling](whitelabeling.md)
-- [Deliver analytics to your customers](https://www.metabase.com/learn/building-analytics/dashboards/linking-filters.html)
-- [Embed Metabase in your app to deliver multi-tenant, self-service analytics](https://www.metabase.com/learn/developing-applications/advanced-metabase/multi-tenant-self-service-analytics.html)
-- [Create charts with explorable data](https://www.metabase.com/learn/developing-applications/advanced-metabase/multi-tenant-self-service-analytics.html)
+- [Customizing Metabase's appearance](../configuring-metabase/appearance.md).
+- [Strategies for delivering customer-facing analytics](https://www.metabase.com/learn/embedding/embedding-overview).
+- [Publishing data visualizations to the web](https://www.metabase.com/learn/embedding/embedding-charts-and-dashboards).
+- [Multi-tenant self-service analytics](https://www.metabase.com/learn/embedding/multi-tenant-self-service-analytics).

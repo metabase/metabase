@@ -27,7 +27,7 @@
 
 (defn- postprocess-field-values
   "Format a FieldValues to use by params functions.
-  ;; (postprocess-field-values (FieldValues 1) (Field 1))
+  ;; (postprocess-field-values (db/select-one FieldValues :id 1) (Field 1))
   ;; => {:values          [1 2 3 4]
          :field_id        1
          :has_more_values boolean}"
@@ -101,7 +101,7 @@
 
   ([fv-type field constraints]
    (let [hash-key (hash-key-for-advanced-field-values fv-type (:id field) constraints)
-         fv       (or (FieldValues :field_id (:id field)
+         fv       (or (db/select-one FieldValues :field_id (:id field)
                                    :type fv-type
                                    :hash_key hash-key)
                       (create-advanced-field-values! fv-type field hash-key constraints))]

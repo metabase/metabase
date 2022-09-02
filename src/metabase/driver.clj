@@ -434,7 +434,14 @@
     :advanced-math-expressions
 
     ;; Does the driver support percentile calculations (including median)
-    :percentile-aggregations})
+    :percentile-aggregations
+
+    ;; Does the driver support experimental "writeback" actions like "delete this row" or "insert a new row" from 44+?
+    :actions
+
+    ;; Does the driver support custom writeback actions using `is_write` Saved Questions. Drivers that support this must
+    ;; implement [[execute-write-query!]]
+    :actions/custom})
 
 (defmulti supports?
   "Does this driver support a certain `feature`? (A feature is a keyword, and can be any of the ones listed above in
@@ -442,7 +449,8 @@
 
     (supports? :postgres :set-timezone) ; -> true
 
-  deprecated — [[database-supports?]] is intended to replace this method. However, it driver authors should continue _implementing_ `supports?` for the time being until we get a chance to migrate all our usages."
+  DEPRECATED — [[database-supports?]] is intended to replace this method. However, it driver authors should continue
+  _implementing_ `supports?` for the time being until we get a chance to migrate all our usages."
   {:arglists '([driver feature]), :deprecated "0.41.0"}
   (fn [driver feature]
     (when-not (driver-features feature)
@@ -710,3 +718,10 @@
 (defmethod superseded-by :default
   [_]
   nil)
+
+(defmulti execute-write-query!
+  "Execute a writeback query (from an `is_write` Card) e.g. one powering a custom
+  `QueryAction` (see [[metabase.models.action]]). Drivers that support `:actions/custom` must implement this method."
+  {:added "0.44.0", :arglists '([driver query])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)

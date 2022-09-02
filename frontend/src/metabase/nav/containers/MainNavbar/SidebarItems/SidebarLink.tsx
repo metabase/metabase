@@ -15,7 +15,7 @@ import {
 interface Props {
   children: string;
   url?: string;
-  icon: string | IconProps | React.ReactElement;
+  icon?: string | IconProps | React.ReactElement;
   isSelected?: boolean;
   hasDefaultIconStyle?: boolean;
   left?: React.ReactNode;
@@ -52,6 +52,9 @@ function SidebarLink({
   ...props
 }: Props) {
   const renderIcon = useCallback(() => {
+    if (!icon) {
+      return null;
+    }
     if (React.isValidElement(icon)) {
       return icon;
     }

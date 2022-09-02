@@ -116,7 +116,7 @@
   border: 1px solid color(var(--color-brand) alpha(-86%));
   background-color: color(var(--color-brand) alpha(-92%));
   padding: 0.25em 0.65em;
-  border-radius: 99px;
+  border-radius: 0px;
   min-width: 35px;
   text-align: center;
   color: var(--color-brand);

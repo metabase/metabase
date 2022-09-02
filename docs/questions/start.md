@@ -44,10 +44,6 @@ Pass parameters into variables in your SQL templates.
 
 Reuse and share bits of SQL.
 
-### [SQL snippet permissions](./native-editor/snippet-permissions.md)
-
-Organize snippets into folders that require permissions to view.
-
 ## Sharing results
 
 There are many different ways to share the results of questions. To share the results of a dashboard, see [Dashboard subscriptions](../dashboards/subscriptions.md).
@@ -60,6 +56,10 @@ Save questions, download results, and share links.
 
 Choose from a variety of visualization types.
 
-### [Sharing](./sharing/alerts.md)
+### [Alerts](./sharing/alerts.md)
 
 Get results via email or Slack, either on a schedule, or only when something interesting happens.
+
+### [Public links](./sharing/public-links.md)
+
+Share your data with the good people of the internet.

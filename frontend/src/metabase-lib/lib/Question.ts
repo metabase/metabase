@@ -305,12 +305,20 @@ class QuestionInner {
     return this._card && this._card.persisted;
   }
 
+  isAction() {
+    return this._card && this._card.is_write;
+  }
+
   setPersisted(isPersisted) {
     return this.setCard(assoc(this.card(), "persisted", isPersisted));
   }
 
   setDataset(dataset) {
     return this.setCard(assoc(this.card(), "dataset", dataset));
+  }
+
+  setIsAction(isAction) {
+    return this.setCard(assoc(this.card(), "is_write", isAction));
   }
 
   // locking the display prevents auto-selection
@@ -833,7 +841,7 @@ class QuestionInner {
     return this._card && this._card.name;
   }
 
-  setDisplayName(name: string) {
+  setDisplayName(name: string | null | undefined) {
     return this.setCard(assoc(this.card(), "name", name));
   }
 
@@ -841,7 +849,7 @@ class QuestionInner {
     return this._card && this._card.collection_id;
   }
 
-  setCollectionId(collectionId: number) {
+  setCollectionId(collectionId: number | null | undefined) {
     return this.setCard(assoc(this.card(), "collection_id", collectionId));
   }
 

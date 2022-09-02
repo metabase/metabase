@@ -119,7 +119,7 @@
                 (catch Throwable e
                   (log/error e "Error adding extra metadata"))))))
         ;; make sure we're returing an up-to-date copy of the DB
-        (Database (u/the-id db))
+        (db/select-one Database :id (u/the-id db))
         (catch Throwable e
           (let [e (ex-info (format "Failed to create test database: %s" (ex-message e))
                            {:driver             driver
@@ -295,7 +295,7 @@
   (copy-db-fks! old-db-id new-db-id))
 
 (def ^:dynamic *db-is-temp-copy?*
-    "Whether the current test database is a temp copy created with the [[metabase.test/with-temp-copy-of-db]] macro."
+  "Whether the current test database is a temp copy created with the [[metabase.test/with-temp-copy-of-db]] macro."
   false)
 
 (defn do-with-temp-copy-of-db
@@ -334,7 +334,7 @@
   (let [dbdef             (tx/get-dataset-definition dataset-definition)
         get-db-for-driver (mdb.connection/memoize-for-application-db
                            (fn [driver]
-                             (binding [db/*disable-db-logging* true]
+                            (binding [db/*disable-db-logging* true]
                                (let [db (get-or-create-database! driver dbdef)]
                                  (assert db)
                                  (assert (db/exists? Database :id (u/the-id db)))

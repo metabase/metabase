@@ -1,0 +1,25 @@
+.Image-wrap {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: scroll;
+  pointer-events: all;
+}
+
+.Image-wrap-input {
+}
+
+.Image-wrap-upload {
+  display: flex;
+  align-items: center;
+  pointer-events: all;
+  margin-bottom: 8px;
+}
+
+.Image-wrap-upload .ant-upload {
+  margin-right: 4px;
+}
+
+.ant-image-mask {
+  background: rgba(0, 0, 0, 0.2);
+}

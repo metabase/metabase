@@ -17,7 +17,7 @@ const footers = [
       },
       {
         label: "Docs",
-        url: "https://docs.nftlake.network/",
+        url: "https://docs.NFTRover.network/",
       },
       {
         label: "Tutorials",
@@ -25,7 +25,7 @@ const footers = [
       },
       {
         label: "Data Dictionary",
-        url: "https://www.nftlake.network/@NFTLake/NFTLake-Datasets-Data-Dictionary",
+        url: "https://www.NFTRover.network/@NFTRover/NFTRover-Datasets-Data-Dictionary",
       },
       {
         label: "Pricing",
@@ -49,7 +49,7 @@ const footers = [
         url: "/chains",
       },
       {
-        label: "NFTLake Enterprise",
+        label: "NFTRover Enterprise",
         url: "/defi360",
       },
     ],
@@ -58,7 +58,7 @@ const footers = [
     title: "Company",
     items: [
       {
-        label: "Why NFTLake",
+        label: "Why NFTRover",
         url: "/about",
       },
       {
@@ -75,7 +75,7 @@ const footers = [
       },
       {
         label: "Contact Us",
-        url: "mailto:analytics@nftlake.network",
+        url: "mailto:analytics@NFTRover.network",
       },
     ],
   },
@@ -92,7 +92,7 @@ const footers = [
       },
       {
         label: "Twitter",
-        url: "https://twitter.com/NFTLake_Data",
+        url: "https://twitter.com/NFTRover_Data",
       },
       {
         label: "Medium",
@@ -114,16 +114,16 @@ const PublicFooter = props => {
     <footer className="home-footer-container footprint-primary-text">
       <div className="home-footer">
         <div className="home-footer-left">
-          <img src={""} alt="NFTLake analytics" />
+          <img src={""} alt="NFTRover analytics" />
           <span data-nosnippet>
-            NFTLake is a powerful yet easy-to-use analytics tool to uncover and
+            NFTRover is a powerful yet easy-to-use analytics tool to uncover and
             visualize blockchain data. The product puts user experience first
             whether you’re an analyst, data scientist, developer, student,
             teacher, or executive. It provides an intuitive, drag-and-drop
             interface for interactive data queries.
           </span>
           <span data-nosnippet>
-            Disclaimer: All data and articles on NFTLake Analytics are for
+            Disclaimer: All data and articles on NFTRover Analytics are for
             informational purposes only, and do not constitute any investment
             advice.
           </span>
@@ -191,7 +191,7 @@ const PublicFooter = props => {
       <div style={{ display: "none" }}>
         keywords：
         <a
-          href="https://www.nftlake.network/sitemap.html"
+          href="https://www.NFTRover.network/sitemap.html"
           title="footprint"
           rel="noreferrer"
           target="_blank"
@@ -199,7 +199,7 @@ const PublicFooter = props => {
           <strong>footprint</strong>
         </a>
         <a
-          href="https://www.nftlake.network/sitemap.xml"
+          href="https://www.NFTRover.network/sitemap.xml"
           title="footprint"
           rel="noreferrer"
           target="_blank"

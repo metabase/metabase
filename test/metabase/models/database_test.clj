@@ -211,7 +211,7 @@
                                        :value   "new-password"})
                 (testing " updating the value works as expected"
                   (db/update! Database id :details (assoc details :password-path  "/path/to/my/password-file"))
-                  (check-db-fn (Database id) {:kind    :password
+                  (check-db-fn (db/select-one Database :id id) {:kind    :password
                                               :source  :file-path
                                               :version 2
                                               :value   "/path/to/my/password-file"}))))

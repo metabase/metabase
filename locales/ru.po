@@ -4270,8 +4270,8 @@ msgstr "Категория, Тип, Модель, Рейтинг, прочее."
 msgid "Account settings"
 msgstr "Настройки учетной записи"
 
-#: frontend/src/metabase/nav/components/PublicNavbar/PublicNavbar.tsx:59
-#: frontend/src/metabase/nav/components/PublicNavbar/PublicNavbar.tsx:99
+#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:59
+#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:99
 msgid "Exit admin"
 msgstr "Выйти из администрирования"
 
@@ -4314,7 +4314,7 @@ msgstr "Торговый знак"
 msgid "and is built with care in San Francisco, CA"
 msgstr "и было создано с заботой в Сан Франциско, Калифорния"
 
-#: frontend/src/metabase/nav/components/PublicNavbar/PublicNavbar.tsx:37
+#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:37
 msgid "Metabase Admin"
 msgstr "Управление Metabase"
 

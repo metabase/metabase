@@ -4,9 +4,11 @@
             [metabase-enterprise.serialization.upsert :as upsert]
             [metabase.models :refer [Card Collection Dashboard DashboardCard Database Field Metric NativeQuerySnippet
                                      Pulse Segment Table User]]
+            [metabase.models.interface :as mi]
             [metabase.test :as mt]
             [metabase.util :as u]
-            [toucan.db :as db]))
+            [toucan.db :as db]
+            [toucan.models :as models]))
 
 (def ^:private same? (comp nil? second data/diff))
 
@@ -52,7 +54,7 @@
                 (let [[e1 e2]   @cards
                       [id1 id2] (upsert/maybe-upsert-many! {:mode mode} Card @cards)]
                   (is (every? (partial apply same?)
-                              [[(Card id1) e1] [(Card id2) e2]])))))]
+                              [[(db/select-one Card :id id1) e1] [(db/select-one Card :id id2) e2]])))))]
       (doseq [mode [:skip :update]]
         (test-mode mode)))))
 
@@ -65,13 +67,13 @@
       (testing "Card 1 ID"
         (is (= id1 id1-mutated)))
       (testing "Card 1"
-        (is (same? (Card id1-mutated) e1-mutated)))
+        (is (same? (db/select-one Card :id id1-mutated) e1-mutated)))
       (testing "Card 2"
-        (is (same? (Card id2) e2))))))
+        (is (same? (db/select-one Card :id id2) e2))))))
 
-(defn- dummy-entity [dummy-dashboard model entity instance-num]
+(defn- dummy-entity [dummy-dashboard instance entity instance-num]
   (cond
-    (= (type DashboardCard) (type model))
+    (mi/instance-of? DashboardCard instance)
     ;; hack to make sure that :visualization_settings are slightly different between the two dummy instances
     ;; this is necessary because DashboardCards have that as part of their identity-condition
     (assoc entity :dashboard_id (u/the-id dummy-dashboard)
@@ -92,7 +94,7 @@
                                 ;; create an additional entity so we're sure whe get the right one
                                 model     [_ (dummy-entity dashboard model e1 1)]
                                 model     [{id :id} (dummy-entity dashboard model e2 2)]]
-                  (let [e (model id)]
+                  (let [e (db/select-one model (models/primary-key model) id)]
                     ;; make sure that all columns in identity-condition actually exist in the model
                     (is (= (set id-cond) (-> e
                                              (select-keys id-cond)
@@ -101,7 +103,7 @@
                     (is (= (#'upsert/select-identical model (cond-> e
                                                               ;; engine is a keyword but has to be a string for
                                                               ;; HoneySQL to not interpret it as a col name
-                                                              (= (class e) (class Database)) (update :engine name)))
+                                                              (mi/instance-of? Database e) (update :engine name)))
                            e)))))))]
     (doseq [model [Collection
                    Card

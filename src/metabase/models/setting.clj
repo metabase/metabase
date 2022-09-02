@@ -139,7 +139,7 @@
   "The model that underlies [[defsetting]]."
   :setting)
 
-(u/strict-extend (class Setting)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Setting)
   models/IModel
   (merge models/IModelDefaults
          {:types       (constantly {:value :encrypted-text})
@@ -929,6 +929,11 @@
 
   The ability of this Setting to be /Database-local/. Valid values are `:only`, `:allowed`, and `:never`. Default:
   `:never`. See docstring for [[metabase.models.setting]] for more information.
+
+  ###### `:user-local`
+
+  Whether this Setting is /User-local/. Valid values are `:only`, `:allowed`, and `:never`. Default: `:never`. See
+  docstring for [[metabase.models.setting]] for more info.
 
   ###### `:deprecated`
 

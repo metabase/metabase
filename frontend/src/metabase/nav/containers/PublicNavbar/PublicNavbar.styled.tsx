@@ -9,7 +9,7 @@ import { ADMIN_NAVBAR_HEIGHT, APP_BAR_HEIGHT } from "../../constants";
 
 export const PublicNavbarRoot = styled.nav`
   padding: 0.5rem 1rem;
-  background: ${color("filter")};
+  background: ${color("admin-navbar")};
   color: ${color("white")};
   font-size: 0.85rem;
   height: ${APP_BAR_HEIGHT};

@@ -7,7 +7,6 @@ import * as Urls from "metabase/lib/urls";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
 
-import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import ViewButton from "metabase/query_builder/components/view/ViewButton";
 
@@ -67,7 +66,6 @@ const viewTitleHeaderPropTypes = {
   isShowingQuestionDetailsSidebar: PropTypes.bool,
   isObjectDetail: PropTypes.bool,
   isAdditionalInfoVisible: PropTypes.bool,
-  isWritebackEnabled: PropTypes.bool,
 
   runQuestionQuery: PropTypes.func,
   cancelQuery: PropTypes.func,
@@ -320,7 +318,6 @@ ViewTitleHeaderRightSide.propTypes = {
   isRunning: PropTypes.bool,
   isNativeEditorOpen: PropTypes.bool,
   isShowingSummarySidebar: PropTypes.bool,
-  isWritebackEnabled: PropTypes.bool,
   isDirty: PropTypes.bool,
   isResultDirty: PropTypes.bool,
   isActionListVisible: PropTypes.bool,
@@ -330,6 +327,8 @@ ViewTitleHeaderRightSide.propTypes = {
   onEditSummary: PropTypes.func,
   onCloseSummary: PropTypes.func,
   setQueryBuilderMode: PropTypes.func,
+  turnQuestionIntoAction: PropTypes.func,
+  turnActionIntoQuestion: PropTypes.func,
   turnDatasetIntoQuestion: PropTypes.func,
   areFiltersExpanded: PropTypes.bool,
   onExpandFilters: PropTypes.func,
@@ -356,7 +355,6 @@ function ViewTitleHeaderRightSide(props) {
     isRunning,
     isNativeEditorOpen,
     isShowingSummarySidebar,
-    isWritebackEnabled,
     isDirty,
     isResultDirty,
     isActionListVisible,
@@ -367,6 +365,8 @@ function ViewTitleHeaderRightSide(props) {
     onCloseSummary,
     setQueryBuilderMode,
     turnDatasetIntoQuestion,
+    turnQuestionIntoAction,
+    turnActionIntoQuestion,
     areFiltersExpanded,
     onExpandFilters,
     onCollapseFilters,
@@ -399,8 +399,6 @@ function ViewTitleHeaderRightSide(props) {
   const hasRunButton =
     isRunnable && !isNativeEditorOpen && !isMissingPermissions;
 
-  const hasNewRowButton = isWritebackEnabled && !isNative && query.isRaw();
-
   const handleInfoClick = useCallback(() => {
     if (isShowingQuestionInfoSidebar) {
       onCloseQuestionInfo();
@@ -419,15 +417,6 @@ function ViewTitleHeaderRightSide(props) {
           onExpand={onExpandFilters}
           onCollapse={onCollapseFilters}
         />
-      )}
-      {hasNewRowButton && (
-        <Button
-          primary
-          icon="add"
-          onClick={() => onOpenModal(MODAL_TYPES.INSERT_ROW)}
-        >
-          {t`New row`}
-        </Button>
       )}
       {QuestionFilterWidget.shouldRender(props) && (
         <QuestionFilterWidget
@@ -496,6 +485,8 @@ function ViewTitleHeaderRightSide(props) {
           question={question}
           setQueryBuilderMode={setQueryBuilderMode}
           turnDatasetIntoQuestion={turnDatasetIntoQuestion}
+          turnQuestionIntoAction={turnQuestionIntoAction}
+          turnActionIntoQuestion={turnActionIntoQuestion}
           onInfoClick={handleInfoClick}
           onModelPersistenceChange={onModelPersistenceChange}
         />

@@ -29,6 +29,6 @@ export const DashboardHeaderButton = styled(Button)`
 `;
 
 DashboardHeaderButton.defaultProps = {
-  onlyIcon: true,
+  onlyIcon: false,
   iconSize: 16,
 };

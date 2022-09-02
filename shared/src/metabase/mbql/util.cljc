@@ -8,6 +8,7 @@
               [metabase.mbql.schema :as mbql.s]
               [metabase.mbql.schema.helpers :as schema.helpers]
               [metabase.mbql.util.match :as mbql.match]
+              [metabase.models.dispatch :as models.dispatch]
               [metabase.shared.util.i18n :as i18n]
               metabase.util.i18n
               [potemkin :as p]
@@ -344,9 +345,15 @@
   "Dispatch function perfect for use with multimethods that dispatch off elements of an MBQL query. If `x` is an MBQL
   clause, dispatches off the clause name; otherwise dispatches off `x`'s class."
   ([x]
-   (if (mbql-clause? x)
-     (first x)
-     (type x)))
+   #?(:clj
+      (if (mbql-clause? x)
+        (first x)
+        (or (metabase.models.dispatch/model x)
+            (type x)))
+      :cljs
+      (if (mbql-clause? x)
+        (first x)
+        (type x))))
   ([x _]
    (dispatch-by-clause-name-or-class x)))
 

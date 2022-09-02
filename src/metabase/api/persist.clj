@@ -78,7 +78,7 @@
   [persisted-info-id]
   {persisted-info-id (s/maybe su/IntGreaterThanZero)}
   (api/let-404 [persisted-info (first (fetch-persisted-info {:persisted-info-id persisted-info-id} nil nil))]
-    (api/write-check (Database (:database_id persisted-info)))
+    (api/write-check (db/select-one Database :id (:database_id persisted-info)))
     persisted-info))
 
 (api/defendpoint GET "/card/:card-id"
@@ -86,7 +86,7 @@
   [card-id]
   {card-id (s/maybe su/IntGreaterThanZero)}
   (api/let-404 [persisted-info (first (fetch-persisted-info {:card-id card-id} nil nil))]
-    (api/write-check (Database (:database_id persisted-info)))
+    (api/write-check (db/select-one Database :id (:database_id persisted-info)))
     persisted-info))
 
 (def ^:private CronSchedule
@@ -129,7 +129,7 @@
   - remove `:persist-models-enabled` from relevant [[Database]] options
   - schedule a task to [[metabase.driver.ddl.interface/unpersist]] each table"
   []
-  (let [id->db      (m/index-by :id (Database))
+  (let [id->db      (m/index-by :id (db/select Database))
         enabled-dbs (filter (comp :persist-models-enabled :options) (vals id->db))]
     (log/info (tru "Disabling model persistence"))
     (doseq [db enabled-dbs]
