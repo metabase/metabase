@@ -122,7 +122,6 @@
 
 (defsetting token-status
   (deferred-tru "Cached token status for premium features. This is to avoid an API request on the the first page load.")
-  :visibility :internal
   :type       :json
   :setter     :none
   :getter     (fn [] (fetch-token-status (premium-embedding-token))))
