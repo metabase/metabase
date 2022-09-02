@@ -85,7 +85,18 @@
         (#{:pin_map :state :country} display-type)
         (chart-type nil "display-type is %s" display-type)
 
-        (#{:area
+        ;; for scalar/smartscalar, the display-type might actually be :line, so we can't have line above
+        (and (not= display-type :progress)
+             (= @col-sample-count @row-sample-count 1))
+        (chart-type :scalar "result has one row and one column")
+
+        (and (= display-type :smartscalar)
+             (= @col-sample-count 2)
+             (seq insights))
+        (chart-type :smartscalar "result has two columns and insights")
+
+        (#{:line
+           :area
            :bar
            :combo
            :funnel
@@ -93,15 +104,6 @@
            :table
            :waterfall} display-type)
         (chart-type display-type "display-type is %s" display-type)
-
-        ;; for scalar/smartscalar, the display-type might actually be :line, so we can't have line above
-        (= @col-sample-count @row-sample-count 1)
-        (chart-type :scalar "result has one row and one column")
-
-        (and (= display-type :smartscalar)
-             (= @col-sample-count 2)
-             (seq insights))
-        (chart-type :smartscalar "result has two columns and insights")
 
         (and (some? maybe-dashcard)
              (> (count (dashboard-card/dashcard->multi-cards maybe-dashcard)) 0)
