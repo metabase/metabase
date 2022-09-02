@@ -122,9 +122,10 @@
 
 (defsetting token-status
   (deferred-tru "Cached token status for premium features. This is to avoid an API request on the the first page load.")
+  :visibility :admin
   :type       :json
   :setter     :none
-  :getter     (fn [] (fetch-token-status (premium-embedding-token))))
+  :getter     (fn [] (some-> (premium-embedding-token) (fetch-token-status))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             SETTING & RELATED FNS                                              |
