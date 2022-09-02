@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
 export const ChartSettingOrderedRowsRoot = styled.div`
-  margin-left: 0.5rem;
+  margin-left: 1rem;
 `;
 
 export const ChartSettingMessage = styled.div`

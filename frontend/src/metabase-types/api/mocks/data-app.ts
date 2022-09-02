@@ -1,5 +1,6 @@
-import { DataApp } from "metabase-types/api";
+import { DataApp, Dashboard } from "metabase-types/api";
 import { createMockCollection } from "./collection";
+import { createMockDashboard } from "./dashboard";
 
 export const createMockDataApp = ({
   collection: collectionProps,
@@ -18,3 +19,7 @@ export const createMockDataApp = ({
     collection,
   };
 };
+
+export const createMockDataAppPage = (
+  params: Partial<Omit<Dashboard, "is_app_page">>,
+): Dashboard => createMockDashboard({ ...params, is_app_page: true });

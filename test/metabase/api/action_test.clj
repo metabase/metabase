@@ -25,6 +25,8 @@
                                          s/Keyword s/Any}
                               s/Keyword s/Any}
               s/Keyword      s/Any}
+   :parameters s/Any
+   :visualization_settings su/Map
    s/Keyword s/Any})
 
 (deftest list-actions-test

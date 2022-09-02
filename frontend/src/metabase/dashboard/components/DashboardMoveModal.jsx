@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { withRouter } from "react-router";
 import { connect } from "react-redux";
 import { t, jt } from "ttag";
 import _ from "underscore";
@@ -21,14 +20,16 @@ const mapDispatchToProps = {
 
 class DashboardMoveModalInner extends React.Component {
   render() {
-    const { params, onClose, setDashboardCollection } = this.props;
-    const dashboardId = Urls.extractEntityId(params.slug);
+    const { dashboard, onClose, setDashboardCollection } = this.props;
+    const title = dashboard.is_app_page
+      ? t`Move page to…`
+      : t`Move dashboard to…`;
     return (
       <CollectionMoveModal
-        title={t`Move dashboard to...`}
+        title={title}
         onClose={onClose}
         onMove={async destination => {
-          await setDashboardCollection({ id: dashboardId }, destination, {
+          await setDashboardCollection({ id: dashboard.id }, destination, {
             notify: {
               message: (
                 <DashboardMoveToast
@@ -45,8 +46,10 @@ class DashboardMoveModalInner extends React.Component {
 }
 
 const DashboardMoveModal = _.compose(
-  withRouter,
   connect(null, mapDispatchToProps),
+  Dashboards.load({
+    id: (state, props) => Urls.extractCollectionId(props.params.slug),
+  }),
 )(DashboardMoveModalInner);
 
 export default DashboardMoveModal;

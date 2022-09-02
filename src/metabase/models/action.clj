@@ -99,7 +99,7 @@
                        :description description
                        :disabled (::disabled card)
                        :card (dissoc card ::disabled)}
-                      (select-keys card [:parameters :parameter_mappings])))))
+                      (select-keys card [:parameters :parameter_mappings :visualization_settings])))))
             actions))))
 
 (defn- normalize-http-actions [actions]
@@ -112,7 +112,8 @@
                    (merge
                      {:disabled false
                       :parameters []
-                      :parameter_mappings {}}
+                      :parameter_mappings {}
+                      :visualization_settings {}}
                      (select-keys http-action [:name :description :template :response_handle :error_handle])
                      (select-keys (:template http-action) [:parameters :parameter_mappings])))))
            actions))))
@@ -137,3 +138,26 @@
       (for [{emitter-id :id, :as emitter} emitters]
         (some-> emitter (assoc :action (get actions-by-id (get action-id-by-emitter-id emitter-id))))))
     emitters))
+
+(defn cards-by-action-id
+  "Hydrates action_id from Card for is_write cards"
+  {:batched-hydrate :card/action-id}
+  [cards]
+  (if-let [card-id->action-id (not-empty (db/select-field->field
+                                           :card_id :action_id
+                                           'QueryAction
+                                           :card_id [:in (map :id cards)]))]
+
+    (for [card cards]
+      (m/assoc-some card :action_id (get card-id->action-id (:id card))))
+    cards))
+
+(defn dashcard-action
+  "Hydrates action from DashboardCard"
+  {:batched-hydrate :dashcard/action}
+  [dashcards]
+  (if-let [action-ids (not-empty (keep :action_id dashcards))]
+    (let [actions-by-id (m/index-by :id (select-actions :id [:in action-ids]))]
+      (for [dashcard dashcards]
+        (m/assoc-some dashcard :action (get actions-by-id (:action_id dashcard)))))
+    dashcards))

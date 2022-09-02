@@ -22,3 +22,4 @@ export * from "./slack";
 export * from "./table";
 export * from "./timeline";
 export * from "./user";
+export * from "./writeback";

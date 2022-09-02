@@ -8,7 +8,7 @@ redirect_from:
 
 You can customize what happens when people click on questions in your dashboard.
 
-By default, when you create charts using Metabase's graphical query builder, your charts automatically come with [drill-through capabilities](https://www.metabase.com/blog/drilling-through-data/index.html), which let folks click on a chart to explore further. But if you have a more customized click path in mind, Metabase allows you to customize what happens when a user clicks on a chart or table in your dashboard.
+By default, when you create charts using Metabase's graphical query builder, your charts automatically come with [drill-through capabilities](https://www.metabase.com/learn/questions/drill-through), which let folks click on a chart to explore further. But if you have a more customized click path in mind, Metabase allows you to customize what happens when a user clicks on a chart or table in your dashboard.
 
 You can set up a dashboard card to:
 
@@ -48,7 +48,7 @@ If your dashboard has a filter, you'll also see an option to [update the filter]
 
 ## Open the action menu
 
-For questions composed using the query builder, the default click behavior is to open the **action menu**, which presents people with the option to [drill through the data](https://www.metabase.com/blog/drilling-through-data/index.html):
+For questions composed using the query builder, the default click behavior is to open the **action menu**, which presents people with the option to [drill through the data](https://www.metabase.com/learn/questions/drill-through):
 
 ![Action menu](./images/action-menu.png)
 

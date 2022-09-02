@@ -1,4 +1,5 @@
-import type { Collection, DataApp } from "metabase-types/api";
+import _ from "underscore";
+import type { Collection, DataApp, Dashboard } from "metabase-types/api";
 
 export function getDataAppIcon(app?: DataApp) {
   return { name: "star" };
@@ -6,4 +7,9 @@ export function getDataAppIcon(app?: DataApp) {
 
 export function isDataAppCollection(collection: Collection) {
   return typeof collection.app_id === "number";
+}
+
+export function getDataAppHomePageId(pages: Dashboard[]) {
+  const [firstPage] = _.sortBy(pages, "name");
+  return firstPage?.id;
 }

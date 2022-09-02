@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
+import { LocationDescriptor } from "history";
 
 import * as Urls from "metabase/lib/urls";
 import { closeNavbar, openNavbar } from "metabase/redux/app";
@@ -30,7 +31,11 @@ interface StateProps {
   dashboard?: Dashboard;
 }
 
-type Props = MainNavbarProps & StateProps;
+interface DispatchProps {
+  onChangeLocation: (location: LocationDescriptor) => void;
+}
+
+type Props = MainNavbarProps & StateProps & DispatchProps;
 
 function mapStateToProps(state: State) {
   return {
@@ -168,7 +173,7 @@ function MainNavbar({
 
 export default connect<
   StateProps,
-  MainNavbarDispatchProps,
+  MainNavbarDispatchProps & DispatchProps,
   MainNavbarOwnProps,
   State
 >(

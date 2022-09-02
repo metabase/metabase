@@ -94,6 +94,7 @@
            :waterfall} display-type)
         (chart-type display-type "display-type is %s" display-type)
 
+        ;; for scalar/smartscalar, the display-type might actually be :line, so we can't have line above
         (= @col-sample-count @row-sample-count 1)
         (chart-type :scalar "result has one row and one column")
 
@@ -107,16 +108,13 @@
              (not (#{:combo} display-type)))
         (chart-type :multiple "result has multiple card semantics, a multiple chart")
 
-        ;; Default behavior of these to be sparkline, unless the columns and rows don't behave and display type is correct,
-        ;; upon which they're lines
+        ;; we have to check when display-type is :line that there are enough rows/cols to actually create a line chart
+        ;; if there is only 1 row and 1 col, the chart should be considered scalar, actually.
         (and (= @col-sample-count 2)
              (> @row-sample-count 1)
              (number-field? @col-2)
              (not (#{:waterfall :pie :table :area} display-type)))
-        (chart-type :sparkline "result has 2 cols (%s and %s (number)) and > 1 row" (col-description @col-1) (col-description @col-2))
-
-        (= display-type :line)
-        (chart-type display-type "display-type is %s" display-type)
+        (chart-type :line "result has 2 cols (%s and %s (number)) and > 1 row" (col-description @col-1) (col-description @col-2))
 
         (and (= @col-sample-count 2)
              (number-field? @col-2)
@@ -205,7 +203,7 @@
                    content]}))
 
 (s/defn render-pulse-card-to-png :- bytes
-  "Render a `pulse-card` as a PNG. `data` is the `:data` from a QP result (I think...)"
+  "Render a `pulse-card` as a PNG. `data` is the `:data` from a QP result."
   [timezone-id :- (s/maybe s/Str) pulse-card result width]
   (png/render-html-to-png (render-pulse-card :inline timezone-id pulse-card nil result) width))
 

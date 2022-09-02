@@ -23,7 +23,7 @@ import {
   UpdateRowFromDataAppPayload,
   deleteRowFromDataApp,
   updateRowFromDataApp,
-} from "metabase/dashboard/writeback-actions";
+} from "metabase/dashboard/actions";
 
 import { useDataAppContext } from "metabase/writeback/containers/DataAppContext";
 

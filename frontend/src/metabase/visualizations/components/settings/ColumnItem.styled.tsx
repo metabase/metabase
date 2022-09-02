@@ -35,14 +35,14 @@ export const ColumnItemSpan = styled.span`
   word-wrap: anywhere;
   font-weight: 700;
   margin: 0;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   line-height: 1rem;
   flex: auto;
   color: ${color("text-dark")};
 `;
 
 export const ColumnItemContent = styled.div`
-  padding: 0 0.625rem;
+  padding: 0 0.5rem;
   position: relative;
   align-items: center;
   display: flex;
@@ -54,6 +54,7 @@ export const ColumnItemContainer = styled.div`
   position: relative;
   flex: auto;
   display: flex;
+  align-items: center;
 `;
 
 export const ColumnItemIcon = styled(Icon)`

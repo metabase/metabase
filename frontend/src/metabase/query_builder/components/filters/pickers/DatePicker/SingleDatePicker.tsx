@@ -11,9 +11,8 @@ export type SingleDatePickerProps = {
   filter: Filter;
   selectAll?: SelectAll;
   primaryColor?: string;
-  onFilterChange: (filter: any[]) => void;
-
   hideTimeSelectors?: boolean;
+  onFilterChange: (filter: any[]) => void;
 };
 
 const SingleDatePicker = ({
@@ -31,8 +30,9 @@ const SingleDatePicker = ({
     selectAll={selectAll}
     onChange={value => onFilterChange([op, field, value])}
     onClear={() => onFilterChange([op, field, setTimeComponent(value)])}
+    autoFocus
+    hasCalendar
     hideTimeSelectors={hideTimeSelectors}
-    calendar
   />
 );
 

@@ -16,7 +16,7 @@
 (api/defendpoint POST "/"
   "Endpoint to create an app"
   [:as {{:keys [collection dashboard_id options nav_items]
-         {:keys [name color description parent_id namespace authority_level]} :collection
+         {:keys [name color description namespace authority_level]} :collection
          :as body} :body}]
   {dashboard_id    (s/maybe su/IntGreaterThanOrEqualToZero)
    options         (s/maybe su/Map)
@@ -24,11 +24,10 @@
    name            su/NonBlankString
    color           collection/hex-color-regex
    description     (s/maybe su/NonBlankString)
-   parent_id       (s/maybe su/IntGreaterThanZero)
    namespace       (s/maybe su/NonBlankString)
    authority_level collection/AuthorityLevel}
   (db/transaction
-   (let [coll-params (select-keys collection [:name :color :description :parent_id :namespace :authority_level])
+   (let [coll-params (select-keys collection [:name :color :description :namespace :authority_level])
          collection-instance (api.collection/create-collection! coll-params)
          app-params (-> body
                         (select-keys [:dashboard_id :options :nav_items])

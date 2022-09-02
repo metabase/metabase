@@ -17,6 +17,7 @@ type Props = {
   disabled?: boolean;
   widget?: React.ComponentType;
   inline?: boolean;
+  marginBottom?: string;
   props?: Record<string, unknown>;
   noPadding?: boolean;
   variant?: "default" | "form-field";
@@ -30,6 +31,7 @@ const ChartSettingsWidget = ({
   disabled,
   variant = "default",
   inline = false,
+  marginBottom = undefined,
   widget: Widget,
   props,
   // disables X padding for certain widgets so divider line extends to edge
@@ -47,6 +49,7 @@ const ChartSettingsWidget = ({
       disabled={disabled}
       className={cx({ "Form-field": isFormField })}
       inline={inline}
+      marginBottom={marginBottom}
     >
       {title && (
         <Title variant={variant} className={cx({ "Form-label": isFormField })}>
