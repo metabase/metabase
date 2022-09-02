@@ -26,10 +26,10 @@ Settings access defines which groups can view and edit the settings under the Ad
 - [Authentication](../people-and-groups/start.md)
 - [Maps](../configuring-metabase/custom-maps.md)
 - [Localization](../configuring-metabase/localization.md)
-- [Public sharing](../embedding/public-links.md)
+- [Appearance](../configuring-metabase/appearance.md)
+- [Public sharing](../questions/sharing/public-links.md)
 - [Embedding in other applications](../embedding/start.md)
 - [Caching](../configuring-metabase/caching.md)
-- [White labeling](../embedding/whitelabeling.md)
 
 ## Monitoring access
 

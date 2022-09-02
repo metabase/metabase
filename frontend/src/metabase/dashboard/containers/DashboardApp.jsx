@@ -189,7 +189,11 @@ const DashboardApp = props => {
           />
         )}
         <Toaster
-          message={t`Would you like to be notified when this dashboard is done loading?`}
+          message={
+            dashboard?.is_app_page
+              ? t`Would you like to be notified when this page is done loading?`
+              : t`Would you like to be notified when this dashboard is done loading?`
+          }
           isShown={isShowingToaster}
           onDismiss={onDismissToast}
           onConfirm={onConfirmToast}

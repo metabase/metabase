@@ -7,7 +7,7 @@ import { isPK } from "metabase/lib/schema_metadata";
 import Table from "metabase-lib/lib/metadata/Table";
 
 import { State } from "metabase-types/store";
-import { ForeignKey } from "metabase-types/api";
+import type { ForeignKey, ConcreteTableId } from "metabase-types/api";
 import { DatasetData } from "metabase-types/types/Dataset";
 import { ObjectId, OnVisualizationClickType } from "./types";
 
@@ -35,6 +35,7 @@ import {
   getCanZoomNextRow,
 } from "metabase/query_builder/selectors";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import { isVirtualCardId } from "metabase/lib/saved-questions";
 
 import {
   getObjectName,
@@ -159,8 +160,8 @@ export function ObjectDetailFn({
       return;
     }
 
-    if (table && table.fks == null) {
-      fetchTableFks(table.id);
+    if (table && table.fks == null && !isVirtualCardId(table.id)) {
+      fetchTableFks(table.id as ConcreteTableId);
     }
     // load up FK references
     if (tableForeignKeys) {

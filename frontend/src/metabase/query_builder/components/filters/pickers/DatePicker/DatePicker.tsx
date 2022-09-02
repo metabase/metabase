@@ -81,8 +81,8 @@ export function getDateTimeFieldTarget(field: any[]) {
 }
 
 // add temporal-unit to fields if any of them have a time component
-function getDateTimeFieldAndValues(filter: Filter, count: number) {
-  let values = filter.slice(2, 2 + count).map(value => value && getDate(value));
+function getDateTimeFieldAndValues(filter: Filter) {
+  let values = filter.slice(2).map(value => value && getDate(value));
   const bucketing = _.any(values, hasTime) ? "minute" : null;
   const field = getDateTimeField(filter, bucketing);
   const { hours, minutes } = getTimeComponent(values[0]);
@@ -102,6 +102,50 @@ function getDateTimeFieldAndValues(filter: Filter, count: number) {
     }
   }
   return [field, ...values.filter(value => value !== undefined)];
+}
+
+function getOnFilterFieldAndValues(filter: Filter) {
+  const [op] = filter;
+  const [field, ...values] = getDateTimeFieldAndValues(filter);
+
+  if (op === "between") {
+    return [field, values[1]];
+  } else {
+    return [field, values[0]];
+  }
+}
+
+function getBeforeFilterFieldAndValues(filter: Filter) {
+  const [op] = filter;
+  const [field, ...values] = getDateTimeFieldAndValues(filter);
+
+  if (op === "between") {
+    return [field, values[1]];
+  } else {
+    return [field, values[0]];
+  }
+}
+
+function getAfterFilterFieldAndValues(filter: Filter) {
+  const [field, ...values] = getDateTimeFieldAndValues(filter);
+  return [field, values[0]];
+}
+
+function getBetweenFilterFieldAndValues(filter: Filter) {
+  const [op] = filter;
+  const [field, ...values] = getDateTimeFieldAndValues(filter);
+
+  if (op === "=" || op === "<") {
+    const beforeDate = moment(values[0]).subtract(30, "day");
+    const beforeValue = beforeDate.format("YYYY-MM-DD");
+    return [field, beforeValue, values[0]];
+  } else if (op === ">") {
+    const afterDate = moment(values[0]).add(30, "day");
+    const afterValue = afterDate.format("YYYY-MM-DD");
+    return [field, values[0], afterValue];
+  } else {
+    return [field, ...values];
+  }
 }
 
 export type DatePickerGroup = "relative" | "specific";
@@ -176,10 +220,7 @@ export const DATE_OPERATORS: DateOperator[] = [
   {
     name: "between",
     displayName: t`Between`,
-    init: filter => {
-      const [field, ...values] = getDateTimeFieldAndValues(filter, 2);
-      return ["between", field, ...values];
-    },
+    init: filter => ["between", ...getBetweenFilterFieldAndValues(filter)],
     test: ([op, _field, left, right]) =>
       op === "between" &&
       !isRelativeDatetime(left) &&
@@ -190,7 +231,7 @@ export const DATE_OPERATORS: DateOperator[] = [
   {
     name: "before",
     displayName: t`Before`,
-    init: filter => ["<", ...getDateTimeFieldAndValues(filter, 1)],
+    init: filter => ["<", ...getBeforeFilterFieldAndValues(filter)],
     test: ([op]) => op === "<",
     group: "specific",
     widget: BeforePicker,
@@ -198,7 +239,7 @@ export const DATE_OPERATORS: DateOperator[] = [
   {
     name: "on",
     displayName: t`On`,
-    init: filter => ["=", ...getDateTimeFieldAndValues(filter, 1)],
+    init: filter => ["=", ...getOnFilterFieldAndValues(filter)],
     test: ([op]) => op === "=",
     group: "specific",
     widget: SingleDatePicker,
@@ -206,7 +247,7 @@ export const DATE_OPERATORS: DateOperator[] = [
   {
     name: "after",
     displayName: t`After`,
-    init: filter => [">", ...getDateTimeFieldAndValues(filter, 1)],
+    init: filter => [">", ...getAfterFilterFieldAndValues(filter)],
     test: ([op]) => op === ">",
     group: "specific",
     widget: AfterPicker,

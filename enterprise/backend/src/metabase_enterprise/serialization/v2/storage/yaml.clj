@@ -15,7 +15,7 @@
 (defn- spit-yaml
   [file obj]
   (io/make-parents file)
-  (spit (io/file file) (yaml/generate-string obj :dumper-options {:flow-style :block})))
+  (spit (io/file file) (yaml/generate-string (into (sorted-map) obj) :dumper-options {:flow-style :block})))
 
 (defn- store-entity! [{:keys [root-dir]} entity]
   (spit-yaml (u.yaml/hierarchy->file root-dir (serdes.base/serdes-path entity))

@@ -10,8 +10,8 @@ So here's the scenario: you love Metabase. It's changed your life. But you have 
 
 Before you start building a driver from scratch, see if one already exists that you could contribute to:
 
-- [Officially supported databases](https://www.metabase.com/docs/latest/administration-guide/01-managing-databases.html#officially-supported-databases)
-- [Community databases](https://www.metabase.com/docs/latest/developers-guide/partner-and-community-drivers.html#how-to-use-a-community-built-driver)
+- [Officially supported databases](../../databases/connecting.md#connecting-to-supported-databases)
+- [Community databases](../partner-and-community-drivers.md#community-drivers)
 
 ## Setting up
 

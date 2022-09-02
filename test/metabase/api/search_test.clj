@@ -6,7 +6,7 @@
             [metabase.api.search :as api.search]
             [metabase.models
              :refer
-             [Card CardBookmark Collection Dashboard DashboardBookmark DashboardCard
+             [App Card CardBookmark Collection Dashboard DashboardBookmark DashboardCard
               Database Metric PermissionsGroup PermissionsGroupMembership Pulse PulseCard
               Segment Table]]
             [metabase.models.permissions :as perms]
@@ -22,9 +22,10 @@
   {:id                         true
    :description                nil
    :archived                   false
-   :collection                 {:id false :name nil :authority_level nil}
+   :collection                 {:id false :name nil :authority_level nil :app_id false}
    :collection_authority_level nil
    :collection_position        nil
+   :app_id                     false
    :moderated_status           nil
    :context                    nil
    :dashboardcard_count        nil
@@ -54,15 +55,13 @@
 
 (defn- make-result
   [name & kvs]
-  (merge
-   default-search-row
-   {:name name}
-   (apply array-map kvs)))
+  (apply assoc default-search-row :name name kvs))
 
 (def ^:private test-collection (make-result "collection test collection"
                                             :bookmark false
                                             :model "collection"
-                                            :collection {:id true, :name true :authority_level nil}
+                                            :collection {:id true, :name true :authority_level nil
+                                                         :app_id false}
                                             :updated_at false))
 
 (defn- default-search-results []
@@ -95,7 +94,7 @@
 
 (defn- default-results-with-collection []
   (on-search-types #{"dashboard" "pulse" "card" "dataset"}
-                   #(assoc % :collection {:id true, :name true :authority_level nil})
+                   #(assoc % :collection {:id true, :name true :authority_level nil :app_id false})
                    (default-search-results)))
 
 (defn- do-with-search-items [search-string in-root-collection? f]
@@ -601,12 +600,43 @@
 (deftest card-dataset-query-test
   (testing "Search results should match a native query's dataset_query column, but not an MBQL query's one."
     ;; https://github.com/metabase/metabase/issues/24132
-    (mt/with-temp* [Card [_mbql-card   {:name          "Venues Count"
-                                        :query_type    "query"
-                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
-                    Card [_native-card {:name          "Another SQL query"
-                                        :query_type    "native"
-                                        :dataset_query (mt/native-query {:query "SELECT COUNT(1) AS aggregation FROM venues"})}]]
-      (is (= ["Another SQL query"]
-             (->> (search-request-data :rasta :q "aggregation")
-                  (map :name)))))))
+    (let [native-card {:name          "Another SQL query"
+                       :query_type    "native"
+                       :dataset_query (mt/native-query {:query "SELECT COUNT(1) AS aggregation FROM venues"})}]
+      (mt/with-temp* [Card [_mbql-card   {:name          "Venues Count"
+                                          :query_type    "query"
+                                          :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+                      Card [_native-card native-card]
+                      Card [_dataset     (assoc native-card :name "Dataset" :dataset true)]]
+        (is (= ["Another SQL query" "Dataset"]
+               (->> (search-request-data :rasta :q "aggregation")
+                    (map :name))))))))
+
+(deftest app-test
+  (testing "App collections should come with app_id set"
+    (with-search-items-in-collection {:keys [collection]} "test"
+      (mt/with-temp App [_app {:collection_id (:id collection)}]
+        (is (= (mapv
+                (fn [result]
+                  (cond-> result
+                    (not (#{"metric" "segment"} (:model result))) (assoc-in [:collection :app_id] true)
+                    (= (:model result) "collection")              (assoc :model "app" :app_id true)))
+                (default-results-with-collection))
+               (search-request-data :rasta :q "test"))))))
+  (testing "App collections should filterable as \"app\""
+    (mt/with-temp* [Collection [collection {:name "App collection to find"}]
+                    App [_ {:collection_id (:id collection)}]
+                    Collection [_ {:name "Another collection to find"}]]
+      (is (partial= [(assoc (select-keys collection [:name])
+                            :model "app")]
+             (search-request-data :rasta :q "find" :models "app"))))))
+
+(deftest page-test
+  (testing "Search results should pages with model \"page\""
+    (mt/with-temp* [Dashboard [_ {:name "Not a page but contains important text!"}]
+                    Dashboard [page {:name        "Page"
+                                     :description "Contains important text!"
+                                     :is_app_page true}]]
+      (is (partial= [(assoc (select-keys page [:name :description])
+                            :model "page")]
+                    (search-request-data :rasta :q "important text" :models "page"))))))

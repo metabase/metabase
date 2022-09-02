@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
+import { LocationDescriptor } from "history";
 
 import { IconProps } from "metabase/components/Icon";
 import Modal from "metabase/components/Modal";
@@ -69,6 +70,7 @@ interface Props extends MainNavbarProps {
   allFetched: boolean;
   logout: () => void;
   onReorderBookmarks: (bookmarks: Bookmark[]) => void;
+  onChangeLocation: (location: LocationDescriptor) => void;
 }
 
 function MainNavbarContainer({

@@ -2,10 +2,16 @@
   "moduleNameMapper": {
     "\\.(css|less)$": "<rootDir>/frontend/test/__mocks__/styleMock.js",
     "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$": "<rootDir>/frontend/test/__mocks__/fileMock.js",
-    "^promise-loader\\?global\\!metabase\\/lib\\/ga-metadata$": "<rootDir>/frontend/src/metabase/lib/ga-metadata.js"
+    "^promise-loader\\?global\\!metabase\\/lib\\/ga-metadata$": "<rootDir>/frontend/src/metabase/lib/ga-metadata.js",
+    "ace/ext-searchbox": "<rootDir>/frontend/test/__mocks__/aceSearchBoxExtMock.js"
   },
-  "testPathIgnorePatterns": ["<rootDir>/frontend/test/.*/.*.tz.unit.spec.{js,jsx,ts,tsx}"],
-  "testMatch": ["<rootDir>/**/*.unit.spec.js", "<rootDir>/**/*.unit.spec.{js,jsx,ts,tsx}"],
+  "testPathIgnorePatterns": [
+    "<rootDir>/frontend/test/.*/.*.tz.unit.spec.{js,jsx,ts,tsx}"
+  ],
+  "testMatch": [
+    "<rootDir>/**/*.unit.spec.js",
+    "<rootDir>/**/*.unit.spec.{js,jsx,ts,tsx}"
+  ],
   "modulePaths": [
     "<rootDir>/frontend/test",
     "<rootDir>/frontend/src",

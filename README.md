@@ -25,8 +25,8 @@ Take a [tour of Metabase](https://www.metabase.com/learn/getting-started/tour-of
 
 ## Supported databases
 
-- [Officially supported databases](https://www.metabase.com/docs/latest/administration-guide/01-managing-databases.html#officially-supported-databases).
-- [Community-supported drivers](https://www.metabase.com/docs/latest/developers-guide/partner-and-community-drivers.html#how-to-use-a-community-built-driver).
+- [Officially supported databases](../../databases/connecting.md#connecting-to-supported-databases)
+- [Community-supported drivers](../partner-and-community-drivers.md#community-drivers)
 
 ## Installation
 

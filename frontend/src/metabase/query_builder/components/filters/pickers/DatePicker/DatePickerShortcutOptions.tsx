@@ -112,8 +112,9 @@ const MISC_OPTIONS: Option[] = [
   {
     displayName: t`Specific dates...`,
     init: filter => [
-      "=",
+      "between",
       getDateTimeField(filter[1]),
+      moment().subtract(30, "day").format("YYYY-MM-DD"),
       moment().format("YYYY-MM-DD"),
     ],
   },

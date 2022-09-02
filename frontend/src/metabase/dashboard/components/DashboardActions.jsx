@@ -32,6 +32,10 @@ export const getDashboardActions = (
     hasNightModeToggle,
   },
 ) => {
+  if (dashboard?.is_app_page) {
+    return [];
+  }
+
   const isPublicLinksEnabled = MetabaseSettings.get("enable-public-sharing");
   const isEmbeddingEnabled = MetabaseSettings.get("enable-embedding");
 

@@ -135,7 +135,17 @@
 ;;; Storage:
 ;;; The storage system might transform that stream in some arbitrary way. Storage is a dead end - it should perform side
 ;;; effects like writing to the disk or network, and return nothing.
-
+;;;
+;;; Selective Serialization:
+;;; Sometimes we want to export a "subtree" instead of the complete appdb. At the simplest, we might serialize a single
+;;; question. Moving up, it might be a Dashboard and all its questions, or a Collection and all its content Cards and
+;;; Dashboards.
+;;; There's a relation to be captured here: the *descendants* of an entity are the ones it semantically "contains" (or
+;;; those it needs in order to be executed, such as when questions depend on each other, or NativeQuerySnippets are
+;;; referenced by a SQL question.
+;;;
+;;; (serdes-descendants entity) returns a set of such descendants for the given entity (in its exported form); see that
+;;; multimethod for more details.
 (defmulti extract-all
   "Entry point for extracting all entities of a particular model:
   `(extract-all \"ModelName\" {opts...})`
@@ -417,6 +427,39 @@
     (if (nil? maybe-local-id)
       (load-insert! model adjusted)
       (load-update! model adjusted (db/select-one (symbol model) pkey maybe-local-id)))))
+
+(defmulti serdes-descendants
+  "Captures the notion that eg. a dashboard \"contains\" its cards.
+  Returns a set, possibly empty or nil, of `[model-name database-id]` pairs for all entities that this entity contains
+  or requires to be executed.
+  Dispatches on the model name.
+
+  For example:
+  - a `Collection` contains 0 or more other `Collection`s plus many `Card`s and `Dashboard`s;
+  - a `Dashboard` contains its `DashboardCard`s;
+  - each `DashboardCard` contains its `Card`;
+  - a `Card` might stand alone, or it might require `NativeQuerySnippet`s or other `Card`s as inputs; and
+  - a `NativeQuerySnippet` similarly might derive from others;
+
+  A transitive closure over [[serdes-descendants]] should thus give a complete \"subtree\", such as a complete
+  `Collection` and all its contents.
+
+  A typical implementation will run a query or two to collect eg. all `DashboardCard`s that are part of this
+  `Dashboard`, and return them as pairs like `[\"DashboardCard\" 17]`.
+
+  What about [[serdes-dependencies]]?
+  Despite the similar-sounding names, this differs crucially from [[serdes-dependencies]]. [[serdes-descendants]] finds
+  all entities that are \"part\" of the given entity.
+
+  [[serdes-dependencies]] finds all entities that need to be loaded into appdb before this one can be, generally because
+  this has a foreign key to them. The arrow \"points the other way\": [[serdes-dependencies]] points *up* -- from a
+  `Dashboard` to its containing `Collection`, `Collection` to its parent, from a `DashboardCard` to its `Dashboard` and
+  `Card`. [[serdes-descendants]] points *down* to contents, children, and components."
+  {:arglists '([model-name db-id])}
+  (fn [model-name _] model-name))
+
+(defmethod serdes-descendants :default [_ _]
+  nil)
 
 (defn entity-id?
   "Checks if the given string is a 21-character NanoID. Useful for telling entity IDs apart from identity hashes."

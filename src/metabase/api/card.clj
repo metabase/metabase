@@ -163,7 +163,7 @@
                  (cond-> ;; card
                    api/*is-superuser?* (hydrate [:emitters [:action :card]])
                    (:dataset raw-card) (hydrate :persisted)
-                   (:is_write raw-card) (hydrate :card/emitter-usages))
+                   (:is_write raw-card) (hydrate :card/emitter-usages :card/action-id))
                  api/read-check
                  (last-edit/with-last-edit-info :card))]
     (u/prog1 card
@@ -361,6 +361,8 @@ saved later when it is ready."
                           :average_query_time
                           :last_query_start
                           :collection [:moderation_reviews :moderator_details])
+                 (cond-> ;; card
+                   (:is_write card) (hydrate :card/action-id))
                  (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))
       (when timed-out?
         (schedule-metadata-saving result-metadata-chan <>)))))
@@ -596,7 +598,7 @@ saved later when it is ready."
                  :collection [:moderation_reviews :moderator_details])
         (cond-> ;; card
           (:dataset card) (hydrate :persisted)
-          (:is_write card) (hydrate :card/emitter-usages))
+          (:is_write card) (hydrate :card/emitter-usages :card/action-id))
         (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
 
 (api/defendpoint PUT "/:id"

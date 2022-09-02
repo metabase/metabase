@@ -8,8 +8,8 @@ import {
   setOrUnsetParameterValues,
   setParameterValue,
   openActionParametersModal,
+  executeRowAction,
 } from "metabase/dashboard/actions";
-import { executeRowAction } from "metabase/dashboard/writeback-actions";
 import {
   getDataFromClicked,
   getTargetForQueryParams,
