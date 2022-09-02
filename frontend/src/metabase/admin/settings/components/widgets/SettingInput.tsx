@@ -25,7 +25,6 @@ interface SettingInputProps {
   errorMessage?: string;
   id?: string;
   type?: string;
-  disabled?: boolean;
 }
 
 const SettingInput = ({
@@ -36,7 +35,6 @@ const SettingInput = ({
   fireOnChange,
   id,
   type = "text",
-  disabled,
 }: SettingInputProps) => {
   const changeHandler = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = getValue(e.target.value, type);
@@ -57,7 +55,6 @@ const SettingInput = ({
       onChange={fireOnChange ? changeHandler : undefined}
       onBlurChange={!fireOnChange ? changeHandler : undefined}
       autoFocus={autoFocus}
-      disabled={disabled}
     />
   );
 };
