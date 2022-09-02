@@ -13,7 +13,11 @@ import SettingToggle from "./widgets/SettingToggle";
 import SettingSelect from "./widgets/SettingSelect";
 import SettingText from "./widgets/SettingText";
 import { settingToFormFieldId } from "./../../settings/utils";
-import { SettingWarning } from "./SettingsSetting.styled";
+import {
+  SettingPlaceholderMessage,
+  SettingErrorMessage,
+  SettingWarningMessage,
+} from "./SettingsSetting.styled";
 
 const SETTING_WIDGET_MAP = {
   string: SettingInput,
@@ -23,20 +27,6 @@ const SETTING_WIDGET_MAP = {
   radio: SettingRadio,
   boolean: SettingToggle,
   text: SettingText,
-};
-
-const updatePropsForEnvironmentVars = props => {
-  if (props && props.setting && props.setting.is_env_setting) {
-    return {
-      setting: {
-        ...props.setting,
-        placeholder: t`Using ` + props.setting.env_name,
-      },
-      disabled: true,
-    };
-  }
-
-  return props;
 };
 
 export default class SettingsSetting extends Component {
@@ -63,9 +53,9 @@ export default class SettingsSetting extends Component {
     }
 
     const widgetProps = {
+      setting,
       ...setting.getProps?.(setting),
       ...setting.props,
-      ...updatePropsForEnvironmentVars(this.props),
     };
 
     return (
@@ -75,12 +65,20 @@ export default class SettingsSetting extends Component {
           <SettingHeader id={settingId} setting={setting} />
         )}
         <div className="flex">
-          <Widget id={settingId} {...widgetProps} />
+          {setting.is_env_setting ? (
+            <SettingPlaceholderMessage>
+              {t`Using ` + setting.env_name}
+            </SettingPlaceholderMessage>
+          ) : (
+            <Widget id={settingId} {...widgetProps} />
+          )}
         </div>
         {errorMessage && (
-          <div className="text-error text-bold pt1">{errorMessage}</div>
+          <SettingErrorMessage>{errorMessage}</SettingErrorMessage>
         )}
-        {setting.warning && <SettingWarning>{setting.warning}</SettingWarning>}
+        {setting.warning && (
+          <SettingWarningMessage>{setting.warning}</SettingWarningMessage>
+        )}
       </li>
     );
   }
