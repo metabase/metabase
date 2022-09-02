@@ -97,9 +97,10 @@ export const XYChart = ({
     series,
     VALUE_CHAR_SIZE,
   );
+  const calculatedInnerWidth = innerWidth - valuesLeftOffset;
   const xScale = createXScale(
     series,
-    [0, innerWidth - valuesLeftOffset],
+    [0, calculatedInnerWidth],
     settings.x.type,
   );
   const { yScaleLeft, yScaleRight } = createYScales(
@@ -235,7 +236,7 @@ export const XYChart = ({
           {defaultYScale && (
             <GridRows
               scale={defaultYScale}
-              width={innerWidth}
+              width={calculatedInnerWidth}
               strokeDasharray="4"
             />
           )}
@@ -267,7 +268,7 @@ export const XYChart = ({
             <GoalLine
               label={settings.goal.label}
               x1={0}
-              x2={innerWidth}
+              x2={calculatedInnerWidth}
               // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
               y={defaultYScale!(settings.goal.value)}
               color={style.goalColor}
@@ -287,7 +288,7 @@ export const XYChart = ({
               xScale={xScale}
               yScaleLeft={yScaleLeft}
               yScaleRight={yScaleRight}
-              innerWidth={innerWidth}
+              innerWidth={calculatedInnerWidth}
               areStacked={settings.stacking === "stack"}
               xAxisYPos={yMin - margin.top}
             />
