@@ -1,12 +1,11 @@
 import { t } from "ttag";
 import moment from "moment-timezone";
 
-import { Field } from "metabase-types/types/Field";
-import { FieldDimension } from "metabase-lib/lib/Dimension";
+import Dimension from "metabase-lib/lib/Dimension";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 
-function getDateTimeField(field: Field, bucketing?: string) {
-  const dimension = FieldDimension.parseMBQLOrWarn(field);
+function getDateTimeDimension(mbql: any, bucketing?: string) {
+  const dimension = Dimension.parseMBQL(mbql);
   if (dimension) {
     if (bucketing) {
       return dimension.withTemporalUnit(bucketing).mbql();
@@ -14,7 +13,7 @@ function getDateTimeField(field: Field, bucketing?: string) {
       return dimension.withoutTemporalBucketing().mbql();
     }
   }
-  return field;
+  return mbql;
 }
 
 type Option = {
@@ -27,7 +26,7 @@ const DAY_OPTIONS: Option[] = [
     displayName: t`Today`,
     init: filter => [
       "time-interval",
-      getDateTimeField(filter[1]),
+      getDateTimeDimension(filter[1]),
       "current",
       "day",
       { include_current: true },
@@ -37,7 +36,7 @@ const DAY_OPTIONS: Option[] = [
     displayName: t`Yesterday`,
     init: filter => [
       "time-interval",
-      getDateTimeField(filter[1]),
+      getDateTimeDimension(filter[1]),
       -1,
       "day",
       { include_current: false },
@@ -47,7 +46,7 @@ const DAY_OPTIONS: Option[] = [
     displayName: t`Last Week`,
     init: filter => [
       "time-interval",
-      getDateTimeField(filter[1]),
+      getDateTimeDimension(filter[1]),
       -1,
       "week",
       { include_current: false },
@@ -57,7 +56,7 @@ const DAY_OPTIONS: Option[] = [
     displayName: t`Last 7 Days`,
     init: filter => [
       "time-interval",
-      getDateTimeField(filter[1]),
+      getDateTimeDimension(filter[1]),
       -7,
       "day",
       { include_current: false },
@@ -67,7 +66,7 @@ const DAY_OPTIONS: Option[] = [
     displayName: t`Last 30 Days`,
     init: filter => [
       "time-interval",
-      getDateTimeField(filter[1]),
+      getDateTimeDimension(filter[1]),
       -30,
       "day",
       { include_current: false },
@@ -80,7 +79,7 @@ const MONTH_OPTIONS: Option[] = [
     displayName: t`Last Month`,
     init: filter => [
       "time-interval",
-      getDateTimeField(filter[1]),
+      getDateTimeDimension(filter[1]),
       -1,
       "month",
       { include_current: false },
@@ -90,7 +89,7 @@ const MONTH_OPTIONS: Option[] = [
     displayName: t`Last 3 Months`,
     init: filter => [
       "time-interval",
-      getDateTimeField(filter[1]),
+      getDateTimeDimension(filter[1]),
       -3,
       "month",
       { include_current: false },
@@ -100,7 +99,7 @@ const MONTH_OPTIONS: Option[] = [
     displayName: t`Last 12 Months`,
     init: filter => [
       "time-interval",
-      getDateTimeField(filter[1]),
+      getDateTimeDimension(filter[1]),
       -12,
       "month",
       { include_current: false },
@@ -113,18 +112,23 @@ const MISC_OPTIONS: Option[] = [
     displayName: t`Specific dates...`,
     init: filter => [
       "between",
-      getDateTimeField(filter[1]),
+      getDateTimeDimension(filter[1]),
       moment().subtract(30, "day").format("YYYY-MM-DD"),
       moment().format("YYYY-MM-DD"),
     ],
   },
   {
     displayName: t`Relative dates...`,
-    init: filter => ["time-interval", getDateTimeField(filter[1]), -30, "day"],
+    init: filter => [
+      "time-interval",
+      getDateTimeDimension(filter[1]),
+      -30,
+      "day",
+    ],
   },
   {
     displayName: t`Exclude...`,
-    init: filter => ["!=", getDateTimeField(filter[1])],
+    init: filter => ["!=", getDateTimeDimension(filter[1])],
   },
 ];
 
