@@ -222,6 +222,15 @@ describe("urls", () => {
         }),
       ).toBe("/collection/1-john-doe-s-personal-collection");
     });
+
+    it("handles data app collections", () => {
+      const appCollection = createMockCollection({
+        id: 2,
+        app_id: 5,
+        name: "My App",
+      });
+      expect(collection(appCollection)).toBe("/apps/5-my-app");
+    });
   });
 
   describe("dataApp", () => {
