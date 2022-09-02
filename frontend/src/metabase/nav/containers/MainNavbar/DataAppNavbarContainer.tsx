@@ -17,7 +17,7 @@ import { MainNavbarProps, MainNavbarOwnProps, SelectedItem } from "./types";
 import NavbarLoadingView from "./NavbarLoadingView";
 import DataAppNavbarView from "./DataAppNavbarView";
 
-const FETCHING_SEARCH_MODELS = ["dashboard", "dataset", "card"];
+const FETCHING_SEARCH_MODELS = ["page"];
 const LIMIT = 100;
 
 function isAtDataAppHomePage(selectedItems: SelectedItem[]) {
@@ -63,9 +63,7 @@ function DataAppNavbarContainer({
       return [
         {
           type: "data-app-page",
-          id: getDataAppHomePageId(
-            items.filter(item => item.model === "dashboard"),
-          ),
+          id: getDataAppHomePageId(items),
         },
       ];
     }
