@@ -301,6 +301,10 @@ class NativeQueryEditor extends Component {
       },
     });
 
+    // TODO: Should I:
+    // (1) move this into the above completor?
+    // (2) move this into autocompleteResultsFn? https://github.com/metabase/metabase/blob/c344bb625e66c905ea791dd87fbf9aff1ba0bcea/frontend/src/metabase/query_builder/selectors.js#L835
+    // (3) leave as is?
     aceLanguageTools.addCompleter({
       getCompletions: (_editor, _session, _pos, prefix, callback) => {
         // Gets all the column names from tagged questions, and hands them to a callback provided by ace's autocomplete component for display.
