@@ -41,27 +41,18 @@ function getCellData({
     );
   }
   if (columnSettings["show_change_in_percentage"]) {
-    const row = rows[rowIndex];
-
-    let parentIndex, childIndex, childColumn;
+    let percentage;
     if (columnSettings["show_change_in_percentage"]) {
-      const parentColumn = columnSettings["column_title"];
-      parentIndex = cols.findIndex(x => x.display_name === parentColumn);
-      childColumn = columnSettings["child_column"];
+      const splittedValue = value.split("%");
+      value = splittedValue[0];
+      percentage = splittedValue[1];
     }
-
-    cols.map((column, index) => {
-      if (column.display_name === childColumn) {
-        childIndex = index;
-      }
-    });
 
     return (
       <ChangePercentIcon
         value={value}
+        percentage={percentage}
         options={columnSettings}
-        parent={row[parentIndex]}
-        child={row[childIndex]}
       />
     );
   }

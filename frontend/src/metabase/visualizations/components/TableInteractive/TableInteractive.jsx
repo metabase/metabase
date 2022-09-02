@@ -498,23 +498,17 @@ class TableInteractive extends Component {
 
     const column = cols[columnIndex];
     const row = rows[rowIndex];
-    const value = row[columnIndex];
+    let value = row[columnIndex];
+    let percentage;
 
     const columnSettings = settings.column(column);
     const clicked = this.getCellClickedObject(rowIndex, columnIndex);
 
-    let parentIndex, childIndex, childColumn;
     if (columnSettings["show_change_in_percentage"]) {
-      const parentColumn = columnSettings["column_title"];
-      parentIndex = cols.findIndex(x => x.display_name === parentColumn);
-      childColumn = columnSettings["child_column"];
+      const splittedValue = value.split("%");
+      value = splittedValue[0];
+      percentage = splittedValue[1];
     }
-
-    cols.map((column, index) => {
-      if (column.display_name === childColumn) {
-        childIndex = index;
-      }
-    });
 
     const cellData = columnSettings["show_mini_bar"] ? (
       <MiniBar
@@ -527,8 +521,7 @@ class TableInteractive extends Component {
       <ChangePercentIcon
         value={value}
         options={columnSettings}
-        parent={row[parentIndex]}
-        child={row[childIndex]}
+        percentage={percentage}
         cellHeight={ROW_HEIGHT}
       />
     ) : (

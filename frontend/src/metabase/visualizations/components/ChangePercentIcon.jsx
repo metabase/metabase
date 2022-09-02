@@ -20,14 +20,8 @@ export const Variation = styled.div`
   }
 `;
 
-const ChangePercentIcon = ({ value, parent, child, options }) => {
-  let barPercent;
-  if (parent > 0) {
-    barPercent = ((parent - child) / parent) * 100;
-  } else {
-    barPercent = 0;
-  }
-  const isNegative = barPercent < 1;
+const ChangePercentIcon = ({ value, percentage, options }) => {
+  const isNegative = percentage < 0;
   const barColor = isNegative ? color("error") : color("success");
 
   return (
@@ -46,7 +40,7 @@ const ChangePercentIcon = ({ value, parent, child, options }) => {
           size={13}
           name={isNegative ? "arrow_down" : "arrow_up"}
         />
-        {barPercent.toFixed(2)}%
+        {percentage}%
       </Variation>
     </div>
   );
