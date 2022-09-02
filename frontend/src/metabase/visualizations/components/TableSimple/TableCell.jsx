@@ -16,6 +16,7 @@ import { getColumnExtent } from "metabase/visualizations/lib/utils";
 
 import MiniBar from "../MiniBar";
 import { CellRoot, CellContent } from "./TableCell.styled";
+import ChangePercentIcon from "../ChangePercentIcon";
 
 function getCellData({
   value,
@@ -23,6 +24,7 @@ function getCellData({
   extraData,
   cols,
   rows,
+  rowIndex,
   columnIndex,
   columnSettings,
 }) {
@@ -35,6 +37,31 @@ function getCellData({
         value={value}
         options={columnSettings}
         extent={getColumnExtent(cols, rows, columnIndex)}
+      />
+    );
+  }
+  if (columnSettings["show_change_in_percentage"]) {
+    const row = rows[rowIndex];
+
+    let parentIndex, childIndex, childColumn;
+    if (columnSettings["show_change_in_percentage"]) {
+      const parentColumn = columnSettings["column_title"];
+      parentIndex = cols.findIndex(x => x.display_name === parentColumn);
+      childColumn = columnSettings["child_column"];
+    }
+
+    cols.map((column, index) => {
+      if (column.display_name === childColumn) {
+        childIndex = index;
+      }
+    });
+
+    return (
+      <ChangePercentIcon
+        value={value}
+        options={columnSettings}
+        parent={row[parentIndex]}
+        child={row[childIndex]}
       />
     );
   }
@@ -102,10 +129,20 @@ function TableCell({
         extraData,
         cols,
         rows,
+        rowIndex,
         columnIndex,
         columnSettings,
       }),
-    [value, clicked, extraData, cols, rows, columnIndex, columnSettings],
+    [
+      value,
+      clicked,
+      extraData,
+      cols,
+      rows,
+      rowIndex,
+      columnIndex,
+      columnSettings,
+    ],
   );
 
   const isLink = cellData && cellData.type === ExternalLink;

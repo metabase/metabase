@@ -35,6 +35,7 @@ import { getQueryBuilderMode } from "metabase/query_builder/selectors";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import MiniBar from "../MiniBar";
+import ChangePercentIcon from "../ChangePercentIcon";
 
 import Ellipsified from "metabase/core/components/Ellipsified";
 import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
@@ -502,11 +503,32 @@ class TableInteractive extends Component {
     const columnSettings = settings.column(column);
     const clicked = this.getCellClickedObject(rowIndex, columnIndex);
 
+    let parentIndex, childIndex, childColumn;
+    if (columnSettings["show_change_in_percentage"]) {
+      const parentColumn = columnSettings["column_title"];
+      parentIndex = cols.findIndex(x => x.display_name === parentColumn);
+      childColumn = columnSettings["child_column"];
+    }
+
+    cols.map((column, index) => {
+      if (column.display_name === childColumn) {
+        childIndex = index;
+      }
+    });
+
     const cellData = columnSettings["show_mini_bar"] ? (
       <MiniBar
         value={value}
         options={columnSettings}
         extent={getColumnExtent(data.cols, data.rows, columnIndex)}
+        cellHeight={ROW_HEIGHT}
+      />
+    ) : columnSettings["show_change_in_percentage"] ? (
+      <ChangePercentIcon
+        value={value}
+        options={columnSettings}
+        parent={row[parentIndex]}
+        child={row[childIndex]}
         cellHeight={ROW_HEIGHT}
       />
     ) : (
