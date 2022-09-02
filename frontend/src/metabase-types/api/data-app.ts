@@ -1,4 +1,4 @@
-import { Collection } from "./collection";
+import { Collection, RegularCollectionId } from "./collection";
 
 export type DataAppId = number;
 
@@ -14,4 +14,10 @@ export interface DataApp {
 
   created_at: string;
   updated_at: string;
+}
+
+export interface DataAppSearchItem {
+  id: RegularCollectionId;
+  app_id: DataAppId;
+  collection: Collection;
 }
