@@ -288,12 +288,12 @@ class NativeQueryEditor extends Component {
           }
 
           // transform results of the API call into what ACE expects
-          const jsResults = results.map(result => ({
+          const resultsForAce = results.map(result => ({
             name: result[0],
             value: result[0],
             meta: result[1],
           }));
-          callback(null, jsResults);
+          callback(null, resultsForAce);
         } catch (error) {
           console.log("error getting autocompletion data", error);
           callback(null, []);
@@ -307,22 +307,18 @@ class NativeQueryEditor extends Component {
           const { query } = this.props;
           const templateTags = query.templateTagsWithoutSnippets();
           const referencedQuestionIds = templateTags.map(tag => tag["card-id"]);
-          const referencedQuestions = referencedQuestionIds.map(questionId =>
-            query.metadata().question(questionId),
-          );
-          const results = referencedQuestions.flatMap(question =>
-            question._card.result_metadata.map(column => [
-              column.name,
-              `${question._card.name} :${column.base_type}`,
-            ]),
-          );
-          // transform results of the API call into what ACE expects
-          const jsResults = results.map(result => ({
-            name: result,
-            value: result[0],
-            meta: result[1],
-          }));
-          callback(null, jsResults);
+          const resultsForAce = referencedQuestionIds.flatMap(questionId => {
+            const question = query.metadata().question(questionId);
+            if (!question) {
+              return [];
+            }
+            return question.getResultMetadata().map(columnMetadata => ({
+              name: columnMetadata.name,
+              value: columnMetadata.name,
+              meta: `${question.displayName()} :${columnMetadata.base_type}`,
+            }));
+          });
+          callback(null, resultsForAce);
         } catch (error) {
           console.log("error getting autocompletion data", error);
           callback(null, []);
