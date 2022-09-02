@@ -10,10 +10,14 @@ import AccordionList from "metabase/core/components/AccordionList";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import DataSelectorSectionHeader from "../DataSelectorSectionHeader";
 
-import { DataSelectorSection } from "./DataSelectorTablePicker.styled";
+import {
+  DataSelectorContainer as Container,
+  DataSelectorSection as Section,
+} from "./DataSelectorTablePicker.styled";
 
 import type { Database } from "metabase-types/api/database";
-import type { Table } from "metabase-types/api/table";
+import type Schema from "metabase-lib/lib/metadata/Schema";
+import type Table from "metabase-lib/lib/metadata/Table";
 
 type DataSelectorTablePickerProps = {
   hasFiltering: boolean;
@@ -21,11 +25,17 @@ type DataSelectorTablePickerProps = {
   hasNextStep: boolean;
   isLoading: boolean;
   minTablesToShowSearch: number;
+  schemas: Schema[];
   selectedDatabase: Database;
+  selectedSchema: Schema;
   selectedTable: Table;
   tables: Table[];
   onBack?: () => void;
   onChangeTable: (table: Table) => void;
+};
+
+type Item = {
+  table: Table;
 };
 
 const DataSelectorTablePicker = ({
@@ -42,7 +52,6 @@ const DataSelectorTablePicker = ({
   minTablesToShowSearch = 10,
   hasInitialFocus,
 }: DataSelectorTablePickerProps) => {
-  console.log("🚀", { schemas });
   // In case DataSelector props get reseted
   if (!selectedDatabase) {
     if (onBack) {
@@ -83,11 +92,18 @@ const DataSelectorTablePicker = ({
         loading: tables.length === 0 && isLoading,
       },
     ];
+
+    const checkIfItemIsClickable = (item: Item) =>
+      item.table && isSyncCompleted(item.table);
+
+    const checkIfItemIsSelected = (item: Item) =>
+      item.table && selectedTable ? item.table.id === selectedTable.id : false;
+
+    const renderItemIcon = (item: Item) =>
+      item.table ? <Icon name="table2" size={18} /> : null;
+
     return (
-      <div
-        style={{ width: 300, overflowY: "auto" }}
-        data-testid="data-selector"
-      >
+      <Container>
         <AccordionList
           id="TablePicker"
           key="tablePicker"
@@ -97,18 +113,14 @@ const DataSelectorTablePicker = ({
           maxHeight={Infinity}
           width="100%"
           searchable={hasFiltering && tables.length >= minTablesToShowSearch}
-          onChange={item => onChangeTable(item.table)}
-          itemIsSelected={item =>
-            item.table && selectedTable
-              ? item.table.id === selectedTable.id
-              : false
-          }
-          itemIsClickable={item => item.table && isSyncCompleted(item.table)}
-          renderItemIcon={item =>
-            item.table ? <Icon name="table2" size={18} /> : null
-          }
+          onChange={(item: Item) => onChangeTable(item.table)}
+          r
+          itemIsSelected={checkIfItemIsSelected}
+          itemIsClickable={checkIfItemIsClickable}
+          renderItemIcon={renderItemIcon}
           showItemArrows={hasNextStep}
         />
+
         {isSavedQuestionList && (
           <div className="bg-light p2 text-centered border-top">
             {t`Is a question missing?`}
@@ -123,15 +135,15 @@ const DataSelectorTablePicker = ({
             </ExternalLink>
           </div>
         )}
-      </div>
+      </Container>
     );
   } else {
     // this is a database with no tables!
     return (
-      <DataSelectorSection>
+      <Section>
         <DataSelectorSectionHeader header={header} />
         <div className="p4 text-centered">{t`No tables found in this database.`}</div>
-      </DataSelectorSection>
+      </Section>
     );
   }
 };
