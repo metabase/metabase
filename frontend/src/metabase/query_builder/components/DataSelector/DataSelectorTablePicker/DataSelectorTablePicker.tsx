@@ -11,8 +11,12 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import DataSelectorSectionHeader from "../DataSelectorSectionHeader";
 
 import {
-  DataSelectorContainer as Container,
-  DataSelectorSection as Section,
+  DataSelectorTablePickerContainer as Container,
+  DataSelectorTablePickerSection as Section,
+  DataSelectorTablePickerHeaderContainer as HeaderContainer,
+  DataSelectorTablePickerHeaderClickable as HeaderClickable,
+  DataSelectorTablePickerHeaderDatabaseName as HeaderDatabaseName,
+  DataSelectorTablePickerHeaderSchemaName as HeaderSchemaName,
 } from "./DataSelectorTablePicker.styled";
 
 import type { Database } from "metabase-types/api/database";
@@ -62,22 +66,16 @@ const DataSelectorTablePicker = ({
 
   const isSavedQuestionList = selectedDatabase.is_saved_questions;
   const header = (
-    <div className="flex flex-wrap align-center">
-      <span
-        className={cx("flex align-center", {
-          "text-brand-hover cursor-pointer": onBack,
-        })}
-        onClick={onBack}
-      >
+    <HeaderContainer>
+      <HeaderClickable onClick={onBack}>
         {onBack && <Icon name="chevronleft" size={18} />}
-        <span className="ml1 text-wrap">{selectedDatabase.name}</span>
-      </span>
+        <HeaderDatabaseName>{selectedDatabase.name}</HeaderDatabaseName>
+      </HeaderClickable>
+
       {selectedSchema?.name && schemas.length > 1 && (
-        <span className="ml1 text-wrap text-slate">
-          - {selectedSchema.displayName()}
-        </span>
+        <HeaderSchemaName>- {selectedSchema.displayName()}</HeaderSchemaName>
       )}
-    </div>
+    </HeaderContainer>
   );
 
   if (tables.length > 0 || isLoading) {
