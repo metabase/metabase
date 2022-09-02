@@ -11,7 +11,8 @@
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
             [metabase.test.util :as tu]
-            [metabase.util.honeysql-extensions :as hx]))
+            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util :as u]))
 
 (deftest parse-connection-string-test
   (testing "Check that the functions for exploding a connection string's options work as expected"
@@ -150,3 +151,42 @@
                       "GROUP BY ATTEMPTS.DATE "
                       "ORDER BY ATTEMPTS.DATE ASC")
                  (some-> (qp/compile query) :query pretty-sql))))))))
+
+(deftest classify-ddl-test
+  (mt/test-driver :h2
+    (is (= [org.h2.command.dml.Select]
+           (mapv type (#'h2/parse (u/the-id (mt/db)) "select 1"))))
+    (is (= [org.h2.command.dml.Update]
+           (mapv type (#'h2/parse (u/the-id (mt/db)) "update venues set name = 'bill'"))))
+    (is (= [org.h2.command.dml.Delete]
+           (mapv type (#'h2/parse (u/the-id (mt/db)) "delete venues"))))
+    (is (= [org.h2.command.dml.Select
+            org.h2.command.dml.Update
+            org.h2.command.dml.Delete]
+           (mapv type (#'h2/parse (u/the-id (mt/db))
+                                  (str/join "; "
+                                            ["select 1"
+                                             "update venues set name = 'bill'"
+                                             "delete venues"])))))
+    (is (= nil (#'h2/check-disallow-ddl-commands
+                {:database (u/the-id (mt/db))
+                 :engine :h2
+                 :native {:query (str/join "; "
+                                           ["select 1"
+                                            "update venues set name = 'bill'"
+                                            "delete venues"])}})))
+    (let [the-exploit "
+DROP TRIGGER IF EXISTS TRIG_RCE;
+CREATE OR REPLACE TRIGGER TRIG_RCE BEFORE SELECT ON INFORMATION_SCHEMA.Users AS '//javascript
+var myrce = java.lang.Runtime.getRuntime().exec(\"curl http://localhost:8000\");';
+
+SELECT * FROM INFORMATION_SCHEMA.Users;
+"
+          ]
+      (is (thrown?
+           clojure.lang.ExceptionInfo
+           #"uh oh." ;; TODO fix message
+           (#'h2/check-disallow-ddl-commands
+            {:database (u/the-id (mt/db))
+             :engine :h2
+             :native {:query the-exploit}}))))))
