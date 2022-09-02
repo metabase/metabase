@@ -325,6 +325,7 @@ class Visualization extends React.PureComponent {
       expectedDuration,
       replacementContent,
       onOpenChartSettings,
+      onUpdateVisualizationSettings,
     } = this.props;
     const { visualization } = this.state;
     const small = width < 330;
@@ -334,6 +335,7 @@ class Visualization extends React.PureComponent {
     let { style } = this.props;
 
     const clickActions = this.getClickActions(clicked);
+    console.log("click actions", clickActions);
     // disable hover when click action is active
     if (clickActions.length > 0) {
       hovered = null;
@@ -551,6 +553,8 @@ class Visualization extends React.PureComponent {
             clickActions={clickActions}
             onChangeCardAndRun={this.handleOnChangeCardAndRun}
             onClose={this.hideActions}
+            series={series}
+            onUpdateVisualizationSettings={onUpdateVisualizationSettings}
           />
         )}
       </div>

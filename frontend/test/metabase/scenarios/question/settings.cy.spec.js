@@ -163,7 +163,7 @@ describe("scenarios > question > settings", () => {
       }
     });
 
-    it("should change to column formatting when sidebar is already open (metabase#16043)", () => {
+    it.only("should change to column formatting when sidebar is already open (metabase#16043)", () => {
       visitQuestionAdhoc({
         dataset_query: {
           type: "query",
