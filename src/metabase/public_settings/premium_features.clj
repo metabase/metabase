@@ -74,8 +74,7 @@
                   (http/get {:query-params {:users     (active-user-count)
                                             :site-uuid (setting/get :site-uuid-for-premium-features-token-checks)}})
                   :body
-                  (json/parse-string keyword)
-                  (assoc :status "unpaid"))
+                  (json/parse-string keyword))
           ;; if there was an error fetching the token, log it and return a generic message about the
           ;; token being invalid. This message will get displayed in the Settings page in the admin panel so
           ;; we do not want something complicated
