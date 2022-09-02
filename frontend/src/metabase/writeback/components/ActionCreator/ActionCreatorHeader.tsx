@@ -1,7 +1,7 @@
 import React from "react";
 import { t } from "ttag";
 
-import type { ActionType } from "metabase/writeback/types";
+import type { WritebackActionType } from "metabase-types/api";
 
 import {
   Container,
@@ -15,8 +15,8 @@ type Props = {
   name: string;
   onChangeName: (name: string) => void;
 
-  type: ActionType;
-  onChangeType?: (type: ActionType) => void;
+  type: WritebackActionType;
+  onChangeType?: (type: WritebackActionType) => void;
 
   onSave: () => void;
   canSave: boolean;

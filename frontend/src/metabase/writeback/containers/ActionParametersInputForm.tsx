@@ -2,12 +2,12 @@ import React, { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-import { getActionParameterType } from "metabase/writeback/utils";
-import { ParametersMappedToValues } from "metabase/writeback/types";
-
 import Form from "metabase/containers/Form";
-import { Parameter, ParameterId } from "metabase-types/types/Parameter";
-import { Dispatch } from "metabase-types/store";
+import { getActionParameterType } from "metabase/writeback/utils";
+
+import type { ParametersMappedToValues } from "metabase-types/api";
+import type { Parameter, ParameterId } from "metabase-types/types/Parameter";
+import type { Dispatch } from "metabase-types/store";
 
 interface Props {
   description?: string;

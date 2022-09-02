@@ -1,5 +1,6 @@
 ---
 title: Getting alerts about questions
+redirect_from:
   - /docs/latest/users-guide/15-alerts
 ---
 

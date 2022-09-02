@@ -10,9 +10,9 @@ import { createQuestionFromAction } from "metabase/writeback/selectors";
 import Question from "metabase-lib/lib/Question";
 
 import type NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import type { State } from "metabase-types/store";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
-import type { WritebackQueryAction } from "metabase/writeback/types";
+import type { WritebackQueryAction } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import Modal from "metabase/components/Modal";
 

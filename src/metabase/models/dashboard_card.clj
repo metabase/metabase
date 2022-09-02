@@ -255,3 +255,8 @@
       (update :dashboard_id           serdes.util/import-fk 'Dashboard)
       (update :parameter_mappings     serdes.util/import-parameter-mappings)
       (update :visualization_settings serdes.util/import-visualization-settings)))
+
+(defmethod serdes.base/serdes-descendants "DashboardCard" [_model-name id]
+  (let [{:keys [card_id dashboard_id]} (db/select-one DashboardCard :id id)]
+    #{["Card"      card_id]
+      ["Dashboard" dashboard_id]}))

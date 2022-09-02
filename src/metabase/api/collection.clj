@@ -774,6 +774,10 @@
         (api/check-403
          (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
            (collection/perms-for-moving collection-before-update new-parent)))
+        (when (not= new-parent collection/root-collection)
+          ;; apps are not allowed to be moved away from the root collection
+          (api/check-403
+           (nil? (:app_id (hydrate collection-before-update :app_id)))))
         ;; ok, we're good to move!
         (collection/move-collection! collection-before-update new-location)))))
 

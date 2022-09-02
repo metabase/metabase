@@ -1,6 +1,7 @@
 (ns metabase.models.bookmark
   (:require [clojure.string :as str]
             [metabase.db.connection :as mdb.connection]
+            [metabase.models.app :refer [App]]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :refer [Collection]]
             [metabase.models.dashboard :refer [Dashboard]]
@@ -30,7 +31,8 @@
    (s/optional-key :dataset)         (s/maybe s/Bool)
    (s/optional-key :display)         (s/maybe s/Str)
    (s/optional-key :authority_level) (s/maybe s/Str)
-   (s/optional-key :description)     (s/maybe s/Str)})
+   (s/optional-key :description)     (s/maybe s/Str)
+   (s/optional-key :app_id)          (s/maybe su/IntGreaterThanOrEqualToZero)})
 
 (s/defn ^:private normalize-bookmark-result :- BookmarkResult
   "Normalizes bookmark results. Bookmarks are left joined against the card, collection, and dashboard tables, but only
@@ -41,7 +43,7 @@
         normalized-result (zipmap (map unqualify-key (keys result)) (vals result))
         id-str            (str (:type normalized-result) "-" (:item_id normalized-result))]
     (-> normalized-result
-        (select-keys [:item_id :type :name :dataset :description :display :authority_level])
+        (select-keys [:item_id :type :name :dataset :description :display :authority_level :app_id])
         (assoc :id id-str))))
 
 (defn- bookmarks-union-query
@@ -91,11 +93,13 @@
                      [:collection.name (db/qualify 'Collection :name)]
                      [:collection.authority_level (db/qualify 'Collection :authority_level)]
                      [:collection.description (db/qualify 'Collection :description)]
-                     [:collection.archived (db/qualify 'Collection :archived)]]
+                     [:collection.archived (db/qualify 'Collection :archived)]
+                     [:app.id (db/qualify 'Collection :app_id)]]
          :from      [[(bookmarks-union-query user-id) :bookmark]]
          :left-join [[Card :card] [:= :bookmark.card_id :card.id]
                      [Dashboard :dashboard] [:= :bookmark.dashboard_id :dashboard.id]
                      [Collection :collection] [:= :bookmark.collection_id :collection.id]
+                     [App :app] [:= :app.collection_id :collection.id]
                      [BookmarkOrdering :bookmark_ordering] [:and
                                                             [:= :bookmark_ordering.user_id user-id]
                                                             [:= :bookmark_ordering.type :bookmark.type]

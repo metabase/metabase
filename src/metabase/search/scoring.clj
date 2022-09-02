@@ -219,7 +219,7 @@
   "Massage the raw result from the DB and match data into something more useful for the client"
   [result {:keys [column match-context-thunk]} scores]
   (let [{:keys [name display_name
-                collection_id collection_name collection_authority_level]} result]
+                collection_id collection_name collection_authority_level collection_app_id]} result]
     (-> result
         (assoc
          :name           (if (or (= column :name)
@@ -231,12 +231,14 @@
                            (match-context-thunk))
          :collection     {:id              collection_id
                           :name            collection_name
-                          :authority_level collection_authority_level}
+                          :authority_level collection_authority_level
+                          :app_id          collection_app_id}
          :scores          scores)
         (update :dataset_query #(some-> % json/parse-string mbql.normalize/normalize))
         (dissoc
          :collection_id
          :collection_name
+         :collection_app_id
          :display_name))))
 
 (defn weights-and-scores
