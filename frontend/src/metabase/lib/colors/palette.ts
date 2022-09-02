@@ -125,3 +125,55 @@ export const isLight = (c: string) => {
 export const isDark = (c: string) => {
   return Color(color(c)).isDark();
 };
+
+const LIGHT_HSL_RANGES = [
+  [
+    [42, 105],
+    [70, 100],
+    [75, 100],
+  ],
+  [
+    [140, 185],
+    [70, 100],
+    [75, 100],
+  ],
+  [
+    [40, 120],
+    [70, 100],
+    [70, 100],
+  ],
+  [
+    [40, 110],
+    [90, 100],
+    [0, 100],
+  ],
+  [
+    [150, 185],
+    [90, 100],
+    [0, 100],
+  ],
+];
+
+export const getTextColorForBackground = (backgroundColor: string) => {
+  const colorObject = Color(color(backgroundColor));
+  const hslColor = [
+    colorObject.hue(),
+    colorObject.saturationl(),
+    colorObject.lightness(),
+  ];
+
+  if (
+    LIGHT_HSL_RANGES.some(hslRanges => {
+      return hslRanges.every((range, index) => {
+        const [start, end] = range;
+        const colorComponentValue = hslColor[index];
+
+        return colorComponentValue >= start && colorComponentValue <= end;
+      });
+    })
+  ) {
+    return color("text-dark");
+  }
+
+  return color("white");
+};
