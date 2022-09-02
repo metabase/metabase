@@ -49,6 +49,7 @@ export interface Settings {
   "show-homepage-pin-message": boolean;
   "show-lighthouse-illustration": boolean;
   "show-metabot": boolean;
+  "token-status": Record<string, unknown> | undefined;
   "slack-token": string | undefined;
   "slack-token-valid?": boolean;
   "slack-app-token": string | undefined;

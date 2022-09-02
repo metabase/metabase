@@ -18,11 +18,12 @@ import {
   getIsAdminApp,
   getIsAppBarVisible,
   getIsNavBarVisible,
+  getBannerMessage,
 } from "metabase/selectors/app";
 import { useOnMount } from "metabase/hooks/use-on-mount";
 import { initializeIframeResizer } from "metabase/lib/dom";
 
-import AppBanner from "metabase/components/AppBanner";
+import Banner from "metabase/components/Banner";
 import AppBar from "metabase/nav/containers/AppBar";
 import Navbar from "metabase/nav/containers/Navbar";
 import StatusListing from "metabase/status/containers/StatusListing";
@@ -51,6 +52,7 @@ const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
 interface AppStateProps {
   errorPage: AppErrorDescriptor | null;
   isAdminApp: boolean;
+  bannerMessage: string | null;
   isAppBarVisible: boolean;
   isNavBarVisible: boolean;
 }
@@ -68,6 +70,7 @@ const mapStateToProps = (
 ): AppStateProps => ({
   errorPage: getErrorPage(state),
   isAdminApp: getIsAdminApp(state, props),
+  bannerMessage: getBannerMessage(state),
   isAppBarVisible: getIsAppBarVisible(state, props),
   isNavBarVisible: getIsNavBarVisible(state, props),
 });
@@ -85,10 +88,10 @@ class ErrorBoundary extends React.Component<{
 }
 
 function App({
+  bannerMessage,
   errorPage,
   isAdminApp,
   isAppBarVisible,
-  // TODO: implement isAppBannerVisible
   isNavBarVisible,
   children,
 }: AppProps) {
@@ -103,7 +106,7 @@ function App({
     <ErrorBoundary onError={setErrorInfo}>
       <ScrollToTop>
         <AppContainer className="spread">
-          <AppBanner></AppBanner>
+          {bannerMessage && <Banner>{bannerMessage}</Banner>}
           {isAppBarVisible && <AppBar isNavBarVisible={isNavBarVisible} />}
           <AppContentContainer isAdminApp={isAdminApp}>
             {isNavBarVisible && <Navbar />}
