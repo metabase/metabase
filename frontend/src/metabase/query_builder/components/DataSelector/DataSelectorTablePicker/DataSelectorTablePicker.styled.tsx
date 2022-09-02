@@ -42,3 +42,10 @@ export const DataSelectorTablePickerHeaderSchemaName = styled.span`
   flex-wrap: wrap;
   margin-left: ${space(1)};
 `;
+
+export const LinkToDocsContainer = styled.div`
+  background-color: ${color("bg-light")};
+  border-top: 1px solid ${color("border")};
+  padding: ${space(2)};
+  text-align: center;
+`;

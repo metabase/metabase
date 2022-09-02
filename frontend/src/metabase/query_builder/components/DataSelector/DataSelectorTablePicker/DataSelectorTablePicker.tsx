@@ -17,6 +17,7 @@ import {
   DataSelectorTablePickerHeaderClickable as HeaderClickable,
   DataSelectorTablePickerHeaderDatabaseName as HeaderDatabaseName,
   DataSelectorTablePickerHeaderSchemaName as HeaderSchemaName,
+  LinkToDocsContainer,
 } from "./DataSelectorTablePicker.styled";
 
 import type { Database } from "metabase-types/api/database";
@@ -114,7 +115,6 @@ const DataSelectorTablePicker = ({
           width="100%"
           searchable={hasFiltering && tables.length >= minTablesToShowSearch}
           onChange={(item: Item) => onChangeTable(item.table)}
-          r
           itemIsSelected={checkIfItemIsSelected}
           itemIsClickable={checkIfItemIsClickable}
           renderItemIcon={renderItemIcon}
@@ -122,18 +122,7 @@ const DataSelectorTablePicker = ({
         />
 
         {isSavedQuestionList && (
-          <div className="bg-light p2 text-centered border-top">
-            {t`Is a question missing?`}
-            <ExternalLink
-              href={MetabaseSettings.docsUrl(
-                "questions/native-editor/referencing-saved-questions-in-queries",
-              )}
-              target="_blank"
-              className="block link"
-            >
-              {t`Learn more about nested queries`}
-            </ExternalLink>
-          </div>
+          <LinkToDocsOnReferencingSavedQuestionsInQueries />
         )}
       </Container>
     );
@@ -147,6 +136,21 @@ const DataSelectorTablePicker = ({
     );
   }
 };
+
+const LinkToDocsOnReferencingSavedQuestionsInQueries = () => (
+  <LinkToDocsContainer>
+    {t`Is a question missing?`}
+    <ExternalLink
+      href={MetabaseSettings.docsUrl(
+        "questions/native-editor/referencing-saved-questions-in-queries",
+      )}
+      target="_blank"
+      className="block link"
+    >
+      {t`Learn more about nested queries`}
+    </ExternalLink>
+  </LinkToDocsContainer>
+);
 
 const Header = ({
   onBack,
