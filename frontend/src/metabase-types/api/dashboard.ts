@@ -6,8 +6,6 @@ import {
 } from "metabase-types/types/Parameter";
 import { CardId, SavedCard } from "metabase-types/types/Card";
 
-import { WritebackAction } from "./writeback";
-
 export type DashboardId = number;
 
 export interface Dashboard {
@@ -29,19 +27,18 @@ export interface Dashboard {
 
 export type DashCardId = EntityId;
 
-export type DashboardOrderedCard = {
+export type BaseDashboardOrderedCard = {
   id: DashCardId;
-  card: SavedCard;
-  card_id: CardId;
-  parameter_mappings?: DashboardParameterMapping[] | null;
-  series?: SavedCard[];
   visualization_settings?: {
     [key: string]: unknown;
   };
+};
 
-  // Only for action buttons
-  action_id: number | null;
-  action?: WritebackAction;
+export type DashboardOrderedCard = BaseDashboardOrderedCard & {
+  card_id: CardId;
+  card: SavedCard;
+  parameter_mappings?: DashboardParameterMapping[] | null;
+  series?: SavedCard[];
 };
 
 export type DashboardParameterMapping = {
