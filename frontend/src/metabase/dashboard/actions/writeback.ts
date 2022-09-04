@@ -24,9 +24,11 @@ import type {
   ParameterMappedForActionExecution,
 } from "metabase-types/api";
 import type { DashCard } from "metabase-types/types/Dashboard";
+import type { Dispatch } from "metabase-types/store";
 
 import { getCardData } from "../selectors";
 import { isVirtualDashCard } from "../utils";
+import { setDashCardAttributes } from "./core";
 import { fetchCardData } from "./data-fetching";
 
 export const OPEN_ACTION_PARAMETERS_MODAL =
@@ -34,6 +36,20 @@ export const OPEN_ACTION_PARAMETERS_MODAL =
 export const openActionParametersModal = createAction(
   OPEN_ACTION_PARAMETERS_MODAL,
 );
+
+export function updateButtonActionMapping(
+  dashCardId: number,
+  attributes: { action_id?: number | null; parameter_mappings?: any },
+) {
+  return (dispatch: Dispatch) => {
+    dispatch(
+      setDashCardAttributes({
+        id: dashCardId,
+        attributes: attributes,
+      }),
+    );
+  };
+}
 
 export type InsertRowFromDataAppPayload = InsertRowPayload & {
   dashCard: DashCard;
