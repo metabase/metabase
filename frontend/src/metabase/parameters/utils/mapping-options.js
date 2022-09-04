@@ -63,7 +63,7 @@ export function getParameterMappingOptions(
   }
 
   if (isActionButtonCard(card)) {
-    // action cards don't have parameters
+    // Action parameters are mapped via click behavior UI for now
     return [];
   }
 
