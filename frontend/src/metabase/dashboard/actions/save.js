@@ -112,6 +112,7 @@ export const saveDashboardAndCards = createThunkAction(
         const cards = updatedDashcards.map(
           ({
             id,
+            action_id,
             card_id,
             row,
             col,
@@ -122,6 +123,7 @@ export const saveDashboardAndCards = createThunkAction(
             visualization_settings,
           }) => ({
             id,
+            action_id,
             card_id,
             row,
             col,
