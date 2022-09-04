@@ -51,7 +51,7 @@ export type DashboardParameterMapping = {
 // Example: "[\"dimension\",[\"field\",17,null]]"
 type StringifiedDimension = string;
 
-type ClickBehaviorParameterMapping = Record<
+export type ClickBehaviorParameterMapping = Record<
   ParameterId | StringifiedDimension,
   {
     id: ParameterId | StringifiedDimension;
