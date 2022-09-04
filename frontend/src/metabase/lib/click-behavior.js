@@ -16,12 +16,12 @@ import {
 
 export function getDataFromClicked({
   extraData: { dashboard, parameterValuesBySlug, userAttributes } = {},
-  dimensions,
-  data,
+  dimensions = [],
+  data = [],
 }) {
   const column = [
-    ...(dimensions || []),
-    ...(data || []).map(d => ({
+    ...dimensions,
+    ...data.map(d => ({
       column: d.col,
       // When the data is changed to a display value for use in tooltips, we can set clickBehaviorValue to the raw value for filtering.
       value: d.clickBehaviorValue || d.value,
