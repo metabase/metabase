@@ -3,7 +3,10 @@ import { TYPE } from "metabase/lib/types";
 import type Database from "metabase-lib/lib/metadata/Database";
 import type Field from "metabase-lib/lib/metadata/Field";
 
-import type { DashboardOrderedCard } from "metabase-types/api";
+import type {
+  ActionButtonDashboardCard,
+  BaseDashboardOrderedCard,
+} from "metabase-types/api";
 import type { SavedCard } from "metabase-types/types/Card";
 import type { Database as IDatabase } from "metabase-types/types/Database";
 
@@ -61,15 +64,21 @@ export const isEditableField = (field: Field) => {
 export const isActionButtonCard = (card: SavedCard) =>
   card?.display === "action-button";
 
-export const isActionButtonDashCard = (dashCard: DashboardOrderedCard) =>
-  isActionButtonCard(
-    dashCard.visualization_settings?.virtual_card as SavedCard,
-  );
+export function isActionButtonDashCard(
+  dashCard: BaseDashboardOrderedCard,
+): dashCard is ActionButtonDashboardCard {
+  const virtualCard = dashCard.visualization_settings?.virtual_card;
+  return isActionButtonCard(virtualCard as SavedCard);
+}
 
-export const isActionButtonWithMappedAction = (
-  dashCard: DashboardOrderedCard,
-) => {
-  return (
-    isActionButtonDashCard(dashCard) && typeof dashCard.action_id === "number"
-  );
-};
+export function isActionButtonWithMappedAction(
+  dashCard: BaseDashboardOrderedCard,
+): dashCard is ActionButtonDashboardCard {
+  const isAction = isActionButtonDashCard(dashCard);
+  return isAction && typeof dashCard.action_id === "number";
+}
+
+export function getActionButtonLabel(dashCard: ActionButtonDashboardCard) {
+  const label = dashCard.visualization_settings?.["button.label"];
+  return label || "";
+}
