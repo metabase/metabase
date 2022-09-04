@@ -16,7 +16,14 @@ import {
   BulkDeletePayload,
 } from "metabase/writeback/actions";
 
-import { DashboardWithCards, DashCard } from "metabase-types/types/Dashboard";
+import { ActionsApi } from "metabase/services";
+
+import type {
+  Dashboard,
+  ActionButtonDashboardCard,
+  ParameterMappedForActionExecution,
+} from "metabase-types/api";
+import type { DashCard } from "metabase-types/types/Dashboard";
 
 import { getCardData } from "../selectors";
 import { isVirtualDashCard } from "../utils";
@@ -237,19 +244,24 @@ export const deleteManyRowsFromDataApp = (
 };
 
 export type ExecuteRowActionPayload = {
-  dashboard: DashboardWithCards;
-  parameters: Record<string, unknown>;
+  dashboard: Dashboard;
+  dashcard: ActionButtonDashboardCard;
+  parameters: ParameterMappedForActionExecution[];
 };
 
 export const executeRowAction = ({
   dashboard,
+  dashcard,
   parameters,
 }: ExecuteRowActionPayload) => {
   return async function (dispatch: any) {
     try {
-      const result = {
-        "rows-affected": 0,
-      };
+      const result = await ActionsApi.execute({
+        dashboardId: dashboard.id,
+        dashcardId: dashcard.id,
+        actionId: dashcard.action_id,
+        parameters,
+      });
       if (result["rows-affected"] > 0) {
         dashboard.ordered_cards
           .filter(dashCard => !isVirtualDashCard(dashCard))
