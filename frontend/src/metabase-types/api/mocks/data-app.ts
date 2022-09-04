@@ -1,4 +1,8 @@
-import { DataApp, Dashboard } from "metabase-types/api";
+import {
+  ActionButtonDashboardCard,
+  DataApp,
+  Dashboard,
+} from "metabase-types/api";
 import { createMockCollection } from "./collection";
 import { createMockDashboard } from "./dashboard";
 
@@ -23,3 +27,13 @@ export const createMockDataApp = ({
 export const createMockDataAppPage = (
   params: Partial<Omit<Dashboard, "is_app_page">>,
 ): Dashboard => createMockDashboard({ ...params, is_app_page: true });
+
+export const createMockDashboardActionButton = (
+  opts?: Partial<ActionButtonDashboardCard>,
+): ActionButtonDashboardCard => ({
+  id: 1,
+  action_id: null,
+  parameter_mappings: null,
+  visualization_settings: {},
+  ...opts,
+});
