@@ -5,14 +5,10 @@ import _ from "underscore";
 
 import { getUserAttributes } from "metabase/selectors/user";
 
-import Actions from "metabase/entities/actions";
 import Questions from "metabase/entities/questions";
 import Dashboards from "metabase/entities/dashboards";
 
 function hasLinkedQuestionOrDashboard({ type, linkType, action } = {}) {
-  if (type === "action") {
-    return typeof action === "number";
-  }
   if (type === "link") {
     return linkType === "question" || linkType === "dashboard";
   }
@@ -20,12 +16,6 @@ function hasLinkedQuestionOrDashboard({ type, linkType, action } = {}) {
 }
 
 function mapLinkedEntityToEntityQuery({ type, linkType, action, targetId }) {
-  if (type === "action") {
-    return {
-      entity: Actions,
-      entityId: action,
-    };
-  }
   return {
     entity: linkType === "question" ? Questions : Dashboards,
     entityId: targetId,
