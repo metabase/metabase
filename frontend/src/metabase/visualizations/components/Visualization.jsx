@@ -149,7 +149,7 @@ class Visualization extends React.PureComponent {
       : null;
     this.setState({
       hovered: null,
-      clicked: null,
+      //clicked: null,
       error: null,
       warnings: [],
       yAxisSplit: null,
@@ -305,6 +305,7 @@ class Visualization extends React.PureComponent {
 
   hideActions = () => {
     if (this.state.clicked !== null) {
+      console.log("are we doing this?");
       this.setState({ clicked: null });
     }
   };
