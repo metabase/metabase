@@ -55,6 +55,7 @@ const WithVizSettingsData = ComposedComponent => {
           ...entitiesByTypeAndId,
           parameterValuesBySlug: props.parameterValuesBySlug,
           dashboard: props.dashboard,
+          dashcard: props.dashcard,
           userAttributes: getUserAttributes(state, props),
         };
       },
