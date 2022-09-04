@@ -1,12 +1,13 @@
-import { SavedCard, NativeDatasetQuery } from "metabase-types/types/Card";
-import { DashboardWithCards } from "metabase-types/types/Dashboard";
-import { Column } from "metabase-types/types/Dataset";
+import { Card } from "metabase-types/api";
 import {
   Parameter,
   ParameterId,
   ParameterTarget,
-  ParameterValueOrArray,
 } from "metabase-types/types/Parameter";
+
+export interface WritebackParameter extends Parameter {
+  target: ParameterTarget;
+}
 
 export type WritebackActionType = "http" | "query";
 
@@ -14,12 +15,12 @@ export interface WritebackActionBase {
   id: number;
   name: string;
   description: string | null;
-  parameters: Parameter[];
+  parameters: WritebackParameter[];
   "updated-at": string;
   "created-at": string;
 }
 
-type QueryActionCard = SavedCard<NativeDatasetQuery> & {
+export type QueryActionCard = Card & {
   is_write: true;
   action_id: number;
 };
@@ -55,41 +56,16 @@ export type WritebackAction = WritebackActionBase & (QueryAction | HttpAction);
 
 export type ParameterMappings = Record<ParameterId, ParameterTarget>;
 
-export type ActionClickBehaviorData = {
-  column: Partial<Column>;
-  parameter: Record<ParameterId, { value: ParameterValueOrArray }>;
-  parameterByName: Record<string, { value: ParameterValueOrArray }>;
-  parameterBySlug: Record<string, { value: ParameterValueOrArray }>;
-  userAttributes: Record<string, unknown>;
-};
-
-export type ActionClickBehavior = {
-  action: number; // action id
-  emitter_id: number;
-  type: "action";
-  parameterMapping: ParameterMappings;
-};
-
-export type ActionClickExtraData = {
-  actions: Record<number, WritebackAction>;
-  dashboard: DashboardWithCards;
-  parameterBySlug: Record<string, { value: ParameterValueOrArray }>;
-  userAttributes: unknown[];
-};
-
-export type ParametersSourceTargetMap = Record<
-  ParameterId,
-  {
-    id: ParameterId;
-    source: { id: string; type: string; name: string };
-    target: { id: string; type: string };
-  }
->;
-
 export type ParametersMappedToValues = Record<
   ParameterId,
   { type: string; value: string | number }
 >;
+
+export type ParameterMappedForActionExecution = {
+  id: ParameterId;
+  type: string;
+  value: string | number;
+};
 
 // we will tighten this up when we figure out what the form settings should look like
 export type ActionFormSettings = {
