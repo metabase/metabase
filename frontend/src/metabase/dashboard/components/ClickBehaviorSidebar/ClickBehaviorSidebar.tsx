@@ -12,6 +12,8 @@ import { usePrevious } from "metabase/hooks/use-previous";
 
 import Sidebar from "metabase/dashboard/components/Sidebar";
 
+import { isActionButtonWithMappedAction } from "metabase/writeback/utils";
+
 import type { UiParameter } from "metabase/parameters/types";
 import type {
   Dashboard,
@@ -157,7 +159,10 @@ function ClickBehaviorSidebar({
   ]);
 
   useOnMount(() => {
-    if (shouldShowTypeSelector(clickBehavior)) {
+    if (
+      !isActionButtonWithMappedAction(dashcard) &&
+      shouldShowTypeSelector(clickBehavior)
+    ) {
       setTypeSelectorVisible(true);
     }
     if (dashcard) {
@@ -187,7 +192,9 @@ function ClickBehaviorSidebar({
     <Sidebar
       onClose={hideClickBehaviorSidebar}
       onCancel={handleCancel}
-      closeIsDisabled={!isValidClickBehavior}
+      closeIsDisabled={
+        !isValidClickBehavior && !isActionButtonWithMappedAction(dashcard)
+      }
     >
       <ClickBehaviorSidebarHeader
         dashcard={dashcard}
