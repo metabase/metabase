@@ -1,17 +1,14 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
-import _ from "underscore";
 
 import Actions from "metabase/entities/actions";
 
-import ClickMappings from "metabase/dashboard/components/ClickMappings";
 import { updateButtonActionMapping } from "metabase/dashboard/actions";
 
 import type {
   ActionButtonDashboardCard,
   ActionButtonParametersMapping,
-  ClickBehaviorParameterMapping,
   WritebackAction,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -19,22 +16,9 @@ import type { UiParameter } from "metabase/parameters/types";
 
 import { Heading, SidebarContent } from "../ClickBehaviorSidebar.styled";
 
-import {
-  turnClickBehaviorParameterMappingsIntoDashCardMappings,
-  turnDashCardParameterMappingsIntoClickBehaviorMappings,
-} from "./utils";
+import ActionClickMappings from "./ActionClickMappings";
 import ActionOptionItem from "./ActionOptionItem";
 import { ClickMappingsContainer } from "./ActionOptions.styled";
-
-// We're reusing the ClickMappings component for mapping parameters
-// ClickMappings is bound to click behavior, but for custom actions
-// we're using dash cards parameter mappings in another format
-// So here we need to convert these formats from one to another
-// Until we introduce another mapping component or refactor ClickMappings
-interface IntermediateActionClickBehavior {
-  type: "action";
-  parameterMapping?: ClickBehaviorParameterMapping;
-}
 
 interface ActionOptionsOwnProps {
   dashcard: ActionButtonDashboardCard;
@@ -69,19 +53,6 @@ function ActionOptions({
     action => action.id === connectedActionId,
   );
 
-  const clickBehavior = useMemo(() => {
-    if (!selectedAction) {
-      return { type: "action" };
-    }
-    const parameterMapping =
-      turnDashCardParameterMappingsIntoClickBehaviorMappings(
-        dashcard,
-        parameters,
-        selectedAction,
-      );
-    return { type: "action", parameterMapping };
-  }, [dashcard, parameters, selectedAction]);
-
   const handleActionSelected = useCallback(
     (action: WritebackAction) => {
       onUpdateButtonActionMapping(dashcard.id, {
@@ -92,22 +63,12 @@ function ActionOptions({
   );
 
   const handleParameterMappingChange = useCallback(
-    (nextClickBehavior: IntermediateActionClickBehavior) => {
-      const { parameterMapping } = nextClickBehavior;
-
-      const parameterMappings =
-        parameterMapping && selectedAction
-          ? turnClickBehaviorParameterMappingsIntoDashCardMappings(
-              parameterMapping,
-              selectedAction,
-            )
-          : null;
-
+    (parameter_mappings: ActionButtonParametersMapping[] | null) => {
       onUpdateButtonActionMapping(dashcard.id, {
-        parameter_mappings: parameterMappings,
+        parameter_mappings,
       });
     },
-    [dashcard, selectedAction, onUpdateButtonActionMapping],
+    [dashcard, onUpdateButtonActionMapping],
   );
 
   return (
@@ -123,12 +84,11 @@ function ActionOptions({
       ))}
       {selectedAction && (
         <ClickMappingsContainer>
-          <ClickMappings
-            isAction
-            object={selectedAction}
+          <ActionClickMappings
+            action={selectedAction}
             dashcard={dashcard}
-            clickBehavior={clickBehavior}
-            updateSettings={handleParameterMappingChange}
+            parameters={parameters}
+            onChange={handleParameterMappingChange}
           />
         </ClickMappingsContainer>
       )}
