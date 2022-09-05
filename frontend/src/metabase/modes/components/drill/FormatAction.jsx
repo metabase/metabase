@@ -1,4 +1,5 @@
 import React from "react";
+import styled from "@emotion/styled";
 
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
@@ -27,7 +28,7 @@ export default ({ question, clicked }) => {
       buttonType: "formatting",
       icon: "gear",
       tooltip: t`Column formatting`,
-      popover: ({ series, onChange }) => {
+      popover: function FormatPopover({ series, onChange }) {
         const handleChangeSettings = changedSettings => {
           onChange(
             updateSettings(
@@ -43,10 +44,8 @@ export default ({ question, clicked }) => {
           false,
         ).find(widget => widget.id === "column_settings");
 
-        console.log(columnSettingsWidget, column);
-
         return (
-          <div class="pt3">
+          <PopoverRoot>
             <ChartSettingsWidget
               key={columnSettingsWidget.id}
               {...{
@@ -58,16 +57,13 @@ export default ({ question, clicked }) => {
               }}
               hidden={false}
             />
-          </div>
+          </PopoverRoot>
         );
       },
-      // action: () =>
-      //   showChartSettings({
-      //     widget: {
-      //       id: "column_settings",
-      //       props: { initialKey: keyForColumn(column) },
-      //     },
-      //   }),
     },
   ];
 };
+
+const PopoverRoot = styled.div`
+  margin-top: 1.5rem;
+`;

@@ -86,7 +86,6 @@ class ChartClickActions extends Component {
 
   handleClickAction = action => {
     const { dispatch, onChangeCardAndRun } = this.props;
-    console.log(action);
     if (action.popover) {
       MetabaseAnalytics.trackStructEvent(
         "Actions",
@@ -183,8 +182,6 @@ class ChartClickActions extends Component {
       .value();
 
     const hasOnlyOneSection = sections.length === 1;
-
-    console.log(sections);
 
     return (
       <Popover

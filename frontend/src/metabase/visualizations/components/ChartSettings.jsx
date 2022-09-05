@@ -149,8 +149,6 @@ class ChartSettings extends Component {
       const { isDashboard } = this.props;
       const transformedSeries = this._getTransformedSeries();
 
-      console.log(transformedSeries);
-
       return getSettingsWidgetsForSeries(
         transformedSeries,
         this.handleChangeSettings,

@@ -305,7 +305,6 @@ class Visualization extends React.PureComponent {
 
   hideActions = () => {
     if (this.state.clicked !== null) {
-      console.log("are we doing this?");
       this.setState({ clicked: null });
     }
   };
@@ -336,7 +335,6 @@ class Visualization extends React.PureComponent {
     let { style } = this.props;
 
     const clickActions = this.getClickActions(clicked);
-    console.log("click actions", clickActions);
     // disable hover when click action is active
     if (clickActions.length > 0) {
       hovered = null;
