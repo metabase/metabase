@@ -146,8 +146,7 @@ export default function FilterPopover({
   };
 
   const handleFilterChange = (mbql: any[] = []) => {
-    const newFilter = new Filter(mbql, filter?.index(), query);
-
+    const newFilter = filter ? filter.set(mbql) : new Filter(mbql, null, query);
     setFilter(newFilter);
   };
 
