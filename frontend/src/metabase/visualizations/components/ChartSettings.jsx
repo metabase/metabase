@@ -10,6 +10,7 @@ import Radio from "metabase/core/components/Radio";
 import { SectionContainer, SectionWarnings } from "./ChartSettings.styled";
 
 import Visualization from "metabase/visualizations/components/Visualization";
+import ChartSettingsWidgetPopover from "./ChartSettingsWidgetPopover";
 import ChartSettingsWidget from "./ChartSettingsWidget";
 
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
@@ -25,6 +26,28 @@ import {
 
 // section names are localized
 const DEFAULT_TAB_PRIORITY = [t`Display`];
+
+const getPopoverWidget = (widgets, currentWidget, extraWidgetProps) => {
+  const widget =
+    currentWidget && widgets.find(widget => widget.id === currentWidget.id);
+
+  if (widget) {
+    return (
+      <ChartSettingsWidget
+        key={widget.id}
+        {...widget}
+        props={{
+          ...widget.props,
+          ...currentWidget.props,
+        }}
+        hidden={false}
+        {...extraWidgetProps}
+      />
+    );
+  }
+
+  return undefined;
+};
 
 const withTransientSettingState = ComposedComponent =>
   class extends React.Component {
@@ -83,13 +106,14 @@ class ChartSettings extends Component {
   };
 
   // allows a widget to temporarily replace itself with a different widget
-  handleShowWidget = widget => {
+  handleShowWidget = (widget, ref) => {
+    this.setState({ popoverRef: ref });
     this.setState({ currentWidget: widget });
   };
 
   // go back to previously selected section
   handleEndShowWidget = () => {
-    this.setState({ currentWidget: null });
+    this.setState({ currentWidget: null, popoverRef: null });
   };
 
   handleResetSettings = () => {
@@ -162,7 +186,7 @@ class ChartSettings extends Component {
       setSidebarPropsOverride,
       dashboard,
     } = this.props;
-    const { currentWidget } = this.state;
+    const { currentWidget, popoverRef } = this.state;
 
     const settings = this._getSettings();
     const widgets = this._getWidgets();
@@ -210,21 +234,7 @@ class ChartSettings extends Component {
         : _.find(DEFAULT_TAB_PRIORITY, name => name in sections) ||
           sectionNames[0];
 
-    let visibleWidgets;
-    let widget = currentWidget && widgetsById[currentWidget.id];
-    if (widget) {
-      widget = {
-        ...widget,
-        hidden: false,
-        props: {
-          ...(widget.props || {}),
-          ...(currentWidget.props || {}),
-        },
-      };
-      visibleWidgets = [widget];
-    } else {
-      visibleWidgets = sections[currentSection] || [];
-    }
+    const visibleWidgets = sections[currentSection] || [];
 
     // This checks whether the current section contains a column settings widget
     // at the top level. If it does, we avoid hiding the section tabs and
@@ -258,7 +268,7 @@ class ChartSettings extends Component {
 
     const widgetList = visibleWidgets.map(widget => (
       <ChartSettingsWidget
-        key={`${widget.id}`}
+        key={widget.id}
         {...widget}
         {...extraWidgetProps}
         setSidebarPropsOverride={setSidebarPropsOverride}
@@ -341,6 +351,11 @@ class ChartSettings extends Component {
             </div>
           </div>
         )}
+        <ChartSettingsWidgetPopover
+          anchor={popoverRef}
+          widget={getPopoverWidget(widgets, currentWidget, extraWidgetProps)}
+          handleEndShowWidget={this.handleEndShowWidget}
+        />
       </div>
     );
   }

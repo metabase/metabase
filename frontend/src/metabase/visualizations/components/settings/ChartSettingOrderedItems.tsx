@@ -15,7 +15,7 @@ interface SortableItem {
 
 interface SortableColumnFunctions<T> {
   onRemove?: (item: T) => void;
-  onEdit?: (item: T) => void;
+  onEdit?: (item: T, targetElement?: HTMLElement) => void;
   onClick?: (item: T) => void;
   onAdd?: (item: T) => void;
   onEnable?: (item: T) => void;
@@ -40,7 +40,11 @@ const SortableColumn = SortableElement(function SortableColumn<
   return (
     <ColumnItem
       title={getItemName(item)}
-      onEdit={onEdit ? () => onEdit(item) : null}
+      onEdit={
+        onEdit
+          ? (targetElement?: HTMLElement) => onEdit(item, targetElement)
+          : null
+      }
       onRemove={onRemove && item.enabled ? () => onRemove(item) : null}
       onClick={onClick ? () => onClick(item) : null}
       onAdd={onAdd ? () => onAdd(item) : null}
