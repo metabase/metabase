@@ -832,10 +832,7 @@ export class UnconnectedDataSelector extends Component {
 
     return (
       <span
-        className={
-          className ||
-          "px2 py2 text-bold cursor-pointer text-default flex-no-shrink"
-        }
+        className={className || "px2 py2 text-bold cursor-pointer text-default"}
         style={style}
       >
         {React.createElement(getTriggerElementContent, {
