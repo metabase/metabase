@@ -1,3 +1,4 @@
+import { GET } from "metabase/lib/api";
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
@@ -16,10 +17,23 @@ import { canonicalCollectionId } from "metabase/collections/utils";
 import forms from "./questions/forms";
 import { updateIn } from "icepick";
 
+const listCards = GET("/api/card");
+const listReferencedCards = GET("/api/card/:questionId/referenced-cards");
+
 const Questions = createEntity({
   name: "questions",
   nameOne: "question",
   path: "/api/card",
+
+  api: {
+    list: async (params, ...args) => {
+      if (params.endpoint === "referenced-cards") {
+        return listReferencedCards(params, ...args);
+      } else {
+        return listCards(params, ...args);
+      }
+    },
+  },
 
   objectActions: {
     setArchived: ({ id, model }, archived, opts) =>

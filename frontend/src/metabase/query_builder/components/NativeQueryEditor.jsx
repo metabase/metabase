@@ -115,7 +115,6 @@ class NativeQueryEditor extends Component {
       // close selected text popover if text is deselected
       this.setState({ isSelectedTextPopoverOpen: false });
     }
-
     // Check that the query prop changed before updating the editor. Otherwise,
     // we might overwrite just typed characters before onChange is called.
     const queryPropUpdated = this.props.query !== prevProps.query;
@@ -264,7 +263,7 @@ class NativeQueryEditor extends Component {
       showLineNumbers: true,
     });
 
-    this._lastAutoComplete = { timestamp: 0, prefix: null, results: null };
+    this._lastAutoComplete = { timestamp: 0, prefix: null, results: [] };
 
     aceLanguageTools.addCompleter({
       getCompletions: async (_editor, _session, _pos, prefix, callback) => {
@@ -278,53 +277,43 @@ class NativeQueryEditor extends Component {
             Date.now() - timestamp < AUTOCOMPLETE_CACHE_DURATION &&
             this._lastAutoComplete.prefix === prefix;
           if (!cacheHit) {
+            // Get models and fields from tables
             // HACK: call this.props.autocompleteResultsFn rather than caching the prop since it might change
-            results = await this.props.autocompleteResultsFn(prefix);
+            const apiResults = await this.props.autocompleteResultsFn(prefix);
             this._lastAutoComplete = {
               timestamp: Date.now(),
               prefix,
               results,
             };
+
+            // Get columns from referenced questions
+            const { query } = this.props;
+            const referencedQuestionIds = query.referencedQuestionIds();
+            const questionResults = referencedQuestionIds.flatMap(
+              questionId => {
+                const question = query.metadata().question(questionId);
+                if (!question) {
+                  return [];
+                }
+                return question
+                  .getResultMetadata()
+                  .map(columnMetadata => [
+                    columnMetadata.name,
+                    `${question.displayName()} :${columnMetadata.base_type}`,
+                  ]);
+              },
+            );
+
+            // Concat the results from tables, models, and referenced questions
+            results = apiResults.concat(questionResults);
           }
 
-          // transform results of the API call into what ACE expects
+          // transform results into what ACE expects
           const resultsForAce = results.map(result => ({
             name: result[0],
             value: result[0],
             meta: result[1],
           }));
-          callback(null, resultsForAce);
-        } catch (error) {
-          console.log("error getting autocompletion data", error);
-          callback(null, []);
-        }
-      },
-    });
-
-    // TODO: Should I:
-    // (1) move this into the above completor?
-    // (2) move this into autocompleteResultsFn? https://github.com/metabase/metabase/blob/c344bb625e66c905ea791dd87fbf9aff1ba0bcea/frontend/src/metabase/query_builder/selectors.js#L835
-    // (3) leave as is?
-    aceLanguageTools.addCompleter({
-      getCompletions: (_editor, _session, _pos, prefix, callback) => {
-        // Gets all the column names from tagged questions, and hands them to a callback provided by ace's autocomplete component for display.
-        // TODO: Move this processing to a place that gets called when the column names from tagged questions change.
-        // This function runs every time the user types a character, which we don't need to do.
-        try {
-          const { query } = this.props;
-          const templateTags = query.templateTagsWithoutSnippets(); // If this hasn't changed, we shouldn't need to run the following every time
-          const referencedQuestionIds = templateTags.map(tag => tag["card-id"]);
-          const resultsForAce = referencedQuestionIds.flatMap(questionId => {
-            const question = query.metadata().question(questionId);
-            if (!question) {
-              return [];
-            }
-            return question.getResultMetadata().map(columnMetadata => ({
-              name: columnMetadata.name,
-              value: columnMetadata.name,
-              meta: `${question.displayName()} :${columnMetadata.base_type}`,
-            }));
-          });
           callback(null, resultsForAce);
         } catch (error) {
           console.log("error getting autocompletion data", error);
@@ -558,14 +547,10 @@ class NativeQueryEditor extends Component {
 export default _.compose(
   ExplicitSize(),
   Questions.loadList({
-    // At the moment I'm loading all questions, but ideally I'd only load questions that are tagged in the query, like this:
-    // query: (state, { query }) => {
-    //     const templateTags = query.templateTagsWithoutSnippets();
-    //     const referencedQuestionIds = templateTags.map(tag => tag["card-id"]);
-    //   return {
-    //     ids: referencedQuestionIds,
-    //   };
-    // },
+    query: (state, props) => ({
+      questionId: props.question.id(),
+      endpoint: "referenced-cards",
+    }),
     loadingAndErrorWrapper: false,
   }),
   Snippets.loadList({ loadingAndErrorWrapper: false }),

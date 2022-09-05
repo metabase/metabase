@@ -290,6 +290,12 @@ export default class NativeQuery extends AtomicQuery {
     return this.templateTags().filter(t => t.type !== "snippet");
   }
 
+  referencedQuestionIds(): number[] {
+    return this.templateTags()
+      .filter(tag => tag.type === "card")
+      .map(tag => tag["card-id"]);
+  }
+
   templateTagsMap(): TemplateTags {
     return getIn(this.datasetQuery(), ["native", "template-tags"]) || {};
   }
