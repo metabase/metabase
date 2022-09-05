@@ -26,7 +26,12 @@ import {
 import ActionOptionItem from "./ActionOptionItem";
 import { ClickMappingsContainer } from "./ActionOptions.styled";
 
-interface WritebackActionClickBehavior {
+// We're reusing the ClickMappings component for mapping parameters
+// ClickMappings is bound to click behavior, but for custom actions
+// we're using dash cards parameter mappings in another format
+// So here we need to convert these formats from one to another
+// Until we introduce another mapping component or refactor ClickMappings
+interface IntermediateActionClickBehavior {
   type: "action";
   parameterMapping?: ClickBehaviorParameterMapping;
 }
@@ -87,7 +92,7 @@ function ActionOptions({
   );
 
   const handleParameterMappingChange = useCallback(
-    (nextClickBehavior: WritebackActionClickBehavior) => {
+    (nextClickBehavior: IntermediateActionClickBehavior) => {
       const { parameterMapping } = nextClickBehavior;
 
       const parameterMappings =
