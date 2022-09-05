@@ -532,18 +532,10 @@ export function isSearchable({
     );
   }
 
-  function everyFieldIsConfiguredToShowValues() {
-    return fields.every(
-      f => f.has_field_values === "search" || f.has_field_values === "list",
-    );
-  }
-
   return (
     !disableSearch &&
     (valuesMode === "search" ||
-      (everyFieldIsSearchable() &&
-        someFieldIsConfiguredForSearch() &&
-        everyFieldIsConfiguredToShowValues()))
+      (everyFieldIsSearchable() && someFieldIsConfiguredForSearch()))
   );
 }
 
