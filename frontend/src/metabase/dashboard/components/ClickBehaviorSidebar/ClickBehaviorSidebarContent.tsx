@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { getIn } from "icepick";
 
 import { isTableDisplay } from "metabase/lib/click-behavior";
+
+import { isActionButtonWithMappedAction } from "metabase/writeback/utils";
 
 import type { UiParameter } from "metabase/parameters/types";
 import type {
@@ -45,7 +47,15 @@ function ClickBehaviorSidebar({
   onSettingsChange,
   onTypeSelectorVisibilityChange,
 }: Props) {
-  const finalClickBehavior = clickBehavior || { type: "actionMenu" };
+  const finalClickBehavior = useMemo(() => {
+    if (clickBehavior) {
+      return clickBehavior;
+    }
+    if (isActionButtonWithMappedAction(dashcard)) {
+      return { type: "action" };
+    }
+    return { type: "actionMenu" };
+  }, [clickBehavior, dashcard]);
 
   if (isTableDisplay(dashcard) && !hasSelectedColumn) {
     const columns = getIn(dashcardData, [dashcard.card_id, "data", "cols"]);
