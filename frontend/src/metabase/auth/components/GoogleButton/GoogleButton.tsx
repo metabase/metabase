@@ -1,36 +1,28 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 import { getIn } from "icepick";
-import AuthButton from "../AuthButton";
-import { AuthError, AuthErrorContainer } from "./GoogleButton.styled";
+import { TextLink } from "../AuthButton/AuthButton.styled";
 
-export type AttachCallback = (
-  element: HTMLElement,
-  onLogin: (token: string) => void,
-  onError: (error: string) => void,
-) => void;
+import { AuthError, AuthErrorContainer } from "./GoogleButton.styled";
+import { GoogleLogin } from "@react-oauth/google";
+import MetabaseSettings from "metabase/lib/settings";
 
 export interface GoogleButtonProps {
   isCard?: boolean;
   redirectUrl?: string;
-  onAttach: AttachCallback;
   onLogin: (token: string, redirectUrl?: string) => void;
 }
 
-const GoogleButton = ({
-  isCard,
-  redirectUrl,
-  onAttach,
-  onLogin,
-}: GoogleButtonProps) => {
-  const ref = useRef<HTMLDivElement>(null);
+const GoogleButton = ({ isCard, redirectUrl, onLogin }: GoogleButtonProps) => {
   const [errors, setErrors] = useState<string[]>([]);
 
+  const siteLocale = MetabaseSettings.get("site-locale");
+
   const handleLogin = useCallback(
-    async (token: string) => {
+    async (response: string) => {
       try {
         setErrors([]);
-        await onLogin(token, redirectUrl);
+        await onLogin(response, redirectUrl);
       } catch (error) {
         setErrors(getErrors(error));
       }
@@ -42,15 +34,28 @@ const GoogleButton = ({
     setErrors([error]);
   }, []);
 
-  useEffect(() => {
-    ref.current && onAttach(ref.current, handleLogin, handleError);
-  }, [onAttach, handleLogin, handleError]);
-
   return (
-    <div ref={ref}>
-      <AuthButton icon="google" isCard={isCard}>
-        {t`Sign in with Google`}
-      </AuthButton>
+    <div>
+      {isCard ? (
+        <GoogleLogin
+          useOneTap
+          onSuccess={({ credential }) => {
+            handleLogin(credential ?? "");
+          }}
+          onError={() =>
+            handleError(
+              t`There was an issue signing in with Google. Please contact an administrator.`,
+            )
+          }
+          locale={siteLocale}
+          width="366"
+        />
+      ) : (
+        <TextLink to={"#"} onClick={() => null}>
+          {t`Sign in with Google`}
+        </TextLink>
+      )}
+
       {errors.length > 0 && (
         <AuthErrorContainer>
           {errors.map((error, index) => (

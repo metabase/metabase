@@ -6,6 +6,7 @@
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE POST PUT]]
             [metabase.api.common :as api]
+            [metabase.api.common.validation :as validation]
             [metabase.email :as email]
             [metabase.models.setting :as setting]
             [metabase.util :as u]
@@ -18,7 +19,9 @@
    :email-smtp-password :pass
    :email-smtp-port     :port
    :email-smtp-security :security
-   :email-from-address  :sender})
+   :email-from-name     :sender-name
+   :email-from-address  :sender
+   :email-reply-to      :reply-to})
 
 (defn- humanize-error-messages
   "Convert raw error message responses from our email functions into our normal api error response structure."
@@ -28,9 +31,16 @@
                                 :email-smtp-port "Wrong host or port"}}
           creds-error {:errors {:email-smtp-username "Wrong username or password"
                                 :email-smtp-password "Wrong username or password"}}
-          message     (str/join ": " (map ex-message (u/full-exception-chain error)))]
-          (log/warn "Problem connecting to mail server:" message)
-      (condp re-find message
+          exceptions  (u/full-exception-chain error)
+          message     (str/join ": " (map ex-message exceptions))
+          match-error (fn match-error [regex-or-exception-class [message exceptions]]
+                        (cond (instance? java.util.regex.Pattern regex-or-exception-class)
+                              (re-find regex-or-exception-class message)
+
+                              (class? regex-or-exception-class)
+                              (some (partial instance? regex-or-exception-class) exceptions)))]
+      (log/warn "Problem connecting to mail server:" message)
+      (condp match-error [message exceptions]
         ;; bad host = "Unknown SMTP host: foobar"
         #"^Unknown SMTP host:.*$"
         conn-error
@@ -51,8 +61,10 @@
         #"^435 4.7.8 Error: authentication failed:.*$"
         creds-error
 
+        javax.mail.AuthenticationFailedException
+        creds-error
+
         ;; everything else :(
-        #".*"
         {:message (str "Sorry, something went wrong. Please try again. Error: " message)}))))
 
 (defn- humanize-email-corrections
@@ -66,40 +78,47 @@
              (str/upper-case v))])))
 
 (api/defendpoint PUT "/"
-  "Update multiple email Settings. You must be a superuser to do this."
+  "Update multiple email Settings. You must be a superuser or have `setting` permission to do this."
   [:as {settings :body}]
   {settings su/Map}
-  (api/check-superuser)
-  (let [settings (-> settings
-                     (select-keys (keys mb-to-smtp-settings))
-                     (set/rename-keys mb-to-smtp-settings))
-        settings (cond-> settings
-                   (string? (:port settings))     (update :port #(Long/parseLong ^String %))
-                   (string? (:security settings)) (update :security keyword))
+  (validation/check-has-application-permission :setting)
+  ;; the frontend has access to an obfuscated version of the password. Watch for whether it sent us a new password or
+  ;; the obfuscated version
+  (let [obfuscated? (and (:email-smtp-password settings) (email/email-smtp-password)
+                         (= (:email-smtp-password settings) (setting/obfuscate-value (email/email-smtp-password))))
+        settings    (-> (cond-> settings
+                          obfuscated?
+                          (assoc :email-smtp-password (email/email-smtp-password)))
+                        (select-keys (keys mb-to-smtp-settings))
+                        (set/rename-keys mb-to-smtp-settings))
+        settings    (cond-> settings
+                      (string? (:port settings))     (update :port #(Long/parseLong ^String %))
+                      (string? (:security settings)) (update :security keyword))
         response (email/test-smtp-connection settings)]
     (if-not (::email/error response)
       ;; test was good, save our settings
-      (assoc (setting/set-many! (set/rename-keys response (set/map-invert mb-to-smtp-settings)))
-             :with-corrections  (let [[_ corrections] (data/diff settings response)]
-                                  (-> corrections
-                                      (set/rename-keys (set/map-invert mb-to-smtp-settings))
-                                      humanize-email-corrections)))
+      (cond-> (assoc (setting/set-many! (set/rename-keys response (set/map-invert mb-to-smtp-settings)))
+                     :with-corrections  (let [[_ corrections] (data/diff settings response)]
+                                          (-> corrections
+                                              (set/rename-keys (set/map-invert mb-to-smtp-settings))
+                                              humanize-email-corrections)))
+        obfuscated? (update :email-smtp-password setting/obfuscate-value))
       ;; test failed, return response message
       {:status 400
        :body   (humanize-error-messages response)})))
 
 (api/defendpoint DELETE "/"
-  "Clear all email related settings. You must be a superuser to ddo this"
+  "Clear all email related settings. You must be a superuser or have `setting` permission to do this."
   []
-  (api/check-superuser)
+  (validation/check-has-application-permission :setting)
   (setting/set-many! (zipmap (keys mb-to-smtp-settings) (repeat nil)))
   api/generic-204-no-content)
 
 (api/defendpoint POST "/test"
-  "Send a test email using the SMTP Settings. You must be a superuser to do this. Returns `{:ok true}` if we were able
-  to send the message successfully, otherwise a standard 400 error response."
+  "Send a test email using the SMTP Settings. You must be a superuser or have `setting` permission to do this.
+  Returns `{:ok true}` if we were able to send the message successfully, otherwise a standard 400 error response."
   []
-  (api/check-superuser)
+  (validation/check-has-application-permission :setting)
   (let [response (email/send-message!
                    :subject      "Metabase Test Email"
                    :recipients   [(:email @api/*current-user*)]

@@ -5,7 +5,7 @@
             [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.config :as config]
-            [metabase.server.protocols :as protocols]
+            [metabase.server.protocols :as server.protocols]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [ring.adapter.jetty :as ring-jetty]
@@ -56,7 +56,7 @@
   ^Server []
   @instance*)
 
-(defn- ^AbstractHandler async-proxy-handler [handler timeout]
+(defn- async-proxy-handler ^AbstractHandler [handler timeout]
   (proxy [AbstractHandler] []
     (handle [_ ^Request base-request ^HttpServletRequest request ^HttpServletResponse response]
       (let [^AsyncContext context (doto (.startAsync request)
@@ -73,11 +73,11 @@
           (handler
            request-map
            (fn [response-map]
-             (protocols/respond (:body response-map) {:request       request
-                                                      :request-map   request-map
-                                                      :async-context context
-                                                      :response      response
-                                                      :response-map  response-map}))
+             (server.protocols/respond (:body response-map) {:request       request
+                                                             :request-map   request-map
+                                                             :async-context context
+                                                             :response      response
+                                                             :response-map  response-map}))
            raise)
           (catch Throwable e
             (log/error e (trs "Unexpected Exception in API request handler"))

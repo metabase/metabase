@@ -1,4 +1,5 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore } from "__support__/e2e/helpers";
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 describe("scenarios > admin > troubleshooting > tasks", () => {
   beforeEach(() => {
@@ -11,7 +12,7 @@ describe("scenarios > admin > troubleshooting > tasks", () => {
     // Since this happens async, that number may vary but it should always be greater than 50 [1] and less than 100 [2]
     // Note: each sync generates 6 tasks and we start with 12 tasks already for the testing sample database
     for (let i = 0; i < 13; i++) {
-      cy.request("POST", "/api/database/1/sync_schema");
+      cy.request("POST", `/api/database/${SAMPLE_DB_ID}/sync_schema`);
     }
     cy.server();
     cy.route("GET", "/api/task?limit=50&offset=0").as("tasks");
@@ -41,13 +42,9 @@ describe("scenarios > admin > troubleshooting > tasks", () => {
 });
 
 function shouldNotBeDisabled(selector) {
-  cy.get(selector)
-    .parent()
-    .should("not.have.attr", "disabled");
+  cy.get(selector).parent().should("not.have.attr", "disabled");
 }
 
 function shouldBeDisabled(selector) {
-  cy.get(selector)
-    .parent()
-    .should("have.attr", "disabled");
+  cy.get(selector).parent().should("have.attr", "disabled");
 }

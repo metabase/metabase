@@ -1,12 +1,10 @@
 (ns metabase.api.common-test
   (:require [clojure.test :refer :all]
-            [metabase.api.common :as api :refer :all]
-            [metabase.api.common.internal :refer :all]
+            [metabase.api.common :as api]
+            [metabase.api.common.internal :as api.internal]
             [metabase.server.middleware.exceptions :as mw.exceptions]
             [metabase.server.middleware.misc :as mw.misc]
-            [metabase.server.middleware.security :as mw.security]
-            [metabase.test.data :refer :all]
-            [metabase.util.schema :as su]))
+            [metabase.server.middleware.security :as mw.security]))
 
 ;;; TESTS FOR CHECK (ETC)
 
@@ -36,19 +34,19 @@
    identity
    (fn [e] (throw e))))
 
-(defn- my-mock-api-fn []
+(defn my-mock-api-fn []
   (mock-api-fn
    (fn [_]
-     (check-404 @*current-user*)
+     (api/check-404 @api/*current-user*)
      {:status 200
-      :body   @*current-user*})))
+      :body   @api/*current-user*})))
 
-(deftest check-404-test
+(deftest ^:parallel check-404-test
   (testing "check that `check-404` doesn't throw an exception if `test` is true"
     (is (= {:status  200
             :body    "Cam Saul"
             :headers {"Content-Type" "text/plain"}}
-           (binding [*current-user* (atom "Cam Saul")]
+           (binding [api/*current-user* (atom "Cam Saul")]
              (my-mock-api-fn)))))
 
   (testing "check that 404 is returned otherwise"
@@ -60,7 +58,7 @@
     (is (= four-oh-four
            (-> (mock-api-fn
                 (fn [_]
-                  (let-404 [user nil]
+                  (api/let-404 [user nil]
                     {:user user})))
                (update-in [:headers "Last-Modified"] string?)))))
 
@@ -69,20 +67,42 @@
            ((mw.exceptions/catch-api-exceptions
              (fn [_ respond _]
                (respond
-                (let-404 [user {:name "Cam"}]
+                (api/let-404 [user {:name "Cam"}]
                   {:user user}))))
             nil
             identity
             (fn [e] (throw e)))))))
 
-(deftest defendpoint-test
+(deftest ^:parallel parse-defendpoint-args-test
+  (is (= {:method      'POST
+          :route       ["/:id/dimension" :id "[0-9]+"]
+          :docstr      String
+          :args        '[id :as {{dimension-type :type, dimension-name :name} :body}]
+          :arg->schema '{dimension-type schema.core/Int, dimension-name schema.core/Str}
+          :fn-name     'POST_:id_dimension}
+         (-> (#'api/parse-defendpoint-args
+              '[POST "/:id/dimension"
+                "Sets the dimension for the given object with ID."
+                [id :as {{dimension-type :type, dimension-name :name} :body}]
+                {dimension-type schema.core/Int
+                 dimension-name schema.core/Str}])
+             (update :docstr class)
+             ;; two regex patterns are not equal even if they're the exact same pattern so convert to string so we can
+             ;; compare easily.
+             (update-in [:route 2] str)))))
+
+(deftest ^:parallel defendpoint-test
   ;; replace regex `#"[0-9]+"` with str `"#[0-9]+" so expectations doesn't barf
-  (binding [*auto-parse-types* (update-in *auto-parse-types* [:int :route-param-regex] (partial str "#"))]
+  (binding [api.internal/*auto-parse-types* (update-in api.internal/*auto-parse-types* [:int :route-param-regex] (partial str "#"))]
     (is (= '(def GET_:id
-              (compojure.core/GET ["/:id" :id "#[0-9]+"] [id]
-                                  (metabase.api.common.internal/auto-parse [id]
-                                    (metabase.api.common.internal/validate-param 'id id metabase.util.schema/IntGreaterThanZero)
-                                    (metabase.api.common.internal/wrap-response-if-needed (do (select-one Card :id id))))))
-           (macroexpand `(defendpoint GET "/:id" [~'id]
-                           {~'id su/IntGreaterThanZero}
-                           (~'select-one ~'Card :id ~'id)))))))
+              (compojure.core/GET
+               ["/:id" :id "#[0-9]+"]
+               [id]
+               (metabase.api.common.internal/auto-parse [id]
+                 (metabase.api.common.internal/validate-param 'id id metabase.util.schema/IntGreaterThanZero)
+                 (metabase.api.common.internal/wrap-response-if-needed
+                  (do
+                    (select-one Card :id id))))))
+           (macroexpand '(metabase.api.common/defendpoint compojure.core/GET "/:id" [id]
+                           {id metabase.util.schema/IntGreaterThanZero}
+                           (select-one Card :id id)))))))

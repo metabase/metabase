@@ -40,7 +40,6 @@ function DimensionInfoPopover({
     <TippyPopover
       className={className}
       delay={delay}
-      interactive
       placement={placement || "left-start"}
       disabled={disabled}
       content={<WidthBoundDimensionInfo dimension={dimension} />}

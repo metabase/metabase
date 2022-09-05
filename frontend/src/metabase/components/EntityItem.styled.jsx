@@ -1,11 +1,9 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 
 import { color, darken } from "metabase/lib/colors";
-import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
-import Button from "metabase/core/components/Button";
 
 function getPinnedForeground(disabled) {
   return disabled ? darken(color("border"), 0.38) : color("accent4");
@@ -65,15 +63,6 @@ export const EntityMenuContainer = styled.div`
   align-items: center;
   color: ${color("text-medium")};
 `;
-
-export const PinButton = forwardRefToInnerRef(styled(Button)`
-  color: ${color("text-medium")};
-  border: none;
-
-  &:hover {
-    color: ${color("brand")};
-  }
-`);
 
 export const EntityItemActions = styled.div`
   display: flex;

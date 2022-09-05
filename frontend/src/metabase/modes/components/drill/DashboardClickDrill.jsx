@@ -1,15 +1,26 @@
 /* eslint-disable react/prop-types */
 import { getIn } from "icepick";
 import _ from "underscore";
+import querystring from "querystring";
 
 import Question from "metabase-lib/lib/Question";
-import { setOrUnsetParameterValues } from "metabase/dashboard/actions";
+import {
+  setOrUnsetParameterValues,
+  setParameterValue,
+  openActionParametersModal,
+  executeRowAction,
+} from "metabase/dashboard/actions";
 import {
   getDataFromClicked,
   getTargetForQueryParams,
   formatSourceForTarget,
 } from "metabase/lib/click-behavior";
 import { renderLinkURLForClick } from "metabase/lib/formatting/link";
+import * as Urls from "metabase/lib/urls";
+import {
+  getActionParameters,
+  getNotProvidedActionParameters,
+} from "metabase/writeback/utils";
 
 export default ({ question, clicked }) => {
   const settings = (clicked && clicked.settings) || {};
@@ -36,35 +47,94 @@ export default ({ question, clicked }) => {
     return [];
   }
 
-  if (type === "crossfilter") {
-    const valuesToSet = _.chain(parameterMapping)
-      .values()
-      .map(({ source, target, id }) => {
-        const value = formatSourceForTarget(source, target, {
-          data,
-          extraData,
-          clickBehavior,
-        });
-        return [id, value];
-      })
-      .value();
+  if (type === "action") {
+    const parameters = getActionParameters(parameterMapping, {
+      data,
+      extraData,
+      clickBehavior,
+    });
+    const action = extraData.actions[clickBehavior.action];
+    const missingParameters = getNotProvidedActionParameters(
+      action,
+      parameters,
+    );
+    const emitterId = clickBehavior.emitter_id || clickBehavior.id;
 
-    behavior = { action: () => setOrUnsetParameterValues(valuesToSet) };
+    if (missingParameters.length > 0) {
+      behavior = {
+        action: () =>
+          openActionParametersModal({
+            emitterId: emitterId,
+            props: {
+              missingParameters,
+              onSubmit: filledMissingParameters =>
+                executeRowAction({
+                  dashboard: extraData.dashboard,
+                  emitterId: emitterId,
+                  parameters: {
+                    ...parameters,
+                    ...filledMissingParameters,
+                  },
+                }),
+            },
+          }),
+      };
+    } else {
+      behavior = {
+        action: () =>
+          executeRowAction({
+            dashboard: extraData.dashboard,
+            emitterId: emitterId,
+            parameters,
+          }),
+      };
+    }
+  } else if (type === "crossfilter") {
+    const parameterIdValuePairs = getParameterIdValuePairs(parameterMapping, {
+      data,
+      extraData,
+      clickBehavior,
+    });
+
+    behavior = {
+      action: () => setOrUnsetParameterValues(parameterIdValuePairs),
+    };
   } else if (type === "link") {
     if (linkType === "url") {
       behavior = {
+        ignoreSiteUrl: true,
         url: () =>
           renderLinkURLForClick(clickBehavior.linkTemplate || "", data),
       };
     } else if (linkType === "dashboard") {
-      const url = new URL(`/dashboard/${targetId}`, location.href);
-      Object.entries(
-        getQueryParams(parameterMapping, { data, extraData, clickBehavior }),
-      ).forEach(([k, v]) => url.searchParams.append(k, v));
+      if (extraData.dashboard.id === targetId) {
+        const parameterIdValuePairs = getParameterIdValuePairs(
+          parameterMapping,
+          { data, extraData, clickBehavior },
+        );
 
-      behavior = { url: () => url.toString() };
+        behavior = {
+          action: () => {
+            return dispatch =>
+              parameterIdValuePairs.forEach(([id, value]) => {
+                setParameterValue(id, value)(dispatch);
+              });
+          },
+        };
+      } else {
+        const queryParams = getParameterValuesBySlug(parameterMapping, {
+          data,
+          extraData,
+          clickBehavior,
+        });
+
+        const path = Urls.dashboard({ id: targetId });
+        const url = `${path}?${querystring.stringify(queryParams)}`;
+
+        behavior = { url: () => url };
+      }
     } else if (linkType === "question" && extraData && extraData.questions) {
-      const queryParams = getQueryParams(parameterMapping, {
+      const queryParams = getParameterValuesBySlug(parameterMapping, {
         data,
         extraData,
         clickBehavior,
@@ -87,9 +157,7 @@ export default ({ question, clicked }) => {
 
       const url = targetQuestion.isStructured()
         ? targetQuestion.getUrlWithParameters(parameters, queryParams)
-        : `${targetQuestion.getUrl()}?${new URLSearchParams(
-            queryParams,
-          ).toString()}`;
+        : `${targetQuestion.getUrl()}?${querystring.stringify(queryParams)}`;
 
       behavior = { url: () => url };
     }
@@ -104,7 +172,28 @@ export default ({ question, clicked }) => {
   ];
 };
 
-function getQueryParams(parameterMapping, { data, extraData, clickBehavior }) {
+function getParameterIdValuePairs(
+  parameterMapping,
+  { data, extraData, clickBehavior },
+) {
+  const value = _.values(parameterMapping).map(({ source, target, id }) => {
+    return [
+      id,
+      formatSourceForTarget(source, target, {
+        data,
+        extraData,
+        clickBehavior,
+      }),
+    ];
+  });
+
+  return value;
+}
+
+function getParameterValuesBySlug(
+  parameterMapping,
+  { data, extraData, clickBehavior },
+) {
   return _.chain(parameterMapping)
     .values()
     .map(({ source, target }) => [

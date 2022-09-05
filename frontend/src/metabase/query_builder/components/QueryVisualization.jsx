@@ -59,11 +59,17 @@ export default class QueryVisualization extends Component {
       isResultDirty,
       isNativeEditorOpen,
       result,
+      loadingMessage,
     } = this.props;
 
     return (
       <div className={cx(className, "relative stacking-context")}>
-        {isRunning ? <VisualizationRunningState className="spread z2" /> : null}
+        {isRunning ? (
+          <VisualizationRunningState
+            className="spread z2"
+            loadingMessage={loadingMessage}
+          />
+        ) : null}
         <VisualizationDirtyState
           {...this.props}
           hidden={!isResultDirty || isRunning || isNativeEditorOpen}
@@ -112,7 +118,7 @@ export const VisualizationEmptyState = ({ className }) => (
   </div>
 );
 
-export const VisualizationRunningState = ({ className }) => (
+export const VisualizationRunningState = ({ className, loadingMessage }) => (
   <div
     className={cx(
       className,
@@ -121,7 +127,7 @@ export const VisualizationRunningState = ({ className }) => (
   >
     <LoadingSpinner />
     <h2 className="Loading-message text-brand text-uppercase my3">
-      {t`Doing science`}...
+      {loadingMessage}
     </h2>
   </div>
 );

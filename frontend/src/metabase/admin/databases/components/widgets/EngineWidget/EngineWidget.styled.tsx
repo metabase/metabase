@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import { color, lighten } from "metabase/lib/colors";
 import { breakpointMinSmall } from "metabase/styled-components/theme";
 import Button from "metabase/core/components/Button";
@@ -38,8 +38,8 @@ export const EngineCardRoot = styled.li<EngineCardRootProps>`
   outline: ${props => (props.isActive ? `2px solid ${color("focus")}` : "")};
 
   &:hover {
-    border-color: ${color("brand")};
-    background-color: ${lighten("brand", 0.6)};
+    border-color: ${() => color("brand")};
+    background-color: ${() => lighten("brand", 0.6)};
   }
 `;
 

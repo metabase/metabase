@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import { connect } from "react-redux";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
@@ -19,6 +20,7 @@ import {
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 import { performDefaultAction } from "metabase/visualizations/lib/action";
+import { getFont } from "metabase/styled-components/selectors";
 
 import Utils from "metabase/lib/utils";
 import { datasetContainsNoResults } from "metabase/lib/dataset";
@@ -39,11 +41,12 @@ export const ERROR_MESSAGE_PERMISSION = t`Sorry, you don't have permission to se
 
 import Question from "metabase-lib/lib/Question";
 import Mode from "metabase-lib/lib/Mode";
-import { memoize } from "metabase-lib/lib/utils";
+import { memoizeClass } from "metabase-lib/lib/utils";
+import { VisualizationSlowSpinner } from "./Visualization.styled";
 
 // NOTE: pass `CardVisualization` so that we don't include header when providing size to child element
-@ExplicitSize({ selector: ".CardVisualization" })
-export default class Visualization extends React.PureComponent {
+
+class Visualization extends React.PureComponent {
   constructor(props) {
     super(props);
 
@@ -79,7 +82,12 @@ export default class Visualization extends React.PureComponent {
   UNSAFE_componentWillReceiveProps(newProps) {
     if (
       !isSameSeries(newProps.rawSeries, this.props.rawSeries) ||
-      !Utils.equals(newProps.settings, this.props.settings)
+      !Utils.equals(newProps.settings, this.props.settings) ||
+      !Utils.equals(newProps.timelineEvents, this.props.timelineEvents) ||
+      !Utils.equals(
+        newProps.selectedTimelineEventIds,
+        this.props.selectedTimelineEventIds,
+      )
     ) {
       this.transform(newProps);
     }
@@ -151,6 +159,17 @@ export default class Visualization extends React.PureComponent {
     });
   }
 
+  isLoading = series => {
+    return !(
+      series &&
+      series.length > 0 &&
+      _.every(
+        series,
+        s => s.data || _.isObject(s.card.visualization_settings.virtual_card),
+      )
+    );
+  };
+
   handleHoverChange = hovered => {
     if (hovered) {
       const { yAxisSplit } = this.state;
@@ -178,7 +197,6 @@ export default class Visualization extends React.PureComponent {
     }
   };
 
-  @memoize
   _getQuestionForCardCached(metadata, card) {
     if (!metadata || !card) {
       return;
@@ -248,12 +266,15 @@ export default class Visualization extends React.PureComponent {
       return;
     }
 
-    if (
-      performDefaultAction(this.getClickActions(clicked), {
+    const didPerformDefaultAction = performDefaultAction(
+      this.getClickActions(clicked),
+      {
         dispatch: this.props.dispatch,
         onChangeCardAndRun: this.handleOnChangeCardAndRun,
-      })
-    ) {
+      },
+    );
+
+    if (didPerformDefaultAction) {
       return;
     }
 
@@ -264,13 +285,13 @@ export default class Visualization extends React.PureComponent {
   };
 
   // Add the underlying card of current series to onChangeCardAndRun if available
-  handleOnChangeCardAndRun = ({ nextCard, seriesIndex }) => {
+  handleOnChangeCardAndRun = ({ nextCard, seriesIndex, objectId }) => {
     const { series, clicked } = this.state;
 
     const index = seriesIndex || (clicked && clicked.seriesIndex) || 0;
     const previousCard = series && series[index] && series[index].card;
 
-    this.props.onChangeCardAndRun({ nextCard, previousCard });
+    this.props.onChangeCardAndRun({ nextCard, previousCard, objectId });
   };
 
   onRender = ({ yAxisSplit, warnings = [] } = {}) => {
@@ -292,6 +313,7 @@ export default class Visualization extends React.PureComponent {
     const {
       actionButtons,
       className,
+      dashcard,
       showTitle,
       isDashboard,
       width,
@@ -299,6 +321,7 @@ export default class Visualization extends React.PureComponent {
       headerIcon,
       errorIcon,
       isSlow,
+      isMobile,
       expectedDuration,
       replacementContent,
       onOpenChartSettings,
@@ -317,16 +340,9 @@ export default class Visualization extends React.PureComponent {
     }
 
     let error = this.props.error || this.state.error;
-    const loading = !(
-      series &&
-      series.length > 0 &&
-      _.every(
-        series,
-        s => s.data || _.isObject(s.card.visualization_settings.virtual_card),
-      )
-    );
     let noResults = false;
     let isPlaceholder = false;
+    const loading = this.isLoading(series);
 
     // don't try to load settings unless data is loaded
     let settings = this.props.settings || {};
@@ -383,12 +399,10 @@ export default class Visualization extends React.PureComponent {
     const extra = (
       <span className="flex align-center">
         {isSlow && !loading && (
-          <LoadingSpinner
+          <VisualizationSlowSpinner
+            className="Visualization-slow-spinner"
             size={18}
-            className={cx(
-              "Visualization-slow-spinner",
-              isSlow === "usually-slow" ? "text-gold" : "text-slate",
-            )}
+            isUsuallySlow={isSlow === "usually-slow"}
           />
         )}
         {actionButtons}
@@ -430,7 +444,7 @@ export default class Visualization extends React.PureComponent {
       (showTitle &&
         hasHeaderContent &&
         (loading || error || noResults || isHeaderEnabled)) ||
-      replacementContent;
+      (replacementContent && (dashcard.sizeY !== 1 || isMobile));
 
     return (
       <div
@@ -463,9 +477,9 @@ export default class Visualization extends React.PureComponent {
             }
           >
             <Tooltip tooltip={t`No results!`} isEnabled={small}>
-              <img src={NoResults} />
+              <img data-testid="no-results-image" src={NoResults} />
             </Tooltip>
-            {!small && <span className="h4 text-bold">No results!</span>}
+            {!small && <span className="h4 text-bold">{t`No results!`}</span>}
           </div>
         ) : error ? (
           <div
@@ -543,3 +557,16 @@ export default class Visualization extends React.PureComponent {
     );
   }
 }
+
+const mapStateToProps = state => ({
+  fontFamily: getFont(state),
+});
+
+export default _.compose(
+  ExplicitSize({
+    selector: ".CardVisualization",
+    refreshMode: props => (props.isVisible ? "throttle" : "debounce"),
+  }),
+  connect(mapStateToProps),
+  memoizeClass("_getQuestionForCardCached"),
+)(Visualization);

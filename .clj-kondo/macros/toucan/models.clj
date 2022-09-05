@@ -1,7 +1,5 @@
-(ns toucan.models)
+(ns macros.toucan.models)
 
-(defmacro defmodel [model-name & ks]
-  `(do (clojure.core/defrecord ~model-name ~(vec (map (comp symbol name) ks)))
-       (clojure.core/defrecord
-           ~(symbol (str model-name "Instance"))
-           ~(vec (map (comp symbol name) ks)))))
+(defmacro defmodel [model-name & _args]
+  `(do
+     (def ~model-name "Docstring." nil)))

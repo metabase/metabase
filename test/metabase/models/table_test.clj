@@ -1,6 +1,8 @@
 (ns metabase.models.table-test
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.test :refer :all]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.models.table :as table :refer [Table]]
             [metabase.sync :as sync]
             [metabase.test :as mt]
@@ -66,3 +68,12 @@
         (mt/with-temp Table [{table-id :id} {:schema schema-name}]
           (is (= schema-name
                  (db/select-one-field :schema Table :id table-id))))))))
+
+(deftest identity-hash-test
+  (testing "Table hashes are composed of the schema name, table name and the database's identity-hash"
+    (mt/with-temp* [Database [db    {:name "field-db" :engine :h2}]
+                    Table    [table {:schema "PUBLIC" :name "widget" :db_id (:id db)}]]
+      (let [db-hash (serdes.hash/identity-hash db)]
+        (is (= "0395fe49"
+               (serdes.hash/raw-hash ["PUBLIC" "widget" db-hash])
+               (serdes.hash/identity-hash table)))))))

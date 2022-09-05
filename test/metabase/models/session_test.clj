@@ -4,7 +4,7 @@
             [metabase.server.middleware.misc :as mw.misc]
             [metabase.test :as mt]
             [toucan.db :as db]
-            [toucan.models :as t.models]))
+            [toucan.models :as models]))
 
 (def ^:private test-uuid #uuid "092797dd-a82a-4748-b393-697d7bb9ab65")
 
@@ -13,7 +13,7 @@
 (defn- new-session []
   (try
     (db/insert! Session {:id (str test-uuid), :user_id (mt/user->id :trashbird)})
-    (-> (Session (str test-uuid)) t.models/post-insert (dissoc :created_at))
+    (-> (db/select-one Session :id (str test-uuid)) models/post-insert (dissoc :created_at))
     (finally
       (db/delete! Session :id (str test-uuid)))))
 

@@ -5,10 +5,11 @@
             [metabase.api.common :as api]
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
-            [metabase.models :refer [Database]]
-            [metabase.models.database :as mdb]
+            [metabase.models :refer [Database Permissions]]
+            [metabase.models.database :as database]
             [metabase.models.permissions :as perms]
             [metabase.models.secret :as secret :refer [Secret]]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.models.user :as user]
             [metabase.server.middleware.session :as mw.session]
             [metabase.task :as task]
@@ -32,15 +33,20 @@
     (mt/with-temp Database [db]
       (is (= true
              (perms/set-has-full-permissions? (user/permissions-set (mt/user->id :rasta))
-                                              (perms/data-perms-path db)))))))
+                                              (perms/data-perms-path db))))
+      (is (= true
+             (perms/set-has-full-permissions? (user/permissions-set (mt/user->id :rasta))
+                                              (perms/feature-perms-path :download :full db))))))
+
+  (testing "After deleting a Database, no permissions for the DB should still exist"
+    (mt/with-temp Database [{db-id :id}]
+      (db/delete! Database :id db-id)
+      (is (= [] (db/select Permissions :object [:like (str "%" (perms/data-perms-path db-id) "%")]))))))
 
 (deftest tasks-test
   (testing "Sync tasks should get scheduled for a newly created Database"
     (mt/with-temp-scheduler
-      ;; temporarily disable the `maybe-update-db-schedules` behavior that normally happens when the sync databases
-      ;; task gets initialized so we don't end up getting all of our database sync schedules randomized.
-      (with-redefs [task.sync-databases/maybe-update-db-schedules identity]
-        (task/init! ::task.sync-databases/SyncDatabases))
+      (task/init! ::task.sync-databases/SyncDatabases)
       (mt/with-temp Database [{db-id :id}]
         (is (schema= {:description         (s/eq (format "sync-and-analyze Database %d" db-id))
                       :key                 (s/eq (format "metabase.task.sync-and-analyze.trigger.%d" db-id))
@@ -62,7 +68,7 @@
   (let [encode-decode (fn [obj] (decode (encode obj)))
         project-id    "random-project-id" ; the actual value here doesn't seem to matter
         ;; this is trimmed for the parts we care about in the test
-        pg-db         (mdb/map->DatabaseInstance
+        pg-db         (database/map->DatabaseInstance
                        {:description nil
                         :name        "testpg"
                         :details     {:additional-options            nil
@@ -80,7 +86,7 @@
                                       :tunnel-user                   "a-tunnel-user"
                                       :tunnel-private-key-passphrase "Password1234"}
                         :id          3})
-        bq-db         (mdb/map->DatabaseInstance
+        bq-db         (database/map->DatabaseInstance
                        {:description nil
                         :name        "testbq"
                         :details     {:use-service-account  nil
@@ -159,16 +165,16 @@
            (driver.u/sensitive-fields :test-sensitive-driver))))
   (testing "get-sensitive-fields-for-db returns default fields for null or empty database map"
     (is (= driver.u/default-sensitive-fields
-           (mdb/sensitive-fields-for-db nil)))
+           (database/sensitive-fields-for-db nil)))
     (is (= driver.u/default-sensitive-fields
-           (mdb/sensitive-fields-for-db {})))))
+           (database/sensitive-fields-for-db {})))))
 
 (deftest secret-db-details-integration-test
   (testing "manipulating secret values in db-details works correctly"
     (mt/with-driver :secret-test-driver
       (binding [api/*current-user-id* (mt/user->id :crowberto)]
         (let [secret-ids  (atom #{}) ; keep track of all secret IDs created with the temp database
-              check-db-fn (fn [{:keys [details] :as database} exp-secret]
+              check-db-fn (fn [{:keys [details] :as _database} exp-secret]
                             (when (not= :file-path (:source exp-secret))
                               (is (not (contains? details :password-value))
                                   "password-value was removed from details when not a file-path"))
@@ -205,7 +211,7 @@
                                        :value   "new-password"})
                 (testing " updating the value works as expected"
                   (db/update! Database id :details (assoc details :password-path  "/path/to/my/password-file"))
-                  (check-db-fn (Database id) {:kind    :password
+                  (check-db-fn (db/select-one Database :id id) {:kind    :password
                                               :source  :file-path
                                               :version 2
                                               :value   "/path/to/my/password-file"}))))
@@ -216,6 +222,20 @@
                   (is (nil? (db/select-one Secret :id secret-id))
                       (format "Secret ID %d was not removed from the app DB" secret-id)))))))))))
 
+(deftest user-may-not-update-sample-database-test
+  (mt/with-temp Database [{:keys [id] :as _sample-database} {:engine    :h2
+                                                             :is_sample true
+                                                             :name      "Sample Database"
+                                                             :details   {:db "./resources/sample-database.db;USER=GUEST;PASSWORD=guest"}}]
+    (testing " updating the engine of a sample database is not allowed"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"The engine on a sample database cannot be changed."
+           (db/update! Database id :engine :sqlite))))
+    (testing " updating other attributes of a sample database is allowed"
+      (db/update! Database id :name "My New Name")
+      (is (= "My New Name" (db/select-one-field :name Database :id id))))))
+
 (driver/register! ::test, :abstract? true)
 
 (deftest preserve-driver-namespaces-test
@@ -223,3 +243,11 @@
     (mt/with-temp Database [{db-id :id} {:engine (u/qualified-name ::test)}]
       (is (= ::test
              (db/select-one-field :engine Database :id db-id))))))
+
+(deftest identity-hash-test
+  (testing "Database hashes are composed of the name and engine"
+    (mt/with-temp Database [db {:engine :mysql :name "hashmysql"}]
+      (is (= (Integer/toHexString (hash ["hashmysql" :mysql]))
+             (serdes.hash/identity-hash db)))
+      (is (= "b6f1a9e8"
+             (serdes.hash/identity-hash db))))))

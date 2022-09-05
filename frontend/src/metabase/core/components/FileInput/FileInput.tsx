@@ -40,7 +40,7 @@ const FileInput = forwardRef(function FileInput(
   );
 
   return (
-    <InputRoot innerRef={ref as any} {...props}>
+    <InputRoot ref={ref} {...props}>
       <InputField
         type="file"
         name={name}

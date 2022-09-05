@@ -1,7 +1,7 @@
 import React from "react";
 import { t, jt } from "ttag";
 import { connect } from "react-redux";
-import moment from "moment";
+import moment from "moment-timezone";
 import { showLicenseAcceptedToast } from "metabase-enterprise/license/actions";
 import {
   TokenStatus,
@@ -68,9 +68,13 @@ const LicenseAndBillingSettings = ({
   settings,
   showLicenseAcceptedToast,
 }: LicenseAndBillingSettingsProps) => {
-  const { value: token, is_env_setting, env_name } =
-    settingValues?.find(setting => setting.key === "premium-embedding-token") ??
-    {};
+  const {
+    value: token,
+    is_env_setting,
+    env_name,
+  } = settingValues?.find(
+    setting => setting.key === "premium-embedding-token",
+  ) ?? {};
 
   const { isLoading, error, tokenStatus, updateToken, isUpdating } = useLicense(
     showLicenseAcceptedToast,
@@ -92,9 +96,8 @@ const LicenseAndBillingSettings = ({
   const isStoreManagedBilling = tokenStatus?.features?.includes(
     STORE_MANAGED_FEATURE_KEY,
   );
-  const shouldShowLicenseInput = !tokenStatus?.features?.includes(
-    HOSTING_FEATURE_KEY,
-  );
+  const shouldShowLicenseInput =
+    !tokenStatus?.features?.includes(HOSTING_FEATURE_KEY);
 
   const shouldUpsell = !tokenStatus?.features?.includes(NO_UPSELL_FEATURE_HEY);
 

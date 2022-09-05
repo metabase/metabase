@@ -3,145 +3,35 @@ import {
   popover,
   openOrdersTable,
   remapDisplayValueToFK,
+  visitQuestion,
   visitQuestionAdhoc,
   visualize,
   getDimensionByName,
-} from "__support__/e2e/cypress";
+  summarize,
+  filter,
+  filterField,
+} from "__support__/e2e/helpers";
 
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE } = SAMPLE_DATABASE;
 
-describe("scenarios > question > nested (metabase#12568)", () => {
-  beforeEach(() => {
-    restore();
-    cy.signInAsAdmin();
-
-    // Create a simple question of orders by week
-    cy.createQuestion({
-      name: "GH_12568: Simple",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
-      },
-      display: "line",
-    }).then(({ body }) => {
-      cy.intercept("POST", `/api/card/${body.id}/query`).as("cardMetadata");
-
-      cy.visit(`/question/${body.id}`);
-      // We have to wait for the metadata to load
-      cy.wait("@cardMetadata");
-    });
-
-    // Create a native question of orders by day
-    cy.createNativeQuestion({
-      name: "GH_12568: SQL",
-      native: {
-        query:
-          "SELECT date_trunc('day', CREATED_AT) as date, COUNT(*) as count FROM ORDERS GROUP BY date_trunc('day', CREATED_AT)",
-      },
-      display: "scalar",
-    }).then(({ body }) => {
-      cy.intercept("POST", `/api/card/${body.id}/query`).as("nativeMetadata");
-
-      cy.visit(`/question/${body.id}`);
-      // We have to wait for the metadata to load
-      cy.wait("@nativeMetadata");
-    });
-
-    // [quarantine] The whole CI was timing out
-    // Create a complex native question
-    // cy.createNativeQuestion({
-    //   name: "GH_12568: Complex SQL",
-    //   native: {
-    //     query: `WITH tmp_user_order_dates as (
-    //         SELECT
-    //           o.USER_ID,
-    //           o.CREATED_AT,
-    //           o.QUANTITY
-    //         FROM
-    //           ORDERS o
-    //       ),
-
-    //       tmp_prior_orders_by_date as (
-    //         select
-    //             tbod.USER_ID,
-    //             tbod.CREATED_AT,
-    //             tbod.QUANTITY,
-    //             (select count(*) from tmp_user_order_dates tbod2 where tbod2.USER_ID = tbod.USER_ID and tbod2.CREATED_AT < tbod.CREATED_AT ) as PRIOR_ORDERS
-    //         from tmp_user_order_dates tbod
-    //       )
-
-    //       select
-    //         date_trunc('day', tpobd.CREATED_AT) as "Date",
-    //         case when tpobd.PRIOR_ORDERS > 0 then 'Return' else 'New' end as "Customer Type",
-    //         sum(QUANTITY) as "Items Sold"
-    //       from tmp_prior_orders_by_date tpobd
-    //       group by date_trunc('day', tpobd.CREATED_AT), "Customer Type"
-    //       order by date_trunc('day', tpobd.CREATED_AT) asc`,
-    //   },
-    //   display: "scalar",
-    // });
-  });
-
-  it("should allow Distribution on a Saved Simple Question", () => {
-    cy.visit("/question/new");
-    cy.contains("Simple question").click();
-    cy.contains("Saved Questions").click();
-    cy.contains("GH_12568: Simple").click();
-    cy.contains("Count").click();
-    cy.contains("Distribution").click();
-    cy.contains("Count by Count: Auto binned");
-    cy.get(".bar").should("have.length.of.at.least", 8);
-  });
-
-  it("should allow Sum over time on a Saved Simple Question", () => {
-    cy.visit("/question/new");
-    cy.contains("Simple question").click();
-    cy.contains("Saved Questions").click();
-    cy.contains("GH_12568: Simple").click();
-    cy.contains("Count").click();
-    cy.contains("Sum over time").click();
-    cy.contains("Sum of Count");
-    cy.get(".dot").should("have.length.of.at.least", 10);
-  });
-
-  it("should allow Distribution on a Saved SQL Question", () => {
-    cy.visit("/question/new");
-    cy.contains("Simple question").click();
-    cy.contains("Saved Questions").click();
-    cy.contains("GH_12568: SQL").click();
-    cy.contains("COUNT").click();
-    cy.contains("Distribution").click();
-    cy.contains("Count by COUNT: Auto binned");
-    cy.get(".bar").should("have.length.of.at.least", 8);
-  });
-
-  // [quarantine] The whole CI was timing out
-  it.skip("should allow Sum over time on a Saved SQL Question", () => {
-    cy.visit("/question/new");
-    cy.contains("Simple question").click();
-    cy.contains("Saved Questions").click();
-    cy.contains("GH_12568: SQL").click();
-    cy.contains("COUNT").click();
-    cy.contains("Sum over time").click();
-    cy.contains("Sum of COUNT");
-    cy.get(".dot").should("have.length.of.at.least", 10);
-  });
-
-  // [quarantine] The whole CI was timing out
-  it.skip("should allow Distribution on a Saved complex SQL Question", () => {
-    cy.visit("/question/new");
-    cy.contains("Simple question").click();
-    cy.contains("Saved Questions").click();
-    cy.contains("GH_12568: Complex SQL").click();
-    cy.contains("Items Sold").click();
-    cy.contains("Distribution").click();
-    cy.contains("Count by Items Sold: Auto binned");
-    cy.get(".bar").should("have.length.of.at.least", 10);
-  });
-});
+const ordersJoinProductsQuery = {
+  "source-table": ORDERS_ID,
+  joins: [
+    {
+      fields: "all",
+      "source-table": PRODUCTS_ID,
+      condition: [
+        "=",
+        ["field", ORDERS.PRODUCT_ID, null],
+        ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+      ],
+      alias: "Products",
+    },
+  ],
+};
 
 describe("scenarios > question > nested", () => {
   beforeEach(() => {
@@ -149,44 +39,115 @@ describe("scenarios > question > nested", () => {
     cy.signInAsAdmin();
   });
 
-  it("should handle duplicate column names in nested queries (metabase#10511)", () => {
-    cy.createQuestion({
-      name: "10511",
+  it("should allow 'Distribution' and 'Sum over time' on nested questions (metabase#12568)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
+    // Make sure it works for a GUI question
+    const guiQuestionDetails = {
+      name: "GH_12568: Simple",
       query: {
-        filter: [">", ["field", "count", { "base-type": "type/Integer" }], 5],
-        "source-query": {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [
-            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-            [
-              "field",
-              PRODUCTS.CREATED_AT,
-              { "temporal-unit": "month", "source-field": ORDERS.PRODUCT_ID },
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+      },
+      display: "line",
+    };
+
+    createNestedQuestion(
+      {
+        baseQuestionDetails: guiQuestionDetails,
+        nestedQuestionDetails: { name: "Nested GUI" },
+      },
+      { loadBaseQuestionMetadata: true },
+    );
+
+    cy.contains("Count").click();
+    cy.contains("Distribution").click();
+    cy.wait("@dataset");
+    cy.contains("Count by Count: Auto binned");
+    cy.get(".bar").should("have.length.of.at.least", 8);
+
+    // Go back to the nested question and make sure Sum over time works
+    cy.findByText("Nested GUI").click();
+
+    cy.contains("Count").click();
+    cy.contains("Sum over time").click();
+    cy.contains("Sum of Count");
+    cy.findByText("137");
+
+    // Make sure it works for a SQL question
+    const sqlQuestionDetails = {
+      name: "GH_12568: SQL",
+      native: {
+        query:
+          "SELECT date_trunc('year', CREATED_AT) as date, COUNT(*) as count FROM ORDERS GROUP BY date_trunc('year', CREATED_AT)",
+      },
+      display: "scalar",
+    };
+
+    createNestedQuestion(
+      {
+        baseQuestionDetails: sqlQuestionDetails,
+        nestedQuestionDetails: { name: "Nested SQL" },
+      },
+      { loadBaseQuestionMetadata: true },
+    );
+
+    cy.contains("COUNT").click();
+    cy.contains("Distribution").click();
+    cy.wait("@dataset");
+    cy.contains("Count by COUNT: Auto binned");
+    cy.get(".bar").should("have.length.of.at.least", 5);
+
+    cy.findByText("Nested SQL").click();
+
+    cy.contains("COUNT").click();
+    cy.contains("Sum over time").click();
+    cy.wait("@dataset");
+    cy.contains("Sum of COUNT");
+    cy.findByText("744");
+  });
+
+  it("should handle duplicate column names in nested queries (metabase#10511)", () => {
+    cy.createQuestion(
+      {
+        name: "10511",
+        query: {
+          filter: [">", ["field", "count", { "base-type": "type/Integer" }], 5],
+          "source-query": {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+              [
+                "field",
+                PRODUCTS.CREATED_AT,
+                { "temporal-unit": "month", "source-field": ORDERS.PRODUCT_ID },
+              ],
             ],
-          ],
+          },
         },
       },
-    }).then(({ body: { id: questionId } }) => {
-      cy.visit(`/question/${questionId}`);
-      cy.findByText("10511");
-      cy.findAllByText("June, 2016");
-      cy.findAllByText("13");
-    });
+      { visitQuestion: true },
+    );
+
+    cy.findByText("10511");
+    cy.findAllByText("June, 2016");
+    cy.findAllByText("13");
   });
 
   it.skip("should display granularity for aggregated fields in nested questions (metabase#13764)", () => {
     openOrdersTable({ mode: "notebook" });
+
     // add initial aggregation ("Average of Total by Order ID")
-    cy.findByText("Summarize").click();
+    summarize({ mode: "notebook" });
     cy.findByText("Average of ...").click();
     cy.findByText("Total").click();
     cy.findByText("Pick a column to group by").click();
     cy.findByText("ID").click();
+
     // add another aggregation ("Count by Average of Total")
-    cy.get(".Button")
-      .contains("Summarize")
-      .click();
+    summarize({ mode: "notebook" });
     cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();
     cy.log("Reported failing on v0.34.3 - v0.37.0.2");
@@ -196,58 +157,9 @@ describe("scenarios > question > nested", () => {
       .contains("Auto binned");
   });
 
-  it.skip("should show all filter options for a nested question (metabase#13186)", () => {
-    const nativeQuestionDetails = {
-      name: "13816_Q1",
-      native: {
-        query: "SELECT * FROM PRODUCTS",
-      },
-    };
-
-    cy.createNativeQuestion(nativeQuestionDetails).then(
-      ({ body: { id: Q1_ID } }) => {
-        cy.log("Convert Q1 to `query` and save as Q2");
-        cy.createQuestion({
-          name: "13816_Q2",
-          query: {
-            "source-table": `card__${Q1_ID}`,
-          },
-        });
-      },
-    );
-
-    cy.createDashboard().then(({ body: { id: DASBOARD_ID } }) => {
-      cy.visit(`/dashboard/${DASBOARD_ID}`);
-    });
-
-    // Add Q2 to that dashboard
-    cy.icon("pencil").click();
-    cy.icon("add")
-      .last()
-      .click();
-    cy.findByText("13816_Q2").click();
-
-    // Add filter to the dashboard...
-    cy.icon("filter").click();
-    cy.findByText("Text or Category").click();
-    cy.findByText("Dropdown").click();
-    // ...and try to connect it to the question
-    cy.findByText("Select…").click();
-
-    cy.log("Reported failing in v0.36.4 (`Category` is missing)");
-    popover().within(() => {
-      cy.findByText(/Category/i);
-      cy.findByText(/Title/i);
-      cy.findByText(/Vendor/i);
-    });
-  });
-
   it("should apply metrics including filter to the nested question (metabase#12507)", () => {
-    const METRIC_NAME = "Sum of discounts";
-
-    cy.log("Create a metric with a filter");
-    cy.request("POST", "/api/metric", {
-      name: METRIC_NAME,
+    const metric = {
+      name: "Sum of discounts",
       description: "Discounted orders.",
       table_id: ORDERS_ID,
       definition: {
@@ -255,52 +167,42 @@ describe("scenarios > question > nested", () => {
         aggregation: [["count"]],
         filter: ["!=", ["field", ORDERS.DISCOUNT, null], 0],
       },
-    }).then(({ body: { id: metricId } }) => {
-      // "capture" the original query because we will need to re-use it later in a nested question as "source-query"
-      const ORIGINAL_QUERY = {
-        "source-table": ORDERS_ID,
-        aggregation: [["metric", metricId]],
-        breakout: [
-          ["field", ORDERS.TOTAL, { binning: { strategy: "default" } }],
-        ],
-      };
+    };
 
-      // Create new question which uses previously defined metric
-      cy.createQuestion({
-        name: "12507",
-        query: ORIGINAL_QUERY,
-      }).then(({ body: { id: questionId } }) => {
-        cy.intercept("POST", `/api/card/${questionId}/query`).as("cardQuery");
-
-        cy.log("Create and visit a nested question based on the previous one");
-        visitQuestionAdhoc({
-          dataset_query: {
-            type: "query",
-            query: {
-              "source-table": `card__${questionId}`,
-              filter: [">", ["field", ORDERS.TOTAL, null], 50],
-            },
-            database: 1,
+    cy.log("Create a metric with a filter");
+    cy.request("POST", "/api/metric", metric).then(
+      ({ body: { id: metricId } }) => {
+        // "capture" the original query because we will need to re-use it later in a nested question as "source-query"
+        const baseQuestionDetails = {
+          name: "12507",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["metric", metricId]],
+            breakout: [
+              ["field", ORDERS.TOTAL, { binning: { strategy: "default" } }],
+            ],
           },
-        });
+        };
+
+        const nestedQuestionDetails = {
+          query: {
+            filter: [">", ["field", ORDERS.TOTAL, null], 50],
+          },
+        };
+
+        // Create new question which uses previously defined metric
+        createNestedQuestion({ baseQuestionDetails, nestedQuestionDetails });
 
         cy.log("Reported failing since v0.35.2");
-        cy.visit(`/question/${questionId}`);
-        cy.wait("@cardQuery").then(xhr => {
-          expect(xhr.response.body.error).not.to.exist;
-        });
-        cy.get(".cellData").contains(METRIC_NAME);
-      });
-    });
+        cy.get(".cellData").contains(metric.name);
+      },
+    );
   });
 
   it("should handle remapped display values in a base QB question (metabase#10474)", () => {
     cy.log(
       "Related issue [#14629](https://github.com/metabase/metabase/issues/14629)",
     );
-
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
 
     cy.log("Remap Product ID's display value to `title`");
     remapDisplayValueToFK({
@@ -309,77 +211,40 @@ describe("scenarios > question > nested", () => {
       fk: PRODUCTS.TITLE,
     });
 
-    cy.createQuestion({
+    const baseQuestionDetails = {
       name: "Orders (remapped)",
-      query: { "source-table": ORDERS_ID },
-    });
+      query: { "source-table": ORDERS_ID, limit: 5 },
+    };
 
-    // Try to use saved question as a base for a new / nested question
-    cy.visit("/question/new");
-    cy.findByText("Simple question").click();
-    cy.findByText("Saved Questions").click();
-    cy.findByText("Orders (remapped)").click();
+    createNestedQuestion({ baseQuestionDetails });
 
-    cy.wait("@dataset").then(xhr => {
-      expect(xhr.response.body.error).not.to.exist;
-    });
     cy.findAllByText("Awesome Concrete Shoes");
   });
 
-  ["remapped", "default"].forEach(test => {
-    describe(`${test.toUpperCase()} version: question with joins as a base for new quesiton(s) (metabase#14724)`, () => {
-      const QUESTION_NAME = "14724";
-      const SECOND_QUESTION_NAME = "14724_2";
+  it("nested questions based on a saved question with joins should work (metabase#14724)", () => {
+    const baseQuestionDetails = {
+      name: "14724",
+      query: ordersJoinProductsQuery,
+    };
 
-      beforeEach(() => {
-        if (test === "remapped") {
-          cy.log("Remap Product ID's display value to `title`");
-          remapDisplayValueToFK({
-            display_value: ORDERS.PRODUCT_ID,
-            name: "Product ID",
-            fk: PRODUCTS.TITLE,
-          });
-        }
-
-        cy.server();
-        cy.route("POST", "/api/dataset").as("dataset");
-      });
-
-      it("should handle single-level nesting", () => {
-        ordersJoinProducts(QUESTION_NAME);
-
-        // Start new question from a saved one
-        cy.visit("/question/new");
-        cy.findByText("Simple question").click();
-        cy.findByText("Saved Questions").click();
-        cy.findByText(QUESTION_NAME).click();
-
-        cy.wait("@dataset").then(xhr => {
-          expect(xhr.response.body.error).not.to.exist;
+    ["default", "remapped"].forEach(scenario => {
+      if (scenario === "remapped") {
+        cy.log("Remap Product ID's display value to `title`");
+        remapDisplayValueToFK({
+          display_value: ORDERS.PRODUCT_ID,
+          name: "Product ID",
+          fk: PRODUCTS.TITLE,
         });
-        cy.contains("37.65");
-      });
+      }
 
-      it("should handle multi-level nesting", () => {
-        // Use the original question qith joins, then save it again
-        ordersJoinProducts(QUESTION_NAME).then(
-          ({ body: { id: ORIGINAL_QUESTION_ID } }) => {
-            cy.createQuestion({
-              name: SECOND_QUESTION_NAME,
-              query: { "source-table": `card__${ORIGINAL_QUESTION_ID}` },
-            });
-          },
-        );
+      // should hangle single-level nesting
+      createNestedQuestion({ baseQuestionDetails });
 
-        // Start new question from already saved nested question
-        cy.visit("/question/new");
-        cy.findByText("Simple question").click();
-        cy.findByText("Saved Questions").click();
-        cy.findByText(SECOND_QUESTION_NAME).click();
+      cy.contains("37.65");
 
-        cy.wait("@dataset").then(xhr => {
-          expect(xhr.response.body.error).not.to.exist;
-        });
+      // should handle multi-level nesting
+      cy.get("@nestedQuestionId").then(id => {
+        visitNestedQueryAdHoc(id);
         cy.contains("37.65");
       });
     });
@@ -388,18 +253,22 @@ describe("scenarios > question > nested", () => {
   it("'distribution' should work on a joined table from a saved question (metabase#14787)", () => {
     // Set the display really wide and really tall to avoid any scrolling
     cy.viewport(1600, 1200);
+    cy.intercept("POST", "/api/dataset").as("dataset");
 
-    ordersJoinProducts("14787");
-    // This repro depends on these exact steps - it has to be opened from the saved questions
-    cy.visit("/question/new");
-    cy.findByText("Simple question").click();
-    cy.findByText("Saved Questions").click();
-    cy.findByText("14787").click();
+    const baseQuestionDetails = {
+      name: "14787",
+      query: { ...ordersJoinProductsQuery, limit: 5 },
+    };
+
+    createNestedQuestion({ baseQuestionDetails });
 
     // The column title
     cy.findByText("Products → Category").click();
     cy.findByText("Distribution").click();
-    cy.contains("Summarize").click();
+    cy.wait("@dataset");
+
+    summarize();
+
     cy.findByText("Group by")
       .parent()
       .within(() => {
@@ -410,7 +279,7 @@ describe("scenarios > question > nested", () => {
     // Although the test will fail on the previous step, we're including additional safeguards against regressions once the issue is fixed
     // It can potentially fail at two more places. See [1] and [2]
     cy.icon("notebook").click();
-    cy.get("[class*=NotebookCellItem]")
+    cy.findAllByTestId("notebook-cell-item")
       .contains(/^Products → Category$/) /* [1] */
       .click();
     popover().within(() => {
@@ -431,54 +300,32 @@ describe("scenarios > question > nested", () => {
     }
   });
 
-  ["count", "average"].forEach(test => {
-    it(`${test.toUpperCase()}:\n should be able to use aggregation functions on saved native question (metabase#15397)`, () => {
-      cy.intercept("POST", "/api/dataset").as("dataset");
+  it("should be able to use aggregation functions on saved native question (metabase#15397)", () => {
+    cy.createNativeQuestion({
+      name: `15397`,
+      native: {
+        query:
+          "select count(*), orders.product_id from orders group by orders.product_id;",
+      },
+    }).then(({ body: { id } }) => {
+      visitQuestion(id);
 
-      cy.createNativeQuestion({
-        name: "15397",
-        native: {
-          query:
-            "select count(*), orders.product_id from orders group by orders.product_id;",
-        },
-      }).then(({ body: { id } }) => {
-        cy.intercept("POST", `/api/card/${id}/query`).as("cardQuery");
+      visitNestedQueryAdHoc(id);
 
-        // Visit the question to load the `result_metadata`
-        cy.visit(`/question/${id}`);
-        cy.wait("@cardQuery");
-      });
+      // Count
+      summarize();
 
-      cy.visit("/question/new");
-      cy.findByText("Simple question").click();
-      cy.findByText("Saved Questions").click();
-      cy.findByText("15397").click();
-
+      cy.findByText("Group by").parent().findByText("COUNT(*)").click();
       cy.wait("@dataset");
-      cy.findAllByText("Summarize")
-        .first()
-        .click();
 
-      if (test === "average") {
-        cy.findByTestId("sidebar-right")
-          .should("be.visible")
-          .findByText("Count")
-          .click();
-        cy.findByText("Average of ...").click();
-        popover()
-          .findByText("COUNT(*)")
-          .click();
-        cy.wait("@dataset");
-      }
+      cy.get(".bar").should("have.length.of.at.least", 5);
 
-      cy.findByText("Group by")
-        .parent()
-        .findByText("COUNT(*)")
-        .click();
+      // Replace "Count" with the "Average"
+      cy.findByTestId("aggregation-item").contains("Count").click();
+      cy.findByText("Average of ...").click();
+      popover().findByText("COUNT(*)").click();
+      cy.wait("@dataset");
 
-      cy.wait("@dataset").then(xhr => {
-        expect(xhr.response.body.error).not.to.exist;
-      });
       cy.get(".bar").should("have.length.of.at.least", 5);
     });
   });
@@ -527,16 +374,13 @@ describe("scenarios > question > nested", () => {
         },
         type: "query",
         display: "scalar",
-      }).then(({ body }) => {
-        cy.visit(`/question/${body.id}`);
+      }).then(({ body: { id } }) => {
+        visitQuestion(id);
+        cy.get(".ScalarValue").findByText(value);
+
+        visitNestedQueryAdHoc(id);
         cy.get(".ScalarValue").findByText(value);
       });
-      // Start new question based on the saved one
-      cy.visit("/question/new");
-      cy.findByText("Simple question").click();
-      cy.findByText("Saved Questions").click();
-      cy.findByText(name).click();
-      cy.get(".ScalarValue").findByText(value);
     }
   });
 
@@ -549,12 +393,13 @@ describe("scenarios > question > nested", () => {
       });
       // Window object gets recreated for every `cy.visit`
       // See: https://stackoverflow.com/a/65218352/8815185
-      cy.visit("/question/new", {
+      cy.visit("/", {
         onBeforeLoad(win) {
           cy.spy(win.console, "warn").as("consoleWarn");
         },
       });
-      cy.findByText("Custom question").click();
+      cy.findByText("New").click();
+      cy.findByText("Question").should("be.visible").click();
       cy.findByText("Saved Questions").click();
       cy.findByText("15725").click();
       cy.findByText("Pick the metric you want to see").click();
@@ -562,9 +407,7 @@ describe("scenarios > question > nested", () => {
     });
 
     it("Count of rows AND Sum of VAL by CAT (metabase#15725-1)", () => {
-      cy.icon("add")
-        .last()
-        .click();
+      cy.icon("add").last().click();
       cy.findByText(/^Sum of/).click();
       cy.findByText("VAL").click();
       cy.findByText("Sum of VAL");
@@ -586,14 +429,10 @@ describe("scenarios > question > nested", () => {
 
       visualize();
 
-      cy.findAllByRole("button")
-        .contains("Summarize")
-        .click();
+      summarize();
       cy.findByTestId("add-aggregation-button").click();
       cy.findByText(/^Sum of/).click();
-      popover()
-        .findByText("VAL")
-        .click();
+      popover().findByText("VAL").click();
       cy.wait("@dataset").then(xhr => {
         expect(xhr.response.body.error).not.to.exist;
       });
@@ -603,25 +442,160 @@ describe("scenarios > question > nested", () => {
       );
     });
   });
+
+  it("should properly work with native questions (metabsae#15808, metabase#16938, metabase#18364)", () => {
+    const questionDetails = {
+      name: "15808",
+      native: { query: "select * from products limit 5" },
+    };
+
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
+    cy.createNativeQuestion(questionDetails, { visitQuestion: true });
+
+    cy.findByText("Explore results").click();
+    cy.wait("@dataset");
+
+    // should allow to browse object details when exploring native query results (metabase#16938)
+    cy.get(".Table-ID")
+      .as("primaryKeys")
+      .should("have.length", 5)
+      .first()
+      .click();
+
+    cy.findByTestId("object-detail").within(() => {
+      cy.findByText("Swaniawski, Casper and Hilll");
+    });
+
+    // Close the modal (until we implement the "X" button in the modal itself)
+    cy.get("body").click("bottomRight");
+    cy.get(".Modal").should("not.exist");
+
+    // should be able to save a nested question (metabase#18364)
+    saveQuestion();
+
+    // should be able to use integer filter on a nested query based on a saved native question (metabase#15808)
+    filter();
+    filterField("RATING", {
+      operator: "Equal to",
+      value: "4",
+    });
+    cy.findByTestId("apply-filters").click();
+
+    cy.findByText("Synergistic Granite Chair");
+    cy.findByText("Rustic Paper Wallet").should("not.exist");
+
+    function saveQuestion() {
+      cy.intercept("POST", "/api/card").as("cardCreated");
+
+      cy.findByText("Save").click({ force: true });
+      cy.get(".Modal").button("Save").click();
+
+      cy.wait("@cardCreated").then(({ response: { body } }) => {
+        expect(body.error).not.to.exist;
+      });
+
+      cy.button("Failed").should("not.exist");
+      cy.findByText("Not now").click();
+    }
+  });
+
+  it("should create a nested question with post-aggregation filter (metabase#11561)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", PEOPLE.ID, { "source-field": ORDERS.USER_ID }]],
+        },
+        type: "query",
+      },
+    });
+
+    cy.findByText("Filter").click();
+    cy.findByText("Summaries").click();
+    cy.findByTestId("operator-select").click();
+    popover().contains("Equal to").click();
+    cy.findByPlaceholderText("Enter a number").type("5");
+    cy.button("Apply Filters").click();
+    cy.wait("@dataset");
+
+    cy.findByText("Count is equal to 5");
+    cy.findByText("Showing 100 rows");
+
+    saveQuestion();
+
+    reloadQuestion();
+    cy.findByText("Showing 100 rows");
+
+    cy.icon("notebook").click();
+    cy.findAllByTestId("notebook-cell-item").contains(/Users? → ID/);
+
+    function saveQuestion() {
+      cy.intercept("POST", "/api/card").as("cardCreated");
+
+      cy.findByText("Save").click();
+
+      cy.get(".Modal").within(() => {
+        cy.findByLabelText("Name").type("Q").blur();
+        cy.button("Save").click();
+      });
+
+      cy.wait("@cardCreated");
+      cy.findByText("Not now").click();
+    }
+
+    function reloadQuestion() {
+      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+      cy.reload();
+      cy.wait("@cardQuery");
+    }
+  });
 });
 
-function ordersJoinProducts(name) {
-  return cy.createQuestion({
-    name,
-    query: {
-      "source-table": ORDERS_ID,
-      joins: [
-        {
-          fields: "all",
-          "source-table": PRODUCTS_ID,
-          condition: [
-            "=",
-            ["field", ORDERS.PRODUCT_ID, null],
-            ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-          ],
-          alias: "Products",
-        },
-      ],
+function createNestedQuestion(
+  { baseQuestionDetails, nestedQuestionDetails = {} },
+  { loadBaseQuestionMetadata = false, visitNestedQuestion = true } = {},
+) {
+  if (!baseQuestionDetails) {
+    throw new Error("Please provide the base question details");
+  }
+
+  createBaseQuestion(baseQuestionDetails).then(({ body: { id } }) => {
+    loadBaseQuestionMetadata && visitQuestion(id);
+
+    const { query: nestedQuery, ...details } = nestedQuestionDetails;
+
+    const composite = {
+      name: "Nested Question",
+      query: {
+        ...nestedQuery,
+        "source-table": `card__${id}`,
+      },
+      ...details,
+    };
+
+    return cy.createQuestion(composite, {
+      visitQuestion: visitNestedQuestion,
+      wrapId: true,
+      idAlias: "nestedQuestionId",
+    });
+  });
+
+  function createBaseQuestion(query) {
+    return query.native
+      ? cy.createNativeQuestion(query)
+      : cy.createQuestion(query);
+  }
+}
+
+function visitNestedQueryAdHoc(id) {
+  return visitQuestionAdhoc({
+    dataset_query: {
+      database: SAMPLE_DB_ID,
+      type: "query",
+      query: { "source-table": `card__${id}` },
     },
   });
 }

@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useMemo } from "react";
 import PropTypes from "prop-types";
 import * as Tippy from "@tippyjs/react";
 import * as ReactIs from "react-is";
 
 import { isReducedMotionPreferred } from "metabase/lib/dom";
+import { DEFAULT_Z_INDEX } from "metabase/components/Popover/constants";
 
 const TippyComponent = Tippy.default;
 
@@ -18,13 +19,14 @@ Tooltip.propTypes = {
   maxWidth: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
 };
 
-interface TooltipProps
+export interface TooltipProps
   extends Partial<
     Pick<
       Tippy.TippyProps,
       "delay" | "reference" | "placement" | "maxWidth" | "offset"
     >
   > {
+  preventOverflow?: boolean;
   tooltip?: React.ReactNode;
   children?: React.ReactNode;
   isEnabled?: boolean;
@@ -68,12 +70,30 @@ function Tooltip({
   offset,
   isEnabled,
   isOpen,
+  preventOverflow = false,
   maxWidth = 200,
 }: TooltipProps) {
   const visible = isOpen != null ? isOpen : undefined;
   const animationDuration = isReducedMotionPreferred() ? 0 : undefined;
   const disabled = isEnabled === false;
   const targetProps = getTargetProps(reference, children);
+
+  const popperOptions = useMemo(
+    () =>
+      preventOverflow
+        ? {
+            modifiers: [
+              {
+                name: "preventOverflow",
+                options: {
+                  altAxis: true,
+                },
+              },
+            ],
+          }
+        : undefined,
+    [preventOverflow],
+  );
 
   if (tooltip && targetProps) {
     return (
@@ -90,6 +110,8 @@ function Tooltip({
         delay={delay}
         placement={placement}
         offset={offset}
+        zIndex={DEFAULT_Z_INDEX}
+        popperOptions={popperOptions}
         {...targetProps}
       />
     );

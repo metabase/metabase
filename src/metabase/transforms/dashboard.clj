@@ -3,7 +3,7 @@
             [metabase.api.common :as api]
             [metabase.automagic-dashboards.populate :as populate]
             [metabase.models.table :refer [Table]]
-            [metabase.transforms.materialize :as materialize]
+            [metabase.transforms.materialize :as tf.materialize]
             [metabase.transforms.specs :refer [transform-specs]]
             [metabase.util :as u]
             [toucan.db :as db]))
@@ -48,7 +48,7 @@
   [transform-name]
   (let [transform-spec              (m/find-first (comp #{transform-name} :name) @transform-specs)
         {steps false provides true} (->> transform-name
-                                         materialize/get-collection
+                                         tf.materialize/get-collection
                                          (db/select 'Card :collection_id)
                                          (group-by (comp some?
                                                          (-> transform-spec :provides set)

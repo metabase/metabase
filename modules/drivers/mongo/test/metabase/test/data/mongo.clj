@@ -1,11 +1,10 @@
 (ns metabase.test.data.mongo
   (:require [cheshire.core :as json]
             [cheshire.generate :as json.generate]
+            [clojure.java.io :as io]
             [clojure.test :refer :all]
-            [metabase.driver :as driver]
+            [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.mongo.util :refer [with-mongo-connection]]
-            [metabase.models :refer [Field]]
-            [metabase.test.data :as data]
             [metabase.test.data.interface :as tx]
             [monger.collection :as mc]
             [monger.core :as mg])
@@ -13,14 +12,36 @@
 
 (tx/add-test-extensions! :mongo)
 
+(defn ssl-required?
+  "Returns if the mongo server requires an SSL connection."
+  []
+  (contains? #{"true" "1"} (System/getenv "MB_TEST_MONGO_REQUIRES_SSL")))
+
+(defn- ssl-params
+  "Returns the Metabase connection parameters needed for an SSL connection."
+  []
+  {:ssl true
+   :ssl-use-client-auth true
+   :client-ssl-key-value (-> "ssl/mongo/metabase.key" io/resource slurp)
+   :client-ssl-cert (-> "ssl/mongo/metabase.crt" io/resource slurp)
+   :ssl-cert (-> "ssl/mongo/metaca.crt" io/resource slurp)})
+
+(defn conn-details
+  "Extends `details` with the parameters necessary for an SSL connection."
+  [details]
+  (cond->> details
+    (ssl-required?) (merge (ssl-params))))
+
 (defmethod tx/dbdef->connection-details :mongo
   [_ _ dbdef]
-  {:dbname (tx/escaped-database-name dbdef)
-   :host   "localhost"})
+  (conn-details {:dbname (tx/escaped-database-name dbdef)
+                 :user   "metabase"
+                 :pass   "metasample123"
+                 :host   "localhost"}))
 
 (defn- destroy-db! [driver dbdef]
-  (with-open [mongo-connection (mg/connect (tx/dbdef->connection-details driver :server dbdef))]
-    (mg/drop-db mongo-connection (tx/escaped-database-name dbdef))))
+  (with-mongo-connection [mongo-connection (tx/dbdef->connection-details driver :server dbdef)]
+    (mg/drop-db (.getMongo mongo-connection) (tx/escaped-database-name dbdef))))
 
 (defmethod tx/create-db! :mongo
   [driver {:keys [table-definitions], :as dbdef} & {:keys [skip-drop-db?], :or {skip-drop-db? false}}]
@@ -43,7 +64,7 @@
   [driver dbdef]
   (destroy-db! driver dbdef))
 
-(defmethod tx/format-name :mongo
+(defmethod ddl.i/format-name :mongo
   [_ table-or-field-name]
   (if (= table-or-field-name "id")
     "_id"
@@ -62,23 +83,21 @@
            (json/generate-string {:x (json-raw "{{param}}")})))))
 
 (defmethod tx/count-with-template-tag-query :mongo
-  [driver table-name field-name param-type]
-  (let [{base-type :base_type} (Field (driver/with-driver driver (data/id table-name field-name)))]
-    {:projections [:count]
-     :query       (json/generate-string
-                   [{:$match {(name field-name) (json-raw (format "{{%s}}" (name field-name)))}}
-                    {:$group {"_id" nil, "count" {:$sum 1}}}
-                    {:$sort {"_id" 1}}
-                    {:$project {"_id" false, "count" true}}])
-     :collection  (name table-name)}))
+  [_driver table-name field-name _param-type]
+  {:projections [:count]
+   :query       (json/generate-string
+                 [{:$match {(name field-name) (json-raw (format "{{%s}}" (name field-name)))}}
+                  {:$group {"_id" nil, "count" {:$sum 1}}}
+                  {:$sort {"_id" 1}}
+                  {:$project {"_id" false, "count" true}}])
+   :collection  (name table-name)})
 
 (defmethod tx/count-with-field-filter-query :mongo
-  [driver table-name field-name]
-  (let [{base-type :base_type} (Field (driver/with-driver driver (data/id table-name field-name)))]
-    {:projections [:count]
-     :query       (json/generate-string
-                   [{:$match (json-raw (format "{{%s}}" (name field-name)))}
-                    {:$group {"_id" nil, "count" {:$sum 1}}}
-                    {:$sort {"_id" 1}}
-                    {:$project {"_id" false, "count" true}}])
-     :collection  (name table-name)}))
+  [_driver table-name field-name]
+  {:projections [:count]
+   :query       (json/generate-string
+                 [{:$match (json-raw (format "{{%s}}" (name field-name)))}
+                  {:$group {"_id" nil, "count" {:$sum 1}}}
+                  {:$sort {"_id" 1}}
+                  {:$project {"_id" false, "count" true}}])
+   :collection  (name table-name)})

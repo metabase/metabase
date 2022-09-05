@@ -1,4 +1,21 @@
+---
+title: Driver interface changelog
+---
+
 # Driver Interface Changelog
+
+## Metabase 0.45.0
+
+- `metabase.driver.sql-jdbc.connection/details->connection-spec-for-testing-connection` has been removed in Metabase
+  0.45.0, because it leaked SSH tunnels. See [#24445](https://github.com/metabase/metabase/issues/24445). If you are
+  using this function, please update your code to use
+  `metabase.driver.sql-jdbc.connection/with-connection-spec-for-testing-connection` instead, which properly cleans up
+  after itself.
+
+### New methods
+
+- `metabase.driver.sql-jdbc.sync.describe-table-fields` has been added. Implement this method if you want to override
+  the default behavior for fetching field metadata (such as types) for a table.
 
 ## Metabase 0.43.0
 
@@ -9,6 +26,15 @@
   available since at least Metabase 0.35.0 and handles both types of keys. It is highly recommended that you use this
   function rather than accessing `:expressions` directly, as doing so can make your driver compatible with both 0.42.0
   and with 0.43.0 and newer.
+
+- There is now a `describe-nested-field-columns` method under `sql-jdbc.sync` namespace which returns an instance of
+  NestedFCMetadata. This is in order to allow JSON columns in Postgres and eventually other DB's which are usually
+  ordinary RDBMS's but then sometimes they have a denormalized column with JSON or some other semantics. Given a table
+  with denormalized columns which have nested field semantics (so, typed sub-fields which are still denormalized but
+  stable in type between rows), return value should be a NestedFCMetadata, a map of flattened key paths to the
+  detected sub-field. Field detection in syncing will then be enriched with those nested types. This is materially
+  different from the way we do it for mongo because every kind of JSON column is different, but it's going to run
+  every sync so it can't be too slow, even on enormous tables and enormous denormalized columns on those enormous tables.
 
 ## Metabase 0.42.0
 
@@ -110,7 +136,7 @@ The following methods and vars are slated for removal in Metabase 0.45.0 unless 
 
 ## Older versions
 
-Prior to 0.42.0, this information was tracked in our Wiki. You can find changes for versions prior to 0.42.0 in the
+Before 0.42.0, this information was tracked in our Wiki. You can find changes for versions before 0.42.0 in the
 table below:
 
 | Version | Wiki page |

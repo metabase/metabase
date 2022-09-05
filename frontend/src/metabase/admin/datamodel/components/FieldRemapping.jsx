@@ -3,12 +3,9 @@ import React from "react";
 
 import { t } from "ttag";
 import _ from "underscore";
-import cx from "classnames";
 
-import SelectButton from "metabase/core/components/SelectButton";
 import Select from "metabase/core/components/Select";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import FieldList from "metabase/query_builder/components/FieldList";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 
@@ -18,7 +15,12 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
 import Question from "metabase-lib/lib/Question";
-import { FieldMappingContainer } from "./FieldRemapping.styled";
+import {
+  FieldMappingContainer,
+  FieldMappingRoot,
+  FieldSelectButton,
+  ForeignKeyList,
+} from "./FieldRemapping.styled";
 
 const MAP_OPTIONS = {
   original: { type: "original", name: t`Use original value` },
@@ -56,25 +58,37 @@ export default class FieldRemapping extends React.Component {
     throw new Error(t`Unrecognized mapping type`);
   };
 
-  getAvailableMappingTypes = () => {
-    const { field } = this.props;
+  hasForeignKeys = () =>
+    this.props.field.semantic_type === "type/FK" &&
+    this.getForeignKeys().length > 0;
 
-    const hasForeignKeys =
-      field.semantic_type === "type/FK" && this.getForeignKeys().length > 0;
+  hasMappableNumeralValues = () => {
+    const { field } = this.props;
 
     // Only show the "custom" option if we have some values that can be mapped to user-defined custom values
     // (for a field without user-defined remappings, every key of `field.remappings` has value `undefined`)
-    const hasMappableNumeralValues =
+    return (
       field.remapping.size > 0 &&
       [...field.remapping.keys()].every(
         key => typeof key === "number" || key === null,
-      );
+      )
+    );
+  };
 
-    return [
+  getAvailableMappingTypes = () => {
+    const mappingTypes = [
       MAP_OPTIONS.original,
-      ...(hasForeignKeys ? [MAP_OPTIONS.foreign] : []),
-      ...(hasMappableNumeralValues > 0 ? [MAP_OPTIONS.custom] : []),
+      ...(this.hasForeignKeys() ? [MAP_OPTIONS.foreign] : []),
+      ...(this.hasMappableNumeralValues() > 0 ? [MAP_OPTIONS.custom] : []),
     ];
+
+    const selectedType = this.getMappingTypeForField(this.props.field);
+
+    if (!mappingTypes.includes(selectedType)) {
+      mappingTypes.push(selectedType);
+    }
+
+    return mappingTypes;
   };
 
   getFKTargetTableEntityNameOrNull = () => {
@@ -170,12 +184,8 @@ export default class FieldRemapping extends React.Component {
   };
 
   onForeignKeyFieldChange = async foreignKeyClause => {
-    const {
-      table,
-      field,
-      fetchTableMetadata,
-      updateFieldDimension,
-    } = this.props;
+    const { table, field, fetchTableMetadata, updateFieldDimension } =
+      this.props;
 
     this.clearEditingStates();
 
@@ -247,12 +257,14 @@ export default class FieldRemapping extends React.Component {
   };
 
   render() {
-    const { field, table, fields } = this.props;
+    const { field, table, fields, fieldsError } = this.props;
     const {
       isChoosingInitialFkTarget,
       hasChanged,
       dismissedInitialFkTargetPopover,
     } = this.state;
+
+    const isFieldsAccessRestricted = fieldsError?.status === 403;
 
     const mappingType = this.getMappingTypeForField(field);
     const isFKMapping = mappingType === MAP_OPTIONS.foreign;
@@ -271,57 +283,60 @@ export default class FieldRemapping extends React.Component {
             optionValueFn={o => o}
             className="inline-block"
           />
-          {mappingType === MAP_OPTIONS.foreign && [
-            <SelectSeparator classname="flex" key="foreignKeySeparator" />,
-            <PopoverWithTrigger
-              key="foreignKeyName"
-              ref={this.fkPopover}
-              triggerElement={
-                <SelectButton
-                  hasValue={hasFKMappingValue}
-                  className={cx({
-                    "border-error": dismissedInitialFkTargetPopover,
-                    "border-dark": !dismissedInitialFkTargetPopover,
-                  })}
-                >
-                  {fkMappingField ? (
-                    fkMappingField.display_name
-                  ) : (
-                    <span className="text-medium">{t`Choose a field`}</span>
-                  )}
-                </SelectButton>
-              }
-              isInitiallyOpen={isChoosingInitialFkTarget}
-              onClose={this.onFkPopoverDismiss}
-            >
-              <FieldList
-                className="text-purple"
-                field={fkMappingField}
-                fieldOptions={{
-                  count: 0,
-                  dimensions: [],
-                  fks: this.getForeignKeys(),
-                }}
-                table={table}
-                onFieldChange={this.onForeignKeyFieldChange}
-                hideSingleSectionTitle
-              />
-            </PopoverWithTrigger>,
-            dismissedInitialFkTargetPopover && (
-              <div className="text-error ml2">{t`Please select a column to use for display.`}</div>
-            ),
-          ]}
+          {mappingType === MAP_OPTIONS.foreign && (
+            <>
+              <SelectSeparator classname="flex" key="foreignKeySeparator" />
+              <PopoverWithTrigger
+                key="foreignKeyName"
+                ref={this.fkPopover}
+                triggerElement={
+                  <FieldSelectButton
+                    hasValue={hasFKMappingValue}
+                    hasError={dismissedInitialFkTargetPopover}
+                  >
+                    {fkMappingField ? (
+                      fkMappingField.display_name
+                    ) : (
+                      <span className="text-medium">{t`Choose a field`}</span>
+                    )}
+                  </FieldSelectButton>
+                }
+                isInitiallyOpen={isChoosingInitialFkTarget}
+                onClose={this.onFkPopoverDismiss}
+              >
+                <ForeignKeyList
+                  field={fkMappingField}
+                  fieldOptions={{
+                    count: 0,
+                    dimensions: [],
+                    fks: this.getForeignKeys(),
+                  }}
+                  table={table}
+                  onFieldChange={this.onForeignKeyFieldChange}
+                  hideSingleSectionTitle
+                />
+              </PopoverWithTrigger>
+              {dismissedInitialFkTargetPopover && (
+                <div className="text-error ml2">{t`Please select a column to use for display.`}</div>
+              )}
+            </>
+          )}
         </FieldMappingContainer>
         {hasChanged && hasFKMappingValue && <RemappingNamingTip />}
-        {mappingType === MAP_OPTIONS.custom && (
-          <div className="mt3">
-            {hasChanged && <RemappingNamingTip />}
-            <ValueRemappings
-              remappings={field && field.remapping}
-              updateRemappings={this.onUpdateRemappings}
-            />
-          </div>
-        )}
+        {mappingType === MAP_OPTIONS.custom &&
+          (isFieldsAccessRestricted ? (
+            <div className="pt2 text-error">
+              {t`You need unrestricted data access on this table to map custom display values.`}
+            </div>
+          ) : (
+            <div className="mt3">
+              {hasChanged && <RemappingNamingTip />}
+              <ValueRemappings
+                remappings={field && field.remapping}
+                updateRemappings={this.onUpdateRemappings}
+              />
+            </div>
+          ))}
       </div>
     );
   }
@@ -413,7 +428,7 @@ export class ValueRemappings extends React.Component {
     const { editingRemappings } = this.state;
 
     return (
-      <div className="bordered rounded py2 px4 border-dark">
+      <FieldMappingRoot>
         <div className="flex align-center my1 pb2 border-bottom">
           <h3>{t`Original value`}</h3>
           <h3 className="ml-auto">{t`Mapped value`}</h3>
@@ -440,7 +455,7 @@ export class ValueRemappings extends React.Component {
             {t`Save`}
           </ButtonWithStatus>
         </div>
-      </div>
+      </FieldMappingRoot>
     );
   }
 }

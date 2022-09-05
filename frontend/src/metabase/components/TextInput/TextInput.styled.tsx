@@ -1,4 +1,5 @@
-import styled, { css } from "styled-components";
+import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 import { color } from "metabase/lib/colors";
 import { ColorScheme, Size } from "./TextInput";
 
@@ -14,7 +15,7 @@ const BORDER_RADIUS = {
 
 const BORDER_COLOR = {
   default: () => color("brand"),
-  admin: () => color("accent7"),
+  admin: () => color("filter"),
   transparent: () => "transparent",
 };
 
@@ -36,8 +37,7 @@ const getBorderColor = (colorScheme: ColorScheme, invalid?: boolean) => {
 };
 
 export const Input = styled.input<InputProps>`
-  border: 1px solid ${props =>
-    getBorderColor(props.colorScheme, props.invalid)};
+  border: 1px solid ${props => getBorderColor(props.colorScheme, props.invalid)};
   outline: none;
   width: 100%;
   font-size: 1.12em;

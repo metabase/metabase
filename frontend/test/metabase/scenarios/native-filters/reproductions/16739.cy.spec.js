@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, visitQuestion } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
@@ -28,15 +28,12 @@ describe("issue 16739", () => {
           "template-tags": { filter },
         },
       }).then(({ body: { id } }) => {
-        cy.intercept("POST", `/api/card/${id}/query`).as("cardQuery");
-
         if (user === "nodata") {
           cy.signOut();
           cy.signIn(user);
         }
 
-        cy.visit(`/question/${id}`);
-        cy.wait("@cardQuery");
+        visitQuestion(id);
       });
 
       cy.icon("play").should("not.exist");

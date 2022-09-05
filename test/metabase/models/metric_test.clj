@@ -2,6 +2,7 @@
   (:require [clojure.test :refer :all]
             [metabase.models.database :refer [Database]]
             [metabase.models.metric :as metric :refer [Metric]]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.models.table :refer [Table]]
             [metabase.test :as mt]
             [metabase.util :as u]
@@ -14,6 +15,7 @@
    :caveats                 nil
    :points_of_interest      nil
    :archived                false
+   :entity_id               true
    :definition              nil})
 
 (defn- user-details
@@ -22,15 +24,16 @@
 
 (deftest retrieve-metrics-test
   (mt/with-temp* [Database [{database-id :id}]
-                  Table    [{table-id-1 :id}    {:db_id database-id}]
-                  Table    [{table-id-2 :id}    {:db_id database-id}]
-                  Metric   [{segement-id-1 :id} {:table_id table-id-1, :name "Metric 1", :description nil}]
-                  Metric   [{metric-id-2 :id}   {:table_id table-id-2}]
-                  Metric   [{metric-id3 :id}    {:table_id table-id-1, :archived true}]]
+                  Table    [{table-id-1 :id} {:db_id database-id}]
+                  Table    [{table-id-2 :id} {:db_id database-id}]
+                  Metric   [segment-1        {:table_id table-id-1, :name "Metric 1", :description nil}]
+                  Metric   [_                {:table_id table-id-2}]
+                  Metric   [_                {:table_id table-id-1, :archived true}]]
     (is (= [(merge
              metric-defaults
              {:creator_id (mt/user->id :rasta)
               :creator    (user-details :rasta)
+              :entity_id  (:entity_id segment-1)
               :name       "Metric 1"})]
            (for [metric (u/prog1 (metric/retrieve-metrics table-id-1)
                                  (assert (= 1 (count <>))))]
@@ -70,6 +73,7 @@
       (is (= (merge metric-defaults
                     {:id          true
                      :table_id    true
+                     :entity_id   (:entity_id metric)
                      :creator_id  (mt/user->id :rasta)
                      :name        "Toucans in the rainforest"
                      :description "Lookin' for a blueberry"
@@ -129,33 +133,11 @@
                                      :description "Unchanged"
                                      :definition  {:filter [:and [:> 4 "2014-10-19"]]}}))))))
 
-(deftest metric-dependencies-test
-  (is (= {:Segment #{2 3}}
-         (metric/metric-dependencies
-          Metric
-          12
-          {:definition {:breakout [[:field 4 nil] [:field 5 nil]]
-                        :filter   [:and
-                                   [:> 4 "2014-10-19"]
-                                   [:= 5 "yes"]
-                                   [:segment 2]
-                                   [:segment 3]]}})))
-
-  (is (= {:Segment #{1}}
-         (metric/metric-dependencies
-          Metric
-          12
-          {:definition {:aggregation [:metric 7]
-                        :filter      [:and
-                                      [:> 4 "2014-10-19"]
-                                      [:= 5 "yes"]
-                                      [:or
-                                       [:segment 1]
-                                       [:!= 5 "5"]]]}})))
-
-  (is (= {:Segment #{}}
-         (metric/metric-dependencies
-          Metric
-          12
-          {:definition {:aggregation nil
-                        :filter      nil}}))))
+(deftest identity-hash-test
+  (testing "Metric hashes are composed of the metric name and table identity-hash"
+    (mt/with-temp* [Database [db    {:name "field-db" :engine :h2}]
+                    Table    [table {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
+                    Metric   [metric {:name "measurement" :table_id (:id table)}]]
+      (is (= "8fb4650a"
+             (serdes.hash/raw-hash ["measurement" (serdes.hash/identity-hash table)])
+             (serdes.hash/identity-hash metric))))))

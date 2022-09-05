@@ -4,7 +4,6 @@ import PropTypes from "prop-types";
 import {
   StyledPinDropTarget,
   PinDropTargetIndicator,
-  PinDropTargetProps,
   PinDropTargetRenderArgs,
 } from "./PinDropZone.styled";
 

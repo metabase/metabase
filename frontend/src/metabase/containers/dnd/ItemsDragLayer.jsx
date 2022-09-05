@@ -10,15 +10,7 @@ import PinnedItemCard from "metabase/collections/components/PinnedItemCard";
 // NOTE: our version of react-hot-loader doesn't play nice with react-dnd's DragLayer,
 // so we exclude files named `*DragLayer.jsx` in webpack.config.js
 
-@DragLayer((monitor, props) => ({
-  item: monitor.getItem(),
-  // itemType: monitor.getItemType(),
-  initialOffset: monitor.getInitialSourceClientOffset(),
-  currentOffset: monitor.getSourceClientOffset(),
-  isDragging: monitor.isDragging(),
-}))
-@BodyComponent
-export default class ItemsDragLayer extends React.Component {
+class ItemsDragLayerInner extends React.Component {
   render() {
     const {
       isDragging,
@@ -43,7 +35,7 @@ export default class ItemsDragLayer extends React.Component {
           transform: `translate(${x}px, ${y}px)`,
           pointerEvents: "none",
           opacity: 0.65,
-          zIndex: 1,
+          zIndex: 999,
         }}
       >
         <DraggedItems
@@ -56,6 +48,16 @@ export default class ItemsDragLayer extends React.Component {
     );
   }
 }
+
+const ItemsDragLayer = DragLayer((monitor, props) => ({
+  item: monitor.getItem(),
+  // itemType: monitor.getItemType(),
+  initialOffset: monitor.getInitialSourceClientOffset(),
+  currentOffset: monitor.getSourceClientOffset(),
+  isDragging: monitor.isDragging(),
+}))(ItemsDragLayerInner);
+
+export default BodyComponent(ItemsDragLayer);
 
 class DraggedItems extends React.Component {
   shouldComponentUpdate(nextProps) {

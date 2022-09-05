@@ -19,9 +19,11 @@ const TypePage = () => (
 
       <table className="Table">
         <thead>
-          <th>Name</th>
-          <th>Size</th>
-          <th>Weight</th>
+          <tr>
+            <th>Name</th>
+            <th>Size</th>
+            <th>Weight</th>
+          </tr>
         </thead>
         <tbody>
           <tr>

@@ -11,7 +11,7 @@
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.driver.sql.parameters.substitution :as params.substitution]
+            [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
@@ -66,7 +66,9 @@
       :as   details}]
   (merge {:subprotocol "sqlite"
           :subname     db}
-         (dissoc details :db)))
+         (dissoc details :db)
+         ;; disallow "FDW" (connecting to other SQLite databases on the local filesystem) -- see https://github.com/metabase/metaboat/issues/152
+         {:limit_attached 0}))
 
 ;; We'll do regex pattern matching here for determining Field types because SQLite types can have optional lengths,
 ;; e.g. NVARCHAR(100) or NUMERIC(10,5) See also http://www.sqlite.org/datatype3.html
@@ -205,7 +207,7 @@
   (->date (sql.qp/->honeysql driver expr) (hx/literal "start of year")))
 
 (defmethod sql.qp/add-interval-honeysql-form :sqlite
-  [driver hsql-form amount unit]
+  [_driver hsql-form amount unit]
   (let [[multiplier sqlite-unit] (case unit
                                    :second  [1 "seconds"]
                                    :minute  [1 "minutes"]
@@ -215,20 +217,7 @@
                                    :month   [1 "months"]
                                    :quarter [3 "months"]
                                    :year    [1 "years"])]
-    ;; Make a string like DATETIME(DATE('now', 'start of month'), '-1 month') The date bucketing will end up being
-    ;; done twice since `date` is called on the results of `date-interval` automatically. This shouldn't be a big deal
-    ;; because it's used for relative dates and only needs to be done once.
-    ;;
-    ;; It's important to call `date` on 'now' to apply bucketing *before* adding/subtracting dates to handle certain
-    ;; edge cases as discussed in issue #2275 (https://github.com/metabase/metabase/issues/2275).
-    ;;
-    ;; Basically, March 30th minus one month becomes Feb 30th in SQLite, which becomes March 2nd.
-    ;; DATE(DATETIME('2016-03-30', '-1 month'), 'start of month') is thus March 1st.
-    ;; The SQL we produce instead (for "last month") ends up looking something like:
-    ;; DATE(DATETIME(DATE('2015-03-30', 'start of month'), '-1 month'), 'start of month').
-    ;; It's a little verbose, but gives us the correct answer (Feb 1st).
-    (->datetime (sql.qp/date driver unit hsql-form)
-                (hx/literal (format "%+d %s" (* amount multiplier) sqlite-unit)))))
+    (->datetime hsql-form (hx/literal (format "%+d %s" (* amount multiplier) sqlite-unit)))))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:sqlite :seconds]
   [_ _ expr]
@@ -259,7 +248,7 @@
   ;; for anything that's a Temporal value convert it to a yyyy-MM-dd formatted date literal
   ;; string For whatever reason the SQL generated from parameters ends up looking like `WHERE date(some_field) = ?`
   ;; sometimes so we need to use just the date rather than a full ISO-8601 string
-  (params.substitution/make-stmt-subs "?" [(t/format "yyyy-MM-dd" date)]))
+  (sql.params.substitution/make-stmt-subs "?" [(t/format "yyyy-MM-dd" date)]))
 
 ;; SQLite doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively; convert these booleans to numbers.
 (defmethod sql.qp/->honeysql [:sqlite Boolean]
@@ -279,11 +268,11 @@
    (mapv (partial sql.qp/->honeysql driver) args)))
 
 (defmethod sql.qp/->honeysql [:sqlite :floor]
-  [driver [_ arg]]
+  [_driver [_ arg]]
   (hsql/call :round (hsql/call :- arg 0.5)))
 
 (defmethod sql.qp/->honeysql [:sqlite :ceil]
-  [driver [_ arg]]
+  [_driver [_ arg]]
   (hsql/call :round (hsql/call :+ arg 0.5)))
 
 
@@ -349,9 +338,11 @@
   [_]
   (hsql/call :datetime (hx/literal :now)))
 
-;; SQLite's JDBC driver is fussy and won't let you change connections to read-only after you create them
+;; SQLite's JDBC driver is fussy and won't let you change connections to read-only after you create them. So skip that
+;; step. SQLite doesn't have a notion of session timezones so don't do that either. The only thing we're doing here from
+;; the default impl is setting the transaction isolation level
 (defmethod sql-jdbc.execute/connection-with-timezone :sqlite
-  [driver database ^String timezone-id]
+  [driver database _timezone-id]
   (let [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! driver database))]
     (try
       (sql-jdbc.execute/set-best-transaction-level! driver conn)

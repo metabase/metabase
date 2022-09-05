@@ -32,8 +32,7 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-export default class ActivityApp extends Component {
+class ActivityApp extends Component {
   static propTypes = {
     onChangeLocation: PropTypes.func.isRequired,
     user: PropTypes.object.isRequired,
@@ -70,3 +69,5 @@ export default class ActivityApp extends Component {
     );
   }
 }
+
+export default connect(mapStateToProps, mapDispatchToProps)(ActivityApp);

@@ -3,10 +3,12 @@
             [clojure.test :refer :all]
             [metabase.models.card :refer [Card]]
             [metabase.models.card-test :as card-test]
+            [metabase.models.collection :refer [Collection]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
             [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
             [metabase.models.interface-test :as i.test]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.test :as mt]
             [metabase.util :as u]
             [toucan.db :as db]))
@@ -71,8 +73,8 @@
                     Card                [card2]
                     Dashboard           [dashboard]
                     DashboardCard       [dc-1 {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card1)}]
-                    DashboardCard       [dc-2 {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card2)}]
-                    DashboardCardSeries [dcs-1 {:dashboardcard_id (u/the-id dc-1), :card_id (u/the-id card2)}]]
+                    DashboardCard       [_    {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card2)}]
+                    DashboardCardSeries [_    {:dashboardcard_id (u/the-id dc-1), :card_id (u/the-id card2)}]]
       (testing "get multi-cards"
         (is (= 1 (count (dashboard-card/dashcard->multi-cards dc-1))))))))
 
@@ -239,7 +241,7 @@
            (is (= expected
                   (db/select-one-field :visualization_settings DashboardCard :id (u/the-id dashcard))))))))))
 
-(deftest normalize-parameter-mappings-test
+(deftest normalize-parameter-mappings-test-2
   (testing "make sure parameter mappings correctly normalize things like legacy MBQL clauses"
     (is (= [{:target [:dimension [:field 30 {:source-field 23}]]}]
            ((i.test/type-fn :parameters-list :out)
@@ -258,3 +260,15 @@
     (is (= []
            ((i.test/type-fn :parameters-list :out)
             (json/generate-string []))))))
+
+(deftest identity-hash-test
+  (testing "Dashboard card hashes are composed of the card hash, dashboard hash, and visualization settings"
+    (mt/with-temp* [Collection    [c1       {:name "top level" :location "/"}]
+                    Dashboard     [dash     {:name "my dashboard"  :collection_id (:id c1)}]
+                    Card          [card     {:name "some question" :collection_id (:id c1)}]
+                    DashboardCard [dashcard {:card_id                (:id card)
+                                             :dashboard_id           (:id dash)
+                                             :visualization_settings {}}]]
+      (is (= "c926aed0"
+             (serdes.hash/raw-hash [(serdes.hash/identity-hash card) (serdes.hash/identity-hash dash) {}])
+             (serdes.hash/identity-hash dashcard))))))

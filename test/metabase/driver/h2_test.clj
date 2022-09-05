@@ -3,7 +3,7 @@
             [clojure.string :as str]
             [clojure.test :refer :all]
             [honeysql.core :as hsql]
-            [metabase.db.spec :as db.spec]
+            [metabase.db.spec :as mdb.spec]
             [metabase.driver :as driver]
             [metabase.driver.h2 :as h2]
             [metabase.driver.sql.query-processor :as sql.qp]
@@ -113,7 +113,7 @@
 (deftest timestamp-with-timezone-test
   (testing "Make sure TIMESTAMP WITH TIME ZONEs come back as OffsetDateTimes."
     (is (= [{:t #t "2020-05-28T18:06-07:00"}]
-           (jdbc/query (db.spec/spec :h2 {:db "mem:test_db"})
+           (jdbc/query (mdb.spec/spec :h2 {:db "mem:test_db"})
                        "SELECT TIMESTAMP WITH TIME ZONE '2020-05-28 18:06:00.000 America/Los_Angeles' AS t")))))
 
 (deftest native-query-parameters-test

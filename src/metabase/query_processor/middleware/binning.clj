@@ -5,7 +5,7 @@
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.public-settings :as public-settings]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
@@ -47,7 +47,7 @@
                                                global-max)]
     (when-not (and min-value max-value)
       (throw (ex-info (tru "Unable to bin Field without a min/max value")
-               {:type        error-type/invalid-query
+               {:type        qp.error-type/invalid-query
                 :field-id    field-id
                 :fingerprint fingerprint})))
     {:min-value min-value, :max-value max-value}))
@@ -63,9 +63,12 @@
 
 (s/defn ^:private calculate-num-bins :- su/IntGreaterThanZero
   "Calculate number of bins of width `bin-width` required to cover interval [`min-value`, `max-value`]."
-  [min-value :- s/Num, max-value :- s/Num, bin-width :- (s/constrained s/Num (complement neg?) "number >= 0")]
-  (long (Math/ceil (/ (- max-value min-value)
-                      bin-width))))
+  [min-value :- s/Num
+   max-value :- s/Num
+   bin-width :- (s/constrained s/Num (complement neg?) "number >= 0")]
+  (max (long (Math/ceil (/ (- max-value min-value)
+                           bin-width)))
+       1))
 
 (s/defn ^:private resolve-default-strategy :- [(s/one (s/enum :bin-width :num-bins) "strategy")
                                                (s/one {:bin-width s/Num, :num-bins su/IntGreaterThanZero} "opts")]

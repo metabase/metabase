@@ -21,7 +21,7 @@ import {
   StatusToggle,
   StatusBody,
 } from "./DatabaseStatusLarge.styled";
-import Ellipsified from "metabase/components/Ellipsified";
+import Ellipsified from "metabase/core/components/Ellipsified";
 import useStatusVisibility from "../../hooks/use-status-visibility";
 
 export interface DatabaseStatusLargeProps {

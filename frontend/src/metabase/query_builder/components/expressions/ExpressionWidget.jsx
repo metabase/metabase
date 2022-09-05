@@ -30,6 +30,8 @@ export default class ExpressionWidget extends Component {
     name: "",
   };
 
+  helpTextTarget = React.createRef();
+
   UNSAFE_componentWillMount() {
     this.UNSAFE_componentWillReceiveProps(this.props);
   }
@@ -55,15 +57,17 @@ export default class ExpressionWidget extends Component {
 
   render() {
     const { query } = this.props;
-    const { expression } = this.state;
+    const { expression, name } = this.state;
 
     return (
       <div style={{ maxWidth: "600px" }}>
         <div className="p2">
           <div className="h5 text-uppercase text-medium text-bold">{t`Field formula`}</div>
-          <div>
+          <div ref={this.helpTextTarget}>
             <ExpressionEditorTextfield
+              helpTextTarget={this.helpTextTarget.current}
               expression={expression}
+              name={name}
               query={query}
               onChange={parsedExpression =>
                 this.setState({ expression: parsedExpression, error: null })
@@ -76,7 +80,9 @@ export default class ExpressionWidget extends Component {
               <ExternalLink
                 className="link"
                 target="_blank"
-                href={MetabaseSettings.docsUrl("users-guide/expressions")}
+                href={MetabaseSettings.docsUrl(
+                  "questions/query-builder/expressions",
+                )}
               >{t`Learn more`}</ExternalLink>
             </p>
           </div>

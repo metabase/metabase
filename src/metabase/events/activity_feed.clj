@@ -1,5 +1,5 @@
 (ns metabase.events.activity-feed
-  (:require [clojure.core.async :as async]
+  (:require [clojure.core.async :as a]
             [clojure.tools.logging :as log]
             [metabase.events :as events]
             [metabase.mbql.util :as mbql.u]
@@ -36,7 +36,7 @@
 
 (defonce ^:private ^{:doc "Channel for receiving event notifications we want to subscribe to for the activity feed."}
   activity-feed-channel
-  (async/chan))
+  (a/chan))
 
 ;;; ------------------------------------------------ EVENT PROCESSING ------------------------------------------------
 
@@ -56,7 +56,7 @@
                        ;; around
                        dataset? (assoc :original-model "card"))
         query       (when (seq query)
-                      (try (qp/query->preprocessed query)
+                      (try (qp/preprocess query)
                            (catch Throwable e
                              (log/error e (tru "Error preprocessing query:")))))
         database-id (some-> query :database u/the-id)

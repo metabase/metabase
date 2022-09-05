@@ -1,7 +1,10 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 
-export const EditorHeaderContainer = styled.div`
-  padding: 0 3rem;
+export const PermissionEditorContentRoot = styled.div`
+  display: flex;
+  flex-direction: column;
+  padding-left: 40px;
+  height: 100%;
 `;
 
 export const EditorFilterContainer = styled.div`
@@ -11,4 +14,11 @@ export const EditorFilterContainer = styled.div`
 
 export const EditorEmptyStateContainer = styled.div`
   margin-top: 7.5rem;
+`;
+
+export const PermissionTableWrapper = styled.div`
+  position: relative;
+  flex: 1;
+  overflow-x: auto;
+  padding-bottom: 2rem;
 `;

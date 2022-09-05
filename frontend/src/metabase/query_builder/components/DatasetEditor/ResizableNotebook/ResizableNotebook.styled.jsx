@@ -1,7 +1,6 @@
 import React from "react";
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import { color, darken } from "metabase/lib/colors";
-import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 
 export const NotebookContainer = styled.div`
   width: 100%;
@@ -29,8 +28,6 @@ const HandleContainer = styled.div`
   cursor: row-resize;
 `;
 
-const HandleContainerWithRef = forwardRefToInnerRef(HandleContainer);
-
 const HandleContent = styled.div`
   width: 100px;
   height: 5px;
@@ -40,8 +37,8 @@ const HandleContent = styled.div`
 
 export function Handle(props) {
   return (
-    <HandleContainerWithRef {...props}>
+    <HandleContainer {...props}>
       <HandleContent />
-    </HandleContainerWithRef>
+    </HandleContainer>
   );
 }

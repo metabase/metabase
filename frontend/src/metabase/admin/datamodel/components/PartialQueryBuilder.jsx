@@ -2,12 +2,12 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import PropTypes from "prop-types";
-import cx from "classnames";
 import { t } from "ttag";
 import _ from "underscore";
 
 import Question from "metabase-lib/lib/Question";
 
+import Link from "metabase/core/components/Link";
 import { getMetadata } from "metabase/selectors/metadata";
 import Tables from "metabase/entities/tables";
 import GuiQueryEditor from "metabase/query_builder/components/GuiQueryEditor";
@@ -15,13 +15,7 @@ import * as Urls from "metabase/lib/urls";
 
 import withTableMetadataLoaded from "../hoc/withTableMetadataLoaded";
 
-@Tables.load({
-  id: (state, props) => props.value && props.value["source-table"],
-  wrapped: true,
-})
-@withTableMetadataLoaded
-@connect((state, props) => ({ metadata: getMetadata(state) }))
-export default class PartialQueryBuilder extends Component {
+class PartialQueryBuilder extends Component {
   static propTypes = {
     onChange: PropTypes.func.isRequired,
     table: PropTypes.object.isRequired,
@@ -108,7 +102,7 @@ export default class PartialQueryBuilder extends Component {
     const previewCard = {
       dataset_query: datasetQuery,
     };
-    const previewUrl = Urls.question(null, previewCard);
+    const previewUrl = Urls.serializedQuestion(previewCard);
 
     return (
       <div className="py1">
@@ -122,16 +116,25 @@ export default class PartialQueryBuilder extends Component {
         >
           <div className="flex align-center mx2 my2">
             <span className="text-bold px3">{previewSummary}</span>
-            <a
-              data-metabase-event={"Data Model;Preview Click"}
+            <Link
+              to={previewUrl}
+              data-metabase-event="Data Model;Preview Click"
               target={window.OSX ? null : "_blank"}
               rel="noopener noreferrer"
-              className={cx("Button Button--primary")}
-              href={previewUrl}
-            >{t`Preview`}</a>
+              className="Button Button--primary"
+            >{t`Preview`}</Link>
           </div>
         </GuiQueryEditor>
       </div>
     );
   }
 }
+
+export default _.compose(
+  Tables.load({
+    id: (state, props) => props.value && props.value["source-table"],
+    wrapped: true,
+  }),
+  withTableMetadataLoaded,
+  connect((state, props) => ({ metadata: getMetadata(state) })),
+)(PartialQueryBuilder);

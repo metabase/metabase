@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 
 import { color, lighten } from "metabase/lib/colors";
 import Banner from "metabase/components/Banner";

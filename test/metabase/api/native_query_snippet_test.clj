@@ -113,7 +113,7 @@
                   (let [response ((mt/user->client :rasta) :post expected-status-code (snippet-url)
                                   {:name "test-snippet", :description "Just null", :content "NULL", :collection_id collection-id})]
                     {:response response
-                     :db       (some-> (:id response) NativeQuerySnippet)})
+                     :db       (some->> (:id response) (db/select-one NativeQuerySnippet :id))})
                   (finally
                     (db/delete! NativeQuerySnippet :name "test-snippet"))))]
         (mt/with-temp Collection [{collection-id :id} {:namespace "snippets"}]

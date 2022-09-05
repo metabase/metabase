@@ -1,9 +1,10 @@
 import {
   restore,
   openOrdersTable,
-  getNotebookStep,
+  visualize,
   popover,
-} from "__support__/e2e/cypress";
+  summarize,
+} from "__support__/e2e/helpers";
 
 describe("issue 18589", () => {
   beforeEach(() => {
@@ -19,26 +20,20 @@ describe("issue 18589", () => {
     selectFromDropdown("Quantity");
     selectFromDropdown("Rating");
 
-    cy.findByText("Summarize").click();
+    summarize({ mode: "notebook" });
     selectFromDropdown("Count of rows");
 
-    getNotebookStep("summarize").within(() => {
-      cy.icon("play").click();
-      cy.wait("@dataset");
-      cy.findByText("2,860,368");
-    });
+    visualize();
+
+    cy.findByText("2,860,368");
   });
 });
 
 function joinTable(table) {
   cy.findByText("Join data").click();
-  popover()
-    .findByText(table)
-    .click();
+  popover().findByText(table).click();
 }
 
 function selectFromDropdown(option, clickOpts) {
-  popover()
-    .findByText(option)
-    .click(clickOpts);
+  popover().findByText(option).click(clickOpts);
 }

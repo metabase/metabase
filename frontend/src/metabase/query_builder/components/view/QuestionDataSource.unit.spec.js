@@ -331,6 +331,16 @@ describe("QuestionDataSource", () => {
             Urls.browseDatabase(question.database()),
           );
         });
+
+        it("shows nothing if a user doesn't have data permissions", () => {
+          const originalMethod = question.query().database;
+          question.query().database = () => null;
+
+          setup({ question });
+          expect(screen.getByTestId("head-crumbs-container")).toBeEmpty();
+
+          question.query().database = originalMethod;
+        });
       });
     });
   });
@@ -356,10 +366,7 @@ describe("QuestionDataSource", () => {
           );
           expect(node.closest("a")).toHaveAttribute(
             "href",
-            question
-              .table()
-              .newQuestion()
-              .getUrl(),
+            question.table().newQuestion().getUrl(),
           );
         });
 
@@ -370,10 +377,7 @@ describe("QuestionDataSource", () => {
           );
           expect(node.closest("a")).toHaveAttribute(
             "href",
-            question
-              .table()
-              .newQuestion()
-              .getUrl(),
+            question.table().newQuestion().getUrl(),
           );
         });
       });
@@ -493,7 +497,10 @@ describe("QuestionDataSource", () => {
     });
   });
 
-  describe("Object Detail", () => {
+  describe.skip("Object Detail", () => {
+    // these tests do not apply to the new modal object detail view
+    // but will be useful when we implement the new version of full page
+    // object detail
     [
       GUI_TEST_CASE.SAVED_OBJECT_DETAIL,
       GUI_TEST_CASE.AD_HOC_OBJECT_DETAIL,

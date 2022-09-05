@@ -3,8 +3,10 @@ import {
   setupSMTP,
   openEmailPage,
   sendSubscriptionsEmail,
-} from "__support__/e2e/cypress";
-import { USERS } from "__support__/e2e/cypress_data";
+  visitDashboard,
+} from "__support__/e2e/helpers";
+
+import { USERS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS_ID, ORDERS, PRODUCTS } = SAMPLE_DATABASE;
@@ -30,12 +32,12 @@ describe("static visualizations", () => {
           createOneDimensionTwoMetricsQuestion(type),
         ],
       }).then(({ dashboard }) => {
-        cy.visit(`/dashboard/${dashboard.id}`);
+        visitDashboard(dashboard.id);
 
         sendSubscriptionsEmail(`${admin.first_name} ${admin.last_name}`);
 
         openEmailPage(dashboardName).then(() => {
-          cy.percySnapshot();
+          cy.createPercySnapshot();
         });
       });
     });
@@ -55,7 +57,7 @@ function createOneDimensionTwoMetricsQuestion(display) {
       "graph.metrics": ["count", "avg"],
     },
     display: display,
-    database: 1,
+    database: SAMPLE_DB_ID,
   };
 }
 
@@ -75,6 +77,6 @@ function createOneMetricTwoDimensionsQuestion(display) {
       "graph.metrics": ["count"],
     },
     display: display,
-    database: 1,
+    database: SAMPLE_DB_ID,
   };
 }

@@ -1,9 +1,9 @@
 import { connect } from "react-redux";
-import { PLUGIN_SELECTORS } from "metabase/plugins";
 import AuthLayout from "../../components/AuthLayout";
+import { State } from "metabase-types/store";
 
-const mapStateToProps = (state: any, props: any) => ({
-  showScene: PLUGIN_SELECTORS.getShowAuthScene(state, props),
+const mapStateToProps = (state: State) => ({
+  showIllustration: state.settings.values["show-lighthouse-illustration"],
 });
 
 export default connect(mapStateToProps)(AuthLayout);

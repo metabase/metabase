@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import React, { useEffect, useState } from "react";
 import { connect } from "react-redux";
-
+import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
 
 import {
@@ -11,13 +11,19 @@ import {
   getGroupNameLocalized,
 } from "metabase/lib/groups";
 
-import { PermissionsApi } from "metabase/services";
-import { t, ngettext, msgid } from "ttag";
+import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import Alert from "metabase/components/Alert";
 import AdminPaneLayout from "metabase/components/AdminPaneLayout";
-
-import GroupMembersTable from "./group-members/GroupMembersTable";
-import { deleteMembership } from "../people";
+import { getGroupMembersips, getMembershipsByUser } from "../selectors";
+import { getUser } from "metabase/selectors/user";
+import GroupMembersTable from "./GroupMembersTable";
+import {
+  createMembership,
+  deleteMembership,
+  updateMembership,
+  loadMemberships,
+} from "../people";
+import { useConfirmation } from "metabase/hooks/use-confirmation";
 
 const GroupDescription = ({ group }) =>
   isDefaultGroup(group) ? (
@@ -41,170 +47,148 @@ const GroupDescription = ({ group }) =>
     </div>
   ) : null;
 
-@connect(null, {
+const mapStateToProps = (state, props) => ({
+  groupMemberships: getGroupMembersips(state, props),
+  membershipsByUser: getMembershipsByUser(state),
+  currentUser: getUser(state),
+});
+
+const mapDispatchToProps = {
+  createMembership,
   deleteMembership,
-})
-export default class GroupDetail extends Component {
-  constructor(props, context) {
-    super(props, context);
-    this.state = {
-      addUserVisible: false,
-      text: "",
-      selectedUsers: [],
-      members: null,
-      alertMessage: null,
-    };
-  }
+  updateMembership,
+  loadMemberships,
+  confirmDeleteMembershipAction: (membershipId, userMemberships) =>
+    PLUGIN_GROUP_MANAGERS.confirmDeleteMembershipAction(
+      membershipId,
+      userMemberships,
+    ),
+  confirmUpdateMembershipAction: (membership, userMemberships) =>
+    PLUGIN_GROUP_MANAGERS.confirmUpdateMembershipAction(
+      membership,
+      userMemberships,
+    ),
+};
 
-  alert(alertMessage) {
-    this.setState({ alertMessage });
-  }
+const GroupDetail = ({
+  currentUser,
+  group,
+  users,
+  membershipsByUser,
+  groupMemberships,
+  createMembership,
+  updateMembership,
+  deleteMembership,
+  loadMemberships,
+  confirmDeleteMembershipAction,
+  confirmUpdateMembershipAction,
+}) => {
+  const { modalContent, show } = useConfirmation();
+  const [addUserVisible, setAddUserVisible] = useState(false);
+  const [alertMessage, setAlertMessage] = useState(null);
 
-  onAddUsersClicked() {
-    this.setState({
-      addUserVisible: true,
-    });
-  }
+  useEffect(() => {
+    loadMemberships();
+  }, [loadMemberships]);
 
-  onAddUserCanceled() {
-    this.setState({
-      addUserVisible: false,
-      text: "",
-      selectedUsers: [],
-    });
-  }
+  const alert = alertMessage => setAlertMessage(alertMessage);
 
-  async onAddUserDone() {
-    this.setState({
-      addUserVisible: false,
-      text: "",
-      selectedUsers: [],
-    });
+  const onAddUsersClicked = () => setAddUserVisible(true);
+
+  const onAddUserCanceled = () => setAddUserVisible(false);
+
+  const onAddUserDone = async userIds => {
+    setAddUserVisible(false);
     try {
       await Promise.all(
-        this.state.selectedUsers.map(async user => {
-          const members = await PermissionsApi.createMembership({
-            group_id: this.props.group.id,
-            user_id: user.id,
+        userIds.map(async userId => {
+          await createMembership({
+            groupId: group.id,
+            userId,
           });
-          this.setState({ members });
         }),
       );
     } catch (error) {
-      this.alert(error && typeof error.data ? error.data : error);
+      alert(error && typeof error.data ? error.data : error);
     }
-  }
+  };
 
-  onAddUserTextChange(newText) {
-    this.setState({
-      text: newText,
+  const handleChange = async membership => {
+    const confirmation = PLUGIN_GROUP_MANAGERS.getChangeMembershipConfirmation(
+      currentUser,
+      membership,
+    );
+
+    if (!confirmation) {
+      return await updateMembership(membership);
+    }
+
+    show({
+      ...confirmation,
+      onConfirm: () =>
+        confirmUpdateMembershipAction(
+          membership,
+          membershipsByUser[currentUser.id],
+        ),
     });
-  }
+  };
 
-  onUserSuggestionAccepted(user) {
-    this.setState({
-      selectedUsers: this.state.selectedUsers.concat(user),
-      text: "",
+  const handleRemove = async membershipId => {
+    const confirmation = PLUGIN_GROUP_MANAGERS.getRemoveMembershipConfirmation(
+      currentUser,
+      membershipsByUser[currentUser.id],
+      membershipId,
+    );
+
+    if (!confirmation) {
+      return await deleteMembership(membershipId);
+    }
+
+    show({
+      ...confirmation,
+      onConfirm: () =>
+        confirmDeleteMembershipAction(
+          membershipId,
+          membershipsByUser[currentUser.id],
+        ),
     });
-  }
+  };
 
-  onRemoveUserFromSelection(user) {
-    this.setState({
-      selectedUsers: this.state.selectedUsers.filter(u => u.id !== user.id),
-    });
-  }
+  return (
+    <AdminPaneLayout
+      title={
+        <React.Fragment>
+          {getGroupNameLocalized(group ?? {})}
+          <span className="text-light ml1">
+            {ngettext(
+              msgid`${groupMemberships.length} member`,
+              `${groupMemberships.length} members`,
+              groupMemberships.length,
+            )}
+          </span>
+        </React.Fragment>
+      }
+      buttonText={t`Add members`}
+      buttonAction={canEditMembership(group) ? onAddUsersClicked : null}
+      buttonDisabled={addUserVisible}
+    >
+      <GroupDescription group={group} />
+      <GroupMembersTable
+        groupMemberships={groupMemberships}
+        membershipsByUser={membershipsByUser}
+        currentUser={currentUser}
+        group={group}
+        users={users}
+        showAddUser={addUserVisible}
+        onAddUserCancel={onAddUserCanceled}
+        onAddUserDone={onAddUserDone}
+        onMembershipRemove={handleRemove}
+        onMembershipUpdate={handleChange}
+      />
+      <Alert message={alertMessage} onClose={() => alert(null)} />
+      {modalContent}
+    </AdminPaneLayout>
+  );
+};
 
-  async onRemoveUserClicked(user) {
-    try {
-      const membership = this.props.group.members.find(
-        m => m.user_id === user.id,
-      );
-      await this.props.deleteMembership({
-        membershipId: membership.membership_id,
-      });
-      const newMembers = _.reject(
-        this.getMembers(),
-        m => m.user_id === membership.user_id,
-      );
-      this.setState({ members: newMembers });
-    } catch (error) {
-      console.error("Error deleting PermissionsMembership:", error);
-      this.alert(error && typeof error.data ? error.data : error);
-    }
-  }
-
-  // TODO - bad!
-  // TODO - this totally breaks if you edit members and then switch groups !
-  getMembers() {
-    return (
-      this.state.members || (this.props.group && this.props.group.members) || []
-    );
-  }
-
-  render() {
-    // users = array of all users for purposes of adding new users to group
-    // [group.]members = array of users currently in the group
-    let { currentUser, group, users } = this.props;
-    const { text, selectedUsers, addUserVisible, alertMessage } = this.state;
-    const members = this.getMembers();
-
-    group = group || {};
-    users = users || {};
-
-    const usedUsers = {};
-    for (const user of members) {
-      usedUsers[user.user_id] = true;
-    }
-    for (const user of selectedUsers) {
-      usedUsers[user.id] = true;
-    }
-    const filteredUsers = Object.values(users).filter(
-      user => !usedUsers[user.id],
-    );
-
-    const title = (
-      <React.Fragment>
-        {getGroupNameLocalized(group)}
-        <span className="text-light ml1">
-          {ngettext(
-            msgid`${members.length} member`,
-            `${members.length} members`,
-            members.length,
-          )}
-        </span>
-      </React.Fragment>
-    );
-
-    return (
-      <AdminPaneLayout
-        title={title}
-        buttonText={t`Add members`}
-        buttonAction={
-          canEditMembership(group) ? this.onAddUsersClicked.bind(this) : null
-        }
-        buttonDisabled={addUserVisible}
-      >
-        <GroupDescription group={group} />
-        <GroupMembersTable
-          currentUser={currentUser}
-          group={group}
-          members={members}
-          users={filteredUsers}
-          showAddUser={addUserVisible}
-          text={text || ""}
-          selectedUsers={selectedUsers}
-          onAddUserCancel={this.onAddUserCanceled.bind(this)}
-          onAddUserDone={this.onAddUserDone.bind(this)}
-          onAddUserTextChange={this.onAddUserTextChange.bind(this)}
-          onUserSuggestionAccepted={this.onUserSuggestionAccepted.bind(this)}
-          onRemoveUserFromSelection={this.onRemoveUserFromSelection.bind(this)}
-          onRemoveUserClicked={this.onRemoveUserClicked.bind(this)}
-        />
-        <Alert
-          message={alertMessage}
-          onClose={() => this.setState({ alertMessage: null })}
-        />
-      </AdminPaneLayout>
-    );
-  }
-}
+export default connect(mapStateToProps, mapDispatchToProps)(GroupDetail);

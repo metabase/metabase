@@ -25,16 +25,19 @@ export const QuestionListItem = React.memo(function QuestionListItem({
   isBad,
   style,
 }) {
+  const isStructuredQuestion = question.isStructured();
+  const questionName = question.displayName();
   return (
     <QuestionListItemRoot style={style} isDisabled={isBad}>
-      <CheckboxContainer>
+      <CheckboxContainer hasIcon={!isStructuredQuestion}>
         <CheckBox
-          label={question.displayName()}
+          label={questionName}
+          labelEllipsis
           checked={isEnabled}
           onChange={onChange}
         />
       </CheckboxContainer>
-      {!question.isStructured() && (
+      {!isStructuredQuestion && (
         <Tooltip tooltip={t`We're not sure if this question is compatible`}>
           <WarningIcon />
         </Tooltip>

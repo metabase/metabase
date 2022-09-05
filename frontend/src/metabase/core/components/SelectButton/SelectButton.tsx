@@ -1,17 +1,18 @@
 import React, {
   ButtonHTMLAttributes,
   forwardRef,
+  Ref,
   useCallback,
   useMemo,
 } from "react";
-
 import {
   SelectButtonRoot,
   SelectButtonIcon,
   SelectButtonContent,
 } from "./SelectButton.styled";
 
-interface SelectButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+export interface SelectButtonProps
+  extends ButtonHTMLAttributes<HTMLButtonElement> {
   left?: React.ReactNode;
   className?: string;
   style?: React.CSSProperties;
@@ -19,7 +20,10 @@ interface SelectButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   hasValue?: boolean;
   disabled?: boolean;
   fullWidth?: boolean;
+  highlighted?: boolean;
+  onClick?: () => void;
   onClear?: () => void;
+  dataTestId?: string;
 }
 
 const SelectButton = forwardRef(function SelectButton(
@@ -29,12 +33,15 @@ const SelectButton = forwardRef(function SelectButton(
     children,
     left,
     hasValue = true,
-    disabled,
+    disabled = false,
     fullWidth = true,
+    highlighted = false,
+    onClick,
     onClear,
+    dataTestId,
     ...rest
   }: SelectButtonProps,
-  ref,
+  ref: Ref<HTMLButtonElement>,
 ) {
   const handleClear = useCallback(
     event => {
@@ -57,13 +64,15 @@ const SelectButton = forwardRef(function SelectButton(
   return (
     <SelectButtonRoot
       type="button"
-      data-testid="select-button"
-      innerRef={ref as any}
+      data-testid={`${dataTestId ? `${dataTestId}-` : ""}select-button`}
+      ref={ref}
       className={className}
       style={style}
       hasValue={hasValue}
       disabled={disabled}
+      highlighted={highlighted}
       fullWidth={fullWidth}
+      onClick={onClick}
       {...rest}
     >
       {React.isValidElement(left) && left}
@@ -73,7 +82,9 @@ const SelectButton = forwardRef(function SelectButton(
       <SelectButtonIcon
         name={rightIcon}
         size={12}
-        onClick={onClear ? handleClear : undefined}
+        hasValue={hasValue}
+        highlighted={highlighted}
+        onClick={rightIcon === "close" ? handleClear : undefined}
       />
     </SelectButtonRoot>
   );
@@ -81,4 +92,6 @@ const SelectButton = forwardRef(function SelectButton(
 
 export default Object.assign(SelectButton, {
   Root: SelectButtonRoot,
+  Content: SelectButtonContent,
+  Icon: SelectButtonIcon,
 });

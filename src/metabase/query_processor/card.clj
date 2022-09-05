@@ -4,7 +4,7 @@
             [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.api.common :as api]
-            [metabase.mbql.normalize :as normalize]
+            [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.card :as card :refer [Card]]
@@ -14,10 +14,10 @@
             [metabase.public-settings :as public-settings]
             [metabase.query-processor :as qp]
             [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.middleware.constraints :as constraints]
+            [metabase.query-processor.middleware.constraints :as qp.constraints]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.query-processor.streaming :as qp.streaming]
-            [metabase.query-processor.util :as qputil]
+            [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
             [metabase.util.schema :as su]
@@ -25,11 +25,11 @@
             [toucan.db :as db]))
 
 (defn- query-magic-ttl
-  "Compute a 'magic' cache TTL time (in seconds) for QUERY by multipling its historic average execution times by the
+  "Compute a 'magic' cache TTL time (in seconds) for `query` by multipling its historic average execution times by the
   `query-caching-ttl-ratio`. If the TTL is less than a second, this returns `nil` (i.e., the cache should not be
   utilized.)"
   [query]
-  (when-let [average-duration (query/average-execution-time-ms (qputil/query-hash query))]
+  (when-let [average-duration (query/average-execution-time-ms (qp.util/query-hash query))]
     (let [ttl-seconds (Math/round (float (/ (* average-duration (public-settings/query-caching-ttl-ratio))
                                             1000.0)))]
       (when-not (zero? ttl-seconds)
@@ -94,7 +94,7 @@
     (into
      {}
      (comp
-      (map (fn [[param-name {widget-type :widget-type, tag-type :type}] ]
+      (map (fn [[param-name {widget-type :widget-type, tag-type :type}]]
              ;; Field Filter parameters have a `:type` of `:dimension` and the widget type that should be used is
              ;; specified by `:widget-type`. Non-Field-filter parameters just have `:type`. So prefer
              ;; `:widget-type` if available but fall back to `:type` if not.
@@ -177,7 +177,7 @@
   options."
   [card-id export-format
    & {:keys [parameters constraints context dashboard-id middleware qp-runner run ignore_cache]
-      :or   {constraints constraints/default-query-constraints
+      :or   {constraints (qp.constraints/default-query-constraints)
              context     :question
              qp-runner   qp/process-query-and-save-execution!}}]
   {:pre [(int? card-id) (u/maybe? sequential? parameters)]}
@@ -188,7 +188,7 @@
                    (qp.streaming/streaming-response [context export-format (u/slugify (:card-name info))]
                      (binding [qp.perms/*card-id* card-id]
                        (qp-runner query info context)))))
-        card  (api/read-check (db/select-one [Card :id :name :dataset_query :database_id
+        card  (api/read-check (db/select-one [Card :id :name :dataset_query :database_id :is_write
                                               :cache_ttl :collection_id :dataset :result_metadata]
                                              :id card-id))
         query (-> (assoc (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id}) :async? true)
@@ -204,6 +204,9 @@
                 (and (:dataset card) (seq (:result_metadata card)))
                 (assoc :metadata/dataset-metadata (:result_metadata card)))]
     (api/check-not-archived card)
+    (api/check-is-readonly card)
     (when (seq parameters)
-      (validate-card-parameters card-id (normalize/normalize-fragment [:parameters] parameters)))
+      (validate-card-parameters card-id (mbql.normalize/normalize-fragment [:parameters] parameters)))
+    (log/tracef "Running query for Card %d:\n%s" card-id
+                (u/pprint-to-str query))
     (run query info)))

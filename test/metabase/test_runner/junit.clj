@@ -72,7 +72,7 @@
                  {:duration-ms (- (System/currentTimeMillis) (:start-time-ms context))})]
     (alter-meta! test-ns update-in [::context :results] conj result)))
 
-(defn- inc-ns-test-counts! [{test-ns :ns, :as event} & ks]
+(defn- inc-ns-test-counts! [{test-ns :ns, :as _event} & ks]
   (alter-meta! test-ns update ::context (fn [context]
                                           (reduce
                                            (fn [context k]

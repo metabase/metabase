@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import { breakpointMinSmall } from "metabase/styled-components/theme";
 
 const getPercentage = (number: number): string => {

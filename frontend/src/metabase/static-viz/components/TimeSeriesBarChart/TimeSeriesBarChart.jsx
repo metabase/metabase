@@ -13,13 +13,14 @@ import {
 import { formatDate } from "../../lib/dates";
 import { formatNumber } from "../../lib/numbers";
 import { sortTimeSeries } from "../../lib/sort";
+import { DATE_ACCESSORS } from "../../constants/accessors";
 
 const propTypes = {
   data: PropTypes.array.isRequired,
   accessors: PropTypes.shape({
     x: PropTypes.func.isRequired,
     y: PropTypes.func.isRequired,
-  }).isRequired,
+  }),
   settings: PropTypes.shape({
     x: PropTypes.object,
     y: PropTypes.object,
@@ -29,6 +30,7 @@ const propTypes = {
     left: PropTypes.string,
     bottom: PropTypes.string,
   }),
+  getColor: PropTypes.func,
 };
 
 const layout = {
@@ -56,7 +58,13 @@ const layout = {
   strokeDasharray: "4",
 };
 
-const TimeSeriesBarChart = ({ data, accessors, settings, labels }) => {
+const TimeSeriesBarChart = ({
+  data,
+  accessors = DATE_ACCESSORS,
+  settings,
+  labels,
+  getColor,
+}) => {
   data = sortTimeSeries(data);
   const colors = settings?.colors;
   const yTickWidth = getYTickWidth(data, accessors, settings, layout.font.size);
@@ -110,9 +118,9 @@ const TimeSeriesBarChart = ({ data, accessors, settings, labels }) => {
         labelOffset={yLabelOffset}
         hideTicks
         hideAxisLine
-        labelProps={getLabelProps(layout)}
+        labelProps={getLabelProps(layout, getColor)}
         tickFormat={value => formatNumber(value, settings?.y)}
-        tickLabelProps={() => getYTickLabelProps(layout)}
+        tickLabelProps={() => getYTickLabelProps(layout, getColor)}
       />
       <AxisBottom
         scale={xScale}
@@ -121,9 +129,9 @@ const TimeSeriesBarChart = ({ data, accessors, settings, labels }) => {
         numTicks={layout.numTicks}
         stroke={palette.textLight}
         tickStroke={palette.textLight}
-        labelProps={getLabelProps(layout)}
+        labelProps={getLabelProps(layout, getColor)}
         tickFormat={value => formatDate(value, settings?.x)}
-        tickLabelProps={() => getXTickLabelProps(layout)}
+        tickLabelProps={() => getXTickLabelProps(layout, false, getColor)}
       />
     </svg>
   );

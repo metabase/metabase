@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
 export const InputRoot = styled.label`
@@ -43,7 +43,7 @@ export const InputButton = styled.span`
   user-select: none;
 
   ${InputField}:focus + & {
-    outline: 2px solid ${color("focus")};
+    outline: 2px solid ${() => color("focus")};
   }
 
   ${InputField}:not(:focus-visible) + & {

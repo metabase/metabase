@@ -1,5 +1,5 @@
 import Button from "metabase/core/components/Button";
-import styled from "styled-components";
+import styled from "@emotion/styled";
 
 export const SecretKeyWidgetRoot = styled.div`
   display: flex;

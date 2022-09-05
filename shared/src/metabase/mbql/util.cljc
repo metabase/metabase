@@ -4,10 +4,13 @@
   #?@
   (:clj
    [(:require [clojure.string :as str]
+              [clojure.tools.logging :as log]
               [metabase.mbql.schema :as mbql.s]
               [metabase.mbql.schema.helpers :as schema.helpers]
               [metabase.mbql.util.match :as mbql.match]
+              [metabase.models.dispatch :as models.dispatch]
               [metabase.shared.util.i18n :as i18n]
+              metabase.util.i18n
               [potemkin :as p]
               [schema.core :as s])]
    :cljs
@@ -240,9 +243,12 @@
   `<unit>` is inferred from the `:field` the clause is being compared to (if any), otherwise falls back to `default.`"
   [m]
   (mbql.match/replace m
-    [clause field [:relative-datetime :current & _]]
-    [clause field [:relative-datetime 0 (or (mbql.match/match-one field [:field _ (opts :guard :temporal-unit)] (:temporal-unit opts))
-                                            :default)]]))
+    [clause field & (args :guard (partial some (partial = [:relative-datetime :current])))]
+    (let [temporal-unit (or (mbql.match/match-one field [:field _ {:temporal-unit temporal-unit}] temporal-unit)
+                            :default)]
+      (into [clause field] (mbql.match/replace args
+                             [:relative-datetime :current]
+                             [:relative-datetime 0 temporal-unit])))))
 
 (s/defn desugar-filter-clause :- mbql.s/Filter
   "Rewrite various 'syntatic sugar' filter clauses like `:time-interval` and `:inside` as simpler, logically
@@ -339,9 +345,15 @@
   "Dispatch function perfect for use with multimethods that dispatch off elements of an MBQL query. If `x` is an MBQL
   clause, dispatches off the clause name; otherwise dispatches off `x`'s class."
   ([x]
-   (if (mbql-clause? x)
-     (first x)
-     (type x)))
+   #?(:clj
+      (if (mbql-clause? x)
+        (first x)
+        (or (metabase.models.dispatch/model x)
+            (type x)))
+      :cljs
+      (if (mbql-clause? x)
+        (first x)
+        (type x))))
   ([x _]
    (dispatch-by-clause-name-or-class x)))
 
@@ -624,23 +636,6 @@
                            max-results)]
     (safe-min mbql-limit constraints-limit)))
 
-;; TODO -- This seems like it would be easily confused with
-;; [[metabase.driver.sql.query-processor/source-query-alias]]. Joins are REQUIRED to have aliases anyway
-(def ^:private default-join-alias "source")
-
-(s/defn deduplicate-join-aliases :- mbql.s/Joins
-  "Make sure every join in `:joins` has a unique alias. If a `:join` does not already have an alias, this will give it
-  one."
-  [joins :- [mbql.s/Join]]
-  (let [joins          (for [join joins]
-                         (update join :alias #(or % default-join-alias)))
-        unique-aliases (uniquify-names (map :alias joins))]
-    (mapv
-     (fn [join alias]
-       (assoc join :alias alias))
-     joins
-     unique-aliases)))
-
 (defn- remove-empty [x]
   (cond
     (map? x)
@@ -675,10 +670,18 @@
 
 (defn with-temporal-unit
   "Set the `:temporal-unit` of a `:field` clause to `unit`."
-  [clause unit]
+  [[_ _ {:keys [base-type]} :as clause] unit]
   ;; it doesn't make sense to call this on an `:expression` or `:aggregation`.
   (assert (is-clause? :field clause))
-  (assoc-field-options clause :temporal-unit unit))
+  (if (or (not base-type)
+          (mbql.s/valid-temporal-unit-for-base-type? base-type unit))
+    (assoc-field-options clause :temporal-unit unit)
+    #_{:clj-kondo/ignore [:redundant-do]} ; The linter detects that this is redundant in CLJS and warns for it.
+    (do
+      #?(:clj
+         (log/warn (metabase.util.i18n/trs "{0} is not a valid temporal unit for {1}; not adding to clause {2}"
+                                           unit base-type (pr-str clause))))
+      clause)))
 
 (defn remove-namespaced-options
   "Update a `:field`, `:expression` reference, or `:aggregation` reference clause by removing all namespaced keys in the

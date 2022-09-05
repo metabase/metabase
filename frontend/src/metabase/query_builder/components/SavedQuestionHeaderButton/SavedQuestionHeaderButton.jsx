@@ -1,36 +1,30 @@
 import React from "react";
+import { t } from "ttag";
 import PropTypes from "prop-types";
-
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { HeaderButton } from "./SavedQuestionHeaderButton.styled";
-
-export default SavedQuestionHeaderButton;
+import { HeaderRoot, HeaderTitle } from "./SavedQuestionHeaderButton.styled";
 
 SavedQuestionHeaderButton.propTypes = {
   className: PropTypes.string,
   question: PropTypes.object.isRequired,
-  onClick: PropTypes.func.isRequired,
-  isActive: PropTypes.bool.isRequired,
+  onSave: PropTypes.func,
 };
 
-function SavedQuestionHeaderButton({ className, question, onClick, isActive }) {
-  const {
-    name: reviewIconName,
-    color: reviewIconColor,
-  } = PLUGIN_MODERATION.getStatusIconForQuestion(question);
-
+function SavedQuestionHeaderButton({ question, onSave }) {
   return (
-    <HeaderButton
-      className={className}
-      onClick={onClick}
-      iconRight="chevrondown"
-      icon={reviewIconName}
-      leftIconColor={reviewIconColor}
-      isActive={isActive}
-      iconSize={20}
-      data-testid="saved-question-header-button"
-    >
-      {question.displayName()}
-    </HeaderButton>
+    <HeaderRoot>
+      <HeaderTitle
+        isDisabled={!question.canWrite()}
+        initialValue={question.displayName()}
+        placeholder={t`Add title`}
+        onChange={onSave}
+        data-testid="saved-question-header-title"
+      />
+      <PLUGIN_MODERATION.QuestionModerationIcon question={question} />
+    </HeaderRoot>
   );
 }
+
+export default Object.assign(SavedQuestionHeaderButton, {
+  Root: HeaderRoot,
+});

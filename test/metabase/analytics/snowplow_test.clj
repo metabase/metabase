@@ -8,6 +8,7 @@
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
             [toucan.db :as db])
   (:import java.util.LinkedHashMap))
 
@@ -69,15 +70,34 @@
                        :user-id (-> events :subject :uid)})
          events)))
 
+(defn valid-datetime-for-snowplow?
+  "Check if a datetime string has the format that snowplow accepts.
+  The string should have the format yyyy-mm-dd'T'hh:mm:ss.SSXXX which is a RFC3339 format.
+  Reference: https://json-schema.org/understanding-json-schema/reference/string.html#dates-and-times"
+  [t]
+  (try
+    (java.time.LocalDate/parse
+      t
+      (java.time.format.DateTimeFormatter/ofPattern "yyyy-MM-dd'T'hh:mm:ss.SSXXX"))
+    true
+    (catch Exception _e
+      false)))
+
 (deftest custom-content-test
-  (testing "Snowplow events include a custom context that includes the schema, instance ID, version and token features"
+  (testing "Snowplow events include a custom context that includes the schema, instance ID, version, token features
+           and creation timestamp"
     (with-fake-snowplow-collector
       (snowplow/track-event! ::snowplow/new-instance-created)
       (is (= {:schema "iglu:com.metabase/instance/jsonschema/1-1-0",
               :data {:id             (snowplow/analytics-uuid)
                      :version        {:tag (:tag (public-settings/version))},
-                     :token-features (public-settings/token-features)}}
-             (:context (first @*snowplow-collector*)))))))
+                     :token_features (public-settings/token-features)
+                     :created_at     (snowplow/instance-creation)}}
+             (:context (first @*snowplow-collector*))))
+
+      (testing "the created_at should have the format yyyy-MM-dd'T'hh:mm:ss.SSXXX"
+        (is (valid-datetime-for-snowplow?
+              (get-in (first @*snowplow-collector*) [:context :data :created_at])))))))
 
 (deftest ip-address-override-test
   (testing "IP address on Snowplow subject is overridden with a dummy value (127.0.0.1)"
@@ -90,7 +110,9 @@
   (with-fake-snowplow-collector
     (testing "Data sent into [[snowplow/track-event!]] for each event type is propagated to the Snowplow collector,
              with keys converted into snake-case strings, and the subject's user ID being converted to a string."
-      (snowplow/track-event! ::snowplow/new-instance-created)
+      ;; Trigger instance-creation event by calling the `instance-creation` setting function for the first time
+      (db/delete! Setting :key "instance-creation")
+      (snowplow/instance-creation)
       (is (= [{:data    {"event" "new_instance_created"}
                :user-id nil}]
              (pop-event-data-and-user-id!)))
@@ -130,6 +152,11 @@
                :user-id "1"}]
              (pop-event-data-and-user-id!)))
 
+      (snowplow/track-event! ::snowplow/new-event-created 1 {:source "question", :question_id 1})
+      (is (= [{:data    {"event" "new_event_created", "source" "question", "question_id" 1}
+               :user-id "1"}]
+             (pop-event-data-and-user-id!)))
+
       (testing "Snowplow events are not sent when tracking is disabled"
         (mt/with-temporary-setting-values [anon-tracking-enabled false]
           (snowplow/track-event! ::snowplow/new-instance-created)
@@ -139,7 +166,7 @@
   (let [original-value (db/select-one-field :value Setting :key "instance-creation")]
     (try
       (testing "Instance creation timestamp is set only once when setting is first fetched"
-        (db/delete! Setting {:key "instance-creation"})
+        (db/delete! Setting :key "instance-creation")
         (with-redefs [snowplow/first-user-creation (constantly nil)]
           (let [first-value (snowplow/instance-creation)]
             (Thread/sleep 10) ;; short sleep since java.time.Instant is not necessarily monotonic
@@ -148,11 +175,11 @@
 
       (testing "If a user already exists, we should use the first user's creation timestamp"
         (mt/with-test-user :crowberto
-          (db/delete! Setting {:key "instance-creation"})
+          (db/delete! Setting :key "instance-creation")
           (let [first-user-creation (:min (db/select-one ['User [:%min.date_joined :min]]))
                 instance-creation   (snowplow/instance-creation)]
-            (is (= (java-time/local-date-time first-user-creation)
-                   (java-time/local-date-time instance-creation))))))
+            (is (= (u.date/format-rfc3339 first-user-creation)
+                   instance-creation)))))
       (finally
-        (if original-value
+        (when original-value
           (db/update-where! Setting {:key "instance-creation"} :value original-value))))))

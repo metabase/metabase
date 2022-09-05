@@ -18,7 +18,7 @@ const AuditUserDetail = ({ params, ...props }) => {
         <EntityName
           entityType="users"
           entityId={userId}
-          property={"common_name"}
+          property="common_name"
         />
       }
       tabs={AuditUserDetail.tabs}

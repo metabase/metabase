@@ -1,5 +1,5 @@
 import React from "react";
-import styled from "styled-components";
+import styled from "@emotion/styled";
 
 import { PRODUCTS } from "__support__/sample_database_fixture";
 import Table from "metabase-lib/lib/metadata/Table";

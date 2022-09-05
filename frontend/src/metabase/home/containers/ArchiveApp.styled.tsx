@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 
 export const ArchiveRoot = styled.div`
   margin: 0 4rem;
@@ -15,9 +15,13 @@ export const ArchiveBody = styled.div`
 `;
 
 export const ArchiveBarContent = styled.div`
-  display: flex;
   align-items: center;
-  padding: 1rem 4rem;
+  display: flex;
+  // Height is hard-set so it remains
+  // the same as the ProfileLinkContainer
+  // in MainNavbar
+  height: 48px;
+  padding: 8px 4rem 7px;
 `;
 
 export const ArchiveBarText = styled.div`

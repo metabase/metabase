@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import Button from "metabase/core/components/Button";
 
@@ -11,9 +11,11 @@ export const NavBar = styled.div`
   border-bottom: 1px solid ${color("border")};
 `;
 
-export const ModelEducationButton = styled(Button).attrs({
-  icon: "model",
-  borderless: true,
-})`
+export const ModelEducationButton = styled(Button)`
   color: ${color("text-dark")};
 `;
+
+ModelEducationButton.defaultProps = {
+  icon: "model",
+  borderless: true,
+};

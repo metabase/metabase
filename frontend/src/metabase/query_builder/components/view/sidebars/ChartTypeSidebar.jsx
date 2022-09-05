@@ -2,7 +2,6 @@
 import React from "react";
 import _ from "underscore";
 import { t } from "ttag";
-import cx from "classnames";
 import Icon from "metabase/components/Icon";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 
@@ -17,7 +16,7 @@ import {
 const FIXED_LAYOUT = [
   ["line", "bar", "combo", "area", "row", "waterfall"],
   ["scatter", "pie", "funnel", "smartscalar", "progress", "gauge"],
-  ["scalar", "table", "pivot", "map"],
+  ["scalar", "table", "pivot", "map", "list", "object"],
 ];
 const FIXED_TYPES = new Set(_.flatten(FIXED_LAYOUT));
 
@@ -68,7 +67,10 @@ const ChartTypeSidebar = ({
                     question
                       .setDisplay(type)
                       .lockDisplay(true) // prevent viz auto-selection
-                      .update(null, { reload: false, shouldUpdateUrl: true });
+                      .update(null, {
+                        reload: false,
+                        shouldUpdateUrl: question.query().isEditable(),
+                      });
                     onOpenChartSettings({ section: t`Data` });
                     setUIControls({ isShowingRawTable: false });
                   }}
@@ -92,10 +94,6 @@ const ChartTypeOption = ({
     <OptionIconContainer
       isSelected={isSelected}
       onClick={onClick}
-      className={cx(
-        "cursor-pointer bg-brand-hover text-brand text-white-hover",
-        { "text-white": isSelected },
-      )}
       data-testid={`${visualization.uiName}-button`}
       data-is-sensible={isSensible}
     >

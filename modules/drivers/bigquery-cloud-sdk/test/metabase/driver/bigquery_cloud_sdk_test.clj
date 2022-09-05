@@ -1,5 +1,6 @@
 (ns metabase.driver.bigquery-cloud-sdk-test
   (:require [clojure.core.async :as a]
+            [clojure.string :as str]
             [clojure.test :refer :all]
             [clojure.tools.logging :as log]
             [metabase.db.metadata-queries :as metadata-queries]
@@ -19,8 +20,9 @@
 
 (deftest can-connect?-test
   (mt/test-driver :bigquery-cloud-sdk
-    (let [db-details   (:details (mt/db))
-          fake-proj-id "definitely-not-a-real-project-id-way-no-how"]
+    (let [db-details (:details (mt/db))
+          fake-proj-id "definitely-not-a-real-project-id-way-no-how"
+          fake-dataset-id "definitely-not-a-real-dataset-id-way-no-how"]
       (testing "can-connect? returns true in the happy path"
         (is (true? (driver/can-connect? :bigquery-cloud-sdk db-details))))
       (testing "can-connect? returns false for bogus credentials"
@@ -28,7 +30,12 @@
       (testing "can-connect? returns true for a valid dataset-id even with no tables"
         (with-redefs [bigquery/list-tables (fn [& _]
                                              [])]
-          (is (true? (driver/can-connect? :bigquery-cloud-sdk db-details))))))))
+          (is (true? (driver/can-connect? :bigquery-cloud-sdk db-details)))))
+      (testing "can-connect? returns an appropriate exception message if no datasets are found"
+        (is (thrown-with-msg? Exception
+                              #"Looks like we cannot find any matching datasets."
+                              (driver/can-connect? :bigquery-cloud-sdk
+                                                   (assoc db-details :dataset-filters-patterns fake-dataset-id))))))))
 
 (deftest table-rows-sample-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -38,9 +45,9 @@
               [3 "The Apple Pan"]
               [4 "Wurstküche"]
               [5 "Brite Spot Family Restaurant"]]
-             (->> (metadata-queries/table-rows-sample (Table (mt/id :venues))
-                    [(Field (mt/id :venues :id))
-                     (Field (mt/id :venues :name))]
+             (->> (metadata-queries/table-rows-sample (db/select-one Table :id (mt/id :venues))
+                    [(db/select-one Field :id (mt/id :venues :id))
+                     (db/select-one Field :id (mt/id :venues :name))]
                     (constantly conj))
                   (sort-by first)
                   (take 5)))))
@@ -53,9 +60,9 @@
            page-callback   (fn [] (swap! pages-retrieved inc))]
        (with-bindings {#'bigquery/*page-size*             25
                        #'bigquery/*page-callback*         page-callback}
-         (let [actual (->> (metadata-queries/table-rows-sample (Table (mt/id :venues))
-                             [(Field (mt/id :venues :id))
-                              (Field (mt/id :venues :name))]
+         (let [actual (->> (metadata-queries/table-rows-sample (db/select-one Table :id (mt/id :venues))
+                             [(db/select-one Field :id (mt/id :venues :id))
+                              (db/select-one Field :id (mt/id :venues :name))]
                              (constantly conj))
                            (sort-by first)
                            (take 5))]
@@ -93,6 +100,7 @@
                   "raw values being used to calculate the formulas below, so we can tell at a glance if they're right "
                   "without referring to the EDN def)")
       (is (= [[nil] [0.0] [0.0] [10.0] [8.0] [5.0] [5.0] [nil] [0.0] [0.0]]
+             #_:clj-kondo/ignore
              (calculate-bird-scarcity $count))))
 
     (testing (str "do expressions automatically handle division by zero? Should return `nil` in the results for places "
@@ -197,7 +205,7 @@
 
 (deftest sync-views-test
   (mt/test-driver :bigquery-cloud-sdk
-    (with-view [view-name]
+    (with-view [#_:clj-kondo/ignore view-name]
       (is (contains? (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db)))
                      {:schema "v3_test_data", :name view-name})
           "`describe-database` should see the view")
@@ -286,7 +294,7 @@
 
 (deftest bigquery-specific-types-test
   (testing "Table with decimal types"
-    (with-numeric-types-table [tbl-nm]
+    (with-numeric-types-table [#_:clj-kondo/ignore tbl-nm]
       (is (contains? (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db)))
                      {:schema "v3_test_data", :name tbl-nm})
           "`describe-database` should see the table")
@@ -333,8 +341,24 @@
                 :name   tbl-nm
                 :fields #{{:name "int_col", :database-type "INTEGER", :base-type :type/Integer, :database-position 0}
                           {:name "array_col", :database-type "INTEGER", :base-type :type/Array, :database-position 1}}}
-              (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm, :schema "v3_test_data"}))
-          "`describe-table` should detect the correct base-type for array type columns")))))
+               (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm, :schema "v3_test_data"}))
+               "`describe-table` should detect the correct base-type for array type columns")))))
+
+(deftest sync-inactivates-old-duplicate-tables
+  (testing "If on the new driver, then downgrade, then upgrade again (#21981)"
+    (mt/test-driver :bigquery-cloud-sdk
+      (mt/dataset avian-singles
+        (try
+          (let [synced-tables (db/select Table :db_id (mt/id))]
+            (is (= 2 (count synced-tables)))
+            (db/insert-many! Table (map #(dissoc % :id :schema) synced-tables))
+            (sync/sync-database! (mt/db) {:scan :schema})
+            (let [synced-tables (db/select Table :db_id (mt/id))]
+              (is (partial= {true [{:name "messages"} {:name "users"}]
+                             false [{:name "messages"} {:name "users"}]}
+                            (-> (group-by :active synced-tables)
+                                (update-vals #(sort-by :name %)))))))
+          (finally (db/delete! Table :db_id (mt/id) :active false)))))))
 
 (deftest retry-certain-exceptions-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -370,22 +394,21 @@
 (deftest global-max-rows-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "The limit middleware prevents us from fetching more pages than are necessary to fulfill query max-rows"
-      (mt/with-open-channels [canceled-chan (a/promise-chan)]
-        (let [page-size          100
-              max-rows           1000
-              num-page-callbacks (atom 0)]
-          (binding [bigquery/*page-size*     page-size
-                    bigquery/*page-callback* (fn []
-                                               (swap! num-page-callbacks inc))]
-            (mt/dataset sample-dataset
-              (let [rows (mt/rows (mt/process-query (mt/query orders {:query {:limit max-rows}})))]
-                (is (= max-rows (count rows)))
-                (is (= (/ max-rows page-size) @num-page-callbacks))))))))))
+      (let [page-size          100
+            max-rows           1000
+            num-page-callbacks (atom 0)]
+        (binding [bigquery/*page-size*     page-size
+                  bigquery/*page-callback* (fn []
+                                             (swap! num-page-callbacks inc))]
+          (mt/dataset sample-dataset
+            (let [rows (mt/rows (mt/process-query (mt/query orders {:query {:limit max-rows}})))]
+              (is (= max-rows (count rows)))
+              (is (= (/ max-rows page-size) @num-page-callbacks)))))))))
 
 (defn- sync-and-assert-filtered-tables [database assert-table-fn]
   (mt/with-temp Database [db-filtered database]
     (sync/sync-database! db-filtered {:scan :schema})
-    (doseq [table (Table :db_id (u/the-id db-filtered))]
+    (doseq [table (db/select-one Table :db_id (u/the-id db-filtered))]
       (assert-table-fn table))))
 
 (deftest dataset-filtering-test
@@ -431,7 +454,7 @@
                                                                   (orig-fn database dataset-id))]
             ;; fetch the Database from app DB a few more times to ensure the normalization changes are only called once
             (doseq [_ (range 5)]
-              (is (nil? (get-in (Database db-id) [:details :dataset-id]))))
+              (is (nil? (get-in (db/select-one Database :id db-id) [:details :dataset-id]))))
             ;; the convert-dataset-id-to-filters! fn should have only been called *once* (as a result of the select
             ;; that runs at the end of creating the temp object, above ^
             ;; it should have persisted the change that removes the dataset-id to the app DB, so the next time someone
@@ -441,7 +464,7 @@
           ;; now, so we need to manually update the temp DB again here, to force the "old" structure
           (let [updated? (db/update! Database db-id :details {:dataset-id "my-dataset"})]
             (is updated?)
-            (let [updated (Database db-id)]
+            (let [updated (db/select-one Database :id db-id)]
               (is (nil? (get-in updated [:details :dataset-id])))
               ;; the hardcoded dataset-id connection property should have now been turned into an inclusion filter
               (is (= "my-dataset" (get-in updated [:details :dataset-filters-patterns])))
@@ -468,3 +491,20 @@
                 mt/native-query
                 qp/process-query
                 mt/rows))))))
+
+(deftest datetime-truncate-field-literal-form-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "Field literal forms should get datetime-truncated correctly (#20806)"
+      (let [query (mt/mbql-query nil
+                    {:source-query {:native (str/join
+                                             \newline
+                                             ["SELECT date"
+                                              "FROM unnest(generate_date_array('2021-01-01', '2021-01-15')) date"])}
+                     :breakout    [[:field "date" {:temporal-unit :week, :base-type :type/Date}]]
+                     :aggregation [[:count]]})]
+        (mt/with-native-query-testing-context query
+          (is (= [["2020-12-27T00:00:00Z" 2]
+                  ["2021-01-03T00:00:00Z" 7]
+                  ["2021-01-10T00:00:00Z" 6]]
+                 (mt/rows
+                  (qp/process-query query)))))))))

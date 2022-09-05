@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import {
   breakpointMinMedium,
   breakpointMinSmall,
@@ -15,13 +15,4 @@ export const SchemaGridItem = styled(GridItem)`
   ${breakpointMinMedium} {
     width: 33.33%;
   }
-`;
-
-export const SchemaCardContent = styled.div`
-  display: flex;
-  align-items: center;
-`;
-
-export const SchemaCardActions = styled.div`
-  margin-left: auto;
 `;

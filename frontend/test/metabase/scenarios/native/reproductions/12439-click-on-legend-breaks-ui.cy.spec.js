@@ -1,4 +1,6 @@
-import { restore, visitQuestionAdhoc, sidebar } from "__support__/e2e/cypress";
+import { restore, visitQuestionAdhoc, sidebar } from "__support__/e2e/helpers";
+
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 const nativeQuery = `SELECT "PRODUCTS__via__PRODUCT_ID"."CATEGORY" AS "CATEGORY", parsedatetime(formatdatetime("PUBLIC"."ORDERS"."CREATED_AT", 'yyyyMM'), 'yyyyMM') AS "CREATED_AT", count(*) AS "count"
 FROM "PUBLIC"."ORDERS"
@@ -9,7 +11,7 @@ ORDER BY "PRODUCTS__via__PRODUCT_ID"."CATEGORY" ASC, parsedatetime(formatdatetim
 
 const questionDetails = {
   dataset_query: {
-    database: 1,
+    database: SAMPLE_DB_ID,
     native: {
       query: nativeQuery,
     },

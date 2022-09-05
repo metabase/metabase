@@ -146,17 +146,22 @@ function getDataSourceParts({ question, subHead, isObjectDetail }) {
     return [];
   }
 
-  const parts = [];
-
   const isStructuredQuery = question.isStructured();
   const query = isStructuredQuery
     ? question.query().rootQuery()
     : question.query();
 
+  const hasDataPermission = query.isEditable();
+  if (!hasDataPermission) {
+    return [];
+  }
+
+  const parts = [];
+
   const database = query.database();
   if (database) {
     parts.push({
-      icon: "database",
+      icon: !subHead ? "database" : undefined,
       name: database.displayName(),
       href: database.id >= 0 && Urls.browseDatabase(database),
     });

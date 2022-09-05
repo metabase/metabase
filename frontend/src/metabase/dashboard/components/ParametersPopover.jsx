@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { getDashboardParameterSections } from "metabase/parameters/utils/dashboard-options";
 import Icon from "metabase/components/Icon";
 import { getParameterIconName } from "metabase/parameters/utils/ui";
-import styled from "styled-components";
+import styled from "@emotion/styled";
 
 import _ from "underscore";
 

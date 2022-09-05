@@ -151,7 +151,7 @@
           :rounding 0,
           :code "BRL",
           :name_plural "Brazilian reals"}],
-   [:BTC {:symbol "BTC",
+   [:BTC {:symbol "₿",
           :name "Bitcoin",
           :symbol_native "BTC",
           :decimal_digits 8,

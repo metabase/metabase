@@ -17,16 +17,6 @@ export const EDITOR_QUOTES = {
   identifierAlwaysQuoted: true,
 };
 
-// export const EDITOR_QUOTES = {
-//   characters: {
-//     "'": "literal",
-//     '"': "identifier",
-//   },
-//   literalQuoteDefault: "'",
-//   identifierQuoteDefault: '"',
-//   identifierAlwaysQuoted: false,
-// };
-
 export const EDITOR_FK_SYMBOLS = {
   // specifies which symbols can be used to delimit foreign/joined fields
   symbols: [".", " → "],
@@ -226,11 +216,21 @@ export const MBQL_CLAUSES = {
     type: "boolean",
     args: ["expression", "expression", "expression"],
   },
+  interval: {
+    displayName: "timeSpan",
+    type: "number",
+    args: ["number", "string"],
+  },
   "time-interval": {
     displayName: `interval`,
     type: "boolean",
     args: ["expression", "number", "string"],
     hasOptions: true,
+  },
+  "relative-datetime": {
+    displayName: "relativeDateTime",
+    type: "expression",
+    args: ["number", "string"],
   },
   "is-null": {
     displayName: `isnull`,
@@ -398,6 +398,8 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "starts-with",
   "between",
   "time-interval",
+  "relative-datetime",
+  "interval",
   "is-null",
   "is-empty",
   // other

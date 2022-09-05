@@ -6,7 +6,7 @@
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :refer [Field]]
             [metabase.models.table :as table]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
             [metabase.types :as types]
             [metabase.util :as u]
@@ -46,7 +46,7 @@
     (when (empty? fields)
       (throw (ex-info (tru "No fields found for table {0}." (pr-str (:name (qp.store/table table-id))))
                       {:table-id table-id
-                       :type     error-type/invalid-query})))
+                       :type     qp.error-type/invalid-query})))
     (mapv
      (fn [field]
        ;; implicit datetime Fields get bucketing of `:default`. This is so other middleware doesn't try to give it
@@ -114,7 +114,7 @@
       ;; if the Table has no Fields, throw an Exception, because there is no way for us to proceed
       (when-not (seq fields)
         (throw (ex-info (tru "Table ''{0}'' has no Fields associated with it." (:name (qp.store/table source-table-id)))
-                        {:type error-type/invalid-query})))
+                        {:type qp.error-type/invalid-query})))
       ;; add the fields & expressions under the `:fields` clause
       (assoc inner-query :fields (vec (concat fields expressions))))))
 

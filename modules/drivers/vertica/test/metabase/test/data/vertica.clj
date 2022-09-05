@@ -14,7 +14,7 @@
             [metabase.test.data.sql-jdbc.execute :as execute]
             [metabase.test.data.sql-jdbc.load-data :as load-data]
             [metabase.util :as u]
-            [metabase.util.files :as files]))
+            [metabase.util.files :as u.files]))
 
 (sql-jdbc.tx/add-test-extensions! :vertica)
 
@@ -112,7 +112,7 @@
                          :field-definitions [{:field-name "vendor"
                                               :base-type  :type/Text}]
                          :rows              [["Pouros, Nitzsche and Mayer"]]}
-          temp-filename (str (files/get-path (System/getProperty "java.io.tmpdir") "vertica-csv-test.csv"))]
+          temp-filename (str (u.files/get-path (System/getProperty "java.io.tmpdir") "vertica-csv-test.csv"))]
       (dump-table-rows-to-csv! table-def temp-filename)
       (is (= ["id,vendor"
               "1,Pouros\\, Nitzsche and Mayer"]
@@ -120,7 +120,7 @@
 
 (defn- load-rows-from-csv!
   "Load rows from a CSV file into a Table."
-  [driver {:keys [database-name], :as dbdef} {:keys [table-name rows], :as tabledef} filename]
+  [_driver {:keys [database-name], :as _dbdef} {:keys [table-name rows], :as _tabledef} filename]
   (let [table-identifier (sql.tx/qualify-and-quote :vertica database-name table-name)]
     (with-open [conn (jdbc/get-connection (dbspec))]
       (letfn [(execute! [sql]
@@ -147,7 +147,7 @@
           (let [[{actual-num-rows :count}] (jdbc/query {:connection conn}
                                                        (format "SELECT count(*) FROM %s;" table-identifier))]
             (when-not (= actual-num-rows (count rows))
-              (throw (ex-info (format "Expected count(*) to return %d, but only got" (count rows) actual-num-rows)
+              (throw (ex-info (format "Expected count(*) to return %d, but only got %d" (count rows) actual-num-rows)
                               {:inserted-rows (take 100 (actual-rows))}))))
           ;; success!
           :ok

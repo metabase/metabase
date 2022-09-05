@@ -1,7 +1,7 @@
 (ns metabase-enterprise.content-management.api.review-test
   (:require [clojure.test :refer :all]
             [metabase.models.card :refer [Card]]
-            [metabase.models.moderation-review :as mod-review :refer [ModerationReview]]
+            [metabase.models.moderation-review :as moderation-review :refer [ModerationReview]]
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.test :as mt]
             [toucan.db :as db]))
@@ -23,7 +23,7 @@
                                       :moderated_item_type "card"})))))
 
     (premium-features-test/with-premium-features #{:content-management}
-      (mt/with-temp* [Card [{card-id :id :as card} {:name "Test Card"}]]
+      (mt/with-temp* [Card [{card-id :id} {:name "Test Card"}]]
         (mt/with-model-cleanup [ModerationReview]
           (letfn [(moderate! [status text]
                     (normalized-response
@@ -65,7 +65,7 @@
                                :moderated_item_id card-id
                                :moderated_item_type "card"))))))
             (testing "Ensures we never have more than `modreview/max-moderation-reviews`"
-              (db/insert-many! ModerationReview (repeat (* 2 mod-review/max-moderation-reviews)
+              (db/insert-many! ModerationReview (repeat (* 2 moderation-review/max-moderation-reviews)
                                                         {:moderated_item_id   card-id
                                                          :moderated_item_type "card"
                                                          :moderator_id        (mt/user->id :crowberto)
@@ -74,13 +74,13 @@
                                                          :text                "old review"}))
               ;; manually inserted many
 
-              (is (> (review-count) mod-review/max-moderation-reviews))
+              (is (> (review-count) moderation-review/max-moderation-reviews))
               (moderate! "verified" "lookin good")
               ;; api ensures we never have more than our limit
 
-              (is (<= (review-count) mod-review/max-moderation-reviews)))
+              (is (<= (review-count) moderation-review/max-moderation-reviews)))
             (testing "Only allows for valid status"
-              (doseq [status mod-review/statuses]
+              (doseq [status moderation-review/statuses]
                 (is (= status (:status (moderate! status "good")))))
               ;; i wish this was better. Should have a better error message and honestly shouldn't be a 500
               (mt/user-http-request :crowberto :post 400 "moderation-review"

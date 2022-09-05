@@ -1,4 +1,4 @@
-import { getInbox, restore, setupSMTP } from "__support__/e2e/cypress";
+import { getInbox, restore, setupSMTP } from "__support__/e2e/helpers";
 import { USERS } from "__support__/e2e/cypress_data";
 
 const { admin } = USERS;
@@ -26,15 +26,13 @@ describe("scenarios > auth > password", () => {
       cy.findByLabelText("Confirm your password").type(admin.password);
       cy.findByText("Save new password").click();
 
-      cy.findByText("All done!");
-      cy.findByText("Sign in with your new password").click();
-
-      cy.findByText("Start here");
+      cy.findByText("You've updated your password.");
     });
   });
 });
 
 const getResetLink = html => {
-  const [, href] = html.match(/href="([^"]+)"/);
+  const [, anchor] = html.match(/<a (.*)>/);
+  const [, href] = anchor.match(/href="([^"]+)"/);
   return href;
 };

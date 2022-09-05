@@ -7,7 +7,7 @@
             [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test :as mt]))
 
-(defn- resolve-joins [{{:keys [source-table]} :query, :as query}]
+(defn- resolve-joins [query]
   (mt/with-everything-store
     (resolve-joins/resolve-joins query)))
 
@@ -99,17 +99,17 @@
                               :condition    [:= $category_id &c.categories.id]
                               :fields       [&c.categories.name]}]}))))))
 
-(deftest join-same-table-twice-test
-  (testing "Does joining the same table twice without an explicit alias give both joins unique aliases?"
+(deftest join-table-without-alias-test
+  (testing "Does joining a table an explicit alias add a default alias?"
     (is (= (mt/mbql-query venues
              {:joins        [{:source-table $$categories
-                              :alias        "source"
+                              :alias        "__join"
                               :strategy     :left-join
                               :condition    [:= $category_id 1]}
                              {:source-table $$categories
-                              :alias        "source_2"
+                              :alias        "__join"
                               :strategy     :left-join
-                              :condition    [:= $category_id 2]}],
+                              :condition    [:= $category_id 2]}]
               :source-table (mt/id :venues)})
            (resolve-joins
             (mt/mbql-query venues
@@ -170,7 +170,7 @@
 (deftest join-with-source-query-test
   (testing "Does a join using a source query get its Tables resolved?"
     (is (= {:store
-            {:database "test-data",
+            {:database "test-data"
              :tables   #{"VENUES" "CATEGORIES"}
              :fields   #{["VENUES" "CATEGORY_ID"]}}
 

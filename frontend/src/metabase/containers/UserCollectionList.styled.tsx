@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import { GridItem } from "metabase/components/Grid";
 
 export const ListRoot = styled.div`

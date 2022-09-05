@@ -2,11 +2,13 @@ import React from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
-import moment from "moment";
+import moment from "moment-timezone";
 
 import { getUser } from "metabase/selectors/user";
-
+import { getFullName } from "metabase/lib/user";
 import { TextButton } from "metabase/components/Button.styled";
+import Tooltip from "metabase/components/Tooltip";
+import DateTime from "metabase/components/DateTime";
 
 function mapStateToProps(state) {
   return {
@@ -31,27 +33,28 @@ LastEditInfoLabel.propTypes = {
   className: PropTypes.string,
 };
 
-function formatEditorName(firstName, lastName) {
-  const lastNameFirstLetter = lastName.charAt(0);
-  return `${firstName} ${lastNameFirstLetter}.`;
+function formatEditorName(lastEditInfo) {
+  const name = getFullName(lastEditInfo);
+
+  return name || lastEditInfo.email;
 }
 
 function LastEditInfoLabel({ item, user, onClick, className }) {
-  const { first_name, last_name, id: editorId, timestamp } = item[
-    "last-edit-info"
-  ];
+  const lastEditInfo = item["last-edit-info"];
+  const { id: editorId, timestamp } = lastEditInfo;
   const time = moment(timestamp).fromNow();
 
-  const editor =
-    editorId === user.id ? t`you` : formatEditorName(first_name, last_name);
+  const editor = editorId === user.id ? t`you` : formatEditorName(lastEditInfo);
 
   return (
-    <TextButton
-      size="small"
-      className={className}
-      onClick={onClick}
-      data-testid="revision-history-button"
-    >{t`Edited ${time} by ${editor}`}</TextButton>
+    <Tooltip tooltip={<DateTime value={timestamp} />}>
+      <TextButton
+        size="small"
+        className={className}
+        onClick={onClick}
+        data-testid="revision-history-button"
+      >{t`Edited ${time} by ${editor}`}</TextButton>
+    </Tooltip>
   );
 }
 

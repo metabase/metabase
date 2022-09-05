@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import {
   breakpointMinMedium,
   breakpointMinSmall,
@@ -7,7 +7,6 @@ import {
 import Card from "metabase/components/Card";
 import Link from "metabase/core/components/Link";
 import { GridItem } from "metabase/components/Grid";
-import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 
 export const TableGridItem = styled(GridItem)`
   width: 100%;
@@ -30,12 +29,12 @@ export const TableLink = styled(Link)`
 export const TableActionLink = styled(Link)`
   line-height: initial;
 
-  &:not(:first-child) {
+  &:not(:first-of-type) {
     margin-left: ${space(1)};
   }
 `;
 
-export const TableCard = forwardRefToInnerRef(styled(Card)`
+export const TableCard = styled(Card)`
   padding-left: ${space(1)};
   padding-right: ${space(1)};
 
@@ -46,4 +45,4 @@ export const TableCard = forwardRefToInnerRef(styled(Card)`
   &:hover ${TableActionLink} {
     visibility: visible;
   }
-`);
+`;

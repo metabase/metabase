@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -20,7 +20,8 @@ describe("visual tests > models > editor", () => {
         cy.visit(`/model/${MODEL_ID}/query`);
         cy.wait("@cardQuery");
         cy.findByText(/Doing science/).should("not.exist");
-        cy.percySnapshot(
+        cy.wait(100); // waits for the colums widths calculation
+        cy.createPercySnapshot(
           "visual tests > models > editor > GUI query > renders query editor correctly",
         );
       });
@@ -35,7 +36,8 @@ describe("visual tests > models > editor", () => {
         cy.visit(`/model/${MODEL_ID}/metadata`);
         cy.wait("@cardQuery");
         cy.findByText(/Doing science/).should("not.exist");
-        cy.percySnapshot(
+        cy.wait(100); // waits for the colums widths calculation
+        cy.createPercySnapshot(
           "visual tests > models > editor > GUI query > renders metadata editor correctly",
         );
       });
@@ -54,7 +56,7 @@ describe("visual tests > models > editor", () => {
         cy.visit(`/model/${MODEL_ID}/query`);
         cy.wait("@cardQuery");
         cy.findByText(/Doing science/).should("not.exist");
-        cy.percySnapshot(
+        cy.createPercySnapshot(
           "visual tests > models > editor > native query > renders query editor correctly",
         );
       });
@@ -71,7 +73,8 @@ describe("visual tests > models > editor", () => {
         cy.visit(`/model/${MODEL_ID}/metadata`);
         cy.wait("@cardQuery");
         cy.findByText(/Doing science/).should("not.exist");
-        cy.percySnapshot(
+        cy.wait(100); // waits for the colums widths calculation
+        cy.createPercySnapshot(
           "visual tests > models > editor > native query > renders metadata editor correctly",
         );
       });

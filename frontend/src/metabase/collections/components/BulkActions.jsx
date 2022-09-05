@@ -3,7 +3,6 @@ import React from "react";
 import { t, msgid, ngettext } from "ttag";
 import _ from "underscore";
 
-import { Grid } from "metabase/components/Grid";
 import BulkActionBar from "metabase/components/BulkActionBar";
 import Button from "metabase/core/components/Button";
 import Modal from "metabase/components/Modal";
@@ -17,9 +16,6 @@ import {
   ActionBarContent,
   ActionBarText,
   ActionControlsRoot,
-  ActionGridItem,
-  ActionGridItemContent,
-  ActionGridPlaceholder,
 } from "./BulkActions.styled";
 
 const BulkActionControls = ({ onArchive, onMove }) => (
@@ -66,37 +62,29 @@ function BulkActions(props) {
     onCloseModal,
     onMove,
     onCopy,
+    isNavbarOpen,
   } = props;
   return (
-    <BulkActionBar showing={selected.length > 0}>
+    <BulkActionBar showing={selected.length > 0} isNavbarOpen={isNavbarOpen}>
       {/* NOTE: these padding and grid sizes must be carefully matched
                    to the main content above to ensure the bulk checkbox lines up */}
       <ActionBarContent>
-        <Grid>
-          <ActionGridPlaceholder />
-          <ActionGridItem>
-            <ActionGridItemContent>
-              <SelectionControls {...props} />
-              <BulkActionControls
-                onArchive={
-                  _.all(selected, item => item.setArchived) ? onArchive : null
-                }
-                onMove={
-                  _.all(selected, item => item.setCollection)
-                    ? onMoveStart
-                    : null
-                }
-              />
-              <ActionBarText>
-                {ngettext(
-                  msgid`${selected.length} item selected`,
-                  `${selected.length} items selected`,
-                  selected.length,
-                )}
-              </ActionBarText>
-            </ActionGridItemContent>
-          </ActionGridItem>
-        </Grid>
+        <SelectionControls {...props} />
+        <BulkActionControls
+          onArchive={
+            _.all(selected, item => item.setArchived) ? onArchive : null
+          }
+          onMove={
+            _.all(selected, item => item.setCollection) ? onMoveStart : null
+          }
+        />
+        <ActionBarText>
+          {ngettext(
+            msgid`${selected.length} item selected`,
+            `${selected.length} items selected`,
+            selected.length,
+          )}
+        </ActionBarText>
       </ActionBarContent>
       {!_.isEmpty(selectedItems) && selectedAction === "copy" && (
         <Modal onClose={onCloseModal}>

@@ -21,6 +21,7 @@ import {
   ToggleLabel,
   WarningIcon,
   DisabledPermissionOption,
+  SelectedOption,
 } from "./PermissionsSelect.styled";
 
 const propTypes = {
@@ -66,7 +67,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
           iconColor="text-light"
         />
       ) : (
-        <PermissionsSelectOption {...selectedOption} />
+        <SelectedOption {...selectedOption} />
       )}
 
       {warning && (

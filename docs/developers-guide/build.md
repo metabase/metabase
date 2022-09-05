@@ -1,3 +1,7 @@
+---
+title: Building Metabase
+---
+
 # Building Metabase
 
 This doc will show you how you can build and run Metabase on your own computer so you can play around with it or test features in development. You can also run development branches of Metabase [using a pre-built Docker image](dev-branch-docker.md).
@@ -14,7 +18,7 @@ To complete any build of the Metabase code, you'll need to install the following
 
 1. [Clojure (https://clojure.org)](https://clojure.org/guides/getting_started) - install the latest release by following the guide depending on your OS
 
-2. [Java Development Kit JDK (https://adoptopenjdk.net/releases.html)](https://adoptopenjdk.net/releases.html) - you need to install JDK 11 ([more info on Java versions](../operations-guide/java-versions.md))
+2. [Java Development Kit JDK (https://adoptopenjdk.net/releases.html)](https://adoptopenjdk.net/releases.html) - you need to install JDK 11 ([more info on Java versions](../installation-and-operation/java-versions.md))
 
 3. [Node.js (http://nodejs.org/)](http://nodejs.org/) - latest LTS release
 
@@ -38,13 +42,27 @@ sudo update-alternatives --config java
 
 Then select Java 11 in the menu.
 
+### Running on M1 Apple computers
+
+If you are developing on newer Apple M1 computers, please note that the current NodeJS LTS (v16.15.0) has native support for arm architecture. However, make sure you have Rosetta 2 installed before you attempt to build the frontend:
+
+```
+/usr/sbin/softwareupdate --install-rosetta (root permission not required)
+```
+
+or
+
+```
+/usr/sbin/softwareupdate --install-rosetta --agree-to-license (root permission required)
+```
+
 ### If you're running Windows, use WSL
 
 If you are developing on Windows, you should run Ubuntu on Windows Subsystem for Linux (WSL) and follow instructions for Ubuntu/Linux.
 
 ### Developing with VS Code in a remote container
 
-Alternatively, without the need to explicitly install the above dependencies, follow the guide [on using Visual Studio Code](deven.md#developing-with-visual-studio-code.md) and its remote container support.
+Alternatively, without the need to explicitly install the above dependencies, follow the guide [on using Visual Studio Code](visual-studio-code.md) and its remote container support.
 
 ## Clone the Metabase repo
 
@@ -58,6 +76,7 @@ Once you've installed all the build tools, you'll need to clone the [Metabase re
 cd ~/workspace
 ```
 
+{:start="3"}
 3. Run the following command to “clone” Metabase into this folder, using the URL of the Metabase repository on GitHub:
 
 ```
@@ -70,6 +89,7 @@ This is the part that you’ll use over and over.
 
 The “official” branch of Metabase is called `master`, and other feature development branches get merged into it when they’re approved. So if you want to try out a feature before then, you’ll need to know the name of that branch so you can switch over to it. Here’s what to do:
 
+{:start="4"}
 4. Open up your terminal app
 
 5. Navigate to where you're storing the Metabase code. If you followed this guide exactly, you'd get there by entering this command: 
@@ -109,6 +129,7 @@ The “official” branch of Metabase is called `master`, and other feature deve
 
 ## Run Metabase
 
+{:start="9"}
 9. Now we’ll start up the backend server of Metabase with:
 
    ```
@@ -122,8 +143,11 @@ The “official” branch of Metabase is called `master`, and other feature deve
    ```
    yarn build-hot
    ```
+   
+If you're having trouble with this step, make sure you are using the LTS version of [Node.js (http://nodejs.org/)](http://nodejs.org/).
 
-11. In your web browser of choice, navigate to [localhost:3000](http://localhost:3000), where you should see Metabase!
+{:start="11"}
+11. In your web browser of choice, navigate to `http://localhost:3000`, where you should see Metabase!
      
    This is the local “server” on your computer, and 3000 is the “port” that Metabase is running on. You can have multiple different apps running on different ports on your own computer. Note that if you share any URLs with others that begin with `localhost`, they won’t be able to access them because your computer by default isn’t open up to the whole world, for security.    
 
@@ -140,4 +164,3 @@ The entire Metabase application is compiled and assembled into a single .jar fil
     ./bin/build
 
 After running the build script simply look in `target/uberjar` for the output .jar file and you are ready to go.
-

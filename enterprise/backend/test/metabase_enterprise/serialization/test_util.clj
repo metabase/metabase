@@ -1,8 +1,15 @@
 (ns metabase-enterprise.serialization.test-util
-  (:require [metabase-enterprise.serialization.names :as names]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database Dependency
+  (:require [clojure.java.io :as io]
+            [clojure.test :refer :all]
+            [metabase-enterprise.serialization.names :as names]
+            [metabase.db :as mdb]
+            [metabase.db.connection :as mdb.connection]
+            [metabase.db.data-source :as mdb.data-source]
+            [metabase.db.schema-migrations-test.impl :as schema-migrations-test.impl]
+            [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database
                                      Field Metric NativeQuerySnippet Pulse PulseCard Segment Table User]]
             [metabase.models.collection :as collection]
+            [metabase.models.permissions-group :as perms-group]
             [metabase.query-processor.store :as qp.store]
             [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.test :as mt]
@@ -14,14 +21,12 @@
 (def temp-db-name "Fingerprint test-data copy")
 
 (defn temp-field [from-field-id table-id]
-  (-> from-field-id
-      Field
+  (-> (db/select-one Field :id from-field-id)
       (dissoc :id)
       (assoc :table_id table-id)))
 
 (defn temp-table [from-tbl-id db-id]
-  (-> from-tbl-id
-      Table
+  (-> (db/select-one Table :id from-tbl-id)
       (dissoc :id)
       (update :display_name #(str "Temp " %))
       (assoc :db_id db-id)))
@@ -44,6 +49,84 @@
   [model-bindings & body]
   `(binding [collection/*allow-deleting-personal-collections* true]
      (tt/with-temp* ~model-bindings ~@body)))
+
+(defmacro with-empty-h2-app-db
+  "Runs `body` under a new, blank, H2 application database (randomly named), in which all model tables have been
+  created via Liquibase schema migrations. After `body` is finished, the original app DB bindings are restored.
+
+  Makes use of functionality in the [[metabase.db.schema-migrations-test.impl]] namespace since that already does what
+  we need."
+  [& body]
+  `(schema-migrations-test.impl/with-temp-empty-app-db [conn# :h2]
+     (schema-migrations-test.impl/run-migrations-in-range! conn# [0 "v99.00-000"]) ; this should catch all migrations)
+     ;; since the actual group defs are not dynamic, we need with-redefs to change them here
+     (with-redefs [perms-group/all-users (#'perms-group/magic-group perms-group/all-users-group-name)
+                   perms-group/admin     (#'perms-group/magic-group perms-group/admin-group-name)]
+       ~@body)))
+
+(defn create! [model & {:as properties}]
+  (db/insert! model (merge (tt/with-temp-defaults model) properties)))
+
+(defn- do-with-in-memory-h2-db [db-name-prefix f]
+  (let [db-name           (str db-name-prefix (mt/random-name))
+        connection-string (format "jdbc:h2:mem:%s" db-name)
+        data-source       (mdb.data-source/raw-connection-string->DataSource connection-string)]
+    ;; DB should stay open as long as `conn` is held open.
+    (with-open [_conn (.getConnection data-source)]
+      (letfn [(do-with-app-db [thunk]
+                (binding [mdb.connection/*application-db* (mdb.connection/application-db :h2 data-source)]
+                  (testing (format "\nApp DB = %s" (pr-str connection-string))
+                    (thunk))))]
+        (do-with-app-db mdb/setup-db!)
+        (f do-with-app-db)))))
+
+(defn do-with-source-and-dest-dbs [f]
+  (do-with-in-memory-h2-db
+   "source-"
+   (fn [do-with-source-db]
+     (do-with-in-memory-h2-db
+      "dest-"
+      (fn [do-with-dest-db]
+        (f do-with-source-db do-with-dest-db))))))
+
+(defmacro with-source-and-dest-dbs
+  "Creates and sets up two in-memory H2 application databases, a source database and an application database. For
+  testing load/dump/serialization stuff. To use the source DB, use [[with-source-db]], which makes binds it as the
+  current application database; [[with-dest-db]] binds the destination DB as the current application database."
+  {:style/indent 0}
+  [& body]
+  ;; this is implemented by introducing the anaphors `&do-with-source-db` and `&do-with-dest-db` which are used by
+  ;; [[with-source-db]] and [[with-dest-db]]
+  `(do-with-source-and-dest-dbs
+    (fn [~'&do-with-source-db ~'&do-with-dest-db]
+      ~@body)))
+
+(defmacro with-source-db
+  "For use with [[with-source-and-dest-dbs]]. Makes the source DB the current application database."
+  {:style/indent 0}
+  [& body]
+  `(~'&do-with-source-db (fn [] ~@body)))
+
+(defmacro with-dest-db
+  "For use with [[with-source-and-dest-dbs]]. Makes the destination DB the current application database."
+  {:style/indent 0}
+  [& body]
+  `(~'&do-with-dest-db (fn [] ~@body)))
+
+(defn random-dump-dir [prefix]
+  (str (System/getProperty "java.io.tmpdir") "/" prefix (mt/random-name)))
+
+(defn do-with-random-dump-dir [prefix f]
+  (let [dump-dir (random-dump-dir (or prefix ""))]
+    (testing (format "\nDump dir = %s" (pr-str dump-dir))
+      (try
+        (f dump-dir)
+        (finally
+          (when (.exists (io/file dump-dir))
+            (.delete (io/file dump-dir))))))))
+
+(defmacro with-random-dump-dir {:style/indent 2} [[dump-dir-binding prefix] & body]
+  `(do-with-random-dump-dir ~prefix (fn [~dump-dir-binding] ~@body)))
 
 (defmacro with-world
   "Run test in the context of a minimal Metabase instance connected to our test database."
@@ -121,11 +204,6 @@
                                                                              [:field
                                                                               ~'category-pk-field-id
                                                                               {:join-alias "cat"}]]}]}}}]
-                   Dependency [{~'dependency-id :id} {:model "Card"
-                                                      :model_id ~'card-id
-                                                      :dependent_on_model "Segment"
-                                                      :dependent_on_id ~'segment-id
-                                                      :created_at :%now}]
                    Card       [{~'card-arch-id :id}
                                {;:archived true
                                 :table_id ~'table-id

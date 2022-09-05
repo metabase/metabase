@@ -21,6 +21,7 @@ import cx from "classnames";
 import {
   getSettings,
   getSettingValues,
+  getDerivedSettingValues,
   getSections,
   getActiveSection,
   getActiveSectionName,
@@ -32,6 +33,7 @@ const mapStateToProps = (state, props) => {
   return {
     settings: getSettings(state, props),
     settingValues: getSettingValues(state, props),
+    derivedSettingValues: getDerivedSettingValues(state, props),
     sections: getSections(state, props),
     activeSection: getActiveSection(state, props),
     activeSectionName: getActiveSectionName(state, props),
@@ -45,9 +47,7 @@ const mapDispatchToProps = {
   reloadSettings,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-@title(({ activeSection }) => activeSection && activeSection.name)
-export default class SettingsEditorApp extends Component {
+class SettingsEditorApp extends Component {
   layout = null; // the reference to AdminLayout
 
   static propTypes = {
@@ -67,7 +67,7 @@ export default class SettingsEditorApp extends Component {
   }
 
   updateSetting = async (setting, newValue) => {
-    const { settingValues, updateSetting } = this.props;
+    const { settingValues, updateSetting, reloadSettings } = this.props;
 
     this.saveStatusRef.current.setSaving();
 
@@ -85,7 +85,9 @@ export default class SettingsEditorApp extends Component {
         );
       }
 
-      await updateSetting(setting);
+      if (!setting.disableDefaultUpdate) {
+        await updateSetting(setting);
+      }
 
       if (setting.onChanged) {
         await setting.onChanged(
@@ -94,6 +96,10 @@ export default class SettingsEditorApp extends Component {
           settingValues,
           this.handleChangeSetting,
         );
+      }
+
+      if (setting.disableDefaultUpdate) {
+        await reloadSettings();
       }
 
       this.saveStatusRef.current.setSaved();
@@ -130,7 +136,13 @@ export default class SettingsEditorApp extends Component {
   };
 
   renderSettingsPane() {
-    const { activeSection, settingValues } = this.props;
+    const { activeSection, settings, settingValues, derivedSettingValues } =
+      this.props;
+    const isLoading = settings.length === 0;
+
+    if (isLoading) {
+      return null;
+    }
 
     if (!activeSection) {
       return <NotFound />;
@@ -149,7 +161,9 @@ export default class SettingsEditorApp extends Component {
         <ul>
           {activeSection.settings
             .filter(setting =>
-              setting.getHidden ? !setting.getHidden(settingValues) : true,
+              setting.getHidden
+                ? !setting.getHidden(settingValues, derivedSettingValues)
+                : true,
             )
             .map((setting, index) => (
               <SettingsSetting
@@ -175,8 +189,9 @@ export default class SettingsEditorApp extends Component {
         // HACK - This is used to hide specific items in the sidebar and is currently
         // only used as a way to fake the multi page auth settings pages without
         // requiring a larger refactor.
-        if (section.sidebar === false) {
-          return false;
+        const isNestedSettingPage = Boolean(slug.split("/")[1]);
+        if (isNestedSettingPage) {
+          return null;
         }
 
         // The nested authentication routes should be matched just on the prefix:
@@ -237,3 +252,8 @@ export default class SettingsEditorApp extends Component {
     );
   }
 }
+
+export default _.compose(
+  connect(mapStateToProps, mapDispatchToProps),
+  title(({ activeSection }) => activeSection && activeSection.name),
+)(SettingsEditorApp);

@@ -3,8 +3,10 @@ import {
   setupSMTP,
   openEmailPage,
   sendSubscriptionsEmail,
-} from "__support__/e2e/cypress";
-import { USERS } from "__support__/e2e/cypress_data";
+  visitDashboard,
+} from "__support__/e2e/helpers";
+
+import { USERS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 const { admin } = USERS;
 
@@ -25,12 +27,12 @@ describe("static visualizations", () => {
         createWaterfallQuestion({ showTotal: false }),
       ],
     }).then(({ dashboard }) => {
-      cy.visit(`/dashboard/${dashboard.id}`);
+      visitDashboard(dashboard.id);
 
       sendSubscriptionsEmail(`${admin.first_name} ${admin.last_name}`);
 
       openEmailPage(dashboardName).then(() => {
-        cy.percySnapshot();
+        cy.createPercySnapshot();
       });
     });
   });
@@ -46,7 +48,7 @@ function createWaterfallQuestion({ showTotal } = {}) {
     },
     visualization_settings: {},
     display: "waterfall",
-    database: 1,
+    database: SAMPLE_DB_ID,
   };
 
   if (typeof showTotal !== "undefined") {

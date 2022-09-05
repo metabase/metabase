@@ -10,7 +10,7 @@
             [metabase.models.pulse :as pulse]
             [metabase.models.pulse-channel :as pulse-channel]
             [metabase.models.task-history :as task-history]
-            [metabase.pulse :as p]
+            metabase.pulse
             [metabase.task :as task]
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s]))
@@ -49,10 +49,11 @@
    (let [pulse-id->channels (group-by :pulse_id (pulse-channel/retrieve-scheduled-channels hour weekday monthday monthweek))]
      (doseq [[pulse-id channels] pulse-id->channels]
        (try
-         (task-history/with-task-history {:task (format "send-pulse %s" pulse-id)}
+         (task-history/with-task-history {:task         "send-pulse"
+                                          :task_details {:pulse-id pulse-id}}
            (log/debug (trs "Starting Pulse Execution: {0}" pulse-id))
            (when-let [pulse (pulse/retrieve-notification pulse-id :archived false)]
-             (p/send-pulse! pulse :channel-ids (map :id channels)))
+             (metabase.pulse/send-pulse! pulse :channel-ids (map :id channels)))
            (log/debug (trs "Finished Pulse Execution: {0}" pulse-id)))
          (catch Throwable e
            (on-error pulse-id e)))))))
@@ -76,8 +77,7 @@
       (< start-of-last-week curr-day-of-month) :last
       :else                                    :other)))
 
-;; triggers the sending of all pulses which are scheduled to run in the current hour
-(jobs/defjob SendPulses [_]
+(jobs/defjob ^{:doc "Triggers the sending of all pulses which are scheduled to run in the current hour"} SendPulses [_]
   (try
     (task-history/with-task-history {:task "send-pulses"}
       ;; determine what time it is right now (hour-of-day & day-of-week) in reporting timezone

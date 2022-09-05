@@ -6,18 +6,17 @@ import {
   sidebar,
   visitQuestionAdhoc,
   visualize,
-} from "__support__/e2e/cypress";
-import { USER_GROUPS } from "__support__/e2e/cypress_data";
+  summarize,
+  visitQuestion,
+  visitDashboard,
+  startNewQuestion,
+} from "__support__/e2e/helpers";
+
+import { USER_GROUPS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const {
-  ORDERS,
-  ORDERS_ID,
-  PRODUCTS,
-  PRODUCTS_ID,
-  PEOPLE,
-  PEOPLE_ID,
-} = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
+  SAMPLE_DATABASE;
 const { DATA_GROUP } = USER_GROUPS;
 
 describe("scenarios > visualizations > drillthroughs > chart drill", () => {
@@ -27,48 +26,47 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it("should allow brush date filter", () => {
-    cy.createQuestion({
-      name: "Brush Date Filter",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        breakout: [
-          [
-            "field",
-            PRODUCTS.CREATED_AT,
-            { "source-field": ORDERS.PRODUCT_ID, "temporal-unit": "month" },
+    cy.createQuestion(
+      {
+        name: "Brush Date Filter",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "field",
+              PRODUCTS.CREATED_AT,
+              { "source-field": ORDERS.PRODUCT_ID, "temporal-unit": "month" },
+            ],
+            ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
           ],
-          ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
-        ],
+        },
+        display: "line",
       },
-      display: "line",
-    }).then(response => {
-      cy.visit(`/question/${response.body.id}`);
+      { visitQuestion: true },
+    );
 
-      // wait for chart to expand and display legend/labels
-      cy.contains("Loading..."); // this gives more time to load
-      cy.contains("Gadget");
-      cy.contains("January, 2017");
-      cy.wait(100); // wait longer to avoid grabbing the svg before a chart redraw
+    cy.contains("Gadget");
+    cy.contains("January, 2017");
+    cy.wait(100); // wait longer to avoid grabbing the svg before a chart redraw
 
-      // drag across to filter
-      cy.get(".Visualization")
-        .trigger("mousedown", 120, 200)
-        .trigger("mousemove", 230, 200)
-        .trigger("mouseup", 230, 200);
+    // drag across to filter
+    cy.get(".Visualization")
+      .trigger("mousedown", 120, 200)
+      .trigger("mousemove", 230, 200)
+      .trigger("mouseup", 230, 200);
 
-      // new filter applied
-      // Note: Test was flaking because apparently mouseup doesn't always happen at the same position.
-      //       It is enough that we assert that the filter exists and that it starts with May, 2016
-      cy.contains(/^Created At between May, 2016/);
-      // more granular axis labels
-      cy.contains("June, 2016");
-      // confirm that product category is still broken out
-      cy.contains("Gadget");
-      cy.contains("Doohickey");
-      cy.contains("Gizmo");
-      cy.contains("Widget");
-    });
+    // new filter applied
+    // Note: Test was flaking because apparently mouseup doesn't always happen at the same position.
+    //       It is enough that we assert that the filter exists and that it starts with May, 2016
+    cy.contains(/^Created At between May, 2016/);
+    // more granular axis labels
+    cy.contains("June, 2016");
+    // confirm that product category is still broken out
+    cy.contains("Gadget");
+    cy.contains("Doohickey");
+    cy.contains("Gizmo");
+    cy.contains("Widget");
   });
 
   ["month", "month-of-year"].forEach(granularity => {
@@ -80,7 +78,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
       const questionDetails = {
         name: "18011",
-        database: 1,
+        database: SAMPLE_DB_ID,
         query: {
           "source-table": PRODUCTS_ID,
           aggregation: [["count"]],
@@ -164,7 +162,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
               });
             });
 
-            cy.visit(`/dashboard/${DASHBOARD_ID}`);
+            visitDashboard(DASHBOARD_ID);
 
             cy.log("The first series line");
             cy.get(".sub.enable-dots._0")
@@ -246,7 +244,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
               });
             });
 
-            cy.visit(`/dashboard/${DASHBOARD_ID}`);
+            visitDashboard(DASHBOARD_ID);
 
             cy.log("The first series line");
             cy.get(".sub.enable-dots._0")
@@ -278,8 +276,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     // There's a slight hiccup in the UI with nested questions when we Summarize by City below.
     // Because there's only 5 rows, it automatically switches to the chart, but issues another
     // dataset request. So we wait for the dataset to load.
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
+    cy.intercept("POST", "/api/dataset").as("dataset");
 
     // People in CA
     cy.createQuestion({
@@ -287,26 +284,19 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       query: { "source-table": PEOPLE_ID, limit: 5 },
     });
     // Build a new question off that grouping by City
-    cy.visit("/question/new");
-    cy.contains("Simple question").click();
+    startNewQuestion();
     cy.contains("Saved Questions").click();
     cy.contains("CA People").click();
     cy.contains("Hudson Borer");
-    cy.contains("Summarize").click();
-    cy.contains("Summarize by")
-      .parent()
-      .parent()
-      .contains("City")
-      .click();
+    summarize();
+    cy.contains("Summarize by").parent().parent().contains("City").click();
 
     // wait for chart to load
     cy.wait("@dataset");
     cy.contains("Count by City");
     // drill into the first bar
-    cy.get(".bar")
-      .first()
-      .click({ force: true });
-    cy.contains("View this CA Person").click();
+    cy.get(".bar").first().click({ force: true });
+    cy.contains("View this CA People").click();
 
     // check that filter is applied and person displayed
     cy.contains("City is Beaver Dams");
@@ -330,9 +320,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.contains("January, 2019");
 
     // drill into a recent week
-    cy.get(".dot")
-      .eq(-4)
-      .click({ force: true });
+    cy.get(".dot").eq(-4).click({ force: true });
     cy.contains("View these Orders").click();
 
     // check that filter is applied and rows displayed
@@ -345,7 +333,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
   it.skip("should drill-through on filtered aggregated results (metabase#13504)", () => {
     openOrdersTable({ mode: "notebook" });
-    cy.findByText("Summarize").click();
+    summarize({ mode: "notebook" });
     cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();
     cy.findByText("Created At").click();
@@ -357,9 +345,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       cy.findByText("Equal to").click();
     });
     cy.findByText("Greater than").click();
-    cy.findByPlaceholderText("Enter a number")
-      .click()
-      .type("1");
+    cy.findByPlaceholderText("Enter a number").click().type("1");
     cy.findByText("Add filter").click();
 
     visualize();
@@ -385,28 +371,29 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it("should display correct value in a tooltip for unaggregated data (metabase#11907)", () => {
-    cy.createNativeQuestion({
-      name: "11907",
-      native: {
-        query:
-          "SELECT parsedatetime('2020-01-01', 'yyyy-MM-dd') AS \"d\", 5 AS \"c\" UNION ALL\nSELECT parsedatetime('2020-01-01', 'yyyy-MM-dd') AS \"d\", 2 AS \"c\" UNION ALL\nSELECT parsedatetime('2020-01-01', 'yyyy-MM-dd') AS \"d\", 3 AS \"c\" UNION ALL\nSELECT parsedatetime('2020-01-02', 'yyyy-MM-dd') AS \"d\", 1 AS \"c\" UNION ALL\nSELECT parsedatetime('2020-01-02', 'yyyy-MM-dd') AS \"d\", 4 AS \"c\"",
-        "template-tags": {},
+    cy.createNativeQuestion(
+      {
+        name: "11907",
+        native: {
+          query:
+            "SELECT parsedatetime('2020-01-01', 'yyyy-MM-dd') AS \"d\", 5 AS \"c\" UNION ALL\nSELECT parsedatetime('2020-01-01', 'yyyy-MM-dd') AS \"d\", 2 AS \"c\" UNION ALL\nSELECT parsedatetime('2020-01-01', 'yyyy-MM-dd') AS \"d\", 3 AS \"c\" UNION ALL\nSELECT parsedatetime('2020-01-02', 'yyyy-MM-dd') AS \"d\", 1 AS \"c\" UNION ALL\nSELECT parsedatetime('2020-01-02', 'yyyy-MM-dd') AS \"d\", 4 AS \"c\"",
+          "template-tags": {},
+        },
+        display: "line",
       },
-      display: "line",
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.visit(`/question/${QUESTION_ID}`);
+      { visitQuestion: true },
+    );
 
-      clickLineDot({ index: 0 });
-      popover().within(() => {
-        cy.findByText("January 1, 2020");
-        cy.findByText("10");
-      });
+    clickLineDot({ index: 0 });
+    popover().within(() => {
+      cy.findByText("January 1, 2020");
+      cy.findByText("10");
+    });
 
-      clickLineDot({ index: 1 });
-      popover().within(() => {
-        cy.findByText("January 2, 2020");
-        cy.findByText("5");
-      });
+    clickLineDot({ index: 1 });
+    popover().within(() => {
+      cy.findByText("January 2, 2020");
+      cy.findByText("5");
     });
   });
 
@@ -418,7 +405,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
           query:
             "select 1 as axis, 5 as value, 9 as breakout union all\nselect 2 as axis, 6 as value, 10 as breakout union all\nselect 2 as axis, 6 as value, 10 as breakout",
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "bar",
       visualization_settings: {
@@ -427,9 +414,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       },
     });
 
-    cy.get(".bar")
-      .last()
-      .trigger("mousemove");
+    cy.get(".bar").last().trigger("mousemove");
     popover().findByText("12");
   });
 
@@ -486,20 +471,14 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         },
         display: "bar",
       }).then(({ body: { id: QUESTION_ID } }) => {
-        // Prepare to wait for certain imporatnt queries
-        cy.server();
-        cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
-        cy.route("POST", "/api/dataset").as("dataset");
+        cy.intercept("POST", "/api/dataset").as("dataset");
 
         // Switch to the normal user who has restricted SQL access
         cy.signInAsNormalUser();
-        cy.visit(`/question/${QUESTION_ID}`);
+        visitQuestion(QUESTION_ID);
 
         // Initial visualization has rendered and we can now drill-through
-        cy.wait("@cardQuery");
-        cy.get(".Visualization .bar")
-          .eq(4)
-          .click({ force: true });
+        cy.get(".Visualization .bar").eq(4).click({ force: true });
         cy.findByText(/View these People/i).click();
 
         // We should see the resulting dataset of that drill-through
@@ -515,7 +494,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     visitQuestionAdhoc({
       name: "15324",
       dataset_query: {
-        database: 1,
+        database: SAMPLE_DB_ID,
         query: {
           "source-table": ORDERS_ID,
           aggregation: [["count"]],
@@ -541,7 +520,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     visitQuestionAdhoc({
       name: "11345",
       dataset_query: {
-        database: 1,
+        database: SAMPLE_DB_ID,
         query: {
           "source-table": ORDERS_ID,
           aggregation: [["count"]],
@@ -560,7 +539,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
     // count number of distinct values in the Discount column
     cy.findByText("Discount ($)").click();
-    cy.findByText("Distincts").click();
+    cy.findByText("Distinct values").click();
 
     // there should be 0 distinct values since they are all null
     cy.get(".TableInteractive-cellWrapper").contains("0");
@@ -604,7 +583,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
           });
         });
 
-        cy.visit(`/dashboard/${DASHBOARD_ID}`);
+        visitDashboard(DASHBOARD_ID);
       });
     });
 
@@ -625,15 +604,13 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     beforeEach(() => {
       // Build a question without saving
       openProductsTable();
-      cy.findByText("Summarize").click();
+      summarize();
       sidebar().within(() => {
         cy.contains("Category").click();
       });
 
       // Drill-through the last bar (Widget)
-      cy.get(".bar")
-        .last()
-        .click({ force: true });
+      cy.get(".bar").last().click({ force: true });
       cy.findByText("View these Products").click();
     });
 
@@ -651,7 +628,5 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 });
 
 function clickLineDot({ index } = {}) {
-  cy.get(".Visualization .dot")
-    .eq(index)
-    .click({ force: true });
+  cy.get(".Visualization .dot").eq(index).click({ force: true });
 }

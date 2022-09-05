@@ -5,7 +5,7 @@
             [clojure.tools.logging :as log]
             [compojure.core :refer [POST]]
             [metabase.api.common :as api]
-            [metabase.models.setting.cache :as cache]
+            [metabase.models.setting.cache :as setting.cache]
             [toucan.db :as db]))
 
 (defn- snapshot-path-for-name
@@ -24,10 +24,10 @@
     (api/check-404 (.exists (java.io.File. path)))
     (with-open [conn (jdbc/get-connection (db/connection))]
       (let [conn-spec {:connection conn}]
-        (jdbc/execute! conn-spec ["SET LOCK_TIMEOUT 120000"])
+        (jdbc/execute! conn-spec ["SET LOCK_TIMEOUT 180000"])
         (jdbc/execute! conn-spec ["DROP ALL OBJECTS"])
         (jdbc/execute! conn-spec ["RUNSCRIPT FROM ?" path]))))
-  (cache/restore-cache!)
+  (setting.cache/restore-cache!)
   :ok)
 
 (api/defendpoint POST "/snapshot/:name"
@@ -41,5 +41,13 @@
   [name]
   (restore-snapshot! name)
   nil)
+
+(api/defendpoint POST "/echo"
+  [fail :as {:keys [body]}]
+  (if fail
+    {:status 400
+     :body {:error-code "oops"}}
+    {:status 200
+     :body body}))
 
 (api/define-routes)

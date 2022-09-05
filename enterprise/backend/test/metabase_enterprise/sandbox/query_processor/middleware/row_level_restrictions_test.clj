@@ -10,7 +10,7 @@
             [metabase.api.common :as api]
             [metabase.driver :as driver]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.mbql.normalize :as normalize]
+            [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.util :as mbql.u]
             [metabase.models :refer [Card Collection Field Table]]
             [metabase.models.permissions :as perms]
@@ -19,7 +19,7 @@
             [metabase.query-processor.middleware.cache-test :as cache-test]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.query-processor.pivot :as qp.pivot]
-            [metabase.query-processor.util :as qputil]
+            [metabase.query-processor.util :as qp.util]
             [metabase.query-processor.util.add-alias-info :as add]
             [metabase.test :as mt]
             [metabase.test.data.env :as tx.env]
@@ -35,7 +35,7 @@
 (defn- identifier
   ([table-key]
    (mt/with-everything-store
-     (sql.qp/->honeysql (or driver/*driver* :h2) (Table (mt/id table-key)))))
+     (sql.qp/->honeysql (or driver/*driver* :h2) (db/select-one Table :id (mt/id table-key)))))
 
   ([table-key field-key]
    (let [field-id   (mt/id table-key field-key)
@@ -156,7 +156,7 @@
 
 (defn- apply-row-level-permissions [query]
   (-> (mt/with-everything-store
-        (#'row-level-restrictions/apply-sandboxing (normalize/normalize query)))
+        (#'row-level-restrictions/apply-sandboxing (mbql.normalize/normalize query)))
       remove-metadata))
 
 (deftest middleware-test
@@ -247,7 +247,7 @@
     (testing "When querying with full permissions, no changes should be made"
       (mt/with-gtaps {:gtaps      {:venues (venues-category-mbql-gtap-def)}
                       :attributes {"cat" 50}}
-        (perms/grant-permissions! &group (perms/table-query-path (Table (mt/id :venues))))
+        (perms/grant-permissions! &group (perms/table-query-path (db/select-one Table :id (mt/id :venues))))
         (is (= [[100]]
                (run-venues-count-query)))))
 
@@ -405,8 +405,8 @@
 
 (defn- run-query-returning-remark [run-query-fn]
   (let [remark (atom nil)
-        orig   qputil/query->remark]
-    (with-redefs [qputil/query->remark (fn [driver outer-query]
+        orig   qp.util/query->remark]
+    (with-redefs [qp.util/query->remark (fn [driver outer-query]
                                          (u/prog1 (orig driver outer-query)
                                            (reset! remark <>)))]
       (let [results (run-query-fn)]
@@ -799,7 +799,7 @@
                                                                            :id (mt/id :products :category))
                                                           :database_type "VARCHAR"
                                                           :name          "CATEGORY"}]]
-                                       (get-in (qp/query->preprocessed drill-thru-query) [:query :filter])))))]
+                                       (get-in (qp/preprocess drill-thru-query) [:query :filter])))))]
                         (testing "As an admin"
                           (mt/with-test-user :crowberto
                             (test-preprocessing)
@@ -948,7 +948,7 @@
                                       {:orders   {:remappings {:user_id [:dimension $orders.user_id]}}
                                        :products {:remappings {:user_cat [:dimension $products.category]}}})
                         :attributes {:user_id 1, :user_cat "Widget"}}
-          (perms/grant-permissions! &group (perms/table-query-path (Table (mt/id :people))))
+          (perms/grant-permissions! &group (perms/table-query-path (db/select-one Table :id (mt/id :people))))
           (is (= (->> [["Twitter" nil      0 401.51]
                        ["Twitter" "Widget" 0 498.59]
                        [nil       nil      1 401.51]

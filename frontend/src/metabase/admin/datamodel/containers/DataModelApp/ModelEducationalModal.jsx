@@ -41,7 +41,10 @@ export function ModelEducationalModal({ isOpen, onClose }) {
             {t`Instead of having your end users wade through your complex raw data, you can create custom models that are easy to find, understand, and explore.`}
           </Description>
           <CenteredRow>
-            <ButtonLink href={EDUCATION_URL}>{t`Learn how`}</ButtonLink>
+            <ButtonLink
+              href={EDUCATION_URL}
+              className="Button Button--primary"
+            >{t`Learn how`}</ButtonLink>
           </CenteredRow>
         </Content>
       </ModalContent>

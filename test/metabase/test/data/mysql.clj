@@ -22,6 +22,7 @@
                                    :type/Decimal        "DECIMAL"
                                    :type/Float          "DOUBLE"
                                    :type/Integer        "INTEGER"
+                                   :type/JSON           "JSON"
                                    :type/Text           "TEXT"
                                    :type/Time           "TIME(3)"}]
   (defmethod sql.tx/field-base-type->sql-type [:mysql base-type] [_ _] database-type))

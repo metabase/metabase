@@ -1,7 +1,8 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
-import styled, { css } from "styled-components";
+import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 
 import Icon from "metabase/components/Icon";
 
@@ -92,7 +93,12 @@ export function NotebookCellItem({
     mainContentRoundedCorners.push("right");
   }
   return (
-    <NotebookCellItemContainer inactive={inactive} color={color} {...props}>
+    <NotebookCellItemContainer
+      inactive={inactive}
+      color={color}
+      {...props}
+      data-testid={props["data-testid"] ?? "notebook-cell-item"}
+    >
       <NotebookCellItemContentContainer
         inactive={inactive}
         color={color}
@@ -119,11 +125,10 @@ export function NotebookCellItem({
 NotebookCellItem.displayName = "NotebookCellItem";
 NotebookCell.CONTAINER_PADDING = CONTAINER_PADDING;
 
-export const NotebookCellAdd = styled(NotebookCellItem).attrs({
-  inactive: ({ initialAddText }) => initialAddText,
-  // eslint-disable-next-line react/display-name
-  children: ({ initialAddText }) =>
-    initialAddText || <Icon name="add" className="text-white" />,
-})``;
+export const NotebookCellAdd = ({ initialAddText, ...props }) => (
+  <NotebookCellItem {...props} inactive={initialAddText}>
+    {initialAddText || <Icon name="add" className="text-white" />}
+  </NotebookCellItem>
+);
 
 NotebookCellAdd.displayName = "NotebookCellAdd";

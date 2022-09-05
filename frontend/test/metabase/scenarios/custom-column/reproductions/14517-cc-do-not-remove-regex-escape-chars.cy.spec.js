@@ -1,4 +1,4 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import { restore, popover, startNewQuestion } from "__support__/e2e/helpers";
 
 const PG_DB_NAME = "QA Postgres12";
 
@@ -11,11 +11,8 @@ describe.skip("postgres > question > custom columns", () => {
     restore("postgres-12");
     cy.signInAsAdmin();
 
-    cy.visit("/question/new");
-    cy.findByText("Custom question").click();
-    cy.findByText(PG_DB_NAME)
-      .should("be.visible")
-      .click();
+    startNewQuestion();
+    cy.findByText(PG_DB_NAME).should("be.visible").click();
     cy.findByTextEnsureVisible("People").click();
   });
 

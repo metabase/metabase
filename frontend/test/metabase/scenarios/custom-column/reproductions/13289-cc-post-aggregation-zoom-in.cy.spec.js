@@ -4,7 +4,8 @@ import {
   popover,
   enterCustomColumnDetails,
   visualize,
-} from "__support__/e2e/cypress";
+  summarize,
+} from "__support__/e2e/helpers";
 
 const CC_NAME = "Math";
 describe("issue 13289", () => {
@@ -24,18 +25,14 @@ describe("issue 13289", () => {
   });
 
   it("should allow 'zoom in' drill-through when grouped by custom column (metabase#13289) (metabase#13289)", () => {
-    cy.findByText("Summarize").click();
+    summarize({ mode: "notebook" });
     cy.findByText("Count of rows").click();
 
     cy.findByText("Pick a column to group by").click();
 
-    popover()
-      .findByText(CC_NAME)
-      .click();
+    popover().findByText(CC_NAME).click();
 
-    cy.icon("add")
-      .last()
-      .click();
+    cy.icon("add").last().click();
 
     popover().within(() => {
       cy.findByText("Created At").click();

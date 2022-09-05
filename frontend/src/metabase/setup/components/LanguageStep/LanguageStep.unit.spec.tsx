@@ -1,8 +1,8 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { Locale } from "metabase-types/store";
 import LanguageStep, { LanguageStepProps } from "./LanguageStep";
-import { Locale } from "../../types";
 
 describe("LanguageStep", () => {
   it("should render in inactive state", () => {

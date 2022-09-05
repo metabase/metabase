@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import { breakpointMinLarge } from "metabase/styled-components/theme";
 import Button from "metabase/core/components/Button";

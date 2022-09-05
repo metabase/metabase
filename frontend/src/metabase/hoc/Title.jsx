@@ -8,6 +8,7 @@ const SEPARATOR = " · ";
 
 const updateDocumentTitle = _.debounce(() => {
   document.title = componentStack
+    .sort((a, b) => (a._titleIndex || 0) - (b._titleIndex || 0))
     .map(component => component._documentTitle)
     .filter(title => title)
     .reverse()
@@ -53,7 +54,12 @@ const title = documentTitleOrGetter => ComposedComponent =>
           // the title. When that promise resolves, we call
           // `documentTitleOrGetter` again.
           this._documentTitle = result.title;
-          result.refresh.then(() => this._updateDocumentTitle());
+          result.refresh?.then(() => this._updateDocumentTitle());
+
+          // Getter can also return a priority index used for sorting the component stack
+          if (result.titleIndex) {
+            this._titleIndex = result.titleIndex;
+          }
         }
       }
       updateDocumentTitle();

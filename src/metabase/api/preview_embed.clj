@@ -10,49 +10,55 @@
    Refer to the documentation for those endpoints for further details."
   (:require [compojure.core :refer [GET]]
             [metabase.api.common :as api]
-            [metabase.api.embed :as embed-api]
+            [metabase.api.common.validation :as validation]
+            [metabase.api.embed :as api.embed]
             [metabase.query-processor.pivot :as qp.pivot]
-            [metabase.util.embed :as eu]))
+            [metabase.util.embed :as embed]))
 
 (defn- check-and-unsign [token]
   (api/check-superuser)
-  (api/check-embedding-enabled)
-  (eu/unsign token))
+  (validation/check-embedding-enabled)
+  (embed/unsign token))
 
 (api/defendpoint GET "/card/:token"
   "Fetch a Card you're considering embedding by passing a JWT `token`."
   [token]
   (let [unsigned-token (check-and-unsign token)]
-    (embed-api/card-for-unsigned-token unsigned-token
-      :embedding-params (eu/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params]))))
+    (api.embed/card-for-unsigned-token unsigned-token
+      :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params]))))
+
+(def ^:private max-results
+  "Embedding previews need to be limited in size to avoid performance issues (#20938)."
+  2000)
 
 (api/defendpoint ^:streaming GET "/card/:token/query"
   "Fetch the query results for a Card you're considering embedding by passing a JWT `token`."
   [token & query-params]
   (let [unsigned-token (check-and-unsign token)
-        card-id        (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
-    (embed-api/run-query-for-card-with-params-async
+        card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
+    (api.embed/run-query-for-card-with-params-async
       :export-format    :api
       :card-id          card-id
-      :token-params     (eu/get-in-unsigned-token-or-throw unsigned-token [:params])
-      :embedding-params (eu/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
+      :token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
+      :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
+      :constraints      {:max-results max-results}
       :query-params     query-params)))
 
 (api/defendpoint GET "/dashboard/:token"
   "Fetch a Dashboard you're considering embedding by passing a JWT `token`. "
   [token]
   (let [unsigned-token (check-and-unsign token)]
-    (embed-api/dashboard-for-unsigned-token unsigned-token
-      :embedding-params (eu/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params]))))
+    (api.embed/dashboard-for-unsigned-token unsigned-token
+      :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params]))))
 
 (api/defendpoint ^:streaming GET "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard you're considering embedding with JWT `token`."
   [token dashcard-id card-id & query-params]
   (let [unsigned-token   (check-and-unsign token)
-        dashboard-id     (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
-        embedding-params (eu/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
-        token-params     (eu/get-in-unsigned-token-or-throw unsigned-token [:params])]
-    (embed-api/dashcard-results-async
+        dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
+        embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
+        token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
+    (api.embed/dashcard-results-async
       :export-format    :api
       :dashboard-id     dashboard-id
       :dashcard-id      dashcard-id
@@ -65,12 +71,12 @@
   "Fetch the query results for a Card you're considering embedding by passing a JWT `token`."
   [token & query-params]
   (let [unsigned-token (check-and-unsign token)
-        card-id        (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
-    (embed-api/run-query-for-card-with-params-async
+        card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
+    (api.embed/run-query-for-card-with-params-async
       :export-format    :api
       :card-id          card-id
-      :token-params     (eu/get-in-unsigned-token-or-throw unsigned-token [:params])
-      :embedding-params (eu/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
+      :token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
+      :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
       :query-params     query-params
       :qp-runner        qp.pivot/run-pivot-query)))
 
@@ -78,10 +84,10 @@
   "Fetch the results of running a Card belonging to a Dashboard you're considering embedding with JWT `token`."
   [token dashcard-id card-id & query-params]
   (let [unsigned-token   (check-and-unsign token)
-        dashboard-id     (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
-        embedding-params (eu/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
-        token-params     (eu/get-in-unsigned-token-or-throw unsigned-token [:params])]
-    (embed-api/dashcard-results-async
+        dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
+        embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
+        token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
+    (api.embed/dashcard-results-async
       :export-format    :api
       :dashboard-id     dashboard-id
       :dashcard-id      dashcard-id

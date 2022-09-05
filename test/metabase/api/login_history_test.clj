@@ -5,6 +5,11 @@
             [metabase.util :as u]
             [schema.core :as s]))
 
+;; don't run these tests when running driver tests (i.e., `DRIVERS` is set) because they tend to flake
+(use-fixtures :each (fn [thunk]
+                      (mt/disable-flaky-test-when-running-driver-tests-in-ci
+                        (thunk))))
+
 (def ^:private windows-user-agent
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML like Gecko) Chrome/89.0.4389.86 Safari/537.36")
 
@@ -15,7 +20,7 @@
   (testing "GET /api/login-history/current"
     (let [session-id (str (java.util.UUID/randomUUID))]
       (mt/with-temp* [User         [user]
-                      Session      [session {:id session-id, :user_id (u/the-id user)}]
+                      Session      [_ {:id session-id, :user_id (u/the-id user)}]
                       LoginHistory [_ {:timestamp          #t "2021-03-18T19:52:41.808482Z"
                                        :user_id            (u/the-id user)
                                        :device_id          "e9b49ec7-bc64-4a83-9b1a-ecd3ae26ba9d"

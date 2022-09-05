@@ -13,6 +13,7 @@ const DataSourceSelectorsPropTypes = {
   readOnly: PropTypes.bool,
   setDatabaseId: PropTypes.func,
   setTableId: PropTypes.func,
+  requireWriteback: PropTypes.bool,
 };
 
 const PopulatedDataSourceSelectorsPropTypes = {
@@ -23,6 +24,7 @@ const PopulatedDataSourceSelectorsPropTypes = {
   readOnly: PropTypes.bool,
   setDatabaseId: PropTypes.func,
   setTableId: PropTypes.func,
+  requireWriteback: PropTypes.bool,
 };
 
 const DatabaseSelectorPropTypes = {
@@ -30,9 +32,10 @@ const DatabaseSelectorPropTypes = {
   databases: PropTypes.array,
   readOnly: PropTypes.bool,
   setDatabaseId: PropTypes.func,
+  requireWriteback: PropTypes.bool,
 };
 
-const DatabaseNameSpanPropTypes = {
+const SingleDatabaseNamePropTypes = {
   database: PropTypes.object,
 };
 
@@ -53,6 +56,7 @@ const DataSourceSelectors = ({
   readOnly,
   setDatabaseId,
   setTableId,
+  requireWriteback = false,
 }) => {
   const database = query.database();
   const databases = query.metadata().databasesList({ savedQuestions: false });
@@ -69,6 +73,7 @@ const DataSourceSelectors = ({
       readOnly={readOnly}
       setDatabaseId={setDatabaseId}
       setTableId={setTableId}
+      requireWriteback={requireWriteback}
     />
   );
 };
@@ -82,6 +87,7 @@ const PopulatedDataSourceSelectors = ({
   readOnly,
   setDatabaseId,
   setTableId,
+  requireWriteback = false,
 }) => {
   const dataSourceSelectors = [];
 
@@ -98,10 +104,13 @@ const PopulatedDataSourceSelectors = ({
         key="db_selector"
         readOnly={readOnly}
         setDatabaseId={setDatabaseId}
+        requireWriteback={requireWriteback}
       />,
     );
   } else if (database) {
-    dataSourceSelectors.push(<DatabaseNameSpan key="db" database={database} />);
+    dataSourceSelectors.push(
+      <SingleDatabaseName key="db" database={database} />,
+    );
   }
 
   if (query.requiresTable()) {
@@ -125,7 +134,13 @@ const checkIfThereAreMultipleDatabases = (database, databases) =>
   database == null ||
   (databases.length > 1 && databases.some(db => db.id === database.id));
 
-const DatabaseSelector = ({ database, databases, readOnly, setDatabaseId }) => (
+const DatabaseSelector = ({
+  database,
+  databases,
+  readOnly,
+  setDatabaseId,
+  requireWriteback = false,
+}) => (
   <div className="GuiBuilder-section GuiBuilder-data flex align-center ml2">
     <DatabaseDataSelector
       databases={databases}
@@ -133,17 +148,18 @@ const DatabaseSelector = ({ database, databases, readOnly, setDatabaseId }) => (
       setDatabaseFn={setDatabaseId}
       isInitiallyOpen={database == null}
       readOnly={readOnly}
+      requireWriteback={requireWriteback}
     />
   </div>
 );
 
 DatabaseSelector.propTypes = DatabaseSelectorPropTypes;
 
-const DatabaseNameSpan = ({ database }) => (
-  <span className="p2 text-bold text-grey">{database.name}</span>
+const SingleDatabaseName = ({ database }) => (
+  <div className="p2 text-bold text-grey">{database.name}</div>
 );
 
-DatabaseNameSpan.propTypes = DatabaseNameSpanPropTypes;
+SingleDatabaseName.propTypes = SingleDatabaseNamePropTypes;
 
 const TableSelector = ({ database, readOnly, selectedTable, setTableId }) => (
   <div className="GuiBuilder-section GuiBuilder-data flex align-center ml2">
@@ -161,9 +177,9 @@ const TableSelector = ({ database, readOnly, selectedTable, setTableId }) => (
 TableSelector.propTypes = TableSelectorPropTypes;
 
 const Placeholder = ({ query }) => (
-  <span className="ml2 p2 text-medium">
+  <div className="ml2 p2 text-medium">
     {t`This question is written in ${query.nativeQueryLanguage()}.`}
-  </span>
+  </div>
 );
 
 Placeholder.propTypes = PlaceholderPropTypes;

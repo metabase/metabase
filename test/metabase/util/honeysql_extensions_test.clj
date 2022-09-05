@@ -204,3 +204,17 @@
            (hx/unwrap-typed-honeysql-form :field)))
     (is (= nil
            (hx/unwrap-typed-honeysql-form nil)))))
+
+(deftest ^:parallel math-operators-propagate-type-info-test
+  (testing "Math operators like `+` should propagate the type info of their args\n"
+    ;; just pass along type info of the first arg with type info.
+    (doseq [f [#'hx/+ #'hx/- #'hx/* #'hx// #'hx/mod]
+            x [(hx/with-database-type-info 1 "int") 1]
+            y [(hx/with-database-type-info 2 "INT") 2]]
+      (testing (str (pr-str (list f x y)) \newline)
+        (let [expr (f x y)]
+          (testing (pr-str expr)
+            (is (= (if (some hx/type-info [x y])
+                     "int"
+                     nil)
+                   (hx/type-info->db-type (hx/type-info expr))))))))))

@@ -1,6 +1,6 @@
-import styled, { css } from "styled-components";
+import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 
-import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 import { space } from "metabase/styled-components/theme";
 import { color, lighten } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
@@ -11,6 +11,15 @@ export const Container = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
+`;
+
+export const TextCardDefault = styled.div`
+  color: ${color("text-medium")};
+  margin: ${space(1)} 0;
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  line-height: 1.5rem;
 `;
 
 export const CardLabel = styled.div`
@@ -28,10 +37,7 @@ export const Header = styled.h4`
   margin-bottom: ${space(1)};
 `;
 
-export const TargetButton = forwardRefToInnerRef(styled.div.attrs({
-  tabIndex: 0,
-  role: "button",
-})`
+export const TargetButton = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -70,17 +76,19 @@ export const TargetButton = forwardRefToInnerRef(styled.div.attrs({
       background-color: ${color("bg-light")};
       color: ${color("text-medium")};
     `}
-`);
+`;
+
+TargetButton.defaultProps = {
+  tabIndex: 0,
+  role: "button",
+};
 
 export const TargetButtonText = styled.span`
   text-align: center;
   margin-right: ${space(1)};
 `;
 
-export const CloseIconButton = styled(Button).attrs({
-  icon: "close",
-  size: 12,
-})`
+export const CloseIconButton = styled(Button)`
   color: ${color("white")};
   background-color: transparent;
   border: none;
@@ -92,19 +100,28 @@ export const CloseIconButton = styled(Button).attrs({
   }
 `;
 
-export const ChevrondownIcon = styled(Icon).attrs({
-  name: "chevrondown",
+CloseIconButton.defaultProps = {
+  icon: "close",
   size: 12,
-})`
+};
+
+export const ChevrondownIcon = styled(Icon)`
   margin-top: 2px;
 `;
 
-export const KeyIcon = styled(Icon).attrs({
-  name: "key",
-  size: 18,
-})`
+ChevrondownIcon.defaultProps = {
+  name: "chevrondown",
+  size: 12,
+};
+
+export const KeyIcon = styled(Icon)`
   flex: 1;
 `;
+
+KeyIcon.defaultProps = {
+  name: "key",
+  size: 18,
+};
 
 export const Warning = styled.span`
   margin-top: ${space(1)};

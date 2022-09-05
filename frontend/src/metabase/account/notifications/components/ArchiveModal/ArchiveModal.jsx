@@ -52,7 +52,7 @@ const ArchiveModal = ({
       onClose={onClose}
     >
       {isCreator(item, user) && hasUnsubscribed && (
-        <ModalMessage>
+        <ModalMessage data-server-date>
           {getCreatorMessage(type, user)}
           {t`As the creator you can also choose to delete this if it’s no longer relevant to others as well.`}
         </ModalMessage>

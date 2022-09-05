@@ -1,4 +1,5 @@
-import styled, { css } from "styled-components";
+import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 import EditBar from "metabase/components/EditBar";
 import Icon from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";
@@ -18,7 +19,7 @@ export const TabHintToastContainer = styled.div`
 `;
 
 export const DatasetEditBar = styled(EditBar)`
-  background-color: ${color("nav")};
+  background-color: ${color("brand")};
 `;
 
 export const TableHeaderColumnName = styled.div`
@@ -67,7 +68,7 @@ export const TableHeaderColumnName = styled.div`
   }
 `;
 
-export const FieldTypeIcon = styled(Icon).attrs({ size: 14 })`
+export const FieldTypeIcon = styled(Icon)`
   background-color: ${props =>
     props.isSelected ? color("white") : color("brand")};
 
@@ -77,13 +78,18 @@ export const FieldTypeIcon = styled(Icon).attrs({ size: 14 })`
   padding: 0.2em;
 `;
 
+FieldTypeIcon.defaultProps = { size: 14 };
+
 // Mirrors styling of some QB View div elements
+
+const EDIT_BAR_HEIGHT = "49px";
 
 export const Root = styled.div`
   display: flex;
   flex: 1 0 auto;
   position: relative;
   background-color: ${color("bg-white")};
+  height: calc(100vh - ${EDIT_BAR_HEIGHT});
 `;
 
 export const MainContainer = styled.div`

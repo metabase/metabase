@@ -2,21 +2,19 @@
 import React, { Component } from "react";
 import { t } from "ttag";
 
-import Ellipsified from "metabase/components/Ellipsified";
-
 import { formatValue } from "metabase/lib/formatting";
 import { TYPE } from "metabase/lib/types";
 
 import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
-import cx from "classnames";
 import _ from "underscore";
 
 import ScalarValue, {
   ScalarWrapper,
   ScalarTitle,
 } from "metabase/visualizations/components/ScalarValue";
+import { ScalarContainer } from "./Scalar.styled";
 
 // convert legacy `scalar.*` visualization settings to format options
 function legacyScalarSettingsToFormatOptions(settings) {
@@ -177,6 +175,9 @@ export default class Scalar extends Component {
       visualizationIsClickable,
       onVisualizationClick,
       width,
+      gridSize,
+      totalNumGridCols,
+      fontFamily,
     } = this.props;
 
     const columnIndex = this._getColumnIndex(cols, settings);
@@ -218,13 +219,11 @@ export default class Scalar extends Component {
         <div className="Card-title absolute top right p1 px2">
           {actionButtons}
         </div>
-        <Ellipsified
-          className={cx("fullscreen-normal-text fullscreen-night-text", {
-            "text-brand-hover cursor-pointer": isClickable,
-          })}
+        <ScalarContainer
+          className="fullscreen-normal-text fullscreen-night-text"
           tooltip={fullScalarValue}
           alwaysShowTooltip={fullScalarValue !== displayValue}
-          style={{ maxWidth: "100%" }}
+          isClickable={isClickable}
         >
           <span
             onClick={
@@ -235,9 +234,15 @@ export default class Scalar extends Component {
             }
             ref={scalar => (this._scalar = scalar)}
           >
-            <ScalarValue value={displayValue} />
+            <ScalarValue
+              value={displayValue}
+              width={width}
+              gridSize={gridSize}
+              totalNumGridCols={totalNumGridCols}
+              fontFamily={fontFamily}
+            />
           </span>
-        </Ellipsified>
+        </ScalarContainer>
         {isDashboard && (
           <ScalarTitle
             title={settings["card.title"]}

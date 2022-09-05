@@ -1,13 +1,11 @@
-import { popover } from "__support__/e2e/cypress";
+import { popover } from "__support__/e2e/helpers";
 
 export function openColumnOptions(column) {
   cy.findByText(column).click();
 }
 
 export function renameColumn(oldName, newName) {
-  cy.findByDisplayValue(oldName)
-    .clear()
-    .type(newName);
+  cy.findByDisplayValue(oldName).clear().type(newName);
 }
 
 export function setColumnType(oldType, newType) {
@@ -21,13 +19,18 @@ export function mapColumnTo({ table, column } = {}) {
   cy.findByText("Database column this maps to")
     .closest(".Form-field")
     .findByTestId("select-button")
-    .click();
+    .click({ force: true });
 
-  popover()
-    .contains(table)
-    .click();
+  popover().contains(table).click();
 
-  popover()
-    .contains(column)
-    .click();
+  popover().contains(column).click();
+}
+
+export function setModelMetadata(modelId, callback) {
+  return cy.request("GET", `/api/card/${modelId}`).then(response => {
+    const { result_metadata } = response.body;
+    return cy.request("PUT", `/api/card/${modelId}`, {
+      result_metadata: result_metadata.map(callback),
+    });
+  });
 }

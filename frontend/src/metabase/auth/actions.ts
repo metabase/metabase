@@ -1,10 +1,14 @@
 import { push } from "react-router-redux";
 import { getIn } from "icepick";
 import { SessionApi, UtilApi } from "metabase/services";
+import MetabaseSettings from "metabase/lib/settings";
 import { createThunkAction } from "metabase/lib/redux";
-import { clearGoogleAuthCredentials, deleteSession } from "metabase/lib/auth";
-import { refreshSiteSettings } from "metabase/redux/settings";
+import { loadLocalization } from "metabase/lib/i18n";
+import { deleteSession } from "metabase/lib/auth";
 import { clearCurrentUser, refreshCurrentUser } from "metabase/redux/user";
+import { refreshSiteSettings } from "metabase/redux/settings";
+import { getUser } from "metabase/selectors/user";
+import { State } from "metabase-types/store";
 import {
   trackLogin,
   trackLoginGoogle,
@@ -12,6 +16,16 @@ import {
   trackPasswordReset,
 } from "./analytics";
 import { LoginData } from "./types";
+
+export const REFRESH_LOCALE = "metabase/user/REFRESH_LOCALE";
+export const refreshLocale = createThunkAction(
+  REFRESH_LOCALE,
+  () => async (dispatch: any, getState: () => State) => {
+    const userLocale = getUser(getState())?.locale;
+    const siteLocale = MetabaseSettings.get("site-locale");
+    await loadLocalization(userLocale ?? siteLocale ?? "en");
+  },
+);
 
 export const REFRESH_SESSION = "metabase/auth/REFRESH_SESSION";
 export const refreshSession = createThunkAction(
@@ -21,48 +35,51 @@ export const refreshSession = createThunkAction(
       dispatch(refreshCurrentUser()),
       dispatch(refreshSiteSettings()),
     ]);
+    await dispatch(refreshLocale());
   },
 );
 
 export const LOGIN = "metabase/auth/LOGIN";
 export const login = createThunkAction(
   LOGIN,
-  (data: LoginData, redirectUrl = "/") => async (dispatch: any) => {
-    await SessionApi.create(data);
-    trackLogin();
+  (data: LoginData, redirectUrl = "/") =>
+    async (dispatch: any) => {
+      await SessionApi.create(data);
+      await dispatch(refreshSession());
+      trackLogin();
 
-    await dispatch(refreshSession());
-    dispatch(push(redirectUrl));
-  },
+      dispatch(push(redirectUrl));
+    },
 );
 
 export const LOGIN_GOOGLE = "metabase/auth/LOGIN_GOOGLE";
 export const loginGoogle = createThunkAction(
   LOGIN_GOOGLE,
-  (token: string, redirectUrl = "/") => async (dispatch: any) => {
-    try {
+  (token: string, redirectUrl = "/") =>
+    async (dispatch: any) => {
       await SessionApi.createWithGoogleAuth({ token });
+      await dispatch(refreshSession());
       trackLoginGoogle();
 
-      await dispatch(refreshSession());
       dispatch(push(redirectUrl));
-    } catch (error) {
-      await clearGoogleAuthCredentials();
-      throw error;
-    }
-  },
+    },
 );
 
 export const LOGOUT = "metabase/auth/LOGOUT";
-export const logout = createThunkAction(LOGOUT, () => {
+export const logout = createThunkAction(LOGOUT, (redirectUrl: string) => {
   return async (dispatch: any) => {
     await deleteSession();
-    await clearGoogleAuthCredentials();
     await dispatch(clearCurrentUser());
+    await dispatch(refreshLocale());
     trackLogout();
 
-    dispatch(push("/auth/login"));
-    window.location.reload();
+    let loginUrl = "/auth/login";
+    if (redirectUrl) {
+      loginUrl += `?redirect=${encodeURIComponent(redirectUrl)}`;
+    }
+
+    dispatch(push(loginUrl));
+    window.location.reload(); // clears redux state and browser caches
   };
 });
 

@@ -1,15 +1,20 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import Icon from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";
+import {
+  CheckBoxContainerProps,
+  CheckBoxIconContainerProps,
+  CheckBoxIconProps,
+  CheckBoxInputProps,
+  CheckBoxLabelProps,
+} from "./types";
+
+import { DEFAULT_ICON_PADDING } from "./constants";
 
 export const CheckBoxRoot = styled.label`
   display: block;
   position: relative;
 `;
-
-export interface CheckBoxInputProps {
-  size: number;
-}
 
 export const CheckBoxInput = styled.input<CheckBoxInputProps>`
   appearance: none;
@@ -26,18 +31,15 @@ export const CheckBoxInput = styled.input<CheckBoxInputProps>`
   z-index: 1;
 `;
 
-export interface CheckBoxContainerProps {
-  disabled: boolean | undefined;
-}
-
 export const CheckBoxContainer = styled.span<CheckBoxContainerProps>`
   display: inline-flex;
   align-items: center;
   cursor: ${props => (props.disabled ? "" : "pointer")};
+  max-width: 100%;
   opacity: ${props => (props.disabled ? "0.4" : "")};
 
   ${CheckBoxInput}:focus + & {
-    outline: 2px solid ${color("focus")};
+    outline: 2px solid ${() => color("focus")};
   }
 
   ${CheckBoxInput}:focus:not(:focus-visible) + & {
@@ -45,29 +47,19 @@ export const CheckBoxContainer = styled.span<CheckBoxContainerProps>`
   }
 `;
 
-export interface CheckBoxIconProps {
-  checked?: boolean;
-  uncheckedColor: string;
-}
-
 export const CheckBoxIcon = styled(Icon)<CheckBoxIconProps>`
   display: block;
+  padding: ${DEFAULT_ICON_PADDING / 2}px;
   color: ${props => color(props.checked ? "white" : props.uncheckedColor)};
   width: ${props => `${props.size}px`};
   height: ${props => `${props.size}px`};
 `;
 
-export interface CheckBoxIconContainerProps {
-  checked: boolean | undefined;
-  size: number;
-  checkedColor: string;
-  uncheckedColor: string;
-}
-
 export const CheckBoxIconContainer = styled.span<CheckBoxIconContainerProps>`
   display: flex;
   justify-content: center;
   align-items: center;
+  min-width: ${props => `${props.size}px`};
   width: ${props => `${props.size}px`};
   height: ${props => `${props.size}px`};
   border: 0.125rem solid
@@ -77,7 +69,15 @@ export const CheckBoxIconContainer = styled.span<CheckBoxIconContainerProps>`
     color(props.checked ? props.checkedColor : "bg-white")};
 `;
 
-export const CheckBoxLabel = styled.span`
+export const CheckBoxLabel = styled.span<CheckBoxLabelProps>`
   display: block;
   margin-left: 0.5rem;
+  ${({ labelEllipsis }) =>
+    labelEllipsis
+      ? `;
+         overflow: hidden;
+         text-overflow: ellipsis;
+         white-space: nowrap;
+         `
+      : ""}
 `;

@@ -10,7 +10,12 @@ function showChartSettings(...args) {
 import { keyForColumn } from "metabase/lib/dataset";
 
 export default ({ question, clicked }) => {
-  if (!clicked || clicked.value !== undefined || !clicked.column) {
+  if (
+    !clicked ||
+    clicked.value !== undefined ||
+    !clicked.column ||
+    !question.query().isEditable()
+  ) {
     return [];
   }
   const { column } = clicked;

@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import _ from "underscore";
 
 import { connect } from "react-redux";
 import { withRouter } from "react-router";
@@ -17,12 +18,7 @@ const mapDispatchToProps = {
   push,
 };
 
-@connect(null, mapDispatchToProps)
-@Collection.load({
-  id: (state, props) => Urls.extractCollectionId(props.params.slug),
-})
-@withRouter
-class ArchiveCollectionModal extends React.Component {
+class ArchiveCollectionModalInner extends React.Component {
   archive = async () => {
     const { setCollectionArchived, params } = this.props;
     const id = Urls.extractCollectionId(params.slug);
@@ -53,5 +49,13 @@ class ArchiveCollectionModal extends React.Component {
     );
   }
 }
+
+const ArchiveCollectionModal = _.compose(
+  connect(null, mapDispatchToProps),
+  Collection.load({
+    id: (state, props) => Urls.extractCollectionId(props.params.slug),
+  }),
+  withRouter,
+)(ArchiveCollectionModalInner);
 
 export default ArchiveCollectionModal;

@@ -3,7 +3,9 @@ import {
   popover,
   visitQuestionAdhoc,
   openNativeEditor,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
+
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
@@ -26,12 +28,8 @@ describe("scenarios > visualizations > maps", () => {
     cy.contains("Visualization").click();
     cy.icon("pinmap").click();
 
-    cy.contains("Map type")
-      .next()
-      .click();
-    popover()
-      .contains("Pin map")
-      .click();
+    cy.contains("Map type").next().click();
+    popover().contains("Pin map").click();
 
     // When the settings sidebar opens, both latitude and longitude selects are
     // open. That makes it difficult to select each in Cypress, so we click
@@ -40,46 +38,37 @@ describe("scenarios > visualizations > maps", () => {
     cy.contains("New question").click();
 
     // select both columns
-    cy.contains("Latitude field")
-      .next()
-      .click();
-    popover()
-      .contains("LAT")
-      .click();
+    cy.contains("Latitude field").next().click();
+    popover().contains("LAT").click();
 
-    cy.contains("Longitude field")
-      .next()
-      .click();
-    popover()
-      .contains("LNG")
-      .click();
+    cy.contains("Longitude field").next().click();
+    popover().contains("LNG").click();
 
     // check that a map appears
     cy.get(".leaflet-container");
   });
 
   it("should suggest map visualization regardless of the first column type (metabase#14254)", () => {
-    cy.createNativeQuestion({
-      name: "14254",
-      native: {
-        query:
-          'SELECT "PUBLIC"."PEOPLE"."LONGITUDE" AS "LONGITUDE", "PUBLIC"."PEOPLE"."LATITUDE" AS "LATITUDE", "PUBLIC"."PEOPLE"."CITY" AS "CITY"\nFROM "PUBLIC"."PEOPLE"\nLIMIT 10',
-        "template-tags": {},
+    cy.createNativeQuestion(
+      {
+        name: "14254",
+        native: {
+          query:
+            'SELECT "PUBLIC"."PEOPLE"."LONGITUDE" AS "LONGITUDE", "PUBLIC"."PEOPLE"."LATITUDE" AS "LATITUDE", "PUBLIC"."PEOPLE"."CITY" AS "CITY"\nFROM "PUBLIC"."PEOPLE"\nLIMIT 10',
+          "template-tags": {},
+        },
+        display: "map",
+        visualization_settings: {
+          "map.region": "us_states",
+          "map.type": "pin",
+          "map.latitude_column": "LATITUDE",
+          "map.longitude_column": "LONGITUDE",
+        },
       },
-      display: "map",
-      visualization_settings: {
-        "map.region": "us_states",
-        "map.type": "pin",
-        "map.latitude_column": "LATITUDE",
-        "map.longitude_column": "LONGITUDE",
-      },
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.visit(`/question/${QUESTION_ID}`);
-    });
+      { visitQuestion: true },
+    );
 
-    cy.findByText("Visualization")
-      .closest(".Button")
-      .as("vizButton");
+    cy.findByText("Visualization").closest(".Button").as("vizButton");
     cy.get("@vizButton").find(".Icon-pinmap");
     cy.get("@vizButton").click();
     cy.findByText("Choose a visualization");
@@ -87,22 +76,15 @@ describe("scenarios > visualizations > maps", () => {
     cy.findByTestId("sidebar-left").as("vizSidebar");
 
     cy.get("@vizSidebar").within(() => {
-      // There should be a unique class for "selected" viz type
-      cy.icon("pinmap")
-        .parent()
-        .should("have.class", "text-white");
-
-      cy.findByText("Map")
-        .parent()
-        .should("have.css", "opacity", "1");
+      cy.findByText("Map").parent().should("have.css", "opacity", "1");
     });
   });
 
   it("should not assign the full name of the state as the filter value on a drill-through (metabase#14650)", () => {
-    cy.intercept("/app/assets/geojson").as("geojson");
+    cy.intercept("/app/assets/geojson/**").as("geojson");
     visitQuestionAdhoc({
       dataset_query: {
-        database: 1,
+        database: SAMPLE_DB_ID,
         query: {
           "source-table": PEOPLE_ID,
           aggregation: [["count"]],
@@ -147,7 +129,7 @@ describe("scenarios > visualizations > maps", () => {
     visitQuestionAdhoc({
       display: "map",
       dataset_query: {
-        database: 1,
+        database: SAMPLE_DB_ID,
         type: "query",
         query: {
           "source-table": PEOPLE_ID,
@@ -199,7 +181,7 @@ describe("scenarios > visualizations > maps", () => {
             `,
           "template-tags": {},
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "map",
       visualization_settings: {

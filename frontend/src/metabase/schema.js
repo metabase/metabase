@@ -5,11 +5,13 @@ import { generateSchemaId, entityTypeForObject } from "metabase/lib/schema";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
 
 export const QuestionSchema = new schema.Entity("questions");
+export const BookmarkSchema = new schema.Entity("bookmarks");
 export const DashboardSchema = new schema.Entity("dashboards");
 export const PulseSchema = new schema.Entity("pulses");
 export const CollectionSchema = new schema.Entity("collections");
 
 export const DatabaseSchema = new schema.Entity("databases");
+export const DataAppSchema = new schema.Entity("dataApps");
 export const SchemaSchema = new schema.Entity("schemas");
 export const TableSchema = new schema.Entity(
   "tables",
@@ -44,8 +46,11 @@ export const TableSchema = new schema.Entity(
 export const FieldSchema = new schema.Entity("fields");
 export const SegmentSchema = new schema.Entity("segments");
 export const MetricSchema = new schema.Entity("metrics");
+export const PersistedModelSchema = new schema.Entity("persistedModels");
 export const SnippetSchema = new schema.Entity("snippets");
 export const SnippetCollectionSchema = new schema.Entity("snippetCollections");
+export const TimelineSchema = new schema.Entity("timelines");
+export const TimelineEventSchema = new schema.Entity("timelineEvents");
 
 DatabaseSchema.define({
   tables: [TableSchema],
@@ -82,8 +87,19 @@ MetricSchema.define({
   table: TableSchema,
 });
 
+TimelineSchema.define({
+  collection: CollectionSchema,
+  events: [TimelineEventSchema],
+});
+
+DataAppSchema.define({
+  collection: CollectionSchema,
+});
+
 export const ENTITIES_SCHEMA_MAP = {
   questions: QuestionSchema,
+  bookmarks: BookmarkSchema,
+  dataApps: DataAppSchema,
   dashboards: DashboardSchema,
   pulses: PulseSchema,
   collections: CollectionSchema,
@@ -102,7 +118,11 @@ CollectionSchema.define({
   items: [ObjectUnionSchema],
 });
 
-export const RecentsSchema = new schema.Entity("recents", undefined, {
+export const RecentItemSchema = new schema.Entity("recentItems", undefined, {
+  idAttribute: ({ model, model_id }) => `${model}:${model_id}`,
+});
+
+export const PopularItemSchema = new schema.Entity("popularItems", undefined, {
   idAttribute: ({ model, model_id }) => `${model}:${model_id}`,
 });
 

@@ -2,7 +2,10 @@ import {
   restore,
   visitQuestionAdhoc,
   downloadAndAssert,
-} from "__support__/e2e/cypress";
+  visitQuestion,
+} from "__support__/e2e/helpers";
+
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
@@ -13,7 +16,7 @@ const questionDetails = {
   dataset_query: {
     type: "query",
     query,
-    database: 1,
+    database: SAMPLE_DB_ID,
   },
 };
 
@@ -46,10 +49,7 @@ describe("issue 18440", () => {
 
     it(`export should include a column with remapped values for ${fileType} for a saved question (metabase#18440-2)`, () => {
       cy.createQuestion({ query }).then(({ body: { id } }) => {
-        cy.intercept("POST", `/api/card/${id}/query`).as("cardQuery");
-
-        cy.visit(`/question/${id}`);
-        cy.wait("@cardQuery");
+        visitQuestion(id);
 
         cy.findByText("Product ID");
         cy.findByText("Awesome Concrete Shoes");

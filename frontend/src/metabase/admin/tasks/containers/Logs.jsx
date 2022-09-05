@@ -9,7 +9,7 @@ import reactAnsiStyle from "react-ansi-style";
 import "react-ansi-style/inject-css";
 
 import _ from "underscore";
-import moment from "moment";
+import moment from "moment-timezone";
 import { t } from "ttag";
 
 import Select, { Option } from "metabase/core/components/Select";

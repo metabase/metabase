@@ -2,13 +2,15 @@
   "Tests for /api/activity endpoints."
   (:require [clojure.test :refer :all]
             [java-time :as t]
-            [metabase.api.activity :as activity-api]
+            [metabase.api.activity :as api.activity]
             [metabase.models.activity :refer [Activity]]
             [metabase.models.card :refer [Card]]
             [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.interface :as models]
+            [metabase.models.interface :as mi]
+            [metabase.models.query-execution :refer [QueryExecution]]
             [metabase.models.table :refer [Table]]
             [metabase.models.view-log :refer [ViewLog]]
+            [metabase.query-processor.util :as qp.util]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
@@ -54,7 +56,15 @@
                                          :user_id   (mt/user->id :rasta)
                                          :model     "user"
                                          :details   {}
-                                         :timestamp #t "2015-09-10T05:33:43.641Z[UTC]"}]]
+                                         :timestamp #t "2015-09-10T05:33:43.641Z[UTC]"}]
+                    Dashboard [page {:is_app_page true}]
+                    Activity [activity4 {:topic     "dashboard-create"
+                                         :user_id   (mt/user->id :crowberto)
+                                         :model     "dashboard"
+                                         :model_id  (u/the-id page)
+                                         :details   {:description "Because I can too!"
+                                                     :name        "Hehehe"}
+                                         :timestamp #t "2015-09-10T04:53:01.632Z[UTC]"}]]
       (letfn [(fetch-activity [activity]
                 (merge
                  activity-defaults
@@ -68,12 +78,18 @@
                  {:topic "user-joined"
                   :user  (activity-user-info :rasta)})
                 (merge
+                 (fetch-activity activity4)
+                 {:topic        "dashboard-create"
+                  :user         (activity-user-info :crowberto)
+                  :model_exists true
+                  :model        "page"})
+                (merge
                  (fetch-activity activity1)
                  {:topic   "install"
                   :user_id nil
                   :user    nil})]
                ;; remove other activities from the API response just in case -- we're not interested in those
-               (let [these-activity-ids (set (map u/the-id [activity1 activity2 activity3]))]
+               (let [these-activity-ids (set (map u/the-id [activity1 activity2 activity3 activity4]))]
                  (for [activity (mt/user-http-request :crowberto :get 200 "activity")
                        :when    (contains? these-activity-ids (u/the-id activity))]
                    (dissoc activity :timestamp)))))))))
@@ -87,14 +103,25 @@
 ;;  4. we filter out entries where `:model_object` is nil (object doesn't exist)
 
 (defn- create-views!
-  "Insert views [user-id model model-id]. Reviews are entered a second apart with last review as most recent."
+  "Insert views [user-id model model-id]. Views are entered a second apart with last view as most recent."
   [views]
-  (let [views (map (fn [[user model model-id] hours-ago]
-                     {:user_id user, :model model, :model_id model-id
-                      :timestamp (t/plus (t/local-date-time) (t/seconds (- hours-ago)))})
-                   (reverse views)
-                   (range))]
-    (db/insert-many! ViewLog views)))
+  (let [start-time (t/offset-date-time)
+        views (->> (map (fn [[user model model-id] seconds-ago]
+                          (case model
+                            "card" {:executor_id user :card_id model-id
+                                    :context :question
+                                    :hash (qp.util/query-hash {})
+                                    :running_time 1
+                                    :result_rows 1
+                                    :native false
+                                    :started_at (t/plus start-time (t/seconds (- seconds-ago)))}
+                            {:user_id user, :model model, :model_id model-id
+                             :timestamp (t/plus start-time (t/seconds (- seconds-ago)))}))
+                        (reverse views)
+                        (range))
+                   (group-by #(if (:card_id %) :card :other)))]
+    (db/insert-many! ViewLog (:other views))
+    (db/insert-many! QueryExecution (:card views))))
 
 (deftest recent-views-test
   (mt/with-temp* [Card      [card1 {:name                   "rand-name"
@@ -106,10 +133,14 @@
                                         :display                "table"
                                         :archived               true
                                         :visualization_settings {}}]
-                  Dashboard [dash1 {:name        "rand-name"
-                                    :description "rand-name"
-                                    :creator_id  (mt/user->id :crowberto)}]
-                  Table     [table1 {:name        "rand-name"}]
+                  Dashboard [page {:name        "rand-name"
+                                   :description "rand-name"
+                                   :creator_id  (mt/user->id :crowberto)
+                                   :is_app_page true}]
+                  Dashboard [dash {:name        "rand-name2"
+                                   :description "rand-name2"
+                                   :creator_id  (mt/user->id :crowberto)}]
+                  Table     [table1 {:name "rand-name"}]
                   Table     [hidden-table {:name            "hidden table"
                                            :visibility_type "hidden"}]
                   Card      [dataset {:name                   "rand-name"
@@ -117,60 +148,91 @@
                                       :creator_id             (mt/user->id :crowberto)
                                       :display                "table"
                                       :visualization_settings {}}]]
-    (mt/with-model-cleanup [ViewLog]
+    (mt/with-model-cleanup [ViewLog QueryExecution]
       (create-views! [[(mt/user->id :crowberto) "card"      (:id dataset)]
-                      [(mt/user->id :crowberto) "dashboard" (:id dash1)]
+                      [(mt/user->id :crowberto) "dashboard" (:id page)]
                       [(mt/user->id :crowberto) "card"      (:id card1)]
                       [(mt/user->id :crowberto) "card"      36478]
+                      [(mt/user->id :crowberto) "dashboard" (:id dash)]
                       [(mt/user->id :crowberto) "table"     (:id table1)]
                       ;; most recent for crowberto are archived card and hidden table
                       [(mt/user->id :crowberto) "card"      (:id archived)]
                       [(mt/user->id :crowberto) "table"     (:id hidden-table)]
                       [(mt/user->id :rasta)     "card"      (:id card1)]])
-      (is (= [{:cnt          1,
-               :model        "table",
-               :model_id     (:id table1),
-               :model_object {:db_id               (:db_id table1),
-                              :id                  (:id table1),
-                              :visibility_type     nil
-                              :name                (:name table1)
-                              :display_name        (:display_name table1)
-                              :initial_sync_status "incomplete"},
-               :user_id      (mt/user->id :crowberto)}
-              {:cnt          1
-               :user_id      (mt/user->id :crowberto)
-               :model        "card"
-               :model_id     (:id card1)
-               :model_object {:id            (:id card1)
-                              :name          (:name card1)
-                              :archived      false
-                              :collection_id nil
-                              :dataset       false
-                              :description   (:description card1)
-                              :display       (name (:display card1))}}
-              {:cnt          1
-               :user_id      (mt/user->id :crowberto)
-               :model        "dashboard"
-               :model_id     (:id dash1)
-               :model_object {:id            (:id dash1)
-                              :name          (:name dash1)
-                              :archived      false
-                              :collection_id nil
-                              :description   (:description dash1)}}
-              {:cnt          1
-               :user_id      (mt/user->id :crowberto)
-               :model        "dataset"
-               :model_id     (:id dataset)
-               :model_object {:id            (:id dataset)
-                              :name          (:name dataset)
-                              :archived      false
-                              :dataset       true
-                              :collection_id nil
-                              :description   (:description dataset)
-                              :display       (name (:display dataset))}}]
-             (for [recent-view (mt/user-http-request :crowberto :get 200 "activity/recent_views")]
-               (dissoc recent-view :max_ts)))))))
+      (let [recent-views (mt/user-http-request :crowberto :get 200 "activity/recent_views")]
+        (is (partial= [{:model "table"     :model_id (:id table1)}
+                       {:model "dashboard" :model_id (:id dash) :model_object {:is_app_page false}}
+                       {:model "card"      :model_id (:id card1)}
+                       {:model "page"      :model_id (:id page) :model_object {:is_app_page true}}
+                       {:model "dataset"   :model_id (:id dataset)}]
+                      recent-views))))))
 
+(deftest popular-items-test
+  (mt/with-temp* [Card      [card1 {:name                   "rand-name"
+                                    :creator_id             (mt/user->id :crowberto)
+                                    :display                "table"
+                                    :visualization_settings {}}]
+                  Card      [_archived  {:name                   "archived-card"
+                                         :creator_id             (mt/user->id :crowberto)
+                                         :display                "table"
+                                         :archived               true
+                                         :visualization_settings {}}]
+                  Dashboard [dash1 {:name        "rand-name"
+                                    :description "rand-name"
+                                    :creator_id  (mt/user->id :crowberto)}]
+                  Dashboard [dash2 {:name        "other-dashboard"
+                                    :description "just another dashboard"
+                                    :creator_id  (mt/user->id :crowberto)
+                                    :is_app_page true}]
+                  Table     [table1 {:name "rand-name"}]
+                  Table     [_hidden-table {:name            "hidden table"
+                                            :visibility_type "hidden"}]
+                  Card      [dataset {:name                   "rand-name"
+                                      :dataset                true
+                                      :creator_id             (mt/user->id :crowberto)
+                                      :display                "table"
+                                      :visualization_settings {}}]]
+    (testing "Items viewed by multiple users are not duplicated in the popular items list."
+      (mt/with-model-cleanup [ViewLog QueryExecution]
+        (create-views! [[(mt/user->id :rasta)     "dashboard" (:id dash1)]
+                        [(mt/user->id :crowberto) "dashboard" (:id dash1)]
+                        [(mt/user->id :rasta)     "card"      (:id card1)]
+                        [(mt/user->id :crowberto) "card"      (:id card1)]])
+        (is (= [["dashboard" (:id dash1)]
+                ["card" (:id card1)]]
+               ;; all views are from :rasta, but :crowberto can still see popular items
+               (for [popular-item (mt/user-http-request :crowberto :get 200 "activity/popular_items")]
+                 ((juxt :model :model_id) popular-item))))))
+    (testing "Items viewed by other users can still show up in popular items."
+      (mt/with-model-cleanup [ViewLog QueryExecution]
+        (create-views! [[(mt/user->id :rasta) "dashboard" (:id dash1)]
+                        [(mt/user->id :rasta) "card"      (:id card1)]
+                        [(mt/user->id :rasta) "table"     (:id table1)]
+                        [(mt/user->id :rasta) "card"      (:id dataset)]])
+        (is (= [["dashboard" (:id dash1)]
+                ["card" (:id card1)]
+                ["dataset" (:id dataset)]
+                ["table" (:id table1)]]
+               ;; all views are from :rasta, but :crowberto can still see popular items
+               (for [popular-item (mt/user-http-request :crowberto :get 200 "activity/popular_items")]
+                 ((juxt :model :model_id) popular-item))))))
+    (testing "Items with more views show up sooner in popular items."
+      (mt/with-model-cleanup [ViewLog QueryExecution]
+        (create-views! (concat
+                        ;; one item with many views is considered more popular
+                        (repeat 10 [(mt/user->id :rasta) "dashboard" (:id dash1)])
+                        [[(mt/user->id :rasta) "dashboard" (:id dash2)]
+                         [(mt/user->id :rasta) "card"      (:id dataset)]
+                         [(mt/user->id :rasta) "table"     (:id table1)]
+                         [(mt/user->id :rasta) "card"      (:id card1)]]))
+        (is (= [["dashboard" (:id dash1)]
+                ["page"      (:id dash2)]
+                ["card"      (:id card1)]
+                ["dataset"   (:id dataset)]
+                ["table"     (:id table1)]]
+               ;; all views are from :rasta, but :crowberto can still see popular items
+               (for [popular-item (mt/user-http-request :crowberto :get 200 "activity/popular_items")]
+                 ((juxt :model :model_id) popular-item))))))))
 
 ;;; activities->referenced-objects, referenced-objects->existing-objects, add-model-exists-info
 
@@ -193,12 +255,12 @@
   (is (= {"dashboard" #{41 43 42}
           "card"      #{113 108 109 111 112 114}
           "user"      #{90}}
-         (#'activity-api/activities->referenced-objects fake-activities))))
+         (#'api.activity/activities->referenced-objects fake-activities))))
 
 (deftest referenced-objects->existing-objects-test
   (mt/with-temp Dashboard [{dashboard-id :id}]
     (is (= {"dashboard" #{dashboard-id}}
-           (#'activity-api/referenced-objects->existing-objects {"dashboard" #{dashboard-id 0}
+           (#'api.activity/referenced-objects->existing-objects {"dashboard" #{dashboard-id 0}
                                                                  "card"      #{0}})))))
 (deftest add-model-exists-info-test
   (mt/with-temp* [Dashboard [{dashboard-id :id}]
@@ -214,7 +276,7 @@
              :details      {:dashcards [{:card_id card-id, :exists true}
                                         {:card_id 0, :exists false}
                                         {:card_id dataset-id, :exists true}]}}]
-           (#'activity-api/add-model-exists-info [{:model "dashboard", :model_id dashboard-id}
+           (#'api.activity/add-model-exists-info [{:model "dashboard", :model_id dashboard-id}
                                                   {:model "card", :model_id 0}
                                                   {:model "card", :model_id dataset-id}
                                                   {:model    "dashboard"
@@ -235,10 +297,10 @@
         (testing "admin should see `:user-joined` activities"
           (testing "Sanity check: admin should be able to read the activity"
             (mt/with-test-user :crowberto
-              (is (models/can-read? activity))))
+              (is (mi/can-read? activity))))
           (is (contains? (activity-topics :crowberto) "user-joined")))
         (testing "non-admin should *not* see `:user-joined` activities"
           (testing "Sanity check: non-admin should *not* be able to read the activity"
             (mt/with-test-user :rasta
-              (is (not (models/can-read? activity)))))
+              (is (not (mi/can-read? activity)))))
           (is (not (contains? (activity-topics :rasta) "user-joined"))))))))

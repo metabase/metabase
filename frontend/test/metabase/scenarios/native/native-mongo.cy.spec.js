@@ -1,15 +1,18 @@
-import { restore, modal } from "__support__/e2e/cypress";
+import { restore, modal } from "__support__/e2e/helpers";
 
 const MONGO_DB_NAME = "QA Mongo4";
 
-describe("scenatios > question > native > mongo", () => {
+describe("scenarios > question > native > mongo", () => {
   before(() => {
     cy.intercept("POST", "/api/card").as("createQuestion");
+    cy.intercept("POST", "/api/dataset").as("dataset");
 
     restore("mongo-4");
     cy.signInAsNormalUser();
 
-    cy.visit("/question/new");
+    cy.visit("/");
+    cy.findByText("New").click();
+    // Reproduces metabase#20499 issue
     cy.findByText("Native query").click();
     cy.findByText(MONGO_DB_NAME).click();
 
@@ -22,18 +25,19 @@ describe("scenatios > question > native > mongo", () => {
       parseSpecialCharSequences: false,
     });
     cy.get(".NativeQueryEditor .Icon-play").click();
-    cy.findByText("18,760");
+
+    cy.wait("@dataset");
+
+    cy.findByTextEnsureVisible("18,760");
 
     cy.findByText("Save").click();
 
-    modal().within(() => {
-      cy.findByLabelText("Name")
-        .focus()
-        .type("mongo count");
+    cy.findByTextEnsureVisible("Save question");
 
-      cy.button("Save")
-        .should("not.be.disabled")
-        .click();
+    modal().within(() => {
+      cy.findByLabelText("Name").clear().should("be.empty").type("mongo count");
+
+      cy.button("Save").should("not.be.disabled").click();
     });
 
     cy.wait("@createQuestion");

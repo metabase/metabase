@@ -3,7 +3,8 @@ import {
   popover,
   restore,
   visualize,
-} from "__support__/e2e/cypress";
+  summarize,
+} from "__support__/e2e/helpers";
 
 describe("issue 6239", () => {
   beforeEach(() => {
@@ -12,28 +13,21 @@ describe("issue 6239", () => {
 
     openOrdersTable({ mode: "notebook" });
 
-    cy.findByText("Summarize").click();
+    summarize({ mode: "notebook" });
     cy.findByText("Custom Expression").click();
 
-    cy.get(".ace_text-input")
-      .type("CountIf([Total] > 0)")
-      .blur();
+    cy.get(".ace_text-input").type("CountIf([Total] > 0)").blur();
 
     cy.findByPlaceholderText("Name (required)").type("CE");
     cy.button("Done").click();
 
     cy.findByText("Pick a column to group by").click();
-    popover()
-      .contains("Created At")
-      .first()
-      .click();
+    popover().contains("Created At").first().click();
   });
 
   it("should be possible to sort by using custom expression (metabase#6239)", () => {
     cy.findByText("Sort").click();
-    popover()
-      .contains(/^CE$/)
-      .click();
+    popover().contains(/^CE$/).click();
 
     visualize();
 
@@ -45,10 +39,7 @@ describe("issue 6239", () => {
       .should("contain", "CE")
       .and("have.descendants", ".Icon-chevronup");
 
-    cy.get(".cellData")
-      .eq(3)
-      .invoke("text")
-      .should("eq", "1");
+    cy.get(".cellData").eq(3).invoke("text").should("eq", "1");
 
     // Go back to the notebook editor
     cy.icon("notebook").click();
@@ -65,9 +56,6 @@ describe("issue 6239", () => {
       .should("contain", "CE")
       .and("have.descendants", ".Icon-chevrondown");
 
-    cy.get(".cellData")
-      .eq(3)
-      .invoke("text")
-      .should("eq", "584");
+    cy.get(".cellData").eq(3).invoke("text").should("eq", "584");
   });
 });

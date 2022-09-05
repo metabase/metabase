@@ -4,8 +4,7 @@
             [medley.core :as m]
             [metabase.test.data.interface :as tx]
             [metabase.util.date-2 :as u.date])
-  (:import java.sql.Time
-           [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
+  (:import [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Various Datasets                                                |
@@ -67,6 +66,9 @@
   difference from the H2 version that ships with Metabase -- this version uses `:type/DateTimeWithTZ` `updated_at`
   columns (i.e., `TIMESTAMP WITH TIME ZONE`) instead of `:type/DateType`, to make it easier to use this test data
   across multiple databases.")
+
+(tx/defdataset-edn json
+  "Dataset with some JSON columns in it. Used to test JSON columns.")
 
 (defn- date-only
   "Convert date or datetime temporal value to `t` to an appropriate date type, discarding time information."

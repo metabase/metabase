@@ -78,7 +78,7 @@ const Legend = ({
         );
       })}
       {overflowLength > 0 && (
-        <LegendLinkContainer innerRef={targetRef} isVertical={isVertical}>
+        <LegendLinkContainer ref={targetRef} isVertical={isVertical}>
           <LegendLink onMouseDown={handleOpen}>
             {t`And ${overflowLength} more`}
           </LegendLink>

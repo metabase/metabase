@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS } = SAMPLE_DATABASE;
@@ -30,8 +30,8 @@ describe("issue 12228", () => {
   });
 
   it("can load a question with a date filter (metabase#12228)", () => {
-    cy.createNativeQuestion(nativeQuery).then(response => {
-      cy.visit(`/question/${response.body.id}?created_at=2020-01`);
+    cy.createNativeQuestion(nativeQuery).then(({ body: { id } }) => {
+      cy.visit(`/question/${id}?created_at=2020-01`);
       cy.contains("580");
     });
   });

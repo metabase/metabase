@@ -15,7 +15,7 @@ const ExternalLink = forwardRef(function ExternalLink(
 ) {
   return (
     <LinkRoot
-      innerRef={ref as any}
+      ref={ref}
       href={href}
       className={className || "link"}
       target={target}

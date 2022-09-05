@@ -66,6 +66,9 @@ describe("metabase/lib/click-behavior", () => {
       const [{ id, name, target }] = getTargetsWithSourceFilters({
         isDash: true,
         object: { parameters: [parameter] },
+        dashcard: {
+          dashboard_id: 111,
+        },
       });
       expect(id).toEqual("foo123");
       expect(name).toEqual("My Param");
@@ -219,6 +222,9 @@ describe("metabase/lib/click-behavior", () => {
           const [{ sourceFilters }] = getTargetsWithSourceFilters({
             isDash: true,
             object: { parameters: [parameter] },
+            dashcard: {
+              dashboard_id: 111,
+            },
           });
 
           const filteredSources = _.mapObject(sources, (sources, sourceType) =>

@@ -6,7 +6,9 @@ import {
   MONGO_DATABASE,
 } from "__support__/sample_database_fixture";
 
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import NativeQuery, {
+  recognizeTemplateTags,
+} from "metabase-lib/lib/queries/NativeQuery";
 
 function makeDatasetQuery(queryText, templateTags, databaseId) {
   return {
@@ -111,9 +113,8 @@ describe("NativeQuery", () => {
     describe("setCollectionName(newCollection) selects or updates a target table for you mongo native query", () => {
       it("allows you to update mongo collections", () => {
         const fakeCollectionID = 9999;
-        const fakeMongoQuery = makeMongoQuery("").setCollectionName(
-          fakeCollectionID,
-        );
+        const fakeMongoQuery =
+          makeMongoQuery("").setCollectionName(fakeCollectionID);
         expect(fakeMongoQuery.collection()).toBe(fakeCollectionID);
       });
     });
@@ -193,47 +194,25 @@ describe("NativeQuery", () => {
         expect(q.canRun()).toBe(true);
       });
 
-      it("bad type", () => {
+      it("requires a display name", () => {
         q = q.setDatasetQuery(
-          assocIn(
-            q.datasetQuery(),
-            ["native", "template-tags", "foo", "type"],
-            "type-that-does-not-exist",
-          ),
+          assocIn(q.datasetQuery(), ["native", "template-tags", "foo"], {
+            name: "foo",
+            type: "text",
+          }),
         );
+
         expect(q.canRun()).toBe(false);
 
         q = q.setDatasetQuery(
-          assocIn(
-            q.datasetQuery(),
-            ["native", "template-tags", "foo", "type"],
-            "text",
-          ),
+          assocIn(q.datasetQuery(), ["native", "template-tags", "foo"], {
+            name: "foo",
+            type: "text",
+            "display-name": "Foo",
+          }),
         );
+
         expect(q.canRun()).toBe(true);
-      });
-
-      it("dimension type without a widget-type", () => {
-        q = q.setDatasetQuery(
-          assocIn(q.datasetQuery(), ["native", "template-tags", "foo"], {
-            type: "dimension",
-            dimension: ["field", 123, null],
-          }),
-        );
-
-        expect(q.canRun()).toBe(false);
-      });
-
-      it("dimension type with a widget-type of none", () => {
-        q = q.setDatasetQuery(
-          assocIn(q.datasetQuery(), ["native", "template-tags", "foo"], {
-            type: "dimension",
-            "widget-type": "none",
-            dimension: ["field", 123, null],
-          }),
-        );
-
-        expect(q.canRun()).toBe(false);
       });
 
       it("dimension type without a dimension", () => {
@@ -241,6 +220,7 @@ describe("NativeQuery", () => {
           assocIn(q.datasetQuery(), ["native", "template-tags", "foo"], {
             type: "dimension",
             "widget-type": "category",
+            "display-name": "bar",
           }),
         );
 
@@ -248,9 +228,11 @@ describe("NativeQuery", () => {
 
         q = q.setDatasetQuery(
           assocIn(q.datasetQuery(), ["native", "template-tags", "foo"], {
+            name: "foo",
             type: "dimension",
             "widget-type": "category",
             dimension: ["field", 123, null],
+            "display-name": "bar",
           }),
         );
 
@@ -379,6 +361,26 @@ describe("NativeQuery", () => {
           id: PRODUCTS.CATEGORY.id,
         },
       ]);
+    });
+  });
+
+  describe("recognizeTemplateTags", () => {
+    it("should handle standard variable names", () => {
+      expect(recognizeTemplateTags("SELECT * from {{products}}")).toEqual([
+        "products",
+      ]);
+    });
+
+    it("should allow duplicated variables", () => {
+      expect(
+        recognizeTemplateTags("SELECT {{col}} FROM {{t}} ORDER BY {{col}} "),
+      ).toEqual(["col", "t"]);
+    });
+
+    it("should ignore non-alphanumeric markers", () => {
+      expect(recognizeTemplateTags("SELECT * from X -- {{&universe}}")).toEqual(
+        [],
+      );
     });
   });
 });

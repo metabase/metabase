@@ -1,4 +1,5 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import _ from "underscore";
+import { restore, popover, startNewQuestion } from "__support__/e2e/helpers";
 
 describe("visual tests > notebook > major UI elements", () => {
   const VIEWPORT_WIDTH = 2500;
@@ -11,8 +12,7 @@ describe("visual tests > notebook > major UI elements", () => {
   });
 
   it("renders correctly", () => {
-    cy.visit("/question/new");
-    cy.findByText("Custom question").click();
+    startNewQuestion();
     cy.findByTextEnsureVisible("Sample Database").click();
     cy.findByTextEnsureVisible("Orders").click();
 
@@ -45,7 +45,7 @@ describe("visual tests > notebook > major UI elements", () => {
     addSorting({ field: "Average of Quantity" });
     setRowLimit(500);
 
-    cy.percySnapshot(
+    cy.createPercySnapshot(
       "visual tests > notebook > major UI elements renders correctly",
       {
         minHeight: VIEWPORT_HEIGHT,
@@ -66,8 +66,7 @@ describe("visual tests > notebook > Run buttons", () => {
 
   // This tests that the run buttons are the correct size on the Custom question page
   it("in Custom Question render correctly", () => {
-    cy.visit("/question/new");
-    cy.findByText("Custom question").click();
+    startNewQuestion();
     cy.findByTextEnsureVisible("Sample Database").click();
     cy.findByTextEnsureVisible("Orders").click();
     // Waiting for notebook icon to load
@@ -77,7 +76,7 @@ describe("visual tests > notebook > Run buttons", () => {
     cy.wait(1000);
     // Check that we're on the blank question page
     cy.findByText("Here's where your results will appear");
-    cy.percySnapshot(
+    cy.createPercySnapshot(
       "visual tests > notebook > Run buttons in Custom Question render correctly",
       {
         minHeight: VIEWPORT_HEIGHT,
@@ -88,12 +87,13 @@ describe("visual tests > notebook > Run buttons", () => {
 
   // This tests that the run buttons are the correct size on the Native query page
   it("in Native Query render correctly", () => {
-    cy.visit("/question/new");
-    cy.findByText("Native query").click();
+    cy.visit("/");
+    cy.findByText("New").click();
+    cy.findByText("SQL query").click();
 
     // Check that we're on the blank question page
-    cy.findByText("Here's where your results will appear");
-    cy.percySnapshot(
+    cy.findByText("Here's where your results will appear").click();
+    cy.createPercySnapshot(
       "visual tests > notebook > Run buttons in Native Query render correctly",
       {
         minHeight: VIEWPORT_HEIGHT,
@@ -103,14 +103,29 @@ describe("visual tests > notebook > Run buttons", () => {
   });
 });
 
+describe("visual tests > notebook", () => {
+  const VIEWPORT_WIDTH = 1200;
+  const VIEWPORT_HEIGHT = 600;
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    cy.viewport(VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
+  });
+
+  it("data picker", () => {
+    startNewQuestion();
+    cy.findByText("Sample Database");
+    cy.createPercySnapshot();
+  });
+});
+
 function selectFromDropdown(itemName) {
-  return popover().findByText(itemName);
+  return popover().last().findByText(itemName);
 }
 
 function addJoin({ rightTable }) {
-  cy.icon("join_left_outer")
-    .last()
-    .click();
+  cy.icon("join_left_outer").last().click();
 
   selectFromDropdown(rightTable).click();
 }

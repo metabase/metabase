@@ -1,14 +1,14 @@
 (ns metabase.models.interface-test
   (:require [cheshire.core :as json]
             [clojure.test :refer :all]
-            [metabase.mbql.normalize :as normalize]
-            [toucan.models :as t.models]))
+            [metabase.mbql.normalize :as mbql.normalize]
+            [toucan.models :as models]))
 
 ;; let's make sure the `:metabase-query`/`:metric-segment-definition`/`::dashboard-card/parameter-mappings`
 ;; normalization functions respond gracefully to invalid stuff when pulling them out of the Database. See #8914
 
 (defn type-fn [toucan-type in-or-out]
-  (-> @@#'t.models/type-fns toucan-type in-or-out))
+  (-> @@#'models/type-fns toucan-type in-or-out))
 
 (deftest handle-bad-template-tags-test
   (testing (str "an malformed template tags map like the one below is invalid. Rather than potentially destroy an entire API "
@@ -53,7 +53,7 @@
 (deftest handle-errors-gracefully-test
   (testing (str "Cheat and override the `normalization-tokens` function to always throw an Exception so we can make "
                 "sure the Toucan type fn handles the error gracefully")
-    (with-redefs [normalize/normalize-tokens (fn [& _] (throw (Exception. "BARF")))]
+    (with-redefs [mbql.normalize/normalize-tokens (fn [& _] (throw (Exception. "BARF")))]
       (is (= nil
              ((type-fn :parameters-list :out)
               (json/generate-string
@@ -63,6 +63,6 @@
   (testing "should not eat Exceptions if normalization barfs when saving"
     (is (thrown?
          Exception
-         (with-redefs [normalize/normalize-tokens (fn [& _] (throw (Exception. "BARF")))]
+         (with-redefs [mbql.normalize/normalize-tokens (fn [& _] (throw (Exception. "BARF")))]
            ((type-fn :parameters-list :in)
             [{:target [:dimension [:field "ABC" nil]]}]))))))

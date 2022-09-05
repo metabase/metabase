@@ -8,6 +8,8 @@ const EntityLink = ({
   entityId,
   name = "name",
   LinkComponent = Link,
+  dispatchApiErrorEvent = true,
+  fallback = null,
   ...linkProps
 }) => (
   <EntityObjectLoader
@@ -15,6 +17,7 @@ const EntityLink = ({
     entityId={entityId}
     properties={[name]}
     loadingAndErrorWrapper={false}
+    dispatchApiErrorEvent={dispatchApiErrorEvent}
     wrapped
   >
     {({ object }) =>
@@ -22,7 +25,9 @@ const EntityLink = ({
         <LinkComponent {...linkProps} to={object.getUrl()}>
           <span>{object.getName()}</span>
         </LinkComponent>
-      ) : null
+      ) : (
+        fallback
+      )
     }
   </EntityObjectLoader>
 );

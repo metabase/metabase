@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/core/components/Link";
@@ -59,6 +59,7 @@ export const InfoTitle = styled.div`
 export const InfoMessage = styled.div`
   color: ${color("text-dark")};
   text-align: center;
+  margin-bottom: 1rem;
 `;
 
 export const InfoLink = styled(Link)`

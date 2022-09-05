@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import { t } from "ttag";
 
 import cx from "classnames";
 import _ from "underscore";
@@ -62,7 +63,7 @@ class NotebookStepPreview extends React.Component {
     return (
       <PreviewRoot>
         <PreviewHeader>
-          <span className="text-bold">{`Preview`}</span>
+          <span className="text-bold">{t`Preview`}</span>
           <PreviewIconContainer>
             <Icon
               name="close"
@@ -73,7 +74,7 @@ class NotebookStepPreview extends React.Component {
         </PreviewHeader>
         {isDirty ? (
           <PreviewButtonContainer className="bordered shadowed rounded bg-white p4">
-            <Button onClick={this.refresh}>Refresh</Button>
+            <Button onClick={this.refresh}>{t`Refresh`}</Button>
           </PreviewButtonContainer>
         ) : (
           <QuestionResultLoader question={question}>

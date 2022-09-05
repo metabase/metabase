@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
 export const DimensionListTableName = styled.div`
@@ -7,7 +7,7 @@ export const DimensionListTableName = styled.div`
   font-weight: 700;
   font-size: 0.75rem;
   padding: 0 0.5rem;
-  color: ${color("accent1")};
+  color: ${color("summarize")};
 `;
 
 export const DimensionListFilterContainer = styled.div`

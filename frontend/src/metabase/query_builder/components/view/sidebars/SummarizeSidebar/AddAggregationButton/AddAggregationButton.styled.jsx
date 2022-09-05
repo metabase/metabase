@@ -1,15 +1,13 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
-import { forwardRefToInnerRef } from "metabase/styled-components/utils";
-
-export const AddAggregationButtonRoot = forwardRefToInnerRef(styled.button`
+export const AddAggregationButtonRoot = styled.button`
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0.625rem;
   transition: all 0.2s linear;
-  color: ${color("accent1")};
+  color: ${color("summarize")};
   background-color: ${color("bg-light")};
   border-radius: 8px;
   font-weight: 700;
@@ -20,4 +18,4 @@ export const AddAggregationButtonRoot = forwardRefToInnerRef(styled.button`
   &:hover {
     background-color: ${color("bg-medium")};
   }
-`);
+`;

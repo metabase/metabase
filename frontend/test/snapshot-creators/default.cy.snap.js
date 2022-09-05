@@ -1,6 +1,23 @@
 import _ from "underscore";
-import { snapshot, restore, withSampleDatabase } from "__support__/e2e/cypress";
-import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
+import { snapshot, restore, withSampleDatabase } from "__support__/e2e/helpers";
+import {
+  USERS,
+  USER_GROUPS,
+  SAMPLE_DB_ID,
+  SAMPLE_DB_TABLES,
+  METABASE_SECRET_KEY,
+} from "__support__/e2e/cypress_data";
+
+const {
+  STATIC_ORDERS_ID,
+  STATIC_PRODUCTS_ID,
+  STATIC_REVIEWS_ID,
+  STATIC_PEOPLE_ID,
+  STATIC_ACCOUNTS_ID,
+  STATIC_ANALYTIC_EVENTS_ID,
+  STATIC_FEEDBACK_ID,
+  STATIC_INVOICES_ID,
+} = SAMPLE_DB_TABLES;
 
 const {
   ALL_USERS_GROUP,
@@ -17,10 +34,12 @@ describe("snapshots", () => {
       snapshot("blank");
       setup();
       updateSettings();
+      snapshot("setup");
       addUsersAndGroups();
       createCollections();
       withSampleDatabase(SAMPLE_DATABASE => {
-        createQuestionAndDashboard(SAMPLE_DATABASE);
+        ensureTableIdsAreCorrect(SAMPLE_DATABASE);
+        createQuestionsAndDashboards(SAMPLE_DATABASE);
         cy.writeFile(
           "frontend/test/__support__/e2e/cypress_sample_database.json",
           SAMPLE_DATABASE,
@@ -55,14 +74,14 @@ describe("snapshots", () => {
     cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
     cy.request("PUT", "/api/setting/enable-embedding", { value: true });
     cy.request("PUT", "/api/setting/embedding-secret-key", {
-      value: "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      value: METABASE_SECRET_KEY,
     });
 
     // update the Sample db connection string so it is valid in both CI and locally
-    cy.request("GET", "/api/database/1").then(response => {
+    cy.request("GET", `/api/database/${SAMPLE_DB_ID}`).then(response => {
       response.body.details.db =
         "./resources/sample-database.db;USER=GUEST;PASSWORD=guest";
-      cy.request("PUT", "/api/database/1", response.body);
+      cy.request("PUT", `/api/database/${SAMPLE_DB_ID}`, response.body);
     });
   }
 
@@ -98,11 +117,21 @@ describe("snapshots", () => {
     cy.request("GET", "/api/user");
 
     cy.updatePermissionsGraph({
-      [ALL_USERS_GROUP]: { "1": { schemas: "none", native: "none" } },
-      [DATA_GROUP]: { "1": { schemas: "all", native: "write" } },
-      [NOSQL_GROUP]: { "1": { schemas: "all", native: "none" } },
-      [COLLECTION_GROUP]: { "1": { schemas: "none", native: "none" } },
-      [READONLY_GROUP]: { "1": { schemas: "none", native: "none" } },
+      [ALL_USERS_GROUP]: {
+        [SAMPLE_DB_ID]: { data: { schemas: "none", native: "none" } },
+      },
+      [DATA_GROUP]: {
+        [SAMPLE_DB_ID]: { data: { schemas: "all", native: "write" } },
+      },
+      [NOSQL_GROUP]: {
+        [SAMPLE_DB_ID]: { data: { schemas: "all", native: "none" } },
+      },
+      [COLLECTION_GROUP]: {
+        [SAMPLE_DB_ID]: { data: { schemas: "none", native: "none" } },
+      },
+      [READONLY_GROUP]: {
+        [SAMPLE_DB_ID]: { data: { schemas: "none", native: "none" } },
+      },
     });
 
     cy.updateCollectionGraph({
@@ -133,35 +162,23 @@ describe("snapshots", () => {
     );
   }
 
-  function createQuestionAndDashboard({ ORDERS, ORDERS_ID }) {
+  function createQuestionsAndDashboards({ ORDERS, ORDERS_ID }) {
     // question 1: Orders
-    cy.createQuestion({ name: "Orders", query: { "source-table": ORDERS_ID } });
-
-    // question 2: Orders, Count
-    cy.createQuestion({
-      name: "Orders, Count",
-      query: { "source-table": ORDERS_ID, aggregation: [["count"]] },
-    });
-
-    cy.createQuestion({
-      name: "Orders, Count, Grouped by Created At (year)",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
-      },
-      display: "line",
-    });
+    const questionDetails = {
+      name: "Orders",
+      query: { "source-table": ORDERS_ID },
+    };
 
     // dashboard 1: Orders in a dashboard
-    cy.createDashboard({ name: "Orders in a dashboard" });
-    cy.request("POST", `/api/dashboard/1/cards`, { cardId: 1 }).then(
-      ({ body: { id: dashCardId } }) => {
-        cy.request("PUT", `/api/dashboard/1/cards`, {
+    const dashboardDetails = { name: "Orders in a dashboard" };
+
+    cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+      ({ body: { id, card_id, dashboard_id } }) => {
+        cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
           cards: [
             {
-              id: dashCardId,
-              card_id: 1,
+              id,
+              card_id,
               row: 0,
               col: 0,
               sizeX: 12,
@@ -171,6 +188,43 @@ describe("snapshots", () => {
         });
       },
     );
+
+    // question 2: Orders, Count
+    cy.createQuestion({
+      name: "Orders, Count",
+      query: { "source-table": ORDERS_ID, aggregation: [["count"]] },
+    });
+
+    // question 3: Orders, Count, Grouped by Created At (year)
+    cy.createQuestion({
+      name: "Orders, Count, Grouped by Created At (year)",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
+      },
+      display: "line",
+    });
+  }
+
+  function ensureTableIdsAreCorrect({
+    ORDERS_ID,
+    PRODUCTS_ID,
+    REVIEWS_ID,
+    PEOPLE_ID,
+    ACCOUNTS_ID,
+    ANALYTIC_EVENTS_ID,
+    FEEDBACK_ID,
+    INVOICES_ID,
+  }) {
+    expect(ORDERS_ID).to.eq(STATIC_ORDERS_ID);
+    expect(PEOPLE_ID).to.eq(STATIC_PEOPLE_ID);
+    expect(REVIEWS_ID).to.eq(STATIC_REVIEWS_ID);
+    expect(PRODUCTS_ID).to.eq(STATIC_PRODUCTS_ID);
+    expect(ACCOUNTS_ID).to.eq(STATIC_ACCOUNTS_ID);
+    expect(ANALYTIC_EVENTS_ID).to.eq(STATIC_ANALYTIC_EVENTS_ID);
+    expect(FEEDBACK_ID).to.eq(STATIC_FEEDBACK_ID);
+    expect(INVOICES_ID).to.eq(STATIC_INVOICES_ID);
   }
 
   // TODO: It'd be nice to have one file per snapshot.
@@ -200,17 +254,18 @@ describe("snapshots", () => {
             schedule_type: "hourly",
           },
         },
+      }).then(({ body: { id } }) => {
+        cy.request("POST", `/api/database/${id}/sync_schema`);
+        cy.request("POST", `/api/database/${id}/rescan_values`);
+        cy.wait(1000); // wait for sync
+        snapshot("withSqlite");
+        // TODO: Temporary HACK that requires further investigation and a better solution.
+        // sqlite driver was messing with the sync of postres database in CY tests
+        // ("probably some weird race condition" @Damon)
+        // Deleting it here keeps snapshots intact, and enables for unobstructed postgres testing.
+        cy.request("DELETE", `/api/database/${id}`);
+        restore("blank");
       });
-      cy.request("POST", "/api/database/2/sync_schema");
-      cy.request("POST", "/api/database/2/rescan_values");
-      cy.wait(1000); // wait for sync
-      snapshot("withSqlite");
-      // TODO: Temporary HACK that requires further investigation and a better solution.
-      // sqlite driver was messing with the sync of postres database in CY tests
-      // ("probably some weird race condition" @Damon)
-      // Deleting it here keeps snapshots intact, and enables for unobstructed postgres testing.
-      cy.request("DELETE", "/api/database/2");
-      restore("blank");
     });
   });
 });

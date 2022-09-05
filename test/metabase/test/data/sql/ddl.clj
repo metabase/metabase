@@ -2,8 +2,9 @@
   "Methods for creating DDL statements for things like creating/dropping databases and loading data."
   (:require [honeysql.core :as hsql]
             [honeysql.format :as hformat]
-            [honeysql.helpers :as h]
+            [honeysql.helpers :as hh]
             [metabase.driver :as driver]
+            [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.test.data.interface :as tx]
             [metabase.test.data.sql :as sql.tx]
@@ -49,12 +50,11 @@
     (doseq [tabledef table-definitions]
       (add! (sql.tx/drop-table-if-exists-sql driver dbdef tabledef)
             (sql.tx/create-table-sql driver dbdef tabledef)))
-
     ;; Add the SQL for adding FK constraints
-    (doseq [{:keys [field-definitions], :as tabledef} table-definitions]
-      (doseq [{:keys [fk], :as fielddef} field-definitions]
-        (when fk
-          (add! (sql.tx/add-fk-sql driver dbdef tabledef fielddef)))))
+    (doseq [{:keys [field-definitions], :as tabledef} table-definitions
+            {:keys [fk], :as fielddef}                field-definitions]
+      (when fk
+        (add! (sql.tx/add-fk-sql driver dbdef tabledef fielddef))))
     ;; Add the SQL for adding table comments
     (doseq [{:keys [table-comment], :as tabledef} table-definitions]
       (when table-comment
@@ -84,24 +84,24 @@
                     (sql.qp/->honeysql driver value)))
         h-cols  (for [column columns]
                   (sql.qp/->honeysql driver
-                    (hx/identifier :field (tx/format-name driver (u/qualified-name column)))))]
+                    (hx/identifier :field (ddl.i/format-name driver (u/qualified-name column)))))]
     ;; explanation for the hack that follows
-    ;; h/columns has a varargs check to make sure you call it in a varargs manner, which means it checks whether the
+    ;; hh/columns has a varargs check to make sure you call it in a varargs manner, which means it checks whether the
     ;; first non-accumulator (i.e. not the map it's building) argument is a collection, and throws if so
     ;; unfortunately, (coll? (hx/identifier ...)) is true, so the varargs check fails if we have ONE column here
-    ;; also, we can't simply call (h/columns (first h-cols)) here, because that returns only the (hx/identifier ...)
+    ;; also, we can't simply call (hh/columns (first h-cols)) here, because that returns only the (hx/identifier ...)
     ;; itself, and NOT a map like {:columns [(hx/identifier ...)]} like the rest of the builder fns are expecting
     ;; the change in behavior was introduced in honeysql 0.9.7 here:
     ;; https://github.com/seancorfield/honeysql/commit/4ca74f2b0d0f87827ce34d9baf8dcc8d086ce18e
     ;; so we seem to have no choice but to reimplement the n=1 case in a hacky manner ourselves :(
     (-> (case (count h-cols)
-          ;; only 1 column, which is an Identifier; h/columns can't help us (see above)
+          ;; only 1 column, which is an Identifier; hh/columns can't help us (see above)
           1 {:columns [(first h-cols)]}
-          ;; at least two columns, so we can use h/columns, but the first param we pass to it must be a map, since
+          ;; at least two columns, so we can use hh/columns, but the first param we pass to it must be a map, since
           ;; we're using the threading macro backwards
-          (apply h/columns (conj h-cols {})))
-        (h/insert-into table-identifier)
-        (h/values values))))
+          (apply hh/columns (conj h-cols {})))
+        (hh/insert-into table-identifier)
+        (hh/values values))))
 
 (defmulti insert-rows-ddl-statements
   "Return appropriate SQL DDL statemtents for inserting `row-or-rows` (each row should be a map) into a Table named by

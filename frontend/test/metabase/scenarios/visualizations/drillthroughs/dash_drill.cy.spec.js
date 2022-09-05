@@ -1,5 +1,7 @@
 // Imported from drillthroughs.e2e.spec.js
-import { restore } from "__support__/e2e/cypress";
+import { restore, visitDashboard } from "__support__/e2e/helpers";
+
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
@@ -47,7 +49,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
         // Convert Q2 to a scalar with a filter applied
         cy.request("PUT", `/api/card/${Q2.id}`, {
           dataset_query: {
-            database: 1,
+            database: SAMPLE_DB_ID,
             query: {
               aggregation: [["count"]],
               filter: [">", ["field", ORDERS.TOTAL, null], 100],
@@ -90,16 +92,6 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
         }).then(({ body: { id: CARD_ID } }) => {
           cy.createDashboard({ name: DASHBOARD_NAME }).then(
             ({ body: { id: DASHBOARD_ID } }) => {
-              // Prepare to wait for this specific XHR:
-              // We need to do this because Cypress sees the string that is "card title" before card is fully rendered.
-              // That string then gets detached from DOM just prior to this XHR and gets re-rendered again inside a new DOM element.
-              // Cypress was complaining it cannot click on a detached element.
-              cy.server();
-              cy.route(
-                "POST",
-                `/api/dashboard/${DASHBOARD_ID}/dashcard/*/card/${CARD_ID}/query`,
-              ).as("cardQuery");
-
               // Add previously created question to the new dashboard
               cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
                 cardId: CARD_ID,
@@ -107,11 +99,15 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
                 sizeY: 12,
               });
 
-              cy.visit(`/dashboard/${DASHBOARD_ID}`);
+              visitDashboard(DASHBOARD_ID);
               cy.findByText(DASHBOARD_NAME);
 
-              cy.wait("@cardQuery"); // wait for the title to be re-rendered before we can click on it
+              cy.intercept("POST", `/api/card/${CARD_ID}/query`).as(
+                "cardQuery",
+              );
+
               cy.findByText(CARD_NAME).click();
+              cy.wait("@cardQuery");
             },
           );
         });
@@ -191,16 +187,11 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
                 ],
               });
             });
-            cy.server();
-            cy.route(
-              "POST",
-              `/api/dashboard/${DASHBOARD_ID}/dashcard/*/card/${QUESTION_ID}/query`,
-            ).as("cardQuery");
-            cy.route("POST", `/api/dataset`).as("dataset");
 
-            cy.visit(`/dashboard/${DASHBOARD_ID}`);
+            cy.intercept("POST", "/api/dataset").as("dataset");
 
-            cy.wait("@cardQuery");
+            visitDashboard(DASHBOARD_ID);
+
             cy.findByText(QUESTION_NAME).click();
 
             cy.wait("@dataset");
@@ -216,9 +207,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
 // This class shows up only when card title is already re-rendered.
 // That's why we don't have to wait for a specific XHR, but this works only for SCALAR questions.
 function clickScalarCardTitle(card_name) {
-  cy.get(".Scalar-title")
-    .contains(card_name)
-    .click();
+  cy.findByTestId("scalar-title").contains(card_name).click();
 }
 
 function addCardToNewDashboard(dashboard_name, card_id) {
@@ -231,7 +220,7 @@ function addCardToNewDashboard(dashboard_name, card_id) {
         sizeY: 4,
       });
       // Visit newly created dashboard
-      cy.visit(`/dashboard/${DASHBOARD_ID}`);
+      visitDashboard(DASHBOARD_ID);
     },
   );
 }

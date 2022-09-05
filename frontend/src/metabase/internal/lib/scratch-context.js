@@ -1,5 +1,5 @@
 import React from "react";
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import * as systemExports from "styled-system";
 import colors, * as colorsExports from "metabase/lib/colors";
 import * as entities from "metabase/entities";

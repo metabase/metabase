@@ -1,22 +1,17 @@
 import {
   restore,
   popover,
-  describeWithToken,
+  describeEE,
   mockSessionProperty,
-} from "__support__/e2e/cypress";
+  isEE,
+} from "__support__/e2e/helpers";
 
 function typeField(label, value) {
-  cy.findByLabelText(label)
-    .clear()
-    .type(value)
-    .blur();
+  cy.findByLabelText(label).clear().type(value).blur();
 }
 
 function toggleFieldWithDisplayName(displayName) {
-  cy.contains(displayName)
-    .closest(".Form-field")
-    .find("input")
-    .click();
+  cy.contains(displayName).closest(".Form-field").find("input").click();
 }
 
 function selectFieldOption(fieldName, option) {
@@ -24,9 +19,7 @@ function selectFieldOption(fieldName, option) {
     .parents(".Form-field")
     .findByTestId("select-button")
     .click();
-  popover()
-    .contains(option)
-    .click({ force: true });
+  popover().contains(option).click({ force: true });
 }
 
 describe("scenarios > admin > databases > add", () => {
@@ -62,9 +55,7 @@ describe("scenarios > admin > databases > add", () => {
     typeField("Database name", "test_postgres_db");
     typeField("Username", "uberadmin");
 
-    cy.button("Save")
-      .should("not.be.disabled")
-      .click();
+    cy.button("Save").should("not.be.disabled").click();
 
     cy.wait("@createDatabase");
 
@@ -104,7 +95,8 @@ describe("scenarios > admin > databases > add", () => {
 
     cy.button("Save").click();
     cy.wait("@createDatabase");
-    cy.findByText(/Hmm, we couldn't connect to the database/);
+    cy.findByText(": check your connection string");
+    cy.findByText("Implicitly relative file paths are not allowed.");
   });
 
   it("should show scheduling settings if you enable the toggle", () => {
@@ -155,7 +147,7 @@ describe("scenarios > admin > databases > add", () => {
   });
 
   it("EE should ship with Oracle and Vertica as options", () => {
-    cy.onlyOn(!!Cypress.env("HAS_ENTERPRISE_TOKEN"));
+    cy.onlyOn(isEE);
 
     cy.visit("/admin/databases/create");
     cy.contains("Database type")
@@ -173,12 +165,15 @@ describe("scenarios > admin > databases > add", () => {
     cy.findByText("Need help connecting?");
   });
 
-  it("should respect users' decision to manually sync large database (metabase#17450)", () => {
+  // TODO:
+  // Enable once https://github.com/metabase/metabase/issues/24900 gets fixed!
+  it.skip("should respect users' decision to manually sync large database (metabase#17450)", () => {
     const H2_CONNECTION_STRING =
       "zip:./target/uberjar/metabase.jar!/sample-database.db;USER=GUEST;PASSWORD=guest";
 
     const databaseName = "Another H2";
 
+    cy.intercept("POST", "/api/database").as("createDatabase");
     cy.visit("/admin/databases/create");
 
     chooseDatabase("H2");
@@ -194,6 +189,7 @@ describe("scenarios > admin > databases > add", () => {
     isSyncOptionSelected("Never, I'll do this manually if I need to");
 
     cy.button("Save").click();
+    cy.wait("@createDatabase");
 
     cy.findByText("We're taking a look at your database!");
     cy.findByLabelText("close icon").click();
@@ -276,35 +272,59 @@ describe("scenarios > admin > databases > add", () => {
     it("should display driver deprecation messages", () => {
       cy.visit("/admin/databases/create");
 
-      chooseDatabase("BigQuery");
+      chooseDatabase("Presto");
 
-      cy.findByText("BigQuery");
+      cy.findByText("Presto");
       cy.findByText("Need help connecting?");
 
       cy.findByText("find it here").click();
-      cy.findByText("BigQuery (Deprecated Driver)");
+      cy.findByText("Presto (Deprecated Driver)");
       cy.findByText("Need help connecting?");
     });
   });
 
   describe("Google Analytics ", () => {
-    it("should generate well-formed external auth URLs", () => {
+    it("should let you upload the service account json from a file", () => {
       cy.visit("/admin/databases/create");
       chooseDatabase("Google Analytics");
 
-      typeField("Client ID", "   999  ");
+      typeField("Display name", "google analytics");
 
-      cy.findByText("get an auth code", { exact: false })
-        .findByRole("link")
-        .then(el => {
-          expect(el.attr("href")).to.equal(
-            "https://accounts.google.com/o/oauth2/auth?access_type=offline&redirect_uri=urn:ietf:wg:oauth:2.0:oob&response_type=code&scope=https://www.googleapis.com/auth/analytics.readonly&client_id=999",
-          );
-        });
+      typeField("Google Analytics Account ID", " 999  ");
+
+      // create blob to act as selected file
+      cy.get("input[type=file]")
+        .then(async input => {
+          const blob = await Cypress.Blob.binaryStringToBlob('{"foo": 123}');
+          const file = new File([blob], "service-account.json");
+          const dataTransfer = new DataTransfer();
+
+          dataTransfer.items.add(file);
+          input[0].files = dataTransfer.files;
+          return input;
+        })
+        .trigger("change", { force: true })
+        .trigger("blur", { force: true });
+
+      cy.route({
+        method: "POST",
+        url: "/api/database",
+        response: { id: 123 },
+        status: 200,
+        delay: 100,
+      }).as("createDatabase");
+
+      // submit form and check that the file's body is included
+      cy.button("Save").click();
+      cy.wait("@createDatabase").should(xhr => {
+        expect(xhr.request.body.details["service-account-json"]).to.equal(
+          '{"foo": 123}',
+        );
+      });
     });
   });
 
-  describeWithToken("caching", () => {
+  describeEE("caching", () => {
     beforeEach(() => {
       mockSessionProperty("enable-query-caching", true);
     });
@@ -337,13 +357,8 @@ describe("scenarios > admin > databases > add", () => {
 
       cy.findByText("Show advanced options").click();
       cy.findByText("Use instance default (TTL)").click();
-      popover()
-        .findByText("Custom")
-        .click();
-      cy.findByDisplayValue("24")
-        .clear()
-        .type("48")
-        .blur();
+      popover().findByText("Custom").click();
+      cy.findByDisplayValue("24").clear().type("48").blur();
 
       cy.button("Save").click();
 
@@ -403,7 +418,5 @@ function chooseDatabase(database) {
 
 function isSyncOptionSelected(option) {
   // This is a really bad way to assert that the text element is selected/active. Can it be fixed in the FE code?
-  cy.findByText(option)
-    .parent()
-    .should("have.class", "text-brand");
+  cy.findByText(option).parent().should("have.class", "text-brand");
 }

@@ -6,7 +6,8 @@ import {
   popover,
   enterCustomColumnDetails,
   visualize,
-} from "__support__/e2e/cypress";
+  summarize,
+} from "__support__/e2e/helpers";
 
 describe("scenarios > visualizations > table", () => {
   beforeEach(() => {
@@ -15,7 +16,7 @@ describe("scenarios > visualizations > table", () => {
   });
 
   it("should allow to display any column as link with extrapolated url and text", () => {
-    openPeopleTable();
+    openPeopleTable({ limit: 2 });
 
     cy.findByText("City").click();
 
@@ -48,9 +49,21 @@ describe("scenarios > visualizations > table", () => {
   });
 
   it("should show field metadata in a popover when hovering over a table column header", () => {
-    openPeopleTable();
+    const ccName = "Foo";
 
-    cy.icon("notebook").click();
+    openPeopleTable({ mode: "notebook", limit: 2 });
+
+    cy.icon("add_data").click();
+
+    popover().within(() => {
+      enterCustomColumnDetails({
+        formula: "concat([Name], [Name])",
+        name: ccName,
+      });
+
+      cy.button("Done").click();
+    });
+
     cy.findByTestId("fields-picker").click();
     popover().within(() => {
       cy.findByText("Select none").click();
@@ -60,16 +73,8 @@ describe("scenarios > visualizations > table", () => {
       cy.findByText("Latitude").click();
     });
 
-    cy.findByText("Custom column").click();
-
-    popover().within(() => {
-      enterCustomColumnDetails({
-        formula: "concat([Name], [Name])",
-        name: "CustomColumn",
-      });
-
-      cy.findByText("Done").click();
-    });
+    // Click anywhere else to close the popover which is blocking the Visualize button
+    cy.get(".QueryBuilder").click(0, 0);
 
     visualize();
 
@@ -127,7 +132,7 @@ describe("scenarios > visualizations > table", () => {
         },
       ],
       [
-        "CustomColumn",
+        ccName,
         () => {
           // semantic type
           cy.contains("No special type");
@@ -136,31 +141,26 @@ describe("scenarios > visualizations > table", () => {
         },
       ],
     ].forEach(([column, test]) => {
-      cy.get(".cellData")
-        .contains(column)
-        .trigger("mouseenter");
+      cy.get(".cellData").contains(column).trigger("mouseenter");
 
       popover().within(() => {
         test();
       });
 
-      cy.get(".cellData")
-        .contains(column)
-        .trigger("mouseleave");
+      cy.get(".cellData").contains(column).trigger("mouseleave");
     });
 
-    cy.findAllByText("Summarize")
-      .first()
-      .click();
-    cy.findAllByTestId("dimension-list-item-name")
-      .first()
-      .click();
+    summarize();
 
-    cy.icon("table2").click();
+    cy.findAllByTestId("dimension-list-item-name").contains(ccName).click();
 
-    cy.get(".cellData")
-      .contains("Count")
-      .trigger("mouseenter");
+    cy.wait("@dataset");
+
+    cy.get(".Visualization").within(() => {
+      // Make sure new table results loaded with Custom column and Count columns
+      cy.contains(ccName);
+      cy.contains("Count").trigger("mouseenter");
+    });
 
     popover().within(() => {
       cy.contains("No special type");
@@ -169,7 +169,7 @@ describe("scenarios > visualizations > table", () => {
   });
 
   it("should show the field metadata popover for a foreign key field (metabase#19577)", () => {
-    openOrdersTable();
+    openOrdersTable({ limit: 2 });
 
     cy.findByText("Product ID").trigger("mouseenter");
 
@@ -183,9 +183,7 @@ describe("scenarios > visualizations > table", () => {
     openNativeEditor().type("select * from products");
     cy.get(".NativeQueryEditor .Icon-play").click();
 
-    cy.get(".cellData")
-      .contains("CATEGORY")
-      .trigger("mouseenter");
+    cy.get(".cellData").contains("CATEGORY").trigger("mouseenter");
     popover().within(() => {
       cy.contains("No special type");
       cy.findByText("No description");
@@ -193,7 +191,7 @@ describe("scenarios > visualizations > table", () => {
   });
 
   it.skip("should close the colum popover on subsequent click (metabase#16789)", () => {
-    openPeopleTable();
+    openPeopleTable({ limit: 2 });
 
     cy.findByText("City").click();
     popover().within(() => {
@@ -202,7 +200,7 @@ describe("scenarios > visualizations > table", () => {
       cy.icon("gear");
       cy.findByText("Filter by this column");
       cy.findByText("Distribution");
-      cy.findByText("Distincts");
+      cy.findByText("Distinct values");
     });
 
     cy.findByText("City").click();

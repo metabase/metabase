@@ -334,6 +334,74 @@
             (print-diff @before row))
           (rf result row)))))))
 
+(defn- default-debug-middleware
+  "The default set of middleware applied to queries ran via [[process-query-debug]].
+  Analogous to [[qp/default-middleware]]."
+  []
+  (into
+   []
+   (comp cat (keep identity))
+   [@#'qp/execution-middleware
+    @#'qp/compile-middleware
+    @#'qp/post-processing-middleware
+    ;; Normally, pre-processing middleware are applied to the query left-to-right, but in debug mode we convert each
+    ;; one into a transducing middleware and compose them, which causes them to be applied right-to-left. So we need
+    ;; to reverse the order here.
+    (reverse @#'qp/pre-processing-middleware)
+    @#'qp/around-middleware]))
+
+(defn- alter-pre-processing-middleware
+  "Takes a pre-processing middleware function, and converts it to a transducing middleware with the signature:
+
+    (f (f query rff context)) -> (f query rff context)"
+  [middleware]
+  (fn [qp-or-query]
+    (if (map? qp-or-query)
+      ;; If we're passed a map, this means the middleware var is still being called on a query directly. This happens
+      ;; if pre-processing middleware calls other pre-processing middleware, such as [[upgrade-field-literals]] which
+      ;; calls [[resolve-fields]]. Fallback to the original middleware function in this case.
+      (middleware qp-or-query)
+      (fn [query rff context]
+        (qp-or-query
+         (middleware query)
+         rff
+         context)))))
+
+(defn- alter-post-processing-middleware
+  "Takes a pre-processing middleware function, and converts it to a transducing middleware with the signature:
+
+    (f (f query rff context)) -> (f query rff context)"
+  [middleware]
+  (fn [qp]
+    (fn [query rff context]
+      (qp query (middleware query rff) context))))
+
+(defn- with-altered-middleware-fn
+  "Implementation function for [[with-altered-middleware]]. Temporarily alters the root bindings for pre- and
+  post-processing middleware vars, changing them to transducing middleware which can individually be wrapped with
+  debug middleware in [[process-query-debug]]."
+  [f]
+  (let [pre-processing-middleware-vars  @#'qp/pre-processing-middleware
+        post-processing-middleware-vars @#'qp/post-processing-middleware
+        pre-processing-original-fns     (zipmap pre-processing-middleware-vars
+                                                (map deref pre-processing-middleware-vars))
+        post-processing-original-fns    (zipmap post-processing-middleware-vars
+                                                (map deref post-processing-middleware-vars))]
+    (try
+      (mapv #(alter-var-root % alter-pre-processing-middleware) pre-processing-middleware-vars)
+      (mapv #(alter-var-root % alter-post-processing-middleware) post-processing-middleware-vars)
+      (f)
+      (finally
+        (mapv (fn [[middleware-var middleware-fn]]
+                (alter-var-root middleware-var (constantly middleware-fn)))
+              (merge pre-processing-original-fns post-processing-original-fns))))))
+
+(defmacro ^:private with-altered-middleware
+  "Temporarily redefines pre-processing and post-processing middleware vars to equivalent transducing middlewares,
+  so that [[process-query-debug]] can print the transformations for each middleware individually."
+  [& body]
+  `(with-altered-middleware-fn (fn [] ~@body)))
+
 (defn process-query-debug
   "Process a query using a special QP that wraps all of the normal QP middleware and prints any transformations done
   during pre or post-processing.
@@ -358,17 +426,18 @@
             *print-names?*              print-names?
             *validate-query?*           validate-query?
             pprint/*print-right-margin* 80]
-    (let [middleware (for [middleware-var qp/default-middleware
-                           :when          middleware-var]
-                       (->> middleware-var
-                            (debug-query-changes middleware-var)
-                            (debug-metadata-changes middleware-var)
-                            (debug-result-changes middleware-var)
-                            (debug-row-changes middleware-var)))
-          qp         (qp.reducible/sync-qp (#'qp/base-qp middleware))]
-      (if context
-        (qp query context)
-        (qp query)))))
+    (with-altered-middleware
+      (let [middleware (for [middleware-var (default-debug-middleware)
+                             :when          middleware-var]
+                         (->> middleware-var
+                              (debug-query-changes middleware-var)
+                              (debug-metadata-changes middleware-var)
+                              (debug-result-changes middleware-var)
+                              (debug-row-changes middleware-var)))
+            qp         (qp.reducible/sync-qp (#'qp/base-qp middleware))]
+        (if context
+          (qp query context)
+          (qp query))))))
 
 
 ;;;; [[to-mbql-shorthand]]

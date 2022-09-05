@@ -1,7 +1,12 @@
-/* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import InputWithSelectPrefix from "metabase/components/InputWithSelectPrefix";
+
+const propTypes = {
+  setting: PropTypes.object.isRequired,
+  onChange: PropTypes.func.isRequired,
+};
 
 export default class SiteUrlWidget extends Component {
   render() {
@@ -13,7 +18,10 @@ export default class SiteUrlWidget extends Component {
         prefixes={["https://", "http://"]}
         defaultPrefix="http://"
         caseInsensitivePrefix={true}
+        placeholder={setting.placeholder}
       />
     );
   }
 }
+
+SiteUrlWidget.propTypes = propTypes;

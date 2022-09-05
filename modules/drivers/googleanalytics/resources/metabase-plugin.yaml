@@ -2,38 +2,23 @@ info:
   name: Metabase Google Analytics Driver
   version: 1.0.0-SNAPSHOT-1.27.0
   description: Allows Metabase to connect to Google Analytics accounts.
-dependencies:
-  - plugin: Metabase Google Drivers Shared Dependencies
 driver:
   name: googleanalytics
   display-name: Google Analytics
   lazy-load: true
-  parent: google
   connection-properties:
     - name: account-id
       display-name: Google Analytics Account ID
       helper-text: You can find the Account ID in Google Analytics → Admin → Account Settings.
       placeholder: '1234567'
       required: true
-    - name: client-id
-      display-name: Client ID
-      helper-text: Find it in the "GA authentication" tab in Google Analytics Counter module settings and copy "Client ID".
-      placeholder: 1201327674725-y6ferb0feo1hfssr7t40o4aikqll46d4.apps.googleusercontent.com
+    - name: service-account-json
+      display-name: Service account JSON file
+      helper-text: This JSON file contains the credentials Metabase needs to read and query your dataset.
       required: true
-    - name: client-secret
-      display-name: Client Secret
-      helper-text: Go to the "GA authentication" tab in Google Analytics Counter module settings and copy "Client Secret".
-      placeholder: dJNi4utWgMzyIFo2JbnsK6Np
-      required: true
-    - name: auth-code
-      display-name: Auth Code
-      helper-text: Once you've provided Client ID and Client Secret, a link to get an auth code will appear. Authorize the connection and copy and paste the code here.
-      placeholder: 4/HSk-KtxkSzTt61j5zcbee2Rmm5JHkRFbL5gD5lgkXek
-      required: true
+      type: textFile
     - advanced-options-start
     - default-advanced-options
 init:
-  - step: load-namespace
-    namespace: metabase.driver.google
   - step: load-namespace
     namespace: metabase.driver.googleanalytics

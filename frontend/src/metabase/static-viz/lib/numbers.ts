@@ -1,5 +1,5 @@
 export type NumberFormatOptions = {
-  number_style?: string;
+  number_style?: "currency" | "decimal" | "scientific" | "percentage";
   currency?: string;
   currency_style?: string;
   number_separators?: ".,";
@@ -7,10 +7,11 @@ export type NumberFormatOptions = {
   scale?: number;
   prefix?: string;
   suffix?: string;
+  compact?: boolean;
 };
 
 const DEFAULT_OPTIONS = {
-  number_style: "decimal",
+  number_style: "decimal" as NumberFormatOptions["number_style"],
   currency: undefined,
   currency_style: "symbol",
   number_separators: ".,",
@@ -30,17 +31,33 @@ export const formatNumber = (number: number, options?: NumberFormatOptions) => {
     scale,
     prefix,
     suffix,
+    compact,
   } = { ...DEFAULT_OPTIONS, ...options };
 
-  const format = new Intl.NumberFormat("en", {
-    style: number_style !== "scientific" ? number_style : "decimal",
-    notation: number_style !== "scientific" ? "standard" : "scientific",
-    currency: currency,
-    currencyDisplay: currency_style,
-    useGrouping: true,
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals != null ? decimals : 2,
-  });
+  function createFormat(compact?: boolean) {
+    if (compact) {
+      return new Intl.NumberFormat("en", {
+        style: number_style !== "scientific" ? number_style : "decimal",
+        notation: "compact",
+        compactDisplay: "short",
+        currency: currency,
+        currencyDisplay: currency_style,
+        useGrouping: true,
+      });
+    }
+
+    return new Intl.NumberFormat("en", {
+      style: number_style !== "scientific" ? number_style : "decimal",
+      notation: number_style !== "scientific" ? "standard" : "scientific",
+      currency: currency,
+      currencyDisplay: currency_style,
+      useGrouping: true,
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals != null ? decimals : 2,
+    });
+  }
+
+  const format = createFormat(compact);
 
   const formattedNumber = format
     .format(number * scale)

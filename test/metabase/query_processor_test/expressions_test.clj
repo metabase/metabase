@@ -85,8 +85,6 @@
                   :limit       3
                   :order-by    [[:asc $id]]})))))))
 
-(def ^:private limited-char-drivers #{:bigquery-cloud-sdk})
-
 (deftest dont-return-expressions-if-fields-is-explicit-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     ;; bigquery doesn't let you have hypthens in field, table, etc names
@@ -248,9 +246,9 @@
 
 (defn- robust-dates
   [strs]
-  ;; TIMEZONE FIXME — SQLite shouldn't return strings. And for whatever weird reason it's truncating to date as well?
+  ;; TIMEZONE FIXME — SQLite shouldn't return strings.
   (let [format-fn (if (= driver/*driver* :sqlite)
-                    #(u.date/format-sql (t/local-date-time (t/local-date %) (t/local-time 0)))
+                    #(u.date/format-sql (t/local-date-time %))
                     u.date/format)]
     (for [s strs]
       [(format-fn (u.date/parse s "UTC"))])))
@@ -338,7 +336,10 @@
 ;; This is not an issue limited to expressions, but using expressions is the most straightforward
 ;; way to reproducing it.
 (deftest no-lazyness-test
-  (let [{:keys [num-fields], :as dataset-def} (no-laziness-dataset-definition 300)]
+  ;; Sometimes Kondo thinks this is unused, depending on the state of the cache -- see comments in
+  ;; [[hooks.metabase.test.data]] for more information. It's definitely used to.
+  #_{:clj-kondo/ignore [:unused-binding]}
+  (let [dataset-def (no-laziness-dataset-definition 300)]
     (mt/dataset dataset-def
       (let [query (mt/mbql-query lots-of-fields
                     {:expressions {:c [:+
@@ -429,7 +430,6 @@
       (mt/dataset test-data
         (let [r-word  "r_word"
               no-sp   "no_spaces"
-              id      (mt/id :venues :id)
               results (mt/run-mbql-query venues
                         {:expressions  {r-word [:regex-match-first [:field-id (mt/id :venues :name)] "^R[^ ]+"]
                                         no-sp  [:replace [:field-id (mt/id :venues :name)] " " ""]}
@@ -446,12 +446,14 @@
 (deftest expression-name-weird-characters-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "An expression whose name contains weird characters works properly"
-      (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 -3]]
-             (mt/formatted-rows [int str int 4.0 4.0 int int]
-               (mt/run-mbql-query venues
-                 {:expressions {(keyword "Refund Amount (?)") [:* $price -1]}
+      (let [query (mt/mbql-query venues
+                 {:expressions {"Refund Amount (?)" [:* $price -1]}
                   :limit       1
-                  :order-by    [[:asc $id]]})))))))
+                  :order-by    [[:asc $id]]})]
+        (mt/with-native-query-testing-context query
+          (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 -3]]
+                 (mt/formatted-rows [int str int 4.0 4.0 int int]
+                   (qp/process-query query)))))))))
 
 (deftest join-table-on-itself-with-custom-column-test
   (testing "Should be able to join a source query against itself using an expression (#17770)"
@@ -480,3 +482,20 @@
             (is (= [["Doohickey" 42 2 "Doohickey" 42 2]]
                    (mt/formatted-rows [str int int str int int]
                      (qp/process-query query))))))))))
+
+(deftest nested-expressions-with-existing-names-test
+  (testing "Expressions with the same name as existing columns should work correctly in nested queries (#21131)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :expressions)
+      (mt/dataset sample-dataset
+        (doseq [expression-name ["PRICE" "price"]]
+          (testing (format "Expression name = %s" (pr-str expression-name))
+            (let [query (mt/mbql-query products
+                          {:source-query {:source-table $$products
+                                          :expressions  {expression-name [:+ $price 2]}
+                                          :fields       [$id $price [:expression expression-name]]
+                                          :order-by     [[:asc $id]]
+                                          :limit        2}})]
+              (mt/with-native-query-testing-context query
+                (is (= [[1 29.46 31.46] [2 70.08 72.08]]
+                       (mt/formatted-rows [int 2.0 2.0]
+                         (qp/process-query query))))))))))))

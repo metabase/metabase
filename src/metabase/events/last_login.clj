@@ -1,17 +1,17 @@
 (ns metabase.events.last-login
-  (:require [clojure.core.async :as async]
+  (:require [clojure.core.async :as a]
             [clojure.tools.logging :as log]
             [metabase.events :as events]
             [metabase.models.user :refer [User]]
             [toucan.db :as db]))
 
-(def ^:const last-login-topics
+(def ^:private last-login-topics
   "The `Set` of event topics which are subscribed to for use in last login tracking."
   #{:user-login})
 
 (defonce ^:private ^{:doc "Channel for receiving event notifications we want to subscribe to for last login events."}
   last-login-channel
-  (async/chan))
+  (a/chan))
 
 
 ;;; ## ---------------------------------------- EVENT PROCESSING ----------------------------------------

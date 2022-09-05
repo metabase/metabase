@@ -1,10 +1,7 @@
 // Find a text field by label text, type it in, then blur the field.
 // Commonly used in our Admin section as we auto-save settings.
 export function typeAndBlurUsingLabel(label, value) {
-  cy.findByLabelText(label)
-    .clear()
-    .type(value)
-    .blur();
+  cy.findByLabelText(label).clear().type(value).blur();
 }
 
 export function visitAlias(alias) {
@@ -37,29 +34,7 @@ export function openNativeEditor({
 
   databaseName && cy.findByText(databaseName).click();
 
-  return cy
-    .get(".ace_content")
-    .as(alias)
-    .should("be.visible");
-}
-
-/**
- * Open notebook editor.
- *
- * @param {object} options
- * @param {boolean} [options.fromCurrentPage] - Open notebook editor from current location
- * @example
- * openNotebookEditor({ fromCurrentPage: true })
- */
-export function openNotebookEditor({ fromCurrentPage } = {}) {
-  if (!fromCurrentPage) {
-    cy.visit("/");
-  }
-
-  cy.findByText("New").click();
-  cy.findByText("Question")
-    .should("be.visible")
-    .click();
+  return cy.get(".ace_content").as(alias).should("be.visible");
 }
 
 /**
@@ -97,10 +72,8 @@ export function interceptPromise(method, path) {
   return state;
 }
 
-const chainStart = Symbol();
-
 /**
- * Waits for all Cypress commands similarly to Promise.all.
+ * Executes and waits for all Cypress commands sequentially.
  * Helps to avoid excessive nesting and verbosity
  *
  * @param {Array.<Cypress.Chainable<any>>} commands - Cypress commands
@@ -112,36 +85,132 @@ const chainStart = Symbol();
  *   cy.visit(`/dashboard/1`);
  * });
  */
-export const cypressWaitAll = function(commands) {
-  const _ = Cypress._;
-  const chain = cy.wrap(null, { log: false });
+const cypressWaitAllRecursive = (results, currentCommand, commands) => {
+  return currentCommand.then(result => {
+    results.push(result);
 
-  const stopCommand = _.find(cy.queue.commands, {
-    attributes: { chainerId: chain.chainerId },
+    const [nextCommand, ...rest] = Array.from(commands);
+
+    if (nextCommand == null) {
+      return results;
+    }
+
+    return cypressWaitAllRecursive(results, nextCommand, rest);
   });
-
-  const startCommand = _.find(cy.queue.commands, {
-    attributes: { chainerId: commands[0].chainerId },
-  });
-
-  const p = chain.then(() => {
-    return _(commands)
-      .map(cmd => {
-        return cmd[chainStart]
-          ? cmd[chainStart].attributes
-          : _.find(cy.queue.commands, {
-              attributes: { chainerId: cmd.chainerId },
-            }).attributes;
-      })
-      .concat(stopCommand.attributes)
-      .slice(1)
-      .flatMap(cmd => {
-        return cmd.prev.get("subject");
-      })
-      .value();
-  });
-
-  p[chainStart] = startCommand;
-
-  return p;
 };
+
+export const cypressWaitAll = function (commands) {
+  const results = [];
+
+  return cypressWaitAllRecursive(
+    results,
+    cy.wrap(null, { log: false }),
+    commands,
+  );
+};
+
+/**
+ * Visit a question and wait for its query to load.
+ *
+ * @param {number} id
+ */
+export function visitQuestion(id) {
+  // In case we use this function multiple times in a test, make sure aliases are unique for each question
+  const alias = "cardQuery" + id;
+
+  // We need to use the wildcard becase endpoint for pivot tables has the following format: `/api/card/pivot/${id}/query`
+  cy.intercept("POST", `/api/card/**/${id}/query`).as(alias);
+
+  cy.visit(`/question/${id}`);
+
+  cy.wait("@" + alias);
+}
+
+/**
+ * Visit a dashboard and wait for the related queries to load.
+ *
+ * @param {number} dashboard_id
+ */
+export function visitDashboard(dashboard_id) {
+  // Some users will not have permissions for this request
+  cy.request({
+    method: "GET",
+    url: `/api/dashboard/${dashboard_id}`,
+    // That's why we have to ignore failures
+    failOnStatusCode: false,
+  }).then(({ status, body: { ordered_cards } }) => {
+    const dashboardAlias = "getDashboard" + dashboard_id;
+
+    cy.intercept("GET", `/api/dashboard/${dashboard_id}`).as(dashboardAlias);
+
+    const canViewDashboard = hasAccess(status);
+    const validQuestions = dashboardHasQuestions(ordered_cards);
+
+    if (canViewDashboard && validQuestions) {
+      // If dashboard has valid questions (GUI or native),
+      // we need to alias each request and wait for their reponses
+      const aliases = validQuestions.map(
+        ({ id, card_id, card: { display } }) => {
+          const baseUrl =
+            display === "pivot"
+              ? `/api/dashboard/pivot/${dashboard_id}`
+              : `/api/dashboard/${dashboard_id}`;
+
+          const interceptUrl = `${baseUrl}/dashcard/${id}/card/${card_id}/query`;
+
+          const alias = "dashcardQuery" + id;
+
+          cy.intercept("POST", interceptUrl).as(alias);
+
+          return `@${alias}`;
+        },
+      );
+
+      cy.visit(`/dashboard/${dashboard_id}`);
+
+      cy.wait(aliases);
+    } else {
+      // For a dashboard:
+      //  - without questions (can be empty or markdown only) or
+      //  - the one which user doesn't have access to
+      // the last request will always be `GET /api/dashboard/:dashboard_id`
+      cy.visit(`/dashboard/${dashboard_id}`);
+
+      cy.wait(`@${dashboardAlias}`);
+    }
+  });
+}
+
+function hasAccess(statusCode) {
+  return statusCode !== 403;
+}
+
+function dashboardHasQuestions(cards) {
+  if (Array.isArray(cards) && cards.length > 0) {
+    const questions = cards
+      // Filter out markdown cards
+      .filter(({ card_id }) => {
+        return card_id !== null;
+      })
+      // Filter out cards which the current user is not allowed to see
+      .filter(({ card }) => {
+        return card.dataset_query !== undefined;
+      });
+
+    const isPopulated = questions.length > 0;
+
+    return isPopulated && questions;
+  } else {
+    return false;
+  }
+}
+
+export function interceptIfNotPreviouslyDefined({ method, url, alias } = {}) {
+  const aliases = Object.keys(cy.state("aliases"));
+
+  const isAlreadyDefined = aliases.find(a => a === alias);
+
+  if (!isAlreadyDefined) {
+    cy.intercept(method, url).as(alias);
+  }
+}

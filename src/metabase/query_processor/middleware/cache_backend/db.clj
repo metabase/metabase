@@ -55,9 +55,9 @@
   (with-open [conn (jdbc/get-connection (db/connection))
               stmt (prepare-statement conn query-hash max-age-seconds)
               rs   (.executeQuery stmt)]
-    ;; VERY IMPORTANT! Bind `*db-connection*` so it will get reused elsewhere for the duration of results reduction,
-    ;; otherwise we can potentially end up deadlocking if we need to acquire another connection for one reason or
-    ;; another, such as recording QueryExecutions
+    ;; VERY IMPORTANT! Bind [[db/*db-connection*]] so it will get reused elsewhere for the duration of results
+    ;; reduction, otherwise we can potentially end up deadlocking if we need to acquire another connection for one
+    ;; reason or another, such as recording QueryExecutions
     (binding [db/*db-connection* {:connection conn}]
       (if-not (.next rs)
         (respond nil)

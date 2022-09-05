@@ -4,10 +4,10 @@ import cx from "classnames";
 import { assocIn } from "icepick";
 import _ from "underscore";
 import { t } from "ttag";
-import Warnings from "metabase/query_builder/components/Warnings";
 
 import Button from "metabase/core/components/Button";
 import Radio from "metabase/core/components/Radio";
+import { SectionContainer, SectionWarnings } from "./ChartSettings.styled";
 
 import Visualization from "metabase/visualizations/components/Visualization";
 import ChartSettingsWidget from "./ChartSettingsWidget";
@@ -28,8 +28,9 @@ const DEFAULT_TAB_PRIORITY = [t`Display`];
 
 const withTransientSettingState = ComposedComponent =>
   class extends React.Component {
-    static displayName = `withTransientSettingState[${ComposedComponent.displayName ||
-      ComposedComponent.name}]`;
+    static displayName = `withTransientSettingState[${
+      ComposedComponent.displayName || ComposedComponent.name
+    }]`;
 
     constructor(props) {
       super(props);
@@ -159,6 +160,7 @@ class ChartSettings extends Component {
       noPreview,
       children,
       setSidebarPropsOverride,
+      dashboard,
     } = this.props;
     const { currentWidget } = this.state;
 
@@ -241,15 +243,17 @@ class ChartSettings extends Component {
     };
 
     const sectionPicker = (
-      <Radio
-        value={currentSection}
-        onChange={this.handleShowSection}
-        options={sectionNames}
-        optionNameFn={v => v}
-        optionValueFn={v => v}
-        optionKeyFn={v => v}
-        variant="bubble"
-      />
+      <SectionContainer>
+        <Radio
+          value={currentSection}
+          onChange={this.handleShowSection}
+          options={sectionNames}
+          optionNameFn={v => v}
+          optionValueFn={v => v}
+          optionKeyFn={v => v}
+          variant="bubble"
+        />
+      </SectionContainer>
     );
 
     const widgetList = visibleWidgets.map(widget => (
@@ -293,24 +297,24 @@ class ChartSettings extends Component {
     return (
       <div className={cx(className, "flex flex-column")}>
         {showSectionPicker && (
-          <div className="flex flex-no-shrink pl4 pt2 pb1">{sectionPicker}</div>
+          <div className="flex flex-no-shrink pl4 pb1">{sectionPicker}</div>
         )}
         {noPreview ? (
-          <div className="full-height relative scroll-y scroll-show py4">
+          <div className="full-height relative scroll-y scroll-show pt2 pb4">
             {widgetList}
           </div>
         ) : (
           <div className="Grid flex-full">
             <div
               className="Grid-cell Cell--1of3 scroll-y scroll-show border-right py4"
-              data-testid={"chartsettings-sidebar"}
+              data-testid="chartsettings-sidebar"
             >
               {widgetList}
             </div>
             <div className="Grid-cell flex flex-column pt2">
               <div className="mx4 flex flex-column">
-                <Warnings
-                  className="mx2 align-self-end text-gold"
+                <SectionWarnings
+                  className="mx2 align-self-end"
                   warnings={this.state.warnings}
                   size={20}
                 />
@@ -322,6 +326,7 @@ class ChartSettings extends Component {
                   showTitle
                   isEditing
                   isDashboard
+                  dashboard={dashboard}
                   isSettings
                   showWarnings
                   onUpdateVisualizationSettings={this.handleChangeSettings}

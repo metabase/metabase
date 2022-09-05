@@ -12,8 +12,7 @@ const mapStateToProps = state => ({
   url: getLogoUrl(state),
 });
 
-@connect(mapStateToProps)
-export default class LogoIcon extends Component {
+class LogoIcon extends Component {
   state = {
     svg: null,
   };
@@ -133,3 +132,5 @@ export default class LogoIcon extends Component {
     );
   }
 }
+
+export default connect(mapStateToProps)(LogoIcon);

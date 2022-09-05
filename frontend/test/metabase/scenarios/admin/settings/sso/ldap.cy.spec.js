@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore } from "__support__/e2e/helpers";
 
 // Space after "123 " is crucial for #13313
 const INVALID_PORTS = ["21.3", "asd", "123 "];

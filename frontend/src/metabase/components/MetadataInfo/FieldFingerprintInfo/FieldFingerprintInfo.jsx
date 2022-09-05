@@ -11,9 +11,10 @@ import CategoryFingerprint from "./CategoryFingerprint";
 const propTypes = {
   className: PropTypes.string,
   field: PropTypes.instanceOf(Field),
+  showAllFieldValues: PropTypes.bool,
 };
 
-function FieldFingerprintInfo({ className, field }) {
+function FieldFingerprintInfo({ className, field, showAllFieldValues }) {
   if (!field?.fingerprint) {
     return null;
   }
@@ -23,7 +24,13 @@ function FieldFingerprintInfo({ className, field }) {
   } else if (field.isNumber() && !field.isID()) {
     return <NumberFingerprint className={className} field={field} />;
   } else if (field.isCategory()) {
-    return <CategoryFingerprint className={className} field={field} />;
+    return (
+      <CategoryFingerprint
+        className={className}
+        field={field}
+        showAllFieldValues={showAllFieldValues}
+      />
+    );
   } else {
     return null;
   }

@@ -6,7 +6,8 @@ import {
   saveDashboard,
   setFilter,
   checkFilterLabelAndValue,
-} from "__support__/e2e/cypress";
+  visitDashboard,
+} from "__support__/e2e/helpers";
 
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 
@@ -15,7 +16,7 @@ describe("scenarios > dashboard > filters > ID", () => {
     restore();
     cy.signInAsAdmin();
 
-    cy.visit("/dashboard/1");
+    visitDashboard(1);
 
     editDashboard();
     setFilter("ID");
@@ -24,10 +25,7 @@ describe("scenarios > dashboard > filters > ID", () => {
   });
   describe("should work for the primary key", () => {
     beforeEach(() => {
-      popover()
-        .contains("ID")
-        .first()
-        .click();
+      popover().contains("ID").first().click();
     });
 
     it("when set through the filter widget", () => {
@@ -42,9 +40,7 @@ describe("scenarios > dashboard > filters > ID", () => {
     });
 
     it("when set as the default filter", () => {
-      cy.findByText("Default value")
-        .next()
-        .click();
+      cy.findByText("Default value").next().click();
       addWidgetStringFilter("15");
 
       saveDashboard();
@@ -57,9 +53,7 @@ describe("scenarios > dashboard > filters > ID", () => {
 
   describe("should work for the foreign key", () => {
     beforeEach(() => {
-      popover()
-        .contains("User ID")
-        .click();
+      popover().contains("User ID").click();
     });
 
     it("when set through the filter widget", () => {
@@ -76,9 +70,7 @@ describe("scenarios > dashboard > filters > ID", () => {
     });
 
     it("when set as the default filter", () => {
-      cy.findByText("Default value")
-        .next()
-        .click();
+      cy.findByText("Default value").next().click();
       addWidgetStringFilter("4");
 
       saveDashboard();
@@ -94,9 +86,7 @@ describe("scenarios > dashboard > filters > ID", () => {
   describe("should work on the implicit join", () => {
     beforeEach(() => {
       popover().within(() => {
-        cy.findAllByText("ID")
-          .last()
-          .click();
+        cy.findAllByText("ID").last().click();
       });
     });
 
@@ -112,9 +102,7 @@ describe("scenarios > dashboard > filters > ID", () => {
     });
 
     it("when set as the default filter", () => {
-      cy.findByText("Default value")
-        .next()
-        .click();
+      cy.findByText("Default value").next().click();
       addWidgetStringFilter("10");
 
       saveDashboard();

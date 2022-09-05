@@ -34,10 +34,7 @@ const postAggregationFilterQuery = {
 
 const getQuestionStepsForMBQLQuery = query =>
   getQuestionSteps(
-    SAMPLE_DATABASE.question()
-      .query()
-      .setQuery(query)
-      .question(),
+    SAMPLE_DATABASE.question().query().setQuery(query).question(),
   );
 
 describe("new query", () => {

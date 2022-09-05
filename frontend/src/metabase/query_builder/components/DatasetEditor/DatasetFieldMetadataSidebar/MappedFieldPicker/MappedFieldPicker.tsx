@@ -49,7 +49,7 @@ function MappedFieldPicker({
   const { value: selectedFieldId = null, onChange } = field;
   const { databaseId = null } = formField;
 
-  const selectButtonRef = useRef<HTMLDivElement>();
+  const selectButtonRef = useRef<HTMLButtonElement>();
 
   const focusSelectButton = useCallback(() => {
     selectButtonRef.current?.focus();
@@ -71,7 +71,7 @@ function MappedFieldPicker({
       <StyledSelectButton
         hasValue={!!fieldObject}
         tabIndex={tabIndex}
-        ref={selectButtonRef}
+        ref={selectButtonRef as any}
         onClear={() => onChange(null)}
       >
         {label}

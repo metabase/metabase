@@ -17,6 +17,7 @@ const propTypes = {
   onUpdate: PropTypes.func,
   onDelete: PropTypes.func,
   onClose: PropTypes.func,
+  isAdmin: PropTypes.bool,
 };
 
 const AuditNotificationEditModal = ({
@@ -24,6 +25,7 @@ const AuditNotificationEditModal = ({
   type,
   users,
   invalidRecipientText,
+  isAdmin,
   onUpdate,
   onDelete,
   onClose,
@@ -83,6 +85,7 @@ const AuditNotificationEditModal = ({
     >
       {channels.map((channel, index) => (
         <UserPicker
+          canAddItems={isAdmin}
           key={index}
           value={channel.recipients}
           validateValue={recipientIsValid}

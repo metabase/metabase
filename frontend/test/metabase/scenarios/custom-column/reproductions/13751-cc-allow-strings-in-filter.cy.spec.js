@@ -3,7 +3,8 @@ import {
   popover,
   visualize,
   restore,
-} from "__support__/e2e/cypress";
+  startNewQuestion,
+} from "__support__/e2e/helpers";
 
 const CC_NAME = "C-States";
 const PG_DB_NAME = "QA Postgres12";
@@ -13,11 +14,8 @@ describe("issue 13751", () => {
     restore("postgres-12");
     cy.signInAsAdmin();
 
-    cy.visit("/question/new");
-    cy.findByText("Custom question").click();
-    cy.findByText(PG_DB_NAME)
-      .should("be.visible")
-      .click();
+    startNewQuestion();
+    cy.findByText(PG_DB_NAME).should("be.visible").click();
     cy.findByTextEnsureVisible("People").click();
   });
 
@@ -30,10 +28,7 @@ describe("issue 13751", () => {
         formula: 'regexextract([State], "^C[A-Z]")',
       });
       cy.findByPlaceholderText("Something nice and descriptive").type(CC_NAME);
-      cy.get(".Button")
-        .contains("Done")
-        .should("not.be.disabled")
-        .click();
+      cy.get(".Button").contains("Done").should("not.be.disabled").click();
     });
 
     // Add filter based on custom column

@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 
 export const PageRoot = styled.div`
   padding: 4rem 0;

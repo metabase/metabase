@@ -1,6 +1,7 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import { connect } from "react-redux";
+import _ from "underscore";
 
 import title from "metabase/hoc/Title";
 
@@ -53,11 +54,14 @@ const mapDispatchToProps = {
   goBack,
 };
 
-@User.loadList()
-@connect(mapStateToProps, mapDispatchToProps)
-@title(({ pulse }) => pulse && pulse.name)
-export default class PulseEditApp extends Component {
+class PulseEditApp extends Component {
   render() {
     return <PulseEdit {...this.props} />;
   }
 }
+
+export default _.compose(
+  User.loadList(),
+  connect(mapStateToProps, mapDispatchToProps),
+  title(({ pulse }) => pulse && pulse.name),
+)(PulseEditApp);

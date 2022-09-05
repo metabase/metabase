@@ -2,28 +2,29 @@
   (:require [clojure.test :refer :all]
             [java-time :as t]
             [metabase.driver :as driver]
-            [metabase.driver.common.parameters :as i]
-            [metabase.driver.common.parameters.parse :as parse]
-            [metabase.driver.sql.parameters.substitute :as substitute]
-            [metabase.mbql.normalize :as normalize]
+            [metabase.driver.common.parameters :as params]
+            [metabase.driver.common.parameters.parse :as params.parse]
+            [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
+            [metabase.mbql.normalize :as mbql.normalize]
             [metabase.models :refer [Field]]
             [metabase.query-processor :as qp]
             [metabase.query-processor-test :as qp.test]
-            [metabase.query-processor.middleware.parameters.native :as native]
+            [metabase.query-processor.middleware.parameters.native :as qp.native]
             [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test :as mt]
             [metabase.util.schema :as su]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [toucan.db :as db]))
 
-(defn- optional [& args] (i/->Optional args))
-(defn- param [param-name] (i/->Param param-name))
+(defn- optional [& args] (params/->Optional args))
+(defn- param [param-name] (params/->Param param-name))
 
 (defn- substitute [parsed param->value]
   (driver/with-driver :h2
     (mt/with-everything-store
-      (substitute/substitute parsed param->value))))
+      (sql.params.substitute/substitute parsed param->value))))
 
-(deftest substitute-test
+(deftest ^:parallel substitute-test
   (testing "normal substitution"
     (is (= ["select * from foobars where bird_type = ?" ["Steller's Jay"]]
            (substitute
@@ -81,12 +82,12 @@
   "Field filter 'values' returned by the `values` namespace are actualy `FieldFilter` record types that contain
   information about"
   []
-  (i/map->FieldFilter
-   {:field (Field (mt/id :checkins :date))
+  (params/map->FieldFilter
+   {:field (db/select-one Field :id (mt/id :checkins :date))
     :value {:type  :date/single
             :value (t/offset-date-time "2019-09-20T19:52:00.000-07:00")}}))
 
-(deftest substitute-field-filter-test
+(deftest ^:parallel substitute-field-filter-test
   (testing "field-filters"
     (testing "non-optional"
       (let [query ["select * from checkins where " (param "date")]]
@@ -96,7 +97,7 @@
                  (substitute query {"date" (date-field-filter-value)}))))
         (testing "param is missing"
           (is (= ["select * from checkins where 1 = 1" []]
-                 (substitute query {"date" (assoc (date-field-filter-value) :value i/no-value)}))
+                 (substitute query {"date" (assoc (date-field-filter-value) :value params/no-value)}))
               "should be replaced with 1 = 1"))))
     (testing "optional"
       (let [query ["select * from checkins " (optional "where " (param "date"))]]
@@ -106,7 +107,7 @@
                  (substitute query {"date" (date-field-filter-value)}))))
         (testing "param is missing — should be omitted entirely"
           (is (= ["select * from checkins" nil]
-                 (substitute query {"date" (assoc (date-field-filter-value) :value i/no-value)})))))))
+                 (substitute query {"date" (assoc (date-field-filter-value) :value params/no-value)})))))))
   (testing "new operators"
     (testing "string operators"
       (let [query ["select * from venues where " (param "param")]]
@@ -164,28 +165,27 @@
                                             :expected ["select * from venues where \"PUBLIC\".\"VENUES\".\"PRICE\" BETWEEN 1 AND 3" ()]}])]
           (testing operator
             (is (= expected
-                   (substitute query {"param" (i/map->FieldFilter
-                                               {:field (Field (mt/id :venues field))
+                   (substitute query {"param" (params/map->FieldFilter
+                                               {:field (db/select-one Field :id (mt/id :venues field))
                                                 :value {:type  operator
-                                                        :value value}})}))))))))
-
+                                                        :value value}})})))))))))
 
 ;;; -------------------------------------------- Referenced Card Queries ---------------------------------------------
 
-(deftest substitute-referenced-card-query-test
+(deftest ^:parallel substitute-referenced-card-query-test
   (testing "Referenced card query substitution"
     (let [query ["SELECT * FROM " (param "#123")]]
       (is (= ["SELECT * FROM (SELECT 1 `x`)" []]
-             (substitute query {"#123" (i/map->ReferencedCardQuery {:card-id 123, :query "SELECT 1 `x`"})})))))))
+             (substitute query {"#123" (params/map->ReferencedCardQuery {:card-id 123, :query "SELECT 1 `x`"})}))))))
 
 
 ;;; --------------------------------------------- Native Query Snippets ----------------------------------------------
 
-(deftest substitute-native-query-snippets-test
+(deftest ^:parallel substitute-native-query-snippets-test
   (testing "Native query snippet substitution"
     (let [query ["SELECT * FROM test_scores WHERE " (param "snippet:symbol_is_A")]]
       (is (= ["SELECT * FROM test_scores WHERE symbol = 'A'" nil]
-             (substitute query {"snippet:symbol_is_A" (i/->ReferencedQuerySnippet 123 "symbol = 'A'")}))))))
+             (substitute query {"snippet:symbol_is_A" (params/->ReferencedQuerySnippet 123 "symbol = 'A'")}))))))
 
 
 ;;; ------------------------------------------ simple substitution — {{x}} ------------------------------------------
@@ -193,10 +193,10 @@
 (defn- substitute-e2e {:style/indent 1} [sql params]
   (let [[query params] (driver/with-driver :h2
                          (qp.test-util/with-everything-store
-                           (#'substitute/substitute (parse/parse sql) (into {} params))))]
+                           (#'sql.params.substitute/substitute (params.parse/parse sql) (into {} params))))]
     {:query query, :params (vec params)}))
 
-(deftest basic-substitution-test
+(deftest ^:parallel basic-substitution-test
   (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
           :params []}
          (substitute-e2e "SELECT * FROM bird_facts WHERE toucans_are_cool = {{toucans_are_cool}}"
@@ -220,7 +220,7 @@
 
 ;;; ---------------------------------- optional substitution — [[ ... {{x}} ... ]] ----------------------------------
 
-(deftest optional-substitution-test
+(deftest ^:parallel optional-substitution-test
   (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
           :params []}
          (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool}}]]"
@@ -348,16 +348,16 @@
   [{:keys [parameters], inner :native, :as query}]
   (driver/with-driver :h2
     (qp.test-util/with-everything-store
-      (let [inner' (native/expand-inner (update inner :parameters #(concat parameters %)))]
+      (let [inner' (qp.native/expand-inner (update inner :parameters #(concat parameters %)))]
         (assoc query :native inner')))))
 
 (defn- expand* [query]
-  (-> (expand** (normalize/normalize query))
+  (-> (expand** (mbql.normalize/normalize query))
       :native
       (select-keys [:query :params :template-tags])
       (update :params vec)))
 
-(deftest expand-variables-test
+(deftest ^:parallel expand-variables-test
   ;; unspecified optional param
   (is (= {:query  "SELECT * FROM orders ;"
           :params []}
@@ -409,7 +409,7 @@
 
   ([sql field-filter-param]
    ;; TIMEZONE FIXME
-   (t/with-clock (t/mock-clock #t "2016-06-07T12:00-00:00" (t/zone-id "UTC"))
+   (mt/with-clock (t/mock-clock #t "2016-06-07T12:00-00:00" (t/zone-id "UTC"))
      (-> {:native     {:query
                        sql
                        :template-tags {"date" {:name         "date"
@@ -537,7 +537,7 @@
   (qp/process-query
     (apply assoc {:database (mt/id), :type :native} kvs)))
 
-(deftest e2e-basic-test
+(deftest ^:paralllel e2e-basic-test
   (mt/test-drivers (sql-parameters-engines)
     (is (= [29]
            (mt/first-row
@@ -553,7 +553,7 @@
                                :target [:dimension [:template-tag "checkin_date"]]
                                :value  "2015-04-01~2015-05-01"}])))))))
 
-(deftest e2e-no-parameter-test
+(deftest ^:parallel e2e-no-parameter-test
   (mt/test-drivers (sql-parameters-engines)
     (testing "no parameter — should give us a query with \"WHERE 1 = 1\""
       (is (= [1000]
@@ -568,7 +568,7 @@
                                                                 :dimension    [:field (mt/id :checkins :date) nil]}}}
                    :parameters []))))))))
 
-(deftest e2e-relative-dates-test
+(deftest ^:parallel e2e-relative-dates-test
   (mt/test-drivers (sql-parameters-engines)
     (testing (str "test that relative dates work correctly. It should be enough to try just one type of relative date "
                   "here, since handling them gets delegated to the functions in `metabase.query-processor.parameters`, "
@@ -588,7 +588,7 @@
                                  :target [:dimension [:template-tag "checkin_date"]]
                                  :value  "thismonth"}]))))))))
 
-(deftest e2e-combine-multiple-filters-test
+(deftest ^:parallel e2e-combine-multiple-filters-test
   (mt/test-drivers (sql-parameters-engines)
     (testing "test that multiple filters applied to the same variable combine into `AND` clauses (#3539)"
       (is (= [4]
@@ -637,7 +637,7 @@
         "Native dates should be parsed with the report timezone")))
 
 ;; Some random end-to-end param expansion tests added as part of the SQL Parameters 2.0 rewrite
-(deftest param-expansion-test
+(deftest ^:parallel param-expansion-test
   (is (= {:query  "SELECT count(*) FROM CHECKINS WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?",
           :params [#t "2017-03-01"
                    #t "2017-03-31"]}
@@ -697,7 +697,7 @@
 
 (deftest expand-field-filter-relative-dates-test
   (testing "Make sure relative date forms like `past5days` work correctly with Field Filters"
-    (t/with-clock (t/mock-clock #t "2017-11-05T12:00Z" (t/zone-id "UTC"))
+    (mt/with-clock (t/mock-clock #t "2017-11-05T12:00Z" (t/zone-id "UTC"))
       (is (= {:query  (str "SELECT count(*) AS \"count\", \"DATE\" "
                            "FROM CHECKINS "
                            "WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ? "
@@ -726,7 +726,7 @@
                          "GROUP BY \"DATE\"")
             :params [#t "2017-10-31"
                      #t "2017-11-04"]}
-           (t/with-clock (t/mock-clock #t "2017-11-05T12:00Z" (t/zone-id "UTC"))
+           (mt/with-clock (t/mock-clock #t "2017-11-05T12:00Z" (t/zone-id "UTC"))
              (expand* {:native {:query         (str "SELECT count(*) AS \"count\", \"DATE\" "
                                                     "FROM CHECKINS "
                                                     "WHERE {{checkin_date}} "
@@ -754,7 +754,7 @@
                                                               :default      "2017-11-14"
                                                               :widget-type  :date/all-options}}}})))))
 
-(deftest newlines-test
+(deftest ^:parallel newlines-test
   (testing "Make sure queries with newlines are parsed correctly (#11526)"
     (is (= [[1]]
            (mt/rows
@@ -769,7 +769,7 @@
                                                     :default      "Fred 62"}}}
                 :parameters []}))))))
 
-(deftest multiple-value-test
+(deftest ^:parallel multiple-value-test
   (testing "Make sure using commas in numeric params treats them as separate IDs (#5457)"
     (is (= "SELECT * FROM USERS where id IN (1, 2, 3)"
            (-> (qp/process-query
@@ -808,15 +808,15 @@
                            :target [:dimension [:template-tag "names_list"]]
                            :value  ["BBQ" "Bakery" "Bar"]}]})))))
 
-(deftest include-card-parameters-test
+(deftest ^:parallel include-card-parameters-test
   (testing "Make sure Card params are preserved when expanding a Card reference (#12236)"
     (binding [driver/*driver* :h2]
       (is (= ["SELECT * FROM (SELECT * FROM table WHERE x LIKE ?)"
               ["G%"]]
-             (substitute/substitute
-              ["SELECT * FROM " (i/->Param "#1")]
+             (sql.params.substitute/substitute
+              ["SELECT * FROM " (params/->Param "#1")]
               {"#1"
-               (i/map->ReferencedCardQuery
+               (params/map->ReferencedCardQuery
                 {:card-id 1
                  :query   "SELECT * FROM table WHERE x LIKE ?"
                  :params  ["G%"]})}))))))

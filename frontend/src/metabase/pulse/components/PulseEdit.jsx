@@ -30,12 +30,7 @@ import Collections from "metabase/entities/collections";
 import cx from "classnames";
 import { PulseHeader, PulseHeaderContent } from "./PulseEdit.styled";
 
-@Collections.load({
-  id: (state, { pulse, initialCollectionId }) =>
-    pulse.collection_id || initialCollectionId,
-  loadingAndErrorWrapper: false,
-})
-export default class PulseEdit extends Component {
+class PulseEdit extends Component {
   static propTypes = {
     pulse: PropTypes.object.isRequired,
     pulseId: PropTypes.number,
@@ -146,7 +141,7 @@ export default class PulseEdit extends Component {
     const link = (
       <a
         className="link"
-        href={MetabaseSettings.docsUrl("users-guide/dashboard-subscriptions")}
+        href={MetabaseSettings.docsUrl("dashboards/subscriptions")}
       >{t`dashboard subscriptions`}</a>
     );
     return (
@@ -249,3 +244,9 @@ export default class PulseEdit extends Component {
     );
   }
 }
+
+export default Collections.load({
+  id: (state, { pulse, initialCollectionId }) =>
+    pulse.collection_id || initialCollectionId,
+  loadingAndErrorWrapper: false,
+})(PulseEdit);

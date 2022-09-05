@@ -14,16 +14,8 @@ import cx from "classnames";
 
 import { regexpEscape } from "metabase/lib/string";
 import { color } from "metabase/lib/colors";
-import { isSyncCompleted } from "metabase/lib/syncing";
 
-@connect(null, {
-  setVisibilityForTables: (tables, visibility_type) =>
-    Tables.actions.bulkUpdate({
-      ids: tables.map(t => t.id),
-      visibility_type,
-    }),
-})
-export default class MetadataTableList extends Component {
+class MetadataTableList extends Component {
   constructor(props, context) {
     super(props, context);
 
@@ -161,6 +153,14 @@ export default class MetadataTableList extends Component {
   }
 }
 
+export default connect(null, {
+  setVisibilityForTables: (tables, visibility_type) =>
+    Tables.actions.bulkUpdate({
+      ids: tables.map(t => t.id),
+      visibility_type,
+    }),
+})(MetadataTableList);
+
 function TableRow({
   table,
   selectTable,
@@ -173,20 +173,18 @@ function TableRow({
       <a
         className={cx(
           "AdminList-item flex align-center no-decoration text-wrap justify-between",
-          { selected, disabled: !isSyncCompleted(table) },
+          { selected },
         )}
         onClick={() => selectTable(table)}
       >
         {table.display_name}
-        {isSyncCompleted(table) && (
-          <div className="hover-child float-right">
-            <ToggleHiddenButton
-              tables={[table]}
-              isHidden={table.visibility_type != null}
-              setVisibilityForTables={setVisibilityForTables}
-            />
-          </div>
-        )}
+        <div className="hover-child float-right">
+          <ToggleHiddenButton
+            tables={[table]}
+            isHidden={table.visibility_type != null}
+            setVisibilityForTables={setVisibilityForTables}
+          />
+        </div>
       </a>
     </li>
   );

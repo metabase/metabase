@@ -1,10 +1,10 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { t } from "ttag";
-import { PLUGIN_ADMIN_NAV_ITEMS } from "metabase/plugins";
 import MetabaseSettings from "metabase/lib/settings";
 import { AdminNavItem } from "./AdminNavItem";
 import StoreLink from "../StoreLink";
 import LogoIcon from "metabase/components/LogoIcon";
+import Icon from "metabase/components/Icon";
 import {
   AdminExitLink,
   AdminLogoContainer,
@@ -12,74 +12,94 @@ import {
   AdminLogoText,
   AdminNavbarItems,
   AdminNavbarRoot,
+  AdminMobileNavbar,
+  AdminMobileNavBarItems,
+  MobileHide,
 } from "./AdminNavbar.styled";
+import { User } from "metabase-types/api";
+import { AdminPath } from "metabase-types/store";
 
 interface AdminNavbarProps {
   path: string;
+  user: User;
+  adminPaths: AdminPath[];
 }
 
-export const AdminNavbar = ({ path: currentPath }: AdminNavbarProps) => {
+export const AdminNavbar = ({
+  path: currentPath,
+  adminPaths,
+}: AdminNavbarProps) => {
   return (
     <AdminNavbarRoot className="Nav">
-      <AdminLogoLink to="/admin" data-metabase-event={"Navbar;Logo"}>
+      <AdminLogoLink to="/admin" data-metabase-event="Navbar;Logo">
         <AdminLogoContainer>
           <LogoIcon className="text-brand my2" dark />
           <AdminLogoText>{t`Metabase Admin`}</AdminLogoText>
         </AdminLogoContainer>
       </AdminLogoLink>
 
-      <AdminNavbarItems>
-        <AdminNavItem
-          name={t`Settings`}
-          path="/admin/settings"
-          currentPath={currentPath}
-          key="admin-nav-settings"
-        />
-        <AdminNavItem
-          name={t`People`}
-          path="/admin/people"
-          currentPath={currentPath}
-          key="admin-nav-people"
-        />
-        <AdminNavItem
-          name={t`Data Model`}
-          path="/admin/datamodel"
-          currentPath={currentPath}
-          key="admin-nav-datamodel"
-        />
-        <AdminNavItem
-          name={t`Databases`}
-          path="/admin/databases"
-          currentPath={currentPath}
-          key="admin-nav-databases"
-        />
-        <AdminNavItem
-          name={t`Permissions`}
-          path="/admin/permissions"
-          currentPath={currentPath}
-          key="admin-nav-permissions"
-        />
-        {PLUGIN_ADMIN_NAV_ITEMS.map(({ name, path }) => (
-          <AdminNavItem
-            name={name}
-            path={path}
-            currentPath={currentPath}
-            key={`admin-nav-${name}`}
-          />
-        ))}
-        <AdminNavItem
-          name={t`Troubleshooting`}
-          path="/admin/troubleshooting"
-          currentPath={currentPath}
-          key="admin-nav-troubleshooting"
-        />
-      </AdminNavbarItems>
+      <MobileNavbar adminPaths={adminPaths} currentPath={currentPath} />
 
-      {!MetabaseSettings.isPaidPlan() && <StoreLink />}
-      <AdminExitLink
-        to="/"
-        data-metabase-event="Navbar;Exit Admin"
-      >{t`Exit admin`}</AdminExitLink>
+      <MobileHide>
+        <AdminNavbarItems>
+          {adminPaths.map(({ name, key, path }) => (
+            <AdminNavItem
+              name={name}
+              path={path}
+              key={key}
+              currentPath={currentPath}
+            />
+          ))}
+        </AdminNavbarItems>
+
+        {!MetabaseSettings.isPaidPlan() && <StoreLink />}
+        <AdminExitLink
+          to="/"
+          data-metabase-event="Navbar;Exit Admin"
+        >{t`Exit admin`}</AdminExitLink>
+      </MobileHide>
     </AdminNavbarRoot>
+  );
+};
+
+interface AdminMobileNavbarProps {
+  adminPaths: AdminPath[];
+  currentPath: string;
+}
+
+const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  useEffect(() => {
+    if (mobileNavOpen) {
+      const listener = () => setMobileNavOpen(false);
+      document.addEventListener("click", listener, { once: true });
+      return () => document.removeEventListener("click", listener);
+    }
+  }, [mobileNavOpen]);
+
+  return (
+    <AdminMobileNavbar>
+      <Icon
+        name="burger"
+        size={20}
+        onClick={() => setMobileNavOpen(prev => !prev)}
+      />
+      {mobileNavOpen && (
+        <AdminMobileNavBarItems>
+          {adminPaths.map(({ name, key, path }) => (
+            <AdminNavItem
+              name={name}
+              path={path}
+              key={key}
+              currentPath={currentPath}
+            />
+          ))}
+          <AdminExitLink to="/" data-metabase-event="Navbar;Exit Admin">
+            {t`Exit admin`}
+          </AdminExitLink>
+        </AdminMobileNavBarItems>
+      )}
+    </AdminMobileNavbar>
   );
 };

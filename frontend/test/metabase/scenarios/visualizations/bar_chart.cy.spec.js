@@ -1,4 +1,6 @@
-import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
+import { restore, visitQuestionAdhoc } from "__support__/e2e/helpers";
+
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -22,7 +24,7 @@ describe("scenarios > visualizations > bar chart", () => {
         dataset_query: {
           type: "native",
           native: { query, "template-tags": {} },
-          database: 1,
+          database: SAMPLE_DB_ID,
         },
         display: "bar",
         visualization_settings: visualizationSettings,
@@ -65,7 +67,7 @@ describe("scenarios > visualizations > bar chart", () => {
               ["field", ORDERS.DISCOUNT, { binning: { strategy: "default" } }],
             ],
           },
-          database: 1,
+          database: SAMPLE_DB_ID,
         },
       });
 
@@ -89,7 +91,7 @@ describe("scenarios > visualizations > bar chart", () => {
               "union all\n" +
               "select '2021-01-03' as x_axis_1, 'A' as x_axis_2, 20000000 as y_axis\n",
           },
-          database: 1,
+          database: SAMPLE_DB_ID,
         },
         visualization_settings: {
           "graph.show_values": true,
@@ -98,9 +100,7 @@ describe("scenarios > visualizations > bar chart", () => {
         },
       });
 
-      cy.get(".value-labels")
-        .should("contain", "19")
-        .and("contain", "20.0M");
+      cy.get(".value-labels").should("contain", "19").and("contain", "20.0M");
     });
   });
 });

@@ -11,12 +11,36 @@ export function modal() {
 }
 
 export function sidebar() {
-  return cy.get("aside");
+  return cy.get("main aside");
+}
+
+export function appbar() {
+  return cy.findByTestId("app-bar");
+}
+
+export function rightSidebar() {
+  return cy.findAllByTestId("sidebar-right");
+}
+
+export function navigationSidebar() {
+  return cy.get("#root aside").first();
+}
+
+export function appBar() {
+  return cy.get("#root header").first();
+}
+
+export function openNavigationSidebar() {
+  appBar().findByTestId("sidebar-toggle").click();
+}
+
+export function closeNavigationSidebar() {
+  appBar().findByTestId("sidebar-toggle").click();
 }
 
 export function browse() {
   // takes you to `/browse` (reflecting changes made in `0.38-collection-redesign)
-  return cy.get(".Nav .Icon-table_spaced");
+  return navigationSidebar().findByText("Browse data");
 }
 
 /**
@@ -41,3 +65,17 @@ export function browse() {
 export function filterWidget() {
   return cy.get("fieldset");
 }
+
+export const openQuestionActions = () => {
+  cy.findByTestId("qb-header-action-panel").within(() => {
+    cy.icon("ellipsis").click();
+  });
+};
+
+export const closeQuestionActions = () => {
+  cy.findByTestId("qb-header").click();
+};
+
+export const questionInfoButton = () => {
+  return cy.findByTestId("qb-header-info-button");
+};

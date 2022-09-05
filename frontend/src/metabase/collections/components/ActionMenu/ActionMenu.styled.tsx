@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 
 import EntityItem from "metabase/components/EntityItem";
 import { color } from "metabase/lib/colors";

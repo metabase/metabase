@@ -1,4 +1,8 @@
-import { restore, downloadAndAssert } from "__support__/e2e/cypress";
+import {
+  restore,
+  downloadAndAssert,
+  visitQuestion,
+} from "__support__/e2e/helpers";
 
 const questionDetails = {
   name: "19889",
@@ -16,22 +20,18 @@ describe("issue 19889", () => {
     restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
-      cy.wrap(id).as("questionId");
-
-      cy.intercept("POST", `/api/card/${id}/query`).as("cardQuery");
-      cy.visit(`/question/${id}`);
-
-      cy.wait("@cardQuery");
-
-      // Reorder columns a and b
-      cy.findByText("column a")
-        .trigger("mousedown", 0, 0, { force: true })
-        .trigger("mousemove", 5, 5, { force: true })
-        .trigger("mousemove", 100, 0, { force: true })
-        .trigger("mouseup", 100, 0, { force: true });
-      cy.findByText("Started from").click(); // Give DOM some time to update
+    cy.createNativeQuestion(questionDetails, {
+      loadMetadata: true,
+      wrapId: true,
     });
+
+    // Reorder columns a and b
+    cy.findByText("column a")
+      .trigger("mousedown", 0, 0, { force: true })
+      .trigger("mousemove", 5, 5, { force: true })
+      .trigger("mousemove", 100, 0, { force: true })
+      .trigger("mouseup", 100, 0, { force: true });
+    cy.findByText("Started from").click(); // Give DOM some time to update
   });
 
   testCases.forEach(fileType => {
@@ -64,8 +64,7 @@ describe("issue 19889", () => {
       saveAndOverwrite();
 
       cy.get("@questionId").then(questionId => {
-        cy.visit(`/question/${questionId}`);
-        cy.wait("@cardQuery");
+        visitQuestion(questionId);
 
         downloadAndAssert({ fileType, questionId, raw: true }, sheet => {
           expect(sheet["A1"].v).to.equal("column x");

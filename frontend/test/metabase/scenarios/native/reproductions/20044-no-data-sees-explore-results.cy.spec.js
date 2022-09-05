@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, visitQuestion } from "__support__/e2e/helpers";
 
 const questionDetails = {
   name: "20044",
@@ -15,12 +15,9 @@ describe("issue 20044", () => {
 
   it("nodata user should not see 'Explore results' (metabase#20044)", () => {
     cy.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
-      cy.intercept("POST", `/api/card/${id}/query`).as("cardQuery");
-
       cy.signIn("nodata");
 
-      cy.visit(`/question/${id}`);
-      cy.wait("@cardQuery");
+      visitQuestion(id);
 
       cy.get(".cellData").contains("1");
       cy.findByText("Explore results").should("not.exist");

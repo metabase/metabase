@@ -1,16 +1,18 @@
 (ns metabase.models
-  (:require [metabase.models.activity :as activity]
+  (:require [metabase.models.action :as action]
+            [metabase.models.activity :as activity]
+            [metabase.models.app :as app]
+            [metabase.models.application-permissions-revision :as a-perm-revision]
+            [metabase.models.bookmark :as bookmark]
             [metabase.models.card :as card]
-            [metabase.models.card-favorite :as card-favorite]
             [metabase.models.collection :as collection]
             [metabase.models.collection-permission-graph-revision :as c-perm-revision]
             [metabase.models.dashboard :as dashboard]
             [metabase.models.dashboard-card :as dashboard-card]
             [metabase.models.dashboard-card-series :as dashboard-card-series]
-            [metabase.models.dashboard-favorite :as dashboard-favorite]
             [metabase.models.database :as database]
-            [metabase.models.dependency :as dependency]
             [metabase.models.dimension :as dimension]
+            [metabase.models.emitter :as emitter]
             [metabase.models.field :as field]
             [metabase.models.field-values :as field-values]
             [metabase.models.login-history :as login-history]
@@ -18,10 +20,11 @@
             [metabase.models.metric-important-field :as metric-important-field]
             [metabase.models.moderation-review :as moderation-review]
             [metabase.models.native-query-snippet :as native-query-snippet]
-            [metabase.models.permissions :as permissions]
-            [metabase.models.permissions-group :as permissions-group]
-            [metabase.models.permissions-group-membership :as permissions-group-membership]
-            [metabase.models.permissions-revision :as permissions-revision]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as perms-group]
+            [metabase.models.permissions-group-membership :as perms-group-membership]
+            [metabase.models.permissions-revision :as perms-revision]
+            [metabase.models.persisted-info :as persisted-info]
             [metabase.models.pulse :as pulse]
             [metabase.models.pulse-card :as pulse-card]
             [metabase.models.pulse-channel :as pulse-channel]
@@ -35,34 +38,39 @@
             [metabase.models.setting :as setting]
             [metabase.models.table :as table]
             [metabase.models.task-history :as task-history]
+            [metabase.models.timeline :as timeline]
+            [metabase.models.timeline-event :as timeline-event]
             [metabase.models.user :as user]
             [metabase.models.view-log :as view-log]
             [potemkin :as p]))
 
 ;; Fool the linter
-(comment activity/keep-me
+(comment action/keep-me
+         activity/keep-me
+         app/keep-me
          card/keep-me
-         card-favorite/keep-me
+         bookmark/keep-me
          collection/keep-me
          c-perm-revision/keep-me
          dashboard/keep-me
          dashboard-card/keep-me
          dashboard-card-series/keep-me
-         dashboard-favorite/keep-me
          database/keep-me
-         dependency/keep-me
          dimension/keep-me
+         emitter/keep-me
          field/keep-me
          field-values/keep-me
+         a-perm-revision/keep-me
          login-history/keep-me
          metric/keep-me
          moderation-review/keep-me
          metric-important-field/keep-me
          native-query-snippet/keep-me
-         permissions/keep-me
-         permissions-group/keep-me
-         permissions-group-membership/keep-me
-         permissions-revision/keep-me
+         perms/keep-me
+         perms-group/keep-me
+         perms-group-membership/keep-me
+         perms-revision/keep-me
+         persisted-info/keep-me
          pulse/keep-me
          pulse-card/keep-me
          pulse-channel/keep-me
@@ -76,22 +84,30 @@
          setting/keep-me
          table/keep-me
          task-history/keep-me
+         timeline/keep-me
+         timeline-event/keep-me
          user/keep-me
          view-log/keep-me)
 
 (p/import-vars
+ [action Action HTTPAction QueryAction]
  [activity Activity]
+ [app App]
+ [bookmark CardBookmark]
+ [bookmark DashboardBookmark]
+ [bookmark CollectionBookmark]
+ [bookmark BookmarkOrdering]
  [card Card]
- [card-favorite CardFavorite]
  [collection Collection]
  [c-perm-revision CollectionPermissionGraphRevision]
  [dashboard Dashboard]
  [dashboard-card DashboardCard]
  [dashboard-card-series DashboardCardSeries]
- [dashboard-favorite DashboardFavorite]
  [database Database]
- [dependency Dependency]
  [dimension Dimension]
+ [emitter CardEmitter]
+ [emitter DashboardEmitter]
+ [emitter Emitter]
  [field Field]
  [field-values FieldValues]
  [login-history LoginHistory]
@@ -99,10 +115,12 @@
  [moderation-review ModerationReview]
  [metric-important-field MetricImportantField]
  [native-query-snippet NativeQuerySnippet]
- [permissions Permissions]
- [permissions-group PermissionsGroup]
- [permissions-group-membership PermissionsGroupMembership]
- [permissions-revision PermissionsRevision]
+ [perms Permissions]
+ [perms-group PermissionsGroup]
+ [perms-group-membership PermissionsGroupMembership]
+ [perms-revision PermissionsRevision]
+ [a-perm-revision ApplicationPermissionsRevision]
+ [persisted-info PersistedInfo]
  [pulse Pulse]
  [pulse-card PulseCard]
  [pulse-channel PulseChannel]
@@ -116,5 +134,7 @@
  [setting Setting]
  [table Table]
  [task-history TaskHistory]
+ [timeline Timeline]
+ [timeline-event TimelineEvent]
  [user User]
  [view-log ViewLog])

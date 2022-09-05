@@ -23,6 +23,9 @@ import {
   ConcreteField,
 } from "metabase-types/types/Query";
 import _ from "underscore";
+
+const JOIN_OPERATORS = ["=", ">", "<", ">=", "<=", "!="];
+
 const JOIN_STRATEGY_OPTIONS = [
   {
     value: "left-join",
@@ -264,7 +267,7 @@ export default class Join extends MBQLObjectClause {
   // CONDITIONS
   isSingleConditionJoin() {
     const { condition } = this;
-    return Array.isArray(condition) && condition[0] === "=";
+    return Array.isArray(condition) && JOIN_OPERATORS.includes(condition[0]);
   }
 
   isMultipleConditionsJoin() {
@@ -332,6 +335,21 @@ export default class Join extends MBQLObjectClause {
     }
 
     return this.setCondition(filteredCondition);
+  }
+
+  setOperator(index, operator) {
+    if (index == null || !this.getConditionByIndex(index)) {
+      return this.setConditionByIndex({
+        condition: [operator, null, null],
+      });
+    }
+
+    const [_oldOperator, ...args] = this.getConditionByIndex(index);
+
+    return this.setConditionByIndex({
+      index,
+      condition: [operator, ...args],
+    });
   }
 
   setDefaultCondition() {
@@ -453,21 +471,27 @@ export default class Join extends MBQLObjectClause {
     return d1 && d2 && isDateTimeField(d1) && isDateTimeField(d2);
   }
 
+  _getOperatorOrDefault(condition) {
+    return condition?.[0] ?? "=";
+  }
+
   _getDateTimeFieldCondition(
     parentDimension,
     joinDimension,
     temporalUnitSource,
+    operator,
   ) {
     const temporalUnit = getDatetimeUnit(
       temporalUnitSource === "parent" ? parentDimension : joinDimension,
     );
     const parent = setTemporalUnit(parentDimension, temporalUnit);
     const join = setTemporalUnit(joinDimension, temporalUnit);
-    return ["=", parent, join];
+    return [operator, parent, join];
   }
 
   setJoinDimension({ index = 0, dimension, overwriteTemporalUnit = false }) {
     const condition = this.getConditionByIndex(index);
+    const operator = this._getOperatorOrDefault(condition);
 
     const join = this._convertDimensionIntoMBQL(dimension);
 
@@ -477,8 +501,9 @@ export default class Join extends MBQLObjectClause {
           parent,
           join,
           overwriteTemporalUnit ? "join" : "parent",
+          operator,
         )
-      : ["=", parent, join];
+      : [operator, parent, join];
     return this.setConditionByIndex({
       index,
       condition: newCondition,
@@ -487,6 +512,7 @@ export default class Join extends MBQLObjectClause {
 
   setParentDimension({ index = 0, dimension, overwriteTemporalUnit = false }) {
     const condition = this.getConditionByIndex(index);
+    const operator = this._getOperatorOrDefault(condition);
 
     const parent = this._convertDimensionIntoMBQL(dimension);
 
@@ -496,8 +522,9 @@ export default class Join extends MBQLObjectClause {
           parent,
           join,
           overwriteTemporalUnit ? "parent" : "join",
+          operator,
         )
-      : ["=", parent, join];
+      : [operator, parent, join];
     return this.setConditionByIndex({
       index,
       condition: newCondition,

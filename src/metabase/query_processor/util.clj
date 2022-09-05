@@ -1,11 +1,11 @@
 (ns metabase.query-processor.util
   "Utility functions used by the global query processor and middleware functions."
   (:require [buddy.core.codecs :as codecs]
-            [buddy.core.hash :as hash]
+            [buddy.core.hash :as buddy-hash]
             [cheshire.core :as json]
             [clojure.string :as str]
+            [medley.core :as m]
             [metabase.driver :as driver]
-            [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
@@ -85,10 +85,11 @@
       (empty? constraints) (dissoc :constraints)
       (empty? parameters)  (dissoc :parameters))))
 
+#_{:clj-kondo/ignore [:non-arg-vec-return-type-hint]}
 (s/defn ^bytes query-hash :- (Class/forName "[B")
   "Return a 256-bit SHA3 hash of `query` as a key for the cache. (This is returned as a byte array.)"
   [query]
-  (hash/sha3-256 (json/generate-string (select-keys-for-hashing query))))
+  (buddy-hash/sha3-256 (json/generate-string (select-keys-for-hashing query))))
 
 
 ;;; --------------------------------------------- Query Source Card IDs ----------------------------------------------
@@ -115,7 +116,8 @@
   metadata, the types returned should be authoritative. But things like semantic_type, display_name, and description
   can be merged on top."
   ;; TODO: ideally we don't preserve :id but some notion of :user-entered-id or :identified-id
-  [:id :description :display_name :semantic_type :fk_target_field_id :settings])
+  [:id :description :display_name :semantic_type
+   :fk_target_field_id :settings :visibility_type])
 
 (defn combine-metadata
   "Blend saved metadata from previous runs into fresh metadata from an actual run of the query.
@@ -125,7 +127,7 @@
   the metadata from a run from the query, and `pre-existing` should be the metadata from the database we wish to
   ensure survives."
   [fresh pre-existing]
-  (let [by-key (u/key-by (comp field-ref->key :field_ref) pre-existing)]
+  (let [by-key (m/index-by (comp field-ref->key :field_ref) pre-existing)]
     (for [{:keys [field_ref] :as col} fresh]
       (if-let [existing (get by-key (field-ref->key field_ref))]
         (merge col (select-keys existing preserved-keys))

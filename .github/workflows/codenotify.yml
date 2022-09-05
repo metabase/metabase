@@ -6,10 +6,10 @@ on:
 
 jobs:
   codenotify:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     name: Codenotify
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           ref: ${{ github.event.pull_request.head.sha }}
       - uses: sourcegraph/codenotify@v0.4

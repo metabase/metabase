@@ -10,6 +10,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
       ...license,
       component: LicenseAndBillingSettings,
       name: t`License and Billing`,
+      adminOnly: true,
     };
   }),
 );

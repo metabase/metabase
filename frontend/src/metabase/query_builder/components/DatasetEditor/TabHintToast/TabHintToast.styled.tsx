@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 
 import Card from "metabase/components/Card";
 import Icon from "metabase/components/Icon";

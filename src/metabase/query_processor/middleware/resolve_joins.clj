@@ -5,7 +5,7 @@
   (:require [medley.core :as m]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.middleware.add-implicit-clauses :as add-implicit-clauses]
+            [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
@@ -13,8 +13,8 @@
             [schema.core :as s]))
 
 (def ^:private Joins
-  "Schema for a non-empty sequence of Joins. Unlike `mbql.s/Joins`, this does not enforce the constraint that all join
-  aliases be unique; that is not guaranteeded until `mbql.u/deduplicate-join-aliases` transforms the joins."
+  "Schema for a non-empty sequence of Joins. Unlike [[mbql.s/Joins]], this does not enforce the constraint that all join
+  aliases be unique; that is handled by the [[metabase.query-processor.middleware.escape-join-aliases]] middleware."
   (su/non-empty [mbql.s/Join]))
 
 (def ^:private UnresolvedMBQLQuery
@@ -27,7 +27,7 @@
 (def ^:private ResolvedMBQLQuery
   "Schema for the final results of this middleware."
   (s/constrained
-   mbql.s/MBQLQuery
+   UnresolvedMBQLQuery
    (fn [{:keys [joins]}]
      (every?
       (fn [{:keys [fields]}]
@@ -56,9 +56,11 @@
 ;;; |                                             :joins Transformations                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def ^:private default-join-alias "__join")
+
 (s/defn ^:private merge-defaults :- mbql.s/Join
   [join]
-  (merge {:strategy :left-join} join))
+  (merge {:alias default-join-alias, :strategy :left-join} join))
 
 (defn- source-metadata->fields [{:keys [alias], :as join} source-metadata]
   (when-not (seq source-metadata)
@@ -77,22 +79,22 @@
    (when (= fields :all)
      {:fields (if source-query
                (source-metadata->fields join source-metadata)
-               (for [[_ id-or-name opts] (add-implicit-clauses/sorted-implicit-fields-for-table source-table)]
+               (for [[_ id-or-name opts] (qp.add-implicit-clauses/sorted-implicit-fields-for-table source-table)]
                  [:field id-or-name (assoc opts :join-alias alias)]))})))
 
-(s/defn ^:private resolve-references-and-deduplicate :- mbql.s/Joins
+(s/defn ^:private resolve-references :- Joins
   [joins :- Joins]
   (resolve-tables! joins)
-  (u/prog1 (->> joins
-                mbql.u/deduplicate-join-aliases
-                (map merge-defaults)
-                (mapv handle-all-fields))
+  (u/prog1 (into []
+                 (comp (map merge-defaults)
+                       (map handle-all-fields))
+                 joins)
     (resolve-fields! <>)))
 
 (declare resolve-joins-in-mbql-query-all-levels)
 
-(s/defn ^:private resolve-join-source-queries :- mbql.s/Joins
-  [joins :- mbql.s/Joins]
+(s/defn ^:private resolve-join-source-queries :- Joins
+  [joins :- Joins]
   (for [{:keys [source-query], :as join} joins]
     (cond-> join
       source-query resolve-joins-in-mbql-query-all-levels)))
@@ -137,7 +139,7 @@
 (s/defn ^:private resolve-joins-in-mbql-query :- ResolvedMBQLQuery
   [query :- mbql.s/MBQLQuery]
   (-> query
-      (update :joins (comp resolve-join-source-queries resolve-references-and-deduplicate))
+      (update :joins (comp resolve-join-source-queries resolve-references))
       merge-joins-fields))
 
 

@@ -1,5 +1,6 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { screen, fireEvent } from "@testing-library/react";
+import { renderWithProviders } from "__support__/ui";
 
 import MetabaseSettings from "metabase/lib/settings";
 import ProfileLink from "metabase/nav/components/ProfileLink";
@@ -13,6 +14,29 @@ const REGULAR_ITEMS = [
 ];
 const ADMIN_ITEMS = [...REGULAR_ITEMS, "Admin settings"];
 const HOSTED_ITEMS = [...ADMIN_ITEMS];
+
+const adminNavItem = {
+  name: `People`,
+  path: "/admin/people",
+  key: "people",
+};
+
+const setupState = hasAdminNavItems => {
+  const admin = {
+    app: {
+      paths: hasAdminNavItems ? [adminNavItem] : [],
+    },
+  };
+
+  return {
+    storeInitialState: {
+      admin,
+    },
+    reducers: {
+      admin: () => admin,
+    },
+  };
+};
 
 describe("ProfileLink", () => {
   describe("options", () => {
@@ -36,7 +60,10 @@ describe("ProfileLink", () => {
         describe("normal user", () => {
           it("should show the proper set of items", () => {
             const normalUser = { is_superuser: false };
-            render(<ProfileLink user={normalUser} context={""} />);
+            renderWithProviders(
+              <ProfileLink user={normalUser} context={""} />,
+              setupState(),
+            );
 
             assertOn(REGULAR_ITEMS);
           });
@@ -45,7 +72,10 @@ describe("ProfileLink", () => {
         describe("admin", () => {
           it("should show the proper set of items", () => {
             const admin = { is_superuser: true };
-            render(<ProfileLink user={admin} context={""} />);
+            renderWithProviders(
+              <ProfileLink user={admin} context={""} />,
+              setupState(true),
+            );
 
             testCase === "hosted"
               ? assertOn(HOSTED_ITEMS)

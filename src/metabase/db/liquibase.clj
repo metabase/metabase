@@ -3,6 +3,8 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [metabase.db.liquibase.h2 :as liquibase.h2]
+            [metabase.db.liquibase.mysql :as liquibase.mysql]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s])
@@ -11,19 +13,37 @@
            [liquibase.database Database DatabaseFactory]
            liquibase.database.jvm.JdbcConnection
            liquibase.exception.LockException
-           liquibase.resource.ClassLoaderResourceAccessor
-           liquibase.sqlgenerator.SqlGeneratorFactory
-           metabase.db.liquibase.MetabaseMySqlCreateTableSqlGenerator))
+           liquibase.resource.ClassLoaderResourceAccessor))
 
-(.register (SqlGeneratorFactory/getInstance) (MetabaseMySqlCreateTableSqlGenerator.))
+;; register our custom MySQL SQL generators
+(liquibase.mysql/register-mysql-generators!)
+
+;; Liquibase uses java.util.logging (JUL) for logging, so we need to install the JUL -> Log4j2 bridge which replaces the
+;; default JUL handler with one that "writes" log messages to Log4j2. (Not sure this is the best place in the world to
+;; do this, but Liquibase is the only thing using JUL directly.)
+;;
+;; See https://logging.apache.org/log4j/2.x/log4j-jul/index.html for more information.
+(org.apache.logging.log4j.jul.Log4jBridgeHandler/install true nil true)
+
+;; Liquibase logs a message for every ChangeSet directly to standard out -- see
+;; https://github.com/liquibase/liquibase/issues/2396 -- but we can disable this by setting the ConsoleUIService's
+;; output stream to the null output stream
+(doto ^liquibase.ui.ConsoleUIService (.getUI (liquibase.Scope/getCurrentScope))
+  ;; we can't use `java.io.OutputStream/nullOutputStream` here because it's not available on Java 8
+  (.setOutputStream (java.io.PrintStream. (org.apache.commons.io.output.NullOutputStream.))))
 
 (def ^:private ^String changelog-file "liquibase.yaml")
 
 (defn- liquibase-connection ^JdbcConnection [^java.sql.Connection jdbc-connection]
   (JdbcConnection. jdbc-connection))
 
+(defn- h2? [^JdbcConnection liquibase-conn]
+  (str/starts-with? (.getURL liquibase-conn) "jdbc:h2"))
+
 (defn- database ^Database [^JdbcConnection liquibase-conn]
-  (.findCorrectDatabaseImplementation (DatabaseFactory/getInstance) liquibase-conn))
+  (if (h2? liquibase-conn)
+    (liquibase.h2/h2-database liquibase-conn)
+    (.findCorrectDatabaseImplementation (DatabaseFactory/getInstance) liquibase-conn)))
 
 (defn- liquibase ^Liquibase [^Database database]
   (Liquibase. changelog-file (ClassLoaderResourceAccessor.) database))
@@ -119,7 +139,7 @@
     (if (has-unrun-migrations? liquibase)
       (do
         (log/info (trs "Migration lock is cleared. Running migrations..."))
-        (u/auto-retry 3 (let [^Contexts contexts nil] (.update liquibase contexts))))
+        (let [^Contexts contexts nil] (.update liquibase contexts)))
       (log/info
         (trs "Migration lock cleared, but nothing to do here! Migrations were finished by another instance.")))))
 

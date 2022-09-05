@@ -1,4 +1,8 @@
-# End-to-end Tests with Cypress
+---
+title: End-to-end tests with Cypress
+---
+
+# End-to-end tests with Cypress
 
 Metabase uses Cypress for “end-to-end testing”, that is, tests that are executed against the application as a whole, including the frontend, backend, and application database. These tests are essentially scripts written in JavaScript that run in the web browser: visit different URLs, click various UI elements, type text, and assert that things happen as expected (for example, an element appearing on screen, or a network request occuring).
 
@@ -10,19 +14,19 @@ During development you will want to run `yarn build-hot` to continuously build t
 
 To run all Cypress tests programmatically in the terminal:
 ```
-yarn run test-cypress-no-build
+yarn run test-cypress-run
 ```
 
 You can run a specific set of scenarios by using the `--folder` flag, which will pick up the chosen scenarios under `frontend/test/metabase/scenarios/`.
 
 ```
-yarn run test-cypress-no-build --folder sharing
+yarn run test-cypress-run --folder sharing
 ```
 
 You can quickly test a single file only by using the `--spec` flag.
 
 ```
-yarn test-cypress-no-build --spec frontend/test/metabase/scenarios/question/new.cy.spec.js
+yarn test-cypress-run --spec frontend/test/metabase/scenarios/question/new.cy.spec.js
 ```
 
 Cypress test files are structured like Mocha tests, where `describe` blocks are used to group related tests, and `it` blocks are the tests themselves.
@@ -38,7 +42,7 @@ describe("homepage",() => {
 
 We strongly prefer using selectors like `cy.findByText()` and `cy.findByLabelText()` from [`@testing-library/cypress`](https://github.com/testing-library/cypress-testing-library) since they encourage writing tests that don't depend on implementation details like CSS class names.
 
-Try to avoid repeatedly testing pieces of the application incidentally. For example, if you want to test something about the query builder, jump straight there using a URL like `cy.visit("/question/new?database=1&table=2");` rather than starting from the home page, clicking "Ask a question", etc.
+Try to avoid repeatedly testing pieces of the application incidentally. For example, if you want to test something about the query builder, jump straight there using a helper like `openOrdersTable()` rather than starting from the home page, clicking "New", then "Question", etc.
 
 ## Cypress Documentation
 
@@ -49,7 +53,8 @@ Try to avoid repeatedly testing pieces of the application incidentally. For exam
 ## Tips/Gotchas
 
 ### `contains` vs `find` vs `get`
-(TODO: talk about `@testing-library/cypress`). Cypress has a set of similar commands for selecting elements. Here are some tips for using them:
+
+Cypress has a set of similar commands for selecting elements. Here are some tips for using them:
 * `contains` is case-sensitive to the text *in the DOM*. If it’s not matching text you’d expect, check that CSS hasn’t updated the case.
 * `contains` matches substrings, so if you see “filter by” and “Add a filter”, `contains(“filter”)` will match both. To avoid these issues, you can either pass a regexp that pins the start/end of the string or pass a selector in addition to the string: `.contains(selector, content)`.
 * `find` will let you search within your previous selection. `get` will search the entire page even if chained.
@@ -66,6 +71,10 @@ One great feature of Cypress is that you can use the Chrome inspector after each
 ### Putting the wrong HTML template in the Uberjar
 `yarn build` and `yarn build-hot` each overwrite an HTML template to reference the correct Javascript files. If you run `yarn build` before building an Uberjar for Cypress tests, you won’t see changes to your Javascript reflected even if you then start `yarn build-hot`.
 
+### Running Cypress on M1 machines
+
+You might run into problems when running Cypress on M1 machine.
+This is caused by the `@bahmutov/cypress-esbuild-preprocessor` that is using `esbuild` as a dependency. The error might look [like this](https://github.com/evanw/esbuild/issues/1819#issuecomment-1018771557). [The solution](https://github.com/evanw/esbuild/issues/1819#issuecomment-1080720203) is to install NodeJS using one of the Node version managers like [nvm](https://github.com/nvm-sh/nvm) or [n](https://github.com/tj/n).
 
 ## DB Snapshots
 
@@ -83,3 +92,21 @@ Cypress records videos of each test run, which can be helpful in debugging. Addi
 
 These files can be found under the “Artifacts” tab in Circle:
 ![Circle CI Artifacts tab](https://user-images.githubusercontent.com/691495/72190614-f5995380-33cd-11ea-875e-4203d6dcf1c1.png)
+
+## Running Cypress tests against EE version of Metabase
+
+Prior to running Cypress, make sure you have a valid enterprise token. We have a special `describe` block called `describeEE` that will conditionally skip or run tests based on the existence of two environment variables:
+
+- `MB_EDITION`
+- `MB_PREMIUM_EMBEDDING_TOKEN`
+
+```
+MB_EDITION=ee MB_PREMIUM_EMBEDDING_TOKEN=xxxxxx yarn test-cypress-open
+```
+
+If you navigate to the `/admin/settings/license` page, the license input field should be disabled and already populated. It should say: "Using MB_PREMIUM_EMBEDDING_TOKEN".
+
+
+- If tests under `describeEE` block are greyed out and not running, make sure you entered the environment variables correctly.
+- If tests start running but the enterprise features are missing: make sure that the token is still valid. 
+- If everything with the token seems to be okay, go nuclear and destroy all Java processes: run `killall java` and restart Cypress.

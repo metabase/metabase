@@ -1,12 +1,12 @@
 import {
   restore,
   openOrdersTable,
-  version,
   popover,
-  describeWithToken,
+  describeEE,
   setupMetabaseCloud,
-  describeWithoutToken,
-} from "__support__/e2e/cypress";
+  isOSS,
+  isEE,
+} from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS } = SAMPLE_DATABASE;
@@ -17,15 +17,19 @@ describe("scenarios > admin > settings", () => {
     cy.signInAsAdmin();
   });
 
-  it("should prompt admin to migrate to the hosted instance", () => {
-    cy.skipOn(!!Cypress.env("HAS_ENTERPRISE_TOKEN"));
-    cy.visit("/admin/settings/setup");
-    cy.findByText("Have your server maintained for you.");
-    cy.findByText("Migrate to Metabase Cloud.");
-    cy.findAllByRole("link", { name: "Learn more" })
-      .should("have.attr", "href")
-      .and("include", "/migrate/");
-  });
+  it(
+    "should prompt admin to migrate to the hosted instance",
+    { tags: "@OSS" },
+    () => {
+      cy.onlyOn(isOSS);
+      cy.visit("/admin/settings/setup");
+      cy.findByText("Have your server maintained for you.");
+      cy.findByText("Migrate to Metabase Cloud.");
+      cy.findAllByRole("link", { name: "Learn more" })
+        .should("have.attr", "href")
+        .and("include", "/migrate/");
+    },
+  );
 
   it("should surface an error when validation for any field fails (metabase#4506)", () => {
     const BASE_URL = Cypress.config().baseUrl;
@@ -126,15 +130,10 @@ describe("scenarios > admin > settings", () => {
       .parent()
       .findByTestId("select-button")
       .click();
-    popover()
-      .contains("https://")
-      .click({ force: true });
+    popover().contains("https://").click({ force: true });
 
     cy.wait("@httpsCheck");
-    cy.contains("Redirect to HTTPS")
-      .parent()
-      .parent()
-      .contains("Disabled");
+    cy.contains("Redirect to HTTPS").parent().parent().contains("Disabled");
 
     restore(); // avoid leaving https site url
   });
@@ -153,41 +152,15 @@ describe("scenarios > admin > settings", () => {
       .parent()
       .findByTestId("select-button")
       .click();
-    popover()
-      .contains("https://")
-      .click({ force: true });
+    popover().contains("https://").click({ force: true });
 
     cy.wait("@httpsCheck");
     cy.contains("It looks like HTTPS is not properly configured");
     restore(); // avoid leaving https site url
   });
 
-  it("should update the formatting", () => {
-    cy.server();
-    cy.route("PUT", "**/custom-formatting").as("saveFormatting");
-
-    // update the formatting
-    cy.visit("/admin/settings/localization");
-    cy.contains("17:24 (24-hour clock)").click();
-    cy.wait("@saveFormatting");
-
-    // check the new formatting in a question
-    openOrdersTable();
-    cy.contains(/^February 11, 2019, 21:40$/);
-
-    // reset the formatting
-    cy.visit("/admin/settings/localization");
-    cy.contains("5:24 PM (12-hour clock)").click();
-    cy.wait("@saveFormatting");
-
-    // check the reset formatting in a question
-    openOrdersTable();
-    cy.contains(/^February 11, 2019, 9:40 PM$/);
-  });
-
-  it("should correctly apply the globalized date formats (metabase#11394)", () => {
-    cy.server();
-    cy.route("PUT", "**/custom-formatting").as("saveFormatting");
+  it("should correctly apply the globalized date formats (metabase#11394) and update the formatting", () => {
+    cy.intercept("PUT", "**/custom-formatting").as("saveFormatting");
 
     cy.request("PUT", `/api/field/${ORDERS.CREATED_AT}`, {
       semantic_type: null,
@@ -195,17 +168,33 @@ describe("scenarios > admin > settings", () => {
 
     cy.visit("/admin/settings/localization");
 
-    cy.contains("Date style")
-      .closest("li")
-      .find("[data-testid='select-button']")
-      .first()
-      .click();
+    cy.findByText("January 7, 2018").click({ force: true });
     cy.findByText("2018/1/7").click({ force: true });
-    cy.contains("17:24 (24-hour clock)").click();
     cy.wait("@saveFormatting");
+    cy.findAllByTestId("select-button-content").should("contain", "2018/1/7");
 
-    openOrdersTable();
-    cy.contains(/^2019\/2\/11, 21:40$/);
+    cy.findByText("17:24 (24-hour clock)").click();
+    cy.wait("@saveFormatting");
+    cy.findByDisplayValue("HH:mm").should("be.checked");
+
+    openOrdersTable({ limit: 2 });
+
+    cy.findByTextEnsureVisible("Created At");
+    cy.get(".cellData")
+      .should("contain", "Created At")
+      .and("contain", "2019/2/11, 21:40");
+
+    // Go back to the settings and reset the time formatting
+    cy.visit("/admin/settings/localization");
+
+    cy.findByText("5:24 PM (12-hour clock)").click();
+    cy.wait("@saveFormatting");
+    cy.findByDisplayValue("h:mm A").should("be.checked");
+
+    openOrdersTable({ limit: 2 });
+
+    cy.findByTextEnsureVisible("Created At");
+    cy.get(".cellData").and("contain", "2019/2/11, 9:40 PM");
   });
 
   it("should search for and select a new timezone", () => {
@@ -215,7 +204,7 @@ describe("scenarios > admin > settings", () => {
     cy.visit("/admin/settings/localization");
     cy.contains("Report Timezone")
       .closest("li")
-      .findByTestId("select-button")
+      .findByTestId("report-timezone-select-button")
       .click();
 
     cy.findByPlaceholderText("Find...").type("Centr");
@@ -224,97 +213,6 @@ describe("scenarios > admin > settings", () => {
     cy.wait("@reportTimezone");
     cy.contains("US/Central");
   });
-
-  if (version.edition !== "enterprise") {
-    describe(" > embedding settings", () => {
-      it("should validate a premium embedding token has a valid format", () => {
-        cy.server();
-        cy.route("PUT", "/api/setting/premium-embedding-token").as(
-          "saveEmbeddingToken",
-        );
-
-        cy.visit("/admin/settings/embedding_in_other_applications");
-        cy.contains("Premium embedding");
-        cy.contains("Enter a token").click();
-
-        // Try an invalid token format
-        cy.contains("Enter the token")
-          .next()
-          .type("Hi")
-          .blur();
-        cy.wait("@saveEmbeddingToken").then(({ response }) => {
-          expect(response.body).to.equal(
-            "Token format is invalid. Token should be 64 hexadecimal characters.",
-          );
-        });
-        cy.contains("Token format is invalid.");
-      });
-
-      it("should validate a premium embedding token exists", () => {
-        cy.server();
-        cy.route("PUT", "/api/setting/premium-embedding-token").as(
-          "saveEmbeddingToken",
-        );
-
-        cy.visit("/admin/settings/embedding_in_other_applications");
-        cy.contains("Premium embedding");
-        cy.contains("Enter a token").click();
-
-        // Try a valid format, but an invalid token
-        cy.contains("Enter the token")
-          .next()
-          .type(
-            "11397b1e60cfb1372f2f33ac8af234a15faee492bbf5c04d0edbad76da3e614a",
-          )
-          .blur();
-        cy.wait("@saveEmbeddingToken").then(({ response }) => {
-          expect(response.body).to.equal(
-            "Unable to validate token: 404 not found.",
-          );
-        });
-        cy.contains("Unable to validate token: 404 not found.");
-      });
-
-      it("should be able to set a premium embedding token", () => {
-        // A random embedding token with valid format
-        const embeddingToken =
-          "11397b1e60cfb1372f2f33ac8af234a15faee492bbf5c04d0edbad76da3e614a";
-
-        cy.server();
-        cy.route({
-          method: "PUT",
-          url: "/api/setting/premium-embedding-token",
-          response: embeddingToken,
-        }).as("saveEmbeddingToken");
-
-        cy.visit("/admin/settings/embedding_in_other_applications");
-        cy.contains("Premium embedding");
-        cy.contains("Enter a token").click();
-
-        cy.route("GET", "/api/session/properties").as("getSessionProperties");
-        cy.route({
-          method: "GET",
-          url: "/api/setting",
-          response: [
-            { key: "enable-embedding", value: true },
-            { key: "embedding-secret-key", value: embeddingToken },
-            { key: "premium-embedding-token", value: embeddingToken },
-          ],
-        }).as("getSettings");
-
-        cy.contains("Enter the token")
-          .next()
-          .type(embeddingToken)
-          .blur();
-        cy.wait("@saveEmbeddingToken").then(({ response }) => {
-          expect(response.body).to.equal(embeddingToken);
-        });
-        cy.wait("@getSessionProperties");
-        cy.wait("@getSettings");
-        cy.contains("Premium embedding enabled");
-      });
-    });
-  }
 
   it("'General' admin settings should handle setup via `MB_SITE_ULR` environment variable (metabase#14900)", () => {
     cy.server();
@@ -344,20 +242,20 @@ describe("scenarios > admin > settings", () => {
     cy.findByText(/Site URL/i);
   });
 
-  it("should display the order of the settings items consistently between OSS/EE versions (metabase#15441)", () => {
-    const lastItem = Cypress.env("HAS_ENTERPRISE_TOKEN")
-      ? "Whitelabel"
-      : "Caching";
+  it(
+    "should display the order of the settings items consistently between OSS/EE versions (metabase#15441)",
+    { tags: "@OSS" },
+    () => {
+      const lastItem = isEE ? "Appearance" : "Caching";
 
-    cy.visit("/admin/settings/setup");
-    cy.get(".AdminList .AdminList-item")
-      .as("settingsOptions")
-      .first()
-      .contains("Setup");
-    cy.get("@settingsOptions")
-      .last()
-      .contains(lastItem);
-  });
+      cy.visit("/admin/settings/setup");
+      cy.get(".AdminList .AdminList-item")
+        .as("settingsOptions")
+        .first()
+        .contains("Setup");
+      cy.get("@settingsOptions").last().contains(lastItem);
+    },
+  );
 
   // Unskip when mocking Cloud in Cypress is fixed (#18289)
   it.skip("should hide self-hosted settings when running Metabase Cloud", () => {
@@ -394,8 +292,9 @@ describe("scenarios > admin > settings", () => {
   });
 });
 
-describeWithoutToken("scenarios > admin > settings (OSS)", () => {
+describe("scenarios > admin > settings (OSS)", { tags: "@OSS" }, () => {
   beforeEach(() => {
+    cy.onlyOn(isOSS);
     restore();
     cy.signInAsAdmin();
   });
@@ -408,7 +307,7 @@ describeWithoutToken("scenarios > admin > settings (OSS)", () => {
   });
 });
 
-describeWithToken("scenarios > admin > settings (EE)", () => {
+describeEE("scenarios > admin > settings (EE)", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

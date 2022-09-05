@@ -4,13 +4,11 @@ import React, { Component } from "react";
 import cx from "classnames";
 import styles from "./FunnelNormal.css";
 
-import Ellipsified from "metabase/components/Ellipsified";
+import Ellipsified from "metabase/core/components/Ellipsified";
 import { formatValue } from "metabase/lib/formatting";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 
-import { normal } from "metabase/lib/colors";
-
-const DEFAULT_COLORS = Object.values(normal);
+import { color } from "metabase/lib/colors";
 
 export default class FunnelNormal extends Component {
   render() {
@@ -28,7 +26,11 @@ export default class FunnelNormal extends Component {
     const dimensionIndex = 0;
     const metricIndex = 1;
     const cols = series[0].data.cols;
-    const rows = series.map(s => s.data.rows[0]);
+    const rows = settings["funnel.rows"]
+      ? settings["funnel.rows"]
+          .filter(fr => fr.enabled)
+          .map(fr => series[fr.rowIndex].data.rows[0])
+      : series.map(s => s.data.rows[0]);
 
     const isNarrow = gridSize && gridSize.width < 7;
     const isShort = gridSize && gridSize.height <= 5;
@@ -118,6 +120,7 @@ export default class FunnelNormal extends Component {
 
     return (
       <div
+        data-testid="funnel-chart"
         className={cx(className, styles.Funnel, "flex", {
           [styles["Funnel--narrow"]]: isNarrow,
           p1: isSmall,
@@ -135,7 +138,7 @@ export default class FunnelNormal extends Component {
               {formatMetric(rows[0][metricIndex])}
             </div>
             <div className={styles.Subtitle}>
-              {getFriendlyName(cols[dimensionIndex])}
+              {getFriendlyName(cols[metricIndex])}
             </div>
           </div>
           {/* This part of code in used only to share height between .Start and .Graph columns. */}
@@ -217,7 +220,7 @@ const GraphSection = ({
       >
         <polygon
           opacity={1 - index * (0.9 / (infos.length + 1))}
-          fill={DEFAULT_COLORS[0]}
+          fill={color("brand")}
           points={`0 ${info.graph.startBottom}, 0 ${info.graph.startTop}, 1 ${info.graph.endTop}, 1 ${info.graph.endBottom}`}
         />
       </svg>

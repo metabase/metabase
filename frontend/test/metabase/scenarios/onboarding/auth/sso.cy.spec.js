@@ -1,8 +1,8 @@
 import {
-  describeWithToken,
+  describeEE,
   restore,
   mockCurrentUserProperty,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 import { USERS } from "__support__/e2e/cypress_data";
 
 const { admin } = USERS;
@@ -32,8 +32,10 @@ describe("scenarios > auth > signin > SSO", () => {
     });
 
     it("should show SSO button", () => {
-      cy.findByText("Sign in with Google");
       cy.findByText("Sign in with email");
+
+      // Google SSO button is piped through an iframe
+      cy.get("iframe");
     });
 
     it("should show login form when directed to sign in with email", () => {
@@ -63,7 +65,7 @@ describe("scenarios > auth > signin > SSO", () => {
     });
   });
 
-  describeWithToken("EE", () => {
+  describeEE("EE", () => {
     beforeEach(() => {
       // Disable password log-in
       cy.request("PUT", "api/setting/enable-password-login", {
@@ -74,7 +76,8 @@ describe("scenarios > auth > signin > SSO", () => {
 
     it("should show the SSO button without an option to use password", () => {
       cy.visit("/");
-      cy.findByText("Sign in with Google");
+      // Google SSO button is piped through an iframe
+      cy.get("iframe");
       cy.findByText("Sign in with email").should("not.exist");
     });
   });

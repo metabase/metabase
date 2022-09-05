@@ -6,10 +6,12 @@ const Props = ({ of }) => {
   return (
     <table className="Table">
       <thead>
-        <th>Name</th>
-        <th>Type</th>
-        <th>Default</th>
-        <th>Description</th>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Default</th>
+          <th>Description</th>
+        </tr>
       </thead>
       <tbody>
         {Object.keys(component.propTypes).map(prop => {

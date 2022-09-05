@@ -20,6 +20,9 @@
              (-> @inbox vals first count))))))
 
 (deftest should-send-abandoment-email-test
+  (testing "Make sure zero-arity version works (#12068)"
+    (testing `(follow-up-emails/should-send-abandoment-email?)
+      (is (boolean? (#'follow-up-emails/should-send-abandoment-email?)))))
   (testing "Conditions where abandonment emails should be sent"
     (doseq [now               [(t/zoned-date-time) (t/offset-date-time) (t/instant)]
             instance-creation [0 1 5 nil]

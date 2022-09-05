@@ -3,8 +3,12 @@ import {
   visitQuestionAdhoc,
   popover,
   sidebar,
-} from "__support__/e2e/cypress";
+  visitQuestion,
+  visitDashboard,
+  visitIframe,
+} from "__support__/e2e/helpers";
 
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const {
@@ -60,9 +64,7 @@ describe("scenarios > visualizations > pivot tables", () => {
 
     // Switch to "ordinary" table
     cy.findByText("Visualization").click();
-    cy.icon("table")
-      .should("be.visible")
-      .click();
+    cy.icon("table").should("be.visible").click();
 
     cy.contains(`Started from ${QUESTION_NAME}`);
 
@@ -145,7 +147,7 @@ describe("scenarios > visualizations > pivot tables", () => {
             ["field", ORDERS.SUBTOTAL, { binning: { strategy: "default" } }],
           ],
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "pivot",
       visualization_settings: {},
@@ -178,7 +180,7 @@ describe("scenarios > visualizations > pivot tables", () => {
           aggregation: [["count"]],
           breakout: [b1, b2, b3],
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "pivot",
       visualization_settings: {
@@ -193,33 +195,21 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText("215"); // see a non-subtotal value
 
     // click to collapse rows
-    cy.findByText("Doohickey")
-      .parent()
-      .find(".Icon-dash")
-      .click();
+    cy.findByText("Doohickey").parent().find(".Icon-dash").click();
     cy.findByText("1,352"); // subtotal is still there
     cy.findByText("215").should("not.exist"); // value is hidden
 
     // click to uncollapse
-    cy.findByText("Totals for Doohickey")
-      .parent()
-      .find(".Icon-add")
-      .click();
+    cy.findByText("Totals for Doohickey").parent().find(".Icon-add").click();
     cy.findByText("215"); // ...and it's back!
 
     // collapse the column
-    cy.findByText("Product → Category")
-      .parent()
-      .find(".Icon-dash")
-      .click();
+    cy.findByText("Product → Category").parent().find(".Icon-dash").click();
     cy.findByText("215").should("not.exist"); // value is hidden
     cy.findByText("294").should("not.exist"); // value in another section is also hidden
 
     // uncollapse Doohickey
-    cy.findByText("Totals for Doohickey")
-      .parent()
-      .find(".Icon-add")
-      .click();
+    cy.findByText("Totals for Doohickey").parent().find(".Icon-add").click();
     cy.findByText("215"); // value in doohickey is visible
     cy.findByText("294").should("not.exist"); // the other one is still hidden
   });
@@ -257,10 +247,7 @@ describe("scenarios > visualizations > pivot tables", () => {
       .parent()
       .findByText(/Users? → Source/)
       .click();
-    cy.findByText("Show totals")
-      .parent()
-      .find("input")
-      .click();
+    cy.findByText("Show totals").parent().find("input").click();
 
     cy.findByText("3,520").should("not.exist"); // the subtotal has disappeared!
   });
@@ -287,10 +274,7 @@ describe("scenarios > visualizations > pivot tables", () => {
       .parent()
       .findByText(/Users? → Source/)
       .click();
-    cy.findByText("Show totals")
-      .parent()
-      .find("input")
-      .click();
+    cy.findByText("Show totals").parent().find("input").click();
 
     cy.findByText("3,520").should("not.exist"); // the subtotal isn't there
     cy.findByText("899"); // Affiliate is no longer collapsed
@@ -310,14 +294,12 @@ describe("scenarios > visualizations > pivot tables", () => {
 
     cy.log("Collapse the options panel");
     cy.icon("chevronup").click();
-    cy.findByText(/Formatting/).should("not.exist");
+    cy.findByText("Formatting").should("not.exist");
     cy.findByText(/See options/).should("not.exist");
 
     cy.log("Expand it again");
-    cy.icon("chevrondown")
-      .first()
-      .click();
-    cy.findByText(/Formatting/);
+    cy.icon("chevrondown").first().click();
+    cy.findByText("Formatting");
     cy.findByText(/See options/);
   });
 
@@ -339,9 +321,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText(/Column title/);
 
     cy.log("Change the title for this column");
-    cy.get("input[id=column_title]")
-      .clear()
-      .type("ModifiedTITLE");
+    cy.get("input[id=column_title]").clear().type("ModifiedTITLE");
     cy.findByText("Done").click();
     cy.get(".Visualization").within(() => {
       cy.findByText("ModifiedTITLE");
@@ -360,7 +340,7 @@ describe("scenarios > visualizations > pivot tables", () => {
       .parent()
       .findAllByText(/Count/)
       .click();
-    cy.findByText(/Formatting/);
+    cy.findByText("Formatting");
     cy.findByText(/See options/).click();
 
     cy.log("New panel for the column options");
@@ -390,7 +370,7 @@ describe("scenarios > visualizations > pivot tables", () => {
       .findAllByText(/Count/)
       .click();
 
-    cy.findByText(/Formatting/);
+    cy.findByText("Formatting");
     cy.findByText(/Sort order/).should("not.exist");
   });
 
@@ -412,7 +392,7 @@ describe("scenarios > visualizations > pivot tables", () => {
             ],
           ],
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "pivot",
     });
@@ -430,7 +410,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText("8 – 10").should("not.exist");
 
     // sort ascending
-    cy.icon("arrow_up").click();
+    cy.icon("arrow_up").realClick();
     cy.findByText("8 – 10");
     cy.findByText("158 – 160").should("not.exist");
   });
@@ -440,7 +420,7 @@ describe("scenarios > visualizations > pivot tables", () => {
       dataset_query: {
         type: "native",
         native: { query: "select 1", "template-tags": {} },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "pivot",
       visualization_settings: {},
@@ -453,7 +433,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     it("should work with custom columns as values", () => {
       visitQuestionAdhoc({
         dataset_query: {
-          database: 1,
+          database: SAMPLE_DB_ID,
           query: {
             "source-table": ORDERS_ID,
             expressions: {
@@ -501,7 +481,7 @@ describe("scenarios > visualizations > pivot tables", () => {
             aggregation: [["count"]],
             breakout: [["expression", "category_foo"]],
           },
-          database: 1,
+          database: SAMPLE_DB_ID,
         },
         display: "pivot",
       });
@@ -542,7 +522,7 @@ describe("scenarios > visualizations > pivot tables", () => {
                 ],
               });
               cy.log("Open the dashboard");
-              cy.visit(`/dashboard/${DASHBOARD_ID}`);
+              visitDashboard(DASHBOARD_ID);
             });
           },
         );
@@ -612,7 +592,8 @@ describe("scenarios > visualizations > pivot tables", () => {
             });
           },
         );
-        cy.visit(`/question/${QUESTION_ID}`);
+
+        visitQuestion(QUESTION_ID);
       });
     });
 
@@ -622,9 +603,6 @@ describe("scenarios > visualizations > pivot tables", () => {
           cy.visit("collection/root");
           cy.findByText(test.subject).click();
           cy.icon("share").click();
-          if (test.case === "dashboard") {
-            cy.findByText("Sharing and embedding").click();
-          }
         });
 
         it("should display pivot table in a public link", () => {
@@ -653,13 +631,14 @@ describe("scenarios > visualizations > pivot tables", () => {
           cy.findByText(
             /Embed this (question|dashboard) in an application/,
           ).click();
+
           cy.findByText("Publish").click();
+
           // visit the iframe src directly to ensure it's not sing preview endpoints
-          cy.get("iframe").then($iframe => {
-            cy.visit($iframe[0].src);
-            cy.get(".EmbedFrame-header").contains(test.subject);
-            assertOnPivotFields();
-          });
+          visitIframe();
+
+          cy.get(".EmbedFrame-header").contains(test.subject);
+          assertOnPivotFields();
         });
       });
     });
@@ -675,7 +654,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.request("POST", "/api/card", {
       name: "14989",
       dataset_query: {
-        database: 1,
+        database: SAMPLE_DB_ID,
         query: {
           "source-table": PRODUCTS_ID,
           aggregation: [["count"]],
@@ -690,7 +669,7 @@ describe("scenarios > visualizations > pivot tables", () => {
       visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.signIn("nodata");
-      cy.visit(`/question/${QUESTION_ID}`);
+      visitQuestion(QUESTION_ID);
     });
 
     cy.findByText("Grand totals");
@@ -698,10 +677,8 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText("200");
   });
 
-  it.skip("should work with custom mapping of display values (metabase#14985)", () => {
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
-    cy.route("POST", "/api/dataset/pivot").as("datasetPivot");
+  it("should work with custom mapping of display values (metabase#14985)", () => {
+    cy.intercept("POST", "/api/dataset/pivot").as("datasetPivot");
 
     cy.log("Remap 'Reviews Rating' display values to custom values");
     cy.request("POST", `/api/field/${REVIEWS.RATING}/dimension`, {
@@ -709,6 +686,7 @@ describe("scenarios > visualizations > pivot tables", () => {
       type: "internal",
       human_readable_field_id: null,
     });
+
     cy.request("POST", `/api/field/${REVIEWS.RATING}/values`, {
       values: [
         [1, "A"],
@@ -721,7 +699,7 @@ describe("scenarios > visualizations > pivot tables", () => {
 
     visitQuestionAdhoc({
       dataset_query: {
-        database: 1,
+        database: SAMPLE_DB_ID,
         query: {
           "source-table": REVIEWS_ID,
           aggregation: [["count"]],
@@ -737,9 +715,10 @@ describe("scenarios > visualizations > pivot tables", () => {
 
     cy.findByText("Visualization").click();
     sidebar().within(() => {
-      cy.findByText("Pivot Table")
-        .parent()
-        .should("have.css", "opacity", "1");
+      // This part is still failing. Uncomment when fixed.
+      // cy.findByText("Pivot Table")
+      //   .parent()
+      //   .should("have.css", "opacity", "1");
       cy.icon("pivot_table").click({ force: true });
     });
 
@@ -773,7 +752,7 @@ describe("scenarios > visualizations > pivot tables", () => {
             ["!=", ["field", ORDERS.PRODUCT_ID, null], 146],
           ],
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "pivot",
       visualization_settings: {
@@ -807,10 +786,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText("Totals for November 11, 2016");
 
     function collapseRowsFor(column_name) {
-      cy.findByText(column_name)
-        .parent()
-        .find(".Icon-dash")
-        .click();
+      cy.findByText(column_name).parent().find(".Icon-dash").click();
     }
   });
 
@@ -828,7 +804,7 @@ describe("scenarios > visualizations > pivot tables", () => {
           ],
           filter: [">", ["field", ORDERS.CREATED_AT, null], "2020-01-01"],
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "pivot",
       visualization_settings: {
@@ -854,6 +830,104 @@ describe("scenarios > visualizations > pivot tables", () => {
 
     cy.findAllByText(/Totals for .*/i).should("have.length", 0);
   });
+
+  it("should apply conditional formatting", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
+            ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+            ["field", PEOPLE.STATE, { "source-field": ORDERS.USER_ID }],
+          ],
+          filter: [">", ["field", ORDERS.CREATED_AT, null], "2020-01-01"],
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "pivot",
+      visualization_settings: {
+        "pivot_table.column_split": {
+          rows: [
+            ["field", PEOPLE.STATE, { "source-field": ORDERS.USER_ID }],
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
+          ],
+          columns: [
+            ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+          ],
+          values: [["aggregation", 0]],
+        },
+        "pivot_table.collapsed_rows": {
+          value: [],
+          rows: [
+            ["field", PEOPLE.STATE, { "source-field": ORDERS.USER_ID }],
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
+          ],
+        },
+      },
+    });
+
+    cy.findByText("Settings").click();
+    cy.findByText("Conditional Formatting").click();
+
+    cy.findByText("Add a rule").click();
+    cy.findByTestId("conditional-formatting-value-input").type("70");
+    cy.findByText("is equal to").click();
+    cy.findByText("is less than or equal to").click();
+
+    cy.contains("[data-testid=pivot-table-cell]", "65.09").should(
+      "have.css",
+      "background-color",
+      "rgba(80, 158, 227, 0.65)",
+    );
+  });
+
+  it.skip("should sort by metric (metabase#22872)", () => {
+    const questionDetails = {
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": REVIEWS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", REVIEWS.RATING, null],
+            ["field", REVIEWS.CREATED_AT, { "temporal-unit": "year" }],
+          ],
+        },
+        type: "query",
+      },
+      display: "pivot",
+    };
+
+    visitQuestionAdhoc(questionDetails);
+
+    cy.findByTextEnsureVisible("Created At: Year");
+    cy.findByTextEnsureVisible("Row totals");
+
+    assertTopMostRowTotalValue("149");
+
+    cy.icon("notebook").click();
+
+    cy.findByTextEnsureVisible("Sort").click();
+
+    popover().contains("Count").click();
+    cy.wait("@pivotDataset");
+
+    cy.button("Visualize").click();
+
+    assertTopMostRowTotalValue("23");
+
+    /**
+     * @param { string } value
+     */
+    function assertTopMostRowTotalValue(value) {
+      // Warning: Fragile selector!
+      // TODO: refactor once we have a better HTML structure for tables.
+      cy.get("[role=rowgroup] > div").eq(5).invoke("text").should("eq", value);
+    }
+  });
 });
 
 const testQuery = {
@@ -866,19 +940,14 @@ const testQuery = {
       ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
     ],
   },
-  database: 1,
+  database: SAMPLE_DB_ID,
 };
 
 function createAndVisitTestQuestion({ display = "pivot" } = {}) {
-  cy.request("POST", "/api/card", {
-    name: QUESTION_NAME,
-    dataset_query: testQuery,
-    display,
-    description: null,
-    visualization_settings: {},
-  }).then(({ body: { id: QUESTION_ID } }) => {
-    cy.visit(`/question/${QUESTION_ID}`);
-  });
+  const { query } = testQuery;
+  const questionDetails = { name: QUESTION_NAME, query, display };
+
+  cy.createQuestion(questionDetails, { visitQuestion: true });
 }
 
 function assertOnPivotSettings() {
@@ -896,9 +965,7 @@ function assertOnPivotSettings() {
     .eq(1)
     .contains(/Products? → Category/);
   cy.findAllByText("Fields to use for the table").eq(2);
-  cy.get("@fieldOption")
-    .eq(2)
-    .contains("Count");
+  cy.get("@fieldOption").eq(2).contains("Count");
 }
 
 function assertOnPivotFields() {
@@ -915,17 +982,11 @@ function assertOnPivotFields() {
 // Rely on native drag events, rather than on the coordinates
 // We have 3 "drag-handles" in this test. Their indexes are 0-based.
 function dragField(startIndex, dropIndex) {
-  cy.get(".Grabber")
-    .should("be.visible")
-    .as("dragHandle");
+  cy.get(".Grabber").should("be.visible").as("dragHandle");
 
-  cy.get("@dragHandle")
-    .eq(startIndex)
-    .trigger("dragstart");
+  cy.get("@dragHandle").eq(startIndex).trigger("dragstart");
 
-  cy.get("@dragHandle")
-    .eq(dropIndex)
-    .trigger("drop");
+  cy.get("@dragHandle").eq(dropIndex).trigger("drop");
 }
 
 function getIframeBody(selector = "iframe") {

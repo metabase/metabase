@@ -3,8 +3,8 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.config :as config]
-            [metabase.connection-pool :as pool]
-            [metabase.db.spec :as db.spec]
+            [metabase.connection-pool :as connection-pool]
+            [metabase.db.spec :as mdb.spec]
             [potemkin :as p]
             [pretty.core :as pretty])
   (:import java.sql.DriverManager
@@ -77,16 +77,16 @@
          m     (cond-> m
                  (seq username) (assoc :user username)
                  (seq password) (assoc :password password))]
-     (->DataSource s (some-> (not-empty m) pool/map->properties)))))
+     (->DataSource s (some-> (not-empty m) connection-pool/map->properties)))))
 
 (defn broken-out-details->DataSource
   "Return a [[javax.sql.DataSource]] given a broken-out Metabase connection details."
   ^javax.sql.DataSource [db-type details]
   {:pre [(keyword? db-type) (map? details)]}
-  (let [{:keys [subprotocol subname], :as spec} (db.spec/spec db-type (set/rename-keys details {:dbname :db}))
+  (let [{:keys [subprotocol subname], :as spec} (mdb.spec/spec db-type (set/rename-keys details {:dbname :db}))
         _                                       (assert subprotocol)
         _                                       (assert subname)
         url                                     (format "jdbc:%s:%s" subprotocol subname)
         properties                              (some-> (not-empty (dissoc spec :classname :subprotocol :subname))
-                                                        pool/map->properties)]
+                                                        connection-pool/map->properties)]
     (->DataSource url properties)))

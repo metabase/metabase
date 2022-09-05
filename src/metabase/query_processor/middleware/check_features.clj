@@ -2,7 +2,7 @@
   (:require [metabase.driver :as driver]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]))
@@ -12,7 +12,7 @@
   [feature]
   (when-not (driver/database-supports? driver/*driver* feature (qp.store/database))
     (throw (ex-info (tru "{0} is not supported by this driver." (name feature))
-                    {:type    error-type/unsupported-feature
+                    {:type    qp.error-type/unsupported-feature
                      :feature feature}))))
 
 ;; TODO - definitely a little incomplete. It would be cool if we cool look at the metadata in the schema namespace and

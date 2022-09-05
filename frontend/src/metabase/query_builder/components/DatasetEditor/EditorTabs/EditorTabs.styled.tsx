@@ -1,4 +1,5 @@
-import styled, { css } from "styled-components";
+import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 import { alpha, darken, color } from "metabase/lib/colors";
 
 export const TabBar = styled.ul`
@@ -10,7 +11,7 @@ export const TabBar = styled.ul`
 `;
 
 function getActiveTabColor() {
-  return darken("nav");
+  return darken("brand");
 }
 
 function getInactiveTabColor() {
@@ -54,7 +55,7 @@ export const Tab = styled.label<{ selected: boolean }>`
   ${props => (props.selected ? activeTabCSS : inactiveTabCSS)};
 `;
 
-export const RadioInput = styled.input.attrs({ type: "radio" })`
+export const RadioInput = styled.input`
   cursor: inherit;
   position: absolute;
   opacity: 0;
@@ -66,3 +67,5 @@ export const RadioInput = styled.input.attrs({ type: "radio" })`
   padding: 0;
   z-index: 1;
 `;
+
+RadioInput.defaultProps = { type: "radio" };

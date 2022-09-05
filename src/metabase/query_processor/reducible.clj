@@ -2,36 +2,14 @@
   (:require [clojure.core.async :as a]
             [clojure.tools.logging :as log]
             [metabase.async.util :as async.u]
-            [metabase.query-processor.context :as context]
+            [metabase.query-processor.context :as qp.context]
             [metabase.query-processor.context.default :as context.default]
             [metabase.util :as u]))
 
-(defn- wire-up-context-channels!
-  "Wire up the core.async channels in a QP `context`."
-  [context]
-  ;; 1) If query doesn't complete by `timeoutf`, call `timeoutf`, which should raise an Exception
-  ;; 2) when `out-chan` is closed prematurely, send a message to `canceled-chan`
-  ;; 3) when `out-chan` is closed or gets a result, close both out-chan and canceled-chan
-  (let [out-chan      (context/out-chan context)
-        canceled-chan (context/canceled-chan context)
-        timeout       (context/timeout context)]
-    (a/go
-      (let [[val port] (a/alts! [out-chan (a/timeout timeout)] :priority true)]
-        (log/tracef "Port %s got %s"
-                    (if (= port out-chan) "out-chan" (format "[timeout after %s]" (u/format-milliseconds timeout)))
-                    val)
-        (cond
-          (not= port out-chan) (context/timeoutf context)
-          (nil? val)           (a/>!! canceled-chan ::cancel))
-        (log/tracef "Closing out-chan.")
-        (a/close! out-chan)
-        (a/close! canceled-chan)))
-    nil))
-
-(defn pivot
+(defn identity-qp
   "The initial value of `qp` passed to QP middleware."
   [query rff context]
-  (context/runf query rff context))
+  (qp.context/runf query rff context))
 
 (defn combine-middleware
   "Combine a collection of QP middleware into a single QP function. The QP function, like the middleware, will have the
@@ -39,9 +17,9 @@
 
     (qp query rff context)"
   ([middleware]
-   (combine-middleware middleware pivot))
+   (combine-middleware middleware identity-qp))
 
-  ([middleware pivot-fn]
+  ([middleware qp]
    (reduce
     (fn [qp middleware]
       (when (var? middleware)
@@ -49,8 +27,42 @@
       (if (some? middleware)
         (middleware qp)
         qp))
-    pivot-fn
+    qp
     middleware)))
+
+;; Why isn't this just done automatically when we create the context in [[context.default/default-context]]? The timeout
+;; could be subject to change so it makes sense to wait until we actually run the query to wire stuff up. Also, since
+;; we're doing
+;;
+;;    (merge (context.default/default-context) context)
+;;
+;; all over the place, it probably reduces overhead a bit to not run around adding a bunch of timeouts to channels we
+;; don't end up using.
+(defn- wire-up-context-channels!
+  "Wire up the core.async channels in a QP `context`
+
+  1. If query doesn't complete by [[qp.context/timeout]], call [[qp.context/timeoutf]], which should raise an Exception.
+
+  2. When [[qp.context/out-chan]] is closed prematurely, send a message to [[qp.context/canceled-chan]].
+
+  3. When [[qp.context/out-chan]] is closed or gets a result, close both [[qp.context/out-chan]]
+     and [[qp.context/canceled-chan]]."
+  [context]
+  (let [out-chan      (qp.context/out-chan context)
+        canceled-chan (qp.context/canceled-chan context)
+        timeout       (qp.context/timeout context)]
+    (a/go
+      (let [[val port] (a/alts! [out-chan (a/timeout timeout)] :priority true)]
+        (log/tracef "Port %s got %s"
+                    (if (= port out-chan) "out-chan" (format "[timeout after %s]" (u/format-milliseconds timeout)))
+                    val)
+        (cond
+          (not= port out-chan) (qp.context/timeoutf context)
+          (nil? val)           (a/>!! canceled-chan ::cancel))
+        (log/tracef "Closing out-chan.")
+        (a/close! out-chan)
+        (a/close! canceled-chan)))
+    nil))
 
 (def ^:dynamic *run-on-separate-thread?*
   "Whether to run the query on a separate thread. When running a query asynchronously (i.e., with [[async-qp]]), this is
@@ -76,22 +88,26 @@
      (qp* query nil))
 
     ([query context]
+     (qp* query nil context))
+
+    ([query rff context]
      {:pre [(map? query) ((some-fn nil? map?) context)]}
-     (let [context (merge (context.default/default-context) context)]
-       (wire-up-context-channels! context)
-       (let [thunk (fn [] (try
-                            (qp query (context/rff context) context)
+     (let [context (doto (merge (context.default/default-context) context)
+                     wire-up-context-channels!)
+           rff     (or rff
+                       (qp.context/rff context))
+           thunk   (fn [] (try
+                            (qp query rff context)
                             (catch Throwable e
-                              (context/raisef e context))))]
-         (log/tracef "Running on separate thread? %s" *run-on-separate-thread?*)
-         (if *run-on-separate-thread?*
-           (future (thunk))
-           (thunk)))
-       (context/out-chan context)))))
+                              (qp.context/raisef e context))))]
+       (log/tracef "Running on separate thread? %s" *run-on-separate-thread?*)
+       (if *run-on-separate-thread?*
+         (future (thunk))
+         (thunk))
+       (qp.context/out-chan context)))))
 
 (defn- wait-for-async-result [out-chan]
   {:pre [(async.u/promise-chan? out-chan)]}
-  ;; TODO - consider whether we should have another timeout here as well
   (let [result (a/<!! out-chan)]
     (if (instance? Throwable result)
       (throw result)
@@ -105,14 +121,9 @@
     (qp query context)"
   [qp]
   {:pre [(fn? qp)]}
-  (fn qp*
-    ([query]
-     (wait-for-async-result (binding [*run-on-separate-thread?* false]
-                              (qp query))))
-
-    ([query context]
-     (wait-for-async-result (binding [*run-on-separate-thread?* false]
-                              (qp query context))))))
+  (fn qp* [& args]
+    (binding [*run-on-separate-thread?* false]
+      (wait-for-async-result (apply qp args)))))
 
 
 ;;; ------------------------------------------------- Other Util Fns -------------------------------------------------

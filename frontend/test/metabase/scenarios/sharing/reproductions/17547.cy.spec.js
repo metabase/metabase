@@ -1,4 +1,4 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import { restore, popover, visitQuestion } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PEOPLE } = SAMPLE_DATABASE;
@@ -21,12 +21,9 @@ describe("issue 17547", () => {
     cy.signInAsAdmin();
 
     cy.createQuestion(questionDetails).then(({ body: { id: questionId } }) => {
-      cy.intercept("POST", `/api/card/${questionId}/query`).as("cardQuery");
-
       setUpAlert(questionId);
 
-      cy.visit(`/question/${questionId}`);
-      cy.wait("@cardQuery");
+      visitQuestion(questionId);
     });
   });
 

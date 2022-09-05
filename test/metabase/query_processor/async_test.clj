@@ -28,6 +28,7 @@
                :table_id          (mt/id :venues)
                :settings          nil
                :source            :fields
+               :nfc_path          nil
                :parent_id         nil
                :visibility_type   :normal
                :id                (mt/id :venues :name)
