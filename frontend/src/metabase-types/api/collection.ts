@@ -1,4 +1,6 @@
-export type CollectionId = number | "root";
+export type RegularCollectionId = number;
+
+export type CollectionId = RegularCollectionId | "root";
 
 export type CollectionContentModel = "card" | "dataset";
 
