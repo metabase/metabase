@@ -17,7 +17,7 @@
   (testing "POST /api/bookmark/:model/:model-id"
     (mt/with-temp* [Collection [collection {:name "Test Collection"}]
                     Card       [card {:name "Test Card" :display "area"}]
-                    Dashboard  [dashboard {:name "Test Dashboard"}]
+                    Dashboard  [dashboard {:name "Test Dashboard" :is_app_page true}]
                     App        [app {:collection_id (:id collection), :dashboard_id (:id dashboard)}]]
       (testing "check that we can bookmark a Collection"
         (is (= (u/the-id collection)
@@ -43,8 +43,11 @@
           (is (= #{"card" "collection" "dashboard"}
                  (into #{} (map :type) result)))
           (testing "that app_id is hydrated on app collections"
-            (is (partial= [{:app_id (:id app)}]
-                          (filter #(= (:type %) "collection") result))))))
+            (is (partial= [{:item_id (:id collection), :app_id (:id app)}]
+                          (filter #(= (:type %) "collection") result))))
+          (testing "that is_app_page is returned for dashboards"
+            (is (partial= [{:item_id (:id dashboard), :is_app_page true}]
+                          (filter #(= (:type %) "dashboard") result))))))
       (testing "check that we can delete bookmarks"
         (mt/user-http-request :rasta :delete 204 (str "bookmark/card/" (u/the-id card)))
         (is (= #{"collection" "dashboard"}
