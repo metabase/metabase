@@ -55,9 +55,9 @@ export default class SettingsSetting extends Component {
     }
 
     const widgetProps = {
-      setting,
       ...setting.getProps?.(setting),
       ...setting.props,
+      ...this.props,
     };
 
     return (
