@@ -24,6 +24,7 @@ import {
   turnDashCardParameterMappingsIntoClickBehaviorMappings,
 } from "./utils";
 import ActionOptionItem from "./ActionOptionItem";
+import { ClickMappingsContainer } from "./ActionOptions.styled";
 
 interface WritebackActionClickBehavior {
   type: "action";
@@ -116,13 +117,15 @@ function ActionOptions({
         />
       ))}
       {selectedAction && (
-        <ClickMappings
-          isAction
-          object={selectedAction}
-          dashcard={dashcard}
-          clickBehavior={clickBehavior}
-          updateSettings={handleParameterMappingChange}
-        />
+        <ClickMappingsContainer>
+          <ClickMappings
+            isAction
+            object={selectedAction}
+            dashcard={dashcard}
+            clickBehavior={clickBehavior}
+            updateSettings={handleParameterMappingChange}
+          />
+        </ClickMappingsContainer>
       )}
     </>
   );
