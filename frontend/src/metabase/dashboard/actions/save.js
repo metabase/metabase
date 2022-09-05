@@ -77,6 +77,7 @@ export const saveDashboardAndCards = createThunkAction(
               // mark isAdded because addcard doesn't record the position
               return {
                 ...result,
+                action_id: dc.action_id,
                 col: dc.col,
                 row: dc.row,
                 sizeX: dc.sizeX,
