@@ -836,7 +836,7 @@ export const getAutocompleteResultsFn = state => {
   const matchStyle = getSetting(state, "native-query-autocomplete-match-style");
 
   if (matchStyle === "off") {
-    return [];
+    return null;
   }
 
   return function autocompleteResults(query) {
