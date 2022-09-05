@@ -47,7 +47,7 @@ function ClickBehaviorSidebar({
   onSettingsChange,
   onTypeSelectorVisibilityChange,
 }: Props) {
-  const finalClickBehavior = useMemo(() => {
+  const finalClickBehavior = useMemo<ClickBehavior>(() => {
     if (clickBehavior) {
       return clickBehavior;
     }
