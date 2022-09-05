@@ -1,19 +1,11 @@
-import slugg from "slugg";
-
 import { dashboard } from "./dashboards";
 import { question, dataset, tableRowsQuery } from "./questions";
 import { pulse } from "./pulses";
-import { appendSlug } from "./utils";
 
 export const exportFormats = ["csv", "xlsx", "json"];
 
 export function accountSettings() {
   return "/account/profile";
-}
-
-export function bookmark({ id, type, name }) {
-  const [, idInteger] = id.split("-");
-  return `/${type}/${appendSlug(idInteger, slugg(name))}`;
 }
 
 function prepareModel(item) {
