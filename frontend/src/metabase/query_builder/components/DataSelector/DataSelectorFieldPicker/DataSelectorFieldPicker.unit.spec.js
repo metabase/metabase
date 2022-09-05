@@ -1,5 +1,6 @@
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
+import { ORDERS } from "__support__/sample_database_fixture";
 
 import DataSelectorFieldPicker from "./DataSelectorFieldPicker";
 
@@ -8,7 +9,7 @@ describe("DataSelectorFieldPicker", () => {
     it("uses 'Fields' as title if selectedTable not passed", () => {
       render(<DataSelectorFieldPicker isLoading={true} />);
 
-      screen.getByText("Fields");
+      expect(screen.getByText("Fields")).toBeInTheDocument();
     });
 
     it("uses table display name as title if passed", () => {
@@ -21,17 +22,39 @@ describe("DataSelectorFieldPicker", () => {
         />,
       );
 
-      screen.getByText(displayName);
+      expect(screen.getByText(displayName)).toBeInTheDocument();
+    });
+
+    it("goes back if clicked", () => {
+      const onBack = jest.fn();
+
+      render(<DataSelectorFieldPicker isLoading={true} onBack={onBack} />);
+
+      fireEvent.click(screen.getByText("Fields"));
+
+      expect(onBack).toHaveBeenCalledTimes(1);
     });
   });
 
-  it("goes back if clicked", () => {
-    const onBack = jest.fn();
+  describe("loaded", () => {
+    it("displays table name and fields", () => {
+      const tableDisplayName = "Table display name";
 
-    render(<DataSelectorFieldPicker isLoading={true} onBack={onBack} />);
+      const selectedTable = {
+        display_name: tableDisplayName,
+      };
 
-    fireEvent.click(screen.getByText("Fields"));
+      const fields = [ORDERS.PRODUCT_ID];
 
-    expect(onBack).toHaveBeenCalledTimes(1);
+      render(
+        <DataSelectorFieldPicker
+          selectedTable={selectedTable}
+          fields={fields}
+        />,
+      );
+
+      expect(screen.getByText(tableDisplayName)).toBeInTheDocument();
+      expect(screen.getByText("Product ID")).toBeInTheDocument();
+    });
   });
 });
