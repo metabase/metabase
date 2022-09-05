@@ -17,7 +17,7 @@ Metabase needs to know what's in your database in order to show tables and field
 
 2. Metabase *fingerprints* the column the first time it synchronizes. Fingerprinting fetches the first 10,000 rows from each column and uses that data to guesstimate how many unique values each column has, what the minimum and maximum values are for numeric and timestamp columns, and so on. Metabase only fingerprints each column once, unless the administrator explicitly tells it to fingerprint the column again, or in the rare event that a new release of Metabase changes the fingerprinting logic.
 
-3. A *scan* is similar to fingerprinting. Metabase will scan a database by default every 24 hours (though you can configure Metabase to run a scan less frequently, or disable scanning entirely). When you set a field to "A list of all values" in the [Data Model](../administration-guide/03-metadata-editing.md), which is used to display options in dropdown menus, scanning looks at the first 1,000 distinct records (ordered ascending). For each field scanned, Metabase stores only the first 100 kilobytes of text. If more values exist, Metabase displays the stored values in the dropdown menus, and only triggers a database search query to look for more values when people type in the search box for that filter widget.
+3. A *scan* is similar to fingerprinting. Metabase will scan a database by default every 24 hours (though you can configure Metabase to run a scan less frequently, or disable scanning entirely). When you set a field to "A list of all values" in the [Data Model](../data-modeling/metadata-editing.md), which is used to display options in dropdown menus, scanning looks at the first 1,000 distinct records (ordered ascending). For each field scanned, Metabase stores only the first 100 kilobytes of text. If more values exist, Metabase displays the stored values in the dropdown menus, and only triggers a database search query to look for more values when people type in the search box for that filter widget.
 
 <h2 id="cant-sync-fingerprint-scan">Metabase can't sync, fingerprint, or scan</h2>
 
@@ -76,17 +76,17 @@ Metabase syncs and scans regularly, but if the database administrator has just c
 
 **How to detect this:** Sync and scan take a long time to complete.
 
-**How to fix this:** 
+**How to fix this:**
 1. For sync, delays are usually caused by a large database with hundreds of schema, thousands of table and with hundreds of columns in each table. If you only need a subset of those tables or columns in Metabase, then restricting the privileges used to connect to the database will make sure that Metabase can only sync a limited subset of the database.
 2. Scanning normally takes longer than sync, but you can reduce the number of fields Metabase will scan by changing the number of fields that have the **Filtering on this field** option set to "A list of all values". Setting fields to either "Search box" or "Plain input box" will exclude those fields from scans.
 
 You can "fix" this by disabling scan entirely by going to the database in the Admin Panel and telling Metabase, "This is a large database," and then going to the Scheduling tab. However, sync is necessary: without it, Metabase won't know what tables exist or what columns they contain.
 
-[api-learn]: /learn/administration/metabase-api.html
-[bugs]: ./bugs.html
-[community-db-drivers]: ../developers-guide-drivers.html
-[etl]: /glossary/etl
-[metabase-api]: ../api-documentation.html
+[api-learn]: https://www.metabase.com/learn/administration/metabase-api
+[bugs]: ./bugs.md
+[community-db-drivers]: ../developers-guide/partner-and-community-drivers.md
+[etl]: https://www.metabase.com/glossary/etl
+[metabase-api]: ../api-documentation.md
 [metabase-mongo-missing]: ../databases/connections/mongodb.md#i-added-fields-to-my-database-but-dont-see-them-in-metabase
-[sync-frequency]: ../databases/connecting.md#choose-when-metabase-syncs-and-scans
-[troubleshooting-db-connection]: ./datawarehouse.html
+[sync-frequency]: ../databases/connecting.md#scheduling-database-syncs
+[troubleshooting-db-connection]: ./datawarehouse.md

@@ -1487,6 +1487,11 @@
    (s/optional-key :disable-mbql->native?)
    s/Bool
 
+   ;; Disable applying a default limit on the query results. Handled in the `add-default-limit` middleware.
+   ;; If true, this will override the `:max-results` and `:max-results-bare-rows` values in [[Constraints]].
+   (s/optional-key :disable-max-results?)
+   s/Bool
+
    ;; Userland queries are ones ran as a result of an API call, Pulse, or the like. Special handling is done in the
    ;; `process-userland-query` middleware for such queries -- results are returned in a slightly different format, and
    ;; QueryExecution entries are normally saved, unless you pass `:no-save` as the option.

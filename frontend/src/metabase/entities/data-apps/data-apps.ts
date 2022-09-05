@@ -1,14 +1,15 @@
 import { color } from "metabase/lib/colors";
 import { createEntity } from "metabase/lib/entities";
+import * as Urls from "metabase/lib/urls";
 
 import { DataAppSchema } from "metabase/schema";
 import { CollectionsApi, DataAppsApi } from "metabase/services";
 
-import { Collection, DataApp } from "metabase-types/api";
+import { Collection, DataApp, DataAppSearchItem } from "metabase-types/api";
 
 import { DEFAULT_COLLECTION_COLOR_ALIAS } from "../collections/constants";
 
-import { createForm } from "./forms";
+import { createNewAppForm, createAppSettingsForm } from "./forms";
 import { getDataAppIcon } from "./utils";
 
 type EditableDataAppParams = Pick<
@@ -19,6 +20,10 @@ type EditableDataAppParams = Pick<
 
 type CreateDataAppParams = Partial<EditableDataAppParams> &
   Pick<EditableDataAppParams, "name">;
+
+type UpdateDataAppParams = Pick<DataApp, "id" | "collection_id"> & {
+  collection: Pick<Collection, "name" | "description">;
+};
 
 const DataApps = createEntity({
   name: "dataApps",
@@ -36,30 +41,42 @@ const DataApps = createEntity({
       description,
       ...dataAppProps
     }: CreateDataAppParams) => {
-      const collection = await CollectionsApi.create({
-        name,
-        description: description || null,
-        parent_id: null, // apps should always live in root collection
-        color: color(DEFAULT_COLLECTION_COLOR_ALIAS),
-      });
       return DataAppsApi.create({
         ...dataAppProps,
-        collection_id: collection.id,
+        collection: {
+          name,
+          description: description || null,
+          color: color(DEFAULT_COLLECTION_COLOR_ALIAS),
+        },
       });
+    },
+    update: async ({
+      id,
+      collection,
+      collection_id,
+      ...rest
+    }: UpdateDataAppParams) => {
+      await CollectionsApi.update({ ...collection, id: collection_id });
+      return DataAppsApi.update({ id, ...rest });
     },
   },
 
   objectSelectors: {
     getIcon: getDataAppIcon,
+    getUrl: (dataApp: DataApp | DataAppSearchItem) => {
+      return Urls.dataApp(dataApp, { mode: "preview" });
+    },
   },
 
   forms: {
-    details: {
-      fields: createForm,
+    create: {
+      fields: createNewAppForm,
+    },
+    settings: {
+      fields: createAppSettingsForm,
     },
   },
 });
 
-export { getDataAppIcon };
-
+export * from "./utils";
 export default DataApps;

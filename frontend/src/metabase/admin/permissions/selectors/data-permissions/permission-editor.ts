@@ -164,7 +164,7 @@ export const getDatabasesPermissionEditor = createSelector(
     if (database && (schemaName != null || hasSingleSchema)) {
       const schema: Schema = hasSingleSchema
         ? database.getSchemas()[0]
-        : database.schema(schemaName);
+        : (database.schema(schemaName) as Schema);
 
       entities = schema
         .getTables()

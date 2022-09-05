@@ -9,8 +9,8 @@ redirect_from:
 
 ## Getting started
 
-- [Getting started](/learn/getting-started/getting-started)
-- [A tour of Metabase](/learn/getting-started/tour-of-metabase)
+- [Getting started](https://www.metabase.com/learn/getting-started/getting-started)
+- [A tour of Metabase](https://www.metabase.com/learn/getting-started/tour-of-metabase)
 
 ## Troubleshooting and getting help
 
@@ -20,10 +20,11 @@ redirect_from:
 
 ## Tutorials and guides
 
-- [Learn Metabase](/learn) has a ton of articles on how to use Metabase and level up as a data analyst.
+- [Learn Metabase](https://www.metabase.com/learn) has a ton of articles on how to use Metabase and level up as a data analyst.
 
 ## Installation and operation
 
+- [Overview](./installation-and-operation/start.md)
 - [Installing Metabase](./installation-and-operation/installing-metabase.md)
 - [How to upgrade Metabase](./installation-and-operation/upgrading-metabase.md)
 - [Application database](./installation-and-operation/configuring-application-database.md)
@@ -31,8 +32,8 @@ redirect_from:
 - [Migrating to a production application database](./installation-and-operation/migrating-from-h2.md)
 - [A word on Java versions](./installation-and-operation/java-versions.md)
 - [How to setup monitoring via JMX](./installation-and-operation/monitoring-metabase.md)
-- [Serialization: copying one Metabase instance to another](./enterprise-guide/serialization.md)
-- [Supported browsers](./administration-guide/supported-browsers.md)
+- [Serialization: copying one Metabase instance to another](./installation-and-operation/serialization.md)
+- [Supported browsers](./installation-and-operation/supported-browsers.md)
 - [Some info on privacy and GDPR](./installation-and-operation/privacy.md)
 
 ## Asking questions
@@ -60,6 +61,7 @@ redirect_from:
 - [Sharing answers](./questions/sharing/answers.md)
 - [Visualizing data](./questions/sharing/visualizing-results.md)
 - [Setting and getting alerts](./questions/sharing/alerts.md)
+- [Public links](./questions/sharing/public-links.md)
 
 ## Dashboards
 
@@ -118,11 +120,9 @@ redirect_from:
 ## Embedding questions and dashboards
 
 - [Overview](./embedding/start.md)
-- [Embedding Metabase in other applications](./embedding/introduction.md)
-- [Public links for dashboards and questions](./embedding/public-links.md)
-- [Customizing the appearance of embedded items](./enterprise-guide/customize-embeds.md)
-- [Embedding the entire Metabase app in your own web app](./embedding/full-app-embedding.md)
-- [White labeling charts (branding)](./embedding/whitelabeling.md)
+- [Embedding introduction](./embedding/introduction.md)
+- [Signed embedding](./embedding/signed-embedding.md)
+- [Full-app embedding](./embedding/full-app-embedding.md)
 - [Embedding example apps](https://github.com/metabase/embedding-reference-apps)
 
 ## Databases
@@ -144,6 +144,7 @@ redirect_from:
 - [Configuring logging](./configuring-metabase/log-configuration.md)
 - [Handling timezones](./configuring-metabase/timezones.md)
 - [Localization](./configuring-metabase/localization.md)
+- [Appearance](./configuring-metabase/appearance.md)
 - [Caching query results](./configuring-metabase/caching.md)
 - [Custom map settings](./configuring-metabase/custom-maps.md)
 - [Customizing the Metabase Jetty Webserver](./configuring-metabase/customizing-jetty-webserver.md)
@@ -157,7 +158,7 @@ redirect_from:
 ## Metabase API
 
 - [API reference](./api-documentation.md)
-- [API tutorial](/learn/administration/metabase-api)
+- [API tutorial](https://www.metabase.com/learn/administration/metabase-api)
 
 ## Premium features
 
@@ -170,17 +171,17 @@ The Enterprise and Pro plans of Metabase offer additional features.
 ## Metabase community
 
 - [Metabase forum](https://discourse.metabase.com/)
-- [Community stories](/community)
+- [Community stories](https://www.metabase.com/community)
 - [Case studies](https://www.metabase.com/case_studies/)
-- [Metabase Blog](/blog)
+- [Metabase Blog](https://www.metabase.com/blog)
 - [Source code repository on GitHub](https://github.com/metabase/metabase)
 
 ## [Developers guide](developers-guide/start.md)
 
 Contribute to the Metabase open source project!
 
-## [Metabase Cloud](/cloud/docs)
+## [Metabase Cloud](https://www.metabase.com/cloud/docs)
 
-## [Data and Business Intelligence Glossary](/glossary)
+## [Data and Business Intelligence Glossary](https://www.metabase.com/glossary)
 
 Data jargon explained.

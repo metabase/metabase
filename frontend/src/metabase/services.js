@@ -183,7 +183,7 @@ export const CollectionsApi = {
 export const DataAppsApi = {
   list: GET("/api/app"),
   create: POST("/api/app"),
-  update: PUT("/api/app"),
+  update: PUT("/api/app/:id"),
 };
 
 const PIVOT_PUBLIC_PREFIX = "/api/public/pivot/";

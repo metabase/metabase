@@ -841,7 +841,7 @@ class QuestionInner {
     return this._card && this._card.name;
   }
 
-  setDisplayName(name: string) {
+  setDisplayName(name: string | null | undefined) {
     return this.setCard(assoc(this.card(), "name", name));
   }
 
@@ -849,7 +849,7 @@ class QuestionInner {
     return this._card && this._card.collection_id;
   }
 
-  setCollectionId(collectionId: number) {
+  setCollectionId(collectionId: number | null | undefined) {
     return this.setCard(assoc(this.card(), "collection_id", collectionId));
   }
 

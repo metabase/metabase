@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { CollectionId, User } from "metabase-types/api";
+import { User } from "metabase-types/api";
 import AppBarLogo from "./AppBarLogo";
 import AppBarToggle from "./AppBarToggle";
 import SearchBar from "../SearchBar";
@@ -19,7 +19,6 @@ import {
 
 export interface AppBarSmallProps {
   currentUser: User;
-  collectionId?: CollectionId;
   isNavBarOpen?: boolean;
   isNavBarVisible?: boolean;
   isSearchVisible?: boolean;
@@ -33,7 +32,6 @@ export interface AppBarSmallProps {
 
 const AppBarSmall = ({
   currentUser,
-  collectionId,
   isNavBarOpen,
   isNavBarVisible,
   isSearchVisible,
@@ -96,7 +94,7 @@ const AppBarSmall = ({
           {isQuestionLineageVisible ? (
             <QuestionLineage />
           ) : isCollectionPathVisible ? (
-            <CollectionBreadcrumbs collectionId={collectionId} />
+            <CollectionBreadcrumbs />
           ) : null}
         </AppBarSubheader>
       )}

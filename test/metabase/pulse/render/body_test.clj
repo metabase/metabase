@@ -469,7 +469,7 @@
 
 (deftest series-with-color-test
   (testing "Check if single x-axis combo series can convert colors"
-    (is (= [{:name "NumPurchased", :color "#a7cf7b", :type :bar, :data [[1.25 20] [5.0 10] [10.0 1]], :yAxisPosition "left"}]
+    (is (= [{:name "NumPurchased", :color "#a7cf7b", :type :bar, :data [[10.0 1] [5.0 10] [1.25 20]], :yAxisPosition "left"}]
            (#'body/single-x-axis-combo-series
             :bar
             [[[10.0] [1]] [[5.0] [10]] [[1.25] [20]]]
@@ -619,9 +619,9 @@
     (testing "Includes percentages"
       (is (= [:div
               [:img]
-              [:div
-               [:div [:span "•"] [:span "Doohickey"] [:span "75%"]]
-               [:div [:span "•"] [:span "Widget"] [:span "25%"]]]]
+              [:table
+               [:tr [:td [:span "•"]] [:td "Doohickey"] [:td "75%"]]
+               [:tr [:td [:span "•"]] [:td "Widget"] [:td "25%"]]]]
              (prune (:content (render [["Doohickey" 75] ["Widget" 25]]))))))))
 
 (deftest render-progress

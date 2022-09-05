@@ -37,5 +37,9 @@ This guide contains detailed information on how to work on Metabase codebase.
 
 ## Database drivers
 
-- [Partner and community drivers](./developers-guide-drivers.md)
+- [Partner and community drivers](./partner-and-community-drivers.md)
 - [Guide to writing a driver](drivers/start.md)
+
+## Metabase documentation
+
+- [Developing Metabase documentation](./docs.md)

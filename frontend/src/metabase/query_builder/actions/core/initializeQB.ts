@@ -14,6 +14,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { getUser } from "metabase/selectors/user";
 
 import Snippets from "metabase/entities/snippets";
+import Questions from "metabase/entities/questions";
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 
 import Question from "metabase-lib/lib/Question";
@@ -29,7 +30,7 @@ import {
 import { Card, SavedCard } from "metabase-types/types/Card";
 
 import { getQueryBuilderModeFromLocation } from "../../typed-utils";
-import { redirectToNewQuestionFlow, updateUrl } from "../navigation";
+import { updateUrl } from "../navigation";
 import { cancelQuery, runQuestionQuery } from "../querying";
 
 import { resetQB } from "./core";
@@ -103,8 +104,12 @@ function deserializeCard(serializedCard: string) {
   return card;
 }
 
-async function fetchAndPrepareSavedQuestionCards(cardId: number) {
-  const card = await loadCard(cardId);
+async function fetchAndPrepareSavedQuestionCards(
+  cardId: number,
+  dispatch: Dispatch,
+  getState: GetState,
+) {
+  const card = await loadCard(cardId, { dispatch, getState });
   const originalCard = { ...card };
 
   // for showing the "started from" lineage correctly when adding filters/breakouts and when going back and forth
@@ -114,7 +119,11 @@ async function fetchAndPrepareSavedQuestionCards(cardId: number) {
   return { card, originalCard };
 }
 
-async function fetchAndPrepareAdHocQuestionCards(deserializedCard: Card) {
+async function fetchAndPrepareAdHocQuestionCards(
+  deserializedCard: Card,
+  dispatch: Dispatch,
+  getState: GetState,
+) {
   if (!deserializedCard.original_card_id) {
     return {
       card: deserializedCard,
@@ -122,7 +131,10 @@ async function fetchAndPrepareAdHocQuestionCards(deserializedCard: Card) {
     };
   }
 
-  const originalCard = await loadCard(deserializedCard.original_card_id);
+  const originalCard = await loadCard(deserializedCard.original_card_id, {
+    dispatch,
+    getState,
+  });
 
   if (cardIsEquivalent(deserializedCard, originalCard)) {
     return {
@@ -146,10 +158,14 @@ async function resolveCards({
   cardId,
   deserializedCard,
   options,
+  dispatch,
+  getState,
 }: {
   cardId?: number;
   deserializedCard?: Card;
   options: BlankQueryOptions;
+  dispatch: Dispatch;
+  getState: GetState;
 }): Promise<ResolveCardsResult> {
   if (!cardId && !deserializedCard) {
     return {
@@ -157,8 +173,12 @@ async function resolveCards({
     };
   }
   return cardId
-    ? fetchAndPrepareSavedQuestionCards(cardId)
-    : fetchAndPrepareAdHocQuestionCards(deserializedCard as Card);
+    ? fetchAndPrepareSavedQuestionCards(cardId, dispatch, getState)
+    : fetchAndPrepareAdHocQuestionCards(
+        deserializedCard as Card,
+        dispatch,
+        getState,
+      );
 }
 
 function parseHash(hash?: string) {
@@ -201,17 +221,6 @@ async function handleQBInit(
   const { options, serializedCard } = parseHash(location.hash);
   const hasCard = cardId || serializedCard;
 
-  if (
-    !hasCard &&
-    !options.db &&
-    !options.table &&
-    !options.segment &&
-    !options.metric
-  ) {
-    dispatch(redirectToNewQuestionFlow());
-    return;
-  }
-
   const deserializedCard = serializedCard
     ? deserializeCard(serializedCard)
     : null;
@@ -220,6 +229,8 @@ async function handleQBInit(
     cardId,
     deserializedCard,
     options,
+    dispatch,
+    getState,
   });
 
   if (isSavedCard(card) && card.archived) {

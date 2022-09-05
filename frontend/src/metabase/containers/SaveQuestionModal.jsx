@@ -2,8 +2,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { CSSTransitionGroup } from "react-transition-group";
-import { connect } from "react-redux";
-import _ from "underscore";
 import { t } from "ttag";
 
 import Form, { FormField, FormFooter } from "metabase/containers/FormikForm";
@@ -14,32 +12,17 @@ import { generateQueryDescription } from "metabase/lib/query/description";
 import validate from "metabase/lib/validate";
 import { canonicalCollectionId } from "metabase/collections/utils";
 
-import Databases from "metabase/entities/databases";
-import { getUserIsAdmin } from "metabase/selectors/user";
-import { getWritebackEnabled } from "metabase/writeback/selectors";
-import { isDatabaseWritebackEnabled } from "metabase/writeback/utils";
-
 import "./SaveQuestionModal.css";
 
-function mapStateToProps(state) {
-  return {
-    isAdmin: getUserIsAdmin(state),
-    isWritebackEnabled: getWritebackEnabled(state),
-  };
-}
-
-class SaveQuestionModal extends Component {
+export default class SaveQuestionModal extends Component {
   static propTypes = {
     card: PropTypes.object.isRequired,
-    database: PropTypes.object.isRequired,
     originalCard: PropTypes.object,
     tableMetadata: PropTypes.object, // can't be required, sometimes null
     onCreate: PropTypes.func.isRequired,
     onSave: PropTypes.func.isRequired,
     onClose: PropTypes.func.isRequired,
     multiStep: PropTypes.bool,
-    isWritebackEnabled: PropTypes.bool.isRequired,
-    isAdmin: PropTypes.bool.isRequired,
   };
 
   validateName = (name, { values }) => {
@@ -48,17 +31,6 @@ class SaveQuestionModal extends Component {
       // as original question's data will be submitted instead of the form values
       return validate.required()(name);
     }
-  };
-
-  hasIsWriteField = () => {
-    const { card, database, isAdmin, isWritebackEnabled } = this.props;
-    const isNative = Q_DEPRECATED.isNative(card.dataset_query);
-    return (
-      isAdmin &&
-      isNative &&
-      isWritebackEnabled &&
-      isDatabaseWritebackEnabled(database.getPlainObject?.())
-    );
   };
 
   handleSubmit = async details => {
@@ -94,10 +66,6 @@ class SaveQuestionModal extends Component {
       collection_id,
     };
 
-    if (this.hasIsWriteField()) {
-      card.is_write = details.is_write;
-    }
-
     if (details.saveType === "create") {
       await onCreate(card);
     } else if (details.saveType === "overwrite") {
@@ -111,21 +79,6 @@ class SaveQuestionModal extends Component {
       this.props;
 
     const isStructured = Q_DEPRECATED.isStructured(card.dataset_query);
-    const hasIsWriteField = this.hasIsWriteField();
-
-    const fields = [
-      { name: "saveType" },
-      {
-        name: "name",
-        validate: this.validateName,
-      },
-      { name: "description" },
-      { name: "collection_id" },
-      hasIsWriteField && { name: "is_write" },
-    ].filter(Boolean);
-
-    const canUpdateExistingCard =
-      originalCard && !originalCard.dataset && originalCard.can_write;
     const isReadonly = originalCard != null && !originalCard.can_write;
 
     const initialValues = {
@@ -138,16 +91,11 @@ class SaveQuestionModal extends Component {
         card.collection_id === undefined || isReadonly
           ? initialCollectionId
           : card.collection_id,
-      saveType: canUpdateExistingCard ? "overwrite" : "create",
+      saveType:
+        originalCard && !originalCard.dataset && originalCard.can_write
+          ? "overwrite"
+          : "create",
     };
-
-    if (hasIsWriteField) {
-      if (canUpdateExistingCard) {
-        initialValues.is_write = originalCard.is_write || false;
-      } else {
-        initialValues.is_write = false;
-      }
-    }
 
     const title = this.props.multiStep
       ? t`First, save your question`
@@ -167,7 +115,15 @@ class SaveQuestionModal extends Component {
       >
         <Form
           initialValues={initialValues}
-          fields={fields}
+          fields={[
+            { name: "saveType" },
+            {
+              name: "name",
+              validate: this.validateName,
+            },
+            { name: "description" },
+            { name: "collection_id" },
+          ]}
           onSubmit={this.handleSubmit}
           overwriteOnInitialValuesChange
         >
@@ -205,14 +161,6 @@ class SaveQuestionModal extends Component {
                       title={t`Which collection should this go in?`}
                       type="collection"
                     />
-                    {hasIsWriteField && (
-                      <FormField
-                        name="is_write"
-                        title={t`Is write`}
-                        description={t`Write questions can be used for experimental actions.`}
-                        type="boolean"
-                      />
-                    )}
                   </div>
                 )}
               </CSSTransitionGroup>
@@ -240,10 +188,3 @@ const SaveTypeInput = ({ field, originalCard }) => (
     vertical
   />
 );
-
-export default _.compose(
-  connect(mapStateToProps),
-  Databases.load({
-    id: (state, props) => props.card.dataset_query.database,
-  }),
-)(SaveQuestionModal);

@@ -1,6 +1,7 @@
 (ns metabase.api.app
   (:require
     [compojure.core :refer [POST PUT]]
+    [metabase.api.collection :as api.collection]
     [metabase.api.common :as api]
     [metabase.models :refer [App Collection]]
     [metabase.models.collection :as collection]
@@ -14,16 +15,25 @@
 
 (api/defendpoint POST "/"
   "Endpoint to create an app"
-  [:as {{:keys [collection_id dashboard_id options nav_items] :as body} :body}]
-  {collection_id su/IntGreaterThanOrEqualToZero
-   dashboard_id (s/maybe su/IntGreaterThanOrEqualToZero)
-   options (s/maybe su/Map)
-   nav_items (s/maybe [(s/maybe su/Map)])}
-  (api/write-check Collection collection_id)
-  (api/check (not (db/select-one-id App :collection_id collection_id))
-    [400 "An App already exists on this Collection"])
-  (let [app (db/insert! App (select-keys body [:dashboard_id :collection_id :options :nav_items]))]
-    (hydrate-details app)))
+  [:as {{:keys [collection dashboard_id options nav_items]
+         {:keys [name color description namespace authority_level]} :collection
+         :as body} :body}]
+  {dashboard_id    (s/maybe su/IntGreaterThanOrEqualToZero)
+   options         (s/maybe su/Map)
+   nav_items       (s/maybe [(s/maybe su/Map)])
+   name            su/NonBlankString
+   color           collection/hex-color-regex
+   description     (s/maybe su/NonBlankString)
+   namespace       (s/maybe su/NonBlankString)
+   authority_level collection/AuthorityLevel}
+  (db/transaction
+   (let [coll-params (select-keys collection [:name :color :description :namespace :authority_level])
+         collection-instance (api.collection/create-collection! coll-params)
+         app-params (-> body
+                        (select-keys [:dashboard_id :options :nav_items])
+                        (assoc :collection_id (:id collection-instance)))
+         app (db/insert! App app-params)]
+     (hydrate-details app))))
 
 (api/defendpoint PUT "/:app-id"
   "Endpoint to change an app"
@@ -36,7 +46,6 @@
   (db/update! App app-id (select-keys body [:dashboard_id :options :nav_items]))
   (hydrate-details (db/select-one App :id app-id)))
 
-;; TODO handle personal collections, see collection/personal-collection-with-ui-details
 (api/defendpoint GET "/"
   "Fetch a list of all Apps that the current user has read permissions for.
 

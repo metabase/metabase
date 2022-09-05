@@ -723,15 +723,9 @@
                      (db/select-one Collection :id collection-id)
                      collection/root-collection)))
 
-(api/defendpoint POST "/"
-  "Create a new Collection."
-  [:as {{:keys [name color description parent_id namespace authority_level]} :body}]
-  {name            su/NonBlankString
-   color           collection/hex-color-regex
-   description     (s/maybe su/NonBlankString)
-   parent_id       (s/maybe su/IntGreaterThanZero)
-   namespace       (s/maybe su/NonBlankString)
-   authority_level collection/AuthorityLevel}
+(defn create-collection!
+  "Create a new collection."
+  [{:keys [name color description parent_id namespace authority_level]}]
   ;; To create a new collection, you need write perms for the location you are going to be putting it in...
   (write-check-collection-or-root-collection parent_id)
   ;; Now create the new Collection :)
@@ -746,6 +740,17 @@
       :namespace   namespace}
      (when parent_id
        {:location (collection/children-location (db/select-one [Collection :location :id] :id parent_id))}))))
+
+(api/defendpoint POST "/"
+  "Create a new Collection."
+  [:as {{:keys [name color description parent_id namespace authority_level] :as body} :body}]
+  {name            su/NonBlankString
+   color           collection/hex-color-regex
+   description     (s/maybe su/NonBlankString)
+   parent_id       (s/maybe su/IntGreaterThanZero)
+   namespace       (s/maybe su/NonBlankString)
+   authority_level collection/AuthorityLevel}
+  (create-collection! body))
 
 ;; TODO - I'm not 100% sure it makes sense that moving a Collection requires a special call to `move-collection!`,
 ;; while archiving is handled automatically as part of the `pre-update` logic when you change a Collection's
@@ -769,6 +774,10 @@
         (api/check-403
          (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
            (collection/perms-for-moving collection-before-update new-parent)))
+        (when (not= new-parent collection/root-collection)
+          ;; apps are not allowed to be moved away from the root collection
+          (api/check-403
+           (nil? (:app_id (hydrate collection-before-update :app_id)))))
         ;; ok, we're good to move!
         (collection/move-collection! collection-before-update new-location)))))
 

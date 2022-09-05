@@ -54,7 +54,7 @@ If your LDAP setup uses other attributes for these, you can edit this under the 
 
 ![Attributes](./images/ldap-attributes.png)
 
-Your LDAP directory must have the email field populated for each entry that will become a Metabase user, otherwise Metabase won't be able to create the account, nor will that person be able to log in. If either name field is missing, Metabase will use a default of "Unknown," and the person can change their name in their [account settings](../users-guide/account-settings.html).
+Your LDAP directory must have the email field populated for each entry that will become a Metabase user, otherwise Metabase won't be able to create the account, nor will that person be able to log in. If either name field is missing, Metabase will use a default of "Unknown," and the person can change their name in their [account settings](./account-settings.md).
 
 ### LDAP user schema
 
@@ -76,7 +76,7 @@ This default command will work for most LDAP servers, since `inetOrgPerson` is a
 
 ### LDAP group mapping
 
-Manually assigning people to [groups](./managing.md#groups) in Metabase after they've logged in via SSO can get tedious. Instead, you can take advantage of the groups that already exist in your LDAP directory by enabling [group mappings](/learn/permissions/ldap-auth-access-control.html#group-management).
+Manually assigning people to [groups](./managing.md#groups) in Metabase after they've logged in via SSO can get tedious. Instead, you can take advantage of the groups that already exist in your LDAP directory by enabling [group mappings](https://www.metabase.com/learn/permissions/ldap-auth-access-control#group-management).
 
 Scroll to **Group Schema** on the same LDAP settings page, and click the toggle to enable group mapping. Selecting **Edit Mapping** will bring up a modal where you can create and edit mappings, specifying which LDAP group corresponds to which Metabase group.
 
@@ -98,8 +98,8 @@ Group membership lookup filter. The placeholders {dn} and {uid} will be replaced
 
 ## Further reading
 
-- [Using LDAP for authentication and access control](/learn/permissions/ldap-auth-access-control.html)
-- [LDAP troubleshooting guide](../troubleshooting-guide/ldap.html)
+- [Using LDAP for authentication and access control](https://www.metabase.com/learn/permissions/ldap-auth-access-control)
+- [LDAP troubleshooting guide](../troubleshooting-guide/ldap.md)
 - [Permissions overview](../permissions/start.md)
 
 ## Syncing user attributes at login
@@ -128,8 +128,8 @@ Note that you must have at least one account with email and password login. This
  - [Troubleshooting logins](../troubleshooting-guide/cant-log-in.md).
 
 [data-sandboxing-docs]: ../permissions/data-sandboxes.md
-[google-saml-docs]: ../saml-google.md
+[google-saml-docs]: ./saml-google.md
 [jwt-docs]: ./authenticating-with-jwt.md
 [saml-docs]: ./authenticating-with-saml.md
 [user-attributes-docs]: ../permissions/data-sandboxes.md#getting-user-attributes
-[user-attributes-def]: /glossary/attribute#user-attributes-in-metabase
+[user-attributes-def]: https://www.metabase.com/glossary/attribute#user-attributes-in-metabase

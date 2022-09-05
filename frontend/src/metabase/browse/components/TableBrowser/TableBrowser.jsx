@@ -3,8 +3,11 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
-import { isSyncCompleted } from "metabase/lib/syncing";
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
+import { isSyncInProgress } from "metabase/lib/syncing";
+import {
+  isVirtualCardId,
+  SAVED_QUESTIONS_VIRTUAL_DB_ID,
+} from "metabase/lib/saved-questions";
 import Database from "metabase/entities/databases";
 import EntityItem from "metabase/components/EntityItem";
 import Icon from "metabase/components/Icon";
@@ -20,6 +23,7 @@ import {
 } from "./TableBrowser.styled";
 
 const propTypes = {
+  database: PropTypes.object,
   tables: PropTypes.array.isRequired,
   getTableUrl: PropTypes.func.isRequired,
   metadata: PropTypes.object,
@@ -30,6 +34,7 @@ const propTypes = {
 };
 
 const TableBrowser = ({
+  database,
   tables,
   getTableUrl,
   metadata,
@@ -50,12 +55,17 @@ const TableBrowser = ({
       <Grid>
         {tables.map(table => (
           <TableGridItem key={table.id}>
-            <TableCard hoverable={isSyncCompleted(table)}>
+            <TableCard hoverable={!isTableLoading(table, database)}>
               <TableLink
-                to={isSyncCompleted(table) ? getTableUrl(table, metadata) : ""}
+                to={
+                  !isTableLoading(table, database)
+                    ? getTableUrl(table, metadata)
+                    : ""
+                }
                 data-metabase-event={`${ANALYTICS_CONTEXT};Table Click`}
               >
                 <TableBrowserItem
+                  database={database}
                   table={table}
                   dbId={dbId}
                   xraysEnabled={xraysEnabled}
@@ -72,22 +82,27 @@ const TableBrowser = ({
 TableBrowser.propTypes = propTypes;
 
 const itemPropTypes = {
+  database: PropTypes.object,
   table: PropTypes.object.isRequired,
   dbId: PropTypes.number,
   xraysEnabled: PropTypes.bool,
 };
 
-const TableBrowserItem = ({ table, dbId, xraysEnabled }) => {
+const TableBrowserItem = ({ database, table, dbId, xraysEnabled }) => {
+  const isVirtual = isVirtualCardId(table.id);
+  const isLoading = isTableLoading(table, database);
+
   return (
     <EntityItem
       item={table}
       name={table.display_name || table.name}
       iconName="table"
       iconColor={color("accent2")}
-      loading={!isSyncCompleted(table)}
-      disabled={!isSyncCompleted(table)}
+      loading={isLoading}
+      disabled={isLoading}
       buttons={
-        isSyncCompleted(table) && (
+        !isLoading &&
+        !isVirtual && (
           <TableBrowserItemButtons
             tableId={table.id}
             dbId={dbId}
@@ -138,6 +153,10 @@ const TableBrowserItemButtons = ({ tableId, dbId, xraysEnabled }) => {
 };
 
 TableBrowserItemButtons.propTypes = itemButtonsPropTypes;
+
+const isTableLoading = (table, database) => {
+  return database && isSyncInProgress(database) && isSyncInProgress(table);
+};
 
 const getDatabaseCrumbs = dbId => {
   if (dbId === SAVED_QUESTIONS_VIRTUAL_DB_ID) {

@@ -107,11 +107,11 @@ jobs:
     - name: Determine the target Docker Hub repository
       run: |
         if [[ ${{ github.ref_name }} == v1* ]]; then
-          echo "Metabase EE: image is going to be pushed to ${{ github.repository_owner }}/Metabase-enterprise"
-          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/metabase-enterprise" >> $GITHUB_ENV
+          echo "Metabase EE: image is going to be pushed to ${{ github.repository_owner }}/test-metabase-enterprise"
+          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/test-metabase-enterprise" >> $GITHUB_ENV
         else
-          echo "Metabase OSS: image is going to be pushed to ${{ github.repository_owner }}/Metabase"
-          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/metabase" >> $GITHUB_ENV
+          echo "Metabase OSS: image is going to be pushed to ${{ github.repository_owner }}/test-metabase"
+          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/test-metabase" >> $GITHUB_ENV
         fi
 
 

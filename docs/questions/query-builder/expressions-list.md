@@ -27,17 +27,17 @@ For an introduction to expressions, check out [Writing expressions in the notebo
 - [Functions](#functions)
   - [abs](#abs)
   - [between](#between)
-  - [case](./expressions/case)
+  - [case](./expressions/case.md)
   - [ceil](#ceil)
-  - [coalesce](./expressions/coalesce)
+  - [coalesce](./expressions/coalesce.md)
   - [concat](#concat)
   - [contains](#contains)
   - [endswith](#endswith)
   - [exp](#exp)
   - [floor](#floor)
   - [interval](#interval)
-  - [isempty](./expressions/isempty)
-  - [isnull](./expressions/isnull)
+  - [isempty](./expressions/isempty.md)
+  - [isnull](./expressions/isnull.md)
   - [lefttrim](#lefttrim)
   - [length](#length)
   - [log](#log)
@@ -214,7 +214,7 @@ Example: `between([Created At], "2019-01-01", "2020-12-31")` would return rows w
 
 Related: [interval](#interval).
 
-### [case](./expressions/case)
+### [case](./expressions/case.md)
 
 Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met.
 
@@ -232,7 +232,7 @@ Example: `ceil([Price])`. `ceil(2.99)` would return 3.
 
 Related: [floor](#floor), [round](#round).
 
-### [coalesce](./expressions/coalesce)
+### [coalesce](./expressions/coalesce.md)
 
 Looks at the values in each argument in order and returns the first non-null value for each row.
 
@@ -298,7 +298,7 @@ Example: `interval([Created At], -1, "month")`.
 
 Related: [between](#between).
 
-### [isempty](./expressions/isempty)
+### [isempty](./expressions/isempty.md)
 
 Returns true if the column is empty.
 
@@ -306,7 +306,7 @@ Syntax: `isempty(column)`
 
 Example: `isempty([Discount])` would return true if there were no value in the discount field.
 
-### [isnull](./expressions/isnull)
+### [isnull](./expressions/isnull.md)
 
 Returns true if the column is null.
 
@@ -466,6 +466,6 @@ Additionally, **Presto** only provides _approximate_ results for `Median` and `P
 
 If you're using or maintaining a third-party database driver, please [refer to the wiki](https://github.com/metabase/metabase/wiki/What's-new-in-0.35.0-for-Metabase-driver-authors) to see how your driver might be impacted.
 
-See [Custom expressions in the notebook editor](https://www.metabase.com/blog/custom-expressions/index.html) to learn more.
+See [Custom expressions in the notebook editor](https://www.metabase.com/learn/questions/custom-expressions) to learn more.
 
 [expressions]: ./expressions.md

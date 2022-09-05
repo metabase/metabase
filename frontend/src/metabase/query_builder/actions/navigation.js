@@ -112,14 +112,6 @@ export const locationChanged =
     }
   };
 
-export const REDIRECT_TO_NEW_QUESTION_FLOW =
-  "metabase/qb/REDIRECT_TO_NEW_QUESTION_FLOW";
-
-export const redirectToNewQuestionFlow = createThunkAction(
-  REDIRECT_TO_NEW_QUESTION_FLOW,
-  () => dispatch => dispatch(replace("/question/new")),
-);
-
 export const UPDATE_URL = "metabase/qb/UPDATE_URL";
 export const updateUrl = createThunkAction(
   UPDATE_URL,

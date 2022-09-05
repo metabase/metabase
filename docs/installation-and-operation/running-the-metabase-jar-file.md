@@ -25,7 +25,7 @@ If you have Java installed:
    java -jar metabase.jar
    ```
 
-Metabase will log its progress in the terminal as it starts up. Wait until you see "Metabase Initialization Complete" and visit [localhost:3000](http://localhost:3000/setup).
+Metabase will log its progress in the terminal as it starts up. Wait until you see "Metabase Initialization Complete" and visit `http://localhost:3000/setup`.
 
 ## Local installation
 
@@ -92,7 +92,7 @@ Metabase will start using the default settings. You should see some log entries 
 06-19 10:29:34 INFO metabase.core :: Metabase Initialization COMPLETE
 ```
 
-At this point you're ready to go! You can access your new Metabase server on port 3000, most likely at [http://localhost:3000](http://localhost:3000)
+At this point you're ready to go! You can access your new Metabase server on port 3000, most likely at `http://localhost:3000`.
 
 You can use another port than 3000 by setting the `MB_JETTY_PORT` [environment variable](../configuring-metabase/environment-variables.md) before running the jar.
 
@@ -156,4 +156,4 @@ See [Upgrading Metabase](upgrading-metabase.md).
 
 ## Continue to setup
 
-Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](../setting-up-metabase.md).
+Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](../configuring-metabase/setting-up-metabase.md).

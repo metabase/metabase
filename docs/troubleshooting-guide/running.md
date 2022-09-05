@@ -57,6 +57,6 @@ The `-XX:HeapDumpPath` flag specifies where to put the dump---the current direct
 
 <h2 id="cannot-read-write-ioerror">Metabase cannot read or write from a file or folder (IOError)</h2>
 
-If you see an error regarding file permissions, like Metabase being unable to read a SQLite database or a custom GeoJSON map file, check out the section "Metabase can't read to/from a file or directory" in our [Docker troubleshooting guide](./docker.html).
+If you see an error regarding file permissions, like Metabase being unable to read a SQLite database or a custom GeoJSON map file, check out the section "Metabase can't read to/from a file or directory" in our [Docker troubleshooting guide](./docker.md).
 
 [eclipse-memory-analyzer]: https://www.eclipse.org/mat/

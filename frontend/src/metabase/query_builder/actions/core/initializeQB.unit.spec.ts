@@ -123,6 +123,8 @@ async function setup({
     });
   }
 
+  jest.spyOn(CardLib, "loadCard").mockReturnValue(Promise.resolve({ ...card }));
+
   return baseSetup({ location, params, ...opts });
 }
 
@@ -438,6 +440,10 @@ describe("QB Actions > initializeQB", () => {
           body: JSON.stringify(originalQuestion.card()),
         });
 
+        jest
+          .spyOn(CardLib, "loadCard")
+          .mockReturnValueOnce(Promise.resolve({ ...originalQuestion.card() }));
+
         return setup({ question: q, ...opts });
       }
 
@@ -692,12 +698,6 @@ describe("QB Actions > initializeQB", () => {
         ...rest,
       };
     }
-
-    it("redirects to new question flow if missing any options", async () => {
-      const redirectSpy = jest.spyOn(navigation, "redirectToNewQuestionFlow");
-      await setupBlank();
-      expect(redirectSpy).toHaveBeenCalledTimes(1);
-    });
 
     it("constructs a card based on provided 'db' param", async () => {
       const expectedCard = Question.create({

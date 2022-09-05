@@ -10,6 +10,7 @@ import * as Urls from "metabase/lib/urls";
 import DataApps from "metabase/entities/data-apps";
 
 import CollectionCreate from "metabase/collections/containers/CollectionCreate";
+import CreateDataAppModal from "metabase/writeback/containers/CreateDataAppModal";
 
 import { Collection, CollectionId } from "metabase-types/api";
 
@@ -66,7 +67,6 @@ const NewItemMenu = ({
         link: Urls.newQuestion({
           mode: "notebook",
           creationType: "custom_question",
-          collectionId,
         }),
         event: `${analyticsContext};New Question Click;`,
         onClose: onCloseNavbar,
@@ -80,9 +80,17 @@ const NewItemMenu = ({
         link: Urls.newQuestion({
           type: "native",
           creationType: "native_question",
-          collectionId,
         }),
         event: `${analyticsContext};New SQL Query Click;`,
+        onClose: onCloseNavbar,
+      });
+
+      // we should probably get more granular with who sees this
+      items.push({
+        title: t`Action`,
+        icon: "play",
+        link: "/action/create",
+        event: `${analyticsContext};New Action Click;`,
         onClose: onCloseNavbar,
       });
     }
@@ -110,7 +118,6 @@ const NewItemMenu = ({
 
     return items;
   }, [
-    collectionId,
     hasDataAccess,
     hasNativeWrite,
     hasDatabaseWithJsonEngine,
@@ -141,11 +148,7 @@ const NewItemMenu = ({
               onClose={handleModalClose}
             />
           ) : modal === "new-app" ? (
-            <DataApps.ModalForm
-              form={DataApps.forms.details}
-              onSaved={handleModalClose}
-              onClose={handleModalClose}
-            />
+            <CreateDataAppModal onClose={handleModalClose} />
           ) : null}
         </Modal>
       )}

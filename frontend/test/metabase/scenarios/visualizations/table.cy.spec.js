@@ -26,20 +26,17 @@ describe("scenarios > visualizations > table", () => {
 
     cy.findByText("Link").click();
 
-    // There is a lag caused by update of the table visualization which breaks Cypress typing.
-    // Any field in the table will not be "actionable" (the whole table has an overlay with pointer-events set to none) so Cypress cannot click it.
-    // Adding this line makes sure the table finished updating, and solves the typing issue.
-    cy.findByText("Address").click();
+    cy.findByTestId("link_text")
+      .type("{{CITY}} {{ID}} fixed text", {
+        parseSpecialCharSequences: false,
+      })
+      .blur();
 
-    cy.findByTestId("link_text").type("{{CITY}} {{ID}} fixed text", {
-      parseSpecialCharSequences: false,
-    });
-
-    cy.findByTestId("link_url").type("http://metabase.com/people/{{ID}}", {
-      parseSpecialCharSequences: false,
-    });
-
-    cy.findByText("Done").click();
+    cy.findByTestId("link_url")
+      .type("http://metabase.com/people/{{ID}}", {
+        parseSpecialCharSequences: false,
+      })
+      .blur();
 
     cy.findByText("Wood River 1 fixed text").should(
       "have.attr",
