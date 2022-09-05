@@ -150,7 +150,7 @@
             cards))))
 
 (api/defendpoint GET "/:id"
-  "Get `Card` with ID. Optionally load the card's tagged questions"
+  "Get `Card` with ID."
   [id ignore_view]
   (let [raw-card (db/select-one Card :id id)
         card (-> raw-card
