@@ -8,8 +8,8 @@ import {
   metadata,
 } from "__support__/sample_database_fixture";
 
-const NUMBER_AND_DATE_FILTERS = ["<", ">", "=", "!="];
-const OTHER_FILTERS = ["=", "!="];
+const NUMBER_AND_DATE_FILTERS = ["<", ">", "=", "!=", "is-null", "not-null"];
+const OTHER_FILTERS = ["=", "!=", "is-empty", "not-empty"];
 
 const DEFAULT_NUMERIC_CELL_VALUE = 42;
 

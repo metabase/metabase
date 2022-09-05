@@ -34,9 +34,11 @@ export function breakout(question, breakout) {
 export function filter(question, operator, column, value) {
   const query = question.query();
   if (query instanceof StructuredQuery) {
-    return query
-      .filter([operator, fieldRefForColumn(column), value])
-      .question();
+    const filterQuery =
+      value === null
+        ? [operator, fieldRefForColumn(column)]
+        : [operator, fieldRefForColumn(column), value];
+    return query.filter(filterQuery).question();
   }
 }
 
