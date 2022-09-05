@@ -155,25 +155,13 @@ const LIGHT_HSL_RANGES = [
 ];
 
 export const getTextColorForBackground = (backgroundColor: string) => {
-  const colorObject = Color(color(backgroundColor));
-  const hslColor = [
-    colorObject.hue(),
-    colorObject.saturationl(),
-    colorObject.lightness(),
-  ];
-
-  if (
-    LIGHT_HSL_RANGES.some(hslRanges => {
-      return hslRanges.every((range, index) => {
-        const [start, end] = range;
-        const colorComponentValue = hslColor[index];
-
-        return colorComponentValue >= start && colorComponentValue <= end;
-      });
-    })
-  ) {
-    return color("text-dark");
-  }
-
-  return color("white");
+  const whiteTextContrast = Color(color(backgroundColor)).contrast(
+    Color(color("white")),
+  );
+  const darkTextContrast = Color(color(backgroundColor)).contrast(
+    Color(color("text-dark")),
+  );
+  return whiteTextContrast > darkTextContrast
+    ? color("white")
+    : color("text-dark");
 };
