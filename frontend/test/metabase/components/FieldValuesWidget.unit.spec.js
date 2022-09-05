@@ -255,7 +255,6 @@ describe("FieldValuesWidget", () => {
   describe("isSearchable", () => {
     const listField = mock(PRODUCTS.CATEGORY, { has_field_values: "list" });
     const searchField = mock(PRODUCTS.CATEGORY, { has_field_values: "search" });
-    const noneField = mock(PRODUCTS.CATEGORY, { has_field_values: "none" });
     const nonexhaustiveListField = mock(PRODUCTS.CATEGORY, {
       has_field_values: "list",
       has_more_values: true,
@@ -278,11 +277,6 @@ describe("FieldValuesWidget", () => {
     });
 
     describe("when all fields are searchable", () => {
-      it("should be false if there are any fields that are set to show no values", () => {
-        const fields = [searchField, noneField];
-        expect(isSearchable({ fields })).toBe(false);
-      });
-
       it("should be false if there are no fields that require search", () => {
         const fields = [listField];
         expect(isSearchable({ fields })).toBe(false);
