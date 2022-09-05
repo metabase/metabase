@@ -101,7 +101,7 @@ const DataSelectorDatabaseSchemaPicker = ({
   };
 
   const renderSectionExtra = ({ active }: { active?: boolean }) =>
-    active && <PickerSpinner size={16} borderWidth={2} />;
+    !active && <PickerSpinner size={16} borderWidth={2} />;
 
   const renderSectionIcon = ({ icon }: { icon?: string }) =>
     icon && <Icon className="Icon text-default" name={icon} size={18} />;
