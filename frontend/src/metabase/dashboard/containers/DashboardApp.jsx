@@ -45,7 +45,7 @@ import {
   getIsAdditionalInfoVisible,
 
   // Writeback
-  getFocusedEmitterId,
+  getActionParametersModalAction,
 } from "../selectors";
 import { getDatabases, getMetadata } from "metabase/selectors/metadata";
 import {
@@ -107,7 +107,7 @@ const mapStateToProps = (state, props) => {
     embedOptions: getEmbedOptions(state),
 
     // Writeback
-    focusedEmitterId: getFocusedEmitterId(state),
+    focusedActionWithMissingParameters: getActionParametersModalAction(state),
   };
 };
 
@@ -123,7 +123,12 @@ const mapDispatchToProps = {
 const DashboardApp = props => {
   const options = parseHashOptions(window.location.hash);
 
-  const { isRunning, isLoadingComplete, dashboard, focusedEmitterId } = props;
+  const {
+    isRunning,
+    isLoadingComplete,
+    dashboard,
+    focusedActionWithMissingParameters,
+  } = props;
 
   const [editingOnLoad] = useState(options.edit);
   const [addCardOnLoad] = useState(options.add && parseInt(options.add));
@@ -180,10 +185,9 @@ const DashboardApp = props => {
         />
         {/* For rendering modal urls */}
         {props.children}
-        {dashboard && focusedEmitterId && (
+        {dashboard && focusedActionWithMissingParameters && (
           <ActionParametersInputModal
-            dashboard={dashboard}
-            focusedEmitterId={focusedEmitterId}
+            action={focusedActionWithMissingParameters}
           />
         )}
         <Toaster

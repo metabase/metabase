@@ -56,16 +56,21 @@ export type WritebackAction = WritebackActionBase & (QueryAction | HttpAction);
 
 export type ParameterMappings = Record<ParameterId, ParameterTarget>;
 
-export type ParametersMappedToValues = Record<
-  ParameterId,
-  { type: string; value: string | number }
->;
-
-export type ParameterMappedForActionExecution = {
-  id: ParameterId;
+type ParameterForActionExecutionBase = {
   type: string;
   value: string | number;
 };
+
+export type ParameterMappedForActionExecution =
+  ParameterForActionExecutionBase & {
+    id: ParameterId;
+    target: ParameterTarget;
+  };
+
+export type ArbitraryParameterForActionExecution =
+  ParameterForActionExecutionBase & {
+    target: ParameterTarget;
+  };
 
 // we will tighten this up when we figure out what the form settings should look like
 export type ActionFormSettings = {

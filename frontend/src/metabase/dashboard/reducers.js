@@ -414,14 +414,14 @@ const sidebar = handleActions(
 );
 
 // Writeback
-const missingEmitterParameters = handleActions(
+const missingActionParameters = handleActions(
   {
     [INITIALIZE]: {
       next: (state, payload) => null,
     },
     [OPEN_ACTION_PARAMETERS_MODAL]: {
-      next: (state, { payload: { emitterId, props } }) => ({
-        emitterId,
+      next: (state, { payload: { dashcardId, props } }) => ({
+        dashcardId,
         props,
       }),
     },
@@ -448,5 +448,5 @@ export default combineReducers({
   isAddParameterPopoverOpen,
   sidebar,
   parameterValuesSearchCache,
-  missingEmitterParameters,
+  missingActionParameters,
 });
