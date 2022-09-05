@@ -86,11 +86,14 @@ function SortOrderOption({ value, onChange }) {
 }
 
 function FormattingOptions({ onEdit }) {
+  const handleOnEdit = e => {
+    onEdit(e.target);
+  };
   return (
     <FormattingOptionsRoot>
       <Text>{t`Formatting`}</Text>
       <Text
-        onClick={onEdit}
+        onClick={handleOnEdit}
         className="text-brand text-bold cursor-pointer"
       >{t`See options…`}</Text>
     </FormattingOptionsRoot>
@@ -143,14 +146,17 @@ class ChartSettingFieldsPartition extends React.Component {
     return columnSettings && columnSettings[settingName];
   };
 
-  handleEditFormatting = column => {
+  handleEditFormatting = (column, targetElement) => {
     if (column) {
-      this.props.onShowWidget({
-        id: "column_settings",
-        props: {
-          initialKey: keyForColumn(column),
+      this.props.onShowWidget(
+        {
+          id: "column_settings",
+          props: {
+            initialKey: keyForColumn(column),
+          },
         },
-      });
+        targetElement,
+      );
     }
   };
   updateDisplayedValue = displayedValue =>
@@ -303,9 +309,9 @@ class ColumnInner extends React.Component {
     const { expanded } = this.state;
     this.setState({ expanded: !expanded });
   };
-  handleEditFormatting = () => {
+  handleEditFormatting = targetElement => {
     const { column, onEditFormatting } = this.props;
-    onEditFormatting && onEditFormatting(column);
+    onEditFormatting && onEditFormatting(column, targetElement);
   };
   render() {
     const {

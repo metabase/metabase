@@ -37,11 +37,11 @@ import {
   convertSearchResultToTableLikeItem,
 } from "./data-search";
 import SavedQuestionPicker from "./saved-question-picker/SavedQuestionPicker";
-
-import { getMetadata } from "metabase/selectors/metadata";
-import { getHasDataAccess } from "metabase/new_query/selectors";
-
+import DataSelectorLoading from "./DataSelectorLoading";
+import DataSelectorSectionHeader from "./DataSelectorSectionHeader";
+import FieldPicker from "./DataSelectorFieldPicker";
 import {
+  DataSelectorSection,
   DataBucketList,
   DataBucketListItem,
   PickerSpinner,
@@ -50,6 +50,10 @@ import {
   CollectionDatasetAllDataLink,
   EmptyStateContainer,
 } from "./DataSelector.styled";
+
+import { getMetadata } from "metabase/selectors/metadata";
+import { getHasDataAccess } from "metabase/new_query/selectors";
+
 import "./DataSelector.css";
 
 const MIN_SEARCH_LENGTH = 2;
@@ -209,13 +213,13 @@ const DataSelector = _.compose(
           entityQuery: ownProps.databaseQuery,
         }) ||
         [],
-      hasFetchedDatabasesWithTablesSaved: !!Databases.selectors.getList(state, {
+      hasLoadedDatabasesWithTablesSaved: Databases.selectors.getLoaded(state, {
         entityQuery: { include: "tables", saved: true },
       }),
-      hasFetchedDatabasesWithSaved: !!Databases.selectors.getList(state, {
+      hasLoadedDatabasesWithSaved: Databases.selectors.getLoaded(state, {
         entityQuery: { saved: true },
       }),
-      hasFetchedDatabasesWithTables: !!Databases.selectors.getList(state, {
+      hasLoadedDatabasesWithTables: Databases.selectors.getLoaded(state, {
         entityQuery: { include: "tables" },
       }),
       hasDataAccess: getHasDataAccess(state),
@@ -472,6 +476,7 @@ export class UnconnectedDataSelector extends Component {
       selectedTable,
       selectedField,
     } = this.state;
+
     const invalidSchema =
       selectedDatabase &&
       selectedSchema &&
@@ -490,6 +495,7 @@ export class UnconnectedDataSelector extends Component {
       selectedTable &&
       !isVirtualCardId(selectedTable.id) &&
       selectedTable.schema.id !== selectedSchema.id;
+
     const invalidField =
       selectedTable &&
       selectedField &&
@@ -722,16 +728,16 @@ export class UnconnectedDataSelector extends Component {
 
   hasPreloadedStepData(stepName) {
     const {
-      hasFetchedDatabasesWithTables,
-      hasFetchedDatabasesWithTablesSaved,
-      hasFetchedDatabasesWithSaved,
+      hasLoadedDatabasesWithTables,
+      hasLoadedDatabasesWithTablesSaved,
+      hasLoadedDatabasesWithSaved,
     } = this.props;
     if (stepName === DATABASE_STEP) {
-      return hasFetchedDatabasesWithTablesSaved || hasFetchedDatabasesWithSaved;
+      return hasLoadedDatabasesWithTablesSaved || hasLoadedDatabasesWithSaved;
     } else if (stepName === SCHEMA_STEP || stepName === TABLE_STEP) {
       return (
-        hasFetchedDatabasesWithTablesSaved ||
-        (hasFetchedDatabasesWithTables &&
+        hasLoadedDatabasesWithTablesSaved ||
+        (hasLoadedDatabasesWithTables &&
           !this.state.selectedDatabase.is_saved_questions)
       );
     } else if (stepName === FIELD_STEP) {
@@ -783,6 +789,7 @@ export class UnconnectedDataSelector extends Component {
     if (this.props.setDatabaseFn) {
       this.props.setDatabaseFn(database && database.id);
     }
+
     if (this.state.selectedDatabaseId != null) {
       // If we already had a database selected, we need to go back and clear
       // data before advancing to the next step.
@@ -798,16 +805,16 @@ export class UnconnectedDataSelector extends Component {
 
   onChangeTable = async table => {
     if (this.props.setSourceTableFn) {
-      this.props.setSourceTableFn(table && table.id);
+      this.props.setSourceTableFn(table?.id);
     }
-    await this.nextStep({ selectedTableId: table && table.id });
+    await this.nextStep({ selectedTableId: table?.id });
   };
 
   onChangeField = async field => {
     if (this.props.setFieldFn) {
-      this.props.setFieldFn(field && field.id);
+      this.props.setFieldFn(field?.id);
     }
-    await this.nextStep({ selectedFieldId: field && field.id });
+    await this.nextStep({ selectedFieldId: field?.id });
   };
 
   getTriggerElement = triggerProps => {
@@ -1092,7 +1099,7 @@ export class UnconnectedDataSelector extends Component {
                     getSchemaName(selectedTable.schema.id)
                   }
                   isDatasets={selectedDataBucketId === DATA_BUCKET.DATASETS}
-                  tableId={selectedTable && selectedTable.id}
+                  tableId={selectedTable?.id}
                   databaseId={currentDatabaseId}
                   onSelect={this.handleSavedQuestionSelect}
                   onBack={this.handleSavedQuestionPickerClose}
@@ -1303,7 +1310,7 @@ const SchemaPicker = ({
         sections={sections}
         searchable={hasFiltering}
         onChange={item => onChangeSchema(item.schema)}
-        itemIsSelected={item => item && item.schema.id === selectedSchemaId}
+        itemIsSelected={item => item?.schema.id === selectedSchemaId}
         renderItemIcon={() => <Icon name="folder" size={16} />}
         showItemArrows={hasNextStep}
       />
@@ -1339,8 +1346,7 @@ const DatabaseSchemaPicker = ({
     className: database.is_saved_questions ? "bg-light" : null,
     icon: database.is_saved_questions ? "all" : "database",
     loading:
-      selectedDatabase &&
-      selectedDatabase.id === database.id &&
+      selectedDatabase?.id === database.id &&
       database.schemas.length === 0 &&
       isLoading,
     active: database.is_saved_questions || isSyncCompleted(database),
@@ -1359,11 +1365,7 @@ const DatabaseSchemaPicker = ({
     ? databases.findIndex(db => db.id === selectedDatabase.id)
     : -1;
 
-  if (
-    openSection >= 0 &&
-    databases[openSection] &&
-    databases[openSection].schemas.length === 1
-  ) {
+  if (openSection >= 0 && databases[openSection]?.schemas.length === 1) {
     openSection = -1;
   }
 
@@ -1440,7 +1442,7 @@ const TablePicker = ({
         {onBack && <Icon name="chevronleft" size={18} />}
         <span className="ml1 text-wrap">{selectedDatabase.name}</span>
       </span>
-      {selectedSchema && selectedSchema.name && schemas.length > 1 && (
+      {selectedSchema?.name && schemas.length > 1 && (
         <span className="ml1 text-wrap text-slate">
           - {selectedSchema.displayName()}
         </span>
@@ -1505,107 +1507,10 @@ const TablePicker = ({
   } else {
     // this is a database with no tables!
     return (
-      <section
-        className="List-section List-section--open"
-        style={{ width: 300 }}
-      >
-        <div className="p1 border-bottom">
-          <div className="px1 py1 flex align-center">
-            <h3 className="text-default">{header}</h3>
-          </div>
-        </div>
+      <DataSelectorSection>
+        <DataSelectorSectionHeader header={header} />
         <div className="p4 text-centered">{t`No tables found in this database.`}</div>
-      </section>
+      </DataSelectorSection>
     );
-  }
-};
-
-class FieldPicker extends Component {
-  render() {
-    const {
-      isLoading,
-      fields,
-      selectedTable,
-      selectedField,
-      onChangeField,
-      onBack,
-      hasFiltering,
-      hasInitialFocus,
-    } = this.props;
-
-    const header = (
-      <span className="flex align-center">
-        <span
-          className="flex align-center text-slate cursor-pointer"
-          onClick={onBack}
-        >
-          <Icon name="chevronleft" size={18} />
-          <span className="ml1 text-wrap">
-            {(selectedTable && selectedTable.display_name) || t`Fields`}
-          </span>
-        </span>
-      </span>
-    );
-
-    if (isLoading) {
-      return <DataSelectorLoading header={header} />;
-    }
-
-    const sections = [
-      {
-        name: header,
-        items: fields.map(field => ({
-          name: field.display_name,
-          field: field,
-        })),
-      },
-    ];
-
-    return (
-      <div style={{ width: 300, overflowY: "auto" }}>
-        <AccordionList
-          id="FieldPicker"
-          key="fieldPicker"
-          className="text-brand"
-          hasInitialFocus={hasInitialFocus}
-          sections={sections}
-          maxHeight={Infinity}
-          width="100%"
-          searchable={hasFiltering}
-          onChange={item => onChangeField(item.field)}
-          itemIsSelected={item =>
-            item.field && selectedField
-              ? item.field.id === selectedField.id
-              : false
-          }
-          itemIsClickable={item => item.field}
-          renderItemIcon={item =>
-            item.field ? (
-              <Icon name={item.field.dimension().icon()} size={18} />
-            ) : null
-          }
-        />
-      </div>
-    );
-  }
-}
-
-const DataSelectorLoading = ({ header }) => {
-  if (header) {
-    return (
-      <section
-        className="List-section List-section--open"
-        style={{ width: 300 }}
-      >
-        <div className="p1 border-bottom">
-          <div className="px1 py1 flex align-center">
-            <h3 className="text-default">{header}</h3>
-          </div>
-        </div>
-        <LoadingAndErrorWrapper loading />;
-      </section>
-    );
-  } else {
-    return <LoadingAndErrorWrapper loading />;
   }
 };

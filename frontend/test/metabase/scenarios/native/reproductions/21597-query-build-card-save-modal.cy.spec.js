@@ -3,60 +3,37 @@ import {
   popover,
   modal,
   openNativeEditor,
+  addPostgresDatabase,
 } from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 const databaseName = "Sample Database";
 const databaseCopyName = `${databaseName} copy`;
+const secondDatabaseId = SAMPLE_DB_ID + 1;
 
 const { PRODUCTS } = SAMPLE_DATABASE;
 
-describe("display the relevant error message in save question modal (metabase#21597)", () => {
+describe("issue 21597", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.server();
   });
 
-  it("duplicates the Sample Database DB", () => {
-    cy.route({
-      method: "POST",
-      url: "/api/database",
-      delay: 1000,
-    }).as("createDatabase");
-    cy.route({
-      method: "POST",
-      url: "/api/card",
-      delay: 1000,
-    }).as("saveNativeQuestion");
+  it("display the relevant error message in save question modal (metabase#21597)", () => {
+    cy.intercept("POST", "/api/card").as("saveNativeQuestion");
 
     // Second DB (copy)
-    cy.visit("/");
-    cy.icon("gear").click();
-    cy.findByText("Admin settings").click();
-    cy.findByText("Databases").click();
-    cy.findByText("Add database").click();
+    addPostgresDatabase(databaseCopyName);
 
-    cy.get(".Form-field").findByTestId("select-button").first().click();
-    cy.findByText("H2").click();
-    cy.get(`input[name="name"]`).type(databaseCopyName);
-    cy.get(`input[name="details.db"]`).type(
-      "./resources/sample-database.db;USER=GUEST;PASSWORD=guest",
-    );
-
-    cy.button("Save").should("not.be.disabled").click();
-
-    cy.wait("@createDatabase");
-    cy.findByText("We're taking a look at your database!");
-    cy.findByText("Explore sample data");
-
-    // Create a native query
-    // and run it
-    cy.visit("/");
+    // Create a native query and run it
     openNativeEditor({
       databaseName,
-    }).type("SELECT COUNT(*) FROM PRODUCTS WHERE {{}{{}FILTER}}");
+    }).type("SELECT COUNT(*) FROM PRODUCTS WHERE {{FILTER}}", {
+      delay: 0,
+      parseSpecialCharSequences: false,
+    });
 
     cy.findByTestId("select-button").click();
     popover().within(() => {
@@ -88,13 +65,11 @@ describe("display the relevant error message in save question modal (metabase#21
     // Try to save the native query
     cy.findByTestId("qb-header-action-panel").findByText("Save").click();
     modal().within(() => {
-      cy.findByPlaceholderText("What is the name of your card?").type(
-        "The question name",
-      );
+      cy.findByPlaceholderText("What is the name of your card?").type("Q");
       cy.findByText("Save").click();
       cy.wait("@saveNativeQuestion");
       cy.findByText(
-        `Invalid Field Filter: Field ${PRODUCTS.CATEGORY} "PRODUCTS"."CATEGORY" belongs to Database 1 "${databaseName}", but the query is against Database 2 "${databaseCopyName}"`,
+        `Invalid Field Filter: Field ${PRODUCTS.CATEGORY} "PRODUCTS"."CATEGORY" belongs to Database ${SAMPLE_DB_ID} "${databaseName}", but the query is against Database ${secondDatabaseId} "${databaseCopyName}"`,
       );
     });
   });

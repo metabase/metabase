@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { assocIn } from "icepick";
 
 import SettingHeader from "./SettingHeader";
 import { t } from "ttag";
@@ -14,7 +13,13 @@ import SettingToggle from "./widgets/SettingToggle";
 import SettingSelect from "./widgets/SettingSelect";
 import SettingText from "./widgets/SettingText";
 import { settingToFormFieldId } from "./../../settings/utils";
-import { SettingWarning } from "./SettingsSetting.styled";
+import {
+  SettingContent,
+  SettingEnvVarMessage,
+  SettingErrorMessage,
+  SettingRoot,
+  SettingWarningMessage,
+} from "./SettingsSetting.styled";
 
 const SETTING_WIDGET_MAP = {
   string: SettingInput,
@@ -24,17 +29,6 @@ const SETTING_WIDGET_MAP = {
   radio: SettingRadio,
   boolean: SettingToggle,
   text: SettingText,
-};
-
-const updatePlaceholderForEnvironmentVars = props => {
-  if (props && props.setting && props.setting.is_env_setting) {
-    return assocIn(
-      props,
-      ["setting", "placeholder"],
-      t`Using ` + props.setting.env_name,
-    );
-  }
-  return props;
 };
 
 export default class SettingsSetting extends Component {
@@ -63,23 +57,31 @@ export default class SettingsSetting extends Component {
     const widgetProps = {
       ...setting.getProps?.(setting),
       ...setting.props,
-      ...updatePlaceholderForEnvironmentVars(this.props),
+      ...this.props,
     };
 
     return (
       // TODO - this formatting needs to be moved outside this component
-      <li className="m2 mb4">
+      <SettingRoot>
         {!setting.noHeader && (
           <SettingHeader id={settingId} setting={setting} />
         )}
-        <div className="flex">
-          <Widget id={settingId} {...widgetProps} />
-        </div>
+        <SettingContent>
+          {setting.is_env_setting ? (
+            <SettingEnvVarMessage>
+              {t`Using ` + setting.env_name}
+            </SettingEnvVarMessage>
+          ) : (
+            <Widget id={settingId} {...widgetProps} />
+          )}
+        </SettingContent>
         {errorMessage && (
-          <div className="text-error text-bold pt1">{errorMessage}</div>
+          <SettingErrorMessage>{errorMessage}</SettingErrorMessage>
         )}
-        {setting.warning && <SettingWarning>{setting.warning}</SettingWarning>}
-      </li>
+        {setting.warning && (
+          <SettingWarningMessage>{setting.warning}</SettingWarningMessage>
+        )}
+      </SettingRoot>
     );
   }
 }

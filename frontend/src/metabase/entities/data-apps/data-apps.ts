@@ -1,10 +1,11 @@
 import { color } from "metabase/lib/colors";
 import { createEntity } from "metabase/lib/entities";
+import * as Urls from "metabase/lib/urls";
 
 import { DataAppSchema } from "metabase/schema";
 import { CollectionsApi, DataAppsApi } from "metabase/services";
 
-import { Collection, DataApp } from "metabase-types/api";
+import { Collection, DataApp, DataAppSearchItem } from "metabase-types/api";
 
 import { DEFAULT_COLLECTION_COLOR_ALIAS } from "../collections/constants";
 
@@ -62,6 +63,9 @@ const DataApps = createEntity({
 
   objectSelectors: {
     getIcon: getDataAppIcon,
+    getUrl: (dataApp: DataApp | DataAppSearchItem) => {
+      return Urls.dataApp(dataApp, { mode: "preview" });
+    },
   },
 
   forms: {

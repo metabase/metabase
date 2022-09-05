@@ -1,4 +1,5 @@
 export * from "./admin";
+export * from "./bookmarks";
 export * from "./browse";
 export * from "./collections";
 export * from "./dashboards";

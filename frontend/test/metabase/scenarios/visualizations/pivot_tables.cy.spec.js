@@ -321,7 +321,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText(/Column title/);
 
     cy.log("Change the title for this column");
-    cy.get("input[id=column_title]").clear().type("ModifiedTITLE");
+    cy.get("input[id=column_title]").clear().type("ModifiedTITLE").blur();
     cy.findByText("Done").click();
     cy.get(".Visualization").within(() => {
       cy.findByText("ModifiedTITLE");

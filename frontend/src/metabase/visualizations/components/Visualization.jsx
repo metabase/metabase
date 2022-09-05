@@ -149,7 +149,7 @@ class Visualization extends React.PureComponent {
       : null;
     this.setState({
       hovered: null,
-      clicked: null,
+      //clicked: null,
       error: null,
       warnings: [],
       yAxisSplit: null,
@@ -325,6 +325,7 @@ class Visualization extends React.PureComponent {
       expectedDuration,
       replacementContent,
       onOpenChartSettings,
+      onUpdateVisualizationSettings,
     } = this.props;
     const { visualization } = this.state;
     const small = width < 330;
@@ -551,6 +552,8 @@ class Visualization extends React.PureComponent {
             clickActions={clickActions}
             onChangeCardAndRun={this.handleOnChangeCardAndRun}
             onClose={this.hideActions}
+            series={series}
+            onUpdateVisualizationSettings={onUpdateVisualizationSettings}
           />
         )}
       </div>

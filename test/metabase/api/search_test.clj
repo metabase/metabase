@@ -600,15 +600,17 @@
 (deftest card-dataset-query-test
   (testing "Search results should match a native query's dataset_query column, but not an MBQL query's one."
     ;; https://github.com/metabase/metabase/issues/24132
-    (mt/with-temp* [Card [_mbql-card   {:name          "Venues Count"
-                                        :query_type    "query"
-                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
-                    Card [_native-card {:name          "Another SQL query"
-                                        :query_type    "native"
-                                        :dataset_query (mt/native-query {:query "SELECT COUNT(1) AS aggregation FROM venues"})}]]
-      (is (= ["Another SQL query"]
-             (->> (search-request-data :rasta :q "aggregation")
-                  (map :name)))))))
+    (let [native-card {:name          "Another SQL query"
+                       :query_type    "native"
+                       :dataset_query (mt/native-query {:query "SELECT COUNT(1) AS aggregation FROM venues"})}]
+      (mt/with-temp* [Card [_mbql-card   {:name          "Venues Count"
+                                          :query_type    "query"
+                                          :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+                      Card [_native-card native-card]
+                      Card [_dataset     (assoc native-card :name "Dataset" :dataset true)]]
+        (is (= ["Another SQL query" "Dataset"]
+               (->> (search-request-data :rasta :q "aggregation")
+                    (map :name))))))))
 
 (deftest app-test
   (testing "App collections should come with app_id set"
@@ -618,6 +620,23 @@
                 (fn [result]
                   (cond-> result
                     (not (#{"metric" "segment"} (:model result))) (assoc-in [:collection :app_id] true)
-                    (= (:model result) "collection")              (assoc :app_id true)))
+                    (= (:model result) "collection")              (assoc :model "app" :app_id true)))
                 (default-results-with-collection))
-               (search-request-data :rasta :q "test")))))))
+               (search-request-data :rasta :q "test"))))))
+  (testing "App collections should filterable as \"app\""
+    (mt/with-temp* [Collection [collection {:name "App collection to find"}]
+                    App [_ {:collection_id (:id collection)}]
+                    Collection [_ {:name "Another collection to find"}]]
+      (is (partial= [(assoc (select-keys collection [:name])
+                            :model "app")]
+             (search-request-data :rasta :q "find" :models "app"))))))
+
+(deftest page-test
+  (testing "Search results should pages with model \"page\""
+    (mt/with-temp* [Dashboard [_ {:name "Not a page but contains important text!"}]
+                    Dashboard [page {:name        "Page"
+                                     :description "Contains important text!"
+                                     :is_app_page true}]]
+      (is (partial= [(assoc (select-keys page [:name :description])
+                            :model "page")]
+                    (search-request-data :rasta :q "important text" :models "page"))))))
