@@ -14,7 +14,7 @@ import {
 } from "metabase-types/api/mocks";
 
 import { ActionClickBehaviorData } from "./types";
-import { prepareParameter } from "./utils";
+import { prepareParameter, getNotProvidedActionParameters } from "./utils";
 import ActionClickDrill from "./ActionClickDrill";
 
 const WRITEBACK_PARAMETER: WritebackParameter = {
@@ -23,6 +23,14 @@ const WRITEBACK_PARAMETER: WritebackParameter = {
   type: "number",
   slug: "order-id",
   target: ["variable", ["template-tag", "order-id"]],
+};
+
+const WRITEBACK_ARBITRARY_PARAMETER: WritebackParameter = {
+  id: "param-2",
+  name: "Discount",
+  type: "number",
+  slug: "discount",
+  target: ["variable", ["template-tag", "discount"]],
 };
 
 const DASHBOARD_FILTER_PARAMETER: UiParameter = {
@@ -101,6 +109,7 @@ describe("prepareParameter", () => {
       id: DASHBOARD_FILTER_PARAMETER.id,
       type: WRITEBACK_PARAMETER.type,
       value: DASHBOARD_FILTER_PARAMETER.value,
+      target: WRITEBACK_PARAMETER.target,
     });
   });
 
@@ -118,7 +127,92 @@ describe("prepareParameter", () => {
       id: DASHBOARD_FILTER_PARAMETER.id,
       type: WRITEBACK_PARAMETER.type,
       value: DASHBOARD_FILTER_PARAMETER.value,
+      target: WRITEBACK_PARAMETER.target,
     });
+  });
+});
+
+describe("getNotProvidedActionParameters", () => {
+  it("returns empty list if no parameters passed", () => {
+    const action = createMockQueryAction();
+
+    const result = getNotProvidedActionParameters(action, [], []);
+
+    expect(result).toHaveLength(0);
+  });
+
+  it("returns empty list if all parameters have values", () => {
+    const action = createMockQueryAction({ parameters: [WRITEBACK_PARAMETER] });
+
+    const result = getNotProvidedActionParameters(
+      action,
+      [PARAMETER_MAPPING],
+      [
+        {
+          id: DASHBOARD_FILTER_PARAMETER.id,
+          value: 5,
+          type: "number",
+          target: WRITEBACK_ARBITRARY_PARAMETER.target,
+        },
+      ],
+    );
+
+    expect(result).toHaveLength(0);
+  });
+
+  it("returns not mapped parameters", () => {
+    const action = createMockQueryAction({
+      parameters: [WRITEBACK_PARAMETER, WRITEBACK_ARBITRARY_PARAMETER],
+    });
+
+    const result = getNotProvidedActionParameters(
+      action,
+      [PARAMETER_MAPPING],
+      [
+        {
+          id: DASHBOARD_FILTER_PARAMETER.id,
+          value: 5,
+          type: "number",
+          target: WRITEBACK_ARBITRARY_PARAMETER.target,
+        },
+      ],
+    );
+
+    expect(result).toEqual([WRITEBACK_ARBITRARY_PARAMETER]);
+  });
+
+  it("returns mapped parameters without value", () => {
+    const action = createMockQueryAction({
+      parameters: [WRITEBACK_PARAMETER],
+    });
+
+    const result = getNotProvidedActionParameters(
+      action,
+      [PARAMETER_MAPPING],
+      [
+        {
+          id: DASHBOARD_FILTER_PARAMETER.id,
+          type: "number",
+          target: WRITEBACK_PARAMETER.target,
+
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore
+          value: undefined,
+        },
+      ],
+    );
+
+    expect(result).toEqual([WRITEBACK_PARAMETER]);
+  });
+
+  it("skips parameters with default values", () => {
+    const action = createMockQueryAction({
+      parameters: [{ ...WRITEBACK_PARAMETER, default: 10 }],
+    });
+
+    const result = getNotProvidedActionParameters(action, [], []);
+
+    expect(result).toHaveLength(0);
   });
 });
 
@@ -161,6 +255,7 @@ describe("ActionClickDrill", () => {
           id: DASHBOARD_FILTER_PARAMETER.id,
           type: WRITEBACK_PARAMETER.type,
           value: DASHBOARD_FILTER_PARAMETER.value,
+          target: WRITEBACK_PARAMETER.target,
         },
       ],
     });
