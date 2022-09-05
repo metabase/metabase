@@ -57,6 +57,10 @@ function ActionOptions({
     (action: WritebackAction) => {
       onUpdateButtonActionMapping(dashcard.id, {
         action_id: action.id,
+
+        // Clean mappings from previous action
+        // as they're most likely going to be irrelevant
+        parameter_mappings: null,
       });
     },
     [dashcard, onUpdateButtonActionMapping],
