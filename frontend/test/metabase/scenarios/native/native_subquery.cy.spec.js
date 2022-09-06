@@ -60,12 +60,16 @@ describe("scenarios > question > native subquery", () => {
             .should("be.visible")
             .findByText("A_UNIQUE");
 
-          // For some reason, typing `{{#${questionId2}}}` in one go wasn't deterministic, so we type it in two parts
+          // For some reason, typing `{{#${questionId2}}}` in one go isn't deterministic,
+          // so type it in two parts
           cy.get(".ace_editor:not(.ace_autocomplete)")
             .type(` {{#`, {
               parseSpecialCharSequences: false,
             })
             .type(`{leftarrow}{leftarrow}${questionId2}`);
+
+          // Wait until another explicit autocomplete is triggered
+          cy.wait(1000);
 
           cy.get(".ace_editor:not(.ace_autocomplete)").type(" another_unique");
 
