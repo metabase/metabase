@@ -43,7 +43,27 @@ export const TableSchema = new schema.Entity(
     },
   },
 );
-export const FieldSchema = new schema.Entity("fields");
+
+export const FieldSchema = new schema.Entity("fields", undefined, {
+  processStrategy(field) {
+    const { table_id, id } = field;
+    const isVirtualTable =
+      typeof table_id === "string" && table_id.startsWith("card__");
+    const uniqueId = isVirtualTable ? `${table_id}:${id}` : id;
+    return {
+      ...field,
+      uniqueId,
+      origin: isVirtualTable ? "card" : "table",
+    };
+  },
+  idAttribute: field => {
+    const { table_id, id } = field;
+    const isVirtualTable =
+      typeof table_id === "string" && table_id.startsWith("card__");
+    return isVirtualTable ? `${table_id}:${id}` : id;
+  },
+});
+
 export const SegmentSchema = new schema.Entity("segments");
 export const MetricSchema = new schema.Entity("metrics");
 export const PersistedModelSchema = new schema.Entity("persistedModels");
