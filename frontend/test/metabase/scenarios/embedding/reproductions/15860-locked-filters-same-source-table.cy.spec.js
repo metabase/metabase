@@ -81,8 +81,8 @@ describe.skip("issue 15860", () => {
                 card_id: q1,
                 row: 0,
                 col: 0,
-                sizeX: 8,
-                sizeY: 6,
+                size_x: 8,
+                size_y: 6,
                 series: [],
                 visualization_settings: {},
                 parameter_mappings: [
@@ -103,8 +103,8 @@ describe.skip("issue 15860", () => {
                 card_id: q2,
                 row: 0,
                 col: 8,
-                sizeX: 10,
-                sizeY: 6,
+                size_x: 10,
+                size_y: 6,
                 series: [],
                 visualization_settings: {},
                 parameter_mappings: [

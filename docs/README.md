@@ -7,22 +7,33 @@ redirect_from:
   - /docs/latest/operations-guide
 ---
 
-## Getting started
+# Metabase documentation
 
-- [Getting started](https://www.metabase.com/learn/getting-started/getting-started)
-- [A tour of Metabase](https://www.metabase.com/learn/getting-started/tour-of-metabase)
+Metabase is an open-source business intelligence platform. You can use Metabase to ask questions about your data, or embed Metabase in your app to let your customers explore their data on their own.
 
-## Troubleshooting and getting help
+## First steps
 
-- [Troubleshooting guides](troubleshooting-guide/index.md)
-- [Metabase forum](https://discourse.metabase.com/)
-- [Configuring logging](./configuring-metabase/log-configuration.md)
+### [Installing Metabase](./installation-and-operation/installing-metabase.md)
 
-## Tutorials and guides
+Run as a JAR, using Docker, or on Metabase Cloud.
 
-- [Learn Metabase](https://www.metabase.com/learn) has a ton of articles on how to use Metabase and level up as a data analyst.
+### [Setting up Metabase](./configuring-metabase/setting-up-metabase.md)
 
-## Installation and operation
+Once installed, set up your Metabase and connect to your data.
+
+### [Getting started](https://www.metabase.com/learn/getting-started/getting-started)
+
+With your data connected, get started asking questions, creating dashboards, and sharing your work.
+
+### [A tour of Metabase](https://www.metabase.com/learn/getting-started/tour-of-metabase)
+
+Metabase is a deep product with a lot of tools to simplify business intelligence, from embeddable charts and interactive dashboards, to GUI and SQL editors, to auditing and data sandboxing, and more.
+
+## Documentation topics
+
+Metabase's reference documentation.
+
+### Installation and operation
 
 - [Overview](./installation-and-operation/start.md)
 - [Installing Metabase](./installation-and-operation/installing-metabase.md)
@@ -36,18 +47,18 @@ redirect_from:
 - [Supported browsers](./installation-and-operation/supported-browsers.md)
 - [Some info on privacy and GDPR](./installation-and-operation/privacy.md)
 
-## Asking questions
+### Asking questions
 
 - [Overview](./questions/start.md)
 
-### Query builder
+#### Query builder
 
 - [Asking questions](./questions/query-builder/introduction.md)
 - [Custom expressions](./questions/query-builder/expressions.md)
 - [List of expressions: aggregations and functions](./questions/query-builder/expressions-list.md)
 - [Joining data](./questions/query-builder//join.md)
 
-### SQL and native queries
+#### SQL and native queries
 
 - [The native SQL editor](./questions/native-editor/writing-sql.md)
 - [Viewing metadata](./questions/native-editor/data-model-reference.md)
@@ -56,14 +67,14 @@ redirect_from:
 - [SQL snippets](./questions/native-editor/sql-snippets.md)
 - [SQL snippet folder permissions](./permissions/snippets.md)
 
-### Sharing
+#### Sharing
 
 - [Sharing answers](./questions/sharing/answers.md)
 - [Visualizing data](./questions/sharing/visualizing-results.md)
 - [Setting and getting alerts](./questions/sharing/alerts.md)
 - [Public links](./questions/sharing/public-links.md)
 
-## Dashboards
+### Dashboards
 
 - [Overview](./dashboards/start.md)
 - [Creating dashboards](./dashboards/introduction.md)
@@ -72,7 +83,7 @@ redirect_from:
 - [Dashboard charts with multiple series](./dashboards/multiple-series.md)
 - [Setting up dashboard subscriptions](./dashboards/subscriptions.md)
 
-## Data modeling
+### Data modeling
 
 - [Overview](./data-modeling/start.md)
 - [Models](./data-modeling/models.md)
@@ -81,14 +92,14 @@ redirect_from:
 - [Default formatting](./data-modeling/formatting.md)
 - [Creating segments and metrics](./data-modeling/segments-and-metrics.md)
 
-## Finding things and keeping organized
+### Finding things and keeping organized
 
 - [Overview](./exploration-and-organization/start.md)
 - [Basic exploration](./exploration-and-organization/exploration.md)
 - [Collections](./exploration-and-organization/collections.md)
 - [Events and timelines](./exploration-and-organization/events-and-timelines.md)
 
-## People and groups
+### People and groups
 
 - [Overview](./people-and-groups/start.md)
 - [Editing your account settings](./people-and-groups/account-settings.md)
@@ -97,7 +108,7 @@ redirect_from:
 - [Session expiration](./people-and-groups/changing-session-expiration.md)
 - [Google Sign-In or LDAP](./people-and-groups/google-and-ldap.md)
 
-### Paid SSO options
+#### Paid SSO options
 
 - [JWT](./people-and-groups/authenticating-with-jwt.md)
 - [SAML](./people-and-groups/authenticating-with-saml.md)
@@ -107,7 +118,7 @@ redirect_from:
   - [Keycloak](./people-and-groups/saml-keycloak.md)
   - [Okta](./people-and-groups/saml-okta.md)
 
-## Permissions
+### Permissions
 
 - [Overview](./permissions/start.md)
 - [Permissions introduction](./permissions/introduction.md)
@@ -117,7 +128,7 @@ redirect_from:
 - [Sandboxing data based on user attributes](./permissions/data-sandboxes.md)
 - [SQL snippets folder permissions](./permissions/snippets.md)
 
-## Embedding questions and dashboards
+### Embedding questions and dashboards
 
 - [Overview](./embedding/start.md)
 - [Embedding introduction](./embedding/introduction.md)
@@ -125,7 +136,7 @@ redirect_from:
 - [Full-app embedding](./embedding/full-app-embedding.md)
 - [Embedding example apps](https://github.com/metabase/embedding-reference-apps)
 
-## Databases
+### Databases
 
 - [Overview](./databases/start.md)
 - [Adding data sources](./databases/connecting.md)
@@ -133,7 +144,7 @@ redirect_from:
 - [SSH tunneling](./databases/ssh-tunnel.md)
 - [SSL certificate](./databases/ssl-certificates.md)
 
-## Configuring Metabase
+### Configuring Metabase
 
 - [Overview](./configuring-metabase/start.md)
 - [Setting up Metabase](./configuring-metabase/setting-up-metabase.md)
@@ -149,39 +160,75 @@ redirect_from:
 - [Custom map settings](./configuring-metabase/custom-maps.md)
 - [Customizing the Metabase Jetty Webserver](./configuring-metabase/customizing-jetty-webserver.md)
 
-## Usage and performance tools
+### Usage and performance tools
 
 - [Overview](./usage-and-performance-tools/start.md)
 - [Auditing tools](./usage-and-performance-tools/audit.md)
 - [Tracking query errors](./usage-and-performance-tools/tools.md)
 
-## Metabase API
+### Metabase API
 
 - [API reference](./api-documentation.md)
 - [API tutorial](https://www.metabase.com/learn/administration/metabase-api)
 
-## Premium features
+### Troubleshooting
 
-The Enterprise and Pro plans of Metabase offer additional features.
+- [Get unstuck](./troubleshooting-guide/index.md)
 
-- [Overview](./paid-features/start.md)
-- [Getting and activating the Enterprise edition](./paid-features/activating-the-enterprise-edition.md)
-- [List of premium features](./paid-features/overview.md)
+## Getting help
 
-## Metabase community
+### Troubleshooting
 
+- [Troubleshooting guides](troubleshooting-guide/index.md)
 - [Metabase forum](https://discourse.metabase.com/)
-- [Community stories](https://www.metabase.com/community)
-- [Case studies](https://www.metabase.com/case_studies/)
-- [Metabase Blog](https://www.metabase.com/blog)
-- [Source code repository on GitHub](https://github.com/metabase/metabase)
+- [Configuring logging](./configuring-metabase/log-configuration.md)
 
-## [Developers guide](developers-guide/start.md)
+### [Tutorials and guides](https://www.metabase.com/learn)
+
+[Learn Metabase](https://www.metabase.com/learn) has a ton of articles on how to use Metabase, data best practices, and more.
+
+## More resources
+
+### [Learn Metabase](https://www.metabase.com/learn)
+
+Guides on working with data.
+
+### [Discussion](https://discourse.metabase.com)
+
+Share and connect with other Metabasers.
+
+### [Paid features](./paid-features/start.md)
+
+Some [Metabase plans](https://www.metabase.com/pricing) offer additional features.
+
+### [Metabase Cloud](https://www.metabase.com/cloud/docs)
+
+For docs specific to Metabase Cloud plans.
+
+### [Community stories](https://www.metabase.com/community)
+
+Practical advice from our community.
+
+### [Metabase blog](https://www.metabase.com/blog)
+
+News, updates, and ideas.
+
+### [Customers](https://www.metabase.com/case_studies)
+
+Real companies, real data, real stories.
+
+### [Metabase Twitter](https://twitter.com/metabase)
+
+We tweet stuff. 
+
+### [Source code repository on GitHub](https://github.com/metabase/metabase)
+
+Follow us on GitHub.
+
+### [Developers guide](./developers-guide/start.md)
 
 Contribute to the Metabase open source project!
 
-## [Metabase Cloud](https://www.metabase.com/cloud/docs)
-
-## [Data and Business Intelligence Glossary](https://www.metabase.com/glossary)
+### [Data and Business Intelligence Glossary](https://www.metabase.com/glossary)
 
 Data jargon explained.

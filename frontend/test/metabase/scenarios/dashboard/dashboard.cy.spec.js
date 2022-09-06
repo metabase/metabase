@@ -271,8 +271,8 @@ describe("scenarios > dashboard", () => {
                 card_id: questionId,
                 row: 0,
                 col: 0,
-                sizeX: 10,
-                sizeY: 8,
+                size_x: 10,
+                size_y: 8,
                 parameter_mappings: [
                   {
                     parameter_id: "92eb69ea",
@@ -379,8 +379,8 @@ describe("scenarios > dashboard", () => {
           card_id: 1,
           row: 0,
           col: 0,
-          sizeX: 12,
-          sizeY: 8,
+          size_x: 12,
+          size_y: 8,
           parameter_mappings: [
             {
               parameter_id: FILTER_ID,
@@ -437,8 +437,8 @@ describe("scenarios > dashboard", () => {
                 card_id: 1,
                 row: 0,
                 col: 0,
-                sizeX: 12,
-                sizeY: 8,
+                size_x: 12,
+                size_y: 8,
                 series: [],
                 visualization_settings: {
                   column_settings: {
@@ -481,8 +481,8 @@ describe("scenarios > dashboard", () => {
           card_id: 1,
           row: 0,
           col: 0,
-          sizeX: 12,
-          sizeY: 20,
+          size_x: 12,
+          size_y: 20,
           series: [],
           visualization_settings: {},
           parameter_mappings: [],

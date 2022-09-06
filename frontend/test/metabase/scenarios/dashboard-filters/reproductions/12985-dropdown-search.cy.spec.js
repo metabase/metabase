@@ -48,8 +48,8 @@ describe("issue 12985 > dashboard filter dropdown/search", () => {
               card_id,
               row: 0,
               col: 0,
-              sizeX: 10,
-              sizeY: 8,
+              size_x: 10,
+              size_y: 8,
               series: [],
               visualization_settings: {},
               // Connect filter to the card
@@ -107,8 +107,8 @@ describe("issue 12985 > dashboard filter dropdown/search", () => {
               card_id,
               row: 0,
               col: 0,
-              sizeX: 8,
-              sizeY: 6,
+              size_x: 8,
+              size_y: 6,
               series: [],
               visualization_settings: {},
               // Connect filter to the card

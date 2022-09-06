@@ -330,8 +330,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
                 card_id,
                 row: 0,
                 col: 0,
-                sizeX: 8,
-                sizeY: 6,
+                size_x: 8,
+                size_y: 6,
                 parameter_mappings: [
                   {
                     parameter_id: filter.id,
@@ -391,8 +391,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
           card_id: 1,
           row: 0,
           col: 0,
-          sizeX: 12,
-          sizeY: 8,
+          size_x: 12,
+          size_y: 8,
           parameter_mappings: [
             {
               parameter_id: FILTER_ID,
@@ -452,8 +452,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
           card_id: 1,
           row: 0,
           col: 0,
-          sizeX: 12,
-          sizeY: 8,
+          size_x: 12,
+          size_y: 8,
           parameter_mappings: [
             {
               parameter_id: FILTER_ID,
@@ -526,8 +526,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
                 card_id: QUESTION_ID,
                 row: 0,
                 col: 0,
-                sizeX: 14,
-                sizeY: 10,
+                size_x: 14,
+                size_y: 10,
                 series: [],
                 // Set "Click behavior"
                 visualization_settings: {
@@ -638,8 +638,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
                 card_id: QUESTION_ID,
                 row: 0,
                 col: 0,
-                sizeX: 10,
-                sizeY: 6,
+                size_x: 10,
+                size_y: 6,
                 series: [],
                 visualization_settings: {
                   column_settings: {
@@ -722,8 +722,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
                 card_id: QUESTION_ID,
                 row: 0,
                 col: 0,
-                sizeX: 14,
-                sizeY: 10,
+                size_x: 14,
+                size_y: 10,
                 series: [],
                 visualization_settings: {},
                 parameter_mappings: [
@@ -793,8 +793,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
                   card_id: QUESTION1_ID,
                   row: 0,
                   col: 0,
-                  sizeX: 12,
-                  sizeY: 8,
+                  size_x: 12,
+                  size_y: 8,
                   series: [
                     {
                       id: QUESTION2_ID,
@@ -860,8 +860,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
             card_id: 1,
             row: 0,
             col: 0,
-            sizeX: 12,
-            sizeY: 8,
+            size_x: 12,
+            size_y: 8,
             series: [],
             visualization_settings: {},
             parameter_mappings: [
@@ -991,8 +991,8 @@ function createDashboard(
               card_id: questionId,
               row: 0,
               col: 0,
-              sizeX: 6,
-              sizeY: 6,
+              size_x: 6,
+              size_y: 6,
               parameter_mappings: [
                 {
                   parameter_id: "e8f79be9",
