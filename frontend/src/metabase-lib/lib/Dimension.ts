@@ -33,6 +33,7 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import { infer, MONOTYPE } from "metabase/lib/expressions/typeinferencer";
 import { isa } from "cljs/metabase.types";
+import Filter from "metabase-lib/lib/queries/structured/Filter";
 
 /**
  * A dimension option returned by the query_metadata API
@@ -326,6 +327,12 @@ export default class Dimension {
     // let the DatePicker choose the default operator, otherwise use the first one
     // TODO: replace with a defaultFilter()- or similar which includes arguments
     return this.field().isDate() ? null : this.filterOperators()[0];
+  }
+
+  defaultFilterForDimension() {
+    return new Filter([], null, this.query()).setDimension(this.mbql(), {
+      useDefaultOperator: true,
+    });
   }
 
   // AGGREGATIONS
