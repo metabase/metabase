@@ -175,7 +175,7 @@
   "Returns the list of `Card` ids referenced in the native query of the card."
   [card]
   (->> (get-in (:dataset_query card) [:native :template-tags])
-       (vals)
+       vals
        (filter #(= (:type %) :card))
        (map :card-id)))
 
