@@ -15,12 +15,10 @@ import EmptyState from "metabase/components/EmptyState";
 import ListSearchField from "metabase/components/ListSearchField";
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import AccordionList from "metabase/core/components/AccordionList";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import MetabaseSettings from "metabase/lib/settings";
 import { getSchemaName } from "metabase/lib/schema";
-import { isDatabaseWritebackEnabled } from "metabase/writeback/utils";
 
 import Databases from "metabase/entities/databases";
 import Schemas from "metabase/entities/schemas";
@@ -34,7 +32,7 @@ import {
   convertSearchResultToTableLikeItem,
 } from "./data-search";
 import SavedQuestionPicker from "./saved-question-picker/SavedQuestionPicker";
-import DataSelectorLoading from "./DataSelectorLoading";
+import DatabasePicker from "./DataSelectorDatabasePicker";
 import DatabaseSchemaPicker from "./DataSelectorDatabaseSchemaPicker";
 import SchemaPicker from "./DataSelectorSchemaPicker";
 import FieldPicker from "./DataSelectorFieldPicker";
@@ -42,7 +40,6 @@ import TablePicker from "./DataSelectorTablePicker";
 import {
   DataBucketList,
   DataBucketListItem,
-  RawDataBackButton,
   CollectionDatasetSelectList,
   CollectionDatasetAllDataLink,
   EmptyStateContainer,
@@ -1221,62 +1218,5 @@ const DataBucketPicker = ({ onChangeDataBucket }) => {
         />
       ))}
     </DataBucketList>
-  );
-};
-
-const DatabasePicker = ({
-  databases,
-  selectedDatabase,
-  onChangeDatabase,
-  hasNextStep,
-  onBack,
-  hasInitialFocus,
-  requireWriteback = false,
-}) => {
-  if (databases.length === 0) {
-    return <DataSelectorLoading />;
-  }
-
-  const sections = [
-    {
-      items: databases.map((database, index) => ({
-        name: database.name,
-        writebackEnabled: isDatabaseWritebackEnabled(database),
-        index,
-        database: database,
-      })),
-    },
-  ];
-
-  if (onBack) {
-    sections.unshift({ name: <RawDataBackButton /> });
-  }
-
-  return (
-    <AccordionList
-      id="DatabasePicker"
-      key="databasePicker"
-      className="text-brand"
-      hasInitialFocus={hasInitialFocus}
-      sections={sections}
-      onChange={item => onChangeDatabase(item.database)}
-      onChangeSection={(_section, sectionIndex) => {
-        const isNavigationSection = onBack && sectionIndex === 0;
-        if (isNavigationSection) {
-          onBack();
-        }
-        return false;
-      }}
-      itemIsClickable={
-        requireWriteback ? item => item.writebackEnabled : undefined
-      }
-      itemIsSelected={item =>
-        selectedDatabase && item.database.id === selectedDatabase.id
-      }
-      renderItemIcon={() => (
-        <Icon className="Icon text-default" name="database" size={18} />
-      )}
-      showItemArrows={hasNextStep}
-    />
   );
 };
