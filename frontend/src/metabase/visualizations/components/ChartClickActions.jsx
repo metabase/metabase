@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
-import Popover from "metabase/components/Popover";
+import TippyPopover from "metabase/components/Popover/TippyPopover";
 import Tooltip from "metabase/components/Tooltip";
 
 import "./ChartClickActions.css";
@@ -184,9 +184,9 @@ class ChartClickActions extends Component {
     const hasOnlyOneSection = sections.length === 1;
 
     return (
-      <Popover
-        target={clicked.element}
-        targetEvent={clicked.event}
+      <TippyPopover
+        reference={clicked.element.children[0]}
+        visible={!!clicked.element}
         onClose={() => {
           MetabaseAnalytics.trackStructEvent(
             "Action",
@@ -194,81 +194,91 @@ class ChartClickActions extends Component {
           );
           this.close();
         }}
-        verticalAttachments={["top", "bottom"]}
-        horizontalAttachments={["left", "center", "right"]}
-        sizeToFit
-        pinInitialAttachment
-      >
-        {popover ? (
-          popover
-        ) : (
-          <div className="text-bold px2 pt2 pb1">
-            {sections.map(([key, actions]) => (
-              <div
-                key={key}
-                className={cx(
-                  "pb1",
-                  { pb2: SECTIONS[key].icon === "bolt" },
-                  {
-                    ml1:
-                      SECTIONS[key].icon === "bolt" ||
-                      SECTIONS[key].icon === "sum" ||
-                      SECTIONS[key].icon === "breakout" ||
-                      (SECTIONS[key].icon === "funnel_outline" &&
-                        !hasOnlyOneSection),
-                  },
-                )}
-              >
-                {SECTIONS[key].icon === "sum" && (
-                  <p className="mt0 text-medium text-small">{t`Summarize`}</p>
-                )}
-                {SECTIONS[key].icon === "breakout" && (
-                  <p className="my1 text-medium text-small">{t`Break out by a…`}</p>
-                )}
-                {SECTIONS[key].icon === "bolt" && (
-                  <p className="mt2 text-medium text-small">
-                    {t`Automatic explorations`}
-                  </p>
-                )}
-                {SECTIONS[key].icon === "funnel_outline" && (
-                  <p
-                    className={cx(
-                      "text-small",
-                      hasOnlyOneSection ? "mt0" : "mt2",
-                      hasOnlyOneSection ? "text-dark" : "text-medium",
-                    )}
-                  >
-                    {t`Filter by this value`}
-                  </p>
-                )}
-
+        placement="bottom-start"
+        popperOptions={{
+          flip: true,
+          modifiers: [
+            {
+              name: "preventOverflow",
+              options: {
+                padding: 16,
+              },
+            },
+          ],
+        }}
+        content={
+          popover ? (
+            popover
+          ) : (
+            <div className="text-bold px2 pt2 pb1">
+              {sections.map(([key, actions]) => (
                 <div
+                  key={key}
                   className={cx(
-                    "flex",
+                    "pb1",
+                    { pb2: SECTIONS[key].icon === "bolt" },
                     {
-                      "justify-end": SECTIONS[key].icon === "gear",
+                      ml1:
+                        SECTIONS[key].icon === "bolt" ||
+                        SECTIONS[key].icon === "sum" ||
+                        SECTIONS[key].icon === "breakout" ||
+                        (SECTIONS[key].icon === "funnel_outline" &&
+                          !hasOnlyOneSection),
                     },
-                    {
-                      "align-center justify-center":
-                        SECTIONS[key].icon === "gear",
-                    },
-                    { "flex-column my1": SECTIONS[key].icon === "summarize" },
                   )}
                 >
-                  {actions.map((action, index) => (
-                    <ChartClickAction
-                      key={index}
-                      action={action}
-                      isLastItem={index === actions.length - 1}
-                      handleClickAction={this.handleClickAction}
-                    />
-                  ))}
+                  {SECTIONS[key].icon === "sum" && (
+                    <p className="mt0 text-medium text-small">{t`Summarize`}</p>
+                  )}
+                  {SECTIONS[key].icon === "breakout" && (
+                    <p className="my1 text-medium text-small">{t`Break out by a…`}</p>
+                  )}
+                  {SECTIONS[key].icon === "bolt" && (
+                    <p className="mt2 text-medium text-small">
+                      {t`Automatic explorations`}
+                    </p>
+                  )}
+                  {SECTIONS[key].icon === "funnel_outline" && (
+                    <p
+                      className={cx(
+                        "text-small",
+                        hasOnlyOneSection ? "mt0" : "mt2",
+                        hasOnlyOneSection ? "text-dark" : "text-medium",
+                      )}
+                    >
+                      {t`Filter by this value`}
+                    </p>
+                  )}
+
+                  <div
+                    className={cx(
+                      "flex",
+                      {
+                        "justify-end": SECTIONS[key].icon === "gear",
+                      },
+                      {
+                        "align-center justify-center":
+                          SECTIONS[key].icon === "gear",
+                      },
+                      { "flex-column my1": SECTIONS[key].icon === "summarize" },
+                    )}
+                  >
+                    {actions.map((action, index) => (
+                      <ChartClickAction
+                        key={index}
+                        action={action}
+                        isLastItem={index === actions.length - 1}
+                        handleClickAction={this.handleClickAction}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </Popover>
+              ))}
+            </div>
+          )
+        }
+        {...popoverAction?.popoverOptions}
+      />
     );
   }
 }

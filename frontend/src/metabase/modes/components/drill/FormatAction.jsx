@@ -28,6 +28,10 @@ export default ({ question, clicked }) => {
       buttonType: "formatting",
       icon: "gear",
       tooltip: t`Column formatting`,
+      popoverOptions: {
+        placement: "right-end",
+        offset: [0, 20],
+      },
       popover: function FormatPopover({ series, onChange }) {
         const handleChangeSettings = changedSettings => {
           onChange(
