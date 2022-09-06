@@ -36,6 +36,7 @@ import {
 import SavedQuestionPicker from "./saved-question-picker/SavedQuestionPicker";
 import DataSelectorLoading from "./DataSelectorLoading";
 import DatabaseSchemaPicker from "./DataSelectorDatabaseSchemaPicker";
+import SchemaPicker from "./DataSelectorSchemaPicker";
 import FieldPicker from "./DataSelectorFieldPicker";
 import TablePicker from "./DataSelectorTablePicker";
 import {
@@ -1277,39 +1278,5 @@ const DatabasePicker = ({
       )}
       showItemArrows={hasNextStep}
     />
-  );
-};
-
-const SchemaPicker = ({
-  schemas,
-  selectedSchemaId,
-  onChangeSchema,
-  hasNextStep,
-  hasFiltering,
-  hasInitialFocus,
-}) => {
-  const sections = [
-    {
-      items: schemas.map(schema => ({
-        name: schema.displayName(),
-        schema: schema,
-      })),
-    },
-  ];
-  return (
-    <div style={{ width: 300 }}>
-      <AccordionList
-        id="SchemaPicker"
-        key="schemaPicker"
-        className="text-brand"
-        hasInitialFocus={hasInitialFocus}
-        sections={sections}
-        searchable={hasFiltering}
-        onChange={item => onChangeSchema(item.schema)}
-        itemIsSelected={item => item?.schema.id === selectedSchemaId}
-        renderItemIcon={() => <Icon name="folder" size={16} />}
-        showItemArrows={hasNextStep}
-      />
-    </div>
   );
 };
