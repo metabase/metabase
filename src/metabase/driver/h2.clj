@@ -21,7 +21,8 @@
             [metabase.util.ssh :as ssh])
   (:import [java.sql Clob ResultSet ResultSetMetaData]
            java.time.OffsetTime
-           org.h2.command.Parser))
+           org.h2.command.Parser
+           [org.h2.engine Session SessionRemote]))
 
 ;; method impls live in this namespace
 (comment h2.actions/keep-me)
@@ -92,7 +93,7 @@
            (ex-info (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")
              {:type qp.error-type/db})))))))
 
-(defn- make-parser [h2-db-id]
+(defn- make-h2-parser [h2-db-id]
   (with-open [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! :h2 h2-db-id))]
     (let [inner-field (doto
                           (.getDeclaredField (class conn) "inner")
@@ -102,32 +103,43 @@
                             (.getDeclaredField (class h2-jdbc-conn) "session")
                           (.setAccessible true))
           session (.get session-field h2-jdbc-conn)]
-      (Parser. session))))
+      (cond
+        (instance? Session session)
+        (Parser. session)
+
+        ;; a SessionRemote cannot be used to make a parser
+        (instance? SessionRemote session)
+        ::client-side-session
+
+        :else
+        (throw (ex-info "Unknown session type" {:session session}))))))
 
 (defn- truncate [s n]
   (when (<= n (count s))
     (subs s n)))
 
 (defn- parse
-  ([h2-db-id s] (let [my-parser (make-parser h2-db-id)
-                      parse-method (doto (.getDeclaredMethod (class my-parser)
-                                                             "parse"
-                                                             (into-array Class [java.lang.String]))
-                                     (.setAccessible true))
-                      parse-index-field (doto (.getDeclaredField (class my-parser) "parseIndex")
-                                          (.setAccessible true))]
-                  ;; parser moves parseIndex, so get-offset will be the index in the string that was parsed "up to"
-                  (parse s
-                         (fn parser [s]
-                           (try (.invoke parse-method my-parser (object-array [s]))
-                                ;; need to chew through error scenarios because of a query like:
-                                ;;
-                                ;; vulnerability; abc;
-                                ;;
-                                ;; which would cause this parser to break w/o the error handling here, but this way we
-                                ;; still return the org.h2.command.ddl.* classes.
-                                (catch Throwable _ ::parse-fail)))
-                         (fn get-offset [] (.get parse-index-field my-parser)))))
+  ([h2-db-id s]
+   (let [h2-parser (make-h2-parser h2-db-id)]
+     (when-not (= ::client-side-session h2-parser)
+       (let [parse-method (doto (.getDeclaredMethod (class h2-parser)
+                                                    "parse"
+                                                    (into-array Class [java.lang.String]))
+                            (.setAccessible true))
+             parse-index-field (doto (.getDeclaredField (class h2-parser) "parseIndex")
+                                 (.setAccessible true))]
+         ;; parser moves parseIndex, so get-offset will be the index in the string that was parsed "up to"
+         (parse s
+                (fn parser [s]
+                  (try (.invoke parse-method h2-parser (object-array [s]))
+                       ;; need to chew through error scenarios because of a query like:
+                       ;;
+                       ;; vulnerability; abc;
+                       ;;
+                       ;; which would cause this parser to break w/o the error handling here, but this way we
+                       ;; still return the org.h2.command.ddl.* classes.
+                       (catch Throwable _ ::parse-fail)))
+                (fn get-offset [] (.get parse-index-field h2-parser)))))))
   ([s parser get-offset] (vec (concat
                                [(parser s)];; this call to parser parses up to the end of the first sql statement
                                (let [more (truncate s (get-offset))] ;; more is the unparsed part of s
