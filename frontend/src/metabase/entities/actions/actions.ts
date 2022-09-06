@@ -6,6 +6,7 @@ import type { ActionFormSettings } from "metabase-types/api";
 import { CardApi } from "metabase/services";
 
 import { saveForm } from "./forms";
+import { removeOrphanSettings } from "metabase/entities/actions/utils";
 
 type ActionParams = {
   name: string;
@@ -22,7 +23,7 @@ const getAPIFn =
     description,
     question,
     collection_id,
-    formSettings = {},
+    formSettings,
   }: ActionParams) =>
     apifn({
       ...question.card(),
@@ -31,7 +32,10 @@ const getAPIFn =
       parameters: question.parameters(),
       is_write: true,
       display: "table",
-      visualization_settings: formSettings,
+      visualization_settings: removeOrphanSettings(
+        formSettings,
+        question.parameters(),
+      ),
       collection_id,
     });
 

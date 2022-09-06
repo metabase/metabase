@@ -103,8 +103,3 @@ export type ParametersMappedToValues = Record<
   ParameterId,
   { type: string; value: string | number }
 >;
-
-// we will tighten this up when we figure out what the form settings should look like
-export type ActionFormSettings = {
-  [key: string]: any;
-};
