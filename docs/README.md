@@ -172,7 +172,7 @@ The Enterprise and Pro plans of Metabase offer additional features.
 
 - [Metabase forum](https://discourse.metabase.com/)
 - [Community stories](https://www.metabase.com/community)
-- [Case studies](https://www.metabase.com/case_studies/)
+- [Case studies](https://www.metabase.com/case_studies)
 - [Metabase Blog](https://www.metabase.com/blog)
 - [Source code repository on GitHub](https://github.com/metabase/metabase)
 
