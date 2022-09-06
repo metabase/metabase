@@ -7,10 +7,10 @@ export interface AdminAppProps {
 
 const AdminApp = ({ children }: AdminAppProps): JSX.Element => {
   return (
-    <div>
+    <>
       <DeprecationNotice />
       {children}
-    </div>
+    </>
   );
 };
 

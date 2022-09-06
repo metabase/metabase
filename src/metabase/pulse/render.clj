@@ -1,7 +1,7 @@
 (ns metabase.pulse.render
   (:require [clojure.tools.logging :as log]
             [hiccup.core :refer [h]]
-            [metabase.models.dashboard-card :as dc-model]
+            [metabase.models.dashboard-card :as dashboard-card]
             [metabase.pulse.render.body :as body]
             [metabase.pulse.render.common :as common]
             [metabase.pulse.render.image-bundle :as image-bundle]
@@ -48,9 +48,10 @@
                                  :src   (:image-src image-bundle)}])]]]]})))
 
 (s/defn ^:private make-description-if-needed :- (s/maybe common/RenderedPulseCard)
-  [dashcard]
+  [dashcard card]
   (when *include-description*
-    (when-let [description (-> dashcard :visualization_settings :card.description)]
+    (when-let [description (or (get-in dashcard [:visualization_settings :card.description])
+                               (:description card))]
       {:attachments {}
        :content [:div {:style (style/style {:color style/color-text-medium
                                             :font-size :12px
@@ -93,6 +94,7 @@
            :waterfall} display-type)
         (chart-type display-type "display-type is %s" display-type)
 
+        ;; for scalar/smartscalar, the display-type might actually be :line, so we can't have line above
         (= @col-sample-count @row-sample-count 1)
         (chart-type :scalar "result has one row and one column")
 
@@ -102,20 +104,17 @@
         (chart-type :smartscalar "result has two columns and insights")
 
         (and (some? maybe-dashcard)
-             (> (count (dc-model/dashcard->multi-cards maybe-dashcard)) 0)
+             (> (count (dashboard-card/dashcard->multi-cards maybe-dashcard)) 0)
              (not (#{:combo} display-type)))
         (chart-type :multiple "result has multiple card semantics, a multiple chart")
 
-        ;; Default behavior of these to be sparkline, unless the columns and rows don't behave and display type is correct,
-        ;; upon which they're lines
+        ;; we have to check when display-type is :line that there are enough rows/cols to actually create a line chart
+        ;; if there is only 1 row and 1 col, the chart should be considered scalar, actually.
         (and (= @col-sample-count 2)
              (> @row-sample-count 1)
              (number-field? @col-2)
              (not (#{:waterfall :pie :table :area} display-type)))
-        (chart-type :sparkline "result has 2 cols (%s and %s (number)) and > 1 row" (col-description @col-1) (col-description @col-2))
-
-        (= display-type :line)
-        (chart-type display-type "display-type is %s" display-type)
+        (chart-type :line "result has 2 cols (%s and %s (number)) and > 1 row" (col-description @col-1) (col-description @col-2))
 
         (and (= @col-sample-count 2)
              (number-field? @col-2)
@@ -133,7 +132,7 @@
   [render-type timezone-id :- (s/maybe s/Str) card dashcard {:keys [data error], :as results}]
   (try
     (when error
-      (throw (ex-info (tru "Card has errors: {0}" error) results)))
+      (throw (ex-info (tru "Card has errors: {0}" error) (assoc results :card-error true))))
     (let [chart-type (or (detect-pulse-chart-type card dashcard data)
                          (when (is-attached? card)
                            :attached)
@@ -141,8 +140,13 @@
       (log/debug (trs "Rendering pulse card with chart-type {0} and render-type {1}" chart-type render-type))
       (body/render chart-type render-type timezone-id card dashcard data))
     (catch Throwable e
-      (log/error e (trs "Pulse card render error"))
-      (body/render :error nil nil nil nil nil))))
+      (if (:card-error (ex-data e))
+        (do
+          (log/error e (trs "Pulse card query error"))
+          (body/render :card-error nil nil nil nil nil))
+        (do
+          (log/error e (trs "Pulse card render error"))
+          (body/render :render-error nil nil nil nil nil))))))
 
 (defn- card-href
   [card]
@@ -157,7 +161,7 @@
   scalar results where text is preferable to an image of a div of a single result."
   [render-type timezone-id :- (s/maybe s/Str) card dashcard results]
   (let [{title :content, title-attachments :attachments} (make-title-if-needed render-type card dashcard)
-        {description :content}                           (make-description-if-needed dashcard)
+        {description :content}                           (make-description-if-needed dashcard card)
         {pulse-body       :content
          body-attachments :attachments
          text             :render/text}                  (render-pulse-card-body render-type timezone-id card dashcard results)]
@@ -199,7 +203,7 @@
                    content]}))
 
 (s/defn render-pulse-card-to-png :- bytes
-  "Render a `pulse-card` as a PNG. `data` is the `:data` from a QP result (I think...)"
+  "Render a `pulse-card` as a PNG. `data` is the `:data` from a QP result."
   [timezone-id :- (s/maybe s/Str) pulse-card result width]
   (png/render-html-to-png (render-pulse-card :inline timezone-id pulse-card nil result) width))
 

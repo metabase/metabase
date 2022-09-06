@@ -1,30 +1,32 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
+import { TYPE, isa } from "metabase/lib/types";
 
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
-
 import FilterPopover from "metabase/query_builder/components/filters/FilterPopover";
 
-export default function QuickFilterDrill({ question, clicked }) {
+const INVALID_TYPES = [TYPE.Structured];
+
+export default function ColumnFilterDrill({ question, clicked }) {
   const query = question.query();
   if (
-    !(query instanceof StructuredQuery) ||
+    !question.isStructured() ||
+    !query.isEditable() ||
     !clicked ||
     !clicked.column ||
+    INVALID_TYPES.some(type => isa(clicked.column.base_type, type)) ||
     clicked.column.field_ref == null ||
     clicked.value !== undefined
   ) {
     return [];
   }
 
-  const { column } = clicked;
-  const initialFilter = new Filter(
-    [],
-    null,
-    query,
-  ).setDimension(column.field_ref, { useDefaultOperator: true });
+  const { dimension } = clicked;
+  const fieldRef = dimension.mbql();
+  const initialFilter = new Filter([], null, query).setDimension(fieldRef, {
+    useDefaultOperator: true,
+  });
 
   return [
     {
@@ -40,14 +42,12 @@ export default function QuickFilterDrill({ question, clicked }) {
           filter={initialFilter}
           onClose={onClose}
           onChangeFilter={filter => {
-            const nextCard = query
-              .filter(filter)
-              .question()
-              .card();
+            const nextCard = query.filter(filter).question().card();
             onChangeCardAndRun({ nextCard });
             onClose();
           }}
           showFieldPicker={false}
+          isNew={true}
         />
       ),
     },

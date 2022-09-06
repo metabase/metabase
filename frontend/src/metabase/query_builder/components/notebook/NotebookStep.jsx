@@ -4,17 +4,14 @@ import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import styled from "styled-components";
+import styled from "@emotion/styled";
 
-import { color as c, lighten, darken } from "metabase/lib/colors";
+import { color as c, lighten, darken, alpha } from "metabase/lib/colors";
 
 import Tooltip from "metabase/components/Tooltip";
 import Icon from "metabase/components/Icon";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import ExpandingContent from "metabase/components/ExpandingContent";
-import { forwardRefToInnerRef } from "metabase/styled-components/utils";
-
-import { Box, Flex } from "grid-styled";
 
 import NotebookStepPreview from "./NotebookStepPreview";
 
@@ -27,6 +24,14 @@ import BreakoutStep from "./steps/BreakoutStep";
 import SummarizeStep from "./steps/SummarizeStep";
 import SortStep from "./steps/SortStep";
 import LimitStep from "./steps/LimitStep";
+import {
+  StepActionsContainer,
+  StepBody,
+  StepContent,
+  StepHeader,
+  StepButtonContainer,
+  StepRoot,
+} from "./NotebookStep.styled";
 
 // TODO
 const STEP_UI = {
@@ -46,6 +51,7 @@ const STEP_UI = {
     title: t`Custom column`,
     icon: "add_data",
     component: ExpressionStep,
+    transparent: true,
     getColor: () => c("bg-dark"),
   },
   filter: {
@@ -53,21 +59,21 @@ const STEP_UI = {
     icon: "filter",
     component: FilterStep,
     priority: 10,
-    getColor: () => c("accent7"),
+    getColor: () => c("filter"),
   },
   summarize: {
     title: t`Summarize`,
     icon: "sum",
     component: SummarizeStep,
     priority: 5,
-    getColor: () => c("accent1"),
+    getColor: () => c("summarize"),
   },
   aggregate: {
     title: t`Aggregate`,
     icon: "sum",
     component: AggregateStep,
     priority: 5,
-    getColor: () => c("accent1"),
+    getColor: () => c("summarize"),
   },
   breakout: {
     title: t`Breakout`,
@@ -81,6 +87,7 @@ const STEP_UI = {
     icon: "smartscalar",
     component: SortStep,
     compact: true,
+    transparent: true,
     getColor: () => c("bg-dark"),
   },
   limit: {
@@ -88,6 +95,7 @@ const STEP_UI = {
     icon: "list",
     component: LimitStep,
     compact: true,
+    transparent: true,
     getColor: () => c("bg-dark"),
   },
 };
@@ -97,25 +105,21 @@ function getTestId(step) {
   return `step-${type}-${stageIndex || 0}-${itemIndex || 0}`;
 }
 
-const CONTENT_WIDTH = [11 / 12, 8 / 12];
-
 export default class NotebookStep extends React.Component {
   state = {
     showPreview: false,
   };
 
   render() {
-    const {
-      step,
-      openStep,
-      isLastStep,
-      isLastOpened,
-      updateQuery,
-    } = this.props;
+    const { step, openStep, isLastStep, isLastOpened, updateQuery } =
+      this.props;
     const { showPreview } = this.state;
 
-    const { title, getColor, component: NotebookStepComponent } =
-      STEP_UI[step.type] || {};
+    const {
+      title,
+      getColor,
+      component: NotebookStepComponent,
+    } = STEP_UI[step.type] || {};
 
     const color = getColor();
     const canPreview = step.previewQuery && step.previewQuery.isValid();
@@ -152,18 +156,11 @@ export default class NotebookStep extends React.Component {
 
     return (
       <ExpandingContent isInitiallyOpen={!isLastOpened} isOpen>
-        <Box
-          mb={[1, 2]}
-          pb={[1, 2]}
+        <StepRoot
           className="hover-parent hover--visibility"
           data-testid={getTestId(step)}
         >
-          <Flex
-            mb={1}
-            width={CONTENT_WIDTH}
-            className="text-bold"
-            style={{ color }}
-          >
+          <StepHeader color={color}>
             {title}
             <Icon
               name="close"
@@ -172,11 +169,11 @@ export default class NotebookStep extends React.Component {
               onClick={() => step.revert(step.query).update(updateQuery)}
               data-testid="remove-step"
             />
-          </Flex>
+          </StepHeader>
 
           {NotebookStepComponent && (
-            <Flex align="center">
-              <Box width={CONTENT_WIDTH}>
+            <StepBody>
+              <StepContent>
                 <NotebookStepComponent
                   color={color}
                   step={step}
@@ -184,8 +181,8 @@ export default class NotebookStep extends React.Component {
                   updateQuery={updateQuery}
                   isLastOpened={isLastOpened}
                 />
-              </Box>
-              <Box width={[1 / 12]}>
+              </StepContent>
+              <StepButtonContainer>
                 <ActionButton
                   ml={[1, 2]}
                   className={
@@ -194,10 +191,11 @@ export default class NotebookStep extends React.Component {
                   icon="play"
                   title={t`Preview`}
                   color={c("text-light")}
+                  transparent
                   onClick={() => this.setState({ showPreview: true })}
                 />
-              </Box>
-            </Flex>
+              </StepButtonContainer>
+            </StepBody>
           )}
 
           {showPreview && canPreview && (
@@ -208,34 +206,44 @@ export default class NotebookStep extends React.Component {
           )}
 
           {actionButtons.length > 0 && (
-            <Box mt={1} data-testid="action-buttons">
+            <StepActionsContainer data-testid="action-buttons">
               {actionButtons}
-            </Box>
+            </StepActionsContainer>
           )}
-        </Box>
+        </StepRoot>
       </ExpandingContent>
     );
   }
 }
 
-const ColorButton = forwardRefToInnerRef(styled(Button)`
+const ColorButton = styled(Button)`
   border: none;
-  color: ${({ color }) => (color ? color : c("text-medium"))};
-  background-color: ${({ color }) => (color ? lighten(color, 0.61) : null)};
+  color: ${({ color }) => color};
+  background-color: ${({ color, transparent }) =>
+    transparent ? null : alpha(color, 0.2)};
   &:hover {
-    color: ${({ color }) => (color ? darken(color, 0.115) : color("brand"))};
-    background-color: ${({ color }) =>
-      color ? lighten(color, 0.5) : lighten(color("brand"), 0.61)};
+    color: ${({ color }) => darken(color, 0.115)};
+    background-color: ${({ color, transparent }) =>
+      transparent ? lighten(color, 0.5) : alpha(color, 0.35)};
   }
   transition: background 300ms;
-`);
+`;
 
-const ActionButton = ({ icon, title, color, large, onClick, ...props }) => {
+const ActionButton = ({
+  icon,
+  title,
+  color,
+  transparent,
+  large,
+  onClick,
+  ...props
+}) => {
   const button = (
     <ColorButton
-      color={color}
       icon={icon}
       small={!large}
+      color={color}
+      transparent={transparent}
       iconVertical={large}
       iconSize={large ? 18 : 14}
       onClick={onClick}

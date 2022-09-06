@@ -6,19 +6,22 @@ import cx from "classnames";
 import { connect } from "react-redux";
 import _ from "underscore";
 import { t, ngettext, msgid } from "ttag";
-import { Flex } from "grid-styled";
 
-import Card from "metabase/components/Card";
 import Icon from "metabase/components/Icon";
 import Label from "metabase/components/type/Label";
 import Subhead from "metabase/components/type/Subhead";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 import Tooltip from "metabase/components/Tooltip";
 
-import { formatHourAMPM, formatDay, formatFrame } from "metabase/lib/time";
+import {
+  formatDateTimeWithUnit,
+  formatTimeWithUnit,
+} from "metabase/lib/formatting";
+import { formatFrame } from "metabase/lib/time";
 import { getActivePulseParameters } from "metabase/lib/pulse";
 
 import { getParameters } from "metabase/dashboard/selectors";
+import { PulseCard, SidebarActions } from "./PulsesListSidebar.styled";
 
 const mapStateToProps = (state, props) => {
   return {
@@ -41,7 +44,7 @@ function _PulsesListSidebar({
       <div className="px4 pt3 flex justify-between align-center">
         <Subhead>{t`Subscriptions`}</Subhead>
 
-        <Flex align="center">
+        <SidebarActions>
           <Tooltip tooltip={t`Set up a new schedule`}>
             <Icon
               name="add"
@@ -58,20 +61,17 @@ function _PulsesListSidebar({
               onClick={onCancel}
             />
           </Tooltip>
-        </Flex>
+        </SidebarActions>
       </div>
       <div className="my2 mx4">
         {pulses.map(pulse => {
           const canEdit = canEditPulse(pulse, formInput);
 
           return (
-            <Card
+            <PulseCard
               key={pulse.id}
               flat
-              className={cx("mb3", {
-                "cursor-pointer": canEdit,
-                "bg-brand-hover": canEdit,
-              })}
+              canEdit={canEdit}
               onClick={() =>
                 canEdit && editPulse(pulse, pulse.channels[0].channel_type)
               }
@@ -98,7 +98,7 @@ function _PulsesListSidebar({
                 </div>
                 <PulseDetails pulse={pulse} parameters={parameters} />
               </div>
-            </Card>
+            </PulseCard>
           );
         })}
       </div>
@@ -219,39 +219,51 @@ PulseDetails.propTypes = {
 };
 
 function friendlySchedule(channel) {
+  const {
+    channel_type,
+    details,
+    schedule_day,
+    schedule_frame,
+    schedule_hour,
+    schedule_type,
+  } = channel;
+
   let scheduleString = "";
-  if (channel.channel_type === "email") {
+
+  if (channel_type === "email") {
     scheduleString += t`Emailed `;
-  } else if (channel.channel_type === "slack") {
-    scheduleString += t`Sent to ` + channel.details.channel + " ";
+  } else if (channel_type === "slack") {
+    scheduleString += t`Sent to ` + details.channel + " ";
   } else {
     scheduleString += t`Sent `;
   }
 
-  switch (channel.schedule_type) {
+  switch (schedule_type) {
     case "hourly":
       scheduleString += t`hourly`;
       break;
     case "daily": {
-      const ampm = formatHourAMPM(channel.schedule_hour);
-      scheduleString += t`daily at ${ampm}`;
+      const hour = formatTimeWithUnit(schedule_hour, "hour-of-day");
+      scheduleString += t`daily at ${hour}`;
       break;
     }
     case "weekly": {
-      const ampm = formatHourAMPM(channel.schedule_hour);
-      const day = formatDay(channel.schedule_day);
-      scheduleString += t`${day} at ${ampm}`;
+      const hour = formatTimeWithUnit(schedule_hour, "hour-of-day");
+      const day = formatDateTimeWithUnit(schedule_day, "day-of-week");
+      scheduleString += t`${day} at ${hour}`;
       break;
     }
     case "monthly": {
-      const ampm = formatHourAMPM(channel.schedule_hour);
-      const day = formatDay(channel.schedule_day);
-      const frame = formatFrame(channel.schedule_frame);
-      scheduleString += t`monthly on the ${frame} ${day} at ${ampm}`;
+      const hour = formatTimeWithUnit(schedule_hour, "hour-of-day");
+      const day = schedule_day
+        ? formatDateTimeWithUnit(schedule_day, "day-of-week")
+        : "calendar day";
+      const frame = formatFrame(schedule_frame);
+      scheduleString += t`monthly on the ${frame} ${day} at ${hour}`;
       break;
     }
     default:
-      scheduleString += channel.schedule_type;
+      scheduleString += schedule_type;
   }
 
   return scheduleString;

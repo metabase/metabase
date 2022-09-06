@@ -2,12 +2,12 @@ import { ngettext, msgid, t } from "ttag";
 
 import { OPERATOR as OP } from "metabase/lib/expressions/tokenizer";
 import { ResolverError } from "metabase/lib/expressions/pratt/types";
-import { MBQL_CLAUSES } from "metabase/lib/expressions";
+import { getMBQLName, MBQL_CLAUSES } from "metabase/lib/expressions";
 
-const FIELD_MARKERS = ["dimension", "segment", "metric"];
-const LOGICAL_OPS = [OP.Not, OP.And, OP.Or];
-const NUMBER_OPS = [OP.Plus, OP.Minus, OP.Star, OP.Slash];
-const COMPARISON_OPS = [
+export const FIELD_MARKERS = ["dimension", "segment", "metric"];
+export const LOGICAL_OPS = [OP.Not, OP.And, OP.Or];
+export const NUMBER_OPS = [OP.Plus, OP.Minus, OP.Star, OP.Slash];
+export const COMPARISON_OPS = [
   OP.Equal,
   OP.NotEqual,
   OP.GreaterThan,
@@ -48,6 +48,9 @@ const isCompatible = (a, b) => {
   if (a === "aggregation" && b === "number") {
     return true;
   }
+  if (a === "number" && b === "aggregation") {
+    return true;
+  }
   return false;
 };
 
@@ -58,7 +61,20 @@ export function resolve(expression, type = "expression", fn = undefined) {
     if (FIELD_MARKERS.includes(op)) {
       const kind = MAP_TYPE[type] || "dimension";
       const [name] = operands;
-      return fn ? fn(kind, name, expression.node) : [kind, name];
+      if (fn) {
+        try {
+          return fn(kind, name, expression.node);
+        } catch (err) {
+          // A second chance when field is not found:
+          // maybe it is a function with zero argument (e.g. Count, CumulativeCount)
+          const func = getMBQLName(name.trim().toLowerCase());
+          if (func && MBQL_CLAUSES[func].args.length === 0) {
+            return [func];
+          }
+          throw err;
+        }
+      }
+      return [kind, name];
     }
 
     let operandType = null;
@@ -66,6 +82,8 @@ export function resolve(expression, type = "expression", fn = undefined) {
       operandType = "boolean";
     } else if (NUMBER_OPS.includes(op)) {
       operandType = type === "aggregation" ? type : "number";
+    } else if (op === "true" || op === "false") {
+      operandType = "expression";
     } else if (COMPARISON_OPS.includes(op)) {
       operandType = "expression";
       const [firstOperand] = operands;
@@ -148,7 +166,12 @@ export function resolve(expression, type = "expression", fn = undefined) {
       return resolve(operand, args[i], fn);
     });
     return [op, ...resolvedOperands];
-  } else if (!isCompatible(type, typeof expression)) {
+  } else if (
+    !isCompatible(
+      type,
+      typeof expression === "boolean" ? "expression" : typeof expression,
+    )
+  ) {
     throw new Error(
       t`Expecting ${type} but found ${JSON.stringify(expression)}`,
     );

@@ -1,4 +1,8 @@
-import { restore, popover, openNativeEditor } from "__support__/e2e/cypress";
+import {
+  restore,
+  POPOVER_ELEMENT,
+  openNativeEditor,
+} from "__support__/e2e/helpers";
 
 const questionDetails = {
   name: "REVIEWS SQL",
@@ -20,17 +24,15 @@ describe("issue 18418", () => {
 
     cy.findByText("Save").click();
 
-    cy.get(".Modal")
-      .button("Save")
-      .click();
+    cy.get(".Modal").button("Save").click();
 
     cy.button("Not now").click();
 
     openNativeEditor({ fromCurrentPage: true });
 
     // Clicking native question's database picker usually opens a popover with a list of databases
-    // As default Cypress environment has only the sample dataset available, we expect no popup to appear
-    cy.findByTextEnsureVisible("Sample Dataset").click();
-    popover().should("not.exist");
+    // As default Cypress environment has only the sample database available, we expect no popup to appear
+    cy.findByTextEnsureVisible("Sample Database").click();
+    cy.get(POPOVER_ELEMENT).should("not.exist");
   });
 });

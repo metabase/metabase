@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.resolve-referenced
   (:require [metabase.models.card :refer [Card]]
             [metabase.query-processor.middleware.resolve-fields :as qp.resolve-fields]
-            [metabase.query-processor.middleware.resolve-source-table :as qp.resolve-tables]
+            [metabase.query-processor.middleware.resolve-source-table :as qp.resolve-source-table]
             [metabase.util.i18n :refer [tru]]
             [schema.core :as s]
             [toucan.db :as db]
@@ -39,8 +39,8 @@
   (doseq [referenced-card (tags-referenced-cards query)
           :let [referenced-query (:dataset_query referenced-card)]]
     (check-query-database-id= referenced-query (:database query))
-    (qp.resolve-tables/resolve-source-tables* referenced-query)
-    (qp.resolve-fields/resolve-fields* referenced-query))
+    (qp.resolve-source-table/resolve-source-tables referenced-query)
+    (qp.resolve-fields/resolve-fields referenced-query))
   query)
 
 (defn- card-subquery-graph
@@ -74,7 +74,5 @@
 
 (defn resolve-referenced-card-resources
   "Resolves tables and fields referenced in card query template tags."
-  [qp]
-  (fn [query rff context]
-    (qp (-> query check-for-circular-references! resolve-referenced-card-resources*)
-        rff context)))
+  [query]
+  (-> query check-for-circular-references! resolve-referenced-card-resources*))

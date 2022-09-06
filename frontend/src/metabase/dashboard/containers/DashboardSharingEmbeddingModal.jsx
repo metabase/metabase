@@ -6,7 +6,7 @@ import cx from "classnames";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 
 import EmbedModalContent from "metabase/public/components/widgets/EmbedModalContent";
-
+import { getParameters } from "metabase/dashboard/selectors";
 import * as Urls from "metabase/lib/urls";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
@@ -20,6 +20,10 @@ import {
 const defaultProps = {
   isLinkEnabled: true,
 };
+
+const mapStateToProps = (state, props) => ({
+  parameters: getParameters(state, props),
+});
 
 const mapDispatchToProps = {
   createPublicLink,
@@ -37,6 +41,7 @@ class DashboardSharingEmbeddingModal extends Component {
       className,
       createPublicLink,
       dashboard,
+      parameters,
       deletePublicLink,
       enabled,
       linkClassNames,
@@ -55,7 +60,7 @@ class DashboardSharingEmbeddingModal extends Component {
         full
         disabled={!isLinkEnabled}
         triggerElement={
-          <a
+          <span
             className={linkClassNames}
             aria-disabled={!isLinkEnabled}
             onClick={() => {
@@ -69,7 +74,7 @@ class DashboardSharingEmbeddingModal extends Component {
             }}
           >
             {linkText}
-          </a>
+          </span>
         }
         triggerClasses={cx(className, "text-brand-hover")}
         className="scroll-y"
@@ -78,7 +83,7 @@ class DashboardSharingEmbeddingModal extends Component {
           {...props}
           className={className}
           resource={dashboard}
-          resourceParameters={dashboard && dashboard.parameters}
+          resourceParameters={parameters}
           resourceType="dashboard"
           onCreatePublicLink={() => createPublicLink(dashboard)}
           onDisablePublicLink={() => deletePublicLink(dashboard)}
@@ -102,6 +107,6 @@ class DashboardSharingEmbeddingModal extends Component {
 DashboardSharingEmbeddingModal.defaultProps = defaultProps;
 
 export default connect(
-  null,
+  mapStateToProps,
   mapDispatchToProps,
 )(DashboardSharingEmbeddingModal);

@@ -1,10 +1,12 @@
-import { restore, openNativeEditor } from "__support__/e2e/cypress";
+import { restore, openNativeEditor } from "__support__/e2e/helpers";
 
 import { DATE_FILTER_SUBTYPES } from "./helpers/e2e-field-filter-data-objects";
 
 import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
 import * as DateFilter from "./helpers/e2e-date-filter-helpers";
+
+const dateFilters = Object.entries(DATE_FILTER_SUBTYPES);
 
 describe("scenarios > filters > sql filters > field filter > Date", () => {
   beforeEach(() => {
@@ -14,9 +16,7 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
     cy.signInAsAdmin();
 
     openNativeEditor();
-    SQLFilter.enterParameterizedQuery(
-      "SELECT * FROM products WHERE {{filter}}",
-    );
+    SQLFilter.enterParameterizedQuery("SELECT * FROM products WHERE {{f}}");
 
     SQLFilter.openTypePickerFromDefaultFilterType();
     SQLFilter.chooseType("Field Filter");
@@ -27,63 +27,47 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
     });
   });
 
-  Object.entries(DATE_FILTER_SUBTYPES).forEach(
-    ([subType, { value, representativeResult }]) => {
-      describe(`should work for ${subType}`, () => {
-        beforeEach(() => {
-          FieldFilter.setWidgetType(subType);
-        });
+  it("when set through the filter widget", () => {
+    dateFilters.forEach(([subType, { value, representativeResult }]) => {
+      cy.log(`Make sure it works for ${subType.toUpperCase()}`);
 
-        it("when set through the filter widget", () => {
-          dateFilterSelector({ filterType: subType, filterValue: value });
+      FieldFilter.setWidgetType(subType);
+      dateFilterSelector({ filterType: subType, filterValue: value });
 
-          SQLFilter.runQuery();
+      SQLFilter.runQuery();
 
-          cy.get(".Visualization").within(() => {
-            cy.findByText(representativeResult);
-          });
-        });
-
-        it("when set as the default value for a required filter", () => {
-          SQLFilter.toggleRequired();
-
-          dateFilterSelector({
-            filterType: subType,
-            filterValue: value,
-            isFilterRequired: true,
-          });
-
-          SQLFilter.runQuery();
-
-          cy.get(".Visualization").within(() => {
-            cy.findByText(representativeResult);
-          });
-        });
-
-        it("when the widget type is changed (metabase#16756)", () => {
-          const anotherSubType = Object.keys(DATE_FILTER_SUBTYPES).find(
-            type => type !== subType,
-          );
-          const anotherValue = DATE_FILTER_SUBTYPES[anotherSubType].value;
-
-          FieldFilter.setWidgetType(anotherSubType);
-          dateFilterSelector({
-            filterType: anotherSubType,
-            filterValue: anotherValue,
-          });
-
-          FieldFilter.setWidgetType(subType);
-          dateFilterSelector({ filterType: subType, filterValue: value });
-
-          SQLFilter.runQuery();
-
-          cy.get(".Visualization").within(() => {
-            cy.findByText(representativeResult);
-          });
-        });
+      cy.get(".Visualization").within(() => {
+        cy.findByText(representativeResult);
       });
-    },
-  );
+    });
+  });
+
+  it("when set as the default value for a required filter", () => {
+    SQLFilter.toggleRequired();
+
+    dateFilters.forEach(([subType, { value, representativeResult }], index) => {
+      cy.log(`Make sure it works for ${subType.toUpperCase()}`);
+
+      FieldFilter.setWidgetType(subType);
+
+      // When we run the first iteration, there will be no default filter value set
+      if (index !== 0) {
+        FieldFilter.clearDefaultFilterValue();
+      }
+
+      dateFilterSelector({
+        filterType: subType,
+        filterValue: value,
+        isFilterRequired: true,
+      });
+
+      SQLFilter.runQuery();
+
+      cy.get(".Visualization").within(() => {
+        cy.findByText(representativeResult);
+      });
+    });
+  });
 });
 
 function openDateFilterPicker(isFilterRequired) {

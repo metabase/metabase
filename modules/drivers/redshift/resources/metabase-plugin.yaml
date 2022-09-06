@@ -18,6 +18,9 @@ driver:
         - dbname
         - name: db
           placeholder: birds_of_the_world
+    - name: schema-filters
+      type: schema-filters
+      display-name: Schemas
     - user
     - password
     - cloud-ip-address-info

@@ -1,17 +1,17 @@
 (ns metabase.task.sync-databases-test
   "Tests for the logic behind scheduling the various sync operations of Databases. Most of the actual logic we're
-  testing is part of `metabase.models.database`, so there's an argument to be made that these sorts of tests could
+  testing is part of [[metabase.models.database]], so there's an argument to be made that these sorts of tests could
   just as easily belong to a `database-test` namespace."
   (:require [clojure.string :as str]
             [clojure.test :refer :all]
+            [clojurewerkz.quartzite.conversion :as qc]
             [java-time :as t]
             [metabase.models.database :refer [Database]]
             [metabase.sync.schedules :as sync.schedules]
-            [metabase.task.sync-databases :as sync-db]
+            [metabase.task.sync-databases :as task.sync-databases]
             [metabase.test :as mt]
             [metabase.test.util :as tu]
             [metabase.util :as u]
-            [metabase.util.cron :as cron-util]
             [toucan.db :as db])
   (:import [metabase.task.sync_databases SyncAndAnalyzeDatabase UpdateFieldValues]))
 
@@ -44,7 +44,7 @@
 
 (defmacro with-scheduler-setup [& body]
   `(tu/with-temp-scheduler
-     (#'sync-db/job-init)
+     (#'task.sync-databases/job-init)
      ~@body))
 
 (def ^:private sync-job
@@ -141,16 +141,16 @@
 ;; https://www.quartz-scheduler.org/api/2.1.7/org/quartz/JobExecutionContext.html#put(java.lang.Object,%20java.lang.Object)
 (deftype MockJobExecutionContext [job-data-map]
   org.quartz.JobExecutionContext
-  (getMergedJobDataMap [this] (org.quartz.JobDataMap. job-data-map))
+  (getMergedJobDataMap [_this] (org.quartz.JobDataMap. job-data-map))
 
-  clojurewerkz.quartzite.conversion/JobDataMapConversion
+  qc/JobDataMapConversion
   (from-job-data [this]
     (.getMergedJobDataMap this)))
 
 (deftest check-orphaned-jobs-removed-test
   (testing "jobs for orphaned databases are removed during sync run"
     (with-scheduler-setup
-      (doseq [sync-fn [#'sync-db/update-field-values! #'sync-db/sync-and-analyze-database!]]
+      (doseq [sync-fn [#'task.sync-databases/update-field-values! #'task.sync-databases/sync-and-analyze-database!]]
         (testing (str sync-fn)
           (mt/with-temp Database [database {:engine :postgres}]
             (let [db-id (:id database)]
@@ -227,8 +227,8 @@
                :metadata_sync_schedule      (cron-schedule-for-next-year)
                :cache_field_values_schedule "* * * * * ? *"})))))
 
-(def should-refingerprint #'sync-db/should-refingerprint-fields?)
-(def threshold @#'sync-db/analyze-duration-threshold-for-refingerprinting)
+(def should-refingerprint #'task.sync-databases/should-refingerprint-fields?)
+(def threshold @#'task.sync-databases/analyze-duration-threshold-for-refingerprinting)
 
 (defn results [minutes-duration fingerprints-attempted]
   (let [now (t/instant)
@@ -253,30 +253,49 @@
   (testing "It will fingerprint if under time and no other fingerprints"
     (is (should-refingerprint (results (dec threshold) 0)))))
 
-(deftest randomized-schedules-test
-  (testing "when user schedules it does not return new schedules"
-    (is (nil? (sync-db/randomized-schedules {:details {:let-user-control-scheduling true}}))))
-  (testing "when schedules are already 'randomized' it returns nil"
-    (is (nil? (sync-db/randomized-schedules
-                {:cache_field_values_schedule (cron-util/schedule-map->cron-string
-                                                {:schedule_hour 17 :schedule_type "daily"})
-                 :metadata_sync_schedule      (cron-util/schedule-map->cron-string
-                                                {:schedule_minute 17 :schedule_type "hourly"})}))))
-  (testing "returns appropriate randomized schedules"
-    (doseq [default-metadata sync.schedules/default-metadata-sync-schedule-cron-strings]
-      (is (contains? (sync-db/randomized-schedules
-                       {:metadata_sync_schedule      default-metadata
-                        :cache_field_values_schedule (cron-util/schedule-map->cron-string
-                                                       {:schedule_hour 17 :schedule_type "daily"})})
-                     :metadata_sync_schedule)))
-    (doseq [default-cache sync.schedules/default-cache-field-values-schedule-cron-strings]
-      (is (contains? (sync-db/randomized-schedules
-                       {:metadata_sync_schedule      (cron-util/schedule-map->cron-string
-                                                       {:schedule_hour 17 :schedule_type "hourly"})
-                        :cache_field_values_schedule default-cache})
-                     :cache_field_values_schedule)))
-    (is (schema= {:metadata_sync_schedule      String
-                  :cache_field_values_schedule String}
-                 (sync-db/randomized-schedules
-                   {:metadata_sync_schedule      (first sync.schedules/default-metadata-sync-schedule-cron-strings)
-                    :cache_field_values_schedule (first sync.schedules/default-cache-field-values-schedule-cron-strings)})))))
+(deftest randomizing-schedules-test
+  (testing "metabase-controls-schedule?"
+    (is (not (#'task.sync-databases/metabase-controls-schedule?
+              {:details {:let-user-control-scheduling true}})))
+    (is (#'task.sync-databases/metabase-controls-schedule?
+         {:details {:let-user-control-scheduling false}}))
+    (is (#'task.sync-databases/metabase-controls-schedule?
+         {:details {}}))))
+
+(deftest randomize-db-schedules-if-needed-test
+  (let [sync-default (first sync.schedules/default-metadata-sync-schedule-cron-strings)
+        fv-default   (first sync.schedules/default-cache-field-values-schedule-cron-strings)]
+    (testing "Randomizes databases that have the 'old' style schedule defaults"
+      (mt/with-temp* [Database [db {:metadata_sync_schedule      sync-default
+                                    :cache_field_values_schedule fv-default}]]
+        (#'task.sync-databases/randomize-db-schedules-if-needed)
+        (let [after (db/select-one Database :id (u/the-id db))]
+          (is (not= sync-default (:metadata_sync_schedule after))
+              "Sync schedule not randomized")
+          (is (not= fv-default (:cache_field_values_schedule after))
+              "Field values schedule not randomized"))))
+    (testing "Does not randomize databases that have an already randomized sched"
+      (let [custom-sync "0 58 * * * ? *",
+            custom-fv   "0 0 16 * * ? *"]
+        (mt/with-temp* [Database [db {:metadata_sync_schedule      custom-sync
+                                      :cache_field_values_schedule custom-fv}]]
+          (#'task.sync-databases/randomize-db-schedules-if-needed)
+          (let [after (db/select-one Database :id (u/the-id db))]
+            (is (= custom-sync (:metadata_sync_schedule after))
+                "Sync schedule was erroneously randomized")
+            (is (= custom-fv (:cache_field_values_schedule after))
+                "Field values schedule was erroneously randomized")
+            (is (= (:updated_at after) (:updated_at db)))))))
+    (testing "Does not randomize databases that have default schedules but let users control schedule"
+      (mt/with-temp* [Database [db {:metadata_sync_schedule      sync-default
+                                    :cache_field_values_schedule fv-default}]]
+        (db/update! Database (u/the-id db) {:details (assoc (:details db)
+                                                            :let-user-control-scheduling true)})
+        (let [before (db/select-one Database :id (u/the-id db))]
+          (#'task.sync-databases/randomize-db-schedules-if-needed)
+          (let [after (db/select-one Database :id (u/the-id db))]
+            (is (= sync-default (:metadata_sync_schedule after))
+                "Sync schedule erroneously randomized")
+            (is (= fv-default (:cache_field_values_schedule after))
+                "Field values schedule erroneously randomized")
+            (is (= (:updated_at after) (:updated_at before)))))))))

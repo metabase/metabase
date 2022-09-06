@@ -5,20 +5,30 @@
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
             [metabase.db.connection :as mdb.connection]
-            [metabase.mbql.normalize :as normalize]
+            [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.schema :as mbql.s]
+            [metabase.models.dispatch :as models.dispatch]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
-            [metabase.util.cron :as cron-util]
+            [metabase.util.cron :as u.cron]
             [metabase.util.encryption :as encryption]
             [metabase.util.i18n :refer [trs tru]]
-            [potemkin.types :as p.types]
+            [potemkin :as p]
             [schema.core :as s]
             [taoensso.nippy :as nippy]
+            [toucan.db :as db]
             [toucan.models :as models])
   (:import [java.io BufferedInputStream ByteArrayInputStream DataInputStream]
            java.sql.Blob
            java.util.zip.GZIPInputStream))
+
+(p/import-vars
+ [models.dispatch
+  toucan-instance?
+  instance-of?
+  InstanceOf
+  model
+  instance])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Toucan Extensions                                                |
@@ -67,7 +77,7 @@
 ;; `metabase-query` type is for *outer* queries like Card.dataset_query. Normalizes them on the way in & out
 (defn- maybe-normalize [query]
   (cond-> query
-    (seq query) normalize/normalize))
+    (seq query) mbql.normalize/normalize))
 
 (defn catch-normalization-exceptions
   "Wraps normalization fn `f` and returns a version that gracefully handles Exceptions during normalization. When
@@ -89,7 +99,7 @@
 (defn normalize-parameters-list
   "Normalize `parameters` or `parameter-mappings` when coming out of the application database or in via an API request."
   [parameters]
-  (or (normalize/normalize-fragment [:parameters] parameters)
+  (or (mbql.normalize/normalize-fragment [:parameters] parameters)
       []))
 
 (models/add-type! :parameters-list
@@ -107,7 +117,7 @@
 ;; `metric-segment-definition` is, predictably, for Metric/Segment `:definition`s, which are just the inner MBQL query
 (defn- normalize-metric-segment-definition [definition]
   (when (seq definition)
-    (u/prog1 (normalize/normalize-fragment [:query] definition)
+    (u/prog1 (mbql.normalize/normalize-fragment [:query] definition)
       (validate-metric-segment-definition <>))))
 
 ;; For inner queries like those in Metric definitions
@@ -119,7 +129,7 @@
   ;; frontend uses JSON-serialized versions of MBQL clauses as keys in `:column_settings`; we need to normalize them
   ;; to modern MBQL clauses so things work correctly
   (letfn [(normalize-column-settings-key [k]
-            (some-> k u/qualified-name json/parse-string normalize/normalize json/generate-string))
+            (some-> k u/qualified-name json/parse-string mbql.normalize/normalize json/generate-string))
           (normalize-column-settings [column-settings]
             (into {} (for [[k v] column-settings]
                        [(normalize-column-settings-key k) (walk/keywordize-keys v)])))
@@ -132,7 +142,7 @@
             (walk/postwalk
              (fn [form]
                (cond-> form
-                 (mbql-field-clause? form) normalize/normalize))
+                 (mbql-field-clause? form) mbql.normalize/normalize))
              form))]
     (cond-> (walk/keywordize-keys (dissoc viz-settings "column_settings" "graph.metrics"))
       (get viz-settings "column_settings") (assoc :column_settings (normalize-column-settings (get viz-settings "column_settings")))
@@ -194,7 +204,7 @@
   :out decompress)
 
 (defn- validate-cron-string [s]
-  (s/validate (s/maybe cron-util/CronScheduleString) s))
+  (s/validate (s/maybe u.cron/CronScheduleString) s))
 
 (models/add-type! :cron-string
   :in  validate-cron-string
@@ -209,9 +219,11 @@
 
 ;;; properties
 
-;; use now() for Postgres and H2. now() for MySQL/MariaDB only returns second resolution. So use now(6) which uses the
-;; max (nanosecond) resolution.
-(defn- now []
+(defn now
+  "Return a HoneySQL form for a SQL function call to get current moment in time. Currently this is `now()` for Postgres
+  and H2 and `now(6)` for MySQL/MariaDB (`now()` for MySQL only return second resolution; `now(6)` uses the
+  max (nanosecond) resolution)."
+  []
   (classloader/require 'metabase.driver.sql.query-processor)
   ((resolve 'metabase.driver.sql.query-processor/current-datetime-honeysql-form) (mdb.connection/db-type)))
 
@@ -225,84 +237,108 @@
   :insert (comp add-created-at-timestamp add-updated-at-timestamp)
   :update add-updated-at-timestamp)
 
+;; like `timestamped?`, but for models that only have an `:created_at` column
+(models/add-property! :created-at-timestamped?
+  :insert add-created-at-timestamp)
+
 ;; like `timestamped?`, but for models that only have an `:updated_at` column
 (models/add-property! :updated-at-timestamped?
   :insert add-updated-at-timestamp
   :update add-updated-at-timestamp)
 
+(defn- add-entity-id [obj & _]
+  (if (contains? obj :entity_id)
+    obj
+    (assoc obj :entity_id (u/generate-nano-id))))
+
+(models/add-property! :entity_id
+  :insert add-entity-id)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             New Permissions Stuff                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(p.types/defprotocol+ IObjectPermissions
-  "Methods for determining whether the current user has read/write permissions for a given object. See documentation
-  for [[metabase.models.permissions]] for a high-level overview of the Metabase permissions system."
+(defn- dispatch-on-model [x & _args]
+  (models.dispatch/model x))
 
-  (perms-objects-set [instance ^clojure.lang.Keyword read-or-write]
-    "Return a set of permissions object paths that a user must have access to in order to access this object. This
-    should be something like #{\"/db/1/schema/public/table/20/\"}. `read-or-write` will be either `:read` or `:write`,
-    depending on which permissions set we're fetching (these will be the same sets for most models; they can ignore
-    this param).")
+(defmulti perms-objects-set
+  "Return a set of permissions object paths that a user must have access to in order to access this object. This should be
+  something like
 
-  (can-read? [instance] [entity ^Integer id]
-    "Return whether `*current-user*` has *read* permissions for an object. You should use one of these implmentations:
+    #{\"/db/1/schema/public/table/20/\"}
+
+  `read-or-write` will be either `:read` or `:write`, depending on which permissions set we're fetching (these will be
+  the same sets for most models; they can ignore this param)."
+  {:arglists '([instance read-or-write])}
+  dispatch-on-model)
+
+(defmethod perms-objects-set :default
+  [_instance _read-or-write]
+  nil)
+
+(defmulti can-read?
+  "Return whether [[metabase.api.common/*current-user*]] has *read* permissions for an object. You should typically use
+  one of these implementations:
 
   *  `(constantly true)`
   *  `superuser?`
-  *  `(partial current-user-has-full-permissions? :read)` (you must also implement `perms-objects-set` to use this)
-  *  `(partial current-user-has-partial-permissions? :read)` (you must also implement `perms-objects-set` to use
-     this)")
+  *  `(partial current-user-has-full-permissions? :read)` (you must also implement [[perms-objects-set]] to use this)
+  *  `(partial current-user-has-partial-permissions? :read)` (you must also implement [[perms-objects-set]] to use
+     this)"
+  {:arglists '([instance] [model pk])}
+  dispatch-on-model)
 
-  (^{:hydrate :can_write} can-write? [instance] [entity ^Integer id]
-   "Return whether `*current-user*` has *write* permissions for an object. You should use one of these implmentations:
+(defmulti can-write?
+  "Return whether [[metabase.api.common/*current-user*]] has *write* permissions for an object. You should typically use
+  one of these implementations:
 
   *  `(constantly true)`
   *  `superuser?`
-  *  `(partial current-user-has-full-permissions? :write)` (you must also implement `perms-objects-set` to use this)
-  *  `(partial current-user-has-partial-permissions? :write)` (you must also implement `perms-objects-set` to use
-      this)")
+  *  `(partial current-user-has-full-permissions? :write)` (you must also implement [[perms-objects-set]] to use this)
+  *  `(partial current-user-has-partial-permissions? :write)` (you must also implement [[perms-objects-set]] to use
+      this)"
+  {:arglists '([instance] [model pk]), :hydrate :can_write}
+  dispatch-on-model)
 
-  (^{:added "0.32.0"} can-create? [entity m]
-    "NEW! Check whether or not current user is allowed to CREATE a new instance of `entity` with properties in map
+(defmulti can-create?
+  "NEW! Check whether or not current user is allowed to CREATE a new instance of `model` with properties in map
     `m`.
 
-  Because this method was added YEARS after `can-read?` and `can-write?`, most models do not have an implementation
+  Because this method was added YEARS after [[can-read?]] and [[can-write?]], most models do not have an implementation
   for this method, and instead `POST` API endpoints themselves contain the appropriate permissions logic (ick).
-  Implement this method as you come across models that are missing it.")
+  Implement this method as you come across models that are missing it."
+  {:added "0.32.0", :arglists '([model m])}
+  dispatch-on-model)
 
-  (^{:added "0.36.0"} can-update? [instance changes]
-   "NEW! Check whether or not the current user is allowed to update an object and by updating properties to values in
-   the `changes` map. This is equivalent to checking whether you're allowed to perform `(toucan.db/update! entity id
-   changes)`.
+(defmethod can-create? :default
+  [model _m]
+  (throw
+   (NoSuchMethodException.
+    (str (format "%s does not yet have an implementation for [[can-create?]]. " (name model))
+         "Please consider adding one. See dox for [[can-create?]] for more details."))))
 
-  This method is appropriate for powering `PUT` API endpoints. Like `can-create?` this method was added YEARS after
-  most of the current API endpoints were written, so it is used in very few places, and this logic is determined
-  ad-hoc in the API endpoints themselves. Use this method going forward!"))
+(defmulti can-update?
+  "NEW! Check whether or not the current user is allowed to update an object and by updating properties to values in
+   the `changes` map. This is equivalent to checking whether you're allowed to perform
 
-(def IObjectPermissionsDefaults
-  "Default implementations for `IObjectPermissions`."
-  {:perms-objects-set
-   (constantly nil)
+    (toucan.db/update! model id changes)
 
-   :can-create?
-   (fn [entity _]
-     (throw
-      (NoSuchMethodException.
-       (str (format "%s does not yet have an implementation for `can-create?`. " (name entity))
-            "Please consider adding one. See dox for `can-create?` for more details."))))
+  This method is appropriate for powering `PUT` API endpoints. Like [[can-create?]] this method was added YEARS after
+  most of the current API endpoints were written, so it is used in very few places, and this logic is determined ad-hoc
+  in the API endpoints themselves. Use this method going forward!"
+  {:added "0.36.0", :arglists '([instance changes])}
+  dispatch-on-model)
 
-   :can-update?
-   (fn
-     [instance _]
-     (throw
-      (NoSuchMethodException.
-       (str (format "%s does not yet have an implementation for `can-update?`. " (name instance))
-            "Please consider adding one. See dox for `can-update?` for more details."))))})
+(defmethod can-update? :default
+  [instance _changes]
+  (throw
+   (NoSuchMethodException.
+    (str (format "%s does not yet have an implementation for `can-update?`. " (name (models.dispatch/model instance)))
+         "Please consider adding one. See dox for `can-update?` for more details."))))
 
 (defn superuser?
-  "Is `*current-user*` is a superuser? Ignores args.
-   Intended for use as an implementation of `can-read?` and/or `can-write?`."
+  "Is [[metabase.api.common/*current-user*]] is a superuser? Ignores args. Intended for use as an implementation
+  of [[can-read?]] and/or [[can-write?]]."
   [& _]
   @(requiring-resolve 'metabase.api.common/*is-superuser?*))
 
@@ -313,9 +349,9 @@
   (contains? (current-user-permissions-set) "/"))
 
 (defn- check-perms-with-fn
-  ([fn-symb read-or-write entity object-id]
+  ([fn-symb read-or-write a-model object-id]
    (or (current-user-has-root-permissions?)
-       (check-perms-with-fn fn-symb read-or-write (entity object-id))))
+       (check-perms-with-fn fn-symb read-or-write (db/select-one a-model (models/primary-key a-model) object-id))))
 
   ([fn-symb read-or-write object]
    (and object
@@ -327,16 +363,90 @@
      (u/prog1 (f (current-user-permissions-set) perms-set)
        (log/tracef "Perms check: %s -> %s" (pr-str (list fn-symb (current-user-permissions-set) perms-set)) <>)))))
 
-(def ^{:arglists '([read-or-write entity object-id] [read-or-write object] [perms-set])}
+(def ^{:arglists '([read-or-write model object-id] [read-or-write object] [perms-set])}
   current-user-has-full-permissions?
-  "Implementation of `can-read?`/`can-write?` for the old permissions system. `true` if the current user has *full*
-  permissions for the paths returned by its implementation of `perms-objects-set`. (`read-or-write` is either `:read` or
-  `:write` and passed to `perms-objects-set`; you'll usually want to partially bind it in the implementation map)."
+  "Implementation of [[can-read?]]/[[can-write?]] for the old permissions system. `true` if the current user has *full*
+  permissions for the paths returned by its implementation of [[perms-objects-set]]. (`read-or-write` is either `:read` or
+  `:write` and passed to [[perms-objects-set]]; you'll usually want to partially bind it in the implementation map)."
   (partial check-perms-with-fn 'metabase.models.permissions/set-has-full-permissions-for-set?))
 
-(def ^{:arglists '([read-or-write entity object-id] [read-or-write object] [perms-set])}
+(def ^{:arglists '([read-or-write model object-id] [read-or-write object] [perms-set])}
   current-user-has-partial-permissions?
-  "Implementation of `can-read?`/`can-write?` for the old permissions system. `true` if the current user has *partial*
-  permissions for the paths returned by its implementation of `perms-objects-set`. (`read-or-write` is either `:read` or
-  `:write` and passed to `perms-objects-set`; you'll usually want to partially bind it in the implementation map)."
+  "Implementation of [[can-read?]]/[[can-write?]] for the old permissions system. `true` if the current user has *partial*
+  permissions for the paths returned by its implementation of [[perms-objects-set]]. (`read-or-write` is either `:read` or
+  `:write` and passed to [[perms-objects-set]]; you'll usually want to partially bind it in the implementation map)."
   (partial check-perms-with-fn 'metabase.models.permissions/set-has-partial-permissions-for-set?))
+
+(defmethod can-read? ::read-policy.always-allow
+  ([_instance]
+   true)
+  ([_model _pk]
+   true))
+
+(defmethod can-write? ::write-policy.always-allow
+  ([_instance]
+   true)
+  ([_model _pk]
+   true))
+
+(defmethod can-read? ::read-policy.partial-perms-for-perms-set
+  ([instance]
+   (current-user-has-partial-permissions? :read instance))
+  ([model pk]
+   (current-user-has-partial-permissions? :read model pk)))
+
+(defmethod can-read? ::read-policy.full-perms-for-perms-set
+  ([instance]
+   (current-user-has-full-permissions? :read instance))
+  ([model pk]
+   (current-user-has-full-permissions? :read model pk)))
+
+(defmethod can-write? ::write-policy.partial-perms-for-perms-set
+  ([instance]
+   (current-user-has-partial-permissions? :write instance))
+  ([model pk]
+   (current-user-has-partial-permissions? :write model pk)))
+
+(defmethod can-write? ::write-policy.full-perms-for-perms-set
+  ([instance]
+   (current-user-has-full-permissions? :write instance))
+  ([model pk]
+   (current-user-has-full-permissions? :write model pk)))
+
+(defmethod can-read? ::read-policy.superuser
+  ([_instance]
+   (superuser?))
+  ([_model _pk]
+   (superuser?)))
+
+(defmethod can-write? ::write-policy.superuser
+  ([_instance]
+   (superuser?))
+  ([_model _pk]
+   (superuser?)))
+
+(defmethod can-create? ::create-policy.superuser
+  [_model _m]
+  (superuser?))
+
+
+;;;; redefs
+
+;;; swap out [[models/defmodel]] with a special magical version that avoids redefining stuff if the definition has not
+;;; changed at all. This is important to make the stuff in [[models.dispatch]] work properly, since we're dispatching
+;;; off of the model objects themselves e.g. [[metabase.models.user/User]] -- it is important that they do not change
+
+(defonce ^:private original-defmodel @(resolve `models/defmodel))
+
+(defmacro ^:private defmodel [model & args]
+  (let [varr           (ns-resolve *ns* model)
+        existing-hash  (some-> varr meta ::defmodel-hash)
+        has-same-hash? (= existing-hash (hash &form))]
+    (when has-same-hash?
+      (println model "has not changed, skipping redefinition"))
+    (when-not has-same-hash?
+      `(do
+         ~(apply original-defmodel &form &env model args)
+         (alter-meta! (var ~model) assoc ::defmodel-hash ~(hash &form))))))
+
+(alter-var-root #'models/defmodel (constantly @#'defmodel))

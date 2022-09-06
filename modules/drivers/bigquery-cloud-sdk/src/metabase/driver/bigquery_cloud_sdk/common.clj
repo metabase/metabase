@@ -14,13 +14,19 @@
   this dynamic var to the JVM TZ rather than UTC"
   "UTC")
 
+(defn service-account-json->service-account-credential
+  "Returns a `ServiceAccountCredentials` (not scoped) for the given `service-account-json` (String)."
+  {:added "0.42.0"}
+  ^ServiceAccountCredentials [^String service-account-json]
+  (ServiceAccountCredentials/fromStream (ByteArrayInputStream. (.getBytes service-account-json))))
+
 (defn database-details->service-account-credential
   "Returns a `ServiceAccountCredentials` (not scoped) for the given `db-details`, which is based upon the value
   associated to its `service-account-json` key (a String)."
   {:added "0.42.0"}
   ^ServiceAccountCredentials [{:keys [^String service-account-json] :as db-details}]
   {:pre [(map? db-details) (seq service-account-json)]}
-  (ServiceAccountCredentials/fromStream (ByteArrayInputStream. (.getBytes service-account-json))))
+  (service-account-json->service-account-credential service-account-json))
 
 (defn database-details->credential-project-id
   "Uses the given DB `details` credentials to determine the embedded project-id.  This is basically an

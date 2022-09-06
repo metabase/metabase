@@ -44,6 +44,8 @@ describe("metabase/lib/expressions/typeinferencer", () => {
   }
 
   it("should infer the type of primitives", () => {
+    expect(type("true")).toEqual("boolean");
+    expect(type("false")).toEqual("boolean");
     expect(type("0")).toEqual("number");
     expect(type("1")).toEqual("number");
     expect(type("3.14159")).toEqual("number");

@@ -4,7 +4,7 @@
             [clojure.test :refer :all]
             [medley.core :as m]
             [metabase.email :as email]
-            [metabase.test.data.users :as user]
+            [metabase.test.data.users :as test.users]
             [metabase.test.util :as tu]
             [metabase.util :refer [prog1]]
             [postal.message :as message])
@@ -113,18 +113,18 @@
   (regex-email-bodies* regexes @inbox))
 
 (defn received-email-subject?
-  "Indicate whether user the user received an email whose subject matches the `regex`. User should be a keyword
-  like :rasta."
-  [user regex]
-  (let [address (:username (user/user->credentials user))
+  "Indicate whether a user received an email whose subject matches the `regex`. First argument should be a keyword
+  like :rasta, or an email address string."
+  [user-or-email regex]
+  (let [address (if (string? user-or-email) user-or-email (:username (test.users/user->credentials user-or-email)))
         emails  (get @inbox address)]
     (boolean (some #(re-find regex %) (map :subject emails)))))
 
 (defn received-email-body?
-  "Indicate whether user the user received an email whose body matches the `regex`. User should be a keyword
-  like :rasta."
-  [user regex]
-  (let [address (:username (user/user->credentials user))
+  "Indicate whether a user received an email whose body matches the `regex`. First argument should be a keyword
+  like :rasta, or an email address string."
+  [user-or-email regex]
+  (let [address (if (string? user-or-email) user-or-email (:username (test.users/user->credentials user-or-email)))
         emails  (get @inbox address)]
     (boolean (some #(re-find regex %) (map (comp :content first :body) emails)))))
 
@@ -187,10 +187,12 @@
                 @inbox)))
 
 (defn email-to
-  "Creates a default email map for `user-kwd` via `user/fetch-user`, as would be returned by `with-fake-inbox`"
+  "Creates a default email map for `user-kwd` via `test.users/fetch-user`, as would be returned by `with-fake-inbox`"
   [user-kwd & [email-map]]
-  (let [{:keys [email]} (user/fetch-user user-kwd)]
-    {email [(merge {:from (email/email-from-address)
+  (let [{:keys [email]} (test.users/fetch-user user-kwd)]
+    {email [(merge {:from (if-let [from-name (email/email-from-name)]
+                            (str from-name " <" (email/email-from-address) ">")
+                            (email/email-from-address))
                     :to #{email}}
                    email-map)]}))
 
@@ -202,32 +204,51 @@
 
 (defn mock-send-email!
   "To stub out email sending, instead returning the would-be email contents as a string"
-  [smtp-credentials email-details]
+  [_smtp-credentials email-details]
   (-> email-details
       message/make-jmessage
       message/message->str))
 
 (deftest send-message!-test
   (tu/with-temporary-setting-values [email-from-address "lucky@metabase.com"
+                                     email-from-name    "Lucky"
                                      email-smtp-host    "smtp.metabase.com"
                                      email-smtp-username "lucky"
                                      email-smtp-password "d1nner3scapee!"
                                      email-smtp-port     1025
+                                     email-reply-to      ["reply-to-me@metabase.com" "reply-to-me-too@metabase.com"]
                                      email-smtp-security :none]
     (testing "basic sending"
       (is (=
-           [{:from    (email/email-from-address)
-             :to      ["test@test.com"]
-             :subject "101 Reasons to use Metabase"
-             :body    [{:type    "text/html; charset=utf-8"
-                        :content "101. Metabase will make you a better person"}]}]
+           [{:from     (str (email/email-from-name) " <" (email/email-from-address) ">")
+             :to       ["test@test.com"]
+             :subject  "101 Reasons to use Metabase"
+             :reply-to (email/email-reply-to)
+             :body     [{:type    "text/html; charset=utf-8"
+                         :content "101. Metabase will make you a better person"}]}]
            (with-fake-inbox
              (email/send-message!
-               :subject      "101 Reasons to use Metabase"
-               :recipients   ["test@test.com"]
-               :message-type :html
-               :message      "101. Metabase will make you a better person")
+              :subject      "101 Reasons to use Metabase"
+              :recipients   ["test@test.com"]
+              :message-type :html
+              :message      "101. Metabase will make you a better person")
              (@inbox "test@test.com")))))
+    (testing "basic sending without email-from-name"
+      (tu/with-temporary-setting-values [email-from-name nil]
+        (is (=
+             [{:from     (email/email-from-address)
+               :to       ["test@test.com"]
+               :subject  "101 Reasons to use Metabase"
+               :reply-to (email/email-reply-to)
+               :body     [{:type    "text/html; charset=utf-8"
+                           :content "101. Metabase will make you a better person"}]}]
+             (with-fake-inbox
+               (email/send-message!
+                :subject      "101 Reasons to use Metabase"
+                :recipients   ["test@test.com"]
+                :message-type :html
+                :message      "101. Metabase will make you a better person")
+               (@inbox "test@test.com"))))))
     (testing "with an attachment"
       (let [recipient    "csv_user@example.com"
             csv-contents "hugs_with_metabase,hugs_without_metabase\n1,0"
@@ -235,25 +256,26 @@
             params       {:subject      "101 Reasons to use Metabase"
                           :recipients   [recipient]
                           :message-type :attachments
-                          :message      [{:type "text/html; charset=utf-8"
+                          :message      [{:type    "text/html; charset=utf-8"
                                           :content "100. Metabase will hug you when you're sad"}
-                                         {:type :attachment
+                                         {:type         :attachment
                                           :content-type "text/csv"
-                                          :file-name "metabase-reasons.csv"
-                                          :content csv-file
-                                          :description "very scientific data"}]}]
+                                          :file-name    "metabase-reasons.csv"
+                                          :content      csv-file
+                                          :description  "very scientific data"}]}]
         (testing "it sends successfully"
           (is (=
-               [{:from    (email/email-from-address)
-                 :to      [recipient]
-                 :subject "101 Reasons to use Metabase"
-                 :body    [{:type    "text/html; charset=utf-8"
-                            :content "100. Metabase will hug you when you're sad"}
-                           {:type         :attachment
-                            :content-type "text/csv"
-                            :file-name    "metabase-reasons.csv"
-                            :content      csv-file
-                            :description  "very scientific data"}]}]
+               [{:from     (str (email/email-from-name) " <" (email/email-from-address) ">")
+                 :to       [recipient]
+                 :subject  "101 Reasons to use Metabase"
+                 :reply-to (email/email-reply-to)
+                 :body     [{:type    "text/html; charset=utf-8"
+                             :content "100. Metabase will hug you when you're sad"}
+                            {:type         :attachment
+                             :content-type "text/csv"
+                             :file-name    "metabase-reasons.csv"
+                             :content      csv-file
+                             :description  "very scientific data"}]}]
                (with-fake-inbox
                  (m/mapply email/send-message! params)
                  (@inbox recipient)))))

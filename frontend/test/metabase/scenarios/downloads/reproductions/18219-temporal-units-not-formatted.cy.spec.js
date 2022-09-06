@@ -1,7 +1,11 @@
-import { restore, downloadAndAssert } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import {
+  restore,
+  downloadAndAssert,
+  visitQuestion,
+} from "__support__/e2e/helpers";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const questionDetails = {
   name: "18219",
@@ -24,11 +28,7 @@ describe.skip("issue 18219", () => {
     it("should format temporal units on export (metabase#18219)", () => {
       cy.createQuestion(questionDetails).then(
         ({ body: { id: questionId } }) => {
-          cy.intercept("POST", `/api/card/${questionId}/query`).as("cardQuery");
-          cy.visit(`/question/${questionId}`);
-
-          // Wait for `result_metadata` to load
-          cy.wait("@cardQuery");
+          visitQuestion(questionId);
 
           cy.findByText("Created At: Year");
           cy.findByText("2016");

@@ -19,6 +19,12 @@ import {
   EDITOR_FK_SYMBOLS,
 } from "./config";
 
+const suggestionText = func => {
+  const { displayName, args } = func;
+  const suffix = args.length > 0 ? "(" : " ";
+  return displayName + suffix;
+};
+
 export function suggest({
   source,
   query,
@@ -42,6 +48,26 @@ export function suggest({
     return { suggestions };
   }
 
+  suggestions.push(
+    {
+      type: "literal",
+      name: "True",
+      text: "True",
+      index: targetOffset,
+      icon: "io",
+      order: 1,
+    },
+    {
+      type: "literal",
+      name: "False",
+      text: "False",
+      index: targetOffset,
+      icon: "io",
+      order: 1,
+    },
+  );
+
+  const database = query.database();
   if (_.first(matchPrefix) !== "[") {
     suggestions.push({
       type: "functions",
@@ -54,10 +80,11 @@ export function suggest({
     suggestions.push(
       ...Array.from(EXPRESSION_FUNCTIONS)
         .map(name => MBQL_CLAUSES[name])
+        .filter(clause => clause && database.hasFeature(clause.requiresFeature))
         .map(func => ({
           type: "functions",
           name: func.displayName,
-          text: func.displayName + "(",
+          text: suggestionText(func),
           index: targetOffset,
           icon: "function",
           order: 1,
@@ -67,10 +94,13 @@ export function suggest({
       suggestions.push(
         ...Array.from(AGGREGATION_FUNCTIONS)
           .map(name => MBQL_CLAUSES[name])
+          .filter(
+            clause => clause && database.hasFeature(clause.requiresFeature),
+          )
           .map(func => ({
             type: "aggregations",
             name: func.displayName,
-            text: func.displayName + "(",
+            text: suggestionText(func),
             index: targetOffset,
             icon: "function",
             order: 1,
@@ -148,11 +178,22 @@ export function suggest({
   suggestions = suggestions.filter(suggestion => suggestion.range);
 
   // deduplicate suggestions and sort by type then name
-  return {
-    suggestions: _.chain(suggestions)
-      .uniq(suggestion => suggestion.text)
-      .sortBy("text")
-      .sortBy("order")
-      .value(),
-  };
+  suggestions = _.chain(suggestions)
+    .uniq(suggestion => suggestion.text)
+    .sortBy("text")
+    .sortBy("order")
+    .value();
+
+  // the only suggested function equals the prefix match?
+  if (suggestions.length === 1 && matchPrefix) {
+    const { icon } = suggestions[0];
+    if (icon === "function") {
+      const helpText = getHelpText(getMBQLName(matchPrefix));
+      if (helpText) {
+        return { helpText };
+      }
+    }
+  }
+
+  return { suggestions };
 }

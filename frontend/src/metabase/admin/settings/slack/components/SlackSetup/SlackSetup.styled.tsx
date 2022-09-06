@@ -1,9 +1,8 @@
-import styled from "styled-components";
-import { color, lighten } from "metabase/lib/colors";
+import styled from "@emotion/styled";
+import { color } from "metabase/lib/colors";
 import { breakpointMinLarge } from "metabase/styled-components/theme";
-import Button from "metabase/components/Button";
-import ExternalLink from "metabase/components/ExternalLink";
-import SlackHelpCard from "../SlackHelpCard";
+import Button from "metabase/core/components/Button";
+import ExternalLink from "metabase/core/components/ExternalLink";
 
 export const SetupRoot = styled.div`
   max-width: 42rem;
@@ -76,36 +75,4 @@ export const SectionMessage = styled.div`
 export const SectionLink = styled(ExternalLink)`
   color: ${color("brand")};
   font-weight: bold;
-`;
-
-export const SectionCode = styled.div`
-  position: relative;
-  height: 19rem;
-  border: 1px solid ${color("brand")};
-  border-radius: 0.5rem;
-  background-color: ${lighten("brand", 0.6)};
-  overflow: auto;
-`;
-
-export const SectionCodeContent = styled.div`
-  padding: 1rem;
-  font-size: 0.75rem;
-  font-family: Monaco, monospace;
-  white-space: pre;
-`;
-
-export const SectionCodeButton = styled(Button)`
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  background-color: ${color("white")};
-`;
-
-export const SetupHelpCard = styled(SlackHelpCard)`
-  ${breakpointMinLarge} {
-    position: fixed;
-    right: 2rem;
-    bottom: 2rem;
-    max-width: 15%;
-  }
 `;

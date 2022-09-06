@@ -11,6 +11,7 @@ import { format as formatExpression } from "metabase/lib/expressions/format";
 import * as AGGREGATION from "./aggregation";
 import * as QUERY from "./query";
 import * as FIELD_REF from "./field_ref";
+import { FilterClause, MetricClause } from "./description.styled";
 
 // NOTE: This doesn't support every MBQL clause, e.x. joins. It should also be moved to StructuredQuery.
 
@@ -62,13 +63,7 @@ export function getAggregationDescription(tableMetadata, query, options) {
           id: AGGREGATION.getMetric(aggregation),
         });
         const name = metric ? metric.name : "[Unknown Metric]";
-        return [
-          options.jsx ? (
-            <span className="text-green text-bold">{name}</span>
-          ) : (
-            name
-          ),
-        ];
+        return [options.jsx ? <MetricClause>{name}</MetricClause> : name];
       }
       switch (aggregation[0]) {
         case "rows":
@@ -152,11 +147,9 @@ export function getFilterClauseDescription(tableMetadata, filter, options) {
   } else if (filter[0] === "segment") {
     const segment = _.findWhere(tableMetadata.segments, { id: filter[1] });
     const name = segment ? segment.name : "[Unknown Segment]";
-    return options.jsx ? (
-      <span className="text-purple text-bold">{name}</span>
-    ) : (
-      name
-    );
+    return options.jsx ? <FilterClause>{name}</FilterClause> : name;
+  } else if (filter[0] === "between" && filter[1][0] === "+") {
+    return getFieldName(tableMetadata, filter[1][1], options);
   } else {
     return getFieldName(tableMetadata, filter[1], options);
   }
@@ -168,12 +161,15 @@ export function getOrderByDescription(tableMetadata, query, options) {
     return [
       t`Sorted by `,
       joinList(
-        orderBy.map(
-          ([direction, field]) =>
-            getFieldName(tableMetadata, field, options) +
-            " " +
-            (direction === "asc" ? "ascending" : "descending"),
-        ),
+        orderBy.map(([direction, field]) => {
+          const name = FIELD_REF.isAggregateField(field)
+            ? getAggregationDescription(tableMetadata, query, options)
+            : getFieldName(tableMetadata, field, options);
+
+          return (
+            name + " " + (direction === "asc" ? "ascending" : "descending")
+          );
+        }),
         " and ",
       ),
     ];
@@ -243,6 +239,10 @@ export function formatTableDescription({ table }, options = {}) {
 }
 
 export function formatAggregationDescription({ aggregation }, options = {}) {
+  if (!aggregation || !aggregation.length) {
+    return [];
+  }
+
   return conjunctList(
     aggregation.map(agg => {
       switch (agg["type"]) {
@@ -251,7 +251,7 @@ export function formatAggregationDescription({ aggregation }, options = {}) {
         case "metric":
           return [
             options.jsx ? (
-              <span className="text-green text-bold">{agg["arg"]}</span>
+              <MetricClause>{agg["arg"]}</MetricClause>
             ) : (
               agg["arg"]
             ),
@@ -282,69 +282,69 @@ export function formatAggregationDescription({ aggregation }, options = {}) {
 }
 
 export function formatBreakoutDescription({ breakout }, options = {}) {
-  if (breakout && breakout.length > 0) {
-    return [
-      t`Grouped by `,
-      joinList(
-        breakout.map(b => b),
-        " and ",
-      ),
-    ];
-  } else {
+  if (!breakout || !breakout.length) {
     return [];
   }
+
+  return [
+    t`Grouped by `,
+    joinList(
+      breakout.map(b => b),
+      " and ",
+    ),
+  ];
 }
 
 export function formatFilterDescription({ filter }, options = {}) {
-  if (filter && filter.length > 0) {
-    return [
-      t`Filtered by `,
-      joinList(
-        filter.map(f => {
-          if (f["segment"] != null) {
-            return options.jsx ? (
-              <span className="text-purple text-bold">{f["segment"]}</span>
-            ) : (
-              f["segment"]
-            );
-          } else if (f["field"] != null) {
-            return f["field"];
-          }
-        }),
-        ", ",
-      ),
-    ];
-  } else {
+  if (!filter || !filter.length) {
     return [];
   }
+
+  return [
+    t`Filtered by `,
+    joinList(
+      filter.map(f => {
+        if (f["segment"] != null) {
+          return options.jsx ? (
+            <FilterClause>{f["segment"]}</FilterClause>
+          ) : (
+            f["segment"]
+          );
+        } else if (f["field"] != null) {
+          return f["field"];
+        }
+      }),
+      ", ",
+    ),
+  ];
 }
 
 export function formatOrderByDescription(parts, options = {}) {
   const orderBy = parts["order-by"];
-  if (orderBy && orderBy.length > 0) {
-    return [
-      t`Sorted by `,
-      joinList(
-        orderBy.map(
-          field =>
-            field["field"] +
-            " " +
-            (field["direction"] === "asc" ? "ascending" : "descending"),
-        ),
-        " and ",
-      ),
-    ];
-  } else {
+  if (!orderBy || !orderBy.length) {
     return [];
   }
+
+  return [
+    t`Sorted by `,
+    joinList(
+      orderBy.map(
+        field =>
+          field["field"] +
+          " " +
+          (field["direction"] === "asc" ? "ascending" : "descending"),
+      ),
+      " and ",
+    ),
+  ];
 }
 
 export function formatLimitDescription({ limit }, options = {}) {
-  if (limit != null) {
-    return [limit, " ", inflection.inflect("row", limit)];
-  } else {
+  if (limit == null) {
     return [];
   }
+
+  return [limit, " ", inflection.inflect("row", limit)];
 }
 
 export function formatQueryDescription(parts, options = {}) {

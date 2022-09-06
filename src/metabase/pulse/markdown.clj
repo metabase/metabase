@@ -2,11 +2,13 @@
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.string :as str]
+            [clojure.walk :as walk]
             [metabase.public-settings :as public-settings])
   (:import [com.vladsch.flexmark.ast AutoLink BlockQuote BulletList BulletListItem Code Emphasis FencedCodeBlock
             HardLineBreak Heading HtmlBlock HtmlCommentBlock HtmlEntity HtmlInline HtmlInlineBase HtmlInlineComment
             HtmlInnerBlockComment Image ImageRef IndentedCodeBlock Link LinkRef MailLink OrderedList OrderedListItem
             Paragraph Reference SoftLineBreak StrongEmphasis Text ThematicBreak]
+           com.vladsch.flexmark.ext.autolink.AutolinkExtension
            [com.vladsch.flexmark.html HtmlRenderer LinkResolver LinkResolverFactory]
            [com.vladsch.flexmark.html.renderer LinkResolverBasicContext LinkStatus]
            com.vladsch.flexmark.parser.Parser
@@ -20,7 +22,9 @@
 
 (def ^:private parser
   "An instance of a Flexmark parser"
-  (delay (.build (Parser/builder))))
+  (let [options (.. (MutableDataSet.)
+                    (set Parser/EXTENSIONS [(AutolinkExtension/create)]))]
+    (.build (Parser/builder options))))
 
 (def ^:private node-to-tag-mapping
   "Mappings from Flexmark AST nodes to keyword tags"
@@ -34,8 +38,8 @@
    Emphasis              :italic
    OrderedList           :ordered-list
    BulletList            :unordered-list
-   OrderedListItem       :ordered-list-item
-   BulletListItem        :unordered-list-item
+   OrderedListItem       :list-item
+   BulletListItem        :list-item
    Code                  :code
    FencedCodeBlock       :codeblock
    IndentedCodeBlock     :codeblock
@@ -159,7 +163,7 @@
     (str (.getChars this)))
 
   nil
-  (to-clojure [this]
+  (to-clojure [_this]
     nil))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -200,108 +204,184 @@
         (.. (URI. site-url) (resolve uri) toString)
         uri))))
 
-(defn- ast->mrkdwn
-  "Takes an AST representing Markdown input, and converts it to a mrkdwn string that will render nicely in Slack.
+(defn- ^:private strip-tag
+  "Given the value from the :content field of a Markdown AST node, and a keyword representing a tag type, converts all
+  instances of the tag in the content to `:default` tags. This is used to suppress rendering of nested bold and italic
+  tags, which Slack doesn't support."
+  [content tag]
+  (walk/postwalk
+   (fn [node]
+     (if (and (map? node) (= (:tag node) tag))
+        (assoc node :tag :default)
+        node))
+   content))
+
+(defmulti ast->slack
+  "Takes an AST representing Markdown input, and converts it to a string that will render nicely in Slack.
 
   Some of the differences to Markdown include:
-    * All headers are just rendered as bold text.
-    * Ordered and unordered lists are printed in plain text.
-    * Inline images are rendered as text that links to the image source, e.g. <image.png|[Image: alt-text]>."
-  [{:keys [tag attrs content]}]
-  (let [resolved-content (if (string? content)
-                           (escape-text content)
-                           (map #(if (string? %)
-                                   (escape-text %)
-                                   (ast->mrkdwn %))
-                                content))
-        joined-content   (str/join resolved-content)]
-    (case tag
-      :document
-      joined-content
+  * All headers are just rendered as bold text.
+  * Ordered and unordered lists are printed in plain text.
+  * Inline images are rendered as text that links to the image source, e.g. <image.png|[Image: alt-text]>."
+  :tag)
 
-      :paragraph
-      (str joined-content "\n")
+(defn ^:private resolved-content
+  "Given the value from the :content field of a Markdown AST node, recursively resolves subnodes into a nested list of
+  strings."
+  [content]
+  (if (string? content)
+    (escape-text content)
+    (map #(if (string? %)
+            (escape-text %)
+            (ast->slack %))
+         content)))
 
-      :soft-line-break
-      " "
+(defn ^:private resolved-content-string
+  "Given the resolved content of a Markdown AST node, converts it into a single flattened string. This is used for
+  rendering a couple specific types of nodes, such as list items."
+  [resolved-content]
+  (-> resolved-content
+      flatten
+      str/join))
 
-      :hard-line-break
-      "\n"
+(defn ^:private resolved-lines
+  "Given the value from the :content field of a Markdown AST node, recursively resolves it and returns a list of
+  strings corresponding to individual lines in the result."
+  [content]
+  (-> content
+      resolved-content
+      resolved-content-string
+      str/split-lines))
 
-      (:heading)
-      (str "*" joined-content "*\n")
+(defmethod ast->slack :default
+  [{content :content}]
+  (resolved-content content))
 
-      :bold
-      (str "*" joined-content "*")
+(defmethod ast->slack :document
+  [{content :content}]
+  (resolved-content content))
 
-      :italic
-      (str "_" joined-content "_")
+(defmethod ast->slack :paragraph
+  [{content :content}]
+  [(resolved-content content) "\n"])
 
-      :code
-      (str "`" joined-content "`")
+(defmethod ast->slack :soft-line-break
+  [_]
+  " ")
 
-      :codeblock
-      (str "```\n" joined-content "```")
+(defmethod ast->slack :hard-line-break
+  [_]
+  "\n")
 
-      :blockquote
-      (let [lines (str/split-lines joined-content)]
-        (str/join "\n" (map #(str ">" %) lines)))
+(defmethod ast->slack :horizontal-line
+  [_]
+  "\n───────────────────\n")
 
-      :link
-      (let [resolved-uri (resolve-uri (:href attrs))]
-        (if (contains? #{:image :image-ref} (:tag (first content)))
-          ;; If this is a linked image, add link target on separate line after image placeholder
-          (str joined-content "\n(" resolved-uri ")")
-          (str "<" resolved-uri "|" joined-content ">")))
+(defmethod ast->slack :heading
+  [{content :content}]
+  ["*" (resolved-content content) "*\n"])
 
-      :link-ref
-      (if-let [resolved-uri (resolve-uri (-> attrs :reference :attrs :url))]
-        (str "<" resolved-uri "|" joined-content ">")
-        joined-content)
+(defmethod ast->slack :bold
+  [{content :content}]
+  ["*" (resolved-content (strip-tag content :bold)) "*"])
 
-      :auto-link
-      (str "<" (:href attrs) ">")
+(defmethod ast->slack :italic
+  [{content :content}]
+  ["_" (resolved-content (strip-tag content :italic)) "_"])
 
-      :mail-link
-      (str "<" (:address attrs) ">")
+(defmethod ast->slack :code
+  [{content :content}]
+  ["`" (resolved-content content) "`"])
 
-      ;; list items might have nested lists or other elements, which should have their indentation level increased
-      (:unordered-list-item :ordered-list-item)
-      (let [indented-content (->> (rest resolved-content)
-                                  str/join
-                                  str/split-lines
-                                  (map #(str "    " %))
-                                  (str/join "\n"))]
-        (if-not (str/blank? indented-content)
-          (str (first resolved-content) indented-content "\n")
-          joined-content))
+(defmethod ast->slack :codeblock
+  [{content :content}]
+  ["```\n" (resolved-content content) "```"])
 
-      :unordered-list
-      (str/join (map #(str "• " %) resolved-content))
+(defmethod ast->slack :blockquote
+  [{content :content}]
+  (let [lines (resolved-lines content)]
+    (interpose "\n" (map (fn [line] [">" line]) lines))))
 
-      :ordered-list
-      (str/join (map-indexed #(str (inc %1) ". " %2) resolved-content))
+(defmethod ast->slack :link
+  [{:keys [content attrs]}]
+  (let [resolved-uri     (resolve-uri (:href attrs))
+        resolved-content (resolved-content content)]
+    (if (contains? #{:image :image-ref} (:tag (first content)))
+      ;; If this is a linked image, add link target on separate line after image placeholder
+      [resolved-content "\n(" resolved-uri ")"]
+      ["<" resolved-uri "|" resolved-content ">"])))
 
-      ;; Replace images with text that links to source, including alt text if available
-      :image
-      (let [{:keys [src alt]} attrs]
-        (if (str/blank? alt)
-          (str "<" src "|[Image]>")
-          (str "<" src "|[Image: " alt "]>")))
+(defmethod ast->slack :link-ref
+  [{:keys [content attrs]}]
+  (let [resolved-uri     (resolve-uri (-> attrs :reference :attrs :url))
+        resolved-content (resolved-content content)]
+    (if resolved-uri
+      ["<" resolved-uri "|" resolved-content ">"]
+      ;; If this was parsed as a link-ref but has no reference, assume it was just a pair of square brackets and
+      ;; restore them. This is a known discrepency between flexmark-java and Markdown rendering on the frontend.
+      ["[" resolved-content "]"])))
 
-      :image-ref
-      (let [src (-> attrs :reference :attrs :url)
-            alt joined-content]
-        (if (str/blank? alt)
-          (str "<" src "|[Image]>")
-          (str "<" src "|[Image: " alt "]>")))
+(defmethod ast->slack :auto-link
+  [{{href :href} :attrs}]
+  ["<" href ">"])
 
-      :html-entity
-      (some->> content
-               (get @html-entities)
-               (:characters))
+(defmethod ast->slack :mail-link
+  [{{address :address} :attrs}]
+  ["<mailto:"  address "|" address ">"])
 
-      joined-content)))
+(defmethod ast->slack :list-item
+  [{content :content}]
+  (let [resolved-content (resolved-content content)
+        ;; list items might have nested lists or other elements, which should have their indentation level increased
+        indented-content (->> (rest resolved-content)
+                              resolved-content-string
+                              str/split-lines
+                              (map #(str "    " %))
+                              (str/join "\n"))]
+    (if-not (str/blank? indented-content)
+      [(first resolved-content) indented-content "\n"]
+      resolved-content)))
+
+(defmethod ast->slack :unordered-list
+  [{content :content}]
+  (map (fn [list-item] ["• " list-item])
+       (resolved-content content)))
+
+(defmethod ast->slack :ordered-list
+  [{content :content}]
+  (map-indexed (fn [idx list-item] [(inc idx) ". " list-item])
+               (resolved-content content)))
+
+(defmethod ast->slack :image
+  [{{:keys [src alt]} :attrs}]
+  ;; Replace images with text that links to source, including alt text if available
+  (if (str/blank? alt)
+    ["<" src "|[Image]>"]
+    ["<" src "|[Image: " alt "]>"]))
+
+(defmethod ast->slack :image-ref
+  [{:keys [content attrs]}]
+  (let [src (-> attrs :reference :attrs :url)
+        alt (-> content resolved-content resolved-content-string)]
+    (if (str/blank? alt)
+      ["<" src "|[Image]>"]
+      ["<" src "|[Image: " alt "]>"])))
+
+(defmethod ast->slack :html-entity
+  [{content :content}]
+  (some->> content
+           (get @html-entities)
+           (:characters)))
+
+(defn- empty-link-ref?
+  "Returns true if this node was parsed as a link ref, but has no references. This probably means the original text
+  was just a pair of square brackets, and not an actual link ref. This is a known discrepency between flexmark-java
+  and Markdown rendering on the frontend."
+  [^Node node]
+  (and (instance? LinkRef node)
+       (-> (.getDocument node)
+           (.get Parser/REFERENCES)
+           empty?)))
 
 (def ^:private renderer
   "An instance of a Flexmark HTML renderer"
@@ -310,28 +390,33 @@
                        (toImmutable))
         lr-factory (reify LinkResolverFactory
                      (^LinkResolver apply [_this ^LinkResolverBasicContext _context]
-                      (reify LinkResolver
-                        (resolveLink [_this node context link]
-                          (if-let [url (resolve-uri (.getUrl link))]
-                            (.. link
-                                (withStatus LinkStatus/VALID)
-                                (withUrl url))
-                            link)))))]
-    (delay (.build (.linkResolverFactory (HtmlRenderer/builder options) lr-factory)))))
+                       (reify LinkResolver
+                         (resolveLink [_this node _context link]
+                           (if-let [url (cond
+                                          (instance? MailLink node) (.getUrl link)
+                                          (empty-link-ref? node) nil
+                                          :else (resolve-uri (.getUrl link)))]
+                             (.. link
+                                 (withStatus LinkStatus/VALID)
+                                 (withUrl url))
+                             link)))))]
+    (.build (.linkResolverFactory (HtmlRenderer/builder options) lr-factory))))
 
 (defmulti process-markdown
   "Converts a markdown string from a virtual card into a form that can be sent to a channel
-  (mrkdwn for Slack; HTML for email)."
+  (Slack's markup language, or HTML for email)."
   (fn [_markdown channel-type] channel-type))
 
-(defmethod process-markdown :mrkdwn
+(defmethod process-markdown :slack
   [markdown _]
-  (-> (.parse ^Parser @parser ^String markdown)
+  (-> (.parse ^Parser parser ^String markdown)
       to-clojure
-      ast->mrkdwn
+      ast->slack
+      flatten
+      str/join
       str/trim))
 
 (defmethod process-markdown :html
   [markdown _]
-  (let [ast (.parse ^Parser @parser ^String markdown)]
-    (.render ^HtmlRenderer @renderer ^Document ast)))
+  (let [ast (.parse ^Parser parser ^String markdown)]
+    (.render ^HtmlRenderer renderer ^Document ast)))

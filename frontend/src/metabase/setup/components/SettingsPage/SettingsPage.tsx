@@ -8,13 +8,18 @@ import DatabaseHelp from "../../containers/DatabaseHelp";
 import PreferencesStep from "../../containers/PreferencesStep";
 import CompletedStep from "../../containers/CompletedStep";
 import SetupHelp from "../SetupHelp";
+import MigrationHelp from "metabase/setup/containers/CloudMigrationHelp";
 
 export interface SettingsPageProps {
   step: number;
   onStepShow: (step: number) => void;
 }
 
-const SettingsPage = ({ step, onStepShow }: SettingsPageProps): JSX.Element => {
+const SettingsPage = ({
+  step,
+  onStepShow,
+  ...props
+}: SettingsPageProps): JSX.Element => {
   useEffect(() => {
     onStepShow(step);
   }, [step, onStepShow]);
@@ -25,13 +30,14 @@ const SettingsPage = ({ step, onStepShow }: SettingsPageProps): JSX.Element => {
         <LogoIcon height={51} />
       </PageHeader>
       <PageBody>
-        <LanguageStep />
-        <UserStep />
-        <DatabaseStep />
-        <DatabaseHelp />
-        <PreferencesStep />
-        <CompletedStep />
-        <SetupHelp />
+        <LanguageStep {...props} />
+        <UserStep {...props} />
+        <DatabaseStep {...props} />
+        <DatabaseHelp {...props} />
+        <PreferencesStep {...props} />
+        <CompletedStep {...props} />
+        <MigrationHelp {...props} />
+        <SetupHelp {...props} />
       </PageBody>
     </div>
   );

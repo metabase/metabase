@@ -12,12 +12,23 @@
   text-decoration: none;
   color: var(--color-brand);
 }
+
 .link:hover {
   text-decoration: underline;
 }
+
 .link--nohover:hover {
   text-decoration: none;
 }
+
+.link:focus {
+  outline: 2px solid var(--color-focus);
+}
+
+.link:focus:not(:focus-visible) {
+  outline: none;
+}
+
 .link--wrappable {
   word-break: break-all;
 }

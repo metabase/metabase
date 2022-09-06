@@ -3,7 +3,7 @@
   infamous `blueberries_consumed` database, used by sync tests in several different namespaces."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
-            [metabase.db.spec :as db.spec]
+            [metabase.db.spec :as mdb.spec]
             [metabase.models.database :refer [Database]]
             [metabase.sync :as sync]
             [metabase.test.data :as data]
@@ -22,7 +22,7 @@
   (let [details {:db (str "mem:" (tu/random-name) ";DB_CLOSE_DELAY=10")}]
     (tt/with-temp Database [db {:engine :h2, :details details}]
       (data/with-db db
-        (jdbc/with-db-connection [conn (db.spec/h2 details)]
+        (jdbc/with-db-connection [conn (mdb.spec/spec :h2 details)]
           (binding [*conn* conn]
             (f)))))))
 
@@ -43,11 +43,11 @@
   "Impl for `with-blueberries-db` macro; use that instead of using this directly."
   [f]
   (with-blank-db
-    (jdbc/execute! *conn* ["CREATE TABLE blueberries_consumed (num SMALLINT NOT NULL);"])
+    (jdbc/execute! *conn* ["CREATE TABLE blueberries_consumed (str TEXT NOT NULL);"])
     (f)))
 
 (defmacro with-blueberries-db
-  "Creates a database with a single table, `blueberries_consumed`, with one column, `num`."
+  "Creates a database with a single table, `blueberries_consumed`, with one column, `str`."
   {:style/indent 0}
   [& body]
   `(do-with-blueberries-db (fn [] ~@body)))
@@ -55,17 +55,25 @@
 
 ;;; ------------------------------------ Helper Fns for Populating Blueberries DB ------------------------------------
 
-(defn- insert-range-sql
-  "Generate SQL to insert a row for each number in `rang`."
-  [rang]
-  (str "INSERT INTO blueberries_consumed (num) VALUES "
-       (str/join ", " (for [n rang]
-                        (str "(" n ")")))))
+(defn range-str
+  "Like range but each element is a string.
+  We also sort the list because select distinct will also do sort automatically."
+  [& args]
+  (->> (apply range args)
+      (map str)
+      sort))
+
+(defn- insert-sql
+  "Generate SQL to insert a row for each value in `values`."
+  [values]
+  (str "INSERT INTO blueberries_consumed (str) VALUES "
+       (str/join ", " (for [v values]
+                        (str "('" v "')")))))
 
 (defn insert-rows-and-sync!
-  "With the temp blueberries db from above, insert a `range` of values and re-sync the DB.
+  "With the temp blueberries db from above, insert a collection of values and re-sync the DB.
 
      (insert-rows-and-sync! [0 1 2 3]) ; insert 4 rows"
-  [rang]
-  (jdbc/execute! *conn* [(insert-range-sql rang)])
+  [values]
+  (jdbc/execute! *conn* [(insert-sql values)])
   (sync/sync-database! (data/db)))

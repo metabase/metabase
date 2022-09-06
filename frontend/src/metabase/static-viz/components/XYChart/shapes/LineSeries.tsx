@@ -3,7 +3,8 @@ import { Group } from "@visx/group";
 import { LinePath } from "@visx/shape";
 import { PositionScale } from "@visx/shape/lib/types";
 import { getY } from "metabase/static-viz/components/XYChart/utils";
-import {
+
+import type {
   Series,
   SeriesDatum,
 } from "metabase/static-viz/components/XYChart/types";
@@ -29,12 +30,13 @@ export const LineSeries = ({
           return null;
         }
 
+        const yAccessor = (datum: SeriesDatum) => yScale(getY(datum)) ?? 0;
         return (
           <LinePath
             key={s.name}
             data={s.data}
             x={xAccessor}
-            y={d => yScale(getY(d)) ?? 0}
+            y={yAccessor}
             stroke={s.color}
             strokeWidth={2}
           />

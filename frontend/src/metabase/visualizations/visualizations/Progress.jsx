@@ -143,14 +143,8 @@ export default class Progress extends Component {
     const goal = settings["progress.goal"] || 0;
 
     const mainColor = settings["progress.color"];
-    const lightColor = Color(mainColor)
-      .lighten(0.25)
-      .rgb()
-      .string();
-    const darkColor = Color(mainColor)
-      .darken(0.3)
-      .rgb()
-      .string();
+    const lightColor = Color(mainColor).lighten(0.25).rgb().string();
+    const darkColor = Color(mainColor).darken(0.3).rgb().string();
 
     const progressColor = mainColor;
     const restColor = value > goal ? darkColor : lightColor;
@@ -166,7 +160,7 @@ export default class Progress extends Component {
       barMessage = t`Goal exceeded`;
     }
 
-    const clicked = { value, column };
+    const clicked = { value, column, settings };
     const isClickable = visualizationIsClickable(clicked);
 
     return (
@@ -207,6 +201,7 @@ export default class Progress extends Component {
               borderRadius: BORDER_RADIUS,
               overflow: "hidden",
             }}
+            data-testid="progress-bar"
             onClick={
               isClickable &&
               (e => onVisualizationClick({ ...clicked, event: e.nativeEvent }))

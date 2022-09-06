@@ -1,4 +1,5 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore } from "__support__/e2e/helpers";
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 describe("visual tests > onboarding > URLs", () => {
   beforeEach(() => {
@@ -7,7 +8,9 @@ describe("visual tests > onboarding > URLs", () => {
   });
 
   it("home", () => {
-    cy.intercept("GET", `/api/automagic-dashboards`).as("automagic-dashboards");
+    cy.intercept("GET", `/api/automagic-dashboards/**`).as(
+      "automagic-dashboards",
+    );
 
     cy.visit("/", {
       // to give predictable messages based on randomization
@@ -18,15 +21,14 @@ describe("visual tests > onboarding > URLs", () => {
 
     cy.wait("@automagic-dashboards");
 
-    cy.findByText("Reviews table");
+    cy.findByText("Reviews");
     cy.findByText("First collection");
-    cy.findByText("Sample Dataset");
 
-    cy.percySnapshot();
+    cy.createPercySnapshot();
   });
 
   it("root collection", () => {
-    cy.intercept("GET", `api/collection/root/items`).as("collection-items");
+    cy.intercept("GET", `api/collection/root/items*`).as("collection-items");
     cy.visit("/collection/root");
 
     // Twice, one for pinned items and another for dashboard
@@ -35,8 +37,9 @@ describe("visual tests > onboarding > URLs", () => {
 
     cy.findByText("First collection");
     cy.findByText("Your personal collection");
+    cy.findByText("Orders");
 
-    cy.percySnapshot();
+    cy.createPercySnapshot();
   });
 
   it("browse", () => {
@@ -44,19 +47,19 @@ describe("visual tests > onboarding > URLs", () => {
     cy.visit("/browse/");
 
     cy.wait("@database");
-    cy.findByText("Sample Dataset");
+    cy.findByText("Sample Database");
 
-    cy.percySnapshot();
+    cy.createPercySnapshot();
   });
 
-  it("browse/1 (Sample Dataset)", () => {
-    cy.intercept("GET", `api/database/1/schemas`).as("schemas");
+  it("browse/1 (Sample Database)", () => {
+    cy.intercept("GET", `api/database/${SAMPLE_DB_ID}/schemas`).as("schemas");
     cy.visit("/browse/1");
 
     cy.wait("@schemas");
-    cy.findByText("Sample Dataset");
+    cy.findByText("Sample Database");
     cy.findByText("Reviews");
 
-    cy.percySnapshot();
+    cy.createPercySnapshot();
   });
 });

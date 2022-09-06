@@ -1,7 +1,7 @@
 (ns metabase.util.date-2.parse
   (:require [clojure.string :as str]
             [java-time :as t]
-            [metabase.util.date-2.common :as common]
+            [metabase.util.date-2.common :as u.date.common]
             [metabase.util.date-2.parse.builder :as b]
             [metabase.util.i18n :refer [tru]]
             [schema.core :as s])
@@ -34,7 +34,7 @@
                          \"201901\"))
     ;; -> {:year 2019, :iso-week-of-year 1}"
   [^TemporalAccessor temporal-accessor]
-  (into {} (for [[k ^TemporalField field] common/temporal-field
+  (into {} (for [[k ^TemporalField field] u.date.common/temporal-field
                  :when                    (.isSupported temporal-accessor field)]
              [k (.getLong temporal-accessor field)])))
 
@@ -67,7 +67,7 @@
         [:zone   :date]     (ZonedDateTime/of  local-date (t/local-time 0) zone-id)
         [:offset :date]     (OffsetDateTime/of local-date (t/local-time 0) zone-offset)
         [:local  :date]     local-date
-        [:zone   :time]     (OffsetTime/of local-time (or zone-offset (common/standard-offset zone-id)))
+        [:zone   :time]     (OffsetTime/of local-time (or zone-offset (u.date.common/standard-offset zone-id)))
         [:offset :time]     (OffsetTime/of local-time zone-offset)
         [:local  :time]     local-time
         (throw (ex-info (tru "Don''t know how to parse {0} using format {1}" (pr-str s) (pr-str formattr))

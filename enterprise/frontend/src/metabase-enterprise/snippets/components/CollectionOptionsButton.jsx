@@ -3,9 +3,9 @@ import React from "react";
 import { t } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
-import { canonicalCollectionId } from "metabase/entities/collections";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import AccordionList from "metabase/components/AccordionList";
+import { canonicalCollectionId } from "metabase/collections/utils";
+import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import AccordionList from "metabase/core/components/AccordionList";
 import Icon from "metabase/components/Icon";
 
 const ICON_SIZE = 16;
@@ -29,22 +29,21 @@ export default class CollectionOptionsButton extends React.Component {
         // cap the large ellipsis so it doesn't increase the row height
         style={{ height: ICON_SIZE }}
       >
-        <PopoverWithTrigger
-          triggerElement={
-            <Icon name="ellipsis" size={20} className="hover-child" />
-          }
-        >
-          {({ onClose }) => (
+        <TippyPopoverWithTrigger
+          triggerClasses="hover-child"
+          triggerContent={<Icon name="ellipsis" size={20} />}
+          placement="bottom-end"
+          popoverContent={({ closePopover }) => (
             <AccordionList
               className="text-brand"
               sections={[{ items }]}
               onChange={item => {
                 item.onClick();
-                onClose();
+                closePopover();
               }}
             />
           )}
-        </PopoverWithTrigger>
+        />
       </div>
     );
   }

@@ -1,33 +1,45 @@
+import { init } from "server-text-width";
+import { CHAR_SIZES, CHAR_SIZES_FONT_SIZE } from "../constants/char-sizes";
+
 const CHAR_ELLIPSES = "…";
+const DEFAULT_FONT_WEIGHT = 400;
 
-// TODO: Replace this rough simple approximation with a correct one
-const getCharWidth = (fontSize: number) => {
-  if (fontSize <= 12) {
-    return fontSize / 2.15;
-  }
+export const { getTextWidth } = init(CHAR_SIZES);
 
-  if (fontSize <= 16) {
-    return fontSize / 1.84;
-  }
+export const measureText = (
+  text: string,
+  fontSize: number,
+  fontWeight = DEFAULT_FONT_WEIGHT,
+) => {
+  const sizeFactor = fontSize / CHAR_SIZES_FONT_SIZE;
 
-  return fontSize / 1.7;
-};
+  const baseWidth = getTextWidth(text, {
+    fontSize: `${CHAR_SIZES_FONT_SIZE}px`,
+    fontWeight: fontWeight.toString(),
+  });
 
-export const measureText = (text: string, fontSize: number) => {
-  return text.length * getCharWidth(fontSize);
+  return sizeFactor * baseWidth;
 };
 
 export const measureTextHeight = (fontSize: number) => {
   return fontSize * 1.3;
 };
 
-export const truncateText = (text: string, width: number, fontSize: number) => {
-  if (measureText(text, fontSize) <= width) {
+export const truncateText = (
+  text: string,
+  width: number,
+  fontSize: number,
+  fontWeight = DEFAULT_FONT_WEIGHT,
+) => {
+  if (measureText(text, fontSize, fontWeight) <= width) {
     return text;
   }
 
-  while (text.length && measureText(text + CHAR_ELLIPSES, fontSize) > width) {
-    text = text.substring(0, text.length - 1);
+  while (
+    text.length &&
+    measureText(text + CHAR_ELLIPSES, fontSize, fontWeight) > width
+  ) {
+    text = text.substring(0, text.length - 1).trim();
   }
 
   return text + CHAR_ELLIPSES;

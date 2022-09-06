@@ -14,9 +14,10 @@ const propTypes = {
   aggregation: PropTypes.object,
   index: PropTypes.number.isRequired,
   query: PropTypes.object,
+  onRemove: PropTypes.func,
 };
 
-export const AggregationItem = ({ aggregation, index, query }) => {
+export const AggregationItem = ({ aggregation, index, query, onRemove }) => {
   return (
     <PopoverWithTrigger
       triggerClasses="flex-full"
@@ -32,6 +33,9 @@ export const AggregationItem = ({ aggregation, index, query }) => {
               name="close"
               onClick={() => {
                 updateAndRunQuery(query.removeAggregation(index));
+                if (typeof onRemove === "function") {
+                  onRemove(aggregation, index);
+                }
               }}
             />
           )}

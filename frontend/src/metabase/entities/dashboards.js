@@ -15,10 +15,10 @@ import { addUndo } from "metabase/redux/undo";
 
 import { POST, DELETE } from "metabase/lib/api";
 import {
-  canonicalCollectionId,
   getCollectionType,
   normalizedCollection,
 } from "metabase/entities/collections";
+import { canonicalCollectionId } from "metabase/collections/utils";
 
 import forms from "./dashboards/forms";
 
@@ -88,22 +88,20 @@ const Dashboards = createEntity({
       ]),
       withAnalytics("entities", "dashboard", "copy"),
     )(
-      (entityObject, overrides, { notify } = {}) => async (
-        dispatch,
-        getState,
-      ) => {
-        const result = Dashboards.normalize(
-          await Dashboards.api.copy({
-            id: entityObject.id,
-            ...overrides,
-          }),
-        );
-        if (notify) {
-          dispatch(addUndo(notify));
-        }
-        dispatch({ type: Dashboards.actionTypes.INVALIDATE_LISTS_ACTION });
-        return result;
-      },
+      (entityObject, overrides, { notify } = {}) =>
+        async (dispatch, getState) => {
+          const result = Dashboards.normalize(
+            await Dashboards.api.copy({
+              id: entityObject.id,
+              ...overrides,
+            }),
+          );
+          if (notify) {
+            dispatch(addUndo(notify));
+          }
+          dispatch({ type: Dashboards.actionTypes.INVALIDATE_LISTS_ACTION });
+          return result;
+        },
     ),
   },
 
@@ -135,7 +133,12 @@ const Dashboards = createEntity({
     getUrl: dashboard => dashboard && Urls.dashboard(dashboard),
     getCollection: dashboard =>
       dashboard && normalizedCollection(dashboard.collection),
-    getIcon: dashboard => ({ name: "dashboard" }),
+    getIcon: dashboard => ({
+      name:
+        dashboard.is_app_page || dashboard.model === "page"
+          ? "document"
+          : "dashboard",
+    }),
     getColor: () => color("dashboard"),
   },
 

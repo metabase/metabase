@@ -1,69 +1,37 @@
 name: Frontend
 
 on:
-  pull_request:
   push:
     branches:
-      - '**'
-    paths:
-    - 'frontend/**'
-    - 'shared/**'
-    - 'enterprise/frontend/**'
-    - '**/package.json'
-    - '**/yarn.lock'
-    - '**/.eslintrc'
-    - '.github/workflows/**'
+      - 'master'
+      - 'release-**'
+  pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      - "**_test.clj"
+      - "**.cy.*.js" # .cy.spec.js, .cy.snap.js
+      - "frontend/test/__support__/e2e/**"
+      - "frontend/test/__runner__/*cypress*"
 
 jobs:
-
   fe-linter-prettier:
     runs-on: ubuntu-20.04
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v2
-    - name: Prepare Node.js
-      uses: actions/setup-node@v1
-      with:
-        node-version: 14.x
-    - name: Get yarn cache
-      uses: actions/cache@v2
-      with:
-        path: ~/.cache/yarn
-        key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-    - name: Get node_modules cache
-      uses: actions/cache@v2
-      with:
-        path: node_modules
-        key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock') }}
-    - run: yarn install --frozen-lockfile --prefer-offline
+    - uses: actions/checkout@v3
+    - name: Prepare front-end environment
+      uses: ./.github/actions/prepare-frontend
     - run: yarn run lint-prettier
       name: Run Prettier formatting linter
 
   fe-linter-eslint:
     runs-on: ubuntu-20.04
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
-    - uses: actions/checkout@v2
-    - name: Prepare Node.js
-      uses: actions/setup-node@v1
-      with:
-        node-version: 14.x
-    - name: Get M2 cache
-      uses: actions/cache@v2
-      with:
-        path: ~/.m2
-        key: ${{ runner.os }}-cljs-${{ hashFiles('**/shadow-cljs.edn') }}
-    - name: Get yarn cache
-      uses: actions/cache@v2
-      with:
-        path: ~/.cache/yarn
-        key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-    - name: Get node_modules cache
-      uses: actions/cache@v2
-      with:
-        path: node_modules
-        key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock') }}
-    - run: yarn install --frozen-lockfile --prefer-offline
+    - uses: actions/checkout@v3
+    - name: Prepare front-end environment
+      uses: ./.github/actions/prepare-frontend
     - run: yarn run lint-eslint
       name: Run ESLint linter
 
@@ -71,22 +39,9 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v2
-    - name: Prepare Node.js
-      uses: actions/setup-node@v1
-      with:
-        node-version: 14.x
-    - name: Get yarn cache
-      uses: actions/cache@v2
-      with:
-        path: ~/.cache/yarn
-        key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-    - name: Get node_modules cache
-      uses: actions/cache@v2
-      with:
-        path: node_modules
-        key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock') }}
-    - run: yarn install --frozen-lockfile --prefer-offline
+    - uses: actions/checkout@v3
+    - name: Prepare front-end environment
+      uses: ./.github/actions/prepare-frontend
     - run: yarn type-check
       name: Check types
 
@@ -94,27 +49,9 @@ jobs:
     runs-on: buildjet-2vcpu-ubuntu-2004
     timeout-minutes: 20
     steps:
-    - uses: actions/checkout@v2
-    - name: Prepare Node.js
-      uses: actions/setup-node@v1
-      with:
-        node-version: 14.x
-    - name: Get M2 cache
-      uses: actions/cache@v2
-      with:
-        path: ~/.m2
-        key: ${{ runner.os }}-cljs-${{ hashFiles('**/shadow-cljs.edn') }}
-    - name: Get yarn cache
-      uses: actions/cache@v2
-      with:
-        path: ~/.cache/yarn
-        key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-    - name: Get node_modules cache
-      uses: actions/cache@v2
-      with:
-        path: node_modules
-        key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock') }}
-    - run: yarn install --frozen-lockfile --prefer-offline
+    - uses: actions/checkout@v3
+    - name: Prepare front-end environment
+      uses: ./.github/actions/prepare-frontend
     - run: yarn run test-unit --coverage --silent
       name: Run frontend unit tests
     - name: Upload coverage to codecov.io
@@ -127,52 +64,21 @@ jobs:
     runs-on: buildjet-2vcpu-ubuntu-2004
     timeout-minutes: 14
     steps:
-    - uses: actions/checkout@v2
-    - name: Prepare Node.js
-      uses: actions/setup-node@v1
-      with:
-        node-version: 14.x
-    - name: Get M2 cache
-      uses: actions/cache@v2
-      with:
-        path: ~/.m2
-        key: ${{ runner.os }}-cljs-${{ hashFiles('**/shadow-cljs.edn') }}
-    - name: Get yarn cache
-      uses: actions/cache@v2
-      with:
-        path: ~/.cache/yarn
-        key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-    - name: Get node_modules cache
-      uses: actions/cache@v2
-      with:
-        path: node_modules
-        key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock') }}
-    - run: yarn install --frozen-lockfile --prefer-offline
+    - uses: actions/checkout@v3
+    - name: Prepare front-end environment
+      uses: ./.github/actions/prepare-frontend
     - run: yarn run test-timezones
       name: Run frontend timezones tests
 
   fe-chromatic:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - name: Prepare Node.js
-        uses: actions/setup-node@v1
-        with:
-          node-version: 14.x
-      - name: Get yarn cache
-        uses: actions/cache@v2
-        with:
-          path: ~/.cache/yarn
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-      - name: Get node_modules cache
-        uses: actions/cache@v2
-        with:
-          path: node_modules
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock') }}
-      - run: yarn install --frozen-lockfile --prefer-offline
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
       - name: Publish to Chromatic
         uses: chromaui/action@v1
         env:

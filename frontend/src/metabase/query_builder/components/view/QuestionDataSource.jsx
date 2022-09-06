@@ -1,12 +1,17 @@
 import React from "react";
 import { t } from "ttag";
 import PropTypes from "prop-types";
+
+import { color } from "metabase/lib/colors";
 import {
   isVirtualCardId,
   getQuestionIdFromVirtualTableId,
 } from "metabase/lib/saved-questions";
 import * as Urls from "metabase/lib/urls";
 import Questions from "metabase/entities/questions";
+
+import Tooltip from "metabase/components/Tooltip";
+
 import TableInfoPopover from "metabase/components/MetadataInfo/TableInfoPopover";
 
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
@@ -106,13 +111,28 @@ function SourceDatasetBreadcrumbs({ dataset, ...props }) {
         >
           {collection?.name || t`Our analytics`}
         </HeadBreadcrumbs.Badge>,
-        <HeadBreadcrumbs.Badge
-          key="dataset-name"
-          to={Urls.question(dataset)}
-          inactiveColor="text-light"
-        >
-          {dataset.name}
-        </HeadBreadcrumbs.Badge>,
+        dataset.archived ? (
+          <Tooltip
+            key="dataset-name"
+            tooltip={t`This model is archived and shouldn't be used.`}
+            maxWidth="auto"
+            placement="bottom"
+          >
+            <HeadBreadcrumbs.Badge
+              inactiveColor="text-light"
+              icon={{ name: "warning", color: color("danger") }}
+            >
+              {dataset.name}
+            </HeadBreadcrumbs.Badge>
+          </Tooltip>
+        ) : (
+          <HeadBreadcrumbs.Badge
+            to={Urls.question(dataset)}
+            inactiveColor="text-light"
+          >
+            {dataset.name}
+          </HeadBreadcrumbs.Badge>
+        ),
       ]}
     />
   );
@@ -126,17 +146,22 @@ function getDataSourceParts({ question, subHead, isObjectDetail }) {
     return [];
   }
 
-  const parts = [];
-
   const isStructuredQuery = question.isStructured();
   const query = isStructuredQuery
     ? question.query().rootQuery()
     : question.query();
 
+  const hasDataPermission = query.isEditable();
+  if (!hasDataPermission) {
+    return [];
+  }
+
+  const parts = [];
+
   const database = query.database();
   if (database) {
     parts.push({
-      icon: "database",
+      icon: !subHead ? "database" : undefined,
       name: database.displayName(),
       href: database.id >= 0 && Urls.browseDatabase(database),
     });

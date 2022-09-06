@@ -3,10 +3,12 @@ import {
   openOrdersTable,
   openReviewsTable,
   popover,
-} from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+  summarize,
+} from "__support__/e2e/helpers";
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, REVIEWS, REVIEWS_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID, REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > admin > datamodel > metadata", () => {
   beforeEach(() => {
@@ -15,14 +17,11 @@ describe("scenarios > admin > datamodel > metadata", () => {
   });
 
   it("should correctly show remapped column value", () => {
-    // go directly to Data Model page for Sample Dataset
-    cy.visit("/admin/datamodel/database/1");
+    // go directly to Data Model page for Sample Database
+    cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}`);
     // edit "Product ID" column in "Orders" table
     cy.findByText("Orders").click();
-    cy.findByDisplayValue("Product ID")
-      .parent()
-      .find(".Icon-gear")
-      .click();
+    cy.findByDisplayValue("Product ID").parent().find(".Icon-gear").click();
 
     // remap its original value to use foreign key
     cy.findByText("Use original value").click();
@@ -49,14 +48,11 @@ describe("scenarios > admin > datamodel > metadata", () => {
       5: "Perfecto",
     };
 
-    // go directly to Data Model page for Sample Dataset
-    cy.visit("/admin/datamodel/database/1");
+    // go directly to Data Model page for Sample Database
+    cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}`);
     // edit "Rating" values in "Reviews" table
     cy.findByText("Reviews").click();
-    cy.findByDisplayValue("Rating")
-      .parent()
-      .find(".Icon-gear")
-      .click();
+    cy.findByDisplayValue("Rating").parent().find(".Icon-gear").click();
 
     // apply custom remapping for "Rating" values 1-5
     cy.findByText("Use original value").click();
@@ -66,10 +62,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
     );
 
     Object.entries(customMap).forEach(([key, value]) => {
-      cy.findByDisplayValue(key)
-        .click()
-        .clear()
-        .type(value);
+      cy.findByDisplayValue(key).click().clear().type(value);
     });
     cy.findByText("Save").click();
 
@@ -85,23 +78,24 @@ describe("scenarios > admin > datamodel > metadata", () => {
       semantic_type: null,
     });
 
-    cy.createQuestion({
-      name: "14124",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        breakout: [
-          ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }],
-        ],
+    cy.createQuestion(
+      {
+        name: "14124",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }],
+          ],
+        },
       },
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.visit(`/question/${QUESTION_ID}`);
+      { visitQuestion: true },
+    );
 
-      cy.findByText("Created At: Hour of day");
+    cy.findByText("Created At: Hour of day");
 
-      cy.log("Reported failing in v0.37.2");
-      cy.findByText(/^3:00 AM$/);
-    });
+    cy.log("Reported failing in v0.37.2");
+    cy.findByText(/^3:00 AM$/);
   });
 
   it("should not display multiple 'Created At' fields when they are remapped to PK/FK (metabase#15563)", () => {
@@ -115,28 +109,28 @@ describe("scenarios > admin > datamodel > metadata", () => {
     });
 
     openReviewsTable({ mode: "notebook" });
-    cy.findByText("Summarize").click();
+    summarize({ mode: "notebook" });
     cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();
-    cy.get(".List-section-header")
-      .contains("Created At")
-      .click();
+    cy.get(".List-section-header").contains("Created At").click();
     cy.get(".List-section--expanded .List-item-title")
       .contains("Created At")
       .should("have.length", 1);
   });
 
-  it.skip("display value 'custom mapping' should be available regardless of the chosen filtering type (metabase#16322)", () => {
+  it("display value 'custom mapping' should be available regardless of the chosen filtering type (metabase#16322)", () => {
     cy.visit(
-      `/admin/datamodel/database/1/table/${REVIEWS_ID}/${REVIEWS.RATING}/general`,
+      `/admin/datamodel/database/${SAMPLE_DB_ID}/table/${REVIEWS_ID}/${REVIEWS.RATING}/general`,
     );
 
     openOptionsForSection("Filtering on this field");
-    popover()
-      .findByText("Search box")
-      .click();
+    popover().findByText("Search box").click();
 
-    cy.reload();
+    openOptionsForSection("Display values");
+    popover().findByText("Custom mapping").should("not.exist");
+
+    openOptionsForSection("Filtering on this field");
+    popover().findByText("A list of all values").click();
 
     openOptionsForSection("Display values");
     popover().findByText("Custom mapping");
@@ -146,6 +140,6 @@ describe("scenarios > admin > datamodel > metadata", () => {
 function openOptionsForSection(sectionName) {
   cy.findByText(sectionName)
     .closest("section")
-    .find(".AdminSelect")
+    .findByTestId("select-button")
     .click();
 }

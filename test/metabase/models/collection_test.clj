@@ -8,6 +8,7 @@
             [metabase.models :refer [Card Collection Dashboard NativeQuerySnippet Permissions PermissionsGroup Pulse User]]
             [metabase.models.collection :as collection]
             [metabase.models.permissions :as perms]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
@@ -21,6 +22,17 @@
 (defn- lucky-collection-children-location []
   (collection/children-location (collection/user->personal-collection (mt/user->id :lucky))))
 
+(deftest format-personal-collection-name-test
+  (testing "test that the Personal collection name formatting outputs correct strings"
+    (is (= "Meta Base's Personal Collection"
+           (collection/format-personal-collection-name "Meta" "Base" "MetaBase@metabase.com" :site)))
+    (is (= "Meta's Personal Collection"
+           (collection/format-personal-collection-name "Meta" nil "MetaBase@metabase.com" :site)))
+    (is (= "Base's Personal Collection"
+           (collection/format-personal-collection-name nil "Base" "MetaBase@metabase.com" :site)))
+    (is (= "MetaBase@metabase.com's Personal Collection"
+           (collection/format-personal-collection-name nil nil "MetaBase@metabase.com" :site)))))
+
 (deftest create-collection-test
   (testing "test that we can create a new Collection with valid inputs"
     (mt/with-temp Collection [collection {:name "My Favorite Cards", :color "#ABCDEF"}]
@@ -33,7 +45,7 @@
                :archived          false
                :location          "/"
                :personal_owner_id nil})
-             (mt/derecordize (dissoc collection :id)))))))
+             (mt/derecordize (dissoc collection :id :entity_id)))))))
 
 (deftest color-validation-test
   (testing "Collection colors should be validated when inserted into the DB"
@@ -73,6 +85,16 @@
       (is (some? c1))
       (is (some? c2))
       (is (= (:slug c1) (:slug c2))))))
+
+(deftest entity-ids-test
+  (testing "entity IDs are generated"
+    (mt/with-temp Collection [collection]
+      (is (some? (:entity_id collection)))))
+
+  (testing "entity IDs are unique"
+    (mt/with-temp* [Collection [c1 {:name "My Favorite Cards"}]
+                    Collection [c2 {:name "my_favorite Cards"}]]
+      (is (not= (:entity_id c1) (:entity_id c2))))))
 
 (deftest archive-cards-test
   (testing "check that archiving a Collection archives its Cards as well"
@@ -925,7 +947,7 @@
     ;;           +-> F -> G            +-> G
     (with-collection-hierarchy [{:keys [a f], :as collections}]
       (collection/move-collection! f (collection/children-location collection/root-collection))
-      (collection/move-collection! a (collection/children-location (Collection (u/the-id f))))
+      (collection/move-collection! a (collection/children-location (db/select-one Collection :id (u/the-id f))))
       (is (= {"F" {"A" {"B" {}
                         "C" {"D" {"E" {}}}}
                    "G" {}}}
@@ -1082,15 +1104,17 @@
   (perms-path-ids->names
    (zipmap (map :name collections)
            collections)
-   (db/select-field :object Permissions :group_id (u/the-id perms-group))))
+   (db/select-field :object Permissions
+                    {:where [:and
+                             [:like :object "/collection/%"]
+                             [:= :group_id (u/the-id perms-group)]]})))
 
 (deftest copy-root-collection-perms-test
   (testing (str "Make sure that when creating a new Collection at the Root Level, we copy the group permissions for "
                 "the Root Collection\n")
     (doseq [collection-namespace [nil "currency"]
-            :let                 [root-collection       (assoc collection/root-collection :namespace collection-namespace)
-                                  other-namespace      (if collection-namespace nil "currency")
-                                  other-root-collection (assoc collection/root-collection :namespace other-namespace)]]
+            :let                 [root-collection (assoc collection/root-collection :namespace collection-namespace)
+                                  other-namespace (if collection-namespace nil "currency")]]
       (testing (format "Collection namespace = %s\n" (pr-str collection-namespace))
         (mt/with-temp PermissionsGroup [group]
           (testing "no perms beforehand = no perms after"
@@ -1436,25 +1460,22 @@
 (deftest check-collection-namespace-test
   (testing "check-collection-namespace"
     (testing "Should succeed if namespace is allowed"
-      (mt/with-temp* [Card       [{card-id :id}]
-                      Collection [{collection-id :id}]]
+      (mt/with-temp Collection [{collection-id :id}]
         (is (= nil
                (collection/check-collection-namespace Card collection-id)))))
 
     (testing "Should throw exception if namespace is not allowed"
-      (mt/with-temp* [Card       [{card-id :id}]
-                      Collection [{collection-id :id} {:namespace "x"}]]
+      (mt/with-temp Collection [{collection-id :id} {:namespace "x"}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A Card can only go in Collections in the \"default\" namespace"
              (collection/check-collection-namespace Card collection-id)))))
 
     (testing "Should throw exception if Collection does not exist"
-      (mt/with-temp Card [{card-id :id}]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"Collection does not exist"
-             (collection/check-collection-namespace Card Integer/MAX_VALUE)))))))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Collection does not exist"
+           (collection/check-collection-namespace Card Integer/MAX_VALUE))))))
 
 (deftest delete-collection-set-children-collection-id-to-null-test
   (testing "When deleting a Collection, should change collection_id of Children to nil instead of Cascading"
@@ -1600,3 +1621,21 @@
               {:id 5 :here #{:card}}]}]
            (clean (collection/collections->tree {:card #{1 5} :dataset #{3 4}}
                                                 collections))))))
+
+(deftest identity-hash-test
+  (testing "Collection hashes are composed of the name, namespace, and parent collection's hash"
+    (mt/with-temp* [Collection [c1  {:name "top level"  :namespace "yolocorp" :location "/"}]
+                    Collection [c2  {:name "nested"     :namespace "yolocorp" :location (format "/%s/" (:id c1))}]
+                    Collection [c3  {:name "grandchild" :namespace "yolocorp" :location (format "/%s/%s/" (:id c1) (:id c2))}]]
+      (let [c1-hash (serdes.hash/identity-hash c1)
+            c2-hash (serdes.hash/identity-hash c2)]
+        (is (= "37e57249"
+               (serdes.hash/raw-hash ["top level" :yolocorp "ROOT"])
+               c1-hash)
+            "Top-level collections should use a parent hash of 'ROOT'")
+        (is (= "ce76f360"
+               (serdes.hash/raw-hash ["nested" :yolocorp c1-hash])
+               c2-hash))
+        (is (= "acb1ea3e"
+               (serdes.hash/raw-hash ["grandchild" :yolocorp c2-hash])
+               (serdes.hash/identity-hash c3)))))))

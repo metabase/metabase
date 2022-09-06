@@ -1,15 +1,13 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-
 import { t } from "ttag";
-import cx from "classnames";
 import _ from "underscore";
-
-import Icon from "metabase/components/Icon";
-
-import ChartSettingSelect from "./ChartSettingSelect";
-
 import { keyForColumn } from "metabase/lib/dataset";
+import ChartSettingSelect from "./ChartSettingSelect";
+import {
+  SettingsIcon,
+  ChartSettingFieldPickerRoot,
+} from "./ChartSettingFieldPicker.styled";
 
 const ChartSettingFieldPicker = ({
   value,
@@ -29,7 +27,7 @@ const ChartSettingFieldPicker = ({
     }
   }
   return (
-    <div className={cx(className, "flex align-center")}>
+    <ChartSettingFieldPickerRoot className={className}>
       <ChartSettingSelect
         className="flex-full"
         value={value}
@@ -38,30 +36,32 @@ const ChartSettingFieldPicker = ({
         placeholder={t`Select a field`}
         placeholderNoOptions={t`No valid fields`}
         isInitiallyOpen={value === undefined}
+        hiddenIcons
       />
       {columnKey && (
-        <Icon
-          name="gear"
-          className="ml1 text-medium text-brand-hover cursor-pointer"
-          onClick={() => {
-            onShowWidget({
-              id: "column_settings",
-              props: {
-                initialKey: columnKey,
+        <SettingsIcon
+          name="ellipsis"
+          onClick={e => {
+            onShowWidget(
+              {
+                id: "column_settings",
+                props: {
+                  initialKey: columnKey,
+                },
               },
-            });
+              e.target,
+            );
           }}
         />
       )}
-      <Icon
-        data-testid={`remove-${value}`}
-        name="close"
-        className={cx("ml1 text-medium text-brand-hover cursor-pointer", {
-          "disabled hidden": !onRemove,
-        })}
-        onClick={onRemove}
-      />
-    </div>
+      {onRemove && (
+        <SettingsIcon
+          data-testid={`remove-${value}`}
+          name="close"
+          onClick={onRemove}
+        />
+      )}
+    </ChartSettingFieldPickerRoot>
   );
 };
 

@@ -4,8 +4,9 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.async.streaming-response :as streaming-response]
-            [metabase.async.streaming-response.thread-pool :as streaming-response.thread-pool]
+            [metabase.async.streaming-response.thread-pool :as thread-pool]
             [metabase.async.util :as async.u]
+            [metabase.db.connection :as mdb.connection]
             [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
             [metabase.server :as server]
             [metabase.server.request.util :as request.u]
@@ -40,17 +41,18 @@
      (format " [%s: %s]" (trs "ASYNC") async-status))))
 
 (defn- format-performance-info
-  [{:keys [start-time call-count-fn diag-info-fn]
+  [{:keys [start-time call-count-fn _diag-info-fn]
     :or {start-time    (System/nanoTime)
-         call-count-fn (constantly -1)
-         diag-info-fn  (constantly {})}}]
+         call-count-fn (constantly -1)}}]
   (let [elapsed-time (u/format-nanoseconds (- (System/nanoTime) start-time))
         db-calls     (call-count-fn)]
     (trs "{0} ({1} DB calls)" elapsed-time db-calls)))
 
 (defn- stats [diag-info-fn]
   (str
-   (let [^PoolBackedDataSource pool (:datasource (db/connection))]
+   (when-let [^PoolBackedDataSource pool (let [data-source (mdb.connection/data-source)]
+                                           (when (instance? PoolBackedDataSource data-source)
+                                             data-source))]
      (trs "App DB connections: {0}/{1}"
           (.getNumBusyConnectionsAllUsers pool) (.getNumConnectionsAllUsers pool)))
    " "
@@ -63,9 +65,9 @@
    " "
    (trs "({0} total active threads)" (Thread/activeCount))
    " "
-   (trs "Queries in flight: {0}" (streaming-response.thread-pool/active-thread-count))
+   (trs "Queries in flight: {0}" (thread-pool/active-thread-count))
    " "
-   (trs "({0} queued)" (streaming-response.thread-pool/queued-thread-count))
+   (trs "({0} queued)" (thread-pool/queued-thread-count))
    (when diag-info-fn
      (when-let [diag-info (not-empty (diag-info-fn))]
        (format
@@ -151,14 +153,14 @@
 (defn- log-core-async-response
   "For async responses that return a `core.async` channel, wait for the channel to return a response before logging the
   API request info."
-  [{{chan :body, :as response} :response, :as info}]
+  [{{chan :body, :as _response} :response, :as info}]
   {:pre [(async.u/promise-chan? chan)]}
   ;; [async] wait for the pipe to close the canceled/finished channel and log the API response
   (a/go
     (let [result (a/<! chan)]
       (log-info (assoc info :async-status (if (nil? result) "canceled" "completed"))))))
 
-(defn- log-streaming-response [{{streaming-response :body, :as response} :response, :as info}]
+(defn- log-streaming-response [{{streaming-response :body, :as _response} :response, :as info}]
   ;; [async] wait for the streaming response to be canceled/finished channel and log the API response
   (let [finished-chan (streaming-response/finished-chan streaming-response)]
     (a/go

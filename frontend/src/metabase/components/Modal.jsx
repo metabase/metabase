@@ -30,11 +30,13 @@ export class WindowModal extends Component {
   static propTypes = {
     isOpen: PropTypes.bool,
     enableMouseEvents: PropTypes.bool,
+    enableTransition: PropTypes.bool,
   };
 
   static defaultProps = {
     className: "Modal",
     backdropClassName: "Modal-backdrop",
+    enableTransition: true,
   };
 
   constructor(props) {
@@ -58,12 +60,15 @@ export class WindowModal extends Component {
   _modalComponent() {
     const className = cx(
       this.props.className,
-      ...["small", "medium", "wide", "tall"]
+      ...["small", "medium", "wide", "tall", "fit"]
         .filter(type => this.props[type])
         .map(type => `Modal--${type}`),
     );
     return (
-      <OnClickOutsideWrapper handleDismissal={this.handleDismissal}>
+      <OnClickOutsideWrapper
+        backdropElement={this._modalElement}
+        handleDismissal={this.handleDismissal}
+      >
         <div className={cx(className, "relative bg-white rounded")}>
           {getModalContent({
             ...this.props,
@@ -78,7 +83,13 @@ export class WindowModal extends Component {
   }
 
   render() {
-    const { enableMouseEvents, backdropClassName, isOpen, style } = this.props;
+    const {
+      enableMouseEvents,
+      backdropClassName,
+      isOpen,
+      style,
+      enableTransition,
+    } = this.props;
     const backdropClassnames =
       "flex justify-center align-center fixed top left bottom right";
 
@@ -88,10 +99,13 @@ export class WindowModal extends Component {
         enableMouseEvents={enableMouseEvents}
       >
         <CSSTransitionGroup
+          component="div"
           transitionName="Modal"
-          transitionAppear={true}
+          transitionAppear={enableTransition}
           transitionAppearTimeout={250}
+          transitionEnter={enableTransition}
           transitionEnterTimeout={250}
+          transitionLeave={enableTransition}
           transitionLeaveTimeout={250}
         >
           {isOpen && (
@@ -201,7 +215,7 @@ export class FullPageModal extends Component {
 // the "routeless" version should only be used for non-inline modals
 const RoutelessFullPageModal = routeless(FullPageModal);
 
-const Modal = ({ full, ...props }) =>
+const Modal = ({ full = false, ...props }) =>
   full ? (
     props.isOpen ? (
       <RoutelessFullPageModal {...props} />

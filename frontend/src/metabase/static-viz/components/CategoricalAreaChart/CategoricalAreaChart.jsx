@@ -15,13 +15,14 @@ import {
 } from "../../lib/axes";
 import { formatNumber } from "../../lib/numbers";
 import { truncateText } from "../../lib/text";
+import { POSITIONAL_ACCESSORS } from "../../constants/accessors";
 
 const propTypes = {
   data: PropTypes.array.isRequired,
   accessors: PropTypes.shape({
     x: PropTypes.func.isRequired,
     y: PropTypes.func.isRequired,
-  }).isRequired,
+  }),
   settings: PropTypes.shape({
     x: PropTypes.object,
     y: PropTypes.object,
@@ -31,6 +32,7 @@ const propTypes = {
     left: PropTypes.string,
     bottom: PropTypes.string,
   }),
+  getColor: PropTypes.func,
 };
 
 const layout = {
@@ -59,7 +61,13 @@ const layout = {
   strokeDasharray: "4",
 };
 
-const CategoricalAreaChart = ({ data, accessors, settings, labels }) => {
+const CategoricalAreaChart = ({
+  data,
+  accessors = POSITIONAL_ACCESSORS,
+  settings,
+  labels,
+  getColor,
+}) => {
   const colors = settings?.colors;
   const isVertical = data.length > 10;
   const xTickWidth = getXTickWidth(
@@ -132,9 +140,9 @@ const CategoricalAreaChart = ({ data, accessors, settings, labels }) => {
         labelOffset={yLabelOffset}
         hideTicks
         hideAxisLine
-        labelProps={getLabelProps(layout)}
+        labelProps={getLabelProps(layout, getColor)}
         tickFormat={value => formatNumber(value, settings?.y)}
-        tickLabelProps={() => getYTickLabelProps(layout)}
+        tickLabelProps={() => getYTickLabelProps(layout, getColor)}
       />
       <LinePath
         data={data}
@@ -150,9 +158,9 @@ const CategoricalAreaChart = ({ data, accessors, settings, labels }) => {
         numTicks={data.length}
         stroke={palette.textLight}
         tickStroke={palette.textLight}
-        labelProps={getLabelProps(layout)}
+        labelProps={getLabelProps(layout, getColor)}
         tickComponent={props => <Text {...getXTickProps(props)} />}
-        tickLabelProps={() => getXTickLabelProps(layout, isVertical)}
+        tickLabelProps={() => getXTickLabelProps(layout, isVertical, getColor)}
       />
     </svg>
   );

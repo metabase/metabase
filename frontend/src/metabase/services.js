@@ -15,6 +15,22 @@ export const ActivityApi = {
   recent_views: GET("/api/activity/recent_views"),
 };
 
+export const BookmarkApi = {
+  card: {
+    create: POST("/api/bookmark/card/:id"),
+    delete: DELETE("/api/bookmark/card/:id"),
+  },
+  collection: {
+    create: POST("/api/bookmark/collection/:id"),
+    delete: DELETE("/api/bookmark/collection/:id"),
+  },
+  dashboard: {
+    create: POST("/api/bookmark/dashboard/:id"),
+    delete: DELETE("/api/bookmark/dashboard/:id"),
+  },
+  reorder: PUT("/api/bookmark/ordering"),
+};
+
 // only available with token loaded
 export const GTAPApi = {
   list: GET("/api/mt/gtap"),
@@ -100,13 +116,16 @@ export const CardApi = {
   create: POST("/api/card"),
   get: GET("/api/card/:cardId"),
   update: PUT("/api/card/:id"),
-  delete: DELETE("/api/card/:cardId"),
+  delete: DELETE("/api/card/:id"),
+  persist: POST("/api/card/:id/persist"),
+  unpersist: POST("/api/card/:id/unpersist"),
+  refreshModelCache: POST("/api/card/:id/refresh"),
   query: POST("/api/card/:cardId/query"),
   query_pivot: POST("/api/card/pivot/:cardId/query"),
-  // isfavorite:                  GET("/api/card/:cardId/favorite"),
-  favorite: POST("/api/card/:cardId/favorite"),
-  unfavorite: DELETE("/api/card/:cardId/favorite"),
-
+  bookmark: {
+    create: POST("/api/card/:id/bookmark"),
+    delete: DELETE("/api/card/:id/bookmark"),
+  },
   listPublic: GET("/api/card/public"),
   listEmbeddable: GET("/api/card/embeddable"),
   createPublicLink: POST("/api/card/:id/public_link"),
@@ -139,10 +158,14 @@ export const DashboardApi = {
   createPublicLink: POST("/api/dashboard/:id/public_link"),
   deletePublicLink: DELETE("/api/dashboard/:id/public_link"),
 
-  cardQuery: POST("/api/dashboard/:dashboardId/card/:cardId/query"),
-  cardQueryPivot: POST("/api/dashboard/:dashboardId/card/pivot/:cardId/query"),
+  cardQuery: POST(
+    "/api/dashboard/:dashboardId/dashcard/:dashcardId/card/:cardId/query",
+  ),
+  cardQueryPivot: POST(
+    "/api/dashboard/pivot/:dashboardId/dashcard/:dashcardId/card/:cardId/query",
+  ),
   exportCardQuery: POST(
-    "/api/dashboard/:dashboardId/card/:cardId/query/:exportFormat",
+    "/api/dashboard/:dashboardId/dashcard/:dashcardId/card/:cardId/query/:exportFormat",
   ),
 };
 
@@ -157,6 +180,12 @@ export const CollectionsApi = {
   updateGraph: PUT("/api/collection/graph"),
 };
 
+export const DataAppsApi = {
+  list: GET("/api/app"),
+  create: POST("/api/app"),
+  update: PUT("/api/app/:id"),
+};
+
 const PIVOT_PUBLIC_PREFIX = "/api/public/pivot/";
 
 export const PublicApi = {
@@ -164,9 +193,11 @@ export const PublicApi = {
   cardQuery: GET("/api/public/card/:uuid/query"),
   cardQueryPivot: GET(PIVOT_PUBLIC_PREFIX + "card/:uuid/query"),
   dashboard: GET("/api/public/dashboard/:uuid"),
-  dashboardCardQuery: GET("/api/public/dashboard/:uuid/card/:cardId"),
+  dashboardCardQuery: GET(
+    "/api/public/dashboard/:uuid/dashcard/:dashcardId/card/:cardId",
+  ),
   dashboardCardQueryPivot: GET(
-    PIVOT_PUBLIC_PREFIX + "dashboard/:uuid/card/:cardId",
+    PIVOT_PUBLIC_PREFIX + "dashboard/:uuid/dashcard/:dashcardId/card/:cardId",
   ),
 };
 
@@ -206,11 +237,26 @@ export const LdapApi = {
   updateSettings: PUT("/api/ldap/settings"),
 };
 
+export const TimelineApi = {
+  list: GET("/api/timeline"),
+  listForCollection: GET("/api/collection/:collectionId/timelines"),
+  get: GET("/api/timeline/:id"),
+  create: POST("/api/timeline"),
+  update: PUT("/api/timeline/:id"),
+};
+
+export const TimelineEventApi = {
+  list: GET("/api/timeline-event"),
+  get: GET("/api/timeline-event/:id"),
+  create: POST("/api/timeline-event"),
+  update: PUT("/api/timeline-event/:id"),
+};
+
 export const MetabaseApi = {
   db_list: GET("/api/database", res => res["data"]),
   db_create: POST("/api/database"),
   db_validate: POST("/api/database/validate"),
-  db_add_sample_dataset: POST("/api/database/sample_dataset"),
+  db_add_sample_database: POST("/api/database/sample_database"),
   db_get: GET("/api/database/:dbId"),
   db_update: PUT("/api/database/:id"),
   db_delete: DELETE("/api/database/:dbId"),
@@ -221,11 +267,14 @@ export const MetabaseApi = {
   db_fields: GET("/api/database/:dbId/fields"),
   db_idfields: GET("/api/database/:dbId/idfields"),
   db_autocomplete_suggestions: GET(
-    "/api/database/:dbId/autocomplete_suggestions?prefix=:prefix",
+    "/api/database/:dbId/autocomplete_suggestions?:matchStyle=:query",
   ),
   db_sync_schema: POST("/api/database/:dbId/sync_schema"),
+  db_dismiss_sync_spinner: POST("/api/database/:dbId/dismiss_spinner"),
   db_rescan_values: POST("/api/database/:dbId/rescan_values"),
   db_discard_values: POST("/api/database/:dbId/discard_values"),
+  db_persist: POST("/api/database/:dbId/persist"),
+  db_unpersist: POST("/api/database/:dbId/unpersist"),
   db_get_db_ids_with_deprecated_drivers: GET("/db-ids-with-deprecated-drivers"),
   table_list: GET("/api/table"),
   // table_get:                   GET("/api/table/:tableId"),
@@ -380,8 +429,17 @@ export const PermissionsApi = {
   memberships: GET("/api/permissions/membership"),
   createMembership: POST("/api/permissions/membership"),
   deleteMembership: DELETE("/api/permissions/membership/:id"),
+  updateMembership: PUT("/api/permissions/membership/:id"),
   updateGroup: PUT("/api/permissions/group/:id"),
   deleteGroup: DELETE("/api/permissions/group/:id"),
+};
+
+export const PersistedModelsApi = {
+  get: GET("/api/persist/:id"),
+  getForModel: GET("/api/persist/card/:id"),
+  enablePersistence: POST("/api/persist/enable"),
+  disablePersistence: POST("/api/persist/disable"),
+  setRefreshSchedule: POST("/api/persist/set-refresh-schedule"),
 };
 
 export const SetupApi = {
@@ -471,3 +529,18 @@ function setParamsEndpoints(prefix) {
     prefix + "/dashboard/:dashId/params/:paramId/search/:query",
   );
 }
+
+export const ActionsApi = {
+  create: POST("/api/action/row/create"),
+  update: POST("/api/action/row/update"),
+  delete: POST("/api/action/row/delete"),
+  bulkUpdate: POST("/api/action/bulk/update/:tableId"),
+  bulkDelete: POST("/api/action/bulk/delete/:tableId"),
+};
+
+export const EmittersApi = {
+  create: POST("/api/emitter"),
+  update: PUT("/api/emitter/:id"),
+  delete: DELETE("/api/emitter/:id"),
+  execute: POST("/api/emitter/:id/execute"),
+};

@@ -1,9 +1,9 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { Box, Flex } from "grid-styled";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import cx from "classnames";
+import _ from "underscore";
 
 import title from "metabase/hoc/Title";
 import withToast from "metabase/hoc/Toast";
@@ -11,18 +11,20 @@ import DashboardData from "metabase/dashboard/hoc/DashboardData";
 import { getValuePopulatedParameters } from "metabase/parameters/utils/parameter-values";
 
 import ActionButton from "metabase/components/ActionButton";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import Card from "metabase/components/Card";
 import Icon from "metabase/components/Icon";
 import Filter from "metabase/query_builder/components/Filter";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/components/Tooltip";
 
 import { Dashboard } from "metabase/dashboard/containers/Dashboard";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 
 import { getMetadata } from "metabase/selectors/metadata";
+import { getIsHeaderVisible } from "metabase/dashboard/selectors";
 
+import Collections from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
 import * as Urls from "metabase/lib/urls";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
@@ -31,6 +33,14 @@ import Dimension from "metabase-lib/lib/Dimension";
 import { color } from "metabase/lib/colors";
 
 import { dissoc } from "icepick";
+import {
+  ItemContent,
+  ItemDescription,
+  ListRoot,
+  SidebarHeader,
+  SidebarRoot,
+  XrayIcon,
+} from "./AutomaticDashboardApp.styled";
 
 const getDashboardId = (state, { params: { splat }, location: { hash } }) =>
   `/auto/dashboard/${splat}${hash.replace(/^#?/, "?")}`;
@@ -38,17 +48,15 @@ const getDashboardId = (state, { params: { splat }, location: { hash } }) =>
 const mapStateToProps = (state, props) => ({
   metadata: getMetadata(state),
   dashboardId: getDashboardId(state, props),
+  isHeaderVisible: getIsHeaderVisible(state),
 });
 
 const mapDispatchToProps = {
   saveDashboard: Dashboards.actions.save,
+  invalidateCollections: Collections.actions.invalidateLists,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-@DashboardData
-@withToast
-@title(({ dashboard }) => dashboard && dashboard.name)
-class AutomaticDashboardApp extends React.Component {
+class AutomaticDashboardAppInner extends React.Component {
   state = {
     savedDashboardId: null,
   };
@@ -61,11 +69,13 @@ class AutomaticDashboardApp extends React.Component {
   }
 
   save = async () => {
-    const { dashboard, triggerToast, saveDashboard } = this.props;
+    const { dashboard, triggerToast, saveDashboard, invalidateCollections } =
+      this.props;
     // remove the transient id before trying to save
     const { payload: newDashboard } = await saveDashboard(
       dissoc(dashboard, "id"),
     );
+    invalidateCollections();
     triggerToast(
       <div className="flex align-center">
         {t`Your dashboard was saved`}
@@ -93,6 +103,7 @@ class AutomaticDashboardApp extends React.Component {
       parameters,
       parameterValues,
       setParameterValue,
+      isHeaderVisible,
     } = this.props;
     const { savedDashboardId } = this.state;
     // pull out "more" related items for displaying as a button at the bottom of the dashboard
@@ -108,34 +119,36 @@ class AutomaticDashboardApp extends React.Component {
         })}
       >
         <div className="" style={{ marginRight: hasSidebar ? 346 : undefined }}>
-          <div className="bg-white border-bottom py2">
-            <div className="wrapper flex align-center">
-              <Icon name="bolt" className="text-gold mr2" size={24} />
-              <div>
-                <h2 className="text-wrap mr2">
-                  {dashboard && <TransientTitle dashboard={dashboard} />}
-                </h2>
-                {dashboard && dashboard.transient_filters && (
-                  <TransientFilters
-                    filter={dashboard.transient_filters}
-                    metadata={this.props.metadata}
-                  />
+          {isHeaderVisible && (
+            <div className="bg-white border-bottom py2">
+              <div className="wrapper flex align-center">
+                <XrayIcon name="bolt" size={24} />
+                <div>
+                  <h2 className="text-wrap mr2">
+                    {dashboard && <TransientTitle dashboard={dashboard} />}
+                  </h2>
+                  {dashboard && dashboard.transient_filters && (
+                    <TransientFilters
+                      filter={dashboard.transient_filters}
+                      metadata={this.props.metadata}
+                    />
+                  )}
+                </div>
+                {savedDashboardId != null ? (
+                  <Button className="ml-auto" disabled>{t`Saved`}</Button>
+                ) : (
+                  <ActionButton
+                    className="ml-auto text-nowrap"
+                    success
+                    borderless
+                    actionFn={this.save}
+                  >
+                    {t`Save this`}
+                  </ActionButton>
                 )}
               </div>
-              {savedDashboardId != null ? (
-                <Button className="ml-auto" disabled>{t`Saved`}</Button>
-              ) : (
-                <ActionButton
-                  className="ml-auto text-nowrap"
-                  success
-                  borderless
-                  actionFn={this.save}
-                >
-                  {t`Save this`}
-                </ActionButton>
-              )}
             </div>
-          </div>
+          )}
 
           <div className="wrapper pb4">
             {parameters && parameters.length > 0 && (
@@ -178,6 +191,13 @@ class AutomaticDashboardApp extends React.Component {
     );
   }
 }
+
+const AutomaticDashboardApp = _.compose(
+  connect(mapStateToProps, mapDispatchToProps),
+  DashboardData,
+  withToast,
+  title(({ dashboard }) => dashboard && dashboard.name),
+)(AutomaticDashboardAppInner);
 
 const TransientTitle = ({ dashboard }) =>
   dashboard.transient_name ? (
@@ -232,7 +252,7 @@ const RELATED_CONTENT = {
 };
 
 const SuggestionsList = ({ suggestions, section }) => (
-  <Box is="ol" my={1}>
+  <ListRoot>
     {Object.keys(suggestions).map((s, i) => (
       <li key={i} className="my2">
         <SuggestionSectionHeading>
@@ -249,7 +269,7 @@ const SuggestionsList = ({ suggestions, section }) => (
               mb={1}
             >
               <Card p={2} hoverable>
-                <Flex align="center">
+                <ItemContent>
                   <Icon
                     name={RELATED_CONTENT[s].icon}
                     color={color("accent4")}
@@ -257,18 +277,18 @@ const SuggestionsList = ({ suggestions, section }) => (
                     size={22}
                   />
                   <h4 className="text-wrap">{item.title}</h4>
-                  <Box ml="auto" className="hover-child">
+                  <ItemDescription className="hover-child">
                     <Tooltip tooltip={item.description}>
                       <Icon name="question" color={color("bg-dark")} />
                     </Tooltip>
-                  </Box>
-                </Flex>
+                  </ItemDescription>
+                </ItemContent>
               </Card>
             </Link>
           ))}
       </li>
     ))}
-  </Box>
+  </ListRoot>
 );
 
 const SuggestionSectionHeading = ({ children }) => (
@@ -284,12 +304,10 @@ const SuggestionSectionHeading = ({ children }) => (
   </h5>
 );
 const SuggestionsSidebar = ({ related }) => (
-  <Flex flexDirection="column" py={2} px={3}>
-    <Box is="h2" py={1}>
-      {t`More X-rays`}
-    </Box>
+  <SidebarRoot>
+    <SidebarHeader>{t`More X-rays`}</SidebarHeader>
     <SuggestionsList suggestions={related} />
-  </Flex>
+  </SidebarRoot>
 );
 
 export default AutomaticDashboardApp;

@@ -7,11 +7,11 @@
             [metabase.models.field :refer [Field]]
             [metabase.models.metric :refer [Metric]]
             [metabase.models.segment :refer [Segment]]
-            [metabase.util.i18n :as ui18n :refer [deferred-tru]]
+            [metabase.util.i18n :refer [deferred-tru]]
             [toucan.db :as db]))
 
 (defn- get-table-description
-  [metadata query]
+  [metadata _query]
   {:table (:display_name metadata)})
 
 (defn- field-clause->display-name [clause]
@@ -32,6 +32,7 @@
                              {:type :aggregation :arg (:display-name options)}
 
                              [:aggregation-options ag _]
+                             #_:clj-kondo/ignore
                              (recur ag)
 
                              [(operator :guard #{:+ :- :/ :*}) & args]
@@ -62,16 +63,16 @@
     {:aggregation details}))
 
 (defn- get-breakout-description
-  [metadata query]
+  [_metadata query]
   (when-let [breakouts (seq (:breakout query))]
     {:breakout (map #(db/select-one-field :display_name Field :id %) breakouts)}))
 
 (defn- get-filter-clause-description
-  [metadata filt]
+  [_metadata filt]
   (let [typ (first filt)]
     (condp = typ
       :field   {:field (field-clause->display-name filt)}
-      :segment {:segment (let [segment (Segment (second filt))]
+      :segment {:segment (let [segment (db/select-one Segment :id (second filt))]
                            (if segment
                              (:name segment)
                              (deferred-tru "[Unknown Segment]")))}
@@ -84,15 +85,15 @@
                   (mbql.u/match filters #{:field :segment} &match))}))
 
 (defn- get-order-by-description
-  [metadata query]
-  (when-let [order-by (:order-by query)]
+  [_metadata query]
+  (when (:order-by query)
     {:order-by (map (fn [[direction field]]
                       {:field     (field-clause->display-name field)
                        :direction direction})
                     (mbql.u/match query #{:asc :desc} &match))}))
 
 (defn- get-limit-description
-  [metadata query]
+  [_metadata query]
   (when-let [limit (:limit query)]
     {:limit limit}))
 

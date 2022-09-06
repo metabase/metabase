@@ -7,7 +7,7 @@
             [metabase.events :as events]
             [metabase.models.query :as query]
             [metabase.models.query-execution :as query-execution :refer [QueryExecution]]
-            [metabase.query-processor.util :as qputil]
+            [metabase.query-processor.util :as qp.util]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]))
 
@@ -29,7 +29,8 @@
 (defn- save-query-execution!*
   "Save a `QueryExecution` and update the average execution time for the corresponding `Query`."
   [{query :json_query, query-hash :hash, running-time :running_time, context :context :as query-execution}]
-  (query/save-query-and-update-average-execution-time! query query-hash running-time)
+  (when-not (:cache_hit query-execution)
+    (query/save-query-and-update-average-execution-time! query query-hash running-time))
   (if-not context
     (log/warn (trs "Cannot save QueryExecution, missing :context"))
     (db/insert! QueryExecution (dissoc query-execution :json_query))))
@@ -83,15 +84,13 @@
        (rf))
 
       ([acc]
-       (do
-         ;; We don't actually have a guarantee that it's from a card just because it's userland
-         (when (integer? (:card_id execution-info))
-           (events/publish-event! :card-query {:card_id      (:card_id execution-info)
-                                               :actor_id     (:executor_id execution-info)
-                                               :cached       (:cached acc)
-                                               :ignore_cache (get-in execution-info [:json_query :middleware :ignore-cached-results?])}))
-         (when-not (:cached acc)
-           (save-successful-query-execution! (:cached acc) execution-info @row-count)))
+       ;; We don't actually have a guarantee that it's from a card just because it's userland
+       (when (integer? (:card_id execution-info))
+         (events/publish-event! :card-query {:card_id      (:card_id execution-info)
+                                             :actor_id     (:executor_id execution-info)
+                                             :cached       (:cached acc)
+                                             :ignore_cache (get-in execution-info [:json_query :middleware :ignore-cached-results?])}))
+       (save-successful-query-execution! (:cached acc) execution-info @row-count)
        (rf (if (map? acc)
              (success-response execution-info acc)
              acc)))
@@ -128,7 +127,7 @@
   etc.). This includes recording QueryExecution entries and returning the results in an FE-client-friendly format."
   [qp]
   (fn [query rff {:keys [raisef], :as context}]
-    (let [query          (assoc-in query [:info :query-hash] (qputil/query-hash query))
+    (let [query          (assoc-in query [:info :query-hash] (qp.util/query-hash query))
           execution-info (query-execution-info query)]
       (letfn [(rff* [metadata]
                 (add-and-save-execution-info-xform! execution-info (rff metadata)))

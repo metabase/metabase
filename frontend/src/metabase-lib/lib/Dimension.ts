@@ -2,27 +2,37 @@
 // @ts-nocheck
 import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
+import { merge } from "icepick";
 import { stripId, FK_SYMBOL } from "metabase/lib/formatting";
 import { TYPE } from "metabase/lib/types";
-import { TemplateTagVariable } from "./Variable";
-import Field from "./metadata/Field";
+import { TemplateTagVariable } from "metabase-lib/lib/Variable";
+import Field from "metabase-lib/lib/metadata/Field";
 import {
   AggregationOperator,
   FilterOperator,
   Metadata,
   Query,
-} from "./metadata/Metadata";
+} from "metabase-lib/lib/metadata/Metadata";
 import {
+  Field as AbstractField,
   ConcreteField,
   LocalFieldReference,
   ExpressionReference,
   DatetimeUnit,
 } from "metabase-types/types/Query";
+import { VariableTarget } from "metabase-types/types/Parameter";
+import ValidationError, {
+  VALIDATION_ERROR_TYPES,
+} from "metabase-lib/lib/ValidationError";
 import { IconName } from "metabase-types/types";
+import { getFieldValues, getRemappings } from "metabase/lib/query/field";
 import { DATETIME_UNITS, formatBucketing } from "metabase/lib/query_time";
-import Aggregation from "./queries/structured/Aggregation";
-import StructuredQuery from "./queries/StructuredQuery";
+import { getQuestionIdFromVirtualTableId } from "metabase/lib/saved-questions";
+import Aggregation from "metabase-lib/lib/queries/structured/Aggregation";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import { infer, MONOTYPE } from "metabase/lib/expressions/typeinferencer";
+import { isa } from "cljs/metabase.types";
 
 /**
  * A dimension option returned by the query_metadata API
@@ -54,6 +64,7 @@ export default class Dimension {
   _args: any;
   _metadata: Metadata | null | undefined;
   _query: Query | null | undefined;
+  _options: any;
   // Display names provided by the backend
   _subDisplayName: string | null | undefined;
   _subTriggerDisplayName: string | null | undefined;
@@ -66,11 +77,30 @@ export default class Dimension {
     args: any[],
     metadata?: Metadata,
     query?: StructuredQuery | null | undefined,
+    options: any,
   ) {
     this._parent = parent;
     this._args = args;
     this._metadata = metadata || (parent && parent._metadata);
     this._query = query || (parent && parent._query);
+    this._options = options;
+  }
+
+  /**
+   * Canonically the field clause should use `null` instead of empty options. Keys with null values should get removed.
+   */
+  static normalizeOptions(options: any): any {
+    if (!options) {
+      return null;
+    }
+
+    // recursively normalize maps inside options.
+    options = _.mapObject(options, val =>
+      typeof val === "object" ? this.normalizeOptions(val) : val,
+    );
+    // remove null/undefined options from map.
+    options = _.omit(options, value => value == null);
+    return _.isEmpty(options) ? null : options;
   }
 
   /**
@@ -78,9 +108,9 @@ export default class Dimension {
    * Metadata should be provided if you intend to use the display name or render methods.
    */
   static parseMBQL(
-    mbql: ConcreteField,
+    mbql: ConcreteField | VariableTarget,
     metadata?: Metadata,
-    query?: StructuredQuery | null | undefined,
+    query?: StructuredQuery | NativeQuery | null | undefined,
   ): Dimension | null | undefined {
     for (const D of DIMENSION_TYPES) {
       const dimension = D.parseMBQL(mbql, metadata, query);
@@ -247,11 +277,8 @@ export default class Dimension {
     );
   }
 
-  /**
-   * The base dimension of this dimension, typically a field. May return itself.
-   */
-  baseDimension(): Dimension {
-    return this;
+  isExpression(): boolean {
+    return isExpressionDimension(this);
   }
 
   foreign(dimension: Dimension): FieldDimension {
@@ -373,25 +400,6 @@ export default class Dimension {
   }
 
   /**
-   * The name to be shown when this dimension is being displayed as a sub-dimension of another.
-   *
-   * Example: a temporal bucketing option such as 'by Day' or 'by Month'.
-   * @abstract
-   */
-  subDisplayName(): string {
-    return this._subDisplayName || "";
-  }
-
-  /**
-   * A shorter version of subDisplayName, e.x. to be shown in the dimension picker trigger (e.g. the list of temporal
-   * bucketing options like 'Day' or 'Month')
-   * @abstract
-   */
-  subTriggerDisplayName(): string {
-    return this._subTriggerDisplayName || "";
-  }
-
-  /**
    * An icon name representing this dimension's type, to be used in the <Icon> component.
    * @abstract
    */
@@ -408,13 +416,240 @@ export default class Dimension {
   }
 
   /**
+   * Get an option from the field options map, if there is one.
+   */
+  getOption(k: string): any {
+    return this._options && this._options[k];
+  }
+
+  /*
+   * The temporal unit that is being used to bucket this Field, if any.
+   */
+  temporalUnit() {
+    return this.getOption("temporal-unit");
+  }
+
+  /**
+   * Whether temporal bucketing is being applied, *and* the bucketing is a truncation operation such as "month" or
+   * "quarter";
+   */
+  isTemporalExtraction(): boolean {
+    return this.temporalUnit() && /-of-/.test(this.temporalUnit());
+  }
+
+  /**
+   * Whether temporal bucketing is being applied, *and* the bucketing is an truncation operation such as "day of month";
+   */
+  isTemporalTruncation(): boolean {
+    return this.temporalUnit() && !this.isTemporalExtraction();
+  }
+
+  // binning-strategy stuff
+  binningOptions() {
+    return this.getOption("binning");
+  }
+
+  getBinningOption(option) {
+    return this.binningOptions() && this.binningOptions()[option];
+  }
+
+  binningStrategy() {
+    return this.getBinningOption("strategy");
+  }
+
+  /**
+   * Short string that describes the binning options used. Used for both subTriggerDisplayName() and render()
+   */
+  describeBinning(): string {
+    if (!this.binningOptions()) {
+      return "";
+    }
+
+    if (this.binningStrategy() === "num-bins") {
+      const n = this.getBinningOption("num-bins");
+      return ngettext(msgid`${n} bin`, `${n} bins`, n);
+    }
+
+    if (this.binningStrategy() === "bin-width") {
+      const binWidth = this.getBinningOption("bin-width");
+      const units = this.field().isCoordinate() ? "°" : "";
+      return `${binWidth}${units}`;
+    } else {
+      return t`Auto binned`;
+    }
+  }
+
+  /**
+   * Return the join alias associated with this field, if any.
+   */
+  joinAlias() {
+    return this.getOption("join-alias");
+  }
+
+  sourceField() {
+    return this.getOption("source-field");
+  }
+
+  /**
+   * Return a copy of this Dimension that includes the specified `options`.
+   * @abstract
+   */
+  withOptions(options: any): Dimension {
+    return this;
+  }
+
+  /**
+   * Return a copy of this Dimension with option `key` set to `value`.
+   */
+  withOption(key: string, value: any): Dimension {
+    return this.withOptions({
+      [key]: value,
+    });
+  }
+
+  /**
+   * Return a copy of this Dimension, bucketed by the specified temporal unit.
+   */
+  withTemporalUnit(unit: string): Dimension {
+    return this.withOptions({
+      "temporal-unit": unit,
+    });
+  }
+
+  /**
+   * Return a copy of this Dimension, with its binning options replaced by the new ones.
+   */
+  withBinningOptions(newBinningOptions) {
+    return this.withOptions({
+      binning: newBinningOptions,
+    });
+  }
+
+  /**
+   * Return a copy of this Dimension with join alias set to `newAlias`.
+   */
+  withJoinAlias(newAlias) {
+    return this.withOptions({
+      "join-alias": newAlias,
+    });
+  }
+
+  /**
+   * Return a copy of this Dimension with a replacement source field.
+   */
+  withSourceField(sourceField) {
+    return this.withOptions({
+      "source-field": sourceField,
+    });
+  }
+
+  /**
+   * Return a copy of this Dimension that excludes `options`.
+   * @abstract
+   */
+  withoutOptions(...options: string[]): Dimension {
+    return this;
+  }
+
+  /**
+   * Return a copy of this Dimension with any temporal unit options removed.
+   */
+  withoutTemporalBucketing(): Dimension {
+    return this.withoutOptions("temporal-unit");
+  }
+
+  /**
+   * Return a copy of this Dimension with any binning options removed.
+   */
+  withoutBinning(): Dimension {
+    return this.withoutOptions("binning");
+  }
+
+  withoutJoinAlias(): Dimension {
+    return this.withoutOptions("join-alias");
+  }
+
+  /**
+   * Return a copy of this Dimension with any temporal bucketing or binning options removed.
+   */
+  baseDimension(): Dimension {
+    return this.withoutTemporalBucketing().withoutBinning();
+  }
+
+  /**
+   * The name to be shown when this dimension is being displayed as a sub-dimension of another.
+   *
+   * Example: a temporal bucketing option such as 'by Day' or 'by Month'.
+   */
+  subDisplayName(): string {
+    if (this._subDisplayName) {
+      return this._subDisplayName;
+    }
+
+    if (this.temporalUnit()) {
+      return formatBucketing(this.temporalUnit());
+    }
+
+    if (this.binningStrategy()) {
+      return this.describeBinning();
+    }
+
+    // honestly, I have no idea why we do something totally random if we have a FK source field compared to everything
+    // else, but that's how the tests are written
+    if (this.sourceField()) {
+      return this.displayName();
+    }
+
+    return "Default";
+  }
+
+  /**
+   * A shorter version of subDisplayName, e.x. to be shown in the dimension picker trigger (e.g. the list of temporal
+   * bucketing options like 'Day' or 'Month')
+   */
+  subTriggerDisplayName(): string {
+    if (this._subTriggerDisplayName) {
+      return this._subTriggerDisplayName;
+    }
+
+    // binned field
+    if (this.binningOptions()) {
+      return this.describeBinning();
+    }
+
+    // temporal bucketed field
+    if (this.temporalUnit()) {
+      return t`by ${formatBucketing(this.temporalUnit()).toLowerCase()}`;
+    }
+
+    // if the field is a binnable number, we should return 'Unbinned' here
+    if (this.isBinnable()) {
+      return t`Unbinned`;
+    }
+
+    return "";
+  }
+
+  /**
+   * Whether this is a numeric Field that can be binned
+   */
+  isBinnable(): boolean {
+    const defaultDimension = this.defaultDimension();
+    return (
+      defaultDimension &&
+      isFieldDimension(defaultDimension) &&
+      defaultDimension.binningOptions()
+    );
+  }
+
+  /**
    * Renders a dimension to a string for display in query builders
    */
   render() {
     return this._parent ? this._parent.render() : this.displayName();
   }
 
-  mbql() {
+  mbql(): AbstractField | null | undefined {
     throw new Error("Abstract method `mbql` not implemented");
   }
 
@@ -482,23 +717,6 @@ export class FieldDimension extends Dimension {
     return dimension;
   }
 
-  /**
-   * Canonically the field clause should use `null` instead of empty options. Keys with null values should get removed.
-   */
-  static normalizeOptions(options: any): any {
-    if (!options) {
-      return null;
-    }
-
-    // recursively normalize maps inside options.
-    options = _.mapObject(options, val =>
-      typeof val === "object" ? this.normalizeOptions(val) : val,
-    );
-    // remove null/undefined options from map.
-    options = _.omit(options, value => value == null);
-    return _.isEmpty(options) ? null : options;
-  }
-
   constructor(
     fieldIdOrName,
     options = null,
@@ -506,9 +724,14 @@ export class FieldDimension extends Dimension {
     query = null,
     additionalProperties = null,
   ) {
-    super(null, [fieldIdOrName, options], metadata, query);
+    super(
+      null,
+      [fieldIdOrName, options],
+      metadata,
+      query,
+      Object.freeze(Dimension.normalizeOptions(options)),
+    );
     this._fieldIdOrName = fieldIdOrName;
-    this._options = Object.freeze(FieldDimension.normalizeOptions(options));
 
     if (additionalProperties) {
       Object.keys(additionalProperties).forEach(k => {
@@ -545,13 +768,6 @@ export class FieldDimension extends Dimension {
   }
 
   /**
-   * Get an option from the field options map, if there is one.
-   */
-  getOption(k: string): any {
-    return this._options && this._options[k];
-  }
-
-  /**
    * Return integer ID *or* string name of the Field this `field` clause refers to.
    */
   fieldIdOrName(): string | number {
@@ -573,83 +789,165 @@ export class FieldDimension extends Dimension {
     return typeof this._fieldIdOrName === "string";
   }
 
-  field(): any {
-    if (this.isIntegerFieldId()) {
-      const field = this._metadata?.field(this.fieldIdOrName());
+  _createField(fieldInfo, { hydrate = false } = {}): Field {
+    const field = new Field({
+      ...fieldInfo,
+      metadata: this._metadata,
+      query: this._query,
+    });
 
-      if (field) {
+    // This is normally done when calculating metadata,
+    // but since we're merging plain objects without these fields,
+    // we need to repeat the hydration again.
+    // We should definitely move it out of there
+    if (hydrate) {
+      field.table =
+        this.query()?.table() ?? this._metadata.table(field.table_id);
+      field.table_id = field.table?.id;
+
+      if (field.isFK()) {
+        field.target = this._metadata.field(field.fk_target_field_id);
+      }
+
+      if (field.name_field != null) {
+        field.field_name = this._metadata.field(field.name_field);
+      } else if (field.table && field.isPK()) {
+        field.field_name = _.find(field.table.fields, f => f.isEntityName());
+      }
+
+      field.values = getFieldValues(field);
+      field.remappings = new Map(getRemappings(field));
+    }
+
+    return field;
+  }
+
+  _getIdentifierProp() {
+    return this.isIntegerFieldId() ? "id" : "name";
+  }
+
+  _getTrustedFieldCachedOnInstance() {
+    if (
+      this._fieldInstance &&
+      this._fieldInstance._comesFromEndpoint === true
+    ) {
+      return this._fieldInstance;
+    }
+  }
+
+  _getFieldMetadataFromSavedDataset() {
+    const identifierProp = this._getIdentifierProp();
+    const questionAssociatedWithDimension = this.query()?.question();
+    if (
+      questionAssociatedWithDimension?.isSaved() &&
+      questionAssociatedWithDimension.isDataset()
+    ) {
+      const fieldMetadata = _.findWhere(
+        questionAssociatedWithDimension.getResultMetadata(),
+        {
+          [identifierProp]: this.fieldIdOrName(),
+        },
+      );
+
+      return fieldMetadata;
+    }
+  }
+
+  _getFieldMetadataFromNestedDataset() {
+    const identifierProp = this._getIdentifierProp();
+    const virtualTableCardId = getQuestionIdFromVirtualTableId(
+      this.query()?.sourceTableId?.(),
+    );
+    if (virtualTableCardId != null) {
+      const question = this._metadata?.question(virtualTableCardId);
+      const fieldMetadata = question?.isDataset()
+        ? _.findWhere(question.getResultMetadata(), {
+            [identifierProp]: this.fieldIdOrName(),
+          })
+        : undefined;
+
+      return fieldMetadata;
+    }
+  }
+
+  _getFieldMetadataFromQueryTable() {
+    const identifierProp = this._getIdentifierProp();
+    const table = this.query()?.table();
+    return _.findWhere(table?.fields, {
+      [identifierProp]: this.fieldIdOrName(),
+    });
+  }
+
+  _combineFieldWithExtraMetadata(field: Field | undefined, fieldMetadata) {
+    if (field) {
+      if (!fieldMetadata || field === fieldMetadata) {
         return field;
       }
 
-      // if the field isn't in metadata, there _might_ be a card tied to this Dimension
-      // if so, check the card's result_metadata
-      const question = this.query()?.question();
-
-      if (question != null) {
-        const field = _.findWhere(question.getResultMetadata(), {
-          id: this.fieldIdOrName(),
-        });
-
-        if (field) {
-          return new Field({
-            ...field,
-            metadata: this._metadata,
-            query: this._query,
-          });
-        }
-      }
-
-      return new Field({
-        id: this._fieldIdOrName,
-        metadata: this._metadata,
-        query: this._query,
-      });
+      const fieldObject = merge(
+        field instanceof Field ? field.getPlainObject() : field,
+        fieldMetadata instanceof Field
+          ? fieldMetadata.getPlainObject()
+          : fieldMetadata,
+      );
+      return this._createField(fieldObject, { hydrate: true });
     }
 
-    // look for a "virtual" field on the query's table or question
-    // for example, fields from a question based on a nested question have fields
-    // that show up in a card's `result_metadata`
-    if (this.query()) {
-      const table = this.query().table();
-
-      if (table != null) {
-        const field = _.findWhere(table.fields, {
-          name: this.fieldIdOrName(),
-        });
-
-        if (field) {
-          return field;
-        }
+    if (fieldMetadata) {
+      if (fieldMetadata instanceof Field) {
+        return fieldMetadata;
       }
 
-      const question = this.query().question();
+      return this._createField(fieldMetadata);
+    }
+  }
 
-      if (question != null) {
-        const field = _.findWhere(question.getResultMetadata(), {
-          name: this.fieldIdOrName(),
-        });
-
-        if (field) {
-          return new Field({
-            ...field,
-            metadata: this._metadata,
-            query: this._query,
-          });
-        }
-      }
+  field(): Field {
+    // If a Field is cached on the FieldDimension instance, we can shortwire this method and
+    // return the cached Field.
+    const cachedField = this._getTrustedFieldCachedOnInstance();
+    if (cachedField) {
+      return cachedField;
     }
 
-    // despite being unable to find a field, we _might_ still have enough data to know a few things about it
-    // for example, if we have an mbql field reference, it might contain a `base-type`
-    return new Field({
-      id: this.mbql(),
-      name: this._fieldIdOrName,
+    let fieldMetadata;
+
+    // Models contain custom metadata for fields, but when these fields have integer ids,
+    // they are clobbered by the metadata from the real table that the card is based on,
+    // so we need to check the result_metadata of the nested card and merge it with the
+    // Field that exists in the Metadata object.
+    if (this.isIntegerFieldId()) {
+      fieldMetadata =
+        this._getFieldMetadataFromSavedDataset() ||
+        this._getFieldMetadataFromNestedDataset();
+    }
+
+    // In scenarios where the Field id is not an integer, we need to grab the Field from the
+    // query's table, because the Field won't exist in the Metadata object (and string Field ids
+    // are not sufficiently unique to be stored properly in the Metadata object).
+    fieldMetadata = fieldMetadata || this._getFieldMetadataFromQueryTable();
+
+    // The `fieldMetadata` object may have metadata that overrides the regular field object
+    // (e.g. a custom field display name or description on a model)
+    const field = this._metadata?.field(this.fieldIdOrName());
+    const combinedField = this._combineFieldWithExtraMetadata(
+      field,
+      fieldMetadata,
+    );
+
+    if (combinedField) {
+      return combinedField;
+    }
+
+    // Despite being unable to find a field, we _might_ still have enough data to know a few things about it.
+    // For example, if we have an mbql field reference, it might contain a `base-type`
+    return this._createField({
+      id: this.isIntegerFieldId() ? this.fieldIdOrName() : this.mbql(),
+      name: this.isStringFieldName() && this.fieldIdOrName(),
       // NOTE: this display_name will likely be incorrect
       // if a `FieldDimension` isn't associated with a query then we don't know which table it belongs to
       display_name: this._fieldIdOrName,
       base_type: this.getOption("base-type"),
-      query: this._query,
-      metadata: this._metadata,
     });
   }
 
@@ -675,27 +973,6 @@ export class FieldDimension extends Dimension {
   }
 
   /**
-   * Return a copy of this FieldDimension with any temporal bucketing options removed.
-   */
-  withoutTemporalBucketing(): FieldDimension {
-    return this.withoutOptions("temporal-unit");
-  }
-
-  /**
-   * Return a copy of this FieldDimension with any binning options removed.
-   */
-  withoutBinning(): FieldDimension {
-    return this.withoutOptions("binning");
-  }
-
-  /**
-   * Return a copy of this FieldDimension with any temporal bucketing or binning options removed.
-   */
-  baseDimension(): FieldDimension {
-    return this.withoutTemporalBucketing().withoutBinning();
-  }
-
-  /**
    * Return a copy of this FieldDimension that includes the specified `options`.
    */
   withOptions(options: any): FieldDimension {
@@ -709,25 +986,12 @@ export class FieldDimension extends Dimension {
       { ...this._options, ...options },
       this._metadata,
       this._query,
+      {
+        _fieldInstance: this._fieldInstance,
+        _subDisplayName: this._subDisplayName,
+        _subTriggerDisplayName: this._subTriggerDisplayName,
+      },
     );
-  }
-
-  /**
-   * Return a copy of this FieldDimension with option `key` set to `value`.
-   */
-  withOption(key: string, value: any): FieldDimension {
-    return this.withOptions({
-      [key]: value,
-    });
-  }
-
-  /**
-   * Return a copy of this FieldDimension, bucketed by the specified temporal unit.
-   */
-  withTemporalUnit(unit: string): FieldDimension {
-    return this.withOptions({
-      "temporal-unit": unit,
-    });
   }
 
   // no idea what this does or if it's even used anywhere.
@@ -745,62 +1009,8 @@ export class FieldDimension extends Dimension {
     return this.field().displayName(...args);
   }
 
-  subDisplayName(): string {
-    if (this._subDisplayName) {
-      return this._subDisplayName;
-    }
-
-    if (this.temporalUnit()) {
-      return formatBucketing(this.temporalUnit());
-    }
-
-    if (this.binningStrategy()) {
-      return this.describeBinning();
-    }
-
-    // honestly, I have no idea why we do something totally random if we have a FK source field compared to everything
-    // else, but that's how the tests are written
-    if (this.sourceField()) {
-      return this.displayName();
-    }
-
-    return "Default";
-  }
-
   icon() {
     return this.field().icon();
-  }
-
-  /**
-   * Short string that describes the binning options used. Used for both subTriggerDisplayName() and render()
-   */
-  describeBinning(): string {
-    if (!this.binningOptions()) {
-      return "";
-    }
-
-    if (this.binningStrategy() === "num-bins") {
-      const n = this.getBinningOption("num-bins");
-      return ngettext(msgid`${n} bin`, `${n} bins`, n);
-    }
-
-    if (this.binningStrategy() === "bin-width") {
-      const binWidth = this.getBinningOption("bin-width");
-      const units = this.field().isCoordinate() ? "°" : "";
-      return `${binWidth}${units}`;
-    } else {
-      return t`Auto binned`;
-    }
-  }
-
-  /**
-   * Whether this is a numeric Field that can be binned
-   */
-  isBinnable(): boolean {
-    const defaultDimension = this.defaultDimension();
-    return (
-      isFieldDimension(defaultDimension) && defaultDimension.binningOptions()
-    );
   }
 
   dimensions(DimensionTypes?: typeof Dimension[]): FieldDimension[] {
@@ -820,7 +1030,7 @@ export class FieldDimension extends Dimension {
     const field = this.field();
 
     // Add FK dimensions if this field is an FK
-    if (field.target && field.target.table && field.target.table.fields) {
+    if (field.target?.table?.fields) {
       const fkDimensions = field.target.table.fields.map(
         field =>
           new FieldDimension(
@@ -891,7 +1101,7 @@ export class FieldDimension extends Dimension {
   }
 
   _dimensionForOption(option): FieldDimension {
-    const dimension = option.mbql
+    let dimension = option.mbql
       ? FieldDimension.parseMBQLOrWarn(option.mbql, this._metadata, this._query)
       : this;
 
@@ -902,6 +1112,15 @@ export class FieldDimension extends Dimension {
         option,
       );
       return null;
+    }
+
+    // Field literal's sub-dimensions sometimes don't have a specified base-type
+    // This can break a query, so here we need to ensure it mirrors the parent dimension
+    if (this.getOption("base-type") && !dimension.getOption("base-type")) {
+      dimension = dimension.withOption(
+        "base-type",
+        this.getOption("base-type"),
+      );
     }
 
     const additionalProperties = {
@@ -922,43 +1141,20 @@ export class FieldDimension extends Dimension {
     );
   }
 
-  subTriggerDisplayName(): string {
-    if (this._subTriggerDisplayName) {
-      return this._subTriggerDisplayName;
-    }
-
-    // binned field
-    if (this.binningOptions()) {
-      return this.describeBinning();
-    }
-
-    // temporal bucketed field
-    if (this.temporalUnit()) {
-      return t`by ${formatBucketing(this.temporalUnit()).toLowerCase()}`;
-    }
-
-    // if the field is a binnable number, we should return 'Unbinned' here
-    if (this.isBinnable()) {
-      return "Unbinned";
-    }
-
-    return "";
-  }
-
   render(): string {
     let displayName = this.displayName();
 
     if (this.fk()) {
       const fkDisplayName =
-        this.fk() &&
-        stripId(
-          this.fk()
-            .field()
-            .displayName(),
-        );
-      displayName = `${fkDisplayName} ${FK_SYMBOL} ${displayName}`;
+        this.fk() && stripId(this.fk().field().displayName());
+      if (!displayName.startsWith(`${fkDisplayName} ${FK_SYMBOL}`)) {
+        displayName = `${fkDisplayName} ${FK_SYMBOL} ${displayName}`;
+      }
     } else if (this.joinAlias()) {
-      displayName = `${this.joinAlias()} ${FK_SYMBOL} ${displayName}`;
+      const joinAlias = this.joinAlias();
+      if (!displayName.startsWith(`${joinAlias} ${FK_SYMBOL}`)) {
+        displayName = `${joinAlias} ${FK_SYMBOL} ${displayName}`;
+      }
     }
 
     if (this.temporalUnit()) {
@@ -1004,79 +1200,12 @@ export class FieldDimension extends Dimension {
     );
   }
 
-  /*
-   * The temporal unit that is being used to bucket this Field, if any.
-   */
-  temporalUnit() {
-    return this.getOption("temporal-unit");
-  }
-
-  /**
-   * Whether temporal bucketing is being applied, *and* the bucketing is a truncation operation such as "month" or
-   * "quarter";
-   */
-  isTemporalExtraction(): boolean {
-    return this.temporalUnit() && /-of-/.test(this.temporalUnit());
-  }
-
-  /**
-   * Whether temporal bucketing is being applied, *and* the bucketing is an truncation operation such as "day of month";
-   */
-  isTemporalTruncation(): boolean {
-    return this.temporalUnit() && !this.isTemporalExtraction();
-  }
-
-  sourceField() {
-    return this.getOption("source-field");
-  }
-
-  withSourceField(sourceField) {
-    return this.withOptions({
-      "source-field": sourceField,
-    });
-  }
-
-  /**
-   * Return the join alias associated with this field, if any.
-   */
-  joinAlias() {
-    return this.getOption("join-alias");
-  }
-
-  /**
-   * Return a copy of this field with join alias set to `newAlias`.
-   */
-  withJoinAlias(newAlias) {
-    return this.withOptions({
-      "join-alias": newAlias,
-    });
-  }
-
   join() {
     return this.joinAlias()
       ? _.findWhere(this._query && this._query.joins(), {
           alias: this.joinAlias(),
         })
       : null;
-  }
-
-  // binning-strategy stuff
-  binningOptions() {
-    return this.getOption("binning");
-  }
-
-  withBinningOptions(newBinningOptions) {
-    return this.withOptions({
-      binning: newBinningOptions,
-    });
-  }
-
-  getBinningOption(option) {
-    return this.binningOptions() && this.binningOptions()[option];
-  }
-
-  binningStrategy() {
-    return this.getBinningOption("strategy");
   }
 }
 
@@ -1086,62 +1215,127 @@ const isFieldDimension = dimension => dimension instanceof FieldDimension;
  * Expression reference, `["expression", expression-name]`
  */
 export class ExpressionDimension extends Dimension {
-  tag = "Custom";
+  _expressionName: ExpressionName;
+
+  /**
+   * Whether `clause` is an array, and a valid `:expression` clause
+   */
+  static isExpressionClause(clause): boolean {
+    return (
+      Array.isArray(clause) && clause.length >= 2 && clause[0] === "expression"
+    );
+  }
 
   static parseMBQL(
     mbql: any,
     metadata?: Metadata | null | undefined,
     query?: StructuredQuery | null | undefined,
   ): Dimension | null | undefined {
-    if (Array.isArray(mbql) && mbql[0] === "expression") {
-      return new ExpressionDimension(null, mbql.slice(1), metadata, query);
+    if (ExpressionDimension.isExpressionClause(mbql)) {
+      const [expressionName, options] = mbql.slice(1);
+      return new ExpressionDimension(expressionName, options, metadata, query);
     }
   }
 
+  constructor(
+    expressionName,
+    options = null,
+    metadata = null,
+    query = null,
+    additionalProperties = null,
+  ) {
+    super(
+      null,
+      [expressionName, options],
+      metadata,
+      query,
+      Object.freeze(Dimension.normalizeOptions(options)),
+    );
+    this._expressionName = expressionName;
+
+    if (additionalProperties) {
+      Object.keys(additionalProperties).forEach(k => {
+        this[k] = additionalProperties[k];
+      });
+    }
+
+    Object.freeze(this);
+  }
+
+  isEqual(somethingElse) {
+    if (isExpressionDimension(somethingElse)) {
+      return (
+        somethingElse._expressionName === this._expressionName &&
+        _.isEqual(somethingElse._options, this._options)
+      );
+    }
+
+    if (ExpressionDimension.isExpressionClause(somethingElse)) {
+      const dimension = ExpressionDimension.parseMBQL(
+        somethingElse,
+        this._metadata,
+        this._query,
+      );
+      return dimension ? this.isEqual(dimension) : false;
+    }
+
+    return false;
+  }
+
   mbql(): ExpressionReference {
-    return ["expression", this._args[0]];
+    return ["expression", this._expressionName, this._options];
   }
 
   name() {
-    return this._args[0];
+    return this._expressionName;
   }
 
   displayName(): string {
-    return this._args[0];
+    return this._expressionName;
   }
 
   columnName() {
-    return this._args[0];
+    return this._expressionName;
+  }
+
+  _createField(fieldInfo): Field {
+    return new Field({
+      ...fieldInfo,
+      metadata: this._metadata,
+      query: this._query,
+    });
   }
 
   field() {
     const query = this._query;
     const table = query ? query.table() : null;
-    let type = MONOTYPE.Number; // fallback
+
+    // fallback
+    let type = MONOTYPE.Number;
+    let semantic_type = null;
 
     if (query) {
       const datasetQuery = query.query();
       const expressions = datasetQuery?.expressions ?? {};
+      const expr = expressions[this.name()];
 
-      const env = mbql => {
+      const field = mbql => {
         const dimension = Dimension.parseMBQL(
           mbql,
           this._metadata,
           this._query,
         );
-        return dimension.field().base_type;
+        return dimension?.field();
       };
 
-      type = infer(expressions[this.name()], env);
+      type = infer(expr, mbql => field(mbql)?.base_type);
+      semantic_type = infer(expr, mbql => field(mbql)?.semantic_type);
     } else {
-      type = infer(this._args[0]);
+      type = infer(this._expressionName);
     }
 
     let base_type = type;
-
     if (!type.startsWith("type/")) {
-      base_type = "type/Float"; // fallback
-
       switch (type) {
         case MONOTYPE.String:
           base_type = "type/Text";
@@ -1151,36 +1345,131 @@ export class ExpressionDimension extends Dimension {
           base_type = "type/Boolean";
           break;
 
+        // fallback
         default:
+          base_type = "type/Float";
           break;
       }
+      semantic_type = base_type;
     }
+
+    // if a dimension has access to a question with result metadata,
+    // we try to find the field using the metadata directly,
+    // so that we don't have to try to infer field metadata from the expression
+    const resultMetadata = query?.question()?.getResultMetadata?.();
+    if (resultMetadata) {
+      const fieldMetadata = _.findWhere(resultMetadata, {
+        name: this.name(),
+      });
+      if (fieldMetadata) {
+        return this._createField(fieldMetadata);
+      }
+    }
+
+    const subsOptions = getOptions(semantic_type ? semantic_type : base_type);
+    const dimension_options =
+      subsOptions && Array.isArray(subsOptions)
+        ? subsOptions.map(({ name, options }) => {
+            return {
+              name,
+              type: base_type,
+              mbql: ["expression", null, options],
+            };
+          })
+        : null;
 
     return new Field({
       id: this.mbql(),
       name: this.name(),
       display_name: this.displayName(),
-      semantic_type: null,
       base_type,
+      semantic_type,
       query,
       table,
+      dimension_options,
     });
   }
 
   icon(): IconName {
-    const { base_type } = this.field();
+    const field = this.field();
+    return field ? field.icon() : "unknown";
+  }
 
-    switch (base_type) {
-      case "type/Text":
-        return "string";
+  _dimensionForOption(option): ExpressionDimension {
+    const dimension = option.mbql
+      ? ExpressionDimension.parseMBQL(option.mbql, this._metadata, this._query)
+      : this;
 
-      default:
-        break;
+    const additionalProperties = {
+      _expressionName: this._expressionName,
+    };
+
+    if (option.name) {
+      additionalProperties._subDisplayName = option.name;
+      additionalProperties._subTriggerDisplayName = option.name;
     }
 
-    return "int";
+    return new ExpressionDimension(
+      dimension._expressionName,
+      dimension._options,
+      this._metadata,
+      this._query,
+      additionalProperties,
+    );
+  }
+
+  /**
+   * Return a copy of this ExpressionDimension that excludes `options`.
+   */
+  withoutOptions(...options: string[]): ExpressionDimension {
+    // optimization: if we don't have any options, we can return ourself as-is
+    if (!this._options) {
+      return this;
+    }
+
+    return new ExpressionDimension(
+      this._expressionName,
+      _.omit(this._options, ...options),
+      this._metadata,
+      this._query,
+    );
+  }
+
+  /**
+   * Return a copy of this ExpressionDimension that includes the specified `options`.
+   */
+  withOptions(options: any): ExpressionDimension {
+    // optimization : if options is empty return self as-is
+    if (!options || !Object.entries(options).length) {
+      return this;
+    }
+
+    return new ExpressionDimension(
+      this._expressionName,
+      { ...this._options, ...options },
+      this._metadata,
+      this._query,
+    );
+  }
+
+  render(): string {
+    let displayName = this.displayName();
+
+    if (this.temporalUnit()) {
+      displayName = `${displayName}: ${formatBucketing(this.temporalUnit())}`;
+    }
+
+    if (this.binningOptions()) {
+      displayName = `${displayName}: ${this.describeBinning()}`;
+    }
+
+    return displayName;
   }
 }
+
+const isExpressionDimension = dimension =>
+  dimension instanceof ExpressionDimension;
+
 // These types aren't aggregated. e.g. if you take the distinct count of a FK
 // column, you now have a normal integer and should see relevant filters for
 // that type.
@@ -1190,18 +1479,51 @@ const UNAGGREGATED_SEMANTIC_TYPES = new Set([TYPE.FK, TYPE.PK]);
  * Aggregation reference, `["aggregation", aggregation-index]`
  */
 export class AggregationDimension extends Dimension {
+  _aggregationIndex: number;
+
   static parseMBQL(
     mbql: any,
     metadata?: Metadata | null | undefined,
     query?: StructuredQuery | null | undefined,
   ): Dimension | null | undefined {
     if (Array.isArray(mbql) && mbql[0] === "aggregation") {
-      return new AggregationDimension(null, mbql.slice(1), metadata, query);
+      const [aggregationIndex, options] = mbql.slice(1);
+      return new AggregationDimension(
+        aggregationIndex,
+        options,
+        metadata,
+        query,
+      );
     }
   }
 
+  constructor(
+    aggregationIndex,
+    options = null,
+    metadata = null,
+    query = null,
+    additionalProperties = null,
+  ) {
+    super(
+      null,
+      [aggregationIndex, options],
+      metadata,
+      query,
+      Object.freeze(Dimension.normalizeOptions(options)),
+    );
+    this._aggregationIndex = aggregationIndex;
+
+    if (additionalProperties) {
+      Object.keys(additionalProperties).forEach(k => {
+        this[k] = additionalProperties[k];
+      });
+    }
+
+    Object.freeze(this);
+  }
+
   aggregationIndex(): number {
-    return this._args[0];
+    return this._aggregationIndex;
   }
 
   column(extra = {}) {
@@ -1235,7 +1557,11 @@ export class AggregationDimension extends Dimension {
    * Raw aggregation
    */
   _aggregation(): Aggregation {
-    return this._query && this._query.aggregations()[this.aggregationIndex()];
+    return (
+      this._query &&
+      this._query.aggregations &&
+      this._query.aggregations()[this.aggregationIndex()]
+    );
   }
 
   /**
@@ -1272,7 +1598,7 @@ export class AggregationDimension extends Dimension {
   }
 
   mbql() {
-    return ["aggregation", this._args[0]];
+    return ["aggregation", this._aggregationIndex, this._options];
   }
 
   icon() {
@@ -1280,16 +1606,16 @@ export class AggregationDimension extends Dimension {
   }
 }
 export class TemplateTagDimension extends FieldDimension {
-  constructor(tagName, metadata, query) {
+  constructor(tagName: string, metadata: Metadata, query: NativeQuery) {
     super(null, null, metadata, query, {
       _tagName: tagName,
     });
   }
 
   static parseMBQL(
-    mbql,
-    metadata = null,
-    query = null,
+    mbql: VariableTarget,
+    metadata: Metadata = null,
+    query: NativeQuery = null,
   ): FieldDimension | null | undefined {
     return TemplateTagDimension.isTemplateTagClause(mbql)
       ? Object.freeze(new TemplateTagDimension(mbql[1], metadata, query))
@@ -1298,6 +1624,27 @@ export class TemplateTagDimension extends FieldDimension {
 
   static isTemplateTagClause(clause) {
     return Array.isArray(clause) && clause[0] === "template-tag";
+  }
+
+  validateTemplateTag(): ValidationError | null {
+    const tag = this.tag();
+    if (!tag) {
+      return new ValidationError(t`Invalid template tag "${this.tagName()}"`);
+    }
+
+    if (this.isDimensionType() && tag.dimension == null) {
+      return new ValidationError(
+        t`The variable "${this.tagName()}" needs to be mapped to a field.`,
+        VALIDATION_ERROR_TYPES.MISSING_TAG_DIMENSION,
+      );
+    }
+
+    return null;
+  }
+
+  isValidDimensionType() {
+    const maybeErrors = this.validateTemplateTag();
+    return this.isDimensionType() && maybeErrors === null;
   }
 
   isDimensionType() {
@@ -1311,7 +1658,7 @@ export class TemplateTagDimension extends FieldDimension {
   }
 
   dimension() {
-    if (this.isDimensionType()) {
+    if (this.isValidDimensionType()) {
       const tag = this.tag();
       return Dimension.parseMBQL(tag.dimension, this._metadata, this._query);
     }
@@ -1334,7 +1681,7 @@ export class TemplateTagDimension extends FieldDimension {
   }
 
   field() {
-    if (this.isDimensionType()) {
+    if (this.isValidDimensionType()) {
       return this.dimension().field();
     }
 
@@ -1342,7 +1689,7 @@ export class TemplateTagDimension extends FieldDimension {
   }
 
   name() {
-    return this.isDimensionType() ? this.field().name : this.tagName();
+    return this.isValidDimensionType() ? this.field().name : this.tagName();
   }
 
   tagName() {
@@ -1359,7 +1706,7 @@ export class TemplateTagDimension extends FieldDimension {
   }
 
   icon() {
-    if (this.isDimensionType()) {
+    if (this.isValidDimensionType()) {
       return this.dimension().icon();
     } else if (this.isVariableType()) {
       return this.variable().icon();
@@ -1374,3 +1721,193 @@ const DIMENSION_TYPES: typeof Dimension[] = [
   AggregationDimension,
   TemplateTagDimension,
 ];
+
+const NUMBER_SUBDIMENSIONS = [
+  {
+    name: t`Auto bin`,
+    options: {
+      binning: {
+        strategy: "default",
+      },
+    },
+  },
+  {
+    name: t`10 bins`,
+    options: {
+      binning: {
+        strategy: "num-bins",
+        "num-bins": 10,
+      },
+    },
+  },
+  {
+    name: t`50 bins`,
+    options: {
+      binning: {
+        strategy: "num-bins",
+        "num-bins": 50,
+      },
+    },
+  },
+  {
+    name: t`100 bins`,
+    options: {
+      binning: {
+        strategy: "num-bins",
+        "num-bins": 100,
+      },
+    },
+  },
+  {
+    name: t`Don't bin`,
+    options: null,
+  },
+];
+
+const DATETIME_SUBDIMENSIONS = [
+  {
+    name: t`Minute`,
+    options: {
+      "temporal-unit": "minute",
+    },
+  },
+  {
+    name: t`Hour`,
+    options: {
+      "temporal-unit": "hour",
+    },
+  },
+  {
+    name: t`Day`,
+    options: {
+      "temporal-unit": "day",
+    },
+  },
+  {
+    name: t`Week`,
+    options: {
+      "temporal-unit": "week",
+    },
+  },
+  {
+    name: t`Month`,
+    options: {
+      "temporal-unit": "month",
+    },
+  },
+  {
+    name: t`Quarter`,
+    options: {
+      "temporal-unit": "quarter",
+    },
+  },
+  {
+    name: t`Year`,
+    options: {
+      "temporal-unit": "year",
+    },
+  },
+  {
+    name: t`Minute of Hour`,
+    options: {
+      "temporal-unit": "minute-of-hour",
+    },
+  },
+  {
+    name: t`Hour of Day`,
+    options: {
+      "temporal-unit": "hour-of-day",
+    },
+  },
+  {
+    name: t`Day of Week`,
+    options: {
+      "temporal-unit": "day-of-week",
+    },
+  },
+  {
+    name: t`Day of Month`,
+    options: {
+      "temporal-unit": "day-of-month",
+    },
+  },
+  {
+    name: t`Day of Year`,
+    options: {
+      "temporal-unit": "day-of-year",
+    },
+  },
+  {
+    name: t`Week of Year`,
+    options: {
+      "temporal-unit": "week-of-year",
+    },
+  },
+  {
+    name: t`Month of Year`,
+    options: {
+      "temporal-unit": "month-of-year",
+    },
+  },
+  {
+    name: t`Quarter of Year`,
+    options: {
+      "temporal-unit": "quarter-of-year",
+    },
+  },
+];
+
+const COORDINATE_SUBDIMENSIONS = [
+  {
+    name: t`Bin every 0.1 degrees`,
+    options: {
+      binning: {
+        strategy: "bin-width",
+        "bin-width": 0.1,
+      },
+    },
+  },
+  {
+    name: t`Bin every 1 degree`,
+    options: {
+      binning: {
+        strategy: "bin-width",
+        "bin-width": 1,
+      },
+    },
+  },
+  {
+    name: t`Bin every 10 degrees`,
+    options: {
+      binning: {
+        strategy: "bin-width",
+        "bin-width": 10,
+      },
+    },
+  },
+  {
+    name: t`Bin every 20 degrees`,
+    options: {
+      binning: {
+        strategy: "bin-width",
+        "bin-width": 20,
+      },
+    },
+  },
+  {
+    name: t`Don't bin`,
+    options: null,
+  },
+];
+
+function getOptions(type) {
+  if (isa(type, "type/Coordinate")) {
+    return COORDINATE_SUBDIMENSIONS;
+  } else if (isa(type, "type/Number")) {
+    return NUMBER_SUBDIMENSIONS;
+  } else if (isa(type, "type/DateTime")) {
+    return DATETIME_SUBDIMENSIONS;
+  }
+
+  return null;
+}

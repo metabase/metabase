@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { unescapeString } from "metabase/lib/expressions/index";
 import {
   /* ALL_ASTYPES */ ADD,
   FIELD,
@@ -7,6 +8,7 @@ import {
   CALL,
   EQUALITY,
   NUMBER,
+  BOOLEAN,
   LOGICAL_OR,
   COMPARISON,
   GROUP,
@@ -26,7 +28,11 @@ import {
   CompileError,
 } from "metabase/lib/expressions/pratt/types";
 
-export type Expr = number | string | ([string, ...Expr[]] & { node?: Node });
+export type Expr =
+  | number
+  | string
+  | boolean
+  | ([string, ...Expr[]] & { node?: Node });
 export type CompilerPass = (expr: Expr) => Expr;
 
 export interface Options {
@@ -60,7 +66,7 @@ function compileField(node: Node): Expr {
   assert(node.token?.text, "Empty field name");
   // Slice off the leading and trailing brackets
   const name = node.token.text.slice(1, node.token.text.length - 1);
-  return withNode(["dimension", name], node);
+  return withNode(["dimension", unescapeString(name)], node);
 }
 
 function compileIdentifier(node: Node): Expr {
@@ -201,6 +207,15 @@ function compileSubtractionOp(node: Node, opts: Options): Expr {
 
 // ----------------------------------------------------------------
 
+function compileBoolean(node: Node, opts: Options): Expr {
+  assert(node.type === BOOLEAN, "Invalid Node Type");
+  assert(node.token?.text, "Empty token text");
+  const text = node.token.text.toLowerCase();
+  return text === "true" ? true : false;
+}
+
+// ----------------------------------------------------------------
+
 function compileUnaryOp(node: Node) {
   if (node.children.length > 1) {
     throw new CompileError(t`Unexpected expression`, {
@@ -278,6 +293,7 @@ const COMPILE = new Map<NodeType, CompileFn>([
   [CALL, compileFunctionCall],
   [EQUALITY, compileEqualityOp],
   [NUMBER, compileNumber],
+  [BOOLEAN, compileBoolean],
   [LOGICAL_NOT, compileLogicalNot],
   [NEGATIVE, compileNegative],
   [LOGICAL_OR, compileLogicalOr],

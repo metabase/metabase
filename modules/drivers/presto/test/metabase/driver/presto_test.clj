@@ -124,8 +124,8 @@
             ["The Apple Pan"]
             ["Wurstküche"]
             ["Brite Spot Family Restaurant"]]
-           (take 5 (metadata-queries/table-rows-sample (Table (mt/id :venues))
-                     [(Field (mt/id :venues :name))]
+           (take 5 (metadata-queries/table-rows-sample (db/select-one Table :id (mt/id :venues))
+                     [(db/select-one Field :id (mt/id :venues :name))]
                      (constantly conj)))))))
 
 
@@ -225,7 +225,7 @@
         (is (= (str "SELECT count(*) AS \"count\" "
                     "FROM \"default\".\"test_data_venues\" "
                     "WHERE \"default\".\"test_data_venues\".\"name\" = 'wow'")
-               (:query (qp/query->native-with-spliced-params query))
+               (:query (qp/compile-and-splice-parameters query))
                (-> (qp/process-query query) :data :native_form :query))))
 
       (testing "When actually running the query we should use paranoid splicing and hex-encode strings"

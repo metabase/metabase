@@ -1,23 +1,24 @@
 (ns metabase.driver.sparksql
   (:require [clojure.java.jdbc :as jdbc]
-            [clojure.set :as set]
             [clojure.string :as str]
             [honeysql.core :as hsql]
-            [honeysql.helpers :as h]
+            [honeysql.helpers :as hh]
             [medley.core :as m]
+            [metabase.connection-pool :as connection-pool]
             [metabase.driver :as driver]
             [metabase.driver.hive-like :as hive-like]
-            [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
+            [metabase.driver.hive-like.fixed-hive-connection :as fixed-hive-connection]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+            [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.mbql.util :as mbql.u]
-            [metabase.models.field :refer [Field]]
             [metabase.query-processor.store :as qp.store]
-            [metabase.query-processor.util :as qputil]
+            [metabase.query-processor.util :as qp.util]
+            [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util.honeysql-extensions :as hx])
   (:import [java.sql Connection ResultSet]))
 
@@ -29,57 +30,68 @@
   "Default alias for all source tables. (Not for source queries; those still use the default SQL QP alias of `source`.)"
   "t1")
 
-;; use `source-table-alias` for the source Table, e.g. `t1.field` instead of the normal `schema.table.field`
-(defmethod sql.qp/->honeysql [:sparksql (class Field)]
-  [driver field]
-  (binding [sql.qp/*table-alias* (or sql.qp/*table-alias* source-table-alias)]
-    ((get-method sql.qp/->honeysql [:hive-like (class Field)]) driver field)))
+(defmethod sql.qp/->honeysql [:sparksql :field]
+  [driver [_ _ {::sql.params.substitution/keys [compiling-field-filter?]} :as field-clause]]
+  ;; use [[source-table-alias]] instead of the usual `schema.table` to qualify fields e.g. `t1.field` instead of the
+  ;; normal `schema.table.field`
+  (let [parent-method (get-method sql.qp/->honeysql [:hive-like :field])
+        field-clause  (mbql.u/update-field-options field-clause
+                                                   update
+                                                   ::add/source-table
+                                                   (fn [source-table]
+                                                     (cond
+                                                       ;; DO NOT qualify fields from field filters with `t1`, that won't
+                                                       ;; work unless the user-written SQL query is doing the same
+                                                       ;; thing.
+                                                       compiling-field-filter? ::add/none
+                                                       ;; for all other fields from the source table qualify them with
+                                                       ;; `t1`
+                                                       (integer? source-table) source-table-alias
+                                                       ;; no changes for anyone else.
+                                                       :else                   source-table)))]
+    (parent-method driver field-clause)))
 
-(defmethod sql.qp/apply-top-level-clause [:sparksql :page] [_ _ honeysql-form {{:keys [items page]} :page}]
+(defmethod sql.qp/apply-top-level-clause [:sparksql :page]
+  [_ _ honeysql-form {{:keys [items page]} :page}]
   (let [offset (* (dec page) items)]
     (if (zero? offset)
       ;; if there's no offset we can simply use limit
-      (h/limit honeysql-form items)
+      (hh/limit honeysql-form items)
       ;; if we need to do an offset we have to do nesting to generate a row number and where on that
       (let [over-clause (format "row_number() OVER (%s)"
                                 (first (hsql/format (select-keys honeysql-form [:order-by])
                                                     :allow-dashed-names? true
                                                     :quoting :mysql)))]
-        (-> (apply h/select (map last (:select honeysql-form)))
-            (h/from (h/merge-select honeysql-form [(hsql/raw over-clause) :__rownum__]))
-            (h/where [:> :__rownum__ offset])
-            (h/limit items))))))
+        (-> (apply hh/select (map last (:select honeysql-form)))
+            (hh/from (hh/merge-select honeysql-form [(hsql/raw over-clause) :__rownum__]))
+            (hh/where [:> :__rownum__ offset])
+            (hh/limit items))))))
 
 (defmethod sql.qp/apply-top-level-clause [:sparksql :source-table]
   [driver _ honeysql-form {source-table-id :source-table}]
   (let [{table-name :name, schema :schema} (qp.store/table source-table-id)]
-    (h/from honeysql-form [(sql.qp/->honeysql driver (hx/identifier :table schema table-name))
-                           (sql.qp/->honeysql driver (hx/identifier :table-alias source-table-alias))])))
+    (hh/from honeysql-form [(sql.qp/->honeysql driver (hx/identifier :table schema table-name))
+                            (sql.qp/->honeysql driver (hx/identifier :table-alias source-table-alias))])))
 
 
 ;;; ------------------------------------------- Other Driver Method Impls --------------------------------------------
 
-(defn- sparksql
-  "Create a database specification for a Spark SQL database."
-  [{:keys [host port db jdbc-flags]
-    :or   {host "localhost", port 10000, db "", jdbc-flags ""}
-    :as   opts}]
-  (merge
-   {:classname   "metabase.driver.FixedHiveDriver"
-    :subprotocol "hive2"
-    :subname     (str "//" host ":" port "/" db jdbc-flags)}
-   (dissoc opts :host :port :jdbc-flags)))
+(defrecord SparkSQLDataSource [url properties]
+  javax.sql.DataSource
+  (getConnection [_this]
+    (fixed-hive-connection/fixed-hive-connection url properties)))
 
 (defmethod sql-jdbc.conn/connection-details->spec :sparksql
-  [_ details]
-  (-> details
-      (update :port (fn [port]
-                      (if (string? port)
-                        (Integer/parseInt port)
-                        port)))
-      (set/rename-keys {:dbname :db})
-      sparksql
-      (sql-jdbc.common/handle-additional-options details)))
+  [_driver {:keys [host port db jdbc-flags dbname]
+            :or   {host "localhost", port 10000, db "", jdbc-flags ""}
+            :as   opts}]
+  (let [port        (cond-> port
+                      (string? port) Integer/parseInt)
+        db          (or dbname db)
+        url         (format "jdbc:hive2://%s:%s/%s%s" host port db jdbc-flags)
+        properties  (connection-pool/map->properties (dissoc opts :host :port :jdbc-flags))
+        data-source (->SparkSQLDataSource url properties)]
+    {:datasource data-source}))
 
 (defn- dash-to-underscore [s]
   (when s
@@ -87,14 +99,14 @@
 
 ;; workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata
 (defmethod driver/describe-database :sparksql
-  [_ {:keys [details] :as database}]
+  [_ database]
   {:tables
    (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec database))]
      (set
-      (for [{:keys [database tablename tab_name]} (jdbc/query {:connection conn} ["show tables"])]
+      (for [{:keys [database tablename tab_name], table-namespace :namespace} (jdbc/query {:connection conn} ["show tables"])]
         {:name   (or tablename tab_name) ; column name differs depending on server (SparkSQL, hive, Impala)
-         :schema (when (seq database)
-                   database)})))})
+         :schema (or (not-empty database)
+                     (not-empty table-namespace))})))})
 
 ;; Hive describe table result has commented rows to distinguish partitions
 (defn- valid-describe-table-row? [{:keys [col_name data_type]}]
@@ -104,7 +116,7 @@
 
 ;; workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata
 (defmethod driver/describe-table :sparksql
-  [driver {:keys [details] :as database} {table-name :name, schema :schema, :as table}]
+  [driver database {table-name :name, schema :schema}]
   {:name   table-name
    :schema schema
    :fields
@@ -124,9 +136,9 @@
 
 ;; bound variables are not supported in Spark SQL (maybe not Hive either, haven't checked)
 (defmethod driver/execute-reducible-query :sparksql
-  [driver {:keys [database settings], {sql :query, :keys [params], :as inner-query} :native, :as outer-query} context respond]
+  [driver {{sql :query, :keys [params], :as inner-query} :native, :as outer-query} context respond]
   (let [inner-query (-> (assoc inner-query
-                               :remark (qputil/query->remark :sparksql outer-query)
+                               :remark (qp.util/query->remark :sparksql outer-query)
                                :query  (if (seq params)
                                          (binding [hive-like/*param-splice-style* :paranoid]
                                            (unprepare/unprepare driver (cons sql params)))
@@ -141,7 +153,7 @@
 ;; 3.  SparkSQL doesn't support making connections read-only
 ;; 4.  SparkSQL doesn't support setting the default result set holdability
 (defmethod sql-jdbc.execute/connection-with-timezone :sparksql
-  [driver database ^String timezone-id]
+  [driver database _timezone-id]
   (let [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! driver database))]
     (try
       (.setTransactionIsolation conn Connection/TRANSACTION_READ_UNCOMMITTED)

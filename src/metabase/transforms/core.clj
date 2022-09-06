@@ -6,9 +6,10 @@
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :refer [Field]]
+            [metabase.models.interface :as mi]
             [metabase.models.table :as table :refer [Table]]
             [metabase.query-processor :as qp]
-            [metabase.transforms.materialize :as materialize]
+            [metabase.transforms.materialize :as tf.materialize]
             [metabase.transforms.specs :refer [Step transform-specs TransformSpec]]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
@@ -62,8 +63,7 @@
     (-> query
         (assoc :expressions (->> expressions
                                  keys
-                                 (select-keys (get-in bindings [name :dimensions]))
-                                 (m/map-keys keyword)))
+                                 (select-keys (get-in bindings [name :dimensions]))))
         (update :fields concat (for [expression (keys expressions)]
                                  [:expression expression])))
     query))
@@ -84,7 +84,7 @@
 (s/defn ^:private ->source-table-reference
   "Serialize `entity` into a form suitable as `:source-table` value."
   [entity :- SourceEntity]
-  (if (instance? (type Table) entity)
+  (if (mi/instance-of? Table entity)
     (u/the-id entity)
     (str "card__" (u/the-id entity))))
 
@@ -104,7 +104,7 @@
   (m/assoc-some query :filter (de/resolve-dimension-clauses bindings name filter)))
 
 (defn- maybe-add-limit
-  [bindings {:keys [limit]} query]
+  [_bindings {:keys [limit]} query]
   (m/assoc-some query :limit limit))
 
 (s/defn ^:private transform-step! :- Bindings
@@ -124,10 +124,10 @@
                                        (maybe-add-filter local-bindings step)
                                        (maybe-add-limit local-bindings step))
                         :database ((some-fn :db_id :database_id) source-entity)}]
-    (assoc bindings name {:entity     (materialize/make-card-for-step! step query)
+    (assoc bindings name {:entity     (tf.materialize/make-card-for-step! step query)
                           :dimensions (infer-resulting-dimensions local-bindings step query)})))
 
-(def ^:private Tableset [(type Table)])
+(def ^:private Tableset [(mi/InstanceOf Table)])
 
 (s/defn ^:private find-tables-with-domain-entity :- Tableset
   [tableset :- Tableset, domain-entity-spec :- DomainEntitySpec]
@@ -141,7 +141,7 @@
                :entity     table}])))
 
 (s/defn ^:private apply-transform-to-tableset! :- Bindings
-  [tableset :- Tableset, {:keys [steps provides]} :- TransformSpec]
+  [tableset :- Tableset, {:keys [steps _provides]} :- TransformSpec]
   (driver/with-driver (-> tableset first table/database :engine)
     (reduce transform-step! (tableset->bindings tableset) (vals steps))))
 
@@ -183,7 +183,7 @@
   4) Check that all output cards have the expected result shape.
   5) Return the output cards."
   [db-id :- su/IntGreaterThanZero, schema :- (s/maybe s/Str), spec :- TransformSpec]
-  (materialize/fresh-collection-for-transform! spec)
+  (tf.materialize/fresh-collection-for-transform! spec)
   (some-> (tableset db-id schema)
           (tables-matching-requirements spec)
           (apply-transform-to-tableset! spec)

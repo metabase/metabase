@@ -1,10 +1,10 @@
 (ns metabase.query-processor.middleware.constraints-test
   (:require [clojure.test :refer :all]
-            [metabase.query-processor.middleware.constraints :as constraints]
+            [metabase.query-processor.middleware.constraints :as qp.constraints]
             [metabase.test :as mt]))
 
 (defn- add-default-userland-constraints [query]
-  (:pre (mt/test-qp-middleware constraints/add-default-userland-constraints query)))
+  (:pre (mt/test-qp-middleware qp.constraints/add-default-userland-constraints query)))
 
 (deftest no-op-without-middleware-options-test
   (testing "don't do anything to queries without [:middleware :add-default-userland-constraints?] set"
@@ -14,8 +14,8 @@
 (deftest add-constraints-test
   (testing "if it is *truthy* add the constraints"
     (is (= {:middleware  {:add-default-userland-constraints? true},
-            :constraints {:max-results           @#'constraints/max-results
-                          :max-results-bare-rows @#'constraints/max-results-bare-rows}}
+            :constraints {:max-results           @#'qp.constraints/max-results
+                          :max-results-bare-rows @#'qp.constraints/default-max-results-bare-rows}}
            (add-default-userland-constraints
             {:middleware {:add-default-userland-constraints? true}})))))
 
@@ -28,7 +28,7 @@
 (deftest dont-overwrite-existing-constraints-test
   (testing "if it already has constraints, don't overwrite those!"
     (is (= {:middleware  {:add-default-userland-constraints? true}
-            :constraints {:max-results           @#'constraints/max-results
+            :constraints {:max-results           @#'qp.constraints/max-results
                           :max-results-bare-rows 1}}
            (add-default-userland-constraints
             {:constraints {:max-results-bare-rows 1}

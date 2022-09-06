@@ -33,7 +33,7 @@
 (defn- register-fonts! []
   (try
     (doseq [weight ["regular" "700" "900"]]
-      (register-font! (format "frontend_client/app/fonts/lato-v16-latin/lato-v16-latin-%s.ttf" weight)))
+      (register-font! (format "frontend_client/app/fonts/Lato/lato-v16-latin-%s.ttf" weight)))
     (catch Throwable e
       (let [message (str (trs "Error registering fonts: Metabase will not be able to send Pulses.")
                          " "
@@ -65,12 +65,11 @@
     (.addStyleSheet nil (CSSNorm/formsStyleSheet) DOMAnalyzer$Origin/AGENT)
     .getStyleSheets))
 
-(defn- render-to-png!
-  [^String html, ^ByteArrayOutputStream os, width]
+(defn- render-to-png
+  [^String html, width]
   (register-fonts-if-needed!)
   (with-open [is         (ByteArrayInputStream. (.getBytes html StandardCharsets/UTF_8))
               doc-source (StreamDocumentSource. is nil "text/html; charset=utf-8")]
-    ;; todo: get rid of this hardcoded 1200. it is passed down from metabase.pulse.render/card-width = 400
     (let [dimension       (Dimension. width 1)
           doc             (.parse (DefaultDOMSource. doc-source))
           da              (dom-analyzer doc doc-source dimension)
@@ -86,7 +85,15 @@
                                 (.setRenderingHint RenderingHints/KEY_FRACTIONALMETRICS
                                                    RenderingHints/VALUE_FRACTIONALMETRICS_ON))))]
       (.createLayout graphics-engine dimension)
-      (write-image! (.getImage graphics-engine) "png" os))))
+      (let [image         (.getImage graphics-engine)
+            viewport      (.getViewport graphics-engine)
+            ;; CSSBox voodoo -- sometimes maximal width < minimal width, no idea why
+            content-width (max (int (.getMinimalWidth viewport))
+                               (int (.getMaximalWidth viewport)))]
+        ;; Crop the image to the actual size of the rendered content so that tables don't have a ton of whitespace.
+        (if (< content-width (.getWidth image))
+          (.getSubimage image 0 0 content-width (.getHeight image))
+          image)))))
 
 (s/defn render-html-to-png :- bytes
   "Render the Hiccup HTML `content` of a Pulse to a PNG image, returning a byte array."
@@ -99,7 +106,8 @@
                                              :background-color :white})}
                              content]])]
       (with-open [os (ByteArrayOutputStream.)]
-        (render-to-png! html os width)
+        (-> (render-to-png html width)
+            (write-image! "png" os))
         (.toByteArray os)))
     (catch Throwable e
       (log/error e (trs "Error rendering Pulse"))

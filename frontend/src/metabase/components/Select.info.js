@@ -1,6 +1,6 @@
 import React from "react";
 import { t } from "ttag";
-import Select from "metabase/components/Select";
+import Select from "metabase/core/components/Select";
 
 export const component = Select;
 export const category = "input";

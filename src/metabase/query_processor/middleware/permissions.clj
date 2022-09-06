@@ -8,7 +8,7 @@
             [metabase.models.permissions :as perms]
             [metabase.models.query.permissions :as query-perms]
             [metabase.plugins.classloader :as classloader]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.resolve-referenced :as qp.resolve-referenced]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
@@ -17,17 +17,18 @@
             [toucan.db :as db]))
 
 (def ^:dynamic *card-id*
-  "ID of the Card currently being executed, if there is one. Bind this in a Card-execution context so we will use
+  "ID of the Card currently being executed, if there is one. Bind this in a Card-execution so we will use
   Card [Collection] perms checking rather than ad-hoc perms checking."
   nil)
 
-(defn- perms-exception
+(defn perms-exception
+  "Returns an ExceptionInfo instance containing data relevant for a permissions error."
   ([required-perms]
    (perms-exception (tru "You do not have permissions to run this query.") required-perms))
 
   ([message required-perms & [additional-ex-data]]
    (ex-info message
-            (merge {:type                 error-type/missing-required-permissions
+            (merge {:type                 qp.error-type/missing-required-permissions
                     :required-permissions required-perms
                     :actual-permissions   @*current-user-permissions-set*
                     :permissions-error?   true}
@@ -54,10 +55,10 @@
 (s/defn ^:private check-card-read-perms
   "Check that the current user has permissions to read Card with `card-id`, or throw an Exception. "
   [card-id :- su/IntGreaterThanZero]
-  (let [{collection-id :collection_id, :as card} (or (db/select-one [Card :collection_id] :id card-id)
-                                                     (throw (ex-info (tru "Card {0} does not exist." card-id)
-                                                                     {:type    error-type/invalid-query
-                                                                      :card-id card-id})))]
+  (let [card (or (db/select-one [Card :collection_id] :id card-id)
+                 (throw (ex-info (tru "Card {0} does not exist." card-id)
+                                 {:type    qp.error-type/invalid-query
+                                  :card-id card-id})))]
     (log/tracef "Required perms to run Card: %s" (pr-str (mi/perms-objects-set card :read)))
     (when-not (mi/can-read? card)
       (throw (perms-exception (tru "You do not have permissions to view Card {0}." card-id)
@@ -67,8 +68,8 @@
 (declare check-query-permissions*)
 
 (defn- required-perms
-  {:arglists '([outer-query context])}
-  [outer-query {:keys [gtap-perms]}]
+  {:arglists '([outer-query])}
+  [{{gtap-perms :gtaps} ::perms, :as outer-query}]
   (set/difference
    (query-perms/perms-set outer-query, :throw-exceptions? true, :already-preprocessed? true)
    gtap-perms))
@@ -77,8 +78,8 @@
   (perms/set-has-full-permissions-for-set? @*current-user-permissions-set* required-perms))
 
 (s/defn ^:private check-ad-hoc-query-perms
-  [outer-query context]
-  (let [required-perms (required-perms outer-query context)]
+  [outer-query]
+  (let [required-perms (required-perms outer-query)]
     (when-not (has-data-perms? required-perms)
       (throw (perms-exception required-perms))))
   ;; check perms for any Cards referenced by this query (if it is a native query)
@@ -87,15 +88,15 @@
 
 (s/defn ^:private check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
-  [outer-query :- su/Map context]
+  [outer-query :- su/Map]
   (when *current-user-id*
     (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
     (if *card-id*
       (do
         (check-card-read-perms *card-id*)
-        (when-not (has-data-perms? (required-perms outer-query context))
+        (when-not (has-data-perms? (required-perms outer-query))
           (check-block-permissions outer-query)))
-      (check-ad-hoc-query-perms outer-query context))))
+      (check-ad-hoc-query-perms outer-query))))
 
 (defn check-query-permissions
   "Middleware that check that the current user has permissions to run the current query. This only applies if
@@ -104,8 +105,15 @@
   'publishing' a Card)."
   [qp]
   (fn [query rff context]
-    (check-query-permissions* query context)
+    (check-query-permissions* query)
     (qp query rff context)))
+
+(defn remove-permissions-key
+  "Pre-processing middleware. Removes the `::perms` key from the query. This is where we store important permissions
+  information like perms coming from sandboxing (GTAPs). This is programatically added by middleware when appropriate,
+  but we definitely don't want users passing it in themselves. So remove it if it's present."
+  [query]
+  (dissoc query ::perms))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -114,9 +122,10 @@
 
 (defn current-user-has-adhoc-native-query-perms?
   "If current user is bound, do they have ad-hoc native query permissions for `query`'s database? (This is used by
-  `qp/query->native` and the `catch-exceptions` middleware to check the user should be allowed to see the native query
-  before converting the MBQL query to native.)"
-  [{database-id :database, :as query}]
+  [[metabase.query-processor/compile]] and
+  the [[metabase.query-processor.middleware.catch-exceptions/catch-exceptions]] middleware to check the user should be
+  allowed to see the native query before converting the MBQL query to native.)"
+  [{database-id :database, :as _query}]
   (or
    (not *current-user-id*)
    (let [required-perms (perms/adhoc-native-query-path database-id)]

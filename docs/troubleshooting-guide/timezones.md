@@ -1,3 +1,7 @@
+---
+title: The dates and times in my questions and charts are wrong
+---
+
 # The dates and times in my questions and charts are wrong
 
 You are doing calculations with dates and times, or displaying them in charts, but:
@@ -59,7 +63,7 @@ Once you think you have identified a problem, drill down to understand exactly w
 
 ## Are dates without an explicit time zone being converted to another day?
 
-**Root cause:** You are grouping by a date (rather than by a time) that doesn't have a time zone attached to it.
+**Root cause:** You are grouping by a date (rather than by a time) that lacks a time zone.
 
 **Steps to take:**
 
@@ -73,6 +77,6 @@ Once you think you have identified a problem, drill down to understand exactly w
 **Steps to take:**
 
 1. This typically happens with a question that uses multiple fields: for example, you're filtering on one timestamp and grouping by another. Check the time zones of each of the dates or times you are using in your question.
-2. You''ll need to explicitly set the time zone for any value that doesn't have an explicit time zone. This will need to be done either in a SQL query or by transforming the data in your database to ensure both timestamps have time zones.
+2. You'll need to explicitly set the time zone for any value that lacks an explicit time zone. This will need to be done either in a SQL query or by transforming the data in your database to ensure both timestamps have time zones.
 
-[data-model]: ../users-guide/12-data-model-reference.html
+[data-model]: ../questions/native-editor/data-model-reference.md

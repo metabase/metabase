@@ -1,7 +1,7 @@
-import { restore } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { restore } from "__support__/e2e/helpers";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PRODUCTS } = SAMPLE_DATASET;
+const { PRODUCTS } = SAMPLE_DATABASE;
 
 const question = {
   name: "19451",
@@ -27,12 +27,7 @@ describe("issue 19451", () => {
     restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(question).then(({ body: { id } }) => {
-      cy.intercept("POST", `/api/card/${id}/query`).as("cardQuery");
-
-      cy.visit(`/question/${id}`);
-      cy.wait("@cardQuery");
-    });
+    cy.createNativeQuestion(question, { visitQuestion: true });
   });
 
   it("question field filter shows all tables from a selected database (metabase#19451)", () => {

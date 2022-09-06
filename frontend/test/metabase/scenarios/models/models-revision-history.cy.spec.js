@@ -1,13 +1,19 @@
-import { restore, modal } from "__support__/e2e/cypress";
+import {
+  restore,
+  modal,
+  filter,
+  filterField,
+  visitQuestion,
+  openQuestionActions,
+  closeQuestionActions,
+  questionInfoButton,
+} from "__support__/e2e/helpers";
 
 import {
-  assertIsDataset,
-  assertQuestionIsBasedOnDataset,
-  selectFromDropdown,
-  selectDimensionOptionFromSidebar,
-  saveQuestionBasedOnDataset,
+  assertIsModel,
+  assertQuestionIsBasedOnModel,
+  saveQuestionBasedOnModel,
   assertIsQuestion,
-  openDetailsSidebar,
 } from "./helpers/e2e-models-helpers";
 
 describe("scenarios > models > revision history", () => {
@@ -26,24 +32,27 @@ describe("scenarios > models > revision history", () => {
   });
 
   it("should allow reverting to a saved question state", () => {
-    cy.visit("/question/3");
-    openDetailsSidebar();
-    assertIsDataset();
+    cy.visit("/model/3");
+    openQuestionActions();
+    assertIsModel();
+    closeQuestionActions();
 
-    cy.findByText("History").click();
-    cy.button("Revert").click();
+    questionInfoButton().click();
+
+    cy.findByText("History");
+    cy.findAllByTestId("question-revert-button").click();
     cy.wait("@revertToRevision");
 
+    openQuestionActions();
     assertIsQuestion();
     cy.get(".LineAreaBarChart");
 
-    cy.findByTestId("qb-header-action-panel").within(() => {
-      cy.findByText("Filter").click();
+    filter();
+    filterField("Discount", {
+      operator: "Not empty",
     });
-    selectDimensionOptionFromSidebar("Discount");
-    cy.findByText("Equal to").click();
-    selectFromDropdown("Not empty");
-    cy.button("Add filter").click();
+
+    cy.findByTestId("apply-filters").click();
 
     cy.findByText("Save").click();
     modal().within(() => {
@@ -54,41 +63,46 @@ describe("scenarios > models > revision history", () => {
   it("should allow reverting to a model state", () => {
     cy.request("PUT", "/api/card/3", { dataset: false });
 
-    cy.visit("/question/3");
-    openDetailsSidebar();
+    visitQuestion(3);
+    openQuestionActions();
     assertIsQuestion();
+    closeQuestionActions();
 
-    cy.findByText("History").click();
+    questionInfoButton().click();
+
+    cy.findByText("History");
+
     cy.findByText(/Turned this into a model/i)
       .closest("li")
       .within(() => {
-        cy.button("Revert").click();
+        cy.findByTestId("question-revert-button").click();
       });
     cy.wait("@revertToRevision");
 
-    assertIsDataset();
+    openQuestionActions();
+    assertIsModel();
+    closeQuestionActions();
+
     cy.get(".LineAreaBarChart").should("not.exist");
 
-    cy.findByTestId("qb-header-action-panel").within(() => {
-      cy.findByText("Filter").click();
+    filter();
+    filterField("Count", {
+      placeholder: "min",
+      value: "2000",
     });
-    selectDimensionOptionFromSidebar("Count");
-    cy.findByText("Equal to").click();
-    selectFromDropdown("Greater than");
-    cy.findByPlaceholderText("Enter a number").type("2000");
-    cy.button("Add filter").click();
+    cy.findByTestId("apply-filters").click();
 
-    assertQuestionIsBasedOnDataset({
-      dataset: "Orders Model",
+    assertQuestionIsBasedOnModel({
+      model: "Orders Model",
       collection: "Our analytics",
       table: "Orders",
     });
 
-    saveQuestionBasedOnDataset({ datasetId: 3, name: "Q1" });
+    saveQuestionBasedOnModel({ modelId: 3, name: "Q1" });
 
-    assertQuestionIsBasedOnDataset({
+    assertQuestionIsBasedOnModel({
       questionName: "Q1",
-      dataset: "Orders Model",
+      model: "Orders Model",
       collection: "Our analytics",
       table: "Orders",
     });

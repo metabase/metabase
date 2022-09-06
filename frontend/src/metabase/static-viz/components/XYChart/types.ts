@@ -1,5 +1,6 @@
-import { DateFormatOptions } from "metabase/static-viz/lib/dates";
-import { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
+import type { DateFormatOptions } from "metabase/static-viz/lib/dates";
+import type { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
+import type { ScaleBand, ScaleLinear, ScaleTime } from "d3-scale";
 
 export type Range = [number, number];
 export type ContiniousDomain = [number, number];
@@ -24,22 +25,31 @@ export type Series = {
   yAxisPosition: YAxisPosition;
 };
 
+export type StackedDatum = [XValue, YValue, YValue];
+
+export type HydratedSeries = Series & {
+  stackedData?: StackedDatum[];
+};
+
 type TickDisplay = "show" | "hide" | "rotate-45";
+type Stacking = "stack" | "none";
 
 export type ChartSettings = {
+  stacking?: Stacking;
   x: {
     type: XAxisType;
     tick_display?: TickDisplay;
-    format: DateFormatOptions | NumberFormatOptions;
+    format?: DateFormatOptions | NumberFormatOptions;
   };
   y: {
     type: YAxisType;
-    format: NumberFormatOptions;
+    format?: NumberFormatOptions;
   };
   goal?: {
     value: number;
     label: string;
   };
+  show_values?: boolean;
   labels: {
     left?: string;
     bottom?: string;
@@ -77,5 +87,30 @@ export type ChartStyle = {
     fontSize: number;
     lineHeight: number;
   };
+  value?: {
+    color: string;
+    fontSize: number;
+    fontWeight: number;
+    stroke: string;
+    strokeWidth: number;
+  };
   goalColor: string;
 };
+
+export type XYAccessor<
+  T extends SeriesDatum | StackedDatum = SeriesDatum | StackedDatum,
+> = (
+  datum: T extends SeriesDatum ? SeriesDatum : StackedDatum,
+  flipped?: boolean,
+) => number;
+
+export interface XScale<T = any> {
+  scale: T extends ScaleBand<string | number>
+    ? ScaleBand<string | number>
+    : T extends ScaleTime<number, number, never>
+    ? ScaleTime<number, number, never>
+    : ScaleLinear<number, number, never>;
+  bandwidth?: number;
+  lineAccessor: XYAccessor<SeriesDatum>;
+  barAccessor?: XYAccessor<SeriesDatum>;
+}

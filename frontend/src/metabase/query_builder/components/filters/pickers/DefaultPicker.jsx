@@ -13,23 +13,29 @@ import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import {
   getFilterArgumentFormatOptions,
   isFuzzyOperator,
+  isCurrency,
 } from "metabase/lib/schema_metadata";
+
+import { getCurrencySymbol } from "metabase/lib/formatting";
+
+import { keyForColumn } from "metabase/lib/dataset";
 
 import {
   BetweenLayoutContainer,
   BetweenLayoutFieldSeparator,
   BetweenLayoutFieldContainer,
+  DefaultPickerContainer,
 } from "./DefaultPicker.styled";
 
 const defaultPickerPropTypes = {
-  filter: PropTypes.object,
+  filter: PropTypes.array,
   setValue: PropTypes.func,
   setValues: PropTypes.func,
   onCommit: PropTypes.func,
   className: PropTypes.string,
-  isSidebar: PropTypes.bool,
   minWidth: PropTypes.number,
   maxWidth: PropTypes.number,
+  checkedColor: PropTypes.string,
 };
 
 const defaultLayoutPropTypes = {
@@ -45,6 +51,7 @@ export default function DefaultPicker({
   className,
   minWidth,
   maxWidth,
+  checkedColor,
 }) {
   const operator = filter.operator();
   if (!operator) {
@@ -59,11 +66,28 @@ export default function DefaultPicker({
   const isBetweenLayout =
     operator.name === "between" && operatorFields.length === 2;
 
+  const visualizationSettings = filter?.query()?.question()?.settings();
+
+  const key = keyForColumn(dimension.column());
+  const columnSettings = visualizationSettings?.column_settings?.[key];
+
+  const fieldMetadata = field?.metadata?.fields[field?.id];
+  const fieldSettings = {
+    ...(fieldMetadata?.settings ?? {}),
+    ...(columnSettings ?? {}),
+  };
+
+  const currencyPrefix =
+    isCurrency(field) || fieldSettings?.currency
+      ? getCurrencySymbol(fieldSettings?.currency)
+      : null;
+
   const fieldWidgets = operatorFields
     .map((operatorField, index) => {
-      let values, onValuesChange;
       const placeholder =
         (operator.placeholders && operator.placeholders[index]) || undefined;
+
+      let values, onValuesChange;
       if (operator.multi) {
         values = filter.arguments();
         onValuesChange = values => setValues(values);
@@ -71,6 +95,7 @@ export default function DefaultPicker({
         values = [filter.arguments()[index]];
         onValuesChange = values => setValue(index, values[0]);
       }
+
       if (operatorField.type === "hidden") {
         return null;
       } else if (operatorField.type === "select") {
@@ -85,7 +110,7 @@ export default function DefaultPicker({
             onCommit={onCommit}
           />
         );
-      } else if (field && field.id != null && !isBetweenLayout) {
+      } else if (field?.id !== null && !isBetweenLayout) {
         // get the underling field if the query is nested
         let underlyingField = field;
         let sourceField;
@@ -100,6 +125,7 @@ export default function DefaultPicker({
             multi={operator.multi}
             placeholder={placeholder}
             fields={underlyingField ? [underlyingField] : []}
+            prefix={currencyPrefix}
             disablePKRemappingForSearch={true}
             autoFocus={index === 0}
             alwaysShowOptions={operator.fields.length === 1}
@@ -107,6 +133,7 @@ export default function DefaultPicker({
             disableSearch={disableSearch}
             minWidth={minWidth}
             maxWidth={maxWidth}
+            checkedColor={checkedColor}
           />
         );
       } else if (operatorField.type === "text") {
@@ -129,6 +156,7 @@ export default function DefaultPicker({
             values={values}
             onValuesChange={onValuesChange}
             placeholder={placeholder}
+            prefix={currencyPrefix}
             multi={operator.multi}
             onCommit={onCommit}
           />
@@ -147,7 +175,12 @@ export default function DefaultPicker({
   }
 
   return (
-    <div className={cx(className, "PopoverBody--marginBottom")}>{layout}</div>
+    <DefaultPickerContainer
+      limitHeight
+      className={cx(className, "PopoverBody--marginBottom")}
+    >
+      {layout}
+    </DefaultPickerContainer>
   );
 }
 

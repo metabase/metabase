@@ -1,7 +1,13 @@
+/**
+ * ⚠️
+ * @deprecated use existing types from, or add to metabase-types/api/*
+ */
+
 import { ISO8601Time } from ".";
 import { FieldId } from "./Field";
 import { DatasetQuery } from "./Card";
-import { DatetimeUnit, FieldLiteral, Field } from "./Query";
+import { FieldLiteral, Field } from "./Query";
+import { DatetimeUnit } from "metabase-types/api/query";
 
 export type ColumnName = string;
 
@@ -13,10 +19,11 @@ export type BinningInfo = {
 
 // TODO: incomplete
 export type Column = {
-  id?: FieldId | FieldLiteral; // NOTE: sometimes id is a field reference, e.x. nested queries?
+  id?: FieldId | FieldLiteral; // NOTE: sometimes id is a field reference, e.g. nested queries
   name: ColumnName;
   display_name: string;
   base_type: string;
+  effective_type: string;
   semantic_type?: string;
   source?: "fields" | "aggregation" | "breakout";
   unit?: DatetimeUnit;
@@ -25,6 +32,7 @@ export type Column = {
   expression_name?: any;
   settings?: ColumnSettings;
   field_ref?: Field;
+  visibility_type?: "normal" | "details-only" | "hidden";
 };
 
 export type Value =
@@ -48,4 +56,5 @@ export type Dataset = {
   data: DatasetData;
   json_query: DatasetQuery;
   error?: string;
+  row_count?: number;
 };

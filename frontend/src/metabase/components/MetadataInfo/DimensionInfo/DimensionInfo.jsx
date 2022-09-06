@@ -7,16 +7,17 @@ import Dimension from "metabase-lib/lib/Dimension";
 import { Description, EmptyDescription } from "../MetadataInfo.styled";
 import {
   InfoContainer,
-  DimensionLabel,
+  DimensionSemanticTypeLabel,
   FieldFingerprintInfo,
 } from "./DimensionInfo.styled";
 
 DimensionInfo.propTypes = {
   className: PropTypes.string,
   dimension: PropTypes.instanceOf(Dimension).isRequired,
+  showAllFieldValues: PropTypes.bool,
 };
 
-export function DimensionInfo({ className, dimension }) {
+export function DimensionInfo({ className, dimension, showAllFieldValues }) {
   const field = dimension.field();
   const description = field?.description;
   return (
@@ -26,8 +27,11 @@ export function DimensionInfo({ className, dimension }) {
       ) : (
         <EmptyDescription>{t`No description`}</EmptyDescription>
       )}
-      <DimensionLabel dimension={dimension} />
-      <FieldFingerprintInfo field={field} />
+      <DimensionSemanticTypeLabel dimension={dimension} />
+      <FieldFingerprintInfo
+        field={field}
+        showAllFieldValues={showAllFieldValues}
+      />
     </InfoContainer>
   );
 }

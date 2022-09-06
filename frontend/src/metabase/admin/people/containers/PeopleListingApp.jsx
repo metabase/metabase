@@ -1,11 +1,13 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import { connect } from "react-redux";
 
 import * as Urls from "metabase/lib/urls";
 
 import AdminPaneLayout from "metabase/components/AdminPaneLayout";
-import Radio from "metabase/components/Radio";
+import Radio from "metabase/core/components/Radio";
+import { getUserIsAdmin } from "metabase/selectors/user";
 
 import SearchInput from "../components/SearchInput";
 import PeopleList from "../components/PeopleList";
@@ -14,7 +16,7 @@ import { usePeopleQuery } from "../hooks/use-people-query";
 
 const PAGE_SIZE = 25;
 
-export default function PeopleListingApp({ children }) {
+function PeopleListingApp({ children, isAdmin }) {
   const {
     query,
     status,
@@ -26,7 +28,7 @@ export default function PeopleListingApp({ children }) {
   } = usePeopleQuery(PAGE_SIZE);
 
   const headingContent = (
-    <div className="mb2 flex">
+    <div className="mb2 flex align-center">
       <SearchInput
         className="text-small mr2"
         type="text"
@@ -35,24 +37,28 @@ export default function PeopleListingApp({ children }) {
         onChange={updateSearchInputValue}
         hasClearButton
       />
-      <Radio
-        className="ml2 text-bold"
-        value={status}
-        options={[
-          { name: t`Active`, value: USER_STATUS.active },
-          { name: t`Deactivated`, value: USER_STATUS.deactivated },
-        ]}
-        showButtons
-        py={1}
-        onChange={updateStatus}
-      />
+      {isAdmin && (
+        <Radio
+          className="ml2 text-bold"
+          value={status}
+          options={[
+            { name: t`Active`, value: USER_STATUS.active },
+            { name: t`Deactivated`, value: USER_STATUS.deactivated },
+          ]}
+          showButtons
+          onChange={updateStatus}
+        />
+      )}
     </div>
   );
+
+  const buttonText =
+    isAdmin && status === USER_STATUS.active ? t`Invite someone` : null;
 
   return (
     <AdminPaneLayout
       headingContent={headingContent}
-      buttonText={status === USER_STATUS.deactivated ? null : t`Invite someone`}
+      buttonText={buttonText}
       buttonLink={Urls.newUser()}
     >
       <PeopleList
@@ -67,4 +73,9 @@ export default function PeopleListingApp({ children }) {
 
 PeopleListingApp.propTypes = {
   children: PropTypes.node,
+  isAdmin: PropTypes.bool,
 };
+
+export default connect(state => ({
+  isAdmin: getUserIsAdmin(state),
+}))(PeopleListingApp);

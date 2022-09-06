@@ -1,22 +1,20 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { Box } from "grid-styled";
 
 import ConfirmContent from "metabase/components/ConfirmContent";
 import ModalContent from "metabase/components/ModalContent";
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
+import { PageHeader, PageSection } from "./ModalsPage.styled";
 
 const Section = ({ children }) => (
-  <Box className="bordered shadowed rounded" my={3} width={520}>
-    {children}
-  </Box>
+  <PageSection className="bordered shadowed rounded">{children}</PageSection>
 );
 
 const ModalsPage = () => (
-  <Box className="wrapper">
-    <Box my={3}>
+  <div className="wrapper">
+    <PageHeader>
       <h1>Modal Content examples</h1>
-    </Box>
+    </PageHeader>
     <h3>Modal Content</h3>
     <p>Basic modal content. Build off of this for other modals.</p>
     <Section>
@@ -49,7 +47,7 @@ const ModalsPage = () => (
         ]}
       />
     </Section>
-  </Box>
+  </div>
 );
 
 export default ModalsPage;

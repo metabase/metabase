@@ -1,13 +1,17 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
+import Button from "metabase/core/components/Button";
 
-export const StepLink = styled.a`
-  cursor: pointer;
-  text-decoration: none;
+export const StepButton = styled(Button)`
   color: ${color("brand")};
+  font-weight: normal;
+  padding: 0;
+  border: none;
+  border-radius: 0;
 
   &:hover {
     text-decoration: underline;
+    background-color: transparent;
   }
 `;
 
@@ -24,4 +28,10 @@ export const StepFormGroup = styled.div`
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 1rem;
+`;
+
+export const FormActions = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
 `;

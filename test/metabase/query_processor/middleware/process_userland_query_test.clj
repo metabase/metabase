@@ -2,10 +2,10 @@
   (:require [clojure.core.async :as a]
             [clojure.test :refer :all]
             [metabase.events :as events]
-            [metabase.query-processor.context :as context]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.context :as qp.context]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
-            [metabase.query-processor.util :as qputil]
+            [metabase.query-processor.util :as qp.util]
             [metabase.test :as mt]))
 
 (defn- do-with-query-execution [query run]
@@ -18,7 +18,7 @@
               (:running_time qe) (update :running_time int?)
               (:hash qe)         (update :hash (fn [^bytes a-hash]
                                                  (when a-hash
-                                                   (java.util.Arrays/equals a-hash (qputil/query-hash query))))))))))))
+                                                   (java.util.Arrays/equals a-hash (qp.util/query-hash query))))))))))))
 
 (defmacro ^:private with-query-execution {:style/indent 1} [[qe-result-binding query] & body]
   `(do-with-query-execution ~query (fn [~qe-result-binding] ~@body)))
@@ -71,8 +71,8 @@
            clojure.lang.ExceptionInfo
            #"Oops!"
            (process-userland-query query {:runf (fn [_ _ context]
-                                                  (context/raisef (ex-info "Oops!" {:type error-type/qp})
-                                                                  context))})))
+                                                  (qp.context/raisef (ex-info "Oops!" {:type qp.error-type/qp})
+                                                                     context))})))
       (is (= {:hash         true
               :database_id  nil
               :error        "Oops!"
@@ -90,12 +90,11 @@
           "QueryExecution saved in the DB should have query execution info. empty `:data` should get added to failures"))))
 
 (deftest viewlog-call-test
-  (let [query {:query? true}]
-    (testing "no viewlog event with nil card id"
-      (let [call-count (atom 0)]
-        (with-redefs [events/publish-event! (fn [& args] (swap! call-count inc))]
-          (mt/test-qp-middleware process-userland-query/process-userland-query {:query? true} {} [] nil)
-          (is (= 0 @call-count)))))))
+  (testing "no viewlog event with nil card id"
+    (let [call-count (atom 0)]
+      (with-redefs [events/publish-event! (fn [& _] (swap! call-count inc))]
+        (mt/test-qp-middleware process-userland-query/process-userland-query {:query? true} {} [] nil)
+        (is (= 0 @call-count))))))
 
 (defn- async-middleware [qp]
   (fn async-middleware-qp [query rff context]
@@ -103,7 +102,7 @@
       (try
         (qp query rff context)
         (catch Throwable e
-          (context/raisef e context))))
+          (qp.context/raisef e context))))
     nil))
 
 (deftest cancel-test

@@ -6,7 +6,7 @@
   historic reasons. When time permits it should be moved into this middleware since it's really a separate
   transformation from wrapping the value literals themselves."
   (:require [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]))
@@ -26,18 +26,14 @@
                            base-type
                            (pr-str v)
                            base-type)
-                      {:type error-type/invalid-query}
+                      {:type qp.error-type/invalid-query}
                       e)))))
 
-(defn- auto-parse-filter-values* [query]
+(defn auto-parse-filter-values
+  "Automatically parse String filter clause values to the appropriate type."
+  [query]
   (mbql.u/replace-in query [:query]
     [:value (v :guard string?) (info :guard (fn [{base-type :base_type}]
                                               (and base-type
                                                    (not (isa? base-type :type/Text)))))]
     [:value (parse-value-for-base-type v (:base_type info)) info]))
-
-(defn auto-parse-filter-values
-  "Automatically parse String filter clause values to the appropriate type."
-  [qp]
-  (fn [query rff context]
-    (qp (auto-parse-filter-values* query) rff context)))

@@ -6,3 +6,4 @@ export const LABEL_PADDING = 12;
 
 export const LEGEND_CIRCLE_SIZE = 10;
 export const LEGEND_TEXT_MARGIN = LEGEND_CIRCLE_SIZE * 2;
+export const LEGEND_COLUMNS_MARGIN = 24;

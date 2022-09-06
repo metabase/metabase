@@ -5,9 +5,11 @@
             [kixi.stats.math :as math]
             [medley.core :as m]
             [metabase.mbql.util :as mbql.u]
-            [metabase.models.field :as field]
-            [metabase.sync.analyze.fingerprint.fingerprinters :as f]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.interface :as mi]
+            [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
             [metabase.sync.util :as sync-util]
+            [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [trs]]
             [redux.core :as redux])
@@ -103,13 +105,13 @@
    sampling, and use it to calculate RMSE."
   [fx fy]
   (redux/post-complete
-   (f/robust-fuse
+   (fingerprinters/robust-fuse
     {:fits           (->> (for [{:keys [x-link-fn y-link-fn formula model]} trendline-function-families]
                             (redux/post-complete
                              (stats/simple-linear-regression (comp (stats/somef x-link-fn) fx)
                                                              (comp (stats/somef y-link-fn) fy))
                              (fn [[offset slope]]
-                               (when (every? f/real-number? [offset slope])
+                               (when (every? u/real-number? [offset slope])
                                  {:model   (model offset slope)
                                   :formula (formula offset slope)}))))
                           (apply redux/juxt))
@@ -125,7 +127,7 @@
               (map #(assoc % :mae (transduce identity
                                              (mae (comp (:model %) first) second)
                                              validation-set)))
-              (filter (comp f/real-number? :mae))
+              (filter (comp u/real-number? :mae))
               not-empty
               (apply min-key :mae)
               :formula))))
@@ -185,16 +187,16 @@
         xfn        #(some-> %
                             (nth x-position)
                             ;; at this point in the pipeline, dates are still stings
-                            f/->temporal
+                            fingerprinters/->temporal
                             ->millis-from-epoch
                             ms->day)]
-    (f/with-error-handling
+    (fingerprinters/with-error-handling
       (apply redux/juxt
              (for [number-col numbers]
                (redux/post-complete
                 (let [y-position (:position number-col)
                       yfn        #(nth % y-position)]
-                  ((filter (comp f/real-number? yfn))
+                  ((filter (comp u/real-number? yfn))
                    (redux/juxt ((map yfn) (last-n 2))
                                ((map xfn) (last-n 2))
                                (stats/simple-linear-regression xfn yfn)
@@ -206,7 +208,7 @@
                                          (infer-unit x-previous x-current)
                                          unit))
                         show-change? (valid-period? x-previous x-current unit)]
-                    (f/robust-map
+                    (fingerprinters/robust-map
                      :last-value     y-current
                      :previous-value (when show-change?
                                        y-previous)
@@ -218,7 +220,7 @@
                      :col            (:name number-col)
                      :unit           unit))))))
       (trs "Error generating timeseries insight keyed by: {0}"
-           (sync-util/name-for-logging (field/map->FieldInstance datetime))))))
+           (sync-util/name-for-logging (mi/instance Field datetime))))))
 
 (defn insights
   "Based on the shape of returned data construct a transducer to statistically analyize data."
@@ -239,4 +241,4 @@
                                         :else                                               :others))))]
     (cond
       (timeseries? cols-by-type) (timeseries-insight cols-by-type)
-      :else                      (f/constant-fingerprinter nil))))
+      :else                      (fingerprinters/constant-fingerprinter nil))))

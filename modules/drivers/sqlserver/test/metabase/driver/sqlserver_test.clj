@@ -11,9 +11,55 @@
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
+            [metabase.driver.sqlserver :as sqlserver]
+            [metabase.models :refer [Database]]
             [metabase.query-processor :as qp]
+            [metabase.query-processor.interface :as qp.i]
+            [metabase.query-processor.middleware.constraints :as qp.constraints]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.test :as mt]))
+
+(deftest fix-order-bys-test
+  (testing "Remove order-by from joins"
+    (let [original {:joins [{:alias        "C3"
+                             :source-query {:source-table 1
+                                            :order-by     [[:asc [:field 2 nil]]]}}
+                            {:alias        "C4"
+                             :source-query {:source-table 1
+                                            :order-by     [[:asc [:field 2 nil]]]
+                                            :limit        10}}]}
+          expected {:joins [{:alias        "C3"
+                             :source-query {:source-table 1}}
+                            {:alias        "C4"
+                             :source-query {:source-table 1
+                                            :order-by     [[:asc [:field 2 nil]]]
+                                            :limit        10}}]}]
+      (is (query= expected
+                  (#'sqlserver/fix-order-bys original)))
+      (testing "Inside `:source-query`"
+        (is (query= {:source-query expected}
+                    (#'sqlserver/fix-order-bys {:source-query original})))))
+
+    (testing "Add limit for :source-query order bys"
+      (mt/$ids nil
+        (let [original {:source-table 1
+                        :order-by     [[:asc 2]]}]
+          (testing "Not in a source query -- don't do anything"
+            (is (query= original
+                        (#'sqlserver/fix-order-bys original))))
+          (testing "In source query -- add `:limit`"
+            (is (query= {:source-query (assoc original :limit qp.i/absolute-max-results)}
+                        (#'sqlserver/fix-order-bys {:source-query original}))))
+          (testing "In source query in source query-- add `:limit` at both levels"
+            (is (query= {:source-query {:source-query (assoc original :limit qp.i/absolute-max-results)
+                                        :order-by     [[:asc [:field 1]]]
+                                        :limit        qp.i/absolute-max-results}}
+                        (#'sqlserver/fix-order-bys {:source-query {:source-query original
+                                                                   :order-by     [[:asc [:field 1]]]}}))))
+          (testing "In source query inside source query for join -- add `:limit`"
+            (is (query= {:joins [{:source-query {:source-query (assoc original :limit qp.i/absolute-max-results)}}]}
+                        (#'sqlserver/fix-order-bys
+                         {:joins [{:source-query {:source-query original}}]})))))))))
 
 ;;; -------------------------------------------------- VARCHAR(MAX) --------------------------------------------------
 
@@ -63,19 +109,15 @@
   (mt/test-driver :sqlserver
     (testing (str "SQL Server doesn't let you use ORDER BY in nested SELECTs unless you also specify a TOP (their "
                   "equivalent of LIMIT). Make sure we add a max-results LIMIT to the nested query")
-      (is (= {:query (str "SELECT TOP 1048575 \"source\".\"name\" AS \"name\" "
-                          "FROM ("
-                          "SELECT TOP 1048575 "
-                          "\"dbo\".\"venues\".\"name\" AS \"name\" "
-                          "FROM \"dbo\".\"venues\" "
-                          "ORDER BY \"dbo\".\"venues\".\"id\" ASC"
-                          " ) \"source\" ") ; not sure why this generates an extra space before the closing paren, but it does
-              :params nil}
-             (qp/query->native
-              (mt/mbql-query venues
-                {:source-query {:source-table $$venues
-                                :fields       [$name]
-                                :order-by     [[:asc $id]]}})))))))
+      (is (sql= '{:select [TOP 1048575 source.name AS name]
+                  :from   [{:select   [TOP 1048575 dbo.venues.name AS name]
+                            :from     [dbo.venues]
+                            :order-by [dbo.venues.id ASC]}
+                           source]}
+                (mt/mbql-query venues
+                  {:source-query {:source-table $$venues
+                                  :fields       [$name]
+                                  :order-by     [[:asc $id]]}}))))))
 
 (deftest preserve-existing-top-clauses
   (mt/test-driver :sqlserver
@@ -89,7 +131,7 @@
                            "ORDER BY \"dbo\".\"venues\".\"id\" ASC"
                            " ) \"source\" ")
               :params nil}
-             (qp/query->native
+             (qp/compile
               (mt/mbql-query venues
                 {:source-query {:source-table $$venues
                                 :fields       [$name]
@@ -108,7 +150,7 @@
                                              :fields       [$name]
                                              :order-by     [[:asc $id]]}
                               :order-by     [[:asc $id]]})
-                           qp/query->preprocessed
+                           qp/preprocess
                            (m/dissoc-in [:query :limit]))]
       (mt/with-everything-store
         (is (= {:query  (str "SELECT \"source\".\"name\" AS \"name\" "
@@ -249,10 +291,54 @@
           (testing (format "\nUnit = %s\n" unit)
             (testing "Should generate the correct SQL query"
               (is (= expected-sql
-                     (pretty-sql (:query (qp/query->native (query-with-bucketing unit)))))))
+                     (pretty-sql (:query (qp/compile (query-with-bucketing unit)))))))
             (testing "Should still return correct results"
               (is (= expected-rows
                      (take 5 (mt/rows
                                (mt/run-mbql-query checkins
                                  {:aggregation [[:count]]
                                   :breakout    [[:field $date {:temporal-unit unit}]]}))))))))))))
+(deftest max-results-bare-rows-test
+  (mt/test-driver :sqlserver
+    (testing "Should support overriding the ROWCOUNT for a specific SQL Server DB (#9940)"
+      (mt/with-temp Database [db {:name    "SQL Server with ROWCOUNT override"
+                                  :engine  "sqlserver"
+                                  :details (-> (:details (mt/db))
+                                               ;; SQL server considers a ROWCOUNT of 0 to be unconstrained
+                                               ;; we are putting this in the details map, since that's where connection
+                                               ;; properties go in a client save operation, but it will be MOVED to the
+                                               ;; settings map instead (which is where DB-local settings go), via the
+                                               ;; driver/normalize-db-details implementation for :sqlserver
+                                               (assoc :rowcount-override 0))}]
+        ;; TODO FIXME -- This query probably shouldn't be returning ANY rows given that we're setting the LIMIT to zero.
+        ;; For now I've had to keep a bug where it always returns at least one row regardless of the limit. See comments
+        ;; in [[metabase.query-processor.middleware.limit/limit-xform]].
+        (mt/with-db db
+          (is (= 3000 (-> {:query (str "DECLARE @DATA AS TABLE(\n"
+                                       "    IDX INT IDENTITY(1,1),\n"
+                                       "    V INT\n"
+                                       ")\n"
+                                       "DECLARE @STEP INT \n"
+                                       "SET @STEP = 1\n"
+                                       "WHILE @STEP <=3000\n"
+                                       "BEGIN\n"
+                                       "    INSERT INTO @DATA(V)\n"
+                                       "    SELECT 1\n"
+                                       "    SET @STEP = @STEP + 1\n"
+                                       "END \n"
+                                       "\n"
+                                       "DECLARE @TEMP AS TABLE(\n"
+                                       "    IDX INT IDENTITY(1,1),\n"
+                                       "    V INT\n"
+                                       ")\n"
+                                       "INSERT INTO @TEMP(V)\n"
+                                       "SELECT V FROM @DATA\n"
+                                       "\n"
+                                       "SELECT COUNT(1) FROM @TEMP\n")}
+                         mt/native-query
+                         ;; add default query constraints to ensure the default limit of 2000 is overridden by the
+                         ;; `:rowcount-override` connection property we defined in the details above
+                         (assoc :constraints (qp.constraints/default-query-constraints))
+                         qp/process-query
+                         mt/rows
+                         ffirst))))))))

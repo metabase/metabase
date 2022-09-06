@@ -4,7 +4,7 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.server.middleware.security :as mw.security]
-            [metabase.util.i18n :as ui18n :refer [trs]])
+            [metabase.util.i18n :refer [trs]])
   (:import java.sql.SQLException
            org.eclipse.jetty.io.EofException))
 
@@ -74,7 +74,7 @@
                                                         #"\s*\n\s*"))))
 
 (defmethod api-exception-response EofException
-  [e]
+  [_e]
   (log/info (trs "Request canceled before finishing."))
   {:status-code 204, :body nil, :headers (mw.security/security-headers)})
 
@@ -82,7 +82,7 @@
   "Middleware that catches API Exceptions and returns them in our normal-style format rather than the Jetty 500
   Stacktrace page, which is not so useful for our frontend."
   [handler]
-  (fn [request respond raise]
+  (fn [request respond _raise]
     (handler
      request
      respond

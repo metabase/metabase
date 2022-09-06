@@ -20,6 +20,7 @@
   {:archived               false
    :collection_id          nil
    :collection_position    nil
+   :collection_preview     true
    :creator_id             (:creator_id card)
    :database_id            (mt/id)
    :dataset_query          (:dataset_query card)
@@ -27,14 +28,18 @@
    :description            nil
    :display                :table
    :enable_embedding       false
+   :entity_id              (:entity_id card)
    :embedding_params       nil
    :id                     (u/the-id card)
    :made_public_by_id      nil
    :name                   (:name card)
+   :parameters             []
+   :parameter_mappings     []
    :public_uuid            nil
    :cache_ttl              nil
    :query_type             :query
    :table_id               (mt/id :categories)
+   :is_write               false
    :visualization_settings {}})
 
 (defn- dashboard->revision-object [dashboard]
@@ -188,6 +193,7 @@
                 :user_id      (mt/user->id :rasta)
                 :object       {:name                    "Toucans in the rainforest"
                                :description             "Lookin' for a blueberry"
+                               :entity_id               (:entity_id metric)
                                :how_is_this_calculated  nil
                                :show_in_getting_started false
                                :caveats                 nil
@@ -217,6 +223,7 @@
                 :user_id      (mt/user->id :crowberto)
                 :object       {:name                    "Toucans in the rainforest"
                                :description             "Lookin' for a blueberry"
+                               :entity_id               (:entity_id metric)
                                :how_is_this_calculated  nil
                                :show_in_getting_started false
                                :caveats                 nil
@@ -247,6 +254,7 @@
                                :how_is_this_calculated  nil
                                :show_in_getting_started false
                                :caveats                 nil
+                               :entity_id               (:entity_id metric)
                                :points_of_interest      nil
                                :archived                true
                                :creator_id              (mt/user->id :rasta)
@@ -266,7 +274,7 @@
                                             :definition {:a "b"}}]]
       (revision/process-revision-event! {:topic :segment-create
                                          :item  segment})
-      (let [revision (-> (Revision :model "Segment", :model_id (:id segment))
+      (let [revision (-> (db/select-one Revision :model "Segment", :model_id (:id segment))
                          (select-keys [:model :user_id :object :is_reversion :is_creation :message]))]
         (is (= {:model        "Segment"
                 :user_id      (mt/user->id :rasta)
@@ -275,6 +283,7 @@
                                :show_in_getting_started false
                                :caveats                 nil
                                :points_of_interest      nil
+                               :entity_id               (:entity_id segment)
                                :archived                false
                                :creator_id              (mt/user->id :rasta)
                                :definition              {:a "b"}}
@@ -301,6 +310,7 @@
                              :show_in_getting_started false
                              :caveats                 nil
                              :points_of_interest      nil
+                             :entity_id               (:entity_id segment)
                              :archived                false
                              :creator_id              (mt/user->id :rasta)
                              :definition              {:a "b"}}
@@ -329,6 +339,7 @@
                              :show_in_getting_started false
                              :caveats                 nil
                              :points_of_interest      nil
+                             :entity_id               (:entity_id segment)
                              :archived                true
                              :creator_id              (mt/user->id :rasta)
                              :definition              {:a "b"}}

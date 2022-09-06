@@ -1,7 +1,8 @@
 (ns metabase.query-processor-test.parameters-test
   "Tests for support for parameterized queries in drivers that support it. (There are other tests for parameter support
   in various places; these are mainly for high-level verification that parameters are working.)"
-  (:require [clojure.test :refer :all]
+  (:require [clojure.string :as str]
+            [clojure.test :refer :all]
             [medley.core :as m]
             [metabase.driver :as driver]
             [metabase.models :refer [Card]]
@@ -148,7 +149,7 @@
 (deftest filter-nested-queries-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :nested-queries)
     (testing "We should be able to apply filters to queries that use native queries with parameters as their source (#9802)"
-      (mt/with-temp Card [{card-id :id} {:dataset_query (mt/native-query (qp/query->native (mt/mbql-query checkins)))}]
+      (mt/with-temp Card [{card-id :id} {:dataset_query (mt/native-query (qp/compile (mt/mbql-query checkins)))}]
         (let [query (assoc (mt/mbql-query nil
                              {:source-table (format "card__%d" card-id)})
                            :parameters [{:type   :date/all-options
@@ -173,7 +174,7 @@
       (mt/dataset airports
         (is (= {:query  "SELECT NAME FROM COUNTRY WHERE \"PUBLIC\".\"COUNTRY\".\"NAME\" IN ('US', 'MX')"
                 :params nil}
-               (qp/query->native-with-spliced-params
+               (qp/compile-and-splice-parameters
                 {:type       :native
                  :native     {:query         "SELECT NAME FROM COUNTRY WHERE {{country}}"
                               :template-tags {"country"
@@ -190,7 +191,7 @@
     (testing "Comma-separated numbers"
       (is (= {:query  "SELECT * FROM VENUES WHERE \"PUBLIC\".\"VENUES\".\"PRICE\" IN (1, 2)"
               :params []}
-             (qp/query->native-with-spliced-params
+             (qp/compile-and-splice-parameters
               {:type       :native
                :native     {:query         "SELECT * FROM VENUES WHERE {{price}}"
                             :template-tags {"price"
@@ -219,3 +220,51 @@
                                                                         {:source-field (mt/id :venues :category_id)}]]}]))
                  (m/dissoc-in [:data :native_form :params])
                  (m/dissoc-in [:data :results_metadata :checksum])))))))
+
+(deftest legacy-parameters-with-no-widget-type-test
+  (testing "Legacy queries with parameters that don't specify `:widget-type` should still work (#20643)"
+    (mt/dataset sample-dataset
+      (let [query (mt/native-query
+                    {:query         "SELECT count(*) FROM products WHERE {{cat}};"
+                     :template-tags {"cat" {:id           "__MY_CAT__"
+                                            :name         "cat"
+                                            :display-name "Cat"
+                                            :type         :dimension
+                                            :dimension    [:field (mt/id :products :category) nil]}}})]
+        (is (= [200]
+               (mt/first-row (qp/process-query query))))))))
+
+(deftest date-parameter-for-native-query-with-nested-mbql-query-test
+  (testing "Should be able to have a native query with a nested MBQL query and a date parameter (#21246)"
+    (mt/dataset sample-dataset
+      (mt/with-temp Card [{card-id :id} {:dataset_query (mt/mbql-query products)}]
+        (let [param-name (format "#%d" card-id)
+              query      (mt/native-query
+                           {:query         (str/join \newline
+                                                     [(format "WITH exclude_products AS {{%s}}" param-name)
+                                                      "SELECT count(*)"
+                                                      "FROM orders"
+                                                      "[[WHERE {{created_at}}]]"])
+                            :template-tags {param-name   {:type         :card
+                                                          :card-id      card-id
+                                                          :display-name param-name
+                                                          :id           "__source__"
+                                                          :name         param-name}
+                                            "created_at" {:type         :dimension
+                                                          :default      nil
+                                                          :dimension    [:field (mt/id :orders :created_at) nil]
+                                                          :display-name "Created At"
+                                                          :id           "__created_at__"
+                                                          :name         "created_at"
+                                                          :widget-type  :date/all-options}}})]
+          (testing "With no parameters"
+            (mt/with-native-query-testing-context query
+              (is (= [[18760]]
+                     (mt/rows (qp/process-query query))))))
+          (testing "With parameters (#21246)"
+            (let [query (assoc query :parameters [{:type   :date/all-options
+                                                   :value  "2022-04-20"
+                                                   :target [:dimension [:template-tag "created_at"]]}])]
+              (mt/with-native-query-testing-context query
+                (is (= [[0]]
+                       (mt/rows (qp/process-query query))))))))))))

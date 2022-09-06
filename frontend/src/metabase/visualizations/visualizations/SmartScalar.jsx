@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { Box, Flex } from "grid-styled";
 import { t, jt } from "ttag";
 import _ from "underscore";
 
@@ -19,6 +18,13 @@ import ScalarValue, {
   ScalarWrapper,
   ScalarTitle,
 } from "metabase/visualizations/components/ScalarValue";
+
+import {
+  PreviousValueContainer,
+  PreviousValueSeparator,
+  PreviousValueVariation,
+  Variation,
+} from "./SmartScalar.styled";
 
 export default class Smart extends React.Component {
   static uiName = t`Trend`;
@@ -89,6 +95,10 @@ export default class Smart extends React.Component {
         },
       ],
       rawSeries,
+      gridSize,
+      width,
+      totalNumGridCols,
+      fontFamily,
     } = this.props;
 
     const metricIndex = cols.findIndex(col => !isDate(col));
@@ -114,9 +124,7 @@ export default class Smart extends React.Component {
     const isSwapped = settings["scalar.switch_positive_negative"];
 
     // if the number is negative but thats been identified as a good thing (e.g. decreased latency somehow?)
-    const changeColor = (isSwapped
-    ? !isNegative
-    : isNegative)
+    const changeColor = (isSwapped ? !isNegative : isNegative)
       ? color("error")
       : color("success");
 
@@ -126,16 +134,7 @@ export default class Smart extends React.Component {
       </span>
     );
     const separator = (
-      <span
-        style={{
-          color: color("text-light"),
-          fontSize: "0.7rem",
-          marginLeft: 4,
-          marginRight: 4,
-        }}
-      >
-        •
-      </span>
+      <PreviousValueSeparator gridSize={gridSize}>•</PreviousValueSeparator>
     );
     const granularityDisplay = (
       <span style={{ marginLeft: 5 }}>{jt`last ${granularity}`}</span>
@@ -174,6 +173,10 @@ export default class Smart extends React.Component {
           ref={scalar => (this._scalar = scalar)}
         >
           <ScalarValue
+            gridSize={gridSize}
+            width={width}
+            totalNumGridCols={totalNumGridCols}
+            fontFamily={fontFamily}
             value={formatValue(insight["last-value"], settings.column(column))}
           />
         </span>
@@ -187,39 +190,33 @@ export default class Smart extends React.Component {
             }
           />
         )}
-        <Box className="SmartWrapper">
+        <div className="SmartWrapper">
           {lastChange == null || previousValue == null ? (
-            <Box
+            <div
               className="text-centered text-bold mt1"
-              color={color("text-medium")}
-            >{jt`Nothing to compare for the previous ${granularity}.`}</Box>
+              style={{ color: color("text-medium") }}
+            >{jt`Nothing to compare for the previous ${granularity}.`}</div>
           ) : lastChange === 0 ? (
             t`No change from last ${granularity}`
           ) : (
-            <Flex align="center" mt={1} flexWrap="wrap">
-              <Flex align="center" color={changeColor}>
+            <PreviousValueContainer gridSize={gridSize}>
+              <Variation color={changeColor}>
                 <Icon
                   size={13}
                   pr={1}
                   name={isNegative ? "arrow_down" : "arrow_up"}
                 />
                 {changeDisplay}
-              </Flex>
-              <h4
-                id="SmartScalar-PreviousValue"
-                className="flex align-center hide lg-show"
-                style={{
-                  color: color("text-medium"),
-                }}
-              >
+              </Variation>
+              <PreviousValueVariation id="SmartScalar-PreviousValue">
                 {jt`${separator} was ${formatValue(
                   previousValue,
                   settings.column(column),
                 )} ${granularityDisplay}`}
-              </h4>
-            </Flex>
+              </PreviousValueVariation>
+            </PreviousValueContainer>
           )}
-        </Box>
+        </div>
       </ScalarWrapper>
     );
   }

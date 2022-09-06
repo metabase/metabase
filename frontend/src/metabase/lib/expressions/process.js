@@ -1,6 +1,9 @@
 import { t } from "ttag";
 
-import { parse } from "metabase/lib/expressions/recursive-parser";
+import {
+  parse,
+  adjustBooleans,
+} from "metabase/lib/expressions/recursive-parser";
 import { resolve } from "metabase/lib/expressions/resolver";
 
 import {
@@ -22,10 +25,12 @@ export function processSource(options) {
       if (!segment) {
         throw new Error(t`Unknown Segment: ${name}`);
       }
-      return ["segment", segment.id];
+      return Array.isArray(segment.id) ? segment.id : ["segment", segment.id];
     } else {
+      const reference = options.name; // avoid circular reference
+
       // fallback
-      const dimension = parseDimension(name, options);
+      const dimension = parseDimension(name, { reference, ...options });
       if (!dimension) {
         throw new Error(t`Unknown Field: ${name}`);
       }
@@ -38,7 +43,8 @@ export function processSource(options) {
   let expression;
   let compileError;
   try {
-    expression = resolve(parse(source), startRule, resolveMBQLField);
+    const parsed = parse(source);
+    expression = adjustBooleans(resolve(parsed, startRule, resolveMBQLField));
   } catch (e) {
     console.warn("compile error", e);
     compileError = e;

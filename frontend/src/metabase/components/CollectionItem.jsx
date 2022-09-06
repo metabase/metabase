@@ -2,7 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 
 import Card from "metabase/components/Card";
-import Ellipsified from "metabase/components/Ellipsified";
+import Ellipsified from "metabase/core/components/Ellipsified";
 
 import { getCollectionIcon } from "metabase/entities/collections";
 
@@ -22,7 +22,7 @@ const CollectionItem = ({ collection, event }) => {
   const icon = getCollectionIcon(collection);
   return (
     <ItemLink to={collection.getUrl()} data-metabase-event={event}>
-      <Card hoverable compact>
+      <Card hoverable>
         <CardContent>
           <IconContainer color={icon.color}>
             <CollectionIcon name={icon.name} tooltip={icon.tooltip} />

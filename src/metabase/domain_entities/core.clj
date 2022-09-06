@@ -4,6 +4,7 @@
             [metabase.domain-entities.specs :refer [domain-entity-specs MBQL]]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.card :refer [Card]]
+            [metabase.models.interface :as mi]
             [metabase.models.table :as table :refer [Table]]
             [metabase.util :as u]
             [schema.core :as s]))
@@ -24,10 +25,11 @@
 
 (def SourceEntity
   "A source for a card. Can be either a table or another card."
-  (s/cond-pre (type Table) (type Card)))
+  (s/cond-pre (mi/InstanceOf Table) (mi/InstanceOf Card)))
 
 (def Bindings
-  "Top-level lexical context mapping source names to their corresponding entity and constituent dimensions. See also `DimensionBindings`."
+  "Top-level lexical context mapping source names to their corresponding entity and constituent dimensions. See also
+  `DimensionBindings`."
   {SourceName {(s/optional-key :entity)     SourceEntity
                (s/required-key :dimensions) DimensionBindings}})
 
@@ -56,7 +58,7 @@
     [:field name {:base-type base_type}]))
 
 (defn- has-attribute?
-  [entity {:keys [field domain_entity has_many]}]
+  [entity {:keys [field _domain_entity _has_many]}]
   (cond
     field (some (fn [col]
                   (when (or (isa? (field-type col) field)
@@ -84,7 +86,7 @@
           (resolve-dimension-clauses bindings source entity))))
 
 (defn- instantiate-domain-entity
-  [table {:keys [name description required_attributes optional_attributes metrics segments breakout_dimensions type]}]
+  [table {:keys [name description metrics segments breakout_dimensions type]}]
   (let [dimensions (into {} (for [field (:fields table)]
                               [(-> field field-type clojure.core/name) field]))
         bindings   {name {:entity     table

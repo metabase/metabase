@@ -3,7 +3,6 @@
             [metabase.driver :as driver]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.splice-params-in-response :as splice-params-in-response]
-            [metabase.test :as mt]
             [metabase.test.data :as data]))
 
 (defn- do-with-splice-params-call? [f]
@@ -20,11 +19,7 @@
 (defn- splice-params [metadata]
   (with-splice-params-call?
     (driver/with-driver :h2
-      (-> (mt/test-qp-middleware
-           splice-params-in-response/splice-params-in-response
-           {} metadata [])
-          :metadata
-          :data))))
+      ((splice-params-in-response/splice-params-in-response {} identity) metadata))))
 
 (deftest basic-test
   (testing "Middleware should attempt to splice parameters into native query for queries that have params"
@@ -44,25 +39,25 @@
   {:database (data/id)
    :type     :query
    :query    {:source-table (data/id :venues)
-              :fields       [[:field-id (data/id :venues :id)]]
-              :filter       [:= [:field-id (data/id :venues :name)] "Beyond Sushi"]
+              :fields       [[:field (data/id :venues :id) nil]]
+              :filter       [:= [:field (data/id :venues :name) nil] "Beyond Sushi"]
               :limit 1}})
 
-(deftest query->native-with-spliced-params
-  (testing "`qp/query->native-with-spliced-params`, should, as the name implies, attempt to splice the params into the query"
+(deftest compile-and-splice-parameters
+  (testing "`qp/compile-and-splice-parameters`, should, as the name implies, attempt to splice the params into the query"
     (with-splice-params-call?
       (is (= '(splice-parameters-into-native-query
                :h2
                {:query  "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"VENUES\" WHERE \"PUBLIC\".\"VENUES\".\"NAME\" = ? LIMIT 1"
                 :params ["Beyond Sushi"]})
-             (qp/query->native-with-spliced-params (sushi-query)))))))
+             (qp/compile-and-splice-parameters (sushi-query)))))))
 
-(deftest query->native-test
-  (testing "`query->native` should not call `splice-parameters-into-native-query`"
+(deftest compile-test
+  (testing "`compile` should not call `splice-parameters-into-native-query`"
     (with-splice-params-call?
       (is (= {:query  "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"VENUES\" WHERE \"PUBLIC\".\"VENUES\".\"NAME\" = ? LIMIT 1"
               :params ["Beyond Sushi"]}
-             (qp/query->native (sushi-query)))))))
+             (qp/compile (sushi-query)))))))
 
 (deftest e2e-test
   (testing (str "`splice-parameters-into-native-query` should get called on the `:native_form` returned in query "

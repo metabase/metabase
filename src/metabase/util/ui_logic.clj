@@ -26,7 +26,7 @@
   "For graphs with goals, this function returns the index of the default column that should be used to compare against
   the goal. This follows the frontend code getDefaultLineAreaBarColumns closely with a slight change (detailed in the
   code)"
-  [{graph-type :display :as card} {[col-1 col-2 col-3 :as all-cols] :cols :as result}]
+  [{graph-type :display :as _card} {[col-1 col-2 col-3 :as all-cols] :cols :as _result}]
   (let [cols-count (count all-cols)]
     (cond
       ;; Progress goals return a single row and column, compare that
@@ -59,7 +59,7 @@
 
 (defn- column-name->index
   "The results seq is seq of vectors, this function returns the index in that vector of the given `COLUMN-NAME`"
-  [column-name {:keys [cols] :as result}]
+  [column-name {:keys [cols] :as _result}]
   (first (remove nil? (map-indexed (fn [idx column]
                                      (when (.equalsIgnoreCase (name column-name) (name (:name column)))
                                        idx))
@@ -90,7 +90,7 @@
   (let [metrics     (some-> card
                             (get-in [:visualization_settings :graph.metrics]))
         col-indices (map #(column-name->index % results) metrics)]
-    (when (seq? col-indices)
+    (when (seq col-indices)
       (fn [row]
         (let [res (vec (for [idx col-indices]
                          (get row idx)))]
@@ -105,7 +105,7 @@
   (let [dimensions  (some-> card
                             (get-in [:visualization_settings :graph.dimensions]))
         col-indices (map #(column-name->index % results) dimensions)]
-    (when (seq? col-indices)
+    (when (seq col-indices)
       (fn [row]
         (let [res (vec (for [idx col-indices]
                          (get row idx)))]

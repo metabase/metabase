@@ -31,10 +31,10 @@
    (set (mt/normal-drivers-with-feature :set-timezone))
    broken-drivers))
 
-(defn- timezone-aware-column-drivers
+(defn timezone-aware-column-drivers
   "Drivers that support the equivalent of `TIMESTAMP WITH TIME ZONE` columns."
   []
-  (conj (set-timezone-drivers) :h2 :bigquery :sqlserver :mongo))
+  (conj (set-timezone-drivers) :h2 :bigquery-cloud-sdk :sqlserver :mongo))
 
 ;; TODO - we should also do similar tests for timezone-unaware columns
 (deftest result-rows-test

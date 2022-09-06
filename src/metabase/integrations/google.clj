@@ -10,7 +10,7 @@
             [metabase.models.user :as user :refer [User]]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
-            [metabase.util.i18n :as ui18n :refer [deferred-tru trs tru]]
+            [metabase.util.i18n :refer [deferred-tru trs tru]]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -24,7 +24,7 @@
   (deferred-tru "Client ID for Google Sign-In. If this is set, Google Sign-In is considered to be enabled.")
   :visibility :public
   :setter (fn [client-id]
-            (if client-id
+            (if (seq client-id)
               (let [trimmed-client-id (str/trim client-id)]
                 (when-not (str/ends-with? trimmed-client-id ".apps.googleusercontent.com")
                   (throw (ex-info (tru "Invalid Google Sign-In Client ID: must end with \".apps.googleusercontent.com\"")
@@ -53,8 +53,9 @@
        (let [audience (:aud <>)
              audience (if (string? audience) [audience] audience)]
          (when-not (contains? (set audience) client-id)
-           (throw (ex-info (str (deferred-tru "Google Sign-In token appears to be incorrect. ")
-                                (deferred-tru "Double check that it matches in Google and Metabase."))
+           (throw (ex-info (tru
+                             (str "Google Sign-In token appears to be incorrect. "
+                                  "Double check that it matches in Google and Metabase."))
                            {:status-code 400}))))
        (when-not (= (:email_verified <>) "true")
          (throw (ex-info (tru "Email is not verified.") {:status-code 400})))))))
@@ -92,7 +93,7 @@
 
 (defn do-google-auth
   "Call to Google to perform an authentication"
-  [{{:keys [token]} :body, :as request}]
+  [{{:keys [token]} :body, :as _request}]
   (let [token-info-response                    (http/post (format google-auth-token-info-url token))
         {:keys [given_name family_name email]} (google-auth-token-info token-info-response)]
     (log/info (trs "Successfully authenticated Google Sign-In token for: {0} {1}" given_name family_name))

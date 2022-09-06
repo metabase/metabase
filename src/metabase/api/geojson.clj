@@ -2,11 +2,12 @@
   (:require [clojure.java.io :as io]
             [compojure.core :refer [GET]]
             [metabase.api.common :as api]
+            [metabase.api.common.validation :as validation]
             [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.util.i18n :as ui18n :refer [deferred-tru tru]]
+            [metabase.util.i18n :refer [deferred-tru tru]]
             [metabase.util.schema :as su]
-            [ring.util.codec :as rc]
-            [ring.util.response :as rr]
+            [ring.util.codec :as codec]
+            [ring.util.response :as response]
             [schema.core :as s])
   (:import [java.net InetAddress URL]
            org.apache.commons.io.input.ReaderInputStream))
@@ -103,9 +104,9 @@
       (with-open [reader (io/reader (or (io/resource url)
                                         url))
                   is     (ReaderInputStream. reader)]
-        (respond (-> (rr/response is)
-                     (rr/content-type "application/json"))))
-      (catch Throwable e
+        (respond (-> (response/response is)
+                     (response/content-type "application/json"))))
+      (catch Throwable _e
         (raise (ex-info (tru "GeoJSON URL failed to load") {:status-code 400}))))
     (raise (ex-info (tru "Invalid custom GeoJSON key: {0}" key) {:status-code 400}))))
 
@@ -114,17 +115,20 @@
   This behaves similarly to /api/geojson/:key but doesn't require the custom map to be saved to the DB first."
   [{{:keys [url]} :params} respond raise]
   {url su/NonBlankString}
-  (api/check-superuser)
-  (let [decoded-url (rc/url-decode url)]
-    (when-not (valid-geojson-url? decoded-url)
-      (raise (ex-info (invalid-location-msg) {:status-code 400})))
+  (validation/check-has-application-permission :setting)
+  (let [decoded-url (codec/url-decode url)]
     (try
-      (with-open [reader (io/reader (or (io/resource decoded-url)
-                                        decoded-url))
-                  is     (ReaderInputStream. reader)]
-        (respond (-> (rr/response is)
-                     (rr/content-type "application/json"))))
+      (when-not (valid-geojson-url? decoded-url)
+        (throw (ex-info (invalid-location-msg) {:status-code 400})))
+      (try
+        (with-open [reader (io/reader (or (io/resource decoded-url)
+                                          decoded-url))
+                    is     (ReaderInputStream. reader)]
+          (respond (-> (response/response is)
+                       (response/content-type "application/json"))))
+        (catch Throwable _
+          (throw (ex-info (tru "GeoJSON URL failed to load") {:status-code 400}))))
       (catch Throwable e
-        (raise (ex-info (tru "GeoJSON URL failed to load") {:status-code 400}))))))
+        (raise e)))))
 
 (api/define-routes)

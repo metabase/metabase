@@ -1,10 +1,10 @@
 import {
-  SAMPLE_DATASET,
+  SAMPLE_DATABASE,
   ANOTHER_DATABASE,
   ORDERS,
   PRODUCTS,
   MAIN_METRIC_ID,
-} from "__support__/sample_dataset_fixture";
+} from "__support__/sample_database_fixture";
 
 import Segment from "metabase-lib/lib/metadata/Segment";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
@@ -12,7 +12,7 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 function makeDatasetQuery(query = {}) {
   return {
     type: "query",
-    database: SAMPLE_DATASET.id,
+    database: SAMPLE_DATABASE.id,
     query: {
       "source-table": query["source-query"] ? undefined : ORDERS.id,
       ...query,
@@ -41,8 +41,8 @@ describe("StructuredQuery behavioral tests", () => {
 
     const queryWithBreakout = query.breakout(breakoutDimension.mbql());
 
-    const filterDimensionOptions = queryWithBreakout.filterDimensionOptions()
-      .dimensions;
+    const filterDimensionOptions =
+      queryWithBreakout.filterDimensionOptions().dimensions;
     const filterDimension = filterDimensionOptions.find(
       d => d.field().id === ORDERS.TOTAL.id,
     );
@@ -68,12 +68,12 @@ describe("StructuredQuery", () => {
     });
     describe("databaseId", () => {
       it("returns the Database ID of the wrapped query ", () => {
-        expect(query.databaseId()).toBe(SAMPLE_DATASET.id);
+        expect(query.databaseId()).toBe(SAMPLE_DATABASE.id);
       });
     });
     describe("database", () => {
       it("returns a dictionary with the underlying database of the wrapped query", () => {
-        expect(query.database().id).toBe(SAMPLE_DATASET.id);
+        expect(query.database().id).toBe(SAMPLE_DATABASE.id);
       });
     });
     describe("engine", () => {
@@ -83,17 +83,21 @@ describe("StructuredQuery", () => {
       });
     });
     describe("dependentMetadata", () => {
-      it("should include source table with foreignTables = true", () => {
+      it("should include db schemas and source table with foreignTables = true", () => {
         expect(query.dependentMetadata()).toEqual([
+          { type: "schema", id: SAMPLE_DATABASE.id },
           { type: "table", id: ORDERS.id, foreignTables: true },
         ]);
       });
-      it("should include source table for nested queries with foreignTables = true", () => {
+
+      it("should include db schemas and source table for nested queries with foreignTables = true", () => {
         expect(query.nest().dependentMetadata()).toEqual([
+          { type: "schema", id: SAMPLE_DATABASE.id },
           { type: "table", id: ORDERS.id, foreignTables: true },
         ]);
       });
-      it("should include joined tables with foreignTables = false", () => {
+
+      it("should include db schemas and joined tables with foreignTables = false", () => {
         expect(
           query
             .join({
@@ -102,9 +106,22 @@ describe("StructuredQuery", () => {
             })
             .dependentMetadata(),
         ).toEqual([
+          { type: "schema", id: SAMPLE_DATABASE.id },
           { type: "table", id: ORDERS.id, foreignTables: true },
           { type: "table", id: PRODUCTS.id, foreignTables: false },
         ]);
+      });
+
+      describe("when the query is missing a database", () => {
+        it("should not include db schemas in dependent  metadata", () => {
+          const dependentMetadata = query
+            .setDatabaseId(null)
+            .dependentMetadata();
+
+          expect(dependentMetadata.some(({ type }) => type === "schema")).toBe(
+            false,
+          );
+        });
       });
     });
   });
@@ -137,7 +154,7 @@ describe("StructuredQuery", () => {
 
       it("retains the correct database id when setting a new table", () => {
         expect(query.setTable(PRODUCTS).table().database.id).toBe(
-          SAMPLE_DATASET.id,
+          SAMPLE_DATABASE.id,
         );
       });
     });
@@ -157,6 +174,12 @@ describe("StructuredQuery", () => {
     describe("isEditable", () => {
       it("A valid query should be editable", () => {
         expect(query.isEditable()).toBe(true);
+      });
+
+      it("should be not editable when database object is missing", () => {
+        const q = makeQuery();
+        q.database = () => null;
+        expect(q.isEditable()).toBe(false);
       });
     });
     describe("isEmpty", () => {
@@ -217,9 +240,7 @@ describe("StructuredQuery", () => {
       });
       it("returns a standard aggregation name", () => {
         expect(
-          makeQueryWithAggregation(["count"])
-            .aggregations()[0]
-            .displayName(),
+          makeQueryWithAggregation(["count"]).aggregations()[0].displayName(),
         ).toBe("Count");
       });
       it("returns a standard aggregation name with field", () => {
@@ -316,6 +337,34 @@ describe("StructuredQuery", () => {
       it("should return true if there is at least one breakout", () => {
         expect(query.breakout(ORDERS.PRODUCT_ID).hasValidBreakout()).toBe(true);
       });
+    });
+
+    describe("excludes breakout that has the same base dimension as what is already used", () => {
+      const breakout = [
+        "field",
+        ORDERS.CREATED_AT.id,
+        { "temporal-unit": "month" },
+      ];
+      const queryWithBreakout = query.breakout(breakout);
+      const createdAtBreakoutDimension = queryWithBreakout
+        .breakouts()
+        .map(breakout => breakout.dimension());
+
+      //Ensure dimension added is not present in breakout options
+      expect(queryWithBreakout.breakoutOptions().all()).toEqual(
+        expect.not.arrayContaining(createdAtBreakoutDimension),
+      );
+      expect(
+        queryWithBreakout
+          .breakoutOptions()
+          .all()
+          .some(dimension => dimension.field().id === ORDERS.CREATED_AT.id),
+      ).toBe(false);
+
+      //Ensure that only 1 breakout option was removed after adding our breakout
+      expect(queryWithBreakout.breakoutOptions().all().length).toBe(
+        query.breakoutOptions().all().length - 1,
+      );
     });
   });
 

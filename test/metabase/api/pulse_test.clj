@@ -1,9 +1,10 @@
 (ns metabase.api.pulse-test
   "Tests for /api/pulse endpoints."
   (:require [clojure.test :refer :all]
-            [metabase.api.card-test :as card-api-test]
-            [metabase.api.pulse :as pulse-api]
-            [metabase.http-client :as http]
+            [java-time :as t]
+            [metabase.api.card-test :as api.card-test]
+            [metabase.api.pulse :as api.pulse]
+            [metabase.http-client :as client]
             [metabase.integrations.slack :as slack]
             [metabase.models :refer [Card Collection Dashboard DashboardCard Pulse PulseCard PulseChannel
                                      PulseChannelRecipient]]
@@ -12,7 +13,7 @@
             [metabase.models.pulse-channel :as pulse-channel]
             [metabase.models.pulse-test :as pulse-test]
             [metabase.pulse.render.png :as png]
-            [metabase.server.middleware.util :as middleware.u]
+            [metabase.server.middleware.util :as mw.util]
             [metabase.test :as mt]
             [metabase.test.mock.util :refer [pulse-channel-defaults]]
             [metabase.util :as u]
@@ -45,7 +46,8 @@
   (merge
    (select-keys
     pulse
-    [:id :name :created_at :updated_at :creator_id :collection_id :collection_position :archived :skip_if_empty :dashboard_id :parameters])
+    [:id :name :created_at :updated_at :creator_id :collection_id :collection_position :entity_id :archived
+     :skip_if_empty :dashboard_id :parameters])
    {:creator  (user-details (db/select-one 'User :id (:creator_id pulse)))
     :cards    (map pulse-card-details (:cards pulse))
     :channels (map pulse-channel-details (:channels pulse))}))
@@ -56,6 +58,7 @@
       (assoc :created_at (some? created_at)
              :updated_at (some? updated_at))
       (update :collection_id boolean)
+      (update :entity_id boolean)
       (update :cards #(for [card %]
                         (update card :collection_id boolean)))))
 
@@ -85,8 +88,8 @@
 ;; authentication test on every single individual endpoint
 
 (deftest authentication-test
-  (is (= (:body middleware.u/response-unauthentic) (http/client :get 401 "pulse")))
-  (is (= (:body middleware.u/response-unauthentic) (http/client :put 401 "pulse/13"))))
+  (is (= (:body mw.util/response-unauthentic) (client/client :get 401 "pulse")))
+  (is (= (:body mw.util/response-unauthentic) (client/client :put 401 "pulse/13"))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -138,7 +141,9 @@
 
 (defn- remove-extra-channels-fields [channels]
   (for [channel channels]
-    (dissoc channel :id :pulse_id :created_at :updated_at)))
+    (-> channel
+        (dissoc :id :pulse_id :created_at :updated_at)
+        (update :entity_id boolean))))
 
 (def ^:private pulse-defaults
   {:collection_id       nil
@@ -148,6 +153,7 @@
    :updated_at          true
    :archived            false
    :dashboard_id        nil
+   :entity_id           true
    :parameters          []})
 
 (def ^:private daily-email-channel
@@ -163,9 +169,9 @@
     (testing "legacy pulse"
       (mt/with-temp* [Card [card-1]
                       Card [card-2]
-                      Dashboard [{dashboard-id :id} {:name "Birdcage KPIs"}]
+                      Dashboard [_ {:name "Birdcage KPIs"}]
                       Collection [collection]]
-        (card-api-test/with-cards-in-readable-collection [card-1 card-2]
+        (api.card-test/with-cards-in-readable-collection [card-1 card-2]
           (mt/with-model-cleanup [Pulse]
             (is (= (merge
                     pulse-defaults
@@ -216,7 +222,7 @@
                              :dashboard_id  permitted-dashboard-id
                              :skip_if_empty false
                              :parameters filter-params}]
-          (card-api-test/with-cards-in-readable-collection [card-1 card-2]
+          (api.card-test/with-cards-in-readable-collection [card-1 card-2]
             (mt/with-model-cleanup [Pulse]
               (testing "successful creation"
                 (is (= (merge
@@ -249,7 +255,7 @@
                       Card [card-2 {:name        "The card"
                                     :description "Info"
                                     :display     :table}]]
-        (card-api-test/with-cards-in-readable-collection [card-1 card-2]
+        (api.card-test/with-cards-in-readable-collection [card-1 card-2]
           (mt/with-temp Collection [collection]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
             (mt/with-model-cleanup [Pulse]
@@ -291,7 +297,7 @@
           (mt/with-temp Collection [collection]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
             (mt/with-model-cleanup [Pulse]
-              (card-api-test/with-cards-in-readable-collection [card-1 card-2]
+              (api.card-test/with-cards-in-readable-collection [card-1 card-2]
                 (is (= (merge
                         pulse-defaults
                         {:name          "A Pulse"
@@ -341,7 +347,7 @@
           (let [pulse-name (mt/random-name)]
             (mt/with-temp* [Card       [card]
                             Collection [collection]]
-              (card-api-test/with-cards-in-readable-collection [card]
+              (api.card-test/with-cards-in-readable-collection [card]
                 (create-pulse! 200 pulse-name card collection)
                 (is (= {:collection_id (u/the-id collection), :collection_position 1}
                        (mt/derecordize (db/select-one [Pulse :collection_id :collection_position] :name pulse-name)))))))
@@ -406,7 +412,7 @@
                     Card                  [card]]
       (let [filter-params [{:id "123abc", :name "species", :type "string"}]]
         (with-pulses-in-writeable-collection [pulse]
-          (card-api-test/with-cards-in-readable-collection [card]
+          (api.card-test/with-cards-in-readable-collection [card]
             (is (= (merge
                     pulse-defaults
                     {:name          "Updated Pulse"
@@ -452,7 +458,7 @@
                       Card                  [card-2 {:name        "Test2"
                                                      :description "Just Testing2"}]]
         (with-pulses-in-writeable-collection [pulse]
-          (card-api-test/with-cards-in-readable-collection [card-1 card-2]
+          (api.card-test/with-cards-in-readable-collection [card-1 card-2]
             ;; The FE will include the original HybridPulseCard, similar to how the API returns the card via GET
             (let [pulse-cards (:cards (mt/user-http-request :rasta :get 200 (format "pulse/%d" (u/the-id pulse))))]
               (is (= (merge
@@ -509,8 +515,9 @@
           ;; grant Permissions for only the *old* collection
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
           ;; now make an API call to move collections. Should fail
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :put 403 (str "pulse/" (u/the-id pulse)) {:collection_id (u/the-id new-collection)}))))))))
+          (is (schema= {:message (s/eq "You do not have curate permissions for this Collection.")
+                        s/Keyword s/Any}
+                       (mt/user-http-request :rasta :put 403 (str "pulse/" (u/the-id pulse)) {:collection_id (u/the-id new-collection)}))))))))
 
 (deftest update-collection-position-test
   (testing "Can we change the Collection position of a Pulse?"
@@ -569,7 +576,7 @@
                       Pulse                 [pulse {:collection_id (u/the-id collection)}]
                       PulseChannel          [pc    {:pulse_id (u/the-id pulse)}]
                       PulseChannelRecipient [pcr   {:pulse_channel_id (u/the-id pc), :user_id (mt/user->id :rasta)}]
-                      Card                  [card]]
+                      Card                  [_]]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
         (mt/user-http-request :rasta :put 200 (str "pulse/" (u/the-id pulse))
                               {:archived true})
@@ -696,11 +703,11 @@
         (mt/with-temp* [Collection [collection-1]
                         Collection [collection-2]
                         Card       [card-1]]
-          (card-api-test/with-ordered-items collection-1 [Pulse a
+          (api.card-test/with-ordered-items collection-1 [Pulse a
                                                           Pulse b
                                                           Pulse c
                                                           Pulse d]
-            (card-api-test/with-ordered-items collection-2 [Card      e
+            (api.card-test/with-ordered-items collection-2 [Card      e
                                                             Card      f
                                                             Dashboard g
                                                             Dashboard h]
@@ -713,11 +720,11 @@
               (testing "\nPositions after actions for"
                 (testing "Collection 1"
                   (is (= (first expected)
-                         (card-api-test/get-name->collection-position :rasta (u/the-id collection-1)))))
+                         (api.card-test/get-name->collection-position :rasta (u/the-id collection-1)))))
                 (when (second expected)
                   (testing "Collection 2"
                     (is (= (second expected)
-                           (card-api-test/get-name->collection-position :rasta (u/the-id collection-2))))))))))))))
+                           (api.card-test/get-name->collection-position :rasta (u/the-id collection-2))))))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -776,17 +783,17 @@
     (testing "can fetch dashboard subscriptions by user ID -- should return subscriptions created by the user,
            or subscriptions for which the user is a known recipient. Should exclude pulses."
       (mt/with-temp* [Dashboard             [{dashboard-id :id}]
-                      Pulse                 [creator-pulse   {:name "LuckyCreator",
-                                                              :creator_id (mt/user->id :lucky)
+                      Pulse                 [_creator-pulse  {:name         "LuckyCreator"
+                                                              :creator_id   (mt/user->id :lucky)
                                                               :dashboard_id dashboard-id}]
-                      Pulse                 [recipient-pulse {:name "LuckyRecipient",
+                      Pulse                 [recipient-pulse {:name         "LuckyRecipient"
                                                               :dashboard_id dashboard-id}]
-                      Pulse                 [other-pulse     {:name "Other",
+                      Pulse                 [_other-pulse    {:name         "Other"
                                                               :dashboard_id dashboard-id}]
-                      Pulse                 [excluded-pulse  {:name "Excluded"}]
+                      Pulse                 [_excluded-pulse {:name "Excluded"}]
                       PulseChannel          [pulse-channel   {:pulse_id (u/the-id recipient-pulse)}]
-                      PulseChannelRecipient [_               {:pulse_channel_id (u/the-id pulse-channel),
-                                                              :user_id (mt/user->id :lucky)}]]
+                      PulseChannelRecipient [_               {:pulse_channel_id (u/the-id pulse-channel)
+                                                              :user_id          (mt/user->id :lucky)}]]
         (is (= #{"LuckyCreator" "LuckyRecipient"}
                (set (map :name (mt/user-http-request :rasta :get 200 (str "pulse?user_id=" (mt/user->id :lucky)))))))
         (is (= #{"LuckyRecipient" "Other"}
@@ -825,7 +832,7 @@
           (mt/with-temp* [Collection [collection]
                           Card       [card  {:dataset_query (mt/mbql-query incidents {:aggregation [[:count]]})}]]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-            (card-api-test/with-cards-in-readable-collection [card]
+            (api.card-test/with-cards-in-readable-collection [card]
               (is (= {:ok true}
                      (mt/user-http-request :rasta :post 200 "pulse/test" {:name          "Daily Sad Toucans"
                                                                           :collection_id (u/the-id collection)
@@ -887,7 +894,7 @@
                     Dashboard [{dashboard-id :id} {:parameters [{:name    "X"
                                                                  :slug    "x"
                                                                  :id      "__X__"
-                                                                 :type    :category
+                                                                 :type    "category"
                                                                  :default 3}]}]
                     DashboardCard [_ {:card_id            card-id
                                       :dashboard_id       dashboard-id
@@ -922,7 +929,7 @@
                   Card [card-2 {:dataset_query
                                 {:database (mt/id), :type :query, :query {:source-table (mt/id :venues)}}}]]
 
-    (card-api-test/with-cards-in-readable-collection [card-1 card-2]
+    (api.card-test/with-cards-in-readable-collection [card-1 card-2]
       (mt/with-fake-inbox
         (mt/with-model-cleanup [Pulse]
           (mt/with-temp Collection [collection]
@@ -954,28 +961,54 @@
                                           :body    {"A Pulse" true}})
                      (mt/regex-email-bodies #"A Pulse"))))))))))
 
-(deftest dont-run-cards-async-test
+(deftest pulse-card-query-results-test
   (testing "A Card saved with `:async?` true should not be ran async for a Pulse"
-    (is (map? (#'pulse-api/pulse-card-query-results
+    (is (map? (#'api.pulse/pulse-card-query-results
                {:id            1
                 :dataset_query {:database (mt/id)
                                 :type     :query
                                 :query    {:source-table (mt/id :venues)
                                            :limit        1}
-                                :async?   true}})))))
+                                :async?   true}}))))
+  (testing "viz-settings saved in the DB for a Card should be loaded"
+    (is (some? (get-in (#'api.pulse/pulse-card-query-results
+                        {:id            1
+                         :dataset_query {:database (mt/id)
+                                         :type     :query
+                                         :query    {:source-table (mt/id :venues)
+                                                    :limit        1}
+                                         :async?   true}})
+                       [:data :viz-settings])))))
 
 (deftest form-input-test
   (testing "GET /api/pulse/form_input"
     (testing "Check that Slack channels come back when configured"
-      (mt/with-temporary-setting-values [slack-token "something"]
-        (with-redefs [slack/conversations-list (constantly [{:name "foo"}])
-                      slack/users-list         (constantly [{:name "bar"}])]
-          (is (= [{:name "channel", :type "select", :displayName "Post to", :options ["#foo" "@bar"], :required true}]
-                 (-> (mt/user-http-request :rasta :get 200 "pulse/form_input")
-                     (get-in [:channels :slack :fields])))))))
+      (mt/with-temporary-setting-values [slack/slack-channels-and-usernames-last-updated
+                                         (t/zoned-date-time)
+
+                                         slack/slack-app-token "test-token"
+
+                                         slack/slack-cached-channels-and-usernames
+                                         {:channels [{:type "channel"
+                                                      :name "foo"
+                                                      :display-name "#foo"
+                                                      :id "CAAS3DD9XND"}
+                                                     {:type "channel"
+                                                      :name "general"
+                                                      :display-name "#general"
+                                                      :id "C3MJRZ9EUVA"}
+                                                     {:type "user"
+                                                      :name "user1"
+                                                      :id "U1DYU9W3WZ2"
+                                                      :display-name "@user1"}]}]
+        (is (= [{:name "channel", :type "select", :displayName "Post to",
+                 :options ["#foo" "#general" "@user1"], :required true}]
+               (-> (mt/user-http-request :rasta :get 200 "pulse/form_input")
+                   (get-in [:channels :slack :fields]))))))
 
     (testing "When slack is not configured, `form_input` returns no channels"
-      (mt/with-temporary-setting-values [slack-token nil]
+      (mt/with-temporary-setting-values [slack-token nil
+                                         slack-app-token nil]
         (is (empty?
                (-> (mt/user-http-request :rasta :get 200 "pulse/form_input")
                    (get-in [:channels :slack :fields])
@@ -984,11 +1017,11 @@
 
 (deftest preview-pulse-test
   (testing "GET /api/pulse/preview_card/:id"
-    (mt/with-temp* [Collection [collection]
-                    Card       [card  {:dataset_query (mt/mbql-query checkins {:limit 5})}]]
+    (mt/with-temp* [Collection [_]
+                    Card       [card {:dataset_query (mt/mbql-query checkins {:limit 5})}]]
       (letfn [(preview [expected-status-code]
-                (http/client-full-response (mt/user->credentials :rasta)
-                                           :get expected-status-code (format "pulse/preview_card_png/%d" (u/the-id card))))]
+                (client/client-full-response (mt/user->credentials :rasta)
+                                             :get expected-status-code (format "pulse/preview_card_png/%d" (u/the-id card))))]
         (testing "Should be able to preview a Pulse"
           (let [{{:strs [Content-Type]} :headers, :keys [body]} (preview 200)]
             (is (= "image/png"
@@ -1000,7 +1033,7 @@
                                                         (throw (ex-info "Can't register fonts!"
                                                                         {}
                                                                         (NullPointerException.))))]
-            (let [{{:strs [Content-Type]} :headers, :keys [body]} (mt/suppress-output (preview 500))]
+            (let [{{:strs [Content-Type]} :headers, :keys [body]} (preview 500)]
               (is (= "application/json;charset=utf-8"
                      Content-Type))
               (is (schema= {:message  (s/eq "Can't register fonts!")
@@ -1018,11 +1051,11 @@
                                                     :details       {:other  "stuff"
                                                                     :emails ["foo@bar.com"]}}]]
       (testing "Should be able to delete your own subscription"
-        (mt/with-temp PulseChannelRecipient [pcr {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}]
+        (mt/with-temp PulseChannelRecipient [_ {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}]
           (is (= nil
                  (mt/user-http-request :rasta :delete 204 (str "pulse/" pulse-id "/subscription"))))))
 
       (testing "Users can't delete someone else's pulse subscription"
-        (mt/with-temp PulseChannelRecipient [pcr {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}]
+        (mt/with-temp PulseChannelRecipient [_ {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}]
           (is (= "Not found."
                  (mt/user-http-request :lucky :delete 404 (str "pulse/" pulse-id "/subscription")))))))))

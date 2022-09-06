@@ -1,9 +1,9 @@
 (ns metabase.sync.analyze.classifiers.text-fingerprint-test
   (:require [clojure.test :refer :all]
             [metabase.models.field :as field]
-            [metabase.sync.analyze.classifiers.text-fingerprint :as text-fingerprint]))
+            [metabase.sync.analyze.classifiers.text-fingerprint :as classifiers.text-fingerprint]))
 
-(def can-edit? #'text-fingerprint/can-edit-semantic-type?)
+(def can-edit? #'classifiers.text-fingerprint/can-edit-semantic-type?)
 
 (deftest can-edit-semantic-type?
   (testing "When semantic type is nil we can change it"
@@ -13,9 +13,9 @@
       (is (not (can-edit? field)))
       (is (can-edit? (with-meta field {:sync.classify/original {:name "field" :semantic_type nil}}))))))
 
-(def infer #'text-fingerprint/infer-semantic-type-for-text-fingerprint)
-(def threshold @#'text-fingerprint/percent-valid-threshold)
-(def lower-threshold @#'text-fingerprint/lower-percent-valid-threshold)
+(def infer #'classifiers.text-fingerprint/infer-semantic-type-for-text-fingerprint)
+(def threshold @#'classifiers.text-fingerprint/percent-valid-threshold)
+(def lower-threshold @#'classifiers.text-fingerprint/lower-percent-valid-threshold)
 
 (deftest infer-semantic-type-for-text-fingerprint-test
   (let [expectations [[:percent-json  :type/SerializedJSON]
@@ -36,12 +36,12 @@
         field             (field/map->FieldInstance {:name "field" :base_type :type/Text})]
     (testing "can infer a semantic type from text fingerprints"
       (is (= :type/SerializedJSON
-             (:semantic_type (text-fingerprint/infer-semantic-type field fingerprint))))
+             (:semantic_type (classifiers.text-fingerprint/infer-semantic-type field fingerprint))))
       (is (= :type/State
-             (:semantic_type (text-fingerprint/infer-semantic-type field state-fingerprint)))))
+             (:semantic_type (classifiers.text-fingerprint/infer-semantic-type field state-fingerprint)))))
     (testing "can infer a semantic type from text fingerprints if another classifier has put one one"
       (let [field-with-original (with-meta (assoc field :semantic_type :type/Category) {:sync.classify/original field})]
         (is (= :type/SerializedJSON
-               (:semantic_type (text-fingerprint/infer-semantic-type field-with-original fingerprint))))
+               (:semantic_type (classifiers.text-fingerprint/infer-semantic-type field-with-original fingerprint))))
         (is (= :type/State
-               (:semantic_type (text-fingerprint/infer-semantic-type field-with-original state-fingerprint))))))))
+               (:semantic_type (classifiers.text-fingerprint/infer-semantic-type field-with-original state-fingerprint))))))))

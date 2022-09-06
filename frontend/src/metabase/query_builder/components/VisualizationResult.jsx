@@ -2,6 +2,7 @@
 import React, { Component } from "react";
 import { t, jt } from "ttag";
 import cx from "classnames";
+import _ from "underscore";
 
 import ErrorMessage from "metabase/components/ErrorMessage";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -9,6 +10,17 @@ import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 import Modal from "metabase/components/Modal";
 import { ALERT_TYPE_ROWS } from "metabase-lib/lib/Alert";
+
+const ALLOWED_VISUALIZATION_PROPS = [
+  // Table
+  "isShowingDetailsOnlyColumns",
+  // Table Interactive
+  "hasMetadataPopovers",
+  "tableHeaderHeight",
+  "scrollToColumn",
+  "renderTableHeaderWrapper",
+  "mode",
+];
 
 export default class VisualizationResult extends Component {
   state = {
@@ -23,14 +35,25 @@ export default class VisualizationResult extends Component {
     this.setState({ showCreateAlertModal: false });
   };
 
+  getObjectDetailData = series => {
+    return [
+      {
+        ...series[0],
+        card: { ...series[0].card, display: "object" },
+      },
+    ];
+  };
+
   render() {
     const {
       question,
       isDirty,
-      isVisualizationClickable,
+      queryBuilderMode,
       navigateToNewCardInsideQB,
       result,
       rawSeries,
+      timelineEvents,
+      selectedTimelineEventIds,
       className,
     } = this.props;
     const { showCreateAlertModal } = this.state;
@@ -77,23 +100,46 @@ export default class VisualizationResult extends Component {
         </div>
       );
     } else {
+      const vizSpecificProps = _.pick(
+        this.props,
+        ...ALLOWED_VISUALIZATION_PROPS,
+      );
+      const hasDrills = this.props.query.isEditable();
       return (
-        <Visualization
-          className={className}
-          rawSeries={rawSeries}
-          onChangeCardAndRun={navigateToNewCardInsideQB}
-          isEditing={true}
-          isQueryBuilder={true}
-          showTitle={false}
-          isClickable={isVisualizationClickable}
-          metadata={question.metadata()}
-          onOpenChartSettings={this.props.onOpenChartSettings}
-          onUpdateWarnings={this.props.onUpdateWarnings}
-          onUpdateVisualizationSettings={
-            this.props.onUpdateVisualizationSettings
-          }
-          query={this.props.query}
-        />
+        <>
+          <Visualization
+            className={className}
+            rawSeries={rawSeries}
+            onChangeCardAndRun={
+              hasDrills ? navigateToNewCardInsideQB : undefined
+            }
+            isEditing={true}
+            isObjectDetail={false}
+            isQueryBuilder={true}
+            queryBuilderMode={queryBuilderMode}
+            showTitle={false}
+            metadata={question.metadata()}
+            timelineEvents={timelineEvents}
+            selectedTimelineEventIds={selectedTimelineEventIds}
+            handleVisualizationClick={this.props.handleVisualizationClick}
+            onOpenTimelines={this.props.onOpenTimelines}
+            onSelectTimelineEvents={this.props.selectTimelineEvents}
+            onDeselectTimelineEvents={this.props.deselectTimelineEvents}
+            onOpenChartSettings={this.props.onOpenChartSettings}
+            onUpdateWarnings={this.props.onUpdateWarnings}
+            onUpdateVisualizationSettings={
+              this.props.onUpdateVisualizationSettings
+            }
+            query={this.props.query}
+            {...vizSpecificProps}
+          />
+          {this.props.isObjectDetail && (
+            <Visualization
+              isObjectDetail={true}
+              rawSeries={this.getObjectDetailData(rawSeries)}
+            />
+          )}
+        </>
       );
     }
   }

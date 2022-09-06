@@ -11,7 +11,7 @@
 (defn- bar-th-style []
   (merge
    (style/font-style)
-   {:font-size :12.5px
+   {:font-size :12px
     :font-weight     700
     :color           style/color-text-medium
     :border-bottom   (str "1px solid " style/color-header-row-border)
@@ -23,14 +23,14 @@
 (defn- bar-td-style []
   (merge
    (style/font-style)
-   {:font-size      :12.5px
+   {:font-size      :12px
     :font-weight    700
     :text-align     :left
     :color          style/color-text-dark
     :border-bottom  (str "1px solid " style/color-body-row-border)
-    :height         :36px
-    :padding-right  :0.5em
-    :padding-left   :0.5em}))
+    :height         :28px
+    :padding-right  :0.375em
+    :padding-left   :0.375em}))
 
 (defn- bar-th-style-numeric []
   (merge (style/font-style) (bar-th-style) {:text-align :right}))
@@ -42,7 +42,7 @@
   ([color positive? width-in-pixels]
    (render-bar-component color positive? width-in-pixels 0))
 
-  ([color positive? width-in-pixels offset]
+  ([color positive? width-in-pixels _offset]
    [:div
     {:style (style/style
              (merge
@@ -78,7 +78,7 @@
   [:thead
    [:tr
     (for [header-cell row]
-      [:th {:style (style/style (row-style-for-type header-cell) (heading-style-for-type header-cell) {:min-width :60px})}
+      [:th {:style (style/style (row-style-for-type header-cell) (heading-style-for-type header-cell) {:min-width :42px})}
        (h header-cell)])
     (when bar-width
       [:th {:style (style/style (bar-td-style) (bar-th-style) {:width (str bar-width "%")})}])]])
@@ -125,7 +125,7 @@
   background color for a given cell. `column-names` is different from the header in `header+rows` as the header is the
   display_name (i.e. human friendly. `header+rows` includes the text contents of the table we're about ready to
   create. If `normalized-zero` is set (defaults to 0), render values less than it as negative"
-  ([color-selector column-names [header & rows :as contents]]
+  ([color-selector column-names contents]
    (render-table color-selector 0 column-names contents))
 
   ([color-selector normalized-zero column-names [header & rows]]

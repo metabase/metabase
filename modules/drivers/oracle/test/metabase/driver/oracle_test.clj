@@ -19,6 +19,7 @@
             [metabase.query-processor-test :as qp.test]
             [metabase.query-processor-test.order-by-test :as qp-test.order-by-test] ; used for one SSL connectivity test
             [metabase.sync :as sync]
+            metabase.sync.util
             [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
             [metabase.test.data.oracle :as oracle.tx]
@@ -217,7 +218,9 @@
             execute! (fn [format-string & args]
                        (jdbc/execute! spec (apply format format-string args)))
             pk-type  (sql.tx/pk-sql-type :oracle)]
-        (with-temp-user [username]
+        (with-temp-user
+          #_:clj-kondo/ignore
+          [username]
           (execute! "CREATE TABLE \"%s\".\"messages\" (\"id\" %s, \"message\" CLOB)"            username pk-type)
           (execute! "INSERT INTO \"%s\".\"messages\" (\"id\", \"message\") VALUES (1, 'Hello')" username)
           (execute! "INSERT INTO \"%s\".\"messages\" (\"id\", \"message\") VALUES (2, NULL)"    username)
@@ -291,7 +294,7 @@
                   :where  [:<= (hsql/raw "rownum") 100]})
                (#'sql.qp/mbql->honeysql
                 :oracle
-                (qp/query->preprocessed
+                (qp/preprocess
                  (mt/mbql-query venues
                    {:source-table $$venues
                     :order-by     [[:asc $id]]
@@ -369,3 +372,25 @@
         (is (= [1M]
                (mt/first-row
                 (mt/run-mbql-query airport {:aggregation [:count], :filter [:= $code ""]}))))))))
+
+(deftest custom-expression-between-test
+  (mt/test-driver :oracle
+    (testing "Custom :between expression should work (#15538)"
+      (let [query (mt/mbql-query nil
+                    {:source-query {:native (str "select 42 as \"val\","
+                                                 " cast(to_timestamp('09-APR-2021') AS date) as \"date\","
+                                                 " to_timestamp('09-APR-2021') AS \"timestamp\" "
+                                                 "from dual")}
+                     :aggregation  [[:aggregation-options
+                                     [:sum-where
+                                      [:field "val" {:base-type :type/Decimal}]
+                                      [:between [:field "date" {:base-type :type/Date}] "2021-01-01" "2021-12-31"]]
+                                     {:name "CE", :display-name "CE"}]]})]
+        (mt/with-native-query-testing-context query
+          (is (= [42M]
+                 (mt/first-row (qp/process-query query)))))))))
+
+(deftest escape-alias-test
+  (testing "Oracle should strip double quotes and null characters from identifiers"
+    (is (= "ABC_D_E__FG_H"
+           (driver/escape-alias :oracle "ABC\"D\"E\"\u0000FG\u0000H")))))

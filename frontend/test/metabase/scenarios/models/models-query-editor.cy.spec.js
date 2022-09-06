@@ -1,146 +1,158 @@
 import {
   restore,
-  getNotebookStep,
   runNativeQuery,
-} from "__support__/e2e/cypress";
+  summarize,
+  popover,
+  openQuestionActions,
+} from "__support__/e2e/helpers";
 
-import {
-  selectFromDropdown,
-  openDetailsSidebar,
-} from "./helpers/e2e-models-helpers";
+import { selectFromDropdown } from "./helpers/e2e-models-helpers";
 
-describe("scenarios > datasets query editor", () => {
+describe("scenarios > models query editor", () => {
   beforeEach(() => {
+    cy.intercept("PUT", "/api/card/*").as("updateCard");
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
     restore();
     cy.signInAsAdmin();
   });
 
-  beforeEach(() => {
-    cy.intercept("PUT", "/api/card/*").as("updateCard");
-    cy.intercept("POST", "/api/dataset").as("dataset");
-  });
-
-  it("allows to edit GUI dataset query", () => {
-    cy.request("PUT", "/api/card/1", { dataset: true });
-    cy.visit("/dataset/1");
-
-    openDetailsSidebar();
-    cy.findByText("Edit query definition").click();
-
-    getNotebookStep("data").findByText("Orders");
-    cy.get(".TableInteractive");
-    cy.url().should("match", /\/dataset\/[1-9]\d*.*\/query/);
-
-    cy.findByTestId("action-buttons")
-      .findByText("Summarize")
-      .click();
-    selectFromDropdown("Count of rows");
-    cy.findByText("Pick a column to group by").click();
-    selectFromDropdown("Created At");
-
-    cy.get(".RunButton").click();
-
-    cy.get(".TableInteractive").within(() => {
-      cy.findByText("Created At: Month");
-      cy.findByText("Count");
-    });
-    cy.get(".TableInteractive-headerCellData").should("have.length", 2);
-
-    cy.button("Save changes").click();
-    cy.wait("@updateCard");
-
-    cy.url().should("include", "/dataset/1");
-    cy.url().should("not.include", "/query");
-
-    cy.visit("/dataset/1/query");
-    getNotebookStep("summarize").within(() => {
-      cy.findByText("Created At: Month");
-      cy.findByText("Count");
-    });
-    cy.get(".TableInteractive").within(() => {
-      cy.findByText("Created At: Month");
-      cy.findByText("Count");
+  describe("GUI models", () => {
+    beforeEach(() => {
+      cy.request("PUT", "/api/card/1", { dataset: true });
     });
 
-    cy.button("Cancel").click();
-    cy.url().should("include", "/dataset/1");
-    cy.url().should("not.include", "/query");
+    it("allows to edit GUI model query", () => {
+      cy.visit("/model/1");
+      cy.wait("@dataset");
 
-    cy.go("back");
-    cy.url().should("match", /\/dataset\/[1-9]\d*.*\/query/);
+      cy.get(".cellData").should("contain", "37.65").and("contain", "109.22");
+
+      openQuestionActions();
+
+      popover().within(() => {
+        cy.findByText("Edit query definition").click();
+      });
+
+      cy.button("Save changes").should("be.disabled");
+
+      cy.findByText("Row limit").click();
+      cy.findByPlaceholderText("Enter a limit").type("2");
+
+      cy.get(".RunButton").click();
+      cy.wait("@dataset");
+
+      cy.get(".cellData")
+        .should("contain", "37.65")
+        .and("not.contain", "109.22");
+
+      cy.button("Save changes").click();
+      cy.wait("@updateCard");
+
+      cy.url().should("include", "/model/1").and("not.include", "/query");
+      cy.location("hash").should("eq", "");
+
+      cy.get(".cellData")
+        .should("contain", "37.65")
+        .and("not.contain", "109.22");
+    });
+
+    it("locks display to table", () => {
+      cy.visit("/model/1/query");
+
+      summarize({ mode: "notebook" });
+
+      selectFromDropdown("Count of rows");
+
+      cy.get(".RunButton").click();
+      cy.wait("@dataset");
+
+      // FE chooses the scalar visualization to display count of rows for regular questions
+      cy.get(".TableInteractive");
+      cy.get(".ScalarValue").should("not.exist");
+    });
   });
 
-  it("locks display to table", () => {
-    cy.request("PUT", "/api/card/1", { dataset: true });
-    cy.visit("/dataset/1/query");
-
-    cy.findByTestId("action-buttons")
-      .findByText("Join data")
-      .click();
-    selectFromDropdown("People");
-
-    cy.button("Save changes").click();
-    openDetailsSidebar();
-    cy.findByText("Edit query definition").click();
-
-    cy.findByTestId("action-buttons")
-      .findByText("Summarize")
-      .click();
-    selectFromDropdown("Count of rows");
-    cy.findByText("Pick a column to group by").click();
-    selectFromDropdown("Created At");
-
-    cy.get(".RunButton").click();
-    cy.wait("@dataset");
-
-    cy.get(".LineAreaBarChart").should("not.exist");
-    cy.get(".TableInteractive");
-  });
-
-  it("allows to edit native dataset query", () => {
-    cy.createNativeQuestion(
-      {
-        name: "Native DS",
-        dataset: true,
-        native: {
-          query: "SELECT * FROM orders",
+  describe("native models", () => {
+    it("allows to edit native model query", () => {
+      cy.createNativeQuestion(
+        {
+          name: "Native Model",
+          dataset: true,
+          native: {
+            query: "SELECT * FROM orders limit 5",
+          },
         },
-      },
-      { visitQuestion: true },
-    );
+        { visitQuestion: true },
+      );
 
-    openDetailsSidebar();
-    cy.findByText("Edit query definition").click();
+      cy.get(".cellData").should("contain", "37.65").and("contain", "109.22");
 
-    cy.get(".ace_content").as("editor");
-    cy.get(".TableInteractive");
-    cy.url().should("match", /\/dataset\/[1-9]\d*.*\/query/);
+      openQuestionActions();
 
-    cy.get("@editor").type(
-      " LEFT JOIN products ON orders.PRODUCT_ID = products.ID",
-    );
-    runNativeQuery();
+      popover().within(() => {
+        cy.findByText("Edit query definition").click();
+      });
 
-    cy.get(".TableInteractive").within(() => {
-      cy.findByText("EAN");
-      cy.findByText("TOTAL");
+      cy.url().should("include", "/query");
+      cy.button("Save changes").should("be.disabled");
+
+      cy.get(".ace_content").type("{backspace}2");
+
+      runNativeQuery();
+
+      cy.get(".cellData")
+        .should("contain", "37.65")
+        .and("not.contain", "109.22");
+
+      cy.button("Save changes").click();
+      cy.wait("@updateCard");
+
+      cy.get(".cellData")
+        .should("contain", "37.65")
+        .and("not.contain", "109.22");
     });
 
-    cy.button("Save changes").click();
-    cy.wait("@updateCard");
+    it("handles failing queries", () => {
+      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
-    cy.url().should("match", /\/dataset\/[1-9]\d*.*\d/);
-    cy.url().should("not.include", "/query");
+      cy.createNativeQuestion(
+        {
+          name: "Erroring Model",
+          dataset: true,
+          native: {
+            // Let's use API to type the most of the query, but stil make it invalid
+            query: "SELECT ",
+          },
+        },
+        { visitQuestion: true },
+      );
 
-    cy.findByText("Edit query definition").click();
+      openQuestionActions();
 
-    cy.get(".TableInteractive").within(() => {
-      cy.findByText("EAN");
-      cy.findByText("TOTAL");
+      popover().within(() => {
+        cy.findByText("Edit metadata").click();
+      });
+
+      cy.wait("@cardQuery");
+      cy.findByText(/Syntax error in SQL/).should("be.visible");
+
+      cy.findByText("Query").click();
+
+      cy.wait("@cardQuery");
+      cy.findByText(/Syntax error in SQL/).should("be.visible");
+
+      cy.get(".ace_content").type("1");
+      runNativeQuery();
+
+      cy.get(".cellData").contains(1);
+      cy.findByText(/Syntax error in SQL/).should("not.exist");
+
+      cy.button("Save changes").click();
+      cy.wait("@updateCard");
+
+      cy.get(".cellData").contains(1);
+      cy.findByText(/Syntax error in SQL/).should("not.exist");
     });
-
-    cy.button("Cancel").click();
-    cy.url().should("match", /\/dataset\/[1-9]\d*.*\d/);
-    cy.url().should("not.include", "/query");
   });
 });

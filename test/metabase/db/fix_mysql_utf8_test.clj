@@ -2,6 +2,7 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.test :refer :all]
+            [metabase.db.data-source :as mdb.data-source]
             [metabase.db.setup :as mdb.setup]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.models :refer [Database]]
@@ -15,17 +16,17 @@
                        "CREATE DATABASE utf8_test;"]]
       (jdbc/execute! server-conn statement))))
 
-(defn- test-db-spec []
-  (sql-jdbc.conn/connection-details->spec :mysql
-    (mt/dbdef->connection-details :mysql :db {:database-name "utf8_test"})))
+(defn- test-data-source ^javax.sql.DataSource []
+  (mdb.data-source/broken-out-details->DataSource
+   :mysql
+   (mt/dbdef->connection-details :mysql :db {:database-name "utf8_test"})))
 
 (defn- convert-to-charset!
   "Convert a MySQL/MariaDB database to the `latin1` character set."
   [jdbc-spec charset collation]
-  (jdbc/with-db-connection [conn jdbc-spec]
-    (doseq [statement [(format "ALTER DATABASE utf8_test CHARACTER SET = %s COLLATE = %s;" charset collation)
-                       (format "ALTER TABLE metabase_database CONVERT TO CHARACTER SET %s COLLATE %s;" charset collation)]]
-      (jdbc/execute! jdbc-spec [statement]))))
+  (doseq [statement [(format "ALTER DATABASE utf8_test CHARACTER SET = %s COLLATE = %s;" charset collation)
+                     (format "ALTER TABLE metabase_database CONVERT TO CHARACTER SET %s COLLATE %s;" charset collation)]]
+    (jdbc/execute! jdbc-spec [statement])))
 
 (defn- remove-utf8mb4-migrations!
   "Remove the entries for the migrations that convert a DB to utf8mb4 from the Liquibase migration log so they can be
@@ -78,16 +79,18 @@
                                            {:charset "latin1", :collation "latin1_swedish_ci"}]]
         ;; create a new application DB and run migrations.
         (create-test-db!)
-        (jdbc/with-db-connection [jdbc-spec (test-db-spec)]
-          (mdb.setup/migrate! jdbc-spec :up)
+        (let [data-source (test-data-source)
+              jdbc-spec   {:datasource data-source}]
+          (mdb.setup/migrate! :mysql data-source :up)
           (testing (format "Migrating %s charset -> utf8mb4\n" charset)
             ;; Roll back the DB to act as if migrations 107-160 had never been ran
             (convert-to-charset! jdbc-spec charset collation)
             (remove-utf8mb4-migrations! jdbc-spec)
-            (binding [db/*db-connection* jdbc-spec]
+            (binding [db/*db-connection* jdbc-spec
+                      db/*quoting-style* :mysql]
               (testing (format "DB without migrations 107-160: UTF-8 shouldn't work when using the '%s' character set" charset)
-                (let [db-cs (db-charset)
-                      tb-cs (table-charset)
+                (let [db-cs  (db-charset)
+                      tb-cs  (table-charset)
                       col-cs (column-charset)]
                   (is (every? (cond-> #{charset} (= charset "utf8") (conj "utf8mb3"))
                               (map :character-set [db-cs tb-cs col-cs]))
@@ -101,7 +104,7 @@
                     "Shouldn't be able to insert UTF-8 values"))
 
               (testing "If we run the migrations 107-160 then the DB should get converted to utf8mb4"
-                (mdb.setup/migrate! jdbc-spec :up)
+                (mdb.setup/migrate! :mysql data-source :up)
                 (is (= {:character-set "utf8mb4", :collation "utf8mb4_unicode_ci"}
                        (db-charset)
                        (table-charset)

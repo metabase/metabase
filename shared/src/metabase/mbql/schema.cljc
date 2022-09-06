@@ -1,22 +1,22 @@
 (ns metabase.mbql.schema
   "Schema for validating a *normalized* MBQL query. This is also the definitive grammar for MBQL, wow!"
-  (:refer-clojure :exclude [count distinct min max + - / * and or not not-empty = < > <= >= time case concat replace])
+  (:refer-clojure :exclude [count distinct min max + - / * and or not not-empty = < > <= >= time case concat replace abs])
   #?@
-   (:clj
-    [(:require
-      [clojure.core :as core]
-      [clojure.set :as set]
-      [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
-      [metabase.mbql.schema.macros :refer [defclause one-of]]
-      [schema.core :as s])
-     (:import java.time.format.DateTimeFormatter)]
-    :cljs
-    [(:require
-      [clojure.core :as core]
-      [clojure.set :as set]
-      [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
-      [metabase.mbql.schema.macros :refer [defclause one-of]]
-      [schema.core :as s])]))
+  (:clj
+   [(:require
+     [clojure.core :as core]
+     [clojure.set :as set]
+     [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
+     [metabase.mbql.schema.macros :refer [defclause one-of]]
+     [schema.core :as s])
+    (:import java.time.format.DateTimeFormatter)]
+   :cljs
+   [(:require
+     [clojure.core :as core]
+     [clojure.set :as set]
+     [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
+     [metabase.mbql.schema.macros :refer [defclause one-of]]
+     [schema.core :as s])]))
 
 ;; A NOTE ABOUT METADATA:
 ;;
@@ -41,6 +41,9 @@
 
 ;;; ------------------------------------------------- Datetime Stuff -------------------------------------------------
 
+;; `:day-of-week` depends on the [[metabase.public-settings/start-of-week]] Setting, by default Sunday.
+;; 1 = first day of the week (e.g. Sunday)
+;; 7 = last day of the week (e.g. Saturday)
 (def date-bucketing-units
   "Set of valid units for bucketing or comparing against a *date* Field."
   #{:default :day :day-of-week :day-of-month :day-of-year :week :week-of-year
@@ -75,15 +78,6 @@
    (apply s/enum datetime-bucketing-units)
    "datetime-bucketing-unit"))
 
-;; TODO -- rename to `TemporalUnit`
-(def ^{:deprecated "0.39.0"} DatetimeFieldUnit
-  "Schema for all valid datetime bucketing units. DEPRECATED -- use `DateUnit`, `TimeUnit`, or
-  `DateTimeUnit` instead."
-  (s/named
-   (apply s/enum #{:default :minute :minute-of-hour :hour :hour-of-day :day :day-of-week :day-of-month :day-of-year
-                   :week :week-of-year :month :month-of-year :quarter :quarter-of-year :year})
-   "datetime-unit"))
-
 (def ^:private RelativeDatetimeUnit
   (s/named
    (apply s/enum #{:default :minute :hour :day :week :month :quarter :year})
@@ -107,15 +101,18 @@
 
 ;; TODO -- currently these are all the same between date/time/datetime
 
-(def ^:private ^{:arglists '([s])} can-parse-date?
+(def ^{:arglists '([s])} can-parse-date?
+  "Returns whether a string can be parsed to an ISO 8601 date or not."
   #?(:clj (partial can-parse-iso-8601? DateTimeFormatter/ISO_DATE)
      :cljs can-parse-iso-8601?))
 
-(def ^:private ^{:arglists '([s])} can-parse-datetime?
+(def ^{:arglists '([s])} can-parse-datetime?
+  "Returns whether a string can be parsed to an ISO 8601 datetime or not."
   #?(:clj (partial can-parse-iso-8601? DateTimeFormatter/ISO_DATE_TIME)
      :cljs can-parse-iso-8601?))
 
-(def ^:private ^{:arglists '([s])} can-parse-time?
+(def ^{:arglists '([s])} can-parse-time?
+  "Returns whether a string can be parsed to an ISO 8601 time or not."
   #?(:clj (partial can-parse-iso-8601? DateTimeFormatter/ISO_TIME)
      :cljs can-parse-iso-8601?))
 
@@ -296,21 +293,28 @@
       validate-bin-width
       validate-num-bins))
 
+(defn valid-temporal-unit-for-base-type?
+  "Whether `temporal-unit` (e.g. `:day`) is valid for the given `base-type` (e.g. `:type/Date`). If either is `nil` this
+  will return truthy. Accepts either map of `field-options` or `base-type` and `temporal-unit` passed separately."
+  ([{:keys [base-type temporal-unit] :as _field-options}]
+   (valid-temporal-unit-for-base-type? base-type temporal-unit))
+
+  ([base-type temporal-unit]
+   (if-let [units (when (core/and temporal-unit base-type)
+                    (condp #(isa? %2 %1) base-type
+                      :type/Date     date-bucketing-units
+                      :type/Time     time-bucketing-units
+                      :type/DateTime datetime-bucketing-units
+                      nil))]
+     (contains? units temporal-unit)
+     true)))
+
 (defn- validate-temporal-unit [schema]
   ;; TODO - consider breaking this out into separate constraints for the three different types so we can generate more
   ;; specific error messages
   (s/constrained
    schema
-   (fn [{:keys [base-type temporal-unit]}]
-     (if-not temporal-unit
-       true
-       (if-let [units (condp #(isa? %2 %1) base-type
-                        :type/Date     date-bucketing-units
-                        :type/Time     time-bucketing-units
-                        :type/DateTime datetime-bucketing-units
-                        nil)]
-         (contains? units temporal-unit)
-         true)))
+   valid-temporal-unit-for-base-type?
    "Invalid :temporal-unit for the specified :base-type."))
 
 (defn- no-binning-options-at-top-level [schema]
@@ -430,7 +434,7 @@
 
 (def string-expressions
   "String functions"
-  #{:substring :trim :rtrim :ltrim :upper :lower :replace :concat :regex-match-first :coalesce})
+  #{:substring :trim :rtrim :ltrim :upper :lower :replace :concat :regex-match-first :coalesce :case})
 
 (declare StringExpression)
 
@@ -452,9 +456,14 @@
   "Set of valid arithmetic expression clause keywords."
   #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp :case})
 
+(def boolean-expressions
+  "Set of valid boolean expression clause keywords."
+  #{:and :or :not :< :<= :> :>= := :!=})
+
 (def ^:private aggregations #{:sum :avg :stddev :var :median :percentile :min :max :cum-count :cum-sum :count-where :sum-where :share :distinct :metric :aggregation-options :count})
 
 (declare ArithmeticExpression)
+(declare BooleanExpression)
 (declare Aggregation)
 
 (def ^:private NumericExpressionArg
@@ -478,6 +487,12 @@
   (s/conditional
    number?
    s/Num
+
+   boolean?
+   s/Bool
+
+   (partial is-clause? boolean-expressions)
+   (s/recursive #'BooleanExpression)
 
    (partial is-clause? arithmetic-expressions)
    (s/recursive #'ArithmeticExpression)
@@ -532,15 +547,8 @@
 (defclause ^{:requires-features #{:expressions :regex}} regex-match-first
   s StringExpressionArg, pattern s/Str)
 
-(def ^:private StringExpression*
-  (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce))
-
-(def ^:private StringExpression
-  "Schema for the definition of an string expression."
-  (s/recursive #'StringExpression*))
-
 (defclause ^{:requires-features #{:expressions}} +
-  x NumericExpressionArg, y NumericExpressionArgOrInterval, more (rest NumericExpressionArgOrInterval))
+  x NumericExpressionArgOrInterval, y NumericExpressionArgOrInterval, more (rest NumericExpressionArgOrInterval))
 
 (defclause ^{:requires-features #{:expressions}} -
   x NumericExpressionArg, y NumericExpressionArgOrInterval, more (rest NumericExpressionArgOrInterval))
@@ -578,6 +586,12 @@
 (def ^:private ArithmeticExpression
   "Schema for the definition of an arithmetic expression."
   (s/recursive #'ArithmeticExpression*))
+
+(declare StringExpression*)
+
+(def ^:private StringExpression
+  "Schema for the definition of an string expression."
+  (s/recursive #'StringExpression*))
 
 
 ;;; ----------------------------------------------------- Filter -----------------------------------------------------
@@ -709,10 +723,20 @@
 ;; segments and pass-thru to GA.
 (defclause ^:sugar segment, segment-id (s/cond-pre helpers/IntGreaterThanZero helpers/NonBlankString))
 
+(declare BooleanExpression*)
+
+(def ^:private BooleanExpression
+  "Schema for the definition of an arithmetic expression."
+  (s/recursive #'BooleanExpression*))
+
+(def ^:private BooleanExpression*
+  (one-of and or not < <= > >= = !=))
+
 (def ^:private Filter*
   (s/conditional
    (partial is-clause? arithmetic-expressions) ArithmeticExpression
    (partial is-clause? string-expressions)     StringExpression
+   (partial is-clause? boolean-expressions)    BooleanExpression
    :else
    (one-of
     ;; filters drivers must implement
@@ -737,12 +761,17 @@
 (def ^:private ArithmeticExpression*
   (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case))
 
+(def ^:private StringExpression*
+  (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce case))
+
+
 (def FieldOrExpressionDef
   "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a
   `:+` clause or a `:field` clause."
   (s/conditional
    (partial is-clause? arithmetic-expressions) ArithmeticExpression
    (partial is-clause? string-expressions)     StringExpression
+   (partial is-clause? boolean-expressions)    BooleanExpression
    (partial is-clause? :case)                  case
    :else                                       Field))
 
@@ -783,6 +812,7 @@
 (defclause ^{:requires-features #{:standard-deviation-aggregations}} stddev
   field-or-expression FieldOrExpressionDef)
 
+(declare ag:var) ;; for clj-kondo
 (defclause ^{:requires-features #{:standard-deviation-aggregations}} [ag:var var]
   field-or-expression FieldOrExpressionDef)
 
@@ -818,7 +848,8 @@
   {;; name to use for this aggregation in the native query instead of the default name (e.g. `count`)
    (s/optional-key :name)         helpers/NonBlankString
    ;; user-facing display name for this aggregation instead of the default one
-   (s/optional-key :display-name) helpers/NonBlankString})
+   (s/optional-key :display-name) helpers/NonBlankString
+   s/Keyword                      s/Any})
 
 (defclause aggregation-options
   aggregation UnnamedAggregation
@@ -1053,11 +1084,17 @@
   "Schema for a valid value for the `:source-table` clause of an MBQL query."
   (s/cond-pre helpers/IntGreaterThanZero source-table-card-id-regex))
 
+(def join-strategies
+  "Valid values of the `:strategy` key in a join map."
+  #{:left-join :right-join :inner-join :full-join})
+
 (def JoinStrategy
   "Strategy that should be used to perform the equivalent of a SQL `JOIN` against another table or a nested query.
   These correspond 1:1 to features of the same name in driver features lists; e.g. you should check that the current
   driver supports `:full-join` before generating a Join clause using that strategy."
-  (s/enum :left-join :right-join :inner-join :full-join))
+  (apply s/enum join-strategies))
+
+(declare Fields)
 
 (def Join
   "Perform the equivalent of a SQL `JOIN` with another Table or nested `:source-query`. JOINs are either explicitly
@@ -1113,8 +1150,8 @@
     (s/named
      (s/cond-pre
       (s/enum :all :none)
-      [field])
-    "Valid Join `:fields`: `:all`, `:none`, or a sequence of `:field` clauses that have `:join-alias`.")
+      (s/recursive #'Fields))
+     "Valid Join `:fields`: `:all`, `:none`, or a sequence of `:field` clauses that have `:join-alias`.")
     ;;
     ;; The name used to alias the joined table or query. This is usually generated automatically and generally looks
     ;; like `table__via__field`. You can specify this yourself if you need to reference a joined field with a
@@ -1165,8 +1202,7 @@
     (s/optional-key :source-table) SourceTable
     (s/optional-key :aggregation)  (helpers/non-empty [Aggregation])
     (s/optional-key :breakout)     (helpers/non-empty [Field])
-    ;; TODO - expressions keys should be strings; fix this when we get a chance (#14647)
-    (s/optional-key :expressions)  {s/Keyword FieldOrExpressionDef}
+    (s/optional-key :expressions)  {helpers/NonBlankString FieldOrExpressionDef}
     (s/optional-key :fields)       Fields
     (s/optional-key :filter)       Filter
     (s/optional-key :limit)        helpers/IntGreaterThanOrEqualToZero
@@ -1250,7 +1286,6 @@
   Field filter like `:date` or `:text` and you pass in a parameter like `string/!=` `NOTHING_WILL_MATCH_THIS`.
   Non-exact-match parameters can be abused to enumerate *all* the rows in a table when the parameter was supposed to
   lock the results down to a single row or set of rows."
-  ;; `:type` -- the gener
   {;; the basic raw-value types. These can be used with [[TemplateTag:RawValue]] template tags as well as
    ;; [[TemplateTag:FieldFilter]] template tags.
    :number  {:type :numeric, :allowed-for #{:number :number/= :id :category :location/zip_code}}
@@ -1305,7 +1340,7 @@
    :date/all-options {:type :date, :allowed-for #{:date/all-options}}
 
    ;; "operator" parameter types.
-   :number/!=               {:type :numeric, :operator :variadic, :allowed-for #{:number/!=} }
+   :number/!=               {:type :numeric, :operator :variadic, :allowed-for #{:number/!=}}
    :number/<=               {:type :numeric, :operator :unary, :allowed-for #{:number/<=}}
    :number/=                {:type :numeric, :operator :variadic, :allowed-for #{:number/= :number :id :category
                                                                                  :location/zip_code}}
@@ -1335,7 +1370,9 @@
 ;; examples:
 ;;
 ;;    {:target [:dimension [:template-tag "my_tag"]]}
+;;    {:target [:dimension [:template-tag {:id "my_tag_id"}]]}
 ;;    {:target [:variable [:template-tag "another_tag"]]}
+;;    {:target [:variable [:template-tag {:id "another_tag_id"}]]}
 ;;    {:target [:dimension [:field 100 nil]]}
 ;;    {:target [:field 100 nil]}
 ;;
@@ -1349,10 +1386,12 @@
 ;; supposed to work, but we have test #18747 that attempts to set it. I'm not convinced this should actually be
 ;; allowed.
 
-;; this is the reference like [:template-tag "whatever"], not the [[TemplateTag]] schema for when it's declared in
+;; this is the reference like [:template-tag <whatever>], not the [[TemplateTag]] schema for when it's declared in
 ;; `:template-tags`
 (defclause template-tag
-  tag-name helpers/NonBlankString)
+  tag-name
+  (s/cond-pre helpers/NonBlankString
+              {:id helpers/NonBlankString}))
 
 (defclause dimension
   target (s/cond-pre Field template-tag))
@@ -1443,14 +1482,19 @@
    s/Bool
 
    ;; disable the MBQL->native middleware. If you do this, the query will not work at all, so there are no cases where
-   ;; you should set this yourself. This is only used by the `qp/query->preprocessed` function to get the fully
-   ;; pre-processed query without attempting to convert it to native.
+   ;; you should set this yourself. This is only used by the [[metabase.query-processor/preprocess]] function to get
+   ;; the fully pre-processed query without attempting to convert it to native.
    (s/optional-key :disable-mbql->native?)
    s/Bool
 
-   ;; Userland queries are ones ran as a result of an API call, Pulse, MetaBot query, or the like. Special handling is
-   ;; done in the `process-userland-query` middleware for such queries -- results are returned in a slightly different
-   ;; format, and QueryExecution entries are normally saved, unless you pass `:no-save` as the option.
+   ;; Disable applying a default limit on the query results. Handled in the `add-default-limit` middleware.
+   ;; If true, this will override the `:max-results` and `:max-results-bare-rows` values in [[Constraints]].
+   (s/optional-key :disable-max-results?)
+   s/Bool
+
+   ;; Userland queries are ones ran as a result of an API call, Pulse, or the like. Special handling is done in the
+   ;; `process-userland-query` middleware for such queries -- results are returned in a slightly different format, and
+   ;; QueryExecution entries are normally saved, unless you pass `:no-save` as the option.
    (s/optional-key :userland-query?)
    (s/maybe s/Bool)
 
@@ -1480,13 +1524,13 @@
 (def Context
   "Schema for `info.context`; used for informational purposes to record how a query was executed."
   (s/enum :ad-hoc
+          :collection
           :csv-download
           :dashboard
           :embedded-dashboard
           :embedded-question
           :json-download
           :map-tiles
-          :metabot
           :public-dashboard
           :public-question
           :pulse
@@ -1507,16 +1551,14 @@
    (s/optional-key :card-name)    (s/maybe helpers/NonBlankString)
    (s/optional-key :dashboard-id) (s/maybe helpers/IntGreaterThanZero)
    (s/optional-key :pulse-id)     (s/maybe helpers/IntGreaterThanZero)
-   (s/optional-key :nested?)      (s/maybe s/Bool)
-
    ;; Metadata for datasets when querying the dataset. This ensures that user edits to dataset metadata are blended in
    ;; with runtime computed metadata so that edits are saved.
    (s/optional-key :metadata/dataset-metadata) (s/maybe [{s/Any s/Any}])
    ;; `:hash` gets added automatically by `process-query-and-save-execution!`, so don't try passing
    ;; these in yourself. In fact, I would like this a lot better if we could take these keys out of `:info` entirely
    ;; and have the code that saves QueryExceutions figure out their values when it goes to save them
-   (s/optional-key :query-hash)   (s/maybe #?(:clj (Class/forName "[B")
-                                              :cljs s/Any))})
+   (s/optional-key :query-hash) (s/maybe #?(:clj (Class/forName "[B")
+                                            :cljs s/Any))})
 
 
 ;;; --------------------------------------------- Metabase [Outer] Query ---------------------------------------------

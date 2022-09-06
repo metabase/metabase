@@ -4,12 +4,12 @@
   as a Card. Saved Cards are subject to the permissions of the Collection to which they belong."
   (:require [clojure.tools.logging :as log]
             [metabase.api.common :as api]
-            [metabase.mbql.normalize :as normalize]
+            [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.util :as mbql.u]
-            [metabase.models.interface :as i]
+            [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
             [metabase.models.table :refer [Table]]
-            [metabase.query-processor.util :as qputil]
+            [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
@@ -39,7 +39,7 @@
 ;; `table-segmented-query-path`. `perms-set` will require full access to the tables, `segmented-perms-set` will only
 ;; require segmented access
 
-(s/defn ^:private query->source-table-ids :- #{(s/cond-pre (s/eq ::native) su/IntGreaterThanZero)}
+(s/defn query->source-table-ids :- #{(s/cond-pre (s/eq ::native) su/IntGreaterThanZero)}
   "Return a sequence of all Table IDs referenced by `query`."
   [query]
   (set
@@ -57,34 +57,43 @@
 
 (def ^:private PermsOptions
   "Map of options to be passed to the permissions checking functions."
-  {:segmented-perms?                       s/Bool
+  {(s/optional-key :segmented-perms?)      s/Bool
    (s/optional-key :throw-exceptions?)     (s/maybe s/Bool)
-   (s/optional-key :already-preprocessed?) s/Bool})
+   (s/optional-key :already-preprocessed?) s/Bool
+   (s/optional-key :table-perms-fn)        (s/pred fn?)
+   (s/optional-key :native-perms-fn)        (s/pred fn?)})
 
 (def ^:private TableOrIDOrNativePlaceholder
   (s/cond-pre
    (s/eq ::native)
    su/IntGreaterThanZero))
 
-(s/defn ^:private tables->permissions-path-set :- #{perms/Path}
+(s/defn tables->permissions-path-set :- #{perms/Path}
   "Given a sequence of `tables-or-ids` referenced by a query, return a set of required permissions. A truthy value for
-  `segmented-perms?` will return segmented permissions for the table rather that full table permissions."
-  [database-or-id             :- (s/cond-pre su/IntGreaterThanZero su/Map)
-   tables-or-ids              :- #{TableOrIDOrNativePlaceholder}
-   {:keys [segmented-perms?]} :- PermsOptions]
+  `segmented-perms?` will return segmented permissions for the table rather that full table permissions.
+
+  Custom `table-perms-fn` and `native-perms-fn` can be passed as options to generate permissions paths for feature-level
+  permissions, such as download permissions."
+  [database-or-id            :- (s/cond-pre su/IntGreaterThanZero su/Map)
+   tables-or-ids             :- #{TableOrIDOrNativePlaceholder}
+   {:keys [segmented-perms?
+           table-perms-fn
+           native-perms-fn]} :- PermsOptions]
   (let [table-ids           (filter integer? tables-or-ids)
         table-id->schema    (when (seq table-ids)
                               (db/select-id->field :schema Table :id [:in table-ids]))
         table-or-id->schema #(if (integer? %)
                                (table-id->schema %)
                                (:schema %))
-        table-perms-fn      (if segmented-perms?
-                              perms/table-segmented-query-path
-                              perms/table-query-path)]
+        native-perms-fn     (or native-perms-fn perms/adhoc-native-query-path)
+        table-perms-fn      (or table-perms-fn
+                                (if segmented-perms?
+                                  perms/table-segmented-query-path
+                                  perms/table-query-path))]
     (set (for [table-or-id tables-or-ids]
            (if (= ::native table-or-id)
              ;; Any `::native` placeholders from above mean we need native ad-hoc query permissions for this DATABASE
-             (perms/adhoc-native-query-path database-or-id)
+             (native-perms-fn database-or-id)
              ;; anything else (i.e., a normal table) just gets normal table permissions
              (table-perms-fn (u/the-id database-or-id)
                              (table-or-id->schema table-or-id)
@@ -94,7 +103,7 @@
   "Calculate the permissions needed to run an ad-hoc query that uses a Card with `source-card-id` as its source
   query."
   [source-card-id :- su/IntGreaterThanZero]
-  (i/perms-objects-set (or (db/select-one ['Card :collection_id] :id source-card-id)
+  (mi/perms-objects-set (or (db/select-one ['Card :collection_id] :id source-card-id)
                            (throw (Exception. (tru "Card {0} does not exist." source-card-id))))
                        :read))
 
@@ -103,7 +112,7 @@
   ;; preprocessing to fail because current user doesn't have permissions to run it when we're not trying to run it at
   ;; all
   (binding [api/*current-user-id* nil]
-    ((resolve 'metabase.query-processor/query->preprocessed) query)))
+    ((resolve 'metabase.query-processor/preprocess) query)))
 
 (s/defn ^:private mbql-permissions-path-set :- #{perms/Path}
   "Return the set of required permissions needed to run an adhoc `query`.
@@ -115,9 +124,9 @@
   [query :- {:query su/Map, s/Keyword s/Any}
    {:keys [throw-exceptions? already-preprocessed?], :as perms-opts} :- PermsOptions]
   (try
-    (let [query (normalize/normalize query)]
-      ;; if we are using a Card as our perms are that Card's (i.e. that Card's Collection's) read perms
-      (if-let [source-card-id (qputil/query->source-card-id query)]
+    (let [query (mbql.normalize/normalize query)]
+      ;; if we are using a Card as our source, our perms are that Card's (i.e. that Card's Collection's) read perms
+      (if-let [source-card-id (qp.util/query->source-card-id query)]
         (source-card-read-perms source-card-id)
         ;; otherwise if there's no source card then calculate perms based on the Tables referenced in the query
         (let [{:keys [query database]} (cond-> query
@@ -127,7 +136,7 @@
     ;; that means no one will ever get to see it (except for superusers who get to see everything)
     (catch Throwable e
       (let [e (ex-info "Error calculating permissions for query"
-                       {:query (or (u/ignore-exceptions (normalize/normalize query))
+                       {:query (or (u/ignore-exceptions (mbql.normalize/normalize query))
                                    query)}
                        e)]
         (when throw-exceptions?

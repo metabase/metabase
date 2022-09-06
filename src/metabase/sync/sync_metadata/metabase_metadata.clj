@@ -1,8 +1,8 @@
 (ns metabase.sync.sync-metadata.metabase-metadata
-  "Logic for syncing the special `_metabase_metadata` table, which is a way for datasets such as the Sample Dataset to
+  "Logic for syncing the special `_metabase_metadata` table, which is a way for datasets such as the Sample Database to
   specific properties such as semantic types that should be applied during sync.
 
-  Currently, this is only used by the Sample Dataset, but theoretically in the future we could add additional sample
+  Currently, this is only used by the Sample Database, but theoretically in the future we could add additional sample
   datasets and preconfigure them by populating this Table; or 3rd-party applications or users can add this table to
   their database for an enhanced Metabase experience out-of-the box."
   (:require [clojure.string :as str]
@@ -72,7 +72,7 @@
   `keypath` is of the form `table-name.key` or `table-name.field-name.key`, where `key` is the name of some property
   of `Table` or `Field`.
 
-  This functionality is currently only used by the Sample Dataset. In order to use this functionality, drivers *must*
+  This functionality is currently only used by the Sample Database. In order to use this functionality, drivers *must*
   implement optional fn `:table-rows-seq`."
   [driver, database :- i/DatabaseInstance, metabase-metadata-table :- i/DatabaseMetadataTable]
   (doseq [{:keys [keypath value]} (driver/table-rows-seq driver database metabase-metadata-table)]

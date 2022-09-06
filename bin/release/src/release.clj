@@ -5,7 +5,6 @@
             [metabuild-common.core :as u]
             [release
              [check-prereqs :as check-prereqs]
-             [checkout-latest :as checkout-latest]
              [common :as c]
              [docker :as docker]
              [draft-release :as draft-release]
@@ -22,7 +21,6 @@
 
 (def ^:private steps*
   (ordered-map/ordered-map
-   :checkout-latest                     checkout-latest/checkout-latest!
    :build-uberjar                       uberjar/build-uberjar!
    :build-docker                        docker/build-docker-image!
    :push-git-tags                       git-tags/push-tags!

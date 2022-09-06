@@ -1,11 +1,12 @@
-/* eslint-disable react/prop-types */
 import { t } from "ttag";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Dimension from "metabase-lib/lib/Dimension";
+import { TYPE, isa } from "metabase/lib/types";
+
+const INVALID_TYPES = [TYPE.Structured];
 
 export default ({ question, clicked }) => {
   const query = question.query();
-  if (!(query instanceof StructuredQuery)) {
+  if (!question.isStructured() || !query.isEditable()) {
     return [];
   }
 
@@ -13,6 +14,7 @@ export default ({ question, clicked }) => {
     !clicked ||
     !clicked.column ||
     clicked.value !== undefined ||
+    INVALID_TYPES.some(type => isa(clicked.column.base_type, type)) ||
     !clicked.column.source
   ) {
     return [];

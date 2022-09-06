@@ -5,13 +5,13 @@
 
 (models/defmodel PulseChannelRecipient :pulse_channel_recipient)
 
-(defn- pre-delete [{id :id, pulse-channel-id :pulse_channel_id, :as pcr}]
+(defn- pre-delete [pcr]
   ;; call [[metabase.models.pulse-channel/will-delete-recipient]] to let it know we're about to delete this
   ;; PulseChannelRecipient; that function will decide whether to automatically delete the PulseChannel as well.
   (classloader/require 'metabase.models.pulse-channel)
   ((resolve 'metabase.models.pulse-channel/will-delete-recipient) pcr))
 
-(u/strict-extend (class PulseChannelRecipient)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class PulseChannelRecipient)
   models/IModel
   (merge
    models/IModelDefaults

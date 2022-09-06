@@ -13,7 +13,7 @@ describe("nestedSettings", () => {
         }),
       }),
     };
-    const stored = { nested_settings: { "1": { foo: "bar" } } };
+    const stored = { nested_settings: { 1: { foo: "bar" } } };
     const settings = getComputedSettings(defs, null, stored);
     expect(settings.nested(1)).toEqual({ foo: "bar" });
     expect(settings.nested(2)).toEqual({ foo: "foo2" });
@@ -21,7 +21,7 @@ describe("nestedSettings", () => {
     delete settings.nested;
     expect(settings).toEqual({
       nested: undefined,
-      nested_settings: { "1": { foo: "bar" } },
+      nested_settings: { 1: { foo: "bar" } },
     });
   });
 });

@@ -30,7 +30,7 @@
 (defn expand-inner
   "Expand parameters inside an *inner* native `query`. Not recursive -- recursive transformations are handled in
   the `middleware.parameters` functions that invoke this function."
-  [{:keys [parameters query native] :as inner-query}]
+  [inner-query]
   (if-not (driver/supports? driver/*driver* :native-parameters)
     inner-query
     ;; Totally ridiculous, but top-level native queries use the key `:query` for SQL or equivalent, while native

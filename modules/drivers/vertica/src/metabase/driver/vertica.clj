@@ -9,7 +9,7 @@
             [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
+            [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.query-processor.empty-string-is-null :as sql.qp.empty-string-is-null]
@@ -19,7 +19,7 @@
   (:import [java.sql ResultSet Types]))
 
 (driver/register! :vertica, :parent #{:sql-jdbc
-                                      ::legacy/use-legacy-classes-for-read-and-set
+                                      ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set
                                       ::sql.qp.empty-string-is-null/empty-string-is-null})
 
 (defmethod driver/supports? [:vertica :percentile-aggregations] [_ _] false)
@@ -123,7 +123,11 @@
 
 (defmethod sql.qp/add-interval-honeysql-form :vertica
   [_ hsql-form amount unit]
-  (hx/+ (hx/->timestamp hsql-form) (hsql/raw (format "(INTERVAL '%d %s')" (int amount) (name unit)))))
+  (let [acceptable-types (case unit
+                           (:millisecond :second :minute :hour) #{"time" "timetz" "timestamp" "timestamptz"}
+                           (:day :week :month :quarter :year)   #{"date" "timestamp" "timestamptz"})
+        hsql-form        (hx/cast-unless-type-in "timestamp" acceptable-types hsql-form)]
+    (hx/+ hsql-form (hsql/raw (format "(INTERVAL '%d %s')" (int amount) (name unit))))))
 
 (defn- materialized-views
   "Fetch the Materialized Views for a Vertica `database`.

@@ -1,3 +1,7 @@
+---
+title: Can't save questions or dashboards, or getting a blank page
+---
+
 # Can't save questions or dashboards, or getting a blank page
 
 <div class='doc-toc' markdown=1>

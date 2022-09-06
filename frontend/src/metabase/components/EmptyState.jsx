@@ -1,11 +1,16 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { Box, Flex } from "grid-styled";
 
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 import Text from "metabase/components/type/Text";
+import {
+  EmptyStateActions,
+  EmptyStateFooter,
+  EmptyStateHeader,
+  EmptyStateIllustration,
+} from "./EmptyState.styled";
 
 // Don't break existing empty states
 // TODO - remove these and update empty states with proper usage of illustrationElement
@@ -24,7 +29,18 @@ const LegacyImage = props =>
       className={props.imageClassName}
     />
   ) : null;
-
+/**
+ * @typedef {Record<string, any>} EmptyStateProps
+ * @property {import("react").ReactNode} message
+ * @property {import("react").ReactNode} [title]
+ * @property {import("react").ReactNode} [action]
+ * @property {import("react-router").IndexLinkProps["to"]} [link]
+ * @property {import("react").ReactNode} [illustrationElement]
+ * @property {function} [onActionClick]
+ *
+ * @param {EmptyStateProps} props
+ * @returns {import("react").ReactElement}
+ */
 const EmptyState = ({
   title,
   message,
@@ -34,21 +50,23 @@ const EmptyState = ({
   onActionClick,
   ...rest
 }) => (
-  <Box>
-    <Flex justify="center" flexDirection="column" align="center">
-      {illustrationElement && <Box mb={[2, 3]}>{illustrationElement}</Box>}
-      <Box>
+  <div>
+    <EmptyStateHeader>
+      {illustrationElement && (
+        <EmptyStateIllustration>{illustrationElement}</EmptyStateIllustration>
+      )}
+      <div>
         <LegacyIcon {...rest} />
         <LegacyImage {...rest} />
-      </Box>
+      </div>
       {title && <h2 className="text-medium">{title}</h2>}
       {message && <Text color="medium">{message}</Text>}
-    </Flex>
+    </EmptyStateHeader>
     {/* TODO - we should make this children or some other more flexible way to
       add actions
       */}
-    <Flex mt={2}>
-      <Flex align="center" ml="auto" mr="auto">
+    <EmptyStateFooter>
+      <EmptyStateActions>
         {action && link && (
           <Link to={link} target={link.startsWith("http") ? "_blank" : ""}>
             <Button primary>{action}</Button>
@@ -59,9 +77,9 @@ const EmptyState = ({
             {action}
           </Button>
         )}
-      </Flex>
-    </Flex>
-  </Box>
+      </EmptyStateActions>
+    </EmptyStateFooter>
+  </div>
 );
 
 export default EmptyState;

@@ -35,7 +35,7 @@
 
 (defn default-revert-to-revision!
   "Default implementation of `revert-to-revision!` which simply does an update using the values from `serialized-instance`."
-  [entity id user-id serialized-instance]
+  [entity id _user-id serialized-instance]
   (db/update! entity id, serialized-instance))
 
 (defn default-diff-map
@@ -77,7 +77,7 @@
     (cond-> revision
       model (update :object (partial models/do-post-select model)))))
 
-(u/strict-extend (class Revision)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Revision)
   models/IModel
   (merge models/IModelDefaults
          {:types       (constantly {:object :json})
@@ -168,7 +168,7 @@
       ;; Do the reversion of the object
       (revert-to-revision! entity id user-id serialized-instance)
       ;; Push a new revision to record this change
-      (let [last-revision (Revision :model (:name entity), :model_id id, {:order-by [[:id :desc]]})
+      (let [last-revision (db/select-one Revision :model (:name entity), :model_id id, {:order-by [[:id :desc]]})
             new-revision  (db/insert! Revision
                             :model        (:name entity)
                             :model_id     id

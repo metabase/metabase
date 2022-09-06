@@ -3,7 +3,7 @@
   (:require [cheshire.core :as json]
             [clojure.set :as set]
             [clojure.test :refer :all]
-            [metabase.api.tiles :as tiles]
+            [metabase.api.tiles :as api.tiles]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
             [schema.core :as s]))
@@ -26,7 +26,7 @@
                                          (mt/id :venues :longitude))
                  :query (json/generate-string venues-query)))))
     (testing "Works on native queries"
-      (let [native-query {:query (:query (qp/query->native venues-query))
+      (let [native-query {:query (:query (qp/compile venues-query))
                           :template-tags {}}]
         (is (png? (mt/user-http-request
                    :rasta :get 200 (format "tiles/1/1/1/%s/%s"
@@ -46,8 +46,8 @@
                      :query {:source-table 88
                              :fields [[:field 562 nil]
                                       [:field 574 nil] ; lat
-                                      [:field 576 nil] ; lon
-                                      ]
+                                      [:field 576 nil]] ; lon
+
                              :limit 50000}
                      :type :query}]
           (is (= {:database 19
@@ -58,10 +58,10 @@
                           :filter [:inside [:field 574 nil] [:field 576 nil]]}
                   :type :query
                   :async? false}
-                 (clean (tiles/query->tiles-query query
-                                                  {:zoom 2 :x 3 :y 1
-                                                   :lat-field "574"
-                                                   :lon-field "576"})))))))
+                 (clean (#'api.tiles/query->tiles-query query
+                                                        {:zoom 2 :x 3 :y 1
+                                                         :lat-field [:field 574 nil]
+                                                         :lon-field [:field 576 nil]})))))))
     (testing "native"
       (testing "nests the query, selects fields"
         (let [query {:type :native
@@ -78,10 +78,31 @@
                           :limit  2000}
                   :type :query
                   :async? false}
-                 (clean (tiles/query->tiles-query query
-                                                  {:zoom 2 :x 2 :y 1
-                                                   :lat-field "latitude"
-                                                   :lon-field "longitude"})))))))))
+                 (clean (@#'api.tiles/query->tiles-query query
+                                                         {:zoom 2 :x 2 :y 1
+                                                          :lat-field [:field "latitude" {:base-type :type/Float}]
+                                                          :lon-field [:field "longitude" {:base-type :type/Float}]})))))))))
+
+(deftest breakout-query-test
+  (testing "the appropriate lat/lon fields are selected from the results, if the query contains a :breakout clause (#20182)"
+    (mt/dataset sample-dataset
+      (with-redefs [api.tiles/create-tile (fn [_ points] points)
+                    api.tiles/tile->byte-array identity]
+        (let [result (mt/user-http-request
+                      :rasta :get 200 (format "tiles/7/30/49/%d/%d"
+                                              (mt/id :people :latitude)
+                                              (mt/id :people :longitude))
+                      :query (json/generate-string
+                              {:database (mt/id)
+                               :type :query
+                               :query {:source-table (mt/id :people)
+                                       :breakout [[:field (mt/id :people :latitude)]
+                                                  [:field (mt/id :people :longitude)]]
+                                       :aggregation [[:count]]}}))]
+          (is (= [[36.6163612 -94.5197949]
+                  [36.8177783 -93.8447328]
+                  [36.8311004 -95.0253779]]
+                 (take 3 result))))))))
 
 (deftest failure-test
   (testing "if the query fails, don't attempt to generate a map without any points -- the endpoint should return a 400"
@@ -104,3 +125,10 @@
                         :type     :query
                         :query    {:source-table (mt/id :venues)}
                         :async?   true}))))))
+
+(deftest field-ref-test
+  (testing "Field refs can be constructed from strings representing integer field IDs or field names"
+    (is (= [:field 1 nil]
+           (@#'api.tiles/field-ref "1")))
+    (is (= [:field "Latitude" {:base-type :type/Float}]
+           (@#'api.tiles/field-ref "Latitude")))))

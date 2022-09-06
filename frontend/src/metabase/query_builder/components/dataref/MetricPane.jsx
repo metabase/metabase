@@ -23,8 +23,7 @@ const mapStateToProps = (state, props) => ({
   metadata: getMetadata(state, props),
 });
 
-@connect(mapStateToProps, mapDispatchToProps)
-export default class MetricPane extends Component {
+class MetricPane extends Component {
   constructor(props, context) {
     super(props, context);
 
@@ -102,3 +101,5 @@ export default class MetricPane extends Component {
     );
   }
 }
+
+export default connect(mapStateToProps, mapDispatchToProps)(MetricPane);

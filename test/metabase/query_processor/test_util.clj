@@ -11,7 +11,7 @@
             [metabase.models.field :refer [Field]]
             [metabase.models.table :refer [Table]]
             [metabase.query-processor :as qp]
-            [metabase.query-processor.middleware.add-implicit-joins :as add-implicit-joins]
+            [metabase.query-processor.middleware.add-implicit-joins :as qp.add-implicit-joins]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.test.data :as data]
@@ -39,14 +39,19 @@
         (qp.store/fetch-and-store-fields! [field-id])
         (qp.store/field field-id))))
 
+(def ^:dynamic ^:private *already-have-everything-store?* false)
+
 (defn do-with-everything-store
-  "Impl for `with-everything-store`."
-  [f]
-  (with-redefs [qp.store/table everything-store-table
-                qp.store/field everything-store-field]
-    (qp.store/with-store
-      (qp.store/fetch-and-store-database! (data/id))
-      (f))))
+  "Impl for [[with-everything-store]]."
+  [thunk]
+  (if *already-have-everything-store?*
+    (thunk)
+    (binding [*already-have-everything-store?* true
+              qp.store/*table*                 everything-store-table
+              qp.store/*field*                 everything-store-field]
+      (qp.store/with-store
+        (qp.store/fetch-and-store-database! (data/id))
+        (thunk)))))
 
 (defmacro with-everything-store
   "When testing a specific piece of middleware, you often need to load things into the QP Store, but doing so can be
@@ -89,7 +94,8 @@
         (update :fields (fn [fields]
                           (set
                            (for [[_ {table-id :table_id, field-name :name}] fields]
-                             [(get-in store [:tables table-id :name]) field-name])))))))
+                             [(get-in store [:tables table-id :name]) field-name]))))
+        (dissoc :misc))))
 
 (defn card-with-source-metadata-for-query
   "Given an MBQL `query`, return the relevant keys for creating a Card with that query and matching `:result_metadata`.
@@ -110,7 +116,7 @@
 
     (fk-table-alias-name (data/id :categories) (data/id :venues :category_id)) ;; -> \"CATEGORIES__via__CATEGORY_ID\""
   [table-or-id field-or-id]
-  (#'add-implicit-joins/join-alias
+  (#'qp.add-implicit-joins/join-alias
    (db/select-one-field :name Table :id (u/the-id table-or-id))
    (db/select-one-field :name Field :id (u/the-id field-or-id))))
 

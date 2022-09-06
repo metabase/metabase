@@ -7,7 +7,7 @@ import _ from "underscore";
 import Collapse from "react-collapse";
 import { t } from "ttag";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import DisclosureTriangle from "metabase/components/DisclosureTriangle";
 import MetabaseUtils from "metabase/lib/utils";
 import SettingsSetting from "./SettingsSetting";
@@ -17,6 +17,10 @@ import { updateSettings as defaultUpdateSettings } from "../settings";
 const VALIDATIONS = {
   email: {
     validate: value => MetabaseUtils.isEmail(value),
+    message: t`That's not a valid email address`,
+  },
+  email_list: {
+    validate: value => value.every(MetabaseUtils.isEmail),
     message: t`That's not a valid email address`,
   },
   integer: {
@@ -31,16 +35,7 @@ const SAVE_SETTINGS_BUTTONS_STATES = {
   success: t`Changes saved!`,
 };
 
-@connect(
-  null,
-  (dispatch, { updateSettings }) => ({
-    updateSettings:
-      updateSettings || (settings => dispatch(defaultUpdateSettings(settings))),
-  }),
-  null,
-  { withRef: true }, // HACK: needed so consuming components can call methods on the component :-/
-)
-export default class SettingsBatchForm extends Component {
+class SettingsBatchForm extends Component {
   constructor(props, context) {
     super(props, context);
     this.state = {
@@ -114,17 +109,18 @@ export default class SettingsBatchForm extends Component {
 
     let valid = true;
     const validationErrors = {};
+    const availableElements = elements.filter(e => !e.is_env_setting);
 
     // Validate form only if LDAP is enabled
     if (!enabledKey || formData[enabledKey]) {
-      elements.forEach(function(element) {
+      availableElements.forEach(function (element) {
         // test for required elements
         if (element.required && MetabaseUtils.isEmpty(formData[element.key])) {
           valid = false;
         }
 
         if (element.validations) {
-          element.validations.forEach(function(validation) {
+          element.validations.forEach(function (validation) {
             validationErrors[element.key] = this.validateElement(
               validation,
               formData[element.key],
@@ -310,6 +306,16 @@ export default class SettingsBatchForm extends Component {
     );
   }
 }
+
+export default connect(
+  null,
+  (dispatch, { updateSettings }) => ({
+    updateSettings:
+      updateSettings || (settings => dispatch(defaultUpdateSettings(settings))),
+  }),
+  null,
+  { withRef: true }, // HACK: needed so consuming components can call methods on the component :-/
+)(SettingsBatchForm);
 
 const StandardSection = ({ title, children }) => (
   <div>

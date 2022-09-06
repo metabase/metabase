@@ -1,8 +1,14 @@
+/**
+ * ⚠️
+ * @deprecated use existing types from, or add to metabase-types/api/*
+ */
+
 import { TableId } from "./Table";
 import { FieldId, BaseType } from "./Field";
 import { SegmentId } from "./Segment";
 import { MetricId } from "./Metric";
 import { ParameterType } from "./Parameter";
+import { DatetimeUnit } from "metabase-types/api/query";
 
 export type ExpressionName = string;
 
@@ -27,27 +33,16 @@ export type RelativeDatetimeUnit =
   | "month"
   | "quarter"
   | "year";
-export type DatetimeUnit =
-  | "default"
-  | "minute"
-  | "minute-of-hour"
-  | "hour"
-  | "hour-of-day"
-  | "day"
-  | "day-of-week"
-  | "day-of-month"
-  | "day-of-year"
-  | "week"
-  | "week-of-year"
-  | "month"
-  | "month-of-year"
-  | "quarter"
-  | "quarter-of-year"
-  | "year";
 
 export type TemplateTagId = string;
 export type TemplateTagName = string;
-export type TemplateTagType = "text" | "number" | "date" | "dimension";
+export type TemplateTagType =
+  | "card"
+  | "text"
+  | "number"
+  | "date"
+  | "dimension"
+  | "snippet";
 
 export type TemplateTag = {
   id: TemplateTagId;
@@ -58,6 +53,10 @@ export type TemplateTag = {
   "widget-type"?: ParameterType;
   required?: boolean;
   default?: string;
+
+  // Snippet specific
+  "snippet-id"?: number;
+  "snippet-name"?: string;
 };
 
 export type TemplateTags = { [key: TemplateTagName]: TemplateTag };
@@ -67,8 +66,13 @@ export type NativeQuery = {
   "template-tags": TemplateTags;
 };
 
+// "card__4" like syntax meaning a query is using card 4 as a data source
+type NestedQueryTableId = string;
+
+export type SourceTableId = TableId | NestedQueryTableId;
+
 export type StructuredQuery = {
-  "source-table"?: TableId;
+  "source-table"?: SourceTableId;
   "source-query"?: StructuredQuery;
   aggregation?: AggregationClause;
   breakout?: BreakoutClause;
@@ -303,3 +307,16 @@ export type ExpressionOperator = "+" | "-" | "*" | "/";
 export type ExpressionOperand = ConcreteField | NumericLiteral | Expression;
 
 export type FieldsClause = ConcreteField[];
+
+export type DependentTable = {
+  id: number | string;
+  type: "table";
+  foreignTables?: boolean;
+};
+
+export type DependentField = {
+  id: number;
+  type: "field";
+};
+
+export type DependentMetadataItem = DependentTable | DependentField;

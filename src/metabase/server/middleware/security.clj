@@ -3,11 +3,12 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [java-time :as t]
+            [metabase.analytics.snowplow :as snowplow]
             [metabase.config :as config]
             [metabase.models.setting :refer [defsetting]]
             [metabase.public-settings :as public-settings]
             [metabase.server.request.util :as request.u]
-            [metabase.util.i18n :as ui18n :refer [deferred-tru]]
+            [metabase.util.i18n :refer [deferred-tru]]
             [ring.util.codec :refer [base64-encode]])
   (:import java.security.MessageDigest))
 
@@ -50,14 +51,12 @@
                                   ["'self'"
                                    "'unsafe-eval'" ; TODO - we keep working towards removing this entirely
                                    "https://maps.google.com"
-                                   "https://apis.google.com"
-                                   "https://*.googleapis.com"
-                                   "*.gstatic.com"
+                                   "https://accounts.google.com"
                                    (when (public-settings/anon-tracking-enabled)
                                      "https://www.google-analytics.com")
                                    ;; for webpack hot reloading
                                    (when config/is-dev?
-                                     "localhost:8080")
+                                     "*:8080")
                                    ;; for react dev tools to work in Firefox until resolution of
                                    ;; https://github.com/facebook/react/issues/17997
                                    (when config/is-dev?
@@ -68,13 +67,14 @@
                                  ;; TODO - double check that we actually need this for Google Auth
                                  "https://accounts.google.com"]
                   :style-src    ["'self'"
-                                 "'unsafe-inline'"]
-                  :font-src     ["'self'"
-                                 (when config/is-dev?
-                                   "localhost:8080")]
+                                 "'unsafe-inline'"
+                                 "https://accounts.google.com"]
+                  :font-src     ["*"]
                   :img-src      ["*"
                                  "'self' data:"]
                   :connect-src  ["'self'"
+                                 ;; Google Identity Services
+                                 "https://accounts.google.com"
                                  ;; MailChimp. So people can sign up for the Metabase mailing list in the sign up process
                                  "metabase.us10.list-manage.com"
                                  ;; Google analytics
@@ -82,10 +82,10 @@
                                    "www.google-analytics.com")
                                  ;; Snowplow analytics
                                  (when (public-settings/anon-tracking-enabled)
-                                   "sp.metabase.com")
+                                   (snowplow/snowplow-url))
                                  ;; Webpack dev server
                                  (when config/is-dev?
-                                   "localhost:8080 ws://localhost:8080")]
+                                   "*:8080 ws://*:8080")]
                   :manifest-src ["'self'"]}]
       (format "%s %s; " (name k) (str/join " " vs))))})
 
@@ -101,9 +101,11 @@
           #(format "%s frame-ancestors %s;" % (if allow-iframes? "*" (or (embedding-app-origin) "'none'")))))
 
 (defsetting ssl-certificate-public-key
-  (str (deferred-tru "Base-64 encoded public key for this site's SSL certificate.")
-       (deferred-tru "Specify this to enable HTTP Public Key Pinning.")
-       (deferred-tru "See {0} for more information." "http://mzl.la/1EnfqBf")))
+  (deferred-tru
+    (str "Base-64 encoded public key for this site''s SSL certificate. "
+         "Specify this to enable HTTP Public Key Pinning. "
+         "See {0} for more information.")
+    "http://mzl.la/1EnfqBf"))
 ;; TODO - it would be nice if we could make this a proper link in the UI; consider enabling markdown parsing
 
 (defn- first-embedding-app-origin

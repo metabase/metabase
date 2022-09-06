@@ -1,11 +1,10 @@
 (ns metabase.query-processor.middleware.cumulative-aggregations-test
   (:require [clojure.test :refer :all]
-            [metabase.query-processor.middleware.cumulative-aggregations :as cumulative-aggregations]
-            [metabase.test :as mt]))
+            [metabase.query-processor.middleware.cumulative-aggregations :as qp.cumulative-aggregations]))
 
 (deftest add-values-from-last-row-test
   (are [expected indecies] (= expected
-                              (#'cumulative-aggregations/add-values-from-last-row indecies [1 2 3] [1 2 3]))
+                              (#'qp.cumulative-aggregations/add-values-from-last-row indecies [1 2 3] [1 2 3]))
     [1 2 3] #{}
     [2 2 3] #{0}
     [2 4 3] #{0 1}
@@ -13,24 +12,24 @@
 
   (is (thrown?
        IndexOutOfBoundsException
-       (#'cumulative-aggregations/add-values-from-last-row #{4} [1 2 3] [1 2 3]))
+       (#'qp.cumulative-aggregations/add-values-from-last-row #{4} [1 2 3] [1 2 3]))
       "should throw an Exception if index is out of bounds")
 
   (testing "Do we handle nils correctly"
-    (is (= [1] (#'cumulative-aggregations/add-values-from-last-row #{0} [nil] [1])))
-    (is (= [0] (#'cumulative-aggregations/add-values-from-last-row #{0} [nil] [nil])))
-    (is (= [1] (#'cumulative-aggregations/add-values-from-last-row #{0} [1] [nil])))))
+    (is (= [1] (#'qp.cumulative-aggregations/add-values-from-last-row #{0} [nil] [1])))
+    (is (= [0] (#'qp.cumulative-aggregations/add-values-from-last-row #{0} [nil] [nil])))
+    (is (= [1] (#'qp.cumulative-aggregations/add-values-from-last-row #{0} [1] [nil])))))
 
 (deftest diff-indicies-test
   (testing "collections are the same"
     (is (= #{}
-           (#'cumulative-aggregations/diff-indecies [:a :b :c] [:a :b :c]))))
+           (#'qp.cumulative-aggregations/diff-indecies [:a :b :c] [:a :b :c]))))
   (testing "one index is different"
     (is (= #{1}
-           (#'cumulative-aggregations/diff-indecies [:a :b :c] [:a 100 :c])))))
+           (#'qp.cumulative-aggregations/diff-indecies [:a :b :c] [:a 100 :c])))))
 
 (defn- sum-rows [replaced-indecies rows]
-  (let [rf (#'cumulative-aggregations/cumulative-ags-xform replaced-indecies (fn
+  (let [rf (#'qp.cumulative-aggregations/cumulative-ags-xform replaced-indecies (fn
                                                                                ([] [])
                                                                                ([acc] acc)
                                                                                ([acc row] (conj acc row))))]
@@ -63,7 +62,7 @@
             :query    {:source-table 1
                        :breakout     [[:field 1 nil]]
                        :aggregation  [[:sum [:field 1 nil]]]}}
-           (#'cumulative-aggregations/replace-cumulative-ags
+           (#'qp.cumulative-aggregations/replace-cumulative-ags
             {:database 1
              :type     :query
              :query    {:source-table 1
@@ -73,22 +72,21 @@
     (is (= {:database 1
             :type     :query
             :query    {:source-table 1, :aggregation [[:* [:count] 1]]}}
-           (#'cumulative-aggregations/replace-cumulative-ags
+           (#'qp.cumulative-aggregations/replace-cumulative-ags
             {:database 1
              :type     :query
              :query    {:source-table 1, :aggregation [[:* [:cum-count] 1]]}})))))
 
 
 (defn- handle-cumulative-aggregations [query]
-  (-> (mt/test-qp-middleware
-       cumulative-aggregations/handle-cumulative-aggregations
-       query
-       [[1 1]
-        [2 2]
-        [3 3]
-        [4 4]
-        [5 5]])
-      :post))
+  (let [query (#'qp.cumulative-aggregations/rewrite-cumulative-aggregations query)
+        rff   (qp.cumulative-aggregations/sum-cumulative-aggregation-columns query (constantly conj))
+        rf    (rff nil)]
+    (transduce identity rf [[1 1]
+                            [2 2]
+                            [3 3]
+                            [4 4]
+                            [5 5]])))
 
 (deftest e2e-test
   (testing "make sure we take breakout fields into account"

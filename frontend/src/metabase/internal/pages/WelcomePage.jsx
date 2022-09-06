@@ -1,5 +1,4 @@
 import React from "react";
-import { Box, Flex } from "grid-styled";
 
 import Heading from "metabase/components/type/Heading";
 import Subhead from "metabase/components/type/Subhead";
@@ -8,16 +7,22 @@ import Text from "metabase/components/type/Text";
 import ProgressBar from "metabase/components/ProgressBar";
 
 import { stats } from "../lib/components-webpack";
+import {
+  PageBody,
+  PageContent,
+  PageFooter,
+  PageHeader,
+} from "./WelcomePage.styled";
 
 const WelcomePage = () => {
   return (
-    <Box className="wrapper wrapper--trim">
-      <Box my={4}>
+    <div className="wrapper wrapper--trim">
+      <PageHeader>
         <Heading>Metabase Style Guide</Heading>
         <Text>
           Reference and samples for how to make things the Metabase way.
         </Text>
-      </Box>
+      </PageHeader>
 
       <Subhead>Documentation progress</Subhead>
       <Text>
@@ -26,20 +31,20 @@ const WelcomePage = () => {
         form of documentation so far.
       </Text>
 
-      <Box mt={3}>
+      <PageBody>
         <ProgressBar percentage={stats.ratio} />
-        <Flex align="center" mt={1}>
-          <Box>
+        <PageContent>
+          <div>
             <Subhead>{stats.documented}</Subhead>
             <Text>Documented</Text>
-          </Box>
-          <Box ml={"auto"} className="text-right">
+          </div>
+          <PageFooter>
             <Subhead>{stats.total}</Subhead>
             <Text>Total .jsx files in /components</Text>
-          </Box>
-        </Flex>
-      </Box>
-    </Box>
+          </PageFooter>
+        </PageContent>
+      </PageBody>
+    </div>
   );
 };
 

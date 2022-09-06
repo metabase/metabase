@@ -2,32 +2,35 @@
 import React, { useMemo } from "react";
 import { t } from "ttag";
 import cx from "classnames";
-import { Box, Flex } from "grid-styled";
 
 import EntityMenu from "metabase/components/EntityMenu";
-import Swapper from "metabase/components/Swapper";
-import CheckBox from "metabase/components/CheckBox";
-import Ellipsified from "metabase/components/Ellipsified";
+import Swapper from "metabase/core/components/Swapper";
+import CheckBox from "metabase/core/components/CheckBox";
+import Ellipsified from "metabase/core/components/Ellipsified";
 import Icon from "metabase/components/Icon";
+import { isFullyParametrized, isItemPinned } from "metabase/collections/utils";
 
 import {
   EntityIconWrapper,
+  EntityItemActions,
   EntityItemSpinner,
   EntityItemWrapper,
+  EntityMenuContainer,
 } from "./EntityItem.styled";
 
 function EntityIconCheckBox({
   item,
   variant,
-  iconName,
+  icon,
   pinned,
   selectable,
   selected,
+  showCheckbox,
   disabled,
   onToggleSelected,
   ...props
 }) {
-  const iconSize = variant === "small" ? 12 : 18;
+  const iconSize = variant === "small" ? 12 : 16;
   const handleClick = e => {
     e.preventDefault();
     onToggleSelected();
@@ -38,28 +41,40 @@ function EntityIconCheckBox({
       isPinned={pinned}
       model={item.model}
       onClick={selectable ? handleClick : null}
-      circle
+      rounded
       disabled={disabled}
       {...props}
     >
       {selectable ? (
         <Swapper
-          startSwapped={selected}
           defaultElement={
-            <Icon name={iconName} color={"inherit"} size={iconSize} />
+            <Icon
+              name={icon.name}
+              color={icon.color ?? "inherit"}
+              size={iconSize}
+            />
           }
           swappedElement={<CheckBox checked={selected} size={iconSize} />}
+          isSwapped={selected || showCheckbox}
         />
       ) : (
-        <Icon name={iconName} color={"inherit"} size={iconSize} />
+        <Icon
+          name={icon.name}
+          color={icon.color ?? "inherit"}
+          size={iconSize}
+        />
       )}
     </EntityIconWrapper>
   );
 }
 
-function EntityItemName({ name }) {
+function EntityItemName({ name, variant }) {
   return (
-    <h3 className="overflow-hidden">
+    <h3
+      className={cx("overflow-hidden", {
+        "text-list": variant === "list",
+      })}
+    >
       <Ellipsified>{name}</Ellipsified>
     </h3>
   );
@@ -67,68 +82,97 @@ function EntityItemName({ name }) {
 
 function EntityItemMenu({
   item,
+  isBookmarked,
+  isPreviewShown,
+  isPreviewAvailable,
   onPin,
   onMove,
   onCopy,
   onArchive,
+  onToggleBookmark,
+  onTogglePreview,
   className,
   analyticsContext,
 }) {
+  const isPinned = isItemPinned(item);
+  const isParametrized = isFullyParametrized(item);
+
   const actions = useMemo(
     () =>
       [
         onPin && {
-          title:
-            item.collection_position != null
-              ? t`Unpin this item`
-              : t`Pin this item`,
+          title: isPinned ? t`Unpin` : t`Pin this`,
           icon: "pin",
           action: onPin,
           event: `${analyticsContext};Entity Item;Pin Item;${item.model}`,
         },
+        onTogglePreview && {
+          title: isPreviewShown
+            ? t`Don’t show visualization`
+            : t`Show visualization`,
+          icon: isPreviewShown ? "eye_crossed_out" : "eye",
+          action: onTogglePreview,
+          tooltip:
+            !isPreviewAvailable && !isParametrized
+              ? t`Open this question and fill in its variables to see it.`
+              : undefined,
+          disabled: !isPreviewAvailable,
+          event: `${analyticsContext};Entity Item;Preview Item;${item.model}`,
+        },
         onMove && {
-          title: t`Move this item`,
+          title: t`Move`,
           icon: "move",
           action: onMove,
           event: `${analyticsContext};Entity Item;Move Item;${item.model}`,
         },
         onCopy && {
-          title: t`Duplicate this item`,
+          title: t`Duplicate`,
           icon: "clone",
           action: onCopy,
           event: `${analyticsContext};Entity Item;Copy Item;${item.model}`,
         },
         onArchive && {
-          title: t`Archive this item`,
+          title: t`Archive`,
           icon: "archive",
           action: onArchive,
           event: `${analyticsContext};Entity Item;Archive Item;${item.model}`,
         },
+        onToggleBookmark && {
+          title: isBookmarked ? t`Remove from bookmarks` : t`Bookmark`,
+          icon: "bookmark",
+          action: onToggleBookmark,
+          event: `${analyticsContext};Entity Item;Bookmark Item;${item.model}`,
+        },
       ].filter(action => action),
-    [item, onPin, onMove, onCopy, onArchive, analyticsContext],
+    [
+      item.model,
+      isPinned,
+      isParametrized,
+      isBookmarked,
+      isPreviewShown,
+      isPreviewAvailable,
+      onPin,
+      onMove,
+      onCopy,
+      onArchive,
+      onTogglePreview,
+      onToggleBookmark,
+      analyticsContext,
+    ],
   );
   if (actions.length === 0) {
     return null;
   }
   return (
-    <EntityMenu
-      className={cx(className, "hover-child")}
-      triggerIcon="ellipsis"
-      items={actions}
-    />
+    <EntityMenuContainer align="center">
+      <EntityMenu
+        className={cx(className, "hover-child")}
+        triggerIcon="ellipsis"
+        items={actions}
+      />
+    </EntityMenuContainer>
   );
 }
-
-const ENTITY_ITEM_SPACING = {
-  list: {
-    px: 2,
-    py: 2,
-  },
-  small: {
-    px: 2,
-    py: 1,
-  },
-};
 
 const EntityItem = ({
   analyticsContext,
@@ -149,36 +193,33 @@ const EntityItem = ({
   loading,
   disabled,
 }) => {
-  const spacing = ENTITY_ITEM_SPACING[variant] || { py: 2 };
+  const icon = useMemo(() => ({ name: iconName }), [iconName]);
 
   return (
     <EntityItemWrapper
-      {...spacing}
       className={cx("hover-parent hover--visibility", {
         "bg-light-hover": variant === "list",
       })}
+      variant={variant}
       disabled={disabled}
     >
       <EntityIconCheckBox
         item={item}
         variant={variant}
-        iconName={iconName}
+        icon={icon}
         pinned={pinned}
         selectable={selectable}
         selected={selected}
         disabled={disabled}
         onToggleSelected={onToggleSelected}
-        style={{
-          marginRight: "16px",
-        }}
       />
 
-      <Box>
+      <div className="overflow-hidden">
         <EntityItemName name={name} />
-        <Box>{extraInfo && extraInfo}</Box>
-      </Box>
+        <div>{extraInfo && extraInfo}</div>
+      </div>
 
-      <Flex ml="auto" pr={1} align="center" onClick={e => e.preventDefault()}>
+      <EntityItemActions onClick={e => e.preventDefault()}>
         {buttons}
         {loading && <EntityItemSpinner size={24} borderWidth={3} />}
         <EntityItemMenu
@@ -190,7 +231,7 @@ const EntityItem = ({
           className="ml1"
           analyticsContext={analyticsContext}
         />
-      </Flex>
+      </EntityItemActions>
     </EntityItemWrapper>
   );
 };

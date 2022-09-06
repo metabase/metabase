@@ -1,10 +1,10 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 
-import _DimensionLabel from "metabase/components/MetadataInfo/DimensionLabel";
+import _DimensionSemanticTypeLabel from "metabase/components/MetadataInfo/DimensionSemanticTypeLabel";
 import _FieldFingerprintInfo from "metabase/components/MetadataInfo/FieldFingerprintInfo";
 import { InfoContainer as _InfoContainer } from "metabase/components/MetadataInfo/MetadataInfo.styled";
 
-export const DimensionLabel = styled(_DimensionLabel)`
+export const DimensionSemanticTypeLabel = styled(_DimensionSemanticTypeLabel)`
   font-size: 0.9em;
 `;
 

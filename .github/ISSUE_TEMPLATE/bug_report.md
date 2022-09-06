@@ -30,12 +30,12 @@ If applicable, add screenshots to help explain your problem.
 
 You can get this information by going to Admin -> Troubleshooting.
 
-- Your browser and the version: (e.x. Chrome 52.1, Firefox 48.0, Safari 11.1, …)
-- Your operating system: (e.x. OS X 10.10, Windows 10.1809, Ubuntu 16.04, …)
-- Your databases: (e.x. MySQL, Postgres, MongoDB, …)
-- Metabase version: (e.x. 0.19.3)
-- Metabase hosting environment: (e.x. Mac app, Elastic Beanstalk, Docker, Heroku, Jar-file on Ubuntu, …)
-- Metabase internal database: (e.x. H2 (default), Postgres or MySQL)
+- Your browser and the version: (e.g., Chrome 52.1, Firefox 48.0, Safari 11.1, …)
+- Your operating system: (e.g., OS X 10.10, Windows 10.1809, Ubuntu 16.04, …)
+- Your databases: (e.g, MySQL, Postgres, MongoDB, …)
+- Metabase version: (e.g., 0.19.3)
+- Metabase hosting environment: (e.g., Elastic Beanstalk, Docker, Heroku, Jar-file on Ubuntu, …)
+- Metabase internal database: (e.g., H2 (default), Postgres or MySQL)
 
 **Severity**
 How severe an issue is this bug to you? Is this annoying, blocking some users, blocking an upgrade or blocking your usage of Metabase entirely?

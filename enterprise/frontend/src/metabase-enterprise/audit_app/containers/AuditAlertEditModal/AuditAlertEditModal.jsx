@@ -4,9 +4,11 @@ import _ from "underscore";
 import { t } from "ttag";
 import Alerts from "metabase/entities/alerts";
 import Users from "metabase/entities/users";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import AuditNotificationEditModal from "../../components/AuditNotificationEditModal";
 
 const mapStateToProps = (state, { alert }) => ({
+  isAdmin: getUserIsAdmin(state),
   item: alert,
   type: "alert",
   invalidRecipientText: domains =>

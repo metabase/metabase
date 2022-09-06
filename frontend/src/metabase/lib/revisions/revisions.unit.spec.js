@@ -14,6 +14,7 @@ const DEFAULT_EPOCH_TIMESTAMP = new Date(DEFAULT_TIMESTAMP).valueOf();
 function getRevision({
   isCreation = false,
   isReversion = false,
+  userId = 1,
   username = "Foo",
   before,
   after,
@@ -25,6 +26,7 @@ function getRevision({
       after,
     },
     user: {
+      id: userId,
       common_name: username,
     },
     is_creation: isCreation,
@@ -276,6 +278,16 @@ describe("getRevisionDescription | questions", () => {
       "changed this from a model to a saved question",
     );
   });
+
+  it("handles metadata changes for models", () => {
+    const revision = getSimpleRevision({
+      field: "result_metadata",
+      before: [{ foo: "" }],
+      after: [{ foo: "bar" }],
+    });
+
+    expect(getRevisionDescription(revision)).toBe("edited the metadata");
+  });
 });
 
 describe("getRevisionDescription | dashboards", () => {
@@ -425,11 +437,9 @@ describe("getRevisionEvents", () => {
   const revisionEvents = [latestRevisionEvent, changeEvent, creationEvent];
 
   it("should convert a revision object into an object for use in a <Timeline /> component", () => {
-    const canWrite = false;
-    const timelineEvents = getRevisionEventsForTimeline(
-      revisionEvents,
-      canWrite,
-    );
+    const timelineEvents = getRevisionEventsForTimeline(revisionEvents, {
+      canWrite: false,
+    });
 
     expect(timelineEvents).toEqual([
       getExpectedEvent({
@@ -456,28 +466,23 @@ describe("getRevisionEvents", () => {
   });
 
   it("should set the `isRevertable` to false when the user doesn't have write access", () => {
-    const canWrite = false;
-    const timelineEvents = getRevisionEventsForTimeline(
-      revisionEvents,
-      canWrite,
-    );
+    const timelineEvents = getRevisionEventsForTimeline(revisionEvents, {
+      canWrite: false,
+    });
 
     expect(timelineEvents.every(event => event.isRevertable)).toBe(false);
   });
 
   it("should set the `isRevertable` to true on all revisions that are not the most recent revision when the user has write access", () => {
-    const canWrite = true;
-    const timelineEvents = getRevisionEventsForTimeline(
-      revisionEvents,
-      canWrite,
-    );
+    const timelineEvents = getRevisionEventsForTimeline(revisionEvents, {
+      canWrite: true,
+    });
 
     expect(timelineEvents[0].isRevertable).toBe(false);
     expect(timelineEvents[1].isRevertable).toBe(true);
   });
 
   it("should drop invalid revisions", () => {
-    const canWrite = true;
     const timelineEvents = getRevisionEventsForTimeline(
       [
         changeEvent,
@@ -486,7 +491,7 @@ describe("getRevisionEvents", () => {
           after: null,
         }),
       ],
-      canWrite,
+      { canWrite: true },
     );
     expect(timelineEvents).toEqual([
       getExpectedEvent({
@@ -498,7 +503,6 @@ describe("getRevisionEvents", () => {
   });
 
   it("should drop revisions with not registered fields", () => {
-    const canWrite = true;
     const timelineEvents = getRevisionEventsForTimeline(
       [
         changeEvent,
@@ -509,13 +513,32 @@ describe("getRevisionEvents", () => {
           after: { "dont-know-this-field": 2 },
         }),
       ],
-      canWrite,
+      { canWrite: true },
     );
     expect(timelineEvents).toEqual([
       getExpectedEvent({
         title: <RevisionTitle username="Foo" message="added a description" />,
         isRevertable: false,
         revision: changeEvent,
+      }),
+    ]);
+  });
+
+  it("should use 'You' instead of a username if it's current user", () => {
+    const currentUser = { id: 5 };
+    const event = getRevision({
+      isCreation: true,
+      userId: currentUser.id,
+    });
+    const timelineEvents = getRevisionEventsForTimeline([event], {
+      currentUser,
+    });
+
+    expect(timelineEvents).toEqual([
+      getExpectedEvent({
+        title: <RevisionTitle username="You" message="created this" />,
+        isRevertable: false,
+        revision: event,
       }),
     ]);
   });

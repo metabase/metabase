@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore } from "__support__/e2e/helpers";
 
 describe("scenarios > admin > spinner", () => {
   beforeEach(() => {
@@ -9,14 +9,15 @@ describe("scenarios > admin > spinner", () => {
   describe("API request", () => {
     it("should return correct DB", () => {
       cy.visit("/admin/databases/1");
-      cy.findByText("Sample Dataset");
+      cy.findByText("Sample Database");
       cy.findByText("Add Database").should("not.exist");
     });
 
-    it.skip("should not spin forever if it returns an error (metabase#11037)", () => {
+    it("should not spin forever if it returns an error (metabase#11037)", () => {
       cy.visit("/admin/databases/999");
       cy.findAllByText("Databases").should("have.length", 2);
       cy.findByText("Loading...").should("not.exist");
+      cy.findByText("Not found.");
     });
   });
 });

@@ -3,19 +3,22 @@
             [clojure.string :as str]
             [clojure.test :refer :all]
             [metabase.db.liquibase :as liquibase]
+            [metabase.db.test-util :as mdb.test-util]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.test :as mt]))
 
 (deftest mysql-engine-charset-test
   (mt/test-driver :mysql
     (testing "Make sure MySQL CREATE DATABASE statements have ENGINE/CHARACTER SET appended to them (#10691)"
-      (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :mysql
-                                       (mt/dbdef->connection-details :mysql :server nil))]
+      (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec
+                                      :mysql
+                                      (mt/dbdef->connection-details :mysql :server nil))]
         (doseq [statement ["DROP DATABASE IF EXISTS liquibase_test;"
                            "CREATE DATABASE liquibase_test;"]]
           (jdbc/execute! conn statement)))
-      (liquibase/with-liquibase [liquibase (sql-jdbc.conn/connection-details->spec :mysql
-                                             (mt/dbdef->connection-details :mysql :db {:database-name "liquibase_test"}))]
+      (liquibase/with-liquibase [liquibase (->> (mt/dbdef->connection-details :mysql :db {:database-name "liquibase_test"})
+                                                (sql-jdbc.conn/connection-details->spec :mysql)
+                                                mdb.test-util/->ClojureJDBCSpecDataSource)]
         (testing "Make sure the first line actually matches the shape we're testing against"
           (is (= (str "CREATE TABLE liquibase_test.DATABASECHANGELOGLOCK ("
                       "ID INT NOT NULL, "

@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { createEntity } from "metabase/lib/entities";
 import validate from "metabase/lib/validate";
-import { canonicalCollectionId } from "metabase/entities/collections";
+import { canonicalCollectionId } from "metabase/collections/utils";
 
 const formFields = [
   {

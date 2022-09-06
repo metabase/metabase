@@ -1,22 +1,17 @@
-import { restore } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { restore, visitDashboard } from "__support__/e2e/helpers";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const {
-  ORDERS,
-  ORDERS_ID,
-  PRODUCTS,
-  PRODUCTS_ID,
-  REVIEWS,
-  REVIEWS_ID,
-} = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
+  SAMPLE_DATABASE;
 
 describe("scenarios > dashboard > dashboard cards > click behavior", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
-  it.skip("should show filters defined on a question with filter pass-thru (metabase#15993)", () => {
+  it("should show filters defined on a question with filter pass-thru (metabase#15993)", () => {
     cy.createQuestion({
       name: "15993",
       query: {
@@ -40,23 +35,13 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
                     col: 0,
                     sizeX: 12,
                     sizeY: 10,
-                    visualization_settings: getVisualizationSettings(
-                      question1Id,
-                    ),
+                    visualization_settings:
+                      getVisualizationSettings(question1Id),
                   },
                 ],
               });
 
-              cy.visit(`/dashboard/${dashboardId}`);
-
-              cy.intercept(
-                "POST",
-                `/api/dashboard/${dashboardId}/card/${question1Id}/query`,
-              ).as("cardQuery");
-
-              cy.intercept("POST", `/api/card/${nativeId}/query`).as(
-                "nativeQuery",
-              );
+              visitDashboard(dashboardId);
             });
           });
         },
@@ -64,12 +49,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     });
 
     // Drill-through
-    cy.wait("@nativeQuery");
-    cy.get(".cellData .link")
-      .contains("0")
-      .realClick();
+    cy.findAllByTestId("cell-data").get(".link").contains("0").realClick();
 
-    cy.wait("@cardQuery");
     cy.contains("117.03").should("not.exist"); // Total for the order in which quantity wasn't 0
     cy.findByText("Quantity is equal to 0");
 
@@ -134,21 +115,12 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             ],
           });
 
-          cy.visit(`/dashboard/${dashboard_id}`);
-
-          cy.intercept(
-            "POST",
-            `/api/dashboard/${dashboard_id}/card/${card_id}/query`,
-          ).as("cardQuery");
+          visitDashboard(dashboard_id);
         },
       );
     });
 
-    cy.wait("@cardQuery");
-    cy.get(".cellData")
-      .contains("5")
-      .first()
-      .click();
+    cy.findAllByTestId("cell-data").contains("5").first().click();
 
     // Make sure filter is set
     cy.findByText("Rating is equal to 5");
@@ -186,4 +158,65 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       },
     });
   });
+
+  it("should navigate to a target from a gauge card (metabase#23137)", () => {
+    const target_id = 1;
+
+    cy.createQuestionAndDashboard({
+      questionDetails: getQuestionDetails({ display: "gauge" }),
+    }).then(({ body: { id, card_id, dashboard_id } }) => {
+      cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
+        cards: [getDashcardDetails({ id, card_id, target_id })],
+      });
+
+      visitDashboard(dashboard_id);
+    });
+
+    cy.findByTestId("gauge-arc-1").click();
+    cy.wait("@dataset");
+    cy.findByText("Orders");
+  });
+
+  it("should navigate to a target from a progress card (metabase#23137)", () => {
+    const target_id = 1;
+
+    cy.createQuestionAndDashboard({
+      questionDetails: getQuestionDetails({ display: "progress" }),
+    }).then(({ body: { id, card_id, dashboard_id } }) => {
+      cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
+        cards: [getDashcardDetails({ id, card_id, target_id })],
+      });
+
+      visitDashboard(dashboard_id);
+    });
+
+    cy.findByTestId("progress-bar").click();
+    cy.wait("@dataset");
+    cy.findByText("Orders");
+  });
+});
+
+const getQuestionDetails = ({ display }) => ({
+  display,
+  query: {
+    "source-table": REVIEWS_ID,
+    aggregation: [["count"]],
+  },
+});
+
+const getDashcardDetails = ({ id, card_id, target_id }) => ({
+  id,
+  card_id,
+  row: 0,
+  col: 0,
+  sizeX: 12,
+  sizeY: 10,
+  visualization_settings: {
+    click_behavior: {
+      type: "link",
+      linkType: "question",
+      targetId: target_id,
+      parameterMapping: {},
+    },
+  },
 });

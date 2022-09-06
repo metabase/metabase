@@ -1,7 +1,5 @@
 import React from "react";
-import styled from "styled-components";
-
-import { forwardRefToInnerRef } from "metabase/styled-components/utils";
+import styled from "@emotion/styled";
 
 import TippyPopover from "./TippyPopover";
 
@@ -15,26 +13,31 @@ const Base = styled.div`
   justify-content: center;
 `;
 
-const PopoverBody = forwardRefToInnerRef(styled(Base)`
+const PopoverBody = styled(Base)`
   border: none;
   height: 200px;
   width: 200px;
-`);
+`;
 
-const LazyPopoverBody = forwardRefToInnerRef(styled(Base)`
+const LongPopoverBody = styled(PopoverBody)`
+  height: 600px;
+`;
+
+const LazyPopoverBody = styled(Base)`
   border: none;
   height: 200px;
   width: 200px;
   transition: opacity 1s;
   opacity: ${props => props.opacity};
-`);
+`;
 
-const PopoverTarget = forwardRefToInnerRef(styled(Base)`
+const PopoverTarget = styled(Base)`
   height: 100px;
   width: 100px;
-`);
+`;
 
 const content = <PopoverBody>popover body</PopoverBody>;
+const longContent = <LongPopoverBody>long popover body</LongPopoverBody>;
 const target = <PopoverTarget>popover target</PopoverTarget>;
 
 function LazyContentExample() {
@@ -52,6 +55,22 @@ function LazyContentExample() {
   }, [opacity]);
 
   return <LazyPopoverBody opacity={opacity}>popover content</LazyPopoverBody>;
+}
+
+function VisiblePropExample() {
+  const [visible, setVisible] = React.useState(true);
+  return (
+    <TippyPopover
+      visible={visible}
+      onHide={() => {
+        setVisible(false);
+      }}
+      placement="left-end"
+      content={content}
+    >
+      <div onClick={() => setVisible(true)}>{target}</div>
+    </TippyPopover>
+  );
 }
 
 export const examples = {
@@ -79,9 +98,26 @@ export const examples = {
       </TippyPopover>
     </React.Fragment>
   ),
-  interactive: (
-    <TippyPopover interactive placement="left-end" content={content}>
+  "interactive disabled": (
+    <TippyPopover interactive={false} placement="left-end" content={content}>
       {target}
     </TippyPopover>
   ),
+  "control mode + handling of Esc press": <VisiblePropExample />,
+  "flip disabled": (
+    <TippyPopover flip={false} placement="bottom-start" content={content}>
+      {target}
+    </TippyPopover>
+  ),
+  sizeToFit: (
+    <TippyPopover
+      sizeToFit
+      placement="bottom-start"
+      visible
+      content={longContent}
+    >
+      {target}
+    </TippyPopover>
+  ),
+  extra_space: <div style={{ height: 400 }} />,
 };

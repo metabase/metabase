@@ -7,23 +7,27 @@ import {
   scaleTime,
 } from "@visx/scale";
 import {
+  getX,
+  getY,
+} from "metabase/static-viz/components/XYChart/utils/series";
+
+import type {
   SeriesDatum,
   XAxisType,
   ContiniousDomain,
   Range,
   Series,
   YAxisType,
+  HydratedSeries,
+  StackedDatum,
+  XScale,
 } from "metabase/static-viz/components/XYChart/types";
-import {
-  getX,
-  getY,
-} from "metabase/static-viz/components/XYChart/utils/series";
 
 export const createXScale = (
   series: Series[],
   range: Range,
   axisType: XAxisType,
-) => {
+): XScale => {
   const hasBars = series.some(series => series.type === "bar");
   const isOrdinal = axisType === "ordinal";
 
@@ -38,7 +42,6 @@ export const createXScale = (
     const xScale = scaleBand({
       domain,
       range,
-      round: true,
       padding: 0.1,
     });
 
@@ -85,11 +88,13 @@ export const createXScale = (
 };
 
 const calculateYDomain = (
-  series: Series[],
+  series: HydratedSeries[],
   goalValue?: number,
 ): ContiniousDomain => {
   const values = series
-    .flatMap(series => series.data)
+    .flatMap<SeriesDatum | StackedDatum>(
+      series => series.stackedData ?? series.data,
+    )
     .map(datum => getY(datum));
   const minValue = min(values);
   const maxValue = max(values);
@@ -100,7 +105,10 @@ const calculateYDomain = (
   ];
 };
 
-export const calculateYDomains = (series: Series[], goalValue?: number) => {
+export const calculateYDomains = (
+  series: HydratedSeries[],
+  goalValue?: number,
+) => {
   const leftScaleSeries = series.filter(
     series => series.yAxisPosition === "left",
   );

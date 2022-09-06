@@ -2,14 +2,14 @@
   "Tests for *MBQL* parameter substitution."
   (:require [clojure.test :refer :all]
             [metabase.driver :as driver]
-            [metabase.mbql.normalize :as normalize]
+            [metabase.mbql.normalize :as mbql.normalize]
             [metabase.query-processor :as qp]
-            [metabase.query-processor.middleware.parameters.mbql :as mbql-params]
+            [metabase.query-processor.middleware.parameters.mbql :as qp.mbql]
             [metabase.test :as mt]))
 
 (defn- expand-parameters [query]
-  (let [query (normalize/normalize query)]
-    (mbql-params/expand (dissoc query :parameters) (:parameters query))))
+  (let [query (mbql.normalize/normalize query)]
+    (qp.mbql/expand (dissoc query :parameters) (:parameters query))))
 
 (defn- expanded-query-with-filter [filter-clause]
   {:database 1
@@ -220,7 +220,7 @@
                              "FROM \"PUBLIC\".\"VENUES\" "
                              "WHERE (\"PUBLIC\".\"VENUES\".\"PRICE\" = 3 OR \"PUBLIC\".\"VENUES\".\"PRICE\" = 4)")
                 :params nil}
-               (qp/query->native
+               (qp/compile
                 (mt/query venues
                   {:query      {:aggregation [[:count]]}
                    :parameters [{:name   "price"
@@ -244,7 +244,7 @@
                              "FROM \"PUBLIC\".\"VENUES\" "
                              "WHERE \"PUBLIC\".\"VENUES\".\"PRICE\" BETWEEN 3 AND 4")
                 :params nil}
-               (qp/query->native
+               (qp/compile
                 (mt/query venues
                   {:query      {:aggregation [[:count]]}
                    :parameters [{:name   "price"
@@ -264,7 +264,7 @@
                    #t "2014-07-01T00:00Z[UTC]"
                    #t "2015-06-01T00:00Z[UTC]"
                    #t "2015-07-01T00:00Z[UTC]"]}
-         (qp/query->native
+         (qp/compile
            (mt/query checkins
              {:query      {:aggregation [[:count]]}
               :parameters [{:name   "date"
@@ -275,7 +275,7 @@
 (deftest convert-ids-to-numbers-test
   (is (= (mt/$ids venues
            [:= $id 1])
-         (#'mbql-params/build-filter-clause
+         (#'qp.mbql/build-filter-clause
           (mt/$ids venues
             {:type   :id
              :target [:dimension $id]

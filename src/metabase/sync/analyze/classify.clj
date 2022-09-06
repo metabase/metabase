@@ -19,11 +19,12 @@
   (:require [clojure.data :as data]
             [clojure.tools.logging :as log]
             [metabase.models.field :refer [Field]]
+            [metabase.models.interface :as mi]
             [metabase.models.table :refer [Table]]
-            [metabase.sync.analyze.classifiers.category :as category]
-            [metabase.sync.analyze.classifiers.name :as name]
-            [metabase.sync.analyze.classifiers.no-preview-display :as no-preview-display]
-            [metabase.sync.analyze.classifiers.text-fingerprint :as text-fingerprint]
+            [metabase.sync.analyze.classifiers.category :as classifiers.category]
+            [metabase.sync.analyze.classifiers.name :as classifiers.name]
+            [metabase.sync.analyze.classifiers.no-preview-display :as classifiers.no-preview-display]
+            [metabase.sync.analyze.classifiers.text-fingerprint :as classifiers.text-fingerprint]
             [metabase.sync.interface :as i]
             [metabase.sync.util :as sync-util]
             [metabase.util :as u]
@@ -55,7 +56,7 @@
         (throw (Exception. (format "Classifiers are not allowed to set the value of %s." k)))))
     ;; cool, now we should be ok to update the model
     (when values-to-set
-      (db/update! (if (instance? (type Field) original-model)
+      (db/update! (if (mi/instance-of? Field original-model)
                     Field
                     Table)
           (u/the-id original-model)
@@ -69,10 +70,10 @@
 
   A classifier may see the original field (before any classifiers were run) in the metadata of the field at
   `:sync.classify/original`."
-  [name/infer-and-assoc-semantic-type
-   category/infer-is-category-or-list
-   no-preview-display/infer-no-preview-display
-   text-fingerprint/infer-semantic-type])
+  [classifiers.name/infer-and-assoc-semantic-type
+   classifiers.category/infer-is-category-or-list
+   classifiers.no-preview-display/infer-no-preview-display
+   classifiers.text-fingerprint/infer-semantic-type])
 
 (s/defn run-classifiers :- i/FieldInstance
   "Run all the available `classifiers` against `field` and `fingerprint`, and return the resulting `field` with
@@ -130,14 +131,14 @@
   [table :- i/TableInstance]
   (let [updated-table (sync-util/with-error-handling (format "Error running classifier on %s"
                                                              (sync-util/name-for-logging table))
-                        (name/infer-entity-type table))]
+                        (classifiers.name/infer-entity-type table))]
     (if (instance? Exception updated-table)
       table
       (save-model-updates! table updated-table))))
 
 (s/defn classify-tables-for-db!
   "Classify all tables found in a given database"
-  [database :- i/DatabaseInstance
+  [_database :- i/DatabaseInstance
    tables :- [i/TableInstance]
    log-progress-fn]
   {:total-tables      (count tables)
@@ -151,7 +152,7 @@
 
 (s/defn classify-fields-for-db!
   "Classify all fields found in a given database"
-  [database :- i/DatabaseInstance
+  [_database :- i/DatabaseInstance
    tables :- [i/TableInstance]
    log-progress-fn]
   (apply merge-with +

@@ -1,37 +1,62 @@
 import {
+  bookmark,
   browseDatabase,
   collection,
   dashboard,
+  dataApp,
   question,
   extractQueryParams,
   extractEntityId,
   extractCollectionId,
   isCollectionPath,
 } from "metabase/lib/urls";
+import {
+  createMockDataApp,
+  createMockCollection,
+} from "metabase-types/api/mocks";
 
 describe("urls", () => {
   describe("question", () => {
     describe("with a query", () => {
       it("returns the correct url", () => {
-        expect(question({}, "", { foo: "bar" })).toEqual("/question?foo=bar");
-        expect(question({}, "hash", { foo: "bar" })).toEqual(
+        expect(question({}, { query: { foo: "bar" } })).toEqual(
+          "/question?foo=bar",
+        );
+        expect(question({}, { hash: "hash", query: { foo: "bar" } })).toEqual(
           "/question?foo=bar#hash",
         );
-        expect(question(null, "hash", { foo: "bar" })).toEqual(
+        expect(question(null, { hash: "hash", query: { foo: "bar" } })).toEqual(
           "/question?foo=bar#hash",
         );
-        expect(question(null, "", { foo: "bar" })).toEqual("/question?foo=bar");
-        expect(question(null, "", { foo: "bar+bar" })).toEqual(
+        expect(question(null, { query: { foo: "bar" } })).toEqual(
+          "/question?foo=bar",
+        );
+        expect(question(null, { query: { foo: "bar+bar" } })).toEqual(
           "/question?foo=bar%2Bbar",
         );
-        expect(question(null, "", { foo: ["bar", "baz"] })).toEqual(
+        expect(question(null, { query: { foo: ["bar", "baz"] } })).toEqual(
           "/question?foo=bar&foo=baz",
         );
-        expect(question(null, "", { foo: ["bar", "baz+bay"] })).toEqual(
+        expect(question(null, { query: { foo: ["bar", "baz+bay"] } })).toEqual(
           "/question?foo=bar&foo=baz%2Bbay",
         );
-        expect(question(null, "", { foo: ["bar", "baz&bay"] })).toEqual(
+        expect(question(null, { query: { foo: ["bar", "baz&bay"] } })).toEqual(
           "/question?foo=bar&foo=baz%26bay",
+        );
+      });
+
+      it("does not include undefined params", () => {
+        expect(question(null, { query: { foo: undefined } })).toEqual(
+          "/question",
+        );
+        expect(
+          question(null, { query: { foo: undefined, bar: "bar" } }),
+        ).toEqual("/question?bar=bar");
+      });
+
+      it("includes null params", () => {
+        expect(question(null, { query: { foo: null } })).toEqual(
+          "/question?foo=null",
         );
       });
     });
@@ -67,17 +92,48 @@ describe("urls", () => {
       });
     });
 
-    describe("dataset", () => {
-      it("returns /dataset URLS", () => {
-        expect(question({ id: 1, dataset: true, name: "Foo" })).toEqual(
-          "/dataset/1-foo",
+    describe("with object ID", () => {
+      it("should append object ID to path", () => {
+        const url = question({ id: 1 }, { objectId: 5 });
+        expect(url).toBe("/question/1/5");
+      });
+
+      it("should support query params", () => {
+        const url = question({ id: 1 }, { query: "?a=b", objectId: 5 });
+        expect(url).toBe("/question/1/5?a=b");
+      });
+
+      it("should support hash", () => {
+        const url = question({ id: 1 }, { hash: "abc", objectId: 5 });
+        expect(url).toBe("/question/1/5#abc");
+      });
+
+      it("should support both hash and query params", () => {
+        const url = question(
+          { id: 1, name: "foo" },
+          { hash: "abc", query: "a=b", objectId: 5 },
         );
+        expect(url).toBe("/question/1-foo/5?a=b#abc");
+      });
+    });
+
+    describe("model", () => {
+      it("returns /model URLS", () => {
+        expect(question({ id: 1, dataset: true, name: "Foo" })).toEqual(
+          "/model/1-foo",
+        );
+
         expect(
           question({ id: 1, card_id: 42, dataset: true, name: "Foo" }),
-        ).toEqual("/dataset/42-foo");
+        ).toEqual("/model/42-foo");
+
         expect(
           question({ id: 1, card_id: 42, model: "dataset", name: "Foo" }),
-        ).toEqual("/dataset/42-foo");
+        ).toEqual("/model/42-foo");
+
+        expect(
+          question({ id: 1, dataset: true, name: "Foo" }, { objectId: 4 }),
+        ).toEqual("/model/1-foo/4");
       });
     });
   });
@@ -166,6 +222,108 @@ describe("urls", () => {
           personal_owner_id: 1,
         }),
       ).toBe("/collection/1-john-doe-s-personal-collection");
+    });
+
+    it("handles data app collections", () => {
+      const appCollection = createMockCollection({
+        id: 2,
+        app_id: 5,
+        name: "My App",
+      });
+      expect(collection(appCollection)).toBe("/apps/5-my-app");
+    });
+  });
+
+  describe("dataApp", () => {
+    const appCollection = createMockCollection({ id: 1 });
+    const app = createMockDataApp({ id: 2, collection: appCollection });
+
+    const appId = app.id;
+    const appName = appCollection.name.toLowerCase();
+
+    const appSearchItem = {
+      id: appCollection.id,
+      app_id: app.id,
+      collection: { ...appCollection, app_id: app.id },
+    };
+
+    it("returns data app preview URL", () => {
+      expect(dataApp(app, { mode: "preview" })).toBe(
+        `/apps/${appId}-${appName}`,
+      );
+    });
+
+    it("returns data app internal URL", () => {
+      expect(dataApp(app, { mode: "internal" })).toBe(`/a/${appId}-${appName}`);
+    });
+
+    it("returns data app preview URL out of search result item", () => {
+      expect(dataApp(appSearchItem, { mode: "preview" })).toBe(
+        `/apps/${appId}-${appName}`,
+      );
+    });
+
+    it("returns data app internal URL out of search result item", () => {
+      expect(dataApp(appSearchItem, { mode: "internal" })).toBe(
+        `/a/${appId}-${appName}`,
+      );
+    });
+  });
+
+  describe("bookmarks", () => {
+    it("returns card bookmark path", () => {
+      expect(
+        bookmark({
+          id: "card-5",
+          dataset: false,
+          name: "Orders",
+          type: "card",
+        }),
+      ).toBe("/question/5-orders");
+    });
+
+    it("returns model bookmark path", () => {
+      expect(
+        bookmark({
+          id: "card-1",
+          dataset: true,
+          name: "Product",
+          type: "card",
+        }),
+      ).toBe("/model/1-product");
+    });
+
+    it("returns dashboard bookmark path", () => {
+      expect(
+        bookmark({
+          id: "dashboard-3",
+          name: "Shop Stats",
+          type: "dashboard",
+        }),
+      ).toBe("/dashboard/3-shop-stats");
+    });
+
+    it("returns collection bookmark path", () => {
+      expect(
+        bookmark({
+          id: "collection-8",
+          item_id: 8,
+          name: "Growth",
+          type: "collection",
+        }),
+      ).toBe("/collection/8-growth");
+    });
+
+    it("returns data app bookmark path", () => {
+      expect(
+        bookmark({
+          id: "collection-3",
+          item_id: 3,
+          name: "Shop",
+          type: "collection",
+          app_id: 14,
+        }),
+      ).toBe("/apps/14-shop");
     });
   });
 

@@ -4,3 +4,4 @@ export * from "./ticks";
 export * from "./margin";
 export * from "./legend";
 export * from "./bounds";
+export * from "./values";

@@ -16,14 +16,13 @@
             [metabase.cmd.copy :as copy]
             [metabase.cmd.copy.h2 :as copy.h2]
             [metabase.cmd.rotate-encryption-key :as rotate-encryption]
-            [metabase.db.connection :as mdb.conn]
-            [toucan.db :as db]))
+            [metabase.db.connection :as mdb.connection]))
 
 (defn dump-to-h2!
   "Transfer data from existing database specified by connection string to the H2 DB specified by env vars. Intended as a
   tool for migrating from one instance to another using H2 as serialization target.
 
-  Defaults to using `@metabase.db.env/db-file` as the connection string.
+  Defaults to using [[metabase.db.env/db-file]] as the connection string.
 
   Target H2 DB will be deleted if it exists, unless `keep-existing?` is truthy."
   ([h2-filename]
@@ -31,15 +30,12 @@
 
   ([h2-filename {:keys [keep-existing? dump-plaintext?]
                  :or   {keep-existing? false dump-plaintext? false}}]
-   (let [h2-filename  (or h2-filename "metabase_dump.h2")
-         h2-jdbc-spec (copy.h2/h2-jdbc-spec h2-filename)]
+   (let [h2-filename    (or h2-filename "metabase_dump.h2")
+         h2-data-source (copy.h2/h2-data-source h2-filename)]
      (log/infof "Dumping from configured Metabase db to H2 file %s" h2-filename)
      (when-not keep-existing?
        (copy.h2/delete-existing-h2-database-files! h2-filename))
-     (copy/copy!  (mdb.conn/db-type) (mdb.conn/jdbc-spec) :h2 h2-jdbc-spec)
+     (copy/copy! (mdb.connection/db-type) (mdb.connection/data-source) :h2 h2-data-source)
      (when dump-plaintext?
-       (binding [mdb.conn/*db-type* :h2
-                 mdb.conn/*jdbc-spec* h2-jdbc-spec
-                 db/*db-connection* h2-jdbc-spec
-                 db/*quoting-style* :h2]
+       (binding [mdb.connection/*application-db* (mdb.connection/application-db :h2 h2-data-source)]
          (rotate-encryption/rotate-encryption-key! nil))))))

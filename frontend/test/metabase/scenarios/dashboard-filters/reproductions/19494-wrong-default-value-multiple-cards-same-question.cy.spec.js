@@ -3,7 +3,8 @@ import {
   popover,
   editDashboard,
   saveDashboard,
-} from "__support__/e2e/cypress";
+  visitDashboard,
+} from "__support__/e2e/helpers";
 
 const filter1 = {
   name: "Card 1 Filter",
@@ -25,7 +26,7 @@ const filter2 = {
 const card1 = getCardProperties({ id: 1, col: 0 });
 const card2 = getCardProperties({ id: 2, col: 9 });
 
-describe.skip("issue 19494", () => {
+describe("issue 19494", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -47,7 +48,7 @@ describe.skip("issue 19494", () => {
   it("should correctly apply different filters with default values to all cards of the same question (metabase#19494)", () => {
     // Instead of using the API to connect filters to the cards,
     // let's use UI to replicate user experience as closely as possible
-    cy.visit("/dashboard/1");
+    visitDashboard(1);
 
     editDashboard();
 
@@ -86,31 +87,21 @@ function getCardProperties(cardObject) {
 }
 
 function connectFilterToCard({ filterName, cardPosition }) {
-  cy.findByText(filterName)
-    .find(".Icon-gear")
-    .click();
+  cy.findByText(filterName).find(".Icon-gear").click();
 
-  cy.findAllByText("Select…")
-    .eq(cardPosition)
-    .click();
+  cy.findAllByText("Select…").eq(cardPosition).click();
 
-  popover()
-    .contains("Category")
-    .click();
+  popover().contains("Category").click();
 }
 
 function setDefaultFilter(value) {
   cy.findByText("No default").click();
 
-  popover()
-    .contains(value)
-    .click();
+  popover().contains(value).click();
 
   cy.button("Add filter").click();
 }
 
 function checkAppliedFilter(name, value) {
-  cy.findByText(name)
-    .closest("fieldset")
-    .contains(value);
+  cy.findByText(name).closest("fieldset").contains(value);
 }

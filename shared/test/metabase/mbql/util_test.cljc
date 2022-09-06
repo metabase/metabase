@@ -6,7 +6,7 @@
 
 (comment metabase.types/keep-me)
 
-(t/deftest simplify-compound-filter-test
+(t/deftest ^:parallel simplify-compound-filter-test
   (t/is (= [:= [:field 1 nil] 2]
            (mbql.u/simplify-compound-filter [:and [:= [:field 1 nil] 2]]))
         "can `simplify-compound-filter` fix `and` or `or` with only one arg?")
@@ -110,7 +110,7 @@
     (t/is (= [:= [:field 1 nil] nil]
              (mbql.u/simplify-compound-filter [:and nil [:= [:field 1 nil] nil]])))))
 
-(t/deftest add-order-by-clause-test
+(t/deftest ^:parallel add-order-by-clause-test
   (t/testing "can we add an order-by clause to a query?"
     (t/is (= {:source-table 1, :order-by [[:asc [:field 10 nil]]]}
              (mbql.u/add-order-by-clause {:source-table 1} [:asc [:field 10 nil]])))
@@ -143,7 +143,7 @@
                                             :order-by     [[:asc [:field 10 nil]]]}
                                            [:asc [:field 10 {:temporal-unit :day}]]))))))
 
-(t/deftest combine-filter-clauses-test
+(t/deftest ^:parallel combine-filter-clauses-test
   (t/is (= [:and [:= [:field 1 nil] 100] [:= [:field 2 nil] 200]]
            (mbql.u/combine-filter-clauses
             [:= [:field 1 nil] 100]
@@ -173,7 +173,7 @@
              [:= [:field 4 nil] 300]]))
         "Should be able to combine multiple compound clauses"))
 
-(t/deftest add-filter-clause-test
+(t/deftest ^:parallel add-filter-clause-test
   (t/is (= {:database 1
             :type     :query
             :query    {:source-table 1
@@ -186,7 +186,7 @@
             [:= [:field 2 nil] 200]))
         "Should be able to add a filter clause to a query"))
 
-(t/deftest desugar-time-interval-test
+(t/deftest ^:parallel desugar-time-interval-test
   (t/is (= [:between
             [:field 1 {:temporal-unit :month}]
             [:relative-datetime 1 :month]
@@ -228,7 +228,7 @@
            (mbql.u/desugar-filter-clause [:time-interval [:field 1 nil] :current :week]))
         "keywords like `:current` should work correctly"))
 
-(t/deftest desugar-time-interval-with-expression-test
+(t/deftest ^:parallel desugar-time-interval-with-expression-test
   (t/is (= [:between
             [:expression "CC"]
             [:relative-datetime 1 :month]
@@ -270,7 +270,7 @@
            (mbql.u/desugar-filter-clause [:time-interval [:expression "CC"] :current :week]))
         "keywords like `:current` should work correctly"))
 
-(t/deftest desugar-relative-datetime-with-current-test
+(t/deftest ^:parallel desugar-relative-datetime-with-current-test
   (t/testing "when comparing `:relative-datetime`to `:field`, it should take the temporal unit of the `:field`"
     (t/is (= [:=
               [:field 1 {:temporal-unit :minute}]
@@ -296,7 +296,29 @@
                [:field 1 {:temporal-unit :week, :binning {:strategy :default}}]
                [:relative-datetime :current]])))))
 
-(t/deftest desugar-other-filter-clauses-test
+(t/deftest relative-datetime-current-inside-between-test
+  (t/testing ":relative-datetime should work inside a :between clause (#19606)\n"
+    (let [absolute "2022-03-11T15:48:00-08:00"
+          relative [:relative-datetime :current]
+          expected (fn [v unit]
+                     (condp = v
+                       absolute absolute
+                       relative [:relative-datetime 0 unit]))]
+      (doseq [x    [relative absolute]
+              y    [relative absolute]
+              unit [:week :default]]
+        (t/testing (pr-str [:between [:field 1 {:temporal-unit unit}] x y])
+          (t/is (= [:between
+                    [:field 1 {:temporal-unit unit}]
+                    (expected x unit)
+                    (expected y unit)]
+                   (mbql.u/desugar-filter-clause
+                    [:between
+                     [:field 1 {:temporal-unit unit}]
+                     x
+                     y]))))))))
+
+(t/deftest ^:parallel desugar-other-filter-clauses-test
   (t/testing "desugaring := and :!= with extra args"
     (t/is (= [:or
               [:= [:field 1 nil] 2]
@@ -332,7 +354,7 @@
               [:!= [:field 1 nil] ""]]
              (mbql.u/desugar-filter-clause [:not-empty [:field 1 nil]])))))
 
-(t/deftest desugar-does-not-contain-test
+(t/deftest ^:parallel desugar-does-not-contain-test
   (t/testing "desugaring does-not-contain without options"
     (t/is (= [:not [:contains [:field 1 nil] "ABC"]]
              (mbql.u/desugar-filter-clause [:does-not-contain [:field 1 nil] "ABC"]))))
@@ -340,7 +362,7 @@
     (t/is (= [:not [:contains [:field 1 nil] "ABC" {:case-sensitive false}]]
              (mbql.u/desugar-filter-clause [:does-not-contain [:field 1 nil] "ABC" {:case-sensitive false}])))))
 
-(t/deftest negate-simple-filter-clause-test
+(t/deftest ^:parallel negate-simple-filter-clause-test
   (t/testing :=
     (t/is (= [:!= [:field 1 nil] 10]
              (mbql.u/negate-filter-clause [:= [:field 1 nil] 10]))))
@@ -374,7 +396,7 @@
     (t/is (= [:not [:ends-with [:field 1 nil] "ABC"]]
              (mbql.u/negate-filter-clause [:ends-with [:field 1 nil] "ABC"])))))
 
-(t/deftest negate-compund-filter-clause-test
+(t/deftest ^:parallel negate-compund-filter-clause-test
   (t/testing :not
     (t/is (= [:= [:field 1 nil] 10]
              (mbql.u/negate-filter-clause [:not [:= [:field 1 nil] 10]]))
@@ -396,7 +418,7 @@
                [:!= [:field 1 nil] 10]
                [:!= [:field 2 nil] 20]])))))
 
-(t/deftest negate-syntactic-sugar-filter-clause-test
+(t/deftest ^:parallel negate-syntactic-sugar-filter-clause-test
   (t/testing "= with extra args"
     (t/is (= [:and
               [:!= [:field 1 nil] 10]
@@ -437,7 +459,7 @@
              (mbql.u/negate-filter-clause
               [:inside [:field 1 nil] [:field 2 nil] 10.0 -20.0 -10.0 20.0])))))
 
-(t/deftest join->source-table-id-test
+(t/deftest ^:parallel join->source-table-id-test
   (let [join {:strategy  :left-join
               :condition [:=
                           [:field 48 nil]
@@ -460,7 +482,7 @@
               :aggregation  [[:avg [:field 1 nil]]
                              [:max [:field 1 nil]]]}})
 
-(t/deftest aggregation-at-index-test
+(t/deftest ^:parallel aggregation-at-index-test
   (doseq [[input expected] {[0]   [:avg [:field 1 nil]]
                             [1]   [:max [:field 1 nil]]
                             [0 0] [:avg [:field 1 nil]]
@@ -473,7 +495,7 @@
 
 ;;; --------------------------------- Unique names & transforming ags to have names ----------------------------------
 
-(t/deftest uniquify-names
+(t/deftest ^:parallel uniquify-names
   (t/testing "can we generate unique names?"
     (t/is (= ["count" "sum" "count_2" "count_3"]
              (mbql.u/uniquify-names ["count" "sum" "count" "count"]))))
@@ -487,7 +509,7 @@
     (t/is (= ["" "_2"]
              (mbql.u/uniquify-names ["" ""])))))
 
-(t/deftest uniquify-named-aggregations-test
+(t/deftest ^:parallel uniquify-named-aggregations-test
   (t/is (= [[:aggregation-options [:count] {:name "count"}]
             [:aggregation-options [:sum [:field 1 nil]] {:name "sum"}]
             [:aggregation-options [:count] {:name "count_2"}]
@@ -507,7 +529,7 @@
                [:aggregation-options [:count] {:name "count"}]
                [:aggregation-options [:count] {:name "count_2"}]])))))
 
-(t/deftest pre-alias-aggregations-test
+(t/deftest ^:parallel pre-alias-aggregations-test
   (letfn [(simple-ag->name [[ag-name]]
             (name ag-name))]
     (t/testing "can we wrap all of our aggregation clauses in `:named` clauses?"
@@ -589,7 +611,7 @@
                     [:sum [:field 1 nil]]
                     [:aggregation-options [:sum [:field 1 nil]] {:name "sum_2", :display-name "Sum of Field 1"}]])))))))
 
-(t/deftest unique-name-generator-test
+(t/deftest ^:parallel unique-name-generator-test
   (t/testing "Can we get a simple unique name generator"
     (t/is (= ["count" "sum" "count_2" "count_2_2"]
              (map (mbql.u/unique-name-generator) ["count" "sum" "count" "count_2"]))))
@@ -622,7 +644,7 @@
 
 ;;; --------------------------------------------- query->max-rows-limit ----------------------------------------------
 
-(t/deftest query->max-rows-limit-test
+(t/deftest ^:parallel query->max-rows-limit-test
   (doseq [[group query->expected]
           {"should return `:limit` if set"
            {{:database 1, :type :query, :query {:source-table 1, :limit 10}} 10}
@@ -686,7 +708,7 @@
           (t/is (= expected
                    (mbql.u/query->max-rows-limit query))))))))
 
-(t/deftest datetime-arithmetics?-test
+(t/deftest ^:parallel datetime-arithmetics?-test
   (t/is (mbql.u/datetime-arithmetics?
          [:+ [:field-id 13] [:interval -1 :month]]))
   (t/is (mbql.u/datetime-arithmetics?
@@ -694,19 +716,37 @@
   (t/is (not (mbql.u/datetime-arithmetics?
               [:+ [:field-id 13] 3]))))
 
-(t/deftest expression-with-name-test
+(t/deftest ^:parallel expression-with-name-test
   (t/is (= [:+ 1 1]
-           (mbql.u/expression-with-name {:expressions  {:two [:+ 1 1]}
+           (mbql.u/expression-with-name {:expressions  {"two" [:+ 1 1]}
                                          :source-table 1}
                                         "two")))
 
   (t/testing "Make sure `expression-with-name` knows how to reach into the parent query if need be"
     (t/is (= [:+ 1 1]
+             (mbql.u/expression-with-name {:source-query {:expressions  {"two" [:+ 1 1]}
+                                                          :source-table 1}}
+                                          "two"))))
+
+  (t/testing "Should work if passed in a keyword as well"
+    (t/is (= [:+ 1 1]
+             (mbql.u/expression-with-name {:source-query {:expressions  {"two" [:+ 1 1]}
+                                                          :source-table 1}}
+                                          :two))))
+
+  (t/testing "Should work if the key in the expression map is a keyword in pre-Metabase 43 query maps"
+    (t/is (= [:+ 1 1]
              (mbql.u/expression-with-name {:source-query {:expressions  {:two [:+ 1 1]}
                                                           :source-table 1}}
-                                          "two")))))
+                                          "two"))))
 
-(t/deftest update-field-options-test
+  (t/testing "Should throw an Exception if expression does not exist"
+    (t/is (thrown-with-msg?
+           #?(:clj clojure.lang.ExceptionInfo :cljs cljs.core.ExceptionInfo)
+           #"No expression named"
+           (mbql.u/expression-with-name {} "wow")))))
+
+(t/deftest ^:parallel update-field-options-test
   (t/is (= [:field 1 {:wow true}]
            (mbql.u/update-field-options [:field 1 nil] assoc :wow true)
            (mbql.u/update-field-options [:field 1 {}] assoc :wow true)
@@ -740,3 +780,25 @@
                (mbql.u/update-field-options [:expression "wow" {:b 2}] dissoc :b)))
       (t/is (= [:aggregation 0]
                (mbql.u/update-field-options [:aggregation 0 {:b 2}] dissoc :b))))))
+
+(t/deftest remove-namespaced-options-test
+  (t/are [clause expected] (= expected
+                              (mbql.u/remove-namespaced-options clause))
+    [:field 1 {::namespaced true}]                [:field 1 nil]
+    [:field 1 {::namespaced true, :a 1}]          [:field 1 {:a 1}]
+    [:expression "wow"]                           [:expression "wow"]
+    [:expression "wow" {::namespaced true}]       [:expression "wow"]
+    [:expression "wow" {::namespaced true, :a 1}] [:expression "wow" {:a 1}]
+    [:aggregation 0]                              [:aggregation 0]
+    [:aggregation 0 {::namespaced true}]          [:aggregation 0]
+    [:aggregation 0 {::namespaced true, :a 1}]    [:aggregation 0 {:a 1}]))
+
+(t/deftest with-temporal-unit-test
+  (t/is (= [:field 1 {:temporal-unit :day}]
+           (mbql.u/with-temporal-unit [:field 1 nil] :day)))
+  (t/is (= [:field "t" {:base-type :type/Date, :temporal-unit :day}]
+           (mbql.u/with-temporal-unit [:field "t" {:base-type :type/Date}] :day)))
+  (t/testing "Ignore invalid temporal units if `:base-type` is specified (#16485)"
+    ;; `:minute` doesn't make sense for a DATE
+    (t/is (= [:field "t" {:base-type :type/Date}]
+             (mbql.u/with-temporal-unit [:field "t" {:base-type :type/Date}] :minute)))))

@@ -50,7 +50,7 @@
          message)))
 
 (defmethod dependency-satisfied? :class
-  [_ {{plugin-name :name} :info} {^String classname :class, message :message, :as dep}]
+  [_ {{plugin-name :name} :info} {^String classname :class, message :message, :as _dep}]
   (try
     (Class/forName classname false (classloader/the-classloader))
     (catch ClassNotFoundException _
@@ -58,12 +58,12 @@
       false)))
 
 (defmethod dependency-satisfied? :plugin
-  [initialized-plugin-names {{plugin-name :name} :info, :as info} {dep-plugin-name :plugin}]
+  [initialized-plugin-names {{plugin-name :name} :info} {dep-plugin-name :plugin}]
   (log-once plugin-name (trs "Plugin ''{0}'' depends on plugin ''{1}''" plugin-name dep-plugin-name))
   ((set initialized-plugin-names) dep-plugin-name))
 
 (defmethod dependency-satisfied? :env-var
-  [_ {{plugin-name :name} :info, :as info} {env-var-name :env-var}]
+  [_ {{plugin-name :name} :info} {env-var-name :env-var}]
   (if (str/blank? (env/env (keyword env-var-name)))
     (do
       (log-once plugin-name (trs "Plugin ''{0}'' depends on environment variable ''{1}'' being set to something"

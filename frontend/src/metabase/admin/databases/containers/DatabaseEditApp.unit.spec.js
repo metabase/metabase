@@ -29,6 +29,7 @@ const ENGINES_MOCK = {
 };
 
 const ComponentMock = () => <div />;
+jest.mock("metabase/containers/DatabaseHelpCard", () => ComponentMock);
 jest.mock("metabase/containers/DriverWarning", () => ComponentMock);
 
 function mockSettings({ cachingEnabled = false }) {
@@ -59,10 +60,18 @@ function mockSettings({ cachingEnabled = false }) {
 
 async function setup({ cachingEnabled = false } = {}) {
   mockSettings({ cachingEnabled });
+
+  const settingsReducer = () => ({
+    values: {
+      "persisted-models-enabled": false,
+    },
+  });
+
   renderWithProviders(<DatabaseEditApp />, {
     withRouter: true,
-    reducers: { admin },
+    reducers: { admin, settings: settingsReducer },
   });
+
   await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
 }
 

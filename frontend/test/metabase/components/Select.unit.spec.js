@@ -1,7 +1,7 @@
 import React from "react";
 import { render } from "@testing-library/react";
 
-import Select, { Option } from "metabase/components/Select";
+import Select, { Option } from "metabase/core/components/Select";
 
 describe("Select", () => {
   it("should render selected option", () => {

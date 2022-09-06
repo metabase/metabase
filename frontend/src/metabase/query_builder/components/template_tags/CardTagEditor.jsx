@@ -2,11 +2,12 @@
 import React, { Component } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
+import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
 import QuestionPicker from "metabase/containers/QuestionPicker";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import SelectButton from "metabase/components/SelectButton";
+import SelectButton from "metabase/core/components/SelectButton";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import Questions from "metabase/entities/questions";
@@ -14,11 +15,7 @@ import * as Urls from "metabase/lib/urls";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import MetabaseSettings from "metabase/lib/settings";
 
-@Questions.load({
-  id: (state, { tag }) => tag["card-id"],
-  loadingAndErrorWrapper: false,
-})
-export default class CardTagEditor extends Component {
+class CardTagEditor extends Component {
   handleQuestionSelection = id => {
     const { question, query, setDatasetQuery } = this.props;
     setDatasetQuery(
@@ -57,9 +54,9 @@ export default class CardTagEditor extends Component {
     return (
       <SelectButton>
         {tag["card-id"] == null ? (
-          <span className="text-medium">{t`Pick a saved question`}</span>
+          <span className="text-medium">{t`Pick a question or a model`}</span>
         ) : this.errorMessage() ? (
-          <span className="text-medium">{t`Pick a different question`}</span>
+          <span className="text-medium">{t`Pick a different question or a model`}</span>
         ) : question ? (
           question.name
         ) : (
@@ -83,7 +80,9 @@ export default class CardTagEditor extends Component {
           {cardId == null ? (
             t`Question #…`
           ) : (
-            <Link to={this.getQuestionUrl()}>{t`Question #${cardId}`}</Link>
+            <Link to={this.getQuestionUrl()}>
+              {question?.dataset ? t`Model #${cardId}` : t`Question #${cardId}`}
+            </Link>
           )}
         </h3>
         {loading ? (
@@ -115,7 +114,9 @@ export default class CardTagEditor extends Component {
                 <Icon name="all" size={12} mr={1} /> {question.collection.name}
               </div>
             )}
-            <div className="flex align-center mt1">
+            <div
+              className={cx("flex align-center", { mt1: question.collection })}
+            >
               <Icon name="calendar" size={12} mr={1} />{" "}
               {t`Last edited ${formatDate(question.updated_at)}`}
             </div>
@@ -125,6 +126,11 @@ export default class CardTagEditor extends Component {
     );
   }
 }
+
+export default Questions.load({
+  id: (state, { tag }) => tag["card-id"],
+  loadingAndErrorWrapper: false,
+})(CardTagEditor);
 
 // This formats a timestamp as a date using any custom formatting options.
 function formatDate(value) {

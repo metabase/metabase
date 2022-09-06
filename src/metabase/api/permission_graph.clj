@@ -5,7 +5,8 @@
   then postwalk to actually perform the conversion."
   (:require [clojure.spec.alpha :as s]
             [clojure.spec.gen.alpha :as gen]
-            [clojure.walk :as walk]))
+            [clojure.walk :as walk]
+            [metabase.util :as u]))
 
 (defmulti ^:private convert
   "convert values from the naively converted json to what we REALLY WANT"
@@ -19,9 +20,13 @@
   [[_ s]]
   (keyword s))
 
+;; Convert a keyword to string without excluding the namespace.
+;; e.g: :schema/name => "schema/name".
+;; Primarily used for schema-name since schema are allowed to have "/"
+;; and calling (name s) returning a substring after "/".
 (defmethod convert :kw->str
   [[_ s]]
-  (name s))
+  (u/qualified-name s))
 
 (defmethod convert :nil->none
   [[_ _]]
@@ -37,43 +42,52 @@
 (s/def ::id (s/with-gen (s/or :kw->int (s/and keyword? #(re-find #"^\d+$" (name %))))
               #(gen/fmap (comp keyword str) (s/gen pos-int?))))
 
-(s/def ::native (s/or :str->kw #{"write" "none"}
+(s/def ::native (s/or :str->kw #{"write" "none" "full" "limited"}
                       :nil->none nil?))
 
 ;;; ------------------------------------------------ Data Permissions ------------------------------------------------
 
 (s/def ::schema-name (s/or :kw->str keyword?))
 
-;; {:groups {1 {:schemas {"PUBLIC" ::schema-perms-granular}}}} =>
-;; {:groups {1 {:schemas {"PUBLIC" {1 :all}}}}}
+;; {:groups {1 {:data {:schemas {"PUBLIC" ::schema-perms-granular}}}}} =>
+;; {:groups {1 {:data {:schemas {"PUBLIC" {1 :all}}}}}}
 (s/def ::read (s/or :str->kw #{"all" "none"}))
 (s/def ::query (s/or :str->kw #{"all" "none" "segmented"}))
 
 (s/def ::table-perms-granular (s/keys :opt-un [::read ::query]))
 
-(s/def ::table-perms (s/or :str->kw #{"all" "segmented" "none"}
+(s/def ::table-perms (s/or :str->kw #{"all" "segmented" "none" "full" "limited"}
                            :identity ::table-perms-granular))
 
 (s/def ::table-graph (s/map-of ::id ::table-perms
                                :conform-keys true))
 
-(s/def ::schema-perms (s/or :str->kw #{"all" "segmented" "none"}
+(s/def ::schema-perms (s/or :str->kw #{"all" "segmented" "none" "full" "limited"}
                             :identity ::table-graph))
 
-;; {:groups {1 {:schemas {"PUBLIC" ::schema-perms}}}}
+;; {:groups {1 {:data {:schemas {"PUBLIC" ::schema-perms}}}}}
 (s/def ::schema-graph (s/map-of ::schema-name ::schema-perms
                                 :conform-keys true))
 
-;; {:groups {1 {:schemas ::schemas}}}
-(s/def ::schemas (s/or :str->kw   #{"all" "segmented" "none" "block"}
+;; {:groups {1 {:data {:schemas ::schemas}}}}
+(s/def ::schemas (s/or :str->kw   #{"all" "segmented" "none" "block" "full" "limited"}
                        :nil->none nil?
                        :identity  ::schema-graph))
 
-(s/def ::db-perms (s/keys :opt-un [::native ::schemas]))
+(s/def ::data (s/keys :opt-un [::native ::schemas]))
+
+(s/def ::download (s/keys :opt-un [::native ::schemas]))
+
+(s/def ::data-model (s/keys :opt-un [::native ::schemas]))
+
+;; We use "yes" and "no" instead of booleans for consistency with the application perms graph, and consistency with the
+;; language used on the frontend.
+(s/def ::details (s/or :str->kw #{"yes" "no"}))
+
+(s/def ::db-perms (s/keys :opt-un [::data ::download ::data-model ::details]))
 
 (s/def ::db-graph (s/map-of ::id ::db-perms
                             :conform-keys true))
-
 
 (s/def :metabase.api.permission-graph.data/groups
   (s/map-of ::id ::db-graph

@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
+import _ from "underscore";
 
 import Visualization from "metabase/visualizations/components/Visualization";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
@@ -16,7 +17,7 @@ import {
 import { applyParameters } from "metabase/meta/Card";
 import {
   getParametersFromCard,
-  getValueAndFieldIdPopulatedParametersFromCard,
+  getCardUiParameters,
 } from "metabase/parameters/utils/cards";
 
 import {
@@ -45,10 +46,7 @@ const mapDispatchToProps = {
   addFields,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-@title(({ card }) => card && card.name)
-@ExplicitSize()
-export default class PublicQuestion extends Component {
+class PublicQuestion extends Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -64,7 +62,6 @@ export default class PublicQuestion extends Component {
       setErrorPage,
       params: { uuid, token },
       location: { query },
-      metadata,
     } = this.props;
 
     if (uuid) {
@@ -84,15 +81,17 @@ export default class PublicQuestion extends Component {
       }
 
       if (card.param_values) {
-        this.props.addParamValues(card.param_values);
+        await this.props.addParamValues(card.param_values);
       }
       if (card.param_fields) {
-        this.props.addFields(card.param_fields);
+        await this.props.addFields(card.param_fields);
       }
 
-      const parameters = getValueAndFieldIdPopulatedParametersFromCard(
+      const parameters = getCardUiParameters(
         card,
-        metadata,
+        this.props.metadata,
+        {},
+        card.parameters || undefined,
       );
       const parameterValuesById = getParameterValuesByIdFromQueryParams(
         parameters,
@@ -136,7 +135,7 @@ export default class PublicQuestion extends Component {
       return;
     }
 
-    const parameters = getParametersFromCard(card);
+    const parameters = card.parameters || getParametersFromCard(card);
 
     try {
       this.setState({ result: null });
@@ -189,14 +188,15 @@ export default class PublicQuestion extends Component {
     );
 
     const parameters =
-      card && getValueAndFieldIdPopulatedParametersFromCard(card, metadata);
+      card &&
+      getCardUiParameters(card, metadata, {}, card.parameters || undefined);
 
     return (
       <EmbedFrame
         name={card && card.name}
         description={card && card.description}
-        parameters={initialized ? parameters : []}
         actionButtons={actionButtons}
+        parameters={initialized ? parameters : []}
         parameterValues={parameterValues}
         setParameterValue={this.setParameterValue}
       >
@@ -233,3 +233,9 @@ export default class PublicQuestion extends Component {
     );
   }
 }
+
+export default _.compose(
+  connect(mapStateToProps, mapDispatchToProps),
+  title(({ card }) => card && card.name),
+  ExplicitSize({ refreshMode: "debounceLeading" }),
+)(PublicQuestion);

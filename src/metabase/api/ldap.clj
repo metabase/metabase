@@ -4,6 +4,7 @@
             [clojure.tools.logging :as log]
             [compojure.core :refer [PUT]]
             [metabase.api.common :as api]
+            [metabase.api.common.validation :as validation]
             [metabase.integrations.ldap :as ldap]
             [metabase.models.setting :as setting]
             [metabase.util.schema :as su]))
@@ -85,15 +86,24 @@
         #"(?s).*"
         {:message message}))))
 
+(defn- update-password-if-needed
+  "Do not update password if `new-password` is an obfuscated value of the current password."
+  [new-password]
+  (let [current-password (setting/get :ldap-password)]
+    (if (= (setting/obfuscate-value current-password) new-password)
+      current-password
+      new-password)))
+
 (api/defendpoint PUT "/settings"
   "Update LDAP related settings. You must be a superuser to do this."
   [:as {settings :body}]
   {settings su/Map}
-  (api/check-superuser)
+  (validation/check-has-application-permission :setting)
   (let [ldap-settings (-> settings
                           (select-keys (keys mb-settings->ldap-details))
                           (assoc :ldap-port (when-let [^String ldap-port (not-empty (str (:ldap-port settings)))]
-                                              (Long/parseLong ldap-port))))
+                                              (Long/parseLong ldap-port)))
+                          (update :ldap-password update-password-if-needed))
         ldap-details  (set/rename-keys ldap-settings mb-settings->ldap-details)
         results       (if-not (:ldap-enabled settings)
                         ;; when disabled just respond with a success message

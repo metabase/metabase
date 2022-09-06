@@ -2,7 +2,7 @@
   "Logic related to writing test results for a namespace to a JUnit XML file. See
   https://stackoverflow.com/a/9410271/1198455 for the JUnit output spec."
   (:require [clojure.java.io :as io]
-            [clojure.pprint :as pp]
+            [clojure.pprint :as pprint]
             [clojure.string :as str]
             [pjstadig.print :as p])
   (:import [java.util.concurrent Executors ThreadFactory ThreadPoolExecutor TimeUnit]
@@ -39,18 +39,18 @@
   ^String [s]
   (-> s decolorize escape-unprintable-characters))
 
-(defn- print-result-description [{:keys [file line message testing-contexts], :as result}]
+(defn- print-result-description [{:keys [file line message testing-contexts], :as _result}]
   (println (format "%s:%d" file line))
   (doseq [s (reverse testing-contexts)]
-    (println (str/trim (decolorize-and-escape s))))
+    (println (str/trim (decolorize-and-escape (str s)))))
   (when message
     (println (decolorize-and-escape message))))
 
 (defn- print-expected [expected actual]
   (p/rprint "expected: ")
-  (pp/pprint expected)
+  (pprint/pprint expected)
   (p/rprint "  actual: ")
-  (pp/pprint actual)
+  (pprint/pprint actual)
   (p/clear))
 
 (defn- write-result-output!
@@ -68,11 +68,11 @@
                     (p/rprint "    diff:")
                     (if a
                       (do (p/rprint " - ")
-                          (pp/pprint a)
+                          (pprint/pprint a)
                           (p/rprint "          + "))
                       (p/rprint " + "))
                     (when b
-                      (pp/pprint b))
+                      (pprint/pprint b))
                     (p/clear))
                   (print-expected expected actual)))))]
     (.writeCData w (decolorize-and-escape s))))
@@ -99,7 +99,7 @@
   nil)
 
 (defmethod write-assertion-result!* :fail
-  [w {:keys [message], :as result}]
+  [w result]
   (write-element!
    w "failure"
    nil
@@ -107,7 +107,7 @@
      (write-result-output! w result))))
 
 (defmethod write-assertion-result!* :error
-  [w {:keys [message actual], :as result}]
+  [w {:keys [actual], :as result}]
   (write-element!
    w "error"
    (when (instance? Throwable actual)

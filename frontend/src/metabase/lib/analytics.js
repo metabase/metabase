@@ -17,21 +17,21 @@ export const createTracker = store => {
 };
 
 export const trackPageView = url => {
-  if (!url) {
+  if (!url || !Settings.trackingEnabled()) {
     return;
   }
 
   if (Settings.googleAnalyticsEnabled()) {
-    trackGoogleAnalyticsPageView(url);
+    trackGoogleAnalyticsPageView(getSanitizedUrl(url));
   }
 
   if (Settings.snowplowEnabled()) {
-    trackSnowplowPageView(url);
+    trackSnowplowPageView(getSanitizedUrl(url));
   }
 };
 
 export const trackStructEvent = (category, action, label, value) => {
-  if (!category || !label) {
+  if (!category || !label || !Settings.trackingEnabled()) {
     return;
   }
 
@@ -41,7 +41,7 @@ export const trackStructEvent = (category, action, label, value) => {
 };
 
 export const trackSchemaEvent = (schema, version, data) => {
-  if (!schema) {
+  if (!schema || !Settings.trackingEnabled()) {
     return;
   }
 
@@ -140,4 +140,11 @@ const handleStructEventClick = event => {
       trackStructEvent(...parts);
     }
   }
+};
+
+const getSanitizedUrl = url => {
+  const urlWithoutSlug = url.replace(/(\/\d+)-[^\/]+$/, (match, path) => path);
+  const urlWithoutHost = new URL(urlWithoutSlug, Settings.snowplowUrl());
+
+  return urlWithoutHost.href;
 };

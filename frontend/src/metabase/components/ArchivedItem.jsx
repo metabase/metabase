@@ -4,13 +4,13 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import CheckBox from "metabase/components/CheckBox";
+import CheckBox from "metabase/core/components/CheckBox";
 import Icon from "metabase/components/Icon";
-import IconWrapper from "metabase/components/IconWrapper";
-import Swapper from "metabase/components/Swapper";
+import Swapper from "metabase/core/components/Swapper";
 import Tooltip from "metabase/components/Tooltip";
 
 import { color as c } from "metabase/lib/colors";
+import { ItemIcon, ItemIconContainer } from "./ArchivedItem.styled";
 
 const ArchivedItem = ({
   name,
@@ -20,21 +20,24 @@ const ArchivedItem = ({
   isAdmin = false,
   onUnarchive,
   onDelete,
-
   selected,
   onToggleSelected,
   showSelect,
 }) => (
   <div className="flex align-center p2 hover-parent hover--visibility border-bottom bg-light-hover">
-    <IconWrapper p={1} mr={1} align="center" justify="center">
-      <Swapper
-        startSwapped={showSelect}
-        defaultElement={<Icon name={icon} color={color} />}
-        swappedElement={
+    <Swapper
+      defaultElement={
+        <ItemIconContainer>
+          <ItemIcon name={icon} color={color} />
+        </ItemIconContainer>
+      }
+      swappedElement={
+        <ItemIconContainer>
           <CheckBox checked={selected} onChange={onToggleSelected} />
-        }
-      />
-    </IconWrapper>
+        </ItemIconContainer>
+      }
+      isSwapped={showSelect}
+    />
     {name}
     {isAdmin && (onUnarchive || onDelete) && (
       <span className="ml-auto mr2">

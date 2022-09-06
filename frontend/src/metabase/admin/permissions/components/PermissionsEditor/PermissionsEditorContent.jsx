@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import { Box } from "grid-styled";
 
 import { PermissionsTable } from "../PermissionsTable";
 import Subhead from "metabase/components/type/Subhead";
@@ -13,6 +12,12 @@ import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 
 import { PermissionsEditorBreadcrumbs } from "./PermissionsEditorBreadcrumbs";
+import {
+  EditorEmptyStateContainer,
+  EditorFilterContainer,
+  PermissionEditorContentRoot,
+  PermissionTableWrapper,
+} from "./PermissionsEditorContent.styled";
 
 export const permissionEditorContentPropTypes = {
   title: PropTypes.string.isRequired,
@@ -55,48 +60,47 @@ export function PermissionsEditorContent({
   }, [entities, debouncedFilter]);
 
   return (
-    <>
-      <Box px="3rem">
-        <Subhead>
-          {title}{" "}
-          {breadcrumbs && (
-            <PermissionsEditorBreadcrumbs
-              items={breadcrumbs}
-              onBreadcrumbsItemSelect={onBreadcrumbsItemSelect}
-            />
-          )}
-        </Subhead>
-
-        {description && <Text>{description}</Text>}
-
-        <Box mt={2} mb={1} width="280px">
-          <TextInput
-            hasClearButton
-            colorScheme="admin"
-            placeholder={filterPlaceholder}
-            onChange={setFilter}
-            value={filter}
-            padding="sm"
-            borderRadius="md"
-            icon={<Icon name="search" size={16} />}
+    <PermissionEditorContentRoot>
+      <Subhead>
+        {title}{" "}
+        {breadcrumbs && (
+          <PermissionsEditorBreadcrumbs
+            items={breadcrumbs}
+            onBreadcrumbsItemSelect={onBreadcrumbsItemSelect}
           />
-        </Box>
-      </Box>
+        )}
+      </Subhead>
 
-      <PermissionsTable
-        horizontalPadding="lg"
-        entities={filteredEntities || entities}
-        columns={columns}
-        onSelect={onSelect}
-        onChange={onChange}
-        onAction={onAction}
-        emptyState={
-          <Box mt="120px">
-            <EmptyState message={t`Nothing here`} icon="all" />
-          </Box>
-        }
-      />
-    </>
+      {description && <Text>{description}</Text>}
+
+      <EditorFilterContainer>
+        <TextInput
+          hasClearButton
+          colorScheme="admin"
+          placeholder={filterPlaceholder}
+          onChange={setFilter}
+          value={filter}
+          padding="sm"
+          borderRadius="md"
+          icon={<Icon name="search" size={16} />}
+        />
+      </EditorFilterContainer>
+
+      <PermissionTableWrapper>
+        <PermissionsTable
+          entities={filteredEntities || entities}
+          columns={columns}
+          onSelect={onSelect}
+          onChange={onChange}
+          onAction={onAction}
+          emptyState={
+            <EditorEmptyStateContainer>
+              <EmptyState message={t`Nothing here`} icon="all" />
+            </EditorEmptyStateContainer>
+          }
+        />
+      </PermissionTableWrapper>
+    </PermissionEditorContentRoot>
   );
 }
 

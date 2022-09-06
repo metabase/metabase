@@ -6,13 +6,13 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [hiccup.util :as h.util]
+            hiccup.util
             [metabase.core.initialization-status :as init-status]
             [metabase.models.setting :as setting]
             [metabase.public-settings :as public-settings]
             [metabase.util.embed :as embed]
             [metabase.util.i18n :as i18n :refer [trs]]
-            [ring.util.response :as resp]
+            [ring.util.response :as response]
             [stencil.core :as stencil])
   (:import java.io.FileNotFoundException))
 
@@ -35,26 +35,28 @@
     {"" {"Metabase" {"msgid"  "Metabase"
                      "msgstr" ["Metabase"]}}}}))
 
-(defn- localization-json-file-name [locale-or-name]
-  (format "frontend_client/app/locales/%s.json" (str (i18n/locale locale-or-name))))
+(defn- localization-json-file-name [locale-string]
+  (format "frontend_client/app/locales/%s.json" (str/replace locale-string \- \_)))
 
-(defn- load-localization* [locale-or-name]
+(defn- load-localization* [locale-string]
   (or
-   (when-let [locale-name (some-> locale-or-name str)]
-     (when-not (= locale-name "en")
+   (when locale-string
+     (when-not (= locale-string "en")
        (try
-         (slurp (or (io/resource (localization-json-file-name locale-name))
-                    (when-let [fallback-locale (i18n/fallback-locale locale-name)]
+         (slurp (or (io/resource (localization-json-file-name locale-string))
+                    (when-let [fallback-locale (i18n/fallback-locale locale-string)]
                       (io/resource (localization-json-file-name (str fallback-locale))))
                     ;; don't try to i18n the Exception message below, we have no locale to translate it to!
-                    (throw (FileNotFoundException. (format "Locale '%s' not found." locale-name)))))
+                    (throw (FileNotFoundException. (format "Locale '%s' not found." locale-string)))))
          (catch Throwable e
            (log/warn (.getMessage e))))))
-   (fallback-localization locale-or-name)))
+   (fallback-localization locale-string)))
 
-(def ^:private ^{:arglists '([])} load-localization
-  "Load a JSON-encoded map of localized strings for the current user's Locale."
-  (comp (memoize load-localization*) #(some-> (i18n/user-locale) str)))
+(let [load-fn (memoize load-localization*)]
+  (defn- load-localization
+    "Load a JSON-encoded map of localized strings for the current user's Locale."
+    [locale-override]
+    (load-fn (or locale-override (i18n/user-locale-string)))))
 
 (defn- load-inline-js* [resource-name]
   (slurp (io/resource (format "frontend_client/inline_js/%s.js" resource-name))))
@@ -69,21 +71,23 @@
         (log/error e message)
         (throw (Exception. message e))))))
 
-(defn- load-entrypoint-template [entrypoint-name embeddable? uri]
+(defn- load-entrypoint-template [entrypoint-name embeddable? {:keys [uri params]}]
   (load-template
    (str "frontend_client/" entrypoint-name ".html")
    (let [{:keys [anon-tracking-enabled google-auth-client-id], :as public-settings} (setting/user-readable-values-map :public)]
-     {:bootstrapJS        (load-inline-js "index_bootstrap")
-      :googleAnalyticsJS  (load-inline-js "index_ganalytics")
-      :bootstrapJSON      (escape-script (json/generate-string public-settings))
-      :localizationJSON   (escape-script (load-localization))
-      :favicon            (h.util/escape-html (public-settings/application-favicon-url))
-      :applicationName    (h.util/escape-html (public-settings/application-name))
-      :uri                (h.util/escape-html uri)
-      :baseHref           (h.util/escape-html (base-href))
-      :embedCode          (when embeddable? (embed/head uri))
-      :enableGoogleAuth   (boolean google-auth-client-id)
-      :enableAnonTracking (boolean anon-tracking-enabled)})))
+     {:bootstrapJS          (load-inline-js "index_bootstrap")
+      :googleAnalyticsJS    (load-inline-js "index_ganalytics")
+      :bootstrapJSON        (escape-script (json/generate-string public-settings))
+      :userLocalizationJSON (escape-script (load-localization (:locale params)))
+      :siteLocalizationJSON (escape-script (load-localization (public-settings/site-locale)))
+      :language             (hiccup.util/escape-html (public-settings/site-locale))
+      :favicon              (hiccup.util/escape-html (public-settings/application-favicon-url))
+      :applicationName      (hiccup.util/escape-html (public-settings/application-name))
+      :uri                  (hiccup.util/escape-html uri)
+      :baseHref             (hiccup.util/escape-html (base-href))
+      :embedCode            (when embeddable? (embed/head uri))
+      :enableGoogleAuth     (boolean google-auth-client-id)
+      :enableAnonTracking   (boolean anon-tracking-enabled)})))
 
 (defn- load-init-template []
   (load-template
@@ -92,12 +96,12 @@
 
 (defn- entrypoint
   "Response that serves up an entrypoint into the Metabase application, e.g. `index.html`."
-  [entrypoint-name embeddable? {:keys [uri]} respond raise]
+  [entrypoint-name embeddable? request respond _raise]
   (respond
-    (-> (resp/response (if (init-status/complete?)
-                         (load-entrypoint-template entrypoint-name embeddable? uri)
-                         (load-init-template)))
-        (resp/content-type "text/html; charset=utf-8"))))
+    (-> (response/response (if (init-status/complete?)
+                             (load-entrypoint-template entrypoint-name embeddable? request)
+                             (load-init-template)))
+        (response/content-type "text/html; charset=utf-8"))))
 
 (def index  "main index.html entrypoint."    (partial entrypoint "index"  (not :embeddable)))
 (def public "/public index.html entrypoint." (partial entrypoint "public" :embeddable))

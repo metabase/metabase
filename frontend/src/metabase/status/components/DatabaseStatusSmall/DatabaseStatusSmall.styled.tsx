@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import { color, lighten } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
@@ -40,9 +40,9 @@ const getBackgroundColor = ({ status }: Props): string => {
     case "incomplete":
       return "transparent";
     case "complete":
-      return color("accent1");
+      return color("success");
     case "aborted":
-      return color("accent3");
+      return color("error");
   }
 };
 

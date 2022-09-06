@@ -1,5 +1,6 @@
 import { color } from "metabase/lib/colors";
-import styled from "styled-components";
+import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 
 export const BetweenLayoutContainer = styled.div`
   display: flex;
@@ -16,4 +17,9 @@ export const BetweenLayoutFieldSeparator = styled.div`
   padding: 0.5rem 0.5rem 0 0.5rem;
   font-weight: 700;
   color: ${color("text-medium")};
+`;
+
+export const DefaultPickerContainer = styled.div`
+  max-height: 300px;
+  overflow: auto;
 `;

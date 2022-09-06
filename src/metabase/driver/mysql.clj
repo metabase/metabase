@@ -4,23 +4,34 @@
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [clojure.walk :as walk]
             [honeysql.core :as hsql]
+            [honeysql.format :as hformat]
             [java-time :as t]
-            [metabase.db.spec :as dbspec]
+            [metabase.config :as config]
+            [metabase.db.spec :as mdb.spec]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
+            [metabase.driver.mysql.ddl :as mysql.ddl]
             [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+            [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
+            [metabase.models.field :as field]
+            [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
+            [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [deferred-tru trs]])
   (:import [java.sql DatabaseMetaData ResultSet ResultSetMetaData Types]
-           [java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime]))
+           [java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime]
+           metabase.util.honeysql_extensions.Identifier))
+(comment
+  mysql.ddl/keep-me)
 
 (driver/register! :mysql, :parent :sql-jdbc)
 
@@ -29,9 +40,17 @@
 
 (defmethod driver/display-name :mysql [_] "MySQL")
 
+(defmethod driver/database-supports? [:mysql :nested-field-columns] [_ _ database]
+  (or (get-in database [:details :json-unfolding]) true))
+
+(defmethod driver/database-supports? [:mysql :persist-models] [_driver _feat _db] true)
+
+(defmethod driver/database-supports? [:mysql :persist-models-enabled]
+  [_driver _feat db]
+  (-> db :options :persist-models-enabled))
+
 (defmethod driver/supports? [:mysql :regex] [_ _] false)
 (defmethod driver/supports? [:mysql :percentile-aggregations] [_ _] false)
-
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -50,19 +69,19 @@
      (if (mariadb? metadata) min-supported-mariadb-version min-supported-mysql-version)))
 
 (defn- warn-on-unsupported-versions [driver details]
-  (let [jdbc-spec (sql-jdbc.conn/details->connection-spec-for-testing-connection driver details)]
+  (sql-jdbc.conn/with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
     (jdbc/with-db-metadata [metadata jdbc-spec]
       (when (unsupported-version? metadata)
         (log/warn
          (u/format-color 'red
-             (str
-              "\n\n********************************************************************************\n"
-              (trs "WARNING: Metabase only officially supports MySQL {0}/MariaDB {1} and above."
-                   min-supported-mysql-version
-                   min-supported-mariadb-version)
-              "\n"
-              (trs "All Metabase features may not work properly when using an unsupported version.")
-              "\n********************************************************************************\n")))))))
+                         (str
+                          "\n\n********************************************************************************\n"
+                          (trs "WARNING: Metabase only officially supports MySQL {0}/MariaDB {1} and above."
+                               min-supported-mysql-version
+                               min-supported-mariadb-version)
+                          "\n"
+                          (trs "All Metabase features may not work properly when using an unsupported version.")
+                          "\n********************************************************************************\n")))))))
 
 (defmethod driver/can-connect? :mysql
   [driver details]
@@ -94,6 +113,7 @@
     default-ssl-cert-details
     driver.common/ssh-tunnel-preferences
     driver.common/advanced-options-start
+    driver.common/json-unfolding
     (assoc driver.common/additional-options
            :placeholder  "tinyInt1isBit=false")
     driver.common/default-advanced-options]
@@ -116,18 +136,18 @@
   [_ message]
   (condp re-matches message
     #"^Communications link failure\s+The last packet sent successfully to the server was 0 milliseconds ago. The driver has not received any packets from the server.$"
-    (driver.common/connection-error-messages :cannot-connect-check-host-and-port)
+    :cannot-connect-check-host-and-port
 
     #"^Unknown database .*$"
-    (driver.common/connection-error-messages :database-name-incorrect)
+    :database-name-incorrect
 
     #"Access denied for user.*$"
-    (driver.common/connection-error-messages :username-or-password-incorrect)
+    :username-or-password-incorrect
 
     #"Must specify port after ':' in connection string"
-    (driver.common/connection-error-messages :invalid-hostname)
+    :invalid-hostname
 
-    #".*"                               ; default
+    ;; else
     message))
 
 (defmethod sql-jdbc.sync/db-default-timezone :mysql
@@ -167,6 +187,18 @@
   [_]
   :sunday)
 
+(def ^:const max-nested-field-columns
+  "Maximum number of nested field columns."
+  100)
+
+(defmethod sql-jdbc.sync/describe-nested-field-columns :mysql
+  [driver database table]
+  (let [spec   (sql-jdbc.conn/db->pooled-connection-spec database)
+        fields (sql-jdbc.describe-table/describe-nested-field-columns driver spec table)]
+    (if (> (count fields) max-nested-field-columns)
+      #{}
+      fields)))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
@@ -203,6 +235,50 @@
 (defmethod sql.qp/->honeysql [:mysql :length]
   [driver [_ arg]]
   (hsql/call :char_length (sql.qp/->honeysql driver arg)))
+
+(def ^:private database-type->mysql-cast-type-name
+  "MySQL supports the ordinary SQL standard database type names for actual type stuff but not for coercions, sometimes.
+  If it doesn't support the ordinary SQL standard type, then we coerce it to a different type that MySQL does support here"
+  {"integer"          "signed"
+   "text"             "char"
+   "double precision" "double"})
+
+(defmethod sql.qp/json-query :mysql
+  [_ unwrapped-identifier stored-field]
+  (letfn [(handle-name [x] (str "\"" (if (number? x) (str x) (name x)) "\""))]
+    (let [field-type        (:database_type stored-field)
+          field-type        (get database-type->mysql-cast-type-name field-type field-type)
+          nfc-path          (:nfc_path stored-field)
+          parent-identifier (field/nfc-field->parent-identifier unwrapped-identifier stored-field)
+          jsonpath-query    (format "$.%s" (str/join "." (map handle-name (rest nfc-path))))
+          default-cast      (hsql/call :convert
+                                          (hsql/call :json_extract (hsql/raw (hformat/to-sql parent-identifier)) jsonpath-query)
+                                          (hsql/raw (str/upper-case field-type)))
+          ;; If we see JSON datetimes we expect them to be in ISO8601. However, MySQL expects them as something different.
+          ;; We explicitly tell MySQL to go and accept ISO8601, because that is JSON datetimes, although there is no real standard for JSON, ISO8601 is the de facto standard.
+          iso8601-cast         (hsql/call :convert
+                                          (hsql/call :str_to_date
+                                          (hsql/call :json_extract (hsql/raw (hformat/to-sql parent-identifier)) jsonpath-query)
+                                          "\"%Y-%m-%dT%T.%fZ\"")
+                                          (hsql/raw "DATETIME"))]
+      (case field-type
+        "timestamp" iso8601-cast
+        default-cast))))
+
+(defmethod sql.qp/->honeysql [:mysql :field]
+  [driver [_ id-or-name opts :as clause]]
+  (let [stored-field (when (integer? id-or-name)
+                       (qp.store/field id-or-name))
+        parent-method (get-method sql.qp/->honeysql [:sql :field])
+        identifier    (parent-method driver clause)]
+    (if (field/json-field? stored-field)
+      (if (::sql.qp/forced-alias opts)
+        (keyword (::add/source-alias opts))
+        (walk/postwalk #(if (instance? Identifier %)
+                          (sql.qp/json-query :mysql % stored-field)
+                          %)
+                       identifier))
+      identifier)))
 
 ;; Since MySQL doesn't have date_trunc() we fake it by formatting a date to an appropriate string and then converting
 ;; back to a date. See http://dev.mysql.com/doc/refman/5.6/en/date-and-time-functions.html#function_date-format for an
@@ -306,6 +382,13 @@
    ;; strip off " UNSIGNED" from end if present
    (keyword (str/replace (name database-type) #"\sUNSIGNED$" ""))))
 
+(defmethod sql-jdbc.sync/column->semantic-type :mysql
+  [_ database-type _]
+  ;; More types to be added when we start caring about them
+  (case database-type
+    "JSON"  :type/SerializedJSON
+    nil))
+
 (def ^:private default-connection-args
   "Map of args for the MySQL/MariaDB JDBC connection string."
   { ;; 0000-00-00 dates are valid in MySQL; convert these to `null` when they come back because they're illegal in Java
@@ -317,16 +400,28 @@
    ;; GZIP compress packets sent between Metabase server and MySQL/MariaDB database
    :useCompression       true})
 
+(defn- maybe-add-program-name-option [jdbc-spec additional-options-map]
+  ;; connectionAttributes (if multiple) are separated by commas, so values that contain spaces are OK, so long as they
+  ;; don't contain a comma; our mb-version-and-process-identifier shouldn't contain one, but just to be on the safe side
+  (let [set-prog-nm-fn (fn []
+                         (let [prog-name (str/replace config/mb-version-and-process-identifier "," "_")]
+                           (assoc jdbc-spec :connectionAttributes (str "program_name:" prog-name))))]
+    (if-let [conn-attrs (get additional-options-map "connectionAttributes")]
+      (if (str/includes? conn-attrs "program_name")
+        jdbc-spec ; additional-options already includes the program_name; don't set it here
+        (set-prog-nm-fn))
+      (set-prog-nm-fn)))) ; additional-options did not contain connectionAttributes at all; set it
+
 (defmethod sql-jdbc.conn/connection-details->spec :mysql
   [_ {ssl? :ssl, :keys [additional-options ssl-cert], :as details}]
   ;; In versions older than 0.32.0 the MySQL driver did not correctly save `ssl?` connection status. Users worked
   ;; around this by including `useSSL=true`. Check if that's there, and if it is, assume SSL status. See #9629
   ;;
   ;; TODO - should this be fixed by a data migration instead?
-  (let [ssl?      (or ssl? (some-> additional-options (str/includes? "useSSL=true")))
-        ssl-cert? (and ssl? (some? ssl-cert))]
-    (when (and ssl?
-               (not (some->  additional-options (str/includes? "trustServerCertificate"))))
+  (let [addl-opts-map (sql-jdbc.common/additional-options->map additional-options :url "=" false)
+        ssl?          (or ssl? (= "true" (get addl-opts-map "useSSL")))
+        ssl-cert?     (and ssl? (some? ssl-cert))]
+    (when (and ssl? (not (contains? addl-opts-map "trustServerCertificate")))
       (log/info (trs "You may need to add 'trustServerCertificate=true' to the additional connection options to connect with SSL.")))
     (merge
      default-connection-args
@@ -335,7 +430,8 @@
      (let [details (-> (if ssl-cert? (set/rename-keys details {:ssl-cert :serverSslCert}) details)
                        (set/rename-keys {:dbname :db})
                        (dissoc :ssl))]
-       (-> (dbspec/mysql details)
+       (-> (mdb.spec/spec :mysql details)
+           (maybe-add-program-name-option addl-opts-map)
            (sql-jdbc.common/handle-additional-options details))))))
 
 (defmethod sql-jdbc.sync/active-tables :mysql

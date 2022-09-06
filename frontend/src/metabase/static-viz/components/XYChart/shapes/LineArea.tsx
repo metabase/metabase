@@ -4,10 +4,10 @@ import { AccessorForArrayItem, PositionScale } from "@visx/shape/lib/types";
 
 interface AreaProps<Datum> {
   x: AccessorForArrayItem<Datum, number>;
-  y: AccessorForArrayItem<Datum, number>;
-  y1: number;
+  y: number | AccessorForArrayItem<Datum, number>;
+  y1: number | AccessorForArrayItem<Datum, number>;
   yScale: PositionScale;
-  data: Datum[];
+  data?: Datum[];
   color: string;
 }
 

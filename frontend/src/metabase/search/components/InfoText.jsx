@@ -5,13 +5,13 @@ import { t, jt } from "ttag";
 import * as Urls from "metabase/lib/urls";
 
 import Icon from "metabase/components/Icon";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 
 import Schema from "metabase/entities/schemas";
 import Database from "metabase/entities/databases";
 import Table from "metabase/entities/tables";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-import { getTranslatedEntityName } from "metabase/nav/components/utils";
+import { getTranslatedEntityName } from "metabase/nav/utils";
 import { CollectionBadge } from "./CollectionBadge";
 
 const searchResultPropTypes = {
@@ -29,14 +29,21 @@ const infoTextPropTypes = {
 
 export function InfoText({ result }) {
   switch (result.model) {
+    case "app":
+      return t`App`;
     case "card":
-      return jt`Saved question in ${formatCollection(result.getCollection())}`;
+      return jt`Saved question in ${formatCollection(
+        result,
+        result.getCollection(),
+      )}`;
     case "dataset":
-      return jt`Model in ${formatCollection(result.getCollection())}`;
+      return jt`Model in ${formatCollection(result, result.getCollection())}`;
     case "collection":
       return getCollectionInfoText(result.collection);
     case "database":
       return t`Database`;
+    case "page":
+      return t`Page`;
     case "table":
       return <TablePath result={result} />;
     case "segment":
@@ -45,6 +52,7 @@ export function InfoText({ result }) {
       return jt`Metric for ${(<TableLink result={result} />)}`;
     default:
       return jt`${getTranslatedEntityName(result.model)} in ${formatCollection(
+        result,
         result.getCollection(),
       )}`;
   }
@@ -52,8 +60,12 @@ export function InfoText({ result }) {
 
 InfoText.propTypes = infoTextPropTypes;
 
-function formatCollection(collection) {
-  return collection.id && <CollectionBadge collection={collection} />;
+function formatCollection(result, collection) {
+  return (
+    collection.id && (
+      <CollectionBadge key={result.model} collection={collection} />
+    )
+  );
 }
 
 function getCollectionInfoText(collection) {

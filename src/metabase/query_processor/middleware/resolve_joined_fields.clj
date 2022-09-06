@@ -4,7 +4,7 @@
             [clojure.tools.logging :as log]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
@@ -34,37 +34,45 @@
       0
       (if (empty? source-query)
         clause
-        (do
-          (recur field source-query clause)))
+        (recur field source-query clause))
 
       ;; if there are multiple candidates, try ignoring the implicit ones
       ;; presence of `:fk-field-id` indicates that the join was implicit, as the result of an `fk->` form
       (let [explicit-joins (remove :fk-field-id joins)]
         (if (= (count explicit-joins) 1)
           (recur field {:joins explicit-joins} clause)
-          (let [{:keys [id name]} (qp.store/table table-id)]
+          (let [{:keys [_id name]} (qp.store/table table-id)]
             (throw (ex-info (tru "Cannot resolve joined field due to ambiguous joins: table {0} (ID {1}) joined multiple times. You need to specify an explicit `:join-alias` in the field reference."
                                  name field-id)
                             {:field      field
-                             :error      error-type/invalid-query
+                             :error      qp.error-type/invalid-query
                              :joins      joins
                              :candidates candidate-tables}))))))))
 
+(defn- primary-source-table-id
+  "Get the ID of the 'primary' table towards which this query is pointing at: either the `:source-table` or indirectly
+  thru some number of `:source-query`s."
+  [{:keys [source-table source-query]}]
+  (or source-table
+      (when source-query
+        (recur source-query))))
+
 (s/defn ^:private add-join-alias-to-fields-if-needed*
   "Wrap Field clauses in a form that has `:joins`."
-  [{:keys [source-table source-query joins], :as form} :- InnerQuery]
+  [{:keys [source-query joins], :as form} :- InnerQuery]
   ;; don't replace stuff in child `:join` or `:source-query` forms -- remove these from `form` when we call `replace`
-  (let [form (mbql.u/replace (dissoc form :joins :source-query)
-               ;; don't add `:join-alias` to anything that already has one
-               [:field _ (_ :guard :join-alias)]
-               &match
+  (let [source-table (primary-source-table-id form)
+        form         (mbql.u/replace (dissoc form :joins :source-query)
+                       ;; don't add `:join-alias` to anything that already has one
+                       [:field _ (_ :guard :join-alias)]
+                       &match
 
-               ;; otherwise for any other `:field` whose table isn't the source Table, attempt to wrap it.
-               [:field
-                (field-id :guard (every-pred integer?
-                                             #(not= (:table_id (qp.store/field %)) source-table)))
-                _]
-               (add-join-alias (qp.store/field field-id) form &match))
+                       ;; otherwise for any other `:field` whose table isn't the source Table, attempt to wrap it.
+                       [:field
+                        (field-id :guard (every-pred integer?
+                                                     #(not= (:table_id (qp.store/field %)) source-table)))
+                        _]
+                       (add-join-alias (qp.store/field field-id) form &match))
         ;; add :joins and :source-query back which we removed above.
         form (cond-> form
                (seq joins)  (assoc :joins joins)
@@ -93,10 +101,9 @@
 
 (defn resolve-joined-fields
   "Add `:join-alias` info to `:field` clauses where needed."
-  [qp]
-  (fn [query rff context]
-    (let [query' (add-join-alias-to-fields-if-needed query)]
-      (when-not (= query query')
-        (let [[before after] (data/diff query query')]
-          (log/tracef "Inferred :field :join-alias info: %s -> %s" (u/pprint-to-str 'yellow before) (u/pprint-to-str 'cyan after))))
-      (qp query' rff context))))
+  [query]
+  (let [query' (add-join-alias-to-fields-if-needed query)]
+    (when-not (= query query')
+      (let [[before after] (data/diff query query')]
+        (log/tracef "Inferred :field :join-alias info: %s -> %s" (u/pprint-to-str 'yellow before) (u/pprint-to-str 'cyan after))))
+    query'))

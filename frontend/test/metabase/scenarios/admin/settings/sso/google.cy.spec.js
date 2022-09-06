@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore } from "__support__/e2e/helpers";
 
 describe("scenarios > admin > settings > SSO > Google", () => {
   beforeEach(() => {
@@ -11,30 +11,35 @@ describe("scenarios > admin > settings > SSO > Google", () => {
     cy.findByLabelText("Client ID").type(
       "fake-client-id.apps.googleusercontent.com",
     );
-    saveSettings();
-
-    // This string lingers for far too long in the UI, so we have to wait for it to disappear before we assert on that same button again.
-    // Otherwise, the test fails. That's why we added a custom timeout of 6s.
-    cy.findByText("Success", { timeout: 6000 }).should("not.exist");
-
-    cy.findByDisplayValue("fake-client-id.apps.googleusercontent.com").type(
-      "fake-client-id2.apps.googleusercontent.com",
-    );
-    saveSettings();
+    successfullySaveSettings();
+    cy.reload();
+    cy.findByDisplayValue("fake-client-id.apps.googleusercontent.com")
+      .clear()
+      .type("fake-client-id2.apps.googleusercontent.com");
+    successfullySaveSettings();
   });
 
-  it(
-    "Google sign-in client ID form should show an error message if it does not end with the correct suffix (metabase#15975)",
-  ),
-    () => {
-      cy.findByLabelText("Client ID").type("fake-client-id");
-      saveSettings();
+  it("Remove Google Sing-In Setup (metabase#20442)", () => {
+    cy.request("PUT", "/api/setting", {
+      "google-auth-client-id": "example.apps.googleusercontent.com",
+      "google-auth-auto-create-accounts-domain": "example.test",
+    });
+    cy.visit("/admin/settings/authentication/google");
+    cy.findByLabelText("Client ID").clear();
+    cy.findByLabelText("Domain").clear();
+    successfullySaveSettings();
+  });
 
-      cy.findByText("Invalid Google Sign-In Client ID");
-    };
+  it("Google sign-in client ID form should show an error message if it does not end with the correct suffix (metabase#15975)", () => {
+    cy.findByLabelText("Client ID").type("fake-client-id");
+    cy.button("Save changes").click();
+    cy.findByText(
+      'Invalid Google Sign-In Client ID: must end with ".apps.googleusercontent.com"',
+    );
+  });
 });
 
-function saveSettings() {
+function successfullySaveSettings() {
   cy.button("Save changes").click();
   cy.findByText("Success");
 }

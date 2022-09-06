@@ -1,19 +1,24 @@
 (ns metabase.driver.sql-jdbc.sync.describe-table
-  "SQL JDBC impl for `describe-table` and `describe-table-fks`."
-  (:require [clojure.java.jdbc :as jdbc]
+  "SQL JDBC impl for `describe-table`, `describe-table-fks`, and `describe-nested-field-columns`."
+  (:require [cheshire.core :as json]
+            [clojure.java.jdbc :as jdbc]
+            [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [honeysql.core :as hsql]
             [medley.core :as m]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.sync.common :as common]
-            [metabase.driver.sql-jdbc.sync.interface :as i]
+            [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.common]
+            [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.mbql.schema :as mbql.s]
+            [metabase.models.table :as table]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx])
   (:import [java.sql Connection DatabaseMetaData ResultSet]))
 
-(defmethod i/column->semantic-type :sql-jdbc [_ _ _] nil)
+(defmethod sql-jdbc.sync.interface/column->semantic-type :sql-jdbc [_ _ _] nil)
 
 (defn pattern-based-database-type->base-type
   "Return a `database-type->base-type` function that matches types based on a sequence of pattern / base-type pairs.
@@ -36,7 +41,7 @@
 (defn- database-type->base-type-or-warn
   "Given a `database-type` (e.g. `VARCHAR`) return the mapped Metabase type (e.g. `:type/Text`)."
   [driver database-type]
-  (or (i/database-type->base-type driver (keyword database-type))
+  (or (sql-jdbc.sync.interface/database-type->base-type driver (keyword database-type))
       (do (log/warn (format "Don't know how to map column type '%s' to a Field base_type, falling back to :type/*."
                             database-type))
           :type/*)))
@@ -44,12 +49,12 @@
 (defn- calculated-semantic-type
   "Get an appropriate semantic type for a column with `column-name` of type `database-type`."
   [driver ^String column-name ^String database-type]
-  (when-let [semantic-type (i/column->semantic-type driver database-type column-name)]
+  (when-let [semantic-type (sql-jdbc.sync.interface/column->semantic-type driver database-type column-name)]
     (assert (isa? semantic-type :type/*)
       (str "Invalid type: " semantic-type))
     semantic-type))
 
-(defmethod i/fallback-metadata-query :sql-jdbc
+(defmethod sql-jdbc.sync.interface/fallback-metadata-query :sql-jdbc
   [driver schema table]
   {:pre [(string? table)]}
   ;; Using our SQL compiler here to get portable LIMIT (e.g. `SELECT TOP n ...` for SQL Server/Oracle)
@@ -59,15 +64,15 @@
         honeysql (sql.qp/apply-top-level-clause driver :limit honeysql {:limit 0})]
     (sql.qp/format-honeysql driver honeysql)))
 
-(defn- fallback-fields-metadata-from-select-query
+(defn fallback-fields-metadata-from-select-query
   "In some rare cases `:column_name` is blank (eg. SQLite's views with group by) fallback to sniffing the type from a
   SELECT * query."
   [driver ^Connection conn table-schema table-name]
   ;; some DBs (:sqlite) don't actually return the correct metadata for LIMIT 0 queries
-  (let [[sql & params] (i/fallback-metadata-query driver table-schema table-name)]
+  (let [[sql & params] (sql-jdbc.sync.interface/fallback-metadata-query driver table-schema table-name)]
     (reify clojure.lang.IReduceInit
       (reduce [_ rf init]
-        (with-open [stmt (common/prepare-statement driver conn sql params)
+        (with-open [stmt (sql-jdbc.common/prepare-statement driver conn sql params)
                     rs   (.executeQuery stmt)]
           (let [metadata (.getMetaData rs)]
             (reduce
@@ -80,22 +85,32 @@
 (defn- jdbc-fields-metadata
   "Reducible metadata about the Fields belonging to a Table, fetching using JDBC DatabaseMetaData methods."
   [driver ^Connection conn db-name-or-nil schema table-name]
-  (common/reducible-results #(.getColumns (.getMetaData conn)
-                                          db-name-or-nil
-                                          (some->> schema (driver/escape-entity-name-for-metadata driver))
-                                          (some->> table-name (driver/escape-entity-name-for-metadata driver))
-                                          nil)
-                            (fn [^ResultSet rs]
-                              #(merge
-                                {:name          (.getString rs "COLUMN_NAME")
-                                 :database-type (.getString rs "TYPE_NAME")}
-                                (when-let [remarks (.getString rs "REMARKS")]
-                                  (when-not (str/blank? remarks)
-                                    {:field-comment remarks}))))))
+  (sql-jdbc.common/reducible-results
+    #(.getColumns (.getMetaData conn)
+                  db-name-or-nil
+                  (some->> schema (driver/escape-entity-name-for-metadata driver))
+                  (some->> table-name (driver/escape-entity-name-for-metadata driver))
+                  nil)
+    (fn [^ResultSet rs]
+      ;; https://docs.oracle.com/javase/7/docs/api/java/sql/DatabaseMetaData.html#getColumns(java.lang.String,%20java.lang.String,%20java.lang.String,%20java.lang.String)
+      #(let [default (.getString rs "COLUMN_DEF")
+             no-default? (contains? #{nil "NULL" "null"} default)
+             nullable (.getInt rs "NULLABLE")
+             not-nullable? (= 0 nullable)
+             auto-increment (.getString rs "IS_AUTOINCREMENT")
+             no-auto-increment? (= "NO" auto-increment)
+             column-name (.getString rs "COLUMN_NAME")
+             required? (and no-default? not-nullable? no-auto-increment?)]
+         (merge
+           {:name              column-name
+            :database-type     (.getString rs "TYPE_NAME")
+            :database-required required?}
+           (when-let [remarks (.getString rs "REMARKS")]
+             (when-not (str/blank? remarks)
+               {:field-comment remarks})))))))
 
-(defn- fields-metadata
-  "Returns reducible metadata for the Fields in a `table`."
-  [driver ^Connection conn {schema :schema, table-name :name} & [^String db-name-or-nil]]
+(defn ^:private fields-metadata
+  [driver ^Connection conn {schema :schema, table-name :name} ^String db-name-or-nil]
   {:pre [(instance? Connection conn) (string? table-name)]}
   (reify clojure.lang.IReduceInit
     (reduce [_ rf init]
@@ -127,26 +142,45 @@
          init
          [jdbc-metadata fallback-metadata])))))
 
-(defn describe-table-fields
+(defn describe-table-fields-xf
+  "Returns a transducer for computing metatdata about the fields in `table`."
+  [driver table]
+  (map-indexed (fn [i {:keys [database-type], column-name :name, :as col}]
+                 (let [semantic-type (calculated-semantic-type driver column-name database-type)]
+                   (merge
+                    (u/select-non-nil-keys col [:name :database-type :field-comment :database-required])
+                    {:base-type         (database-type->base-type-or-warn driver database-type)
+                     :database-position i}
+                    (when semantic-type
+                      {:semantic-type semantic-type})
+                    (when (and
+                           (isa? semantic-type :type/SerializedJSON)
+                           (driver/database-supports?
+                            driver
+                            :nested-field-columns
+                            (table/database table)))
+                      {:visibility-type :details-only}))))))
+
+(defmulti describe-table-fields
   "Returns a set of column metadata for `table` using JDBC Connection `conn`."
-  [driver conn table & [db-name-or-nil]]
+  {:added    "0.45.0"
+   :arglists '([driver ^Connection conn table ^String db-name-or-nil])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod describe-table-fields :sql-jdbc
+  [driver conn table db-name-or-nil]
   (into
    #{}
-   (map-indexed (fn [i {:keys [database-type], column-name :name, :as col}]
-                  (merge
-                   (u/select-non-nil-keys col [:name :database-type :field-comment])
-                   {:base-type         (database-type->base-type-or-warn driver database-type)
-                    :database-position i}
-                   (when-let [semantic-type (calculated-semantic-type driver column-name database-type)]
-                     {:semantic-type semantic-type}))))
+   (describe-table-fields-xf driver table)
    (fields-metadata driver conn table db-name-or-nil)))
 
 (defn add-table-pks
   "Using `metadata` find any primary keys for `table` and assoc `:pk?` to true for those columns."
   [^DatabaseMetaData metadata table]
-  (let [pks (into #{} (common/reducible-results #(.getPrimaryKeys metadata nil nil (:name table))
-                                                (fn [^ResultSet rs]
-                                                  #(.getString rs "COLUMN_NAME"))))]
+  (let [pks (into #{} (sql-jdbc.common/reducible-results #(.getPrimaryKeys metadata nil nil (:name table))
+                                                         (fn [^ResultSet rs]
+                                                           #(.getString rs "COLUMN_NAME"))))]
     (update table :fields (fn [fields]
                             (set (for [field fields]
                                    (if-not (contains? pks (:name field))
@@ -156,7 +190,7 @@
 (defn- describe-table* [driver ^Connection conn table]
   {:pre [(instance? Connection conn)]}
   (->> (assoc (select-keys table [:name :schema])
-              :fields (describe-table-fields driver conn table))
+              :fields (describe-table-fields driver conn table nil))
        ;; find PKs and mark them
        (add-table-pks (.getMetaData conn))))
 
@@ -170,16 +204,16 @@
         (describe-table* driver conn table)))))
 
 (defn- describe-table-fks*
-  [driver ^Connection conn {^String schema :schema, ^String table-name :name} & [^String db-name-or-nil]]
+  [_driver ^Connection conn {^String schema :schema, ^String table-name :name} & [^String db-name-or-nil]]
   (into
    #{}
-   (common/reducible-results #(.getImportedKeys (.getMetaData conn) db-name-or-nil schema table-name)
-                             (fn [^ResultSet rs]
-                               (fn []
-                                 {:fk-column-name   (.getString rs "FKCOLUMN_NAME")
-                                  :dest-table       {:name   (.getString rs "PKTABLE_NAME")
-                                                     :schema (.getString rs "PKTABLE_SCHEM")}
-                                  :dest-column-name (.getString rs "PKCOLUMN_NAME")})))))
+   (sql-jdbc.common/reducible-results #(.getImportedKeys (.getMetaData conn) db-name-or-nil schema table-name)
+                                      (fn [^ResultSet rs]
+                                        (fn []
+                                          {:fk-column-name   (.getString rs "FKCOLUMN_NAME")
+                                           :dest-table       {:name   (.getString rs "PKTABLE_NAME")
+                                                              :schema (.getString rs "PKTABLE_SCHEM")}
+                                           :dest-column-name (.getString rs "PKCOLUMN_NAME")})))))
 
 (defn describe-table-fks
   "Default implementation of `driver/describe-table-fks` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
@@ -189,3 +223,178 @@
     (let [spec (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec-or-conn)]
       (with-open [conn (jdbc/get-connection spec)]
         (describe-table-fks* driver conn table db-name-or-nil)))))
+
+(def ^:const nested-field-sample-limit
+  "Number of rows to sample for describe-nested-field-columns"
+  500)
+
+(def ^:dynamic *nested-field-column-max-row-length*
+  "Max string length for a row for nested field column before we just give up on parsing it.
+  Marked as mutable because we mutate it for tests."
+  50000)
+
+(defn- flattened-row [field-name row]
+  (letfn [(flatten-row [row path]
+            (lazy-seq
+              (when-let [[[k v] & xs] (seq row)]
+                (cond (and (map? v) (not-empty v))
+                      (into (flatten-row v (conj path k))
+                            (flatten-row xs path))
+                      :else
+                      (cons [(conj path k) v]
+                            (flatten-row xs path))))))]
+    (into {} (flatten-row row [field-name]))))
+
+(defn- type-by-parsing-string
+  "Mostly just (type member) but with a bit to suss out strings which are ISO8601 and say that they are datetimes"
+  [member]
+  (let [member-type (type member)]
+    (if (and (instance? String member)
+             (mbql.s/can-parse-datetime? member))
+      java.time.LocalDateTime
+      member-type)))
+
+(defn- row->types [row]
+  (into {} (for [[field-name field-val] row
+                 ;; We put top-level array row type semantics on JSON roadmap but skip for now
+                 :when (map? field-val)]
+             (let [flat-row (flattened-row field-name field-val)]
+               (into {} (map (fn [[k v]] [k (type-by-parsing-string v)]) flat-row))))))
+
+(defn- describe-json-xform [member]
+  ((comp (map #(for [[k v] %
+                     :when (< (count v) *nested-field-column-max-row-length*)]
+                 [k (json/parse-string v)]))
+         (map #(into {} %))
+         (map row->types)) member))
+
+(def ^:const max-nested-field-columns
+  "Maximum number of nested field columns."
+  100)
+
+(defn- describe-json-rf
+  "Reducing function that takes a bunch of maps from row->types,
+  and gets them to conform to the type hierarchy,
+  going through and taking the lowest common denominator type at each pass,
+  ignoring the nils."
+  ([] nil)
+  ([acc-field-type-map] acc-field-type-map)
+  ([acc-field-type-map second-field-type-map]
+   (into {}
+         (for [json-column (set/union (set (keys second-field-type-map))
+                                      (set (keys acc-field-type-map)))]
+           (cond
+             (or (nil? acc-field-type-map)
+                 (nil? (acc-field-type-map json-column))
+                 (= (hash (acc-field-type-map json-column))
+                    (hash (second-field-type-map json-column))))
+             [json-column (second-field-type-map json-column)]
+
+             (or (nil? second-field-type-map)
+                 (nil? (second-field-type-map json-column)))
+             [json-column (acc-field-type-map json-column)]
+
+             (every? #(isa? % Number) [(acc-field-type-map json-column)
+                                       (second-field-type-map json-column)])
+             [json-column java.lang.Number]
+
+             (every?
+               (fn [column-type]
+                 (some (fn [allowed-type]
+                         (isa? column-type allowed-type))
+                       [String Number Boolean java.time.LocalDateTime]))
+               [(acc-field-type-map json-column) (second-field-type-map json-column)])
+             [json-column java.lang.String]
+
+             :else
+             [json-column nil])))))
+
+(def field-type-map
+  "Map from Java types for deserialized JSON (so small subset of Java types) to MBQL types.
+
+  We actually do deserialize the JSON in order to determine types,
+  so the java / clojure types we get have to be matched to MBQL types"
+  {java.lang.String                :type/Text
+   ;; JSON itself has the single number type, but Java serde of JSON is stricter
+   java.lang.Long                  :type/Integer
+   clojure.lang.BigInt             :type/BigInteger
+   java.math.BigInteger            :type/BigInteger
+   java.lang.Integer               :type/Integer
+   java.lang.Double                :type/Float
+   java.lang.Float                 :type/Float
+   java.math.BigDecimal            :type/Decimal
+   java.lang.Number                :type/Number
+   java.lang.Boolean               :type/Boolean
+   java.time.LocalDateTime         :type/DateTime
+   clojure.lang.PersistentVector   :type/Array
+   clojure.lang.PersistentArrayMap :type/Structured
+   clojure.lang.PersistentHashMap  :type/Structured})
+
+(def db-type-map
+  "Map from MBQL types to database types.
+
+  This is the lowest common denominator of types, hopefully,
+  although as of writing this is just geared towards Postgres types"
+  {:type/Text       "text"
+   :type/Integer    "bigint"
+   ;; You might think that the ordinary 'bigint' type in Postgres and MySQL should be this.
+   ;; However, Bigint in those DB's maxes out at 2 ^ 64.
+   ;; JSON, like Javascript itself, will happily represent 1.8 * (10^308),
+   ;; Losing digits merrily along the way.
+   ;; We can't really trust anyone to use MAX_SAFE_INTEGER, in JSON-land..
+   ;; So really without forcing arbitrary precision ('decimal' type),
+   ;; we have too many numerical regimes to test.
+   ;; (#22732) was basically the consequence of missing one.
+   :type/BigInteger "decimal"
+   :type/Float      "double precision"
+   :type/Number     "double precision"
+   :type/Decimal    "decimal"
+   :type/Boolean    "boolean"
+   :type/DateTime   "timestamp"
+   :type/Array      "text"
+   :type/Structured "text"})
+
+(defn- field-types->fields [field-types]
+  (let [valid-fields (for [[field-path field-type] (seq field-types)]
+                       (if (nil? field-type)
+                         nil
+                         (let [curr-type (get field-type-map field-type :type/*)]
+                           {:name              (str/join " \u2192 " (map name field-path)) ;; right arrow
+                            :database-type     (db-type-map curr-type)
+                            :base-type         curr-type
+                            ;; Postgres JSONB field, which gets most usage, doesn't maintain JSON object ordering...
+                            :database-position 0
+                            :visibility-type   :normal
+                            :nfc-path          field-path})))
+        field-hash   (apply hash-set (filter some? valid-fields))]
+    field-hash))
+
+;; The name's nested field columns but what the people wanted (issue #708)
+;; was JSON so what they're getting is JSON.
+(defn describe-nested-field-columns
+  "Default implementation of `describe-nested-field-columns` for SQL JDBC drivers. Goes and queries the table if there are JSON columns for the nested contents."
+  [driver spec table]
+  (with-open [conn (jdbc/get-connection spec)]
+    (let [table-identifier-info [(:schema table) (:name table)]
+
+          table-fields          (describe-table-fields driver conn table nil)
+          json-fields           (filter #(= (:semantic-type %) :type/SerializedJSON) table-fields)]
+      (if (nil? (seq json-fields))
+        #{}
+        (let [json-field-names (mapv #(apply hx/identifier :field (into table-identifier-info [(:name %)])) json-fields)
+              table-identifier (apply hx/identifier :table table-identifier-info)
+              quote-type       (case driver :postgres :ansi :mysql :mysql)
+              sql-args         (hsql/format {:select json-field-names
+                                             :from   [table-identifier]
+                                             :limit  nested-field-sample-limit} :quoting quote-type)
+              query            (jdbc/reducible-query spec sql-args {:identifiers identity})
+              field-types      (transduce describe-json-xform describe-json-rf query)
+              fields           (field-types->fields field-types)]
+          (if (> (count fields) max-nested-field-columns)
+            (do
+              (log/warn
+                (format
+                  "More nested field columns detected than maximum. Limiting the number of nested field columns to %d."
+                  max-nested-field-columns))
+              (set (take max-nested-field-columns fields)))
+            fields))))))

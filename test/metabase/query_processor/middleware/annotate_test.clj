@@ -1,5 +1,6 @@
 (ns metabase.query-processor.middleware.annotate-test
   (:require [clojure.test :refer :all]
+            [medley.core :as m]
             [metabase.driver :as driver]
             [metabase.models :refer [Card Field]]
             [metabase.query-processor :as qp]
@@ -13,7 +14,7 @@
 (defn- add-column-info [query metadata]
   (mt/with-everything-store
     (driver/with-driver :h2
-      (-> (mt/test-qp-middleware annotate/add-column-info query metadata []) :metadata :data))))
+      ((annotate/add-column-info query identity) metadata))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             column-info (:native)                                              |
@@ -220,6 +221,7 @@
                 :name            "parent.child"
                 :settings        nil
                 :field_ref       [:field (u/the-id child) nil]
+                :nfc_path        nil
                 :parent_id       (u/the-id parent)
                 :id              (u/the-id child)
                 :visibility_type :normal
@@ -241,6 +243,7 @@
                 :name            "grandparent.parent.child"
                 :settings        nil
                 :field_ref       [:field (u/the-id child) nil]
+                :nfc_path        nil
                 :parent_id       (u/the-id parent)
                 :id              (u/the-id child)
                 :visibility_type :normal
@@ -610,7 +613,7 @@
 
 (deftest mbql-cols-nested-queries-test
   (testing "Should be able to infer MBQL columns with nested queries"
-    (let [base-query (qp/query->preprocessed
+    (let [base-query (qp/preprocess
                       (mt/mbql-query venues
                         {:joins [{:fields       :all
                                   :source-table $$categories
@@ -638,11 +641,11 @@
       ;; these tests look at the metadata for just one column so it's easier to spot the differences.
       (letfn [(ean-metadata [result]
                 (as-> (:cols result) result
-                  (u/key-by :name result)
+                  (m/index-by :name result)
                   (get result "EAN")
                   (select-keys result [:name :display_name :base_type :semantic_type :id :field_ref])))]
         (testing "Make sure metadata is correct for the 'EAN' column with"
-          (let [base-query (qp/query->preprocessed
+          (let [base-query (qp/preprocess
                             (mt/mbql-query orders
                               {:joins [{:fields       :all
                                         :source-table $$products
@@ -674,7 +677,7 @@
                       Card [{card-2-id :id} {:dataset_query (mt/mbql-query people)}]]
         (testing "when a nested query is from a saved question, there should be no `:join-alias` on the left side"
           (mt/$ids nil
-            (let [base-query (qp/query->preprocessed
+            (let [base-query (qp/preprocess
                               (mt/mbql-query nil
                                 {:source-table (str "card__" card-1-id)
                                  :joins        [{:fields       :all

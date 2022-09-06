@@ -1,6 +1,6 @@
 (ns metabase.query-processor-test.string-extracts-test
   (:require [clojure.test :refer :all]
-            [metabase.query-processor-test :refer :all]
+            [metabase.query-processor :as qp]
             [metabase.test :as mt]
             [metabase.test.data :as data]))
 
@@ -14,7 +14,7 @@
         :order-by    [[:asc [:field-id (data/id :venues :id)]]]
         :limit       1}
        (mt/run-mbql-query venues)
-       rows
+       mt/rows
        ffirst))
 
 (deftest test-length
@@ -94,3 +94,27 @@
     (is (= "Taylor's" (test-string-extract
                        [:regex-match-first [:field-id (data/id :venues :name)] "^Taylor's"]
                        [:= [:field-id (data/id :venues :name)] "Taylor's Prime Steak House"])))))
+
+(deftest regex-extract-in-explict-join-test
+  (testing "Should be able to use regex extra in an explict join (#17790)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex :left-join)
+      (mt/dataset sample-dataset
+        (let [query (mt/mbql-query orders
+                      {:joins       [{:source-table $$products
+                                      :alias        "Products"
+                                      :condition    [:= $product_id &Products.products.id]
+                                      :fields       :all}]
+                       :expressions {:regex [:regex-match-first &Products.products.category ".*"]}
+                       :order-by    [[:asc $id]]
+                       :limit       2})]
+          (mt/with-native-query-testing-context query
+            (is (= [[1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2
+                     "Widget"
+                     14 "8833419218504" "Awesome Concrete Shoes" "Widget" "McClure-Lockman" 25.1 4.0 "2017-12-31T14:41:56.87Z"]
+                    [2 1 123 110.93 6.1 117.03 nil "2018-05-15T08:04:04.58Z" 3
+                     "Gizmo"
+                     123 "3621077291879" "Mediocre Wooden Bench" "Gizmo" "Flatley-Kunde" 73.95 2.0 "2017-11-16T13:53:14.232Z"]]
+                   (mt/formatted-rows [int int int 2.0 2.0 2.0 int str int
+                                       str
+                                       int str str str str 2.0 2.0 str]
+                     (qp/process-query query))))))))))

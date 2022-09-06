@@ -1,11 +1,13 @@
 import {
   restore,
-  describeWithToken,
+  describeEE,
   mockSessionProperty,
-  modal,
-} from "__support__/e2e/cypress";
+  popover,
+  visitDashboard,
+  rightSidebar,
+} from "__support__/e2e/helpers";
 
-describeWithToken("scenarios > dashboard > caching", () => {
+describeEE("scenarios > dashboard > caching", () => {
   beforeEach(() => {
     restore();
     mockSessionProperty("enable-query-caching", true);
@@ -14,43 +16,50 @@ describeWithToken("scenarios > dashboard > caching", () => {
 
   it("can set cache ttl for a saved question", () => {
     cy.intercept("PUT", "/api/dashboard/1").as("updateDashboard");
-    cy.visit("/dashboard/1");
+    visitDashboard(1);
 
-    openEditingModalForm();
-    modal().within(() => {
-      cy.findByText("More options").click();
-      cy.findByPlaceholderText("24")
-        .clear()
-        .type("48")
-        .blur();
-      cy.button("Update").click();
+    openDashboardInfo();
+
+    rightSidebar().within(() => {
+      cy.findByText(/Cache Configuration/).click();
+    });
+
+    popover().within(() => {
+      cy.findByPlaceholderText("24").clear().type("48").blur();
+      cy.button("Save changes").click();
     });
 
     cy.wait("@updateDashboard");
     cy.reload();
 
-    openEditingModalForm();
-    modal().within(() => {
-      cy.findByText("More options").click();
-      cy.findByDisplayValue("48")
-        .clear()
-        .type("0")
-        .blur();
-      cy.button("Update").click();
+    openDashboardInfo();
+
+    rightSidebar().within(() => {
+      cy.findByText(/Cache Configuration/).click();
+    });
+
+    popover().within(() => {
+      cy.findByDisplayValue("48").clear().type("0").blur();
+      cy.button("Save changes").click();
     });
 
     cy.wait("@updateDashboard");
     cy.reload();
 
-    openEditingModalForm();
-    modal().within(() => {
-      cy.findByText("More options").click();
+    openDashboardInfo();
+
+    rightSidebar().within(() => {
+      cy.findByText(/Cache Configuration/).click();
+    });
+
+    popover().within(() => {
       cy.findByPlaceholderText("24");
     });
   });
 });
 
-function openEditingModalForm() {
-  cy.icon("ellipsis").click();
-  cy.findByText("Edit dashboard details").click();
+function openDashboardInfo() {
+  cy.get("main header").within(() => {
+    cy.icon("info").click();
+  });
 }

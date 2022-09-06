@@ -224,13 +224,15 @@
 ;;; (like `metabase.api.dataset-test`).
 ;;; TODO: migrate the test cases above to use these functions, if possible
 
-(defn- do-test
-  [message {:keys [query viz-settings assertions endpoints]}]
+(defn do-test
+  "Test helper to enable writing API-level export tests across multiple export endpoints and formats."
+  [message {:keys [query viz-settings assertions endpoints user]}]
   (testing message
     (let [query-json        (json/generate-string query)
           viz-settings-json (json/generate-string viz-settings)
           public-uuid       (str (UUID/randomUUID))
-          card-defaults     {:dataset_query query, :public_uuid public-uuid, :enable_embedding true}]
+          card-defaults     {:dataset_query query, :public_uuid public-uuid, :enable_embedding true}
+          user              (or user :rasta)]
       (mt/with-temporary-setting-values [enable-public-sharing true
                                          enable-embedding      true]
         (embed-test/with-new-secret-key
@@ -242,7 +244,7 @@
               (testing endpoint
                 (case endpoint
                   :dataset
-                  (let [results (mt/user-http-request :rasta :post 200
+                  (let [results (mt/user-http-request user :post 200
                                                       (format "dataset/%s" (name export-format))
                                                       {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
                                                       :query query-json
@@ -250,19 +252,19 @@
                     ((-> assertions export-format) results))
 
                   :card
-                  (let [results (mt/user-http-request :rasta :post 200
+                  (let [results (mt/user-http-request user :post 200
                                                       (format "card/%d/query/%s" (:id card) (name export-format))
                                                       {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
                     ((-> assertions export-format) results))
 
                   :public
-                  (let [results (mt/user-http-request :rasta :get 200
+                  (let [results (mt/user-http-request user :get 200
                                                       (format "public/card/%s/query/%s" public-uuid (name export-format))
                                                       {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
                     ((-> assertions export-format) results))
 
                   :embed
-                  (let [results (mt/user-http-request :rasta :get 200
+                  (let [results (mt/user-http-request user :get 200
                                                       (embed-test/card-query-url card (str "/" (name export-format)))
                                                       {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
                     ((-> assertions export-format) results)))))))))))
@@ -334,32 +336,35 @@
                                (xlsx-test/parse-xlsx-results results))))}}))
 
 (deftest remapped-columns-test
-  (letfn [(testfn []
-            (do-test
-             "Remapped values are used in exports"
-             {:query {:database (mt/id)
-                      :type     :query
-                      :query    {:source-table (mt/id :venues)
-                                 :limit 1}}
+  (letfn [(testfn [remap-type]
+            (let [col-name (case remap-type
+                             :internal "Category ID [internal remap]"
+                             :external "Category ID [external remap]")]
+              (do-test
+               "Remapped values are used in exports"
+               {:query {:database (mt/id)
+                        :type     :query
+                        :query    {:source-table (mt/id :venues)
+                                   :limit        1}}
 
-              :assertions {:csv (fn [results]
-                                  (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
-                                          ["1" "Red Medicine" "Asian" "10.0646" "-165.374" "3"]]
-                                         (csv/read-csv results))))
+                :assertions {:csv (fn [results]
+                                    (is (= [["ID" "Name" col-name "Latitude" "Longitude" "Price"]
+                                            ["1" "Red Medicine" "Asian" "10.0646" "-165.374" "3"]]
+                                           (csv/read-csv results))))
 
-                           :json (fn [results]
-                                   (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
-                                           [1 "Red Medicine" "Asian" 10.0646 -165.374 3]]
-                                          (parse-json-results results))))
+                             :json (fn [results]
+                                     (is (= [["ID" "Name" col-name "Latitude" "Longitude" "Price"]
+                                             [1 "Red Medicine" "Asian" 10.0646 -165.374 3]]
+                                            (parse-json-results results))))
 
-                           :xlsx (fn [results]
-                                   (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
-                                           [1.0 "Red Medicine" "Asian" 10.0646 -165.374 3.0]]
-                                          (xlsx-test/parse-xlsx-results results))))}}))]
+                             :xlsx (fn [results]
+                                     (is (= [["ID" "Name" col-name "Latitude" "Longitude" "Price"]
+                                             [1.0 "Red Medicine" "Asian" 10.0646 -165.374 3.0]]
+                                            (xlsx-test/parse-xlsx-results results))))}})))]
     (mt/with-column-remappings [venues.category_id categories.name]
-      (testfn))
+      (testfn :external))
     (mt/with-column-remappings [venues.category_id (values-of categories.name)]
-      (testfn))))
+      (testfn :internal))))
 
 (deftest join-export-test
   (do-test
@@ -476,7 +481,12 @@
            (@#'qp.streaming/export-column-order
             [{:id 0, :name "Col1" :field_ref [:field 0 nil]}]
             [{::mb.viz/table-column-field-ref [:field 1 nil], ::mb.viz/table-column-enabled true}
-             {::mb.viz/table-column-field-ref [:field 2 nil], ::mb.viz/table-column-enabled true}]))))
+             {::mb.viz/table-column-field-ref [:field 2 nil], ::mb.viz/table-column-enabled true}])))
+    (is (= [0]
+           (@#'qp.streaming/export-column-order
+            [{:id 0, :name "Col1" :field_ref [:field 0 nil]}]
+            [{::mb.viz/table-column-name "Col1" , ::mb.viz/table-column-enabled true}
+             {::mb.viz/table-column-name "Col2" , ::mb.viz/table-column-enabled true}]))))
 
   (testing "if table-columns is nil, original order of cols is used"
     (is (= [0 1]

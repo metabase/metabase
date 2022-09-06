@@ -2,8 +2,7 @@
   (:require [clojure.test :refer :all]
             [honeysql.core :as hsql]
             [metabase-enterprise.audit-app.interface :as audit.i]
-            [metabase-enterprise.audit-app.pages.common :as pages.common]
-            [metabase.db :as mdb]
+            [metabase-enterprise.audit-app.pages.common :as common]
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
@@ -20,18 +19,17 @@
 
 (defmethod audit.i/internal-query ::legacy-format-query-fn
   [_ a1]
-  (let [h2? (= (mdb/db-type) :h2)]
-    {:metadata [[:A {:display_name "A", :base_type :type/DateTime}]
-                [:B {:display_name "B", :base_type :type/Integer}]]
-     :results  (pages.common/query
-                {:union-all [{:select [[a1 :A] [2 :B]]}
-                             {:select [[3 :A] [4 :B]]}]})}))
+  {:metadata [[:A {:display_name "A", :base_type :type/DateTime}]
+              [:B {:display_name "B", :base_type :type/Integer}]]
+   :results  (common/query
+              {:union-all [{:select [[a1 :A] [2 :B]]}
+                           {:select [[3 :A] [4 :B]]}]})})
 
 (defmethod audit.i/internal-query ::reducible-format-query-fn
   [_ a1]
   {:metadata [[:A {:display_name "A", :base_type :type/DateTime}]
               [:B {:display_name "B", :base_type :type/Integer}]]
-   :results  (pages.common/reducible-query
+   :results  (common/reducible-query
               {:union-all [{:select [[a1 :A] [2 :B]]}
                            {:select [[3 :A] [4 :B]]}]})
    :xform    (map #(update (vec %) 0 inc))})
@@ -62,12 +60,12 @@
               (hsql/call :cast :bob.dobbs #honeysql.types.SqlRaw{:s "date"})
               {::hx/database-type "date"})
             nil]}
-          (assoc-in (#'pages.common/add-45-days-clause {} :bob.dobbs) [:where 2] nil)))))
+          (assoc-in (#'common/add-45-days-clause {} :bob.dobbs) [:where 2] nil)))))
 
 (deftest add-search-clause-test
   (testing "add search clause"
     (is (= {:where `(:or [:like ~(hsql/call :lower :t.name) "%birds%"] [:like ~(hsql/call :lower :db.name) "%birds%"])}
-           (#'pages.common/add-search-clause {} "birds" :t.name :db.name)))))
+           (#'common/add-search-clause {} "birds" :t.name :db.name)))))
 
 (deftest query-limit-and-offset-test
   (testing "Make sure params passed in as part of the query map are respected"
@@ -87,20 +85,20 @@
 (deftest CTES->subselects-test
   (testing "FROM substitution"
     (is (= {:from [[{:from [[:view_log :vl]]} :mp]]}
-           (#'pages.common/CTEs->subselects
+           (#'common/CTEs->subselects
             {:with      [[:most_popular {:from [[:view_log :vl]]}]]
              :from      [[:most_popular :mp]]}))))
 
   (testing "JOIN substitution"
     (is (= {:left-join [[{:from [[:query_execution :qe]]} :qe_count] [:= :qe_count.executor_id :u.id]]}
-           (#'pages.common/CTEs->subselects
+           (#'common/CTEs->subselects
             {:with      [[:qe_count {:from [[:query_execution :qe]]}]]
              :left-join [:qe_count [:= :qe_count.executor_id :u.id]]}))))
 
   (testing "IN subselect substitution"
     (is (= {:from [[{:from  [[:report_dashboardcard :dc]]
                      :where [:in :d.id {:from [[{:from [[:view_log :vl]]} :most_popular]]}]} :dash_avg_running_time]]}
-           (#'pages.common/CTEs->subselects
+           (#'common/CTEs->subselects
             {:with [[:most_popular {:from [[:view_log :vl]]}]
                     [:dash_avg_running_time {:from  [[:report_dashboardcard :dc]]
                                              :where [:in :d.id {:from [:most_popular]}]}]]
@@ -125,7 +123,7 @@
                                                             :left-join [[:report_dashboard :d]
                                                                         [:= :vl.model_id :d.id]]} :most_popular]]}]} :rt]
                         [:= :mp.dashboard_id :rt.dashboard_id]]}
-           (#'pages.common/CTEs->subselects
+           (#'common/CTEs->subselects
             {:with      [[:most_popular {:select    [[:d.id :dashboard_id]]
                                          :from      [[:view_log :vl]]
                                          :left-join [[:report_dashboard :d] [:= :vl.model_id :d.id]]}]

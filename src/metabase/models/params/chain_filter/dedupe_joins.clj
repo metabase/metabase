@@ -39,6 +39,7 @@
 (defn- list-beforeo
   "A relation such that `sublist` is all items in `lst` up to (but not including) `item`."
   [lst sublist item]
+  #_:clj-kondo/ignore
   (l/matcha [lst sublist]
     ([[] []])
     ([[item . _] []])
@@ -57,9 +58,7 @@
   "A relationship such that all RHS tables in `joins` are distinct."
   [joins]
   (let [rhses (vec (l/lvars (count joins)))]
-    (dorun (map (fn [join rhs]
-                  (rhso join rhs))
-                joins rhses))
+    (dorun (map rhso joins rhses))
     (l/all
      (l/distincto rhses))))
 

@@ -1,15 +1,20 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { render } from "@testing-library/react";
+import { merge } from "icepick";
 import { createMemoryHistory } from "history";
 import { Router, Route } from "react-router";
 import { Provider } from "react-redux";
 import { reducer as form } from "redux-form";
-import { ThemeProvider } from "styled-components";
+import { ThemeProvider } from "@emotion/react";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
-import { state as sampleDatasetReduxState } from "__support__/sample_dataset_fixture";
+import { state as sampleDatabaseReduxState } from "__support__/sample_database_fixture";
 import { getStore } from "./entities-store";
+import {
+  createMockSettingsState,
+  createMockEmbedState,
+} from "metabase-types/store/mocks";
 
 function getUser(user = {}) {
   return {
@@ -27,26 +32,41 @@ function getUser(user = {}) {
  * helping to setup common wrappers and provider components
  * (router, redux, drag-n-drop provider, etc.)
  *
- * @param {React.ReactElement} JSX to render
- * @param {object} various wrapper settings and RTL render options
+ * @param {React.ReactElement} ui - JSX to render
+ * @param {Option}  prop - various wrapper settings and RTL render options
+ *
+ * @typedef Option
+ * @property {object} [currentUser]
+ * @property {{[key: string]: import("redux").Reducer}} [reducers]
+ * @property {object} [storeInitialState]
+ * @property {boolean} [withSampleDatabase]
+ * @property {boolean} [withRouter]
+ * @property {boolean} [withDND]
  */
 export function renderWithProviders(
   ui,
   {
     currentUser,
     reducers,
-    withSampleDataset,
+    storeInitialState = {},
+    withSampleDatabase,
     withRouter = false,
     withDND = false,
+    withSettings = false,
+    withEmbedSettings = false,
     ...options
   } = {},
 ) {
-  const initialReduxState = withSampleDataset ? sampleDatasetReduxState : {};
+  const initialReduxState = withSampleDatabase
+    ? merge(sampleDatabaseReduxState, storeInitialState)
+    : storeInitialState;
 
   const store = getStore(
     {
       form,
       currentUser: () => getUser(currentUser),
+      settings: withSettings ? () => createMockSettingsState() : undefined,
+      embed: withEmbedSettings ? () => createMockEmbedState() : undefined,
       ...reducers,
     },
     initialReduxState,

@@ -1,4 +1,4 @@
-import Collections from "metabase/entities/collections";
+import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
 
 describe("Collection selectors", () => {
   const CANONICAL_ROOT_COLLECTION_ID = null;
@@ -43,13 +43,13 @@ describe("Collection selectors", () => {
       },
       entities: {
         collections: {
-          ...collections,
           root: {
             id: "root",
             name: "Our analytics",
             can_write: isAdmin,
           },
           [PERSONAL_COLLECTION.id]: PERSONAL_COLLECTION,
+          ...collections,
         },
       },
     };
@@ -185,6 +185,35 @@ describe("Collection selectors", () => {
             pathname: `/collection/${TEST_READ_ONLY_COLLECTION.id}-slug`,
             query: {
               collectionId: TEST_READ_ONLY_COLLECTION.id,
+            },
+          },
+        };
+        expect(getInitialCollectionId(state, props)).toBe(
+          PERSONAL_COLLECTION.id,
+        );
+      });
+
+      it("does not suggest a read-only root collection when others collections permissions had not been loaded yet", () => {
+        // eslint-disable-next-line no-unused-vars
+        const { can_write, ...personalCollectionWithoutPermissionsLoaded } =
+          PERSONAL_COLLECTION;
+
+        const state = getReduxState({
+          collections: {
+            [PERSONAL_COLLECTION.id]:
+              personalCollectionWithoutPermissionsLoaded,
+          },
+        });
+        const props = {
+          collectionId: ROOT_COLLECTION.id,
+          params: {
+            collectionId: CANONICAL_ROOT_COLLECTION_ID,
+            slug: ROOT_COLLECTION.id,
+          },
+          location: {
+            pathname: `/collection/${ROOT_COLLECTION.id}`,
+            query: {
+              collectionId: ROOT_COLLECTION.id,
             },
           },
         };

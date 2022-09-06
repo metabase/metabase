@@ -79,7 +79,7 @@
                                                 [:avg $id]
                                                 {:name "some_generated_name", :display-name "My Cool Ag"}]]
                                 :breakout     [$price]}})]
-    ;; see comment in `metabase.query-processor.middleware.large-int-id/convert-id-to-string`
+    ;; see comment in [[metabase.query-processor.middleware.large-int-id/convert-id-to-string]]
     ;; for why this value does not change
     (testing "aggregations are not converted to strings with middleware enabled"
       (is (= [[1 55]
@@ -94,7 +94,15 @@
               [3 47]
               [4 62]]
              (mt/rows
-               (qp/process-query (assoc query :middleware {}))))))))
+              (qp/process-query (assoc query :middleware {}))))))))
+
+(defn- convert-id-to-string [rows]
+  (let [query {:type       :query
+               :query      {:fields [[:field (mt/id :venues :id) nil]]}
+               :middleware {:js-int-to-string? true}}
+        rff   (large-int-id/convert-id-to-string query (constantly conj))
+        rf    (rff nil)]
+    (transduce identity rf rows)))
 
 (deftest different-row-types-test
   (testing "Middleware should work regardless of the type of each row (#13475)"
@@ -109,10 +117,4 @@
       (testing (format "rows = ^%s %s" (.getCanonicalName (class rows)) (pr-str rows))
         (is (= [["1"]
                 ["2147483647"]]
-               (:post
-                (mt/test-qp-middleware
-                 large-int-id/convert-id-to-string
-                 {:type       :query
-                  :query      {:fields [[:field (mt/id :venues :id) nil]]}
-                  :middleware {:js-int-to-string? true}}
-                 rows))))))))
+               (convert-id-to-string rows)))))))

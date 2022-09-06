@@ -1,17 +1,20 @@
 import {
-  describeWithToken,
+  describeEE,
   popover,
   restore,
   setupSMTP,
   sidebar,
-} from "__support__/e2e/cypress";
-import { USERS } from "__support__/e2e/cypress_data";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+  visitDashboard,
+  clickSend,
+} from "__support__/e2e/helpers";
+
+import { USERS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { admin } = USERS;
-const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATASET;
+const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
-describeWithToken("issue 18669", () => {
+describeEE("issue 18669", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -20,14 +23,13 @@ describeWithToken("issue 18669", () => {
     cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: card }) => {
         cy.editDashboardCard(card, getFilterMapping(card));
-        cy.visit(`/dashboard/${card.dashboard_id}`);
+        visitDashboard(card.dashboard_id);
       },
     );
   });
 
   it("should send a test email with non-default parameters (metabase#18669)", () => {
-    cy.icon("share").click();
-    cy.findByText("Dashboard subscriptions").click();
+    cy.icon("subscription").click();
     cy.findByText("Email it").click();
 
     cy.findByPlaceholderText("Enter user names or email addresses")
@@ -44,14 +46,13 @@ describeWithToken("issue 18669", () => {
       cy.button("Update filter").click();
     });
 
-    cy.button("Send email now").click();
-    cy.findByText("Email sent", { timeout: 10000 });
+    clickSend();
   });
 });
 
 const questionDetails = {
   name: "Product count",
-  database: 1,
+  database: SAMPLE_DB_ID,
   type: "query",
   query: {
     "source-table": PRODUCTS_ID,

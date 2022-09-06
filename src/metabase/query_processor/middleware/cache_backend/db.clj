@@ -3,6 +3,7 @@
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [java-time :as t]
+            [metabase.db :as mdb]
             [metabase.models.query-cache :refer [QueryCache]]
             [metabase.query-processor.middleware.cache-backend.interface :as i]
             [metabase.util.date-2 :as u.date]
@@ -16,19 +17,26 @@
                    [:second n])]
     (u.date/add (t/offset-date-time) unit (- n))))
 
-(def ^:private cached-results-query-sql
-  (delay (first (hsql/format {:select   [:results]
-                              :from     [QueryCache]
-                              :where    [:and
-                                         [:= :query_hash (hsql/raw "?")]
-                                         [:>= :updated_at (hsql/raw "?")]]
-                              :order-by [[:updated_at :desc]]
-                              :limit    1}
-                  :quoting (db/quoting-style)))))
+(def ^:private ^{:arglists '([])} cached-results-query-sql
+  ;; this is memoized for a given application DB so we can deliver cached results EXTRA FAST and not have to spend an
+  ;; extra microsecond compiling the same exact query every time. :shrug:
+  ;;
+  ;; Since application DB can change at run time (during tests) it's not just a plain delay
+  (let [f (memoize (fn [_db-type quoting-style]
+                     (first (hsql/format {:select   [:results]
+                                          :from     [QueryCache]
+                                          :where    [:and
+                                                     [:= :query_hash (hsql/raw "?")]
+                                                     [:>= :updated_at (hsql/raw "?")]]
+                                          :order-by [[:updated_at :desc]]
+                                          :limit    1}
+                                         :quoting quoting-style))))]
+    (fn []
+      (f (mdb/db-type) (db/quoting-style)))))
 
 (defn- prepare-statement
   ^PreparedStatement [^Connection conn query-hash max-age-seconds]
-  (let [stmt (.prepareStatement conn ^String @cached-results-query-sql
+  (let [stmt (.prepareStatement conn ^String (cached-results-query-sql)
                                 ResultSet/TYPE_FORWARD_ONLY
                                 ResultSet/CONCUR_READ_ONLY
                                 ResultSet/CLOSE_CURSORS_AT_COMMIT)]
@@ -47,9 +55,9 @@
   (with-open [conn (jdbc/get-connection (db/connection))
               stmt (prepare-statement conn query-hash max-age-seconds)
               rs   (.executeQuery stmt)]
-    ;; VERY IMPORTANT! Bind `*db-connection*` so it will get reused elsewhere for the duration of results reduction,
-    ;; otherwise we can potentially end up deadlocking if we need to acquire another connection for one reason or
-    ;; another, such as recording QueryExecutions
+    ;; VERY IMPORTANT! Bind [[db/*db-connection*]] so it will get reused elsewhere for the duration of results
+    ;; reduction, otherwise we can potentially end up deadlocking if we need to acquire another connection for one
+    ;; reason or another, such as recording QueryExecutions
     (binding [db/*db-connection* {:connection conn}]
       (if-not (.next rs)
         (respond nil)
@@ -60,13 +68,12 @@
   "Delete any cache entries that are older than the global max age `max-cache-entry-age-seconds` (currently 3 months)."
   [max-age-seconds]
   {:pre [(number? max-age-seconds)]}
-  (do
-    (log/tracef "Purging old cache entries.")
-    (try
-      (db/simple-delete! QueryCache
-        :updated_at [:<= (seconds-ago max-age-seconds)])
-      (catch Throwable e
-        (log/error e (trs "Error purging old cache entries")))))
+  (log/tracef "Purging old cache entries.")
+  (try
+    (db/simple-delete! QueryCache
+                       :updated_at [:<= (seconds-ago max-age-seconds)])
+    (catch Throwable e
+      (log/error e (trs "Error purging old cache entries"))))
   nil)
 
 (defn- save-results!

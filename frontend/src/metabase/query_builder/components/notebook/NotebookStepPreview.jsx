@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import { t } from "ttag";
 
 import cx from "classnames";
 import _ from "underscore";
@@ -7,14 +8,19 @@ import _ from "underscore";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 
 import Icon from "metabase/components/Icon";
-import Button from "metabase/components/Button";
-import { Box, Flex } from "grid-styled";
+import Button from "metabase/core/components/Button";
 import { Motion, spring } from "react-motion";
 
 import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
 import Visualization from "metabase/visualizations/components/Visualization";
 
 import Question from "metabase-lib/lib/Question";
+import {
+  PreviewButtonContainer,
+  PreviewHeader,
+  PreviewIconContainer,
+  PreviewRoot,
+} from "./NotebookStepPreview.styled";
 
 class NotebookStepPreview extends React.Component {
   constructor(props) {
@@ -55,25 +61,21 @@ class NotebookStepPreview extends React.Component {
       : { stiffness: 170 };
 
     return (
-      <Box pt={2}>
-        <Flex align="center" justify="space-between" mb={1}>
-          <span className="text-bold">{`Preview`}</span>
-          <Flex align="right">
+      <PreviewRoot>
+        <PreviewHeader>
+          <span className="text-bold">{t`Preview`}</span>
+          <PreviewIconContainer>
             <Icon
               name="close"
               onClick={onClose}
               className="text-light text-medium-hover cursor-pointer ml1"
             />
-          </Flex>
-        </Flex>
+          </PreviewIconContainer>
+        </PreviewHeader>
         {isDirty ? (
-          <Flex
-            align="center"
-            justify="center"
-            className="bordered shadowed rounded bg-white p4"
-          >
-            <Button onClick={this.refresh}>Refresh</Button>
-          </Flex>
+          <PreviewButtonContainer className="bordered shadowed rounded bg-white p4">
+            <Button onClick={this.refresh}>{t`Refresh`}</Button>
+          </PreviewButtonContainer>
         ) : (
           <QuestionResultLoader question={question}>
             {({ rawSeries, result }) => (
@@ -103,7 +105,7 @@ class NotebookStepPreview extends React.Component {
             )}
           </QuestionResultLoader>
         )}
-      </Box>
+      </PreviewRoot>
     );
   }
 }

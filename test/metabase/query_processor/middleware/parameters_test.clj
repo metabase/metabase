@@ -3,7 +3,7 @@
   SQL-specific, they still confirm that the middleware itself is working correctly."
   (:require [clojure.test :refer :all]
             [metabase.driver :as driver]
-            [metabase.mbql.normalize :as normalize]
+            [metabase.mbql.normalize :as mbql.normalize]
             [metabase.models.card :refer [Card]]
             [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
             [metabase.query-processor.middleware.parameters :as parameters]
@@ -22,7 +22,7 @@
 
 (defn- substitute-params [query]
   (driver/with-driver :h2
-    (:pre (mt/test-qp-middleware parameters/substitute-parameters (normalize/normalize query)))))
+    (parameters/substitute-parameters (mbql.normalize/normalize query))))
 
 (deftest expand-mbql-top-level-params-test
   (testing "can we expand MBQL params if they are specified at the top level?"
@@ -160,8 +160,8 @@
   (testing "multiple sub-queries, referenced in template tags, are correctly substituted"
     (mt/with-temp* [Card [card-1 {:dataset_query (mt/native-query {:query "SELECT 1"})}]
                     Card [card-2 {:dataset_query (mt/native-query {:query "SELECT 2"})}]]
-      (let [card-1-id  (:id card-1)
-            card-2-id  (:id card-2)]
+      (let [card-1-id (:id card-1)
+            card-2-id (:id card-2)]
         (is (= (mt/native-query
                 {:query "SELECT COUNT(*) FROM (SELECT 1) AS c1, (SELECT 2) AS c2", :params []})
                (substitute-params
@@ -172,8 +172,8 @@
   (testing "multiple CTE queries, referenced in template tags, are correctly substituted"
     (mt/with-temp* [Card [card-1 {:dataset_query (mt/native-query {:query "SELECT 1"})}]
                     Card [card-2 {:dataset_query (mt/native-query {:query "SELECT 2"})}]]
-      (let [card-1-id  (:id card-1)
-            card-2-id  (:id card-2)]
+      (let [card-1-id (:id card-1)
+            card-2-id (:id card-2)]
         (is (= (mt/native-query
                 {:query "WITH c1 AS (SELECT 1), c2 AS (SELECT 2) SELECT COUNT(*) FROM c1, c2", :params []})
                (substitute-params
@@ -187,8 +187,7 @@
                     Card [card-2 {:dataset_query (mt/native-query
                                                   {:query         (str "SELECT * FROM {{#" (:id card-1) "}} AS c1")
                                                    :template-tags (card-template-tags [(:id card-1)])})}]]
-      (let [card-1-id  (:id card-1)
-            card-2-id  (:id card-2)]
+      (let [card-2-id (:id card-2)]
         (is (= (mt/native-query
                 {:query "SELECT COUNT(*) FROM (SELECT * FROM (SELECT 1) AS c1) AS c2", :params []})
                (substitute-params
@@ -201,15 +200,14 @@
                     Card [card-2 {:dataset_query (mt/native-query
                                                   {:query         (str "SELECT * FROM {{#" (:id card-1) "}} AS c1")
                                                    :template-tags (card-template-tags [(:id card-1)])})}]]
-      (let [card-1-id  (:id card-1)
-            card-2-id  (:id card-2)
+      (let [card-2-id       (:id card-2)
             card-1-subquery (str "SELECT "
-                                   "\"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", "
-                                   "\"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\", "
-                                   "\"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" AS \"CATEGORY_ID\", "
-                                   "\"PUBLIC\".\"VENUES\".\"LATITUDE\" AS \"LATITUDE\", "
-                                   "\"PUBLIC\".\"VENUES\".\"LONGITUDE\" AS \"LONGITUDE\", "
-                                   "\"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\" "
+                                 "\"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", "
+                                 "\"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\", "
+                                 "\"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" AS \"CATEGORY_ID\", "
+                                 "\"PUBLIC\".\"VENUES\".\"LATITUDE\" AS \"LATITUDE\", "
+                                 "\"PUBLIC\".\"VENUES\".\"LONGITUDE\" AS \"LONGITUDE\", "
+                                 "\"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\" "
                                  "FROM \"PUBLIC\".\"VENUES\" "
                                  "LIMIT 1048575")]
         (is (= (mt/native-query

@@ -72,7 +72,7 @@ xcshareddata
 xcuserdata
 dev/src/dev/nocommit/
 *~
-**/cypress_sample_dataset.json
+**/cypress_sample_database.json
 /frontend/src/cljs
 .shadow-cljs
 
@@ -80,3 +80,6 @@ dev/src/dev/nocommit/
 .lsp/*
 !.lsp/config.edn
 .clj-kondo/.cache
+*.code-workspace
+
+.calva/

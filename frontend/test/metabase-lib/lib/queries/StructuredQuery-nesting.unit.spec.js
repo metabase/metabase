@@ -1,4 +1,4 @@
-import { ORDERS } from "__support__/sample_dataset_fixture";
+import { ORDERS } from "__support__/sample_database_fixture";
 
 describe("StructuredQuery nesting", () => {
   describe("nest", () => {
@@ -99,9 +99,7 @@ describe("StructuredQuery nesting", () => {
       });
     });
     it("should return last summarized stage if any is summarized", () => {
-      const q = ORDERS.query()
-        .aggregate(["count"])
-        .nest();
+      const q = ORDERS.query().aggregate(["count"]).nest();
       expect(q.topLevelQuery().query()).toEqual({
         "source-table": ORDERS.id,
         aggregation: [["count"]],

@@ -14,6 +14,85 @@
             [metabase.util :as u]
             [toucan.db :as db]))
 
+;;;; [[->sorted-mbql-query-map]]
+
+(def ^:private mbql-clause->sort-order
+  (into {}
+        (map-indexed (fn [i k]
+                       [k i]))
+        [;; top-level keys
+         :database
+         :type
+         :query
+         :native
+         ;; inner-query and join keys
+         :source-table
+         :source-query
+         :source-metadata
+         :alias
+         :joins
+         :expressions
+         :breakout
+         :aggregation
+         :condition
+         :fields
+         :strategy
+         :filter
+         :order-by
+         :page
+         :limit]))
+
+(defn- sorted-mbql-query-map []
+  ;; stuff in [[mbql-clause->sort-order]] should always get sorted according to that order. Everything else should go at
+  ;; the end, with non-namespaced stuff first and namespaced stuff last; otherwise sort alphabetically
+  (sorted-map-by (fn [x y]
+                   (let [order   (fn [k]
+                                   (or (mbql-clause->sort-order k)
+                                       (when (and (keyword? k) (namespace k))
+                                         Integer/MAX_VALUE)
+                                       (dec Integer/MAX_VALUE)))
+                         x-order (order x)
+                         y-order (order y)]
+                     (if (= x-order y-order)
+                       (compare (str x) (str y))
+                       (compare x-order y-order))))))
+
+(def ^:dynamic *shorten-namespaced-keywords?*
+  "Whether to shorten something like `:metabase.query-processor.util.add-alias-info/source-table` to
+  `::add/source-table` if an alias exists for the keyword namespace in the current namespace ([[*ns*]])."
+  true)
+
+(defn- alias-for-namespace-in-*ns* [ns-symb]
+  (let [a-namespace (find-ns (symbol ns-symb))]
+    (some
+     (fn [[ns-alias aliased-namespace]]
+       (when (= aliased-namespace a-namespace)
+         ns-alias))
+     (ns-aliases *ns*))))
+
+(defn ->sorted-mbql-query-map
+  "Convert MBQL `query` to a special map type that keeps the keys sorted in the 'preferred' order (e.g. order roughly
+  matches that of SQL, i.e. things like source query and joins come before order by or limit), which is easier to look
+  at (maybe)."
+  [query]
+  (walk/postwalk
+   (fn [form]
+     (cond
+       (map? form)
+       (into (sorted-mbql-query-map) form)
+
+       (and *shorten-namespaced-keywords?*
+            (keyword? form)
+            (namespace form))
+       (if-let [ns-alias (alias-for-namespace-in-*ns* (symbol (namespace form)))]
+         (symbol (format "::%s/%s" ns-alias (name form)))
+         form)
+
+       :else
+       form))
+   query))
+
+
 ;;;; [[add-names]]
 
 (defn- field-and-table-name [field-id]
@@ -29,35 +108,36 @@
   "Walk a MBQL snippet `x` and add comment forms with the names of the Fields referenced to any `:field` clauses nil
   encountered. Helpful for debugging!"
   [x]
-  (walk/postwalk
-   (fn add-names* [form]
-     (letfn [(add-name-to-field-id [id]
-               (when id
-                 (let [[field-name table-name] (field-and-table-name id)]
-                   (symbol (format "#_\"%s.%s\"" field-name table-name)))))
-             (field-id->name-form [field-id]
-               (list 'do (add-name-to-field-id field-id) field-id))]
-       (mbql.u/replace form
-         [:field (id :guard integer?) opts]
-         [:field id (add-name-to-field-id id) (cond-> opts
-                                                (integer? (:source-field opts))
-                                                (update :source-field field-id->name-form))]
+  (-> (walk/postwalk
+       (fn add-names* [form]
+         (letfn [(add-name-to-field-id [id]
+                   (when id
+                     (let [[field-name table-name] (field-and-table-name id)]
+                       (symbol (format "#_\"%s.%s\"" field-name table-name)))))
+                 (field-id->name-form [field-id]
+                   (list 'do (add-name-to-field-id field-id) field-id))]
+           (mbql.u/replace form
+             [:field (id :guard integer?) opts]
+             [:field id (add-name-to-field-id id) (cond-> opts
+                                                    (integer? (:source-field opts))
+                                                    (update :source-field field-id->name-form))]
 
-         (m :guard (every-pred map? (comp integer? :source-table)))
-         (add-names* (update m :source-table add-table-id-name))
+             (m :guard (every-pred map? (comp integer? :source-table)))
+             (add-names* (update m :source-table add-table-id-name))
 
-         (m :guard (every-pred map? (comp integer? :metabase.query-processor.util.add-alias-info/source-table)))
-         (add-names* (update m :metabase.query-processor.util.add-alias-info/source-table add-table-id-name))
+             (m :guard (every-pred map? (comp integer? :metabase.query-processor.util.add-alias-info/source-table)))
+             (add-names* (update m :metabase.query-processor.util.add-alias-info/source-table add-table-id-name))
 
-         (m :guard (every-pred map? (comp integer? :fk-field-id)))
-         (-> m
-             (update :fk-field-id field-id->name-form)
-             add-names*)
+             (m :guard (every-pred map? (comp integer? :fk-field-id)))
+             (-> m
+                 (update :fk-field-id field-id->name-form)
+                 add-names*)
 
-         ;; don't recursively replace the `do` lists above, other we'll get vectors.
-         (_ :guard (every-pred list? #(= (first %) 'do)))
-         &match)))
-   x))
+             ;; don't recursively replace the `do` lists above, other we'll get vectors.
+             (_ :guard (every-pred list? #(= (first %) 'do)))
+             &match)))
+       x)
+      ->sorted-mbql-query-map))
 
 
 ;;;; [[process-query-debug]]
@@ -91,15 +171,13 @@
 
 (defn- print-diff [before after]
   (assert (not= before after))
-  (let [before                         (format-output before)
-        after                          (format-output after)
-        [only-in-before only-in-after] (data/diff before after)]
+  (let [[only-in-before only-in-after] (data/diff before after)]
     (when *print-full?*
       (println (u/pprint-to-str 'cyan (format-output after))))
     (when (seq only-in-before)
-      (println (u/colorize 'red (str "-\n" (u/pprint-to-str only-in-before)))))
+      (println (u/colorize 'red (str "-\n" (u/pprint-to-str (format-output only-in-before))))))
     (when (seq only-in-after)
-      (println (u/colorize 'green (str "+\n" (u/pprint-to-str only-in-after)))))))
+      (println (u/colorize 'green (str "+\n" (u/pprint-to-str (format-output only-in-after))))))))
 
 (defn- debug-query-changes [middleware-var middleware]
   (fn [next-middleware]
@@ -256,6 +334,74 @@
             (print-diff @before row))
           (rf result row)))))))
 
+(defn- default-debug-middleware
+  "The default set of middleware applied to queries ran via [[process-query-debug]].
+  Analogous to [[qp/default-middleware]]."
+  []
+  (into
+   []
+   (comp cat (keep identity))
+   [@#'qp/execution-middleware
+    @#'qp/compile-middleware
+    @#'qp/post-processing-middleware
+    ;; Normally, pre-processing middleware are applied to the query left-to-right, but in debug mode we convert each
+    ;; one into a transducing middleware and compose them, which causes them to be applied right-to-left. So we need
+    ;; to reverse the order here.
+    (reverse @#'qp/pre-processing-middleware)
+    @#'qp/around-middleware]))
+
+(defn- alter-pre-processing-middleware
+  "Takes a pre-processing middleware function, and converts it to a transducing middleware with the signature:
+
+    (f (f query rff context)) -> (f query rff context)"
+  [middleware]
+  (fn [qp-or-query]
+    (if (map? qp-or-query)
+      ;; If we're passed a map, this means the middleware var is still being called on a query directly. This happens
+      ;; if pre-processing middleware calls other pre-processing middleware, such as [[upgrade-field-literals]] which
+      ;; calls [[resolve-fields]]. Fallback to the original middleware function in this case.
+      (middleware qp-or-query)
+      (fn [query rff context]
+        (qp-or-query
+         (middleware query)
+         rff
+         context)))))
+
+(defn- alter-post-processing-middleware
+  "Takes a pre-processing middleware function, and converts it to a transducing middleware with the signature:
+
+    (f (f query rff context)) -> (f query rff context)"
+  [middleware]
+  (fn [qp]
+    (fn [query rff context]
+      (qp query (middleware query rff) context))))
+
+(defn- with-altered-middleware-fn
+  "Implementation function for [[with-altered-middleware]]. Temporarily alters the root bindings for pre- and
+  post-processing middleware vars, changing them to transducing middleware which can individually be wrapped with
+  debug middleware in [[process-query-debug]]."
+  [f]
+  (let [pre-processing-middleware-vars  @#'qp/pre-processing-middleware
+        post-processing-middleware-vars @#'qp/post-processing-middleware
+        pre-processing-original-fns     (zipmap pre-processing-middleware-vars
+                                                (map deref pre-processing-middleware-vars))
+        post-processing-original-fns    (zipmap post-processing-middleware-vars
+                                                (map deref post-processing-middleware-vars))]
+    (try
+      (mapv #(alter-var-root % alter-pre-processing-middleware) pre-processing-middleware-vars)
+      (mapv #(alter-var-root % alter-post-processing-middleware) post-processing-middleware-vars)
+      (f)
+      (finally
+        (mapv (fn [[middleware-var middleware-fn]]
+                (alter-var-root middleware-var (constantly middleware-fn)))
+              (merge pre-processing-original-fns post-processing-original-fns))))))
+
+(defmacro ^:private with-altered-middleware
+  "Temporarily redefines pre-processing and post-processing middleware vars to equivalent transducing middlewares,
+  so that [[process-query-debug]] can print the transformations for each middleware individually."
+  [& body]
+  `(with-altered-middleware-fn (fn [] ~@body)))
+
 (defn process-query-debug
   "Process a query using a special QP that wraps all of the normal QP middleware and prints any transformations done
   during pre or post-processing.
@@ -280,17 +426,18 @@
             *print-names?*              print-names?
             *validate-query?*           validate-query?
             pprint/*print-right-margin* 80]
-    (let [middleware (for [middleware-var qp/default-middleware
-                           :when          middleware-var]
-                       (->> middleware-var
-                            (debug-query-changes middleware-var)
-                            (debug-metadata-changes middleware-var)
-                            (debug-result-changes middleware-var)
-                            (debug-row-changes middleware-var)))
-          qp         (qp.reducible/sync-qp (#'qp/base-qp middleware))]
-      (if context
-        (qp query context)
-        (qp query)))))
+    (with-altered-middleware
+      (let [middleware (for [middleware-var (default-debug-middleware)
+                             :when          middleware-var]
+                         (->> middleware-var
+                              (debug-query-changes middleware-var)
+                              (debug-metadata-changes middleware-var)
+                              (debug-result-changes middleware-var)
+                              (debug-row-changes middleware-var)))
+            qp         (qp.reducible/sync-qp (#'qp/base-qp middleware))]
+        (if context
+          (qp query context)
+          (qp query))))))
 
 
 ;;;; [[to-mbql-shorthand]]
@@ -387,43 +534,6 @@
 (defn- no-$ [x]
   (mbql.u/replace x [::$ & args] (into [::no-$] args)))
 
-(def ^:private mbql-clause->sort-order
-  (into {}
-        (map-indexed (fn [i k]
-                       [k i]))
-        [;; top-level keys
-         :database
-         :type
-         :query
-         :native
-         ;; inner-query keys
-         :source-table
-         :source-query
-         :source-metadata
-         :joins
-         :expressions
-         :breakout
-         :aggregation
-         :fields
-         :filter
-         :order-by
-         :page
-         :limit
-         ;; join keys
-         :alias
-         :condition
-         :strategy]))
-
-(defn- sorted-mbql-query-map []
-  (sorted-map-by (fn [x y]
-                   (let [x-order (mbql-clause->sort-order x)
-                         y-order (mbql-clause->sort-order y)]
-                     (cond
-                       (and x-order y-order) (compare x-order y-order)
-                       x-order               -1
-                       y-order               1
-                       :else                 (compare (pr-str x) (pr-str y)))))))
-
 (defn- symbolize [form]
   (mbql.u/replace form
     [::-> x y]
@@ -444,7 +554,9 @@
 (defn- query-table-name [{:keys [source-table source-query]}]
   (cond
     source-table
-    (str/lower-case (db/select-one-field :name Table :id source-table))
+    (do
+      (assert (integer? source-table))
+      (str/lower-case (db/select-one-field :name Table :id source-table)))
 
     source-query
     (recur source-query)))
@@ -454,7 +566,7 @@
    (to-mbql-shorthand query (query-table-name (:query query))))
 
   ([query table-name]
-   (let [symbolized (-> query (expand table-name) symbolize)
+   (let [symbolized (-> query (expand table-name) symbolize ->sorted-mbql-query-map)
          table-symb (some-> table-name symbol)]
      (if (:query symbolized)
        (list 'mt/mbql-query table-symb (-> (:query symbolized)

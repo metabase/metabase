@@ -1,12 +1,12 @@
 (ns metabase.query-processor.middleware.add-implicit-clauses
   "Middlware for adding an implicit `:fields` and `:order-by` clauses to certain queries."
   (:require [clojure.tools.logging :as log]
+            [clojure.walk :as walk]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :refer [Field]]
             [metabase.models.table :as table]
-            [metabase.query-processor.error-type :as error-type]
-            [metabase.query-processor.interface :as qp.i]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
             [metabase.types :as types]
             [metabase.util :as u]
@@ -19,7 +19,7 @@
 ;;; |                                              Add Implicit Fields                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- table->sorted-fields
+(defn- table->sorted-fields*
   [table-id]
   (db/select [Field :id :base_type :effective_type :coercion_strategy :semantic_type]
     :table_id        table-id
@@ -28,15 +28,25 @@
     :parent_id       nil
     {:order-by table/field-order-rule}))
 
+(defn- table->sorted-fields
+  "Return a sequence of all Fields for table that we'd normally include in the equivalent of a `SELECT *`."
+  [table-id]
+  (if (qp.store/initialized?)
+    ;; cache duplicate calls to this function in the same QP run.
+    (qp.store/cached-fn [::table-sorted-fields (u/the-id table-id)] #(table->sorted-fields* table-id))
+    ;; if QP store is not initialized don't try to cache the value (this is mainly for the benefit of tests and code
+    ;; that uses this outside of the normal QP execution context)
+    (table->sorted-fields* table-id)))
+
 (s/defn sorted-implicit-fields-for-table :- mbql.s/Fields
   "For use when adding implicit Field IDs to a query. Return a sequence of field clauses, sorted by the rules listed
-  in `metabase.query-processor.sort`, for all the Fields in a given Table."
+  in [[metabase.query-processor.sort]], for all the Fields in a given Table."
   [table-id :- su/IntGreaterThanZero]
   (let [fields (table->sorted-fields table-id)]
     (when (empty? fields)
       (throw (ex-info (tru "No fields found for table {0}." (pr-str (:name (qp.store/table table-id))))
                       {:table-id table-id
-                       :type     error-type/invalid-query})))
+                       :type     qp.error-type/invalid-query})))
     (mapv
      (fn [field]
        ;; implicit datetime Fields get bucketing of `:default`. This is so other middleware doesn't try to give it
@@ -74,10 +84,14 @@
     aggregations :aggregation} :- mbql.s/MBQLQuery]
   ;; if someone is trying to include an explicit `source-query` but isn't specifiying `source-metadata` warn that
   ;; there's nothing we can do to help them
-  (when (and source-query (empty? source-metadata))
-    (when-not qp.i/*disable-qp-logging*
-      (log/warn
-       (trs "Warning: cannot determine fields for an explicit `source-query` unless you also include `source-metadata`."))))
+  (when (and source-query
+             (empty? source-metadata)
+             (qp.store/initialized?))
+    ;; by 'caching' this result, this log message will only be shown once for a given QP run.
+    (qp.store/cached [::should-add-implicit-fields-warning]
+      (log/warn (str (trs "Warning: cannot determine fields for an explicit `source-query` unless you also include `source-metadata`.")
+                     \newline
+                     (trs "Query: {0}" (u/pprint-to-str source-query))))))
   ;; Determine whether we can add the implicit `:fields`
   (and (or source-table
            (and source-query (seq source-metadata)))
@@ -100,7 +114,7 @@
       ;; if the Table has no Fields, throw an Exception, because there is no way for us to proceed
       (when-not (seq fields)
         (throw (ex-info (tru "Table ''{0}'' has no Fields associated with it." (:name (qp.store/table source-table-id)))
-                        {:type error-type/invalid-query})))
+                        {:type qp.error-type/invalid-query})))
       ;; add the fields & expressions under the `:fields` clause
       (assoc inner-query :fields (vec (concat fields expressions))))))
 
@@ -125,23 +139,22 @@
 
 (defn add-implicit-mbql-clauses
   "Add implicit clauses such as `:fields` and `:order-by` to an 'inner' MBQL query as needed."
-  [{:keys [source-query], :as inner-query}]
-  (let [mbql-source-query? (and source-query (not (:native source-query)))
-        inner-query        (-> inner-query add-implicit-breakout-order-by add-implicit-fields)]
-    (if mbql-source-query?
-      ;; if query has an MBQL source query recursively add implicit clauses to that too as needed
-      (update inner-query :source-query add-implicit-mbql-clauses)
-      ;; otherwise we're done
-      inner-query)))
-
-(defn- maybe-add-implicit-clauses [{query-type :type, :as query}]
-  (if (= query-type :native)
-    query
-    (update query :query add-implicit-mbql-clauses)))
+  [form]
+  (walk/postwalk
+   (fn [form]
+     ;; add implicit clauses to any 'inner query', except for joins themselves (we should still add implicit clauses
+     ;; like `:fields` to source queries *inside* joins)
+     (if (and (map? form)
+              ((some-fn :source-table :source-query) form)
+              (not (:condition form)))
+       (-> form add-implicit-breakout-order-by add-implicit-fields)
+       form))
+   form))
 
 (defn add-implicit-clauses
   "Add an implicit `fields` clause to queries with no `:aggregation`, `breakout`, or explicit `:fields` clauses.
    Add implicit `:order-by` clauses for fields specified in a `:breakout`."
-  [qp]
-  (fn [query rff context]
-    (qp (maybe-add-implicit-clauses query) rff context)))
+  [{query-type :type, :as query}]
+  (if (= query-type :native)
+    query
+    (update query :query add-implicit-mbql-clauses)))

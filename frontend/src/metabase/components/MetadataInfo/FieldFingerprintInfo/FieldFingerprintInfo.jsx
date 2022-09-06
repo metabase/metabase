@@ -11,9 +11,10 @@ import CategoryFingerprint from "./CategoryFingerprint";
 const propTypes = {
   className: PropTypes.string,
   field: PropTypes.instanceOf(Field),
+  showAllFieldValues: PropTypes.bool,
 };
 
-function FieldFingerprintInfo({ className, field }) {
+function FieldFingerprintInfo({ className, field, showAllFieldValues }) {
   if (!field?.fingerprint) {
     return null;
   }
@@ -23,7 +24,13 @@ function FieldFingerprintInfo({ className, field }) {
   } else if (field.isNumber() && !field.isID()) {
     return <NumberFingerprint className={className} field={field} />;
   } else if (field.isCategory()) {
-    return <CategoryFingerprint className={className} field={field} />;
+    return (
+      <CategoryFingerprint
+        className={className}
+        field={field}
+        showAllFieldValues={showAllFieldValues}
+      />
+    );
   } else {
     return null;
   }
@@ -64,6 +71,18 @@ function DateTimeFingerprint({ className, field }) {
   );
 }
 
+/**
+ * @param {(number|null|undefined)} num - a number value from the type/Number fingerprint; might not be a number
+ * @returns {[boolean, string]} - a tuple, [isFormattedNumber, formattedNumber]
+ */
+function roundNumber(num) {
+  if (num == null) {
+    return [false, ""];
+  }
+
+  return [true, formatNumber(Number.isInteger(num) ? num : num.toFixed(2))];
+}
+
 function NumberFingerprint({ className, field }) {
   const numberFingerprint = field.fingerprint.type?.["type/Number"];
   if (!numberFingerprint) {
@@ -71,28 +90,30 @@ function NumberFingerprint({ className, field }) {
   }
 
   const { avg, min, max } = numberFingerprint;
-  const fixedAvg = formatNumber(Number.isInteger(avg) ? avg : avg.toFixed(2));
-  const fixedMin = formatNumber(Number.isInteger(min) ? min : min.toFixed(2));
-  const fixedMax = formatNumber(Number.isInteger(max) ? max : max.toFixed(2));
+  const [isAvgNumber, formattedAvg] = roundNumber(avg);
+  const [isMinNumber, formattedMin] = roundNumber(min);
+  const [isMaxNumber, formattedMax] = roundNumber(max);
 
-  return (
+  const someNumberIsDefined = isAvgNumber || isMinNumber || isMaxNumber;
+
+  return someNumberIsDefined ? (
     <Table className={className}>
       <thead>
         <tr>
-          <th>{t`Average`}</th>
-          <th>{t`Min`}</th>
-          <th>{t`Max`}</th>
+          {isAvgNumber && <th>{t`Average`}</th>}
+          {isMinNumber && <th>{t`Min`}</th>}
+          {isMaxNumber && <th>{t`Max`}</th>}
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td>{fixedAvg}</td>
-          <td>{fixedMin}</td>
-          <td>{fixedMax}</td>
+          {isAvgNumber && <td>{formattedAvg}</td>}
+          {isMinNumber && <td>{formattedMin}</td>}
+          {isMaxNumber && <td>{formattedMax}</td>}
         </tr>
       </tbody>
     </Table>
-  );
+  ) : null;
 }
 
 FieldFingerprintInfo.propTypes = propTypes;

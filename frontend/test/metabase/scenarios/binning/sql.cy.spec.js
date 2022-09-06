@@ -1,8 +1,11 @@
 import {
   restore,
+  snapshot,
   visualize,
   changeBinningForDimension,
-} from "__support__/e2e/cypress";
+  summarize,
+  startNewQuestion,
+} from "__support__/e2e/helpers";
 
 const questionDetails = {
   name: "SQL Binning",
@@ -13,22 +16,30 @@ const questionDetails = {
 };
 
 describe("scenarios > binning > from a saved sql question", () => {
+  before(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    cy.createNativeQuestion(questionDetails, { loadMetadata: true });
+
+    snapshot("binningSql");
+  });
+
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    restore();
+    restore("binningSql");
     cy.signInAsAdmin();
-    cy.createNativeQuestion(questionDetails, { loadMetadata: true });
   });
 
   context("via simple question", () => {
     beforeEach(() => {
-      cy.visit("/question/new");
-      cy.findByText("Simple question").click();
+      startNewQuestion();
       cy.findByText("Saved Questions").click();
       cy.findByText("SQL Binning").click();
-      cy.findByText("Summarize").click();
-      cy.wait("@dataset");
+      visualize();
+      cy.findByTextEnsureVisible("LONGITUDE");
+      summarize();
     });
 
     it("should work for time series", () => {
@@ -51,7 +62,7 @@ describe("scenarios > binning > from a saved sql question", () => {
     it("should work for number", () => {
       changeBinningForDimension({
         name: "TOTAL",
-        fromBinning: "Auto binned",
+        fromBinning: "Auto bin",
         toBinning: "50 bins",
       });
 
@@ -62,17 +73,10 @@ describe("scenarios > binning > from a saved sql question", () => {
     });
 
     it("should work for longitude", () => {
-      /**
-       * The correct option should say "Bin every 10 degrees", but this is out of the scope of this test.
-       * It was covered in `frontend/test/metabase/scenarios/binning/binning-options.cy.spec.js`
-       * Please see: https://github.com/metabase/metabase/issues/16675.
-       *
-       * TODO: Change back to "Bin every 10 degrees" once metabase#16675 gets fixed.
-       */
       changeBinningForDimension({
         name: "LONGITUDE",
-        fromBinning: "Auto binned",
-        toBinning: "10°",
+        fromBinning: "Auto bin",
+        toBinning: "Bin every 10 degrees",
       });
 
       waitAndAssertOnRequest("@dataset");
@@ -84,12 +88,10 @@ describe("scenarios > binning > from a saved sql question", () => {
 
   context("via custom question", () => {
     beforeEach(() => {
-      cy.visit("/question/new");
-      cy.findByText("Custom question").click();
+      startNewQuestion();
       cy.findByText("Saved Questions").click();
       cy.findByText("SQL Binning").click();
 
-      cy.findByText("Summarize").click();
       cy.findByText("Pick the metric you want to see").click();
       cy.findByText("Count of rows").click();
       cy.findByText("Pick a column to group by").click();
@@ -114,7 +116,7 @@ describe("scenarios > binning > from a saved sql question", () => {
     it("should work for number", () => {
       changeBinningForDimension({
         name: "TOTAL",
-        fromBinning: "Auto binned",
+        fromBinning: "Auto bin",
         toBinning: "50 bins",
       });
 
@@ -128,17 +130,10 @@ describe("scenarios > binning > from a saved sql question", () => {
     });
 
     it("should work for longitude", () => {
-      /**
-       * The correct option should say "Bin every 10 degrees", but this is out of the scope of this test.
-       * It was covered in `frontend/test/metabase/scenarios/binning/binning-options.cy.spec.js`
-       * Please see: https://github.com/metabase/metabase/issues/16675
-       *
-       * TODO: Change back to "Bin every 10 degrees" once metabase#16675 gets fixed.
-       */
       changeBinningForDimension({
         name: "LONGITUDE",
-        fromBinning: "Auto binned",
-        toBinning: "10°",
+        fromBinning: "Auto bin",
+        toBinning: "Bin every 10 degrees",
       });
 
       cy.findByText("Count by LONGITUDE: 10°");
@@ -153,10 +148,11 @@ describe("scenarios > binning > from a saved sql question", () => {
 
   context("via column popover", () => {
     beforeEach(() => {
-      cy.visit("/question/new");
-      cy.findByText("Simple question").click();
+      startNewQuestion();
       cy.findByText("Saved Questions").click();
       cy.findByText("SQL Binning").click();
+      visualize();
+      cy.findByTextEnsureVisible("LONGITUDE");
     });
 
     it("should work for time series", () => {
@@ -168,9 +164,7 @@ describe("scenarios > binning > from a saved sql question", () => {
       cy.get("circle");
 
       // Open a popover with bucket options from the time series footer
-      cy.get(".AdminSelect-content")
-        .contains("Month")
-        .click();
+      cy.findAllByTestId("select-button-content").contains("Month").click();
       cy.findByText("Quarter").click();
 
       cy.findByText("Count by CREATED_AT: Quarter");
@@ -199,13 +193,9 @@ describe("scenarios > binning > from a saved sql question", () => {
 });
 
 function assertOnXYAxisLabels({ xLabel, yLabel } = {}) {
-  cy.get(".x-axis-label")
-    .invoke("text")
-    .should("eq", xLabel);
+  cy.get(".x-axis-label").invoke("text").should("eq", xLabel);
 
-  cy.get(".y-axis-label")
-    .invoke("text")
-    .should("eq", yLabel);
+  cy.get(".y-axis-label").invoke("text").should("eq", yLabel);
 }
 
 function waitAndAssertOnRequest(requestAlias) {

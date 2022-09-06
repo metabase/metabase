@@ -20,8 +20,9 @@
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.driver.sql.query-processor-test :as sql.qp.test]
+            [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
             [metabase.models.database :refer [Database]]
+            [metabase.models.table :refer [Table]]
             [metabase.query-processor :as qp]
             [metabase.query-processor-test :as qp.test]
             [metabase.query-processor.middleware.format-rows :as format-rows]
@@ -29,11 +30,11 @@
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.regex :as u.regex]
             [potemkin.types :as p.types]
             [pretty.core :as pretty]
             [toucan.db :as db])
-  (:import [java.time LocalDate LocalDateTime]
-           org.joda.time.DateTime))
+  (:import [java.time LocalDate LocalDateTime]))
 
 (defn- ->long-if-number [x]
   (if (number? x)
@@ -693,8 +694,7 @@
   ;; The exclusions here are databases that give incorrect answers when the JVM timezone doesn't match the databases
   ;; timezone (TIMEZONE FIXME)
   (testing "JVM timezone set to Pacific"
-    (mt/test-drivers (mt/normal-drivers-except #{:h2 :sqlserver :redshift :sparksql :mongo :bigquery
-                                                 :bigquery-cloud-sdk})
+    (mt/test-drivers (mt/normal-drivers-except #{:h2 :sqlserver :redshift :sparksql :mongo :bigquery-cloud-sdk})
       (is (= (cond
                (= :sqlite driver/*driver*)
                (results-by-week u.date/parse
@@ -858,7 +858,7 @@
                                  ;;
                                  ;; TODO -- make 'insert-rows-using-statements?` a multimethod so we don't need to
                                  ;; hardcode the whitelist here.
-                                 (not (#{:vertica :bigquery :bigquery-cloud-sdk} driver/*driver*)))
+                                 (not (#{:vertica :bigquery-cloud-sdk} driver/*driver*)))
                           (sql.qp/add-interval-honeysql-form driver/*driver*
                                                              (sql.qp/current-datetime-honeysql-form driver/*driver*)
                                                              (* i interval-seconds)
@@ -1035,7 +1035,8 @@
   (mt/test-drivers (mt/normal-drivers-except #{:snowflake})
     (testing "if datetime string is not yyyy-MM-dd no date bucketing should take place, and thus we should get no (exact) matches"
       (mt/dataset checkins:1-per-day
-        (is (= ;; Mongo returns empty row for count = 0. We should fix that (#5419)
+        (is (=
+             ;; Mongo returns empty row for count = 0. We should fix that (#5419)
              (case driver/*driver*
                :mongo []
                [[0]])
@@ -1090,7 +1091,7 @@
                 "\"PUBLIC\".\"CHECKINS\".\"DATE\" < CAST(dateadd('day', CAST(1 AS long), now()) AS date)"
                 ")")
            (:query
-            (qp/query->native
+            (qp/compile
              (mt/mbql-query checkins
                {:aggregation [[:count]]
                 :filter      [:= $date [:relative-datetime :current]]})))))))
@@ -1107,9 +1108,9 @@
                   "GROUP BY CHECKINS.DATE "
                   "ORDER BY CHECKINS.DATE ASC "
                   "LIMIT 1048575")
-             (sql.qp.test/pretty-sql
+             (sql.qp-test-util/pretty-sql
               (:query
-               (qp/query->native
+               (qp/compile
                 (mt/mbql-query checkins
                   {:filter   [:time-interval $date -4 :month]
                    :breakout [[:datetime-field $date :day]]})))))))))
@@ -1161,3 +1162,74 @@
                        {:aggregation [[:count]]
                         :breakout    [!day-of-week.date]
                         :filter      [:between $date "2013-01-03" "2013-01-20"]}))))))))))
+
+(deftest first-day-of-week-for-day-of-week-bucketing-test
+  (testing "First day of week for `:day-of-week` bucketing should be the consistent (#17801)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
+      (let [query (mt/mbql-query checkins
+                    {:aggregation [[:count]]
+                     :breakout    [!day-of-week.date]})]
+        (doseq [[first-day-of-week expected-rows] {:sunday    [[1 135] [2 143] [3 153] [4 136] [5 139] [6 160] [7 134]]
+                                                   :monday    [[1 143] [2 153] [3 136] [4 139] [5 160] [6 134] [7 135]]
+                                                   :tuesday   [[1 153] [2 136] [3 139] [4 160] [5 134] [6 135] [7 143]]
+                                                   :wednesday [[1 136] [2 139] [3 160] [4 134] [5 135] [6 143] [7 153]]
+                                                   :thursday  [[1 139] [2 160] [3 134] [4 135] [5 143] [6 153] [7 136]]
+                                                   :friday    [[1 160] [2 134] [3 135] [4 143] [5 153] [6 136] [7 139]]
+                                                   :saturday  [[1 134] [2 135] [3 143] [4 153] [5 136] [6 139] [7 160]]}]
+          (mt/with-temporary-setting-values [start-of-week first-day-of-week]
+            (mt/with-native-query-testing-context query
+              (is (= expected-rows
+                     (mt/formatted-rows [int int] (qp/process-query query)))))))))))
+
+(deftest filter-by-current-quarter-test
+  ;; Oracle doesn't work on March 31st because March 31st + 3 months = June 31st, which doesn't exist. See #10072
+  (mt/test-drivers (disj (mt/normal-drivers) :oracle)
+    (testing "Should be able to filter by current quarter (#20683)"
+      (let [query (mt/mbql-query checkins
+                    {:aggregation [[:count]]
+                     :filter [:= !quarter.date [:relative-datetime :now]]})]
+        (mt/with-native-query-testing-context query
+          ;; this isn't expected to return anything; for now it's enough just to make sure that the query doesn't fail.
+          (is (=
+               ;; Mongo returns empty row for count = 0. We should fix that (#5419)
+               (case driver/*driver*
+                 :mongo []
+                 [[0]])
+               (mt/formatted-rows [int] (qp/process-query query)))))))))
+
+;; TODO -- is this really date BUCKETING? Does this BELONG HERE?!
+(deftest june-31st-test
+  (testing "What happens when you try to add 3 months to March 31st? It should still work (#10072, #21968, #21969)"
+    ;; only testing the SQL drivers for now since I'm not 100% sure how to mock this for everyone else. Maybe one day
+    ;; when we support expressions like `+` for temporal types we can do an `:absolute-datetime` plus
+    ;; `:relative-datetime` expression and do this directly in MBQL.
+    (mt/test-drivers (filter #(isa? driver/hierarchy (driver/the-initialized-driver %) :sql)
+                             (mt/normal-drivers))
+      (doseq [[n unit] [[3 :month]
+                        [1 :quarter]]
+              t        [#t "2022-03-31"
+                        #t "2022-03-31T00:00:00"
+                        #t "2022-03-31T00:00:00-00:00"]]
+        (testing (format "%d %s ^%s %s" n unit (.getCanonicalName (class t)) (pr-str t))
+          (let [march-31     (sql.qp/->honeysql driver/*driver* [:absolute-datetime t :day])
+                june-31      (sql.qp/add-interval-honeysql-form driver/*driver* march-31 n unit)
+                checkins     (mt/with-everything-store
+                               (sql.qp/->honeysql driver/*driver* (db/select-one Table :id (mt/id :checkins))))
+                honeysql     {:select [[june-31 :june_31]]
+                              :from   [checkins]}
+                honeysql     (sql.qp/apply-top-level-clause driver/*driver* :limit honeysql {:limit 1})
+                [sql & args] (sql.qp/format-honeysql driver/*driver* honeysql)
+                query        (mt/native-query {:query sql, :params args})]
+            (mt/with-native-query-testing-context query
+              (is (re= (u.regex/rx #"^2022-"
+                                   ;; We don't really care if someone returns June 29th or 30th or July 1st here. I
+                                   ;; guess you could make a case for either June 30th or July 1st. I don't really know
+                                   ;; how you can get June 29th from this, but that's what Vertica returns. :shrug: The
+                                   ;; main thing here is that it's not barfing.
+                                   (or (and "06-" (or "29" "30")) "07-01")
+                                   ;; We also don't really care if this is returned as a date or a timestamp with or
+                                   ;; without time zone.
+                                   (opt (or "T" #"\s")
+                                        "00:00:00"
+                                        (opt "Z")))
+                       (first (mt/first-row (qp/process-query query))))))))))))

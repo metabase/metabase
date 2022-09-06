@@ -1,13 +1,15 @@
 import _ from "underscore";
 import { getIn } from "icepick";
 import { t } from "ttag";
+import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
 
-import { formatValue } from "metabase/lib/formatting";
+import { formatValue, formatColumn } from "metabase/lib/formatting";
 
 export function isPivotGroupColumn(col) {
   return col.name === "pivot-grouping";
 }
 
+export const COLUMN_FORMATTING_SETTING = "table.column_formatting";
 export const COLLAPSED_ROWS_SETTING = "pivot_table.collapsed_rows";
 export const COLUMN_SPLIT_SETTING = "pivot_table.column_split";
 export const COLUMN_SHOW_TOTALS = "pivot_table.column_show_totals";
@@ -38,12 +40,7 @@ export function multiLevelPivot(data, settings) {
       .filter(index => index !== -1),
   );
 
-  const { pivotData, columns } = splitPivotData(
-    data,
-    rowColumnIndexes,
-    columnColumnIndexes,
-  );
-
+  const { pivotData, columns } = splitPivotData(data);
   const columnSettings = columns.map(column => settings.column(column));
   const allCollapsedSubtotals = settings[COLLAPSED_ROWS_SETTING].value;
   const collapsedSubtotals = filterCollapsedSubtotals(
@@ -83,8 +80,13 @@ export function multiLevelPivot(data, settings) {
       columnColumnIndexes.concat(rowColumnIndexes).map(index => row[index]),
     );
     const values = valueColumnIndexes.map(index => row[index]);
+    const valueColumns = valueColumnIndexes.map(
+      index => columnSettings[index]?.column,
+    );
+
     valuesByKey[valueKey] = {
       values,
+      valueColumns,
       data: row.map((value, index) => ({ value, col: columns[index] })),
       dimensions: row
         .map((value, index) => ({
@@ -141,7 +143,10 @@ export function multiLevelPivot(data, settings) {
   const columnIndex = addEmptyIndexItem(
     formattedColumnTreeWithoutValues.flatMap(root => enumeratePaths(root)),
   );
-  const valueColumns = valueColumnIndexes.map(index => columns[index]);
+  const valueColumns = valueColumnIndexes.map(index => [
+    columns[index],
+    columnSettings[index],
+  ]);
   const formattedColumnTree = addValueColumnNodes(
     formattedColumnTreeWithoutValues,
     valueColumns,
@@ -158,7 +163,6 @@ export function multiLevelPivot(data, settings) {
   );
   const formattedRowTree = addSubtotals(
     formattedRowTreeWithoutSubtotals,
-    leftIndexFormatters,
     showSubtotalsByColumn,
   );
   if (formattedRowTreeWithoutSubtotals.length > 1) {
@@ -178,6 +182,13 @@ export function multiLevelPivot(data, settings) {
   const leftHeaderItems = treeToArray(formattedRowTree.flat());
   const topHeaderItems = treeToArray(formattedColumnTree.flat());
 
+  const colorGetter = makeCellBackgroundGetter(
+    pivotData[primaryRowsKey],
+    columns,
+    settings["table.column_formatting"] ?? [],
+    true,
+  );
+
   const getRowSection = createRowSectionGetter({
     valuesByKey,
     subtotalValues,
@@ -186,6 +197,7 @@ export function multiLevelPivot(data, settings) {
     rowColumnIndexes,
     columnIndex,
     rowIndex,
+    colorGetter,
   });
 
   return {
@@ -204,7 +216,7 @@ export function multiLevelPivot(data, settings) {
 // This pulls apart the different aggregations that were packed into one result set.
 // There's a column indicating which breakouts were used to compute that row.
 // We use that column to split apart the data and convert the field refs to indexes.
-function splitPivotData(data, rowIndexes, columnIndexes) {
+function splitPivotData(data) {
   const groupIndex = data.cols.findIndex(isPivotGroupColumn);
   const columns = data.cols.filter(col => !isPivotGroupColumn(col));
   const breakouts = columns.filter(col => col.source === "breakout");
@@ -258,6 +270,7 @@ function createRowSectionGetter({
   rowColumnIndexes,
   columnIndex,
   rowIndex,
+  colorGetter,
 }) {
   const formatValues = values =>
     values === undefined
@@ -290,10 +303,20 @@ function createRowSectionGetter({
       const otherAttrs = rowValues.length === 0 ? { isGrandTotal: true } : {};
       return getSubtotals(indexes, indexValues, otherAttrs);
     }
-    const { values, data, dimensions } =
+    const { values, data, dimensions, valueColumns } =
       valuesByKey[JSON.stringify(indexValues)] || {};
-    return formatValues(values).map(o =>
-      data === undefined ? o : { ...o, clicked: { data, dimensions } },
+    return formatValues(values).map((o, index) =>
+      data === undefined
+        ? o
+        : {
+            ...o,
+            clicked: { data, dimensions },
+            backgroundColor: colorGetter(
+              values[index],
+              o.rowIndex,
+              valueColumns[index].name,
+            ),
+          },
     );
   };
   return _.memoize(getter, (i1, i2) => [i1, i2].join());
@@ -334,11 +357,13 @@ function formatValuesInTree(
 // We display the value column names if there are multiple
 // or if there are no columns pivoted to the top header.
 function addValueColumnNodes(nodes, valueColumns) {
-  const leafNodes = valueColumns.map(column => ({
-    value: column.display_name,
-    children: [],
-    isValueColumn: true,
-  }));
+  const leafNodes = valueColumns.map(([column, columnSettings]) => {
+    return {
+      value: columnSettings.column_title || formatColumn(column),
+      children: [],
+      isValueColumn: true,
+    };
+  });
   if (nodes.length === 0) {
     return leafNodes;
   }
@@ -355,7 +380,7 @@ function addValueColumnNodes(nodes, valueColumns) {
 
 // This inserts nodes into the left header tree for subtotals.
 // We also mark nodes with `hasSubtotal` to display collapsing UI
-function addSubtotals(rowColumnTree, formatters, showSubtotalsByColumn) {
+function addSubtotals(rowColumnTree, showSubtotalsByColumn) {
   // For top-level items we want to show subtotal even if they have only one child
   // Except the case when top-level items have flat structure
   // (meaning all of the items have just one child)
@@ -365,7 +390,7 @@ function addSubtotals(rowColumnTree, formatters, showSubtotalsByColumn) {
   const notFlat = rowColumnTree.some(item => item.children.length > 1);
 
   return rowColumnTree.flatMap(item =>
-    addSubtotal(item, formatters, showSubtotalsByColumn, {
+    addSubtotal(item, showSubtotalsByColumn, {
       shouldShowSubtotal: notFlat || item.children.length > 1,
     }),
   );
@@ -373,7 +398,6 @@ function addSubtotals(rowColumnTree, formatters, showSubtotalsByColumn) {
 
 function addSubtotal(
   item,
-  [formatter, ...formatters],
   [isSubtotalEnabled, ...showSubtotalsByColumn],
   { shouldShowSubtotal = false } = {},
 ) {
@@ -381,7 +405,7 @@ function addSubtotal(
   const subtotal = hasSubtotal
     ? [
         {
-          value: t`Totals for ${formatter(item.value)}`,
+          value: t`Totals for ${item.value}`,
           rawValue: item.rawValue,
           span: 1,
           isSubtotal: true,
@@ -398,7 +422,7 @@ function addSubtotal(
     children: item.children.flatMap(child =>
       // add subtotals until the last level
       child.children.length > 0
-        ? addSubtotal(child, formatters, showSubtotalsByColumn, {
+        ? addSubtotal(child, showSubtotalsByColumn, {
             shouldShowSubtotal: child.children.length > 1,
           })
         : child,
@@ -539,7 +563,7 @@ export function pivot(data, normalCol, pivotCol, cellCol) {
   }
 
   // provide some column metadata to maintain consistency
-  const cols = pivotValues.map(function(value, idx) {
+  const cols = pivotValues.map(function (value, idx) {
     if (idx === 0) {
       // first column is always the coldef of the normal column
       return data.cols[normalCol];

@@ -1,14 +1,12 @@
 import React from "react";
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import * as systemExports from "styled-system";
-import * as gridExports from "grid-styled";
 import colors, * as colorsExports from "metabase/lib/colors";
 import * as entities from "metabase/entities";
 import COMPONENTS from "./components-webpack";
 
 const context = {
   ...systemExports,
-  ...gridExports,
   ...colorsExports,
   React,
   styled,

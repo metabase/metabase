@@ -1,4 +1,4 @@
-import { restore, popover, modal } from "__support__/e2e/cypress";
+import { restore, popover, modal } from "__support__/e2e/helpers";
 
 describe("metabase > scenarios > navbar > new menu", () => {
   beforeEach(() => {
@@ -40,6 +40,9 @@ describe("metabase > scenarios > navbar > new menu", () => {
       cy.findByText("Create").click();
     });
 
-    cy.get("h1").should("have.text", "Test collection");
+    cy.findByTestId("collection-name-heading").should(
+      "have.text",
+      "Test collection",
+    );
   });
 });

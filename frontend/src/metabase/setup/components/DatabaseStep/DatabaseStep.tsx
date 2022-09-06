@@ -1,10 +1,12 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { updateIn } from "icepick";
+import Button from "metabase/core/components/Button";
 import Users from "metabase/entities/users";
 import Databases from "metabase/entities/databases";
 import DriverWarning from "metabase/containers/DriverWarning";
+import { DatabaseInfo, InviteInfo, UserInfo } from "metabase-types/store";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
 import SetupSection from "../SetupSection";
@@ -12,10 +14,10 @@ import {
   StepActions,
   StepDescription,
   StepFormGroup,
-  StepLink,
+  StepButton,
+  FormActions,
 } from "./DatabaseStep.styled";
 import { FormProps } from "./types";
-import { DatabaseInfo, InviteInfo, UserInfo } from "../../types";
 
 export interface DatabaseStepProps {
   user?: UserInfo;
@@ -26,7 +28,7 @@ export interface DatabaseStepProps {
   isStepActive: boolean;
   isStepCompleted: boolean;
   isSetupCompleted: boolean;
-  onEngineChange: (engine: string) => void;
+  onEngineChange: (engine?: string) => void;
   onStepSelect: () => void;
   onDatabaseSubmit: (database: DatabaseInfo) => void;
   onInviteSubmit: (invite: InviteInfo) => void;
@@ -48,10 +50,6 @@ const DatabaseStep = ({
   onInviteSubmit,
   onStepCancel,
 }: DatabaseStepProps): JSX.Element => {
-  useEffect(() => {
-    engine && onEngineChange(engine);
-  }, [engine, onEngineChange]);
-
   const handleCancel = () => {
     onStepCancel(engine);
   };
@@ -75,16 +73,15 @@ const DatabaseStep = ({
     >
       <StepDescription>
         <div>{t`Are you ready to start exploring your data? Add it below.`}</div>
-        <div>{t`Not ready? Skip and play around with our Sample Dataset.`}</div>
+        <div>{t`Not ready? Skip and play around with our Sample Database.`}</div>
       </StepDescription>
       <DatabaseForm
         database={database}
         engine={engine}
         onSubmit={onDatabaseSubmit}
+        onEngineChange={onEngineChange}
+        onSkip={handleCancel}
       />
-      <StepActions>
-        <StepLink onClick={handleCancel}>{t`I'll add my data later`}</StepLink>
-      </StepActions>
       {isEmailConfigured && (
         <SetupSection
           title={t`Need help connecting to your data?`}
@@ -101,12 +98,16 @@ interface DatabaseFormProps {
   database?: DatabaseInfo;
   engine?: string;
   onSubmit: (database: DatabaseInfo) => void;
+  onEngineChange: (engine?: string) => void;
+  onSkip: () => void;
 }
 
 const DatabaseForm = ({
   database,
   engine,
   onSubmit,
+  onEngineChange,
+  onSkip,
 }: DatabaseFormProps): JSX.Element => {
   const handleSubmit = async (database: DatabaseInfo) => {
     try {
@@ -116,32 +117,51 @@ const DatabaseForm = ({
     }
   };
 
+  const handleEngineChange = (value?: string) => {
+    onEngineChange(value);
+  };
+
   return (
     <Databases.Form
       form={Databases.forms.setup}
       formName="database"
       database={database}
       onSubmit={handleSubmit}
+      submitTitle={t`Connect database`}
+      useLegacyForm
     >
       {({
         Form,
         FormField,
-        FormFooter,
+        FormSubmit,
+        FormMessage,
         formFields,
         values,
         onChangeField,
+        submitTitle,
       }: FormProps) => (
         <Form>
-          <FormField name="engine" />
+          <FormField name="engine" onChange={handleEngineChange} />
           <DriverWarning
             engine={values.engine}
-            hasBorder={true}
             onChange={engine => onChangeField("engine", engine)}
           />
           {_.reject(formFields, { name: "engine" }).map(({ name }) => (
             <FormField key={name} name={name} />
           ))}
-          {engine && <FormFooter submitTitle={t`Next`} />}
+          {engine ? (
+            <FormActions>
+              <FormMessage noPadding />
+              <Button type="button" onClick={onSkip}>{t`Skip`}</Button>
+              <FormSubmit className="ml2">{submitTitle}</FormSubmit>
+            </FormActions>
+          ) : (
+            <StepActions>
+              <StepButton onClick={onSkip}>
+                {t`I'll add my data later`}
+              </StepButton>
+            </StepActions>
+          )}
         </Form>
       )}
     </Databases.Form>

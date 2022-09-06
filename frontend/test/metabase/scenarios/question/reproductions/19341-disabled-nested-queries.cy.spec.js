@@ -1,4 +1,9 @@
-import { restore, mockSessionProperty, popover } from "__support__/e2e/cypress";
+import {
+  restore,
+  mockSessionProperty,
+  popover,
+  startNewQuestion,
+} from "__support__/e2e/helpers";
 
 describe("issue 19341", () => {
   const TEST_NATIVE_QUESTION_NAME = "Native";
@@ -18,17 +23,16 @@ describe("issue 19341", () => {
 
   it("should correctly disable nested queries (metabase#19341)", () => {
     // Test "Saved Questions" table is hidden in QB data selector
-    cy.visit("/question/new");
-    cy.findByText("Custom question").click();
+    startNewQuestion();
     popover().within(() => {
       // Wait until picker init
-      // When working as expected, the test environment only has "Sample Dataset" DB
+      // When working as expected, the test environment only has "Sample Database" DB
       // So it should automatically select it as a database
-      // When "Orders" table name appears, it means the picker has selected the sample dataset
+      // When "Orders" table name appears, it means the picker has selected the sample database
       cy.findByText("Loading...").should("not.exist");
       cy.findByText("Orders");
 
-      cy.findByText("Sample Dataset").click(); // go back to DB list
+      cy.findByText("Sample Database").click(); // go back to DB list
       cy.findByText("Saved Questions").should("not.exist");
 
       // Ensure the search doesn't list saved questions
@@ -38,13 +42,13 @@ describe("issue 19341", () => {
       cy.findAllByText(/Table in/i).should("exist");
       cy.icon("close").click();
 
-      cy.findByText("Sample Dataset").click();
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
 
     cy.icon("join_left_outer").click();
     popover().within(() => {
-      cy.findByText("Sample Dataset").click(); // go back to DB list
+      cy.findByText("Sample Database").click(); // go back to DB list
       cy.findByText("Saved Questions").should("not.exist");
     });
 

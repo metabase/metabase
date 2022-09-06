@@ -9,8 +9,10 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 const HtmlWebpackHarddiskPlugin = require("html-webpack-harddisk-plugin");
 const TerserPlugin = require("terser-webpack-plugin");
 const WebpackNotifierPlugin = require("webpack-notifier");
+const ReactRefreshPlugin = require("@pmmmwh/react-refresh-webpack-plugin");
 
 const fs = require("fs");
+const os = require("os");
 
 const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
 const FONTS_PATH = __dirname + "/resources/frontend_client/app/fonts";
@@ -27,6 +29,9 @@ const BUILD_PATH = __dirname + "/resources/frontend_client";
 const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
 const devMode = WEBPACK_BUNDLE !== "production";
 const useFilesystemCache = process.env.FS_CACHE === "true";
+const shouldUseEslint =
+  process.env.WEBPACK_BUNDLE !== "production" &&
+  process.env.USE_ESLINT === "true";
 
 // Babel:
 const BABEL_CONFIG = {
@@ -68,18 +73,22 @@ const config = (module.exports = {
         exclude: /node_modules|cljs/,
         use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
       },
-      {
-        test: /\.(tsx?|jsx?)$/,
-        exclude: /node_modules|cljs|\.spec\.js/,
-        use: [
-          {
-            loader: "eslint-loader",
-            options: {
-              rulePaths: [__dirname + "/frontend/lint/eslint-rules"],
+      ...(shouldUseEslint
+        ? [
+            {
+              test: /\.(tsx?|jsx?)$/,
+              exclude: /node_modules|cljs|\.spec\.js/,
+              use: [
+                {
+                  loader: "eslint-loader",
+                  options: {
+                    rulePaths: [__dirname + "/frontend/lint/eslint-rules"],
+                  },
+                },
+              ],
             },
-          },
-        ],
-      },
+          ]
+        : []),
       {
         test: /\.(eot|woff2?|ttf|svg|png)$/,
         type: "asset/resource",
@@ -119,6 +128,7 @@ const config = (module.exports = {
       "metabase-lib": LIB_SRC_PATH,
       "metabase-enterprise": ENTERPRISE_SRC_PATH,
       "metabase-types": TYPES_SRC_PATH,
+      "metabase-dev": `${SRC_PATH}/dev${devMode ? "" : "-noop"}.js`,
       cljs: CLJS_SRC_PATH,
       __support__: TEST_SUPPORT_PATH,
       style: SRC_PATH + "/css/core/index",
@@ -144,6 +154,7 @@ const config = (module.exports = {
       }
     : undefined,
   optimization: {
+    runtimeChunk: "single",
     splitChunks: {
       cacheGroups: {
         vendors: {
@@ -205,48 +216,60 @@ const config = (module.exports = {
 });
 
 if (WEBPACK_BUNDLE === "hot") {
+
+  const localIpAddress = getLocalIpAddress("IPv4") || getLocalIpAddress("IPv6") || "0.0.0.0";
+
+  const webpackPort = 8080;
+  const webpackHost = `http://${localIpAddress}:${webpackPort}`
   config.target = "web";
   // suffixing with ".hot" allows us to run both `yarn run build-hot` and `yarn run test` or `yarn run test-watch` simultaneously
   config.output.filename = "[name].hot.bundle.js?[contenthash]";
 
   // point the publicPath (inlined in index.html by HtmlWebpackPlugin) to the hot-reloading server
-  config.output.publicPath =
-    "http://localhost:8080/" + config.output.publicPath;
+  config.output.publicPath = webpackHost + "/" + config.output.publicPath;
 
   config.module.rules.unshift({
-    test: /\.jsx$/,
-    // NOTE: our verison of react-hot-loader doesn't play nice with react-dnd's DragLayer, so we exclude files named `*DragLayer.jsx`
-    exclude: /node_modules|cljs|DragLayer\.jsx$/,
+    test: /\.(tsx?|jsx?)$/,
+    exclude: /node_modules|cljs/,
     use: [
-      // NOTE Atte Keinänen 10/19/17: We are currently sticking to an old version of react-hot-loader
-      // because newer versions would require us to upgrade to react-router v4 and possibly deal with
-      // asynchronous route issues as well. See https://github.com/gaearon/react-hot-loader/issues/249
-      { loader: "react-hot-loader/webpack" },
-      { loader: "babel-loader", options: BABEL_CONFIG },
+      {
+        loader: "babel-loader",
+        options: {
+          ...BABEL_CONFIG,
+          plugins: ["@emotion", "react-refresh/babel"],
+        },
+      },
     ],
   });
 
   config.devServer = {
+    host: "local-ip",
+    port: webpackPort,
+    allowedHosts: "auto",
     hot: true,
-    inline: true,
-    contentBase: "frontend",
+    client: {
+      progress: true,
+      overlay: false
+    },
     headers: {
       "Access-Control-Allow-Origin": "*",
     },
     // tweak stats to make the output in the console more legible
     // TODO - once we update webpack to v4+ we can just use `errors-warnings` preset
-    stats: {
-      assets: false,
-      cached: false,
-      cachedAssets: false,
-      chunks: false,
-      chunkModules: false,
-      chunkOrigins: false,
-      modules: false,
-      color: true,
-      hash: false,
-      warnings: true,
-      errorDetals: false,
+    devMiddleware: {
+      stats: {
+        assets: false,
+        cached: false,
+        cachedAssets: false,
+        chunks: false,
+        chunkModules: false,
+        chunkOrigins: false,
+        modules: false,
+        color: true,
+        hash: false,
+        warnings: true,
+        errorDetals: false,
+      },
     },
     // if webpack doesn't reload UI after code change in development
     // watchOptions: {
@@ -260,6 +283,9 @@ if (WEBPACK_BUNDLE === "hot") {
   config.plugins.unshift(
     new webpack.NoEmitOnErrorsPlugin(),
     new webpack.HotModuleReplacementPlugin(),
+    new ReactRefreshPlugin({
+      overlay: false,
+    }),
   );
 }
 
@@ -290,16 +316,21 @@ if (WEBPACK_BUNDLE !== "production") {
     }),
   );
 } else {
-  // Don't bother with ESLint for CI/production (we catch linting errors with another CI run)
-  config.module.rules = config.module.rules.filter(rule => {
-    return Array.isArray(rule.use)
-      ? rule.use[0].loader != "eslint-loader"
-      : true;
-  });
-
   config.plugins.push(
     new TerserPlugin({ parallel: true, test: /\.(tsx?|jsx?)($|\?)/i }),
   );
 
   config.devtool = "source-map";
+}
+
+function getLocalIpAddress(ipFamily) {
+  const networkInterfaces = os.networkInterfaces();
+  const interfaces = Object.keys(networkInterfaces)
+    .map(iface => networkInterfaces[iface])
+    .reduce((interfaces, iface) => interfaces.concat(iface));
+
+  const externalInterfaces = interfaces.filter(iface => !iface.internal)
+
+  const { address } = externalInterfaces.filter(({ family }) => family === ipFamily).shift();
+  return address;
 }

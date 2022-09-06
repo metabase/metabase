@@ -7,14 +7,14 @@ import _ from "underscore";
 import { delay } from "metabase/lib/promise";
 
 import {
-  SAMPLE_DATASET,
+  SAMPLE_DATABASE,
   ANOTHER_DATABASE,
   MULTI_SCHEMA_DATABASE,
   OTHER_MULTI_SCHEMA_DATABASE,
   metadata,
   makeMetadata,
   state as fixtureData,
-} from "__support__/sample_dataset_fixture";
+} from "__support__/sample_database_fixture";
 
 import { UnconnectedDataSelector as DataSelector } from "metabase/query_builder/components/DataSelector";
 
@@ -43,6 +43,7 @@ describe("DataSelector", () => {
     fields: {},
     metrics: {},
     segments: {},
+    questions: {},
   };
 
   it("should allow selecting db, schema, and table", () => {
@@ -52,7 +53,7 @@ describe("DataSelector", () => {
         steps={["DATABASE", "SCHEMA", "TABLE"]}
         combineDatabaseSchemaSteps
         triggerElement={<div />}
-        databases={[MULTI_SCHEMA_DATABASE, SAMPLE_DATASET, ANOTHER_DATABASE]}
+        databases={[MULTI_SCHEMA_DATABASE, SAMPLE_DATABASE, ANOTHER_DATABASE]}
         metadata={metadata}
         isOpen={true}
         setSourceTableFn={setTable}
@@ -61,8 +62,8 @@ describe("DataSelector", () => {
 
     // displays dbs
     getByText("Multi-schema Database");
-    getByText("Sample Dataset");
-    getByText("Sample Empty Dataset");
+    getByText("Sample Database");
+    getByText("Sample Empty Database");
 
     // clicking reveals schemas
     fireEvent.click(getByText("Multi-schema Database"));
@@ -71,8 +72,8 @@ describe("DataSelector", () => {
 
     // but the databases are still displayed
     getByText("Multi-schema Database");
-    getByText("Sample Dataset");
-    getByText("Sample Empty Dataset");
+    getByText("Sample Database");
+    getByText("Sample Empty Database");
 
     // clicking shows the table
     fireEvent.click(getByText("First Schema"));
@@ -126,11 +127,12 @@ describe("DataSelector", () => {
     // on initial load, we fetch databases
     await delay(1);
     expect(fetchDatabases).toHaveBeenCalled();
+    rerender(<DataSelector {...props} loading />);
     getByText("Loading...");
 
     // select a db
     rerenderWith({ databases });
-    getByText("Sample Dataset");
+    getByText("Sample Database");
     getByText("Multi-schema Database");
     fireEvent.click(getByText("Multi-schema Database"));
 
@@ -159,7 +161,7 @@ describe("DataSelector", () => {
         steps={["DATABASE", "SCHEMA", "TABLE"]}
         combineDatabaseSchemaSteps
         triggerElement={<div />}
-        databases={[SAMPLE_DATASET]}
+        databases={[SAMPLE_DATABASE]}
         metadata={metadata}
         isOpen={true}
       />,
@@ -191,7 +193,7 @@ describe("DataSelector", () => {
         steps={["DATABASE", "SCHEMA", "TABLE"]}
         combineDatabaseSchemaSteps
         triggerElement={<div />}
-        databases={[MULTI_SCHEMA_DATABASE, SAMPLE_DATASET]}
+        databases={[MULTI_SCHEMA_DATABASE, SAMPLE_DATABASE]}
         metadata={metadata}
         isOpen={true}
       />,
@@ -199,7 +201,7 @@ describe("DataSelector", () => {
 
     fireEvent.click(getByText("Multi-schema Database"));
     getByText("First Schema");
-    fireEvent.click(getByText("Sample Dataset"));
+    fireEvent.click(getByText("Sample Database"));
     await delay(1);
     getByText("Orders");
   });
@@ -210,18 +212,18 @@ describe("DataSelector", () => {
         steps={["DATABASE", "SCHEMA", "TABLE"]}
         combineDatabaseSchemaSteps
         triggerElement={<div />}
-        databases={[MULTI_SCHEMA_DATABASE, SAMPLE_DATASET]}
+        databases={[MULTI_SCHEMA_DATABASE, SAMPLE_DATABASE]}
         metadata={metadata}
         isOpen={true}
       />,
     );
 
-    fireEvent.click(getByText("Sample Dataset"));
+    fireEvent.click(getByText("Sample Database"));
     await delay(1);
     // check that tables are listed
     getByText("Orders");
     // click header to return to db list
-    fireEvent.click(getByText("Sample Dataset"));
+    fireEvent.click(getByText("Sample Database"));
     // click on a multi-schema db
     fireEvent.click(getByText("Multi-schema Database"));
     // see schema appear and click to view tables for good measure
@@ -239,7 +241,7 @@ describe("DataSelector", () => {
         steps={["DATABASE", "SCHEMA", "TABLE"]}
         combineDatabaseSchemaSteps
         triggerElement={<div />}
-        databases={[MULTI_SCHEMA_DATABASE, SAMPLE_DATASET]}
+        databases={[MULTI_SCHEMA_DATABASE, SAMPLE_DATABASE]}
         metadata={metadata}
         isOpen={true}
       />,
@@ -251,10 +253,10 @@ describe("DataSelector", () => {
     getByText("Second Schema");
 
     // click into a single schema db, check for a table, and then return to db list
-    fireEvent.click(getByText("Sample Dataset"));
+    fireEvent.click(getByText("Sample Database"));
     await delay(1);
     getByText("Orders");
-    fireEvent.click(getByText("Sample Dataset"));
+    fireEvent.click(getByText("Sample Database"));
 
     // expand multi-schema db
     fireEvent.click(getByText("Multi-schema Database"));
@@ -270,13 +272,13 @@ describe("DataSelector", () => {
         steps={["DATABASE", "SCHEMA", "TABLE"]}
         combineDatabaseSchemaSteps
         triggerElement={<div />}
-        databases={[MULTI_SCHEMA_DATABASE, SAMPLE_DATASET]}
+        databases={[MULTI_SCHEMA_DATABASE, SAMPLE_DATABASE]}
         metadata={metadata}
         isOpen={true}
       />,
     );
 
-    getByText("Sample Dataset");
+    getByText("Sample Database");
     fireEvent.click(getByText("Multi-schema Database"));
     // check that schemas are listed
     getByText("First Schema");
@@ -289,7 +291,7 @@ describe("DataSelector", () => {
     // schemas are hidden, but databases are still shown
     expect(queryByText("First Schema")).toBe(null);
     expect(queryByText("Second Schema")).toBe(null);
-    getByText("Sample Dataset");
+    getByText("Sample Database");
     getByText("Multi-schema Database");
     // check for chevron icon
     expect(document.body.querySelector(".Icon-chevrondown")).not.toBe(null);
@@ -299,7 +301,8 @@ describe("DataSelector", () => {
     const { getByText } = render(
       <DataSelector
         steps={["SCHEMA", "TABLE", "FIELD"]}
-        selectedDatabaseId={SAMPLE_DATASET.id}
+        selectedDatabaseId={SAMPLE_DATABASE.id}
+        databases={[SAMPLE_DATABASE]}
         triggerElement={<div />}
         metadata={metadata}
         isOpen={true}
@@ -315,6 +318,7 @@ describe("DataSelector", () => {
       <DataSelector
         steps={["SCHEMA", "TABLE", "FIELD"]}
         selectedDatabaseId={MULTI_SCHEMA_DATABASE.id}
+        databases={[MULTI_SCHEMA_DATABASE]}
         triggerElement={<div />}
         metadata={metadata}
         isOpen={true}
@@ -329,15 +333,15 @@ describe("DataSelector", () => {
     const { getByText } = render(
       <DataSelector
         steps={["DATABASE"]}
-        databases={[SAMPLE_DATASET, MULTI_SCHEMA_DATABASE]}
-        selectedDatabaseId={SAMPLE_DATASET.id}
+        databases={[SAMPLE_DATABASE, MULTI_SCHEMA_DATABASE]}
+        selectedDatabaseId={SAMPLE_DATABASE.id}
         triggerElement={<div />}
         metadata={metadata}
         isOpen={true}
       />,
     );
 
-    getByText("Sample Dataset", { selector: ".List-item--selected h4" });
+    getByText("Sample Database", { selector: ".List-item--selected h4" });
   });
 
   it("should move between selected multi-schema dbs", () => {
@@ -365,7 +369,7 @@ describe("DataSelector", () => {
     const { getByText } = render(
       <DataSelector
         steps={["DATABASE", "SCHEMA", "TABLE"]}
-        databases={[SAMPLE_DATASET, ANOTHER_DATABASE]}
+        databases={[SAMPLE_DATABASE, ANOTHER_DATABASE]}
         combineDatabaseSchemaSteps
         triggerElement={<div />}
         metadata={metadata}
@@ -374,18 +378,31 @@ describe("DataSelector", () => {
     );
 
     // click into the first db
-    fireEvent.click(getByText("Sample Dataset"));
+    fireEvent.click(getByText("Sample Database"));
     await delay(1);
     getByText("Orders");
 
     // click to go back
-    fireEvent.click(getByText("Sample Dataset"));
-    getByText("Sample Empty Dataset");
+    fireEvent.click(getByText("Sample Database"));
+    getByText("Sample Empty Database");
 
     // click back in
-    fireEvent.click(getByText("Sample Dataset"));
+    fireEvent.click(getByText("Sample Database"));
     await delay(1);
     getByText("Orders");
+  });
+
+  it("shows an empty state without any databases", async () => {
+    const { getByText } = render(
+      <DataSelector
+        steps={["DATABASE", "SCHEMA", "TABLE"]}
+        databases={[]}
+        triggerElement={<div />}
+        isOpen={true}
+      />,
+    );
+
+    getByText("To pick some data, you'll need to add some first");
   });
 });
 

@@ -1,7 +1,7 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 
 import TableLabel from "../TableLabel/TableLabel";
 

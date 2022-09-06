@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import { SegmentedControl } from "metabase/components/SegmentedControl";
-import Select from "metabase/components/Select";
+import Select from "metabase/core/components/Select";
 
 import Settings from "metabase/lib/settings";
 import { capitalize } from "metabase/lib/formatting";

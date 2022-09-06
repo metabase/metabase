@@ -52,4 +52,10 @@ describe("metabase/lib/expressions/diagnostics", () => {
       "Function contains expects 2 arguments",
     );
   });
+
+  it("should show an error for custom columns with a root boolean expression", () => {
+    expect(diagnose("[Canceled] = [Returned]", "expression").message).toEqual(
+      "Custom columns do not support boolean expressions",
+    );
+  });
 });

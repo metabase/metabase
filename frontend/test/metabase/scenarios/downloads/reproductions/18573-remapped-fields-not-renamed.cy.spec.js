@@ -2,16 +2,18 @@ import {
   restore,
   visitQuestionAdhoc,
   downloadAndAssert,
-} from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+} from "__support__/e2e/helpers";
 
-const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATASET;
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+
+const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 const questionDetails = {
   dataset_query: {
     type: "query",
     query: { "source-table": ORDERS_ID, limit: 2 },
-    database: 1,
+    database: SAMPLE_DB_ID,
   },
   visualization_settings: {
     column_settings: {
@@ -22,10 +24,8 @@ const questionDetails = {
   },
 };
 
-describe.skip("issue 18573", () => {
+describe("issue 18573", () => {
   beforeEach(() => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
     restore();
     cy.signInAsAdmin();
 
@@ -37,16 +37,13 @@ describe.skip("issue 18573", () => {
     });
   });
 
-  ["csv", "xlsx"].forEach(fileType => {
-    it(`for the remapped columns, it should preserve renamed column name in exports for ${fileType} (metabase#18573)`, () => {
-      visitQuestionAdhoc(questionDetails);
-      cy.wait("@dataset");
+  it(`for the remapped columns, it should preserve renamed column name in exports for xlsx (metabase#18573)`, () => {
+    visitQuestionAdhoc(questionDetails);
 
-      cy.findByText("Foo");
-      cy.findByText("Awesome Concrete Shoes");
+    cy.findByText("Foo");
+    cy.findByText("Awesome Concrete Shoes");
 
-      downloadAndAssert({ fileType }, assertion);
-    });
+    downloadAndAssert({ fileType: "xlsx" }, assertion);
   });
 });
 

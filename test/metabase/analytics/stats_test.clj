@@ -1,6 +1,6 @@
 (ns metabase.analytics.stats-test
   (:require [clojure.test :refer :all]
-            [metabase.analytics.stats :as stats :refer :all]
+            [metabase.analytics.stats :as stats :refer [anonymous-usage-stats]]
             [metabase.email :as email]
             [metabase.integrations.slack :as slack]
             [metabase.models.card :refer [Card]]
@@ -69,19 +69,19 @@
 (deftest anonymous-usage-stats-test
   (with-redefs [email/email-configured? (constantly false)
                 slack/slack-configured? (constantly false)]
-    (mt/with-temporary-setting-values [site-name "Test"]
+    (mt/with-temporary-setting-values [site-name          "Test"
+                                       startup-time-millis 1234.0]
       (let [stats (anonymous-usage-stats)]
-        (doseq [[k expected] {:running_on        :unknown
-                              :check_for_updates true
-                              :site_name         true
-                              :friendly_names    false
-                              :email_configured  false
-                              :slack_configured  false
-                              :sso_configured    false
-                              :has_sample_data   false}]
-          (testing k
-            (is (= expected
-                   (get stats k)))))))))
+        (is (partial= {:running_on          :unknown
+                       :check_for_updates   true
+                       :startup_time_millis 1234.0
+                       :site_name           true
+                       :friendly_names      false
+                       :email_configured    false
+                       :slack_configured    false
+                       :sso_configured      false
+                       :has_sample_data     false}
+                      stats))))))
 
 (deftest conversion-test
   (is (= #{true}

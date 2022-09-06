@@ -2,9 +2,7 @@ import {
   restore,
   downloadAndAssert,
   runNativeQuery,
-} from "__support__/e2e/cypress";
-
-let questionId;
+} from "__support__/e2e/helpers";
 
 const testCases = ["csv", "xlsx"];
 
@@ -15,29 +13,26 @@ describe("issue 10803", () => {
     restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion({
-      name: "10803",
-      native: {
-        query:
-          "SELECT PARSEDATETIME('2020-06-03', 'yyyy-MM-dd') AS \"birth_date\", PARSEDATETIME('2020-06-03 23:41:23', 'yyyy-MM-dd hh:mm:ss') AS \"created_at\"",
-        "template-tags": {},
+    cy.createNativeQuestion(
+      {
+        name: "10803",
+        native: {
+          query:
+            "SELECT PARSEDATETIME('2020-06-03', 'yyyy-MM-dd') AS \"birth_date\", PARSEDATETIME('2020-06-03 23:41:23', 'yyyy-MM-dd hh:mm:ss') AS \"created_at\"",
+        },
       },
-    }).then(({ body }) => {
-      questionId = body.id;
-
-      cy.intercept("POST", `/api/card/${questionId}/query`).as("cardQuery");
-      cy.visit(`/question/${questionId}`);
-
-      cy.wait("@cardQuery");
-    });
+      { visitQuestion: true, wrapId: true },
+    );
   });
 
   testCases.forEach(fileType => {
     it(`should format the date properly for ${fileType} in saved questions (metabase#10803)`, () => {
-      downloadAndAssert(
-        { fileType, questionId, logResults: true, raw: true },
-        testWorkbookDatetimes,
-      );
+      cy.get("@questionId").then(questionId => {
+        downloadAndAssert(
+          { fileType, questionId, logResults: true, raw: true },
+          testWorkbookDatetimes,
+        );
+      });
     });
 
     it(`should format the date properly for ${fileType} in unsaved questions`, () => {

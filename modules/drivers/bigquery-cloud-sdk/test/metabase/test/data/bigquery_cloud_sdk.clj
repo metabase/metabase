@@ -6,6 +6,7 @@
             [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.bigquery-cloud-sdk :as bigquery]
+            [metabase.driver.ddl.interface :as ddl.i]
             [metabase.test.data :as data]
             [metabase.test.data.interface :as tx]
             [metabase.test.data.sql :as sql.tx]
@@ -78,13 +79,14 @@
         bq      (bigquery)]
     (or (:project-id details) (.. bq getOptions getProjectId))))
 
-(defmethod tx/dbdef->connection-details :bigquery-cloud-sdk [_ _ {:keys [database-name]}]
+(defmethod tx/dbdef->connection-details :bigquery-cloud-sdk
+  [_driver _context {:keys [database-name]}]
   (assoc (test-db-details) :dataset-id (normalize-name :db database-name) :include-user-id-and-hash true))
 
 
 ;;; -------------------------------------------------- Loading Data --------------------------------------------------
 
-(defmethod tx/format-name :bigquery-cloud-sdk [_ table-or-field-name]
+(defmethod ddl.i/format-name :bigquery-cloud-sdk [_ table-or-field-name]
   (u/snake-key table-or-field-name))
 
 (defn- create-dataset! [^String dataset-id]
@@ -242,7 +244,7 @@
             (println (u/format-color 'red error-message))
             (throw (ex-info error-message {:metabase.util/no-auto-retry? true}))))))))
 
-(defn- base-type->bigquery-type [base-type]
+(defn base-type->bigquery-type [base-type]
   (let [types {:type/BigInteger     :INTEGER
                :type/Boolean        :BOOLEAN
                :type/Date           :DATE
@@ -314,7 +316,7 @@
   outdated. The fact that a *created* dataset (i.e. created on BigQuery) is transient has already been encoded by a
   suffix, so we can just look for that here."
   [dataset-name]
-  (when-let [[_ ds-timestamp-str] (re-matches #".*__transient_(\d+)$" dataset-name)]
+  (when-let [[_ ^String ds-timestamp-str] (re-matches #".*__transient_(\d+)$" dataset-name)]
     ;; millis to hours
     (< (* 1000 60 60 2) (- ns-load-time (Long. ds-timestamp-str)))))
 

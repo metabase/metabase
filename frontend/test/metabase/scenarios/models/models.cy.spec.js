@@ -2,63 +2,75 @@ import {
   restore,
   modal,
   popover,
-  getNotebookStep,
-  openNewCollectionItemFlowFor,
+  openNativeEditor,
   visualize,
   mockSessionProperty,
-} from "__support__/e2e/cypress";
+  sidebar,
+  summarize,
+  filter,
+  filterField,
+  visitQuestion,
+  visitDashboard,
+  startNewQuestion,
+  openQuestionActions,
+  closeQuestionActions,
+} from "__support__/e2e/helpers";
+
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+import { questionInfoButton } from "../../../__support__/e2e/helpers/e2e-ui-elements-helpers";
 
 import {
-  turnIntoDataset,
-  assertIsDataset,
-  assertQuestionIsBasedOnDataset,
+  turnIntoModel,
+  assertIsModel,
+  assertQuestionIsBasedOnModel,
   selectFromDropdown,
   selectDimensionOptionFromSidebar,
-  saveQuestionBasedOnDataset,
+  saveQuestionBasedOnModel,
   assertIsQuestion,
-  openDetailsSidebar,
-  getDetailsSidebarActions,
 } from "./helpers/e2e-models-helpers";
+
+const { PRODUCTS } = SAMPLE_DATABASE;
 
 describe("scenarios > models", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
   it("allows to turn a GUI question into a model", () => {
     cy.request("PUT", "/api/card/1", { name: "Orders Model" });
-    cy.visit("/question/1");
+    visitQuestion(1);
 
-    turnIntoDataset();
-    assertIsDataset();
+    turnIntoModel();
+    openQuestionActions();
+    assertIsModel();
 
-    cy.findByTestId("qb-header-action-panel").within(() => {
-      cy.findByText("Filter").click();
+    filter();
+    filterField("Discount", {
+      operator: "Not empty",
     });
-    selectDimensionOptionFromSidebar("Discount");
-    cy.findByText("Equal to").click();
-    selectFromDropdown("Not empty");
-    cy.button("Add filter").click();
 
-    assertQuestionIsBasedOnDataset({
-      dataset: "Orders Model",
+    cy.findByTestId("apply-filters").click();
+    cy.wait("@dataset");
+
+    assertQuestionIsBasedOnModel({
+      model: "Orders Model",
       collection: "Our analytics",
       table: "Orders",
     });
 
-    saveQuestionBasedOnDataset({ datasetId: 1, name: "Q1" });
+    saveQuestionBasedOnModel({ modelId: 1, name: "Q1" });
 
-    assertQuestionIsBasedOnDataset({
+    assertQuestionIsBasedOnModel({
       questionName: "Q1",
-      dataset: "Orders Model",
+      model: "Orders Model",
       collection: "Our analytics",
       table: "Orders",
     });
 
-    cy.findAllByText("Our analytics")
-      .first()
-      .click();
+    cy.findByTestId("qb-header").findAllByText("Our analytics").first().click();
     getCollectionItemRow("Orders Model").within(() => {
       cy.icon("model");
     });
@@ -80,35 +92,34 @@ describe("scenarios > models", () => {
       { visitQuestion: true },
     );
 
-    turnIntoDataset();
-    assertIsDataset();
+    turnIntoModel();
+    openQuestionActions();
+    assertIsModel();
 
-    cy.findByTestId("qb-header-action-panel").within(() => {
-      cy.findByText("Filter").click();
+    filter();
+    filterField("DISCOUNT", {
+      operator: "Not empty",
     });
-    selectDimensionOptionFromSidebar("DISCOUNT");
-    cy.findByText("Equal to").click();
-    selectFromDropdown("Not empty");
-    cy.button("Add filter").click();
 
-    assertQuestionIsBasedOnDataset({
-      dataset: "Orders Model",
+    cy.findByTestId("apply-filters").click();
+    cy.wait("@dataset");
+
+    assertQuestionIsBasedOnModel({
+      model: "Orders Model",
       collection: "Our analytics",
       table: "Orders",
     });
 
-    saveQuestionBasedOnDataset({ datasetId: 4, name: "Q1" });
+    saveQuestionBasedOnModel({ modelId: 4, name: "Q1" });
 
-    assertQuestionIsBasedOnDataset({
+    assertQuestionIsBasedOnModel({
       questionName: "Q1",
-      dataset: "Orders Model",
+      model: "Orders Model",
       collection: "Our analytics",
       table: "Orders",
     });
 
-    cy.findAllByText("Our analytics")
-      .first()
-      .click();
+    cy.findByTestId("qb-header").findAllByText("Our analytics").first().click();
     getCollectionItemRow("Orders Model").within(() => {
       cy.icon("model");
     });
@@ -116,78 +127,85 @@ describe("scenarios > models", () => {
       cy.icon("table");
     });
 
-    cy.url().should("not.include", "/question/1");
+    cy.location("pathname").should("eq", "/collection/root");
   });
 
   it("changes model's display to table", () => {
-    cy.visit("/question/3");
+    visitQuestion(3);
 
     cy.get(".LineAreaBarChart");
     cy.get(".TableInteractive").should("not.exist");
 
-    turnIntoDataset();
+    turnIntoModel();
 
     cy.get(".TableInteractive");
     cy.get(".LineAreaBarChart").should("not.exist");
   });
 
   it("allows to undo turning a question into a model", () => {
-    cy.visit("/question/3");
+    visitQuestion(3);
     cy.get(".LineAreaBarChart");
 
-    turnIntoDataset();
+    turnIntoModel();
     cy.findByText("This is a model now.");
     cy.findByText("Undo").click();
 
     cy.get(".LineAreaBarChart");
+    openQuestionActions();
     assertIsQuestion();
   });
 
   it("allows to turn a model back into a saved question", () => {
     cy.request("PUT", "/api/card/1", { dataset: true });
     cy.intercept("PUT", "/api/card/1").as("cardUpdate");
-    cy.visit("/dataset/1");
+    cy.visit("/model/1");
 
-    openDetailsSidebar();
-    cy.findByText("Turn back into a saved question").click();
+    openQuestionActions();
+    popover().within(() => {
+      cy.findByText("Turn back to saved question").click();
+    });
+
     cy.wait("@cardUpdate");
 
     cy.findByText("This is a question now.");
+    openQuestionActions();
     assertIsQuestion();
 
     cy.findByText("Undo").click();
     cy.wait("@cardUpdate");
-    assertIsDataset();
+    openQuestionActions();
+    assertIsModel();
   });
 
   it("shows 404 when opening a question with a /dataset URL", () => {
-    cy.visit("/dataset/1");
+    cy.visit("/model/1");
     cy.findByText(/We're a little lost/i);
   });
 
-  it("redirects to /dataset URL when opening a model with /question URL", () => {
+  it("redirects to /model URL when opening a model with /question URL", () => {
     cy.request("PUT", "/api/card/1", { dataset: true });
+    // Important - do not use visitQuestion(1) here!
     cy.visit("/question/1");
-    openDetailsSidebar();
-    assertIsDataset();
-    cy.url().should("include", "/dataset");
+    cy.wait("@dataset");
+    openQuestionActions();
+    assertIsModel();
+    cy.url().should("include", "/model");
   });
 
   describe("data picker", () => {
     beforeEach(() => {
-      cy.intercept("GET", "/api/search").as("search");
+      cy.intercept("GET", "/api/search*").as("search");
       cy.request("PUT", "/api/card/1", { dataset: true });
     });
 
     it("transforms the data picker", () => {
-      cy.visit("/question/new");
-      cy.findByText("Custom question").click();
+      startNewQuestion();
 
       popover().within(() => {
         testDataPickerSearch({
           inputPlaceholderText: "Search for some data…",
           query: "Ord",
-          datasets: true,
+          models: true,
           cards: true,
           tables: true,
         });
@@ -200,7 +218,7 @@ describe("scenarios > models", () => {
         testDataPickerSearch({
           inputPlaceholderText: "Search for a model…",
           query: "Ord",
-          datasets: true,
+          models: true,
         });
         cy.icon("chevronleft").click();
 
@@ -217,7 +235,7 @@ describe("scenarios > models", () => {
         cy.icon("chevronleft").click();
 
         cy.findByText("Raw Data").click();
-        cy.findByText("Sample Dataset").click(); // go back to db list
+        cy.findByText("Sample Database").click(); // go back to db list
         cy.findByText("Saved Questions").should("not.exist");
         testDataPickerSearch({
           inputPlaceholderText: "Search for a table…",
@@ -228,8 +246,8 @@ describe("scenarios > models", () => {
     });
 
     it("allows to create a question based on a model", () => {
-      cy.visit("/question/new");
-      cy.findByText("Custom question").click();
+      cy.intercept(`/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as("schema");
+      startNewQuestion();
 
       popover().within(() => {
         cy.findByText("Models").click();
@@ -237,14 +255,13 @@ describe("scenarios > models", () => {
       });
 
       cy.icon("join_left_outer").click();
-
+      cy.wait("@schema");
+      cy.findAllByRole("option").should("have.length", 4);
       selectFromDropdown("Products");
-      selectFromDropdown("Product ID");
-      selectFromDropdown("ID");
 
       cy.findByText("Add filters to narrow your answer").click();
-      selectFromDropdown("Products");
-      selectFromDropdown("Price");
+      selectFromDropdown("Products", { force: true });
+      selectFromDropdown("Price", { force: true });
       selectFromDropdown("Equal to");
       selectFromDropdown("Less than");
       cy.findByPlaceholderText("Enter a number").type("50");
@@ -269,8 +286,7 @@ describe("scenarios > models", () => {
 
     it("should not display models if nested queries are disabled", () => {
       mockSessionProperty("enable-nested-queries", false);
-      cy.visit("/question/new");
-      cy.findByText("Custom question").click();
+      startNewQuestion();
       popover().within(() => {
         cy.findByText("Models").should("not.exist");
         cy.findByText("Saved Questions").should("not.exist");
@@ -287,40 +303,40 @@ describe("scenarios > models", () => {
     });
 
     it("can create a question by filtering and summarizing a model", () => {
-      cy.visit("/question/1");
+      cy.visit("/model/1");
+      cy.wait("@dataset");
 
-      cy.findByTestId("qb-header-action-panel").within(() => {
-        cy.findByText("Filter").click();
+      filter();
+      filterField("Discount", {
+        operator: "Not empty",
       });
-      selectDimensionOptionFromSidebar("Discount");
-      cy.findByText("Equal to").click();
-      selectFromDropdown("Not empty");
-      cy.button("Add filter").click();
+      cy.findByTestId("apply-filters").click();
+      cy.wait("@dataset");
 
-      assertQuestionIsBasedOnDataset({
-        dataset: "Orders Model",
+      assertQuestionIsBasedOnModel({
+        model: "Orders Model",
         collection: "Our analytics",
         table: "Orders",
       });
 
-      cy.findByTestId("qb-header-action-panel").within(() => {
-        cy.findByText("Summarize").click();
-      });
+      summarize();
+
       selectDimensionOptionFromSidebar("Created At");
+      cy.wait("@dataset");
       cy.button("Done").click();
 
-      assertQuestionIsBasedOnDataset({
+      assertQuestionIsBasedOnModel({
         questionName: "Count by Created At: Month",
-        dataset: "Orders Model",
+        model: "Orders Model",
         collection: "Our analytics",
         table: "Orders",
       });
 
-      saveQuestionBasedOnDataset({ datasetId: 1, name: "Q1" });
+      saveQuestionBasedOnModel({ modelId: 1, name: "Q1" });
 
-      assertQuestionIsBasedOnDataset({
+      assertQuestionIsBasedOnModel({
         questionName: "Q1",
-        dataset: "Orders Model",
+        model: "Orders Model",
         collection: "Our analytics",
         table: "Orders",
       });
@@ -329,23 +345,24 @@ describe("scenarios > models", () => {
     });
 
     it("can create a question using table click actions", () => {
-      cy.visit("/question/1");
+      cy.visit("/model/1");
+      cy.wait("@dataset");
 
       cy.findByText("Subtotal").click();
       selectFromDropdown("Sum over time");
 
-      assertQuestionIsBasedOnDataset({
+      assertQuestionIsBasedOnModel({
         questionName: "Sum of Subtotal by Created At: Month",
-        dataset: "Orders Model",
+        model: "Orders Model",
         collection: "Our analytics",
         table: "Orders",
       });
 
-      saveQuestionBasedOnDataset({ datasetId: 1, name: "Q1" });
+      saveQuestionBasedOnModel({ modelId: 1, name: "Q1" });
 
-      assertQuestionIsBasedOnDataset({
+      assertQuestionIsBasedOnModel({
         questionName: "Q1",
-        dataset: "Orders Model",
+        model: "Orders Model",
         collection: "Our analytics",
         table: "Orders",
       });
@@ -355,102 +372,144 @@ describe("scenarios > models", () => {
 
     it("can edit model info", () => {
       cy.intercept("PUT", "/api/card/1").as("updateCard");
-      cy.visit("/question/1");
+      cy.visit("/model/1");
+      cy.wait("@dataset");
 
-      openDetailsSidebar();
-      getDetailsSidebarActions().within(() => {
-        cy.icon("pencil").click();
-      });
-      modal().within(() => {
-        cy.findByLabelText("Name")
-          .clear()
-          .type("M1");
-        cy.findByLabelText("Description")
-          .clear()
-          .type("foo");
-        cy.button("Save").click();
-      });
+      cy.findByTestId("saved-question-header-title").clear().type("M1").blur();
       cy.wait("@updateCard");
 
-      cy.findByText("M1");
-      cy.findByText("foo");
+      questionInfoButton().click();
+
+      cy.findByPlaceholderText("Add description").type("foo").blur();
+      cy.wait("@updateCard");
+
+      cy.findByDisplayValue("M1");
+      cy.findByDisplayValue("foo");
     });
   });
 
-  describe("adding a question to collection from its page", () => {
-    it("should offer to pick one of the collection's models by default", () => {
-      cy.request("PUT", "/api/card/1", { dataset: true });
-      cy.request("PUT", "/api/card/2", { dataset: true });
+  it("shouldn't allow to turn native questions with variables into models", () => {
+    cy.createNativeQuestion(
+      {
+        native: {
+          query: "SELECT * FROM products WHERE {{ID}}",
+          "template-tags": {
+            ID: {
+              id: "6b8b10ef-0104-1047-1e1b-2492d5954322",
+              name: "ID",
+              display_name: "ID",
+              type: "dimension",
+              dimension: ["field", PRODUCTS.ID, null],
+              "widget-type": "category",
+              default: null,
+            },
+          },
+        },
+      },
+      { visitQuestion: true },
+    );
 
-      cy.visit("/collection/root");
-      openNewCollectionItemFlowFor("question");
+    openQuestionActions();
+    popover().within(() => {
+      cy.icon("model").click();
+    });
+    modal().within(() => {
+      cy.findByText("Variables in models aren't supported yet");
+      cy.button("Turn this into a model").should("not.exist");
+      cy.icon("close").click();
+    });
+    openQuestionActions();
+    assertIsQuestion();
+    closeQuestionActions();
 
-      cy.findByText("Orders");
-      cy.findByText("Orders, Count");
-      cy.findByText("All data");
+    cy.findByText(/Open editor/i).click();
+    cy.get(".ace_content").type(
+      "{leftarrow}{leftarrow}{backspace}{backspace}#",
+    );
+    cy.findByTestId("tag-editor-sidebar").within(() => {
+      cy.findByTestId("select-button").click();
+    });
+    selectFromDropdown("Orders");
+    cy.findByText("Save").click();
+    modal().findByText("Save").click();
 
-      cy.findByText("Models").should("not.exist");
-      cy.findByText("Raw Data").should("not.exist");
-      cy.findByText("Saved Questions").should("not.exist");
-      cy.findByText("Sample Dataset").should("not.exist");
+    turnIntoModel();
+    openQuestionActions();
+    assertIsModel();
+  });
 
-      cy.findByText("Orders").click();
-
-      getNotebookStep("data").within(() => {
-        cy.findByText("Orders");
+  it("shouldn't allow using variables in native models", () => {
+    cy.createNativeQuestion({
+      native: { query: "SELECT * FROM products" },
+    }).then(({ body: { id: modelId } }) => {
+      cy.request("PUT", `/api/card/${modelId}`, { dataset: true }).then(() => {
+        cy.visit(`/model/${modelId}/query`);
+        cy.get(".ace_content")
+          .should("be.visible")
+          .as("editor")
+          .type("{movetoend}")
+          .type(" WHERE {{F", {
+            parseSpecialCharSequences: false,
+          });
+        cy.findByTestId("tag-editor-sidebar").should("not.exist");
+        cy.get("@editor").type("{leftarrow}{leftarrow}{backspace}#");
+        cy.findByTestId("tag-editor-sidebar").should("be.visible");
       });
+    });
+  });
 
-      cy.button("Visualize");
+  it("should correctly show native models for no-data users", () => {
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    cy.createNativeQuestion({
+      name: "TEST MODEL",
+      dataset: true,
+      native: {
+        query: "select * from orders",
+      },
+    });
+    cy.signIn("nodata");
+    cy.visit("/collection/root");
+    cy.findByText("TEST MODEL").click();
+    cy.wait("@cardQuery");
+    cy.findByText(/This question is written in SQL/i).should("not.exist");
+  });
+
+  describe("listing", () => {
+    beforeEach(() => {
+      cy.request("PUT", "/api/card/1", { name: "Orders Model", dataset: true });
     });
 
-    it("should open the default picker after clicking 'All data'", () => {
-      cy.request("PUT", "/api/card/1", { dataset: true });
-      cy.request("PUT", "/api/card/2", { dataset: true });
+    it("should allow adding models to dashboards", () => {
+      cy.intercept("GET", "/api/dashboard/*").as("fetchDashboard");
 
-      cy.visit("/collection/root");
-      openNewCollectionItemFlowFor("question");
-
-      cy.findByText("All data").click({ force: true });
-
-      cy.findByText("Models");
-      cy.findByText("Raw Data");
-      cy.findByText("Saved Questions");
-    });
-
-    it("should automatically use the only collection model as a data source", () => {
-      cy.request("PUT", "/api/card/2", { dataset: true });
-
-      cy.visit("/collection/root");
-      openNewCollectionItemFlowFor("question");
-
-      getNotebookStep("data").within(() => {
-        cy.findByText("Orders, Count");
+      cy.createDashboard().then(({ body: { id: dashboardId } }) => {
+        visitDashboard(dashboardId);
+        cy.icon("pencil").click();
+        cy.get(".QueryBuilder-section .Icon-add").click();
+        sidebar().findByText("Orders Model").click();
+        cy.button("Save").click();
+        // The first fetch happened when visiting dashboard, and the second one upon saving it.
+        // We need to wait for both.
+        cy.wait(["@fetchDashboard", "@fetchDashboard"]);
+        cy.findByText("Orders Model");
       });
-      cy.button("Visualize");
     });
 
-    it("should use correct picker if collection has no models", () => {
-      cy.request("PUT", "/api/card/1", { dataset: true });
-
-      cy.visit("/collection/9");
-      openNewCollectionItemFlowFor("question");
-
-      cy.findByText("All data").should("not.exist");
-      cy.findByText("Models");
-      cy.findByText("Raw Data");
-      cy.findByText("Saved Questions");
-    });
-
-    it("should use correct picker if there are models at all", () => {
-      cy.visit("/collection/root");
-      openNewCollectionItemFlowFor("question");
-
-      cy.findByText("All data").should("not.exist");
-      cy.findByText("Models").should("not.exist");
-      cy.findByText("Raw Data").should("not.exist");
-
-      cy.findByText("Saved Questions");
-      cy.findByText("Sample Dataset");
+    it("should allow using models in native queries", () => {
+      cy.intercept("POST", "/api/dataset").as("query");
+      openNativeEditor().type("select * from {{#}}", {
+        parseSpecialCharSequences: false,
+      });
+      sidebar().contains("Pick a question or a model").click();
+      selectFromDropdown("Orders Model");
+      cy.get("@editor").contains("select * from {{#1}}");
+      cy.get(".NativeQueryEditor .Icon-play").click();
+      cy.wait("@query");
+      cy.get(".TableInteractive").within(() => {
+        cy.findByText("USER_ID");
+        cy.findByText("PRODUCT_ID");
+        cy.findByText("TAX");
+      });
     });
   });
 });
@@ -462,14 +521,14 @@ function getCollectionItemRow(itemName) {
 function testDataPickerSearch({
   inputPlaceholderText,
   query,
-  datasets = false,
+  models = false,
   cards = false,
   tables = false,
 } = {}) {
   cy.findByPlaceholderText(inputPlaceholderText).type(query);
   cy.wait("@search");
 
-  cy.findAllByText(/Model in/i).should(datasets ? "exist" : "not.exist");
+  cy.findAllByText(/Model in/i).should(models ? "exist" : "not.exist");
   cy.findAllByText(/Saved question in/i).should(cards ? "exist" : "not.exist");
   cy.findAllByText(/Table in/i).should(tables ? "exist" : "not.exist");
 

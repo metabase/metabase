@@ -1,14 +1,19 @@
-import styled, { css } from "styled-components";
+import React from "react";
+import styled from "@emotion/styled";
+import { css } from "@emotion/react";
+
 import Icon from "metabase/components/Icon";
 
-export const HeaderContainer = styled.div.attrs({
-  role: "button",
-  tabIndex: "0",
-})`
+export const HeaderContainer = styled.div`
   display: flex;
   align-items: center;
   cursor: pointer;
 `;
+
+HeaderContainer.defaultProps = {
+  role: "button",
+  tabIndex: "0",
+};
 
 export const Header = styled.span`
   display: flex;
@@ -26,13 +31,13 @@ const ICON_VARIANTS = {
   },
 };
 
-export const ToggleIcon = styled(Icon).attrs({
-  name: ({ isExpanded, variant }) => {
+export const ToggleIcon = styled(
+  ({ isExpanded, variant, size = 12, ...props }) => {
     const { collapsed, expanded } = ICON_VARIANTS[variant];
-    return isExpanded ? expanded : collapsed;
+    const name = isExpanded ? expanded : collapsed;
+    return <Icon name={name} size={size} {...props} />;
   },
-  size: 12,
-})`
+)`
   ${props => css`
     margin-${props.position === "left" ? "right" : "left"}: 0.5rem;
   `};

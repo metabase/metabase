@@ -4,7 +4,7 @@
             [metabase.query-processor.middleware.annotate :as annotate]))
 
 (defn- ag-name [ag-clause]
-  (driver/format-custom-field-name driver/*driver* (annotate/aggregation-name ag-clause)))
+  (driver/escape-alias driver/*driver* (annotate/aggregation-name ag-clause)))
 
 (defn- pre-alias-and-uniquify [aggregations]
   (mapv
@@ -28,13 +28,9 @@
     joins
     (update :joins (partial mapv pre-alias-aggregations-in-inner-query))))
 
-(defn- maybe-pre-alias-aggregations [{query-type :type, :as query}]
+(defn pre-alias-aggregations
+  "Middleware that generates aliases for all aggregations anywhere in a query, and makes sure they're unique."
+  [{query-type :type, :as query}]
   (if-not (= query-type :query)
     query
     (update query :query pre-alias-aggregations-in-inner-query)))
-
-(defn pre-alias-aggregations
-  "Middleware that generates aliases for all aggregations anywhere in a query, and makes sure they're unique."
-  [qp]
-  (fn [query rff context]
-    (qp (maybe-pre-alias-aggregations query) rff context)))

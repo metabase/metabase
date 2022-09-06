@@ -1,8 +1,13 @@
-import { restore, popover, visualize } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  visualize,
+  summarize,
+} from "__support__/e2e/helpers";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
+const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const questionDetails = {
   name: "18069",
@@ -29,7 +34,7 @@ describe("issue 18069", () => {
   });
 
   it("should not allow choosing text fields for SUM (metabase#18069)", () => {
-    cy.findByText("Summarize").click();
+    summarize({ mode: "notebook" });
     cy.findByText("Sum of ...").click();
 
     popover().within(() => {

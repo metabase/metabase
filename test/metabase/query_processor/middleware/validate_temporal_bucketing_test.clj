@@ -6,7 +6,7 @@
             [toucan.db :as db]))
 
 (defn- validate [query]
-  (:pre (mt/test-qp-middleware validate-temporal-bucketing/validate-temporal-bucketing query)))
+  (validate-temporal-bucketing/validate-temporal-bucketing query))
 
 (deftest validate-temporal-bucketing-test
   (mt/dataset attempted-murders

@@ -1,7 +1,7 @@
 (ns metabase-enterprise.serialization.upsert
   "Upsert-or-skip functionality for our models."
   (:require [cheshire.core :as json]
-            [clojure.data :as diff]
+            [clojure.data :as data]
             [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase-enterprise.serialization.names :refer [name-for-logging]]
@@ -11,7 +11,6 @@
             [metabase.models.dashboard-card :refer [DashboardCard]]
             [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
             [metabase.models.database :as database :refer [Database]]
-            [metabase.models.dependency :refer [Dependency]]
             [metabase.models.dimension :refer [Dimension]]
             [metabase.models.field :refer [Field]]
             [metabase.models.field-values :refer [FieldValues]]
@@ -41,7 +40,6 @@
    DashboardCardSeries [:dashboardcard_id :card_id]
    FieldValues         [:field_id]
    Dimension           [:field_id :human_readable_field_id]
-   Dependency          [:model_id :model :dependent_on_model :dependent_on_id]
    Setting             [:key]
    Pulse               [:name :collection_id]
    PulseCard           [:pulse_id :card_id]
@@ -99,8 +97,8 @@
 
 (defn- group-by-action
   "Return `entities` grouped by the action that needs to be done given the `context`."
-  [{:keys [mode on-error]} model entities]
-  (let [same?                        (comp nil? second diff/diff)]
+  [{:keys [mode]} model entities]
+  (let [same? (comp nil? second data/diff)]
     (->> entities
          (map-indexed (fn [position entity]
                         [position
@@ -139,7 +137,6 @@
         (log/info (trs "Skipping {0} (nothing to update)" (name-for-logging (name model) existing)))))
     (doseq [[_ _ existing] update]
       (log/info (trs "Updating {0}" (name-for-logging (name model) existing))))
-
     (->> (concat (for [[position _ existing] skip]
                    [(u/the-id existing) position])
                  (map vector (map post-insert-fn

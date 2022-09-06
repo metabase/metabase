@@ -5,6 +5,7 @@
             [honeysql.format :as hformat]
             [metabase.config :as config]
             [metabase.driver :as driver]
+            [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
@@ -35,13 +36,13 @@
 (defmethod sql.tx/field-base-type->sql-type [:sparksql :type/Time] [_ _]
   (throw (UnsupportedOperationException. "SparkSQL does not have a TIME data type.")))
 
-(defmethod tx/format-name :sparksql
+(defmethod ddl.i/format-name :sparksql
   [_ s]
   (str/replace s #"-" "_"))
 
 (defmethod sql.tx/qualified-name-components :sparksql
   [driver & args]
-  [(tx/format-name driver (u/qualified-name (last args)))])
+  [(ddl.i/format-name driver (u/qualified-name (last args)))])
 
 (defmethod tx/dbdef->connection-details :sparksql
   [driver context {:keys [database-name]}]
@@ -51,14 +52,7 @@
     :user     (tx/db-test-env-var-or-throw :sparksql :user "admin")
     :password (tx/db-test-env-var-or-throw :sparksql :password "admin")}
    (when (= context :db)
-     {:db (tx/format-name driver database-name)})))
-
-;; SparkSQL doesn't support specifying the columns in INSERT INTO statements, so remove it
-(defmethod ddl/insert-rows-honeysql-form :sparksql
-  [driver table-identifier row-or-rows]
-  (let [honeysql ((get-method ddl/insert-rows-honeysql-form :sql-jdbc/test-extensions)
-                  driver table-identifier row-or-rows)]
-    (dissoc honeysql :columns)))
+     {:db (ddl.i/format-name driver database-name)})))
 
 (defmethod ddl/insert-rows-ddl-statements :sparksql
   [driver table-identifier row-or-rows]
@@ -85,8 +79,8 @@
   (apply load-data/load-data-add-ids! args))
 
 (defmethod sql.tx/create-table-sql :sparksql
-  [driver {:keys [database-name], :as dbdef} {:keys [table-name field-definitions]}]
-  (let [quote-name    #(sql.u/quote-name driver :field (tx/format-name driver %))
+  [driver {:keys [database-name]} {:keys [table-name field-definitions]}]
+  (let [quote-name    #(sql.u/quote-name driver :field (ddl.i/format-name driver %))
         pk-field-name (quote-name (sql.tx/pk-field-name driver))]
     (format "CREATE TABLE %s (%s %s, %s)"
             (sql.tx/qualify-and-quote driver database-name table-name)

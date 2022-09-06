@@ -3,9 +3,9 @@ import { suggest as suggest_ } from "metabase/lib/expressions/suggest";
 import _ from "underscore";
 
 import { aggregationOpts, expressionOpts } from "./__support__/expressions";
-import { ORDERS, REVIEWS } from "__support__/sample_dataset_fixture";
+import { ORDERS, REVIEWS } from "__support__/sample_database_fixture";
 
-// custom metadata defined in __support__/sample_dataset_fixture
+// custom metadata defined in __support__/sample_database_fixture
 const SEGMENTS_ORDERS = [{ text: "[Expensive Things]", type: "segments" }];
 const FIELDS_ORDERS = [
   { text: "[Created At] ", type: "fields" },
@@ -145,7 +145,9 @@ describe("metabase/lib/expression/suggest", () => {
           }),
         ).toEqual(
           [
+            { text: "True", type: "literal" },
             { text: "[Total] ", type: "fields" },
+            { text: "timeSpan(", type: "functions" },
             { text: "trim(", type: "functions" },
           ].sort(suggestionSort),
         );
@@ -159,6 +161,16 @@ describe("metabase/lib/expression/suggest", () => {
         });
         expect(structure).toEqual("substring(text, position, length)");
         expect(args).toHaveLength(3);
+      });
+
+      it("should provide help text for the unique match", () => {
+        const { structure, args } = helpText({
+          source: "lower", // doesn't need to be "lower(" since it's a unique match
+          query: ORDERS.query(),
+          startRule: "expression",
+        });
+        expect(structure).toEqual("lower(text)");
+        expect(args).toHaveLength(1);
       });
 
       it("should provide help text after first argument if there's only one argument", () => {
@@ -197,9 +209,9 @@ describe("metabase/lib/expression/suggest", () => {
       it("should suggest partial matches after an aggregation", () => {
         expect(suggest({ source: "average(c", ...aggregationOpts })).toEqual([
           // FIXME: the next four should not appear
-          { type: "aggregations", text: "Count(" },
+          { type: "aggregations", text: "Count " },
           { type: "aggregations", text: "CountIf(" },
-          { type: "aggregations", text: "CumulativeCount(" },
+          { type: "aggregations", text: "CumulativeCount " },
           { type: "aggregations", text: "CumulativeSum(" },
           { type: "fields", text: "[C] " },
           { type: "fields", text: "[count] " },
@@ -213,9 +225,9 @@ describe("metabase/lib/expression/suggest", () => {
 
       it("should suggest partial matches in aggregation", () => {
         expect(suggest({ source: "1 + C", ...aggregationOpts })).toEqual([
-          { type: "aggregations", text: "Count(" },
+          { type: "aggregations", text: "Count " },
           { type: "aggregations", text: "CountIf(" },
-          { type: "aggregations", text: "CumulativeCount(" },
+          { type: "aggregations", text: "CumulativeCount " },
           { type: "aggregations", text: "CumulativeSum(" },
           { type: "fields", text: "[C] " },
           { type: "fields", text: "[count] " },
@@ -248,7 +260,7 @@ describe("metabase/lib/expression/suggest", () => {
             startRule: "aggregation",
           }),
         ).toEqual([
-          { type: "aggregations", text: "Count(" },
+          { type: "aggregations", text: "Count " },
           { type: "aggregations", text: "CountIf(" },
         ]);
       });

@@ -1,8 +1,8 @@
 import {
-  SAMPLE_DATASET,
+  SAMPLE_DATABASE,
   ORDERS,
   PRODUCTS,
-} from "__support__/sample_dataset_fixture";
+} from "__support__/sample_database_fixture";
 
 const ORDERS_PRODUCT_ID_FIELD_REF = ["field", ORDERS.ID.id, null];
 const PRODUCT_ID_FIELD_REF = [
@@ -67,9 +67,7 @@ describe("StructuredQuery", () => {
       });
 
       it.skip("should remove join referencing invalid source-table", () => {
-        const q = ORDERS.query()
-          .setTableId(12345)
-          .join([getJoin()]);
+        const q = ORDERS.query().setTableId(12345).join([getJoin()]);
         expect(q.query()).toEqual({ "source-table": 12345, join: [getJoin()] });
         expect(q.clean().query()).toEqual({ "source-table": 12345 });
       });
@@ -287,13 +285,10 @@ describe("StructuredQuery", () => {
   describe("cleanNesting", () => {
     it("should not modify empty queries with no source-query", () => {
       expect(
-        SAMPLE_DATASET.question()
-          .query()
-          .cleanNesting()
-          .datasetQuery(),
+        SAMPLE_DATABASE.question().query().cleanNesting().datasetQuery(),
       ).toEqual({
         type: "query",
-        database: SAMPLE_DATASET.id,
+        database: SAMPLE_DATABASE.id,
         query: { "source-table": null },
       });
     });

@@ -128,13 +128,36 @@ describe("deprecated metadata actions", () => {
       };
 
       loadMetadataForQuery(query)(dispatch);
-      expect(Tables.actions.fetchMetadata).toHaveBeenCalledWith({ id: 1 });
-      expect(
-        Tables.actions.fetchMetadataAndForeignTables,
-      ).toHaveBeenCalledWith({ id: 2 });
+      expect(Tables.actions.fetchMetadata).toHaveBeenCalledWith(
+        { id: 1 },
+        undefined,
+      );
+      expect(Tables.actions.fetchMetadataAndForeignTables).toHaveBeenCalledWith(
+        { id: 2 },
+        undefined,
+      );
       expect(Tables.actions.fetchMetadata.mock.calls.length).toBe(1);
 
-      expect(Fields.actions.fetch).toHaveBeenCalledWith({ id: 3 });
+      expect(Fields.actions.fetch).toHaveBeenCalledWith({ id: 3 }, undefined);
+    });
+
+    it("should load extra dependencies if provided", () => {
+      const query = {
+        dependentMetadata: () => [
+          {
+            type: "table",
+            id: 1,
+          },
+        ],
+      };
+
+      loadMetadataForQuery(query, [{ type: "field", id: 3 }])(dispatch);
+
+      expect(Tables.actions.fetchMetadata).toHaveBeenCalledWith(
+        { id: 1 },
+        undefined,
+      );
+      expect(Fields.actions.fetch).toHaveBeenCalledWith({ id: 3 }, undefined);
     });
   });
 });

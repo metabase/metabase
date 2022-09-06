@@ -9,6 +9,7 @@
             [clojure.set :as set]
             [clojure.spec.alpha :as s]
             [clojure.test :refer :all]
+            [metabase.public-settings :as public-settings]
             [metabase.pulse.render.js-engine :as js]
             [metabase.pulse.render.js-svg :as js-svg])
   (:import org.apache.batik.anim.dom.SVGOMDocument
@@ -160,10 +161,8 @@
             cat-svg-bytes (js-svg/categorical-area cat-rows cat-labels settings)]
         (is (bytes? tl-svg-bytes))
         (is (bytes? cat-svg-bytes))))
-    (let [tl-svg-string (.asString (js/execute-fn-name @context "timeseries_area" tl-rows tl-labels settings))
-          tl-svg-hiccup (-> tl-svg-string parse-svg document-tag-hiccup)
-          cat-svg-string (.asString (js/execute-fn-name @context "categorical_area" cat-rows cat-labels settings))
-          cat-svg-hiccup (-> cat-svg-string parse-svg document-tag-hiccup)]
+    (let [tl-svg-string  (.asString (js/execute-fn-name @context "timeseries_area" tl-rows tl-labels settings))
+          cat-svg-string (.asString (js/execute-fn-name @context "categorical_area" cat-rows cat-labels settings))]
       (testing "it returns a valid svg string (no html in it)"
         (validate-svg-string :timelineseries-area tl-svg-string)
         (validate-svg-string :categorical-area cat-svg-string)))))
@@ -177,8 +176,7 @@
     (testing "It returns bytes"
       (let [svg-bytes (js-svg/timelineseries-waterfall rows labels settings)]
         (is (bytes? svg-bytes))))
-    (let [svg-string (.asString (js/execute-fn-name @context "timeseries_waterfall" rows labels settings))
-          svg-hiccup (-> svg-string parse-svg document-tag-hiccup)]
+    (let [svg-string (.asString (js/execute-fn-name @context "timeseries_waterfall" rows labels settings (json/generate-string (public-settings/application-colors))))]
       (testing "it returns a valid svg string (no html in it)"
         (validate-svg-string :timelineseries-waterfall svg-string)))))
 
@@ -211,11 +209,9 @@
     (let [svg-string (.asString (js/execute-fn-name @context "combo_chart"
                                                     (json/generate-string series)
                                                     (json/generate-string settings)
-                                                    (json/generate-string {})))
-          svg-hiccup (-> svg-string parse-svg document-tag-hiccup)]
+                                                    (json/generate-string {})))]
       (testing "it returns a valid svg string (no html in it)"
         (validate-svg-string :combo-chart svg-string)))))
-
 
 (deftest categorical-donut-test
   (let [rows [["apples" 2]
@@ -250,5 +246,5 @@
     (testing "It returns bytes"
       (let [svg-bytes (js-svg/categorical-waterfall rows labels {})]
         (is (bytes? svg-bytes))))
-    (let [svg-string (.asString ^Value (js/execute-fn-name @context "categorical_waterfall" rows labels settings))]
+    (let [svg-string (.asString ^Value (js/execute-fn-name @context "categorical_waterfall" rows labels settings (json/generate-string (public-settings/application-colors))))]
       (validate-svg-string :categorical/waterfall svg-string))))

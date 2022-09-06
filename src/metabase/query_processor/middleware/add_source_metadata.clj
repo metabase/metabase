@@ -56,9 +56,9 @@
                    :query    (assoc-in source-query [:middleware :disable-remaps?] true)}))]
       (for [col cols]
         (select-keys col [:name :id :table_id :display_name :base_type :effective_type :coercion_strategy
-                          :semantic_type :unit :fingerprint :settings :source_alias :field_ref :parent_id])))
+                          :semantic_type :unit :fingerprint :settings :source_alias :field_ref :nfc_path :parent_id])))
     (catch Throwable e
-      (log/error e (str (trs "Error determining expected columns for query")))
+      (log/error e (str (trs "Error determining expected columns for query: {0}" (ex-message e))))
       nil)))
 
 (s/defn ^:private add-source-metadata :- {(s/optional-key :source-metadata) [mbql.s/SourceQueryMetadata], s/Keyword s/Any}
@@ -105,11 +105,6 @@
 (defn- add-source-metadata-at-all-levels [inner-query]
   (walk/postwalk maybe-add-source-metadata inner-query))
 
-(defn- add-source-metadata-for-source-queries* [{query-type :type, :as query}]
-  (if-not (= query-type :query)
-    query
-    (update query :query add-source-metadata-at-all-levels)))
-
 (defn add-source-metadata-for-source-queries
   "Middleware that attempts to recursively add `:source-metadata`, if not already present, to any maps with a
   `:source-query`.
@@ -118,6 +113,7 @@
   query; this is added automatically for source queries added via the `card__id` source table form, but for *explicit*
   source queries that do not specify this information, we can often infer it by looking at the shape of the source
   query."
-  [qp]
-  (fn [query rff context]
-    (qp (add-source-metadata-for-source-queries* query) rff context)))
+  [{query-type :type, :as query}]
+  (if-not (= query-type :query)
+    query
+    (update query :query add-source-metadata-at-all-levels)))

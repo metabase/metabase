@@ -4,24 +4,26 @@
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase.automagic-dashboards.populate :as magic.populate]
+            [metabase.automagic-dashboards.populate :as populate]
             [metabase.events :as events]
             [metabase.models.card :as card :refer [Card]]
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
             [metabase.models.field-values :as field-values]
-            [metabase.models.interface :as i]
             [metabase.models.params :as params]
             [metabase.models.permissions :as perms]
             [metabase.models.pulse :as pulse :refer [Pulse]]
             [metabase.models.pulse-card :as pulse-card :refer [PulseCard]]
             [metabase.models.revision :as revision]
             [metabase.models.revision.diff :refer [build-sentence]]
+            [metabase.models.serialization.base :as serdes.base]
+            [metabase.models.serialization.hash :as serdes.hash]
+            [metabase.models.serialization.util :as serdes.util]
             [metabase.moderation :as moderation]
             [metabase.public-settings :as public-settings]
             [metabase.query-processor.async :as qp.async]
             [metabase.util :as u]
-            [metabase.util.i18n :as ui18n :refer [tru]]
+            [metabase.util.i18n :as i18n :refer [tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
@@ -62,12 +64,10 @@
 (comment moderation/keep-me)
 
 (models/defmodel Dashboard :report_dashboard)
-;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
-(defn- assert-valid-parameters [{:keys [parameters]}]
-  (when (s/check (s/maybe [{:id su/NonBlankString, s/Keyword s/Any}]) parameters)
-    (throw (ex-info (tru ":parameters must be a sequence of maps with String :id keys")
-                    {:parameters parameters}))))
+(derive Dashboard ::perms/use-parent-collection-perms)
+
+;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (defn- pre-delete [dashboard]
   (db/delete! 'Revision :model "Dashboard" :model_id (u/the-id dashboard)))
@@ -76,12 +76,12 @@
   (let [defaults  {:parameters []}
         dashboard (merge defaults dashboard)]
     (u/prog1 dashboard
-      (assert-valid-parameters dashboard)
+      (params/assert-valid-parameters dashboard)
       (collection/check-collection-namespace Dashboard (:collection_id dashboard)))))
 
 (defn- pre-update [dashboard]
   (u/prog1 dashboard
-    (assert-valid-parameters dashboard)
+    (params/assert-valid-parameters dashboard)
     (collection/check-collection-namespace Dashboard (:collection_id dashboard))))
 
 (defn- update-dashboard-subscription-pulses!
@@ -131,10 +131,11 @@
   [dashboard]
   (update-dashboard-subscription-pulses! dashboard))
 
-(u/strict-extend (class Dashboard)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Dashboard)
   models/IModel
   (merge models/IModelDefaults
-         {:properties  (constantly {:timestamped? true})
+         {:properties  (constantly {:timestamped? true
+                                    :entity_id    true})
           :types       (constantly {:parameters :parameters-list, :embedding_params :json})
           :pre-delete  pre-delete
           :pre-insert  pre-insert
@@ -142,9 +143,8 @@
           :post-update post-update
           :post-select public-settings/remove-public-uuid-if-public-sharing-is-disabled})
 
-  ;; You can read/write a Dashboard if you can read/write its parent Collection
-  i/IObjectPermissions
-  perms/IObjectPermissionsForParentCollection)
+  serdes.hash/IdentityHashable
+  {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :collection)])})
 
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
@@ -231,7 +231,7 @@
         (->> (filter identity)
              build-sentence))))
 
-(u/strict-extend (class Dashboard)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Dashboard)
   revision/IRevisioned
   (merge revision/IRevisionedDefaults
          {:serialize-instance  (fn [_ _ dashboard] (serialize-dashboard dashboard))
@@ -246,7 +246,7 @@
 (defn- dashboard-id->param-field-ids
   "Get the set of Field IDs referenced by the parameters in this Dashboard."
   [dashboard-or-id]
-  (let [dash (Dashboard (u/the-id dashboard-or-id))]
+  (let [dash (db/select-one Dashboard :id (u/the-id dashboard-or-id))]
     (params/dashboard->param-field-ids (hydrate dash [:ordered_cards :card]))))
 
 
@@ -310,7 +310,7 @@
   [card]
   (cond
     ;; If this is a pre-existing card, just return it
-    (and (integer? (:id card)) (Card (:id card)))
+    (and (integer? (:id card)) (db/select-one Card :id (:id card)))
     card
 
     ;; Don't save text cards
@@ -346,11 +346,11 @@
 (defn save-transient-dashboard!
   "Save a denormalized description of `dashboard`."
   [dashboard parent-collection-id]
-  (let [dashboard  (ui18n/localized-strings->strings dashboard)
+  (let [dashboard  (i18n/localized-strings->strings dashboard)
         dashcards  (:ordered_cards dashboard)
-        collection (magic.populate/create-collection!
+        collection (populate/create-collection!
                     (ensure-unique-collection-name (:name dashboard) parent-collection-id)
-                    (rand-nth magic.populate/colors)
+                    (rand-nth (populate/colors))
                     "Automatically generated cards."
                     parent-collection-id)
         dashboard  (db/insert! Dashboard
@@ -386,7 +386,7 @@
                                                                      {param-id ParamWithMapping})
   "Return map of Dashboard parameter key -> param with resolved `:mappings`.
 
-    (dashboard->resolved-params (Dashboard 62))
+    (dashboard->resolved-params (db/select-one Dashboard :id 62))
     ;; ->
     {\"ee876336\" {:name     \"Category Name\"
                    :slug     \"category_name\"
@@ -414,3 +414,40 @@
                                {(:parameter_id param) #{(assoc param :dashcard dashcard)}}))]
     (into {} (for [{param-key :id, :as param} (:parameters dashboard)]
                [(u/qualified-name param-key) (assoc param :mappings (get param-key->mappings param-key))]))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               SERIALIZATION                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+(defmethod serdes.base/extract-query "Dashboard" [_ {:keys [user]}]
+  ;; TODO This join over the subset of collections this user can see is shared by a few things - factor it out?
+  (serdes.base/raw-reducible-query
+    "Dashboard"
+    {:select     [:dash.*]
+     :from       [[:report_dashboard :dash]]
+     :left-join  [[:collection :coll] [:= :coll.id :dash.collection_id]]
+     :where      (if user
+                   [:or [:= :coll.personal_owner_id user] [:is :coll.personal_owner_id nil]]
+                   [:is :coll.personal_owner_id nil])}))
+
+;; TODO Maybe nest collections -> dashboards -> dashcards?
+(defmethod serdes.base/extract-one "Dashboard"
+  [_model-name _opts dash]
+  (-> (serdes.base/extract-one-basics "Dashboard" dash)
+      (update :collection_id serdes.util/export-fk 'Collection)
+      (update :creator_id    serdes.util/export-fk-keyed 'User :email)))
+
+(defmethod serdes.base/load-xform "Dashboard"
+  [dash]
+  (-> dash
+      serdes.base/load-xform-basics
+      (update :collection_id serdes.util/import-fk 'Collection)
+      (update :creator_id    serdes.util/import-fk-keyed 'User :email)))
+
+(defmethod serdes.base/serdes-dependencies "Dashboard"
+  [{:keys [collection_id]}]
+  [[{:model "Collection" :id collection_id}]])
+
+(defmethod serdes.base/serdes-descendants "Dashboard" [_model-name id]
+  ;; Return the set of DashboardCards that belong to this dashboard.
+  (set (for [dc-id (db/select-ids 'DashboardCard :dashboard_id id)]
+         ["DashboardCard" dc-id])))

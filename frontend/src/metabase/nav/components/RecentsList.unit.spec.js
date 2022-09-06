@@ -1,5 +1,5 @@
 import React from "react";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import xhrMock from "xhr-mock";
 import RecentsList from "./RecentsList";
 
@@ -52,7 +52,7 @@ async function setup(recents = recentsData) {
 
   renderWithProviders(<RecentsList />);
 
-  await waitFor(() => screen.queryByText("Recently viewed"));
+  await screen.findByText("Recently viewed");
 }
 
 describe("RecentsList", () => {
@@ -66,27 +66,27 @@ describe("RecentsList", () => {
 
   it("shows list of recents", async () => {
     await setup();
-    await waitFor(() => screen.queryByText("Question I visited"));
-    expect(screen.queryByText("Recently viewed")).toBeInTheDocument();
+    await screen.findByText("Question I visited");
+    expect(screen.getByText("Recently viewed")).toBeInTheDocument();
 
     const [questionType, dashboardType, tableType] = screen.queryAllByTestId(
       "recently-viewed-item-type",
     );
 
-    expect(screen.queryByText("Question I visited")).toBeInTheDocument();
+    expect(screen.getByText("Question I visited")).toBeInTheDocument();
     expect(questionType).toHaveTextContent("Question");
 
-    expect(screen.queryByText("Dashboard I visited")).toBeInTheDocument();
+    expect(screen.getByText("Dashboard I visited")).toBeInTheDocument();
     expect(dashboardType).toHaveTextContent("Dashboard");
 
-    expect(screen.queryByText("Table I visited")).toBeInTheDocument();
+    expect(screen.getByText("Table I visited")).toBeInTheDocument();
     expect(tableType).toHaveTextContent("Table");
   });
 
   it("shows an empty state when there are no recents", async () => {
     await setup([]);
 
-    expect(screen.queryByText("Recently viewed")).toBeInTheDocument();
-    expect(screen.queryByText("Nothing here")).toBeInTheDocument();
+    expect(screen.getByText("Recently viewed")).toBeInTheDocument();
+    expect(screen.getByText("Nothing here")).toBeInTheDocument();
   });
 });

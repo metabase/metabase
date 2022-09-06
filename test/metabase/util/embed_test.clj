@@ -8,15 +8,15 @@
 (def ^:private ^String token-with-alg-none
   "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJhZG1pbiI6dHJ1ZX0.3Dbtd6Z0yuSfw62fOzBGHyiL0BJp3pod_PZE-BBdR-I")
 
-(deftest validate-token-test
+(deftest ^:parallel validate-token-test
   (testing "check that are token is in fact valid"
     (is (= {:admin true}
            (jwt/unsign token-with-alg-none "")))))
 
 (deftest disallow-unsigned-tokens-test
   (testing "check that we disallow tokens signed with alg = none"
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"JWT `alg` cannot be `none`"
-         (mt/with-temporary-setting-values [embedding-secret-key (crypto-random/hex 32)]
+    (mt/with-temporary-setting-values [embedding-secret-key (crypto-random/hex 32)]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"JWT `alg` cannot be `none`"
            (embed/unsign token-with-alg-none))))))

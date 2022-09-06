@@ -39,9 +39,7 @@ export default class Aggregation extends MBQLClause {
   }
 
   canRemove() {
-    return this.remove()
-      .clean()
-      .isValid();
+    return this.remove().clean().isValid();
   }
 
   /**
@@ -279,8 +277,8 @@ export default class Aggregation extends MBQLClause {
   // MISC
   aggregationDimension() {
     return new AggregationDimension(
+      this._index,
       null,
-      [this._index],
       this._query.metadata(),
       this._query,
     );

@@ -1,9 +1,9 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import styled from "styled-components";
+import styled from "@emotion/styled";
 
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import Icon, { IconWrapper } from "metabase/components/Icon";
 
 export default function PaginationControls({
@@ -58,7 +58,7 @@ export default function PaginationControls({
 const PaginationButton = styled(IconWrapper.withComponent("button"))`
   &:disabled {
     background-color: transparent;
-    color: ${colors["text-light"]};
+    color: ${color("text-light")};
   }
 `;
 

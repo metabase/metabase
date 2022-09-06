@@ -14,7 +14,7 @@
             [compojure.response :refer [Sendable]]
             [metabase.server.middleware.exceptions :as mw.exceptions]
             [metabase.util :as u]
-            [metabase.util.i18n :as ui18n :refer [trs]]
+            [metabase.util.i18n :refer [trs]]
             [ring.core.protocols :as ring.protocols]
             [ring.util.response :as response])
   (:import clojure.core.async.impl.channels.ManyToManyChannel
@@ -49,7 +49,7 @@
     (.write out (str \newline))
     (.flush out)
     true
-    (catch EofException e
+    (catch EofException _e
       (log/debug (u/format-color 'yellow (trs "connection closed, canceling request")))
       false)
     (catch Throwable e
@@ -188,7 +188,29 @@
   ManyToManyChannel
   (write-body-to-stream [chan _ ^OutputStream output-stream]
     (log/debug (u/format-color 'green (trs "starting streaming response")))
-    (write-chan-vals-to-writer! (async-keepalive-channel chan) (io/writer output-stream))))
+    (write-chan-vals-to-writer! (async-keepalive-channel chan) (io/writer output-stream)))
+
+  ;; java.lang.Double, java.lang.Long, and java.lang.Boolean will be given a Content-Type of "application/json; charset=utf-8"
+  ;; so they should be strings, and will be parsed into their respective values.
+  java.lang.Double
+  (write-body-to-stream [num response output-stream]
+    (ring.protocols/write-body-to-stream (str num) response output-stream))
+
+  java.lang.Long
+  (write-body-to-stream [num response output-stream]
+    (ring.protocols/write-body-to-stream (str num) response output-stream))
+
+  java.lang.Boolean
+  (write-body-to-stream [bool response output-stream]
+    (ring.protocols/write-body-to-stream (str bool) response output-stream))
+
+  clojure.lang.Keyword
+  (write-body-to-stream [kkey response output-stream]
+    (ring.protocols/write-body-to-stream
+     (if-let  [key-ns (namespace kkey)]
+       (str key-ns "/" (name kkey))
+       (name kkey))
+     response output-stream)))
 
 ;; `defendpoint-async` responses
 (extend-protocol Sendable
@@ -199,5 +221,5 @@
                     :status 202))))
 
 ;; everthing in this namespace is deprecated!
-(doseq [[symb varr] (ns-interns *ns*)]
+(doseq [[_symb varr] (ns-interns *ns*)]
   (alter-meta! varr assoc :deprecated "0.35.0"))

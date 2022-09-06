@@ -4,12 +4,13 @@ import {
   filterWidget,
   editDashboard,
   saveDashboard,
-} from "__support__/e2e/cypress";
+  visitDashboard,
+} from "__support__/e2e/helpers";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 import { setQuarterAndYear } from "../../native-filters/helpers/e2e-date-filter-helpers";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const questionDetails = {
   query: {
@@ -43,16 +44,14 @@ describe.skip("issue 17775", () => {
 
         cy.editDashboardCard(dashboardCard, updatedSize);
 
-        cy.visit(`/dashboard/${dashboard_id}`);
+        visitDashboard(dashboard_id);
       },
     );
 
     editDashboard();
 
     // Make sure filter can be connected to the custom column using UI, rather than using API.
-    cy.get("header")
-      .find(".Icon-gear")
-      .click();
+    cy.get("main header").find(".Icon-gear").click();
 
     cy.findByText("Column to filter on")
       .parent()

@@ -7,7 +7,8 @@
             [metabase.sync.interface :as i]
             [metabase.sync.util :as sync-util]
             [metabase.util.schema :as su]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [toucan.db :as db]))
 
 (def ^:private bool-or-int-type #{:type/Boolean :type/Integer})
 (def ^:private float-type       #{:type/Float})
@@ -143,9 +144,10 @@
                 (str/blank? (:name field-or-column)))
     (semantic-type-for-name-and-base-type (:name field-or-column) (:base_type field-or-column))))
 
-(s/defn infer-and-assoc-semantic-type  :- (s/maybe FieldOrColumn)
+(s/defn infer-and-assoc-semantic-type :- (s/maybe FieldOrColumn)
   "Returns `field-or-column` with a computed semantic type based on the name and base type of the `field-or-column`"
-  [field-or-column :- FieldOrColumn, _ :- (s/maybe i/Fingerprint)]
+  [field-or-column :- FieldOrColumn
+   _fingerprint    :- (s/maybe i/Fingerprint)]
   (when-let [inferred-semantic-type (infer-semantic-type field-or-column)]
     (log/debug (format "Based on the name of %s, we're giving it a semantic type of %s."
                        (sync-util/name-for-logging field-or-column)
@@ -182,10 +184,10 @@
                                           (when (re-find pattern table-name)
                                             type))
                                         entity-types-patterns)
-                                  (case (-> table
-                                            :db_id
-                                            Database
-                                            :engine)
+                                  (case (->> table
+                                             :db_id
+                                             (db/select-one Database :id)
+                                             :engine)
                                     :googleanalytics :entity/GoogleAnalyticsTable
                                     :druid           :entity/EventTable
                                     nil)

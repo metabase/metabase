@@ -1,21 +1,22 @@
 (ns metabase.http-client
   "HTTP client for making API calls against the Metabase API. For test/REPL purposes."
   (:require [cheshire.core :as json]
-            [clj-http.client :as client]
+            [clj-http.client :as http]
+            [clojure.edn :as edn]
+            [clojure.spec.alpha :as s]
             [clojure.string :as str]
             [clojure.test :as t]
             [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
-            [java-time :as java-time]
+            java-time
             [metabase.config :as config]
             [metabase.server.middleware.session :as mw.session]
+            [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
             [metabase.test.initialize :as initialize]
-            [metabase.test.util.log :as tu.log]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.schema :as su]
             [ring.util.codec :as codec]
-            [schema.core :as s]))
+            [schema.core :as schema]))
 
 ;;; build-url
 
@@ -76,17 +77,27 @@
         :else
         response))
 
+(defn- parse-response-key
+  "Parse JSON keys as numbers if possible, else convert them to keywords indiscriminately."
+  [json-key]
+  (try
+    (let [parsed-key (edn/read-string json-key)]
+      (if (number? parsed-key)
+        parsed-key
+        (keyword json-key)))
+    (catch Throwable _
+      (keyword json-key))))
+
 (defn- parse-response
   "Deserialize the JSON response or return as-is if that fails."
   [body]
   (if-not (string? body)
     body
     (try
-      (auto-deserialize-dates (json/parse-string body keyword))
-      (catch Throwable e
+      (auto-deserialize-dates (json/parse-string body parse-response-key))
+      (catch Throwable _
         (when-not (str/blank? body)
           body)))))
-
 
 ;;; authentication
 
@@ -97,11 +108,11 @@
 
 (def UUIDString
   "Schema for a canonical string representation of a UUID."
-  (s/constrained
+  (schema/constrained
    su/NonBlankString
    (partial re-matches #"^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$")))
 
-(s/defn authenticate :- UUIDString
+(schema/defn authenticate :- UUIDString
   "Authenticate a test user with `username` and `password`, returning their Metabase Session token; or throw an
   Exception if that fails."
   [credentials :- Credentials]
@@ -119,7 +130,10 @@
 
 ;;; client
 
-(defn build-request-map [credentials http-body]
+(defn build-request-map
+  "Build the request map we ultimately pass to [[clj-http.client]]. Add user credential headers, specify JSON encoding,
+  and encode body as JSON."
+  [credentials http-body]
   (merge
    {:accept       :json
     :headers      {@#'mw.session/metabase-session-header
@@ -127,6 +141,7 @@
                      (if (map? credentials)
                        (authenticate credentials)
                        credentials))}
+    :cookie-policy :standard
     :content-type :json}
    (when (seq http-body)
      {:body (json/generate-string http-body)})))
@@ -146,7 +161,7 @@
                     (json/parse-string body keyword)
                     (catch Throwable _
                       body))]
-      (throw (ex-info message {:status-code actual-status-code}))))
+      (throw (ex-info message {:status-code actual-status-code, :body body}))))
   ;; all other status codes should be test assertions against the expected status code if one was specified
   (when expected-status-code
     (t/is (= expected-status-code
@@ -155,35 +170,29 @@
                   method-name url expected-status-code actual-status-code))))
 
 (def ^:private method->request-fn
-  {:get    client/get
-   :post   client/post
-   :put    client/put
-   :delete client/delete})
+  {:get    http/get
+   :post   http/post
+   :put    http/put
+   :delete http/delete})
 
 (def ^:private ClientParamsMap
-  {(s/optional-key :credentials)      (s/maybe (s/cond-pre UUIDString Credentials))
-   :method                            (apply s/enum (keys method->request-fn))
-   (s/optional-key :expected-status)  (s/maybe su/IntGreaterThanZero)
-   :url                               su/NonBlankString
-   (s/optional-key :http-body)        (s/maybe su/Map)
-   (s/optional-key :query-parameters) (s/maybe su/Map)
-   (s/optional-key :request-options)  (s/maybe su/Map)})
+  {(schema/optional-key :credentials)      (schema/maybe (schema/cond-pre UUIDString Credentials))
+   :method                                 (apply schema/enum (keys method->request-fn))
+   (schema/optional-key :expected-status)  (schema/maybe su/IntGreaterThanZero)
+   :url                                    su/NonBlankString
+   ;; body can be either a map or a vector -- we encode it as JSON. Of course, other things are valid JSON as well, but
+   ;; currently none of our endpoints accept them -- add them if needed.
+   (schema/optional-key :http-body)        (schema/cond-pre
+                                            (schema/maybe su/Map)
+                                            (schema/maybe clojure.lang.IPersistentVector))
+   (schema/optional-key :query-parameters) (schema/maybe su/Map)
+   (schema/optional-key :request-options)  (schema/maybe su/Map)})
 
-(defn derecordize
-  "Convert all record types in `form` to plain maps, so tests won't fail."
-  [form]
-  (walk/postwalk
-   (fn [form]
-     (if (record? form)
-       (into {} form)
-       form))
-   form))
-
-(s/defn ^:private -client
+(schema/defn ^:private -client
   ;; Since the params for this function can get a little complicated make sure we validate them
   [{:keys [credentials method expected-status url http-body query-parameters request-options]} :- ClientParamsMap]
   (initialize/initialize-if-needed! :db :web-server)
-  (let [http-body   (derecordize http-body)
+  (let [http-body   (test-runner.assert-exprs/derecordize http-body)
         request-map (merge (build-request-map credentials http-body) request-options)
         request-fn  (method->request-fn method)
         url         (build-url url query-parameters)
@@ -201,31 +210,34 @@
                                            :url     url
                                            :request request-map}
                                           e)))))
-        ;; if we expect a 4xx or 5xx status code then suppress and error messages that may be generated by the request.
-        thunk       (if (and expected-status (>= expected-status 400))
-                      (fn [] (tu.log/suppress-output (thunk)))
-                      thunk)
-
         ;; Now perform the HTTP request
         {:keys [status body], :as response} (thunk)]
     (log/debug method-name url status)
     (check-status-code method-name url body expected-status status)
     (update response :body parse-response)))
 
+(s/def ::http-client-args
+  (s/cat
+   :credentials      (s/? (some-fn map? string?))
+   :method           #{:get :put :post :delete}
+   :expected-status  (s/? integer?)
+   :url              string?
+   :request-options  (s/? (every-pred map? :request-options))
+   :http-body        (s/? (some-fn map? sequential?))
+   :query-parameters (s/* (s/cat :k keyword? :v any?))))
+
 (defn- parse-http-client-args
   "Parse the list of required and optional `args` into the various separated params that `-client` requires"
   [args]
-  (let [[credentials [method & args]]     (u/optional #(or (map? %) (string? %)) args)
-        [expected-status [url & args]]    (u/optional integer? args)
-        [{:keys [request-options]} args]  (u/optional (every-pred map? :request-options) args {:request-options {}})
-        [body [& {:as query-parameters}]] (u/optional map? args)]
-    {:credentials      credentials
-     :method           method
-     :expected-status  expected-status
-     :url              url
-     :http-body        body
-     :query-parameters query-parameters
-     :request-options  request-options}))
+  (let [parsed (s/conform ::http-client-args args)]
+    (when (= parsed ::s/invalid)
+      (throw (ex-info (str "Invalid http-client args: " (s/explain-str ::http-client-args args))
+                      (s/explain-data ::http-client-args args))))
+    (cond-> parsed
+      ;; un-nest {:request-options {:request-options <my-options>}} => {:request-options <my-options>}
+      (:request-options parsed) (update :request-options :request-options)
+      ;; convert query parameters into a flat map [{:k :a, :v 1} {:k :b, :v 2}] => {:a 1, :b 2}
+      (:query-parameters parsed) (update :query-parameters (partial into {} (map (juxt :k :v)))))))
 
 (def ^:private response-timeout-ms (u/seconds->ms 45))
 

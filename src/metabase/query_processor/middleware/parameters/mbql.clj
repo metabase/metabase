@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.parameters.mbql
   "Code for handling parameter substitution in MBQL queries."
-  (:require [metabase.driver.common.parameters.dates :as date-params]
-            [metabase.driver.common.parameters.operators :as ops]
+  (:require [metabase.driver.common.parameters.dates :as params.dates]
+            [metabase.driver.common.parameters.operators :as params.ops]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :refer [Field]]
@@ -44,8 +44,8 @@
 (s/defn ^:private build-filter-clause :- (s/maybe mbql.s/Filter)
   [{param-type :type, param-value :value, [_ field :as target] :target, :as param}]
   (cond
-    (ops/operator? param-type)
-    (ops/to-clause param)
+    (params.ops/operator? param-type)
+    (params.ops/to-clause param)
     ;; multipe values. Recursively handle them all and glue them all together with an OR clause
     (sequential? param-value)
     (mbql.u/simplify-compound-filter
@@ -53,9 +53,9 @@
                       (build-filter-clause {:type param-type, :value value, :target target})))))
 
     ;; single value, date range. Generate appropriate MBQL clause based on date string
-    (date-params/date-type? param-type)
-    (date-params/date-string->filter (parse-param-value-for-type param-type param-value (params/unwrap-field-clause field))
-                                     field)
+    (params.dates/date-type? param-type)
+    (params.dates/date-string->filter (parse-param-value-for-type param-type param-value (params/unwrap-field-clause field))
+                                      field)
 
     ;; TODO - We can't tell the difference between a dashboard parameter (convert to an MBQL filter) and a native
     ;; query template tag parameter without this. There's should be a better, less fragile way to do this. (Not 100%

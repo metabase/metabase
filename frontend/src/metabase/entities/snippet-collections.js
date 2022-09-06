@@ -6,16 +6,19 @@ import { color } from "metabase/lib/colors";
 import { createEntity, undo } from "metabase/lib/entities";
 import { SnippetCollectionSchema } from "metabase/schema";
 import NormalCollections, {
-  canonicalCollectionId,
   getExpandedCollectionsById,
 } from "metabase/entities/collections";
+import { canonicalCollectionId } from "metabase/collections/utils";
 
 const SnippetCollections = createEntity({
   name: "snippetCollections",
   schema: SnippetCollectionSchema,
 
-  api: _.mapObject(NormalCollections.api, f => (first, ...rest) =>
-    f({ ...first, namespace: "snippets" }, ...rest),
+  api: _.mapObject(
+    NormalCollections.api,
+    f =>
+      (first, ...rest) =>
+        f({ ...first, namespace: "snippets" }, ...rest),
   ),
 
   displayNameOne: t`snippet collection`,

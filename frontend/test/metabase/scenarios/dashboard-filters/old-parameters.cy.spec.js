@@ -1,8 +1,8 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import { restore, popover, visitDashboard } from "__support__/e2e/helpers";
 // NOTE: some overlap with parameters-embedded.cy.spec.js
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
+const { PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 // the dashboard parameters used in these tests ('category' and 'location/...') are no longer accessible
 // via the UI but should still work as expected
@@ -53,7 +53,7 @@ describe("scenarios > dashboard > OLD parameters", () => {
               ],
             });
 
-            cy.visit(`/dashboard/${dashboard_id}`);
+            visitDashboard(dashboard_id);
           });
         });
       });
@@ -113,7 +113,7 @@ describe("scenarios > dashboard > OLD parameters", () => {
               ],
             });
 
-            cy.visit(`/dashboard/${dashboard_id}`);
+            visitDashboard(dashboard_id);
           });
         });
       });
@@ -182,7 +182,7 @@ describe("scenarios > dashboard > OLD parameters", () => {
               ],
             });
 
-            cy.visit(`/dashboard/${dashboard_id}`);
+            visitDashboard(dashboard_id);
           });
         });
       });

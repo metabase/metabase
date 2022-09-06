@@ -2,13 +2,13 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import {
-  SAMPLE_DATASET,
+  SAMPLE_DATABASE,
   MULTI_SCHEMA_DATABASE,
   ORDERS,
   PRODUCTS,
   PEOPLE,
   metadata,
-} from "__support__/sample_dataset_fixture";
+} from "__support__/sample_database_fixture";
 import Question from "metabase-lib/lib/Question";
 import * as Urls from "metabase/lib/urls";
 import QuestionDataSource from "./QuestionDataSource";
@@ -18,7 +18,7 @@ const BASE_GUI_QUESTION = {
   visualization_settings: {},
   dataset_query: {
     type: "query",
-    database: SAMPLE_DATASET.id,
+    database: SAMPLE_DATABASE.id,
     query: {
       "source-table": ORDERS.id,
     },
@@ -30,7 +30,7 @@ const BASE_NATIVE_QUESTION = {
   visualization_settings: {},
   dataset_query: {
     type: "native",
-    database: SAMPLE_DATASET.id,
+    database: SAMPLE_DATABASE.id,
     native: {
       query: "select * from orders",
     },
@@ -80,7 +80,7 @@ const PEOPLE_JOIN = {
 
 const QUERY_WITH_PRODUCTS_JOIN = {
   type: "query",
-  database: SAMPLE_DATASET.id,
+  database: SAMPLE_DATABASE.id,
   query: {
     "source-table": ORDERS.id,
     joins: [PRODUCTS_JOIN],
@@ -89,7 +89,7 @@ const QUERY_WITH_PRODUCTS_JOIN = {
 
 const QUERY_WITH_PRODUCTS_PEOPLE_JOIN = {
   type: "query",
-  database: SAMPLE_DATASET.id,
+  database: SAMPLE_DATABASE.id,
   query: {
     "source-table": ORDERS.id,
     joins: [PRODUCTS_JOIN, PEOPLE_JOIN],
@@ -103,7 +103,7 @@ const ORDERS_PK_FILTER = ["=", ["field", ORDERS.ID.id, null], RANDOM_ORDER_ID];
 
 const ORDER_DETAIL_QUERY = {
   type: "query",
-  database: SAMPLE_DATASET.id,
+  database: SAMPLE_DATABASE.id,
   query: {
     "source-table": ORDERS.id,
     filter: ["and", ORDERS_PK_FILTER],
@@ -144,7 +144,7 @@ function getSavedNativeQuestion(overrides) {
 }
 
 function getNestedQuestionTableMock(isMultiSchemaDB) {
-  const db = isMultiSchemaDB ? MULTI_SCHEMA_DATABASE : SAMPLE_DATASET;
+  const db = isMultiSchemaDB ? MULTI_SCHEMA_DATABASE : SAMPLE_DATABASE;
   return {
     id: SOURCE_QUESTION_VIRTUAL_ID,
     db,
@@ -165,7 +165,7 @@ function getNestedQuestionTableMock(isMultiSchemaDB) {
 }
 
 function getAdHocNestedQuestion({ isMultiSchemaDB } = {}) {
-  const db = isMultiSchemaDB ? MULTI_SCHEMA_DATABASE : SAMPLE_DATASET;
+  const db = isMultiSchemaDB ? MULTI_SCHEMA_DATABASE : SAMPLE_DATABASE;
   const question = getAdHocQuestion({
     dataset_query: {
       type: "query",
@@ -182,7 +182,7 @@ function getAdHocNestedQuestion({ isMultiSchemaDB } = {}) {
 }
 
 function getSavedNestedQuestion({ isMultiSchemaDB } = {}) {
-  const db = isMultiSchemaDB ? MULTI_SCHEMA_DATABASE : SAMPLE_DATASET;
+  const db = isMultiSchemaDB ? MULTI_SCHEMA_DATABASE : SAMPLE_DATABASE;
   const question = getSavedGUIQuestion({
     dataset_query: {
       type: "query",
@@ -223,7 +223,7 @@ function setup({ question, subHead = false, isObjectDetail = false } = {}) {
   return { onError };
 }
 
-jest.mock("metabase/components/Link", () => ({ to: href, ...props }) => (
+jest.mock("metabase/core/components/Link", () => ({ to: href, ...props }) => (
   <a href={href} {...props} />
 ));
 
@@ -331,6 +331,16 @@ describe("QuestionDataSource", () => {
             Urls.browseDatabase(question.database()),
           );
         });
+
+        it("shows nothing if a user doesn't have data permissions", () => {
+          const originalMethod = question.query().database;
+          question.query().database = () => null;
+
+          setup({ question });
+          expect(screen.getByTestId("head-crumbs-container")).toBeEmpty();
+
+          question.query().database = originalMethod;
+        });
       });
     });
   });
@@ -356,10 +366,7 @@ describe("QuestionDataSource", () => {
           );
           expect(node.closest("a")).toHaveAttribute(
             "href",
-            question
-              .table()
-              .newQuestion()
-              .getUrl(),
+            question.table().newQuestion().getUrl(),
           );
         });
 
@@ -370,10 +377,7 @@ describe("QuestionDataSource", () => {
           );
           expect(node.closest("a")).toHaveAttribute(
             "href",
-            question
-              .table()
-              .newQuestion()
-              .getUrl(),
+            question.table().newQuestion().getUrl(),
           );
         });
       });
@@ -493,7 +497,10 @@ describe("QuestionDataSource", () => {
     });
   });
 
-  describe("Object Detail", () => {
+  describe.skip("Object Detail", () => {
+    // these tests do not apply to the new modal object detail view
+    // but will be useful when we implement the new version of full page
+    // object detail
     [
       GUI_TEST_CASE.SAVED_OBJECT_DETAIL,
       GUI_TEST_CASE.AD_HOC_OBJECT_DETAIL,

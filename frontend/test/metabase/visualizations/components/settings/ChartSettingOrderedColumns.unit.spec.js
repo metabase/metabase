@@ -2,7 +2,7 @@ import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 
 import ChartSettingOrderedColumns from "metabase/visualizations/components/settings/ChartSettingOrderedColumns";
-import { ORDERS } from "__support__/sample_dataset_fixture.js";
+import { ORDERS } from "__support__/sample_database_fixture.js";
 
 function renderChartSettingOrderedColumns(props) {
   render(
@@ -23,7 +23,7 @@ describe("ChartSettingOrderedColumns", () => {
       ],
     });
     screen.getByRole("img", { name: /add/i });
-    screen.getByRole("img", { name: /close/i });
+    screen.getByRole("img", { name: /eye_filled/i });
   });
 
   it("should add a column", () => {
@@ -57,7 +57,7 @@ describe("ChartSettingOrderedColumns", () => {
       ],
       onChange,
     });
-    const CLOSE = screen.getByRole("img", { name: /close/i });
+    const CLOSE = screen.getByRole("img", { name: /eye_filled/i });
 
     fireEvent.click(CLOSE);
     expect(onChange.mock.calls).toEqual([

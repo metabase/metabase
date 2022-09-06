@@ -1,5 +1,5 @@
 (ns metabase.automagic-dashboards.filters
-  (:require [metabase.mbql.normalize :as normalize]
+  (:require [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :as field :refer [Field]]
@@ -110,7 +110,7 @@
 
 (defn- filter-type
   "Return filter type for a given field."
-  [{:keys [base_type semantic_type] :as field}]
+  [{:keys [semantic_type] :as field}]
   (cond
     (temporal? field)                   "date/all-options"
     (isa? semantic_type :type/State)    "location/state"
@@ -137,10 +137,11 @@
                                        (into {})))
         (add-filters dashboard max-filters)))
   ([dashboard dimensions max-filters]
-   (let [fks (->> (db/select Field
-                    :fk_target_field_id [:not= nil]
-                    :table_id [:in (keep (comp :table_id :card) (:ordered_cards dashboard))])
-                  field/with-targets)]
+   (let [fks (when-let [table-ids (not-empty (set (keep (comp :table_id :card)
+                                                        (:ordered_cards dashboard))))]
+               (->> (db/select Field :fk_target_field_id [:not= nil]
+                               :table_id [:in table-ids])
+                    field/with-targets))]
      (->> dimensions
           remove-unqualified
           sort-by-interestingness
@@ -161,7 +162,6 @@
                                                :slug (:name candidate)}))
                  dashboard)))
            dashboard)))))
-
 
 (defn- flatten-filter-clause
   "Returns a sequence of filter subclauses making up `filter-clause` by flattening `:and` compound filters.
@@ -200,6 +200,6 @@
     (if (seq existing-filters)
       ;; since the filters are programatically generated they won't have passed thru normalization, so make sure we
       ;; normalize them before passing them to `combine-filter-clauses`, which validates its input
-      (apply mbql.u/combine-filter-clauses (map (partial normalize/normalize-fragment [:query :filter])
+      (apply mbql.u/combine-filter-clauses (map (partial mbql.normalize/normalize-fragment [:query :filter])
                                                 (cons refinement existing-filters)))
       refinement)))

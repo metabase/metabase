@@ -69,16 +69,6 @@
   (assert (#{:oss :ee} new-edition))
   (swap! build-options assoc :edition new-edition))
 
-(defn force-latest-release?
-  "Whether this release should be set/forced as the \"latest\" one on GitHub. This is accomplished by overriding the
-  GIT_COMMITTER_DATE env var when creating the tag to be *now* rather than whatever the latest commit date is."
-  []
-  (build-option-or-throw :force-latest-release))
-
-(defn set-force-latest-release?! [latest?]
-  (assert boolean? latest?)
-  (swap! build-options assoc :force-latest-release latest?))
-
 (defn pre-release-version?
   "Whether this version should be considered a prerelease. True if the version doesn't follow the usual
   `major.minor.patch[.build]` format."

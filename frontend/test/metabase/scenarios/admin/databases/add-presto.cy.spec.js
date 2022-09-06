@@ -1,4 +1,4 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import { restore, popover } from "__support__/e2e/helpers";
 
 describe("admin > database > add > Presto", () => {
   beforeEach(() => {
@@ -6,10 +6,7 @@ describe("admin > database > add > Presto", () => {
     cy.signInAsAdmin();
 
     cy.visit("/admin/databases/create");
-    cy.contains("Database type")
-      .closest(".Form-field")
-      .find("a")
-      .click();
+    cy.contains("Database type").closest(".Form-field").find("a").click();
   });
 
   it("should render correctly and allow switching between the new and the old drivers (metabase#18351)", () => {
@@ -59,8 +56,7 @@ describe("admin > database > add > Presto", () => {
     // This should be disabled but we'll not add that assertion until we mark all the required fields in the form
     cy.button("Save");
 
-    cy.findByText("Need help setting up your database?");
-    cy.findByRole("link", { name: "Our docs can help." });
+    cy.findByText("Need help connecting?");
 
     cy.contains("This is our new Presto driver.");
 
@@ -71,7 +67,7 @@ describe("admin > database > add > Presto", () => {
       .find("a")
       .click();
 
-    cy.get(".AdminSelect").contains("Presto (Deprecated Driver)");
+    cy.findAllByTestId("select-button").contains("Presto (Deprecated Driver)");
 
     // It should have persisted the previously set database name
     cy.findByDisplayValue("Foo");
@@ -115,9 +111,7 @@ describe("admin > database > add > Presto", () => {
       .find("a")
       .click();
 
-    cy.get(".AdminSelect")
-      .contains("Presto")
-      .click();
+    cy.findAllByTestId("select-button").contains("Presto").click();
 
     popover()
       .should("contain", "Presto")

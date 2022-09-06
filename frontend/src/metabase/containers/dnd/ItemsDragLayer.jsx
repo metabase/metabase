@@ -5,19 +5,12 @@ import _ from "underscore";
 
 import BodyComponent from "metabase/components/BodyComponent";
 import BaseItemsTable from "metabase/collections/components/BaseItemsTable";
+import PinnedItemCard from "metabase/collections/components/PinnedItemCard";
 
 // NOTE: our version of react-hot-loader doesn't play nice with react-dnd's DragLayer,
 // so we exclude files named `*DragLayer.jsx` in webpack.config.js
 
-@DragLayer((monitor, props) => ({
-  item: monitor.getItem(),
-  // itemType: monitor.getItemType(),
-  initialOffset: monitor.getInitialSourceClientOffset(),
-  currentOffset: monitor.getSourceClientOffset(),
-  isDragging: monitor.isDragging(),
-}))
-@BodyComponent
-export default class ItemsDragLayer extends React.Component {
+class ItemsDragLayerInner extends React.Component {
   render() {
     const {
       isDragging,
@@ -25,6 +18,7 @@ export default class ItemsDragLayer extends React.Component {
       selectedItems,
       pinnedItems,
       item,
+      collection,
     } = this.props;
     if (!isDragging || !currentOffset) {
       return null;
@@ -40,17 +34,30 @@ export default class ItemsDragLayer extends React.Component {
           left: 0,
           transform: `translate(${x}px, ${y}px)`,
           pointerEvents: "none",
+          opacity: 0.65,
+          zIndex: 999,
         }}
       >
         <DraggedItems
           items={items}
           draggedItem={item.item}
           pinnedItems={pinnedItems}
+          collection={collection}
         />
       </div>
     );
   }
 }
+
+const ItemsDragLayer = DragLayer((monitor, props) => ({
+  item: monitor.getItem(),
+  // itemType: monitor.getItemType(),
+  initialOffset: monitor.getInitialSourceClientOffset(),
+  currentOffset: monitor.getSourceClientOffset(),
+  isDragging: monitor.isDragging(),
+}))(ItemsDragLayerInner);
+
+export default BodyComponent(ItemsDragLayer);
 
 class DraggedItems extends React.Component {
   shouldComponentUpdate(nextProps) {
@@ -70,16 +77,36 @@ class DraggedItems extends React.Component {
     return index >= 0;
   };
 
-  renderItem = ({ item, ...itemProps }) => (
-    <BaseItemsTable.Item
-      key={`${item.model}-${item.id}`}
-      {...itemProps}
-      item={item}
-      isPinned={this.checkIsPinned(item)}
-      draggable={false}
-      hasBottomBorder={false}
-    />
-  );
+  renderItem = ({ item, ...itemProps }) => {
+    const isPinned = this.checkIsPinned(item);
+
+    const key = `${item.model}-${item.id}`;
+    const PINNED_WIDTH = 400;
+
+    if (isPinned) {
+      return (
+        <div style={{ width: PINNED_WIDTH }}>
+          <PinnedItemCard
+            key={key}
+            item={item}
+            collection={this.props.collection}
+            onCopy={_.noop}
+            onMove={_.noop}
+          />
+        </div>
+      );
+    }
+    return (
+      <BaseItemsTable.Item
+        key={key}
+        {...itemProps}
+        item={item}
+        isPinned={false}
+        draggable={false}
+        hasBottomBorder={false}
+      />
+    );
+  };
 
   render() {
     const { items, draggedItem } = this.props;

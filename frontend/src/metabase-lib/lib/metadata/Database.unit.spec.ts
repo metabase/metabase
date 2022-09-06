@@ -95,7 +95,6 @@ describe("Database", () => {
     });
   });
   describe("hasFeature", () => {
-    beforeEach(() => {});
     it("returns true when given a falsy `feature`", () => {
       expect(new Database({}).hasFeature(null)).toBe(true);
       expect(new Database({}).hasFeature("")).toBe(true);
@@ -230,10 +229,10 @@ describe("Database", () => {
       const database = new Database({
         id: 123,
       });
-      Question.prototype.setDefaultQuery = jest.fn(function() {
+      Question.prototype.setDefaultQuery = jest.fn(function () {
         return this;
       });
-      Question.prototype.setDefaultDisplay = jest.fn(function() {
+      Question.prototype.setDefaultDisplay = jest.fn(function () {
         return this;
       });
       const question = database.newQuestion();
@@ -259,6 +258,26 @@ describe("Database", () => {
       });
       database1.metadata = metadata;
       expect(database1.savedQuestionsDatabase()).toBe(database2);
+    });
+  });
+
+  describe("canWrite", () => {
+    it("should be true for a db with write permissions", () => {
+      const database = new Database({
+        id: 1,
+        native_permissions: "write",
+      });
+
+      expect(database.canWrite()).toBe(true);
+    });
+
+    it("should be false for a db without write permissions", () => {
+      const database = new Database({
+        id: 1,
+        native_permissions: "none",
+      });
+
+      expect(database.canWrite()).toBe(false);
     });
   });
 });

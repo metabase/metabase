@@ -4,140 +4,143 @@
   enviornment variables e.g. `MB_DB_TYPE`, `MB_DB_HOST`, etc. `MB_DB_CONNECTION_URI` is used preferentially if both
   are specified.
 
-  There are two ways we specify JDBC connection information in Metabase code:
+  There are three ways you can specify application JDBC connection information for Metabase:
 
-  1. As a 'connection details' map that is meant to be UI-friendly; this is the actual map we save when creating a
-     `Database` object and the one you can go edit from the admin page. For application DB code, this representation is
-     only used in this namespace.
+  1. As broken-out connection details -- see [[env]] for a list of env vars. This is basically the same
+    format the actual `:details` map we save when creating a [[metabase.models.Database]] object. We convert this to
+    a [[clojure.java.jdbc]] spec map using [[metabase.db.spec/spec]] and then to create a [[javax.sql.DataSource]] from
+    it. See [[mdb.data-source/broken-out-details->DataSource]].
 
-  2. As a `clojure.java.jdbc` connection spec map. This is used internally by lower-level JDBC stuff. We have to
-     convert the connections details maps to JDBC specs at some point; Metabase driver code normally handles this.
+  2. As a JDBC connection string specified by `MB_DB_CONNECTION_URI`. This is used to create
+     a [[javax.sql.DataSource]]. See [[mdb.data-source/raw-connection-string->DataSource]].
 
-  There are functions for fetching both types of connection details below.
+  3. As a JDBC connection string (`MB_DB_CONNECTION_URI`) with username (`MB_DB_USER`) and/or password (`MB_DB_PASS`)
+     passed separately. Support for this was added in Metabase 0.43.0 -- see #20122.
 
-  Normally you should use the equivalent functions in `metabase.db.connection` which can be overridden rather than
+  This namespace exposes the vars [[db-type]] and [[data-source]] based on the aforementioned environment variables.
+  Normally you should use the equivalent functions in [[metabase.db.connection]] which can be overridden rather than
   using this namespace directly."
   (:require [clojure.java.io :as io]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
             [metabase.config :as config]
-            [metabase.db.spec :as db.spec]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [ring.util.codec :as codec]))
+            [metabase.db.data-source :as mdb.data-source]
+            [metabase.util :as u]))
+
+;;;; [[env->db-type]]
+
+(defn- raw-connection-string->type [s]
+  (when (seq s)
+    (when-let [[_protocol subprotocol] (re-find #"^(?:jdbc:)?([^:]+):" s)]
+      (condp = subprotocol
+        "postgresql" :postgres
+        (keyword subprotocol)))))
+
+(defn- env->db-type
+  [{:keys [mb-db-connection-uri mb-db-type]}]
+  {:post [(#{:postgres :mysql :h2} %)]}
+  (or (some-> mb-db-connection-uri raw-connection-string->type)
+      mb-db-type))
+
+
+;;;; [[env->DataSource]]
 
 (defn- get-db-file
   "Takes a filename and converts it to H2-compatible filename."
   [db-file-name]
-  ;; we need to enable MVCC for Quartz JDBC backend to work! Quartz depends on row-level locking, which means without
-  ;; MVCC we "will experience dead-locks". MVCC is the default for everyone using the MVStore engine anyway so this
-  ;; only affects people still with legacy PageStore databases
-  ;;
-  ;; Tell H2 to defrag when Metabase is shut down -- can reduce DB size by multiple GIGABYTES -- see #6510
-  (let [options ";DB_CLOSE_DELAY=-1;MVCC=TRUE;DEFRAG_ALWAYS=TRUE"]
-    ;; H2 wants file path to always be absolute
-    (str "file:"
-         (.getAbsolutePath (io/file db-file-name))
-         options)))
+  ;; H2 wants file path to always be absolute
+  (str "file:" (.getAbsolutePath (io/file db-file-name))))
 
-(def db-file
-  "Path to our H2 DB file from env var or app config."
+(defn- env->db-file
+  [{:keys [mb-db-in-memory mb-db-file]}]
+  (if mb-db-in-memory
+    ;; In-memory (i.e. test) DB
+    "mem:metabase"
+    ;; File-based DB
+    (get-db-file mb-db-file)))
+
+(def ^:private h2-connection-properties
   ;; see https://h2database.com/html/features.html for explanation of options
-  (delay
-   (if (config/config-bool :mb-db-in-memory)
-     ;; In-memory (i.e. test) DB
-     ;; DB_CLOSE_DELAY=-1 = don't close the Database until the JVM shuts down
-     "mem:metabase;DB_CLOSE_DELAY=-1"
-     ;; File-based DB
-     (let [db-file-name (config/config-str :mb-db-file)]
-       (get-db-file db-file-name)))))
+  {;; DB_CLOSE_DELAY=-1 = don't close the Database until the JVM shuts down
+   :DB_CLOSE_DELAY -1
+   ;; we need to enable MVCC for Quartz JDBC backend to work! Quartz depends on row-level locking, which means without
+   ;; MVCC we "will experience dead-locks". MVCC is the default for everyone using the MVStore engine anyway so this
+   ;; only affects people still with legacy PageStore databases
+   :MVCC           true
+   ;; Tell H2 to defrag when Metabase is shut down -- can reduce DB size by multiple GIGABYTES -- see #6510
+   :DEFRAG_ALWAYS  true
+   ;; LOCK_TIMEOUT=60000 = wait up to one minute to acquire table lock instead of default of 1 second
+   :LOCK_TIMEOUT   60000})
 
-(def ^:private jdbc-connection-regex
-  #"^(jdbc:)?([^:/@]+)://(?:([^:/@]+)(?::([^:@]+))?@)?([^:@]+)(?::(\d+))?/([^/?]+)(?:\?(.*))?$")
+(defn- broken-out-details
+  "Connection details that can be used when pretending the Metabase DB is itself a `Database` (e.g., to use the Generic
+  SQL driver functions on the Metabase DB itself)."
+  [db-type {:keys [mb-db-dbname mb-db-host mb-db-pass mb-db-port mb-db-user], :as env-vars}]
+  (if (= db-type :h2)
+    (assoc h2-connection-properties
+           :db (env->db-file env-vars))
+    {:host     mb-db-host
+     :port     mb-db-port
+     :db       mb-db-dbname
+     :user     mb-db-user
+     :password mb-db-pass}))
 
-(defn- parse-connection-string
-  "Parse a DB connection URI like
-  `postgres://cam@localhost.com:5432/cams_cool_db?ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory` and
-  return a broken-out map."
-  [uri]
-  (when-let [[_ _ protocol user pass host port db query] (re-matches jdbc-connection-regex uri)]
-    (u/prog1 (merge {:type     (case (keyword protocol)
-                                 :postgres   :postgres
-                                 :postgresql :postgres
-                                 :mysql      :mysql
-                                 :h2         :h2)}
+(defn- env->DataSource
+  [db-type {:keys [mb-db-connection-uri mb-db-user mb-db-pass], :as env-vars}]
+  (if mb-db-connection-uri
+    (mdb.data-source/raw-connection-string->DataSource mb-db-connection-uri mb-db-user mb-db-pass)
+    (mdb.data-source/broken-out-details->DataSource db-type (broken-out-details db-type env-vars))))
 
-                    (case (keyword protocol)
-                      :h2 {:db db}
-                      {:user     user
-                       :password pass
-                       :host     host
-                       :port     port
-                       :dbname   db})
-                    (some-> query
-                            codec/form-decode
-                            walk/keywordize-keys))
-      ;; If someone is using Postgres and specifies `ssl=true` they might need to specify `sslmode=require`. Let's let
-      ;; them know about that to make their lives a little easier. See https://github.com/metabase/metabase/issues/8908
-      ;; for more details.
-      (when (and (= (:type <>) :postgres)
-                 (= (:ssl <>) "true")
-                 (not (:sslmode <>)))
-        (log/warn (trs "Warning: Postgres connection string with `ssl=true` detected.")
-                  (trs "You may need to add `?sslmode=require` to your application DB connection string.")
-                  (trs "If Metabase fails to launch, please add it and try again.")
-                  (trs "See https://github.com/metabase/metabase/issues/8908 for more details."))))))
 
-(def ^:private connection-string-details
-  (delay (when-let [uri (config/config-str :mb-db-connection-uri)]
-           (parse-connection-string uri))))
+;;;; exports: [[db-type]], [[db-file]], and [[data-source]] created using enviornment variables.
+
+(def ^:private env
+  {:mb-db-type           (config/config-kw :mb-db-type)
+   :mb-db-in-memory      (config/config-bool :mb-db-in-memory)
+   :mb-db-file           (config/config-str :mb-db-file)
+   :mb-db-connection-uri (config/config-str :mb-db-connection-uri)
+   :mb-db-host           (config/config-str :mb-db-host)
+   :mb-db-port           (config/config-int :mb-db-port)
+   :mb-db-dbname         (config/config-str :mb-db-dbname)
+   :mb-db-user           (config/config-str :mb-db-user)
+   :mb-db-pass           (config/config-str :mb-db-pass)})
 
 (def db-type
   "Keyword type name of the application DB details specified by environment variables. Matches corresponding driver
   name e.g. `:h2`, `:mysql`, or `:postgres`."
-  (delay
-    (or (:type @connection-string-details)
-        (config/config-kw :mb-db-type))))
+  (env->db-type env))
 
-(def db-connection-details
-  "Connection details that can be used when pretending the Metabase DB is itself a `Database` (e.g., to use the Generic
-  SQL driver functions on the Metabase DB itself)."
-  (delay
-    (when (= @db-type :h2)
-      (log/warn
-       (u/format-color 'red
-           (str
-            (trs "WARNING: Using Metabase with an H2 application database is not recommended for production deployments.")
-            " "
-            (trs "For production deployments, we highly recommend using Postgres, MySQL, or MariaDB instead.")
-            " "
-            (trs "If you decide to continue to use H2, please be sure to back up the database file regularly.")
-            " "
-            (trs "For more information, see")
-            " https://metabase.com/docs/latest/operations-guide/migrating-from-h2.html"))))
-    (case @db-type
-      :h2
-      {:db @db-file}
+(when (= db-type :h2)
+  (log/warn
+   (u/format-color
+    :red
+    ;; Unfortunately this can't be i18n'ed because the application DB hasn't been initialized yet at the time we log
+    ;; this and thus the site locale is unavailable.
+    (str/join
+     " "
+     ["WARNING: Using Metabase with an H2 application database is not recommended for production deployments."
+      "For production deployments, we highly recommend using Postgres, MySQL, or MariaDB instead."
+      "If you decide to continue to use H2, please be sure to back up the database file regularly."
+      "For more information, see https://metabase.com/docs/latest/operations-guide/migrating-from-h2.html"]))))
 
-      {:host     (config/config-str :mb-db-host)
-       :port     (config/config-int :mb-db-port)
-       :dbname   (config/config-str :mb-db-dbname)
-       :user     (config/config-str :mb-db-user)
-       :password (config/config-str :mb-db-pass)})))
+(defn db-file
+  "Path to our H2 DB file from env var or app config."
+  []
+  (env->db-file env))
 
-(defn- connection-details->jdbc-spec
-  "Convert a connection details map to a `clojure.java.jdbc` connection spec map."
-  [driver details]
-  ;; TODO: it's probably a good idea to put some more validation here and be really strict about what's in
-  ;; `db-details`.
-  (case driver
-    :h2       (db.spec/h2       details)
-    :mysql    (db.spec/mysql    (assoc details :db (:dbname details)))
-    :postgres (db.spec/postgres (assoc details :db (:dbname details)))))
+;; If someone is using Postgres and specifies `ssl=true` they might need to specify `sslmode=require`. Let's let them
+;; know about that to make their lives a little easier. See #8908 for more details.
+(when-let [raw-connection-string (not-empty (:mb-db-connection-uri env))]
+  (when (and (= db-type :postgres)
+             (str/includes? raw-connection-string "ssl=true")
+             (not (str/includes? raw-connection-string "sslmode=require")))
+    ;; Unfortunately this can't be i18n'ed because the application DB hasn't been initialized yet at the time we log
+    ;; this and thus the site locale is unavailable.
+    (log/warn (str/join " " ["Warning: Postgres connection string with `ssl=true` detected."
+                             "You may need to add `?sslmode=require` to your application DB connection string."
+                             "If Metabase fails to launch, please add it and try again."
+                             "See https://github.com/metabase/metabase/issues/8908 for more details."]))))
 
-(def jdbc-spec
-  "`clojure.java.jdbc` spec map for the application DB, using the details map derived from environment variables."
-  (delay
-    (or (when-let [details @connection-string-details]
-          (connection-details->jdbc-spec @db-type details))
-        (connection-details->jdbc-spec @db-type @db-connection-details))))
+(def ^javax.sql.DataSource data-source
+  "A [[javax.sql.DataSource]] ultimately derived from the environment variables."
+  (env->DataSource db-type env))

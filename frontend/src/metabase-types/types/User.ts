@@ -1,13 +1,18 @@
+/**
+ * ⚠️
+ * @deprecated use existing types from, or add to metabase-types/api/*
+ */
+
 export type User = {
-  common_name: string;
-  date_joined: string;
-  email: string;
-  first_name: string;
-  google_auth: boolean;
   id: number;
-  is_active: boolean;
-  is_qbnewb: false;
-  is_superuser: true;
-  last_login: string;
+  common_name: string;
+  first_name: string;
   last_name: string;
+  email: string;
+  google_auth: boolean;
+  is_active: boolean;
+  is_qbnewb: boolean;
+  is_superuser: boolean;
+  date_joined: string;
+  last_login: string;
 };

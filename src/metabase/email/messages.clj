@@ -3,7 +3,6 @@
    NOTE: we want to keep this about email formatting, so don't put heavy logic here RE: building data for emails."
   (:require [clojure.core.cache :as cache]
             [clojure.java.io :as io]
-            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [hiccup.core :refer [html]]
             [java-time :as t]
@@ -12,22 +11,27 @@
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
             [metabase.email :as email]
+            [metabase.models.collection :as collection]
+            [metabase.models.permissions :as perms]
+            [metabase.models.user :refer [User]]
             [metabase.public-settings :as public-settings]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.pulse.markdown :as markdown]
             [metabase.pulse.parameters :as params]
             [metabase.pulse.render :as render]
-            [metabase.pulse.render.body :as render.body]
+            [metabase.pulse.render.body :as body]
             [metabase.pulse.render.image-bundle :as image-bundle]
             [metabase.pulse.render.js-svg :as js-svg]
-            [metabase.pulse.render.style :as render.style]
+            [metabase.pulse.render.style :as style]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.streaming :as qp.streaming]
-            [metabase.query-processor.streaming.interface :as qp.streaming.i]
-            [metabase.query-processor.streaming.xlsx :as xlsx]
+            [metabase.query-processor.streaming.interface :as qp.si]
+            [metabase.query-processor.streaming.xlsx :as qp.xlsx]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :as i18n :refer [deferred-trs trs tru]]
-            [metabase.util.urls :as url]
+            [metabase.util.urls :as urls]
             [stencil.core :as stencil]
             [stencil.loader :as stencil-loader]
             [toucan.db :as db])
@@ -47,35 +51,21 @@
   (alter-meta! #'stencil.core/render-file assoc :style/indent 1)
   (stencil-loader/set-cache (cache/ttl-cache-factory {} :ttl 0)))
 
-(def ^:private ^:const data-uri-svg-regex #"^data:image/svg\+xml;base64,(.*)$")
-
-(defn- data-uri-svg? [url]
-  (re-matches data-uri-svg-regex url))
-
-(defn- themed-image-url
-  [url color]
-  (try
-    (let [base64 (second (re-matches data-uri-svg-regex url))
-          svg    (u/decode-base64 base64)
-          themed (str/replace svg #"<svg\b([^>]*)( fill=\"[^\"]*\")([^>]*)>" (str "<svg$1$3 fill=\"" color "\">"))]
-      (str "data:image/svg+xml;base64," (u/encode-base64 themed)))
-    (catch Throwable e
-      url)))
-
 (defn- logo-url []
-  (let [url   (public-settings/application-logo-url)
-        color (render.style/primary-color)]
+  (let [url (public-settings/application-logo-url)]
     (cond
       (= url "app/assets/img/logo.svg") "http://static.metabase.com/email_logo.png"
+
+      :else nil
       ;; NOTE: disabling whitelabeled URLs for now since some email clients don't render them correctly
       ;; We need to extract them and embed as attachments like we do in metabase.pulse.render.image-bundle
-      true                              nil
-      (data-uri-svg? url)               (themed-image-url url color)
-      :else                             url)))
+      ;; (data-uri-svg? url)               (themed-image-url url color)
+      ;; :else                             url
+      )))
 
 (defn- icon-bundle
   [icon-name]
-  (let [color     (render.style/primary-color)
+  (let [color     (style/primary-color)
         png-bytes (js-svg/icon icon-name color)]
     (-> (image-bundle/make-image-bundle :attachment png-bytes)
         (image-bundle/image-bundle->attachment))))
@@ -99,13 +89,13 @@
   "Context that is used across multiple email templates, and that is the same for all emails"
   []
   {:applicationName           (public-settings/application-name)
-   :applicationColor          (render.style/primary-color)
+   :applicationColor          (style/primary-color)
    :applicationLogoUrl        (logo-url)
-   :buttonStyle               (button-style (render.style/primary-color))
-   :colorTextLight            render.style/color-text-light
-   :colorTextMedium           render.style/color-text-medium
-   :colorTextDark             render.style/color-text-dark
-   :notificationManagementUrl (url/notification-management-url)
+   :buttonStyle               (button-style (style/primary-color))
+   :colorTextLight            style/color-text-light
+   :colorTextMedium           style/color-text-medium
+   :colorTextDark             style/color-text-dark
+   :notificationManagementUrl (urls/notification-management-url)
    :siteUrl                   (public-settings/site-url)})
 
 (def ^:private notification-context
@@ -135,8 +125,8 @@
         message-body (stencil/render-file "metabase/email/new_user_invite"
                                           (merge (common-context)
                                                  {:emailType     "new_user_invite"
-                                                  :invitedName   (:first_name invited)
-                                                  :invitorName   (:first_name invitor)
+                                                  :invitedName   (or (:first_name invited) (:email invited))
+                                                  :invitorName   (or (:first_name invitor) (:email invitor))
                                                   :invitorEmail  (:email invitor)
                                                   :company       company
                                                   :joinUrl       join-url
@@ -173,7 +163,7 @@
      :message      (stencil/render-file "metabase/email/user_joined_notification"
                                         (merge (common-context)
                                                {:logoHeader        true
-                                                :joinedUserName    (:first_name new-user)
+                                                :joinedUserName    (or (:first_name new-user) (:email new-user))
                                                 :joinedViaSSO      google-auth?
                                                 :joinedUserEmail   (:email new-user)
                                                 :joinedDate        (t/format "EEEE, MMMM d" (t/zoned-date-time)) ; e.g. "Wednesday, July 13". TODO - is this what we want?
@@ -222,44 +212,73 @@
      :message-type :html
      :message      message-body)))
 
-;; TODO - I didn't write these function and I don't know what it's for / what it's supposed to be doing. If this is
-;; determined add appropriate documentation
+(defn- admin-or-ee-monitoring-details-emails
+  "Find emails for users that have an interest in monitoring the database.
+   If oss that means admin users.
+   If ee that also means users with monitoring and details permissions."
+  [database-id]
+  (let [monitoring (perms/application-perms-path :monitoring)
+        db-details (perms/feature-perms-path :details :yes database-id)
+        user-ids (when (premium-features/enable-advanced-permissions?)
+                   (->> {:select   [:pgm.user_id]
+                         :from     [[:permissions_group_membership :pgm]]
+                         :join     [[:permissions_group :pg] [:= :pgm.group_id :pg.id]]
+                         :where    [:and
+                                    [:exists {:select [1]
+                                              :from [[:permissions :p]]
+                                              :where [:and
+                                                      [:= :p.group_id :pg.id]
+                                                      [:= :p.object monitoring]]}]
+                                    [:exists {:select [1]
+                                              :from [[:permissions :p]]
+                                              :where [:and
+                                                      [:= :p.group_id :pg.id]
+                                                      [:= :p.object db-details]]}]]
+                         :group-by [:pgm.user_id]}
+                        db/query
+                        (mapv :user_id)))]
+    (into
+      []
+      (distinct)
+      (concat
+        (all-admin-recipients)
+        (when (seq user-ids)
+          (db/select-field :email User {:where [:and
+                                                [:= :is_active true]
+                                                [:in :id user-ids]]}))))))
 
-(defn- model-name->url-fn [model]
-  (case model
-    "Card"      url/card-url
-    "Dashboard" url/dashboard-url
-    "Pulse"     url/pulse-url
-    "Segment"   url/segment-url))
-
-(defn- add-url-to-dependency [{:keys [id model], :as obj}]
-  (assoc obj :url ((model-name->url-fn model) id)))
-
-(defn- build-dependencies
-  "Build a sequence of dependencies from a `model-name->dependencies` map, and add various information such as obj URLs."
-  [model-name->dependencies]
-  (for [model-name (sort (keys model-name->dependencies))
-        :let       [user-facing-name (if (= model-name "Card")
-                                       "Saved Question"
-                                       model-name)]
-        deps       (get model-name->dependencies model-name)]
-    {:model   user-facing-name
-     :objects (for [dep deps]
-                (add-url-to-dependency dep))}))
-
-(defn send-notification-email!
-  "Format and send an email informing the user about changes to objects in the system."
-  [email context]
-  {:pre [(u/email? email) (map? context)]}
-  (let [context      (merge (update context :dependencies build-dependencies)
-                            notification-context)
-        message-body (stencil/render-file "metabase/email/notification"
+(defn send-persistent-model-error-email!
+  "Format and send an email informing the user about errors in the persistent model refresh task."
+  [database-id persisted-infos trigger]
+  {:pre [(seq persisted-infos)]}
+  (let [database (:database (first persisted-infos))
+        emails (admin-or-ee-monitoring-details-emails database-id)
+        timezone (some-> database qp.timezone/results-timezone-id t/zone-id)
+        context {:database-name (:name database)
+                 :errors
+                 (for [[idx persisted-info] (m/indexed persisted-infos)
+                       :let [card (:card persisted-info)
+                             collection (or (:collection card)
+                                            (collection/root-collection-with-ui-details nil))]]
+                   {:is-not-first (not= 0 idx)
+                    :error (:error persisted-info)
+                    :card-id (:id card)
+                    :card-name (:name card)
+                    :collection-name (:name collection)
+                    ;; February 1, 2022, 3:10 PM
+                    :last-run-at (t/format "MMMM d, yyyy, h:mm a z" (t/zoned-date-time (:refresh_begin persisted-info) timezone))
+                    :last-run-trigger trigger
+                    :card-url (urls/card-url (:id card))
+                    :collection-url (urls/collection-url (:id collection))
+                    :caching-log-details-url (urls/tools-caching-details-url (:id persisted-info))})}
+        message-body (stencil/render-file "metabase/email/persisted-model-error"
                                           (merge (common-context) context))]
-    (email/send-message!
-     :subject      (trs "[{0}] Notification" (app-name-trs))
-     :recipients   [email]
-     :message-type :html
-     :message      message-body)))
+    (when (seq emails)
+      (email/send-message!
+        :subject      (trs "[{0}] Model cache refresh failed for {1}" (app-name-trs) (:name database))
+        :recipients   (vec emails)
+        :message-type :html
+        :message      message-body))))
 
 (defn send-follow-up-email!
   "Format and send an email to the system admin following up on the installation."
@@ -290,7 +309,7 @@
   [{:keys [cards dashboard_id]}]
   (when-let [dashboard-id (or dashboard_id
                               (some :dashboard_id cards))]
-    {:pulseLink (url/dashboard-url dashboard-id)}))
+    {:pulseLink (urls/dashboard-url dashboard-id)}))
 
 (defn- pulse-context [pulse dashboard]
   (merge (common-context)
@@ -299,7 +318,7 @@
           :titleUrl                  (params/dashboard-url (:id dashboard) (params/parameters pulse dashboard))
           :dashboardDescription      (:description dashboard)
           :creator                   (-> pulse :creator :common_name)
-          :sectionStyle              (render.style/style (render.style/section-style))}
+          :sectionStyle              (style/style (style/section-style))}
          (pulse-link-context pulse)))
 
 (defn- create-temp-file
@@ -319,7 +338,7 @@
         (throw (IOException. ex-msg e))))))
 
 (defn- create-result-attachment-map [export-type card-name ^File attachment-file]
-  (let [{:keys [content-type]} (qp.streaming.i/stream-options export-type)]
+  (let [{:keys [content-type]} (qp.si/stream-options export-type)]
     {:type         :attachment
      :content-type content-type
      :file-name    (format "%s.%s" card-name (name export-type))
@@ -342,20 +361,17 @@
       include-xls?
       (no "it has `:include_xls`")
 
-      (some (complement render.body/show-in-table?) cols)
+      (some (complement body/show-in-table?) cols)
       (yes "some columns are not included in rendered results")
 
       (not= :table (render/detect-pulse-chart-type card nil result-data))
       (no "we've determined it should not be rendered as a table")
 
-      (= (count (take render.body/cols-limit cols)) render.body/cols-limit)
-      (yes "the results have >= %d columns" render.body/cols-limit)
-
-      (= (count (take render.body/rows-limit rows)) render.body/rows-limit)
-      (yes "the results have >= %d rows" render.body/rows-limit)
+      (= (count (take body/rows-limit rows)) body/rows-limit)
+      (yes "the results have >= %d rows" body/rows-limit)
 
       :else
-      (no "less than %d columns, %d rows in results" render.body/cols-limit render.body/rows-limit))))
+      (no "less than %d rows in results" body/rows-limit))))
 
 (defn- stream-api-results-to-export-format
   "For legacy compatability. Takes QP results in the normal `:api` response format and streams them to a different
@@ -372,21 +388,21 @@
   (driver/with-driver (driver.u/database->driver database-id)
     (qp.store/with-store
       (qp.store/fetch-and-store-database! database-id)
-      (binding [xlsx/*parse-temporal-string-values* true]
-        (let [w                           (qp.streaming.i/streaming-results-writer export-format os)
+      (binding [qp.xlsx/*parse-temporal-string-values* true]
+        (let [w                           (qp.si/streaming-results-writer export-format os)
               cols                        (-> results :data :cols)
               viz-settings                (-> results :data :viz-settings)
               [ordered-cols output-order] (qp.streaming/order-cols cols viz-settings)
               viz-settings'               (assoc viz-settings :output-order output-order)]
-          (qp.streaming.i/begin! w
-                                 (assoc-in results [:data :ordered-cols] ordered-cols)
-                                 viz-settings')
+          (qp.si/begin! w
+                        (assoc-in results [:data :ordered-cols] ordered-cols)
+                        viz-settings')
           (dorun
            (map-indexed
             (fn [i row]
-              (qp.streaming.i/write-row! w row i ordered-cols viz-settings'))
+              (qp.si/write-row! w row i ordered-cols viz-settings'))
             rows))
-          (qp.streaming.i/finish! w results))))))
+          (qp.si/finish! w results))))))
 
 (defn- result-attachment
   [{{card-name :name, :as card} :card, {{:keys [rows], :as result-data} :data, :as result} :result}]
@@ -417,39 +433,39 @@
         cells   (map
                  (fn [filter]
                    [:td {:class "filter-cell"
-                         :style (render.style/style {:width "50%"
-                                                     :padding "0px"
-                                                     :vertical-align "baseline"})}
+                         :style (style/style {:width "50%"
+                                              :padding "0px"
+                                              :vertical-align "baseline"})}
                     [:table {:cellpadding "0"
                              :cellspacing "0"
                              :width "100%"
                              :height "100%"}
                      [:tr
                       [:td
-                       {:style (render.style/style {:color render.style/color-text-medium
-                                                    :min-width "100px"
-                                                    :width "50%"
-                                                    :padding "4px 4px 4px 0"
-                                                    :vertical-align "baseline"})}
+                       {:style (style/style {:color style/color-text-medium
+                                             :min-width "100px"
+                                             :width "50%"
+                                             :padding "4px 4px 4px 0"
+                                             :vertical-align "baseline"})}
                        (:name filter)]
                       [:td
-                       {:style (render.style/style {:color render.style/color-text-dark
-                                                    :min-width "100px"
-                                                    :width "50%"
-                                                    :padding "4px 16px 4px 8px"
-                                                    :vertical-align "baseline"})}
+                       {:style (style/style {:color style/color-text-dark
+                                             :min-width "100px"
+                                             :width "50%"
+                                             :padding "4px 16px 4px 8px"
+                                             :vertical-align "baseline"})}
                        (params/value-string filter)]]]])
                  filters)
         rows    (partition 2 2 nil cells)]
     (html
-     [:table {:style (render.style/style {:table-layout :fixed
-                                          :border-collapse :collapse
-                                          :cellpadding "0"
-                                          :cellspacing "0"
-                                          :width "100%"
-                                          :font-size  "12px"
-                                          :font-weight 700
-                                          :margin-top "8px"})}
+      [:table {:style (style/style {:table-layout :fixed
+                                    :border-collapse :collapse
+                                    :cellpadding "0"
+                                    :cellspacing "0"
+                                    :width "100%"
+                                    :font-size  "12px"
+                                    :font-weight 700
+                                    :margin-top "8px"})}
       (for [row rows]
         [:tr {} row])])))
 
@@ -491,7 +507,7 @@
 
 (defn pulse->alert-condition-kwd
   "Given an `alert` return a keyword representing what kind of goal needs to be met."
-  [{:keys [alert_above_goal alert_condition card creator] :as alert}]
+  [{:keys [alert_above_goal alert_condition] :as _alert}]
   (if (= "goal" alert_condition)
     (if (true? alert_above_goal)
       :meets
@@ -515,8 +531,8 @@
      (merge (common-context)
             {:emailType                 "alert"
              :questionName              card-name
-             :questionURL               (url/card-url card-id)
-             :sectionStyle              (render.style/section-style)}
+             :questionURL               (urls/card-url card-id)
+             :sectionStyle              (style/section-style)}
             (when alert-condition-map
               {:alertCondition (get alert-condition-map (pulse->alert-condition-kwd alert))})))))
 
@@ -564,7 +580,7 @@
   [alert channel]
   (let [{card-id :id, card-name :name} (first-card alert)]
     {:title         card-name
-     :titleUrl      (url/card-url card-id)
+     :titleUrl      (urls/card-url card-id)
      :alertSchedule (alert-schedule-text channel)
      :creator       (-> alert :creator :common_name)}))
 
@@ -627,14 +643,14 @@
 
 (defn send-admin-unsubscribed-alert-email!
   "Send an email to `user-added` letting them know `admin` has unsubscribed them from `alert`"
-  [alert user-added {:keys [first_name last_name] :as admin}]
+  [alert user-added {:keys [first_name last_name] :as _admin}]
   (let [admin-name (format "%s %s" first_name last_name)]
     (send-email! user-added "You’ve been unsubscribed from an alert" admin-unsubscribed-template
                  (assoc (common-alert-context alert) :adminName admin-name))))
 
 (defn send-you-were-added-alert-email!
   "Send an email to `user-added` letting them know `admin-adder` has added them to `alert`"
-  [alert user-added {:keys [first_name last_name] :as admin-adder}]
+  [alert user-added {:keys [first_name last_name] :as _admin-adder}]
   (let [subject (format "%s %s added you to an alert" first_name last_name)]
     (send-email! user-added subject added-template (common-alert-context alert alert-condition-text))))
 
@@ -642,13 +658,13 @@
 
 (defn send-alert-stopped-because-archived-email!
   "Email to notify users when a card associated to their alert has been archived"
-  [alert user {:keys [first_name last_name] :as archiver}]
+  [alert user {:keys [first_name last_name] :as _archiver}]
   (let [deletion-text (format "the question was archived by %s %s" first_name last_name)]
     (send-email! user not-working-subject stopped-template (assoc (common-alert-context alert) :deletionCause deletion-text))))
 
 (defn send-alert-stopped-because-changed-email!
   "Email to notify users when a card associated to their alert changed in a way that invalidates their alert"
-  [alert user {:keys [first_name last_name] :as archiver}]
+  [alert user {:keys [first_name last_name] :as _archiver}]
   (let [edited-text (format "the question was edited by %s %s" first_name last_name)]
     (send-email! user not-working-subject stopped-template (assoc (common-alert-context alert) :deletionCause edited-text))))
 

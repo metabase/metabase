@@ -1,43 +1,45 @@
-import { getQuestionVirtualTableId } from "metabase/lib/saved-questions";
-
-// Query Builder Mode
-
-export function getQueryBuilderModeFromLocation(location) {
-  const { pathname } = location;
-  if (pathname.endsWith("/notebook")) {
-    return "notebook";
-  }
-  if (pathname.endsWith("/query")) {
-    return "dataset";
-  }
-  return "view";
-}
+import querystring from "querystring";
+import * as Urls from "metabase/lib/urls";
 
 export function getPathNameFromQueryBuilderMode({
   pathname,
   queryBuilderMode,
+  datasetEditorTab = "query",
 }) {
   if (queryBuilderMode === "view") {
     return pathname;
   }
   if (queryBuilderMode === "dataset") {
-    return `${pathname}/query`;
+    return `${pathname}/${datasetEditorTab}`;
   }
   return `${pathname}/${queryBuilderMode}`;
 }
 
-// Datasets
+export function getCurrentQueryParams() {
+  const search =
+    window.location.search.charAt(0) === "?"
+      ? window.location.search.slice(0)
+      : window.location.search;
+  return querystring.parse(search);
+}
 
-export function isAdHocDatasetQuestion(question, originalQuestion) {
-  if (!originalQuestion || !question.isStructured()) {
-    return false;
+export function getURLForCardState(
+  { card, serializedCard },
+  dirty,
+  query = {},
+  objectId,
+) {
+  const options = {
+    hash: serializedCard && dirty ? serializedCard : "",
+    query,
+  };
+  const isAdHocQuestion = !card.id;
+  if (objectId != null) {
+    if (isAdHocQuestion) {
+      options.query.objectId = objectId;
+    } else {
+      options.objectId = objectId;
+    }
   }
-
-  const isDataset = question.isDataset() || originalQuestion.isDataset();
-  const isSameCard = question.id() === originalQuestion.id();
-  const isSelfReferencing =
-    question.query().sourceTableId() ===
-    getQuestionVirtualTableId(originalQuestion.card());
-
-  return isDataset && isSameCard && isSelfReferencing;
+  return Urls.question(card, options);
 }

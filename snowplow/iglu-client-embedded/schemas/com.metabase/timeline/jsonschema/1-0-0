@@ -1,0 +1,63 @@
+{
+  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+  "description": "Event timelines",
+  "self": {
+    "vendor": "com.metabase",
+    "name": "timeline",
+    "format": "jsonschema",
+    "version": "1-0-0"
+  },
+  "type": "object",
+  "properties": {
+    "event": {
+      "description": "Event name",
+      "type": "string",
+      "enum": [
+        "new_event_created"
+      ],
+      "maxLength": 1024
+    },
+    "source": {
+      "description": "String identifying the product location where the event happened",
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "question",
+        "collections",
+        "api"
+      ],
+      "maxLength": 1024
+    },
+    "question_id": {
+      "description": "Unique identifier for question, only applicable if created from a question",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "collection_id": {
+      "description": "Unique identifier for collection, only applicable if created from a collection",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "time_matters": {
+      "description": "Whether the user has added time resolution to the event",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "event"
+  ],
+  "additionalProperties": true
+}

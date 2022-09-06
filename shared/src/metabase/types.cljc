@@ -322,16 +322,6 @@
 
 ;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 
-(defn- types->parents
-  "Return a map of various types to their parent types.
-
-  This is intended for export to the frontend as part of `MetabaseBootstrap` so it can build its own implementation of
-  `isa?`."
-  ([] (types->parents :type/*))
-  ([root]
-   (into {} (for [t (descendants root)]
-              {t (parents t)}))))
-
 (defn field-is-type?
   "True if a Metabase `Field` instance has a temporal base or semantic type, i.e. if this Field represents a value
   relating to a moment in time."

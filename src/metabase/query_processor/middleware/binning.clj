@@ -5,7 +5,7 @@
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.public-settings :as public-settings]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
@@ -47,7 +47,7 @@
                                                global-max)]
     (when-not (and min-value max-value)
       (throw (ex-info (tru "Unable to bin Field without a min/max value")
-               {:type        error-type/invalid-query
+               {:type        qp.error-type/invalid-query
                 :field-id    field-id
                 :fingerprint fingerprint})))
     {:min-value min-value, :max-value max-value}))
@@ -63,9 +63,12 @@
 
 (s/defn ^:private calculate-num-bins :- su/IntGreaterThanZero
   "Calculate number of bins of width `bin-width` required to cover interval [`min-value`, `max-value`]."
-  [min-value :- s/Num, max-value :- s/Num, bin-width :- (s/constrained s/Num (complement neg?) "number >= 0")]
-  (long (Math/ceil (/ (- max-value min-value)
-                      bin-width))))
+  [min-value :- s/Num
+   max-value :- s/Num
+   bin-width :- (s/constrained s/Num (complement neg?) "number >= 0")]
+  (max (long (Math/ceil (/ (- max-value min-value)
+                           bin-width)))
+       1))
 
 (s/defn ^:private resolve-default-strategy :- [(s/one (s/enum :bin-width :num-bins) "strategy")
                                                (s/one {:bin-width s/Num, :num-bins su/IntGreaterThanZero} "opts")]
@@ -187,7 +190,7 @@
   "Given a `binning-strategy` clause, resolve the binning strategy (either provided or found if default is specified)
   and calculate the number of bins and bin width for this field. `field-id->filters` contains related criteria that
   could narrow the domain for the field. This info is saved as part of each `binning-strategy` clause."
-  [{:keys [source-metadata], :as inner-query}
+  [{:keys [source-metadata], :as _inner-query}
    field-id->filters                          :- FieldID->Filters
    [_ id-or-name {:keys [binning], :as opts}] :- mbql.s/field]
   (let [metadata                                   (matching-metadata id-or-name source-metadata)
@@ -198,11 +201,11 @@
                                                                     (get binning (:strategy binning))
                                                                     metadata
                                                                     min-value max-value)
-        resolved-options                           (merge min-max resolved-options)]
-    ;; Bail out and use unmodifed version if we can't converge on a nice version.
-    (let [new-options (or (nicer-breakout new-strategy resolved-options)
-                          resolved-options)]
-      [:field id-or-name (update opts :binning merge {:strategy new-strategy} new-options)])))
+        resolved-options                           (merge min-max resolved-options)
+        ;; Bail out and use unmodifed version if we can't converge on a nice version.
+        new-options (or (nicer-breakout new-strategy resolved-options)
+                        resolved-options)]
+    [:field id-or-name (update opts :binning merge {:strategy new-strategy} new-options)]))
 
 (defn update-binning-strategy-in-inner-query
   "Update `:field` clauses with `:binning` strategy options in an `inner` [MBQL] query."
@@ -215,15 +218,11 @@
         (catch Throwable e
           (throw (ex-info (.getMessage e) {:clause &match} e)))))))
 
-(defn- update-binning-strategy* [{query-type :type, inner-query :query, :as query}]
-  (if (= query-type :native)
-    query
-    (update query :query update-binning-strategy-in-inner-query)))
-
 (defn update-binning-strategy
   "When a binned field is found, it might need to be updated if a relevant query criteria affects the min/max value of
   the binned field. This middleware looks for that criteria, then updates the related min/max values and calculates
   the bin-width based on the criteria values (or global min/max information)."
-  [qp]
-  (fn [query rff context]
-    (qp (update-binning-strategy* query) rff context)))
+  [{query-type :type, :as query}]
+  (if (= query-type :native)
+    query
+    (update query :query update-binning-strategy-in-inner-query)))

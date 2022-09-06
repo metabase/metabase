@@ -6,13 +6,13 @@
   See documentation in [[metabase.models.permissions]] for more information about the Metabase permissions system."
   (:require [clojure.tools.logging :as log]
             [medley.core :as m]
-            [metabase.mbql.normalize :as normalize]
+            [metabase.mbql.normalize :as mbql.normalize]
             [metabase.models.card :as card :refer [Card]]
-            [metabase.models.interface :as i]
+            [metabase.models.interface :as mi]
             [metabase.models.table :as table]
             [metabase.plugins.classloader :as classloader]
             [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.server.middleware.session :as session]
+            [metabase.server.middleware.session :as mw.session]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
@@ -21,6 +21,10 @@
             [toucan.models :as models]))
 
 (models/defmodel GroupTableAccessPolicy :group_table_access_policy)
+
+;;; only admins can work with GTAPs
+(derive GroupTableAccessPolicy ::mi/read-policy.superuser)
+(derive GroupTableAccessPolicy ::mi/write-policy.superuser)
 
 ;; This guard is to make sure this file doesn't get compiled twice when building the uberjar -- that will totally
 ;; screw things up because Toucan models use Potemkin `defrecord+` under the hood.
@@ -37,19 +41,19 @@
 
 (defn- normalize-attribute-remapping-targets [attribute-remappings]
   (m/map-vals
-   normalize/normalize
+   mbql.normalize/normalize
    attribute-remappings))
 
 ;; for GTAPs
 (models/add-type! ::attribute-remappings
-  :in  (comp i/json-in normalize-attribute-remapping-targets)
-  :out (comp normalize-attribute-remapping-targets i/json-out-without-keywordization))
+  :in  (comp mi/json-in normalize-attribute-remapping-targets)
+  :out (comp normalize-attribute-remapping-targets mi/json-out-without-keywordization))
 
 (defn table-field-names->cols
   "Return a mapping of field names to corresponding cols for given table."
   [table-id]
   (classloader/require 'metabase.query-processor)
-  (into {} (for [col (session/with-current-user nil
+  (into {} (for [col (mw.session/with-current-user nil
                        ((resolve 'metabase.query-processor/query->expected-cols)
                         {:database (table/table-id->database-id table-id)
                          :type     :query
@@ -104,7 +108,7 @@
     (when-let [gtaps-using-this-card (not-empty (db/select [GroupTableAccessPolicy :id :table_id] :card_id card-id))]
       (let [original-result-metadata (db/select-one-field :result_metadata Card :id card-id)]
         (when-not (= original-result-metadata new-result-metadata)
-          (doseq [{gtap-id :id, table-id :table_id} gtaps-using-this-card]
+          (doseq [{table-id :table_id} gtaps-using-this-card]
             (try
               (check-columns-match-table table-id new-result-metadata)
               (catch clojure.lang.ExceptionInfo e
@@ -138,11 +142,4 @@
    models/IModelDefaults
    {:types      (constantly {:attribute_remappings ::attribute-remappings})
     :pre-insert pre-insert
-    :pre-update pre-update})
-
-  ;; only admins can work with GTAPs
-  i/IObjectPermissions
-  (merge
-   i/IObjectPermissionsDefaults
-   {:can-read?  i/superuser?
-    :can-write? i/superuser?}))
+    :pre-update pre-update}))

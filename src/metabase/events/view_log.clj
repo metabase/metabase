@@ -1,11 +1,11 @@
 (ns metabase.events.view-log
-  (:require [clojure.core.async :as async]
+  (:require [clojure.core.async :as a]
             [clojure.tools.logging :as log]
             [metabase.events :as events]
             [metabase.models.view-log :refer [ViewLog]]
             [toucan.db :as db]))
 
-(def ^:private ^:const view-log-topics
+(def ^:private view-log-topics
   "The `Set` of event topics which we subscribe to for view counting."
   #{:card-create
     :card-read
@@ -15,7 +15,7 @@
 
 (defonce ^:private ^{:doc "Channel for receiving event notifications we want to subscribe to for view counting."}
   view-log-channel
-  (async/chan))
+  (a/chan))
 
 
 ;;; ## ---------------------------------------- EVENT PROCESSING ----------------------------------------

@@ -14,9 +14,11 @@ driver:
       placeholder: xxxxxxxx.us-east-2.aws
       required: true
     - user
-    - merge:
-        - password
-        - required: true
+    - password
+    - name: private-key
+      display-name: RSA private key (PEM)
+      type: secret
+      secret-kind: pem-cert
     - name: warehouse
       display-name: Warehouse
       helper-text: If your user doesn't have a default warehouse, enter the warehouse to connect to.
@@ -27,10 +29,9 @@ driver:
         - name: db
           required: true
           display-name: Database name (case sensitive)
-    - name: schema
-      display-name: Schema (optional)
-      helper-text: Only add tables to Metabase that come from a specific schema.
-      placeholder: just_crows
+    - name: schema-filters
+      type: schema-filters
+      display-name: Schemas
     - name: role
       display-name: Role (optional)
       helper-text: Specify a role to override the database user’s default role.

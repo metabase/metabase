@@ -3,19 +3,19 @@ import React from "react";
 
 import { ModalFooter } from "metabase/components/ModalContent";
 import AdminContentTable from "metabase/components/AdminContentTable";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import GroupSelect from "metabase/admin/people/components/GroupSelect";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Modal from "metabase/components/Modal";
 import { t } from "ttag";
 import { PermissionsApi, SettingsApi } from "metabase/services";
-import { isSpecialGroup } from "metabase/lib/groups";
+import { isDefaultGroup } from "metabase/lib/groups";
 
 import _ from "underscore";
 
 import SettingToggle from "./SettingToggle";
 
-const groupIsMappable = group => !isSpecialGroup(group);
+const groupIsMappable = group => !isDefaultGroup(group);
 
 export default class GroupMappingsWidget extends React.Component {
   constructor(props, context) {
@@ -110,13 +110,8 @@ export default class GroupMappingsWidget extends React.Component {
   };
 
   render() {
-    const {
-      showEditModal,
-      showAddRow,
-      groups,
-      mappings,
-      saveError,
-    } = this.state;
+    const { showEditModal, showAddRow, groups, mappings, saveError } =
+      this.state;
 
     return (
       <div className="flex align-center">
@@ -143,8 +138,7 @@ export default class GroupMappingsWidget extends React.Component {
                 >{t`Create a mapping`}</Button>
                 <p className="text-measure">
                   {t`Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the
-                                    directory server. Membership to the Admin group can be granted through mappings, but will not be automatically removed as a
-                                    failsafe measure.`}
+                     directory server. Users are only ever added to or removed from mapped groups.`}
                 </p>
                 <AdminContentTable
                   columnTitles={[this.props.groupHeading, t`Groups`, ""]}
@@ -197,17 +191,17 @@ class AddMappingRow extends React.Component {
     };
   }
 
+  _handleSubmit = e => {
+    e.preventDefault();
+    const { onAdd } = this.props;
+    onAdd && onAdd(this.state.value);
+    this.setState({ value: "" });
+  };
+
   _handleCancelClick = e => {
     e.preventDefault();
     const { onCancel } = this.props;
     onCancel && onCancel();
-    this.setState({ value: "" });
-  };
-
-  _handleAddClick = e => {
-    e.preventDefault();
-    const { onAdd } = this.props;
-    onAdd && onAdd(this.state.value);
     this.setState({ value: "" });
   };
 
@@ -219,7 +213,10 @@ class AddMappingRow extends React.Component {
     return (
       <tr>
         <td colSpan="3" style={{ padding: 0 }}>
-          <div className="my2 pl1 p1 bordered border-brand rounded relative flex align-center">
+          <form
+            className="my2 pl1 p1 bordered border-brand rounded relative flex align-center"
+            onSubmit={isValid ? this._handleSubmit : undefined}
+          >
             <input
               className="input--borderless h3 ml1 flex-full"
               type="text"
@@ -234,11 +231,11 @@ class AddMappingRow extends React.Component {
             >{t`Cancel`}</span>
             <Button
               className="ml2"
+              type="submit"
               primary={!!isValid}
               disabled={!isValid}
-              onClick={this._handleAddClick}
             >{t`Add`}</Button>
-          </div>
+          </form>
         </td>
       </tr>
     );

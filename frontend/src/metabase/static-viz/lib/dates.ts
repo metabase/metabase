@@ -14,7 +14,7 @@ const DEFAULT_OPTIONS = {
   time_enabled: false,
 };
 
-const DATE_FORMATS: { [key: string]: Intl.DateTimeFormat } = {
+const DATE_FORMATS: Record<string, Intl.DateTimeFormat> = {
   YY: new Intl.DateTimeFormat("en", { year: "2-digit" }),
   YYYY: new Intl.DateTimeFormat("en", { year: "numeric" }),
   M: new Intl.DateTimeFormat("en", { month: "numeric" }),

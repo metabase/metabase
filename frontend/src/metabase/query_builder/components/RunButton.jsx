@@ -3,7 +3,7 @@ import React, { forwardRef } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 
 import cx from "classnames";
 
@@ -11,7 +11,6 @@ const propTypes = {
   className: PropTypes.string,
   isRunning: PropTypes.bool.isRequired,
   isDirty: PropTypes.bool.isRequired,
-  isPreviewing: PropTypes.bool,
   onRun: PropTypes.func.isRequired,
   onCancel: PropTypes.func,
 };
@@ -20,7 +19,6 @@ const RunButton = forwardRef(function RunButton(
   {
     isRunning,
     isDirty,
-    isPreviewing,
     onRun,
     onCancel,
     className,
@@ -42,7 +40,7 @@ const RunButton = forwardRef(function RunButton(
     if (compact) {
       buttonIcon = "play";
     } else {
-      buttonText = isPreviewing ? t`Get Preview` : t`Get Answer`;
+      buttonText = t`Get Answer`;
     }
   } else {
     buttonIcon = "refresh";

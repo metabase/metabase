@@ -30,16 +30,10 @@
    flatten
    set))
 
-(defn resolve-source-tables*
-  "Resolve all Tables referenced in the `query`, and store them in the QP Store."
-  [query]
-  (check-all-source-table-ids-are-valid query)
-  (qp.store/fetch-and-store-tables! (query->source-table-ids query)))
-
 (defn resolve-source-tables
   "Middleware that will take any `:source-table`s (integer IDs) anywhere in the query and fetch and save the
   corresponding Table in the Query Processor Store."
-  [qp]
-  (fn [query rff context]
-    (resolve-source-tables* query)
-    (qp query rff context)))
+  [query]
+  (check-all-source-table-ids-are-valid query)
+  (qp.store/fetch-and-store-tables! (query->source-table-ids query))
+  query)

@@ -1,10 +1,9 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { withRouter } from "react-router";
 import { connect } from "react-redux";
 import { t, jt } from "ttag";
+import _ from "underscore";
 
-import { Flex } from "grid-styled";
 import Icon from "metabase/components/Icon";
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
 
@@ -13,23 +12,24 @@ import * as Urls from "metabase/lib/urls";
 
 import Dashboards from "metabase/entities/dashboards";
 import Collection, { ROOT_COLLECTION } from "metabase/entities/collections";
+import { ToastRoot } from "./DashboardMoveModal.styled";
 
 const mapDispatchToProps = {
   setDashboardCollection: Dashboards.actions.setCollection,
 };
 
-@withRouter
-@connect(null, mapDispatchToProps)
-class DashboardMoveModal extends React.Component {
+class DashboardMoveModalInner extends React.Component {
   render() {
-    const { params, onClose, setDashboardCollection } = this.props;
-    const dashboardId = Urls.extractEntityId(params.slug);
+    const { dashboard, onClose, setDashboardCollection } = this.props;
+    const title = dashboard.is_app_page
+      ? t`Move page to…`
+      : t`Move dashboard to…`;
     return (
       <CollectionMoveModal
-        title={t`Move dashboard to...`}
+        title={title}
         onClose={onClose}
         onMove={async destination => {
-          await setDashboardCollection({ id: dashboardId }, destination, {
+          await setDashboardCollection({ id: dashboard.id }, destination, {
             notify: {
               message: (
                 <DashboardMoveToast
@@ -45,13 +45,20 @@ class DashboardMoveModal extends React.Component {
   }
 }
 
+const DashboardMoveModal = _.compose(
+  connect(null, mapDispatchToProps),
+  Dashboards.load({
+    id: (state, props) => Urls.extractCollectionId(props.params.slug),
+  }),
+)(DashboardMoveModalInner);
+
 export default DashboardMoveModal;
 
 const DashboardMoveToast = ({ collectionId }) => (
-  <Flex align="center">
+  <ToastRoot>
     <Icon name="all" mr={1} color="white" />
     {jt`Dashboard moved to ${(
       <Collection.Link id={collectionId} ml={1} color={color("brand")} />
     )}`}
-  </Flex>
+  </ToastRoot>
 );

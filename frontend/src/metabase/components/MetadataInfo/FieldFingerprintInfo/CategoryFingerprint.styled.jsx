@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
 import _LoadingSpinner from "metabase/components/LoadingSpinner";
@@ -22,17 +22,20 @@ export const NoWrap = styled.div`
   overflow: hidden;
   font-weight: bold;
   padding-top: 0.3em 0;
+  line-height: 1.3em;
 `;
 
-export const LoadingSpinner = styled(_LoadingSpinner).attrs({
-  size: 18,
-})`
+export const LoadingSpinner = styled(_LoadingSpinner)`
   display: flex;
   flex-grow: 1;
   align-self: center;
   justify-content: center;
-  color: ${color("brand")};
+  color: ${() => color("brand")};
 `;
+
+LoadingSpinner.defaultProps = {
+  size: 18,
+};
 
 export const RelativeContainer = styled.div`
   position: relative;
@@ -57,4 +60,15 @@ export const FadeAndSlide = styled.div`
   opacity: ${({ visible }) => (visible ? "1" : "0")};
   transform: ${({ visible }) =>
     visible ? "translateY(0)" : "translateY(100%)"};
+`;
+
+export const Li = styled.li`
+  padding: 0.3em 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-bottom: 1px solid ${color("border")};
+
+  &:last-child {
+    border-bottom: none;
+  }
 `;

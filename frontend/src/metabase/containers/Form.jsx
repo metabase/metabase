@@ -5,7 +5,7 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { createSelector } from "reselect";
 import { reduxForm, getValues, initialize, change } from "redux-form";
-import { getIn, assocIn } from "icepick";
+import { assocIn } from "icepick";
 import _ from "underscore";
 import { t } from "ttag";
 
@@ -19,6 +19,8 @@ export {
   CustomFormFooter as FormFooter,
   CustomFormSection as FormSection,
 } from "metabase/components/form/CustomForm";
+
+import { makeFormObject, getValue } from "./formUtils";
 
 let FORM_ID = 0;
 // use makeMapStateToProps so each component gets it's own unique formId
@@ -54,8 +56,7 @@ const ReduxFormComponent = reduxForm()(
   },
 );
 
-@connect(makeMapStateToProps)
-export default class Form extends React.Component {
+class Form extends React.Component {
   _state = {
     submitting: false,
     failed: false,
@@ -170,6 +171,7 @@ export default class Form extends React.Component {
         initialize(this.props.formName, this._getInitialValues(), newFields),
       );
     }
+    this.props.onChange?.(this.props.values);
   }
 
   _registerFormField = field => {
@@ -213,7 +215,7 @@ export default class Form extends React.Component {
       const normalized = formObject.normalize(values);
       return (this._state.result = await this.props.onSubmit(normalized));
     } catch (error) {
-      console.error("Form submission error", error);
+      console.error("Form submission error:", error);
       this._state.failed = true;
       this._state.result = error;
       // redux-form expects { "FIELD NAME": "FIELD ERROR STRING" } or {"_error": "GLOBAL ERROR STRING" }
@@ -227,12 +229,19 @@ export default class Form extends React.Component {
         const errorNames = Object.keys(error.data.errors);
         const hasUnknownFields = errorNames.some(name => !fieldNames.has(name));
         throw {
-          _error: hasUnknownFields ? t`An error occurred` : null,
+          _error:
+            error.data?.message ||
+            error.message ||
+            (hasUnknownFields ? t`An error occurred` : null),
           ...error.data.errors,
         };
       } else if (error) {
         throw {
-          _error: error.data.message || error.data,
+          _error:
+            error.data?.message ||
+            error.message ||
+            error.data ||
+            t`An error occurred`,
         };
       }
     } finally {
@@ -279,77 +288,4 @@ export default class Form extends React.Component {
   }
 }
 
-// returns a function that takes an object
-// apply the top level method (if any) to the whole object
-// then apply each field's method (if any) to each value in object, setting the result if not undefined
-//
-// equivalent examples:
-//
-// form.initial is { foo: "bar" }
-// form.initial is () => ({ foo: "bar" })
-// form.fields[0] is { name: "foo", initial: "bar" }
-// form.fields[0] is { name: "foo", initial: () => "bar" }
-//
-function makeFormMethod(form, methodName, defaultValues = {}, mergeFn) {
-  const originalMethod = form[methodName];
-  form[methodName] = (object, ...args) => {
-    // make a copy
-    const values = {
-      ...(getValue(originalMethod, object, ...args) ||
-        getValue(defaultValues, object, ...args)),
-    };
-    for (const field of form.fields(object)) {
-      const value = getValue(
-        field[methodName],
-        object && getValueAtPath(object, field.name),
-        ...args,
-      );
-      if (value !== undefined) {
-        setValueAtPath(values, field.name, value, mergeFn);
-      }
-    }
-    return values;
-  };
-}
-// if the first arg is a function, call it, otherwise return it.
-function getValue(fnOrValue, ...args) {
-  return typeof fnOrValue === "function" ? fnOrValue(...args) : fnOrValue;
-}
-function makeFormObject(formDef) {
-  const form = {
-    ...formDef,
-    fields: values => getValue(formDef.fields, values),
-    fieldNames: values => [
-      "id",
-      ...form.fields(values).map(field => field.name),
-    ],
-  };
-  // for validating the object, or individual values
-  makeFormMethod(form, "validate", {}, (a, b) =>
-    [a, b].filter(a => a).join(", "),
-  );
-  // for getting the initial values object, or getting individual values
-  makeFormMethod(form, "initial");
-  // for normalizeing the object before submitting, or normalizeing individual values
-  makeFormMethod(form, "normalize", object => object);
-  makeFormMethod(form, "hidden");
-  return form;
-}
-
-function getObjectPath(path) {
-  return typeof path === "string" ? path.split(".") : path;
-}
-
-function getValueAtPath(object, path) {
-  return getIn(object, getObjectPath(path));
-}
-function setValueAtPath(object, path, value, mergeFn = (a, b) => b) {
-  path = getObjectPath(path);
-  for (let i = 0; i < path.length; i++) {
-    if (i === path.length - 1) {
-      object[path[i]] = mergeFn(object[path[i]], value);
-    } else {
-      object = object[path[i]] = object[path[i]] || {};
-    }
-  }
-}
+export default connect(makeMapStateToProps)(Form);

@@ -1,8 +1,8 @@
-import { restore, setupSMTP } from "__support__/e2e/cypress";
+import { restore, setupSMTP, visitQuestion } from "__support__/e2e/helpers";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
+const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 const multiSeriesQuestionWithGoal = {
   name: "multi",
@@ -49,7 +49,7 @@ describe("scenarios > alert > types", () => {
   describe("rows based alerts", () => {
     rawTestCases.forEach(({ questionType, questionId }) => {
       it(`should be supported for ${questionType}`, () => {
-        cy.visit(`/question/${questionId}`);
+        visitQuestion(questionId);
 
         openAlertModal();
 
@@ -65,7 +65,7 @@ describe("scenarios > alert > types", () => {
   describe("goal based alerts", () => {
     it("should work for timeseries questions with a set goal", () => {
       // Set goal on timeseries question
-      cy.visit(`/question/${timeSeriesQuestionId}`);
+      visitQuestion(timeSeriesQuestionId);
 
       cy.findByText("Settings").click();
       cy.findByText("Line options");
@@ -74,9 +74,7 @@ describe("scenarios > alert > types", () => {
 
       // Save question
       cy.findByText("Save").click();
-      cy.get(".Modal")
-        .button("Save")
-        .click();
+      cy.get(".Modal").button("Save").click();
       cy.findByText("Save question").should("not.exist");
 
       openAlertModal();
@@ -122,13 +120,9 @@ function openAlertModal() {
 
 function setGoal(goal) {
   // Enable the toggle
-  cy.findByText("Goal line")
-    .next()
-    .click();
+  cy.findByText("Goal line").next().click();
 
-  cy.findByDisplayValue("0")
-    .clear()
-    .type(goal);
+  cy.findByDisplayValue("0").clear().type(goal);
 
   cy.button("Done").click();
 }

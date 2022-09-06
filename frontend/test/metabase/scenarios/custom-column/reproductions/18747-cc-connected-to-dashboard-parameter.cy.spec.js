@@ -1,8 +1,8 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import { restore, popover, visitDashboard } from "__support__/e2e/helpers";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const questionDetails = {
   name: "18747",
@@ -33,7 +33,7 @@ describe("issue 18747", () => {
             },
           ],
         }).then(() => {
-          cy.visit(`/dashboard/${dashboard_id}`);
+          visitDashboard(dashboard_id);
         });
       },
     );
@@ -67,20 +67,12 @@ function addNumberParameterToDashboard() {
 }
 
 function mapParameterToCustomColumn() {
-  cy.get(".DashCard")
-    .contains("Select…")
-    .click();
-  popover()
-    .contains("Quantity_2")
-    .click({ force: true });
+  cy.get(".DashCard").contains("Select…").click();
+  popover().contains("Quantity_2").click({ force: true });
 }
 
 function addValueToParameterFilter() {
   cy.contains("Equal to").click();
-  popover()
-    .find("input")
-    .type("14");
-  popover()
-    .contains("Add filter")
-    .click();
+  popover().find("input").type("14");
+  popover().contains("Add filter").click();
 }

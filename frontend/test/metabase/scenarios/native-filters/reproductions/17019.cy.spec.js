@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, visitQuestion } from "__support__/e2e/helpers";
 
 const question = {
   name: "17019",
@@ -22,13 +22,10 @@ describe("issue 17019", () => {
     cy.signInAsAdmin();
 
     cy.createNativeQuestion(question).then(({ body: { id } }) => {
-      cy.intercept("POST", `/api/card/${id}/query`).as("cardQuery");
-
       // Enable sharing
       cy.request("POST", `/api/card/${id}/public_link`);
 
-      cy.visit(`/question/${id}`);
-      cy.wait("@cardQuery");
+      visitQuestion(id);
     });
   });
 

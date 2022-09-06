@@ -10,7 +10,7 @@ describe("getXTickWidth", () => {
 
     const xTickHeight = getXTickWidth(data, accessors, maxWidth, fontSize);
 
-    expect(Math.round(xTickHeight)).toBe(15);
+    expect(Math.round(xTickHeight)).toBe(19);
   });
 });
 
@@ -27,6 +27,6 @@ describe("getYTickWidth", () => {
 
     const yTickHeight = getYTickWidth(data, accessors, null, fontSize);
 
-    expect(Math.round(yTickHeight)).toBe(10);
+    expect(Math.round(yTickHeight)).toBe(13);
   });
 });

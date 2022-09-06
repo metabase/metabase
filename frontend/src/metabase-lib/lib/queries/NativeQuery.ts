@@ -1,5 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
+import { t } from "ttag";
+
 import Database from "metabase-lib/lib/metadata/Database";
 import Table from "metabase-lib/lib/metadata/Table";
 import { countLines } from "metabase/lib/string";
@@ -14,12 +16,19 @@ import { chain, assoc, getIn, assocIn, updateIn } from "icepick";
 import _ from "underscore";
 import Question from "metabase-lib/lib/Question";
 import { DatasetQuery, NativeDatasetQuery } from "metabase-types/types/Card";
-import { TemplateTags, TemplateTag } from "metabase-types/types/Query";
+import {
+  DependentMetadataItem,
+  TemplateTags,
+  TemplateTag,
+} from "metabase-types/types/Query";
 import { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 import Dimension, { TemplateTagDimension, FieldDimension } from "../Dimension";
 import Variable, { TemplateTagVariable } from "../Variable";
+import { createTemplateTag } from "metabase-lib/lib/queries/TemplateTag";
 import DimensionOptions from "../DimensionOptions";
+import ValidationError from "metabase-lib/lib/ValidationError";
+
 type DimensionFilter = (dimension: Dimension) => boolean;
 type VariableFilter = (variable: Variable) => boolean;
 export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
@@ -79,10 +88,10 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   canRun() {
-    return (
+    return Boolean(
       this.hasData() &&
-      this.queryText().length > 0 &&
-      this.allTemplateTagsAreValid()
+        this.queryText().length > 0 &&
+        this.allTemplateTagsAreValid(),
     );
   }
 
@@ -127,6 +136,12 @@ export default class NativeQuery extends AtomicQuery {
   readOnly() {
     const database = this.database();
     return !database || database.native_permissions !== "write";
+  }
+
+  // This basically just mirrors StructuredQueries `isEditable` method,
+  // so there is no need to do `isStructured ? isEditable() : readOnly()`
+  isEditable() {
+    return !this.readOnly();
   }
 
   /* Methods unique to this query type */
@@ -267,6 +282,10 @@ export default class NativeQuery extends AtomicQuery {
     return Object.values(this.templateTagsMap());
   }
 
+  hasSnippets() {
+    return this.templateTags().some(t => t.type === "snippet");
+  }
+
   templateTagsWithoutSnippets(): TemplateTag[] {
     return this.templateTags().filter(t => t.type !== "snippet");
   }
@@ -275,19 +294,36 @@ export default class NativeQuery extends AtomicQuery {
     return getIn(this.datasetQuery(), ["native", "template-tags"]) || {};
   }
 
+  validate() {
+    const tagErrors = this.validateTemplateTags();
+    return tagErrors;
+  }
+
+  validateTemplateTags() {
+    return this.templateTags()
+      .map(tag => {
+        if (!tag["display-name"]) {
+          return new ValidationError(t`Missing wiget label: ${tag.name}`);
+        }
+        const dimension = new TemplateTagDimension(
+          tag.name,
+          this.metadata(),
+          this,
+        );
+        if (!dimension) {
+          return new ValidationError(t`Invalid template tag: ${tag.name}`);
+        }
+
+        return dimension.validateTemplateTag();
+      })
+      .filter(
+        (maybeError): maybeError is ValidationError => maybeError != null,
+      );
+  }
+
   allTemplateTagsAreValid() {
-    return this.templateTags().every(t => {
-      if (["text", "number", "date", "card", "snippet"].includes(t.type)) {
-        return true;
-      }
-
-      const isDimensionType = t.type === "dimension";
-      const hasDefinedWidgetType =
-        t["widget-type"] && t["widget-type"] !== "none";
-      const hasDefinedDimension = t.dimension != null;
-
-      return isDimensionType && hasDefinedWidgetType && hasDefinedDimension;
-    });
+    const tagErrors = this.validateTemplateTags();
+    return tagErrors.length === 0;
   }
 
   setTemplateTag(name, tag) {
@@ -390,21 +426,7 @@ export default class NativeQuery extends AtomicQuery {
    */
   _getUpdatedTemplateTags(queryText: string): TemplateTags {
     if (queryText && this.supportsNativeParameters()) {
-      let tags = [];
-      // look for variable usage in the query (like '{{varname}}').  we only allow alphanumeric characters for the variable name
-      // a variable name can optionally end with :start or :end which is not considered part of the actual variable name
-      // expected pattern is like mustache templates, so we are looking for something like {{category}} or {{date:start}}
-      // anything that doesn't match our rule is ignored, so {{&foo!}} would simply be ignored
-      // variables referencing other questions, by their card ID, are also supported: {{#123}} references question with ID 123
-      let match;
-      const re = /\{\{\s*((snippet:\s*[^}]+)|[A-Za-z0-9_]+?|#[0-9]*)\s*\}\}/g;
-
-      while ((match = re.exec(queryText)) != null) {
-        tags.push(match[1]);
-      }
-
-      // eliminate any duplicates since it's allowed for a user to reference the same variable multiple times
-      tags = _.uniq(tags);
+      const tags = recognizeTemplateTags(queryText);
       const existingTemplateTags = this.templateTagsMap();
       const existingTags = Object.keys(existingTemplateTags);
 
@@ -444,12 +466,7 @@ export default class NativeQuery extends AtomicQuery {
 
           // create new vars
           for (const tagName of newTags) {
-            templateTags[tagName] = {
-              id: Utils.uuid(),
-              name: tagName,
-              "display-name": humanize(tagName),
-              type: "text",
-            };
+            templateTags[tagName] = createTemplateTag(tagName);
 
             // parse card ID from tag name for card query template tags
             if (isCardQueryName(tagName)) {
@@ -481,7 +498,7 @@ export default class NativeQuery extends AtomicQuery {
     return {};
   }
 
-  dependentMetadata() {
+  dependentMetadata(): DependentMetadataItem[] {
     const templateTags = this.templateTags();
     return templateTags
       .filter(
@@ -500,4 +517,22 @@ export default class NativeQuery extends AtomicQuery {
         };
       });
   }
+}
+
+// look for variable usage in the query (like '{{varname}}').  we only allow alphanumeric characters for the variable name
+// a variable name can optionally end with :start or :end which is not considered part of the actual variable name
+// expected pattern is like mustache templates, so we are looking for something like {{category}} or {{date:start}}
+// anything that doesn't match our rule is ignored, so {{&foo!}} would simply be ignored
+// variables referencing other questions, by their card ID, are also supported: {{#123}} references question with ID 123
+export function recognizeTemplateTags(queryText: string): string[] {
+  const tagNames = [];
+  let match;
+  const re = /\{\{\s*((snippet:\s*[^}]+)|[A-Za-z0-9_\.]+?|#[0-9]*)\s*\}\}/g;
+
+  while ((match = re.exec(queryText)) != null) {
+    tagNames.push(match[1]);
+  }
+
+  // eliminate any duplicates since it's allowed for a user to reference the same variable multiple times
+  return _.uniq(tagNames);
 }

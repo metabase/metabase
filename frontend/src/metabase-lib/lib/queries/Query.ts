@@ -1,18 +1,20 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import { DatasetQuery } from "metabase-types/types/Card";
+import { DependentMetadataItem } from "metabase-types/types/Query";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Question from "metabase-lib/lib/Question";
 import Dimension from "metabase-lib/lib/Dimension";
 import Variable from "metabase-lib/lib/Variable";
-import { memoize } from "metabase-lib/lib/utils";
+import { memoizeClass } from "metabase-lib/lib/utils";
 import DimensionOptions from "metabase-lib/lib/DimensionOptions";
+
 type QueryUpdateFn = (datasetQuery: DatasetQuery) => void;
 /**
  * An abstract class for all query types (StructuredQuery & NativeQuery)
  */
 
-export default class Query {
+class Query {
   _metadata: Metadata;
 
   /**
@@ -32,7 +34,6 @@ export default class Query {
    * Returns a question updated with the current dataset query.
    * Can only be applied to query that is a direct child of the question.
    */
-  @memoize
   question(): Question {
     return this._originalQuestion.setQuery(this);
   }
@@ -40,7 +41,7 @@ export default class Query {
   /**
    * Returns a "clean" version of this query with invalid parts removed
    */
-  clean(): Query {
+  clean() {
     return this;
   }
 
@@ -111,7 +112,7 @@ export default class Query {
   /**
    * Metadata this query needs to display correctly
    */
-  dependentMetadata() {
+  dependentMetadata(): DependentMetadataItem[] {
     return [];
   }
 
@@ -130,3 +131,5 @@ export default class Query {
     }
   }
 }
+
+export default memoizeClass<Query>("question")(Query);

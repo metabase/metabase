@@ -10,7 +10,7 @@
      :order-by [[:asc $id]]}))
 
 (defn- native-query []
-  (qp/query->native (mbql-query)))
+  (qp/compile (mbql-query)))
 
 (deftest max-results-test
   (mt/test-drivers (mt/normal-drivers)

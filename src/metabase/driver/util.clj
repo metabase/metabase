@@ -5,19 +5,104 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.config :as config]
+            [metabase.db.connection :as mdb.connection]
             [metabase.driver :as driver]
             [metabase.models.setting :refer [defsetting]]
             [metabase.public-settings.premium-features :as premium-features]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
+            [metabase.util.i18n :refer [deferred-tru trs]]
             [toucan.db :as db])
   (:import java.io.ByteArrayInputStream
-           [java.security.cert CertificateFactory X509Certificate]
-           java.security.KeyStore
-           java.util.Base64
+           [java.security KeyFactory KeyStore PrivateKey]
+           [java.security.cert Certificate CertificateFactory X509Certificate]
+           java.security.spec.PKCS8EncodedKeySpec
            javax.net.SocketFactory
-           [javax.net.ssl SSLContext TrustManagerFactory X509TrustManager]))
+           [javax.net.ssl KeyManagerFactory SSLContext TrustManagerFactory X509TrustManager]))
+
+(def ^:private connection-error-messages
+  "Generic error messages that drivers should return in their implementation
+  of [[metabase.driver/humanize-connection-error-message]]."
+  {:cannot-connect-check-host-and-port
+   {:message (deferred-tru
+              (str "Hmm, we couldn''t connect to the database."
+                   " "
+                   "Make sure your Host and Port settings are correct"))
+    :errors  {:host (deferred-tru "check your host settings")
+              :port (deferred-tru "check your port settings")}}
+
+   :ssh-tunnel-auth-fail
+   {:message (deferred-tru
+              (str "We couldn''t connect to the SSH tunnel host."
+                   " "
+                   "Check the Username and Password."))
+    :errors  {:tunnel-user (deferred-tru "check your username")
+              :tunnel-pass (deferred-tru "check your password")}}
+
+   :ssh-tunnel-connection-fail
+   {:message (deferred-tru
+              (str "We couldn''t connect to the SSH tunnel host."
+                   " "
+                   "Check the Host and Port."))
+    :errors  {:tunnel-host (deferred-tru "check your host settings")
+              :tunnel-port (deferred-tru "check your port settings")}}
+
+   :database-name-incorrect
+   {:message (deferred-tru "Looks like the Database name is incorrect.")
+    :errors  {:dbname (deferred-tru "check your database name settings")}}
+
+   :invalid-hostname
+   {:message (deferred-tru
+               (str "It looks like your Host is invalid."
+                    " "
+                    "Please double-check it and try again."))
+    :errors  {:host (deferred-tru "check your host settings")}}
+
+   :password-incorrect
+   {:message (deferred-tru "Looks like your Password is incorrect.")
+    :errors  {:password (deferred-tru "check your password")}}
+
+   :password-required
+   {:message (deferred-tru "Looks like you forgot to enter your Password.")
+    :errors  {:password (deferred-tru "check your password")}}
+
+   :username-incorrect
+   {:message (deferred-tru "Looks like your Username is incorrect.")
+    :errors  {:user (deferred-tru "check your username")}}
+
+   :username-or-password-incorrect
+   {:message (deferred-tru "Looks like the Username or Password is incorrect.")
+    :errors  {:user     (deferred-tru "check your username")
+              :password (deferred-tru "check your password")}}
+
+   :certificate-not-trusted
+   {:message (deferred-tru "Server certificate not trusted - did you specify the correct SSL certificate chain?")}
+
+   :unsupported-ssl-key-type
+   {:message (deferred-tru "Unsupported client SSL key type - are you using an RSA key?")}
+
+   :invalid-key-format
+   {:message (deferred-tru "Invalid client SSL key - did you select the correct file?")}
+
+   :requires-ssl
+   {:message (deferred-tru "Server appears to require SSL - please enable SSL below")
+    :errors  {:ssl (deferred-tru "please enable SSL")}}
+
+   :implicitly-relative-db-file-path
+   {:message (deferred-tru "Implicitly relative file paths are not allowed.")
+    :errors  {:db (deferred-tru "check your connection string")}}
+
+   :db-file-not-found
+   {:message (deferred-tru "Database cannot be found.")
+    :errors  {:db (deferred-tru "check your connection string")}}})
+
+(defn- tr-connection-error-messages [error-type-kw]
+  (when-let [message (connection-error-messages error-type-kw)]
+    (cond-> message
+      (contains? message :message) (update :message str)
+      (contains? message :errors)  (update :errors update-vals str))))
+
+(comment mdb.connection/keep-me) ; used for [[memoize/ttl]]
 
 ;; This is normally set via the env var `MB_DB_CONNECTION_TIMEOUT_MS`
 (defsetting db-connection-timeout-ms
@@ -32,6 +117,11 @@
   :default    (if config/is-test?
                 3000
                 10000))
+
+(defn- connection-error? [^Throwable throwable]
+  (and (some? throwable)
+       (or (instance? java.net.ConnectException throwable)
+           (recur (.getCause throwable)))))
 
 (defn can-connect-with-details?
   "Check whether we can connect to a database with `driver` and `details-map` and perform a basic query such as `SELECT
@@ -49,8 +139,19 @@
       ;; actually if we are going to `throw-exceptions` we'll rethrow the original but attempt to humanize the message
       ;; first
       (catch Throwable e
-        (log/error e (trs "Database connection error"))
-        (throw (Exception. (str (driver/humanize-connection-error-message driver (.getMessage e))) e))))
+        (throw (if-let [humanized-message (some->> (.getMessage e)
+                                                   (driver/humanize-connection-error-message driver))]
+                 (let [error-data (cond
+                                    (keyword? humanized-message)
+                                    (tr-connection-error-messages humanized-message)
+
+                                    (connection-error? e)
+                                    (tr-connection-error-messages :cannot-connect-check-host-and-port)
+
+                                    :else
+                                    {:message humanized-message})]
+                   (ex-info (str (:message error-data)) error-data e))
+                 e))))
     (try
       (can-connect-with-details? driver details-map :throw-exceptions)
       (catch Throwable e
@@ -71,19 +172,24 @@
 ;;; |                                               Driver Resolution                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- database->driver* [database-or-id]
-  (or
-   (when-let [engine (:engine database-or-id)]
-     ;; ensure we get the engine as a keyword (sometimes it's a String)
-     (keyword engine))
-   (db/select-one-field :engine 'Database, :id (u/the-id database-or-id))))
+(def ^:private ^{:arglists '([db-id])} database->driver*
+  (memoize/ttl
+   ^{::memoize/args-fn (fn [[db-id]]
+                         [(mdb.connection/unique-identifier) db-id])}
+   (fn [db-id]
+     (db/select-one-field :engine 'Database, :id db-id))
+   :ttl/threshold 1000))
 
-(def ^{:arglists '([database-or-id])} database->driver
+(defn database->driver
   "Look up the driver that should be used for a Database. Lightly cached.
 
   (This is cached for a second, so as to avoid repeated application DB calls if this function is called several times
   over the duration of a single API request or sync operation.)"
-  (memoize/ttl database->driver* :ttl/threshold 1000))
+  [database-or-id]
+  (if-let [driver (:engine database-or-id)]
+    ;; ensure we get the driver as a keyword (sometimes it's a String)
+    (keyword driver)
+    (database->driver* (u/the-id database-or-id))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -138,7 +244,7 @@
     (name k)
     (str k)))
 
-(defn- expand-secret-conn-prop [{prop-name :name, visible-if :visible-if, :as conn-prop}]
+(defn- expand-secret-conn-prop [{prop-name :name, :as conn-prop}]
   (case (->str (:secret-kind conn-prop))
     "password"    [(-> conn-prop
                        (assoc :type "password")
@@ -156,7 +262,7 @@
   "Invokes the getter function on a info type connection property and adds it to the connection property map as its
   placeholder value. Returns nil if no placeholder value or getter is provided, or if the getter returns a non-string
   value or throws an exception."
-  [{prop-name :name, getter :getter, placeholder :placeholder, :as conn-prop}]
+  [{ getter :getter, placeholder :placeholder, :as conn-prop}]
   (let [content (or placeholder
                     (try (getter)
                          (catch Throwable e
@@ -181,23 +287,29 @@
                 {:name (trs "All except...")
                  :value "exclusion"}]
       :default "all"}
-     {:name        (str prop-name "-info-top-inclusion")
-      :type        :info
-      :placeholder (trs "Comma separated names of {0} that should appear in Metabase" (str/lower-case disp-name))
-      :visible-if  {(keyword type-prop-nm) "inclusion"}}
-     {:name        (str prop-name "-info-top-exclusion")
-      :type        :info
-      :placeholder (trs "Comma separated names of {0} that should NOT appear in Metabase" (str/lower-case disp-name))
-      :visible-if  {(keyword type-prop-nm) "exclusion"}}
      {:name (str prop-name "-patterns")
       :type "text"
       :placeholder "E.x. public,auth*"
-      :visible-if  {(keyword type-prop-nm) ["inclusion" "exclusion"]}}
-     {:name (str prop-name "-info-bottom")
-      :type :info
-      :placeholder (trs "You can use patterns like auth* to match multiple {0}" (str/lower-case disp-name))
-      :visible-if {(keyword type-prop-nm) ["inclusion" "exclusion"]}}]))
+      :description (trs "Comma separated names of {0} that <strong>should</strong> appear in Metabase" (str/lower-case disp-name))
+      :visible-if  {(keyword type-prop-nm) "inclusion"}
+      :helper-text (trs "You can use patterns like <strong>auth*</strong> to match multiple {0}" (str/lower-case disp-name))
+      :required true}
+     {:name (str prop-name "-patterns")
+      :type "text"
+      :placeholder "E.x. public,auth*"
+      :description (trs "Comma separated names of {0} that <strong>should NOT</strong> appear in Metabase" (str/lower-case disp-name))
+      :visible-if  {(keyword type-prop-nm) "exclusion"}
+      :helper-text (trs "You can use patterns like <strong>auth*</strong> to match multiple {0}" (str/lower-case disp-name))
+      :required true}]))
 
+
+(defn find-schema-filters-prop
+  "Finds the first property of type `:schema-filters` for the given `driver` connection properties. Returns `nil`
+  if the driver has no property of that type."
+  [driver]
+  (first (filter (fn [conn-prop]
+                   (= :schema-filters (keyword (:type conn-prop))))
+           (driver/connection-properties driver))))
 
 (defn connection-props-server->client
   "Transforms `conn-props` for the given `driver` from their server side definition into a client side definition.
@@ -245,9 +357,9 @@
                                                                       (into #{} (keys acc)))]
                                (if (empty? cyclic-props)
                                  (recur transitive-props next-acc)
-                                 (-> "Cycle detected resolving dependent visible-if properties for driver {0}: {1}"
-                                     (trs driver cyclic-props)
-                                     (ex-info {:type               error-type/driver
+                                 (-> (trs "Cycle detected resolving dependent visible-if properties for driver {0}: {1}"
+                                          driver cyclic-props)
+                                     (ex-info {:type               qp.error-type/driver
                                                :driver             driver
                                                :cyclic-visible-ifs cyclic-props})
                                      throw)))
@@ -256,6 +368,12 @@
                 (seq v-ifs*)
                 (assoc :visible-if v-ifs*))))
          final-props)))
+
+(defn decode-uploaded
+  "Decode `uploaded-data` as an uploaded field.
+  Optionally strip the Base64 MIME prefix."
+  ^bytes [uploaded-data]
+  (u/decode-base64-to-bytes (str/replace uploaded-data #"^data:[^;]+;base64," "")))
 
 (defn db-details-client->server
   "Currently, this transforms client side values for the various back into :type :secret for storage on the server.
@@ -276,7 +394,7 @@
                                            (assoc acc (keyword (:name prop)) prop))
                                    {}
                                    (connection-props-server->client driver (vals secret-names->props)))]
-      (reduce-kv (fn [acc prop-name prop]
+      (reduce-kv (fn [acc prop-name _prop]
                    (let [subprop    (fn [suffix]
                                       (keyword (str prop-name suffix)))
                          path-kw    (subprop "-path")
@@ -293,7 +411,7 @@
                                             (:treat-before-posting textfile-prop)))))
                          value      (let [^String v (val-kw acc)]
                                       (case (get-treat)
-                                        "base64" (.decode (Base64/getDecoder) v)
+                                        "base64" (decode-uploaded v)
                                         v))]
                      (cond-> (assoc acc val-kw value)
                        ;; keywords here are associated to nil, rather than being dissoced, because they will be merged
@@ -311,6 +429,22 @@
                  db-details
                  secret-names->props))))
 
+(def official-drivers
+  "The set of all official drivers"
+  #{"bigquery-cloud-sdk" "druid" "googleanalytics" "h2" "mongo" "mysql" "oracle" "postgres" "presto" "presto-jdbc" "redshift" "snowflake" "sparksql" "sqlite" "sqlserver" "vertica"})
+
+(def partner-drivers
+  "The set of other drivers in the partnership program"
+  #{"exasol" "firebolt" "starburst"})
+
+(defn driver-source
+  "Return the source type of the driver: official, partner, or community"
+  [driver-name]
+  (cond
+    (contains? official-drivers driver-name) "official"
+    (contains? partner-drivers driver-name) "partner"
+    :else "community"))
+
 (defn available-drivers-info
   "Return info about all currently available drivers, including their connection properties fields and supported
   features. The output of `driver/connection-properties` is passed through `connection-props-server->client` before
@@ -324,9 +458,17 @@
                                    (log/error e (trs "Unable to determine connection properties for driver {0}" driver))))]
                  :when  props]
              ;; TODO - maybe we should rename `details-fields` -> `connection-properties` on the FE as well?
-             [driver {:details-fields props
+             [driver {:source {:type (driver-source (name driver))
+                               :contact (driver/contact-info driver)}
+                      :details-fields props
                       :driver-name    (driver/display-name driver)
                       :superseded-by  (driver/superseded-by driver)}])))
+
+(defsetting engines
+  "Available database engines"
+  :visibility :public
+  :setter     :none
+  :getter     available-drivers-info)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             TLS Helpers                                                        |
@@ -336,12 +478,47 @@
   [^X509Certificate cert]
   (.. cert getSubjectX500Principal getName))
 
-(defn generate-keystore-with-cert
-  "Generates a `KeyStore` with custom certificates added"
-  ^KeyStore [cert-string]
+(defn- key-type [key-string]
+  (when-let [m (re-find #"^-----BEGIN (?:(\p{Alnum}+) )?PRIVATE KEY-----\n" key-string)]
+    (m 1)))
+
+(defn- parse-rsa-key
+  "Parses an RSA private key from the PEM string `key-string`."
+  ^PrivateKey [key-string]
+  (let [algorithm (or (key-type key-string) "RSA")
+        key-base64 (-> key-string
+                       (str/replace #"^-----BEGIN (?:(\p{Alnum}+) )?PRIVATE KEY-----\n" "")
+                       (str/replace #"\n-----END (?:(\p{Alnum}+) )?PRIVATE KEY-----\s*$" "")
+                       (str/replace #"\s" ""))
+        decoded (u/decode-base64-to-bytes key-base64)
+        key-factory (KeyFactory/getInstance algorithm)] ; TODO support other algorithms
+    (.generatePrivate key-factory (PKCS8EncodedKeySpec. decoded))))
+
+(defn- parse-certificates
+  "Parses a collection of X509 certificates from the string `cert-string`."
+  [^String cert-string]
   (let [cert-factory (CertificateFactory/getInstance "X.509")
-        cert-stream (ByteArrayInputStream. (.getBytes ^String cert-string "UTF-8"))
-        certs (.generateCertificates cert-factory cert-stream)
+        cert-stream (ByteArrayInputStream. (.getBytes cert-string "UTF-8"))]
+    (.generateCertificates cert-factory cert-stream)))
+
+(defn generate-identity-store
+  "Generates a `KeyStore` for the identity with key parsed from `key-string` protected by `password`
+  and the certificate parsed from `cert-string` ."
+  ^KeyStore [key-string password cert-string]
+  (let [private-key (parse-rsa-key key-string)
+        certificates (parse-certificates cert-string)]
+    (doto (KeyStore/getInstance (KeyStore/getDefaultType))
+      (.load nil nil)
+      (.setKeyEntry (dn-for-cert (first certificates))
+                    private-key
+                    (char-array password)
+                    (into-array Certificate certificates)))))
+
+(defn generate-trust-store
+  "Generates a `KeyStore` with built-in and custom certificates. The custom certificates are parsed from
+  `cert-store`."
+  ^KeyStore [cert-string]
+  (let [certs (parse-certificates cert-string)
         keystore (doto (KeyStore/getInstance (KeyStore/getDefaultType))
                    (.load nil nil))
         ;; this TrustManagerFactory is used for cloning the default certs into the new TrustManagerFactory
@@ -357,16 +534,26 @@
 
     keystore))
 
-(defn socket-factory-for-cert
-  "Generates an `SocketFactory` with the custom certificates added"
-  ^SocketFactory [cert-string]
-  (let [keystore (generate-keystore-with-cert cert-string)
-        ;; this is the final TrustManagerFactory used to initialize the SSLContext
-        trust-manager-factory (TrustManagerFactory/getInstance (TrustManagerFactory/getDefaultAlgorithm))
-        ssl-context (SSLContext/getInstance "TLS")]
-    (.init trust-manager-factory keystore)
-    (.init ssl-context nil (.getTrustManagers trust-manager-factory) nil)
+(defn- key-managers [private-key password own-cert]
+  (let [key-store (generate-identity-store private-key password own-cert)
+        key-manager-factory (KeyManagerFactory/getInstance (KeyManagerFactory/getDefaultAlgorithm))]
+    (.init key-manager-factory key-store (char-array password))
+    (.getKeyManagers key-manager-factory)))
 
+(defn- trust-managers [trust-cert]
+  (let [trust-store (generate-trust-store trust-cert)
+        trust-manager-factory (TrustManagerFactory/getInstance (TrustManagerFactory/getDefaultAlgorithm))]
+    (.init trust-manager-factory trust-store)
+    (.getTrustManagers trust-manager-factory)))
+
+(defn ssl-socket-factory
+  "Generates an `SocketFactory` with the custom certificates added"
+  ^SocketFactory [& {:keys [private-key own-cert trust-cert]}]
+  (let [ssl-context (SSLContext/getInstance "TLS")]
+    (.init ssl-context
+           (when (and private-key own-cert) (key-managers private-key (str (random-uuid)) own-cert))
+           (when trust-cert (trust-managers trust-cert))
+           nil)
     (.getSocketFactory ssl-context)))
 
 (def default-sensitive-fields

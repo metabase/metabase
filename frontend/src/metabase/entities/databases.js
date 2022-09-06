@@ -37,27 +37,31 @@ const Databases = createEntity({
   objectActions: {
     fetchDatabaseMetadata: createThunkAction(
       FETCH_DATABASE_METADATA,
-      ({ id }, { reload = false, params } = {}) => (dispatch, getState) =>
-        fetchData({
-          dispatch,
-          getState,
-          requestStatePath: ["metadata", "databases", id],
-          existingStatePath: ["metadata", "databases", id],
-          getData: async () => {
-            const databaseMetadata = await MetabaseApi.db_metadata({
-              dbId: id,
-              ...params,
-            });
-            return normalize(databaseMetadata, DatabaseSchema);
-          },
-          reload,
-        }),
+      ({ id }, { reload = false, params } = {}) =>
+        (dispatch, getState) =>
+          fetchData({
+            dispatch,
+            getState,
+            requestStatePath: ["metadata", "databases", id],
+            existingStatePath: ["metadata", "databases", id],
+            getData: async () => {
+              const databaseMetadata = await MetabaseApi.db_metadata({
+                dbId: id,
+                ...params,
+              });
+              return normalize(databaseMetadata, DatabaseSchema);
+            },
+            reload,
+          }),
     ),
 
     fetchIdfields: createThunkAction(
       FETCH_DATABASE_IDFIELDS,
-      ({ id }) => async () =>
-        normalize(await MetabaseApi.db_idfields({ dbId: id }), [Fields.schema]),
+      ({ id }, params = {}) =>
+        async () =>
+          normalize(await MetabaseApi.db_idfields({ dbId: id, ...params }), [
+            Fields.schema,
+          ]),
     ),
 
     fetchSchemas: ({ id }) => Schemas.actions.fetchList({ dbId: id }),
@@ -73,8 +77,8 @@ const Databases = createEntity({
   selectors: {
     getObject: (state, { entityId }) => getMetadata(state).database(entityId),
 
-    getHasSampleDataset: state =>
-      _.any(Databases.selectors.getList(state), db => db.is_sample),
+    getHasSampleDatabase: (state, props) =>
+      _.any(Databases.selectors.getList(state, props), db => db.is_sample),
     getIdfields: createSelector(
       // we wrap getFields to handle a circular dep issue
       [state => getFields(state), (state, props) => props.databaseId],

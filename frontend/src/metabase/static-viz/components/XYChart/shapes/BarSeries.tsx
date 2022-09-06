@@ -1,13 +1,14 @@
-import React from "react";
+import React, { Fragment } from "react";
 import { Bar } from "@visx/shape";
 import { Group } from "@visx/group";
 import { scaleBand } from "@visx/scale";
 import { PositionScale } from "@visx/shape/lib/types";
-import {
+import { getY } from "metabase/static-viz/components/XYChart/utils";
+
+import type {
   Series,
   SeriesDatum,
 } from "metabase/static-viz/components/XYChart/types";
-import { getY } from "metabase/static-viz/components/XYChart/utils";
 
 interface BarSeriesProps {
   series: Series[];
@@ -42,7 +43,7 @@ export const BarSeries = ({
         }
 
         return (
-          <>
+          <Fragment key={seriesIndex}>
             {series.data.map((datum, index) => {
               const groupX = xAccessor(datum);
               const innerX = innerBarScale(seriesIndex) ?? 0;
@@ -66,7 +67,7 @@ export const BarSeries = ({
                 />
               );
             })}
-          </>
+          </Fragment>
         );
       })}
     </Group>

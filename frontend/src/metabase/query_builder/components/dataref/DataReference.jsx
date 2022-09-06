@@ -106,7 +106,7 @@ export default class DataReference extends Component {
         onBack={stack.length > 0 ? this.back : null}
         onClose={this.close}
       >
-        <div className="px4">{content}</div>
+        <div className="px3">{content}</div>
       </SidebarContent>
     );
   }

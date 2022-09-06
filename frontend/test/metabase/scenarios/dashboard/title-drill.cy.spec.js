@@ -1,7 +1,12 @@
-import { restore, filterWidget, popover } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import {
+  restore,
+  filterWidget,
+  popover,
+  visitDashboard,
+} from "__support__/e2e/helpers";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
+const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > dashboard > title drill", () => {
   describe("on a native question without connected dashboard parameters", () => {
@@ -21,7 +26,7 @@ describe("scenarios > dashboard > title drill", () => {
 
       cy.createNativeQuestionAndDashboard({ questionDetails }).then(
         ({ body: { dashboard_id } }) => {
-          cy.visit(`/dashboard/${dashboard_id}`);
+          visitDashboard(dashboard_id);
         },
       );
     });
@@ -121,7 +126,7 @@ describe("scenarios > dashboard > title drill", () => {
             ],
           });
 
-          cy.visit(`/dashboard/${dashboard_id}`);
+          visitDashboard(dashboard_id);
           checkScalarResult("200");
         },
       );
@@ -132,9 +137,7 @@ describe("scenarios > dashboard > title drill", () => {
         checkScalarResult("200");
 
         cy.findByText("Text contains").click();
-        cy.findByPlaceholderText("Enter some text")
-          .type("bb")
-          .blur();
+        cy.findByPlaceholderText("Enter some text").type("bb").blur();
         cy.button("Add filter").click();
 
         checkFilterLabelAndValue("Text contains", "bb");
@@ -158,9 +161,7 @@ describe("scenarios > dashboard > title drill", () => {
         checkScalarResult("200");
 
         cy.findByText("Text contains").click();
-        cy.findByPlaceholderText("Enter some text")
-          .type("bb")
-          .blur();
+        cy.findByPlaceholderText("Enter some text").type("bb").blur();
         cy.button("Add filter").click();
 
         checkFilterLabelAndValue("Text contains", "bb");
@@ -227,10 +228,10 @@ describe("scenarios > dashboard > title drill", () => {
 
           cy.intercept(
             "POST",
-            `/api/dashboard/${dashboard_id}/card/${card_id}/query`,
+            `/api/dashboard/${dashboard_id}/dashcard/*/card/${card_id}/query`,
           ).as("cardQuery");
 
-          cy.visit(`/dashboard/${dashboard_id}`);
+          visitDashboard(dashboard_id);
         },
       );
     });
@@ -272,18 +273,14 @@ describe("scenarios > dashboard > title drill", () => {
         cy.findByText("42");
 
         // update the parameter filter to a new value
-        filterWidget()
-          .contains("Doohickey")
-          .click();
+        filterWidget().contains("Doohickey").click();
         popover().within(() => {
           cy.get("input").type("{backspace}Gadget{enter}");
           cy.findByText("Update filter").click();
         });
 
         // rerun the query with the newly set filter
-        cy.get(".RunButton")
-          .first()
-          .click();
+        cy.get(".RunButton").first().click();
         cy.wait("@cardQuery");
 
         // make sure the results reflect the new filter
@@ -296,18 +293,14 @@ describe("scenarios > dashboard > title drill", () => {
         cy.findByText("53");
 
         // make sure the unset id parameter works
-        filterWidget()
-          .last()
-          .click();
+        filterWidget().last().click();
         popover().within(() => {
           cy.get("input").type("5{enter}");
           cy.findByText("Add filter").click();
         });
 
         // rerun the query with the newly set filter
-        cy.get(".RunButton")
-          .first()
-          .click();
+        cy.get(".RunButton").first().click();
         cy.wait("@cardQuery");
 
         cy.findByText("1");
@@ -317,15 +310,10 @@ describe("scenarios > dashboard > title drill", () => {
 });
 
 function checkFilterLabelAndValue(label, value) {
-  filterWidget()
-    .find("legend")
-    .invoke("text")
-    .should("eq", label);
+  filterWidget().find("legend").invoke("text").should("eq", label);
   filterWidget().contains(value);
 }
 
 function checkScalarResult(result) {
-  cy.get(".ScalarValue")
-    .invoke("text")
-    .should("eq", result);
+  cy.get(".ScalarValue").invoke("text").should("eq", result);
 }

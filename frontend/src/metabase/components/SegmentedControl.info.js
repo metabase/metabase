@@ -57,6 +57,7 @@ export const examples = {
         options={SIMPLE_OPTIONS}
         variant="fill-background"
       />
+      <SegmentedControlDemo options={SIMPLE_OPTIONS} variant="fill-all" />
     </React.Fragment>
   ),
   icons: <SegmentedControlDemo options={OPTIONS_WITH_ICONS} />,

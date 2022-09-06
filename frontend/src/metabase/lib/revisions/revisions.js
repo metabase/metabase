@@ -63,15 +63,18 @@ function getSeriesChangeDescription(prevCards, cards) {
     : t`removed series from a question`;
 }
 
-function getCollectionChangeDescription(prevCollectionId, collectionId) {
+export function getCollectionChangeDescription(prevCollectionId, collectionId) {
   const key = `collection-from-${prevCollectionId}-to-${collectionId}`;
-  return jt`moved this to ${(
-    <EntityLink
-      key={key}
-      entityId={collectionId || "root"}
-      entityType="collections"
-    />
-  )}`;
+  return [
+    jt`moved this to ${(
+      <EntityLink
+        key={key}
+        entityId={collectionId || "root"}
+        entityType="collections"
+        fallback={t`Unknown`}
+      />
+    )}`,
+  ];
 }
 
 const CHANGE_DESCRIPTIONS = {
@@ -93,7 +96,7 @@ const CHANGE_DESCRIPTIONS = {
     [CHANGE_TYPE.REMOVE]: getCollectionChangeDescription,
   },
 
-  // Questions
+  // Questions & Models
   dataset: {
     [CHANGE_TYPE.UPDATE]: (wasDataset, isDataset) =>
       isDataset
@@ -112,6 +115,11 @@ const CHANGE_DESCRIPTIONS = {
     [CHANGE_TYPE.ADD]: t`changed the visualization settings`,
     [CHANGE_TYPE.UPDATE]: t`changed the visualization settings`,
     [CHANGE_TYPE.REMOVE]: t`changed the visualization settings`,
+  },
+  result_metadata: {
+    [CHANGE_TYPE.ADD]: t`edited the metadata`,
+    [CHANGE_TYPE.UPDATE]: t`edited the metadata`,
+    [CHANGE_TYPE.REMOVE]: t`edited the metadata`,
   },
 
   // Dashboards
@@ -190,8 +198,11 @@ export function isValidRevision(revision) {
   return getChangedFields(revision).length > 0;
 }
 
-function getRevisionUsername(revision) {
-  return revision.user.common_name;
+function getRevisionUsername(revision, currentUser) {
+  const revisionUser = revision.user;
+  return revisionUser.id === currentUser?.id
+    ? t`You`
+    : revisionUser.common_name;
 }
 
 function getRevisionEpochTimestamp(revision) {
@@ -200,12 +211,16 @@ function getRevisionEpochTimestamp(revision) {
 
 export const REVISION_EVENT_ICON = "pencil";
 
-export function getRevisionEventsForTimeline(revisions = [], canWrite) {
+export function getRevisionEventsForTimeline(
+  revisions = [],
+  { currentUser, canWrite = false },
+  revertFn,
+) {
   return revisions
     .filter(isValidRevision)
     .map((revision, index) => {
       const isRevertable = canWrite && index !== 0;
-      const username = getRevisionUsername(revision);
+      const username = getRevisionUsername(revision, currentUser);
       const changes = getRevisionDescription(revision);
 
       const event = {
@@ -215,6 +230,14 @@ export function getRevisionEventsForTimeline(revisions = [], canWrite) {
         revision,
       };
 
+      const isChangeEvent = !revision.is_creation && !revision.is_reversion;
+
+      // For some events, like moving an item to another collection,
+      // the `changes` object are an array, however they represent a single change
+      // This happens when we need to have JSX inside a message (e.g. a link to a new collection)
+      const isMultipleFieldsChange =
+        Array.isArray(changes) && changes.length > 1;
+
       // If > 1 item's fields are changed in a single revision,
       // the changes are batched into a single string like:
       // "added a description, moved cards around and archived this"
@@ -222,14 +245,16 @@ export function getRevisionEventsForTimeline(revisions = [], canWrite) {
       // we want to show the changelog in a description and set a title to just "User edited this"
       // If only one field is changed, we just show everything in the title
       // like "John added a description"
-
-      if (
-        !revision.is_creation &&
-        !revision.is_reversion &&
-        Array.isArray(changes)
-      ) {
-        event.title = t`${username} edited this`;
-        event.description = <RevisionBatchedDescription changes={changes} />;
+      if (isChangeEvent && isMultipleFieldsChange) {
+        event.title = (
+          <RevisionTitle username={username} message={t`edited this`} />
+        );
+        event.description = (
+          <RevisionBatchedDescription
+            changes={changes}
+            fallback={revision.description}
+          />
+        );
       } else {
         event.title = <RevisionTitle username={username} message={changes} />;
       }

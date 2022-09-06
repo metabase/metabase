@@ -25,7 +25,7 @@ window.SVGElement.prototype.getBBox = () => ({
 describe("LineAreaBarRenderer", () => {
   let element;
 
-  beforeEach(function() {
+  beforeEach(function () {
     document.body.insertAdjacentHTML(
       "afterbegin",
       '<div id="fixture-parent" style="height: 800px; width: 1200px;"><div id="fixture" /></div>',
@@ -33,7 +33,7 @@ describe("LineAreaBarRenderer", () => {
     element = document.getElementById("fixture");
   });
 
-  afterEach(function() {
+  afterEach(function () {
     document.body.removeChild(document.getElementById("fixture-parent"));
   });
 
@@ -372,11 +372,8 @@ describe("LineAreaBarRenderer", () => {
       const data = [[["a", 1]]];
       const warn = jest.fn();
 
-      const {
-        groups,
-        dimension,
-        yExtents,
-      } = getDimensionsAndGroupsAndUpdateSeriesDisplayNames(props, data, warn);
+      const { groups, dimension, yExtents } =
+        getDimensionsAndGroupsAndUpdateSeriesDisplayNames(props, data, warn);
 
       expect(warn).not.toBeCalled();
       expect(groups[0][0].all()[0]).toEqual({ key: "a", value: 1 });
@@ -398,10 +395,8 @@ describe("LineAreaBarRenderer", () => {
       ];
       const warn = jest.fn();
 
-      const {
-        groups,
-        yExtents,
-      } = getDimensionsAndGroupsAndUpdateSeriesDisplayNames(props, data, warn);
+      const { groups, yExtents } =
+        getDimensionsAndGroupsAndUpdateSeriesDisplayNames(props, data, warn);
 
       expect(warn).not.toBeCalled();
       expect(groups.length).toEqual(2);
@@ -428,10 +423,8 @@ describe("LineAreaBarRenderer", () => {
       ];
       const warn = jest.fn();
 
-      const {
-        groups,
-        yExtents,
-      } = getDimensionsAndGroupsAndUpdateSeriesDisplayNames(props, data, warn);
+      const { groups, yExtents } =
+        getDimensionsAndGroupsAndUpdateSeriesDisplayNames(props, data, warn);
 
       expect(warn).not.toBeCalled();
       expect(groups.length).toEqual(1);

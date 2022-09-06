@@ -1,12 +1,17 @@
 import { t } from "ttag";
 
 import {
+  MBQL_CLAUSES,
   getMBQLName,
   parseDimension,
   parseMetric,
   parseSegment,
 } from "metabase/lib/expressions";
-import { resolve } from "metabase/lib/expressions/resolver";
+import {
+  LOGICAL_OPS,
+  COMPARISON_OPS,
+  resolve,
+} from "metabase/lib/expressions/resolver";
 import {
   parse,
   lexify,
@@ -29,7 +34,7 @@ export function countMatchingParentheses(tokens) {
   return tokens.reduce(count, 0);
 }
 
-export function diagnose(source, startRule, query) {
+export function diagnose(source, startRule, query, name = null) {
   if (!source || source.length === 0) {
     return null;
   }
@@ -43,7 +48,9 @@ export function diagnose(source, startRule, query) {
     const token = tokens[i];
     if (token.type === TOKEN.Identifier && source[token.start] !== "[") {
       const functionName = source.slice(token.start, token.end);
-      if (getMBQLName(functionName)) {
+      const fn = getMBQLName(functionName);
+      const clause = fn ? MBQL_CLAUSES[fn] : null;
+      if (clause && clause.args.length > 0) {
         const next = tokens[i + 1];
         if (next.op !== OPERATOR.OpenParenthesis) {
           return {
@@ -70,15 +77,15 @@ export function diagnose(source, startRule, query) {
   }
 
   try {
-    return prattCompiler(source, startRule, query);
+    return prattCompiler(source, startRule, query, name);
   } catch (err) {
     return err;
   }
 }
 
-function prattCompiler(source, startRule, query) {
+function prattCompiler(source, startRule, query, name) {
   const tokens = lexify(source);
-  const options = { source, startRule, query };
+  const options = { source, startRule, query, name };
 
   // PARSE
   const { root, errors } = parse(tokens, {
@@ -96,18 +103,20 @@ function prattCompiler(source, startRule, query) {
     if (kind === "metric") {
       const metric = parseMetric(name, options);
       if (!metric) {
-        throw new ResolverError(t`Unknown Field: ${name}`, node);
+        throw new ResolverError(t`Unknown Metric: ${name}`, node);
       }
       return ["metric", metric.id];
     } else if (kind === "segment") {
       const segment = parseSegment(name, options);
       if (!segment) {
-        throw new ResolverError(t`Unknown Field: ${name}`, node);
+        throw new ResolverError(t`Unknown Segment: ${name}`, node);
       }
-      return ["segment", segment.id];
+      return Array.isArray(segment.id) ? segment.id : ["segment", segment.id];
     } else {
+      const reference = options.name; // avoid circular reference
+
       // fallback
-      const dimension = parseDimension(name, options);
+      const dimension = parseDimension(name, { reference, ...options });
       if (!dimension) {
         throw new ResolverError(t`Unknown Field: ${name}`, node);
       }
@@ -117,7 +126,7 @@ function prattCompiler(source, startRule, query) {
 
   // COMPILE
   try {
-    compile(root, {
+    const expression = compile(root, {
       passes: [
         adjustOptions,
         useShorthands,
@@ -126,6 +135,15 @@ function prattCompiler(source, startRule, query) {
       ],
       getMBQLName,
     });
+    const isBoolean =
+      COMPARISON_OPS.includes(expression[0]) ||
+      LOGICAL_OPS.includes(expression[0]);
+    if (startRule === "expression" && isBoolean) {
+      throw new ResolverError(
+        t`Custom columns do not support boolean expressions`,
+        expression.node,
+      );
+    }
   } catch (err) {
     console.warn("compile error", err);
     return err;

@@ -3,15 +3,12 @@
   (:require [clojure.core.async :as a]
             [dev.debug-qp :as debug-qp]
             [honeysql.core :as hsql]
-            [metabase.api.common :as api-common]
+            [metabase.api.common :as api]
             [metabase.core :as mbc]
-            [metabase.core.initialization-status :as init-status]
-            [metabase.db :as mdb]
             [metabase.db.connection :as mdb.connection]
             [metabase.db.setup :as mdb.setup]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.plugins :as plugins]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.server :as server]
             [metabase.server.handler :as handler]
@@ -38,12 +35,9 @@
 
 (defn start!
   []
-  (when-not @initialized?
-    (init!))
   (server/start-web-server! #'handler/app)
-  (mdb/setup-db!)
-  (plugins/load-plugins!)
-  (init-status/set-complete!))
+  (when-not @initialized?
+    (init!)))
 
 (defn stop!
   []
@@ -89,7 +83,7 @@
 
 (defmacro with-permissions
   [permissions & body]
-  `(binding [api-common/*current-user-permissions-set* (delay ~permissions)]
+  `(binding [api/*current-user-permissions-set* (delay ~permissions)]
      ~@body))
 
 (defn query-jdbc-db
@@ -136,4 +130,4 @@
 (defn migrate!
   "Run migrations for the Metabase application database."
   []
-  (mdb.setup/migrate! (mdb.connection/jdbc-spec) :up))
+  (mdb.setup/migrate! (mdb.connection/db-type) (mdb.connection/data-source) :up))

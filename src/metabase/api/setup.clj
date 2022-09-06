@@ -1,9 +1,11 @@
 (ns metabase.api.setup
   (:require [clojure.tools.logging :as log]
             [compojure.core :refer [GET POST]]
+            [java-time :as t]
             [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
-            [metabase.api.database :as database-api :refer [DBEngineString]]
+            [metabase.api.common.validation :as validation]
+            [metabase.api.database :as api.database :refer [DBEngineString]]
             [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.email :as email]
@@ -14,7 +16,7 @@
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.database :refer [Database]]
             [metabase.models.metric :refer [Metric]]
-            [metabase.models.permissions-group :as group]
+            [metabase.models.permissions-group :as perms-group]
             [metabase.models.pulse :refer [Pulse]]
             [metabase.models.segment :refer [Segment]]
             [metabase.models.session :refer [Session]]
@@ -30,7 +32,7 @@
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
-            [toucan.models :as t.models])
+            [toucan.models :as models])
   (:import java.util.UUID))
 
 (def ^:private SetupToken
@@ -38,32 +40,46 @@
   (su/with-api-error-message (s/constrained su/NonBlankString setup/token-match?)
     "Token does not match the setup token."))
 
+(def ^:dynamic ^:private *allow-api-setup-after-first-user-is-created*
+  "We must not allow users to setup multiple super users after the first user is created. But tests still need to be able
+  to. This var is redef'd to false by certain tests to allow that."
+  false)
+
 (defn- setup-create-user! [{:keys [email first-name last-name password]}]
+  (when (and (setup/has-user-setup)
+             (not *allow-api-setup-after-first-user-is-created*))
+    ;; many tests use /api/setup to setup multiple users, so *allow-api-setup-after-first-user-is-created* is
+    ;; redefined by them
+    (throw (ex-info
+            (tru "The /api/setup route can only be used to create the first user, however a user currently exists.")
+            {:status-code 403})))
   (let [session-id (str (UUID/randomUUID))
         new-user   (db/insert! User
-                               :email        email
-                               :first_name   first-name
-                               :last_name    last-name
-                               :password     (str (UUID/randomUUID))
-                               :is_superuser true)
+                     :email        email
+                     :first_name   first-name
+                     :last_name    last-name
+                     :password     (str (UUID/randomUUID))
+                     :is_superuser true)
         user-id    (u/the-id new-user)]
     ;; this results in a second db call, but it avoids redundant password code so figure it's worth it
     (user/set-password! user-id password)
     ;; then we create a session right away because we want our new user logged in to continue the setup process
     (let [session (or (db/insert! Session
-                                  :id      session-id
-                                  :user_id user-id)
+                        :id      session-id
+                        :user_id user-id)
                       ;; HACK -- Toucan doesn't seem to work correctly with models with string IDs
-                      (t.models/post-insert (Session (str session-id))))]
+                      (models/post-insert (db/select-one Session :id (str session-id))))]
       ;; return user ID, session ID, and the Session object itself
       {:session-id session-id, :user-id user-id, :session session})))
 
-(defn- setup-maybe-create-and-invite-user! [{:keys [email first_name last_name] :as user}, invitor]
+(defn- setup-maybe-create-and-invite-user! [{:keys [email] :as user}, invitor]
   (when email
     (if-not (email/email-configured?)
       (log/error (trs "Could not invite user because email is not configured."))
       (u/prog1 (user/create-and-invite-user! user invitor true)
-        (user/set-permissions-groups! <> [(group/all-users) (group/admin)])))))
+        (user/set-permissions-groups! <> [(perms-group/all-users) (perms-group/admin)])
+        (snowplow/track-event! ::snowplow/invite-sent api/*current-user-id* {:invited-user-id (u/the-id <>)
+                                                                             :source          "setup"})))))
 
 (defn- setup-create-database!
   "Create a new Database. Returns newly created Database."
@@ -79,25 +95,24 @@
        (when schedules
          (sync.schedules/schedule-map->cron-strings schedules))))))
 
-(defn- setup-set-settings! [request {:keys [email site-name site-locale allow-tracking?]}]
+(defn- setup-set-settings! [_request {:keys [email site-name site-locale allow-tracking?]}]
   ;; set a couple preferences
-  (public-settings/site-name site-name)
-  (public-settings/admin-email email)
+  (public-settings/site-name! site-name)
+  (public-settings/admin-email! email)
   (when site-locale
-    (public-settings/site-locale site-locale))
+    (public-settings/site-locale! site-locale))
   ;; default to `true` if allow_tracking isn't specified. The setting will set itself correctly whether a boolean or
   ;; boolean string is specified
-  (public-settings/anon-tracking-enabled (or (nil? allow-tracking?)
-                                             allow-tracking?)))
+  (public-settings/anon-tracking-enabled! (or (nil? allow-tracking?)
+                                              allow-tracking?)))
 
 (api/defendpoint POST "/"
   "Special endpoint for creating the first user during setup. This endpoint both creates the user AND logs them in and
-  returns a session ID. This endpoint also can also be used to add a database, create and invite a second admin, and/or
+  returns a session ID. This endpoint can also be used to add a database, create and invite a second admin, and/or
   set specific settings from the setup flow."
   [:as {{:keys                                          [token]
-         {:keys [name engine details is_full_sync
-                 is_on_demand schedules
-                 auto_run_queries]
+         {:keys [name engine details
+                 schedules auto_run_queries]
           :as   database}                               :database
          {:keys [first_name last_name email password]}  :user
          {invited_first_name :first_name,
@@ -107,8 +122,8 @@
   {token              SetupToken
    site_name          su/NonBlankString
    site_locale        (s/maybe su/ValidLocale)
-   first_name         su/NonBlankString
-   last_name          su/NonBlankString
+   first_name         (s/maybe su/NonBlankString)
+   last_name          (s/maybe su/NonBlankString)
    email              su/Email
    invited_first_name (s/maybe su/NonBlankString)
    invited_last_name  (s/maybe su/NonBlankString)
@@ -135,8 +150,6 @@
                  (setup-set-settings!
                   request
                   {:email email, :site-name site_name, :site-locale site_locale, :allow-tracking? allow_tracking})
-                 ;; clear the setup token now, it's no longer needed
-                 (setup/clear-token!)
                  (assoc user-info :database db)))
               (catch Throwable e
                 ;; if the transaction fails, restore the Settings cache from the DB again so any changes made in this
@@ -153,22 +166,21 @@
                                             user-id
                                             {:database engine, :database-id (u/the-id database), :source :setup}))
       ;; return response with session ID and set the cookie as well
-      (mw.session/set-session-cookie request {:id session-id} session))))
+      (mw.session/set-session-cookies request {:id session-id} session (t/zoned-date-time (t/zone-id "GMT"))))))
 
 (api/defendpoint POST "/validate"
   "Validate that we can connect to a database given a set of details."
   [:as {{{:keys [engine details]} :details, token :token} :body}]
   {token  SetupToken
    engine DBEngineString}
-  (let [engine           (keyword engine)
-        invalid-response (fn [field m] {:status 400, :body (if (#{:dbname :port :host} field)
-                                                             {:errors {field m}}
-                                                             {:message m})})]
-    (let [error-or-nil (database-api/test-database-connection engine details :invalid-response-handler invalid-response)]
-      (when error-or-nil (snowplow/track-event! ::snowplow/database-connection-failed
-                                                nil
-                                                {:database engine, :source :setup}))
-      error-or-nil)))
+  (let [engine       (keyword engine)
+        error-or-nil (api.database/test-database-connection engine details)]
+    (when error-or-nil
+      (snowplow/track-event! ::snowplow/database-connection-failed
+                             nil
+                             {:database engine, :source :setup})
+      {:status 400
+       :body   error-or-nil})))
 
 
 ;;; Admin Checklist
@@ -288,7 +300,7 @@
 (api/defendpoint GET "/admin_checklist"
   "Return various \"admin checklist\" steps and whether they've been completed. You must be a superuser to see this!"
   []
-  (api/check-superuser)
+  (validation/check-has-application-permission :setting)
   (admin-checklist))
 
 ;; User defaults endpoint

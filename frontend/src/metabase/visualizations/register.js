@@ -3,6 +3,8 @@ import {
   setDefaultVisualization,
 } from "metabase/visualizations";
 
+import ActionButtonViz from "metabase/writeback/components/ActionButtonViz";
+
 import Scalar from "./visualizations/Scalar";
 import SmartScalar from "./visualizations/SmartScalar";
 import Progress from "./visualizations/Progress";
@@ -19,10 +21,11 @@ import MapViz from "./visualizations/Map";
 import ScatterPlot from "./visualizations/ScatterPlot";
 import Funnel from "./visualizations/Funnel";
 import Gauge from "./visualizations/Gauge";
-import ObjectDetail from "./visualizations/ObjectDetail";
+import ObjectDetail from "./components/ObjectDetail";
 import PivotTable from "./visualizations/PivotTable";
+import ListViz from "./visualizations/List";
 
-export default function() {
+export default function () {
   registerVisualization(Scalar);
   registerVisualization(SmartScalar);
   registerVisualization(Progress);
@@ -41,5 +44,7 @@ export default function() {
   registerVisualization(Funnel);
   registerVisualization(ObjectDetail);
   registerVisualization(PivotTable);
+  registerVisualization(ListViz);
+  registerVisualization(ActionButtonViz);
   setDefaultVisualization(Table);
 }

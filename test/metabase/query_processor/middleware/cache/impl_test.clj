@@ -1,6 +1,5 @@
 (ns metabase.query-processor.middleware.cache.impl-test
-  (:require [clojure.core.async :as a]
-            [clojure.test :refer :all]
+  (:require [clojure.test :refer :all]
             [metabase.query-processor.middleware.cache.impl :as impl]
             [potemkin.types :as p.types])
   (:import java.io.ByteArrayInputStream))
@@ -27,26 +26,26 @@
            (reduce rf (rf) rows)))))))
 
 (deftest e2e-test
-  (let [{:keys [in-chan out-chan]} (impl/serialize-async)]
-    (doseq [obj objects]
-      (a/put! in-chan obj))
-    (a/close! in-chan)
-    (let [[val] (a/alts!! [out-chan (a/timeout 1000)])]
-      (is (= objects
-             (if (instance? Throwable val)
-               (throw val)
-               (deserialize val)))))))
+  (impl/do-with-serialization
+   (fn [in result]
+     (doseq [obj objects]
+       (is (= nil
+              (in obj))))
+     (let [val (result)]
+       (is (instance? (Class/forName "[B") val))
+       (is (= objects
+              (if (instance? Throwable val)
+                (throw val)
+                (deserialize val))))))))
 
 (deftest max-bytes-test
-  (let [{:keys [in-chan out-chan]} (impl/serialize-async {:max-bytes 50})]
-    (doseq [obj objects]
-      (a/put! in-chan obj))
-    (a/close! in-chan)
-    (let [[val] (a/alts!! [out-chan (a/timeout 1000)])]
-      (is (thrown-with-msg?
-           Exception
-           #"Results are too large to cache\."
-           (if (instance? Throwable val)
-             (throw val)
-             val)))
-      nil)))
+  (impl/do-with-serialization
+   (fn [in result]
+     (doseq [obj objects]
+       (is (= nil
+              (in obj))))
+     (is (thrown-with-msg?
+          Exception
+          #"Results are too large to cache\."
+          (result))))
+   {:max-bytes 50}))

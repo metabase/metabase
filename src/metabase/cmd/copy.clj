@@ -6,18 +6,53 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [honeysql.format :as hformat]
-            [metabase.db.connection :as mdb.conn]
+            [metabase.db.connection :as mdb.connection]
             [metabase.db.data-migrations :refer [DataMigrations]]
             [metabase.db.setup :as mdb.setup]
-            [metabase.models :refer [Activity Card CardFavorite Collection CollectionPermissionGraphRevision Dashboard
-                                     DashboardCard DashboardCardSeries DashboardFavorite Database Dependency Dimension Field
-                                     FieldValues LoginHistory Metric MetricImportantField ModerationReview NativeQuerySnippet
-                                     Permissions PermissionsGroup PermissionsGroupMembership PermissionsRevision Pulse PulseCard
-                                     PulseChannel PulseChannelRecipient Revision Secret Segment Session Setting Table
-                                     User ViewLog]]
+            [metabase.models :refer [Activity
+                                     App
+                                     ApplicationPermissionsRevision
+                                     BookmarkOrdering
+                                     Card
+                                     CardBookmark
+                                     Collection
+                                     CollectionBookmark
+                                     CollectionPermissionGraphRevision
+                                     Dashboard
+                                     DashboardBookmark
+                                     DashboardCard
+                                     DashboardCardSeries
+                                     Database
+                                     Dimension
+                                     Emitter
+                                     Field
+                                     FieldValues
+                                     LoginHistory
+                                     Metric
+                                     MetricImportantField
+                                     ModerationReview
+                                     NativeQuerySnippet
+                                     Permissions
+                                     PermissionsGroup
+                                     PermissionsGroupMembership
+                                     PermissionsRevision
+                                     PersistedInfo
+                                     Pulse
+                                     PulseCard
+                                     PulseChannel
+                                     PulseChannelRecipient
+                                     Revision
+                                     Secret
+                                     Segment
+                                     Session
+                                     Setting
+                                     Table
+                                     Timeline
+                                     TimelineEvent
+                                     User
+                                     ViewLog]]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
-            [metabase.util.schema :as su]
             [schema.core :as s])
   (:import java.sql.SQLException))
 
@@ -30,7 +65,7 @@
     (f)
     (catch Throwable e
       (log/error (u/colorize 'red "[FAIL]\n"))
-      (throw (ex-info (trs "ERROR {0}" msg)
+      (throw (ex-info (trs "ERROR {0}: {1}" msg (ex-message e))
                       {}
                       e))))
   (log-ok))
@@ -47,7 +82,6 @@
   [Database
    User
    Setting
-   Dependency
    Table
    Field
    FieldValues
@@ -62,10 +96,15 @@
    CollectionPermissionGraphRevision
    Dashboard
    Card
-   CardFavorite
+   CardBookmark
+   DashboardBookmark
+   Emitter
+   CollectionBookmark
+   BookmarkOrdering
    DashboardCard
    DashboardCardSeries
    Activity
+   App
    Pulse
    PulseCard
    PulseChannel
@@ -74,10 +113,13 @@
    PermissionsGroupMembership
    Permissions
    PermissionsRevision
-   DashboardFavorite
+   PersistedInfo
+   ApplicationPermissionsRevision
    Dimension
    NativeQuerySnippet
    LoginHistory
+   Timeline
+   TimelineEvent
    Secret
    ;; migrate the list of finished DataMigrations as the very last thing (all models to copy over should be listed
    ;; above this line)
@@ -92,7 +134,7 @@
   ;;
   ;; 2) Need to wrap the column names in quotes because Postgres automatically lowercases unquoted identifiers
   (let [source-keys (keys (first objs))
-        quote-style (mdb.conn/quoting-style target-db-type)
+        quote-style (mdb.connection/quoting-style target-db-type)
         quote-fn    (get @#'hformat/quote-fns quote-style)
         _           (assert (fn? quote-fn) (str "No function for quote style: " quote-style))
         dest-keys   (for [k source-keys]
@@ -108,26 +150,27 @@
 
 (defn- insert-chunk!
   "Insert of `chunkk` of rows into the target database table with `table-name`."
-  [target-db-type target-db-conn table-name chunkk]
+  [target-db-type target-db-conn-spec table-name chunkk]
   (log/debugf "Inserting chunk of %d rows" (count chunkk))
   (try
     (let [{:keys [cols vals]} (objects->colums+values target-db-type chunkk)]
-      (jdbc/insert-multi! target-db-conn table-name cols vals {:transaction? false}))
+      (jdbc/insert-multi! target-db-conn-spec table-name cols vals {:transaction? false}))
     (catch SQLException e
       (log/error (with-out-str (jdbc/print-sql-exception-chain e)))
       (throw e))))
 
 (def ^:private table-select-fragments
-  {"metabase_field" "ORDER BY id ASC"}) ; ensure ID order to ensure that parent fields are inserted before children
+  {;; ensure ID order to ensure that parent fields are inserted before children
+   "metabase_field" "ORDER BY id ASC"})
 
-(defn- copy-data! [source-jdbc-spec target-db-type target-db-conn]
-  (jdbc/with-db-connection [source-conn source-jdbc-spec]
+(defn- copy-data! [^javax.sql.DataSource source-data-source target-db-type target-db-conn-spec]
+  (with-open [source-conn (.getConnection source-data-source)]
     (doseq [{table-name :table, :as entity} entities
             :let                            [fragment (table-select-fragments (str/lower-case (name table-name)))
                                              sql      (str "SELECT * FROM "
                                                            (name table-name)
                                                            (when fragment (str " " fragment)))
-                                             results (jdbc/reducible-query source-conn sql)]]
+                                             results (jdbc/reducible-query {:connection source-conn} sql)]]
       (transduce
        (partition-all chunk-size)
        ;; cnt    = the total number we've inserted so far
@@ -141,7 +184,7 @@
             (when (zero? cnt)
               (log/info (u/colorize 'blue (trs "Copying instances of {0}..." (name entity)))))
             (try
-              (insert-chunk! target-db-type target-db-conn table-name chunkk)
+              (insert-chunk! target-db-type target-db-conn-spec table-name chunkk)
               (catch Throwable e
                 (throw (ex-info (trs "Error copying instances of {0}" (name entity))
                                 {:entity (name entity)}
@@ -152,9 +195,9 @@
 
 (defn- assert-db-empty
   "Make sure [target] application DB is empty before we start copying data."
-  [jdbc-spec]
-  ;; check that there are no permissions groups yet -- the default ones normally get created during data migrations
-  (let [[{:keys [cnt]}] (jdbc/query jdbc-spec "SELECT count(*) AS \"cnt\" FROM permissions_group;")]
+  [data-source]
+  ;; check that there are no Users yet
+  (let [[{:keys [cnt]}] (jdbc/query {:datasource data-source} "SELECT count(*) AS \"cnt\" FROM core_user;")]
     (assert (integer? cnt))
     (when (pos? cnt)
       (throw (ex-info (trs "Target DB is already populated!")
@@ -174,7 +217,7 @@
   `(do-with-connection-rollback-only ~conn (fn [] ~@body)))
 
 (defmulti ^:private disable-db-constraints!
-  {:arglists '([db-type conn])}
+  {:arglists '([db-type conn-spec])}
   (fn [db-type _]
     db-type))
 
@@ -201,7 +244,7 @@
   (jdbc/execute! conn "SET REFERENTIAL_INTEGRITY FALSE"))
 
 (defmulti ^:private reenable-db-constraints!
-  {:arglists '([db-type conn])}
+  {:arglists '([db-type conn-spec])}
   (fn [db-type _]
     db-type))
 
@@ -231,12 +274,44 @@
   [db-type conn & body]
   `(do-with-disabled-db-constraints ~db-type ~conn (fn [] ~@body)))
 
+(defn- clear-existing-rows!
+  "Make sure the target database is empty -- rows created by migrations (such as the magic permissions groups and
+  default perms entries) need to be deleted so we can copy everything over from the source DB without running into
+  conflicts."
+  [target-db-type ^javax.sql.DataSource target-data-source]
+  (with-open [conn (.getConnection target-data-source)
+              stmt (.createStatement conn)]
+    (with-disabled-db-constraints target-db-type {:connection conn}
+      (try
+        (.setAutoCommit conn false)
+        (let [save-point (.setSavepoint conn)]
+          (try
+            (letfn [(add-batch! [^String sql]
+                      (log/debug (u/colorize :yellow sql))
+                      (.addBatch stmt sql))]
+              ;; do these in reverse order so child rows get deleted before parents
+              (doseq [{table-name :table} (reverse entities)]
+                (add-batch! (format (if (= target-db-type :postgres)
+                                      "TRUNCATE TABLE %s CASCADE;"
+                                      "TRUNCATE TABLE %s;")
+                                    (name table-name)))))
+            (.executeBatch stmt)
+            (.commit conn)
+            (catch Throwable e
+              (try
+                (.rollback conn save-point)
+                (catch Throwable e2
+                  (throw (Exception. (ex-message e2) e))))
+              (throw e))))
+        (finally
+          (.setAutoCommit conn true))))))
+
 (def ^:private entities-without-autoinc-ids
   "Entities that do NOT use an auto incrementing ID column."
   #{Setting Session DataMigrations})
 
 (defmulti ^:private update-sequence-values!
-  {:arglists '([db-type jdbc-spec])}
+  {:arglists '([db-type data-source])}
   (fn [db-type _]
     db-type))
 
@@ -244,8 +319,8 @@
 
 ;; Update the sequence nextvals.
 (defmethod update-sequence-values! :postgres
-  [_ jdbc-spec]
-  (jdbc/with-db-transaction [target-db-conn jdbc-spec]
+  [_ data-source]
+  (jdbc/with-db-transaction [target-db-conn {:datasource data-source}]
     (step (trs "Setting Postgres sequence ids to proper values...")
       (doseq [e     entities
               :when (not (contains? entities-without-autoinc-ids e))
@@ -257,29 +332,32 @@
 
 (s/defn copy!
   "Copy data from a source application database into an empty destination application database."
-  [source-db-type   :- (s/enum :h2 :postgres :mysql)
-   source-jdbc-spec :- (s/cond-pre #"^jdbc:" su/Map)
-   target-db-type   :- (s/enum :h2 :postgres :mysql)
-   target-jdbc-spec :- (s/cond-pre #"^jdbc:" su/Map)]
+  [source-db-type     :- (s/enum :h2 :postgres :mysql)
+   source-data-source :- javax.sql.DataSource
+   target-db-type     :- (s/enum :h2 :postgres :mysql)
+   target-data-source :- javax.sql.DataSource]
   ;; make sure the source database is up-do-date
   (step (trs "Set up {0} source database and run migrations..." (name source-db-type))
-    (mdb.setup/setup-db! source-db-type source-jdbc-spec true))
+    (mdb.setup/setup-db! source-db-type source-data-source true))
   ;; make sure the dest DB is up-to-date
   ;;
   ;; don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
   (step (trs "Set up {0} target database and run migrations..." (name target-db-type))
     (binding [mdb.setup/*disable-data-migrations* true]
-      (mdb.setup/setup-db! target-db-type target-jdbc-spec true)))
+      (mdb.setup/setup-db! target-db-type target-data-source true)))
   ;; make sure target DB is empty
   (step (trs "Testing if target {0} database is already populated..." (name target-db-type))
-    (assert-db-empty target-jdbc-spec))
+    (assert-db-empty target-data-source))
+  ;; clear any rows created by the Liquibase migrations.
+  (step (trs "Clearing default entries created by Liquibase migrations...")
+    (clear-existing-rows! target-db-type target-data-source))
   ;; create a transaction and load the data.
-  (jdbc/with-db-transaction [target-conn target-jdbc-spec]
+  (jdbc/with-db-transaction [target-conn-spec {:datasource target-data-source}]
     ;; transaction should be set as rollback-only until it completes. Only then should we disable rollback-only so the
     ;; transaction will commit (i.e., only commit if the whole thing succeeds)
-    (with-connection-rollback-only target-conn
+    (with-connection-rollback-only target-conn-spec
       ;; disable FK constraints for the duration of loading data.
-      (with-disabled-db-constraints target-db-type target-conn
-        (copy-data! source-jdbc-spec target-db-type target-conn))))
+      (with-disabled-db-constraints target-db-type target-conn-spec
+        (copy-data! source-data-source target-db-type target-conn-spec))))
   ;; finally, update sequence values (if needed)
-  (update-sequence-values! target-db-type target-jdbc-spec))
+  (update-sequence-values! target-db-type target-data-source))

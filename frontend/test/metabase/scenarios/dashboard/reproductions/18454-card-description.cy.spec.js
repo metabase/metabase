@@ -1,59 +1,39 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, visitDashboard } from "__support__/e2e/helpers";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
+const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const CARD_DESCRIPTION = "CARD_DESCRIPTION";
+
+const questionDetails = {
+  name: "18454 Question",
+  description: CARD_DESCRIPTION,
+  query: {
+    "source-table": PRODUCTS_ID,
+    aggregation: [["count"]],
+    breakout: [["field", PRODUCTS.CATEGORY, null]],
+  },
+  display: "line",
+};
 
 describe("issue 18454", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+
+    cy.createQuestionAndDashboard({ questionDetails }).then(
+      ({ body: { id, card_id, dashboard_id } }) => {
+        visitDashboard(dashboard_id);
+      },
+    );
   });
 
   it("should show card descriptions (metabase#18454)", () => {
-    createDashboardWithQuestionWithDescription();
-
-    cy.wait("@cardQuery");
-    cy.icon("info").realHover();
+    cy.get(".DashCard").realHover();
+    cy.get(".DashCard").within(() => {
+      cy.icon("info").trigger("mouseenter", { force: true });
+    });
     cy.findByText(CARD_DESCRIPTION);
   });
 });
-
-function createDashboardWithQuestionWithDescription() {
-  const questionDetails = {
-    name: "18454 Question",
-    description: CARD_DESCRIPTION,
-    query: {
-      "source-table": PRODUCTS_ID,
-      aggregation: [["count"]],
-      breakout: [["field", PRODUCTS.CATEGORY, null]],
-    },
-    display: "line",
-  };
-
-  cy.createQuestionAndDashboard({ questionDetails }).then(
-    ({ body: { id, card_id, dashboard_id } }) => {
-      cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-        cards: [
-          {
-            id,
-            card_id,
-            row: 0,
-            col: 0,
-            sizeX: 12,
-            sizeY: 10,
-          },
-        ],
-      });
-
-      cy.visit(`/dashboard/${dashboard_id}`);
-
-      cy.intercept(
-        "POST",
-        `/api/dashboard/${dashboard_id}/card/${card_id}/query`,
-      ).as("cardQuery");
-    },
-  );
-}

@@ -1,9 +1,11 @@
-import { restore, openNativeEditor } from "__support__/e2e/cypress";
+import { restore, openNativeEditor } from "__support__/e2e/helpers";
 
 import { NUMBER_FILTER_SUBTYPES } from "./helpers/e2e-field-filter-data-objects";
 
 import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
+
+const numericFilters = Object.entries(NUMBER_FILTER_SUBTYPES);
 
 describe("scenarios > filters > sql filters > field filter > Number", () => {
   beforeEach(() => {
@@ -13,9 +15,7 @@ describe("scenarios > filters > sql filters > field filter > Number", () => {
     cy.signInAsAdmin();
 
     openNativeEditor();
-    SQLFilter.enterParameterizedQuery(
-      "SELECT * FROM products WHERE {{filter}}",
-    );
+    SQLFilter.enterParameterizedQuery("SELECT * FROM products WHERE {{f}}");
 
     SQLFilter.openTypePickerFromDefaultFilterType();
     SQLFilter.chooseType("Field Filter");
@@ -26,37 +26,46 @@ describe("scenarios > filters > sql filters > field filter > Number", () => {
     });
   });
 
-  Object.entries(NUMBER_FILTER_SUBTYPES).forEach(
-    ([subType, { value, representativeResult }]) => {
-      describe(`should work for ${subType}`, () => {
-        it("when set through the filter widget", () => {
-          FieldFilter.setWidgetType(subType);
+  it("when set through the filter widget", () => {
+    numericFilters.forEach(([subType, { value, representativeResult }]) => {
+      cy.log(`Make sure it works for ${subType.toUpperCase()}`);
 
-          FieldFilter.openEntryForm();
-          FieldFilter.addWidgetNumberFilter(value);
+      FieldFilter.setWidgetType(subType);
 
-          SQLFilter.runQuery();
+      FieldFilter.openEntryForm();
+      FieldFilter.addWidgetNumberFilter(value);
 
-          cy.get(".Visualization").within(() => {
-            cy.findByText(representativeResult);
-          });
-        });
+      SQLFilter.runQuery();
 
-        it("when set as the default value for a required filter", () => {
-          FieldFilter.setWidgetType(subType);
-
-          SQLFilter.toggleRequired();
-
-          FieldFilter.openEntryForm({ isFilterRequired: true });
-          FieldFilter.addDefaultNumberFilter(value);
-
-          SQLFilter.runQuery();
-
-          cy.get(".Visualization").within(() => {
-            cy.findByText(representativeResult);
-          });
-        });
+      cy.get(".Visualization").within(() => {
+        cy.findByText(representativeResult);
       });
-    },
-  );
+    });
+  });
+
+  it("when set as the default value for a required filter", () => {
+    SQLFilter.toggleRequired();
+
+    numericFilters.forEach(
+      ([subType, { value, representativeResult }], index) => {
+        cy.log(`Make sure it works for ${subType.toUpperCase()}`);
+
+        FieldFilter.setWidgetType(subType);
+
+        // When we run the first iteration, there will be no default filter value set
+        if (index !== 0) {
+          FieldFilter.clearDefaultFilterValue();
+        }
+
+        FieldFilter.openEntryForm({ isFilterRequired: true });
+        FieldFilter.addDefaultNumberFilter(value);
+
+        SQLFilter.runQuery();
+
+        cy.get(".Visualization").within(() => {
+          cy.findByText(representativeResult);
+        });
+      },
+    );
+  });
 });

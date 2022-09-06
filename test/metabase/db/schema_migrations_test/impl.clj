@@ -11,16 +11,16 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.test :refer :all]
             [clojure.tools.logging :as log]
-            [metabase.db :as mdb]
-            [metabase.db.connection :as mdb.conn]
+            [metabase.db.connection :as mdb.connection]
+            [metabase.db.data-source :as mdb.data-source]
             [metabase.db.liquibase :as liquibase]
+            [metabase.db.test-util :as mdb.test-util]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
             [metabase.test.initialize :as initialize]
-            [metabase.util :as u]
-            [toucan.db :as db])
+            [metabase.util :as u])
   (:import [liquibase Contexts Liquibase]
            [liquibase.changelog ChangeSet DatabaseChangeLog]))
 
@@ -31,83 +31,92 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
+(defn- random-schema-migrations-test-db-name []
+  (format "schema-migrations-test-db-%05d" (rand-int 100000)))
+
 (defmethod do-with-temp-empty-app-db* :default
   [driver f]
   (log/debugf "Creating empty %s app db..." driver)
-  (let [dbdef {:database-name     "schema-migrations-test-db"
+  (let [dbdef {:database-name     (random-schema-migrations-test-db-name)
                :table-definitions []}]
     (try
       (tx/create-db! driver dbdef)
       (let [connection-details (tx/dbdef->connection-details driver :db dbdef)
             jdbc-spec          (sql-jdbc.conn/connection-details->spec driver connection-details)]
-        (f jdbc-spec))
+        (f (mdb.test-util/->ClojureJDBCSpecDataSource jdbc-spec)))
       (finally
         (log/debugf "Destroying empty %s app db..." driver)
         (tx/destroy-db! driver dbdef)))))
 
 (defmethod do-with-temp-empty-app-db* :h2
-  [driver f]
+  [_driver f]
   (log/debug "Creating empty H2 app db...")
-  ;; we don't need to destroy this DB manually because it will just get shutdown immediately when the Connection
-  ;; closes because we're not setting a `DB_CLOSE_DELAY`
-  ;;
-  ;; don't use the usual implementation of `tx/dbdef->connection-details` because it creates a spec that only connects
-  ;; to with `USER=GUEST` which doesn't let us run DDL statements
-  (let [jdbc-spec {:subprotocol "h2", :subname "mem:schema-migrations-test-db", :classname "org.h2.Driver"}]
-    (f jdbc-spec)))
+  ;; we don't need to destroy this DB manually because it will just get shutdown immediately when the Connection closes
+  ;; because we're not setting a `DB_CLOSE_DELAY`
+  (let [data-source (mdb.data-source/raw-connection-string->DataSource (str "jdbc:h2:mem:" (random-schema-migrations-test-db-name)))]
+    (f data-source)))
 
 (defn do-with-temp-empty-app-db
-  "The function invoked by `with-temp-empty-app-db` to execute a thunk `f` in a temporary, empty app DB. Use the macro
-  instead: `with-temp-empty-app-db`."
+  "The function invoked by [[with-temp-empty-app-db]] to execute function `f` in a temporary, empty app DB. Use the
+  macro instead: [[with-temp-empty-app-db]]."
   {:added "0.41.0"}
   [driver f]
   (do-with-temp-empty-app-db*
    driver
-   (fn [jdbc-spec]
-     (with-open [conn (jdbc/get-connection jdbc-spec)]
-       (binding [toucan.db/*db-connection* {:connection conn}
-                 toucan.db/*quoting-style* (mdb/quoting-style driver)
-                 mdb.conn/*db-type*        driver
-                 mdb.conn/*jdbc-spec*      jdbc-spec]
+   (fn [^javax.sql.DataSource data-source]
+     ;; it should be ok to open multiple connections to this `data-source`; it should stay open as long as `conn` is
+     ;; open
+     (with-open [conn (.getConnection data-source)]
+       (binding [mdb.connection/*application-db* (mdb.connection/application-db driver data-source)]
          (f conn))))))
 
 (defmacro with-temp-empty-app-db
   "Create a new temporary application DB of `db-type` and execute `body` with `conn-binding` bound to a
-  `java.sql.Connection` to the database. Toucan `*db-connection*` is also bound, which means Toucan functions like
-  `select` or `update!` will operate against this database.
+  [[java.sql.Connection]] to the database. [[toucan.db/*db-connection*]] is also bound, which means Toucan functions
+  like `select` or `update!` will operate against this database.
 
   Made public as of x.41."
   [[conn-binding db-type] & body]
   `(do-with-temp-empty-app-db ~db-type (fn [~(vary-meta conn-binding assoc :tag 'java.sql.Connection)] ~@body)))
 
-;; all legacy (numeric) IDs should come before all `v___` IDs so just convert them to prefixed strings so we can do
-;; string comparison.
-(defn- migration-id->str [id]
-  (cond
-    (and (string? id)
-         (re-matches #"^\d+$" id))
-    (recur (Integer/parseUnsignedInt id))
+(defn- migration->number [id]
+  (if (integer? id)
+    id
+    (or (when-let [[_ major-version minor-version migration-num] (re-matches #"^v(\d+)\.(\d+)-(\d+)$" id)]
+          (+ (* (Integer/parseUnsignedInt major-version) 100)
+             (Integer/parseUnsignedInt minor-version)
+             (/ (Integer/parseUnsignedInt migration-num)
+                1000.0)))
+        (when (re-matches #"^\d+$" id)
+          (Integer/parseUnsignedInt id))
+        (throw (ex-info (format "Invalid migration ID: %s" id) {:id id})))))
 
-    (integer? id)
-    (format "legacy-%03d" id)
-
-    (string? id)
-    id))
+(deftest migration->number-test
+  (is (= 356
+         (migration->number 356)
+         (migration->number "356")))
+  (is (= 4301.009
+         (migration->number "v43.01-009")))
+  (is (= 4301.01
+         (migration->number "v43.01-010"))))
 
 (defn- migration-id-in-range?
   "Whether `id` should be considered to be between `start-id` and `end-id`, inclusive. Handles both legacy plain-integer
   and new-style `vMM.mm-NNN` style IDs."
   [start-id id end-id & [{:keys [inclusive-end?]
                           :or   {inclusive-end? true}}]]
-  (let [start-id (migration-id->str start-id)
-        end-id   (migration-id->str end-id)
-        id       (migration-id->str id)]
-    ;; end-id can be nil (meaning, unbounded), and sort will put nils first by default
-    ;; simply remove nils from both vectors when comparing to concisely deal with that
-    (and (= (sort (filter some? [start-id id end-id]))
-            (filter some? [start-id id end-id]))
-         (or inclusive-end?
-             (not= id end-id)))))
+
+  (let [start (migration->number start-id)
+        id    (migration->number id)
+        ;; end-id can be nil (meaning, unbounded)
+        end   (if end-id
+                (migration->number end-id)
+                Integer/MAX_VALUE)]
+    (and
+     (<= start id)
+     (if inclusive-end?
+       (<= id end)
+       (< id end)))))
 
 (deftest migration-id-in-range?-test
   (testing "legacy IDs"
@@ -136,7 +145,12 @@
     (is (not (migration-id-in-range? "v42.00-002" 1000 "v42.00-003")))
     (is (not (migration-id-in-range? "v42.00-002" 1000 "v42.00-003" {:inclusive-end? false})))
     (is (not (migration-id-in-range? 1 "v42.00-001" 1000)))
-    (is (not (migration-id-in-range? 1 "v42.00-001" 1000)))))
+    (is (not (migration-id-in-range? 1 "v42.00-001" 1000)))
+    (is (migration-id-in-range? 1 "v42.00-000" "v43.00-000"))
+    (is (migration-id-in-range? 1 "v42.00-001" "v43.00-000"))
+    (is (migration-id-in-range? 1 "v42.00-000" "v43.00-014"))
+    (is (migration-id-in-range? 1 "v42.00-015" "v43.00-014"))
+    (is (not (migration-id-in-range? 1 "v43.00-014" "v42.00-015")))))
 
 (defn run-migrations-in-range!
   "Run Liquibase migrations from our migrations YAML file in the range of `start-id` -> `end-id` (inclusive) against a
@@ -152,7 +166,11 @@
                               (.setPhysicalFilePath (.getPhysicalFilePath change-log)))]
       ;; add the relevant migrations (change sets) to our subset change log
       (doseq [^ChangeSet change-set (.getChangeSets change-log)
-              :let                  [id (.getId change-set)]
+              :let                  [id (.getId change-set)
+                                     _ (log/tracef "Migration %s in range [%s ↔ %s] %s ? => %s"
+                                                   id start-id end-id
+                                                   (if (:inclusive-end? range-options) "(inclusive)" "(exclusive)")
+                                                   (migration-id-in-range? start-id id end-id range-options))]
               :when                 (migration-id-in-range? start-id id end-id range-options)]
         (.addChangeSet subset-change-log change-set))
       ;; now create a new instance of Liquibase that will run just the subset change log
@@ -173,8 +191,12 @@
           (assert (zero? (count tables))
                   (str "'Empty' application DB is not actually empty. Found tables:\n"
                        (u/pprint-to-str tables))))))
+    (log/debugf "Finding and running migrations before %s..." start-id)
     (run-migrations-in-range! conn [1 start-id] {:inclusive-end? false})
-    (f #(run-migrations-in-range! conn [start-id end-id])))
+    (f
+     (fn migrate! []
+       (log/debugf "Finding and running migrations between %s and %s (inclusive)" start-id (or end-id "end"))
+       (run-migrations-in-range! conn [start-id end-id]))))
   (log/debug (u/format-color 'green "Done testing migrations for driver %s." driver)))
 
 (defn do-test-migrations
@@ -185,7 +207,7 @@
   (let [[start-id end-id] (if (sequential? migration-range)
                             migration-range
                             [migration-range migration-range])]
-    (testing (format "Migrations %s thru %s" start-id end-id)
+    (testing (format "Migrations %s thru %s" start-id (or end-id "end"))
       (mt/test-drivers #{:h2 :mysql :postgres}
         (test-migrations-for-driver driver/*driver* [start-id end-id] f)))))
 
