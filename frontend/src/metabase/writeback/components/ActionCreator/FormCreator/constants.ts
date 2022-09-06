@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import type { FieldType, InputType } from "metabase/writeback/types";
+import type { FieldType, InputType } from "metabase-types/api/writeback";
 
 interface FieldOptionType {
   value: FieldType;

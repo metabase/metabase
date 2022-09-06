@@ -27,7 +27,7 @@ import {
 
 import { newQuestion } from "./utils";
 import { SavedCard } from "metabase-types/types/Card";
-import { ActionFormSettings } from "metabase/writeback/types";
+import type { ActionFormSettings } from "metabase-types/api/writeback";
 
 const mapStateToProps = (
   state: State,

@@ -1,6 +1,6 @@
 import React from "react";
 import { t } from "ttag";
-import { InputType } from "metabase/writeback/types";
+import type { InputType } from "metabase-types/api/writeback";
 
 import Input from "metabase/core/components/Input";
 import Select from "metabase/core/components/Select";

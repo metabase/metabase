@@ -5,7 +5,7 @@ import type { TemplateTag } from "metabase-types/types/Query";
 import type {
   ActionFormSettings,
   FieldSettings,
-} from "metabase/writeback/types";
+} from "metabase-types/api/writeback";
 
 import { FieldSettingsPopover } from "./FieldSettingsPopover";
 import { getDefaultFormSettings, getDefaultFieldSettings } from "./utils";

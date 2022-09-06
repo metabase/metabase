@@ -8,6 +8,8 @@ import {
   ParameterValueOrArray,
 } from "metabase-types/types/Parameter";
 
+export * from "./writeback-form-settings";
+
 export type ActionParameterTuple = [string, Parameter];
 
 export type WritebackActionType = "http" | "query";

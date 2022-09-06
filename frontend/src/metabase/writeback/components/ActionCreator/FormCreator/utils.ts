@@ -1,4 +1,7 @@
-import { ActionFormSettings, FieldSettings } from "metabase/writeback/types";
+import type {
+  ActionFormSettings,
+  FieldSettings,
+} from "metabase-types/api/writeback";
 
 export const getDefaultFormSettings = (): ActionFormSettings => ({
   name: "",

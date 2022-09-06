@@ -2,7 +2,11 @@ import React from "react";
 import { t } from "ttag";
 
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import { FieldSettings, FieldType, InputType } from "metabase/writeback/types";
+import type {
+  FieldSettings,
+  FieldType,
+  InputType,
+} from "metabase-types/api/writeback";
 
 import Radio from "metabase/core/components/Radio";
 import Icon from "metabase/components/Icon";
