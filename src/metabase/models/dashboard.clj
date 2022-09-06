@@ -155,7 +155,7 @@
   (-> dashboard
       (select-keys [:description :name :cache_ttl])
       (assoc :cards (vec (for [dashboard-card (ordered-cards dashboard)]
-                           (-> (select-keys dashboard-card [:sizeX :sizeY :row :col :id :card_id])
+                           (-> (select-keys dashboard-card [:size_x :size_y :row :col :id :card_id])
                                (assoc :series (mapv :id (dashboard-card/series dashboard-card)))))))))
 
 (defn- revert-dashboard!
@@ -166,7 +166,7 @@
   ;; Now update the cards as needed
   (let [serialized-cards    (:cards serialized-dashboard)
         id->serialized-card (zipmap (map :id serialized-cards) serialized-cards)
-        current-cards       (db/select [DashboardCard :sizeX :sizeY :row :col :id :card_id :dashboard_id]
+        current-cards       (db/select [DashboardCard :size_x :size_y :row :col :id :card_id :dashboard_id]
                                        :dashboard_id dashboard-id)
         id->current-card    (zipmap (map :id current-cards) current-cards)
         all-dashcard-ids    (concat (map :id serialized-cards)
@@ -183,7 +183,7 @@
                                                                       :dashboard_id dashboard-id
                                                                       :creator_id   user-id))
 
-          ;; If card is in both we need to change :sizeX, :sizeY, :row, and :col to match serialized-card as needed
+          ;; If card is in both we need to change :size_x, :size_y, :row, and :col to match serialized-card as needed
           :else (dashboard-card/update-dashboard-card! serialized-card)))))
 
   serialized-dashboard)

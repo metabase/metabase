@@ -171,8 +171,8 @@
       api.dashboard/add-query-average-durations
       (update :ordered_cards (fn [dashcards]
                                (for [dashcard dashcards]
-                                 (-> (select-keys dashcard [:id :card :card_id :dashboard_id :series :col :row :sizeX
-                                                            :sizeY :parameter_mappings :visualization_settings])
+                                 (-> (select-keys dashcard [:id :card :card_id :dashboard_id :series :col :row :size_x
+                                                            :size_y :parameter_mappings :visualization_settings])
                                      (update :card remove-card-non-public-columns)
                                      (update :series (fn [series]
                                                        (for [series series]
