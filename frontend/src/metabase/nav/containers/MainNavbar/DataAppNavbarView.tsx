@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React from "react";
 import _ from "underscore";
 import { t } from "ttag";
 
@@ -25,7 +25,7 @@ import {
 
 interface Props extends MainNavbarProps {
   dataApp: DataApp;
-  items: any[];
+  pages: any[];
   selectedItems: SelectedItem[];
   onEditAppSettings: () => void;
   onNewPage: () => void;
@@ -33,16 +33,11 @@ interface Props extends MainNavbarProps {
 
 function DataAppNavbarView({
   dataApp,
-  items,
+  pages,
   selectedItems,
   onEditAppSettings,
   onNewPage,
 }: Props) {
-  const appPages = useMemo(
-    () => items.filter(item => item.model === "dashboard"),
-    [items],
-  );
-
   const { "data-app-page": dataAppPage } = _.indexBy(
     selectedItems,
     item => item.type,
@@ -56,7 +51,7 @@ function DataAppNavbarView({
             <SidebarHeading>{dataApp.collection.name}</SidebarHeading>
           </SidebarHeadingWrapper>
           <ul>
-            {appPages.map(page => (
+            {pages.map(page => (
               <PaddedSidebarLink
                 key={page.id}
                 url={Urls.dataAppPage(dataApp, page)}
