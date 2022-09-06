@@ -44,8 +44,7 @@
   "Run a query asynchronously."
   [{:keys [database], :as query}
    & {:keys [dataset-metadata context export-format qp-runner]
-      :or   {dataset-metadata nil
-             context          :ad-hoc
+      :or   {context          :ad-hoc
              export-format    :api
              qp-runner        qp/process-query-and-save-with-max-results-constraints!}}]
   (when (and (not= (:type query) "internal")
@@ -64,7 +63,7 @@
                            (db/select-one [Card :result_metadata :dataset] :id source-card-id))
         dataset-metadata (if (and (:dataset source-card) dataset-metadata)
                            (qp.util/combine-metadata (:result_metadata source-card) dataset-metadata)
-                           (or (:result_metadata source-card) dataset-metadata nil))
+                           (or (:result_metadata source-card) dataset-metadata))
         info             (cond-> {:executed-by api/*current-user-id*
                                   :context     context
                                   :card-id     source-card-id}

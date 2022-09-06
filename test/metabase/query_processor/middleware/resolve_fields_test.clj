@@ -11,14 +11,14 @@
 
 (deftest resolves-field-in-metadata-dataset-metadata-test
   ;; there are cases where FE can send a `dataset-metadata` via the POST /api/dataset
-  ;; and it could contains fields that might not included in the
+  ;; containing fields that are not present in
   ;; - selected-fields
   ;; - source card
   ;; - joined tables
   ;; - etc
   ;; We allow this behavior for editing models query, so let's make sure
-  ;; the `resolve-fields` find fields in [:info :metadata/dataset-metadata] as well.
-  (testing "`resolve-fields` should finds fields in [:info :metadata/dataset-metadata] (more context in #25000)"
+  ;; `resolve-fields` can find fields in [:info :metadata/dataset-metadata] as well.
+  (testing "`resolve-fields` finds fields in [:info :metadata/dataset-metadata] (more context in #25000)"
     (let [;; a field that is totally unrelated to the query
           unrelated-field-id (mt/id :users :id)]
       (is (= #{[nil (db/select-one-field :name Field :id unrelated-field-id)]}

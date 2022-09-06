@@ -133,7 +133,7 @@
 
     (testing "should run successfully even if dataset-metadata contains fields that is not in the query"
       (let [;; We're querying venues but this dataset-metadata contains a user-id
-            ;; This is to simulate the cases where `dataset-metadata` sent from FE can
+            ;; This is to simulate the cases where `dataset-metadata` sent from FE
             ;; contains fields that are not resolved anywhere in our query.
             ;; Since we're allowing this behavior of sending custom dataset-metadata
             ;; we expect the query to run successfully.
