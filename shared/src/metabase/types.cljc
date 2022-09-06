@@ -314,6 +314,8 @@
 (derive :Coercion/Bytes->Temporal :Coercion/*)
 (derive :Coercion/YYYYMMDDHHMMSSBytes->Temporal :Coercion/Bytes->Temporal)
 
+(derive :Coercion/Bytes->String :Coercion/*)
+
 (derive :Coercion/Number->Temporal :Coercion/*)
 (derive :Coercion/UNIXTime->Temporal :Coercion/Number->Temporal)
 (derive :Coercion/UNIXSeconds->DateTime :Coercion/UNIXTime->Temporal)
@@ -358,6 +360,8 @@
 (coercion-hierarchies/define-types! :Coercion/YYYYMMDDHHMMSSString->Temporal :type/Text                 :type/DateTime)
 
 (coercion-hierarchies/define-non-inheritable-type! :Coercion/YYYYMMDDHHMMSSBytes->Temporal :type/* :type/DateTime)
+
+(coercion-hierarchies/define-types! :Coercion/Bytes->String              :type/*                     :type/Text)
 
 (defn is-coercible-from?
   "Whether `coercion-strategy` is allowed for `base-type`."

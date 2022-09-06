@@ -199,6 +199,19 @@
                   {:type qp.error-type/unsupported-feature
                    :coercion-strategy coercion-strategy})))
 
+
+(defmulti cast-bytes-string
+  "Cast a string representing "
+  {:arglists '([driver coercion-strategy expr]), :added "0.38.0"}
+  (fn [driver coercion-strategy _] [(driver/dispatch-on-initialized-driver driver) coercion-strategy])
+  :hierarchy #'driver/hierarchy)
+
+(defmethod cast-bytes-string :default
+  [driver coercion-strategy _expr]
+  (throw (ex-info (tru "Driver {0} does not support {1}" driver coercion-strategy)
+                  {:type qp.error-type/unsupported-feature
+                   :coercion-strategy coercion-strategy})))
+
 (defmethod unix-timestamp->honeysql [:sql :milliseconds]
   [driver _ expr]
   (unix-timestamp->honeysql driver :seconds (hx// expr 1000)))
@@ -289,6 +302,8 @@
             [(:isa? :type/*) (:isa? :Coercion/Bytes->Temporal)]
             (cast-temporal-byte driver (:coercion_strategy field) honeysql-form)
 
+            [(:isa? :type/*) (:isa? :Coercion/Bytes->String)]
+              (cast-bytes-string driver (:coercion_strategy field) honeysql-form)
             :else honeysql-form)
     (when-not (= <> honeysql-form)
       (log/tracef "Applied casting\n=>\n%s" (u/pprint-to-str <>)))))

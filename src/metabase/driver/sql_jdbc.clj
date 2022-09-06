@@ -87,3 +87,7 @@
 (defmethod sql.qp/cast-temporal-string [:sql-jdbc :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_driver _semantic_type expr]
   (hx/->timestamp expr))
+
+(defmethod sql.qp/cast-bytes-string [:sql-jdbc :Coercion/String->Bytes]
+  [_driver _semantic_type expr]
+  (hx/->text expr));

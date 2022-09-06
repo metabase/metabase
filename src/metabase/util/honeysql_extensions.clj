@@ -297,6 +297,7 @@
 (defn ->integer                  "CAST `x` to a `integer`."                  [x] (maybe-cast :integer x))
 (defn ->time                     "CAST `x` to a `time` datatype"             [x] (maybe-cast :time x))
 (defn ->boolean                  "CAST `x` to a `boolean` datatype"          [x] (maybe-cast :boolean x))
+(defn ->text                     "CAST `x` to a `text` datatype"             [x] (cast :text x))
 
 ;;; Random SQL fns. Not all DBs support all these!
 (def ^{:arglists '([& exprs])} floor   "SQL `floor` function."   (partial hsql/call :floor))

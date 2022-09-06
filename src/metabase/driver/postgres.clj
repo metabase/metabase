@@ -240,6 +240,10 @@
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
                                (hsql/call :convert_from expr (hx/literal "UTF8"))))
 
+(defmethod sql.qp/cast-bytes-string [:postgres  :Coercion/Bytes->String]
+  [driver _coercion-strategy expr]
+  (hx/->text expr))
+
 (defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) (->timestamp expr)))
 (defn- extract    [unit expr] (hsql/call :extract    unit              (->timestamp expr)))
 
