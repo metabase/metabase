@@ -100,7 +100,7 @@ export const getMetadata = createSelector(
     meta.databases = copyObjects(meta, databases, instantiateDatabase);
     meta.schemas = copyObjects(meta, schemas, instantiateSchema);
     meta.tables = copyObjects(meta, tables, instantiateTable);
-    meta.fields = copyObjects(meta, fields, instantiateField);
+    meta.fields = copyObjects(meta, fields, instantiateField, "uniqueId");
     meta.segments = copyObjects(meta, segments, instantiateSegment);
     meta.metrics = copyObjects(meta, metrics, instantiateMetric);
     meta.questions = copyObjects(meta, questions, instantiateQuestion);
@@ -197,12 +197,17 @@ export const getSegments = createSelector(
 // UTILS:
 
 // clone each object in the provided mapping of objects
-export function copyObjects(metadata, objects, instantiate) {
+export function copyObjects(
+  metadata,
+  objects,
+  instantiate,
+  identifierProp = "id",
+) {
   const copies = {};
   for (const object of Object.values(objects)) {
-    if (object && object.id != null) {
-      copies[object.id] = instantiate(object, metadata);
-      copies[object.id].metadata = metadata;
+    if (object?.[identifierProp] != null) {
+      copies[object[identifierProp]] = instantiate(object, metadata);
+      copies[object[identifierProp]].metadata = metadata;
     } else {
       console.warn("Missing id:", object);
     }
