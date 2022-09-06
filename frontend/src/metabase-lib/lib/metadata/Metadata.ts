@@ -106,7 +106,7 @@ export default class Metadata extends Base {
    * @param {FieldId} fieldId
    * @returns {?Field}
    */
-  field(fieldId, tableId): Field | null {
+  field(fieldId, tableId?: string | number): Field | null {
     if (fieldId == null) {
       return null;
     }
