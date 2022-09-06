@@ -3,7 +3,7 @@ name: Lint doc Markdown links
 on:
   push:
     paths:
-      - 'docs/**'
+      - docs/**
 jobs:
   markdown-link-check:
     runs-on: ubuntu-20.04

@@ -32,18 +32,19 @@
    (s/optional-key :display)         (s/maybe s/Str)
    (s/optional-key :authority_level) (s/maybe s/Str)
    (s/optional-key :description)     (s/maybe s/Str)
-   (s/optional-key :app_id)          (s/maybe su/IntGreaterThanOrEqualToZero)})
+   (s/optional-key :app_id)          (s/maybe su/IntGreaterThanOrEqualToZero)
+   (s/optional-key :is_app_page)     (s/maybe s/Bool)})
 
 (s/defn ^:private normalize-bookmark-result :- BookmarkResult
   "Normalizes bookmark results. Bookmarks are left joined against the card, collection, and dashboard tables, but only
-  points to one of them. Normalizes it so it has an id (concatenation of model and model-id), type, item_id, name, and
-  description."
+  points to one of them. Normalizes it so it has just the desired fields."
   [result]
   (let [result            (into {} (remove (comp nil? second) result))
         normalized-result (zipmap (map unqualify-key (keys result)) (vals result))
         id-str            (str (:type normalized-result) "-" (:item_id normalized-result))]
     (-> normalized-result
-        (select-keys [:item_id :type :name :dataset :description :display :authority_level :app_id])
+        (select-keys [:item_id :type :name :dataset :description :display
+                      :authority_level :app_id :is_app_page])
         (assoc :id id-str))))
 
 (defn- bookmarks-union-query
@@ -90,6 +91,7 @@
                      [:dashboard.name (db/qualify 'Dashboard :name)]
                      [:dashboard.description (db/qualify 'Dashboard :description)]
                      [:dashboard.archived (db/qualify 'Dashboard :archived)]
+                     [:dashboard.is_app_page (db/qualify 'Dashboard :is_app_page)]
                      [:collection.name (db/qualify 'Collection :name)]
                      [:collection.authority_level (db/qualify 'Collection :authority_level)]
                      [:collection.description (db/qualify 'Collection :description)]
