@@ -110,14 +110,6 @@
              (not (#{:combo} display-type)))
         (chart-type :multiple "result has multiple card semantics, a multiple chart")
 
-        ;; we have to check when display-type is :line that there are enough rows/cols to actually create a line chart
-        ;; if there is only 1 row and 1 col, the chart should be considered scalar, actually.
-        (and (= @col-sample-count 2)
-             (> @row-sample-count 1)
-             (number-field? @col-2)
-             (not (#{:waterfall :pie :table :area} display-type)))
-        (chart-type :line "result has 2 cols (%s and %s (number)) and > 1 row" (col-description @col-1) (col-description @col-2))
-
         (and (= @col-sample-count 2)
              (number-field? @col-2)
              (= display-type :pie))
