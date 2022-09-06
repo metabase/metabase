@@ -93,11 +93,8 @@
            (ex-info (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")
              {:type qp.error-type/db})))))))
 
-(defn- get-session
-  "Returns the h2 session to be used for wrapping the h2 parser. Returns nil when the  ::client-side-session as the client side
-  session cannot be used to create a parser"
-  [db-id]
-  (with-open [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! :h2 db-id))]
+(defn- make-h2-parser [h2-db-id]
+  (with-open [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! :h2 h2-db-id))]
     (let [inner-field (doto
                           (.getDeclaredField (class conn) "inner")
                         (.setAccessible true))
@@ -106,31 +103,43 @@
                             (.getDeclaredField (class h2-jdbc-conn) "session")
                           (.setAccessible true))
           session (.get session-field h2-jdbc-conn)]
-      (when (instance? Session session)
-        session))))
+      (cond
+        (instance? Session session)
+        (Parser. session)
 
-(defn- truncate [s n] (if (<= n (count s)) (subs s n) ""))
+        ;; a SessionRemote cannot be used to make a parser
+        (instance? SessionRemote session)
+        ::client-side-session
+
+        :else
+        (throw (ex-info "Unknown session type" {:session session}))))))
+
+(defn- truncate [s n]
+  (when (<= n (count s))
+    (subs s n)))
 
 (defn- parse
-  ([db-session s]
-   (let [parser (Parser. db-session)
-         parse-method (doto (.getDeclaredMethod (class parser)
-                                                "parse"
-                                                (into-array Class [java.lang.String]))
-                        (.setAccessible true))
-         parse-index-field (doto (.getDeclaredField (class parser) "parseIndex")
-                             (.setAccessible true))]
-     ;; parser moves parseIndex, so get-offset will be the index in the string that was parsed "up to"
-     (parse s
-            (fn parser [s]
-              (try (.invoke parse-method parser (object-array [s]))
-                   ;; need to chew through error scenarios because of a query like:
-                   ;;
-                   ;; vulnerability; abc;
-                   ;;
-                   ;; which would cause the parser to break unless we ignore errors with the error handling here
-                   (catch Throwable _ ::unparsable)))
-            (fn get-offset [] (.get parse-index-field parser)))))
+  ([h2-db-id s]
+   (let [h2-parser (make-h2-parser h2-db-id)]
+     (when-not (= ::client-side-session h2-parser)
+       (let [parse-method (doto (.getDeclaredMethod (class h2-parser)
+                                                    "parse"
+                                                    (into-array Class [java.lang.String]))
+                            (.setAccessible true))
+             parse-index-field (doto (.getDeclaredField (class h2-parser) "parseIndex")
+                                 (.setAccessible true))]
+         ;; parser moves parseIndex, so get-offset will be the index in the string that was parsed "up to"
+         (parse s
+                (fn parser [s]
+                  (try (.invoke parse-method h2-parser (object-array [s]))
+                       ;; need to chew through error scenarios because of a query like:
+                       ;;
+                       ;; vulnerability; abc;
+                       ;;
+                       ;; which would cause this parser to break w/o the error handling here, but this way we
+                       ;; still return the org.h2.command.ddl.* classes.
+                       (catch Throwable _ ::parse-fail)))
+                (fn get-offset [] (.get parse-index-field h2-parser)))))))
   ([s parser get-offset] (vec (concat
                                [(parser s)];; this call to parser parses up to the end of the first sql statement
                                (let [more (truncate s (get-offset))] ;; more is the unparsed part of s
@@ -139,11 +148,10 @@
 
 (defn- check-disallow-ddl-commands [{:keys [database] :as query}]
   (when query
-    (when-let [session (get-session database)]
-      (let [operations (parse session (-> query :native :query))
-            op-classes (map class operations)]
-        (when (some #(re-find #"org.h2.command.ddl." (str %)) op-classes)
-          (throw (ex-info "DDL commands are not allowed to be used with h2." {:classes op-classes})))))))
+    (let [operations (parse database (-> query :native :query))
+          op-classes (map class operations)]
+      (when (some #(re-find #"org.h2.command.ddl." (str %)) op-classes)
+        (throw (ex-info "DDL commands are not allowed to be used with h2." {:classes op-classes}))))))
 
 (defmethod driver/execute-reducible-query :h2
   [driver query chans respond]
