@@ -61,7 +61,7 @@ The `deps.edn` file specifies the driver's dependencies.
 
 Your driver's [manifest](plugins.md#plugin-manifests) includes details about your driver.
 
-### `src/metabase/driver/sqlite.cljl`
+### `src/metabase/driver/sqlite.clj`
 
 This is the core file for your driver. We'll talk more about it in [Implementing multimethods](multimethods.md).
 
