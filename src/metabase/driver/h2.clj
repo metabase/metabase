@@ -22,7 +22,7 @@
   (:import [java.sql Clob ResultSet ResultSetMetaData]
            java.time.OffsetTime
            org.h2.command.Parser
-           [org.h2.engine Session SessionRemote]))
+           org.h2.engine.Session))
 
 ;; method impls live in this namespace
 (comment h2.actions/keep-me)
@@ -128,8 +128,7 @@
                    ;;
                    ;; vulnerability; abc;
                    ;;
-                   ;; which would cause this parser to break w/o the error handling here, but this way we
-                   ;; still return the org.h2.command.ddl.* classes.
+                   ;; which would cause the parser to break unless we ignore errors with the error handling here
                    (catch Throwable _ ::unparsable)))
             (fn get-offset [] (.get parse-index-field parser)))))
   ([s parser get-offset] (vec (concat
