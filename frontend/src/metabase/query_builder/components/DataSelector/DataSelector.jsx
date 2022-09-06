@@ -15,13 +15,10 @@ import EmptyState from "metabase/components/EmptyState";
 import ListSearchField from "metabase/components/ListSearchField";
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import AccordionList from "metabase/core/components/AccordionList";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import MetabaseSettings from "metabase/lib/settings";
 import { getSchemaName } from "metabase/lib/schema";
-import { isSyncCompleted } from "metabase/lib/syncing";
-import { isDatabaseWritebackEnabled } from "metabase/writeback/utils";
 
 import Databases from "metabase/entities/databases";
 import Schemas from "metabase/entities/schemas";
@@ -35,14 +32,13 @@ import {
   convertSearchResultToTableLikeItem,
 } from "./data-search";
 import SavedQuestionPicker from "./saved-question-picker/SavedQuestionPicker";
-import DataSelectorLoading from "./DataSelectorLoading";
+import DataBucketPicker from "./DataSelectorDataBucketPicker";
+import DatabasePicker from "./DataSelectorDatabasePicker";
+import DatabaseSchemaPicker from "./DataSelectorDatabaseSchemaPicker";
+import SchemaPicker from "./DataSelectorSchemaPicker";
 import FieldPicker from "./DataSelectorFieldPicker";
 import TablePicker from "./DataSelectorTablePicker";
 import {
-  DataBucketList,
-  DataBucketListItem,
-  PickerSpinner,
-  RawDataBackButton,
   CollectionDatasetSelectList,
   CollectionDatasetAllDataLink,
   EmptyStateContainer,
@@ -51,15 +47,11 @@ import {
 import { getMetadata } from "metabase/selectors/metadata";
 import { getHasDataAccess } from "metabase/new_query/selectors";
 
+import { DATA_BUCKET } from "./constants";
+
 import "./DataSelector.css";
 
 const MIN_SEARCH_LENGTH = 2;
-
-export const DATA_BUCKET = {
-  DATASETS: "datasets",
-  RAW_DATA: "raw-data",
-  SAVED_QUESTIONS: "saved-questions",
-};
 
 // chooses a data source bucket (datasets / raw data (tables) / saved questions)
 const DATA_BUCKET_STEP = "BUCKET";
@@ -1188,219 +1180,3 @@ function CollectionDatasetList({ datasets, onSelect, onSeeAllData }) {
     </CollectionDatasetSelectList>
   );
 }
-
-const DataBucketPicker = ({ onChangeDataBucket }) => {
-  const BUCKETS = [
-    {
-      id: DATA_BUCKET.DATASETS,
-      icon: "model",
-      name: t`Models`,
-      description: t`The best starting place for new questions.`,
-    },
-    {
-      id: DATA_BUCKET.RAW_DATA,
-      icon: "database",
-      name: t`Raw Data`,
-      description: t`Unaltered tables in connected databases.`,
-    },
-    {
-      id: DATA_BUCKET.SAVED_QUESTIONS,
-      name: t`Saved Questions`,
-      icon: "folder",
-      description: t`Use any question’s results to start a new question.`,
-    },
-  ];
-
-  return (
-    <DataBucketList>
-      {BUCKETS.map(bucket => (
-        <DataBucketListItem
-          {...bucket}
-          key={bucket.id}
-          onSelect={onChangeDataBucket}
-        />
-      ))}
-    </DataBucketList>
-  );
-};
-
-const DatabasePicker = ({
-  databases,
-  selectedDatabase,
-  onChangeDatabase,
-  hasNextStep,
-  onBack,
-  hasInitialFocus,
-  requireWriteback = false,
-}) => {
-  if (databases.length === 0) {
-    return <DataSelectorLoading />;
-  }
-
-  const sections = [
-    {
-      items: databases.map((database, index) => ({
-        name: database.name,
-        writebackEnabled: isDatabaseWritebackEnabled(database),
-        index,
-        database: database,
-      })),
-    },
-  ];
-
-  if (onBack) {
-    sections.unshift({ name: <RawDataBackButton /> });
-  }
-
-  return (
-    <AccordionList
-      id="DatabasePicker"
-      key="databasePicker"
-      className="text-brand"
-      hasInitialFocus={hasInitialFocus}
-      sections={sections}
-      onChange={item => onChangeDatabase(item.database)}
-      onChangeSection={(_section, sectionIndex) => {
-        const isNavigationSection = onBack && sectionIndex === 0;
-        if (isNavigationSection) {
-          onBack();
-        }
-        return false;
-      }}
-      itemIsClickable={
-        requireWriteback ? item => item.writebackEnabled : undefined
-      }
-      itemIsSelected={item =>
-        selectedDatabase && item.database.id === selectedDatabase.id
-      }
-      renderItemIcon={() => (
-        <Icon className="Icon text-default" name="database" size={18} />
-      )}
-      showItemArrows={hasNextStep}
-    />
-  );
-};
-
-const SchemaPicker = ({
-  schemas,
-  selectedSchemaId,
-  onChangeSchema,
-  hasNextStep,
-  hasFiltering,
-  hasInitialFocus,
-}) => {
-  const sections = [
-    {
-      items: schemas.map(schema => ({
-        name: schema.displayName(),
-        schema: schema,
-      })),
-    },
-  ];
-  return (
-    <div style={{ width: 300 }}>
-      <AccordionList
-        id="SchemaPicker"
-        key="schemaPicker"
-        className="text-brand"
-        hasInitialFocus={hasInitialFocus}
-        sections={sections}
-        searchable={hasFiltering}
-        onChange={item => onChangeSchema(item.schema)}
-        itemIsSelected={item => item?.schema.id === selectedSchemaId}
-        renderItemIcon={() => <Icon name="folder" size={16} />}
-        showItemArrows={hasNextStep}
-      />
-    </div>
-  );
-};
-
-const DatabaseSchemaPicker = ({
-  databases,
-  selectedDatabase,
-  selectedSchema,
-  onChangeSchema,
-  onChangeDatabase,
-  hasNextStep,
-  isLoading,
-  hasBackButton,
-  onBack,
-  hasInitialFocus,
-}) => {
-  if (databases.length === 0) {
-    return <DataSelectorLoading />;
-  }
-
-  const sections = databases.map(database => ({
-    name: database.is_saved_questions ? t`Saved Questions` : database.name,
-    items:
-      !database.is_saved_questions && database.schemas.length > 1
-        ? database.schemas.map(schema => ({
-            schema,
-            name: schema.displayName(),
-          }))
-        : [],
-    className: database.is_saved_questions ? "bg-light" : null,
-    icon: database.is_saved_questions ? "all" : "database",
-    loading:
-      selectedDatabase?.id === database.id &&
-      database.schemas.length === 0 &&
-      isLoading,
-    active: database.is_saved_questions || isSyncCompleted(database),
-  }));
-
-  if (hasBackButton) {
-    sections.unshift({
-      name: <RawDataBackButton />,
-      active: true,
-    });
-  }
-
-  let openSection = selectedSchema
-    ? databases.findIndex(db => db.id === selectedSchema.database.id)
-    : selectedDatabase
-    ? databases.findIndex(db => db.id === selectedDatabase.id)
-    : -1;
-
-  if (openSection >= 0 && databases[openSection]?.schemas.length === 1) {
-    openSection = -1;
-  }
-
-  return (
-    <AccordionList
-      id="DatabaseSchemaPicker"
-      key="databaseSchemaPicker"
-      className="text-brand"
-      hasInitialFocus={hasInitialFocus}
-      sections={sections}
-      onChange={item => onChangeSchema(item.schema)}
-      onChangeSection={(_section, sectionIndex) => {
-        const isNavigationSection = hasBackButton && sectionIndex === 0;
-        if (isNavigationSection) {
-          onBack();
-          return false;
-        }
-        // the "go back" button is also a section,
-        // so need to take its index in mind
-        const database = hasBackButton
-          ? databases[sectionIndex - 1]
-          : databases[sectionIndex];
-        onChangeDatabase(database);
-        return true;
-      }}
-      itemIsSelected={schema => schema === selectedSchema}
-      renderSectionIcon={item =>
-        item.icon && (
-          <Icon className="Icon text-default" name={item.icon} size={18} />
-        )
-      }
-      renderSectionExtra={item =>
-        !item.active && <PickerSpinner size={16} borderWidth={2} />
-      }
-      renderItemIcon={() => <Icon name="folder" size={16} />}
-      initiallyOpenSection={openSection}
-      alwaysTogglable={true}
-      showItemArrows={hasNextStep}
-    />
-  );
-};

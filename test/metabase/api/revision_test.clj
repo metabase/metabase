@@ -117,13 +117,13 @@
                :message      nil
                :user         @rasta-revision-info
                :diff         {:before {:cards nil}
-                              :after  {:cards [{:sizeX 2, :sizeY 2, :row 0, :col 0, :card_id card-id, :series []}]}}
+                              :after  {:cards [{:size_x 2, :size_y 2, :row 0, :col 0, :card_id card-id, :series []}]}}
                :description  "added a card."}
               {:is_reversion false
                :is_creation  false
                :message      nil
                :user         @rasta-revision-info
-               :diff         {:before {:cards [{:sizeX 2, :sizeY 2, :row 0, :col 0, :card_id card-id, :series []}]}
+               :diff         {:before {:cards [{:size_x 2, :size_y 2, :row 0, :col 0, :card_id card-id, :series []}]}
                               :after  {:cards nil}}
                :description "removed a card."}
               {:is_reversion false
@@ -131,7 +131,7 @@
                :message      nil
                :user         @rasta-revision-info
                :diff         {:before {:cards nil}
-                              :after  {:cards [{:sizeX 2, :sizeY 2, :row 0, :col 0, :card_id card-id, :series []}]}}
+                              :after  {:cards [{:size_x 2, :size_y 2, :row 0, :col 0, :card_id card-id, :series []}]}}
                :description "added a card."}
               {:is_reversion false
                :is_creation  true
@@ -152,7 +152,8 @@
                                                                        :revision_id previous-revision-id}))
                (->> (get-revisions :dashboard id)
                     (mapv (fn [rev]
-                            (if-not (:diff rev) rev
+                            (if-not (:diff rev)
+                              rev
                               (if (get-in rev [:diff :before :cards])
                                 (update-in rev [:diff :before :cards] strip-ids)
                                 (update-in rev [:diff :after :cards] strip-ids))))))))))))

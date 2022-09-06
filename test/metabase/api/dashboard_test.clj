@@ -217,49 +217,49 @@
   (testing "GET /api/dashboard/:id"
     (testing "fetch a dashboard WITH a dashboard card on it"
       (mt/with-temp* [Dashboard     [{dashboard-id :id
-                                      :as dashboard}    {:name "Test Dashboard"}]
-                      Card          [{card-id  :id
-                                      :as card}         {:name "Dashboard Test Card"}]
+                                      :as          dashboard}    {:name "Test Dashboard"}]
+                      Card          [{card-id :id
+                                      :as     card}         {:name "Dashboard Test Card"}]
                       DashboardCard [dashcard           {:dashboard_id dashboard-id, :card_id card-id}]
                       User          [{user-id :id}      {:first_name "Test" :last_name "User"
-                                                         :email "test@example.com"}]
-                      Revision      [_                  {:user_id user-id
-                                                         :model "Dashboard"
+                                                         :email      "test@example.com"}]
+                      Revision      [_                  {:user_id  user-id
+                                                         :model    "Dashboard"
                                                          :model_id dashboard-id
-                                                         :object (revision/serialize-instance dashboard
-                                                                                              dashboard-id
-                                                                                              dashboard)}]]
+                                                         :object   (revision/serialize-instance dashboard
+                                                                                                dashboard-id
+                                                                                                dashboard)}]]
         (with-dashboards-in-readable-collection [dashboard-id]
           (api.card-test/with-cards-in-readable-collection [card-id]
             (is (= (merge
                     dashboard-defaults
-                    {:name          "Test Dashboard"
-                     :creator_id    (mt/user->id :rasta)
-                     :collection_id true
+                    {:name                       "Test Dashboard"
+                     :creator_id                 (mt/user->id :rasta)
+                     :collection_id              true
                      :collection_authority_level nil
-                     :can_write     false
-                     :param_fields  nil
-                     :last-edit-info {:timestamp true :id true :first_name "Test" :last_name "User" :email "test@example.com"}
-                     :ordered_cards [{:sizeX                  2
-                                      :sizeY                  2
-                                      :col                    0
-                                      :row                    0
-                                      :collection_authority_level        nil
-                                      :updated_at             true
-                                      :created_at             true
-                                      :entity_id              (:entity_id dashcard)
-                                      :parameter_mappings     []
-                                      :visualization_settings {}
-                                      :card                   (merge api.card-test/card-defaults-no-hydrate
-                                                                     {:name                   "Dashboard Test Card"
-                                                                      :creator_id             (mt/user->id :rasta)
-                                                                      :collection_id          true
-                                                                      :display                "table"
-                                                                      :entity_id              (:entity_id card)
-                                                                      :visualization_settings {}
-                                                                      :is_write               false
-                                                                      :result_metadata        nil})
-                                      :series                 []}]})
+                     :can_write                  false
+                     :param_fields               nil
+                     :last-edit-info             {:timestamp true :id true :first_name "Test" :last_name "User" :email "test@example.com"}
+                     :ordered_cards              [{:size_x                     2
+                                                   :size_y                     2
+                                                   :col                        0
+                                                   :row                        0
+                                                   :collection_authority_level nil
+                                                   :updated_at                 true
+                                                   :created_at                 true
+                                                   :entity_id                  (:entity_id dashcard)
+                                                   :parameter_mappings         []
+                                                   :visualization_settings     {}
+                                                   :card                       (merge api.card-test/card-defaults-no-hydrate
+                                                                                      {:name                   "Dashboard Test Card"
+                                                                                       :creator_id             (mt/user->id :rasta)
+                                                                                       :collection_id          true
+                                                                                       :display                "table"
+                                                                                       :entity_id              (:entity_id card)
+                                                                                       :visualization_settings {}
+                                                                                       :is_write               false
+                                                                                       :result_metadata        nil})
+                                                   :series                     []}]})
                    (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))
 
     (testing "fetch a dashboard with a param in it"
@@ -268,7 +268,7 @@
 
                       Dashboard     [{dashboard-id :id} {:name "Test Dashboard"}]
                       Card          [{card-id :id
-                                      :as card}         {:name "Dashboard Test Card"}]
+                                      :as     card}         {:name "Dashboard Test Card"}]
                       DashboardCard [dashcard           {:dashboard_id       dashboard-id
                                                          :card_id            card-id
                                                          :parameter_mappings [{:card_id      1
@@ -277,42 +277,42 @@
         (with-dashboards-in-readable-collection [dashboard-id]
           (api.card-test/with-cards-in-readable-collection [card-id]
             (is (= (merge dashboard-defaults
-                          {:name          "Test Dashboard"
-                           :creator_id    (mt/user->id :rasta)
-                           :collection_id true
+                          {:name                       "Test Dashboard"
+                           :creator_id                 (mt/user->id :rasta)
+                           :collection_id              true
                            :collection_authority_level nil
-                           :can_write     false
-                           :param_fields  {field-id {:id               field-id
-                                                     :table_id         table-id
-                                                     :display_name     display-name
-                                                     :base_type        "type/Text"
-                                                     :semantic_type    nil
-                                                     :has_field_values "search"
-                                                     :name_field       nil
-                                                     :dimensions       []}}
-                           :ordered_cards [{:sizeX                  2
-                                            :sizeY                  2
-                                            :col                    0
-                                            :row                    0
-                                            :updated_at             true
-                                            :created_at             true
-                                            :entity_id              (:entity_id dashcard)
-                                            :collection_authority_level nil
-                                            :parameter_mappings     [{:card_id      1
-                                                                      :parameter_id "foo"
-                                                                      :target       ["dimension" ["field" field-id nil]]}]
-                                            :visualization_settings {}
-                                            :card                   (merge api.card-test/card-defaults-no-hydrate
-                                                                           {:name                   "Dashboard Test Card"
-                                                                            :creator_id             (mt/user->id :rasta)
-                                                                            :collection_id          true
-                                                                            :entity_id              (:entity_id card)
-                                                                            :display                "table"
-                                                                            :query_type             nil
-                                                                            :visualization_settings {}
-                                                                            :is_write               false
-                                                                            :result_metadata        nil})
-                                            :series                 []}]})
+                           :can_write                  false
+                           :param_fields               {field-id {:id               field-id
+                                                                  :table_id         table-id
+                                                                  :display_name     display-name
+                                                                  :base_type        "type/Text"
+                                                                  :semantic_type    nil
+                                                                  :has_field_values "search"
+                                                                  :name_field       nil
+                                                                  :dimensions       []}}
+                           :ordered_cards              [{:size_x                     2
+                                                         :size_y                     2
+                                                         :col                        0
+                                                         :row                        0
+                                                         :updated_at                 true
+                                                         :created_at                 true
+                                                         :entity_id                  (:entity_id dashcard)
+                                                         :collection_authority_level nil
+                                                         :parameter_mappings         [{:card_id      1
+                                                                                       :parameter_id "foo"
+                                                                                       :target       ["dimension" ["field" field-id nil]]}]
+                                                         :visualization_settings     {}
+                                                         :card                       (merge api.card-test/card-defaults-no-hydrate
+                                                                                            {:name                   "Dashboard Test Card"
+                                                                                             :creator_id             (mt/user->id :rasta)
+                                                                                             :collection_id          true
+                                                                                             :entity_id              (:entity_id card)
+                                                                                             :display                "table"
+                                                                                             :query_type             nil
+                                                                                             :visualization_settings {}
+                                                                                             :is_write               false
+                                                                                             :result_metadata        nil})
+                                                         :series                     []}]})
                    (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))
     (testing "fetch a dashboard from an official collection includes the collection type"
       (mt/with-temp* [Dashboard     [{dashboard-id :id} {:name "Test Dashboard"}]
@@ -766,8 +766,8 @@
                   Card      [{card-id :id}]]
     (with-dashboards-in-writeable-collection [dashboard-id]
       (api.card-test/with-cards-in-readable-collection [card-id]
-        (is (= {:sizeX                  2
-                :sizeY                  2
+        (is (= {:size_x                 2
+                :size_y                 2
                 :col                    4
                 :row                    4
                 :series                 []
@@ -787,14 +787,14 @@
                    (dissoc :id :dashboard_id :action_id :card_id :entity_id)
                    (update :created_at boolean)
                    (update :updated_at boolean))))
-        (is (= [{:sizeX                  2
-                 :sizeY                  2
+        (is (= [{:size_x                 2
+                 :size_y                 2
                  :col                    4
                  :row                    4
                  :parameter_mappings     [{:parameter_id "abc", :card_id 123, :hash "abc", :target "foo"}]
                  :visualization_settings {}}]
                (map (partial into {})
-                    (db/select [DashboardCard :sizeX :sizeY :col :row :parameter_mappings :visualization_settings]
+                    (db/select [DashboardCard :size_x :size_y :col :row :parameter_mappings :visualization_settings]
                       :dashboard_id dashboard-id))))))))
 
 (deftest new-dashboard-card-with-additional-series-test
@@ -808,8 +808,8 @@
                                                     :row    4
                                                     :col    4
                                                     :series [{:id series-id-1}]})]
-          (is (= {:sizeX                  2
-                  :sizeY                  2
+          (is (= {:size_x                 2
+                  :size_y                 2
                   :col                    4
                   :row                    4
                   :parameter_mappings     []
@@ -822,12 +822,12 @@
                   :created_at             true
                   :updated_at             true}
                  (remove-ids-and-booleanize-timestamps dashboard-card)))
-          (is (= [{:sizeX 2
-                   :sizeY 2
-                   :col   4
-                   :row   4}]
+          (is (= [{:size_x 2
+                   :size_y 2
+                   :col    4
+                   :row    4}]
                  (map (partial into {})
-                      (db/select [DashboardCard :sizeX :sizeY :col :row], :dashboard_id dashboard-id))))
+                      (db/select [DashboardCard :size_x :size_y :col :row], :dashboard_id dashboard-id))))
           (is (= #{0}
                  (db/select-field :position DashboardCardSeries, :dashboardcard_id (:id dashboard-card)))))))))
 
@@ -895,10 +895,10 @@
      (mt/with-temp DashboardCard [dashboard-card {:dashboard_id       dashboard-id
                                                   :card_id            card-id
                                                   :parameter_mappings mappings}]
-       (let [dashcard-info     (select-keys dashboard-card [:id :sizeX :sizeY :row :col :parameter_mappings])
+       (let [dashcard-info     (select-keys dashboard-card [:id :size_x :size_y :row :col :parameter_mappings])
              new-mappings      [{:parameter_id "_CATEGORY_ID_"
                                  :target       [:dimension [:field (mt/id :venues :price) nil]]}]
-             new-dashcard-info (assoc dashcard-info :sizeX 1000)]
+             new-dashcard-info (assoc dashcard-info :size_x 1000)]
          (f {:dashboard-id           dashboard-id
              :card-id                card-id
              :original-mappings      mappings
@@ -928,8 +928,8 @@
          (testing "Changing another column should be ok even without data permissions."
            (is (= {:status "ok"}
                   (update-size!)))
-           (is (= (:sizeX new-dashcard-info)
-                  (db/select-one-field :sizeX DashboardCard :dashboard_id dashboard-id, :card_id card-id))))
+           (is (= (:size_x new-dashcard-info)
+                  (db/select-one-field :size_x DashboardCard :dashboard_id dashboard-id, :card_id card-id))))
          (testing "Should be able to update `:parameter_mappings` *with* proper data permissions."
            (perms/grant-permissions! (perms-group/all-users) (perms/table-query-path (mt/id :venues)))
            (is (= {:status "ok"}
@@ -987,8 +987,8 @@
                     DashboardCard [{dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id}]
                     Card          [{series-id-1 :id}   {:name "Series Card"}]]
       (with-dashboards-in-writeable-collection [dashboard-id]
-        (is (= {:sizeX                  2
-                :sizeY                  2
+        (is (= {:size_x                 2
+                :size_y                 2
                 :col                    0
                 :row                    0
                 :series                 []
@@ -997,8 +997,8 @@
                 :created_at             true
                 :updated_at             true}
                (remove-ids-and-booleanize-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id-1))))
-        (is (= {:sizeX                  2
-                :sizeY                  2
+        (is (= {:size_x                 2
+                :size_y                 2
                 :col                    0
                 :row                    0
                 :parameter_mappings     []
@@ -1010,18 +1010,18 @@
         (is (= {:status "ok"}
                (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
                                      {:cards [{:id     dashcard-id-1
-                                               :sizeX  4
-                                               :sizeY  2
+                                               :size_x 4
+                                               :size_y 2
                                                :col    0
                                                :row    0
                                                :series [{:id series-id-1}]}
-                                              {:id    dashcard-id-2
-                                               :sizeX 1
-                                               :sizeY 1
-                                               :col   1
-                                               :row   3}]})))
-        (is (= {:sizeX                  4
-                :sizeY                  2
+                                              {:id     dashcard-id-2
+                                               :size_x 1
+                                               :size_y 1
+                                               :col    1
+                                               :row    3}]})))
+        (is (= {:size_x                 4
+                :size_y                 2
                 :col                    0
                 :row                    0
                 :parameter_mappings     []
@@ -1034,8 +1034,8 @@
                 :created_at             true
                 :updated_at             true}
                (remove-ids-and-booleanize-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id-1))))
-        (is (= {:sizeX                  1
-                :sizeY                  1
+        (is (= {:size_x                 1
+                :size_y                 1
                 :col                    1
                 :row                    3
                 :parameter_mappings     []
@@ -1057,8 +1057,8 @@
                                   :model_id     dashboard-id
                                   :object       {:name         "b"
                                                  :description  nil
-                                                 :cards        [{:sizeX   2
-                                                                 :sizeY   2
+                                                 :cards        [{:size_x   2
+                                                                 :size_y   2
                                                                  :row     0
                                                                  :col     0
                                                                  :card_id 123
@@ -1069,8 +1069,8 @@
                                   :user_id  (mt/user->id :crowberto)
                                   :object   {:name         "c"
                                              :description  "something"
-                                             :cards        [{:sizeX   4
-                                                             :sizeY   3
+                                             :cards        [{:size_x   4
+                                                             :size_y   3
                                                              :row     0
                                                              :col     0
                                                              :card_id 123
@@ -1083,10 +1083,10 @@
                                  (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
                :diff         {:before {:name        "b"
                                        :description nil
-                                       :cards       [{:series nil, :sizeY 2, :sizeX 2}]}
+                                       :cards       [{:series nil, :size_y 2, :size_x 2}]}
                               :after  {:name        "c"
                                        :description "something"
-                                       :cards       [{:series [8 9], :sizeY 3, :sizeX 4}]}}
+                                       :cards       [{:series [8 9], :size_y 3, :size_x 4}]}}
                :description  "renamed it from \"b\" to \"c\", added a description, rearranged the cards and added some series to card 123."}
               {:is_reversion false
                :is_creation  true
@@ -1858,7 +1858,7 @@
           (mt/with-temp* [Dashboard [{dashboard-id :id}]]
             (is (partial= {:action_id action-id}
                           (mt/user-http-request :crowberto :post 200 (format "dashboard/%s/cards" dashboard-id)
-                                                {:sizeX 1 :sizeY 1 :row 1 :col 1 :action_id action-id})))
+                                                {:size_x 1 :size_y 1 :row 1 :col 1 :action_id action-id})))
             (is (partial= {:ordered_cards [{:action_id action-id :action {:id action-id}}]}
                           (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id))))))
         (testing "Updating dashcard action"

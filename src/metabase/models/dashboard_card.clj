@@ -37,21 +37,18 @@
                                                                  (mi/perms-objects-set series-card read-or-write)))))
 
 (defn- pre-insert [dashcard]
-  (let [defaults {:sizeX                  2
-                  :sizeY                  2
-                  :parameter_mappings     []
+  (let [defaults {:parameter_mappings     []
                   :visualization_settings {}}]
     (merge defaults dashcard)))
 
 (u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class DashboardCard)
   models/IModel
   (merge models/IModelDefaults
-         {:properties  (constantly {:timestamped? true
-                                    :entity_id    true})
-          :types       (constantly {:parameter_mappings     :parameters-list
-                                    :visualization_settings :visualization-settings})
-          :pre-insert  pre-insert
-          :post-select #(set/rename-keys % {:sizex :sizeX, :sizey :sizeY})})
+         {:properties (constantly {:timestamped? true
+                                   :entity_id    true})
+          :types      (constantly {:parameter_mappings     :parameters-list
+                                   :visualization_settings :visualization-settings})
+          :pre-insert pre-insert})
 
   serdes.hash/IdentityHashable
   {:identity-hash-fields (constantly [(serdes.hash/hydrated-hash :card)
@@ -141,14 +138,14 @@
   "Update an existing DashboardCard` including all DashboardCardSeries.
    Returns the updated DashboardCard or throws an Exception."
   [{:keys [id action_id parameter_mappings visualization_settings] :as dashboard-card} :- DashboardCardUpdates]
-  (let [{:keys [sizeX sizeY row col series]} (merge {:series []} dashboard-card)]
+  (let [{:keys [size_x size_y row col series]} (merge {:series []} dashboard-card)]
     (db/transaction
      ;; update the dashcard itself (positional attributes)
-     (when (and sizeX sizeY row col)
+     (when (and size_x size_y row col)
        (db/update-non-nil-keys! DashboardCard id
                                 :action_id              action_id
-                                :sizeX                  sizeX
-                                :sizeY                  sizeY
+                                :size_x                 size_x
+                                :size_y                 size_y
                                 :row                    row
                                 :col                    col
                                 :parameter_mappings     parameter_mappings
@@ -181,8 +178,8 @@
   "Create a new DashboardCard by inserting it into the database along with all associated pieces of data such as
    DashboardCardSeries. Returns the newly created DashboardCard or throws an Exception."
   [dashboard-card :- NewDashboardCard]
-  (let [{:keys [dashboard_id card_id action_id parameter_mappings visualization_settings sizeX sizeY row col series]
-         :or   {sizeX 2, sizeY 2, series []}} dashboard-card]
+  (let [{:keys [dashboard_id card_id action_id parameter_mappings visualization_settings size_x size_y row col series]
+         :or   {size_x 2, size_y 2, series []}} dashboard-card]
     ;; make sure the Card isn't a writeback QueryAction. It doesn't make sense to add these to a Dashboard since we're
     ;; not supposed to be executing them for results
     (when (db/select-one-field :is_write Card :id card_id)
@@ -193,8 +190,8 @@
                                       :dashboard_id           dashboard_id
                                       :card_id                card_id
                                       :action_id              action_id
-                                      :sizeX                  sizeX
-                                      :sizeY                  sizeY
+                                      :size_x                  size_x
+                                      :size_y                  size_y
                                       :row                    (or row 0)
                                       :col                    (or col 0)
                                       :parameter_mappings     (or parameter_mappings [])

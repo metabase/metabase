@@ -22,8 +22,8 @@ const AuditDashboard = ({ cards, ...props }) => (
       ordered_cards: cards.map(([{ x, y, w, h }, dc]) => ({
         col: x,
         row: y,
-        sizeX: w,
-        sizeY: h,
+        size_x: w,
+        size_y: h,
         visualization_settings: {
           // use the legacy "graph.colors" settings with color harmony to force brand color, etc
           "graph.colors": getAccentColors({ harmony: true }),

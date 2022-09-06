@@ -327,8 +327,8 @@ describe("scenarios > visualizations > line chart", () => {
               card_id: firstCardId,
               row: 0,
               col: 0,
-              sizeX: 18,
-              sizeY: 12,
+              size_x: 18,
+              size_y: 12,
               series: [
                 {
                   id: secondCardId,

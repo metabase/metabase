@@ -129,19 +129,15 @@
   "Given a sequence of objects/rows fetched from the H2 DB, return a the `columns` that should be used in the `INSERT`
   statement, and a sequence of rows (as sequences)."
   [target-db-type objs]
-  ;; 1) `:sizeX` and `:sizeY` come out of H2 as `:sizex` and `:sizey` because of automatic lowercasing; fix the names
-  ;;    of these before putting into the new DB
-  ;;
-  ;; 2) Need to wrap the column names in quotes because Postgres automatically lowercases unquoted identifiers
+  ;; Need to wrap the column names in quotes because Postgres automatically lowercases unquoted identifiers. (This
+  ;; should be ok now that #16344 is resolved -- we might be able to remove this code entirely now. Quoting identifiers
+  ;; is still a good idea tho.)
   (let [source-keys (keys (first objs))
         quote-style (mdb.connection/quoting-style target-db-type)
         quote-fn    (get @#'hformat/quote-fns quote-style)
         _           (assert (fn? quote-fn) (str "No function for quote style: " quote-style))
         dest-keys   (for [k source-keys]
-                      (quote-fn (name (case k
-                                        :sizex :sizeX
-                                        :sizey :sizeY
-                                        k))))]
+                      (quote-fn (name k)))]
     {:cols dest-keys
      :vals (for [row objs]
              (map row source-keys))}))
