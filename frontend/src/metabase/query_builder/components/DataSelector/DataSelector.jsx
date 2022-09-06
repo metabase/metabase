@@ -32,14 +32,13 @@ import {
   convertSearchResultToTableLikeItem,
 } from "./data-search";
 import SavedQuestionPicker from "./saved-question-picker/SavedQuestionPicker";
+import DataBucketPicker from "./DataSelectorDataBucketPicker";
 import DatabasePicker from "./DataSelectorDatabasePicker";
 import DatabaseSchemaPicker from "./DataSelectorDatabaseSchemaPicker";
 import SchemaPicker from "./DataSelectorSchemaPicker";
 import FieldPicker from "./DataSelectorFieldPicker";
 import TablePicker from "./DataSelectorTablePicker";
 import {
-  DataBucketList,
-  DataBucketListItem,
   CollectionDatasetSelectList,
   CollectionDatasetAllDataLink,
   EmptyStateContainer,
@@ -48,15 +47,11 @@ import {
 import { getMetadata } from "metabase/selectors/metadata";
 import { getHasDataAccess } from "metabase/new_query/selectors";
 
+import { DATA_BUCKET } from "./constants";
+
 import "./DataSelector.css";
 
 const MIN_SEARCH_LENGTH = 2;
-
-export const DATA_BUCKET = {
-  DATASETS: "datasets",
-  RAW_DATA: "raw-data",
-  SAVED_QUESTIONS: "saved-questions",
-};
 
 // chooses a data source bucket (datasets / raw data (tables) / saved questions)
 const DATA_BUCKET_STEP = "BUCKET";
@@ -1185,38 +1180,3 @@ function CollectionDatasetList({ datasets, onSelect, onSeeAllData }) {
     </CollectionDatasetSelectList>
   );
 }
-
-const DataBucketPicker = ({ onChangeDataBucket }) => {
-  const BUCKETS = [
-    {
-      id: DATA_BUCKET.DATASETS,
-      icon: "model",
-      name: t`Models`,
-      description: t`The best starting place for new questions.`,
-    },
-    {
-      id: DATA_BUCKET.RAW_DATA,
-      icon: "database",
-      name: t`Raw Data`,
-      description: t`Unaltered tables in connected databases.`,
-    },
-    {
-      id: DATA_BUCKET.SAVED_QUESTIONS,
-      name: t`Saved Questions`,
-      icon: "folder",
-      description: t`Use any question’s results to start a new question.`,
-    },
-  ];
-
-  return (
-    <DataBucketList>
-      {BUCKETS.map(bucket => (
-        <DataBucketListItem
-          {...bucket}
-          key={bucket.id}
-          onSelect={onChangeDataBucket}
-        />
-      ))}
-    </DataBucketList>
-  );
-};
