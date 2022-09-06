@@ -29,11 +29,11 @@ import { getFieldValues, getRemappings } from "metabase/lib/query/field";
 import { DATETIME_UNITS, formatBucketing } from "metabase/lib/query_time";
 import { getQuestionIdFromVirtualTableId } from "metabase/lib/saved-questions";
 import Aggregation from "metabase-lib/lib/queries/structured/Aggregation";
+import Filter from "metabase-lib/lib/queries/structured/Filter";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import { infer, MONOTYPE } from "metabase/lib/expressions/typeinferencer";
 import { isa } from "cljs/metabase.types";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
 
 /**
  * A dimension option returned by the query_metadata API
