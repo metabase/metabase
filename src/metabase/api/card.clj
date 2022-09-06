@@ -3,7 +3,6 @@
   (:require [cheshire.core :as json]
             [clojure.core.async :as a]
             [clojure.data :as data]
-            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
             [compojure.core :refer [DELETE GET POST PUT]]
