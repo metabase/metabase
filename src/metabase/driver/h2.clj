@@ -118,11 +118,19 @@
                                           (.setAccessible true))]
                   ;; parser moves parseIndex, so get-offset will be the index in the string that was parsed "up to"
                   (parse s
-                         (fn parser [s] (.invoke parse-method my-parser (object-array [s])))
+                         (fn parser [s]
+                           (try (.invoke parse-method my-parser (object-array [s]))
+                                ;; need to chew through error scenarios because of a query like:
+                                ;;
+                                ;; vulnerability; abc;
+                                ;;
+                                ;; which would cause this parser to break w/o the error handling here, but this way we
+                                ;; still return the org.h2.command.ddl.* classes.
+                                (catch Throwable _ ::parse-fail)))
                          (fn get-offset [] (.get parse-index-field my-parser)))))
   ([s parser get-offset] (vec (concat
-                               [(parser s)]
-                               (let [more (truncate s (get-offset))]
+                               [(parser s)];; this call to parser parses up to the end of the first sql statement
+                               (let [more (truncate s (get-offset))] ;; more is the unparsed part of s
                                  (when-not (str/blank? more)
                                    (parse more parser get-offset)))))))
 
