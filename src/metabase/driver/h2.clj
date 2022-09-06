@@ -131,7 +131,7 @@
     (let [operations (parse database (-> query :native :query))
           op-classes (map class operations)]
       (when (some #(re-find #"org.h2.command.ddl." (str %)) op-classes)
-        (throw (ex-info "uh oh" {:classes op-classes}))))))
+        (throw (ex-info "DDL commands are not allowed to be used with h2." {:classes op-classes}))))))
 
 (defmethod driver/execute-reducible-query :h2
   [driver query chans respond]

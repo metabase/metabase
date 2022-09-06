@@ -185,7 +185,7 @@ SELECT * FROM INFORMATION_SCHEMA.Users;
           ]
       (is (thrown?
            clojure.lang.ExceptionInfo
-           #"uh oh." ;; TODO fix message
+           #"DDL commands are not allowed to be used with h2."
            (#'h2/check-disallow-ddl-commands
             {:database (u/the-id (mt/db))
              :engine :h2
