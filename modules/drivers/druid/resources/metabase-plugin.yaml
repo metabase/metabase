@@ -30,7 +30,8 @@ driver:
         auth-enabled: true
     - name: auth-token
       display-name: Token
-      type: string
+      type: secret
+      secret-kind: password
       visible-if:
         auth-enabled: true
     - default-advanced-options

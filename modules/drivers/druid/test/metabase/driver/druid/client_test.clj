@@ -79,7 +79,7 @@
      (request-fn "http://localhost:8082/druid/v2"
        :auth-enabled basic-auth?
        :auth-username "nbotelho"
-       :auth-token "12345678910")
+       :auth-token-value "12345678910")
      (catch Exception e
        (ex-data e)))))
 
