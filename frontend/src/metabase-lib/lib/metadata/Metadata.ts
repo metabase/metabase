@@ -106,8 +106,17 @@ export default class Metadata extends Base {
    * @param {FieldId} fieldId
    * @returns {?Field}
    */
-  field(fieldId): Field | null {
-    return (fieldId != null && this.fields[fieldId]) || null;
+  field(fieldId, tableId): Field | null {
+    if (fieldId == null) {
+      return null;
+    }
+
+    let identifier = fieldId;
+    if (typeof tableId === "string" && tableId.startsWith("card__")) {
+      identifier = `${tableId}:${fieldId}`;
+    }
+
+    return this.fields[identifier] || null;
   }
 
   question(cardId): Question | null {
