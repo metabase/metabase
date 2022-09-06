@@ -36,13 +36,19 @@
     (apply set/union (mi/perms-objects-set card read-or-write) (for [series-card series]
                                                                  (mi/perms-objects-set series-card read-or-write)))))
 
+(defn- pre-insert [dashcard]
+  (let [defaults {:parameter_mappings     []
+                  :visualization_settings {}}]
+    (merge defaults dashcard)))
+
 (u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class DashboardCard)
   models/IModel
   (merge models/IModelDefaults
          {:properties (constantly {:timestamped? true
                                    :entity_id    true})
           :types      (constantly {:parameter_mappings     :parameters-list
-                                   :visualization_settings :visualization-settings})})
+                                   :visualization_settings :visualization-settings})
+          :pre-insert pre-insert})
 
   serdes.hash/IdentityHashable
   {:identity-hash-fields (constantly [(serdes.hash/hydrated-hash :card)

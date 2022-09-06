@@ -12767,42 +12767,63 @@ databaseChangeLog:
   - changeSet:
       id: v45.00-032
       author: camsaul
-      comment: Added 0.45.0 -- add default value for DashboardCard created_at
+      comment: Added 0.45.0 -- add default value for DashboardCard created_at (Postgres/H2)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: postgresql,h2
       changes:
         - addDefaultValue:
             tableName: report_dashboardcard
             columnName: created_at
+            columnDataType: ${timestamp_type}
             defaultValueComputed: current_timestamp
 
+    # addDefaultValue with defaultValueComputed doesn't work for MySQL/MariaDB so we have to do this the hard way.
   - changeSet:
       id: v45.00-033
       author: camsaul
-      comment: Added 0.45.0 -- add default value for DashboardCard updated_at
+      comment: Added 0.45.0 -- add default value for DashboardCard created_at (MySQL/MariaDB)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
       changes:
-        - addDefaultValue:
-            tableName: report_dashboardcard
-            columnName: updated_at
-            defaultValueComputed: current_timestamp
+        - sql:
+            sql: >-
+              ALTER TABLE report_dashboardcard
+              CHANGE created_at
+              created_at timestamp(6) NOT NULL DEFAULT current_timestamp(6);
 
   - changeSet:
       id: v45.00-034
       author: camsaul
-      comment: Added 0.45.0 -- add default value for DashboardCard parameter_mappings
+      comment: Added 0.45.0 -- add default value for DashboardCard updated_at (Postgres/H2)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: postgresql,h2
       changes:
         - addDefaultValue:
             tableName: report_dashboardcard
-            columnName: parameter_mappings
-            defaultValue: '[]'
+            columnName: updated_at
+            columnDataType: ${timestamp_type}
+            defaultValueComputed: current_timestamp
 
   - changeSet:
       id: v45.00-035
       author: camsaul
-      comment: Added 0.45.0 -- add default value for DashboardCard visualization_settings
+      comment: Added 0.45.0 -- add default value for DashboardCard updated_at (MySQL/MariaDB)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
       changes:
-        - addDefaultValue:
-            tableName: report_dashboardcard
-            columnName: visualization_settings
-            defaultValue: '{}'
+        - sql:
+            sql: >-
+              ALTER TABLE report_dashboardcard
+              CHANGE updated_at
+              updated_at timestamp(6) NOT NULL DEFAULT current_timestamp(6);
 
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
