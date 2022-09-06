@@ -197,7 +197,7 @@ Guides on working with data.
 
 Share and connect with other Metabasers.
 
-### [Premium features](./paid-features/start.md)
+### [Paid features](./paid-features/start.md)
 
 Some [Metabase plans](https://www.metabase.com/pricing) offer additional features.
 

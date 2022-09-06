@@ -121,6 +121,7 @@ export default class PieChart extends Component {
       section: t`Display`,
       title: t`Show legend`,
       widget: "toggle",
+      default: true,
     },
     "pie.show_legend_perecent": {
       section: t`Display`,
@@ -233,7 +234,8 @@ export default class PieChart extends Component {
   };
 
   updateChartViewportSize = () => {
-    requestAnimationFrame(() => {
+    // Measure chart viewport dimensions in the next tick to wait for DOM elements to resize
+    setTimeout(() => {
       if (!this.chartContainer.current) {
         return;
       }
