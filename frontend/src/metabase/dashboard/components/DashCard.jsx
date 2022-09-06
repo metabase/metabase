@@ -188,7 +188,7 @@ export default class DashCard extends Component {
     const isEditingDashboardLayout =
       isEditing && clickBehaviorSidebarDashcard == null && !isEditingParameter;
 
-    const gridSize = { width: dashcard.sizeX, height: dashcard.sizeY };
+    const gridSize = { width: dashcard.size_x, height: dashcard.size_y };
 
     return (
       <DashCardRoot

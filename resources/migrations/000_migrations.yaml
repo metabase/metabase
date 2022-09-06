@@ -12722,6 +12722,110 @@ databaseChangeLog:
             constraintName: fk_report_dashboardcard_ref_action_id
             onDelete: CASCADE
 
+  - changeSet:
+      id: v45.00-028
+      author: camsaul
+      comment: Added 0.45.0 -- rename DashboardCard sizeX to size_x. See https://github.com/metabase/metabase/issues/16344
+      changes:
+        - renameColumn:
+            tableName: report_dashboardcard
+            columnDataType: int
+            oldColumnName: sizeX
+            newColumnName: size_x
+
+  - changeSet:
+      id: v45.00-029
+      author: camsaul
+      comment: Added 0.45.0 -- rename DashboardCard size_y to size_y. See https://github.com/metabase/metabase/issues/16344
+      changes:
+        - renameColumn:
+            tableName: report_dashboardcard
+            columnDataType: int
+            oldColumnName: sizeY
+            newColumnName: size_y
+
+  - changeSet:
+      id: v45.00-030
+      author: camsaul
+      comment: Added 0.45.0 -- add default value to DashboardCard size_x -- this was previously done by Toucan
+      changes:
+        - addDefaultValue:
+            tableName: report_dashboardcard
+            columnName: size_x
+            defaultValue: 2
+
+  - changeSet:
+      id: v45.00-031
+      author: camsaul
+      comment: Added 0.45.0 -- add default value to DashboardCard size_y -- this was previously done by Toucan
+      changes:
+        - addDefaultValue:
+            tableName: report_dashboardcard
+            columnName: size_y
+            defaultValue: 2
+
+  - changeSet:
+      id: v45.00-032
+      author: camsaul
+      comment: Added 0.45.0 -- add default value for DashboardCard created_at (Postgres/H2)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: postgresql,h2
+      changes:
+        - addDefaultValue:
+            tableName: report_dashboardcard
+            columnName: created_at
+            columnDataType: ${timestamp_type}
+            defaultValueComputed: current_timestamp
+
+    # addDefaultValue with defaultValueComputed doesn't work for MySQL/MariaDB so we have to do this the hard way.
+  - changeSet:
+      id: v45.00-033
+      author: camsaul
+      comment: Added 0.45.0 -- add default value for DashboardCard created_at (MySQL/MariaDB)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+      changes:
+        - sql:
+            sql: >-
+              ALTER TABLE report_dashboardcard
+              CHANGE created_at
+              created_at timestamp(6) NOT NULL DEFAULT current_timestamp(6);
+
+  - changeSet:
+      id: v45.00-034
+      author: camsaul
+      comment: Added 0.45.0 -- add default value for DashboardCard updated_at (Postgres/H2)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: postgresql,h2
+      changes:
+        - addDefaultValue:
+            tableName: report_dashboardcard
+            columnName: updated_at
+            columnDataType: ${timestamp_type}
+            defaultValueComputed: current_timestamp
+
+  - changeSet:
+      id: v45.00-035
+      author: camsaul
+      comment: Added 0.45.0 -- add default value for DashboardCard updated_at (MySQL/MariaDB)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+      changes:
+        - sql:
+            sql: >-
+              ALTER TABLE report_dashboardcard
+              CHANGE updated_at
+              updated_at timestamp(6) NOT NULL DEFAULT current_timestamp(6);
+
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

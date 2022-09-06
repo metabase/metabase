@@ -40,7 +40,7 @@ describe.skip("issue 17775", () => {
       ({ body: dashboardCard }) => {
         const { dashboard_id } = dashboardCard;
 
-        const updatedSize = { sizeX: 16, sizeY: 8 };
+        const updatedSize = { size_x: 16, size_y: 8 };
 
         cy.editDashboardCard(dashboardCard, updatedSize);
 
