@@ -11,8 +11,7 @@
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
             [metabase.test.util :as tu]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util :as u]))
+            [metabase.util.honeysql-extensions :as hx]))
 
 (deftest parse-connection-string-test
   (testing "Check that the functions for exploding a connection string's options work as expected"
@@ -175,14 +174,10 @@
                                            ["select 1"
                                             "update venues set name = 'bill'"
                                             "delete venues"])}})))
-    (let [the-exploit "
-DROP TRIGGER IF EXISTS TRIG_RCE;
-CREATE OR REPLACE TRIGGER TRIG_RCE BEFORE SELECT ON INFORMATION_SCHEMA.Users AS '//javascript
-var myrce = java.lang.Runtime.getRuntime().exec(\"curl http://localhost:8000\");';
-
-SELECT * FROM INFORMATION_SCHEMA.Users;
-"
-          ]
+    (let [the-exploit (str/join "\n" ["DROP TRIGGER IF EXISTS TRIG_RCE;"
+                                      "CREATE OR REPLACE TRIGGER TRIG_RCE BEFORE SELECT ON INFORMATION_SCHEMA.Users AS '//javascript"
+                                      "var myrce = java.lang.Runtime.getRuntime().exec(\"curl http://localhost:8000\");';"
+                                      "SELECT * FROM INFORMATION_SCHEMA.Users;"])]
       (is (thrown?
            clojure.lang.ExceptionInfo
            #"DDL commands are not allowed to be used with h2."
