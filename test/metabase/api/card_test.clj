@@ -2455,8 +2455,13 @@
   (testing "template-tag-referenced-card-ids returns the correct card ids from the query"
     (mt/with-temp Card [card {:dataset_query {:database (mt/id)
                                               :type     :native
-                                              :native   {:query         "select * from {{#14}} as a join {{#15}} as b on a.id = b.id"
-                                                         :template-tags {"#14" {:id           "some id"
+                                              :native   {:query         "select * from {{#14}} as a join {{#15}} as b on a.id = b.id where a.id = {{id}}"
+                                                         :template-tags {"id"  {:name         "id"
+                                                                                :display-name "ID"
+                                                                                :type         "number"
+                                                                                :required     true
+                                                                                :default      "100"}
+                                                                         "#14" {:id           "some id"
                                                                                 :name         "some name"
                                                                                 :display-name "some name",
                                                                                 :type         "card"
@@ -2465,6 +2470,7 @@
                                                                                 :name         "some name"
                                                                                 :display-name "some name",
                                                                                 :type         "card"
-                                                                                :card-id      15}}}}}]
+                                                                                :card-id      15}}
+                                                         :parameters    []}}}]
       (is (= [14 15]
              (api.card/template-tag-referenced-card-ids card))))))
