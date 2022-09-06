@@ -1,17 +1,13 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { t } from "ttag";
 
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import type {
-  FieldSettings,
-  FieldType,
-  InputType,
-} from "metabase-types/api/writeback";
+import type { FieldSettings, FieldType, InputType } from "metabase-types/api";
 
 import Radio from "metabase/core/components/Radio";
 import Icon from "metabase/components/Icon";
 
-import { fieldTypes, inputTypes } from "./constants";
+import { getFieldTypes, getInputTypes } from "./constants";
 import {
   SettingsPopoverBody,
   SectionLabel,
@@ -23,7 +19,7 @@ export function FieldSettingsPopover({
   onChange,
 }: {
   fieldSettings: FieldSettings;
-  onChange: (fieldSettings: any) => void;
+  onChange: (fieldSettings: FieldSettings) => void;
 }) {
   return (
     <TippyPopoverWithTrigger
@@ -47,13 +43,13 @@ export function FormCreatorPopoverBody({
   fieldSettings: FieldSettings;
   onChange: (fieldSettings: FieldSettings) => void;
 }) {
-  const updateFieldType = (newFieldType: FieldType) =>
+  const handleUpdateFieldType = (newFieldType: FieldType) =>
     onChange({
       ...fieldSettings,
       fieldType: newFieldType,
     });
 
-  const updateInputType = (newInputType: InputType) =>
+  const handleUpdateInputType = (newInputType: InputType) =>
     onChange({
       ...fieldSettings,
       inputType: newInputType,
@@ -63,12 +59,12 @@ export function FormCreatorPopoverBody({
     <SettingsPopoverBody data-testid="field-settings-popover">
       <FieldTypeSelect
         value={fieldSettings.fieldType}
-        onChange={updateFieldType}
+        onChange={handleUpdateFieldType}
       />
       <InputTypeSelect
         value={fieldSettings.inputType}
         fieldType={fieldSettings.fieldType}
-        onChange={updateInputType}
+        onChange={handleUpdateInputType}
       />
     </SettingsPopoverBody>
   );
@@ -81,6 +77,8 @@ function FieldTypeSelect({
   value: FieldType;
   onChange: (newFieldType: FieldType) => void;
 }) {
+  const fieldTypes = useMemo(getFieldTypes, []);
+
   return (
     <FieldTypeWrapper>
       <SectionLabel>{t`Field type`}</SectionLabel>
@@ -103,6 +101,8 @@ function InputTypeSelect({
   fieldType: FieldType;
   onChange: (newInputType: InputType) => void;
 }) {
+  const inputTypes = useMemo(getInputTypes, []);
+
   return (
     <Radio
       vertical

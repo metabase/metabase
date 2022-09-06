@@ -13,7 +13,7 @@ import type {
   ActionClickExtraData,
   ActionClickBehavior,
   ActionParameterTuple,
-} from "metabase-types/api/writeback";
+} from "metabase-types/api";
 import type { Database as IDatabase } from "metabase-types/api/database";
 import type { DashCard } from "metabase-types/types/Dashboard";
 import type { Parameter, ParameterId } from "metabase-types/types/Parameter";

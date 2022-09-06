@@ -2,10 +2,7 @@ import React, { useState, useEffect } from "react";
 import { t } from "ttag";
 
 import type { TemplateTag } from "metabase-types/types/Query";
-import type {
-  ActionFormSettings,
-  FieldSettings,
-} from "metabase-types/api/writeback";
+import type { ActionFormSettings, FieldSettings } from "metabase-types/api";
 
 import { FieldSettingsPopover } from "./FieldSettingsPopover";
 import { getDefaultFormSettings, getDefaultFieldSettings } from "./utils";
@@ -48,7 +45,7 @@ export function FormCreator({
       },
     });
   };
-  1;
+
   return (
     <FormCreatorWrapper>
       {tags.map(tag => (

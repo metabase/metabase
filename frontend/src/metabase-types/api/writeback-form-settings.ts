@@ -1,8 +1,8 @@
 export type FormType = "inline" | "modal";
 export type FieldType = "text" | "number" | "date" | "category";
 export type InputType =
+  | "string"
   | "text"
-  | "longtext"
   | "number"
   | "date"
   | "datetime"
@@ -10,7 +10,7 @@ export type InputType =
   | "quarteryear"
   | "dropdown"
   | "inline-select";
-export type Size = "sm" | "md" | "lg";
+export type Size = "small" | "medium" | "large";
 
 export type DateRange = [string, string];
 export type NumberRange = [number, number];
@@ -28,7 +28,7 @@ export interface FieldSettings {
   valueOptions?: (string | number)[];
   width?: Size;
   height?: number;
-  search?: boolean;
+  hasSearch?: boolean;
 }
 
 export interface ActionFormSettings {
@@ -41,5 +41,4 @@ export interface ActionFormSettings {
   confirmMessage?: string;
   successMessage?: string;
   errorMessage?: string;
-  // successAction ?
 }

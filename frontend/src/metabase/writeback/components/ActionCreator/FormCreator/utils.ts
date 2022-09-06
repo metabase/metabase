@@ -1,7 +1,4 @@
-import type {
-  ActionFormSettings,
-  FieldSettings,
-} from "metabase-types/api/writeback";
+import type { ActionFormSettings, FieldSettings } from "metabase-types/api";
 
 export const getDefaultFormSettings = (): ActionFormSettings => ({
   name: "",
@@ -17,8 +14,8 @@ export const getDefaultFieldSettings = (): FieldSettings => ({
   description: "",
   placeholder: "",
   fieldType: "text",
-  inputType: "text",
+  inputType: "string",
   required: false,
   hidden: false,
-  width: "md",
+  width: "medium",
 });

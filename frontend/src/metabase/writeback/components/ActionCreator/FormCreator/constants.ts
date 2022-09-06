@@ -1,12 +1,12 @@
 import { t } from "ttag";
-import type { FieldType, InputType } from "metabase-types/api/writeback";
+import type { FieldType, InputType } from "metabase-types/api";
 
 interface FieldOptionType {
   value: FieldType;
   name: string;
 }
 
-export const fieldTypes: FieldOptionType[] = [
+export const getFieldTypes = (): FieldOptionType[] => [
   {
     value: "text",
     name: t`text`,
@@ -37,18 +37,18 @@ interface InputOptionsMap {
   category: InputOptionType[];
 }
 
-const textInputs: InputOptionType[] = [
+const getTextInputs = (): InputOptionType[] => [
   {
-    value: "longtext",
+    value: "text",
     name: t`long text`,
   },
   {
-    value: "text",
+    value: "string",
     name: t`text`,
   },
 ];
 
-const selectInputs: InputOptionType[] = [
+const getSelectInputs = (): InputOptionType[] => [
   {
     value: "dropdown",
     name: t`dropdown`,
@@ -59,14 +59,14 @@ const selectInputs: InputOptionType[] = [
   },
 ];
 
-export const inputTypes: InputOptionsMap = {
-  text: [...textInputs, ...selectInputs],
+export const getInputTypes = (): InputOptionsMap => ({
+  text: [...getTextInputs(), ...getSelectInputs()],
   number: [
     {
       value: "number",
       name: t`number`,
     },
-    ...selectInputs,
+    ...getSelectInputs(),
   ],
   date: [
     {
@@ -86,5 +86,5 @@ export const inputTypes: InputOptionsMap = {
       name: t`quarter + year`,
     },
   ],
-  category: [...selectInputs],
-};
+  category: [...getSelectInputs()],
+});

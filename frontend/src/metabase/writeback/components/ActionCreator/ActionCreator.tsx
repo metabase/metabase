@@ -11,7 +11,10 @@ import Question from "metabase-lib/lib/Question";
 
 import type NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
-import type { WritebackQueryAction } from "metabase-types/api";
+import type {
+  WritebackQueryAction,
+  ActionFormSettings,
+} from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import Modal from "metabase/components/Modal";
@@ -27,7 +30,6 @@ import {
 
 import { newQuestion } from "./utils";
 import { SavedCard } from "metabase-types/types/Card";
-import type { ActionFormSettings } from "metabase-types/api/writeback";
 
 const mapStateToProps = (
   state: State,

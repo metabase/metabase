@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import type { ActionFormSettings } from "metabase-types/api/writeback";
+import type { ActionFormSettings } from "metabase-types/api";
 import type { Parameter as ParameterObject } from "metabase-types/types/Parameter";
 
 export const removeOrphanSettings = (
