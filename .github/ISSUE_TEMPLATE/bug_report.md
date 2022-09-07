@@ -20,6 +20,8 @@ Steps to reproduce the behavior:
 3. Scroll down to '....'
 4. See error
 
+Or you can use [Birdeatsbug](https://birdeatsbug.com/) to create a comprehensive bug report.
+
 **Expected behavior**
 A clear and concise description of what you expected to happen.
 
