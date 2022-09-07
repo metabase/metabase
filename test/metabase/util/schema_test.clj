@@ -42,17 +42,18 @@
 
 (deftest ^:parallel api-param-test
   (testing "check that API error message respects `api-param` when specified"
-    (is (= (str "## `POST metabase.util.schema-test/:id/dimension`\n"
-                "\n"
-                "Sets the dimension for the given object with ID.\n"
-                "\n"
-                "### PARAMS:\n"
-                "\n"
-                "*  **`id`** \n"
-                "\n"
-                "*  **`type`** value must be one of: `external`, `internal`.\n"
-                "\n"
-                "*  **`dimension-name`** value must be a non-blank string.")
+    (is (= (str/join "\n"
+                     ["## `POST metabase.util.schema-test/:id/dimension`"
+                      ""
+                      "Sets the dimension for the given object with ID."
+                      ""
+                      "### PARAMS:"
+                      ""
+                      "*  **`id`** "
+                      ""
+                      "*  **`type`** value must be one of: `external`, `internal`."
+                      ""
+                      "*  **`dimension-name`** value must be a non-blank string."])
            (:doc (meta #'POST_:id_dimension))))))
 
 (defn- ex-info-msg [f]
