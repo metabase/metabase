@@ -209,7 +209,7 @@ export function copyObjects(
       copies[object[identifierProp]] = instantiate(object, metadata);
       copies[object[identifierProp]].metadata = metadata;
     } else {
-      console.warn("Missing id:", object);
+      console.warn(`Missing ${identifierProp}:`, object);
     }
   }
   return copies;
