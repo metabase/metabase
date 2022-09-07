@@ -440,14 +440,14 @@ class FieldInner extends Base {
     });
   }
 
-  clone(metadata) {
-    if (metadata instanceof Field) {
-      throw new Error("`metadata` arg must be a plain object");
+  clone(fieldMetadata) {
+    if (fieldMetadata instanceof Field) {
+      throw new Error("`fieldMetadata` arg must be a plain object");
     }
 
     const plainObject = this.getPlainObject();
-    const newField = new Field({ ...this, ...metadata });
-    newField._plainObject = { ...plainObject, ...metadata };
+    const newField = new Field({ ...this, ...fieldMetadata });
+    newField._plainObject = { ...plainObject, ...fieldMetadata };
 
     return newField;
   }
