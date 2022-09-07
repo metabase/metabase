@@ -117,11 +117,14 @@
   "Stop the prometheus metrics web-server if it is running."
   []
   (when system
-    (try (stop-web-server system)
-         (log/info (trs "Prometheus web-server shut down"))
-         (catch Exception e
-           (log/warn e (trs "Error stopping prometheus web-server"))))))
+    (locking #'system
+     (try (stop-web-server system)
+          (alter-var-root #'system (constantly nil))
+          (log/info (trs "Prometheus web-server shut down"))
+          (catch Exception e
+            (log/warn e (trs "Error stopping prometheus web-server")))))))
 
 (comment
   (require 'iapetos.export)
-  (spit "metrics" (iapetos.export/text-format registry)))
+  (spit "metrics" (iapetos.export/text-format registry))
+  )
