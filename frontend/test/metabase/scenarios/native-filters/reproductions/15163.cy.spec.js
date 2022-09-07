@@ -56,8 +56,8 @@ const dashboardFilter = {
                   card_id,
                   row: 0,
                   col: 0,
-                  sizeX: 10,
-                  sizeY: 8,
+                  size_x: 10,
+                  size_y: 8,
                   series: [],
                   visualization_settings: {
                     "card.title": "New Title",

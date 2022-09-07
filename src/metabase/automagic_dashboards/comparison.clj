@@ -27,11 +27,11 @@
   [dashboard]
   (->> dashboard
        :ordered_cards
-       (map (fn [{:keys [sizeY card col row series] :as dashcard}]
+       (map (fn [{:keys [size_y card col row series] :as dashcard}]
               (assoc card
                 :text     (-> dashcard :visualization_settings :text)
                 :series   series
-                :height   sizeY
+                :height   size_y
                 :position (+ (* row populate/grid-width) col))))
        (sort-by :position)))
 
@@ -94,13 +94,13 @@
                          vector)]
           (update dashboard :ordered_cards conj {:col                    0
                                                  :row                    row
-                                                 :sizeX                  populate/grid-width
-                                                 :sizeY                  height
+                                                 :size_x                 populate/grid-width
+                                                 :size_y                 height
                                                  :card                   card
                                                  :card_id                (:id card)
                                                  :series                 series
                                                  :visualization_settings {:graph.y_axis.auto_split false
-                                                                          :graph.series_labels [(:name card) (:name (first series))]}
+                                                                          :graph.series_labels     [(:name card) (:name (first series))]}
                                                  :id                     (gensym)}))
         (let [width        (/ populate/grid-width 2)
               series-left  (map clone-card (:series card-left))
@@ -114,8 +114,8 @@
           (-> dashboard
               (update :ordered_cards conj {:col                    0
                                            :row                    row
-                                           :sizeX                  width
-                                           :sizeY                  height
+                                           :size_x                 width
+                                           :size_y                 height
                                            :card                   card-left
                                            :card_id                (:id card-left)
                                            :series                 series-left
@@ -123,8 +123,8 @@
                                            :id                     (gensym)})
               (update :ordered_cards conj {:col                    width
                                            :row                    row
-                                           :sizeX                  width
-                                           :sizeY                  height
+                                           :size_x                 width
+                                           :size_y                 height
                                            :card                   card-right
                                            :card_id                (:id card-right)
                                            :series                 series-right

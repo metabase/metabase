@@ -2,8 +2,10 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
+import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import { isSyncInProgress } from "metabase/lib/syncing";
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import MetadataTableList from "./MetadataTableList";
 import MetadataSchemaList from "./MetadataSchemaList";
@@ -63,14 +65,28 @@ class MetadataTablePicker extends Component {
   }
 }
 
-export default Tables.loadList({
-  query: (state, { databaseId }) => ({
-    dbId: databaseId,
-    include_hidden: true,
-    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+export default _.compose(
+  Databases.load({
+    id: (state, { databaseId }) =>
+      databaseId !== SAVED_QUESTIONS_VIRTUAL_DB_ID ? databaseId : undefined,
   }),
-  reloadInterval: (state, props, tables = []) => {
-    return tables.some(t => isSyncInProgress(t)) ? RELOAD_INTERVAL : 0;
-  },
-  selectorName: "getListUnfiltered",
-})(MetadataTablePicker);
+  Tables.loadList({
+    query: (state, { databaseId }) => ({
+      dbId: databaseId,
+      include_hidden: true,
+      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+    }),
+    reloadInterval: (state, { database }, tables = []) => {
+      if (
+        database &&
+        isSyncInProgress(database) &&
+        tables.some(t => isSyncInProgress(t))
+      ) {
+        return RELOAD_INTERVAL;
+      } else {
+        return 0;
+      }
+    },
+    selectorName: "getListUnfiltered",
+  }),
+)(MetadataTablePicker);

@@ -113,23 +113,4 @@ describe("ChartSettings", () => {
 
     expect(queryByText("Foo")).toBe(null);
   });
-
-  it("should not show the section picker if showing a column setting", () => {
-    const columnSettingsWidget = widget({
-      title: "Something",
-      section: "Formatting",
-      hidden: true,
-      id: "column_settings",
-    });
-    const { queryByText } = setup({
-      widgets: [
-        widget({ title: "List of columns", section: "Foo", id: "thing" }),
-        widget({ title: "Other Thing", section: "Bar", id: "other_thing" }),
-        columnSettingsWidget,
-      ],
-      initial: { widget: columnSettingsWidget },
-    });
-
-    expect(queryByText("Foo")).toBe(null);
-  });
 });

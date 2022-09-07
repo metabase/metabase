@@ -122,8 +122,8 @@ class DashboardGrid extends Component {
           attributes: {
             col: layoutItem.x,
             row: layoutItem.y,
-            sizeX: layoutItem.w,
-            sizeY: layoutItem.h,
+            size_x: layoutItem.w,
+            size_y: layoutItem.h,
           },
         });
       }
@@ -164,8 +164,8 @@ class DashboardGrid extends Component {
       i: String(dashcard.id),
       x: dashcard.col || 0,
       y: dashcard.row || 0,
-      w: dashcard.sizeX || initialSize.width,
-      h: dashcard.sizeY || initialSize.height,
+      w: dashcard.size_x || initialSize.width,
+      h: dashcard.size_y || initialSize.height,
       dashcard: dashcard,
       minW: minSize.width,
       minH: minSize.height,

@@ -208,7 +208,7 @@
       ;; i'm a bit worried that this is an n+1 situation here. The cards can be batch hydrated i think because they
       ;; have a hydration key and an id. moderation_reviews currently aren't batch hydrated but i'm worried they
       ;; cannot be in this situation
-      (hydrate [:ordered_cards [:card [:moderation_reviews :moderator_details]] :series] :collection_authority_level :can_write :param_fields)
+      (hydrate [:ordered_cards [:card [:moderation_reviews :moderator_details]] :series :dashcard/action] :collection_authority_level :can_write :param_fields)
       (cond-> api/*is-superuser?* (hydrate [:emitters [:action :card]]))
       api/read-check
       api/check-not-archived
@@ -422,8 +422,8 @@
   (su/with-api-error-message
     {:id                                  (su/with-api-error-message su/IntGreaterThanOrEqualToZero
                                             "value must be a DashboardCard ID.")
-     (s/optional-key :sizeX)              (s/maybe su/IntGreaterThanZero)
-     (s/optional-key :sizeY)              (s/maybe su/IntGreaterThanZero)
+     (s/optional-key :size_x)             (s/maybe su/IntGreaterThanZero)
+     (s/optional-key :size_y)             (s/maybe su/IntGreaterThanZero)
      (s/optional-key :row)                (s/maybe su/IntGreaterThanOrEqualToZero)
      (s/optional-key :col)                (s/maybe su/IntGreaterThanOrEqualToZero)
      (s/optional-key :parameter_mappings) (s/maybe [{:parameter_id su/NonBlankString
@@ -438,8 +438,8 @@
   "Update `Cards` on a Dashboard. Request body should have the form:
 
     {:cards [{:id                 ... ; DashboardCard ID
-              :sizeX              ...
-              :sizeY              ...
+              :size_x             ...
+              :size_y             ...
               :row                ...
               :col                ...
               :parameter_mappings ...

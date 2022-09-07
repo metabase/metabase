@@ -55,7 +55,7 @@ export function isVirtualDashCard(dashcard) {
 // info text about parameter mapping in the card itself or as a tooltip.
 export function showVirtualDashCardInfoText(dashcard, isMobile) {
   if (isVirtualDashCard(dashcard)) {
-    return isMobile || dashcard.sizeY > 2 || dashcard.sizeX > 5;
+    return isMobile || dashcard.size_y > 2 || dashcard.size_x > 5;
   } else {
     return true;
   }

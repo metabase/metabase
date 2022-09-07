@@ -2,8 +2,8 @@ import _ from "underscore";
 import * as Q_DEPRECATED from "metabase/lib/query";
 import Utils from "metabase/lib/utils";
 
-import { CardApi } from "metabase/services";
 import { b64hash_to_utf8, utf8_to_b64url } from "metabase/lib/encoding";
+import Questions from "metabase/entities/questions";
 
 export function createCard(name = null) {
   return {
@@ -25,9 +25,13 @@ export function startNewCard(type, databaseId, tableId) {
 
 // load a card either by ID or from a base64 serialization.  if both are present then they are merged, which the serialized version taking precedence
 // TODO: move to redux
-export async function loadCard(cardId) {
+export async function loadCard(cardId, { dispatch, getState }) {
   try {
-    return await CardApi.get({ cardId: cardId });
+    await dispatch(Questions.actions.fetch({ id: cardId }, { reload: true }));
+    const card = Questions.selectors.getObject(getState(), {
+      entityId: cardId,
+    });
+    return card;
   } catch (error) {
     console.log("error loading card", error);
     throw error;

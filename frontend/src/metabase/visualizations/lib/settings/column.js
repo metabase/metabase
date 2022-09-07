@@ -220,9 +220,10 @@ export const DATE_COLUMN_SETTINGS = {
     getHidden: ({ unit }, settings) => !/\//.test(settings["date_style"] || ""),
   },
   date_abbreviate: {
-    title: t`Abbreviate names of days and months`,
+    title: t`Abbreviate days and months`,
     widget: "toggle",
     default: false,
+    inline: true,
     getHidden: ({ unit }, settings) => {
       const format = getDateFormatFromStyle(settings["date_style"], unit);
       return !format.match(/MMMM|dddd/);
