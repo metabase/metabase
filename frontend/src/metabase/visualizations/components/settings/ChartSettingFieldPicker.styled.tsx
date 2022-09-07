@@ -10,8 +10,6 @@ export const ChartSettingFieldPickerRoot = styled.div`
   border: 1px solid ${color("border")};
   border-radius: 0.5rem;
   padding-right: 1rem;
-  overflow-x: hidden;
-  width: 100%;
 
   ${Triggerable.Trigger} {
     flex: 1;
