@@ -1,4 +1,7 @@
 import { TickRendererProps } from "@visx/axis";
+import { getTicks } from "@visx/scale";
+import { timeWeek, timeMonth } from "d3-time";
+
 import { formatDate, DateFormatOptions } from "metabase/static-viz/lib/dates";
 import {
   formatNumber,
@@ -10,14 +13,17 @@ import {
   truncateText,
 } from "metabase/static-viz/lib/text";
 import { MAX_ROTATED_TICK_WIDTH } from "metabase/static-viz/components/XYChart/constants";
-import {
-  ChartSettings,
+import { getX } from "metabase/static-viz/components/XYChart/utils/series";
+
+import type {
   ContiniousDomain,
   Series,
   XAxisType,
   XValue,
+  XScale,
+  ChartSettings,
 } from "metabase/static-viz/components/XYChart/types";
-import { getX } from "metabase/static-viz/components/XYChart/utils/series";
+import type { TimeInterval } from "d3-time";
 
 export const getRotatedXTickHeight = (tickWidth: number) => {
   return tickWidth;
@@ -153,3 +159,31 @@ export const getYTickWidths = (
         : 0,
   };
 };
+
+export function fixTimeseriesTicksExceedXTickCount(
+  xScaleType: XAxisType,
+  xScale: XScale["scale"],
+  numTicks: number,
+) {
+  const defaultTicks = getTicks(xScale, numTicks);
+
+  if (xScaleType === "timeseries" && defaultTicks.length > numTicks) {
+    let minLengthTicks = defaultTicks;
+    const candidateTickIntervals = [
+      timeWeek.every(2) as TimeInterval,
+      timeMonth.every(2) as TimeInterval,
+    ];
+    candidateTickIntervals
+      .map(tickInterval => getTicks(xScale, tickInterval as unknown as number))
+      .filter(ticks => ticks.length > 0)
+      .forEach(ticks => {
+        if (ticks.length < minLengthTicks.length) {
+          minLengthTicks = ticks;
+        }
+      });
+
+    return minLengthTicks;
+  }
+
+  return defaultTicks;
+}
