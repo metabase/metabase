@@ -36,12 +36,15 @@ function aliasTablesAndFields(metadata) {
   }
 }
 
+function normalizeFields(fields) {
+  return normalize(fields, [FieldSchema]) || {};
+}
+
 export function createMetadata(updateState = state => state) {
   const stateModified = updateState(chain(state)).thaw().value();
-  const normalizedFields = normalize(stateModified.entities.fields, [
-    FieldSchema,
-  ]);
-  stateModified.entities.fields = normalizedFields.entities.fields || {};
+  stateModified.entities.fields = normalizeFields(
+    stateModified.entities.fields,
+  );
 
   const metadata = getMetadata(stateModified);
   aliasTablesAndFields(metadata);
@@ -114,8 +117,7 @@ export function makeMetadata(metadata) {
     }
   }
 
-  const normalizedFields = normalize(metadata.fields, [FieldSchema]);
-  metadata.fields = normalizedFields.entities.fields || {};
+  metadata.fields = normalizeFields(metadata.fields);
 
   return getMetadata({ entities: metadata });
 }
