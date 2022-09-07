@@ -37,7 +37,7 @@ function aliasTablesAndFields(metadata) {
 }
 
 function normalizeFields(fields) {
-  return normalize(fields, [FieldSchema]) || {};
+  return normalize(fields, [FieldSchema]).entities.fields || {};
 }
 
 export function createMetadata(updateState = state => state) {
