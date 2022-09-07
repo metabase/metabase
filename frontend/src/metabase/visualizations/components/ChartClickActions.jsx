@@ -4,7 +4,6 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
-import TippyPopover from "metabase/components/Popover/TippyPopover";
 import Tooltip from "metabase/components/Tooltip";
 
 import "./ChartClickActions.css";
@@ -16,7 +15,10 @@ import { performAction } from "metabase/visualizations/lib/action";
 import cx from "classnames";
 import _ from "underscore";
 import { Link } from "react-router";
-import { ClickActionButton } from "./ChartClickActions.styled";
+import {
+  ClickActionButton,
+  FlexTippyPopover,
+} from "./ChartClickActions.styled";
 
 // These icons used to be displayed for each row section of actions.
 // We're now just using them as a way to select different sections of actions to style them uniquely.
@@ -184,8 +186,8 @@ class ChartClickActions extends Component {
     const hasOnlyOneSection = sections.length === 1;
 
     return (
-      <TippyPopover
-        reference={clicked.element.children[0]}
+      <FlexTippyPopover
+        reference={clicked.element.firstChild || clicked.element}
         visible={!!clicked.element}
         onClose={() => {
           MetabaseAnalytics.trackStructEvent(
@@ -195,6 +197,7 @@ class ChartClickActions extends Component {
           this.close();
         }}
         placement="bottom-start"
+        offset={[-8, 8]}
         popperOptions={{
           flip: true,
           modifiers: [

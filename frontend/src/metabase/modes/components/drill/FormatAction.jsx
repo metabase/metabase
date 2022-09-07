@@ -70,4 +70,6 @@ export default ({ question, clicked }) => {
 
 const PopoverRoot = styled.div`
   margin-top: 1.5rem;
+  max-height: 600px;
+  overflow-y: auto;
 `;
