@@ -929,7 +929,10 @@ export class FieldDimension extends Dimension {
 
     // The `fieldMetadata` object may have metadata that overrides the regular field object
     // (e.g. a custom field display name or description on a model)
-    const field = this._metadata?.field(this.fieldIdOrName());
+    const field = this._metadata?.field(
+      this.fieldIdOrName(),
+      this._query?.table()?.id,
+    );
     const combinedField = this._combineFieldWithExtraMetadata(
       field,
       fieldMetadata,
