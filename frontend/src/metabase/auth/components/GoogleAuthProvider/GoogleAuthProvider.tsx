@@ -4,17 +4,15 @@ import { connect } from "react-redux";
 import { State } from "metabase-types/store";
 
 export interface GoogleAuthProviderProps {
-  isEnabled?: boolean;
   clientId?: string | null;
   children?: ReactNode;
 }
 
 const GoogleAuthProvider = ({
-  isEnabled,
   clientId,
   children,
 }: GoogleAuthProviderProps): JSX.Element => {
-  return isEnabled && clientId ? (
+  return clientId ? (
     <GoogleOAuthProvider clientId={clientId}>{children}</GoogleOAuthProvider>
   ) : (
     <>{children}</>
@@ -22,7 +20,6 @@ const GoogleAuthProvider = ({
 };
 
 const mapStateToProps = (state: State) => ({
-  isEnabled: state.settings?.values["ga-enabled"],
   clientId: state.settings?.values["google-auth-client-id"],
 });
 
