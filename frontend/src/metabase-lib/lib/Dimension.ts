@@ -847,10 +847,9 @@ export class FieldDimension extends Dimension {
     }
 
     const maybeTableId = this._query?.table()?.id;
-    const fieldFromGlobalState = this._metadata?.field(
-      this.fieldIdOrName(),
-      maybeTableId,
-    );
+    const fieldFromGlobalState =
+      this._metadata?.field(this.fieldIdOrName(), maybeTableId) ||
+      this._metadata?.field(this.fieldIdOrName());
     if (fieldFromGlobalState) {
       return fieldFromGlobalState;
     }
