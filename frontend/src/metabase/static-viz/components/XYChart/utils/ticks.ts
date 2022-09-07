@@ -16,7 +16,7 @@ import { MAX_ROTATED_TICK_WIDTH } from "metabase/static-viz/components/XYChart/c
 import { getX } from "metabase/static-viz/components/XYChart/utils/series";
 
 import type {
-  ContiniousDomain,
+  ContinuousDomain,
   Series,
   XAxisType,
   XValue,
@@ -131,7 +131,7 @@ export const getDistinctXValuesCount = (series: Series[]) =>
   new Set(series.flatMap(s => s.data).map(getX)).size;
 
 export const calculateYTickWidth = (
-  domain: ContiniousDomain,
+  domain: ContinuousDomain,
   settings: ChartSettings["y"]["format"],
   fontSize: number,
 ) => {
@@ -145,8 +145,8 @@ export const calculateYTickWidth = (
 export const getYTickWidths = (
   settings: ChartSettings["y"]["format"],
   fontSize: number,
-  leftYDomain?: ContiniousDomain,
-  rightYDomain?: ContiniousDomain,
+  leftYDomain?: ContinuousDomain,
+  rightYDomain?: ContinuousDomain,
 ) => {
   return {
     left:

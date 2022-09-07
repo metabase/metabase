@@ -3,7 +3,7 @@ import type { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
 import type { ScaleBand, ScaleLinear, ScaleTime } from "d3-scale";
 
 export type Range = [number, number];
-export type ContiniousDomain = [number, number];
+export type ContinuousDomain = [number, number];
 
 export type XValue = string | number;
 export type YValue = number;
