@@ -155,16 +155,7 @@ export const getSettings = createSelector(
   settings => settings.values,
 );
 
-export const getBannerMessageDescriptor = createSelector(
-  [getUserIsAdmin, getSettings],
-  (isAdmin, settings) => {
-    const tokenStatus = settings["token-status"];
-    if (
-      isAdmin &&
-      tokenStatus != null &&
-      (tokenStatus.status === "unpaid" || tokenStatus.status === "past-due")
-    ) {
-      return tokenStatus.status;
-    }
-  },
+export const getTokenStatusStatus = createSelector(
+  [getSettings],
+  settings => settings["token-status"]?.status,
 );

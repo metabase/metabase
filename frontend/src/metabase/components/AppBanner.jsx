@@ -4,23 +4,31 @@ import { jt, t } from "ttag";
 import Banner from "metabase/components/Banner";
 import ExternalLink from "metabase/core/components/Link";
 import MetabaseSettings from "metabase/lib/settings";
+import { getTokenStatusStatus } from "metabase/selectors/app";
+import { getUserIsAdmin } from "metabase/selectors/user";
+import { connect } from "react-redux";
 
-const AppBanner = ({ messageDescriptor }) => {
-  let message = null;
-  if (messageDescriptor === "past-due") {
+const mapStateToProps = state => ({
+  isAdmin: getUserIsAdmin(state),
+  tokenStatusStatus: getTokenStatusStatus(state),
+});
+
+const AppBanner = ({ isAdmin, tokenStatusStatus }) => {
+  let message;
+  if (isAdmin && tokenStatusStatus === "past-due") {
     message = (
       <>
-        {jt`We couldn't process payment for your account. Please ${(
+        {jt`⚠️ We couldn't process payment for your account. Please ${(
           <ExternalLink className="link" href={MetabaseSettings.storeUrl()}>
             {t`review your payment settings`}
           </ExternalLink>
         )} to avoid service interruptions.`}
       </>
     );
-  } else if (messageDescriptor === "unpaid") {
+  } else if (isAdmin && tokenStatusStatus === "unpaid") {
     message = (
       <>
-        {jt`Pro features won’t work right now due to lack of payment. ${(
+        {jt`⚠️ Pro features won’t work right now due to lack of payment. ${(
           <ExternalLink className="link" href={MetabaseSettings.storeUrl()}>
             {t`Review your payment settings`}
           </ExternalLink>
@@ -28,7 +36,11 @@ const AppBanner = ({ messageDescriptor }) => {
       </>
     );
   }
-  return message && <Banner>{message}</Banner>;
+  if (message) {
+    return <Banner>{message}</Banner>;
+  } else {
+    return null;
+  }
 };
 
-export default AppBanner;
+export default connect(mapStateToProps)(AppBanner);

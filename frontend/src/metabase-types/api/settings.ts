@@ -32,9 +32,10 @@ export type LoadingMessage =
   | "running-query"
   | "loading-results";
 
+export type TokenStatusStatus = "unpaid" | "past-due" | string;
+
 export type TokenStatus = {
-  status?: "unpaid" | "past-due" | string;
-  [index: string]: unknown;
+  status?: TokenStatusStatus;
 };
 
 export interface Settings {
