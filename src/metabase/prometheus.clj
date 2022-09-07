@@ -11,17 +11,110 @@
             [iapetos.core :as prometheus]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.server :as server]
+            [metabase.troubleshooting :as troubleshooting]
             [metabase.util.i18n :refer [trs]]
             [potemkin :as p]
             [potemkin.types :as p.types]
             [ring.adapter.jetty :as ring-jetty])
-  (:import [io.prometheus.client.hotspot
+  (:import [io.prometheus.client Collector GaugeMetricFamily]
+           [io.prometheus.client.hotspot
             GarbageCollectorExports
             MemoryPoolsExports
             StandardExports
             ThreadExports]
            io.prometheus.client.jetty.JettyStatisticsCollector
+           java.util.ArrayList
            org.eclipse.jetty.server.Server))
+
+(defn c3p0-stats
+  "Takes `raw-stats` from [[metabase.troubleshooting/connection-pool-info]] and groups by each property type rather than each database.
+  {\"metabase-postgres-app-db\" {:numConnections 15,
+                                 :numIdleConnections 15,
+                                 :numBusyConnections 0,
+                                 :minPoolSize 1,
+                                 :maxPoolSize 15},
+   \"db-2-postgres-clean\" {:numConnections 2,
+                            :numIdleConnections 2,
+                            :numBusyConnections 0,
+                            :minPoolSize 1,
+                            :maxPoolSize 15}}
+  Becomes {:numConnections [{:name :numConnections,
+                             :value 15.0, ;; values are all doubles
+                             :timestamp 1662563931039,
+                             :label \"metabase-postgres-app-db\"}
+                            {:name :numConnections,
+                             :value 2.0,
+                             :timestamp 1662563931039,
+                             :label \"db-2-postgres-clean\"}]
+          ...}"
+  [raw-stats]
+  (let [now    (.toEpochMilli (java.time.Instant/now))
+        sample (fn sample [[db-label k v]]
+                 {:name      k
+                  :value     (double v)
+                  :timestamp now
+                  :label     db-label})]
+    (->> raw-stats
+         (mapcat (fn [[db-label values]]
+                   (map (fn [[k v]] [db-label k v]) values)))
+         (map sample)
+         (group-by :name))))
+
+(def ^:private label-translation
+  {:maxPoolSize        {:label       "c3p0_max_pool_size"
+                        :description "C3P0 Max pool size"}
+   :minPoolSize        {:label       "c3p0_min_pool_size"
+                        :description "C3P0 Minimum pool size"}
+   :numConnections     {:label       "c3p0_num_connections"
+                        :description "C3P0 Number of connections"}
+   :numIdleConnections {:label       "c3p0_num_idle_connections"
+                        :description "C3P0 Number of idle connections"}
+   :numBusyConnections {:label       "c3p0_num_busy_connections"
+                        :description "C3P0 Number of busy connections"}})
+
+(defn- ->array
+  "Return an array."
+  ^ArrayList
+  [^java.util.Collection coll]
+  (ArrayList. coll))
+
+(defn- stats->prometheus
+  "Create an ArrayList of GaugeMetricFamily objects containing measurements from the c3p0 stats. Stats are grouped by
+  the property and the database information is attached as a label to multiple measurements of `:numConnections`."
+  [stats]
+  (transduce
+   (comp (filter (fn [[raw-label _measurements]]
+                   (or (label-translation raw-label)
+                       (log/warn (trs "Unrecognized measurement {0} in prometheus stats"
+                                      raw-label)))))
+         (map (fn [[raw-label measurements]]
+                (let [{gauge-label :label desc :description} (label-translation raw-label)
+                      gauge (GaugeMetricFamily.
+                             ^String gauge-label
+                             ^String desc
+                             (->array ["database"]))]
+                  (doseq [m measurements]
+                    (.addMetric gauge
+                                (->array [(:label m)])
+                                (:value m)))
+                  gauge))))
+   (completing conj!
+               (fn [metric-family-samples]
+                 (->array (persistent! metric-family-samples))))
+   stats))
+
+(def c3p0-collector
+  "c3p0 collector delay"
+  (letfn [(collect-metrics []
+            (-> (troubleshooting/connection-pool-info)
+                :connection-pools
+                c3p0-stats
+                stats->prometheus))]
+    (delay
+      (proxy [Collector] []
+        (collect
+          ([] (collect-metrics))
+          ([_sampleNameFilter] (collect-metrics)))))))
 
 (defsetting prometheus-server-port
   "Port to serve prometheus status from. If set"
@@ -68,7 +161,8 @@
   (let [registry (prometheus/collector-registry registry-name)]
     (apply prometheus/register registry
            (concat (jvm-collectors)
-                   (jetty-collectors)))))
+                   (jetty-collectors)
+                   [@c3p0-collector]))))
 
 (defn- start-web-server!
   "Start the prometheus web-server. If [[prometheus-server-port]] is not set it will throw."
