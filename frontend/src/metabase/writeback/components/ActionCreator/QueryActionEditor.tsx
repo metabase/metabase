@@ -16,7 +16,6 @@ export function QueryActionEditor({
   return (
     <EditorContainer>
       <NativeQueryEditor
-        question={question}
         query={question.query()}
         viewHeight="full"
         setDatasetQuery={(newQuery: DatasetQuery) =>
