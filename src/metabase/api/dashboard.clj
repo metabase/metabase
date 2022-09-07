@@ -692,12 +692,12 @@
 ;;; ---------------------------------- Executing the action associated with a Dashcard -------------------------------
 
 (def ParameterWithIDOrTarget
-  "Schema for a parameter map with an string `:id`."
+  "Schema for a parameter map with a string `:id` or mbql `:target`."
   (su/with-api-error-message
     {(s/optional-key :id)       su/NonBlankString
      (s/optional-key :target)   [s/Any]
      s/Keyword s/Any}
-    "value must be a parameter map with an 'id' key"))
+    "value must be a parameter map with an 'id' or 'target' key"))
 
 (api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/action/:action-id/execute"
   "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it."
