@@ -119,6 +119,33 @@
           (is (= true (s/valid? spec text-nodes))
               text-nodes))))))
 
+(defn- combo-chart-hiccup
+  [series settings]
+  (let [s (.asString (js/execute-fn-name @context
+                                         "combo_chart"
+                                         (json/generate-string series)
+                                         (json/generate-string settings)
+                                         (json/generate-string (:colors settings))))]
+    (-> s parse-svg document-tag-hiccup)))
+
+(deftest goal-line-test
+  (let [goal-label      "ASDF"
+        series          [{:color         "#999AC4"
+                          :type          :line
+                          :data          [["A" 1] ["B" 20] ["C" -4] ["D" 100]]
+                          :yAxisPosition "left"}]
+        settings        {:x      {:type "ordinal"}
+                         :y      {:type "linear"}
+                         :labels {:bottom "" :left "" :right ""}}
+        non-goal-hiccup (combo-chart-hiccup series settings)
+        non-goal-node   (->> non-goal-hiccup (tree-seq vector? rest) (filter #(= goal-label (second %))) first)]
+  (testing "No goal line exists when there are no goal settings."
+    (is (= nil (second non-goal-node))))
+  (let [goal-hiccup     (combo-chart-hiccup series (merge settings {:goal {:value 0 :label goal-label}}))
+        goal-node       (->> goal-hiccup (tree-seq vector? rest) (filter #(= goal-label (second %))) first)]
+    (testing "A goal line does exist when goal settings are present in the viz-settings"
+      (is (= goal-label (second goal-node)))))))
+
 (deftest timelineseries-bar-test
   (let [rows     [[#t "2020" 2]
                   [#t "2021" 3]]
