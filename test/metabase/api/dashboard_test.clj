@@ -1894,7 +1894,7 @@
                 (is (partial= {:rows-affected 1}
                               (mt/user-http-request :crowberto :post 200 execute-path
                                                     {:parameters [{:id "my_id" :type "id" :value 1}]
-                                                     :extra-parameters [{:target [:variable [:template-tag "name"]]
+                                                     :extra_parameters [{:target [:variable [:template-tag "name"]]
                                                                          :type "text"
                                                                          :value "Bird"}]})))
                 (is (= [1 "Bird Shop"]
@@ -1906,10 +1906,9 @@
                                              {:parameters [{:id "my_id" :type  :number/= :value Integer/MAX_VALUE}]}))))
               (testing "Should 404 if bad dashcard-id"
                 (is (= "Not found."
-                       (mt/user-http-request :crowberto :post 404 (format "dashboard/%d/dashcard/%s/action/%s/execute"
+                       (mt/user-http-request :crowberto :post 404 (format "dashboard/%d/dashcard/%s/action/execute"
                                                                           dashboard-id
-                                                                          Integer/MAX_VALUE
-                                                                          action-id)
+                                                                          Integer/MAX_VALUE)
                                              {}))))
               (testing "Missing parameter should fail gracefully"
                 (is (partial= {:message "Error executing Action: Error building query parameter map: Error determining value for parameter \"id\": You'll need to pick a value for 'ID' before this query can run."}
@@ -1967,10 +1966,9 @@
                                                           :action_id action-id
                                                           :parameter_mappings [{:parameter_id "my_id"
                                                                                 :target [:variable [:template-tag "id"]]}]}]]
-          (let [execute-path (format "dashboard/%s/dashcard/%s/action/%s/execute"
+          (let [execute-path (format "dashboard/%s/dashcard/%s/action/execute"
                                      dashboard-id
-                                     dashcard-id
-                                     action-id)]
+                                     dashcard-id)]
             (testing "Without actions enabled"
               (is (= "Actions are not enabled."
                      (mt/user-http-request :crowberto :post 400 execute-path
