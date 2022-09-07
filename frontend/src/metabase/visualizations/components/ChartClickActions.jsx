@@ -9,6 +9,7 @@ import Tooltip from "metabase/components/Tooltip";
 import "./ChartClickActions.css";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { getEventTarget } from "metabase/lib/dom";
 
 import { performAction } from "metabase/visualizations/lib/action";
 
@@ -113,6 +114,18 @@ class ChartClickActions extends Component {
     }
   };
 
+  getPopoverReference = clicked => {
+    if (clicked.element) {
+      if (clicked.element.firstChild instanceof HTMLElement) {
+        return clicked.element.firstChild;
+      } else {
+        return clicked.element;
+      }
+    } else if (clicked.event) {
+      return getEventTarget(clicked.event);
+    }
+  };
+
   render() {
     const {
       clicked,
@@ -185,10 +198,14 @@ class ChartClickActions extends Component {
 
     const hasOnlyOneSection = sections.length === 1;
 
+    const popoverAnchor = this.getPopoverReference(clicked);
+
+    console.log(popoverAnchor);
+
     return (
       <FlexTippyPopover
-        reference={clicked.element.firstChild || clicked.element}
-        visible={!!clicked.element}
+        reference={popoverAnchor}
+        visible={!!popoverAnchor}
         onClose={() => {
           MetabaseAnalytics.trackStructEvent(
             "Action",
