@@ -10,14 +10,7 @@ import DataSelectorLoading from "../DataSelectorLoading";
 import { RawDataBackButton } from "../DataSelector.styled";
 import { PickerSpinner } from "./DataSelectorDatabaseSchemaPicker.styled";
 
-type Database = {
-  name: string;
-  schemas: Schema[];
-  id: number;
-  is_saved_questions?: boolean;
-};
-
-type Schema = { displayName: () => string; database: Database };
+import type { Database, Schema } from "../types";
 
 type DataSelectorDatabaseSchemaPicker = {
   databases: Database[];

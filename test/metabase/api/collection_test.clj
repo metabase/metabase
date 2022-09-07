@@ -403,7 +403,7 @@
           items))
 
 (defn- default-item [{:keys [model] :as item-map}]
-  (merge {:id true, :collection_position nil, :entity_id true}
+  (merge {:id true, :collection_position nil, :entity_id true, :app_id false}
          (when (= model "collection")
            {:authority_level nil})
          (when (= model "card")
@@ -436,6 +436,7 @@
                   :name                (:name card)
                   :collection_position nil
                   :collection_preview  true
+                  :app_id              nil
                   :display             "table"
                   :description         nil
                   :entity_id           (:entity_id card)
@@ -682,6 +683,54 @@
           (is (= #{"card" "dash" "subcollection" "dataset"}
                  (into #{} (map :name) items))))))))
 
+(deftest filter-facet-test
+  (testing "Filter facets"
+    (mt/with-temp* [Collection [_ {:name "Top level collection"}]
+                    Collection [{app-coll-id :id} {:name "App with items"}]
+                    App        [{app-id :id} {:collection_id app-coll-id}]
+                    Collection [_ {:name "subcollection"
+                                   :location (format "/%d/" app-coll-id)
+                                   :authority_level "official"}]
+                    Card       [_ {:name "card" :collection_id app-coll-id}]
+                    Card       [_ {:name "dataset" :dataset true :collection_id app-coll-id}]
+                    Dashboard  [_ {:name "dash" :collection_id app-coll-id}]
+                    Dashboard  [_ {:name "page" :collection_id app-coll-id :is_app_page true}]]
+      (let [items (->> "/items?models=dashboard&models=card&models=collection"
+                       (str "collection/" app-coll-id)
+                       (mt/user-http-request :rasta :get 200)
+                       :data)]
+        (is (= #{"card" "dash" "subcollection"}
+               (into #{} (map :name) items))))
+      (let [items (->> "/items?models=dashboard&models=card&models=collection&models=dataset"
+                       (str "collection/" app-coll-id)
+                       (mt/user-http-request :rasta :get 200)
+                       :data)]
+        (is (= #{"card" "dash" "subcollection" "dataset"}
+               (into #{} (map :name) items))))
+      (let [items (->> "/items?models=page"
+                       (str "collection/" app-coll-id)
+                       (mt/user-http-request :rasta :get 200)
+                       :data)]
+        (is (= #{"page"}
+               (into #{} (map :name) items))))
+      (let [items (mt/user-http-request
+                   :rasta :get 200 "collection/root/items?models=app")]
+        (is (partial= [{:id app-coll-id
+                        :app_id app-id
+                        :model "app"}]
+                      (:data items))))
+      (let [items (mt/user-http-request
+                   :rasta :get 200 "collection/root/items")]
+        (is (= #{["app" "App with items"]
+                 ["collection" "Top level collection"]
+                 ["collection" "Rasta Toucan's Personal Collection"]}
+               (into #{} (map (juxt :model :name)) (:data items)))))
+      (let [items (->> (str "collection/" app-coll-id "/items")
+                       (mt/user-http-request :rasta :get 200)
+                       :data)]
+        (is (= #{"card" "dash" "subcollection" "dataset" "page"}
+               (into #{} (map :name) items)))))))
+
 (deftest children-sort-clause-test
   (testing "Default sort"
     (doseq [app-db [:mysql :h2 :postgres]]
@@ -726,6 +775,7 @@
         (is (= [{:id        (:id snippet)
                  :name      "My Snippet"
                  :entity_id (:entity_id snippet)
+                 :app_id    nil
                  :model     "snippet"}]
                (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id collection))))))
 
@@ -733,6 +783,7 @@
           (is (= [{:id        (:id archived)
                    :name      "Archived Snippet"
                    :entity_id (:entity_id archived)
+                   :app_id    nil
                    :model     "snippet"}]
                  (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items?archived=true" (:id collection)))))))
 
@@ -740,6 +791,7 @@
           (is (= [{:id        (:id snippet)
                    :name      "My Snippet"
                    :entity_id (:entity_id snippet)
+                   :app_id    nil
                    :model     "snippet"}]
                  (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items?model=snippet" (:id collection)))))))))))
 
@@ -1067,6 +1119,7 @@
                    :description         nil
                    :collection_position nil
                    :collection_preview  true
+                   :app_id              nil
                    :display             "table"
                    :moderated_status    nil
                    :entity_id           (:entity_id card)
@@ -1220,10 +1273,12 @@
           (is (= [{:id        (:id snippet)
                    :name      "My Snippet"
                    :entity_id (:entity_id snippet)
+                   :app_id    nil
                    :model     "snippet"}
                   {:id        (:id snippet-2)
                    :name      "My Snippet 2"
                    :entity_id (:entity_id snippet-2)
+                   :app_id    nil
                    :model     "snippet"}]
                  (only-test-items (:data (mt/user-http-request :rasta :get 200 "collection/root/items?namespace=snippets")))))
 

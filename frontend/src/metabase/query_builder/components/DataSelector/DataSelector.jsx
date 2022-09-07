@@ -15,12 +15,10 @@ import EmptyState from "metabase/components/EmptyState";
 import ListSearchField from "metabase/components/ListSearchField";
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import AccordionList from "metabase/core/components/AccordionList";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import MetabaseSettings from "metabase/lib/settings";
 import { getSchemaName } from "metabase/lib/schema";
-import { isDatabaseWritebackEnabled } from "metabase/writeback/utils";
 
 import Databases from "metabase/entities/databases";
 import Schemas from "metabase/entities/schemas";
@@ -34,15 +32,13 @@ import {
   convertSearchResultToTableLikeItem,
 } from "./data-search";
 import SavedQuestionPicker from "./saved-question-picker/SavedQuestionPicker";
-import DataSelectorLoading from "./DataSelectorLoading";
+import DataBucketPicker from "./DataSelectorDataBucketPicker";
+import DatabasePicker from "./DataSelectorDatabasePicker";
 import DatabaseSchemaPicker from "./DataSelectorDatabaseSchemaPicker";
 import SchemaPicker from "./DataSelectorSchemaPicker";
 import FieldPicker from "./DataSelectorFieldPicker";
 import TablePicker from "./DataSelectorTablePicker";
 import {
-  DataBucketList,
-  DataBucketListItem,
-  RawDataBackButton,
   CollectionDatasetSelectList,
   CollectionDatasetAllDataLink,
   EmptyStateContainer,
@@ -51,15 +47,11 @@ import {
 import { getMetadata } from "metabase/selectors/metadata";
 import { getHasDataAccess } from "metabase/new_query/selectors";
 
+import { DATA_BUCKET } from "./constants";
+
 import "./DataSelector.css";
 
 const MIN_SEARCH_LENGTH = 2;
-
-export const DATA_BUCKET = {
-  DATASETS: "datasets",
-  RAW_DATA: "raw-data",
-  SAVED_QUESTIONS: "saved-questions",
-};
 
 // chooses a data source bucket (datasets / raw data (tables) / saved questions)
 const DATA_BUCKET_STEP = "BUCKET";
@@ -1188,95 +1180,3 @@ function CollectionDatasetList({ datasets, onSelect, onSeeAllData }) {
     </CollectionDatasetSelectList>
   );
 }
-
-const DataBucketPicker = ({ onChangeDataBucket }) => {
-  const BUCKETS = [
-    {
-      id: DATA_BUCKET.DATASETS,
-      icon: "model",
-      name: t`Models`,
-      description: t`The best starting place for new questions.`,
-    },
-    {
-      id: DATA_BUCKET.RAW_DATA,
-      icon: "database",
-      name: t`Raw Data`,
-      description: t`Unaltered tables in connected databases.`,
-    },
-    {
-      id: DATA_BUCKET.SAVED_QUESTIONS,
-      name: t`Saved Questions`,
-      icon: "folder",
-      description: t`Use any question’s results to start a new question.`,
-    },
-  ];
-
-  return (
-    <DataBucketList>
-      {BUCKETS.map(bucket => (
-        <DataBucketListItem
-          {...bucket}
-          key={bucket.id}
-          onSelect={onChangeDataBucket}
-        />
-      ))}
-    </DataBucketList>
-  );
-};
-
-const DatabasePicker = ({
-  databases,
-  selectedDatabase,
-  onChangeDatabase,
-  hasNextStep,
-  onBack,
-  hasInitialFocus,
-  requireWriteback = false,
-}) => {
-  if (databases.length === 0) {
-    return <DataSelectorLoading />;
-  }
-
-  const sections = [
-    {
-      items: databases.map((database, index) => ({
-        name: database.name,
-        writebackEnabled: isDatabaseWritebackEnabled(database),
-        index,
-        database: database,
-      })),
-    },
-  ];
-
-  if (onBack) {
-    sections.unshift({ name: <RawDataBackButton /> });
-  }
-
-  return (
-    <AccordionList
-      id="DatabasePicker"
-      key="databasePicker"
-      className="text-brand"
-      hasInitialFocus={hasInitialFocus}
-      sections={sections}
-      onChange={item => onChangeDatabase(item.database)}
-      onChangeSection={(_section, sectionIndex) => {
-        const isNavigationSection = onBack && sectionIndex === 0;
-        if (isNavigationSection) {
-          onBack();
-        }
-        return false;
-      }}
-      itemIsClickable={
-        requireWriteback ? item => item.writebackEnabled : undefined
-      }
-      itemIsSelected={item =>
-        selectedDatabase && item.database.id === selectedDatabase.id
-      }
-      renderItemIcon={() => (
-        <Icon className="Icon text-default" name="database" size={18} />
-      )}
-      showItemArrows={hasNextStep}
-    />
-  );
-};
