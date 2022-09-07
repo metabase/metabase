@@ -120,8 +120,8 @@
                      :id :name :db_id
                      :display_name :initial_sync_status
                      :visibility_type])
-      (let [model-class (symbol (str/capitalize model))
-            self-qualify #(db/qualify model-class %)]
+      (let [model-symb (symbol (str/capitalize model))
+            self-qualify #(db/qualify model-symb %)]
         (cond-> {:where [:in (self-qualify :id) ids]}
           (not= model "table")
           (merge {:left-join [Collection [:= (db/qualify Collection :id) (self-qualify :collection_id)]
