@@ -22,7 +22,8 @@
   (:import [java.sql Clob ResultSet ResultSetMetaData]
            java.time.OffsetTime
            org.h2.command.Parser
-           org.h2.engine.Session))
+           org.h2.engine.Session
+           org.h2.engine.SessionRemote))
 
 ;; method impls live in this namespace
 (comment h2.actions/keep-me)
