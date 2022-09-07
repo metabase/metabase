@@ -26,7 +26,7 @@ function ActionOptionItem({
       isSelected={isSelected}
       hasDescription={!!description}
     >
-      <ActionSidebarItemIcon name="bolt" isSelected={isSelected} />
+      <ActionSidebarItemIcon name="insight" isSelected={isSelected} />
       <div>
         <SidebarItem.Name>{name}</SidebarItem.Name>
         {description && <ActionDescription>{description}</ActionDescription>}
