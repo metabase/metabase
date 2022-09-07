@@ -195,10 +195,10 @@
   (into #{}
         (comp (mapcat get-typenames)
               (map keyword))
-        (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database
-                       [(str "SELECT nspname, typname "
-                             "FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace "
-                             "WHERE t.oid IN (SELECT DISTINCT enumtypid FROM pg_enum e)")]))))
+        (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
+                    [(str "SELECT nspname, typname "
+                          "FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace "
+                          "WHERE t.oid IN (SELECT DISTINCT enumtypid FROM pg_enum e)")])))
 
 (def ^:private ^:dynamic *enum-types* nil)
 
