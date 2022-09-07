@@ -170,23 +170,6 @@
       (when-not (Boolean/parseBoolean ignore_view)
         (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*))))))
 
-(defn template-tag-referenced-card-ids
-  "Returns the list of `Card` ids referenced in the native query of the card."
-  [card]
-  (->> (get-in (:dataset_query card) [:native :template-tags])
-       vals
-       (filter #(= (:type %) :card))
-       (map :card-id)))
-
-(api/defendpoint GET "/:id/referenced-cards"
-  "Get a list of `Card`s referenced by template tags in the native query of the card."
-  [id]
-  (let [card           (db/select-one Card :id id)
-        referenced-ids (template-tag-referenced-card-ids card)]
-    (when (seq referenced-ids)
-      (->> (db/select Card :id [:in referenced-ids])
-           (filter mi/can-read?)))))
-
 (api/defendpoint GET "/:id/timelines"
   "Get the timelines for card with ID. Looks up the collection the card is in and uses that."
   [id include start end]

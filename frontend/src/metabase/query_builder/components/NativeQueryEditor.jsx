@@ -18,6 +18,7 @@ import "ace/snippets/sqlserver";
 import "ace/snippets/json";
 import _ from "underscore";
 import { ResizableBox } from "react-resizable";
+import { connect } from "react-redux";
 
 import { isEventOverElement } from "metabase/lib/dom";
 import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
@@ -287,25 +288,21 @@ class NativeQueryEditor extends Component {
             };
 
             // Get columns from referenced questions
-            const { query } = this.props;
-            const referencedQuestionIds = query.referencedQuestionIds();
-            const questionResults = referencedQuestionIds.flatMap(
-              questionId => {
-                const question = query.metadata().question(questionId);
-                if (!question) {
-                  return [];
-                }
-                return question
-                  .getResultMetadata()
-                  .map(columnMetadata => [
-                    columnMetadata.name,
-                    `${question.displayName()} :${columnMetadata.base_type}`,
-                  ]);
-              },
+            const referencedQuestionIds =
+              this.props.query.referencedQuestionIds();
+            // The results of the API call are cached by ID
+            const referencedQuestions = await Promise.all(
+              referencedQuestionIds.map(id => this.props.fetchQuestion(id)),
+            );
+            const questionColumns = referencedQuestions.flatMap(question =>
+              question.result_metadata.map(columnMetadata => [
+                columnMetadata.name,
+                `${question.name} :${columnMetadata.base_type}`,
+              ]),
             );
 
             // Concat the results from tables, models, and referenced questions
-            results = apiResults.concat(questionResults);
+            results = apiResults.concat(questionColumns);
           }
 
           // transform results into what ACE expects
@@ -544,15 +541,19 @@ class NativeQueryEditor extends Component {
   }
 }
 
+const mapStateToProps = () => ({});
+const mapDispatchToProps = dispatch => {
+  return {
+    fetchQuestion: async id => {
+      const action = await dispatch(Questions.actions.fetch({ id }));
+      return Questions.HACK_getObjectFromAction(action);
+    },
+  };
+};
+
 export default _.compose(
   ExplicitSize(),
-  Questions.loadList({
-    query: (state, props) => ({
-      questionId: props.question.id(),
-      endpoint: "referenced-cards",
-    }),
-    loadingAndErrorWrapper: false,
-  }),
   Snippets.loadList({ loadingAndErrorWrapper: false }),
   SnippetCollections.loadList({ loadingAndErrorWrapper: false }),
+  connect(mapStateToProps, mapDispatchToProps),
 )(NativeQueryEditor);

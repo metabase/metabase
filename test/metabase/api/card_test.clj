@@ -2450,29 +2450,3 @@
           (is (not (contains? (task.persist-refresh/job-info-for-individual-refresh)
                               (u/the-id parchived)))
               "Scheduled refresh of archived model"))))))
-
-(deftest template-tag-referenced-card-ids-test
-  (testing "template-tag-referenced-card-ids returns the correct card ids from the query"
-    (let [id-1 123
-          id-2 456]
-      (mt/with-temp Card [card {:dataset_query {:database (mt/id)
-                                                :type     :native
-                                                :native   {:query         "select * from {{#14}} as a join {{#15}} as b on a.id = b.id where a.id = {{id}}"
-                                                           :template-tags {"id"          {:name         "id"
-                                                                                          :display-name "ID"
-                                                                                          :type         "number"
-                                                                                          :required     true
-                                                                                          :default      "100"}
-                                                                           (str "#" id-1) {:id           "_ID_"
-                                                                                           :name         "some name"
-                                                                                           :display-name "some name"
-                                                                                           :type         "card"
-                                                                                           :card-id      id-1}
-                                                                           (str "#" id-2) {:id           "_ANOTHER_ID_"
-                                                                                           :name         "some name"
-                                                                                           :display-name "some name"
-                                                                                           :type         "card"
-                                                                                           :card-id      id-2}}
-                                                           :parameters    []}}}]
-        (is (= [id-1 id-2]
-               (api.card/template-tag-referenced-card-ids card)))))))
