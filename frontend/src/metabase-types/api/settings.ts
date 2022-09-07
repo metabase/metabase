@@ -41,7 +41,6 @@ export interface Settings {
   "enable-xrays": boolean;
   engines: Record<string, Engine>;
   "is-hosted?": boolean;
-  "ga-enabled": boolean;
   "google-auth-client-id": string | null;
   "deprecation-notice-version": string | undefined;
   "loading-message": LoadingMessage;
