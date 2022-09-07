@@ -6,7 +6,10 @@ import type { ActionFormSettings } from "metabase-types/api";
 import { CardApi } from "metabase/services";
 
 import { saveForm } from "./forms";
-import { removeOrphanSettings } from "metabase/entities/actions/utils";
+import {
+  removeOrphanSettings,
+  setParameterTypesFromFieldSettings,
+} from "metabase/entities/actions/utils";
 
 type ActionParams = {
   name: string;
@@ -29,7 +32,10 @@ const getAPIFn =
       ...question.card(),
       name,
       description,
-      parameters: question.parameters(),
+      parameters: setParameterTypesFromFieldSettings(
+        formSettings,
+        question.parameters(),
+      ),
       is_write: true,
       display: "table",
       visualization_settings: removeOrphanSettings(

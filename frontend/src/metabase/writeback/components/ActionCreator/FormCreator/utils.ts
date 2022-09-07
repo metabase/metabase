@@ -13,7 +13,7 @@ export const getDefaultFieldSettings = (): FieldSettings => ({
   order: 0,
   description: "",
   placeholder: "",
-  fieldType: "text",
+  fieldType: "string",
   inputType: "string",
   required: false,
   hidden: false,
