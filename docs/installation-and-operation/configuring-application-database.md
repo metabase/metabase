@@ -113,7 +113,7 @@ If that does not work, you can enable `NonValidatingFactory` by adding the follo
 ```
 
 For more options to further tune the SSL connection parameters,
-see the [PostgreSQL SSL client documentation](https://jdbc.postgresql.org/documentation/head/ssl-client.html).
+see the [PostgreSQL SSL client documentation](https://jdbc.postgresql.org/documentation/ssl).
 
 
 ## [MySQL](https://www.mysql.com/) or [MariaDB](https://www.mariadb.org/)
