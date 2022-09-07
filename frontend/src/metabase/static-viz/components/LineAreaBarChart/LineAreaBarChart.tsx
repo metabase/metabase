@@ -29,21 +29,21 @@ const LineAreaBarChart = ({
       color: getColor("text-light"),
       ticks: {
         color: getColor("text-medium"),
-        fontSize: 11,
+        fontSize: 12,
       },
       labels: {
         color: getColor("text-medium"),
-        fontSize: 11,
+        fontSize: 14,
         fontWeight: 700,
       },
     },
     legend: {
-      fontSize: 13,
-      lineHeight: 16,
+      fontSize: 16,
+      lineHeight: 20,
     },
     value: {
       color: getColor("text-dark"),
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: 800,
       stroke: getColor("white"),
       strokeWidth: 3,
