@@ -1,8 +1,8 @@
 ---
-title: "Configuring Metabase"
+title: "Configuring Metabase overview"
 ---
 
-# Configuring Metabase
+# Configuring Metabase overview
 
 ## [Setting up Metabase](./setting-up-metabase.md)
 

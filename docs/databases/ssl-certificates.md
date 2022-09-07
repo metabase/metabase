@@ -1,10 +1,10 @@
 ---
-title: Securing database connections using an SSL certificate
+title: SSL certificate
 redirect_from:
   - /docs/latest/administration-guide/secure-database-connections-with-ssl-certificates
 ---
 
-## Securing database connections using an SSL certificate
+## SSL certificate
 
 If you'd like to connect your Metabase Cloud or self-hosted instance to a database, you can secure the connection using Secure Socket Layer (SSL) encryption with a certificate.
 

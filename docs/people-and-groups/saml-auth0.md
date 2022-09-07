@@ -1,10 +1,10 @@
 ---
-title: Setting up SAML with Auth0
+title: SAML with Auth0
 redirect_from:
   - /docs/latest/enterprise-guide/saml-auth0
 ---
 
-# Setting up SAML with Auth0
+# SAML with Auth0
 
 {% include plans-blockquote.html feature="SAML authentication" %}
 

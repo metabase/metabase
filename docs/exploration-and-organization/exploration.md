@@ -1,10 +1,10 @@
 ---
-title: Exploring in Metabase
+title: Basic exploration
 redirect_from:
   - /docs/latest/users-guide/03-basic-exploration
 ---
 
-# Exploring in Metabase
+# Basic exploration
 
 ## See what your teammates have made
 
