@@ -33,7 +33,7 @@ import {
   getIconForField,
   getFilterOperators,
 } from "metabase/lib/schema_metadata";
-import Dimension, { FieldDimension } from "../Dimension";
+import { FieldDimension } from "../Dimension";
 import Base from "./Base";
 import type { FieldFingerprint } from "metabase-types/api/field";
 import type { Field as FieldRef } from "metabase-types/types/Query";

@@ -41,16 +41,6 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
         database_id: SAMPLE_DATABASE?.id,
         table_id: PRODUCTS.id,
         name: "Base question",
-        result_metadata: [
-          {
-            name: "Foo",
-            display_name: "~*~ Foo ~*~",
-          },
-          {
-            id: PRODUCTS.CATEGORY.id,
-            display_name: "~*~ Category ~*~",
-          },
-        ],
       },
       metadata,
     );
@@ -85,7 +75,10 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
         semantic_type: null,
         table_id: "card__1",
       }),
-      PRODUCTS.CATEGORY,
+      new Field({
+        id: PRODUCTS.CATEGORY.id,
+        display_name: "~*~ Category ~*~",
+      }),
     ];
 
     metadata.questions = {
@@ -107,33 +100,14 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
       expect(table?.getPlainObject()).toEqual(
         NESTED_CARD_TABLE.getPlainObject(),
       );
-    });
-
-    it("should contain fields created by merging the underlying concrete table fields with field metadata found on the card object", () => {
-      const [boolField, expressionField, categoryField] = table?.fields || [];
-      expect(table?.fields.map(field => field.getPlainObject())).toEqual([
-        {
-          ...boolField.getPlainObject(),
-          source: "nested",
-        },
-        {
-          ...expressionField.getPlainObject(),
-          source: "nested",
-          display_name: "~*~ Foo ~*~",
-        },
-        {
-          ...categoryField.getPlainObject(),
-          source: "nested",
-          display_name: "~*~ Category ~*~",
-        },
-      ]);
+      expect(table?.fields).toEqual(NESTED_CARD_TABLE.fields);
     });
   });
 
   describe("Dataset/model card", () => {
     const ORDERS_USER_ID_FIELD = metadata
       .field(ORDERS.USER_ID.id)
-      .getPlainObject();
+      ?.getPlainObject();
     const OVERWRITTEN_USER_ID_FIELD_METADATA = {
       ...ORDERS_USER_ID_FIELD,
       display_name: "Foo",
@@ -146,23 +120,16 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
     };
 
     const ORDERS_DATASET = ORDERS.question()
+      .setCard({ ...ORDERS.question().card(), id: 3 })
       .setDataset(true)
-      .setDisplayName("Dataset Question")
-      .setResultsMetadata({
-        columns: [OVERWRITTEN_USER_ID_FIELD_METADATA],
-      });
-    ORDERS_DATASET.card().id = 3;
+      .setDisplayName("Dataset Question");
 
     const ORDERS_DATASET_TABLE = new Table({
       id: "card__3",
       display_name: ORDERS_DATASET.displayName(),
       name: ORDERS_DATASET.displayName(),
+      fields: [new Field(OVERWRITTEN_USER_ID_FIELD_METADATA)],
     });
-    ORDERS_DATASET_TABLE.fields = [
-      // Note that this SHOULD be identical to OVERWRITTEN_USER_ID_FIELD_METADATA
-      // but this mimics the bug metabase#25141
-      ORDERS.USER_ID,
-    ];
 
     metadata.questions = {
       [ORDERS_DATASET.id()]: ORDERS_DATASET,
@@ -171,18 +138,17 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
     metadata.tables[ORDERS_DATASET_TABLE.id] = ORDERS_DATASET_TABLE;
 
     const table = getStructuredQueryTable(ORDERS_DATASET.query());
-    it("should return a virtual table using the given query's question", () => {
-      expect(table?.getPlainObject()).toEqual({
-        display_name: "Dataset Question",
-        id: "card__3",
-        name: "Dataset Question",
-        fields: [ORDERS.USER_ID.id],
-      });
-    });
+    it("should return a nested card table using the given query's question", () => {
+      expect(table?.getPlainObject()).toEqual(
+        expect.objectContaining({
+          display_name: "Dataset Question",
+          id: "card__3",
+          name: "Dataset Question",
+        }),
+      );
 
-    it("should contain fields created by merging the underlying concrete table fields with field metadata found on the dataset card object", () => {
       expect(table?.fields.map(field => field.getPlainObject())).toEqual([
-        { ...OVERWRITTEN_USER_ID_FIELD_METADATA, source: "nested" },
+        OVERWRITTEN_USER_ID_FIELD_METADATA,
       ]);
     });
   });

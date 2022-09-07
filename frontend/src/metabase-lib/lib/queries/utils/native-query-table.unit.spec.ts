@@ -7,6 +7,7 @@ import {
 } from "__support__/sample_database_fixture";
 import Question from "metabase-lib/lib/Question";
 import Table from "metabase-lib/lib/metadata/Table";
+import Field from "metabase-lib/lib/metadata/Field";
 import type NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
 import { getNativeQueryTable } from "./native-query-table";
@@ -24,26 +25,21 @@ const NATIVE_QUERY_CARD = {
 
 describe("metabase-lib/queries/utils/native-query-table", () => {
   describe("native query associated with a dataset/model question", () => {
-    const PRODUCT_ID_WITH_OVERRIDING_METADATA = {
+    const PRODUCT_ID_WITH_OVERRIDING_METADATA = new Field({
       ...PRODUCTS.ID.getPlainObject(),
       display_name: "~*~Products.ID~*~",
-    };
+    });
 
     const nativeDatasetQuestion = new Question(NATIVE_QUERY_CARD, metadata)
       .setDataset(true)
-      .setDisplayName("Native Dataset Question")
-      .setResultsMetadata({
-        columns: [PRODUCT_ID_WITH_OVERRIDING_METADATA],
-      });
+      .setDisplayName("Native Dataset Question");
 
     const nestedNativeDatasetTable = new Table({
       id: "card__1",
       display_name: nativeDatasetQuestion.displayName(),
       name: nativeDatasetQuestion.displayName(),
+      fields: [PRODUCT_ID_WITH_OVERRIDING_METADATA],
     });
-    // Note that this SHOULD be identical to PRODUCT_ID_WITH_OVERRIDING_METADATA
-    // but this mimics the bug metabase#25141
-    nestedNativeDatasetTable.fields = [PRODUCTS.ID];
 
     metadata.questions = {
       [nativeDatasetQuestion.id()]: nativeDatasetQuestion,
@@ -54,20 +50,19 @@ describe("metabase-lib/queries/utils/native-query-table", () => {
       nativeDatasetQuestion.query() as NativeQuery,
     );
 
-    it("should return a virtual table using the given query's question", () => {
-      expect(table?.getPlainObject()).toEqual({
-        display_name: "Native Dataset Question",
-        id: "card__1",
-        name: "Native Dataset Question",
-        fields: [PRODUCTS.ID.id],
-      });
-    });
+    it("should return a nested card table using the given query's question", () => {
+      expect(table?.getPlainObject()).toEqual(
+        expect.objectContaining({
+          display_name: "Native Dataset Question",
+          id: "card__1",
+          name: "Native Dataset Question",
+        }),
+      );
 
-    it("should contain fields created by merging the underlying concrete table fields with field metadata found on the dataset card object", () => {
       expect(table?.fields.map(field => field.getPlainObject())).toEqual([
         {
-          ...PRODUCT_ID_WITH_OVERRIDING_METADATA,
-          source: "nested",
+          ...PRODUCT_ID_WITH_OVERRIDING_METADATA.getPlainObject(),
+          display_name: "~*~Products.ID~*~",
         },
       ]);
     });

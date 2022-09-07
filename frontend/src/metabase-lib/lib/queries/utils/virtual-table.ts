@@ -49,24 +49,6 @@ export function createVirtualTable({
   return table;
 }
 
-// For when you have a Table but need to override its fields
-export function createTableCloneWithOverridedMetadata(
-  table: Table,
-  fields: Field[],
-): Table {
-  const clonedTable = table.clone();
-
-  clonedTable.fields = fields;
-  clonedTable.getPlainObject().fields = fields.map(field => field.id);
-
-  clonedTable.fields.forEach(field => {
-    field.table = clonedTable;
-    field.table_id = clonedTable.id;
-  });
-
-  return clonedTable;
-}
-
 export function createVirtualField({
   metadata,
   query,
