@@ -31,7 +31,7 @@ export type HydratedSeries = Series & {
   stackedData?: StackedDatum[];
 };
 
-type TickDisplay = "show" | "hide" | "rotate-45";
+type TickDisplay = "show" | "hide" | "rotate-90";
 type Stacking = "stack" | "none";
 
 export type ChartSettings = {

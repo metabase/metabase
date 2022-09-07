@@ -20,7 +20,7 @@ import {
 import { getX } from "metabase/static-viz/components/XYChart/utils/series";
 
 export const getRotatedXTickHeight = (tickWidth: number) => {
-  return Math.ceil(Math.sqrt(Math.pow(tickWidth, 2) / 2));
+  return tickWidth;
 };
 
 export const formatXTick = (
@@ -55,7 +55,7 @@ export const getXTickWidthLimit = (
     return Infinity;
   }
 
-  return settings.tick_display === "rotate-45"
+  return settings.tick_display === "rotate-90"
     ? Math.min(actualMaxWidth, MAX_ROTATED_TICK_WIDTH)
     : bandwidth;
 };
@@ -81,19 +81,19 @@ export const getXTicksDimensions = (
     })
     .reduce((a, b) => Math.max(a, b), 0);
 
-  if (settings.tick_display === "rotate-45") {
+  if (settings.tick_display === "rotate-90") {
     const rotatedSize = getRotatedXTickHeight(maxTextWidth);
 
     return {
-      width: rotatedSize,
-      height: rotatedSize,
+      width: Math.min(rotatedSize, MAX_ROTATED_TICK_WIDTH),
+      height: Math.min(rotatedSize, MAX_ROTATED_TICK_WIDTH),
       maxTextWidth,
     };
   }
 
   return {
+    width: Math.min(maxTextWidth, MAX_ROTATED_TICK_WIDTH),
     height: measureTextHeight(fontSize),
-    width: maxTextWidth,
     maxTextWidth,
   };
 };

@@ -79,7 +79,7 @@ export const XYChart = ({
   const margin = calculateMargin(
     yTickWidths.left,
     yTickWidths.right,
-    xTicksDimensions.height,
+    xTicksDimensions.height + style.axes.labels.fontSize * 2,
     xTicksDimensions.width,
     settings.labels,
     style.axes.ticks.fontSize,
@@ -152,7 +152,7 @@ export const XYChart = ({
     strokeWidth: style.value?.strokeWidth,
   };
 
-  const areXTicksRotated = settings.x.tick_display === "rotate-45";
+  const areXTicksRotated = settings.x.tick_display === "rotate-90";
   const areXTicksHidden = settings.x.tick_display === "hide";
   const xLabelOffset = areXTicksHidden ? -style.axes.ticks.fontSize : undefined;
 
@@ -215,7 +215,7 @@ export const XYChart = ({
 
         <AxisBottom
           scale={xScale.scale}
-          label={areXTicksRotated ? undefined : settings.labels.bottom}
+          label={settings.labels.bottom}
           top={yMin}
           left={xMin}
           numTicks={xTicksCount}
@@ -223,7 +223,12 @@ export const XYChart = ({
           stroke={style.axes.color}
           tickStroke={style.axes.color}
           hideTicks={settings.x.tick_display === "hide"}
-          labelProps={labelProps}
+          labelProps={{
+            ...labelProps,
+            transform: `translate(0, ${
+              areXTicksRotated ? xTickWidthLimit : CHART_PADDING
+            })`,
+          }}
           tickFormat={value =>
             formatXTick(value.valueOf(), settings.x.type, settings.x.format)
           }
