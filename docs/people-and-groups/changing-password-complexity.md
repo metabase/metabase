@@ -1,10 +1,10 @@
 ---
-title: Changing Metabase password complexity
+title: Password complexity
 redirect_from:
   - /docs/latest/operations-guide/changing-password-complexity
 ---
 
-# Changing Metabase password complexity
+# Password complexity
 
 Metabase offers a couple controls for administrators who prefer to increase the password requirements on their user accounts.
 
