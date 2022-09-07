@@ -1,0 +1,17 @@
+version: "3.0"
+services:
+  metabase-app:
+    image: gcr.io/nftlake/metabase/metabase-nftlake:0.0.4
+    restart: always
+    ports:
+      - 3000:3000
+      - 80:3000
+    volumes:
+      - /home/app/metabase-data:/metabase-data
+    environment:
+      MB_DB_TYPE: ${MB_DB_TYPE}
+      MB_DB_DBNAME: ${MB_DB_DBNAME}
+      MB_DB_PORT: ${MB_DB_PORT}
+      MB_DB_USER: ${MB_DB_USER}
+      MB_DB_PASS: ${MB_DB_PASS}
+      MB_DB_HOST: ${MB_DB_HOST}
