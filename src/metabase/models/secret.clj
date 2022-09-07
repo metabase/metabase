@@ -62,9 +62,11 @@
 
   `driver?` is an optional argument that is only used if an ostensibly existing file value (i.e. `:file-path`) can't be
   resolved, in order to render a more user-friendly error message (by looking up the display names of the connection
-  properties involved)."
+  properties involved).
+
+  `ext?` is an optional argument that sets the file extension used for the temporary file, if one needs to be created."
   {:added "0.42.0"}
-  ^File [{:keys [connection-property-name id value] :as secret} driver?]
+  ^File [{:keys [connection-property-name id value] :as secret} & [driver? ext?]]
   (if (= :file-path (:source secret))
     (let [secret-val          (value->string secret)
           ^File existing-file (File. secret-val)]
@@ -85,7 +87,7 @@
           (throw (ex-info (tru "{0} points to non-existent file: {1}" error-source secret-val)
                    {:file-path secret-val
                     :secret    secret})))))
-    (let [^File tmp-file (doto (File/createTempFile "metabase-secret_" nil)
+    (let [^File tmp-file (doto (File/createTempFile "metabase-secret_" ext?)
                            ;; make the file only readable by owner
                            (.setReadable false false)
                            (.setReadable true true)
@@ -103,7 +105,7 @@
 
 (def
   ^java.io.File
-  ^{:arglists '([{:keys [connection-property-name id value] :as secret} driver?])}
+  ^{:arglists '([{:keys [connection-property-name id value] :as secret} & [driver? ext?]])}
   value->file!
   "Returns the value of the given `secret` instance in the form of a file. If the given instance has a `:file-path` as
   its source, a `File` referring to that is returned. Otherwise, the `:value` is written to a temporary file, which is
@@ -111,13 +113,15 @@
 
   `driver?` is an optional argument that is only used if an ostensibly existing file value (i.e. `:file-path`) can't be
   resolved, in order to render a more user-friendly error message (by looking up the display names of the connection
-  properties involved)."
+  properties involved).
+
+  `ext?` is an optional argument that sets the file extension used for the temporary file, if one needs to be created."
   (memoize/memo
    (with-meta value->file!*
-     {::memoize/args-fn (fn [[secret _driver?]]
+     {::memoize/args-fn (fn [[secret & [_driver? ext?]]]
                           ;; not clear if value->string could return nil due to the cond so we'll just cache on a key
                           ;; that is unique
-                          [(vec (:value secret))])})))
+                          [(vec (:value secret)) ext?])})))
 
 (defn get-sub-props
   "Return a map of secret subproperties for the property `connection-property-name`."
@@ -126,7 +130,9 @@
         sub-prop #(keyword (str connection-property-name "-" (name %)))]
     (zipmap sub-prop-types (map sub-prop sub-prop-types))))
 
-(def ^:private uploaded-base-64-pattern #"^data:application/([^;]*);base64,")
+(def uploaded-base-64-pattern
+  "Regex for parsing base64 encoded file uploads."
+  #"^data:application/([^;]*);base64,")
 
 (defn db-details-prop->secret-map
   "Returns a map containing `:value` and `:source` for the given `conn-prop-nm`. `conn-prop-nm` is expected to be the

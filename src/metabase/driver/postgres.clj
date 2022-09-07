@@ -509,9 +509,14 @@
     "inet"  :type/IPAddress
     nil))
 
+(defn- pkcs-12-key-value?
+  [ssl-key-value]
+  (= (second (re-find secret/uploaded-base-64-pattern ssl-key-value))
+     "x-pkcs12"))
+
 (defn- ssl-params
   "Builds the params to include in the JDBC connection spec for an SSL connection."
-  [db-details]
+  [{:keys [ssl-key-value] :as db-details}]
   (let [ssl-root-cert   (when (contains? #{"verify-ca" "verify-full"} (:ssl-mode db-details))
                           (secret/db-details-prop->secret-map db-details "ssl-root-cert"))
         ssl-client-key  (when (:ssl-use-client-auth db-details)
@@ -531,7 +536,7 @@
       (assoc :sslrootcert (secret/value->file! ssl-root-cert :postgres))
 
       (has-value? ssl-client-key)
-      (assoc :sslkey (secret/value->file! ssl-client-key :postgres))
+      (assoc :sslkey (secret/value->file! ssl-client-key :postgres (when (pkcs-12-key-value? ssl-key-value) ".p12")))
 
       (has-value? ssl-client-cert)
       (assoc :sslcert (secret/value->file! ssl-client-cert :postgres))
