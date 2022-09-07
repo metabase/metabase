@@ -1,11 +1,11 @@
 ---
-title: Migrating from the default H2 database to a production database
+title: Migrating to a production application database
 redirect_from:
   - /docs/latest/operations-guide/migrating-from-h2
   - /docs/latest/operations-guide/running-migrations-manually
 ---
 
-# Migrating from the default H2 database to a production database
+# Migrating to a production application database
 
 ## Metabase's application database
 

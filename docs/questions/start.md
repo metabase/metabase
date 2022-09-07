@@ -2,7 +2,7 @@
 title: Questions overview
 ---
 
-# Questions
+# Questions overview
 
 Questions are queries plus their visualization. You can ask questions using Metabase's graphical query builder, or create a native/SQL query.
 
