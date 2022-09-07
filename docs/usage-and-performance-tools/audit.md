@@ -1,10 +1,10 @@
 ---
-title: Audit logs
+title: Auditing tools
 redirect_from:
   - /docs/latest/enterprise-guide/audit
 ---
 
-# Audit logs
+# Auditing tools
 
 {% include plans-blockquote.html feature="Audit logs" %}
 

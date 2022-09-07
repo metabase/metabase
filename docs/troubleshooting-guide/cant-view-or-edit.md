@@ -31,7 +31,7 @@ Someone with edit permissions (your Metabase admin is probably a safe bet) will 
 
 - [I can't view or edit queries from the SQL editor][sql-access].
 - [I'm getting a "permission denied" error message][permission-denied].
-- [I can't save my question or dashboard][proxies].
+- [I can't save my question or dashboard](./proxies.md).
 - [I can't see my tables][cant-see-tables].
 
 ## Are you still stuck?
@@ -50,6 +50,5 @@ If you can’t solve your problem using the troubleshooting guides:
 [known-issues]: ./known-issues.md
 [learn-permissions]: https://www.metabase.com/learn/permissions/index.html
 [permission-denied]: ./data-permissions.md#getting-a-permission-denied-error-message
-[proxies]: ./proxies.md
 [sql-access]: ./data-permissions.md#a-user-group-cant-access-the-sql-editor
 [troubleshooting-data-permissions]: ./data-permissions.md
