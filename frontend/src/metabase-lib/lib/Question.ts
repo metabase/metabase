@@ -1023,14 +1023,6 @@ class QuestionInner {
   dependentMetadata(): DependentMetadataItem[] {
     const dependencies = [];
 
-    const tableId = this.card().table_id;
-    if (tableId != null) {
-      dependencies.push({
-        type: "table",
-        id: tableId,
-      });
-    }
-
     this.getResultMetadata().forEach(field => {
       if (isFK(field) && field.fk_target_field_id) {
         dependencies.push({

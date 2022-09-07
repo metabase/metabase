@@ -960,23 +960,6 @@ describe("Question", () => {
 
       expect(question.dependentMetadata()).toEqual([]);
     });
-
-    it("should return base `table_id` when one is defined", () => {
-      const question = new Question(
-        {
-          ...card,
-          table_id: 1,
-        },
-        metadata,
-      );
-
-      expect(question.dependentMetadata()).toEqual([
-        {
-          type: "table",
-          id: 1,
-        },
-      ]);
-    });
   });
 
   describe("Question.prototype.setDashboardProps", () => {
