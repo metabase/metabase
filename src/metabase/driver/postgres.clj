@@ -195,10 +195,10 @@
   (into #{}
         (comp (mapcat get-typenames)
               (map keyword))
-        (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
+        (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database
                        [(str "SELECT nspname, typname "
                              "FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace "
-                             "WHERE t.oid IN (SELECT DISTINCT enumtypid FROM pg_enum e)")])))
+                             "WHERE t.oid IN (SELECT DISTINCT enumtypid FROM pg_enum e)")]))))
 
 (def ^:private ^:dynamic *enum-types* nil)
 
@@ -358,7 +358,7 @@
 ;; Postgres is not happy with JSON fields which are in group-bys or order-bys
 ;; being described twice instead of using the alias.
 ;; Therefore, force the alias, but only for JSON fields to avoid ambiguity.
-;; The alias names in JSON fields are unique wrt nfc path"
+;; The alias names in JSON fields are unique wrt nfc path
 (defmethod sql.qp/apply-top-level-clause
   [:postgres :breakout]
   [driver clause honeysql-form {breakout-fields :breakout, _fields-fields :fields :as query}]
@@ -510,9 +510,11 @@
     nil))
 
 (defn- pkcs-12-key-value?
+  "If a value was uploaded for the SSL key, return whether it's using the PKCS-12 format."
   [ssl-key-value]
-  (= (second (re-find secret/uploaded-base-64-pattern ssl-key-value))
-     "x-pkcs12"))
+  (when ssl-key-value
+    (= (second (re-find secret/uploaded-base-64-pattern ssl-key-value))
+       "x-pkcs12")))
 
 (defn- ssl-params
   "Builds the params to include in the JDBC connection spec for an SSL connection."
