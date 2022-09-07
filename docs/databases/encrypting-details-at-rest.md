@@ -1,10 +1,10 @@
 ---
-title: Encrypting your database connection details at rest
+title: Encrypting your database connection
 redirect_from:
   - /docs/latest/operations-guide/encrypting-database-details-at-rest
 ---
 
-# Encrypting your database connection details at rest
+# Encrypting your database connection
 
 Metabase stores connection information for the various databases you add in the [Metabase application database](https://www.metabase.com/glossary/application_database). To prevent bad actors from being able to access these details if they were to gain access to the application DB, Metabase can automatically encrypt them with AES256 + SHA512 when they are saved, and decrypt them on-the-fly whenever they are needed.
 

@@ -1,4 +1,8 @@
-# Installation and operation
+---
+title: "Installation and operation overview"
+---
+
+# Installation and operation overview
 
 The birth, care, and feeding of your Metabase.
 
