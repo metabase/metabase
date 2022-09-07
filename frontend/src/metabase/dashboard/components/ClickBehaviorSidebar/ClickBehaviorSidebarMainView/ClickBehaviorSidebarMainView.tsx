@@ -2,6 +2,7 @@ import React from "react";
 
 import type { UiParameter } from "metabase/parameters/types";
 import type {
+  ActionButtonDashboardCard,
   Dashboard,
   DashboardOrderedCard,
   ClickBehavior,
@@ -52,16 +53,12 @@ function ClickBehaviorOptions({
       />
     );
   }
-  if (clickBehavior.type === "action") {
-    return (
-      <ActionOptions
-        clickBehavior={clickBehavior}
-        dashcard={dashcard}
-        updateSettings={updateSettings}
-      />
-    );
-  }
-  return null;
+  return (
+    <ActionOptions
+      dashcard={dashcard as unknown as ActionButtonDashboardCard}
+      parameters={parameters}
+    />
+  );
 }
 
 interface ClickBehaviorSidebarMainViewProps {

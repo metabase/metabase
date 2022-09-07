@@ -28,3 +28,7 @@ export const ActionDescription = styled.span<{ isSelected?: boolean }>`
   color: ${props =>
     props.isSelected ? color("text-white") : color("text-medium")};
 `;
+
+export const ClickMappingsContainer = styled.div`
+  margin-top: 1rem;
+`;

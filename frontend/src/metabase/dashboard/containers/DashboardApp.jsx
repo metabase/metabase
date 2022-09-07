@@ -17,10 +17,8 @@ import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
 import { useWebNotification } from "metabase/hooks/use-web-notification";
 import { useOnUnmount } from "metabase/hooks/use-on-unmount";
 
-import Actions from "metabase/entities/actions";
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 import { getIsNavbarOpen, setErrorPage } from "metabase/redux/app";
-import MetabaseSettings from "metabase/lib/settings";
 
 import {
   getIsEditing,
@@ -45,9 +43,6 @@ import {
   getIsLoadingComplete,
   getIsHeaderVisible,
   getIsAdditionalInfoVisible,
-
-  // Writeback
-  getFocusedEmitterId,
 } from "../selectors";
 import { getDatabases, getMetadata } from "metabase/selectors/metadata";
 import {
@@ -64,8 +59,6 @@ import * as Urls from "metabase/lib/urls";
 import Dashboards from "metabase/entities/dashboards";
 
 import DataAppContext from "metabase/writeback/containers/DataAppContext";
-
-import ActionParametersInputModal from "./ActionParametersInputModal";
 
 function getDashboardId({ dashboardId, location, params }) {
   if (dashboardId) {
@@ -107,9 +100,6 @@ const mapStateToProps = (state, props) => {
     isHeaderVisible: getIsHeaderVisible(state),
     isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
     embedOptions: getEmbedOptions(state),
-
-    // Writeback
-    focusedEmitterId: getFocusedEmitterId(state),
   };
 };
 
@@ -125,7 +115,7 @@ const mapDispatchToProps = {
 const DashboardApp = props => {
   const options = parseHashOptions(window.location.hash);
 
-  const { isRunning, isLoadingComplete, dashboard, focusedEmitterId } = props;
+  const { isRunning, isLoadingComplete, dashboard } = props;
 
   const [editingOnLoad] = useState(options.edit);
   const [addCardOnLoad] = useState(options.add && parseInt(options.add));
@@ -182,12 +172,6 @@ const DashboardApp = props => {
         />
         {/* For rendering modal urls */}
         {props.children}
-        {dashboard && focusedEmitterId && (
-          <ActionParametersInputModal
-            dashboard={dashboard}
-            focusedEmitterId={focusedEmitterId}
-          />
-        )}
         <Toaster
           message={
             dashboard?.is_app_page
@@ -205,15 +189,11 @@ const DashboardApp = props => {
 };
 
 export default _.compose(
-  ...[
-    connect(mapStateToProps, mapDispatchToProps),
-    favicon(({ pageFavicon }) => pageFavicon),
-    title(({ dashboard, documentTitle }) => ({
-      title: documentTitle || dashboard?.name,
-      titleIndex: 1,
-    })),
-    titleWithLoadingTime("loadingStartTime"),
-    MetabaseSettings.get("experimental-enable-actions") &&
-      Actions.loadList({ metadataPropName: "actionListMetadata" }),
-  ].filter(Boolean),
+  connect(mapStateToProps, mapDispatchToProps),
+  favicon(({ pageFavicon }) => pageFavicon),
+  title(({ dashboard, documentTitle }) => ({
+    title: documentTitle || dashboard?.name,
+    titleIndex: 1,
+  })),
+  titleWithLoadingTime("loadingStartTime"),
 )(DashboardApp);

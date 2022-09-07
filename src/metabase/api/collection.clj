@@ -122,7 +122,7 @@
 (def ^:private valid-model-param-values
   "Valid values for the `?model=` param accepted by endpoints in this namespace.
   `no_models` is for nilling out the set because a nil model set is actually the total model set"
-  #{"card" "dataset" "collection" "dashboard" "pulse" "snippet" "no_models" "timeline"})
+  #{"card" "dataset" "collection" "app" "dashboard" "page" "pulse" "snippet" "no_models" "timeline"})
 
 (def ^:private ModelString
   (apply s/enum valid-model-param-values))
@@ -348,9 +348,9 @@
   [_ rows]
   (map post-process-card-row rows))
 
-(defmethod collection-children-query :dashboard
-  [_ collection {:keys [archived? pinned-state]}]
-  (-> {:select    [:d.id :d.name :d.description :d.entity_id :d.collection_position [(hx/literal "dashboard") :model]
+(defn- dashboard-query [collection {:keys [page? archived? pinned-state]}]
+  (-> {:select    [:d.id :d.name :d.description :d.entity_id :d.collection_position
+                   [(hx/literal (if page? "page" "dashboard")) :model]
                    [:u.id :last_edit_user] [:u.email :last_edit_email]
                    [:u.first_name :last_edit_first_name] [:u.last_name :last_edit_last_name]
                    [:r.timestamp :last_edit_timestamp]]
@@ -367,9 +367,14 @@
                    [:= :r.model_id :d.id]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
+                   [:= :is_app_page page?]
                    [:= :collection_id (:id collection)]
                    [:= :archived (boolean archived?)]]}
       (hh/merge-where (pinned-state->clause pinned-state))))
+
+(defmethod collection-children-query :dashboard
+  [_ collection options]
+  (dashboard-query collection (assoc options :page? false)))
 
 (defmethod post-process-collection-children :dashboard
   [_ rows]
@@ -378,12 +383,20 @@
                 :dataset_query)
        rows))
 
-(defmethod collection-children-query :collection
-  [_ collection {:keys [archived? collection-namespace pinned-state]}]
+(defmethod collection-children-query :page
+  [_ collection options]
+  (dashboard-query collection (assoc options :page? true)))
+
+(defmethod post-process-collection-children :page
+  [_ rows]
+  (post-process-collection-children :dashboard rows))
+
+(defn- collection-query
+  [collection {:keys [app? archived? collection-namespace pinned-state]}]
   (-> (assoc (collection/effective-children-query
-               collection
-               [:= :archived archived?]
-               [:= :namespace (u/qualified-name collection-namespace)])
+              collection
+              [:= :archived archived?]
+              [:= :namespace (u/qualified-name collection-namespace)])
              ;; We get from the effective-children-query a normal set of columns selected:
              ;; want to make it fit the others to make UNION ALL work
              :select [:id
@@ -391,10 +404,22 @@
                       :description
                       :entity_id
                       :personal_owner_id
-                      [(hx/literal "collection") :model]
-                      :authority_level])
+                      [(hx/literal (if app? "app" "collection")) :model]
+                      :authority_level
+                      :app_id]
+             ;; A simple left join would force us qualifying :id from
+             ;; collection and that doesn't work with effective-children-query.
+             ;; The sub-query makes sure that :app.id is only visible as :app_id.
+             :left-join [[{:select [[:id :app_id] :collection_id]
+                           :from [:app]} :app]
+                         [:= :app.collection_id :col.id]])
+      (hh/merge-where [(if app? :<> :=) :app_id nil])
       ;; the nil indicates that collections are never pinned.
       (hh/merge-where (pinned-state->clause pinned-state nil))))
+
+(defmethod collection-children-query :collection
+  [_ collection options]
+  (collection-query collection (assoc options :app? false)))
 
 (defmethod post-process-collection-children :collection
   [_ rows]
@@ -406,9 +431,18 @@
     (cond-> row
       ;; when fetching root collection, we might have personal collection
       (:personal_owner_id row) (assoc :name (collection/user->personal-collection-name (:personal_owner_id row) :user))
+      (nil? (:app_id row))     (dissoc :app_id)
       true                     (assoc :can_write (mi/can-write? Collection (:id row)))
       true                     (dissoc :collection_position :display :moderated_status :icon :personal_owner_id
                                        :collection_preview :dataset_query))))
+
+(defmethod collection-children-query :app
+  [_ collection options]
+  (collection-query collection (assoc options :app? true)))
+
+(defmethod post-process-collection-children :app
+  [_ rows]
+  (post-process-collection-children :collection rows))
 
 (s/defn ^:private coalesce-edit-info :- last-edit/MaybeAnnotated
   "Hoist all of the last edit information into a map under the key :last-edit-info. Considers this information present
@@ -443,9 +477,11 @@
 (defn- model-name->toucan-model [model-name]
   (case (keyword model-name)
     :collection Collection
+    :app        Collection
     :card       Card
     :dataset    Card
     :dashboard  Dashboard
+    :page       Dashboard
     :pulse      Pulse
     :snippet    NativeQuerySnippet
     :timeline   Timeline))
@@ -467,7 +503,7 @@
   are optional (not id, but last_edit_user for example) must have a type so that the union-all can unify the nil with
   the correct column type."
   [:id :name :description :entity_id :display [:collection_preview :boolean] :dataset_query
-   :model :collection_position :authority_level [:personal_owner_id :integer]
+   :model :collection_position :authority_level [:app_id :integer] [:personal_owner_id :integer]
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp]])
 
@@ -583,7 +619,7 @@
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models], :as options}                     :- CollectionChildrenOptions]
-  (let [valid-models (for [model-kw [:collection :dataset :card :dashboard :pulse :snippet :timeline]
+  (let [valid-models (for [model-kw [:app :collection :dataset :card :page :dashboard :pulse :snippet :timeline]
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
                            :when    (or (empty? models) (contains? models model-kw))
                            :let     [toucan-model       (model-name->toucan-model model-kw)

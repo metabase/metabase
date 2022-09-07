@@ -1,4 +1,3 @@
-import Dimension from "metabase-lib/lib/Dimension";
 import { isNumber, isCoordinate } from "metabase/lib/schema_metadata";
 
 export function getTableClickedObjectRowData(
@@ -92,11 +91,7 @@ export function getTableHeaderClickedObject(
   } else {
     return {
       column,
-      dimension: Dimension.parseMBQL(
-        column?.field_ref,
-        query?.metadata(),
-        query,
-      ),
+      dimension: query?.dimensionForColumn(column),
     };
   }
 }

@@ -37,10 +37,6 @@ import {
   SET_SHOW_LOADING_COMPLETE_FAVICON,
   RESET,
   SET_PARAMETER_VALUES,
-
-  // Writeback
-  OPEN_ACTION_PARAMETERS_MODAL,
-  CLOSE_ACTION_PARAMETERS_MODAL,
 } from "./actions";
 
 import { isVirtualDashCard, syncParametersAndEmbeddingParams } from "./utils";
@@ -413,28 +409,6 @@ const sidebar = handleActions(
   DEFAULT_SIDEBAR,
 );
 
-// Writeback
-const missingEmitterParameters = handleActions(
-  {
-    [INITIALIZE]: {
-      next: (state, payload) => null,
-    },
-    [OPEN_ACTION_PARAMETERS_MODAL]: {
-      next: (state, { payload: { emitterId, props } }) => ({
-        emitterId,
-        props,
-      }),
-    },
-    [CLOSE_ACTION_PARAMETERS_MODAL]: {
-      next: (state, payload) => null,
-    },
-    [RESET]: {
-      next: (state, payload) => null,
-    },
-  },
-  null,
-);
-
 export default combineReducers({
   dashboardId,
   isEditing,
@@ -448,5 +422,4 @@ export default combineReducers({
   isAddParameterPopoverOpen,
   sidebar,
   parameterValuesSearchCache,
-  missingEmitterParameters,
 });

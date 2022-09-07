@@ -3,7 +3,6 @@ import React from "react";
 import { t } from "ttag";
 import { TYPE, isa } from "metabase/lib/types";
 
-import Filter from "metabase-lib/lib/queries/structured/Filter";
 import FilterPopover from "metabase/query_builder/components/filters/FilterPopover";
 
 const INVALID_TYPES = [TYPE.Structured];
@@ -23,10 +22,7 @@ export default function ColumnFilterDrill({ question, clicked }) {
   }
 
   const { dimension } = clicked;
-  const fieldRef = dimension.mbql();
-  const initialFilter = new Filter([], null, query).setDimension(fieldRef, {
-    useDefaultOperator: true,
-  });
+  const initialFilter = dimension.defaultFilterForDimension();
 
   return [
     {
