@@ -287,19 +287,30 @@ class NativeQueryEditor extends Component {
               results,
             };
 
-            // Get columns from referenced questions
+            // Get referenced questions
             const referencedQuestionIds =
               this.props.query.referencedQuestionIds();
             // The results of the API call are cached by ID
             const referencedQuestions = await Promise.all(
               referencedQuestionIds.map(id => this.props.fetchQuestion(id)),
             );
-            const questionColumns = referencedQuestions.flatMap(question =>
-              question.result_metadata.map(columnMetadata => [
-                columnMetadata.name,
-                `${question.name} :${columnMetadata.base_type}`,
-              ]),
-            );
+
+            // Get columns from referenced questions that match the prefix
+            const lowerCasePrefix = prefix.toLowerCase();
+            const isMatchForPrefix = name =>
+              name.toLowerCase().includes(lowerCasePrefix);
+            const questionColumns = referencedQuestions
+              .filter(Boolean)
+              .flatMap(question =>
+                question.result_metadata
+                  .filter(columnMetadata =>
+                    isMatchForPrefix(columnMetadata.name),
+                  )
+                  .map(columnMetadata => [
+                    columnMetadata.name,
+                    `${question.name} :${columnMetadata.base_type}`,
+                  ]),
+              );
 
             // Concat the results from tables, models, and referenced questions
             results = apiResults.concat(questionColumns);
