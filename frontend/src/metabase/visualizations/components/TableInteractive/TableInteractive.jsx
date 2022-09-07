@@ -403,14 +403,15 @@ class TableInteractive extends Component {
         this.props.data,
         columnIndex,
         this.props.isPivoted,
+        this.props.query,
       );
     } catch (e) {
       console.error(e);
     }
   }
   // NOTE: all arguments must be passed to the memoized method, not taken from this.props etc
-  _getHeaderClickedObjectCached(data, columnIndex, isPivoted) {
-    return getTableHeaderClickedObject(data, columnIndex, isPivoted);
+  _getHeaderClickedObjectCached(data, columnIndex, isPivoted, query) {
+    return getTableHeaderClickedObject(data, columnIndex, isPivoted, query);
   }
 
   visualizationIsClickable(clicked) {
