@@ -26,6 +26,48 @@
            java.util.ArrayList
            org.eclipse.jetty.server.Server))
 
+;;; Infra:
+;; defsetting enables and [[system]] holds the system (webserver and registry)
+
+(defsetting prometheus-server-port
+  "Port to serve prometheus status from. If set"
+  :type       :integer
+  :visibility :internal
+  ;; settable only through environmental variable
+  :setter     :none
+  :getter     (fn reading-prometheus-port-setting []
+                (let [parse (fn [raw-value]
+                              (if-let [parsed (parse-long raw-value)]
+                                parsed
+                                (log/warn (trs "MB_PROMETHEUS_SERVER_PORT value of ''{0}'' is not parseable as an integer."
+                                               raw-value))))]
+                  (setting/get-raw-value :prometheus-server-port integer? parse))))
+
+(defonce ^:private ^{:doc "Prometheus System for prometheus metrics"} system nil)
+
+(p.types/defprotocol+ PrometheusActions
+  (stop-web-server [this]))
+
+(p/defrecord+ PrometheusSystem [registry web-server]
+  ;; prometheus just runs in the background collecting metrics and serving them from
+  ;; localhost:<prometheus-server-port>/metrics. Nothing we need to do but shutdown.
+  PrometheusActions
+  (stop-web-server [_this]
+    (when-let [^Server web-server web-server]
+      (.stop web-server))))
+
+(declare setup-metrics! start-web-server!)
+
+(defn- make-prometheus-system
+  "Takes a port (zero for a random port in test) and a registry name and returns a [[PrometheusSystem]] with a registry
+  serving metrics from that port."
+  [port registry-name]
+  (let [registry (setup-metrics! registry-name)
+        web-server (start-web-server! port registry)]
+    (->PrometheusSystem registry web-server)))
+
+;;; Collectors
+
 (defn c3p0-stats
   "Takes `raw-stats` from [[metabase.troubleshooting/connection-pool-info]] and groups by each property type rather than each database.
   {\"metabase-postgres-app-db\" {:numConnections 15,
@@ -111,26 +153,13 @@
                 c3p0-stats
                 stats->prometheus))]
     (delay
-      (proxy [Collector] []
-        (collect
-          ([] (collect-metrics))
-          ([_sampleNameFilter] (collect-metrics)))))))
-
-(defsetting prometheus-server-port
-  "Port to serve prometheus status from. If set"
-  :type       :integer
-  :visibility :internal
-  ;; settable only through environmental variable
-  :setter     :none
-  :getter     (fn reading-prometheus-port-setting []
-                (let [parse (fn [raw-value]
-                              (if-let [parsed (parse-long raw-value)]
-                                parsed
-                                (log/warn (trs "MB_PROMETHEUS_SERVER_PORT value of ''{0}'' is not parseable as an integer."
-                                               raw-value))))]
-                  (setting/get-raw-value :prometheus-server-port integer? parse))))
-
-(defonce ^:private ^{:doc "Prometheus System for prometheus metrics"} system nil)
+      (collector/named
+       {:name "c3p0-stats"
+        :namespace "metabase_database"}
+       (proxy [Collector] []
+         (collect
+           ([] (collect-metrics))
+           ([_sampleNameFilter] (collect-metrics))))))))
 
 (defn- jvm-collectors
   "JVM collectors. Essentially duplicating [[iapetos.collector.jvm]] namespace so we can set our own namespaces rather
@@ -151,7 +180,11 @@
 
 (defn- jetty-collectors
   []
-  [(JettyStatisticsCollector. (.getHandler (server/instance)))])
+  ;; when in dev you might not have a server setup
+  (when (server/instance)
+    [(collector/named {:namespace "metabase_webserver"
+                       :name      "jetty_stats"}
+                      (JettyStatisticsCollector. (.getHandler (server/instance))))]))
 
 (defn- setup-metrics!
   "Instrument the application. Conditionally done when some setting is set. If [[prometheus-server-port]] is not set it
@@ -177,22 +210,7 @@
                          :port        port
                          :max-threads 8}))
 
-(p.types/defprotocol+ PrometheusActions
-  (stop-web-server [this]))
-
-(p/defrecord+ PrometheusSystem [registry web-server]
-  PrometheusActions
-  (stop-web-server [_this]
-    (when-let [^Server web-server web-server]
-      (.stop web-server))))
-
-(defn- make-prometheus-system
-  "Takes a port (zero for a random port in test) and a registry name and returns a [[PrometheusSystem]] with a registry
-  serving metrics from that port."
-  [port registry-name]
-  (let [registry (setup-metrics! registry-name)
-        web-server (start-web-server! port registry)]
-    (->PrometheusSystem registry web-server)))
+;;; API: call [[setup!]] once, call [[shutdown!]] on shutdown
 
 (defn setup!
   "Start the prometheus metric collector and web-server."
@@ -220,5 +238,5 @@
 
 (comment
   (require 'iapetos.export)
-  (spit "metrics" (iapetos.export/text-format registry))
+  (spit "metrics" (iapetos.export/text-format (.registry system)))
   )
