@@ -139,7 +139,7 @@
                 (fn get-offset [] (.get parse-index-field h2-parser)))))))
   ([s parser get-offset] (vec (concat
                                [(parser s)];; this call to parser parses up to the end of the first sql statement
-                               (let [more (apply str (drop s (get-offset)))] ;; more is the unparsed part of s
+                               (let [more (apply str (drop (get-offset) s))] ;; more is the unparsed part of s
                                  (when-not (str/blank? more)
                                    (parse more parser get-offset)))))))
 
