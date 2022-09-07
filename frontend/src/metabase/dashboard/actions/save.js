@@ -77,6 +77,7 @@ export const saveDashboardAndCards = createThunkAction(
               // mark isAdded because addcard doesn't record the position
               return {
                 ...result,
+                action_id: dc.action_id,
                 col: dc.col,
                 row: dc.row,
                 size_x: dc.size_x,
@@ -112,6 +113,7 @@ export const saveDashboardAndCards = createThunkAction(
         const cards = updatedDashcards.map(
           ({
             id,
+            action_id,
             card_id,
             row,
             col,
@@ -122,6 +124,7 @@ export const saveDashboardAndCards = createThunkAction(
             visualization_settings,
           }) => ({
             id,
+            action_id,
             card_id,
             row,
             col,

@@ -27,15 +27,18 @@ export interface Dashboard {
 
 export type DashCardId = EntityId;
 
-export type DashboardOrderedCard = {
+export type BaseDashboardOrderedCard = {
   id: DashCardId;
-  card: SavedCard;
-  card_id: CardId;
-  parameter_mappings?: DashboardParameterMapping[] | null;
-  series?: SavedCard[];
   visualization_settings?: {
     [key: string]: unknown;
   };
+};
+
+export type DashboardOrderedCard = BaseDashboardOrderedCard & {
+  card_id: CardId;
+  card: SavedCard;
+  parameter_mappings?: DashboardParameterMapping[] | null;
+  series?: SavedCard[];
 };
 
 export type DashboardParameterMapping = {
@@ -48,7 +51,7 @@ export type DashboardParameterMapping = {
 // Example: "[\"dimension\",[\"field\",17,null]]"
 type StringifiedDimension = string;
 
-type ClickBehaviorParameterMapping = Record<
+export type ClickBehaviorParameterMapping = Record<
   ParameterId | StringifiedDimension,
   {
     id: ParameterId | StringifiedDimension;
@@ -94,6 +97,10 @@ export interface ArbitraryCustomDestinationClickBehavior {
   linkTextTemplate?: string;
 }
 
+export interface WritebackActionClickBehavior {
+  type: "action";
+}
+
 // Makes click handler use default drills
 // This is virtual, i.e. if a card has no clickBehavior,
 // it'd behave as if it's an "actionMenu"
@@ -108,4 +115,5 @@ export type CustomDestinationClickBehavior =
 export type ClickBehavior =
   | ActionMenuClickBehavior
   | CrossFilterClickBehavior
-  | CustomDestinationClickBehavior;
+  | CustomDestinationClickBehavior
+  | WritebackActionClickBehavior;

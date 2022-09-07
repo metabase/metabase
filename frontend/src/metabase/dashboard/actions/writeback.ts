@@ -16,10 +16,19 @@ import {
   BulkDeletePayload,
 } from "metabase/writeback/actions";
 
-import { DashboardWithCards, DashCard } from "metabase-types/types/Dashboard";
+import { ActionsApi } from "metabase/services";
+
+import type {
+  Dashboard,
+  ActionButtonDashboardCard,
+  ParameterMappedForActionExecution,
+} from "metabase-types/api";
+import type { DashCard } from "metabase-types/types/Dashboard";
+import type { Dispatch } from "metabase-types/store";
 
 import { getCardData } from "../selectors";
 import { isVirtualDashCard } from "../utils";
+import { setDashCardAttributes } from "./core";
 import { fetchCardData } from "./data-fetching";
 
 export const OPEN_ACTION_PARAMETERS_MODAL =
@@ -27,6 +36,20 @@ export const OPEN_ACTION_PARAMETERS_MODAL =
 export const openActionParametersModal = createAction(
   OPEN_ACTION_PARAMETERS_MODAL,
 );
+
+export function updateButtonActionMapping(
+  dashCardId: number,
+  attributes: { action_id?: number | null; parameter_mappings?: any },
+) {
+  return (dispatch: Dispatch) => {
+    dispatch(
+      setDashCardAttributes({
+        id: dashCardId,
+        attributes: attributes,
+      }),
+    );
+  };
+}
 
 export type InsertRowFromDataAppPayload = InsertRowPayload & {
   dashCard: DashCard;
@@ -237,19 +260,24 @@ export const deleteManyRowsFromDataApp = (
 };
 
 export type ExecuteRowActionPayload = {
-  dashboard: DashboardWithCards;
-  parameters: Record<string, unknown>;
+  dashboard: Dashboard;
+  dashcard: ActionButtonDashboardCard;
+  parameters: ParameterMappedForActionExecution[];
 };
 
 export const executeRowAction = ({
   dashboard,
+  dashcard,
   parameters,
 }: ExecuteRowActionPayload) => {
   return async function (dispatch: any) {
     try {
-      const result = {
-        "rows-affected": 0,
-      };
+      const result = await ActionsApi.execute({
+        dashboardId: dashboard.id,
+        dashcardId: dashcard.id,
+        actionId: dashcard.action_id,
+        parameters,
+      });
       if (result["rows-affected"] > 0) {
         dashboard.ordered_cards
           .filter(dashCard => !isVirtualDashCard(dashCard))
