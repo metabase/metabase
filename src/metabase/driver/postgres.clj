@@ -543,8 +543,9 @@
       (has-value? ssl-client-cert)
       (assoc :sslcert (secret/value->file! ssl-client-cert :postgres))
 
-      (has-value? ssl-key-pw)
-      (assoc :sslpassword (secret/value->string ssl-key-pw))
+      ;; Pass an empty string as password if none is provided; otherwise the driver will prompt for one
+      true
+      (assoc :sslpassword (or (secret/value->string ssl-key-pw) ""))
 
       true
       (as-> params ;; from outer cond->

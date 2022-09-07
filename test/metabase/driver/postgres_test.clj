@@ -75,6 +75,7 @@
             :user                          "camsaul"
             :ssl                           true
             :sslmode                       "require"
+            :sslpassword                   ""
             :ApplicationName               config/mb-version-and-process-identifier}
            (sql-jdbc.conn/connection-details->spec :postgres
              {:ssl    true
@@ -106,6 +107,7 @@
             :sslkey                        "my-key"
             :sslfactory                    "myfactoryoverride"
             :sslrootcert                   "myrootcert"
+            :sslpassword                   ""
             :ApplicationName               config/mb-version-and-process-identifier}
            (sql-jdbc.conn/connection-details->spec :postgres
              {:ssl         true
