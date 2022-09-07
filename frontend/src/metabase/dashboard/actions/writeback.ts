@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
 import { createAction } from "metabase/lib/redux";
-import { EmittersApi } from "metabase/services";
 import { addUndo } from "metabase/redux/undo";
 
 import {
@@ -27,12 +26,6 @@ export const OPEN_ACTION_PARAMETERS_MODAL =
   "metabase/data-app/OPEN_ACTION_PARAMETERS_MODAL";
 export const openActionParametersModal = createAction(
   OPEN_ACTION_PARAMETERS_MODAL,
-);
-
-export const CLOSE_ACTION_PARAMETERS_MODAL =
-  "metabase/data-app/CLOSE_ACTION_PARAMETERS_MODAL";
-export const closeActionParametersModal = createAction(
-  CLOSE_ACTION_PARAMETERS_MODAL,
 );
 
 export type InsertRowFromDataAppPayload = InsertRowPayload & {
@@ -245,21 +238,18 @@ export const deleteManyRowsFromDataApp = (
 
 export type ExecuteRowActionPayload = {
   dashboard: DashboardWithCards;
-  emitterId: number;
   parameters: Record<string, unknown>;
 };
 
 export const executeRowAction = ({
   dashboard,
-  emitterId,
   parameters,
 }: ExecuteRowActionPayload) => {
   return async function (dispatch: any) {
     try {
-      const result = await EmittersApi.execute({
-        id: emitterId,
-        parameters,
-      });
+      const result = {
+        "rows-affected": 0,
+      };
       if (result["rows-affected"] > 0) {
         dashboard.ordered_cards
           .filter(dashCard => !isVirtualDashCard(dashCard))

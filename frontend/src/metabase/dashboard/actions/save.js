@@ -3,20 +3,13 @@ import _ from "underscore";
 
 import { createThunkAction } from "metabase/lib/redux";
 
-import Actions from "metabase/entities/actions";
 import Dashboards from "metabase/entities/dashboards";
 
 import { clickBehaviorIsValid } from "metabase/lib/click-behavior";
 
-import { DashboardApi, CardApi, EmittersApi } from "metabase/services";
+import { DashboardApi, CardApi } from "metabase/services";
 
 import { getDashboardBeforeEditing } from "../selectors";
-import {
-  isActionButtonDashCard,
-  getActionButtonActionId,
-  getActionButtonEmitterId,
-  getActionEmitterParameterMappings,
-} from "metabase/writeback/utils";
 
 import { updateDashcardId } from "./core";
 import { fetchDashboard } from "./data-fetching";
@@ -61,21 +54,12 @@ export const saveDashboardAndCards = createThunkAction(
       await Promise.all(
         dashboard.ordered_cards
           .filter(dc => dc.isRemoved && !dc.isAdded)
-          .map(dc => {
-            if (isActionButtonDashCard(dc) && !!getActionButtonEmitterId(dc)) {
-              const emitterId = getActionButtonEmitterId(dc);
-              return EmittersApi.delete({ id: emitterId }).then(() =>
-                DashboardApi.removecard({
-                  dashId: dashboard.id,
-                  dashcardId: dc.id,
-                }),
-              );
-            }
-            return DashboardApi.removecard({
+          .map(dc =>
+            DashboardApi.removecard({
               dashId: dashboard.id,
               dashcardId: dc.id,
-            });
-          }),
+            }),
+          ),
       );
 
       // add isAdded dashboards
@@ -84,20 +68,6 @@ export const saveDashboardAndCards = createThunkAction(
           .filter(dc => !dc.isRemoved)
           .map(async dc => {
             if (dc.isAdded) {
-              if (isActionButtonDashCard(dc) && !!getActionButtonActionId(dc)) {
-                const actionId = getActionButtonActionId(dc);
-                const action = Actions.selectors.getObject(getState(), {
-                  entityId: actionId,
-                });
-                const emitter = await EmittersApi.create({
-                  dashboard_id: dashboard.id,
-                  action_id: actionId,
-                  parameter_mappings: getActionEmitterParameterMappings(action),
-                });
-                dc.visualization_settings.click_behavior.emitter_id =
-                  emitter.id;
-              }
-
               const result = await DashboardApi.addcard({
                 dashId: dashboard.id,
                 cardId: dc.card_id,

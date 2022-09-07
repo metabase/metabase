@@ -8,7 +8,6 @@ import type {
 } from "metabase-types/api";
 
 import { clickBehaviorOptions, getClickBehaviorOptionName } from "../utils";
-import ActionOptions from "../ActionOptions";
 import CrossfilterOptions from "../CrossfilterOptions";
 import LinkOptions from "../LinkOptions";
 import { SidebarItem } from "../SidebarItem";
@@ -47,15 +46,6 @@ function ClickBehaviorOptions({
       <CrossfilterOptions
         clickBehavior={clickBehavior}
         dashboard={dashboard}
-        dashcard={dashcard}
-        updateSettings={updateSettings}
-      />
-    );
-  }
-  if (clickBehavior.type === "action") {
-    return (
-      <ActionOptions
-        clickBehavior={clickBehavior}
         dashcard={dashcard}
         updateSettings={updateSettings}
       />

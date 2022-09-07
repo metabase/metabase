@@ -19,7 +19,7 @@ export const clickBehaviorOptions: ClickBehaviorOption[] = [
   { value: "menu", icon: "popover" },
   { value: "link", icon: "link" },
   { value: "crossfilter", icon: "filter" },
-  { value: "action", icon: "play" },
+  // { value: "action", icon: "play" },
 ];
 
 export function getClickBehaviorOptionName(

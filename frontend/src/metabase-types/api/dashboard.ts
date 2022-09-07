@@ -94,13 +94,6 @@ export interface ArbitraryCustomDestinationClickBehavior {
   linkTextTemplate?: string;
 }
 
-export interface WritebackActionClickBehavior {
-  type: "action";
-  action: EntityId;
-  emitter_id: EntityId;
-  parameterMapping?: ClickBehaviorParameterMapping;
-}
-
 // Makes click handler use default drills
 // This is virtual, i.e. if a card has no clickBehavior,
 // it'd behave as if it's an "actionMenu"
@@ -115,5 +108,4 @@ export type CustomDestinationClickBehavior =
 export type ClickBehavior =
   | ActionMenuClickBehavior
   | CrossFilterClickBehavior
-  | CustomDestinationClickBehavior
-  | WritebackActionClickBehavior;
+  | CustomDestinationClickBehavior;
