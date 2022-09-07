@@ -200,8 +200,6 @@ class ChartClickActions extends Component {
 
     const popoverAnchor = this.getPopoverReference(clicked);
 
-    console.log(popoverAnchor);
-
     return (
       <FlexTippyPopover
         reference={popoverAnchor}
