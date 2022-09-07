@@ -6,6 +6,8 @@ import type Question from "../Question";
 import type Database from "./Database";
 import type Table from "./Table";
 import type Schema from "./Schema";
+import type Field from "./Field";
+import { getUniqueFieldId } from "./utils";
 
 /**
  * @typedef { import("./metadata").DatabaseId } DatabaseId
@@ -102,21 +104,16 @@ export default class Metadata extends Base {
     return (tableId != null && this.tables[tableId]) || null;
   }
 
-  /**
-   * @param {FieldId} fieldId
-   * @returns {?Field}
-   */
-  field(fieldId, tableId?: string | number): Field | null {
+  field(
+    fieldId: Field["id"] | undefined | null,
+    tableId?: Table["id"] | undefined | null,
+  ): Field | null {
     if (fieldId == null) {
       return null;
     }
 
-    let identifier = fieldId;
-    if (typeof tableId === "string" && tableId.startsWith("card__")) {
-      identifier = `${tableId}:${fieldId}`;
-    }
-
-    return this.fields[identifier] || null;
+    const uniqueId = getUniqueFieldId(fieldId, tableId);
+    return this.fields[uniqueId] || null;
   }
 
   question(cardId): Question | null {

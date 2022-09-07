@@ -40,6 +40,7 @@ import type StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import type NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import type Table from "./Table";
 import type Metadata from "./Metadata";
+import { getUniqueFieldId } from "./utils";
 
 export const LONG_TEXT_MIN = 80;
 
@@ -75,6 +76,19 @@ class FieldInner extends Base {
     }
 
     return this.id;
+  }
+
+  // `uniqueId` is set by our normalizr schema so it is not always available,
+  // if the Field instance was instantiated outside of an entity
+  getUniqueId() {
+    if (this.uniqueId) {
+      return this.uniqueId;
+    }
+
+    const uniqueId = getUniqueFieldId(this.getId(), this.table_id);
+    this.uniqueId = uniqueId;
+
+    return uniqueId;
   }
 
   parent() {
