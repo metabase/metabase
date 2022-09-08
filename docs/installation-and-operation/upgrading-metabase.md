@@ -24,7 +24,7 @@ Steps differ depending on whether you're running the JAR or a Docker image.
 
 If you're running the JVM Jar file directly:
 
-1. [Back up your application database](backing-up-metabase-application-data).
+1. [Back up your application database](backing-up-metabase-application-data.md).
 
 2. Download the latest version of the JAR file:
 
