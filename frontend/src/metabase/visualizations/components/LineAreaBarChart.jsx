@@ -266,7 +266,6 @@ export default class LineAreaBarChart extends Component {
   getLegendSettings(series) {
     const {
       card,
-      //series,
       settings,
       showTitle,
       actionButtons,
