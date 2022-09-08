@@ -458,7 +458,12 @@ describe("QB Actions > updateQuestion", () => {
 
           await setup({ question });
 
-          expect(loadMetadataSpy).not.toHaveBeenCalled();
+          // models always call this once, when fetching themselves as a card table
+          if (question.isDataset()) {
+            expect(loadMetadataSpy).toHaveBeenCalledTimes(1);
+          } else {
+            expect(loadMetadataSpy).not.toHaveBeenCalled();
+          }
         });
 
         it("refreshes question metadata if there's difference in dependent metadata", async () => {

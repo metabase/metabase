@@ -104,7 +104,8 @@ describe("parameters/utils/mapping-options", () => {
         );
         expect(options).toEqual([
           {
-            sectionName: "Product",
+            // this is a source query, and tables for source queries do not have a display_name
+            sectionName: "",
             name: "Created At",
             icon: "calendar",
             target: [
