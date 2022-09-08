@@ -180,9 +180,9 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
 
     it("should return a virtual table based on the nested query", () => {
       expect(table?.getPlainObject()).toEqual({
-        display_name: "Products",
         id: 3,
-        name: "PRODUCTS",
+        display_name: "",
+        name: "",
       });
     });
 

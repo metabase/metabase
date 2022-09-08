@@ -443,7 +443,7 @@ describe("scenarios > question > joined questions", () => {
     cy.get(".ScalarValue").contains("2,087");
   });
 
-  it.skip("should show 'Previous results' instead of a table name for non-field dimensions (metabase#17968)", () => {
+  it("should show 'Previous results' instead of a table name for non-field dimensions (metabase#17968)", () => {
     openOrdersTable({ mode: "notebook" });
 
     summarize({ mode: "notebook" });
