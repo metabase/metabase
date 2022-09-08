@@ -37,7 +37,7 @@ Metabase's reference documentation.
 
 - [Installation and operation overview](./installation-and-operation/start.md)
 - [Installing Metabase](./installation-and-operation/installing-metabase.md)
-- [How to upgrade Metabase](./installation-and-operation/upgrading-metabase.md)
+- [Upgrading Metabase](./installation-and-operation/upgrading-metabase.md)
 - [Configuring the Metabase application database](./installation-and-operation/configuring-application-database.md)
 - [Backing up Metabase](./installation-and-operation/backing-up-metabase-application-data.md)
 - [Migrating to a production application database](./installation-and-operation/migrating-from-h2.md)
@@ -120,7 +120,7 @@ Metabase's reference documentation.
 
 ### Permissions
 
-- [Overview](./permissions/start.md)
+- [Permissions overview](./permissions/start.md)
 - [Permissions introduction](./permissions/introduction.md)
 - [Data permissions](./permissions/data.md)
 - [Collection permissions](./permissions/collections.md)
@@ -158,7 +158,7 @@ Metabase's reference documentation.
 - [Appearance](./configuring-metabase/appearance.md)
 - [Caching query results](./configuring-metabase/caching.md)
 - [Custom maps](./configuring-metabase/custom-maps.md)
-- [Customizing the Metabase Jetty Webserver](./configuring-metabase/customizing-jetty-webserver.md)
+- [Customizing the Metabase Jetty webserver](./configuring-metabase/customizing-jetty-webserver.md)
 
 ### Usage and performance tools
 
