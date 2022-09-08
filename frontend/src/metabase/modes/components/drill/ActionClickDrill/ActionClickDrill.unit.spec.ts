@@ -218,6 +218,10 @@ describe("getNotProvidedActionParameters", () => {
 });
 
 describe("ActionClickDrill", () => {
+  beforeEach(() => {
+    jest.resetAllMocks();
+  });
+
   function setup({
     actionParameters = [],
     dashboardParameters = [],
@@ -229,6 +233,12 @@ describe("ActionClickDrill", () => {
     parameterMappings?: ActionButtonParametersMapping[];
     parameterValuesBySlug?: Record<string, { value: ParameterValueOrArray }>;
   } = {}) {
+    const executeActionSpy = jest.spyOn(dashboardActions, "executeRowAction");
+    const openActionParametersModalSpy = jest.spyOn(
+      dashboardActions,
+      "openActionParametersModal",
+    );
+
     const action = createMockQueryAction({ parameters: actionParameters });
     const dashcard = createMockDashboardActionButton({
       action,
@@ -252,12 +262,18 @@ describe("ActionClickDrill", () => {
       },
     });
 
-    return { action, dashboard, dashcard, clickActions };
+    return {
+      action,
+      dashboard,
+      dashcard,
+      clickActions,
+      executeActionSpy,
+      openActionParametersModalSpy,
+    };
   }
 
   it("executes action correctly", () => {
-    const executeActionSpy = jest.spyOn(dashboardActions, "executeRowAction");
-    const { clickActions, dashboard, dashcard } = setup({
+    const { clickActions, dashboard, dashcard, executeActionSpy } = setup({
       actionParameters: [WRITEBACK_PARAMETER],
       dashboardParameters: [DASHBOARD_FILTER_PARAMETER],
       parameterMappings: [PARAMETER_MAPPING],
@@ -278,6 +294,60 @@ describe("ActionClickDrill", () => {
           type: WRITEBACK_PARAMETER.type,
           value: DASHBOARD_FILTER_PARAMETER.value,
           target: WRITEBACK_PARAMETER.target,
+        },
+      ],
+      extra_parameters: [],
+    });
+  });
+
+  it("executes action with arbitrary parameters correctly", () => {
+    const {
+      clickActions,
+      dashboard,
+      dashcard,
+      executeActionSpy,
+      openActionParametersModalSpy,
+    } = setup({
+      actionParameters: [WRITEBACK_PARAMETER, WRITEBACK_ARBITRARY_PARAMETER],
+      dashboardParameters: [DASHBOARD_FILTER_PARAMETER],
+      parameterMappings: [PARAMETER_MAPPING],
+      parameterValuesBySlug: {
+        [DASHBOARD_FILTER_PARAMETER.slug]: DASHBOARD_FILTER_PARAMETER.value,
+      },
+    });
+
+    clickActions[0].action();
+
+    // Ensure we're not trying to execute the action immediately
+    // until we collect the arbitrary parameter value from a user
+    expect(executeActionSpy).not.toHaveBeenCalled();
+
+    // Emulate ActionParameterInputForm submission
+    const { props } = openActionParametersModalSpy.mock.calls[0][0];
+    props.onSubmit([
+      {
+        target: WRITEBACK_ARBITRARY_PARAMETER.target,
+        value: 123,
+        type: WRITEBACK_ARBITRARY_PARAMETER.type,
+      },
+    ]);
+
+    expect(executeActionSpy).toHaveBeenCalledWith({
+      dashboard,
+      dashcard,
+      parameters: [
+        {
+          id: DASHBOARD_FILTER_PARAMETER.id,
+          type: WRITEBACK_PARAMETER.type,
+          value: DASHBOARD_FILTER_PARAMETER.value,
+          target: WRITEBACK_PARAMETER.target,
+        },
+      ],
+      extra_parameters: [
+        {
+          target: WRITEBACK_ARBITRARY_PARAMETER.target,
+          value: 123,
+          type: WRITEBACK_ARBITRARY_PARAMETER.type,
         },
       ],
     });

@@ -41,11 +41,12 @@ function ActionClickDrill({ clicked }: { clicked: ActionClickObject }) {
         dashcardId: dashcard.id,
         props: {
           missingParameters,
-          onSubmit: (filledParameters: ParameterMappedForActionExecution[]) =>
+          onSubmit: (extra_parameters: ParameterMappedForActionExecution[]) =>
             executeRowAction({
               dashboard,
               dashcard,
-              parameters: [...parameters, ...filledParameters],
+              parameters,
+              extra_parameters,
             }),
         },
       });
@@ -54,6 +55,7 @@ function ActionClickDrill({ clicked }: { clicked: ActionClickObject }) {
       dashboard,
       dashcard,
       parameters,
+      extra_parameters: [],
     });
   }
 

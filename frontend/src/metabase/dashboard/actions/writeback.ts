@@ -269,12 +269,14 @@ export type ExecuteRowActionPayload = {
   dashboard: Dashboard;
   dashcard: ActionButtonDashboardCard;
   parameters: ParameterMappedForActionExecution[];
+  extra_parameters: ParameterMappedForActionExecution[];
 };
 
 export const executeRowAction = ({
   dashboard,
   dashcard,
   parameters,
+  extra_parameters,
 }: ExecuteRowActionPayload) => {
   return async function (dispatch: any) {
     try {
@@ -282,6 +284,7 @@ export const executeRowAction = ({
         dashboardId: dashboard.id,
         dashcardId: dashcard.id,
         parameters,
+        extra_parameters,
       });
       if (result["rows-affected"] > 0) {
         dashboard.ordered_cards
