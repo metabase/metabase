@@ -1,8 +1,9 @@
+import ActionClickDrill from "../drill/ActionClickDrill";
 import DashboardClickDrill from "../drill/DashboardClickDrill";
 
 const ActionMode = {
   name: "actions",
-  drills: () => [DashboardClickDrill],
+  drills: () => [ActionClickDrill, DashboardClickDrill],
 };
 
 export default ActionMode;

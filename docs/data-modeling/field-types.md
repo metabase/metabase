@@ -1,10 +1,10 @@
 ---
-title: "Field types in Metabase"
+title: "Field types"
 redirect_from:
   - /docs/latest/users-guide/field-types
 ---
 
-# Field types in Metabase
+# Field types
 
 
 While data types indicate to a database how it should interpret the values in a field, __field types__ or __semantic types__ describe the _meaning_ of a field. For example, a column's data type could be ```type/text``` but the semantic type may be __Email__. Field types are just one example of metadata—information about data—that [Admins can change](./metadata-editing.md) in Metabase.

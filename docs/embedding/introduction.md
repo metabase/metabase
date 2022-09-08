@@ -1,10 +1,10 @@
 ---
-title: Introduction to embedding
+title: Embedding introduction
 redirect_from:
   - /docs/latest/administration-guide/13-embedding
 ---
 
-# Introduction to embedding
+# Embedding introduction
 
 You can embed Metabase tables, charts, and dashboards—even Metabase's query builder—in your website or application.
 

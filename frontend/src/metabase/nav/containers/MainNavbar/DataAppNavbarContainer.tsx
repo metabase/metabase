@@ -17,7 +17,7 @@ import { MainNavbarProps, MainNavbarOwnProps, SelectedItem } from "./types";
 import NavbarLoadingView from "./NavbarLoadingView";
 import DataAppNavbarView from "./DataAppNavbarView";
 
-const FETCHING_SEARCH_MODELS = ["dashboard", "dataset", "card"];
+const FETCHING_SEARCH_MODELS = ["page"];
 const LIMIT = 100;
 
 function isAtDataAppHomePage(selectedItems: SelectedItem[]) {
@@ -29,7 +29,7 @@ type NavbarModal = "MODAL_APP_SETTINGS" | "MODAL_NEW_PAGE" | null;
 
 interface DataAppNavbarContainerProps extends MainNavbarProps {
   dataApp: DataApp;
-  items: any[];
+  pages: any[];
   selectedItems: SelectedItem[];
   onChangeLocation: (location: LocationDescriptor) => void;
 }
@@ -45,7 +45,7 @@ type SearchRenderProps = {
 
 function DataAppNavbarContainer({
   dataApp,
-  items,
+  pages,
   selectedItems,
   onChangeLocation,
   ...props
@@ -63,15 +63,13 @@ function DataAppNavbarContainer({
       return [
         {
           type: "data-app-page",
-          id: getDataAppHomePageId(
-            items.filter(item => item.model === "dashboard"),
-          ),
+          id: getDataAppHomePageId(pages),
         },
       ];
     }
 
     return selectedItems;
-  }, [items, selectedItems]);
+  }, [pages, selectedItems]);
 
   const onEditAppSettings = useCallback(() => {
     setModal("MODAL_APP_SETTINGS");
@@ -120,7 +118,7 @@ function DataAppNavbarContainer({
       <DataAppNavbarView
         {...props}
         dataApp={dataApp}
-        items={items}
+        pages={pages}
         selectedItems={finalSelectedItems}
         onNewPage={onNewPage}
         onEditAppSettings={onEditAppSettings}
@@ -152,7 +150,7 @@ function DataAppNavbarContainerLoader({
           return <NavbarLoadingView />;
         }
         return (
-          <DataAppNavbarContainer {...props} dataApp={dataApp} items={list} />
+          <DataAppNavbarContainer {...props} dataApp={dataApp} pages={list} />
         );
       }}
     </Search.ListLoader>

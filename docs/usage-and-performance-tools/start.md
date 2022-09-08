@@ -1,8 +1,8 @@
 ---
-title: "Usage and performance tools"
+title: "Usage and performance tools overview"
 ---
 
-# Usage and performance tools
+# Usage and performance tools overview
 
 Administration tools for managing your Metabase.
 
