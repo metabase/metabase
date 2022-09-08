@@ -105,8 +105,7 @@
                   :let [table (get table-id->table table-id)]
                   page-type ["list" "detail"]]
               {:scaffold-target ["card" table-id page-type]
-               :name (format "[%s] Query %s %s"
-                             app-name
+               :name (format "Query %s %s"
                              (or (:display_name table) (:name table))
                              (get-in page-type-display [page-type :name]))
                :display (get-in page-type-display [page-type :display])
@@ -117,7 +116,7 @@
                                :query {:source_table table-id}}})
      :pages (for [table-id table-ids
                   :let [table (get table-id->table table-id)
-                        pk-field-id (first (filter (comp #(= :type/PK %) :semantic_type) (:fields table)))]
+                        pk-field-id (:id (first (filter (comp #(= :type/PK %) :semantic_type) (:fields table))))]
                   page-type ["list" "detail"]]
               (cond->
                {:name (format "%s %s"
