@@ -381,8 +381,6 @@ export default class LineAreaBarChart extends Component {
       canSelectTitle,
     } = this.getLegendSettings(orderedSeries);
 
-    console.log(this.props);
-
     return (
       <LineAreaBarChartRoot
         className={cx(

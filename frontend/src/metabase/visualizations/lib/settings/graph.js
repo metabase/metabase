@@ -159,6 +159,14 @@ export const GRAPH_DATA_SETTINGS = {
         })),
       };
     },
+    getHidden: ({
+      _raw: {
+        0: { card },
+      },
+    }) => {
+      const hide = ["combo", "line"];
+      return hide.includes(card.display);
+    },
   },
   "graph.metrics": {
     section: t`Data`,
