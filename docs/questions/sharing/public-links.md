@@ -1,11 +1,11 @@
 ---
-title: Sharing questions using public links
+title: Public links
 redirect_from:
   - /docs/latest/administration-guide/12-public-links
   - /docs/latest/embedding/12-public-links
 ---
 
-# Sharing questions using public links
+# Public links
 
 Sometimes you'll want to share a dashboard or question you've saved with someone that isn't a part of your organization or company, or someone who doesn't need access to your full Metabase instance. Metabase lets administrators create public links and [public embeds](#public-embed) to let you do just that.
 

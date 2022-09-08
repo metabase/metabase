@@ -3,7 +3,6 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 
 import Form from "metabase/containers/Form";
-import { getActionParameterType } from "metabase/writeback/utils";
 
 import type { ParametersMappedToValues } from "metabase-types/api";
 import type { Parameter, ParameterId } from "metabase-types/types/Parameter";
@@ -18,6 +17,14 @@ interface Props {
   };
   onSubmitSuccess: () => void;
   dispatch: Dispatch;
+}
+
+function getActionParameterType(parameter: Parameter) {
+  const { type } = parameter;
+  if (type === "category") {
+    return "string/=";
+  }
+  return type;
 }
 
 function getParameterFieldProps(parameter: Parameter) {

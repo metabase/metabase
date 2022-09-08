@@ -1,6 +1,7 @@
 import Question from "metabase-lib/lib/Question";
-
 import { ExpressionDimension } from "metabase-lib/lib/Dimension";
+
+import { isActionButtonCard } from "metabase/writeback/utils";
 
 import {
   dimensionFilterForParameter,
@@ -61,8 +62,8 @@ export function getParameterMappingOptions(
     return tagNames ? tagNames.map(buildTextTagOption) : [];
   }
 
-  if (card.display === "action-button") {
-    // action cards don't have parameters
+  if (isActionButtonCard(card)) {
+    // Action parameters are mapped via click behavior UI for now
     return [];
   }
 

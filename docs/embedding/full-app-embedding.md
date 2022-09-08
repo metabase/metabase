@@ -1,10 +1,10 @@
 ---
-title: Embedding all of Metabase in your web app
+title: Full-app embedding
 redirect_from:
   - /docs/latest/enterprise-guide/full-app-embedding
 ---
 
-# Embedding all of Metabase in your web app
+# Full-app embedding 
 
 {% include plans-blockquote.html feature="Full-app embedding" %}
 

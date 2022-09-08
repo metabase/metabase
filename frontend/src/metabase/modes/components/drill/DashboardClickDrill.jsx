@@ -7,8 +7,6 @@ import Question from "metabase-lib/lib/Question";
 import {
   setOrUnsetParameterValues,
   setParameterValue,
-  openActionParametersModal,
-  executeRowAction,
 } from "metabase/dashboard/actions";
 import {
   getDataFromClicked,
@@ -17,10 +15,6 @@ import {
 } from "metabase/lib/click-behavior";
 import { renderLinkURLForClick } from "metabase/lib/formatting/link";
 import * as Urls from "metabase/lib/urls";
-import {
-  getActionParameters,
-  getNotProvidedActionParameters,
-} from "metabase/writeback/utils";
 
 export default ({ question, clicked }) => {
   const settings = (clicked && clicked.settings) || {};
@@ -47,49 +41,7 @@ export default ({ question, clicked }) => {
     return [];
   }
 
-  if (type === "action") {
-    const parameters = getActionParameters(parameterMapping, {
-      data,
-      extraData,
-      clickBehavior,
-    });
-    const action = extraData.actions[clickBehavior.action];
-    const missingParameters = getNotProvidedActionParameters(
-      action,
-      parameters,
-    );
-    const emitterId = clickBehavior.emitter_id || clickBehavior.id;
-
-    if (missingParameters.length > 0) {
-      behavior = {
-        action: () =>
-          openActionParametersModal({
-            emitterId: emitterId,
-            props: {
-              missingParameters,
-              onSubmit: filledMissingParameters =>
-                executeRowAction({
-                  dashboard: extraData.dashboard,
-                  emitterId: emitterId,
-                  parameters: {
-                    ...parameters,
-                    ...filledMissingParameters,
-                  },
-                }),
-            },
-          }),
-      };
-    } else {
-      behavior = {
-        action: () =>
-          executeRowAction({
-            dashboard: extraData.dashboard,
-            emitterId: emitterId,
-            parameters,
-          }),
-      };
-    }
-  } else if (type === "crossfilter") {
+  if (type === "crossfilter") {
     const parameterIdValuePairs = getParameterIdValuePairs(parameterMapping, {
       data,
       extraData,
