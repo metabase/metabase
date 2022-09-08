@@ -1126,7 +1126,11 @@
                    :model               "card"
                    :fully_parametrized  true}]
                  (for [item (:data (mt/user-http-request :crowberto :get 200 "collection/root/items?archived=true"))]
-                   (dissoc item :id)))))))
+                   (dissoc item :id))))))
+
+      (testing "Are is_write cards excluded?"
+        (mt/with-temp Card [_ {:name "Action Card" :is_write true}]
+          (is (nil? (some (comp #(= % "Action Card") :name) (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))))))))
 
     (testing "fully_parametrized of a card"
       (testing "can be false"
