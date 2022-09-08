@@ -9,6 +9,7 @@ import { saveForm } from "./forms";
 import {
   removeOrphanSettings,
   setParameterTypesFromFieldSettings,
+  setTemplateTagTypesFromFieldSettings,
 } from "metabase/entities/actions/utils";
 
 type ActionParams = {
@@ -27,8 +28,10 @@ const getAPIFn =
     question,
     collection_id,
     formSettings,
-  }: ActionParams) =>
-    apifn({
+  }: ActionParams) => {
+    question = setTemplateTagTypesFromFieldSettings(formSettings, question);
+
+    return apifn({
       ...question.card(),
       name,
       description,
@@ -44,6 +47,7 @@ const getAPIFn =
       ),
       collection_id,
     });
+  };
 
 const createAction = getAPIFn(CardApi.create);
 const updateAction = getAPIFn(CardApi.update);

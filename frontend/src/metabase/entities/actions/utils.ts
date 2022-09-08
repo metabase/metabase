@@ -5,11 +5,16 @@ import type {
   InputType,
   ParameterType,
 } from "metabase-types/api";
+
 import type { Parameter as ParameterObject } from "metabase-types/types/Parameter";
+import type { TemplateTag, TemplateTagType } from "metabase-types/types/Query";
+import type NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import type Question from "metabase-lib/lib/Question";
 
 import {
   fieldTypeToParameterTypeMap,
   dateTypetoParameterTypeMap,
+  fieldTypeToTagTypeMap,
 } from "./constants";
 
 export const removeOrphanSettings = (
@@ -37,6 +42,10 @@ const getParameterTypeFromFieldSettings = (
   return fieldTypeToParameterTypeMap[fieldType] ?? "string/=";
 };
 
+const getTagTypeFromFieldSettings = (fieldType: FieldType): TemplateTagType => {
+  return fieldTypeToTagTypeMap[fieldType] ?? "text";
+};
+
 export const setParameterTypesFromFieldSettings = (
   settings: ActionFormSettings,
   parameters: ParameterObject[],
@@ -51,4 +60,24 @@ export const setParameterTypesFromFieldSettings = (
         : "string/=",
     };
   });
+};
+
+export const setTemplateTagTypesFromFieldSettings = (
+  settings: ActionFormSettings,
+  question: Question,
+): Question => {
+  const fields = settings.fields;
+
+  (question.query() as NativeQuery)
+    .templateTagsWithoutSnippets()
+    .forEach((tag: TemplateTag) => {
+      question = question.setQuery(
+        (question.query() as NativeQuery).setTemplateTag(tag.name, {
+          ...tag,
+          type: getTagTypeFromFieldSettings(fields[tag.id].fieldType),
+        }),
+      );
+    });
+
+  return question;
 };
