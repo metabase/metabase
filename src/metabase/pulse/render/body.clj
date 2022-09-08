@@ -570,7 +570,6 @@
   (for [[idx y-col] (map-indexed vector y-cols)]
     (let [y-col-key     (keyword (:name y-col))
           card-name     (or (series-setting viz-settings y-col-key :name)
-                            (series-setting viz-settings y-col-key :title)
                             (:display_name y-col))
           card-color    (or (series-setting viz-settings y-col-key :color)
                             (nth colors idx))
