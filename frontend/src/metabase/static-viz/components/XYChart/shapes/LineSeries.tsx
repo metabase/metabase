@@ -33,29 +33,14 @@ export const LineSeries = ({
 
         const yAccessor = (datum: SeriesDatum) => yScale(getY(datum)) ?? 0;
         return (
-          <>
-            <LinePath
-              key={series.name}
-              data={series.data}
-              x={xAccessor}
-              y={yAccessor}
-              stroke={series.color}
-              strokeWidth={2}
-            />
-            {series.data.map((datum, dataIndex) => {
-              return (
-                <circle
-                  key={`${seriesIndex}-${dataIndex}`}
-                  r={2}
-                  fill="white"
-                  stroke={series.color}
-                  strokeWidth={1.5}
-                  cx={xAccessor(datum)}
-                  cy={yAccessor(datum)}
-                />
-              );
-            })}
-          </>
+          <LinePath
+            key={series.name}
+            data={series.data}
+            x={xAccessor}
+            y={yAccessor}
+            stroke={series.color}
+            strokeWidth={2}
+          />
         );
       })}
     </Group>

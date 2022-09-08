@@ -97,11 +97,15 @@ export type ChartStyle = {
   goalColor: string;
 };
 
-export type XYAccessor<
-  T extends SeriesDatum | StackedDatum = SeriesDatum | StackedDatum,
-> = (
-  datum: T extends SeriesDatum ? SeriesDatum : StackedDatum,
-  flipped?: boolean,
+export type DatumAccessor = (
+  d: SeriesDatum,
+  index?: number,
+  data?: SeriesDatum[],
+) => number;
+export type StackedDatumAccessor = (
+  d: StackedDatum,
+  index?: number,
+  data?: StackedDatum[],
 ) => number;
 
 export interface XScale<T = any> {
@@ -111,6 +115,6 @@ export interface XScale<T = any> {
     ? ScaleTime<number, number, never>
     : ScaleLinear<number, number, never>;
   bandwidth?: number;
-  lineAccessor: XYAccessor<SeriesDatum>;
-  barAccessor?: XYAccessor<SeriesDatum>;
+  lineAccessor: DatumAccessor;
+  barAccessor?: DatumAccessor;
 }
