@@ -559,14 +559,14 @@ export default class Join extends MBQLObjectClause {
     const sourceTable = this.joinSourceTableId();
     const sourceQuery = this.joinSourceQuery();
     return sourceTable
-      ? new StructuredQuery(this.query().question(), {
+      ? new StructuredQuery(this.query().question().setDataset(false), {
           type: "query",
           query: {
             "source-table": sourceTable,
           },
         })
       : sourceQuery
-      ? new StructuredQuery(this.query().question(), {
+      ? new StructuredQuery(this.query().question().setDataset(false), {
           type: "query",
           query: sourceQuery,
         })
