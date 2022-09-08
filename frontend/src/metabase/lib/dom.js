@@ -491,6 +491,9 @@ export function isSmallScreen() {
   return mediaQuery && mediaQuery.matches;
 }
 
+/**
+ * @param {MouseEvent} event
+ */
 export const getEventTarget = event => {
   let target = document.getElementById("popover-event-target");
   if (!target) {

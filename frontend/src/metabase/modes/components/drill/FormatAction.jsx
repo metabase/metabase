@@ -28,7 +28,7 @@ export default ({ question, clicked }) => {
       buttonType: "formatting",
       icon: "gear",
       tooltip: t`Column formatting`,
-      popoverOptions: {
+      popoverProps: {
         placement: "right-end",
         offset: [0, 20],
       },
@@ -69,7 +69,7 @@ export default ({ question, clicked }) => {
 };
 
 const PopoverRoot = styled.div`
-  margin-top: 1.5rem;
+  padding-top: 1.5rem;
   max-height: 600px;
   overflow-y: auto;
 `;

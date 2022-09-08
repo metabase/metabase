@@ -295,7 +295,7 @@ class ChartClickActions extends Component {
             </div>
           )
         }
-        {...popoverAction?.popoverOptions}
+        {...popoverAction?.popoverProps}
       />
     );
   }
