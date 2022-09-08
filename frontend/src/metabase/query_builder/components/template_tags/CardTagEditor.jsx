@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+import slugg from "slugg";
 import React, { Component } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
@@ -18,8 +19,14 @@ import MetabaseSettings from "metabase/lib/settings";
 class CardTagEditor extends Component {
   handleQuestionSelection = id => {
     const { question, query, setDatasetQuery } = this.props;
+    const selectedQuestion = query.metadata().question(id);
+    const newSlug = `${selectedQuestion.id()}-${slugg(
+      selectedQuestion.displayName(),
+    )}`;
     setDatasetQuery(
-      query.replaceCardId(question ? question.id : "", id).datasetQuery(),
+      query
+        .replaceCardSlug(question ? question.id : "", newSlug)
+        .datasetQuery(),
     );
     this._popover && this._popover.close();
   };
@@ -97,7 +104,7 @@ class CardTagEditor extends Component {
           >
             <QuestionPicker
               className="p2"
-              value={question && question.id}
+              value={question}
               onChange={this.handleQuestionSelection}
             />
           </PopoverWithTrigger>

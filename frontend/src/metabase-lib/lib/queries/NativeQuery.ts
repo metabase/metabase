@@ -42,7 +42,7 @@ export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
     "template-tags": {},
   },
 };
-// This regex needs to match logic in replaceCardId and _getUpdatedTemplateTags.
+// This regex needs to match logic in replaceCardSlug and _getUpdatedTemplateTags.
 const CARD_TAG_REGEX = /^#([0-9]*)([a-z0-9-]*)$/;
 
 function cardTagCardId(name) {
@@ -338,11 +338,16 @@ export default class NativeQuery extends AtomicQuery {
     return new NativeQuery(this._originalQuestion, datasetQuery);
   }
 
-  // `replaceCardId` updates the query text to reference a different card.
+  // `replaceCardSlug` updates the query text to reference a different card.
   // Template tags are updated as a result of calling `setQueryText`.
-  replaceCardId(oldId, newId) {
-    const re = new RegExp(`{{\\s*#${oldId}\\s*}}`, "g");
-    const newQueryText = this.queryText().replace(re, () => `{{#${newId}}}`);
+  replaceCardSlug(oldId, newCardSlug) {
+    let re = new RegExp(`{{\\s*#${oldId}*\\s*}}`, "g");
+    let newQueryText = this.queryText().replace(
+      re,
+      () => `{{#${newCardSlug}}}`,
+    );
+    re = new RegExp(`{{\\s*#${oldId}-[a-z0-9-]*\\s*}}`, "g");
+    newQueryText = newQueryText.replace(re, () => `{{#${newCardSlug}}}`);
     return this.setQueryText(newQueryText);
   }
 
