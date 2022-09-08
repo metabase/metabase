@@ -187,6 +187,43 @@
                                      [] (range (.getLength children)))))))))]
     (tree (.getDocumentElement document))))
 
+(def display-type->static-viz-chart-type
+  {:pin_map nil
+   :state nil
+   :country nil
+   :line :line ;; uses combo in js-svg
+   :area :area ;; uses combo
+   :bar :bar ;; uses combo
+   :combo :combo
+   :pie :categorical/donut
+   :funnel :funnel
+   :progress :progress
+   :scalar :scalar
+   :smartscalar :smartscalar ;; this is 'trend' in the UI
+   :gauge :scalar
+   :table :table
+   ;; these aren't properly handled yet, should fall to :table, but sometimes incorrectly go to :line
+   :scatter :table
+   :row :bar ;; should probably do this, but doesn't yet
+   :list :table
+   :pivot :table})
+
+(def display-types (set (keys display-type->static-viz-chart-type)))
+
+(def can-have-goal-line
+  #{:scatter
+    :line :area :bar :combo})
+
+(def can-have-multiple-y-series
+  #{:scatter
+    :line :area :bar :combo})
+
+(def can-stack-multiple-y-series
+  #{:area :bar :combo})
+
+
+
+
 ;; todo: make this a multi-method dispatching on :display-type, or 'scenario' or something
 (defmulti create-test-viz-data
   "WIP. Create a map of card and data mimicking a valid card and dataset-query result according to a `visualization-scenario` map.
@@ -214,6 +251,15 @@
   (let [svg-string (render-viz-data viz-data)
         svg-hiccup (-> svg-string parse-svg document-tag-hiccup)]
     (->> svg-hiccup (tree-seq vector? rest) (filter #(desired-node-tags (first %))))))
+
+(defn asdf
+  []
+  (let [data (-> (minimal-card-and-data :bar ["x-axis label"] ["y-axis label"])
+                 (add-goal-line-settings {}#_{:graph.show_goal true
+                                              :graph.goal_label "My Goal"
+                                              :graph.goal_value 0}))]
+    (render-as-png data)
+    (rendered-nodes data #{"#text"})))
 
 #_(def some-card
   {:display :line
