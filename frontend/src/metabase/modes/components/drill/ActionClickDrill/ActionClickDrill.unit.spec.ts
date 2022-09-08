@@ -5,6 +5,7 @@ import type {
   DashboardOrderedCard,
   WritebackParameter,
 } from "metabase-types/api";
+import type { ParameterValueOrArray } from "metabase-types/types/Parameter";
 import type { UiParameter } from "metabase/parameters/types";
 
 import {
@@ -217,33 +218,54 @@ describe("getNotProvidedActionParameters", () => {
 });
 
 describe("ActionClickDrill", () => {
-  it("executes action correctly", () => {
-    const executeActionSpy = jest.spyOn(dashboardActions, "executeRowAction");
-
-    const action = createMockQueryAction({ parameters: [WRITEBACK_PARAMETER] });
+  function setup({
+    actionParameters = [],
+    dashboardParameters = [],
+    parameterMappings = [],
+    parameterValuesBySlug = {},
+  }: {
+    actionParameters?: WritebackParameter[];
+    dashboardParameters?: UiParameter[];
+    parameterMappings?: ActionButtonParametersMapping[];
+    parameterValuesBySlug?: Record<string, { value: ParameterValueOrArray }>;
+  } = {}) {
+    const action = createMockQueryAction({ parameters: actionParameters });
     const dashcard = createMockDashboardActionButton({
       action,
       action_id: action.id,
-      parameter_mappings: [PARAMETER_MAPPING],
+      parameter_mappings: parameterMappings,
     });
     const dashboard = createMockDashboard({
       ordered_cards: [dashcard as unknown as DashboardOrderedCard],
-      parameters: [DASHBOARD_FILTER_PARAMETER],
+      parameters: dashboardParameters,
     });
 
-    const [clickAction] = ActionClickDrill({
+    const clickActions = ActionClickDrill({
       clicked: {
         data: [],
         extraData: {
           dashboard,
           dashcard,
-          parameterValuesBySlug: {
-            [DASHBOARD_FILTER_PARAMETER.slug]: DASHBOARD_FILTER_PARAMETER.value,
-          },
+          parameterValuesBySlug,
           userAttributes: [],
         },
       },
     });
+
+    return { action, dashboard, dashcard, clickActions };
+  }
+
+  it("executes action correctly", () => {
+    const executeActionSpy = jest.spyOn(dashboardActions, "executeRowAction");
+    const { clickActions, dashboard, dashcard } = setup({
+      actionParameters: [WRITEBACK_PARAMETER],
+      dashboardParameters: [DASHBOARD_FILTER_PARAMETER],
+      parameterMappings: [PARAMETER_MAPPING],
+      parameterValuesBySlug: {
+        [DASHBOARD_FILTER_PARAMETER.slug]: DASHBOARD_FILTER_PARAMETER.value,
+      },
+    });
+    const [clickAction] = clickActions;
 
     clickAction.action();
 
