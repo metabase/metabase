@@ -28,6 +28,10 @@ export default ({ question, clicked }) => {
       buttonType: "formatting",
       icon: "gear",
       tooltip: t`Column formatting`,
+      popoverProps: {
+        placement: "right-end",
+        offset: [0, 20],
+      },
       popover: function FormatPopover({ series, onChange }) {
         const handleChangeSettings = changedSettings => {
           onChange(
@@ -65,5 +69,7 @@ export default ({ question, clicked }) => {
 };
 
 const PopoverRoot = styled.div`
-  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  max-height: 600px;
+  overflow-y: auto;
 `;
