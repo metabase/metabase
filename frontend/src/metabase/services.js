@@ -537,6 +537,6 @@ export const ActionsApi = {
   bulkUpdate: POST("/api/action/bulk/update/:tableId"),
   bulkDelete: POST("/api/action/bulk/delete/:tableId"),
   execute: POST(
-    "/api/dashboard/:dashboardId/dashcard/:dashcardId/action/:actionId/execute",
+    "/api/dashboard/:dashboardId/dashcard/:dashcardId/action/execute",
   ),
 };

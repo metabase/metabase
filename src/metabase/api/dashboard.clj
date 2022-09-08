@@ -689,8 +689,6 @@
       (into {} (for [field-id filtered-field-ids]
                  [field-id (sort (chain-filter/filterable-field-ids field-id filtering-field-ids))])))))
 
-;;; ---------------------------------- Executing the action associated with a Dashcard -------------------------------
-
 (def ParameterWithID
   "Schema for a parameter map with an string `:id`."
   (su/with-api-error-message
@@ -699,11 +697,24 @@
     "value must be a parameter map with an 'id' key"))
 
 
-(api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/action/:action-id/execute"
-  "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it."
-  [dashboard-id dashcard-id action-id :as {{:keys [parameters], :as _body} :body}]
-  {parameters (s/maybe [ParameterWithID])}
-  (actions.execution/execute-dashcard! action-id dashboard-id dashcard-id parameters))
+(def ParameterWithTarget
+  "Schema for a parameter map with an mbql `:target`."
+  (su/with-api-error-message
+    {:target   [s/Any]
+     s/Keyword s/Any}
+    "value must be a parameter map with a 'target' key"))
+
+;;; ---------------------------------- Executing the action associated with a Dashcard -------------------------------
+
+(api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/action/execute"
+  "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
+
+   `parameters` should be the mapped dashboard parameters with values.
+   `extra_parameters` should be the extra, user entered parameter values."
+  [dashboard-id dashcard-id :as {{:keys [parameters extra_parameters], :as _body} :body}]
+  {parameters (s/maybe [ParameterWithID])
+   extra_parameters (s/maybe [ParameterWithTarget])}
+  (actions.execution/execute-dashcard! dashboard-id dashcard-id parameters extra_parameters))
 
 ;;; ---------------------------------- Running the query associated with a Dashcard ----------------------------------
 

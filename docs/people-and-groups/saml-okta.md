@@ -1,5 +1,5 @@
 ---
-title: Setting up SAML with Okta
+title: SAML with Okta
 ---
 
 # SAML with Okta

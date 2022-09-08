@@ -37,6 +37,12 @@ export const openActionParametersModal = createAction(
   OPEN_ACTION_PARAMETERS_MODAL,
 );
 
+export const CLOSE_ACTION_PARAMETERS_MODAL =
+  "metabase/data-app/CLOSE_ACTION_PARAMETERS_MODAL";
+export const closeActionParametersModal = createAction(
+  CLOSE_ACTION_PARAMETERS_MODAL,
+);
+
 export function updateButtonActionMapping(
   dashCardId: number,
   attributes: { action_id?: number | null; parameter_mappings?: any },
@@ -263,20 +269,22 @@ export type ExecuteRowActionPayload = {
   dashboard: Dashboard;
   dashcard: ActionButtonDashboardCard;
   parameters: ParameterMappedForActionExecution[];
+  extra_parameters: ParameterMappedForActionExecution[];
 };
 
 export const executeRowAction = ({
   dashboard,
   dashcard,
   parameters,
+  extra_parameters,
 }: ExecuteRowActionPayload) => {
   return async function (dispatch: any) {
     try {
       const result = await ActionsApi.execute({
         dashboardId: dashboard.id,
         dashcardId: dashcard.id,
-        actionId: dashcard.action_id,
         parameters,
+        extra_parameters,
       });
       if (result["rows-affected"] > 0) {
         dashboard.ordered_cards

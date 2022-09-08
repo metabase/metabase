@@ -72,7 +72,7 @@
                      (mt/user-http-request :crowberto :post 200 emitter-path
                                            {:parameters {"my_id" {:type  :number/=
                                                                   :value 1}}}))))
-            (is (= [1 "Bird Shop"]
+            (is (= [1 "Shop"]
                    (mt/first-row
                      (mt/run-mbql-query categories {:filter [:= $id 1]}))))
             (testing "Should affect 0 rows if id is out of range"
