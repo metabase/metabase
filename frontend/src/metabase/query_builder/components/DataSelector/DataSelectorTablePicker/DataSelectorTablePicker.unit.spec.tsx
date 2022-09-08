@@ -3,14 +3,25 @@ import { render, screen } from "@testing-library/react";
 
 import DataSelectorTablePicker from "./DataSelectorTablePicker";
 
-const databaseName = "Database name";
-const selectedDatabase = { name: databaseName };
+import { createMockTable } from "metabase-types/api/mocks/table";
+import { createMockDatabase } from "metabase-types/api/mocks/database";
+
+import type Table from "metabase-lib/lib/metadata/Table";
+
+const database = createMockDatabase();
+const table = createMockTable();
+
+const props = {
+  schemas: [],
+  onChangeTable: jest.fn(),
+};
 
 describe("DataSelectorTablePicker", () => {
   it("when no table is in database", () => {
     render(
       <DataSelectorTablePicker
-        selectedDatabase={selectedDatabase}
+        {...props}
+        selectedDatabase={database}
         tables={[]}
       />,
     );
@@ -19,28 +30,22 @@ describe("DataSelectorTablePicker", () => {
       screen.getByText("No tables found in this database."),
     ).toBeInTheDocument();
 
-    expect(screen.getByText(databaseName)).toBeInTheDocument();
+    expect(screen.getByText(database.name)).toBeInTheDocument();
   });
 
   it("when tables are passed", () => {
-    const tableName = "Table name";
-    const tables = [
-      {
-        id: 1,
-        name: "Orders",
-        initial_sync_status: "complete",
-        displayName: () => tableName,
-      },
-    ];
+    const tableName = "Table Name";
+    const table = { displayName: () => tableName };
 
     render(
       <DataSelectorTablePicker
-        selectedDatabase={selectedDatabase}
-        tables={tables}
+        {...props}
+        selectedDatabase={database}
+        tables={[table] as Table[]}
       />,
     );
 
-    expect(screen.getByText(databaseName)).toBeInTheDocument();
+    expect(screen.getByText(database.name)).toBeInTheDocument();
     expect(screen.getByText(tableName)).toBeInTheDocument();
   });
 });
