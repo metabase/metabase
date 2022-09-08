@@ -4,12 +4,12 @@ import { merge } from "icepick";
 import { t } from "ttag";
 
 import { isLocalField, isSameField } from "metabase/lib/query/field_ref";
-
 import { addUndo } from "metabase/redux/undo";
+import { loadMetadataForQueries } from "metabase/redux/metadata";
 
 import { getOriginalCard, getQuestion, getResultsMetadata } from "../selectors";
 
-import { apiUpdateQuestion, updateQuestion } from "./core";
+import { apiUpdateQuestion, updateQuestion, API_UPDATE_QUESTION } from "./core";
 import { runQuestionQuery } from "./querying";
 import { setQueryBuilderMode } from "./ui";
 
@@ -28,8 +28,14 @@ export const onCancelDatasetChanges = () => (dispatch, getState) => {
 
 export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
   const question = getQuestion(getState());
-  const dataset = question.setDataset(true);
-  await dispatch(apiUpdateQuestion(dataset, { rerunQuery: true }));
+  const dataset = await question
+    .setDataset(true)
+    .setDisplay("table")
+    .reduxUpdate(dispatch);
+
+  await dispatch(loadMetadataForQueries([], [dataset.dependentMetadata()]));
+
+  dispatch.action(API_UPDATE_QUESTION, dataset.card());
 
   dispatch(
     addUndo({

@@ -75,6 +75,7 @@ import {
 } from "metabase-lib/lib/Alert";
 import { utf8_to_b64url } from "metabase/lib/encoding";
 import { CollectionId } from "metabase-types/api";
+import { getQuestionVirtualTableId } from "metabase/lib/saved-questions/saved-questions";
 
 type QuestionUpdateFn = (q: Question) => Promise<void> | null | undefined;
 
@@ -583,7 +584,7 @@ class QuestionInner {
           type: "query",
           database: this.databaseId(),
           query: {
-            "source-table": "card__" + this.id(),
+            "source-table": getQuestionVirtualTableId(this.card()),
           },
         },
       };
@@ -600,7 +601,7 @@ class QuestionInner {
       type: "query",
       database: this.databaseId(),
       query: {
-        "source-table": "card__" + this.id(),
+        "source-table": getQuestionVirtualTableId(this.card()),
       },
     });
   }
@@ -1022,6 +1023,13 @@ class QuestionInner {
 
   dependentMetadata(): DependentMetadataItem[] {
     const dependencies = [];
+
+    if (this.isDataset()) {
+      dependencies.push({
+        type: "table",
+        id: getQuestionVirtualTableId(this.card()),
+      });
+    }
 
     this.getResultMetadata().forEach(field => {
       if (isFK(field) && field.fk_target_field_id) {
