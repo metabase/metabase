@@ -89,11 +89,17 @@
 
 (defn- generate-scaffold
   [app-name table-ids]
-  (let [tables (hydrate (db/select Table :id [:in table-ids]) :fields)
+  (let [table-ids (distinct table-ids)
+        tables (hydrate (db/select Table :id [:in table-ids]) :fields)
+        _ (when (not= (count table-ids) (count tables))
+            (throw (ex-info (i18n/tru "Some tables could not be found. Given: {0} Found: {1}"
+                                      (pr-str table-ids)
+                                      (pr-str (map :id tables)))
+                            {:status-code 400})))
         table-id->table (m/index-by :id tables)
-        page-type-display {"list" {:name "List"
+        page-type-display {"list" {:name (i18n/tru "List")
                                    :display "list"}
-                           "detail" {:name "Detail"
+                           "detail" {:name (i18n/tru "Detail")
                                      :display "object"}}]
     {:app {:collection {:name app-name :color "#FFA500"}
            :dashboard_id ["scaffold-target-id" "page" (:id (first tables)) "list"]
@@ -116,7 +122,11 @@
                                :query {:source_table table-id}}})
      :pages (for [table-id table-ids
                   :let [table (get table-id->table table-id)
-                        pk-field-id (:id (first (filter (comp #(= :type/PK %) :semantic_type) (:fields table))))]
+                        pks (filter (comp #(= :type/PK %) :semantic_type) (:fields table))
+                        _ (when (not= 1 (count pks))
+                            (throw (ex-info (i18n/tru "Table must have a single primary key: {0}" (:name table))
+                                            {:status-code 400})))
+                        pk-field-id (:id (first pks))]
                   page-type ["list" "detail"]]
               (cond->
                {:name (format "%s %s"
@@ -172,6 +182,9 @@
           ;; We create the cards so we can replace scaffold-target-id elsewhere
           scaffold-target->id (reduce
                                 (fn [accum {:keys [scaffold-target] :as card}]
+                                  (when-not scaffold-target
+                                    (throw (ex-info (i18n/tru "A scaffold-target was not provided for Card: {0}" (:name card))
+                                                    {:status-code 400})))
                                   (let [card (api.card/create-card! (-> card
                                                                         (assoc :collection_id collection-id)
                                                                         (dissoc :scaffold-target)))]

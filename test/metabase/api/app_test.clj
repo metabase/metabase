@@ -138,20 +138,30 @@
 
 (deftest scaffold-test
   (mt/with-model-cleanup [Card Dashboard Collection]
-    (let [app (mt/user-http-request
-                :crowberto :post 200 "app/scaffold"
-                {:table-ids [(data/id :venues)]
-                 :app-name (str "My test app " (gensym))})
-          pages (m/index-by :name (hydrate (db/select Dashboard :collection_id (:collection_id app)) :ordered_cards))
-          list-page (get pages "Venues List")
-          detail-page (get pages "Venues Detail")]
-      (is (partial= {:nav_items [{:page_id (:id list-page)}
-                                 {:page_id (:id detail-page) :hidden true :indent 1}]
-                     :dashboard_id (:id list-page)}
-                    app))
-      (is (partial= {:ordered_cards [{:visualization_settings {:click_behavior
-                                                               {:type "link",
-                                                                :linkType "dashboard",
-                                                                :targetId (:id detail-page)}}}
-                                     {}]}
-                    list-page)))))
+    (testing "Golden path"
+      (let [app (mt/user-http-request
+                  :crowberto :post 200 "app/scaffold"
+                  {:table-ids [(data/id :venues)]
+                   :app-name (str "My test app " (gensym))})
+            pages (m/index-by :name (hydrate (db/select Dashboard :collection_id (:collection_id app)) :ordered_cards))
+            list-page (get pages "Venues List")
+            detail-page (get pages "Venues Detail")]
+        (is (partial= {:nav_items [{:page_id (:id list-page)}
+                                   {:page_id (:id detail-page) :hidden true :indent 1}]
+                       :dashboard_id (:id list-page)}
+                      app))
+        (is (partial= {:ordered_cards [{:visualization_settings {:click_behavior
+                                                                 {:type "link",
+                                                                  :linkType "dashboard",
+                                                                  :targetId (:id detail-page)}}}
+                                       {}]}
+                      list-page))))
+    (testing "Bad or duplicate tables"
+      (is (= (format "Some tables could not be found. Given: (%s %s) Found: (%s)"
+                     (data/id :venues)
+                     Long/MAX_VALUE
+                     (data/id :venues))
+             (mt/user-http-request
+               :crowberto :post 400 "app/scaffold"
+               {:table-ids [(data/id :venues) (data/id :venues) Long/MAX_VALUE]
+                :app-name (str "My test app " (gensym))}))))))
