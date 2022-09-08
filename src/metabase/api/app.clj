@@ -2,6 +2,8 @@
   (:require
     [clojure.walk :as walk]
     [compojure.core :refer [POST PUT]]
+    [medley.core :as m]
+    [metabase.api.card :as api.card]
     [metabase.api.collection :as api.collection]
     [metabase.api.common :as api]
     [metabase.models :refer [App Collection Dashboard Table]]
@@ -11,9 +13,7 @@
     [metabase.util.schema :as su]
     [schema.core :as s]
     [toucan.db :as db]
-    [toucan.hydrate :refer [hydrate]]
-    [medley.core :as m]
-    [metabase.api.card :as api.card]))
+    [toucan.hydrate :refer [hydrate]]))
 
 (defn- hydrate-details [apps]
   (hydrate apps [:collection :can_write]))
