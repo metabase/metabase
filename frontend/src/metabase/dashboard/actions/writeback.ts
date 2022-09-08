@@ -281,7 +281,6 @@ export const executeRowAction = ({
       const result = await ActionsApi.execute({
         dashboardId: dashboard.id,
         dashcardId: dashcard.id,
-        actionId: dashcard.action_id,
         parameters,
       });
       if (result["rows-affected"] > 0) {
