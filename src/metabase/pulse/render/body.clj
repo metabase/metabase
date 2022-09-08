@@ -309,24 +309,28 @@
         x-col-settings (or (settings-from-column x-col column-settings) {})
         y-col-settings (or (settings-from-column y-col column-settings) {})
         x-format       (merge
-                         (if (isa? (:effective_type x-col) :type/Temporal)
-                           {:date_style "MMMM D, YYYY"}
-                           default-format)
-                         x-col-settings)
+                        (if (isa? (:effective_type x-col) :type/Temporal)
+                          {:date_style "MMMM D, YYYY"}
+                          default-format)
+                        x-col-settings)
         y-format       (merge
-                         default-format
-                         y-col-settings)
+                        default-format
+                        y-col-settings)
         default-x-type (if (isa? (:effective_type x-col) :type/Temporal)
                          "timeseries"
                          "ordinal")]
-    {:colors      (public-settings/application-colors)
-     :stacking    (if (:stackable.stack_type viz-settings) "stack" "none")
-     :show_values (boolean (:graph.show_values viz-settings))
-     :x           {:type   (or (:graph.x_axis.scale viz-settings) default-x-type)
-                   :format x-format}
-     :y           {:type   (or (:graph.y_axis.scale viz-settings) "linear")
-                   :format y-format}
-     :labels      labels}))
+    (merge
+     {:colors      (public-settings/application-colors)
+      :stacking    (if (:stackable.stack_type viz-settings) "stack" "none")
+      :show_values (boolean (:graph.show_values viz-settings))
+      :x           {:type   (or (:graph.x_axis.scale viz-settings) default-x-type)
+                    :format x-format}
+      :y           {:type   (or (:graph.y_axis.scale viz-settings) "linear")
+                    :format y-format}
+      :labels      labels}
+     (when (:graph.show_goal viz-settings)
+       {:goal {:value (:graph.goal_value viz-settings)
+               :label (or (:graph.goal_label viz-settings) (tru "Goal"))}}))))
 
 (defn- set-default-stacked
   "Default stack type is stacked for area chart with more than one metric.
