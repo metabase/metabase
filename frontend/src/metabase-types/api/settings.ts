@@ -41,8 +41,10 @@ export interface Settings {
   "enable-xrays": boolean;
   engines: Record<string, Engine>;
   "is-hosted?": boolean;
+  "google-auth-client-id": string | null;
   "deprecation-notice-version": string | undefined;
   "loading-message": LoadingMessage;
+  "site-locale": string;
   "show-database-syncing-modal": boolean;
   "show-homepage-data": boolean;
   "show-homepage-xrays": boolean;
