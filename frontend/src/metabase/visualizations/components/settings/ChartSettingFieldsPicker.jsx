@@ -2,6 +2,7 @@
 import React from "react";
 import { t } from "ttag";
 import ChartSettingFieldPicker from "./ChartSettingFieldPicker";
+import { AddAnotherContainer } from "./ChartSettingFieldsPicker.styled";
 
 const ChartSettingFieldsPicker = ({
   value = [],
@@ -46,9 +47,9 @@ const ChartSettingFieldsPicker = ({
       <span className="text-error">{t`error`}</span>
     )}
     {addAnother && (
-      <div className="mt2 mb3">
+      <AddAnotherContainer>
         <a
-          className="text-brand text-bold py1 px2 rounded bg-light bg-medium-hover"
+          className="text-brand text-bold py1 rounded bg-light"
           onClick={() => {
             const remaining = options.filter(o => value.indexOf(o.value) < 0);
             if (remaining.length === 1) {
@@ -62,7 +63,7 @@ const ChartSettingFieldsPicker = ({
         >
           {addAnother}
         </a>
-      </div>
+      </AddAnotherContainer>
     )}
   </div>
 );

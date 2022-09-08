@@ -25,7 +25,7 @@ import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 import _ from "underscore";
 import { getMaxMetricsSupported } from "metabase/visualizations";
 
-import { ChartSettingOrderedRows } from "metabase/visualizations/components/settings/ChartSettingOrderedRows";
+import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
 
 // NOTE: currently we don't consider any date extracts to be histgrams
 const HISTOGRAM_DATE_EXTRACTS = new Set([
@@ -127,7 +127,7 @@ export const GRAPH_DATA_SETTINGS = {
           options.length > value.length &&
           value.length < 2 &&
           vizSettings["graph.metrics"].length < 2
-            ? t`Add a series breakout...`
+            ? t`Add series breakout`
             : null,
         columns: data.cols,
         showColumnSetting: true,
@@ -138,34 +138,31 @@ export const GRAPH_DATA_SETTINGS = {
     dashboard: false,
     useRawSeries: true,
   },
-  "graph.test": {
+  series_order: {
     section: t`Data`,
-    widget: ChartSettingOrderedRows,
+    widget: ChartSettingOrderedSimple,
     getDefault: series => {
       const keys = series.map(s => keyForSingleSeries(s));
       return keys.map((key, index) => ({
         name: key,
-        rowIndex: index,
+        originalIndex: index,
         enabled: true,
       }));
     },
     getProps: series => {
       const keys = series.map(s => keyForSingleSeries(s));
       return {
-        rows: keys.map((key, index) => ({
+        items: keys.map((key, index) => ({
           name: key,
-          rowIndex: index,
-          enabled: true,
+          originalIndex: index,
         })),
       };
     },
-    getHidden: ({
-      _raw: {
-        0: { card },
-      },
-    }) => {
-      const hide = ["combo", "line"];
-      return hide.includes(card.display);
+    getHidden: ({ _raw, ...series }, settings) => {
+      return (
+        settings["graph.dimensions"]?.length < 2 ||
+        Object.keys(series).length > 20
+      );
     },
   },
   "graph.metrics": {
