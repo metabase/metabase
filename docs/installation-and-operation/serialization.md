@@ -1,10 +1,10 @@
 ---
-title: "Serialization: copying contents of one Metabase instance to another"
+title: "Serialization"
 redirect_from:
   - /docs/latest/enterprise-guide/serialization
 ---
 
-## Serialization: copying contents of one Metabase instance to another
+## Serialization
 
 {% include plans-blockquote.html feature="Serialization" self-hosted-only="true" %}
 

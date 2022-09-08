@@ -1,10 +1,10 @@
 ---
-title: Handling timezones in Metabase
+title: Timezones
 redirect_from:
   - /docs/latest/operations-guide/handling-timezones
 ---
 
-# Handling timezones in Metabase
+# Timezones
 
 Metabase does its best to ensure proper and accurate reporting in whatever timezone you desire, but timezones are a complicated beast so it's important to abide by some recommendations listed below to ensure your reports come out as intended.
 

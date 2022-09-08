@@ -209,8 +209,20 @@ export const getIsAdditionalInfoVisible = createSelector(
   (isEmbedded, embedOptions) => !isEmbedded || embedOptions.additional_info,
 );
 
-// Writeback
-export const getFocusedEmitterId = state =>
-  state.dashboard.missingEmitterParameters?.emitterId;
-export const getEmitterParametersFormProps = state =>
-  state.dashboard.missingEmitterParameters?.props || {};
+const getMissingActionParametersModalState = state =>
+  state.dashboard.missingActionParameters;
+
+export const getActionParametersModalAction = createSelector(
+  [getDashboardComplete, getMissingActionParametersModalState],
+  (dashboard, missingActionParametersModalState) => {
+    const dashcardId = missingActionParametersModalState?.dashcardId;
+    const dashcard = dashboard?.ordered_cards.find(dc => dc.id === dashcardId);
+    return dashcard?.action;
+  },
+);
+
+export const getActionParametersModalFormProps = createSelector(
+  [getMissingActionParametersModalState],
+  missingActionParametersModalState =>
+    missingActionParametersModalState?.props || {},
+);

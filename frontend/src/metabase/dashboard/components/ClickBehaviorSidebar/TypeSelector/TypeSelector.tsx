@@ -1,7 +1,9 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 
 import Icon from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";
+
+import { isActionButtonDashCard } from "metabase/writeback/utils";
 
 import type { UiParameter } from "metabase/parameters/types";
 import type { DashboardOrderedCard, ClickBehavior } from "metabase-types/api";
@@ -64,6 +66,13 @@ function TypeSelector({
   updateSettings,
   moveToNextPage,
 }: TypeSelectorProps) {
+  const options = useMemo(() => {
+    if (isActionButtonDashCard(dashcard)) {
+      return clickBehaviorOptions;
+    }
+    return clickBehaviorOptions.filter(option => option.value !== "action");
+  }, [dashcard]);
+
   const handleSelect = useCallback(
     value => {
       if (value !== clickBehavior.type) {
@@ -77,7 +86,7 @@ function TypeSelector({
 
   return (
     <div>
-      {clickBehaviorOptions.map(({ value, icon }) => (
+      {options.map(({ value, icon }) => (
         <div key={value} className="mb1">
           <BehaviorOption
             option={getClickBehaviorOptionName(value, dashcard)}

@@ -11,7 +11,10 @@ import Question from "metabase-lib/lib/Question";
 
 import type NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
-import type { WritebackQueryAction } from "metabase-types/api";
+import type {
+  WritebackQueryAction,
+  ActionFormSettings,
+} from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import Modal from "metabase/components/Modal";
@@ -57,6 +60,9 @@ function ActionCreatorComponent({
   const [question, setQuestion] = useState(
     passedQuestion ?? newQuestion(metadata),
   );
+  const [formSettings, setFormSettings] = useState<
+    ActionFormSettings | undefined
+  >(undefined);
   const [showSaveModal, setShowSaveModal] = useState(false);
 
   useEffect(() => {
@@ -93,7 +99,13 @@ function ActionCreatorComponent({
       />
       <ActionCreatorBodyContainer>
         <QueryActionEditor question={question} setQuestion={setQuestion} />
-        <FormCreator tags={query?.templateTagsWithoutSnippets()} />
+        <FormCreator
+          tags={query?.templateTagsWithoutSnippets()}
+          formSettings={
+            question?.card()?.visualization_settings as ActionFormSettings
+          }
+          onChange={setFormSettings}
+        />
       </ActionCreatorBodyContainer>
       {showSaveModal && (
         <Modal onClose={handleClose}>
@@ -105,6 +117,7 @@ function ActionCreatorComponent({
               name: question.displayName(),
               description: question.description(),
               collection_id: question.collectionId(),
+              formSettings,
               question,
             }}
             onSaved={afterSave}

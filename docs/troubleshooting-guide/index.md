@@ -1,12 +1,8 @@
 ---
-title: What are you having trouble with?
+title: Troubleshooting guides
 ---
 
-# What are you having trouble with?
-
-This page collects resources for getting you unstuck.
-
-## Troubleshooting guides
+# Troubleshooting guides
 
 Problems, their causes, how to detect them, and how to fix them.
 

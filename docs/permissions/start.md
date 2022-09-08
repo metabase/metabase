@@ -1,8 +1,8 @@
 ---
-title: Permissions
+title: Permissions overview
 ---
 
-# Permissions
+# Permissions overview
 
 Metabase has a simple, but powerful permissions system.
 

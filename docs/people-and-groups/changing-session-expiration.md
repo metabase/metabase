@@ -1,10 +1,10 @@
 ---
-title: Changing session expiration
+title: Session expiration
 redirect_from:
   - /docs/latest/operations-guide/changing-session-expiration
 ---
 
-# Changing session expiration
+# Session expiration
 
 By default, Metabase sessions are valid for two weeks after a user last authenticated (e.g. by entering their email
 address/password or via an SSO provider). For example, even if you visit your Metabase instance every day, you'll

@@ -32,18 +32,21 @@ export default class ChartSettingOrderedColumns extends Component {
     this.props.onChange(fields);
   };
 
-  handleEdit = columnSetting => {
+  handleEdit = (columnSetting, targetElement) => {
     const column = findColumnForColumnSetting(
       this.props.columns,
       columnSetting,
     );
     if (column) {
-      this.props.onShowWidget({
-        id: "column_settings",
-        props: {
-          initialKey: keyForColumn(column),
+      this.props.onShowWidget(
+        {
+          id: "column_settings",
+          props: {
+            initialKey: keyForColumn(column),
+          },
         },
-      });
+        targetElement,
+      );
     }
   };
 
