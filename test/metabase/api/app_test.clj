@@ -159,9 +159,9 @@
     (testing "Bad or duplicate tables"
       (is (= (format "Some tables could not be found. Given: (%s %s) Found: (%s)"
                      (data/id :venues)
-                     Long/MAX_VALUE
+                     Integer/MAX_VALUE
                      (data/id :venues))
              (mt/user-http-request
                :crowberto :post 400 "app/scaffold"
-               {:table-ids [(data/id :venues) (data/id :venues) Long/MAX_VALUE]
+               {:table-ids [(data/id :venues) (data/id :venues) Integer/MAX_VALUE]
                 :app-name (str "My test app " (gensym))}))))))
