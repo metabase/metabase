@@ -53,7 +53,6 @@ import HTML5Backend from "react-dnd-html5-backend";
 import { DragDropContextProvider } from "react-dnd";
 
 import GlobalStyles from "metabase/styled-components/containers/GlobalStyles";
-import GoogleAuthProvider from "metabase/auth/components/GoogleAuthProvider";
 
 // remove trailing slash
 const BASENAME = window.MetabaseRoot.replace(/\/+$/, "");
@@ -80,14 +79,12 @@ function _init(reducers, getRoutes, callback) {
 
   ReactDOM.render(
     <Provider store={store} ref={ref => (root = ref)}>
-      <GoogleAuthProvider>
-        <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
-          <ThemeProvider theme={theme}>
-            <GlobalStyles />
-            <Router history={history}>{routes}</Router>
-          </ThemeProvider>
-        </DragDropContextProvider>
-      </GoogleAuthProvider>
+      <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
+        <ThemeProvider theme={theme}>
+          <GlobalStyles />
+          <Router history={history}>{routes}</Router>
+        </ThemeProvider>
+      </DragDropContextProvider>
     </Provider>,
     document.getElementById("root"),
   );

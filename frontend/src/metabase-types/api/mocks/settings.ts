@@ -52,6 +52,7 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "google-auth-client-id": null,
   "loading-message": "doing-science",
   "deprecation-notice-version": undefined,
+  "site-locale": "en",
   "show-database-syncing-modal": false,
   "show-homepage-data": false,
   "show-homepage-xrays": false,
