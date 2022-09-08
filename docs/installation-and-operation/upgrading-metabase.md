@@ -49,7 +49,7 @@ To upgrade, you'll need to stop the service, replace the JAR with the newer vers
 
 E.g., if you're running Metabase on Debian as a service using Nginx.
 
-1. [Back up your application database](backing-up-metabase-application-data).
+1. [Back up your application database](backing-up-metabase-application-data.md).
 
 2. Download the latest version of the JAR file:
 
