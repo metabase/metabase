@@ -1,23 +1,59 @@
 import {
-  removeOrphanSettings,
-  setParameterTypesFromFieldSettings,
-} from "./utils";
-
-import {
   getDefaultFormSettings,
   getDefaultFieldSettings,
 } from "metabase/writeback/components/ActionCreator/FormCreator/utils";
 
+import Question from "metabase-lib/lib/Question";
+import { metadata } from "__support__/sample_database_fixture";
+
 import type { Parameter as ParameterObject } from "metabase-types/types/Parameter";
+
+import {
+  removeOrphanSettings,
+  setParameterTypesFromFieldSettings,
+  setTemplateTagTypesFromFieldSettings,
+} from "./utils";
+
+import { NativeDatasetQuery } from "metabase-types/types/Card";
+
+const creatQuestionWithTemplateTags = (tagType: string) =>
+  new Question(
+    {
+      dataset_query: {
+        type: "native",
+        database: null,
+        native: {
+          query:
+            "INSERT INTO products (name, price) VALUES ({{name}}, {{price}});",
+          "template-tags": {
+            name: {
+              id: "aaa",
+              name: "name",
+              type: tagType,
+            },
+            price: {
+              id: "bbb",
+              name: "price",
+              type: tagType,
+            },
+          },
+        },
+      },
+    },
+    metadata,
+  );
 
 describe("entities > actions > utils", () => {
   describe("removeOrphanSettings", () => {
     it("should remove orphan settings", () => {
-      const formSettings = getDefaultFormSettings();
-      formSettings.name = "test form";
-      formSettings.fields.aaa = getDefaultFieldSettings();
-      formSettings.fields.bbb = getDefaultFieldSettings();
-      formSettings.fields.ccc = getDefaultFieldSettings();
+      const formSettings = getDefaultFormSettings({
+        name: "test form",
+        fields: {
+          aaa: getDefaultFieldSettings(),
+          bbb: getDefaultFieldSettings(),
+          ccc: getDefaultFieldSettings(),
+        },
+      });
 
       const parameters = [
         { id: "aaa", name: "foo" },
@@ -33,12 +69,14 @@ describe("entities > actions > utils", () => {
     });
 
     it("should leave non-orphan settings intact", () => {
-      const formSettings = getDefaultFormSettings();
-      formSettings.name = "test form";
-
-      formSettings.fields.aaa = getDefaultFieldSettings();
-      formSettings.fields.bbb = getDefaultFieldSettings();
-      formSettings.fields.ccc = getDefaultFieldSettings();
+      const formSettings = getDefaultFormSettings({
+        name: "test form",
+        fields: {
+          aaa: getDefaultFieldSettings(),
+          bbb: getDefaultFieldSettings(),
+          ccc: getDefaultFieldSettings(),
+        },
+      });
 
       const parameters = [
         { id: "aaa", name: "foo" },
@@ -57,17 +95,14 @@ describe("entities > actions > utils", () => {
 
   describe("setParameterTypesFromFieldSettings", () => {
     it("should set string parameter types", () => {
-      const formSettings = getDefaultFormSettings();
-      formSettings.name = "test form";
-
-      formSettings.fields.aaa = getDefaultFieldSettings();
-      formSettings.fields.aaa.fieldType = "string";
-
-      formSettings.fields.bbb = getDefaultFieldSettings();
-      formSettings.fields.bbb.fieldType = "string";
-
-      formSettings.fields.ccc = getDefaultFieldSettings();
-      formSettings.fields.ccc.fieldType = "string";
+      const formSettings = getDefaultFormSettings({
+        name: "test form",
+        fields: {
+          aaa: getDefaultFieldSettings({ fieldType: "string" }),
+          bbb: getDefaultFieldSettings({ fieldType: "string" }),
+          ccc: getDefaultFieldSettings({ fieldType: "string" }),
+        },
+      });
 
       const parameters = [
         { id: "aaa", name: "foo", type: "number/=" },
@@ -84,17 +119,14 @@ describe("entities > actions > utils", () => {
     });
 
     it("should set number parameter types", () => {
-      const formSettings = getDefaultFormSettings();
-      formSettings.name = "test form";
-
-      formSettings.fields.aaa = getDefaultFieldSettings();
-      formSettings.fields.aaa.fieldType = "number";
-
-      formSettings.fields.bbb = getDefaultFieldSettings();
-      formSettings.fields.bbb.fieldType = "number";
-
-      formSettings.fields.ccc = getDefaultFieldSettings();
-      formSettings.fields.ccc.fieldType = "number";
+      const formSettings = getDefaultFormSettings({
+        name: "test form",
+        fields: {
+          aaa: getDefaultFieldSettings({ fieldType: "number" }),
+          bbb: getDefaultFieldSettings({ fieldType: "number" }),
+          ccc: getDefaultFieldSettings({ fieldType: "number" }),
+        },
+      });
 
       const parameters = [
         { id: "aaa", name: "foo", type: "string/=" },
@@ -111,17 +143,14 @@ describe("entities > actions > utils", () => {
     });
 
     it("should set date parameter types", () => {
-      const formSettings = getDefaultFormSettings();
-      formSettings.name = "test form";
-
-      formSettings.fields.aaa = getDefaultFieldSettings();
-      formSettings.fields.aaa.fieldType = "date";
-
-      formSettings.fields.bbb = getDefaultFieldSettings();
-      formSettings.fields.bbb.fieldType = "date";
-
-      formSettings.fields.ccc = getDefaultFieldSettings();
-      formSettings.fields.ccc.fieldType = "date";
+      const formSettings = getDefaultFormSettings({
+        name: "test form",
+        fields: {
+          aaa: getDefaultFieldSettings({ fieldType: "date" }),
+          bbb: getDefaultFieldSettings({ fieldType: "date" }),
+          ccc: getDefaultFieldSettings({ fieldType: "date" }),
+        },
+      });
 
       const parameters = [
         { id: "aaa", name: "foo", type: "string/=" },
@@ -135,6 +164,54 @@ describe("entities > actions > utils", () => {
       );
 
       newParams.forEach(param => expect(param.type).toEqual("date/single"));
+    });
+  });
+
+  describe("setTemplateTagTypesFromFieldSettings", () => {
+    it("should set text and number template tag types", () => {
+      const question = creatQuestionWithTemplateTags("date");
+
+      const formSettings = getDefaultFormSettings({
+        name: "test form",
+        fields: {
+          aaa: getDefaultFieldSettings({ fieldType: "string" }),
+          bbb: getDefaultFieldSettings({ fieldType: "number" }),
+        },
+      });
+
+      const newQuestion = setTemplateTagTypesFromFieldSettings(
+        formSettings,
+        question,
+      );
+
+      const tags = (newQuestion.card().dataset_query as NativeDatasetQuery)
+        .native["template-tags"];
+
+      expect(tags.name.type).toEqual("text");
+      expect(tags.price.type).toEqual("number");
+    });
+
+    it("should set date template tag types", () => {
+      const question = creatQuestionWithTemplateTags("number");
+
+      const formSettings = getDefaultFormSettings({
+        name: "test form",
+        fields: {
+          aaa: getDefaultFieldSettings({ fieldType: "date" }),
+          bbb: getDefaultFieldSettings({ fieldType: "date" }),
+        },
+      });
+
+      const newQuestion = setTemplateTagTypesFromFieldSettings(
+        formSettings,
+        question,
+      );
+
+      const tags = (newQuestion.card().dataset_query as NativeDatasetQuery)
+        .native["template-tags"];
+
+      expect(tags.name.type).toEqual("date");
+      expect(tags.price.type).toEqual("date");
     });
   });
 });
