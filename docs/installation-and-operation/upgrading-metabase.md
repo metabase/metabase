@@ -10,7 +10,7 @@ redirect_from:
 
 The application database keeps track of all of your people, dashboards, questions, collections, permissions: all the application data in Metabase (that is, everything but the data you've connected to Metabase). While it's unlikely you'll need to roll back to your current version, a backup will do wonders for your peace of mind.
 
-See [Backing up Metabase application data](./backing-up-metabase-application-data.md).
+See [Backing up Metabase application data](backing-up-metabase-application-data).
 
 ## Swapping in the new Metabase version
 
@@ -24,7 +24,7 @@ Steps differ depending on whether you're running the JAR or a Docker image.
 
 If you're running the JVM Jar file directly:
 
-1. [Back up your application database](./backing-up-metabase-application-data.md).
+1. [Back up your application database](backing-up-metabase-application-data).
 
 2. Download the latest version of the JAR file:
 
@@ -49,7 +49,7 @@ To upgrade, you'll need to stop the service, replace the JAR with the newer vers
 
 E.g., if you're running Metabase on Debian as a service using Nginx.
 
-1. [Back up your application database](./backing-up-metabase-application-data.md).
+1. [Back up your application database](backing-up-metabase-application-data).
 
 2. Download the latest version of the JAR file:
 
@@ -74,21 +74,21 @@ E.g., if you're running Metabase on Debian as a service using Nginx.
 
 If you're running Metabase in a Docker container:
 
-1. [Back up your application database](./backing-up-metabase-application-data.md).
+1. [Back up your application database](backing-up-metabase-application-data).
 
-   > WARNING: If you're not using a [production-ready database](./migrating-from-h2.md), your application data (questions, dashboards, and so on) will have been stored in an H2 database _inside_ your container. Upgrading requires swapping out your existing container for a new image with the upgraded Metabase JAR, which will wipe out your application data. We recommend switching to a production-ready database before you upgrade.
+   > WARNING: If you're not using a [production-ready database](migrating-from-h2), your application data (questions, dashboards, and so on) will have been stored in an H2 database _inside_ your container. Upgrading requires swapping out your existing container for a new image with the upgraded Metabase JAR, which will wipe out your application data. We recommend switching to a production-ready database before you upgrade.
 
 2. Stop the current Docker container.
 
 3. Pull the latest Metabase Docker image.
 
-   Metabase Open Source image:
+   Metabase Open Source:
 
    ```
    docker pull metabase/metabase:latest
    ```
 
-   Metabase Pro or Enterprise image:
+   Metabase Pro or Enterprise:
 
    ```
    docker pull metabase/metabase-enterprise:latest
@@ -96,8 +96,16 @@ If you're running Metabase in a Docker container:
 
 4. Start the new Docker container. Depending on the ports and what you want to name the container, the command will look something like:
 
+   Metabase Open Source:
+
    ```
    docker run -d -p 3000:3000 -e MB_DB_CONNECTION_URI="jdbc:postgresql://<host>:5432/metabase?user=<username>&password=<password>" --name metabase metabase/metabase:latest
+   ```
+
+   Metabase Pro or Enterprise:
+
+   ```
+   docker run -d -p 3000:3000 -e MB_DB_CONNECTION_URI="jdbc:postgresql://<host>:5432/metabase?user=<username>&password=<password>" --name metabase metabase/metabase-enterprise:latest
    ```
 
 On startup, Metabase will perform the upgrade automatically. Once Metabase has completed the upgrade, you'll be running the new version.
@@ -108,6 +116,6 @@ If you're on a [Metabase Cloud](https://www.metabase.com/pricing) plan, your Met
 
 ## Upgrading Metabase on other platforms
 
-- [Upgrading AWS Elastic Beanstalk deployments](./running-metabase-on-elastic-beanstalk.md#deploying-new-versions-of-metabase-on-elastic-beanstalk)
-- [Upgrading Azure Web Apps deployments](./running-metabase-on-azure.md#additional-configurations)
-- [Upgrading Heroku deployments](./running-metabase-on-heroku.md#deploying-new-versions-of-metabase)
+- [AWS Elastic Beanstalk deployments](./running-metabase-on-elastic-beanstalk.md#deploying-new-versions-of-metabase-on-elastic-beanstalk)
+- [Azure Web Apps deployments](./running-metabase-on-azure.md#additional-configurations)
+- [Heroku deployments](./running-metabase-on-heroku.md#deploying-new-versions-of-metabase)
