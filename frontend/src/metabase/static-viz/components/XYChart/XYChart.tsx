@@ -80,11 +80,12 @@ export const XYChart = ({
 
   const yLabelOffsetLeft = yTickWidths.left + LABEL_PADDING;
   const yLabelOffsetRight = LABEL_PADDING;
+  const xTickVerticalMargins = style.axes.labels.fontSize * 2;
 
   const margin = calculateMargin(
     yTickWidths.left,
     yTickWidths.right,
-    xTicksDimensions.height + style.axes.labels.fontSize * 2,
+    xTicksDimensions.height + xTickVerticalMargins,
     xTicksDimensions.width,
     settings.labels,
     style.axes.ticks.fontSize,
