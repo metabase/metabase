@@ -248,3 +248,23 @@
         (is (bytes? svg-bytes))))
     (let [svg-string (.asString ^Value (js/execute-fn-name @context "categorical_waterfall" rows labels settings (json/generate-string (public-settings/application-colors))))]
       (validate-svg-string :categorical/waterfall svg-string))))
+
+(deftest custom-series-names-test
+  (let [series-names    ["X" "Y"]
+        series          [{:name          (first series-names)
+                          :color         "#999AC4"
+                          :type          :line
+                          :data          [["A" 1] ["B" 20] ["C" -4] ["D" 100]]
+                          :yAxisPosition "left"}
+                         {:name          (second series-names)
+                          :color         "#999AC4"
+                          :type          :line
+                          :data          [["A" 112] ["B" 120] ["C" -14] ["D" -80]]
+                          :yAxisPosition "right"}]
+        settings        {:x      {:type "ordinal"}
+                         :y      {:type "linear"}
+                         :labels {:bottom "" :left "" :right ""}}
+        hiccup (combo-chart-hiccup series settings)
+        series-name-nodes  (->> hiccup (tree-seq vector? rest) (filter #((set series-names) (second %))))]
+    (testing "Custom Series Names are rendered."
+      (is (= (set series-names) (set (map second series-name-nodes)))))))
