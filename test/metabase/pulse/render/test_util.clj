@@ -1,7 +1,11 @@
 (ns metabase.pulse.render.test-util
   (:require [metabase.pulse.render :as render]
             [metabase.pulse.render.body :as body]
-            [metabase.pulse.render.png :as png]))
+            [metabase.pulse.render.js-svg :as js-svg]
+            [metabase.pulse.render.png :as png])
+  (:import org.apache.batik.anim.dom.SVGOMDocument
+           [org.graalvm.polyglot Context Value]
+           [org.w3c.dom Element Node]))
 
 (def test-card
   {:visualization_settings
@@ -151,22 +155,65 @@
   (prn "NOT IMPLEMENTED YET")
   card-and-data)
 
-(defn- card-and-data->render-args-map
+(defn- render-viz-data
   [{:keys [card data]}]
-  {:chart-type (render/detect-pulse-chart-type card nil data)
-   :render-type :inline
-   :timezone-id "UTC"
-   :card card
-   :dashcard nil
-   :data data})
+  (with-redefs [metabase.pulse.render.js-svg/svg-string->bytes
+                identity
+                metabase.pulse.render.image-bundle/make-image-bundle
+                (fn [_ s]
+                  {:image-src   s
+                   :render-type :inline})]
+    (let [render (body/render (render/detect-pulse-chart-type card nil data) :inline "UTC" card nil data)]
+      (->> render
+           :content
+           (tree-seq vector? (fn [node] (filter vector? node)))
+           (filter #(= :img (first %)))
+           first
+           last
+           :src))))
 
-(defn create-test-viz-data
-  [display-type]
-  (let [c-d (-> (minimal-card-and-data :bar ["X"] ["Y1" "Y2"])
-                card-and-data->render-args-map)]
-    (-> (apply body/render (vals c-d))
-        (png/render-html-to-png 1000)
-        dev.render-png/open-png-bytes)))
+(def parse-svg #'js-svg/parse-svg-string)
+(def svg-string->bytes #'js-svg/svg-string->bytes)
+
+(defn document-tag-hiccup [^SVGOMDocument document]
+  (letfn [(tree [^Node node]
+            (into [(.getNodeName node)]
+                  (if (instance? org.apache.batik.dom.GenericText node)
+                    [(.getWholeText node)]
+                    (map tree
+                         (when (instance? Element node)
+                           (let [children (.getChildNodes node)]
+                             (reduce (fn [cs i] (conj cs (.item children i)))
+                                     [] (range (.getLength children)))))))))]
+    (tree (.getDocumentElement document))))
+
+;; todo: make this a multi-method dispatching on :display-type, or 'scenario' or something
+(defmulti create-test-viz-data
+  "WIP. Create a map of card and data mimicking a valid card and dataset-query result according to a `visualization-scenario` map.
+
+  A `visualization-scenario` is a set of keys dictating the various visualization settings possible."
+  (fn
+    ([] nil)
+    ([scenario] scenario)))
+
+(defmethod create-test-viz-data :default
+  []
+  (-> (minimal-card-and-data :bar ["X"] ["Y1"])))
+
+(defmethod create-test-viz-data #{:multi-series}
+  [_]
+  (-> (minimal-card-and-data :bar ["X"] ["Y1" "Y2"])))
+
+(defn render-as-png
+  [viz-data]
+  (let [svg-string (render-viz-data viz-data)]
+    (dev.render-png/open-png-bytes (svg-string->bytes svg-string))))
+
+(defn rendered-nodes
+  [viz-data desired-node-tags]
+  (let [svg-string (render-viz-data viz-data)
+        svg-hiccup (-> svg-string parse-svg document-tag-hiccup)]
+    (->> svg-hiccup (tree-seq vector? rest) (filter #(desired-node-tags (first %))))))
 
 #_(def some-card
   {:display :line
