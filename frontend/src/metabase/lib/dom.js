@@ -492,7 +492,7 @@ export function isSmallScreen() {
 }
 
 /**
- * @param {MouseEvent} event
+ * @param {MouseEvent<Element, MouseEvent>} event
  */
 export const getEventTarget = event => {
   let target = document.getElementById("popover-event-target");
