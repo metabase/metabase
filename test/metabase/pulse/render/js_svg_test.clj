@@ -249,6 +249,15 @@
     (let [svg-string (.asString ^Value (js/execute-fn-name @context "categorical_waterfall" rows labels settings (json/generate-string (public-settings/application-colors))))]
       (validate-svg-string :categorical/waterfall svg-string))))
 
+(defn- combo-chart-hiccup
+  [series settings]
+  (let [s (.asString (js/execute-fn-name @context
+                                         "combo_chart"
+                                         (json/generate-string series)
+                                         (json/generate-string settings)
+                                         (json/generate-string (:colors settings))))]
+    (-> s parse-svg document-tag-hiccup)))
+
 (deftest custom-series-names-test
   (let [series-names    ["X" "Y"]
         series          [{:name          (first series-names)
