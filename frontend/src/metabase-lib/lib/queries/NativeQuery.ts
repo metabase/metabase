@@ -1,5 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
+import slugg from "slugg";
 import { t } from "ttag";
 
 import { chain, assoc, getIn, assocIn, updateIn } from "icepick";
@@ -42,7 +43,7 @@ export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
   },
 };
 // This regex needs to match logic in replaceCardId and _getUpdatedTemplateTags.
-const CARD_TAG_REGEX = /^#([0-9]*)$/;
+const CARD_TAG_REGEX = /^#([0-9]*)([a-z0-9-]*)$/;
 
 function cardTagCardId(name) {
   const match = name.match(CARD_TAG_REGEX);
@@ -269,6 +270,10 @@ export default class NativeQuery extends AtomicQuery {
     return getEngineNativeRequiresTable(this.engine());
   }
 
+  templateTagsMap(): TemplateTags {
+    return getIn(this.datasetQuery(), ["native", "template-tags"]) || {};
+  }
+
   templateTags(): TemplateTag[] {
     return Object.values(this.templateTagsMap());
   }
@@ -281,14 +286,14 @@ export default class NativeQuery extends AtomicQuery {
     return this.templateTags().filter(t => t.type !== "snippet");
   }
 
+  hasReferencedQuestions() {
+    return this.templateTags().some(t => t.type === "card");
+  }
+
   referencedQuestionIds(): number[] {
     return this.templateTags()
       .filter(tag => tag.type === "card")
       .map(tag => tag["card-id"]);
-  }
-
-  templateTagsMap(): TemplateTags {
-    return getIn(this.datasetQuery(), ["native", "template-tags"]) || {};
   }
 
   validate() {
@@ -385,6 +390,45 @@ export default class NativeQuery extends AtomicQuery {
     }
 
     return query;
+  }
+
+  updateReferencedQuestionNames(cards): NativeQuery {
+    const tagsByCardId = _.chain(this.templateTags())
+      .filter(tag => tag.type === "card")
+      .groupBy(tag => tag["card-id"])
+      .value();
+
+    if (Object.keys(tagsByCardId).length === 0) {
+      // no need to check if there are no tags
+      return this;
+    }
+
+    let query = this;
+    let queryText = this.queryText();
+
+    // TODO: tidy up this iteration loop
+    for (const card of cards) {
+      const newTagName = `#${card.id}-${slugg(card.name)}`;
+      for (const tag of tagsByCardId[card.id] || []) {
+        if (tag.name !== newTagName) {
+          queryText = queryText.replace(
+            new RegExp(`{{\\s*${tag.name}\\s*}}`, "g"),
+            `{{${newTagName}}}`,
+          );
+          query = this.setTemplateTag(newTagName, {
+            ...tag,
+            name: newTagName,
+            "display-name": newTagName,
+          });
+        }
+      }
+    }
+
+    if (queryText !== this.queryText()) {
+      return this.setQueryText(queryText);
+    }
+
+    return this;
   }
 
   updateQueryTextWithNewSnippetNames(snippets): NativeQuery {
@@ -521,10 +565,12 @@ export default class NativeQuery extends AtomicQuery {
 // expected pattern is like mustache templates, so we are looking for something like {{category}} or {{date:start}}
 // anything that doesn't match our rule is ignored, so {{&foo!}} would simply be ignored
 // variables referencing other questions, by their card ID, are also supported: {{#123}} references question with ID 123
+// variables referencing other questions can either include just the card ID, or the slug for the card, e.g. {{#123-my-card-slug}}
 export function recognizeTemplateTags(queryText: string): string[] {
   const tagNames = [];
   let match;
-  const re = /\{\{\s*((snippet:\s*[^}]+)|[A-Za-z0-9_\.]+?|#[0-9]*)\s*\}\}/g;
+  const re =
+    /\{\{\s*((snippet:\s*[^}]+)|[A-Za-z0-9_\.]+?|#[0-9]*[a-z0-9-]*)\s*\}\}/g;
 
   while ((match = re.exec(queryText)) != null) {
     tagNames.push(match[1]);

@@ -285,6 +285,20 @@ async function handleQBInit(
 
   if (question && question.isNative()) {
     const query = question.query() as NativeQuery;
+
+    if (query.hasReferencedQuestions() && !query.readOnly()) {
+      const referencedQuestionIds = query.referencedQuestionIds();
+      const questions = await Promise.all(
+        referencedQuestionIds.map(async id => {
+          const actionResult = await dispatch(Questions.actions.fetch({ id }));
+          return Questions.HACK_getObjectFromAction(actionResult);
+        }),
+      );
+      question = question.setQuery(
+        query.updateReferencedQuestionNames(questions),
+      );
+    }
+
     if (query.hasSnippets() && !query.readOnly()) {
       await dispatch(Snippets.actions.fetchList());
       const snippets = Snippets.selectors.getList(getState());
