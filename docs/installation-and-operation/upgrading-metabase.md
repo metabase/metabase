@@ -74,7 +74,7 @@ E.g., if you're running Metabase on Debian as a service using Nginx.
 
 If you're running Metabase in a Docker container:
 
-1. [Back up your application database](backing-up-metabase-application-data).
+1. [Back up your application database](backing-up-metabase-application-data.md).
 
    > WARNING: If you're not using a [production-ready database](migrating-from-h2.md), your application data (questions, dashboards, and so on) will have been stored in an H2 database _inside_ your container. Upgrading requires swapping out your existing container for a new image with the upgraded Metabase JAR, which will wipe out your application data. We recommend switching to a production-ready database before you upgrade.
 
