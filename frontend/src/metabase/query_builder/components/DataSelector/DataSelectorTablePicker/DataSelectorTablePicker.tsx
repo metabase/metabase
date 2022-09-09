@@ -25,15 +25,15 @@ import type Schema from "metabase-lib/lib/metadata/Schema";
 import type Table from "metabase-lib/lib/metadata/Table";
 
 type DataSelectorTablePickerProps = {
-  hasFiltering: boolean;
-  hasInitialFocus: boolean;
-  hasNextStep: boolean;
-  isLoading: boolean;
-  minTablesToShowSearch: number;
+  hasFiltering?: boolean;
+  hasInitialFocus?: boolean;
+  hasNextStep?: boolean;
+  isLoading?: boolean;
+  minTablesToShowSearch?: number;
   schemas: Schema[];
   selectedDatabase: Database;
-  selectedSchema: Schema;
-  selectedTable: Table;
+  selectedSchema?: Schema;
+  selectedTable?: Table;
   tables: Table[];
   onBack?: () => void;
   onChangeTable: (table: Table) => void;
