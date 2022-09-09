@@ -560,7 +560,10 @@ const mapDispatchToProps = dispatch => {
   return {
     fetchQuestion: async id => {
       const action = await dispatch(
-        Questions.actions.fetch({ id }, { noEvent: true }),
+        Questions.actions.fetch(
+          { id },
+          { noEvent: true, useCachedForbiddenError: true },
+        ),
       );
       return Questions.HACK_getObjectFromAction(action);
     },
