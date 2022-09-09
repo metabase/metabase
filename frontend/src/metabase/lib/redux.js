@@ -279,7 +279,7 @@ function withCachedData(
     // thunk:
     (dispatch, getState) => {
       const options = args[args.length - 1] || {};
-      const { reload, properties } = options;
+      const { useCachedForbiddenError, reload, properties } = options;
 
       const existingStatePath = getExistingStatePath(...args);
       const requestStatePath = ["requests", ...getRequestStatePath(...args)];
@@ -288,8 +288,8 @@ function withCachedData(
       const { loading, loaded, queryKey, error } =
         getIn(getState(), requestStatePath) || {};
 
-      // Avoid repeatedly requesting data with permanently forbidded access
-      if (reload !== true && error?.status === 403) {
+      // Avoid requesting data with permanently forbidded access
+      if (useCachedForbiddenError && error?.status === 403) {
         throw error;
       }
 
