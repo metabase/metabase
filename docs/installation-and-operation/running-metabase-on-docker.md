@@ -8,16 +8,17 @@ redirect_from:
 
 Metabase provides an official Docker image via Dockerhub that can be used for deployments on any system that is running Docker.
 
-If you're trying to upgrade your Metabase version on Docker, check out these [upgrading instructions](upgrading-metabase.md).
+If you're trying to upgrade your Metabase version on Docker, check out these [upgrading instructions](upgrading-metabase).
 
-- [Quick start](#quick-start)
+- [Open Source quick start](#quick-start)
+- [Pro or Enterprise quick start](#quick-start)
 - [Production installation](#production-installation)
 - [Migrating to a production installation](#migrating-to-a-production-installation)
 - [Additional Docker maintenance and configuration](#additional-docker-maintenance-and-configuration)
 
-## Quick start
+## Open Source quick start
 
-> The quick start is intended for running Metabase locally. See below for instructions on [running Metabase in production](#production-installation).
+Use this quick start to run the Open Source version of Metabase locally. See below for instructions on [running Metabase in production](#production-installation).
 
 Assuming you have [Docker](https://www.docker.com/) installed and running, get the latest Docker image:
 
@@ -31,6 +32,38 @@ Then start the Metabase container:
 docker run -d -p 3000:3000 --name metabase metabase/metabase
 ```
 
+This will launch an Metabase server on port 3000 by default.
+
+Optional: to view the logs as your Open Source Metabase initializes, run:
+
+```
+docker logs -f metabase
+```
+
+Once startup completes, you can access your Open Source Metabase at `http://localhost:3000`.
+
+To run your Open Source Metabase on a different port, say port 12345:
+
+```
+docker run -d -p 12345:3000 --name metabase metabase/metabase
+```
+
+## Pro or Enterprise quick start
+
+Use this quick start if you have a [license token](../paid-features/activating-the-enterprise-edition.md) for a [paid version](https://www.metabase.com/pricing/) of Metabase, and you want to run Metabase locally. See below for instructions on [running Metabase in production](#production-installation).
+
+Assuming you have [Docker](https://www.docker.com/) installed and running, get the latest Docker image:
+
+```
+docker pull metabase/metabase-enterprise:latest
+```
+
+Then start the Metabase container:
+
+```
+docker run -d -p 3000:3000 --name metabase metabase/metabase-enterprise
+```
+
 This will launch a Metabase server on port 3000 by default.
 
 Optional: to view the logs as Metabase initializes, run:
@@ -39,19 +72,19 @@ Optional: to view the logs as Metabase initializes, run:
 docker logs -f metabase
 ```
 
-Once the Metabase startup completes, you can access your Metabase at `http://localhost:3000`.
+Once startup completes, you can access your Pro or Enterprise Metabase at `http://localhost:3000`.
 
-To run Metabase on a different port, say port 12345:
+To run your Pro or Enterprise Metabase on a different port, say port 12345:
 
 ```
-docker run -d -p 12345:3000 --name metabase metabase/metabase
+docker run -d -p 12345:3000 --name metabase metabase/metabase-enterprise
 ```
 
 ## Production installation
 
 Metabase ships with an embedded H2 database that uses the file system to store its own application data. Meaning, if you remove the container, you'll lose your Metabase application data (your questions, dashboards, collections, and so on).
 
-If you want to run Metabase in production, you'll need store your application data in a [production-ready database](./migrating-from-h2.md#supported-databases-for-storing-your-metabase-application-data).
+If you want to run Metabase in production, you'll need store your application data in a [production-ready database](./migrating-from-h2#supported-databases-for-storing-your-metabase-application-data).
 
 Once you've provisioned a database, like Postgres, for Metabase to use to store its application data, all you need to do is provide Metabase with the connection information and credentials so Metabase can connect to it.
 
@@ -66,7 +99,7 @@ createdb metabaseappdb
 No need to add any tables; Metabase will create those on startup. And let's assume that database is accessible via `my-database-host:5432` with username `name` and password `password`.
 
 
-Here's an example Docker command that tells Metabase to use that database:
+Here's an example Docker command that tells an Open Source Metabase to use that database:
 
 ```
 docker run -d -p 3000:3000 \
@@ -83,7 +116,7 @@ Keep in mind that Metabase will be connecting from _within_ your Docker containe
 
 ## Migrating to a production installation
 
-If you've already been running Metabase with the default application database (H2), and want to use a production-ready application database without losing your app data (your questions, dashboards, etc), see [Migrating from H2 to a production database](migrating-from-h2.md).
+If you've already been running Metabase with the default application database (H2), and want to use a production-ready application database without losing your app data (your questions, dashboards, etc), see [Migrating from H2 to a production database](migrating-from-h2).
 
 ## Additional Docker maintenance and configuration
 
@@ -100,7 +133,7 @@ If you've already been running Metabase with the default application database (H
 
 ### Customizing the Metabase Jetty server
 
-You can use any of the custom settings from [Customizing the Metabase Jetty Webserver](../configuring-metabase/customizing-jetty-webserver.md) by setting environment variables in your Docker run command.
+You can use any of the custom settings from [Customizing the Metabase Jetty Webserver](../configuring-metabase/customizing-jetty-webserver) by setting environment variables in your Docker run command.
 
 ### Docker-specific environment variables
 
@@ -256,7 +289,7 @@ secrets:
      file: db_user.txt
 ```
 
-We currently support the following [environment variables](../configuring-metabase/environment-variables.md) to be used as secrets:
+We currently support the following [environment variables](../configuring-metabase/environment-variables) to be used as secrets:
 
 - MB_DB_USER
 - MB_DB_PASS
@@ -270,8 +303,8 @@ In order for the Metabase container to read the files and use the contents as a 
 
 ## Troubleshooting
 
-See Running Metabase in the [Troubleshooting guide](../troubleshooting-guide/running.md).
+See Running Metabase in the [Troubleshooting guide](../troubleshooting-guide/running).
 
 ## Continue to setup
 
-Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](../configuring-metabase/setting-up-metabase.md).
+Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](../configuring-metabase/setting-up-metabase).
