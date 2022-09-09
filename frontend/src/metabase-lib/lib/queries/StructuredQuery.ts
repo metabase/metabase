@@ -1270,7 +1270,16 @@ class StructuredQueryInner extends AtomicQuery {
       for (const dimension of fkDimensions) {
         const field = dimension.field();
 
-        if (field && explicitJoins.has(this._keyForFK(field, field.target))) {
+        const queryHasExplicitJoin =
+          field && explicitJoins.has(this._keyForFK(field, field.target));
+        const isNestedCardTable = table?.isVirtualCard();
+        const tableHasExplicitJoin =
+          isNestedCardTable &&
+          table.fields.find(
+            tableField => tableField.id === field.fk_target_field_id,
+          );
+
+        if (queryHasExplicitJoin || tableHasExplicitJoin) {
           continue;
         }
 
