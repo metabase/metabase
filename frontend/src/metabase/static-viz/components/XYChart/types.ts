@@ -3,7 +3,7 @@ import type { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
 import type { ScaleBand, ScaleLinear, ScaleTime } from "d3-scale";
 
 export type Range = [number, number];
-export type ContiniousDomain = [number, number];
+export type ContinuousDomain = [number, number];
 
 export type XValue = string | number;
 export type YValue = number;
@@ -31,7 +31,7 @@ export type HydratedSeries = Series & {
   stackedData?: StackedDatum[];
 };
 
-type TickDisplay = "show" | "hide" | "rotate-45";
+type TickDisplay = "show" | "hide" | "rotate-90";
 type Stacking = "stack" | "none";
 
 export type ChartSettings = {
@@ -97,11 +97,15 @@ export type ChartStyle = {
   goalColor: string;
 };
 
-export type XYAccessor<
-  T extends SeriesDatum | StackedDatum = SeriesDatum | StackedDatum,
-> = (
-  datum: T extends SeriesDatum ? SeriesDatum : StackedDatum,
-  flipped?: boolean,
+export type DatumAccessor = (
+  d: SeriesDatum,
+  index?: number,
+  data?: SeriesDatum[],
+) => number;
+export type StackedDatumAccessor = (
+  d: StackedDatum,
+  index?: number,
+  data?: StackedDatum[],
 ) => number;
 
 export interface XScale<T = any> {
@@ -111,6 +115,6 @@ export interface XScale<T = any> {
     ? ScaleTime<number, number, never>
     : ScaleLinear<number, number, never>;
   bandwidth?: number;
-  lineAccessor: XYAccessor<SeriesDatum>;
-  barAccessor?: XYAccessor<SeriesDatum>;
+  lineAccessor: DatumAccessor;
+  barAccessor?: DatumAccessor;
 }
