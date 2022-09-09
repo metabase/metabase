@@ -125,6 +125,12 @@
               :table
               (:table_name card)))))
 
+(defn- segmented-user?
+  []
+  (if-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
+    (segmented-user?)
+    false))
+
 (s/defn card-id->source-query-and-metadata :- SourceQueryAndMetadata
   "Return the source query info for Card with `card-id`. Pass true as the optional second arg `log?` to enable
   logging. (The circularity check calls this and will print more than desired)"
@@ -142,8 +148,8 @@
                   (db/do-post-select Card)
                   (db/do-post-select PersistedInfo)
                   first)
-           (throw (ex-info (tru "Card {0} does not exist." card-id)
-                           {:card-id card-id})))
+             (throw (ex-info (tru "Card {0} does not exist." card-id)
+                             {:card-id card-id})))
 
          {{mbql-query                   :query
            database-id                  :database
@@ -154,6 +160,7 @@
          card
 
          persisted? (and persisted-info/*allow-persisted-substitution*
+                         (not (segmented-user?))
                          (:active card)
                          (:definition card)
                          (:query_hash card)
