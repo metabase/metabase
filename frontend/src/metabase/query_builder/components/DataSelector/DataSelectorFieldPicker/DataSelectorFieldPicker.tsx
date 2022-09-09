@@ -16,11 +16,11 @@ import type { Table } from "metabase-types/api/table";
 
 type DataSelectorFieldPickerProps = {
   fields: Field[];
-  hasFiltering: boolean;
-  hasInitialFocus: boolean;
-  isLoading: boolean;
-  selectedField: Field;
-  selectedTable: Table;
+  hasFiltering?: boolean;
+  hasInitialFocus?: boolean;
+  isLoading?: boolean;
+  selectedField?: Field;
+  selectedTable?: Table;
   onBack: () => void;
   onChangeField: (field: Field) => void;
 };
