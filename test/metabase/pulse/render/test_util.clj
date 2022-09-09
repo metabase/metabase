@@ -75,17 +75,30 @@
                 series-settings
                 (zipmap series-keys series-settings-maps)))))
 
+(defn- base-series-settings
+  [series-name]
+  {:name         series-name
+   :display_name series-name
+   :settings     nil
+   :base_type    :type/Number})
+
+(defn add-series-rows
+  [card-and-data series-name settings-for-series rows]
+  (let [this-series-settings (merge (base-series-settings series-name))
+        series-settings {(keyword series-name) settings-for-series}]
+    (-> card-and-data
+        (update-in [:card :visualization_settings :graph.metrics] conj series-name)
+        #_(update-in [:data :viz-settings :series_settings] #(merge-with merge %1 %2) series-settings)
+        (update-in [:data :cols] conj this-series-settings)
+        (update-in [:data :rows] (fn [existing new] (mapv #(into [] (concat %1 %2)) existing new)) rows))))
+
 (defn- minimal-data
   "Generate a minimal data map from a given card map, for use with static-viz rendering tests."
   [{:keys [visualization_settings]}]
   (let [dimensions (:graph.dimensions visualization_settings)
         metrics    (:graph.metrics visualization_settings)]
     (-> {:viz-settings {}
-         :cols         (mapv (fn [metric]
-                               {:name         metric
-                                :display_name metric
-                                :settings     nil
-                                :base_type    :type/Number}) (concat dimensions metrics))
+         :cols         (mapv base-series-settings (concat dimensions metrics))
          :rows         (if (= 2 (count metrics))
                          (map #(conj %1 (second %2)) (sin-gen) (cos-gen))
                          (sin-gen))}
@@ -98,6 +111,9 @@
    (let [card (minimal-card display-type dimensions metrics)]
      {:card card
       :data (minimal-data card)})))
+
+(defn build-card-and-data
+  [display-type rows])
 
 (defn add-goal-line-settings
   [card-and-data goal-settings]
@@ -119,7 +135,7 @@
 (defn add-show-graph-values-settings
   [card-and-data show-values-settings]
   (update-in card-and-data [:data :viz-settings] merge
-             {:graph.show_values  true}
+             {:graph.show_values true}
              show-values-settings))
 
 (defn add-column-types
@@ -254,12 +270,12 @@
 
 (defn asdf
   []
-  (let [data (-> (minimal-card-and-data :bar ["x-axis label"] ["y-axis label"])
-                 (add-goal-line-settings {}#_{:graph.show_goal true
-                                              :graph.goal_label "My Goal"
-                                              :graph.goal_value 0}))]
-    (render-as-png data)
-    (rendered-nodes data #{"#text"})))
+  (let [basic-bar (-> (minimal-card-and-data :bar ["x-axis label"] ["y-axis label"])
+                      #_(add-goal-line-settings {:graph.show_goal  true
+                                               :graph.goal_label "WINNING"
+                                               :graph.goal_value 10}))]
+    (render-as-png basic-bar)
+    (rendered-nodes basic-bar #{"#text"})))
 
 #_(def some-card
   {:display :line
