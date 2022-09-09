@@ -1,5 +1,6 @@
 (ns metabase.api.app
   (:require
+    [clojure.string :as str]
     [clojure.walk :as walk]
     [compojure.core :refer [POST PUT]]
     [medley.core :as m]
@@ -80,12 +81,56 @@
   [structure scaffold-target->target-id]
   (walk/postwalk
     (fn [node]
-      (if (and (vector? node) (= "scaffold-target-id" (first node)))
-        (if-let [target-id (get scaffold-target->target-id node)]
-          target-id
-          node)
+      (if-let [target-id (get scaffold-target->target-id node)]
+        target-id
         node))
     structure))
+
+(defn- create-scaffold-cards-and-pages!
+  "Insert new cards and pages (dashboards), keep track of scaffold-target->id for each insert.
+   If an item has a `scaffold-target` field, its id should be added to the accumulator."
+  [collection-id cards pages]
+  ;; We create the cards so we can replace scaffold-target-id elsewhere
+  (let [scaffold-target->id (reduce
+                              (fn [accum {:keys [scaffold-target] :as card}]
+                                (when-not scaffold-target
+                                  (throw (ex-info (i18n/tru "A scaffold-target was not provided for Card: {0}" (:name card))
+                                                  {:status-code 400})))
+                                (let [card (api.card/create-card! (-> card
+                                                                      (assoc :collection_id collection-id)
+                                                                      (dissoc :scaffold-target)))]
+                                  (assoc accum (into ["scaffold-target-id"] scaffold-target) (:id card))))
+                              {}
+                              cards)]
+    ;; We create the dashboards (without dashcards) so we can replace scaffold-target-id elsewhere
+    (reduce
+      (fn [accum {:keys [scaffold-target] :as page}]
+        (when-not scaffold-target
+          (throw (ex-info (i18n/tru "A scaffold-target was not provided for Page: {0}" (:name page))
+                          {:status-code 400})))
+        (let [blank-page (-> page
+                             (assoc :collection_id collection-id
+                                    :is_app_page true
+                                    :creator_id api/*current-user-id*)
+                             (dissoc :ordered_cards :scaffold-target))
+              dashboard (db/insert! Dashboard blank-page)]
+          (assoc accum (into ["scaffold-target-id"] scaffold-target) (:id dashboard))))
+      scaffold-target->id
+      pages)))
+
+(defn- create-scaffold-dashcards! [scaffold-target->id pages]
+  (doseq [{:keys [ordered_cards scaffold-target]} pages
+          :let [dashboard-id (get scaffold-target->id (into ["scaffold-target-id"] scaffold-target))]]
+    ;; if dashcards need to refer to each other with scaffold-target they must be in the right order
+    (reduce (fn [accum {:keys [scaffold-target] :as dashcard}]
+              (let [{dashcard-id :id} (dashboard/add-dashcard!
+                                        dashboard-id
+                                        (:card_id dashcard)
+                                        (replace-scaffold-targets dashcard accum))]
+                (cond-> accum
+                  scaffold-target (assoc (into ["scaffold-target-id"] scaffold-target) dashcard-id))))
+            {}
+            ordered_cards)))
 
 (defn- generate-scaffold
   [app-name table-ids]
@@ -108,7 +153,25 @@
                         (cond-> {:page_id ["scaffold-target-id" "page" table-id page-type]}
                           (= page-type "detail") (assoc :indent 1 :hidden true)))}
      :cards (for [table-id table-ids
-                  :let [table (get table-id->table table-id)]
+                  :let [table (get table-id->table table-id)
+                        order-by-field-id (->> table
+                                               :fields
+                                               (keep (fn [field]
+                                                       (let [field-name (str/lower-case (:name field))]
+                                                         (cond
+                                                           (= field-name "updated_at")
+                                                           [0 (:id field)]
+
+                                                           (= field-name "created_at")
+                                                           [1 (:id field)]
+
+                                                           (and (= :type/PK (:semantic_type field))
+                                                             (isa? (:base_type field) :type/Number))
+                                                           [2 (:id field)]))))
+
+                                               sort
+                                               first
+                                               second)]
                   page-type ["list" "detail"]]
               {:scaffold-target ["card" table-id page-type]
                :name (format "Query %s %s"
@@ -119,7 +182,8 @@
                                          (= page-type "list") (assoc "actions.bulk_enabled" false))
                :dataset_query {:type "query"
                                :database (:db_id table)
-                               :query {:source_table table-id}}})
+                               :query (cond-> {:source_table table-id}
+                                        order-by-field-id (assoc :order_by [["desc", ["field", order-by-field-id, nil]]]))}})
      :pages (for [table-id table-ids
                   :let [table (get table-id->table table-id)
                         pks (filter (comp #(= :type/PK %) :semantic_type) (:fields table))
@@ -134,36 +198,40 @@
                               (get-in page-type-display [page-type :name]))
                 :scaffold-target ["page" table-id page-type]
                 :ordered_cards (if (= "list" page-type)
-                                 [{:size_y 6 :size_x 18 :row 1 :col 0
+                                 [{:size_y 8 :size_x 18 :row 1 :col 0
                                    :card_id ["scaffold-target-id" "card" table-id page-type]
                                    :visualization_settings {"click_behavior"
                                                             {"type" "link"
-                                                             "linkType" "dashboard"
+                                                             "linkType" "page"
                                                              "parameterMapping" {(str "scaffold_" table-id) {"source" {"type" "column",
                                                                                                                        "id" "ID",
                                                                                                                        "name" "ID"},
                                                                                                              "target" {"type" "parameter",
                                                                                                                        "id" (str "scaffold_" table-id)},
-                                                                                                             "id" "scaffold_91"}}
+                                                                                                             "id" (str "scaffold_" table-id)}}
                                                              "targetId" ["scaffold-target-id" "page" table-id "detail"]}}}
                                   {:size_y 1 :size_x 2 :row 0 :col 16
                                    :visualization_settings {"virtual_card" {"display" "action-button"}
-                                                            "button.label" "New",
+                                                            "button.label" (i18n/tru "New"),
                                                             "click_behavior" {"type" "action" "actionType" "insert" "tableId" table-id}}}]
-                                 [{:size_y 6 :size_x 18 :row 1 :col 0
+                                 [{:size_y 8 :size_x 18 :row 1 :col 0
                                    :parameter_mappings [{"parameter_id" (str "scaffold_" table-id)
                                                          "card_id" ["scaffold-target-id" "card" table-id "detail"]
                                                          "target" ["dimension", ["field", pk-field-id, nil]]}]
                                    :card_id ["scaffold-target-id" "card" table-id "detail"]
                                    :scaffold-target ["dashcard" table-id]}
+                                  {:size_y 1 :size_x 2 :row 0 :col 0
+                                   :visualization_settings {"virtual_card" {"display" "action-button"}
+                                                            "button.label" (i18n/tru "← Back to list"),
+                                                            "click_behavior" {"type" "link" "linkType" "page" "targetId" ["scaffold-target-id" "page" table-id "list"]}}}
                                   {:size_y 1 :size_x 2 :row 0 :col 16
                                    :visualization_settings {"virtual_card" {"display" "action-button"}
-                                                            "button.label" "Delete",
+                                                            "button.label" (i18n/tru "Delete"),
                                                             "button.variant" "danger"
                                                             "click_behavior" {"type" "action" "actionType" "delete" "objectDetailDashCardId" ["scaffold-target-id" "dashcard" table-id]}}}
                                   {:size_y 1 :size_x 2 :row 0 :col 14
                                    :visualization_settings {"virtual_card" {"display" "action-button"}
-                                                            "button.label" "Edit",
+                                                            "button.label" (i18n/tru "Edit"),
                                                             "click_behavior" {"type" "action" "actionType" "update" "objectDetailDashCardId" ["scaffold-target-id" "dashcard" table-id]}}}])}
                 (= "detail" page-type) (assoc :parameters [{:name "ID",
                                                             :slug "id",
@@ -179,48 +247,26 @@
     (let [{:keys [app pages cards] :as scaffold} (generate-scaffold app-name table-ids)
           ;; Create a blank app with just the collection info, we will update the rest later after we replace scaffold-target-id
           {app-id :id {collection-id :id} :collection} (create-app! (select-keys app [:collection]))
-          ;; We create the cards so we can replace scaffold-target-id elsewhere
-          scaffold-target->id (reduce
-                                (fn [accum {:keys [scaffold-target] :as card}]
-                                  (when-not scaffold-target
-                                    (throw (ex-info (i18n/tru "A scaffold-target was not provided for Card: {0}" (:name card))
-                                                    {:status-code 400})))
-                                  (let [card (api.card/create-card! (-> card
-                                                                        (assoc :collection_id collection-id)
-                                                                        (dissoc :scaffold-target)))]
-                                    (assoc accum (into ["scaffold-target-id"] scaffold-target) (:id card))))
-                                {}
-                                cards)
-          ;; We create the dashboards (without dashcards) so we can replace scaffold-target-id elsewhere
-          scaffold-target->id (reduce
-                                (fn [accum {:keys [scaffold-target] :as page}]
-                                  (when-not scaffold-target
-                                    (throw (ex-info (i18n/tru "A scaffold-target was not provided for Page: {0}" (:name page))
-                                                    {:status-code 400})))
-                                  (let [blank-page (-> page
-                                                       (assoc :collection_id collection-id
-                                                              :is_app_page true
-                                                              :creator_id api/*current-user-id*)
-                                                       (dissoc :ordered_cards :scaffold-target))
-                                        dashboard (db/insert! Dashboard blank-page)]
-                                    (assoc accum (into ["scaffold-target-id"] scaffold-target) (:id dashboard))))
-                                scaffold-target->id
-                                pages)
+          scaffold-target->id (create-scaffold-cards-and-pages! collection-id cards pages)
           ;; now replace targets with actual ids
           {:keys [app pages]} (replace-scaffold-targets scaffold scaffold-target->id)]
       (db/update! App app-id (select-keys app [:dashboard_id :options :nav_items]))
-      (doseq [{:keys [ordered_cards scaffold-target]} pages
-              :let [dashboard-id (get scaffold-target->id (into ["scaffold-target-id"] scaffold-target))]]
-        ;; if dashcards need to refer to each other with scaffold-target they must be in the right order
-        (reduce (fn [accum {:keys [scaffold-target] :as dashcard}]
-                  (let [{dashcard-id :id} (dashboard/add-dashcard!
-                                            dashboard-id
-                                            (:card_id dashcard)
-                                            (replace-scaffold-targets dashcard accum))]
-                    (cond-> accum
-                      scaffold-target (assoc (into ["scaffold-target-id"] scaffold-target) dashcard-id))))
-                {}
-                ordered_cards))
+      (create-scaffold-dashcards! scaffold-target->id pages)
+      (hydrate-details (db/select-one App :id app-id)))))
+
+(api/defendpoint POST "/:app-id/scaffold"
+  "Endpoint to scaffold a new table onto an existing data-app"
+  [app-id :as {{:keys [table-ids]} :body}]
+  (db/transaction
+    (let [{app-id :id app-name :name nav-items :nav_items {collection-id :id} :collection} (hydrate-details (db/select-one App :id app-id))
+          ;; We can scaffold this as a new app, but use the existing collection-id and nav-items to merge into the existing app
+          {:keys [pages cards] :as scaffold} (generate-scaffold app-name table-ids)
+          scaffold-target->id (create-scaffold-cards-and-pages! collection-id cards pages)
+          ;; now replace targets with actual ids
+          {:keys [app pages]} (replace-scaffold-targets scaffold scaffold-target->id)]
+      ;; update nav items
+      (db/update! App app-id {:nav_items (into (or nav-items []) (:nav_items app))})
+      (create-scaffold-dashcards! scaffold-target->id pages)
       (hydrate-details (db/select-one App :id app-id)))))
 
 (api/define-routes)
