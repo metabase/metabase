@@ -127,8 +127,8 @@
 
 (defn- segmented-user?
   []
-  (if-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
-    (segmented-user?)
+  (if-let [segmented? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
+    (segmented?)
     false))
 
 (s/defn card-id->source-query-and-metadata :- SourceQueryAndMetadata
