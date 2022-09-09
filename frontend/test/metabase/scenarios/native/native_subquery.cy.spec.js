@@ -49,7 +49,16 @@ describe("scenarios > question > native subquery", () => {
 
           cy.findByText("Open Editor").click();
 
-          cy.get(".ace_editor").should("be.visible").type(" a_unique");
+          cy.get(".ace_editor").should("be.visible").type(" a");
+
+          // Can't use cy.type here as it doesn't consistently keep the autocomplete open
+          cy.realPress("_");
+          cy.realPress("u");
+          cy.realPress("n");
+          cy.realPress("i");
+          cy.realPress("q");
+          cy.realPress("u");
+          cy.realPress("e");
 
           // Wait until another explicit autocomplete is triggered
           // (slightly longer than AUTOCOMPLETE_DEBOUNCE_DURATION)
@@ -71,11 +80,18 @@ describe("scenarios > question > native subquery", () => {
           // Wait until another explicit autocomplete is triggered
           cy.wait(1000);
 
-          cy.get(".ace_editor:not(.ace_autocomplete)").type(" another_unique");
+          cy.get(".ace_editor:not(.ace_autocomplete)").type(" a");
+
+          cy.realPress("n");
+          cy.realPress("o");
+          cy.realPress("t");
+          cy.realPress("h");
+          cy.realPress("e");
+          cy.realPress("r");
 
           cy.get(".ace_autocomplete")
             .should("be.visible")
-            .findByText("ANOTHER_UNIQUE");
+            .findByText("ANOTHER");
         });
       });
     });
