@@ -244,7 +244,7 @@ function DashCardCardParameterMapper({
           </Tooltip>
         </>
       )}
-      {onlyAcceptsSingleValue && (
+      {onlyAcceptsSingleValue && !isDisabled && (
         <Warning>
           {t`This field only accepts a single value because it's used in a SQL query.`}
         </Warning>
