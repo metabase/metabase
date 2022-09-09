@@ -43,8 +43,9 @@
   original labels by eg. truncating them to keep the file names from getting too long. The labels aren't used at all on
   the loading side, so it's fine to drop them."
   [root-dir hierarchy]
-  (let [unlabeled (mapv #(dissoc % :label) hierarchy)]
-    (-> (u.yaml/hierarchy->file root-dir hierarchy) ; Use the original hierarchy for the filesystem.
+  (let [unlabeled (mapv #(dissoc % :label) hierarchy)
+        file      (u.yaml/hierarchy->file root-dir hierarchy)] ; Use the original hierarchy for the filesystem.
+    (-> (when (.exists file) file) ; If the returned file doesn't actually exist, replace it with nil.
         yaml/from-file
         read-timestamps
         (assoc :serdes/meta unlabeled)))) ; But return the hierarchy without labels.
