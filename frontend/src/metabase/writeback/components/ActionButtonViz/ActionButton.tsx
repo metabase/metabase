@@ -1,41 +1,23 @@
-import React, { useCallback, useMemo } from "react";
+import React from "react";
 
-import type { Dashboard } from "metabase-types/api";
+import { isImplicitActionButton } from "metabase/writeback/utils";
+
+import type { ActionButtonDashboardCard, Dashboard } from "metabase-types/api";
 import type { VisualizationProps } from "metabase-types/types/Visualization";
 
-import ActionButtonView from "./ActionButtonView";
+import DefaultActionButton from "./DefaultActionButton";
+import ImplicitActionButton from "./ImplicitActionButton";
 
 interface ActionButtonProps extends VisualizationProps {
+  dashcard: ActionButtonDashboardCard;
   dashboard: Dashboard;
 }
 
-function ActionButton({
-  isSettings,
-  settings,
-  getExtraDataForClick,
-  onVisualizationClick,
-}: ActionButtonProps) {
-  const clickObject = useMemo(() => ({ settings }), [settings]);
-
-  const extraData = useMemo(
-    () => getExtraDataForClick?.(clickObject),
-    [clickObject, getExtraDataForClick],
-  );
-
-  const onClick = useCallback(() => {
-    onVisualizationClick({
-      ...clickObject,
-      extraData,
-    });
-  }, [clickObject, extraData, onVisualizationClick]);
-
-  return (
-    <ActionButtonView
-      onClick={onClick}
-      settings={settings}
-      isFullHeight={!isSettings}
-    />
-  );
+function ActionButton({ dashcard, ...props }: ActionButtonProps) {
+  if (isImplicitActionButton(dashcard)) {
+    return <ImplicitActionButton {...props} />;
+  }
+  return <DefaultActionButton {...props} />;
 }
 
 export default ActionButton;
