@@ -280,6 +280,9 @@
   [new-user :- NewUser]
   (db/insert! User (update new-user :password #(or % (str (UUID/randomUUID))))))
 
+(defn serdes-synthesize-user! [new-user]
+  (insert-new-user! new-user))
+
 (s/defn create-and-invite-user!
   "Convenience function for inviting a new `User` and sending out the welcome email."
   [new-user :- NewUser, invitor :- Invitor, setup? :- s/Bool]
