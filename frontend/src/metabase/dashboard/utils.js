@@ -1,5 +1,6 @@
 import _ from "underscore";
 import Utils from "metabase/lib/utils";
+import { isNative } from "metabase/lib/query";
 
 export function syncParametersAndEmbeddingParams(before, after) {
   if (after.parameters && before.embedding_params) {
@@ -49,6 +50,10 @@ export function expandInlineCard(card) {
 
 export function isVirtualDashCard(dashcard) {
   return _.isObject(dashcard.visualization_settings.virtual_card);
+}
+
+export function isNativeDashCard(dashcard) {
+  return isNative(dashcard.card?.dataset_query);
 }
 
 // For a virtual (text) dashcard without any parameters, returns a boolean indicating whether we should display the

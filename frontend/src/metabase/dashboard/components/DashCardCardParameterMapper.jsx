@@ -4,6 +4,7 @@ import { connect } from "react-redux";
 import _ from "underscore";
 import { t } from "ttag";
 
+import MetabaseSettings from "metabase/lib/settings";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
@@ -12,6 +13,7 @@ import { isVariableTarget } from "metabase/parameters/utils/targets";
 import { isDateParameter } from "metabase/parameters/utils/parameter-type";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
+  isNativeDashCard,
   isVirtualDashCard,
   showVirtualDashCardInfoText,
 } from "metabase/dashboard/utils";
@@ -34,6 +36,10 @@ import {
   ChevrondownIcon,
   KeyIcon,
   Warning,
+  NativeCardDefault,
+  NativeCardIcon,
+  NativeCardText,
+  NativeCardLink,
 } from "./DashCardCardParameterMapper.styled";
 
 function formatSelected({ name, sectionName }) {
@@ -94,6 +100,7 @@ function DashCardCardParameterMapper({
   );
 
   const isVirtual = isVirtualDashCard(dashcard);
+  const isNative = isNativeDashCard(dashcard);
 
   const hasPermissionsToMap = useMemo(() => {
     if (isVirtual) {
@@ -155,14 +162,14 @@ function DashCardCardParameterMapper({
     ]);
 
   const headerContent = useMemo(() => {
-    if (!isVirtual) {
+    if (!isVirtual && !(isNative && isDisabled)) {
       return t`Column to filter on`;
     } else if (dashcard.size_y !== 1 || isMobile) {
       return t`Variable to map to`;
     } else {
       return null;
     }
-  }, [dashcard, isVirtual, isMobile]);
+  }, [dashcard, isVirtual, isNative, isDisabled, isMobile]);
 
   const mappingInfoText = t`You can connect widgets to {{variables}} in text cards.`;
 
@@ -185,6 +192,16 @@ function DashCardCardParameterMapper({
             />
           </TextCardDefault>
         )
+      ) : isNative && isDisabled ? (
+        <NativeCardDefault>
+          <NativeCardIcon name="info" />
+          <NativeCardText>{t`Add a variable to this question to connect it to a dashboard filter.`}</NativeCardText>
+          <NativeCardLink
+            href={MetabaseSettings.docsUrl(
+              "questions/native-editor/sql-parameters",
+            )}
+          >{t`Learn how`}</NativeCardLink>
+        </NativeCardDefault>
       ) : (
         <>
           {headerContent && <Header>{headerContent}</Header>}
