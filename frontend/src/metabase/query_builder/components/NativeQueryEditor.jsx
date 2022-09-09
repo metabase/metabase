@@ -312,8 +312,11 @@ class NativeQueryEditor extends Component {
                   ]),
               );
 
-            // Concat the results from tables, models, and referenced questions
-            results = apiResults.concat(questionColumns);
+            // Concat the results from tables, fields, and referenced questions.
+            // The ace editor will deduplicate results based on name, keeping results
+            // that come first. In case of a name conflict, prioritise referenced
+            // questions' columns over tables and fields.
+            results = questionColumns.concat(apiResults);
           }
 
           // transform results into what ACE expects
