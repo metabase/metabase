@@ -569,10 +569,10 @@
 ;; with the result. The tests below just check that we can render a sparkline (without eceptions) and that the
 ;; attachment is included
 
-(defn- render-sparkline [results]
+#_(defn- render-sparkline [results]
   (body/render :sparkline :inline pacific-tz render.tu/test-card nil results))
 
-(deftest render-sparkline-test
+#_(deftest render-sparkline-test
   (testing "Test that we can render a sparkline with all valid values"
     (is (has-inline-image?
          (render-sparkline
