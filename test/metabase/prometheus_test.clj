@@ -100,10 +100,17 @@
           (finally (prometheus/stop-web-server ~system)))))
 
 (deftest web-server-test
-  (with-prometheus-system [port _]
-    (let [metrics-in-registry (metric-tags port)]
-      (is (seq (set/intersection common-metrics metrics-in-registry))
-          "Did not get metrics from the port"))))
+  (testing "Can get metrics from the web-server"
+    (with-prometheus-system [port _]
+      (let [metrics-in-registry (metric-tags port)]
+        (is (seq (set/intersection common-metrics metrics-in-registry))
+            "Did not get metrics from the port"))))
+  (testing "Throws helpful message if cannot start server"
+    ;; start another system on the same port
+    (with-prometheus-system [port _]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Failed to initialize Prometheus on port"
+                            (#'prometheus/make-prometheus-system port "test-failure"))))))
 
 (deftest c3p0-collector-test
   (testing "Registry has c3p0 registered"
@@ -137,8 +144,3 @@
                                  (metric-lines port))]
         (is (seq (set/intersection expected-lines actual-lines))
             "Registry does not have c3p0 metrics in it")))))
-
-(comment
-  (def r (.registry (var-get #'prometheus/system)))
-  (.collectors r)
-  )

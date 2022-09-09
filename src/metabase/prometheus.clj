@@ -67,7 +67,7 @@
           web-server (start-web-server! port registry)]
       (->PrometheusSystem registry web-server))
     (catch Exception e
-      (throw (ex-info (trs "Failed to initialized Prometheus on port {0}" port)
+      (throw (ex-info (trs "Failed to initialize Prometheus on port {0}" port)
                       {:port port}
                       e)))))
 
