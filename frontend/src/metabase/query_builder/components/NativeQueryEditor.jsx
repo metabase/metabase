@@ -559,7 +559,9 @@ const mapStateToProps = () => ({});
 const mapDispatchToProps = dispatch => {
   return {
     fetchQuestion: async id => {
-      const action = await dispatch(Questions.actions.fetch({ id }));
+      const action = await dispatch(
+        Questions.actions.fetch({ id }, { noEvent: true }),
+      );
       return Questions.HACK_getObjectFromAction(action);
     },
   };

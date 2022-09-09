@@ -285,8 +285,13 @@ function withCachedData(
       const requestStatePath = ["requests", ...getRequestStatePath(...args)];
       const newQueryKey = getQueryKey && getQueryKey(...args);
       const existingData = getIn(getState(), existingStatePath);
-      const { loading, loaded, queryKey } =
+      const { loading, loaded, queryKey, error } =
         getIn(getState(), requestStatePath) || {};
+
+      // Avoid repeatedly requesting data with permanently forbidded access
+      if (reload !== true && error?.status === 403) {
+        throw error;
+      }
 
       const hasRequestedProperties =
         properties &&
