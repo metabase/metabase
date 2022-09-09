@@ -513,7 +513,7 @@
   "If a value was uploaded for the SSL key, return whether it's using the PKCS-12 format."
   [ssl-key-value]
   (when ssl-key-value
-    (= (second (re-find secret/uploaded-base-64-pattern ssl-key-value))
+    (= (second (re-find secret/uploaded-base-64-prefix-pattern ssl-key-value))
        "x-pkcs12")))
 
 (defn- ssl-params

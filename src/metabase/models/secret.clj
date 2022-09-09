@@ -66,42 +66,46 @@
 
   `ext?` is an optional argument that sets the file extension used for the temporary file, if one needs to be created."
   {:added "0.42.0"}
-  ^File [{:keys [connection-property-name id value] :as secret} & [driver? ext?]]
-  (if (= :file-path (:source secret))
-    (let [secret-val          (value->string secret)
-          ^File existing-file (File. secret-val)]
-      (if (.exists existing-file)
-        existing-file
-        (let [error-source (cond
-                             id
-                             (tru "Secret ID {0}" id)
+  (^File [secret]
+   (value->file!* secret nil))
+  (^File [secret driver?]
+   (value->file!* secret driver? nil))
+  (^File [{:keys [connection-property-name id value] :as secret} driver? ext?]
+   (if (= :file-path (:source secret))
+     (let [secret-val          (value->string secret)
+           ^File existing-file (File. secret-val)]
+       (if (.exists existing-file)
+         existing-file
+         (let [error-source (cond
+                              id
+                              (tru "Secret ID {0}" id)
 
-                             (and connection-property-name driver?)
-                             (let [secret-props (-> (driver/connection-properties driver?)
-                                                    conn-props->secret-props-by-name)]
-                               (tru "File path for {0}" (-> (get secret-props connection-property-name)
-                                                          :display-name)))
+                              (and connection-property-name driver?)
+                              (let [secret-props (-> (driver/connection-properties driver?)
+                                                     conn-props->secret-props-by-name)]
+                                (tru "File path for {0}" (-> (get secret-props connection-property-name)
+                                                             :display-name)))
 
-                             :else
-                             (tru "Path"))]
-          (throw (ex-info (tru "{0} points to non-existent file: {1}" error-source secret-val)
-                   {:file-path secret-val
-                    :secret    secret})))))
-    (let [^File tmp-file (doto (File/createTempFile "metabase-secret_" ext?)
-                           ;; make the file only readable by owner
-                           (.setReadable false false)
-                           (.setReadable true true)
-                           (.deleteOnExit))]
-      (log/tracef "Creating temp file for secret %s value at %s" (or id "") (.getAbsolutePath tmp-file))
-      (with-open [out (io/output-stream tmp-file)]
-        (let [^bytes v (cond
-                         (string? value)
-                         (.getBytes ^String value "UTF-8")
+                              :else
+                              (tru "Path"))]
+           (throw (ex-info (tru "{0} points to non-existent file: {1}" error-source secret-val)
+                           {:file-path secret-val
+                            :secret    secret})))))
+     (let [^File tmp-file (doto (File/createTempFile "metabase-secret_" ext?)
+                            ;; make the file only readable by owner
+                            (.setReadable false false)
+                            (.setReadable true true)
+                            (.deleteOnExit))]
+       (log/tracef "Creating temp file for secret %s value at %s" (or id "") (.getAbsolutePath tmp-file))
+       (with-open [out (io/output-stream tmp-file)]
+         (let [^bytes v (cond
+                          (string? value)
+                          (.getBytes ^String value "UTF-8")
 
-                         (bytes? value)
-                         ^bytes value)]
-          (.write out v)))
-      tmp-file)))
+                          (bytes? value)
+                          ^bytes value)]
+           (.write out v)))
+       tmp-file))))
 
 (def
   ^java.io.File
@@ -118,7 +122,7 @@
   `ext?` is an optional argument that sets the file extension used for the temporary file, if one needs to be created."
   (memoize/memo
    (with-meta value->file!*
-     {::memoize/args-fn (fn [[secret & [_driver? ext?]]]
+     {::memoize/args-fn (fn [[secret [_driver? ext?]]]
                           ;; not clear if value->string could return nil due to the cond so we'll just cache on a key
                           ;; that is unique
                           [(vec (:value secret)) ext?])})))
@@ -130,7 +134,7 @@
         sub-prop #(keyword (str connection-property-name "-" (name %)))]
     (zipmap sub-prop-types (map sub-prop sub-prop-types))))
 
-(def uploaded-base-64-pattern
+(def uploaded-base-64-prefix-pattern
   "Regex for parsing base64 encoded file uploads."
   #"^data:application/([^;]*);base64,")
 
@@ -155,13 +159,13 @@
         value  (cond
                  ;; ssl-root-certs will need their prefix removed, and to be base 64 decoded (#20319)
                  (and (value-kw details) (#{"ssl-client-cert" "ssl-root-cert"} conn-prop-nm)
-                      (re-find uploaded-base-64-pattern (value-kw details)))
-                 (-> (value-kw details) (str/replace-first uploaded-base-64-pattern "") u/decode-base64)
+                      (re-find uploaded-base-64-prefix-pattern (value-kw details)))
+                 (-> (value-kw details) (str/replace-first uploaded-base-64-prefix-pattern "") u/decode-base64)
 
                  (and (value-kw details) (#{"ssl-key"} conn-prop-nm)
-                      (re-find uploaded-base-64-pattern (value-kw details)))
+                      (re-find uploaded-base-64-prefix-pattern (value-kw details)))
                  (.decode (java.util.Base64/getDecoder)
-                          (str/replace-first (value-kw details) uploaded-base-64-pattern ""))
+                          (str/replace-first (value-kw details) uploaded-base-64-prefix-pattern ""))
 
                  ;; the -value suffix was specified; use that
                  (value-kw details)

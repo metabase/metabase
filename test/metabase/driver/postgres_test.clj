@@ -260,7 +260,7 @@
             (mt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname db-name)}]
               (let [sync! #(sync/sync-database! database)]
                 ;; create a main partitioned table and two partitions for it
-                (exec! spec ["CREATE TABLE part_vals (val bigint NOT NULL) PARTITION BY RANGE (\"val\")"
+                (exec! spec ["CREATE TABLE part_vals (val bigint NOT NULL) PARTITION BY RANGE (\"val\");"
                              "CREATE TABLE part_vals_0 (val bigint NOT NULL);"
                              "ALTER TABLE ONLY part_vals ATTACH PARTITION part_vals_0 FOR VALUES FROM (0) TO (1000);"
                              "CREATE TABLE part_vals_1 (val bigint NOT NULL);"
