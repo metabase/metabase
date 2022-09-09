@@ -160,13 +160,13 @@
          card
 
          persisted? (and persisted-info/*allow-persisted-substitution*
-                         (not (segmented-user?))
                          (:active card)
                          (:definition card)
                          (:query_hash card)
                          (= (:query_hash card) (persisted-info/query-hash (:dataset_query card)))
                          (= (:definition card) (persisted-info/metadata->definition (:result_metadata card)
                                                                                     (:table_name card)))
+                         (not (segmented-user?))
                          (= (:state card) "persisted"))
 
          source-query (cond
