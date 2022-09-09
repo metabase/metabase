@@ -27,7 +27,7 @@ import DashCardParameterMapper from "./DashCardParameterMapper";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
 
-import ActionsLinkingControl from "metabase/writeback/components/ActionsLinkingControl";
+import { isActionButtonCard } from "metabase/writeback/utils";
 
 import cx from "classnames";
 import _ from "underscore";
@@ -179,7 +179,7 @@ export default class DashCard extends Component {
       parameterValues,
     );
 
-    const isActionButton = mainCard.display === "action-button";
+    const isActionButton = isActionButtonCard(mainCard);
 
     const hideBackground =
       !isEditing &&
@@ -190,7 +190,7 @@ export default class DashCard extends Component {
     const isEditingDashboardLayout =
       isEditing && clickBehaviorSidebarDashcard == null && !isEditingParameter;
 
-    const gridSize = { width: dashcard.sizeX, height: dashcard.sizeY };
+    const gridSize = { width: dashcard.size_x, height: dashcard.size_y };
 
     return (
       <DashCardRoot
@@ -213,9 +213,6 @@ export default class DashCard extends Component {
               hasError={!!errorMessage}
               onRemove={onRemove}
               onAddSeries={onAddSeries}
-              onUpdateVisualizationSettings={
-                this.props.onUpdateVisualizationSettings
-              }
               onReplaceAllVisualizationSettings={
                 this.props.onReplaceAllVisualizationSettings
               }
@@ -225,7 +222,6 @@ export default class DashCard extends Component {
               isPreviewing={this.state.isPreviewingCard}
               onPreviewToggle={this.handlePreviewToggle}
               dashboard={dashboard}
-              metadata={metadata}
             />
           </DashboardCardActionsPanel>
         ) : null}
@@ -355,13 +351,11 @@ const DashCardActionButtons = ({
   hasError,
   onRemove,
   onAddSeries,
-  onUpdateVisualizationSettings,
   onReplaceAllVisualizationSettings,
   showClickBehaviorSidebar,
   onPreviewToggle,
   isPreviewing,
   dashboard,
-  metadata,
 }) => {
   const buttons = [];
 
@@ -389,7 +383,7 @@ const DashCardActionButtons = ({
         />,
       );
     }
-    if (!isVirtualDashCard || card.display === "action-button") {
+    if (!isVirtualDashCard || isActionButtonCard(card)) {
       buttons.push(
         <Tooltip key="click-behavior-tooltip" tooltip={t`Click behavior`}>
           <a
@@ -413,18 +407,6 @@ const DashCardActionButtons = ({
         />,
       );
     }
-  }
-
-  if (card.display === "actions") {
-    buttons.push(
-      <ActionsLinkingControl
-        key="connect-actions"
-        card={card}
-        dashboard={dashboard}
-        metadata={metadata}
-        onUpdateVisualizationSettings={onUpdateVisualizationSettings}
-      />,
-    );
   }
 
   return (

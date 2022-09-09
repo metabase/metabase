@@ -2,7 +2,7 @@
 title: Questions overview
 ---
 
-# Questions
+# Questions overview
 
 Questions are queries plus their visualization. You can ask questions using Metabase's graphical query builder, or create a native/SQL query.
 
@@ -56,6 +56,10 @@ Save questions, download results, and share links.
 
 Choose from a variety of visualization types.
 
-### [Sharing](./sharing/alerts.md)
+### [Alerts](./sharing/alerts.md)
 
 Get results via email or Slack, either on a schedule, or only when something interesting happens.
+
+### [Public links](./sharing/public-links.md)
+
+Share your data with the good people of the internet.

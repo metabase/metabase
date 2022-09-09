@@ -1,8 +1,10 @@
 ---
-title: "Finding things and keeping organized"
+title: "Exploration and organization overview"
 ---
 
-# Finding things and keeping organized
+# Exploration and organization overview
+
+Tools for finding things and keeping your Metabase organized. 
 
 ## [Basic exploration](./exploration.md)
 

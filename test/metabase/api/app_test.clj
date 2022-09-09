@@ -1,54 +1,43 @@
 (ns metabase.api.app-test
   (:require
     [clojure.test :refer [deftest is testing]]
-    [metabase.models :refer [App Collection Dashboard]]
+    [medley.core :as m]
+    [metabase.models :refer [App Card Collection Dashboard]]
     [metabase.models.permissions :as perms]
     [metabase.models.permissions-group :as perms-group]
-    [metabase.test :as mt]))
+    [metabase.test :as mt]
+    [metabase.test.data :as data]
+    [toucan.db :as db]
+    [toucan.hydrate :refer [hydrate]]))
 
 (deftest create-test
   (mt/with-model-cleanup [Collection]
     (let [base-params {:name "App collection"
                        :color "#123456"}]
       (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
-        (testing "Create app in non-root collection"
+        (testing "parent_id is ignored when creating apps"
           (mt/with-temp* [Collection [{collection-id :id}]]
             (let [coll-params (assoc base-params :parent_id collection-id)
                   response (mt/user-http-request :crowberto :post 200 "app" {:collection coll-params})]
               (is (pos-int? (:id response)))
               (is (pos-int? (:collection_id response)))
-              (is (partial= (assoc base-params :location (format "/%d/" collection-id))
+              (is (partial= (assoc base-params :location "/")
                             (:collection response))))))
-        (testing "Create aoo in the root"
+        (testing "Create app in the root"
           (let [response (mt/user-http-request :crowberto :post 200 "app" {:collection base-params})]
             (is (pos-int? (:id response)))
             (is (pos-int? (:collection_id response)))
             (is (partial= (assoc base-params :location "/")
                           (:collection response)))))
-        (testing "Collection permissions"
-          (mt/with-non-admin-groups-no-root-collection-perms
-            (mt/with-temp* [Collection [{collection-id :id}]]
-              (let [coll-params (assoc base-params :parent_id collection-id)]
-                (is (= "You don't have permissions to do that."
-                       (mt/user-http-request :rasta :post 403 "app" {:collection coll-params}))))))
-          (mt/with-temp* [Collection [{collection-id :id}]]
-            (let [coll-params (assoc base-params :parent_id collection-id)
-                  response (mt/user-http-request :rasta :post 200 "app" {:collection coll-params})]
-              (is (pos-int? (:id response)))
-              (is (pos-int? (:collection_id response)))
-              (is (partial= (assoc base-params :location (format "/%d/" collection-id))
-                            (:collection response))))))
         (testing "With initial dashboard and nav_items"
-          (mt/with-temp* [Collection [{collection-id :id}]
-                          Dashboard [{dashboard-id :id}]]
-            (let [coll-params (assoc base-params :parent_id collection-id)
-                  nav_items [{:options {:click_behavior {}}}]]
-              (is (partial= {:collection (assoc base-params :location (format "/%d/" collection-id))
+          (mt/with-temp Dashboard [{dashboard-id :id}]
+            (let [nav_items [{:options {:click_behavior {}}}]]
+              (is (partial= {:collection (assoc base-params :location "/")
                              :dashboard_id dashboard-id
                              :nav_items nav_items}
-                            (mt/user-http-request :crowberto :post 200 "app" {:collection coll-params
-                                                                              :dashboard_id dashboard-id
-                                                                              :nav_items nav_items}))))))))))
+                            (mt/user-http-request :rasta :post 200 "app" {:collection base-params
+                                                                          :dashboard_id dashboard-id
+                                                                          :nav_items nav_items}))))))))))
 
 (deftest update-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
@@ -57,8 +46,7 @@
       (mt/with-temp* [Collection [{collection_id :id}]
                       App [{app_id :id} (assoc app-data :collection_id collection_id)]
                       Dashboard [{dashboard_id :id}]]
-        (let [expected (merge app-data {:collection_id collection_id
-                                        :dashboard_id dashboard_id})]
+        (let [expected (assoc app-data :collection_id collection_id :dashboard_id dashboard_id)]
           (testing "setting the dashboard_id doesn't affect the other fields"
             (is (partial= expected
                           (mt/user-http-request :crowberto :put 200 (str "app/" app_id) {:dashboard_id dashboard_id}))))
@@ -147,3 +135,33 @@
         (testing "that app detail properly checks permissions"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (str "app/" app-id)))))))))
+
+(deftest scaffold-test
+  (mt/with-model-cleanup [Card Dashboard Collection]
+    (testing "Golden path"
+      (let [app (mt/user-http-request
+                  :crowberto :post 200 "app/scaffold"
+                  {:table-ids [(data/id :venues)]
+                   :app-name (str "My test app " (gensym))})
+            pages (m/index-by :name (hydrate (db/select Dashboard :collection_id (:collection_id app)) :ordered_cards))
+            list-page (get pages "Venues List")
+            detail-page (get pages "Venues Detail")]
+        (is (partial= {:nav_items [{:page_id (:id list-page)}
+                                   {:page_id (:id detail-page) :hidden true :indent 1}]
+                       :dashboard_id (:id list-page)}
+                      app))
+        (is (partial= {:ordered_cards [{:visualization_settings {:click_behavior
+                                                                 {:type "link",
+                                                                  :linkType "dashboard",
+                                                                  :targetId (:id detail-page)}}}
+                                       {}]}
+                      list-page))))
+    (testing "Bad or duplicate tables"
+      (is (= (format "Some tables could not be found. Given: (%s %s) Found: (%s)"
+                     (data/id :venues)
+                     Integer/MAX_VALUE
+                     (data/id :venues))
+             (mt/user-http-request
+               :crowberto :post 400 "app/scaffold"
+               {:table-ids [(data/id :venues) (data/id :venues) Integer/MAX_VALUE]
+                :app-name (str "My test app " (gensym))}))))))

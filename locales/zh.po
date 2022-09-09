@@ -2265,31 +2265,31 @@ msgstr "保存失败"
 
 #: frontend/src/metabase/components/Calendar.tsx:134
 msgid "Su"
-msgstr "周日"
+msgstr "日"
 
 #: frontend/src/metabase/components/Calendar.tsx:134
 msgid "Mo"
-msgstr "周一"
+msgstr "一"
 
 #: frontend/src/metabase/components/Calendar.tsx:134
 msgid "Tu"
-msgstr "周二"
+msgstr "二"
 
 #: frontend/src/metabase/components/Calendar.tsx:134
 msgid "We"
-msgstr "周三"
+msgstr "三"
 
 #: frontend/src/metabase/components/Calendar.tsx:134
 msgid "Th"
-msgstr "周四"
+msgstr "四"
 
 #: frontend/src/metabase/components/Calendar.tsx:134
 msgid "Fr"
-msgstr "周五"
+msgstr "五"
 
 #: frontend/src/metabase/components/Calendar.tsx:134
 msgid "Sa"
-msgstr "周六"
+msgstr "六"
 
 #: frontend/src/metabase/components/ChannelSetupMessage.jsx:41
 msgid "Your admin's email address"
@@ -13481,7 +13481,7 @@ msgstr "为数据库{0}安排任务失败"
 msgid "All elements must be distinct."
 msgstr "所有元素必须是独特的。"
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "选择需要包含的列"
@@ -17911,12 +17911,12 @@ msgstr "{0} {1}"
 msgid "{1}"
 msgstr "{1}"
 
-#: 
+#:
 msgctxt "This is a new information message on the new pulse creation page."
 msgid "Pulses are being phased out"
 msgstr "豆类正在被逐步淘汰"
 
-#: 
+#:
 msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "你现在可以设置{0}来代替。我们将在未来的版本中删除Pulses，并帮助你迁移你仍然拥有的任何Pulses。"
@@ -17925,7 +17925,7 @@ msgstr "你现在可以设置{0}来代替。我们将在未来的版本中删除
 msgid "dashboard subscriptions"
 msgstr "仪表板订阅"
 
-#: 
+#:
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "{0}订阅中的图表与仪表板中的图表看起来不一样。{1}"
 
@@ -18074,7 +18074,7 @@ msgid "Set up {0} source database and run migrations..."
 msgstr "设置{0}源数据库并运行迁移..."
 
 #. make sure the dest DB is up-to-date
-#. 
+#.
 #. don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
 #: metabase/cmd/copy.clj:343
 msgid "Set up {0} target database and run migrations..."

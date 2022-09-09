@@ -1,8 +1,8 @@
 ---
-title: "Configuring Metabase"
+title: "Configuring Metabase overview"
 ---
 
-# Configuring Metabase
+# Configuring Metabase overview
 
 ## [Setting up Metabase](./setting-up-metabase.md)
 
@@ -23,6 +23,10 @@ Set up Slack for Alerts and Dashboard subscriptions.
 ## [Localization](./localization.md)
 
 Set language, datetime, and currency settings.
+
+## [Appearance](./appearance.md)
+
+Customize colors, fonts, and other visual elements.
 
 ## [Caching](./caching.md)
 

@@ -1,5 +1,6 @@
 import React, { MouseEvent, useMemo } from "react";
 import _ from "underscore";
+import { getEventTarget } from "metabase/lib/dom";
 import Tooltip from "metabase/components/Tooltip";
 import DataPointTooltip from "./DataPointTooltip";
 import TimelineEventTooltip from "./TimelineEventTooltip";
@@ -8,7 +9,6 @@ import {
   HoveredTimelineEvent,
   VisualizationSettings,
 } from "./types";
-import { getEventTarget } from "./utils";
 
 export interface ChartTooltipProps {
   hovered?: HoveredObject;

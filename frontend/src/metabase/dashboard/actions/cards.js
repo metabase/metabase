@@ -93,8 +93,8 @@ export const addActionButtonDashCardToDashboard = ({ dashId }) => {
   };
   const dashcardOverrides = {
     card: virtualActionsCard,
-    sizeX: 2,
-    sizeY: 1,
+    size_x: 2,
+    size_y: 1,
     visualization_settings: {
       virtual_card: virtualActionsCard,
     },

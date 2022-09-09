@@ -208,7 +208,7 @@
       ;; i'm a bit worried that this is an n+1 situation here. The cards can be batch hydrated i think because they
       ;; have a hydration key and an id. moderation_reviews currently aren't batch hydrated but i'm worried they
       ;; cannot be in this situation
-      (hydrate [:ordered_cards [:card [:moderation_reviews :moderator_details]] :series] :collection_authority_level :can_write :param_fields)
+      (hydrate [:ordered_cards [:card [:moderation_reviews :moderator_details]] :series :dashcard/action] :collection_authority_level :can_write :param_fields)
       (cond-> api/*is-superuser?* (hydrate [:emitters [:action :card]]))
       api/read-check
       api/check-not-archived
@@ -422,8 +422,8 @@
   (su/with-api-error-message
     {:id                                  (su/with-api-error-message su/IntGreaterThanOrEqualToZero
                                             "value must be a DashboardCard ID.")
-     (s/optional-key :sizeX)              (s/maybe su/IntGreaterThanZero)
-     (s/optional-key :sizeY)              (s/maybe su/IntGreaterThanZero)
+     (s/optional-key :size_x)             (s/maybe su/IntGreaterThanZero)
+     (s/optional-key :size_y)             (s/maybe su/IntGreaterThanZero)
      (s/optional-key :row)                (s/maybe su/IntGreaterThanOrEqualToZero)
      (s/optional-key :col)                (s/maybe su/IntGreaterThanOrEqualToZero)
      (s/optional-key :parameter_mappings) (s/maybe [{:parameter_id su/NonBlankString
@@ -438,8 +438,8 @@
   "Update `Cards` on a Dashboard. Request body should have the form:
 
     {:cards [{:id                 ... ; DashboardCard ID
-              :sizeX              ...
-              :sizeY              ...
+              :size_x             ...
+              :size_y             ...
               :row                ...
               :col                ...
               :parameter_mappings ...
@@ -689,8 +689,6 @@
       (into {} (for [field-id filtered-field-ids]
                  [field-id (sort (chain-filter/filterable-field-ids field-id filtering-field-ids))])))))
 
-;;; ---------------------------------- Executing the action associated with a Dashcard -------------------------------
-
 (def ParameterWithID
   "Schema for a parameter map with an string `:id`."
   (su/with-api-error-message
@@ -699,11 +697,24 @@
     "value must be a parameter map with an 'id' key"))
 
 
-(api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/action/:action-id/execute"
-  "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it."
-  [dashboard-id dashcard-id action-id :as {{:keys [parameters], :as _body} :body}]
-  {parameters (s/maybe [ParameterWithID])}
-  (actions.execution/execute-dashcard! action-id dashboard-id dashcard-id parameters))
+(def ParameterWithTarget
+  "Schema for a parameter map with an mbql `:target`."
+  (su/with-api-error-message
+    {:target   [s/Any]
+     s/Keyword s/Any}
+    "value must be a parameter map with a 'target' key"))
+
+;;; ---------------------------------- Executing the action associated with a Dashcard -------------------------------
+
+(api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/action/execute"
+  "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
+
+   `parameters` should be the mapped dashboard parameters with values.
+   `extra_parameters` should be the extra, user entered parameter values."
+  [dashboard-id dashcard-id :as {{:keys [parameters extra_parameters], :as _body} :body}]
+  {parameters (s/maybe [ParameterWithID])
+   extra_parameters (s/maybe [ParameterWithTarget])}
+  (actions.execution/execute-dashcard! dashboard-id dashcard-id parameters extra_parameters))
 
 ;;; ---------------------------------- Running the query associated with a Dashcard ----------------------------------
 

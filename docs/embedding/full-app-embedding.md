@@ -1,10 +1,10 @@
 ---
-title: Embedding all of Metabase in your web app
+title: Full-app embedding
 redirect_from:
   - /docs/latest/enterprise-guide/full-app-embedding
 ---
 
-# Embedding all of Metabase in your web app
+# Full-app embedding 
 
 {% include plans-blockquote.html feature="Full-app embedding" %}
 
@@ -158,7 +158,7 @@ When signing JWTs for either SSO (i.e., in full-app embedding) or standalone que
 
 ## Further reading
 
-- [White labeling](whitelabeling.md)
-- [Deliver analytics to your customers](https://www.metabase.com/learn/building-analytics/dashboards/linking-filters.html)
-- [Embed Metabase in your app to deliver multi-tenant, self-service analytics](https://www.metabase.com/learn/developing-applications/advanced-metabase/multi-tenant-self-service-analytics.html)
-- [Create charts with explorable data](https://www.metabase.com/learn/developing-applications/advanced-metabase/multi-tenant-self-service-analytics.html)
+- [Customizing Metabase's appearance](../configuring-metabase/appearance.md).
+- [Strategies for delivering customer-facing analytics](https://www.metabase.com/learn/embedding/embedding-overview).
+- [Publishing data visualizations to the web](https://www.metabase.com/learn/embedding/embedding-charts-and-dashboards).
+- [Multi-tenant self-service analytics](https://www.metabase.com/learn/embedding/multi-tenant-self-service-analytics).

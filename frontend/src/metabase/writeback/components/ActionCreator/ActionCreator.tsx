@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { connect } from "react-redux";
+import { push } from "react-router-redux";
 
 import Actions from "metabase/entities/actions";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -9,9 +10,12 @@ import { createQuestionFromAction } from "metabase/writeback/selectors";
 import Question from "metabase-lib/lib/Question";
 
 import type NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import type { State } from "metabase-types/store";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
-import type { WritebackQueryAction } from "metabase/writeback/types";
+import type {
+  WritebackQueryAction,
+  ActionFormSettings,
+} from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import Modal from "metabase/components/Modal";
 
@@ -36,6 +40,10 @@ const mapStateToProps = (
   actionId: action ? action.id : undefined,
 });
 
+const mapDispatchToProps = {
+  push,
+};
+
 interface ActionCreatorProps {
   metadata: Metadata;
   question?: Question;
@@ -47,10 +55,14 @@ function ActionCreatorComponent({
   metadata,
   question: passedQuestion,
   actionId,
+  push,
 }: ActionCreatorProps) {
   const [question, setQuestion] = useState(
     passedQuestion ?? newQuestion(metadata),
   );
+  const [formSettings, setFormSettings] = useState<
+    ActionFormSettings | undefined
+  >(undefined);
   const [showSaveModal, setShowSaveModal] = useState(false);
 
   useEffect(() => {
@@ -67,8 +79,9 @@ function ActionCreatorComponent({
   const afterSave = (action: SavedCard) => {
     setQuestion(question.setCard(action));
     setTimeout(() => setShowSaveModal(false), 1000);
-    // cannot redirect new action to /action/:id
-    // because the backend doesnt give us an action id yet
+    if (!actionId && action.action_id) {
+      setTimeout(() => push(`/action/${action.action_id}`), 1500);
+    }
   };
 
   const handleClose = () => setShowSaveModal(false);
@@ -86,7 +99,13 @@ function ActionCreatorComponent({
       />
       <ActionCreatorBodyContainer>
         <QueryActionEditor question={question} setQuestion={setQuestion} />
-        <FormCreator tags={query?.templateTagsWithoutSnippets()} />
+        <FormCreator
+          tags={query?.templateTagsWithoutSnippets()}
+          formSettings={
+            question?.card()?.visualization_settings as ActionFormSettings
+          }
+          onChange={setFormSettings}
+        />
       </ActionCreatorBodyContainer>
       {showSaveModal && (
         <Modal onClose={handleClose}>
@@ -98,6 +117,7 @@ function ActionCreatorComponent({
               name: question.displayName(),
               description: question.description(),
               collection_id: question.collectionId(),
+              formSettings,
               question,
             }}
             onSaved={afterSave}
@@ -113,5 +133,5 @@ export const ActionCreator = _.compose(
   Actions.load({
     id: (state: State, props: { actionId?: number }) => props.actionId,
   }),
-  connect(mapStateToProps),
+  connect(mapStateToProps, mapDispatchToProps),
 )(ActionCreatorComponent);

@@ -55,7 +55,7 @@ describe("adjustSettings", () => {
         chartSize,
       );
 
-      expect(adjustedSettings.x.tick_display).toBe("rotate-45");
+      expect(adjustedSettings.x.tick_display).toBe("rotate-90");
     });
 
     it("hides X-ticks when they can't fit", () => {

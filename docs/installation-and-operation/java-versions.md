@@ -1,10 +1,10 @@
 ---
-title: Java Versions
+title: Java versions
 redirect_from:
   - /docs/latest/operations-guide/java-versions
 ---
 
-# Java Versions
+# Java versions
 
 Metabase requires a Java Runtime Environment (JRE), with a Java version of 11 or higher.
 

@@ -49,6 +49,8 @@ jobs:
             exit 0
           fi
 
+          echo "::set-output name=has-conflicts::false"
+
           git checkout master
           git push -u origin ${BACKPORT_BRANCH}
 

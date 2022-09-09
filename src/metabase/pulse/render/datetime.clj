@@ -3,41 +3,93 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [java-time :as t]
+            [metabase.public-settings :as public-settings]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [trs tru]]
             [metabase.util.schema :as su]
             [schema.core :as s])
-  (:import java.time.format.DateTimeFormatter
+  (:import com.ibm.icu.text.RuleBasedNumberFormat
+           java.time.format.DateTimeFormatter
            java.time.Period
-           java.time.temporal.Temporal))
+           java.time.temporal.Temporal
+           java.util.Locale))
+
+(defn temporal-string?
+  "Returns `true` if the string `s` is parseable as a datetime.
+
+  `(temporal-string? \"asdf\")` -> false
+  `(temporal-string? \"2020-02-02\")` -> true"
+  [s]
+  (boolean
+    (try
+      (u.date/parse s)
+      (catch Exception _e false))))
 
 (defn- reformat-temporal-str [timezone-id s new-format-string]
   (t/format new-format-string (u.date/parse s timezone-id)))
 
+(defn- day-of-week
+  [n abbreviate]
+  (let [fmtr (java.time.format.DateTimeFormatter/ofPattern (if abbreviate "EEE" "EEEE"))]
+    (.format fmtr (java.time.DayOfWeek/of n))))
+
+(defn- month-of-year
+  [n abbreviate]
+  (let [fmtr (java.time.format.DateTimeFormatter/ofPattern (if abbreviate "MMM" "MMMM"))]
+    (.format fmtr (java.time.Month/of n))))
+
+(defn- x-of-y
+  "Format an integer as x-th of y, for example, 2nd week of year."
+  [n]
+  (let [nf (RuleBasedNumberFormat. (Locale. (public-settings/site-locale)) RuleBasedNumberFormat/ORDINAL)]
+    (.format nf n)))
+
+(defn- hour-of-day
+  [s time-style]
+  (let [n  (parse-long s)
+        ts (u.date/parse "2022-01-01-00:00:00")]
+    (u.date/format time-style (t/plus ts (t/hours n)))))
+
 (defn format-temporal-str
   "Reformat a temporal literal string `s` (i.e., an ISO-8601 string) with a human-friendly format based on the
   column `:unit`."
-  [timezone-id s col]
-  (cond (str/blank? s) ""
+  ([timezone-id s col] (format-temporal-str timezone-id s col {}))
+  ([timezone-id s col col-viz-settings]
+   (Locale/setDefault (Locale. (public-settings/site-locale)))
+   (let [{date-style :date_style
+          abbreviate :date_abbreviate
+          time-style :time_style} col-viz-settings]
+     (cond (str/blank? s) ""
 
-        (isa? (or (:effective_type col) (:base_type col)) :type/Time)
-        (t/format DateTimeFormatter/ISO_LOCAL_TIME (u.date/parse s timezone-id))
+           (isa? (or (:effective_type col) (:base_type col)) :type/Time)
+           (t/format DateTimeFormatter/ISO_LOCAL_TIME (u.date/parse s timezone-id))
 
-        :else
-        (case (:unit col)
-          ;; these types have special formatting
-          :hour    (reformat-temporal-str timezone-id s "h a - MMM yyyy")
-          :week    (str "Week " (reformat-temporal-str timezone-id s "w - YYYY"))
-          :month   (reformat-temporal-str timezone-id s "MMMM yyyy")
-          :quarter (reformat-temporal-str timezone-id s "QQQ - yyyy")
+           :else
+           (case (:unit col)
+             ;; these types have special formatting
+             :minute  (reformat-temporal-str timezone-id s
+                                             (str (or date-style "MMMM, yyyy") ", "
+                                                  (str/replace (or time-style "h:mm a") #"A" "a")))
+             :hour    (reformat-temporal-str timezone-id s
+                                             (str (or date-style "MMMM, yyyy") ", "
+                                                  (str/replace (or time-style "h a") #"A" "a")))
+             :day     (reformat-temporal-str timezone-id s (or date-style "EEEE, MMMM d, YYYY"))
+             :week    (str (tru "Week ") (reformat-temporal-str timezone-id s "w - YYYY"))
+             :month   (reformat-temporal-str timezone-id s (or date-style "MMMM, yyyy"))
+             :quarter (reformat-temporal-str timezone-id s "QQQ - yyyy")
+             :year    (reformat-temporal-str timezone-id s "YYYY")
 
-          ;; no special formatting here : return as ISO-8601
-          ;; TODO: probably shouldn't even be showing sparkline for x-of-y groupings?
-          (:year :hour-of-day :day-of-week :week-of-year :month-of-year)
-          s
+             ;; s is just a number as a string here
+             :day-of-week     (day-of-week (parse-long s) abbreviate)
+             :month-of-year   (month-of-year (parse-long s) abbreviate)
+             :quarter-of-year (format "Q%s" s)
+             :hour-of-day     (hour-of-day s (str/replace (or time-style "h a") #"A" "a"))
 
-          ;; for everything else return in this format
-          (reformat-temporal-str timezone-id s "MMM d, yyyy"))))
+             (:week-of-year :minute-of-hour :day-of-month :day-of-year) (x-of-y (parse-long s))
+             ;; TODO: probably shouldn't even be showing sparkline for x-of-y groupings?
+
+             ;; for everything else return in this format
+             (reformat-temporal-str timezone-id s "MMM d, yyyy"))))))
 
 (def ^:private RenderableInterval
   {:interval-start     Temporal

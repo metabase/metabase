@@ -123,7 +123,7 @@
       (is (= {:model        "Dashboard"
               :model_id     dashboard-id
               :user_id      (mt/user->id :rasta)
-              :object       (assoc (dashboard->revision-object dashboard) :cards [(assoc (select-keys dashcard [:id :card_id :sizeX :sizeY :row :col]) :series [])])
+              :object       (assoc (dashboard->revision-object dashboard) :cards [(assoc (select-keys dashcard [:id :card_id :size_x :size_y :row :col]) :series [])])
               :is_reversion false
               :is_creation  false}
              (mt/derecordize
@@ -157,18 +157,18 @@
     (mt/with-temp* [Dashboard     [{dashboard-id :id, :as dashboard}]
                     Card          [{card-id :id}                     (card-properties)]
                     DashboardCard [dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]]
-      (db/update! DashboardCard (:id dashcard), :sizeX 4)
+      (db/update! DashboardCard (:id dashcard), :size_x 4)
       (revision/process-revision-event! {:topic :dashboard-reeposition-cards
                                          :item  {:id        dashboard-id
                                                  :actor_id  (mt/user->id :crowberto)
-                                                 :dashcards [(assoc dashcard :sizeX 4)]}})
+                                                 :dashcards [(assoc dashcard :size_x 4)]}})
       (is (= {:model        "Dashboard"
               :model_id     dashboard-id
               :user_id      (mt/user->id :crowberto)
               :object       (assoc (dashboard->revision-object dashboard) :cards [{:id      (:id dashcard)
                                                                                    :card_id card-id
-                                                                                   :sizeX   4
-                                                                                   :sizeY   2
+                                                                                   :size_x  4
+                                                                                   :size_y  2
                                                                                    :row     0
                                                                                    :col     0
                                                                                    :series  []}])

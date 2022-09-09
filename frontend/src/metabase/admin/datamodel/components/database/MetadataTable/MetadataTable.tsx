@@ -6,11 +6,14 @@ import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import withTableMetadataLoaded from "metabase/admin/datamodel/hoc/withTableMetadataLoaded";
 import Radio from "metabase/core/components/Radio";
+import { isSyncCompleted } from "metabase/lib/syncing";
 import { DatabaseEntity, TableEntity } from "metabase-types/entities";
+import { TableVisibilityType } from "metabase-types/api";
 import { State } from "metabase-types/store";
 
 import ColumnsList from "../ColumnsList";
 import MetadataSchema from "../MetadataSchema";
+import TableSyncWarning from "../TableSyncWarning";
 import {
   TableDescription,
   TableDescriptionInput,
@@ -63,7 +66,13 @@ const MetadataTable = ({
     handlePropertyUpdate("description", event.target.value);
   };
 
+  const handleVisibilityTypeChange = (visibilityType: TableVisibilityType) => {
+    handlePropertyUpdate("visibility_type", visibilityType);
+  };
+
   const isHidden = !!table.visibility_type;
+  const isSynced = isSyncCompleted(table);
+  const hasFields = table.fields && table.fields.length > 0;
 
   if (!table) {
     return null;
@@ -154,6 +163,9 @@ const MetadataTable = ({
             />
           )}
         </div>
+      )}
+      {!isSynced && isHidden && !hasFields && (
+        <TableSyncWarning onVisibilityTypeChange={handleVisibilityTypeChange} />
       )}
     </div>
   );

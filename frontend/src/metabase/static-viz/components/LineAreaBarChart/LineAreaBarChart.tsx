@@ -1,5 +1,6 @@
 import { color } from "metabase/lib/colors";
 import { colors } from "metabase/lib/colors/palette";
+import { ColorGetter } from "metabase/static-viz/lib/colors";
 import React from "react";
 import { XYChart } from "../XYChart";
 import { ChartSettings, ChartStyle, Series } from "../XYChart/types";
@@ -14,39 +15,40 @@ interface LineAreaBarChartProps {
   series: Series[];
   settings: ChartSettings;
   colors: Colors;
+  getColor: ColorGetter;
 }
 
 const LineAreaBarChart = ({
   series,
   settings,
-  colors: instanceColors,
+  getColor,
 }: LineAreaBarChartProps) => {
-  const palette = { ...colors, ...instanceColors };
-
   const chartStyle: ChartStyle = {
     fontFamily: "Lato, sans-serif",
     axes: {
-      color: color("text-light", palette),
+      color: getColor("text-light"),
       ticks: {
-        color: color("text-medium", palette),
-        fontSize: 11,
+        color: getColor("text-medium"),
+        fontSize: 12,
       },
       labels: {
-        color: color("text-medium", palette),
-        fontSize: 11,
+        color: getColor("text-medium"),
+        fontSize: 14,
         fontWeight: 700,
       },
     },
     legend: {
-      fontSize: 13,
-      lineHeight: 16,
+      fontSize: 16,
+      lineHeight: 20,
     },
     value: {
-      color: color("text-dark", palette),
-      fontSize: 11,
+      color: getColor("text-dark"),
+      fontSize: 12,
       fontWeight: 800,
+      stroke: getColor("white"),
+      strokeWidth: 3,
     },
-    goalColor: color("text-medium", palette),
+    goalColor: getColor("text-medium"),
   };
 
   const minTickSize = chartStyle.axes.ticks.fontSize * 1.5;
