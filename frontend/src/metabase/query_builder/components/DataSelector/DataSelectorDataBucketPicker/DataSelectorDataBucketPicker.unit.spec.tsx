@@ -5,7 +5,7 @@ import DataSelectorDataBucketPicker from "./DataSelectorDataBucketPicker";
 
 describe("DataSelectorDataBucketPicker", () => {
   it("displays bucket names", () => {
-    render(<DataSelectorDataBucketPicker />);
+    render(<DataSelectorDataBucketPicker onChangeDataBucket={jest.fn()} />);
 
     expect(screen.getByText("Models")).toBeInTheDocument();
     expect(screen.getByText("Raw Data")).toBeInTheDocument();
