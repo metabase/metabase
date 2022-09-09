@@ -271,7 +271,7 @@ describe("scenarios > dashboard > parameters", () => {
       cy.icon("pencil").click();
       cy.icon("filter").click();
       cy.findByText("ID").click();
-      cy.findByText("No valid fields");
+      cy.findByText(/Add a variable to this question/).should("be.visible");
 
       // Confirm that the correct parameter type is connected to the native question's field filter
       cy.findByText(matchingFilterType.name).find(".Icon-gear").click();
@@ -301,7 +301,7 @@ describe("scenarios > dashboard > parameters", () => {
       // Confirm that it is not possible to connect filter to the updated question anymore (metabase#9299)
       cy.icon("pencil").click();
       cy.findByText(matchingFilterType.name).find(".Icon-gear").click();
-      cy.findByText("No valid fields");
+      cy.findByText(/Add a variable to this question/).should("be.visible");
     });
   });
 
@@ -451,48 +451,6 @@ describe("scenarios > dashboard > parameters", () => {
       "?title=Awesome%20Concrete%20Shoes&category=Widget&vendor=McClure-Lockman",
     );
     cy.findAllByTestId("table-row").should("have.length", 1);
-  });
-
-  it("should show an empty state for native questions without matching parameters", () => {
-    const questionDetails = {
-      name: "SQL",
-      native: {
-        database: SAMPLE_DB_ID,
-        query: "SELECT {{tag}}",
-        "template-tags": {
-          tag: {
-            id: "6b8b10ef-0104-1047-1e1b-2492d5954322",
-            name: "tag",
-            display_name: "tag",
-            type: "text",
-            default: "1",
-          },
-        },
-      },
-    };
-
-    const parameterDetails = {
-      name: "Text contains",
-      slug: "text_contains",
-      id: "1b9cd9f1",
-      type: "string/contains",
-      sectionId: "string",
-    };
-
-    const dashboardDetails = {
-      parameters: [parameterDetails],
-    };
-
-    cy.createNativeQuestionAndDashboard({
-      questionDetails,
-      dashboardDetails,
-    }).then(({ body: { dashboard_id } }) => {
-      visitDashboard(dashboard_id);
-    });
-
-    editDashboard();
-    cy.findByText(parameterDetails.name).click();
-    cy.findByText(/Add a variable to this question/).should("be.visible");
   });
 
   describe("when the user does not have self-service data permissions", () => {
