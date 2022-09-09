@@ -62,9 +62,14 @@
   "Takes a port (zero for a random port in test) and a registry name and returns a [[PrometheusSystem]] with a registry
   serving metrics from that port."
   [port registry-name]
-  (let [registry (setup-metrics! registry-name)
-        web-server (start-web-server! port registry)]
-    (->PrometheusSystem registry web-server)))
+  (try
+    (let [registry (setup-metrics! registry-name)
+          web-server (start-web-server! port registry)]
+      (->PrometheusSystem registry web-server))
+    (catch Exception e
+      (throw (ex-info (trs "Failed to initialized Prometheus on port {0}" port)
+                      {:port port}
+                      e)))))
 
 ;;; Collectors
 
