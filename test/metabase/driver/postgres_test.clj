@@ -75,6 +75,7 @@
             :user                          "camsaul"
             :ssl                           true
             :sslmode                       "require"
+            :sslpassword                   ""
             :ApplicationName               config/mb-version-and-process-identifier}
            (sql-jdbc.conn/connection-details->spec :postgres
              {:ssl    true
@@ -106,6 +107,7 @@
             :sslkey                        "my-key"
             :sslfactory                    "myfactoryoverride"
             :sslrootcert                   "myrootcert"
+            :sslpassword                   ""
             :ApplicationName               config/mb-version-and-process-identifier}
            (sql-jdbc.conn/connection-details->spec :postgres
              {:ssl         true
@@ -258,7 +260,7 @@
             (mt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname db-name)}]
               (let [sync! #(sync/sync-database! database)]
                 ;; create a main partitioned table and two partitions for it
-                (exec! spec ["CREATE TABLE part_vals (val bigint NOT NULL) PARTITION BY RANGE (\"val\")";"
+                (exec! spec ["CREATE TABLE part_vals (val bigint NOT NULL) PARTITION BY RANGE (\"val\");"
                              "CREATE TABLE part_vals_0 (val bigint NOT NULL);"
                              "ALTER TABLE ONLY part_vals ATTACH PARTITION part_vals_0 FOR VALUES FROM (0) TO (1000);"
                              "CREATE TABLE part_vals_1 (val bigint NOT NULL);"
@@ -317,18 +319,18 @@
                         Field    [val-field {:table_id      (u/the-id table)
                                              :nfc_path      [:jsons "values" "qty"]
                                              :database_type "integer"}]]
-        (qp.store/with-store
-          (qp.store/fetch-and-store-database! (u/the-id database))
-          (qp.store/fetch-and-store-tables! [(u/the-id table)])
-          (qp.store/fetch-and-store-fields! [(u/the-id val-field)])
-          (let [field-clause [:field (u/the-id val-field) {:binning
-                                                           {:strategy :num-bins,
-                                                            :num-bins 100,
-                                                            :min-value 0.75,
-                                                            :max-value 54.0,
-                                                            :bin-width 0.75}}]]
-            (is (= ["((floor((((complicated_identifiers.jsons#>> ?::text[])::integer  - 0.75) / 0.75)) * 0.75) + 0.75)" "{values,qty}"]
-                   (hsql/format (sql.qp/->honeysql :postgres field-clause)))))))))))
+          (qp.store/with-store
+            (qp.store/fetch-and-store-database! (u/the-id database))
+            (qp.store/fetch-and-store-tables! [(u/the-id table)])
+            (qp.store/fetch-and-store-fields! [(u/the-id val-field)])
+            (let [field-clause [:field (u/the-id val-field) {:binning
+                                                             {:strategy :num-bins,
+                                                              :num-bins 100,
+                                                              :min-value 0.75,
+                                                              :max-value 54.0,
+                                                              :bin-width 0.75}}]]
+              (is (= ["((floor((((complicated_identifiers.jsons#>> ?::text[])::integer  - 0.75) / 0.75)) * 0.75) + 0.75)" "{values,qty}"]
+                     (hsql/format (sql.qp/->honeysql :postgres field-clause)))))))))))
 
 (deftest json-alias-test
   (mt/test-driver :postgres
@@ -559,7 +561,7 @@
                        :parameters
                        [{:type   "text"
                          :target ["dimension" ["template-tag" "user"]]
-                         :value  "4f01dcfd-13f7-430c-8e6f-e505c0851027"}])))))
+                         :value  "4f01dcfd-13f7-430c-8e6f-e505c0851027"}]))))))
       (testing "Check that we can filter by multiple UUIDs for SQL Field filters"
         (is (= [[1 #uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027"]
                 [3 #uuid "da1d6ecc-e775-4008-b366-c38e7a2e8433"]]
@@ -577,7 +579,7 @@
                        [{:type   "text"
                          :target ["dimension" ["template-tag" "user"]]
                          :value  ["4f01dcfd-13f7-430c-8e6f-e505c0851027"
-                                  "da1d6ecc-e775-4008-b366-c38e7a2e8433"]}]))))))))))
+                                  "da1d6ecc-e775-4008-b366-c38e7a2e8433"]}])))))))))
 
 
 (mt/defdataset ip-addresses
@@ -959,7 +961,7 @@
 (deftest can-set-ssl-key-via-gui
   (testing "ssl key can be set via the gui (#20319)"
     (with-redefs [secret/value->file!
-                  (fn [{:keys [connection-property-name value] :as _secret} _driver?]
+                  (fn [{:keys [connection-property-name value] :as _secret} & [_driver? _ext?]]
                     (str "file:" connection-property-name "=" value))]
       (is (= "file:ssl-key=/clientkey.pkcs12"
              (:sslkey
@@ -969,7 +971,7 @@
                 :ssl-client-cert-path "/client.pem"
                 :ssl-key-options "local"
                 :ssl-key-password-value "sslclientkeypw!"
-                :ssl-key-path "/clientkey.pkcs12", ;; <-- this is what is set via ui.
+                :ssl-key-path "/clientkey.pkcs12" ;; <-- this is what is set via ui.
                 :ssl-mode "verify-ca"
                 :ssl-root-cert-options "local"
                 :ssl-root-cert-path "/root.pem"
@@ -982,3 +984,24 @@
                 :user "bcm"
                 :password "abcdef123"
                 :port 5432})))))))
+
+(deftest pkcs-12-extension-test
+  (testing "Uploaded PKCS-12 SSL keys are stored in a file with the .p12 extension (#20319)"
+    (is (true?
+         (-> (#'postgres/ssl-params
+              {:ssl true
+               :ssl-key-options "uploaded"
+               :ssl-key-value "data:application/x-pkcs12;base64,SGVsbG8="
+               :ssl-mode "require"
+               :ssl-use-client-auth true
+               :tunnel-enabled false
+               :advanced-options false
+               :dbname "metabase"
+               :engine :postgres
+               :host "localhost"
+               :user "bcm"
+               :password "abcdef123"
+               :port 5432})
+             :sslkey
+             .getAbsolutePath
+             (str/ends-with? ".p12"))))))
