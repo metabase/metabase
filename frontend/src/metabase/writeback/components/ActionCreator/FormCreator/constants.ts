@@ -39,12 +39,12 @@ interface InputOptionsMap {
 
 const getTextInputs = (): InputOptionType[] => [
   {
-    value: "text",
-    name: t`long text`,
-  },
-  {
     value: "string",
     name: t`text`,
+  },
+  {
+    value: "text",
+    name: t`long text`,
   },
 ];
 
