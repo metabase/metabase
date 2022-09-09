@@ -56,10 +56,11 @@
       (eduction (comp (filter (fn [^File f] (.isFile f)))
                       ;; The immediate parent directory should be a recognized model name.
                       ;; If it's not, this may be in .git, or .github/actions/... or similar extra files.
-                      (filter (fn [^File f] (-> f
-                                                (.getParentFile)
-                                                (.getName)
-                                                model-set)))
+                      (filter (fn [^File f] (or (= (.getName f) "settings.yaml")
+                                                (-> f
+                                                    (.getParentFile)
+                                                    (.getName)
+                                                    model-set))))
                       (mapcat (partial build-metas root-dir)))
                 (file-seq root-dir))))
 
