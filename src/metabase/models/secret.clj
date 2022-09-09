@@ -122,7 +122,7 @@
   `ext?` is an optional argument that sets the file extension used for the temporary file, if one needs to be created."
   (memoize/memo
    (with-meta value->file!*
-     {::memoize/args-fn (fn [[secret [_driver? ext?]]]
+     {::memoize/args-fn (fn [[secret _driver? ext?]]
                           ;; not clear if value->string could return nil due to the cond so we'll just cache on a key
                           ;; that is unique
                           [(vec (:value secret)) ext?])})))
