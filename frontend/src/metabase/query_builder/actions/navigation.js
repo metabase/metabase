@@ -1,9 +1,12 @@
-import _ from "underscore";
 import { parse as parseUrl } from "url";
 import { createAction } from "redux-actions";
 import { push, replace } from "react-router-redux";
 
-import { cleanCopyCard, serializeCardForUrl } from "metabase/lib/card";
+import {
+  cleanCopyCard,
+  deserializeCardFromUrl,
+  serializeCardForUrl,
+} from "metabase/lib/card";
 import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
 import { createThunkAction } from "metabase/lib/redux";
 import Utils from "metabase/lib/utils";
@@ -15,10 +18,10 @@ import Question from "metabase-lib/lib/Question";
 import {
   getCard,
   getDatasetEditorTab,
-  getZoomedObjectId,
   getOriginalQuestion,
   getQueryBuilderMode,
   getQuestion,
+  getZoomedObjectId,
 } from "../selectors";
 import { getQueryBuilderModeFromLocation } from "../typed-utils";
 import {
@@ -28,7 +31,7 @@ import {
 } from "../utils";
 
 import { initializeQB, setCardAndRun } from "./core";
-import { zoomInRow, resetRowZoom } from "./object-detail";
+import { resetRowZoom, zoomInRow } from "./object-detail";
 import { cancelQuery } from "./querying";
 import { setQueryBuilderMode } from "./ui";
 
@@ -59,11 +62,19 @@ export const popState = createThunkAction(
     }
 
     const card = getCard(getState());
-    if (location.state && location.state.card) {
-      if (!Utils.equals(card, location.state.card)) {
-        const shouldRefreshUrl = location.state.card.dataset;
-        await dispatch(setCardAndRun(location.state.card, shouldRefreshUrl));
-        await dispatch(setCurrentState(location.state));
+    if (location.hash) {
+      const cardFromUrl = deserializeCardFromUrl(location.hash);
+
+      if (!Utils.equals(card, cardFromUrl)) {
+        const newState = {
+          card: cardFromUrl,
+          cardId: cardFromUrl.id,
+          serializedCard: serializeCardForUrl(cardFromUrl),
+          objectId: location.state?.objectId,
+        };
+
+        await dispatch(setCardAndRun(cardFromUrl, cardFromUrl.dataset));
+        await dispatch(setCurrentState(newState));
       }
     }
 
@@ -178,7 +189,7 @@ export const updateUrl = createThunkAction(
         }),
         search: urlParsed.search,
         hash: urlParsed.hash,
-        state: newState,
+        state: objectId !== undefined ? { objectId } : undefined,
       };
 
       const isSameURL =
