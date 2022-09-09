@@ -7,6 +7,9 @@ import { isSyncCompleted } from "metabase/lib/syncing";
 import Icon from "metabase/components/Icon";
 import AccordionList from "metabase/core/components/AccordionList";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import type { Database } from "metabase-types/api/database";
+import type Schema from "metabase-lib/lib/metadata/Schema";
+import type Table from "metabase-lib/lib/metadata/Table";
 import DataSelectorSectionHeader from "../DataSelectorSectionHeader";
 
 import { DataSelectorSection as Section } from "../DataSelector.styled";
@@ -19,10 +22,6 @@ import {
   LinkToDocsContainer,
   NoTablesFound,
 } from "./DataSelectorTablePicker.styled";
-
-import type { Database } from "metabase-types/api/database";
-import type Schema from "metabase-lib/lib/metadata/Schema";
-import type Table from "metabase-lib/lib/metadata/Table";
 
 type DataSelectorTablePickerProps = {
   hasFiltering?: boolean;

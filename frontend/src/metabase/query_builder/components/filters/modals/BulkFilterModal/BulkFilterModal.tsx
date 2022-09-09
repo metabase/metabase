@@ -3,20 +3,19 @@ import { t } from "ttag";
 
 import { useDebouncedEffect } from "metabase/hooks/use-debounced-effect";
 
-import Filter from "metabase-lib/lib/queries/structured/Filter";
 import { pluralize } from "metabase/lib/formatting";
-
-import StructuredQuery, {
-  FilterSection,
-  DimensionOption,
-  SegmentOption,
-} from "metabase-lib/lib/queries/StructuredQuery";
-import Question from "metabase-lib/lib/Question";
 
 import Button from "metabase/core/components/Button";
 import Tab from "metabase/core/components/Tab";
 import TabContent from "metabase/core/components/TabContent";
 import Icon from "metabase/components/Icon";
+import Question from "metabase-lib/lib/Question";
+import StructuredQuery, {
+  FilterSection,
+  DimensionOption,
+  SegmentOption,
+} from "metabase-lib/lib/queries/StructuredQuery";
+import Filter from "metabase-lib/lib/queries/structured/Filter";
 import BulkFilterList from "../BulkFilterList";
 import {
   ModalBody,

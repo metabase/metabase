@@ -3,6 +3,7 @@ import React from "react";
 import { t } from "ttag";
 import { assoc } from "icepick";
 
+import { DurationInputArg2 } from "moment-timezone";
 import {
   formatStartingFrom,
   getRelativeDatetimeInterval,
@@ -25,8 +26,6 @@ import {
   DateUnitSelector,
   NumericInput,
 } from "./RelativeDatePicker.styled";
-
-import { DurationInputArg2 } from "moment-timezone";
 
 type RelativeDatePickerProps = {
   className?: string;

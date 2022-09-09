@@ -10,9 +10,8 @@ import DashboardData from "metabase/dashboard/hoc/DashboardData";
 
 const DashboardWithData = DashboardData(Dashboard);
 
-import { AuditMode } from "../lib/mode";
-
 import { getAccentColors } from "metabase/lib/colors/groups";
+import { AuditMode } from "../lib/mode";
 
 const AuditDashboard = ({ cards, ...props }) => (
   <DashboardWithData

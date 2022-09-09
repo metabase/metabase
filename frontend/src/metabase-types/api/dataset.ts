@@ -1,6 +1,6 @@
+import type { DatetimeUnit } from "metabase-types/api/query";
 import { DatabaseId } from "./database";
 import { DownloadPermission } from "./permissions";
-import type { DatetimeUnit } from "metabase-types/api/query";
 
 export interface DatasetColumn {
   display_name: string;

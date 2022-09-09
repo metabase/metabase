@@ -7,6 +7,7 @@ import Question from "metabase-lib/lib/Question";
 import { metadata } from "__support__/sample_database_fixture";
 
 import type { Parameter as ParameterObject } from "metabase-types/types/Parameter";
+import { removeOrphanSettings } from "./utils";
 
 import {
   removeOrphanSettings,

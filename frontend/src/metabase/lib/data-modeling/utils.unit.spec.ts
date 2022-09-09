@@ -1,8 +1,5 @@
 import MetabaseSettings from "metabase/lib/settings";
 
-import Question from "metabase-lib/lib/Question";
-import Database from "metabase-lib/lib/metadata/Database";
-
 import { ModelCacheState } from "metabase-types/api";
 import {
   TemplateTag,
@@ -15,6 +12,8 @@ import { CardId } from "metabase-types/types/Card";
 import { createMockDatabase } from "metabase-types/api/mocks/database";
 import { getMockModelCacheInfo } from "metabase-types/api/mocks/models";
 import { ORDERS, metadata } from "__support__/sample_database_fixture";
+import Database from "metabase-lib/lib/metadata/Database";
+import Question from "metabase-lib/lib/Question";
 
 import {
   checkCanBeModel,

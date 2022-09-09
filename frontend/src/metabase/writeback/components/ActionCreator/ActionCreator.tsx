@@ -7,17 +7,17 @@ import { push } from "react-router-redux";
 import Actions from "metabase/entities/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import { createQuestionFromAction } from "metabase/writeback/selectors";
-import Question from "metabase-lib/lib/Question";
-
-import type NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import type Metadata from "metabase-lib/lib/metadata/Metadata";
 import type {
   WritebackQueryAction,
   ActionFormSettings,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-
 import Modal from "metabase/components/Modal";
+import { SavedCard } from "metabase-types/types/Card";
+import Question from "metabase-lib/lib/Question";
+
+import type NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import type Metadata from "metabase-lib/lib/metadata/Metadata";
 
 import { ActionCreatorHeader } from "./ActionCreatorHeader";
 import { QueryActionEditor } from "./QueryActionEditor";
@@ -29,7 +29,6 @@ import {
 } from "./ActionCreator.styled";
 
 import { newQuestion } from "./utils";
-import { SavedCard } from "metabase-types/types/Card";
 
 const mapStateToProps = (
   state: State,

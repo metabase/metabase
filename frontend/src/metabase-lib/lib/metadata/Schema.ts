@@ -1,7 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import Base from "./Base";
 import { titleize, humanize } from "metabase/lib/formatting";
+import Base from "./Base";
 import type Database from "./Database";
 import type Table from "./Table";
 /**

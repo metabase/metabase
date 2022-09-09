@@ -1,10 +1,9 @@
 import React from "react";
 import { renderWithProviders } from "__support__/ui";
 
-import { NumberColumn, DateTimeColumn } from "../__support__/visualizations";
-
 import Visualization from "metabase/visualizations/components/Visualization";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import { NumberColumn, DateTimeColumn } from "../__support__/visualizations";
 
 const setup = series =>
   renderWithProviders(<Visualization rawSeries={series} />, {

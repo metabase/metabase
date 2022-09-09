@@ -1,16 +1,17 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
+
 // NOTE: this needs to be imported first due to some cyclical dependency nonsense
-import Question from "../Question";
-import Base from "./Base";
+import Question from "../Question"; // eslint-disable-line import/order
 import { singularize } from "metabase/lib/formatting";
 import { getAggregationOperators } from "metabase/lib/schema_metadata";
+import type { TableId } from "metabase-types/types/Table";
 import { createLookupByProperty, memoizeClass } from "metabase-lib/lib/utils";
+import Base from "./Base";
 import type Metadata from "./Metadata";
 import type Schema from "./Schema";
 import type Field from "./Field";
 import type Database from "./Database";
-import type { TableId } from "metabase-types/types/Table";
 /**
  * @typedef { import("./metadata").SchemaName } SchemaName
  * @typedef { import("./metadata").EntityType } EntityType

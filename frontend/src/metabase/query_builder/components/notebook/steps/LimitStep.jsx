@@ -3,8 +3,8 @@ import React from "react";
 
 import { t } from "ttag";
 
-import { NotebookCell } from "../NotebookCell";
 import LimitInput from "metabase/query_builder/components/LimitInput";
+import { NotebookCell } from "../NotebookCell";
 
 export default function LimitStep({
   color,

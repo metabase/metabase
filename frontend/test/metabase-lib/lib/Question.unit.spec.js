@@ -8,12 +8,11 @@ import {
   createMetadata,
 } from "__support__/sample_database_fixture";
 
+import { deserializeCardFromUrl } from "metabase/lib/card";
+import { TYPE as SEMANTIC_TYPE } from "cljs/metabase.types";
 import Question from "metabase-lib/lib/Question";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import { deserializeCardFromUrl } from "metabase/lib/card";
-
-import { TYPE as SEMANTIC_TYPE } from "cljs/metabase.types";
 
 const card = {
   display: "table",

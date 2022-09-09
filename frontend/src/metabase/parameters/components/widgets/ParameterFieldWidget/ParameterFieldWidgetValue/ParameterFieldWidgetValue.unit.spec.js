@@ -1,7 +1,7 @@
 import React from "react";
 
-import ParameterFieldWidgetValue from "./ParameterFieldWidgetValue";
 import { render, screen } from "@testing-library/react";
+import ParameterFieldWidgetValue from "./ParameterFieldWidgetValue";
 
 const value = "A value";
 

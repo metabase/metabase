@@ -3,7 +3,6 @@ import { getIn } from "icepick";
 import _ from "underscore";
 import querystring from "querystring";
 
-import Question from "metabase-lib/lib/Question";
 import {
   setOrUnsetParameterValues,
   setParameterValue,
@@ -15,6 +14,7 @@ import {
 } from "metabase/lib/click-behavior";
 import { renderLinkURLForClick } from "metabase/lib/formatting/link";
 import * as Urls from "metabase/lib/urls";
+import Question from "metabase-lib/lib/Question";
 
 export default ({ question, clicked }) => {
   const settings = (clicked && clicked.settings) || {};

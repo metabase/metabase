@@ -3,10 +3,6 @@ import { t } from "ttag";
 
 import { isTableDisplay } from "metabase/lib/click-behavior";
 
-import CustomLinkText from "./CustomLinkText";
-import QuestionDashboardPicker from "./QuestionDashboardPicker";
-import { SidebarContent } from "../ClickBehaviorSidebar.styled";
-
 import type { UiParameter } from "metabase/parameters/types";
 import type {
   DashboardOrderedCard,
@@ -15,6 +11,9 @@ import type {
   CustomDestinationClickBehavior,
   CustomDestinationClickBehaviorLinkType,
 } from "metabase-types/api";
+import { SidebarContent } from "../ClickBehaviorSidebar.styled";
+import CustomLinkText from "./CustomLinkText";
+import QuestionDashboardPicker from "./QuestionDashboardPicker";
 
 import CustomURLPicker from "./CustomURLPicker";
 import LinkOption from "./LinkOption";

@@ -2,6 +2,7 @@ import React, { useMemo, useCallback } from "react";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import Icon from "metabase/components/Icon";
 
+import { FilterOperatorName } from "metabase-types/types/Metadata";
 import {
   InlineOperatorContainer,
   FieldNameContainer,
@@ -13,7 +14,6 @@ import {
   Option,
   FieldIcon,
 } from "./InlineOperatorSelector.styled";
-import { FilterOperatorName } from "metabase-types/types/Metadata";
 
 interface InlineOperatorSelectorProps {
   fieldName: string;
