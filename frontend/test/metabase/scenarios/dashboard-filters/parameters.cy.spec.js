@@ -453,6 +453,48 @@ describe("scenarios > dashboard > parameters", () => {
     cy.findAllByTestId("table-row").should("have.length", 1);
   });
 
+  it("should show an empty state for native questions without matching parameters", () => {
+    const questionDetails = {
+      name: "SQL",
+      native: {
+        database: SAMPLE_DB_ID,
+        query: "SELECT {{tag}}",
+        "template-tags": {
+          tag: {
+            id: "6b8b10ef-0104-1047-1e1b-2492d5954322",
+            name: "tag",
+            display_name: "tag",
+            type: "text",
+            default: "1",
+          },
+        },
+      },
+    };
+
+    const parameterDetails = {
+      name: "Text contains",
+      slug: "text_contains",
+      id: "1b9cd9f1",
+      type: "string/contains",
+      sectionId: "string",
+    };
+
+    const dashboardDetails = {
+      parameters: [parameterDetails],
+    };
+
+    cy.createNativeQuestionAndDashboard({
+      questionDetails,
+      dashboardDetails,
+    }).then(({ body: { dashboard_id } }) => {
+      visitDashboard(dashboard_id);
+    });
+
+    editDashboard();
+    cy.findByText(parameterDetails.name).click();
+    cy.findByText(/Add a variable to this question/).should("be.visible");
+  });
+
   describe("when the user does not have self-service data permissions", () => {
     beforeEach(() => {
       visitDashboard(1);
