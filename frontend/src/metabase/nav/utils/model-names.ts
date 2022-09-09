@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 const TRANSLATED_NAME_BY_MODEL_TYPE: Record<string, string> = {
+  app: t`App`,
   card: t`Question`,
   dataset: t`Dataset`,
   dashboard: t`Dashboard`,
@@ -9,6 +10,7 @@ const TRANSLATED_NAME_BY_MODEL_TYPE: Record<string, string> = {
   collection: t`Collection`,
   segment: t`Segment`,
   metric: t`Metric`,
+  page: t`Page`,
   pulse: t`Pulse`,
 };
 

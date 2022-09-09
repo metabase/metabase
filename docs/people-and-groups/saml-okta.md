@@ -1,8 +1,8 @@
 ---
-title: Setting up SAML with Okta
+title: SAML with Okta
 ---
 
-# Setting up SAML with Okta
+# SAML with Okta
 
 {% include plans-blockquote.html feature="Okta SAML authentication" %}
 

@@ -1,10 +1,10 @@
 ---
-title: Authenticating with SAML
+title: SAML-based authentication
 redirect_from:
   - /docs/latest/enterprise-guide/authenticating-with-saml
 ---
 
-# Authenticating with SAML
+# SAML-based authentication
 
 {% include plans-blockquote.html feature="SAML authentication" %}
 

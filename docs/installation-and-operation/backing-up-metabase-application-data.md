@@ -1,10 +1,10 @@
 ---
-title: Backing up Metabase application data
+title: Backing up Metabase
 redirect_from:
   - /docs/latest/operations-guide/backing-up-metabase-application-data
 ---
 
-# Backing up Metabase application data
+# Backing up Metabase
 
 Avoid losing your application data (all of your questions, dashboards, collections and so on) by backing up your data.
 

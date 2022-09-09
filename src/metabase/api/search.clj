@@ -283,9 +283,10 @@
       (update :select (fn [columns]
                         (cons [(hx/literal "dataset") :model] (rest columns))))))
 
-(s/defmethod search-query-for-model "collection"
-  [model search-ctx :- SearchContext]
-  (-> (base-query-for-model model search-ctx)
+(defn- shared-collection-impl
+  [model search-ctx]
+  (-> (base-query-for-model "collection" search-ctx)
+      (update :where (fn [where] [:and [(if (= model "app") :<> :=) :app.id nil] where]))
       (hh/left-join [CollectionBookmark :bookmark]
                     [:and
                      [:= :bookmark.collection_id :collection.id]
@@ -294,18 +295,39 @@
                     [:= :app.collection_id :collection.id])
       (add-collection-join-and-where-clauses :collection.id search-ctx)))
 
+(s/defmethod search-query-for-model "collection"
+  [model search-ctx :- SearchContext]
+  (shared-collection-impl model search-ctx))
+
+(s/defmethod search-query-for-model "app"
+  [model search-ctx :- SearchContext]
+  (-> (shared-collection-impl model search-ctx)
+      (update :select (fn [columns]
+                        (cons [(hx/literal model) :model] (rest columns))))))
+
 (s/defmethod search-query-for-model "database"
   [model search-ctx :- SearchContext]
   (base-query-for-model model search-ctx))
 
-(s/defmethod search-query-for-model "dashboard"
-  [model search-ctx :- SearchContext]
-  (-> (base-query-for-model model search-ctx)
+(defn- shared-dashboard-impl
+  [model search-ctx]
+  (-> (base-query-for-model "dashboard" search-ctx)
+      (update :where (fn [where] [:and [:= :dashboard.is_app_page (= model "page")] where]))
       (hh/left-join [DashboardBookmark :bookmark]
                     [:and
                      [:= :bookmark.dashboard_id :dashboard.id ]
                      [:= :bookmark.user_id api/*current-user-id*]])
       (add-collection-join-and-where-clauses :dashboard.collection_id search-ctx)))
+
+(s/defmethod search-query-for-model "dashboard"
+  [model search-ctx :- SearchContext]
+  (shared-dashboard-impl model search-ctx))
+
+(s/defmethod search-query-for-model "page"
+  [model search-ctx :- SearchContext]
+  (-> (shared-dashboard-impl model search-ctx)
+      (update :select (fn [columns]
+                        (cons [(hx/literal model) :model] (rest columns))))))
 
 (s/defmethod search-query-for-model "pulse"
   [model search-ctx :- SearchContext]

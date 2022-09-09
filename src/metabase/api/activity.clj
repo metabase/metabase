@@ -5,6 +5,7 @@
             [medley.core :as m]
             [metabase.api.common :refer [*current-user-id* defendpoint define-routes]]
             [metabase.models.activity :refer [Activity]]
+            [metabase.models.app :refer [App]]
             [metabase.models.bookmark :refer [CardBookmark DashboardBookmark]]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :refer [Collection]]
@@ -113,14 +114,18 @@
         "dashboard" [Dashboard
                      :id :name :collection_id :description
                      :archived :is_app_page
+                     [(db/qualify App :id) :app_id]
                      (db/qualify Collection :authority_level)]
         "table"     [Table
                      :id :name :db_id
                      :display_name :initial_sync_status
                      :visibility_type])
-      (cond-> {:where [:in (db/qualify (symbol (str/capitalize model)) :id) ids]}
-        (not= model "table")
-        (merge {:left-join [Collection [:= (db/qualify Collection :id) :collection_id]]}))))
+      (let [model-symb (symbol (str/capitalize model))
+            self-qualify #(db/qualify model-symb %)]
+        (cond-> {:where [:in (self-qualify :id) ids]}
+          (not= model "table")
+          (merge {:left-join [Collection [:= (db/qualify Collection :id) (self-qualify :collection_id)]
+                              App [:= (db/qualify App :collection_id) (db/qualify Collection :id)]]})))))
 
 (defn- select-items! [model ids]
   (when (seq ids)

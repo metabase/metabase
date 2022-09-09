@@ -35,8 +35,8 @@
     (is (= {:name         "Test Dashboard"
             :description  nil
             :cache_ttl    nil
-            :cards        [{:sizeX   2
-                            :sizeY   2
+            :cards        [{:size_x   2
+                            :size_y   2
                             :row     0
                             :col     0
                             :id      true
@@ -68,8 +68,8 @@
            :cards       []}
           {:name        "Diff Test"
            :description nil
-           :cards       [{:sizeX   2
-                          :sizeY   2
+           :cards       [{:size_x   2
+                          :size_y   2
                           :row     0
                           :col     0
                           :id      1
@@ -82,15 +82,15 @@
           {:name        "Diff Test"
            :description nil
            :cache_ttl   333
-           :cards       [{:sizeX   2
-                          :sizeY   2
+           :cards       [{:size_x   2
+                          :size_y   2
                           :row     0
                           :col     0
                           :id      1
                           :card_id 1
                           :series  [5 6]}
-                         {:sizeX   2
-                          :sizeY   2
+                         {:size_x   2
+                          :size_y   2
                           :row     0
                           :col     0
                           :id      2
@@ -99,15 +99,15 @@
           {:name        "Diff Test"
            :description nil
            :cache_ttl   1227
-           :cards       [{:sizeX   2
-                          :sizeY   2
+           :cards       [{:size_x   2
+                          :size_y   2
                           :row     0
                           :col     0
                           :id      1
                           :card_id 1
                           :series  [4 5]}
-                         {:sizeX   2
-                          :sizeY   2
+                         {:size_x   2
+                          :size_y   2
                           :row     2
                           :col     0
                           :id      2
@@ -133,16 +133,16 @@
                                 :cards       []}
           serialized-dashboard (dashboard/serialize-dashboard dashboard)]
       (testing "original state"
-        (is (= {:name         "Test Dashboard"
-                :description  nil
-                :cache_ttl    nil
-                :cards        [{:sizeX   2
-                                :sizeY   2
-                                :row     0
-                                :col     0
-                                :id      true
-                                :card_id true
-                                :series  true}]}
+        (is (= {:name        "Test Dashboard"
+                :description nil
+                :cache_ttl   nil
+                :cards       [{:size_x  2
+                               :size_y  2
+                               :row     0
+                               :col     0
+                               :id      true
+                               :card_id true
+                               :series  true}]}
                (update serialized-dashboard :cards check-ids))))
       (testing "delete the dashcard and modify the dash attributes"
         (dashboard-card/delete-dashboard-card! dashboard-card (test.users/user->id :rasta))
@@ -154,16 +154,16 @@
                  (dashboard/serialize-dashboard (db/select-one Dashboard :id dashboard-id))))))
       (testing "now do the reversion; state should return to original"
         (#'dashboard/revert-dashboard! nil dashboard-id (test.users/user->id :crowberto) serialized-dashboard)
-        (is (= {:name         "Test Dashboard"
-                :description  nil
-                :cache_ttl    nil
-                :cards        [{:sizeX   2
-                                :sizeY   2
-                                :row     0
-                                :col     0
-                                :id      false
-                                :card_id true
-                                :series  true}]}
+        (is (= {:name        "Test Dashboard"
+                :description nil
+                :cache_ttl   nil
+                :cards       [{:size_x  2
+                               :size_y  2
+                               :row     0
+                               :col     0
+                               :id      false
+                               :card_id true
+                               :series  true}]}
                (update (dashboard/serialize-dashboard (db/select-one Dashboard :id dashboard-id)) :cards check-ids))))
       (testing "revert back to the empty state"
         (#'dashboard/revert-dashboard! nil dashboard-id (test.users/user->id :crowberto) empty-dashboard)

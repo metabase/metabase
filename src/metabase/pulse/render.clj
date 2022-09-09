@@ -81,18 +81,21 @@
         (#{:pin_map :state :country} display-type)
         (chart-type nil "display-type is %s" display-type)
 
-        ;; for scalar, the display-type might be something other than `:scalar`, so we can't have line above
+        ;; for scalar/smartscalar, the display-type might actually be :line, so we can't have line above
         (and (not= display-type :progress)
              (= @col-sample-count @row-sample-count 1))
         (chart-type :scalar "result has one row and one column")
+
+        (and (= display-type :smartscalar)
+             (= @col-sample-count 2)
+             (seq insights))
+        (chart-type :smartscalar "result has two columns and insights")
 
         (#{:line
            :area
            :bar
            :combo
            :funnel
-           :scalar
-           :smartscalar
            :progress
            :table
            :waterfall} display-type)
@@ -103,7 +106,9 @@
              (not (#{:combo} display-type)))
         (chart-type :multiple "result has multiple card semantics, a multiple chart")
 
-        (= display-type :pie)
+        (and (= @col-sample-count 2)
+             (number-field? @col-2)
+             (= display-type :pie))
         (chart-type :categorical/donut "result has two cols (%s and %s (number))" (col-description @col-1) (col-description @col-2))
 
         :else

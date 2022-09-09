@@ -37,8 +37,6 @@ import {
   SET_SHOW_LOADING_COMPLETE_FAVICON,
   RESET,
   SET_PARAMETER_VALUES,
-
-  // Writeback
   OPEN_ACTION_PARAMETERS_MODAL,
   CLOSE_ACTION_PARAMETERS_MODAL,
 } from "./actions";
@@ -413,15 +411,14 @@ const sidebar = handleActions(
   DEFAULT_SIDEBAR,
 );
 
-// Writeback
-const missingEmitterParameters = handleActions(
+const missingActionParameters = handleActions(
   {
     [INITIALIZE]: {
       next: (state, payload) => null,
     },
     [OPEN_ACTION_PARAMETERS_MODAL]: {
-      next: (state, { payload: { emitterId, props } }) => ({
-        emitterId,
+      next: (state, { payload: { dashcardId, props } }) => ({
+        dashcardId,
         props,
       }),
     },
@@ -448,5 +445,5 @@ export default combineReducers({
   isAddParameterPopoverOpen,
   sidebar,
   parameterValuesSearchCache,
-  missingEmitterParameters,
+  missingActionParameters,
 });

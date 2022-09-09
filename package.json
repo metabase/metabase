@@ -134,6 +134,7 @@
     "@types/crossfilter": "^0.0.34",
     "@types/d3": "^3.5.46",
     "@types/d3-scale": "^4.0.2",
+    "@types/d3-time": "^3.0.0",
     "@types/dc": "0.0.29",
     "@types/diff": "^3.5.4",
     "@types/eslint": "7.29.0",

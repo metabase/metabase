@@ -1,6 +1,6 @@
 import slugg from "slugg";
 
-import type { DataApp, Dashboard } from "metabase-types/api";
+import type { DataApp, DataAppSearchItem, Dashboard } from "metabase-types/api";
 
 import { appendSlug } from "./utils";
 
@@ -22,13 +22,17 @@ type DataAppUrlMode = "preview" | "internal" | "app-url";
  * @returns {string} — pathname
  */
 export function dataApp(
-  app: DataApp,
+  app: DataApp | DataAppSearchItem,
   { mode = "internal" }: { mode?: DataAppUrlMode } = {},
 ) {
+  const appId = "app_id" in app ? app.app_id : app.id;
+  const appName = app.collection.name;
+
   if (mode === "preview") {
-    return appendSlug(`/apps/${app.id}`, slugg(app.collection.name));
+    return appendSlug(`/apps/${appId}`, slugg(appName));
   }
-  return appendSlug(`/a/${app.id}`, slugg(app.collection.name));
+
+  return appendSlug(`/a/${appId}`, slugg(appName));
 }
 
 export function dataAppPage(app: DataApp, page: Dashboard) {

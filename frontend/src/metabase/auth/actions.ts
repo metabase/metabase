@@ -5,6 +5,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import { createThunkAction } from "metabase/lib/redux";
 import { loadLocalization } from "metabase/lib/i18n";
 import { deleteSession } from "metabase/lib/auth";
+import * as Urls from "metabase/lib/urls";
 import { clearCurrentUser, refreshCurrentUser } from "metabase/redux/user";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { getUser } from "metabase/selectors/user";
@@ -73,12 +74,7 @@ export const logout = createThunkAction(LOGOUT, (redirectUrl: string) => {
     await dispatch(refreshLocale());
     trackLogout();
 
-    let loginUrl = "/auth/login";
-    if (redirectUrl) {
-      loginUrl += `?redirect=${encodeURIComponent(redirectUrl)}`;
-    }
-
-    dispatch(push(loginUrl));
+    dispatch(push(Urls.login(redirectUrl)));
     window.location.reload(); // clears redux state and browser caches
   };
 });

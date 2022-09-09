@@ -1,10 +1,10 @@
 ---
-title: "People and groups"
+title: "People and groups overview"
 redirect_from:
   - /docs/latest/administration-guide/sso
 ---
 
-# People and groups
+# People and groups overview
 
 User accounts, groups, and authentication. For permissions, see [Permissions overview](../permissions/start.md).
 

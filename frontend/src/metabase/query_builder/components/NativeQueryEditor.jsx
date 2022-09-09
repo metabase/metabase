@@ -67,6 +67,7 @@ class NativeQueryEditor extends Component {
 
   static defaultProps = {
     isOpen: false,
+    enableRun: true,
     cancelQueryOnLeave: true,
     resizable: true,
   };

@@ -84,7 +84,7 @@ export default function FilterPopover({
 
   // if the underlying query changes (e.x. additional metadata is loaded) update the filter's query
   useEffect(() => {
-    if (filter && previousQuery && query !== previousQuery) {
+    if (filter && filter.query() === previousQuery && query !== previousQuery) {
       setFilter(filter.setQuery(query));
     }
   }, [query, previousQuery, filter]);
@@ -146,8 +146,7 @@ export default function FilterPopover({
   };
 
   const handleFilterChange = (mbql: any[] = []) => {
-    const newFilter = new Filter(mbql, filter?.index(), query);
-
+    const newFilter = filter ? filter.set(mbql) : new Filter(mbql, null, query);
     setFilter(newFilter);
   };
 

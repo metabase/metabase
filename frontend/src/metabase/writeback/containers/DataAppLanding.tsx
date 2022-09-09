@@ -41,7 +41,7 @@ const DataAppLanding = ({
       <Search.ListLoader
         query={{
           collection: dataApp.collection_id,
-          models: ["dashboard"],
+          models: ["page"],
           limit: 100,
         }}
         loadingAndErrorWrapper={false}

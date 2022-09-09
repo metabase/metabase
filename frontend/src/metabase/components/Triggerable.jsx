@@ -12,7 +12,8 @@ const Trigger = styled.a``;
 
 // higher order component that takes a component which takes props "isOpen" and optionally "onClose"
 // and returns a component that renders a <a> element "trigger", and tracks whether that component is open or not
-export default ComposedComponent =>
+
+const Triggerable = ComposedComponent =>
   class extends Component {
     static displayName =
       "Triggerable[" +
@@ -178,3 +179,7 @@ export default ComposedComponent =>
       );
     }
   };
+
+export default Object.assign(Triggerable, {
+  Trigger,
+});

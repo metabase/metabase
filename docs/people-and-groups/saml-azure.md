@@ -1,10 +1,10 @@
 ---
-title: Using Azure AD as the Identity Provider with Metabase and SAML
+title: SAML with Azure AD
 redirect_from:
   - /docs/latest/enterprise-guide/authenticating-with-saml-azure-ad
 ---
 
-# Using Azure AD as the Identity Provider with Metabase and SAML
+# SAML with Azure AD
 
 {% include plans-blockquote.html feature="SAML authentication" %}
 
