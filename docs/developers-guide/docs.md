@@ -24,6 +24,16 @@ yarn run lint-docs-links
 
 You can view both commands in the [package.json](https://github.com/metabase/metabase/blob/master/package.json) file under `scripts`.
 
+## Updating API docs
+
+To update an API endpoint description, you'll need to edit the comment in the [source code for that endpoint](https://github.com/metabase/metabase/tree/master/src/metabase/api).
+
+To bring your changes into `docs/latest/api-documentation`, check out a new branch from the current release branch and run:
+
+```
+clojure -M:ee:run api-documentation
+```
+
 ## Style guide
 
 Ancient [style guide](https://github.com/metabase/metabase/wiki/Writing-style-guide-for-documentation-and-blog-posts-(WIP)) that needs an update.
