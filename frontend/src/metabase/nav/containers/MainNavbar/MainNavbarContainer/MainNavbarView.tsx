@@ -16,12 +16,12 @@ import * as Urls from "metabase/lib/urls";
 import type { Bookmark, Collection, DataApp, User } from "metabase-types/api";
 
 import { SelectedItem } from "../types";
-import BookmarkList from "../BookmarkList";
 import {
   SidebarCollectionLink,
   SidebarDataAppLink,
   SidebarLink,
 } from "../SidebarItems";
+
 import {
   AddYourOwnDataLink,
   CollectionMenuList,
@@ -33,6 +33,8 @@ import {
   SidebarHeadingWrapper,
   SidebarSection,
 } from "../MainNavbar.styled";
+
+import BookmarkList from "./BookmarkList";
 
 interface CollectionTreeItem extends Collection {
   icon: string | IconProps;

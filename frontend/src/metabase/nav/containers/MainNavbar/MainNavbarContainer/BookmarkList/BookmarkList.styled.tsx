@@ -4,7 +4,8 @@ import { css } from "@emotion/react";
 import { color } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
-import { SidebarLink } from "../SidebarItems";
+
+import { SidebarLink } from "../../SidebarItems";
 
 type SidebarBookmarkItem = {
   isSorting: boolean;
