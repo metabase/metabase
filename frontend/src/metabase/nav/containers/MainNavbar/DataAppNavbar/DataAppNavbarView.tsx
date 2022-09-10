@@ -42,7 +42,7 @@ function DataAppNavbarView({
     (navItem: DataAppNavItem) => {
       const page = pageMap[navItem.page_id];
 
-      if (!page) {
+      if (!page || navItem.hidden) {
         return null;
       }
 
