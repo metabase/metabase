@@ -141,6 +141,20 @@
   (when (= (mdb/db-type) :postgres)
     (System/setProperty "org.quartz.jobStore.driverDelegateClass" "org.quartz.impl.jdbcjobstore.PostgreSQLDelegate")))
 
+(defn init-scheduler!
+  "Initialize our Quartzite scheduler which allows jobs to be submitted and triggers to scheduled. Puts scheduler in
+  standby mode. Call [[start-scheduler!]] to begin running scheduled tasks."
+  []
+  (classloader/the-classloader)
+  (when-not @*quartz-scheduler*
+    (set-jdbc-backend-properties!)
+    (let [new-scheduler (qs/initialize)]
+      (when (compare-and-set! *quartz-scheduler* nil new-scheduler)
+        (find-and-load-task-namespaces!)
+        (qs/standby new-scheduler)
+        (log/info (trs "Task scheduler initialized into standby mode."))
+        (init-tasks!)))))
+
 ;;; this is a function mostly to facilitate testing.
 (defn- disable-scheduler? []
   (some-> (env/env :mb-disable-scheduler) Boolean/parseBoolean))
