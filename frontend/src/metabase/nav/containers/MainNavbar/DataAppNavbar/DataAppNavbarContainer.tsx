@@ -6,7 +6,10 @@ import Modal from "metabase/components/Modal";
 
 import * as Urls from "metabase/lib/urls";
 
-import DataApps, { getDataAppHomePageId } from "metabase/entities/data-apps";
+import DataApps, {
+  getDataAppHomePageId,
+  getParentDataAppPageId,
+} from "metabase/entities/data-apps";
 import Dashboards from "metabase/entities/dashboards";
 import Search from "metabase/entities/search";
 
@@ -26,6 +29,11 @@ const LIMIT = 100;
 function isAtDataAppHomePage(selectedItems: SelectedItem[]) {
   const [selectedItem] = selectedItems;
   return selectedItems.length === 1 && selectedItem.type === "data-app";
+}
+
+function isDataAppPageSelected(selectedItems: SelectedItem[]) {
+  const [selectedItem] = selectedItems;
+  return selectedItems.length === 1 && selectedItem.type === "data-app-page";
 }
 
 type NavbarModal =
@@ -75,6 +83,25 @@ function DataAppNavbarContainer({
           id: getDataAppHomePageId(dataApp, pages),
         },
       ];
+    }
+
+    if (isDataAppPageSelected(selectedItems)) {
+      const [selectedPage] = selectedItems;
+      const navItem = dataApp.nav_items.find(
+        item => item.page_id === selectedPage.id,
+      );
+      if (navItem?.hidden) {
+        const parentPageId = getParentDataAppPageId(
+          selectedPage.id as number,
+          pages,
+        );
+        return [
+          {
+            type: "data-app-page",
+            id: parentPageId || getDataAppHomePageId(dataApp, pages),
+          },
+        ];
+      }
     }
 
     return selectedItems;
