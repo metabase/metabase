@@ -1,4 +1,5 @@
 import { dashboard } from "./dashboards";
+import { dataAppPage } from "./dataApps";
 import { question, dataset, tableRowsQuery } from "./questions";
 import { pulse } from "./pulses";
 
@@ -29,7 +30,7 @@ export function modelToUrl(item) {
     case "dashboard":
       return dashboard(modelData);
     case "page":
-      return dashboard(modelData);
+      return dataAppPage({ id: modelData.app_id }, { id: modelData.id });
     case "pulse":
       return pulse(modelData.id);
     case "table":
