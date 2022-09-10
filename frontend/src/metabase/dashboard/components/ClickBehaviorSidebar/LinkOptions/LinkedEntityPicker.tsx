@@ -122,8 +122,7 @@ function LinkedEntityPicker({
       const nextSettings = { ...clickBehavior, targetId };
       const isNewTargetEntity = targetId !== clickBehavior.targetId;
       if (isNewTargetEntity) {
-        // For new target question/dashboard,
-        // parameter mappings for the previous link target question/dashboard
+        // For new target entity, parameter mappings for the previous link target
         // don't make sense and have to be reset
         nextSettings.parameterMapping = {};
       }
