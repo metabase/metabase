@@ -39,7 +39,7 @@ export interface CrossFilterClickBehavior {
 
 export interface EntityCustomDestinationClickBehavior {
   type: "link";
-  linkType: "dashboard" | "question";
+  linkType: "dashboard" | "question" | "page";
   targetId: EntityId;
   parameterMapping?: ClickBehaviorParameterMapping;
 }
