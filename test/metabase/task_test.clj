@@ -103,14 +103,14 @@
   (tu/do-with-unstarted-temp-scheduler
    (^:once fn* []
     (testing (format "task/start-scheduler! should no-op When MB_DISABLE_SCHEDULER is set")
-      (println "<HERE 3>")
       (testing "Sanity check"
         (is (identical? (#'task/scheduler) task/*quartz-scheduler*))
         (is (not (qs/started? (#'task/scheduler)))))
-      (println "<HERE 4>")
       (mt/with-temp-env-var-value ["MB_DISABLE_SCHEDULER" "TRUE"]
         (task/start-scheduler!)
         (is (not (qs/started? (#'task/scheduler)))))
+      (testing "Should still be able to 'schedule' tasks even if scheduler is unstarted"
+        (is (some? (task/schedule-task! (job) (trigger-1)))))
       (mt/with-temp-env-var-value ["MB_DISABLE_SCHEDULER" "FALSE"]
         (task/start-scheduler!)
         (is (qs/started? (#'task/scheduler))))))))

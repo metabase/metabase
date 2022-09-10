@@ -630,7 +630,7 @@
   ;; not 100% sure we need to initialize the DB anymore since the temp scheduler is in-memory-only now.
   (classloader/the-classloader)
   (initialize/initialize-if-needed! :db)
-  (do-with-temp-scheduler
+  (do-with-unstarted-temp-scheduler
    (^:once fn* []
     (qs/start task/*quartz-scheduler*)
     (thunk))))
