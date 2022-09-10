@@ -615,10 +615,10 @@
 
 (defn do-with-unstarted-temp-scheduler [thunk]
   (let [temp-scheduler (in-memory-scheduler)
-        already-bound? (identical? task/*quartz-scheduler* temp-scheduler)]
+        already-bound? (identical? @task/*quartz-scheduler* temp-scheduler)]
     (if already-bound?
       (thunk)
-      (binding [task/*quartz-scheduler* temp-scheduler]
+      (binding [task/*quartz-scheduler* (atom temp-scheduler)]
         (try
           (assert (not (qs/started? temp-scheduler))
                   "temp in-memory scheduler already started: did you use it elsewhere without shutting it down?")
@@ -632,7 +632,7 @@
   (initialize/initialize-if-needed! :db)
   (do-with-unstarted-temp-scheduler
    (^:once fn* []
-    (qs/start task/*quartz-scheduler*)
+    (qs/start @task/*quartz-scheduler*)
     (thunk))))
 
 (defmacro with-temp-scheduler
