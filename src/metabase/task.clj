@@ -11,17 +11,20 @@
   ## Quartz JavaDoc
 
   Find the JavaDoc for Quartz here: http://www.quartz-scheduler.org/api/2.3.0/index.html"
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [clojurewerkz.quartzite.scheduler :as qs]
-            [metabase.db :as mdb]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [schema.core :as s]
-            [toucan.db :as db])
-  (:import [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger TriggerKey]))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [clojurewerkz.quartzite.scheduler :as qs]
+   [environ.core :as env]
+   [metabase.db :as mdb]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [schema.core :as s]
+   [toucan.db :as db])
+  (:import
+   (org.quartz CronTrigger JobDetail JobKey Scheduler Trigger TriggerKey)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               SCHEDULER INSTANCE                                               |
@@ -31,17 +34,23 @@
   "Override the global Quartz scheduler by binding this var."
   nil)
 
-(defonce ^:private quartz-scheduler
-  (atom nil))
+;;; seriously, don't use this directly. Use [[scheduler]] to get it, or [[set-scheduler!]] to change it. If you use it
+;;; directly it breaks our ability to mock it in tests using [[*quartz-scheduler*]]
+(defonce ^:private -global-scheduler-do-not-access-directly (atom nil))
 
-;; TODO - maybe we should make this a delay instead!
 (defn- scheduler
   "Fetch the instance of our Quartz scheduler. Call this function rather than dereffing the atom directly because there
   are a few places (e.g., in tests) where we swap the instance out."
   ;; TODO - why can't we just swap the atom out in the tests?
   ^Scheduler []
   (or *quartz-scheduler*
-      @quartz-scheduler))
+      @-global-scheduler-do-not-access-directly))
+
+(defn- set-scheduler! [new-scheduler]
+  (let [[old-scheduler] (reset-vals! -global-scheduler-do-not-access-directly new-scheduler)]
+    (when old-scheduler
+      (qs/shutdown old-scheduler))
+    new-scheduler))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -151,30 +160,36 @@
   standby mode. Call [[start-scheduler!]] to begin running scheduled tasks."
   []
   (classloader/the-classloader)
-  (when-not @quartz-scheduler
-    (set-jdbc-backend-properties!)
-    (let [new-scheduler (qs/initialize)]
-      (when (compare-and-set! quartz-scheduler nil new-scheduler)
-        (find-and-load-task-namespaces!)
-        (qs/standby new-scheduler)
-        (log/info (trs "Task scheduler initialized into standby mode."))
-        (init-tasks!)))))
+  (when-not (scheduler)
+    (locking init-scheduler!
+      (when-not (scheduler)
+        (set-jdbc-backend-properties!)
+        (let [new-scheduler (qs/initialize)]
+          (set-scheduler! new-scheduler)
+          (find-and-load-task-namespaces!)
+          (qs/standby new-scheduler)
+          (log/info (trs "Task scheduler initialized into standby mode."))
+          (init-tasks!))))))
+
+;;; this is a function mostly to facilitate testing.
+(defn- disable-scheduler? []
+  (some-> (env/env :mb-disable-scheduler) Boolean/parseBoolean))
 
 (defn start-scheduler!
   "Start an initialized scheduler. Tasks do not run before calling this function. It is an error to call this function
   when [[quartz-scheduler]] has not been set. The function [[init-scheduler!]] will initialize this correctly."
   []
-  (if-let [scheduler @quartz-scheduler]
-    (do (qs/start scheduler)
-        (log/info (trs "Task scheduler started")))
-    (throw (trs "Scheduler not initialized but `start-scheduler!` called. Please call `init-scheduler!` before attempting to start."))))
+  (if (disable-scheduler?)
+    (log/warn (trs "Metabase task scheduler disabled. Scheduled tasks will not be ran."))
+    (if-let [scheduler (scheduler)]
+      (do (qs/start scheduler)
+          (log/info (trs "Task scheduler started")))
+      (throw (trs "Scheduler not initialized but `start-scheduler!` called. Please call `init-scheduler!` before attempting to start.")))))
 
 (defn stop-scheduler!
   "Stop our Quartzite scheduler and shutdown any running executions."
   []
-  (let [[old-scheduler] (reset-vals! quartz-scheduler nil)]
-    (when old-scheduler
-      (qs/shutdown old-scheduler))))
+  (set-scheduler! nil))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

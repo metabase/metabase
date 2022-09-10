@@ -1,15 +1,18 @@
 (ns metabase.task-test
-  (:require [clojure.test :refer :all]
-            [clojurewerkz.quartzite.jobs :as jobs]
-            [clojurewerkz.quartzite.schedule.cron :as cron]
-            [clojurewerkz.quartzite.scheduler :as qs]
-            [clojurewerkz.quartzite.triggers :as triggers]
-            [metabase.task :as task]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util.schema :as su]
-            [schema.core :as s])
-  (:import [org.quartz CronTrigger JobDetail]))
+  (:require
+   [clojure.test :refer :all]
+   [clojurewerkz.quartzite.jobs :as jobs]
+   [clojurewerkz.quartzite.schedule.cron :as cron]
+   [clojurewerkz.quartzite.scheduler :as qs]
+   [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.task :as task]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.test.util :as tu]
+   [metabase.util.schema :as su]
+   [schema.core :as s])
+  (:import
+   (org.quartz CronTrigger JobDetail)))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -95,3 +98,19 @@
                                                 s/Keyword            s/Any}]
                                  s/Keyword    s/Any}]}
                    (task/scheduler-info))))))
+
+(deftest start-scheduler-no-op-with-env-var-test
+  (tu/do-with-unstarted-temp-scheduler
+   (^:once fn* []
+    (testing (format "task/start-scheduler! should no-op When MB_DISABLE_SCHEDULER is set")
+      (println "<HERE 3>")
+      (testing "Sanity check"
+        (is (identical? (#'task/scheduler) task/*quartz-scheduler*))
+        (is (not (qs/started? (#'task/scheduler)))))
+      (println "<HERE 4>")
+      (mt/with-temp-env-var-value ["MB_DISABLE_SCHEDULER" "TRUE"]
+        (task/start-scheduler!)
+        (is (not (qs/started? (#'task/scheduler)))))
+      (mt/with-temp-env-var-value ["MB_DISABLE_SCHEDULER" "FALSE"]
+        (task/start-scheduler!)
+        (is (qs/started? (#'task/scheduler))))))))
