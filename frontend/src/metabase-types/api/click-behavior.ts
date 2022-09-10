@@ -27,9 +27,13 @@ export type ClickBehaviorType =
   | "crossfilter"
   | "link";
 
-export type CustomDestinationClickBehaviorLinkType =
+export type CustomDestinationClickBehaviorEntity =
   | "dashboard"
   | "question"
+  | "page";
+
+export type CustomDestinationClickBehaviorLinkType =
+  | CustomDestinationClickBehaviorEntity
   | "url";
 
 export interface CrossFilterClickBehavior {
@@ -39,7 +43,7 @@ export interface CrossFilterClickBehavior {
 
 export interface EntityCustomDestinationClickBehavior {
   type: "link";
-  linkType: "dashboard" | "question" | "page";
+  linkType: CustomDestinationClickBehaviorEntity;
   targetId: EntityId;
   parameterMapping?: ClickBehaviorParameterMapping;
 }
