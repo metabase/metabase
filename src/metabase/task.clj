@@ -29,8 +29,8 @@
 ;;; |                                               SCHEDULER INSTANCE                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:dynamic *quartz-scheduler*
-  "Override the global Quartz scheduler by binding this var."
+(defonce ^:dynamic ^{:doc "Override the global Quartz scheduler by binding this var."}
+  *quartz-scheduler*
   (atom nil))
 
 (defn- scheduler
