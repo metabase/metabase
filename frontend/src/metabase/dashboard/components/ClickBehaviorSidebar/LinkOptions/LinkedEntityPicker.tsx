@@ -49,7 +49,7 @@ function PickerControl({
     if (hasSelectedTarget) {
       return <Entity.Name id={clickBehavior.targetId} />;
     }
-    return isDash ? t`Pick a dashboard...` : t`Pick a question...`;
+    return isDash ? t`Pick a dashboard…` : t`Pick a question…`;
   }, [Entity, isDash, clickBehavior]);
 
   return (
