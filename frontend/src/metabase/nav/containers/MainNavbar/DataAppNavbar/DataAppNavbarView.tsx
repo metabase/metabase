@@ -10,7 +10,7 @@ import * as Urls from "metabase/lib/urls";
 
 import type { DataApp } from "metabase-types/api";
 
-import { MainNavbarProps, SelectedItem } from "./types";
+import { MainNavbarProps, SelectedItem } from "../types";
 import {
   DataAppActionsContainer,
   DataAppActionButton,
@@ -21,7 +21,7 @@ import {
   SidebarHeading,
   SidebarHeadingWrapper,
   SidebarSection,
-} from "./MainNavbar.styled";
+} from "../MainNavbar.styled";
 
 interface Props extends MainNavbarProps {
   dataApp: DataApp;

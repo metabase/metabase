@@ -15,7 +15,7 @@ import type Question from "metabase-lib/lib/Question";
 import type { Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import DataAppNavbarContainer from "./DataAppNavbarContainer";
+import DataAppNavbarContainer from "./DataAppNavbar";
 import MainNavbarContainer from "./MainNavbarContainer";
 
 import {
