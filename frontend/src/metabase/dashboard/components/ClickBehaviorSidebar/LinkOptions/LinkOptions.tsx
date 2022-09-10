@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { isTableDisplay } from "metabase/lib/click-behavior";
 
 import CustomLinkText from "./CustomLinkText";
-import QuestionDashboardPicker from "./QuestionDashboardPicker";
+import LinkedEntityPicker from "./LinkedEntityPicker";
 import { SidebarContent } from "../ClickBehaviorSidebar.styled";
 
 import type { UiParameter } from "metabase/parameters/types";
@@ -88,7 +88,7 @@ function LinkOptions({
       <div className="mt1">
         {hasSelectedLinkType && clickBehavior.linkType !== "url" && (
           <div>
-            <QuestionDashboardPicker
+            <LinkedEntityPicker
               dashcard={dashcard}
               clickBehavior={clickBehavior}
               updateSettings={updateSettings}

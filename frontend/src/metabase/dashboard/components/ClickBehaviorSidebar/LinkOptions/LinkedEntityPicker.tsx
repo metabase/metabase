@@ -104,7 +104,7 @@ function TargetClickMappings({
   );
 }
 
-function QuestionDashboardPicker({
+function LinkedEntityPicker({
   dashcard,
   clickBehavior,
   updateSettings,
@@ -189,4 +189,4 @@ function QuestionDashboardPicker({
   );
 }
 
-export default QuestionDashboardPicker;
+export default LinkedEntityPicker;
