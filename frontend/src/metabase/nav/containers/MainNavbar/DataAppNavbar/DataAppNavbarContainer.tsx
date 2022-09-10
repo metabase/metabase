@@ -6,10 +6,7 @@ import Modal from "metabase/components/Modal";
 
 import * as Urls from "metabase/lib/urls";
 
-import DataApps, {
-  getDataAppHomePageId,
-  getParentDataAppPageId,
-} from "metabase/entities/data-apps";
+import DataApps from "metabase/entities/data-apps";
 import Dashboards from "metabase/entities/dashboards";
 import Search from "metabase/entities/search";
 
@@ -21,20 +18,11 @@ import type { State } from "metabase-types/store";
 import { MainNavbarProps, MainNavbarOwnProps, SelectedItem } from "../types";
 import NavbarLoadingView from "../NavbarLoadingView";
 
+import getSelectedItems from "./getSelectedItems";
 import DataAppNavbarView from "./DataAppNavbarView";
 
 const FETCHING_SEARCH_MODELS = ["page"];
 const LIMIT = 100;
-
-function isAtDataAppHomePage(selectedItems: SelectedItem[]) {
-  const [selectedItem] = selectedItems;
-  return selectedItems.length === 1 && selectedItem.type === "data-app";
-}
-
-function isDataAppPageSelected(selectedItems: SelectedItem[]) {
-  const [selectedItem] = selectedItems;
-  return selectedItems.length === 1 && selectedItem.type === "data-app-page";
-}
 
 type NavbarModal =
   | "MODAL_ADD_DATA"
@@ -69,43 +57,10 @@ function DataAppNavbarContainer({
 }: DataAppNavbarContainerProps & { onReloadNavbar: () => Promise<void> }) {
   const [modal, setModal] = useState<NavbarModal>(null);
 
-  const finalSelectedItems: SelectedItem[] = useMemo(() => {
-    const isHomepage = isAtDataAppHomePage(selectedItems);
-
-    // Once a data app is launched, the first view is going to be the app homepage
-    // Homepage is an app page specified by a user or picked automatically (just the first one)
-    // The homepage doesn't have a regular page path like /a/1/page/1, but an app one like /a/1
-    // So we need to overwrite the selectedItems list here and specify the homepage
-    if (isHomepage) {
-      return [
-        {
-          type: "data-app-page",
-          id: getDataAppHomePageId(dataApp, pages),
-        },
-      ];
-    }
-
-    if (isDataAppPageSelected(selectedItems)) {
-      const [selectedPage] = selectedItems;
-      const navItem = dataApp.nav_items.find(
-        item => item.page_id === selectedPage.id,
-      );
-      if (navItem?.hidden) {
-        const parentPageId = getParentDataAppPageId(
-          selectedPage.id as number,
-          pages,
-        );
-        return [
-          {
-            type: "data-app-page",
-            id: parentPageId || getDataAppHomePageId(dataApp, pages),
-          },
-        ];
-      }
-    }
-
-    return selectedItems;
-  }, [dataApp, pages, selectedItems]);
+  const finalSelectedItems: SelectedItem[] = useMemo(
+    () => getSelectedItems({ dataApp, pages, selectedItems }),
+    [dataApp, pages, selectedItems],
+  );
 
   const handleNewDataAdded = useCallback(
     async (nextDataAppState: DataApp) => {
