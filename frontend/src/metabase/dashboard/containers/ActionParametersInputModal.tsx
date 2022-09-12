@@ -11,6 +11,7 @@ import type { State } from "metabase-types/store";
 
 import { closeActionParametersModal } from "../actions";
 import { getActionParametersModalFormProps } from "../selectors";
+import { getFormTitle } from "metabase/writeback/components/ActionCreator/FormCreator";
 
 interface OwnProps {
   action: WritebackAction;
@@ -41,11 +42,14 @@ function ActionParametersInputModal({
   action,
   closeActionParametersModal,
 }: Props) {
+  const title = getFormTitle(action);
+
   return (
     <Modal onClose={closeActionParametersModal}>
-      <ModalContent title={action.name} onClose={closeActionParametersModal}>
+      <ModalContent title={title} onClose={closeActionParametersModal}>
         <ActionParametersInputForm
           {...formProps}
+          action={action}
           onSubmitSuccess={closeActionParametersModal}
         />
       </ModalContent>
