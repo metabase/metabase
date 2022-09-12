@@ -37,7 +37,7 @@
         (db/simple-insert! Field (assoc mock-field :name "Field 1"))
         (db/simple-insert! Field (assoc mock-field :name "Field 2")))
       (testing "sanity check: Fields should not have a `:database_position` column yet"
-        (is (not (contains? (Field 1) :database_position))))
+        (is (not (contains? (db/select-one Field :id 1) :database_position))))
       ;; now run migration 165
       (migrate!)
       (testing "Fields should get `:database_position` equal to their IDs"
@@ -69,7 +69,7 @@
         (migrate!)
         (doseq [e [e1 e2]]
           (is (= true
-                 (db/exists? User :email (u/lower-case-en e1)))))))))
+                 (db/exists? User :email (u/lower-case-en e)))))))))
 
 (deftest semantic-type-migration-tests
   (testing "updates each of the coercion types"

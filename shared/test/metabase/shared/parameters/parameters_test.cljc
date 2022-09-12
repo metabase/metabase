@@ -93,7 +93,7 @@
 
       "{{foo}}"
       {"foo" {:type :date/relative :value "past7days"}}
-      "Past 7 Days"
+      "Previous 7 Days"
 
       "{{foo}}"
       {"foo" {:type :date/relative :value "thismonth"}}
@@ -144,44 +144,125 @@
       ;; Parameter with no type: stringify the value with no additional formatting
       "{{foo}}"
       {"foo" {:value "today"}}
-      "today"))
+      "today")))
 
- (t/testing "Date values are formatted correctly"
-   (t/are [text tag->param expected] (= expected (params/substitute_tags text tag->param))
-     "{{foo}}"
-     {"foo" {:type :date/single :value "2022-07-09"}}
-     "July 9\\, 2022"
+(t/deftest substitute-tags-date-filters
+  (t/testing "Basic date values are formatted correctly"
+    (t/are [text tag->param expected] (= expected (params/substitute_tags text tag->param))
+      "{{foo}}"
+      {"foo" {:type :date/single :value "2022-07-09"}}
+      "July 9\\, 2022"
 
-     "{{foo}}"
-     {"foo" {:type :date/range :value "2022-07-06~2022-07-09"}}
-     "July 6\\, 2022 \\- July 9\\, 2022"
+      "{{foo}}"
+      {"foo" {:type :date/range :value "2022-07-06~2022-07-09"}}
+      "July 6\\, 2022 \\- July 9\\, 2022"
 
-     "{{foo}}"
-     {"foo" {:type :date/month-year :value "2022-07"}}
-     "July\\, 2022"
+      "{{foo}}"
+      {"foo" {:type :date/month-year :value "2022-07"}}
+      "July\\, 2022"
 
-     "{{foo}}"
-     {"foo" {:type :date/quarter-year :value "Q2-2022"}}
-     "Q2\\, 2022"
+      "{{foo}}"
+      {"foo" {:type :date/quarter-year :value "Q2-2022"}}
+      "Q2\\, 2022"
 
-     "{{foo}}"
-     {"foo" {:type :date/all-options :value "~2022-07-09"}}
-     "July 9\\, 2022"
+      "{{foo}}"
+      {"foo" {:type :date/all-options :value "~2022-07-09"}}
+      "July 9\\, 2022"
 
-     "{{foo}}"
-     {"foo" {:type :date/all-options :value "2022-07-06~2022-07-09"}}
-     "July 6\\, 2022 \\- July 9\\, 2022")
+      "{{foo}}"
+      {"foo" {:type :date/all-options :value "2022-07-06~2022-07-09"}}
+      "July 6\\, 2022 \\- July 9\\, 2022"))
 
-   (t/testing "Date values are formatted using the locale passed in as an argument"
-     (t/are [text tag->param expected] (= expected (params/substitute_tags text tag->param "es"))
-       "{{foo}}"
-       {"foo" {:type :date/single :value "2022-07-09"}}
-       "julio 9\\, 2022"
+  (t/testing "Relative date values are formatted correctly"
+    (t/are [text tag->param expected] (= expected (params/substitute_tags text tag->param))
+      "{{foo}}"
+      {"foo" {:type :date/all-options :value "thisday"}}
+      "Today"
 
-       "{{foo}}"
-       {"foo" {:type :date/range :value "2022-01-06~2022-04-09"}}
-       "enero 6\\, 2022 \\- abril 9\\, 2022"
+      "{{foo}}"
+      {"foo" {:type :date/all-options :value "thisweek"}}
+      "This Week"
 
-       "{{foo}}"
-       {"foo" {:type :date/month-year :value "2019-08"}}
-       "agosto\\, 2019"))))
+      "{{foo}}"
+      {"foo" {:type :date/all-options :value "past1days"}}
+      "Yesterday"
+
+      "{{foo}}"
+      {"foo" {:type :date/all-options :value "next1days"}}
+      "Tomorrow"
+
+      "{{foo}}"
+      {"foo" {:type :date/all-options :value "past1weeks"}}
+      "Previous Week"
+
+      "{{foo}}"
+      {"foo" {:type :date/all-options :value "next1quarters"}}
+      "Next Quarter"
+
+      "{{foo}}"
+      {"foo" {:type :date/all-options :value "past60minutes"}}
+      "Previous 60 Minutes"
+
+      "{{foo}}"
+      {"foo" {:type :date/all-options :value "next5years"}}
+      "Next 5 Years"))
+
+  (t/testing "Date values are formatted using the locale passed in as an argument"
+    (t/are [text tag->param expected] (= expected (params/substitute_tags text tag->param "es"))
+      "{{foo}}"
+      {"foo" {:type :date/single :value "2022-07-09"}}
+      "julio 9\\, 2022"
+
+      "{{foo}}"
+      {"foo" {:type :date/range :value "2022-01-06~2022-04-09"}}
+      "enero 6\\, 2022 \\- abril 9\\, 2022"
+
+      "{{foo}}"
+      {"foo" {:type :date/month-year :value "2019-08"}}
+      "agosto\\, 2019")))
+
+(t/deftest substitute-tags-optional-blocks-test
+  (t/testing "Optional blocks are removed when necessary"
+    (t/are [text tag->param expected] (= expected (params/substitute_tags text tag->param))
+      "[[{{foo}}]]"
+      {}
+      ""
+
+      "[[{{foo}}]]"
+      {"foo" {:type :string/= :value "bar"}}
+      "bar"
+
+      "Customers[[ with over {{order_count}} orders]]"
+      {"order_count" {:type :number/= :value nil}}
+      "Customers"
+
+      "Customers[[ with over {{order_count}} orders]]"
+      {"order_count" {:type :number/= :value 10}}
+      "Customers with over 10 orders"
+
+      ;; Optional block is retained when *any* parameters within are substituted
+      "[[{{foo}} {{baz}}]]"
+      {"foo" {:type :string/= :value "bar"}}
+      "bar {{baz}}"
+
+      ;; Make sure `join-consecutive-strings` retains consecutive non-strings (this was a bug during implementation)
+      "[[{{foo}}{{foo}}]]"
+      {"foo" {:type :string/= :value "foo"}}
+      "foofoo"
+
+      "[[{{foo}}]] [[{{bar}}]]"
+      {"foo" {:type :string/= :value 1} "bar" {:type :string/= :value 2}}
+      "1 2"
+
+      "[[{{foo}}]"
+      {"foo" {:type :string/= :value "bar"}}
+      "[[bar]"
+
+      "[{{foo}}]]"
+      {"foo" {:type :string/= :value "bar"}}
+      "[bar]]"
+
+      ;; Don't strip square brackets that are in parameter values
+      "{{foo}}"
+      {"foo" {:type :string/= :value "[[bar]]"}}
+      "\\[\\[bar\\]\\]")))

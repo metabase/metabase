@@ -11,6 +11,7 @@ import {
   extractRemappings,
   getVisualizationTransformed,
 } from "metabase/visualizations";
+import { MetabaseApi } from "metabase/services";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { getCardUiParameters } from "metabase/parameters/utils/cards";
 import { normalizeParameterValue } from "metabase/parameters/utils/parameter-values";
@@ -29,6 +30,7 @@ import { getAlerts } from "metabase/alert/selectors";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { parseTimestamp } from "metabase/lib/time";
 import { getSortedTimelines } from "metabase/lib/timelines";
+import { getSetting } from "metabase/selectors/settings";
 import {
   getXValues,
   isTimeseries,
@@ -58,7 +60,6 @@ const SIDEBARS = [
   "isShowingTimelineSidebar",
 
   "isShowingSummarySidebar",
-  "isShowingFilterSidebar",
 
   "isShowingDataReference",
   "isShowingTemplateTagsEditor",
@@ -69,7 +70,6 @@ export const getIsAnySidebarOpen = createSelector([getUiControls], uiControls =>
   SIDEBARS.some(sidebar => uiControls[sidebar]),
 );
 
-export const getIsEditing = state => getUiControls(state).isEditing;
 export const getIsRunning = state => getUiControls(state).isRunning;
 export const getIsLoadingComplete = state =>
   getQueryStatus(state) === "complete";
@@ -758,28 +758,6 @@ export const getSnippetCollectionId = createSelector(
   uiControls => uiControls && uiControls.snippetCollectionId,
 );
 
-/**
- * Returns whether the query can be "preview", i.e. native query editor is open and visualization is table
- * NOTE: completely disabled for now
- */
-export const getIsPreviewable = createSelector(
-  [getIsNativeEditorOpen, getQuestion, getIsNew, getIsDirty],
-  (isNativeEditorOpen, question, isNew, isDirty) =>
-    // isNativeEditorOpen &&
-    // question &&
-    // question.display() === "table" &&
-    // (isNew || isDirty),
-    false,
-);
-
-/**
- * Returns whether the query builder is in native query "preview" mode
- */
-export const getIsPreviewing = createSelector(
-  [getIsPreviewable, getUiControls],
-  (isPreviewable, uiControls) => isPreviewable && uiControls.isPreviewing,
-);
-
 export const getIsVisualized = createSelector(
   [getQuestion, getVisualizationSettings],
   (question, settings) =>
@@ -853,3 +831,25 @@ export const getIsAdditionalInfoVisible = createSelector(
   [getIsEmbedded, getEmbedOptions],
   (isEmbedded, embedOptions) => !isEmbedded || embedOptions.additional_info,
 );
+
+export const getAutocompleteResultsFn = state => {
+  const matchStyle = getSetting(state, "native-query-autocomplete-match-style");
+
+  if (matchStyle === "off") {
+    return null;
+  }
+
+  return function autocompleteResults(query) {
+    const dbId = state.qb.card?.dataset_query?.database;
+    if (!dbId) {
+      return [];
+    }
+
+    const apiCall = MetabaseApi.db_autocomplete_suggestions({
+      dbId,
+      query,
+      matchStyle,
+    });
+    return apiCall;
+  };
+};

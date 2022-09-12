@@ -165,12 +165,15 @@ describe("scenarios > admin > databases > add", () => {
     cy.findByText("Need help connecting?");
   });
 
-  it("should respect users' decision to manually sync large database (metabase#17450)", () => {
+  // TODO:
+  // Enable once https://github.com/metabase/metabase/issues/24900 gets fixed!
+  it.skip("should respect users' decision to manually sync large database (metabase#17450)", () => {
     const H2_CONNECTION_STRING =
       "zip:./target/uberjar/metabase.jar!/sample-database.db;USER=GUEST;PASSWORD=guest";
 
     const databaseName = "Another H2";
 
+    cy.intercept("POST", "/api/database").as("createDatabase");
     cy.visit("/admin/databases/create");
 
     chooseDatabase("H2");
@@ -186,6 +189,7 @@ describe("scenarios > admin > databases > add", () => {
     isSyncOptionSelected("Never, I'll do this manually if I need to");
 
     cy.button("Save").click();
+    cy.wait("@createDatabase");
 
     cy.findByText("We're taking a look at your database!");
     cy.findByLabelText("close icon").click();

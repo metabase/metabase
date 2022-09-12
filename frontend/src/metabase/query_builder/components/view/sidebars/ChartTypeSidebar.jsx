@@ -16,7 +16,7 @@ import {
 const FIXED_LAYOUT = [
   ["line", "bar", "combo", "area", "row", "waterfall"],
   ["scatter", "pie", "funnel", "smartscalar", "progress", "gauge"],
-  ["scalar", "table", "pivot", "map"],
+  ["scalar", "table", "pivot", "map", "list", "object"],
 ];
 const FIXED_TYPES = new Set(_.flatten(FIXED_LAYOUT));
 
@@ -94,7 +94,6 @@ const ChartTypeOption = ({
     <OptionIconContainer
       isSelected={isSelected}
       onClick={onClick}
-      className="cursor-pointer bg-brand-hover text-brand text-white-hover"
       data-testid={`${visualization.uiName}-button`}
       data-is-sensible={isSensible}
     >

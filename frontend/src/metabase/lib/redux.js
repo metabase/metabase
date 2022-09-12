@@ -1,4 +1,4 @@
-import moment from "moment";
+import moment from "moment-timezone";
 import _ from "underscore";
 import { getIn } from "icepick";
 
@@ -279,14 +279,19 @@ function withCachedData(
     // thunk:
     (dispatch, getState) => {
       const options = args[args.length - 1] || {};
-      const { reload, properties } = options;
+      const { useCachedForbiddenError, reload, properties } = options;
 
       const existingStatePath = getExistingStatePath(...args);
       const requestStatePath = ["requests", ...getRequestStatePath(...args)];
       const newQueryKey = getQueryKey && getQueryKey(...args);
       const existingData = getIn(getState(), existingStatePath);
-      const { loading, loaded, queryKey } =
+      const { loading, loaded, queryKey, error } =
         getIn(getState(), requestStatePath) || {};
+
+      // Avoid requesting data with permanently forbidded access
+      if (useCachedForbiddenError && error?.status === 403) {
+        throw error;
+      }
 
       const hasRequestedProperties =
         properties &&

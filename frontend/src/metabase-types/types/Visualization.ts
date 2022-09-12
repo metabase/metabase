@@ -1,3 +1,8 @@
+/**
+ * ⚠️
+ * @deprecated use existing types from, or add to metabase-types/api/*
+ */
+
 import { DatasetData, Column, Row, Value } from "metabase-types/types/Dataset";
 import { Card } from "metabase-types/types/Card";
 import { VisualizationSettings } from "metabase-types/api/card";
@@ -116,6 +121,7 @@ export type VisualizationProps = {
   onHoverChange: (hoverObject?: HoverObject) => void;
   onVisualizationClick: (clickObject?: ClickObject) => void;
   visualizationIsClickable: (clickObject?: ClickObject) => boolean;
+  getExtraDataForClick?: (clickObject?: ClickObject) => Record<string, unknown>;
   onChangeCardAndRun: OnChangeCardAndRun;
 
   onUpdateVisualizationSettings: (settings: Record<string, any>) => void;

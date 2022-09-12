@@ -2,8 +2,6 @@ import React, { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { BookmarksType, Collection, User } from "metabase-types/api";
-
 import { IconProps } from "metabase/components/Icon";
 import { Tree } from "metabase/components/tree";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
@@ -12,23 +10,28 @@ import {
   getCollectionIcon,
   PERSONAL_COLLECTIONS,
 } from "metabase/entities/collections";
-import { IFRAMED, isSmallScreen } from "metabase/lib/dom";
+import { isSmallScreen } from "metabase/lib/dom";
 import * as Urls from "metabase/lib/urls";
+
+import type { Bookmark, Collection, DataApp, User } from "metabase-types/api";
 
 import { SelectedItem } from "./types";
 import BookmarkList from "./BookmarkList";
-import { SidebarCollectionLink, SidebarLink } from "./SidebarItems";
+import {
+  SidebarCollectionLink,
+  SidebarDataAppLink,
+  SidebarLink,
+} from "./SidebarItems";
 import {
   AddYourOwnDataLink,
-  BrowseLink,
-  CollectionsMoreIconContainer,
-  CollectionsMoreIcon,
   CollectionMenuList,
-  HomePageLink,
+  CollectionsMoreIcon,
+  CollectionsMoreIconContainer,
+  PaddedSidebarLink,
   SidebarContentRoot,
   SidebarHeading,
-  SidebarSection,
   SidebarHeadingWrapper,
+  SidebarSection,
 } from "./MainNavbar.styled";
 
 interface CollectionTreeItem extends Collection {
@@ -40,10 +43,11 @@ type Props = {
   isAdmin: boolean;
   isOpen: boolean;
   currentUser: User;
-  bookmarks: BookmarksType;
+  bookmarks: Bookmark[];
   hasDataAccess: boolean;
   hasOwnDatabase: boolean;
   collections: CollectionTreeItem[];
+  dataApps: DataApp[];
   selectedItems: SelectedItem[];
   handleCloseNavbar: () => void;
   handleLogout: () => void;
@@ -67,6 +71,7 @@ function MainNavbarView({
   currentUser,
   bookmarks,
   collections,
+  dataApps,
   hasOwnDatabase,
   selectedItems,
   hasDataAccess,
@@ -78,6 +83,7 @@ function MainNavbarView({
     card: cardItem,
     collection: collectionItem,
     dashboard: dashboardItem,
+    "data-app": dataAppItem,
     "non-entity": nonEntityItem,
   } = _.indexBy(selectedItems, item => item.type);
 
@@ -92,14 +98,14 @@ function MainNavbarView({
       <div>
         <SidebarSection>
           <ul>
-            <HomePageLink
+            <PaddedSidebarLink
               isSelected={nonEntityItem?.url === "/"}
               icon="home"
               onClick={onItemSelect}
               url="/"
             >
               {t`Home`}
-            </HomePageLink>
+            </PaddedSidebarLink>
           </ul>
         </SidebarSection>
 
@@ -107,7 +113,9 @@ function MainNavbarView({
           <SidebarSection>
             <BookmarkList
               bookmarks={bookmarks}
-              selectedItem={cardItem ?? dashboardItem ?? collectionItem}
+              selectedItem={
+                cardItem ?? dashboardItem ?? dataAppItem ?? collectionItem
+              }
               onSelect={onItemSelect}
               reorderBookmarks={reorderBookmarks}
             />
@@ -127,13 +135,31 @@ function MainNavbarView({
             role="tree"
           />
         </SidebarSection>
-        <ul>
-          {hasDataAccess && !IFRAMED && (
-            <SidebarSection>
-              <SidebarHeadingWrapper>
-                <SidebarHeading>{t`Data`}</SidebarHeading>
-              </SidebarHeadingWrapper>
-              <BrowseLink
+
+        {dataApps.length > 0 && (
+          <SidebarSection>
+            <SidebarHeadingWrapper>
+              <SidebarHeading>{t`Apps`}</SidebarHeading>
+            </SidebarHeadingWrapper>
+            <ul>
+              {dataApps.map(app => (
+                <SidebarDataAppLink
+                  key={`app-${app.id}`}
+                  dataApp={app}
+                  isSelected={dataAppItem?.id === app.id}
+                />
+              ))}
+            </ul>
+          </SidebarSection>
+        )}
+
+        {hasDataAccess && (
+          <SidebarSection>
+            <SidebarHeadingWrapper>
+              <SidebarHeading>{t`Data`}</SidebarHeading>
+            </SidebarHeadingWrapper>
+            <ul>
+              <PaddedSidebarLink
                 icon="database"
                 url={BROWSE_URL}
                 isSelected={nonEntityItem?.url?.startsWith(BROWSE_URL)}
@@ -141,7 +167,7 @@ function MainNavbarView({
                 data-metabase-event="NavBar;Data Browse"
               >
                 {t`Browse data`}
-              </BrowseLink>
+              </PaddedSidebarLink>
               {!hasOwnDatabase && isAdmin && (
                 <AddYourOwnDataLink
                   icon="add"
@@ -155,9 +181,9 @@ function MainNavbarView({
                   {t`Add your own data`}
                 </AddYourOwnDataLink>
               )}
-            </SidebarSection>
-          )}
-        </ul>
+            </ul>
+          </SidebarSection>
+        )}
       </div>
     </SidebarContentRoot>
   );

@@ -67,6 +67,10 @@
 
 (models/defmodel Field :metabase_field)
 
+(doto Field
+  (derive ::mi/read-policy.partial-perms-for-perms-set)
+  (derive ::mi/write-policy.full-perms-for-perms-set))
+
 (defn- hierarchy-keyword-in [column-name & {:keys [ancestor-types]}]
   (fn [k]
     (when-let [k (keyword k)]
@@ -148,11 +152,10 @@
        (perms-objects-set* db-id schema table-id read-or-write)))
    :ttl/threshold 5000))
 
-(defn- perms-objects-set
-  "Calculate set of permissions required to access a Field. For the time being permissions to access a Field are the
-   same as permissions to access its parent Table."
+;;; Calculate set of permissions required to access a Field. For the time being permissions to access a Field are the
+;;; same as permissions to access its parent Table.
+(defmethod mi/perms-objects-set Field
   [{table-id :table_id, {db-id :db_id, schema :schema} :table} read-or-write]
-  {:arglists '([field read-or-write])}
   (if db-id
     ;; if Field already has a hydrated `:table`, then just use that to generate perms set (no DB calls required)
     (perms-objects-set* db-id schema table-id read-or-write)
@@ -176,7 +179,7 @@
   :out (comp update-semantic-numeric-values mi/json-out-with-keywordization))
 
 
-(u/strict-extend (class Field)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Field)
   models/IModel
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:destination :field :origin :human_readable_field])
@@ -192,12 +195,6 @@
           :properties     (constantly {:timestamped? true})
           :pre-insert     pre-insert})
 
-  mi/IObjectPermissions
-  (merge mi/IObjectPermissionsDefaults
-         {:perms-objects-set perms-objects-set
-          :can-read?         (partial mi/current-user-has-partial-permissions? :read)
-          :can-write?        (partial mi/current-user-has-full-permissions? :write)})
-
   serdes.hash/IdentityHashable
   {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :table)])})
 
@@ -209,7 +206,7 @@
   [{:keys [semantic_type fk_target_field_id]}]
   (when (and (isa? semantic_type :type/FK)
              fk_target_field_id)
-    (Field fk_target_field_id)))
+    (db/select-one Field :id fk_target_field_id)))
 
 (defn values
   "Return the `FieldValues` associated with this `field`."
@@ -343,7 +340,7 @@
 (defn qualified-name-components
   "Return the pieces that represent a path to `field`, of the form `[table-name parent-fields-name* field-name]`."
   [{field-name :name, table-id :table_id, parent-id :parent_id}]
-  (conj (vec (if-let [parent (Field parent-id)]
+  (conj (vec (if-let [parent (db/select-one Field :id parent-id)]
                (qualified-name-components parent)
                (let [{table-name :name, schema :schema} (db/select-one ['Table :name :schema], :id table-id)]
                  (conj (when schema
@@ -418,11 +415,5 @@
 
 (defmethod serdes.base/load-find-local "Field"
   [path]
-  (let [db-name            (-> path first :id)
-        schema-name        (when (= 3 (count path))
-                             (-> path second :id))
-        [{table-name :id}
-         {field-name :id}] (take-last 2 path)
-        db-id              (db/select-one-field :id 'Database :name db-name)
-        table-id           (db/select-one-field :id 'Table :name table-name :db_id db-id :schema schema-name)]
-    (db/select-one-field :id Field :name field-name :table_id table-id)))
+  (let [table-id (serdes.base/load-find-local (pop path))]
+    (db/select-one-field :id Field :name (-> path last :id) :table_id table-id)))

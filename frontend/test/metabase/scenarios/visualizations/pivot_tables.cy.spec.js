@@ -294,12 +294,12 @@ describe("scenarios > visualizations > pivot tables", () => {
 
     cy.log("Collapse the options panel");
     cy.icon("chevronup").click();
-    cy.findByText(/Formatting/).should("not.exist");
+    cy.findByText("Formatting").should("not.exist");
     cy.findByText(/See options/).should("not.exist");
 
     cy.log("Expand it again");
     cy.icon("chevrondown").first().click();
-    cy.findByText(/Formatting/);
+    cy.findByText("Formatting");
     cy.findByText(/See options/);
   });
 
@@ -321,7 +321,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText(/Column title/);
 
     cy.log("Change the title for this column");
-    cy.get("input[id=column_title]").clear().type("ModifiedTITLE");
+    cy.get("input[id=column_title]").clear().type("ModifiedTITLE").blur();
     cy.findByText("Done").click();
     cy.get(".Visualization").within(() => {
       cy.findByText("ModifiedTITLE");
@@ -340,7 +340,7 @@ describe("scenarios > visualizations > pivot tables", () => {
       .parent()
       .findAllByText(/Count/)
       .click();
-    cy.findByText(/Formatting/);
+    cy.findByText("Formatting");
     cy.findByText(/See options/).click();
 
     cy.log("New panel for the column options");
@@ -370,7 +370,7 @@ describe("scenarios > visualizations > pivot tables", () => {
       .findAllByText(/Count/)
       .click();
 
-    cy.findByText(/Formatting/);
+    cy.findByText("Formatting");
     cy.findByText(/Sort order/).should("not.exist");
   });
 
@@ -516,8 +516,8 @@ describe("scenarios > visualizations > pivot tables", () => {
                     card_id: QUESTION_ID,
                     row: 0,
                     col: 0,
-                    sizeX: 12,
-                    sizeY: 8,
+                    size_x: 12,
+                    size_y: 8,
                   },
                 ],
               });
@@ -576,8 +576,8 @@ describe("scenarios > visualizations > pivot tables", () => {
                     card_id: QUESTION_ID,
                     row: 0,
                     col: 0,
-                    sizeX: 12,
-                    sizeY: 8,
+                    size_x: 12,
+                    size_y: 8,
                   },
                 ],
               });
@@ -829,6 +829,59 @@ describe("scenarios > visualizations > pivot tables", () => {
     });
 
     cy.findAllByText(/Totals for .*/i).should("have.length", 0);
+  });
+
+  it("should apply conditional formatting", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
+            ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+            ["field", PEOPLE.STATE, { "source-field": ORDERS.USER_ID }],
+          ],
+          filter: [">", ["field", ORDERS.CREATED_AT, null], "2020-01-01"],
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "pivot",
+      visualization_settings: {
+        "pivot_table.column_split": {
+          rows: [
+            ["field", PEOPLE.STATE, { "source-field": ORDERS.USER_ID }],
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
+          ],
+          columns: [
+            ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+          ],
+          values: [["aggregation", 0]],
+        },
+        "pivot_table.collapsed_rows": {
+          value: [],
+          rows: [
+            ["field", PEOPLE.STATE, { "source-field": ORDERS.USER_ID }],
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
+          ],
+        },
+      },
+    });
+
+    cy.findByText("Settings").click();
+    cy.findByText("Conditional Formatting").click();
+
+    cy.findByText("Add a rule").click();
+    cy.findByTestId("conditional-formatting-value-input").type("70");
+    cy.findByText("is equal to").click();
+    cy.findByText("is less than or equal to").click();
+
+    cy.contains("[data-testid=pivot-table-cell]", "65.09").should(
+      "have.css",
+      "background-color",
+      "rgba(80, 158, 227, 0.65)",
+    );
   });
 
   it.skip("should sort by metric (metabase#22872)", () => {

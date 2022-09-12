@@ -15,7 +15,7 @@
 
 (models/defmodel Dimension :dimension)
 
-(u/strict-extend (class Dimension)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Dimension)
   models/IModel
   (merge models/IModelDefaults
          {:types      (constantly {:type :keyword})

@@ -4,7 +4,6 @@
             [metabase.driver :as driver]
             [metabase.models.metric :refer [Metric]]
             [metabase.models.segment :refer [Segment]]
-            [metabase.query-processor-test :refer :all]
             [metabase.test :as mt]))
 
 (deftest basic-test

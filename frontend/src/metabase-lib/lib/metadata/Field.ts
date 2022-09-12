@@ -1,7 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import _ from "underscore";
-import moment from "moment";
+import moment from "moment-timezone";
 import { createLookupByProperty, memoizeClass } from "metabase-lib/lib/utils";
 import { formatField, stripId } from "metabase/lib/formatting";
 import { getFieldValues } from "metabase/lib/query/field";
@@ -22,6 +22,8 @@ import {
   isCountry,
   isCoordinate,
   isLocation,
+  isDescription,
+  isComment,
   isDimension,
   isMetric,
   isPK,
@@ -30,10 +32,17 @@ import {
   getIconForField,
   getFilterOperators,
 } from "metabase/lib/schema_metadata";
-import { Field as FieldRef } from "metabase-types/types/Query";
 import { FieldDimension } from "../Dimension";
-import Table from "./Table";
 import Base from "./Base";
+import type { FieldFingerprint } from "metabase-types/api/field";
+import type { Field as FieldRef } from "metabase-types/types/Query";
+import type StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import type NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import type Table from "./Table";
+import type Metadata from "./Metadata";
+
+export const LONG_TEXT_MIN = 80;
+
 /**
  * @typedef { import("./metadata").FieldValues } FieldValues
  */
@@ -45,13 +54,20 @@ import Base from "./Base";
 class FieldInner extends Base {
   id: number | FieldRef;
   name: string;
+  description: string | null;
   semantic_type: string | null;
-  fingerprint: any;
+  database_required: boolean;
+  fingerprint?: FieldFingerprint;
   base_type: string | null;
   table?: Table;
+  table_id?: Table["id"];
   target?: Field;
   has_field_values?: "list" | "search" | "none";
   values: any[];
+  metadata?: Metadata;
+
+  // added when creating "virtual fields" that are associated with a given query
+  query?: StructuredQuery | NativeQuery;
 
   getId() {
     if (Array.isArray(this.id)) {
@@ -200,6 +216,16 @@ class FieldInner extends Base {
     return isEntityName(this);
   }
 
+  isLongText() {
+    return (
+      isString(this) &&
+      (isComment(this) ||
+        isDescription(this) ||
+        this?.fingerprint?.type?.["type/Text"]?.["average-length"] >=
+          LONG_TEXT_MIN)
+    );
+  }
+
   /**
    * @param {Field} field
    */
@@ -230,6 +256,8 @@ class FieldInner extends Base {
     if (Array.isArray(this.id)) {
       // if ID is an array, it's a MBQL field reference, typically "field"
       return this.id;
+    } else if (this.field_ref) {
+      return this.field_ref;
     } else {
       return ["field", this.id, null];
     }
@@ -268,16 +296,6 @@ class FieldInner extends Base {
     return this.filterOperatorsLookup()[operatorName];
   }
 
-  // @deprecated: use filterOperators
-  get filter_operators() {
-    return this.filterOperators();
-  }
-
-  // @deprecated: use filterOperatorsLookup
-  get filter_operators_lookup() {
-    return this.filterOperatorsLookup();
-  }
-
   // AGGREGATIONS
   aggregationOperators() {
     return this.table
@@ -297,16 +315,6 @@ class FieldInner extends Base {
 
   aggregationOperator(short) {
     return this.aggregationOperatorsLookup()[short];
-  }
-
-  // @deprecated: use aggregationOperators
-  get aggregation_operators() {
-    return this.aggregationOperators();
-  }
-
-  // @deprecated: use aggregationOperatorsLookup
-  get aggregation_operators_lookup() {
-    return this.aggregationOperatorsLookup();
   }
 
   // BREAKOUTS

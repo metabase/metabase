@@ -727,7 +727,9 @@ describeEE("formatting > sandboxes", () => {
         native: { query: "SELECT CAST(ID AS VARCHAR) AS ID FROM ORDERS;" },
       });
 
-      cy.visit("/admin/permissions/data/database/1/schema/PUBLIC/table/2");
+      cy.visit(
+        `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}`,
+      );
       cy.wait("@tablePermissions");
       cy.icon("eye")
         .eq(1) // No better way of doing this, undfortunately (see table above)
@@ -794,7 +796,7 @@ describeEE("formatting > sandboxes", () => {
         .should("be.visible")
         .within(() => {
           // Remove the "Subtotal" column from within sidebar
-          cy.findByText("Subtotal").parent().find(".Icon-close").click();
+          cy.findByText("Subtotal").parent().find(".Icon-eye_filled").click();
         });
       cy.button("Done").click();
       // Rerun the query
@@ -939,7 +941,7 @@ describeEE("formatting > sandboxes", () => {
       cy.contains("37.65");
     });
 
-    it.skip("unsaved/dirty query should work on linked table column with multiple dimensions and remapping (metabase#15106)", () => {
+    it("unsaved/dirty query should work on linked table column with multiple dimensions and remapping (metabase#15106)", () => {
       cy.server();
       cy.route("POST", "/api/dataset").as("dataset");
 
@@ -1013,8 +1015,6 @@ describeEE("formatting > sandboxes", () => {
       cy.findByText("Email it").click();
       cy.findByPlaceholderText("Enter user names or email addresses").click();
       cy.findByText("User 1").click();
-      // Click anywhere to close the popover that covers the "Send email now" button
-      cy.findByText("To:").click();
       cy.findByText("Send email now").click();
       cy.wait("@emailSent");
       cy.request("GET", "http://localhost:80/email").then(({ body }) => {

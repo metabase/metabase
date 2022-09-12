@@ -75,7 +75,7 @@
       permissions but no matching GTAP exists.
 
     * Segmented permissions can also be used to enforce column-level permissions -- any column not returned by the
-      underlying GTAP query is not allowed to be references by the parent query thru other means such as filter clauses.
+      underlying GTAP query is not allowed to be referenced by the parent query thru other means such as filter clauses.
       See [[metabase-enterprise.sandbox.query-processor.middleware.column-level-perms-check]].
 
     * GTAPs are not allowed to add columns not present in the original Table, or change their effective type to
@@ -94,13 +94,11 @@
 
   ### Determining CRUD permissions in the REST API
 
-  REST API permissions checks are generally done in various `metabase.api.*` namespaces. Methods for determine whether
-  the current User can perform various CRUD actions are defined by
-  the [[metabase.models.interface/IObjectPermissions]] protocol; this protocol
-  defines [[metabase.models.interface/can-read?]] (in the API sense, not in the run-query sense)
-  and [[metabase.models.interface/can-write?]] as well as the newer [[metabase.models.interface/can-create?]] and
-  [[metabase.models.interface/can-update?]] methods. Implementations for these methods live in `metabase.model.*`
-  namespaces.
+  REST API permissions checks are generally done in various `metabase.api.*` namespaces. Whether the current User can
+  perform various CRUD actions are defined by [[metabase.models.interface/can-read?]] (in the API sense, not in the
+  run-query sense) and [[metabase.models.interface/can-write?]] as well as the
+  newer [[metabase.models.interface/can-create?]] and [[metabase.models.interface/can-update?]] methods.
+  Implementations for these methods live in `metabase.model.*` namespaces.
 
   The implementation of these methods is up to individual models. The majority of implementations check whether
   [[metabase.api.common/*current-user-permissions-set*]] includes permissions for a given path (action)
@@ -114,8 +112,6 @@
   endpoints (\"read\" it) if they have any permissions starting with `/db/1/`, for example `/db/1/` itself (full
   permissions) `/db/1/native/` (ad-hoc SQL query permissions) or permissions, or
   `/db/1/schema/PUBLIC/table/2/query/` (run ad-hoc queries against Table 2 permissions).
-
-  See documentation for [[metabase.models.interface/IObjectPermissions]] for more details.
 
   ### Determining query permissions
 
@@ -587,17 +583,13 @@
                     {:metabase.models.collection.root/is-root? true
                      :namespace                                collection-namespace}))})))
 
-(def IObjectPermissionsForParentCollection
-  "Implementation of `IObjectPermissions` for objects that have a `collection_id`, and thus, a parent Collection.
-   Using this will mean the current User is allowed to read or write these objects if they are allowed to read or
-  write their parent Collection."
-  (merge mi/IObjectPermissionsDefaults
-         ;; TODO - we use these same partial implementations of `can-read?` and `can-write?` all over the place for
-         ;; different models. Consider making them a mixin of some sort. (I was going to do this but I couldn't come
-         ;; up with a good name for the Mixin. - Cam)
-         {:can-read?         (partial mi/current-user-has-full-permissions? :read)
-          :can-write?        (partial mi/current-user-has-full-permissions? :write)
-          :perms-objects-set perms-objects-set-for-parent-collection}))
+(doto ::use-parent-collection-perms
+  (derive ::mi/read-policy.full-perms-for-perms-set)
+  (derive ::mi/write-policy.full-perms-for-perms-set))
+
+(defmethod mi/perms-objects-set ::use-parent-collection-perms
+  [instance read-or-write]
+  (perms-objects-set-for-parent-collection instance read-or-write))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -622,7 +614,7 @@
                                    (:object permissions))))
   (assert-not-admin-group permissions))
 
-(u/strict-extend (class Permissions)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Permissions)
   models/IModel (merge models/IModelDefaults
                        {:pre-insert pre-insert
                         :pre-update pre-update

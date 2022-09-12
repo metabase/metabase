@@ -59,6 +59,7 @@ export const InfoTitle = styled.div`
 export const InfoMessage = styled.div`
   color: ${color("text-dark")};
   text-align: center;
+  margin-bottom: 1rem;
 `;
 
 export const InfoLink = styled(Link)`

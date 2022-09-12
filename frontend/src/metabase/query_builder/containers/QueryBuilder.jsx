@@ -17,7 +17,6 @@ import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
 
 import { closeNavbar, getIsNavbarOpen } from "metabase/redux/app";
-import { MetabaseApi } from "metabase/services";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   getUser,
@@ -72,8 +71,6 @@ import {
   getQuestionAlerts,
   getVisualizationSettings,
   getIsNativeEditorOpen,
-  getIsPreviewing,
-  getIsPreviewable,
   getIsVisualized,
   getIsLiveResizable,
   getNativeEditorCursorOffset,
@@ -92,21 +89,9 @@ import {
   getIsHeaderVisible,
   getIsActionListVisible,
   getIsAdditionalInfoVisible,
+  getAutocompleteResultsFn,
 } from "../selectors";
 import * as actions from "../actions";
-
-function autocompleteResults(card, prefix) {
-  const databaseId = card && card.dataset_query && card.dataset_query.database;
-  if (!databaseId) {
-    return [];
-  }
-
-  const apiCall = MetabaseApi.db_autocomplete_suggestions({
-    dbId: databaseId,
-    prefix: prefix,
-  });
-  return apiCall;
-}
 
 const timelineProps = {
   query: { include: "events" },
@@ -152,8 +137,6 @@ const mapStateToProps = (state, props) => {
     rawSeries: getRawSeries(state),
 
     uiControls: getUiControls(state),
-    // includes isShowingDataReference, isEditing, isRunning, etc
-    // NOTE: should come before other selectors that override these like getIsPreviewing and getIsNativeEditorOpen
     ...state.qb.uiControls,
     isAnySidebarOpen: getIsAnySidebarOpen(state),
 
@@ -161,8 +144,6 @@ const mapStateToProps = (state, props) => {
     isDirty: getIsDirty(state),
     isNew: getIsNew(state),
     isObjectDetail: getIsObjectDetail(state),
-    isPreviewing: getIsPreviewing(state),
-    isPreviewable: getIsPreviewable(state),
     isNativeEditorOpen: getIsNativeEditorOpen(state),
     isNavBarOpen: getIsNavbarOpen(state),
     isVisualized: getIsVisualized(state),
@@ -182,7 +163,8 @@ const mapStateToProps = (state, props) => {
     questionAlerts: getQuestionAlerts(state),
     visualizationSettings: getVisualizationSettings(state),
 
-    autocompleteResultsFn: prefix => autocompleteResults(state.qb.card, prefix),
+    autocompleteResultsFn: getAutocompleteResultsFn(state),
+
     instanceSettings: getSettings(state),
 
     initialCollectionId: Collections.selectors.getInitialCollectionId(

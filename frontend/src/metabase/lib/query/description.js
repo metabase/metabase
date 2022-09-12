@@ -11,6 +11,7 @@ import { format as formatExpression } from "metabase/lib/expressions/format";
 import * as AGGREGATION from "./aggregation";
 import * as QUERY from "./query";
 import * as FIELD_REF from "./field_ref";
+import { FilterClause, MetricClause } from "./description.styled";
 
 // NOTE: This doesn't support every MBQL clause, e.x. joins. It should also be moved to StructuredQuery.
 
@@ -62,13 +63,7 @@ export function getAggregationDescription(tableMetadata, query, options) {
           id: AGGREGATION.getMetric(aggregation),
         });
         const name = metric ? metric.name : "[Unknown Metric]";
-        return [
-          options.jsx ? (
-            <span className="text-green text-bold">{name}</span>
-          ) : (
-            name
-          ),
-        ];
+        return [options.jsx ? <MetricClause>{name}</MetricClause> : name];
       }
       switch (aggregation[0]) {
         case "rows":
@@ -152,11 +147,7 @@ export function getFilterClauseDescription(tableMetadata, filter, options) {
   } else if (filter[0] === "segment") {
     const segment = _.findWhere(tableMetadata.segments, { id: filter[1] });
     const name = segment ? segment.name : "[Unknown Segment]";
-    return options.jsx ? (
-      <span className="text-purple text-bold">{name}</span>
-    ) : (
-      name
-    );
+    return options.jsx ? <FilterClause>{name}</FilterClause> : name;
   } else if (filter[0] === "between" && filter[1][0] === "+") {
     return getFieldName(tableMetadata, filter[1][1], options);
   } else {
@@ -260,7 +251,7 @@ export function formatAggregationDescription({ aggregation }, options = {}) {
         case "metric":
           return [
             options.jsx ? (
-              <span className="text-green text-bold">{agg["arg"]}</span>
+              <MetricClause>{agg["arg"]}</MetricClause>
             ) : (
               agg["arg"]
             ),
@@ -315,7 +306,7 @@ export function formatFilterDescription({ filter }, options = {}) {
       filter.map(f => {
         if (f["segment"] != null) {
           return options.jsx ? (
-            <span className="text-purple text-bold">{f["segment"]}</span>
+            <FilterClause>{f["segment"]}</FilterClause>
           ) : (
             f["segment"]
           );

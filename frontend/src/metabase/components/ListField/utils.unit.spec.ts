@@ -1,5 +1,5 @@
 import { isValidOptionItem } from "./utils";
-import moment from "moment";
+import moment from "moment-timezone";
 
 describe("ListField - utils", () => {
   describe("isValidOptionItem", () => {

@@ -9,8 +9,7 @@
             [metabase.test.data.users :as test.users]
             [metabase.test.fixtures :as fixtures]
             [ring.mock.request :as ring.mock]
-            [toucan.db :as db]
-            [toucan.util.test :as tt])
+            [toucan.db :as db])
   (:import java.util.UUID))
 
 (use-fixtures :once (fixtures/initialize :db :test-users :web-server))
@@ -38,11 +37,13 @@
 (deftest wrap-current-user-info-test
   (testing "Valid requests should add `metabase-user-id` to requests with valid session info"
     (let [session-id (random-session-id)]
-      (tt/with-temp Session [_ {:id      session-id
-                                :user_id (test.users/user->id :rasta)}]
+      (try
+        (db/insert! Session {:id      session-id
+                             :user_id (test.users/user->id :rasta)})
         (is (= (test.users/user->id :rasta)
                (-> (auth-enforced-handler (request-with-session-id session-id))
-                   :metabase-user-id))))))
+                   :metabase-user-id)))
+        (finally (db/delete! Session :id session-id)))))
 
   (testing "Invalid requests should return unauthed response"
     (testing "when no session ID is sent with request"
@@ -54,23 +55,27 @@
       ;; create a new session (specifically created some time in the past so it's EXPIRED) should fail due to session
       ;; expiration
       (let [session-id (random-session-id)]
-        (tt/with-temp Session [_ {:id      session-id
-                                  :user_id (test.users/user->id :rasta)}]
+        (try
+          (db/insert! Session {:id      session-id
+                               :user_id (test.users/user->id :rasta)})
           (db/update-where! Session {:id session-id}
             :created_at (t/instant 0))
           (is (= mw.util/response-unauthentic
-                 (auth-enforced-handler (request-with-session-id session-id)))))))
+                 (auth-enforced-handler (request-with-session-id session-id))))
+          (finally (db/delete! Session :id session-id)))))
 
     (testing "when a Session tied to an inactive User is sent with the request"
       ;; create a new session (specifically created some time in the past so it's EXPIRED)
       ;; should fail due to inactive user
       ;; NOTE that :trashbird is our INACTIVE test user
       (let [session-id (random-session-id)]
-        (tt/with-temp Session [_ {:id      session-id
-                                  :user_id (test.users/user->id :trashbird)}]
+        (try
+          (db/insert! Session {:id      session-id
+                               :user_id (test.users/user->id :trashbird)})
           (is (= mw.util/response-unauthentic
                  (auth-enforced-handler
-                  (request-with-session-id session-id)))))))))
+                  (request-with-session-id session-id))))
+          (finally (db/delete! Session :id session-id)))))))
 
 
 ;;; ------------------------------------------ TEST wrap-api-key middleware ------------------------------------------

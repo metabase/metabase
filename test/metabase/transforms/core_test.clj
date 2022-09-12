@@ -8,8 +8,8 @@
             [metabase.models.table :as table :refer [Table]]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
-            [metabase.test.domain-entities :refer :all]
-            [metabase.test.transforms :refer :all]
+            [metabase.test.domain-entities :refer [with-test-domain-entity-specs]]
+            [metabase.test.transforms :refer [test-transform-spec with-test-transform-specs]]
             [metabase.transforms.core :as tf]
             [metabase.transforms.specs :as tf.specs]
             [metabase.util :as u]
@@ -49,12 +49,12 @@
   (testing "Can we turn a given entity into a format suitable for a query's `:source_table`?"
     (testing "for a Table"
       (is (= (mt/id :venues)
-             (#'tf/->source-table-reference (Table (mt/id :venues))))))
+             (#'tf/->source-table-reference (db/select-one Table :id (mt/id :venues))))))
 
     (testing "for a Card"
       (mt/with-temp Card [{card-id :id}]
         (is (= (str "card__" card-id)
-               (#'tf/->source-table-reference (Card card-id))))))))
+               (#'tf/->source-table-reference (db/select-one Card :id card-id))))))))
 
 (deftest tableset-test
   (testing "Can we get a tableset for a given schema?"
@@ -77,7 +77,7 @@
   (testing "Can we extract results from the final bindings?"
     (with-test-transform-specs
       (is (= [(mt/id :venues)]
-             (map u/the-id (#'tf/resulting-entities {"VenuesEnhanced" {:entity     (Table (mt/id :venues))
+             (map u/the-id (#'tf/resulting-entities {"VenuesEnhanced" {:entity     (db/select-one Table :id (mt/id :venues))
                                                                        :dimensions {"D1" [:field-id 1]}}}
                                                     (first @tf.specs/transform-specs))))))))
 
@@ -109,7 +109,7 @@
       (testing "... and do we throw if we didn't get what we expected?"
         (is (thrown?
              java.lang.AssertionError
-             (#'tf/validate-results {"VenuesEnhanced" {:entity     (Table (mt/id :venues))
+             (#'tf/validate-results {"VenuesEnhanced" {:entity     (db/select-one Table :id (mt/id :venues))
                                                        :dimensions {"D1" [:field-id 1]}}}
                                     (first @tf.specs/transform-specs))))))))
 
@@ -131,6 +131,6 @@
     (with-test-transform-specs
       (with-test-domain-entity-specs
         (is (= "Test transform"
-               (-> (tf/candidates (Table (mt/id :venues)))
+               (-> (tf/candidates (db/select-one Table :id (mt/id :venues)))
                    first
                    :name)))))))

@@ -34,7 +34,7 @@
   (testing "`retire-tables!` should retire the Table(s) passed to it, not all Tables in the DB -- see #9593"
     (mt/with-temp* [Database [db]
                     Table    [table-1 {:name "Table 1", :db_id (u/the-id db)}]
-                    Table    [table-2 {:name "Table 2", :db_id (u/the-id db)}]]
+                    Table    [_       {:name "Table 2", :db_id (u/the-id db)}]]
       (#'sync-tables/retire-tables! db #{{:name "Table 1", :schema (:schema table-1)}})
       (is (= {"Table 1" false, "Table 2" true}
              (db/select-field->field :name :active Table, :db_id (u/the-id db)))))))

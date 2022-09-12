@@ -163,19 +163,19 @@ The administrator can [create a new group][groups] to capture precisely who's al
 - [I have a different permissions issue][troubleshooting-permissions].
 - [I can't see my tables][cant-see-tables].
 
-[authenticating-with-saml]: ../enterprise-guide/authenticating-with-saml.html
-[cant-see-tables]: cant-see-tables.html
-[column-permissions]: /learn/permissions/data-sandboxing-column-permissions.html
-[data-model]: ../administration-guide/03-metadata-editing.html
-[data-permissions]: /learn/permissions/data-permissions.html
-[groups]: ../administration-guide/04-managing-users.html#groups
-[jwt-auth]: ../enterprise-guide/authenticating-with-jwt.html
-[locked-parameters]: /learn/embedding/embedding-charts-and-dashboards.html#hide-or-lock-parameters-to-restrict-what-data-is-shown
-[permissions]: /learn/permissions/data-permissions.html
-[public-sharing]: ../administration-guide/12-public-links.html
-[row-permissions]: /learn/permissions/data-sandboxing-row-permissions.html
-[sandboxing-your-data]: ../enterprise-guide/data-sandboxes.html
-[signed-embedding]: /learn/embedding/embedding-charts-and-dashboards.html#enable-embedding-in-other-applications
+[authenticating-with-saml]: ../people-and-groups/authenticating-with-saml.md
+[cant-see-tables]: cant-see-tables.md
+[column-permissions]: https://www.metabase.com/learn/permissions/data-sandboxing-column-permissions
+[data-model]: ../data-modeling/metadata-editing.md
+[data-permissions]: https://www.metabase.com/learn/permissions/data-permissions
+[groups]: ../people-and-groups/managing.md#groups
+[jwt-auth]: ../people-and-groups/authenticating-with-jwt.md
+[locked-parameters]: https://www.metabase.com/learn/embedding/embedding-charts-and-dashboards.html#hide-or-lock-parameters-to-restrict-what-data-is-shown
+[permissions]: https://www.metabase.com/learn/permissions/data-permissions.html
+[public-sharing]: ../questions/sharing/public-links.md
+[row-permissions]: https://www.metabase.com/learn/permissions/data-sandboxing-row-permissions
+[sandboxing-your-data]: ../permissions/data-sandboxes.md
+[signed-embedding]: https://www.metabase.com/learn/embedding/embedding-charts-and-dashboards.html#enable-embedding-in-other-applications
 [sandbox-limitations]: ../enterprise-guide/data-sandboxes.html#current-limitations
-[troubleshooting-permissions]: ./permissions.html
-[unsupported-databases]: ../enterprise-guide/data-sandboxes.html#data-sandboxes-do-not-support-non-sql-databases
+[troubleshooting-permissions]: ./permissions.md
+[unsupported-databases]: ../permissions/data-sandboxes.md#data-sandboxes-do-not-support-non-sql-databases

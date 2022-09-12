@@ -1,5 +1,5 @@
 import React from "react";
-import moment from "moment";
+import moment from "moment-timezone";
 import _ from "underscore";
 import cx from "classnames";
 

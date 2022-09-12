@@ -1,6 +1,7 @@
 ---
 title: "Dashboard"
-summary: "/api/dashboard endpoints."
+summary: |
+  /api/dashboard endpoints.
 ---
 
 # Dashboard
@@ -180,7 +181,7 @@ Create a new Dashboard.
 
 *  **`description`** value may be nil, or if non-nil, value must be a string.
 
-*  **`parameters`** value may be nil, or if non-nil, value must be an array. Each parameter must be a map with String :id key
+*  **`parameters`** value may be nil, or if non-nil, value must be an array. Each parameter must be a map with :id and :type keys
 
 *  **`cache_ttl`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
@@ -266,7 +267,7 @@ Add a `Card` to a Dashboard.
 
 *  **`cardId`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
-*  **`parameter_mappings`** value must be an array. Each value must be a map.
+*  **`parameter_mappings`** value may be nil, or if non-nil, value must be an array.
 
 *  **`dashboard-card`**
 
@@ -322,7 +323,7 @@ Update a Dashboard.
 
 ### PARAMS:
 
-*  **`parameters`** value may be nil, or if non-nil, value must be an array. Each parameter must be a map with String :id key
+*  **`parameters`** value may be nil, or if non-nil, value must be an array. Each parameter must be a map with :id and :type keys
 
 *  **`points_of_interest`** value may be nil, or if non-nil, value must be a string.
 
@@ -357,8 +358,8 @@ Update a Dashboard.
 Update `Cards` on a Dashboard. Request body should have the form:
 
     {:cards [{:id                 ... ; DashboardCard ID
-              :sizeX              ...
-              :sizeY              ...
+              :size_x             ...
+              :size_y             ...
               :row                ...
               :col                ...
               :parameter_mappings ...

@@ -1,57 +1,39 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { t } from "ttag";
+import React, { useCallback, useMemo, useState } from "react";
 import { connect } from "react-redux";
-import { push } from "react-router-redux";
-import { LocationDescriptor } from "history";
 import _ from "underscore";
+import { LocationDescriptor } from "history";
 
 import { IconProps } from "metabase/components/Icon";
 import Modal from "metabase/components/Modal";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
 
-import Question from "metabase-lib/lib/Question";
-import {
-  Bookmark,
-  BookmarksType,
-  Collection,
-  Dashboard,
-  User,
-} from "metabase-types/api";
-import { State } from "metabase-types/store";
-
-import Bookmarks, { getOrderedBookmarks } from "metabase/entities/bookmarks";
-import Collections, {
-  ROOT_COLLECTION,
-  getCollectionIcon,
-  buildCollectionTree,
-} from "metabase/entities/collections";
-import { openNavbar, closeNavbar } from "metabase/redux/app";
-import { logout } from "metabase/auth/actions";
-import { getUserIsAdmin, getUser } from "metabase/selectors/user";
-import {
-  getHasOwnDatabase,
-  getHasDataAccess,
-} from "metabase/new_query/selectors";
-import { getQuestion } from "metabase/query_builder/selectors";
-import { getDashboard } from "metabase/dashboard/selectors";
-
-import {
-  nonPersonalOrArchivedCollection,
-  currentUserPersonalCollections,
-  coerceCollectionId,
-} from "metabase/collections/utils";
 import * as Urls from "metabase/lib/urls";
 
-import CollectionCreate from "metabase/collections/containers/CollectionCreate";
+import type { Bookmark, Collection, DataApp, User } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
-import { SelectedItem } from "./types";
-import MainNavbarView from "./MainNavbarView";
+import DataApps, { isDataAppCollection } from "metabase/entities/data-apps";
+import Bookmarks, { getOrderedBookmarks } from "metabase/entities/bookmarks";
+import Collections, {
+  buildCollectionTree,
+  getCollectionIcon,
+  ROOT_COLLECTION,
+} from "metabase/entities/collections";
+import { logout } from "metabase/auth/actions";
+import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import {
-  Sidebar,
-  NavRoot,
-  LoadingContainer,
-  LoadingTitle,
-} from "./MainNavbar.styled";
+  getHasDataAccess,
+  getHasOwnDatabase,
+} from "metabase/new_query/selectors";
+
+import CollectionCreate from "metabase/collections/containers/CollectionCreate";
+import {
+  currentUserPersonalCollections,
+  nonPersonalOrArchivedCollection,
+} from "metabase/collections/utils";
+
+import { MainNavbarProps, SelectedItem } from "./types";
+import MainNavbarView from "./MainNavbarView";
+import NavbarLoadingView from "./NavbarLoadingView";
 
 type NavbarModal = "MODAL_NEW_COLLECTION" | null;
 
@@ -62,16 +44,11 @@ function mapStateToProps(state: State) {
     hasDataAccess: getHasDataAccess(state),
     hasOwnDatabase: getHasOwnDatabase(state),
     bookmarks: getOrderedBookmarks(state),
-    question: getQuestion(state),
-    dashboard: getDashboard(state),
   };
 }
 
 const mapDispatchToProps = {
-  openNavbar,
-  closeNavbar,
   logout,
-  onChangeLocation: push,
   onReorderBookmarks: Bookmarks.actions.reorder,
 };
 
@@ -80,41 +57,32 @@ interface CollectionTreeItem extends Collection {
   children: CollectionTreeItem[];
 }
 
-type Props = {
-  isOpen: boolean;
+interface Props extends MainNavbarProps {
   isAdmin: boolean;
   currentUser: User;
-  bookmarks: BookmarksType;
+  selectedItems: SelectedItem[];
+  bookmarks: Bookmark[];
   collections: Collection[];
   rootCollection: Collection;
-  question?: Question;
-  dashboard?: Dashboard;
+  dataApps: DataApp[];
   hasDataAccess: boolean;
   hasOwnDatabase: boolean;
   allFetched: boolean;
-  location: {
-    pathname: string;
-  };
-  params: {
-    slug?: string;
-  };
-  openNavbar: () => void;
-  closeNavbar: () => void;
   logout: () => void;
-  onChangeLocation: (location: LocationDescriptor) => void;
   onReorderBookmarks: (bookmarks: Bookmark[]) => void;
-};
+  onChangeLocation: (location: LocationDescriptor) => void;
+}
 
 function MainNavbarContainer({
   bookmarks,
   isAdmin,
+  selectedItems,
   isOpen,
   currentUser,
   hasOwnDatabase,
   collections = [],
   rootCollection,
-  question,
-  dashboard,
+  dataApps = [],
   hasDataAccess,
   allFetched,
   location,
@@ -128,79 +96,20 @@ function MainNavbarContainer({
 }: Props) {
   const [modal, setModal] = useState<NavbarModal>(null);
 
-  useEffect(() => {
-    function handleSidebarKeyboardShortcut(e: KeyboardEvent) {
-      if (e.key === "." && (e.ctrlKey || e.metaKey)) {
-        if (isOpen) {
-          closeNavbar();
-        } else {
-          openNavbar();
-        }
-      }
-    }
-
-    window.addEventListener("keydown", handleSidebarKeyboardShortcut);
-    return () => {
-      window.removeEventListener("keydown", handleSidebarKeyboardShortcut);
-    };
-  }, [isOpen, openNavbar, closeNavbar]);
-
-  const selectedItems = useMemo<SelectedItem[]>(() => {
-    const { pathname } = location;
-    const { slug } = params;
-    const isCollectionPath = pathname.startsWith("/collection");
-    const isUsersCollectionPath = pathname.startsWith("/collection/users");
-    const isQuestionPath = pathname.startsWith("/question");
-    const isModelPath = pathname.startsWith("/model");
-    const isDashboardPath = pathname.startsWith("/dashboard");
-
-    if (isCollectionPath) {
-      return [
-        {
-          id: isUsersCollectionPath ? "users" : Urls.extractCollectionId(slug),
-          type: "collection",
-        },
-      ];
-    }
-    if (isDashboardPath && dashboard) {
-      return [
-        {
-          id: dashboard.id,
-          type: "dashboard",
-        },
-        {
-          id: coerceCollectionId(dashboard.collection_id),
-          type: "collection",
-        },
-      ];
-    }
-    if ((isQuestionPath || isModelPath) && question) {
-      return [
-        {
-          id: question.id(),
-          type: "card",
-        },
-        {
-          id: coerceCollectionId(question.collectionId()),
-          type: "collection",
-        },
-      ];
-    }
-    return [{ url: pathname, type: "non-entity" }];
-  }, [location, params, question, dashboard]);
-
   const collectionTree = useMemo<CollectionTreeItem[]>(() => {
     const preparedCollections = [];
     const userPersonalCollections = currentUserPersonalCollections(
       collections,
       currentUser.id,
     );
-    const nonPersonalOrArchivedCollections = collections.filter(
-      nonPersonalOrArchivedCollection,
+    const displayableCollections = collections.filter(
+      collection =>
+        nonPersonalOrArchivedCollection(collection) &&
+        !isDataAppCollection(collection),
     );
 
     preparedCollections.push(...userPersonalCollections);
-    preparedCollections.push(...nonPersonalOrArchivedCollections);
+    preparedCollections.push(...displayableCollections);
 
     const tree = buildCollectionTree(preparedCollections);
 
@@ -250,34 +159,29 @@ function MainNavbarContainer({
     return null;
   }, [modal, closeModal, onChangeLocation]);
 
+  if (!allFetched) {
+    return <NavbarLoadingView />;
+  }
+
   return (
     <>
-      <Sidebar className="Nav" isOpen={isOpen} aria-hidden={!isOpen}>
-        <NavRoot isOpen={isOpen}>
-          {allFetched ? (
-            <MainNavbarView
-              {...props}
-              bookmarks={bookmarks}
-              isAdmin={isAdmin}
-              isOpen={isOpen}
-              currentUser={currentUser}
-              collections={collectionTree}
-              hasOwnDatabase={hasOwnDatabase}
-              selectedItems={selectedItems}
-              hasDataAccess={hasDataAccess}
-              reorderBookmarks={reorderBookmarks}
-              handleCreateNewCollection={onCreateNewCollection}
-              handleCloseNavbar={closeNavbar}
-              handleLogout={logout}
-            />
-          ) : (
-            <LoadingContainer>
-              <LoadingSpinner />
-              <LoadingTitle>{t`Loading…`}</LoadingTitle>
-            </LoadingContainer>
-          )}
-        </NavRoot>
-      </Sidebar>
+      <MainNavbarView
+        {...props}
+        bookmarks={bookmarks}
+        isAdmin={isAdmin}
+        isOpen={isOpen}
+        currentUser={currentUser}
+        collections={collectionTree}
+        dataApps={dataApps}
+        hasOwnDatabase={hasOwnDatabase}
+        selectedItems={selectedItems}
+        hasDataAccess={hasDataAccess}
+        reorderBookmarks={reorderBookmarks}
+        handleCreateNewCollection={onCreateNewCollection}
+        handleCloseNavbar={closeNavbar}
+        handleLogout={logout}
+      />
+
       {modal && <Modal onClose={closeModal}>{renderModalContent()}</Modal>}
     </>
   );
@@ -293,7 +197,10 @@ export default _.compose(
     loadingAndErrorWrapper: false,
   }),
   Collections.loadList({
-    query: () => ({ tree: true }),
+    query: () => ({ tree: true, "exclude-archived": true }),
+    loadingAndErrorWrapper: false,
+  }),
+  DataApps.loadList({
     loadingAndErrorWrapper: false,
   }),
   connect(mapStateToProps, mapDispatchToProps),

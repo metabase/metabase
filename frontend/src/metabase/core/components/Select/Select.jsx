@@ -8,13 +8,13 @@ import SelectButton from "metabase/core/components/SelectButton";
 import _ from "underscore";
 import cx from "classnames";
 
-import AccordionList from "../AccordionList";
 import { createSelector } from "reselect";
 
 import { color } from "metabase/lib/colors";
 
 import Uncontrollable from "metabase/hoc/Uncontrollable";
 import { composeEventHandlers } from "metabase/lib/compose-event-handlers";
+import { SelectAccordionList } from "./Select.styled";
 
 const MIN_ICON_WIDTH = 20;
 
@@ -28,6 +28,7 @@ class Select extends Component {
     children: PropTypes.any,
 
     value: PropTypes.any.isRequired,
+    name: PropTypes.string,
     defaultValue: PropTypes.any,
     onChange: PropTypes.func.isRequired,
     multiple: PropTypes.bool,
@@ -59,6 +60,7 @@ class Select extends Component {
     optionDisabledFn: PropTypes.func,
     optionIconFn: PropTypes.func,
     optionClassNameFn: PropTypes.func,
+    optionStylesFn: PropTypes.func,
   };
 
   static defaultProps = {
@@ -131,7 +133,7 @@ class Select extends Component {
   itemIsClickable = option => !this.props.optionDisabledFn(option);
 
   handleChange = option => {
-    const { multiple, onChange } = this.props;
+    const { name, multiple, onChange } = this.props;
     const optionValue = this.props.optionValueFn(option);
     let value;
     if (multiple) {
@@ -143,7 +145,7 @@ class Select extends Component {
     } else {
       value = optionValue;
     }
-    onChange({ target: { value } });
+    onChange({ target: { name, value } });
     if (!multiple) {
       this._popover.close();
       this.handleClose();
@@ -247,16 +249,17 @@ class Select extends Component {
         // this can happen when filtering items via search
         pinInitialAttachment
       >
-        <AccordionList
+        <SelectAccordionList
           hasInitialFocus
           sections={sections}
-          className="MB-Select text-brand"
+          className="MB-Select"
           alwaysExpanded
           width={width}
           itemIsSelected={this.itemIsSelected}
           itemIsClickable={this.itemIsClickable}
           renderItemName={this.props.optionNameFn}
           getItemClassName={this.props.optionClassNameFn}
+          getItemStyles={this.props.optionStylesFn}
           renderItemDescription={this.props.optionDescriptionFn}
           renderItemIcon={this.renderItemIcon}
           onChange={this.handleChange}

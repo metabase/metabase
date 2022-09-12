@@ -1,6 +1,7 @@
 ---
 title: "Tiles"
-summary: "`/api/tiles` endpoints."
+summary: |
+  `/api/tiles` endpoints.
 ---
 
 # Tiles

@@ -1,14 +1,13 @@
 import Question from "metabase-lib/lib/Question";
-
 import { ExpressionDimension } from "metabase-lib/lib/Dimension";
+
+import { isActionButtonCard } from "metabase/writeback/utils";
 
 import {
   dimensionFilterForParameter,
   getTagOperatorFilterForParameter,
   variableFilterForParameter,
 } from "./filters";
-
-import { isVirtualDashCard } from "metabase/dashboard/utils";
 
 import { tag_names } from "cljs/metabase.shared.parameters.parameters";
 
@@ -58,9 +57,18 @@ export function getParameterMappingOptions(
   card,
   dashcard = null,
 ) {
-  if (dashcard && isVirtualDashCard(dashcard)) {
+  if (dashcard && card.display === "text") {
     const tagNames = tag_names(dashcard.visualization_settings.text || "");
     return tagNames ? tagNames.map(buildTextTagOption) : [];
+  }
+
+  if (isActionButtonCard(card)) {
+    // Action parameters are mapped via click behavior UI for now
+    return [];
+  }
+
+  if (!card.dataset_query) {
+    return [];
   }
 
   const question = new Question(card, metadata);

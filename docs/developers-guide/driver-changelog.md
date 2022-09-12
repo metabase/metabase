@@ -4,6 +4,19 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.45.0
+
+- `metabase.driver.sql-jdbc.connection/details->connection-spec-for-testing-connection` has been removed in Metabase
+  0.45.0, because it leaked SSH tunnels. See [#24445](https://github.com/metabase/metabase/issues/24445). If you are
+  using this function, please update your code to use
+  `metabase.driver.sql-jdbc.connection/with-connection-spec-for-testing-connection` instead, which properly cleans up
+  after itself.
+
+### New methods
+
+- `metabase.driver.sql-jdbc.sync.describe-table-fields` has been added. Implement this method if you want to override
+  the default behavior for fetching field metadata (such as types) for a table.
+
 ## Metabase 0.43.0
 
 - The `:expressions` map in an MBQL query now uses strings as keys rather than keywords (see

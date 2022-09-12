@@ -1,7 +1,6 @@
 (ns metabase.api.session
   "/api/session endpoints"
-  (:require [cemerick.friend.credentials :as creds]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST]]
             [java-time :as t]
             [metabase.analytics.snowplow :as snowplow]
@@ -55,7 +54,7 @@
                         :id      (str session-uuid)
                         :user_id (u/the-id user))
                       ;; HACK !!! For some reason `db/insert` doesn't seem to be working correctly for Session.
-                      (models/post-insert (Session (str session-uuid))))]
+                      (models/post-insert (db/select-one Session :id (str session-uuid))))]
     (assert (map? session))
     (events/publish-event! :user-login
       {:user_id (u/the-id user), :session_id (str session-uuid), :first_login (nil? (:last_login user))})
@@ -232,7 +231,7 @@
                                                                    :id user-id, :is_active true)]
         ;; Make sure the plaintext token matches up with the hashed one for this user
         (when (u/ignore-exceptions
-                (creds/bcrypt-verify token reset_token))
+                (u.password/bcrypt-verify token reset_token))
           ;; check that the reset was triggered within the last 48 HOURS, after that the token is considered expired
           (let [token-age (- (System/currentTimeMillis) reset_triggered)]
             (when (< token-age reset-token-ttl-ms)
@@ -248,7 +247,7 @@
         ;; if this is the first time the user has logged in it means that they're just accepted their Metabase invite.
         ;; Send all the active admins an email :D
         (when-not (:last_login user)
-          (messages/send-user-joined-admin-notification-email! (User user-id)))
+          (messages/send-user-joined-admin-notification-email! (db/select-one User :id user-id)))
         ;; after a successful password update go ahead and offer the client a new session that they can use
         (let [{session-uuid :id, :as session} (create-session! :password user (request.u/device-info request))
               response                        {:success    true

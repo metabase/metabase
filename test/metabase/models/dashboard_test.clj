@@ -4,7 +4,7 @@
             [metabase.automagic-dashboards.core :as magic]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :as collection :refer [Collection]]
-            [metabase.models.dashboard :as dashboard :refer :all]
+            [metabase.models.dashboard :as dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
             [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
             [metabase.models.database :refer [Database]]
@@ -16,7 +16,6 @@
             [metabase.models.table :refer [Table]]
             [metabase.models.user :as user]
             [metabase.test :as mt]
-            [metabase.test.data :refer :all]
             [metabase.test.data.users :as test.users]
             [metabase.test.util :as tu]
             [metabase.util :as u]
@@ -36,18 +35,18 @@
     (is (= {:name         "Test Dashboard"
             :description  nil
             :cache_ttl    nil
-            :cards        [{:sizeX   2
-                            :sizeY   2
+            :cards        [{:size_x   2
+                            :size_y   2
                             :row     0
                             :col     0
                             :id      true
                             :card_id true
                             :series  true}]}
-           (update (serialize-dashboard dashboard) :cards (fn [[{:keys [id card_id series], :as card}]]
-                                                            [(assoc card
-                                                                    :id      (= dashcard-id id)
-                                                                    :card_id (= card-id card_id)
-                                                                    :series  (= [series-id-1 series-id-2] series))]))))))
+           (update (dashboard/serialize-dashboard dashboard) :cards (fn [[{:keys [id card_id series], :as card}]]
+                                                                      [(assoc card
+                                                                              :id      (= dashcard-id id)
+                                                                              :card_id (= card-id card_id)
+                                                                              :series  (= [series-id-1 series-id-2] series))]))))))
 
 
 (deftest diff-dashboards-str-test
@@ -69,8 +68,8 @@
            :cards       []}
           {:name        "Diff Test"
            :description nil
-           :cards       [{:sizeX   2
-                          :sizeY   2
+           :cards       [{:size_x   2
+                          :size_y   2
                           :row     0
                           :col     0
                           :id      1
@@ -83,15 +82,15 @@
           {:name        "Diff Test"
            :description nil
            :cache_ttl   333
-           :cards       [{:sizeX   2
-                          :sizeY   2
+           :cards       [{:size_x   2
+                          :size_y   2
                           :row     0
                           :col     0
                           :id      1
                           :card_id 1
                           :series  [5 6]}
-                         {:sizeX   2
-                          :sizeY   2
+                         {:size_x   2
+                          :size_y   2
                           :row     0
                           :col     0
                           :id      2
@@ -100,15 +99,15 @@
           {:name        "Diff Test"
            :description nil
            :cache_ttl   1227
-           :cards       [{:sizeX   2
-                          :sizeY   2
+           :cards       [{:size_x   2
+                          :size_y   2
                           :row     0
                           :col     0
                           :id      1
                           :card_id 1
                           :series  [4 5]}
-                         {:sizeX   2
-                          :sizeY   2
+                         {:size_x   2
+                          :size_y   2
                           :row     2
                           :col     0
                           :id      2
@@ -132,18 +131,18 @@
                                 :description "something"
                                 :cache_ttl   nil
                                 :cards       []}
-          serialized-dashboard (serialize-dashboard dashboard)]
+          serialized-dashboard (dashboard/serialize-dashboard dashboard)]
       (testing "original state"
-        (is (= {:name         "Test Dashboard"
-                :description  nil
-                :cache_ttl    nil
-                :cards        [{:sizeX   2
-                                :sizeY   2
-                                :row     0
-                                :col     0
-                                :id      true
-                                :card_id true
-                                :series  true}]}
+        (is (= {:name        "Test Dashboard"
+                :description nil
+                :cache_ttl   nil
+                :cards       [{:size_x  2
+                               :size_y  2
+                               :row     0
+                               :col     0
+                               :id      true
+                               :card_id true
+                               :series  true}]}
                (update serialized-dashboard :cards check-ids))))
       (testing "delete the dashcard and modify the dash attributes"
         (dashboard-card/delete-dashboard-card! dashboard-card (test.users/user->id :rasta))
@@ -152,24 +151,24 @@
           :description "something")
         (testing "capture updated Dashboard state"
           (is (= empty-dashboard
-                 (serialize-dashboard (Dashboard dashboard-id))))))
+                 (dashboard/serialize-dashboard (db/select-one Dashboard :id dashboard-id))))))
       (testing "now do the reversion; state should return to original"
         (#'dashboard/revert-dashboard! nil dashboard-id (test.users/user->id :crowberto) serialized-dashboard)
-        (is (= {:name         "Test Dashboard"
-                :description  nil
-                :cache_ttl    nil
-                :cards        [{:sizeX   2
-                                :sizeY   2
-                                :row     0
-                                :col     0
-                                :id      false
-                                :card_id true
-                                :series  true}]}
-               (update (serialize-dashboard (Dashboard dashboard-id)) :cards check-ids))))
+        (is (= {:name        "Test Dashboard"
+                :description nil
+                :cache_ttl   nil
+                :cards       [{:size_x  2
+                               :size_y  2
+                               :row     0
+                               :col     0
+                               :id      false
+                               :card_id true
+                               :series  true}]}
+               (update (dashboard/serialize-dashboard (db/select-one Dashboard :id dashboard-id)) :cards check-ids))))
       (testing "revert back to the empty state"
         (#'dashboard/revert-dashboard! nil dashboard-id (test.users/user->id :crowberto) empty-dashboard)
         (is (= empty-dashboard
-               (serialize-dashboard (Dashboard dashboard-id))))))))
+               (dashboard/serialize-dashboard (db/select-one Dashboard :id dashboard-id))))))))
 
 (deftest public-sharing-test
   (testing "test that a Dashboard's :public_uuid comes back if public sharing is enabled..."
@@ -200,7 +199,7 @@
              (db/select-one-field :collection_id Pulse :id pulse-id))))
     (testing "PulseCard syncing"
       (tt/with-temp Card [{new-card-id :id}]
-        (add-dashcard! dashboard-id new-card-id)
+        (dashboard/add-dashcard! dashboard-id new-card-id)
         (db/update! Dashboard dashboard-id :name "Lucky's Close Shaves")
         (is (not (nil? (db/select-one PulseCard :card_id new-card-id))))))))
 
@@ -254,8 +253,8 @@
       (let [rastas-personal-collection (collection/user->personal-collection (test.users/user->id :rasta))]
         (binding [api/*current-user-id*              (test.users/user->id :rasta)
                   api/*current-user-permissions-set* (-> :rasta test.users/user->id user/permissions-set atom)]
-          (let [dashboard       (magic/automagic-analysis (Table (id :venues)) {})
-                saved-dashboard (save-transient-dashboard! dashboard (u/the-id rastas-personal-collection))]
+          (let [dashboard       (magic/automagic-analysis (db/select-one Table :id (mt/id :venues)) {})
+                saved-dashboard (dashboard/save-transient-dashboard! dashboard (u/the-id rastas-personal-collection))]
             (is (= (db/count DashboardCard :dashboard_id (u/the-id saved-dashboard))
                    (-> dashboard :ordered_cards count)))))))))
 

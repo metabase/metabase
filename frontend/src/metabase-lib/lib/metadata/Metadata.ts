@@ -2,8 +2,11 @@
 // @ts-nocheck
 import _ from "underscore";
 import Base from "./Base";
-import Question from "../Question";
-import Database from "./Database";
+import type Question from "../Question";
+import type Database from "./Database";
+import type Table from "./Table";
+import type Schema from "./Schema";
+
 /**
  * @typedef { import("./metadata").DatabaseId } DatabaseId
  * @typedef { import("./metadata").SchemaId } SchemaId
@@ -18,7 +21,9 @@ import Database from "./Database";
  */
 
 export default class Metadata extends Base {
-  databases: Database[];
+  databases: { [databaseId: string]: Database };
+  questions: { [cardId: string]: Question };
+  tables: { [tableId: string]: Table };
 
   /**
    * @deprecated this won't be sorted or filtered in a meaningful way
@@ -76,7 +81,7 @@ export default class Metadata extends Base {
    * @param {DatabaseId} databaseId
    * @returns {?Database}
    */
-  database(databaseId) {
+  database(databaseId): Database | null {
     return (databaseId != null && this.databases[databaseId]) || null;
   }
 
@@ -84,7 +89,7 @@ export default class Metadata extends Base {
    * @param {SchemaId} schemaId
    * @returns {Schema}
    */
-  schema(schemaId) {
+  schema(schemaId): Schema | null {
     return (schemaId != null && this.schemas[schemaId]) || null;
   }
 
@@ -93,7 +98,7 @@ export default class Metadata extends Base {
    * @param {TableId} tableId
    * @returns {?Table}
    */
-  table(tableId) {
+  table(tableId): Table | null {
     return (tableId != null && this.tables[tableId]) || null;
   }
 
@@ -101,12 +106,12 @@ export default class Metadata extends Base {
    * @param {FieldId} fieldId
    * @returns {?Field}
    */
-  field(fieldId) {
+  field(fieldId): Field | null {
     return (fieldId != null && this.fields[fieldId]) || null;
   }
 
-  question(card) {
-    return new Question(card, this);
+  question(cardId): Question | null {
+    return (cardId != null && this.questions[cardId]) || null;
   }
 
   /**

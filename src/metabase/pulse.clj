@@ -2,6 +2,7 @@
   "Public API for sending Pulses."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [metabase.api.common :as api]
             [metabase.config :as config]
             [metabase.email :as email]
             [metabase.email.messages :as messages]
@@ -10,6 +11,7 @@
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :refer [DashboardCard]]
             [metabase.models.database :refer [Database]]
+            [metabase.models.interface :as mi]
             [metabase.models.pulse :as pulse :refer [Pulse]]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.public-settings :as public-settings]
@@ -21,7 +23,6 @@
             [metabase.query-processor.dashboard :as qp.dashboard]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.server.middleware.session :as mw.session]
-            [metabase.shared.parameters.parameters :as shared.params]
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru trs tru]]
             [metabase.util.retry :as retry]
@@ -46,27 +47,12 @@
        {:value default-value})
      (dissoc parameter :default))))
 
-(defn- process-virtual-dashcard
-  "Given a dashcard and the parameters on a dashboard, returns the dashcard with any parameter values appropriately
-  substituted into connected variables in the text."
-  [dashcard parameters]
-  (let [text               (-> dashcard :visualization_settings :text)
-        parameter-mappings (:parameter_mappings dashcard)
-        tag-names          (shared.params/tag_names text)
-        param-id->param    (into {} (map (juxt :id identity) parameters))
-        tag-name->param-id (into {} (map (juxt (comp second :target) :parameter_id) parameter-mappings))
-        tag->param         (reduce (fn [m tag-name]
-                                     (when-let [param-id (get tag-name->param-id tag-name)]
-                                       (assoc m tag-name (get param-id->param param-id))))
-                                   {}
-                                   tag-names)]
-    (update-in dashcard [:visualization_settings :text] shared.params/substitute_tags tag->param (public-settings/site-locale))))
-
 (defn- execute-dashboard-subscription-card
   [owner-id dashboard dashcard card-or-id parameters]
   (try
     (let [card-id (u/the-id card-or-id)
-          card    (Card :id card-id)
+          card    (db/select-one Card :id card-id)
+          _       (api/check-is-readonly card)
           result  (mw.session/with-current-user owner-id
                     (qp.dashboard/run-query-for-dashcard-async
                      :dashboard-id  (u/the-id dashboard)
@@ -107,7 +93,7 @@
         (execute-dashboard-subscription-card pulse-creator-id dashboard dashcard card-id parameters)
         ;; For virtual cards, return just the viz settings map, with any parameter values substituted appropriately
         (-> dashcard
-            (process-virtual-dashcard parameters)
+            (params/process-virtual-dashcard parameters)
             :visualization_settings)))))
 
 (defn- database-id [card]
@@ -117,7 +103,7 @@
 (s/defn defaulted-timezone :- s/Str
   "Returns the timezone ID for the given `card`. Either the report timezone (if applicable) or the JVM timezone."
   [card :- CardInstance]
-  (or (some-> card database-id Database qp.timezone/results-timezone-id)
+  (or (some->> card database-id (db/select-one Database :id) qp.timezone/results-timezone-id)
       (qp.timezone/system-timezone-id)))
 
 (defn- first-question-name [pulse]
@@ -310,7 +296,7 @@
   (let [email-recipients (filterv u/email? (map :email recipients))
         query-results    (filter :card results)
         timezone         (-> query-results first :card defaulted-timezone)
-        dashboard        (Dashboard :id dashboard-id)]
+        dashboard        (db/select-one Dashboard :id dashboard-id)]
     {:subject      (subject pulse)
      :recipients   email-recipients
      :message-type :attachments
@@ -322,7 +308,7 @@
    {{channel-id :channel} :details}]
   (log/debug (u/format-color 'cyan (trs "Sending Pulse ({0}: {1}) with {2} Cards via Slack"
                                         pulse-id (pr-str pulse-name) (count results))))
-  (let [dashboard (Dashboard :id dashboard-id)]
+  (let [dashboard (db/select-one Dashboard :id dashboard-id)]
     {:channel-id  channel-id
      :attachments (remove nil?
                           (flatten [(slack-dashboard-header pulse dashboard)
@@ -435,7 +421,7 @@
   :default 2.0
   :on-change reconfigure-retrying)
 
-(defsetting notification-retry-randomizaion-factor
+(defsetting notification-retry-randomization-factor
   (deferred-tru "The randomization factor of the retry delay when delivering notifications.")
   :type :double
   :default 0.1
@@ -451,7 +437,7 @@
   (cond-> {:max-attempts (notification-retry-max-attempts)
            :initial-interval-millis (notification-retry-initial-interval)
            :multiplier (notification-retry-multiplier)
-           :randomization-factor (notification-retry-randomizaion-factor)
+           :randomization-factor (notification-retry-randomization-factor)
            :max-interval-millis (notification-retry-max-interval-millis)}
     (or config/is-dev? config/is-test?) (assoc :max-attempts 1)))
 
@@ -506,9 +492,8 @@
        (send-pulse! pulse :channel-ids [312])    Send only to Channel with :id = 312"
   [{:keys [dashboard_id], :as pulse} & {:keys [channel-ids]}]
   {:pre [(map? pulse) (integer? (:creator_id pulse))]}
-  (let [dashboard (Dashboard :id dashboard_id)
-        pulse     (-> pulse
-                      pulse/map->PulseInstance
+  (let [dashboard (db/select-one Dashboard :id dashboard_id)
+        pulse     (-> (mi/instance Pulse pulse)
                       ;; This is usually already done by this step, in the `send-pulses` task which uses `retrieve-pulse`
                       ;; to fetch the Pulse.
                       pulse/hydrate-notification

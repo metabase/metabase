@@ -1,8 +1,10 @@
 (ns metabase.api.routes
   (:require [compojure.core :refer [context defroutes]]
             [compojure.route :as route]
+            [metabase.api.action :as api.action]
             [metabase.api.activity :as api.activity]
             [metabase.api.alert :as api.alert]
+            [metabase.api.app :as api.app]
             [metabase.api.automagic-dashboards :as api.magic]
             [metabase.api.bookmark :as api.bookmark]
             [metabase.api.card :as api.card]
@@ -12,6 +14,7 @@
             [metabase.api.dataset :as api.dataset]
             [metabase.api.email :as api.email]
             [metabase.api.embed :as api.embed]
+            [metabase.api.emitter :as api.emitter]
             [metabase.api.field :as api.field]
             [metabase.api.geojson :as api.geojson]
             [metabase.api.ldap :as api.ldap]
@@ -61,8 +64,10 @@
 
 (defroutes ^{:doc "Ring routes for API endpoints."} routes
   ee-routes
+  (context "/action"              [] (+auth api.action/routes))
   (context "/activity"             [] (+auth api.activity/routes))
   (context "/alert"                [] (+auth api.alert/routes))
+  (context "/app"                  [] (+auth api.app/routes))
   (context "/automagic-dashboards" [] (+auth api.magic/routes))
   (context "/card"                 [] (+auth api.card/routes))
   (context "/bookmark"             [] (+auth api.bookmark/routes))
@@ -72,6 +77,7 @@
   (context "/dataset"              [] (+auth api.dataset/routes))
   (context "/email"                [] (+auth api.email/routes))
   (context "/embed"                [] (+message-only-exceptions api.embed/routes))
+  (context "/emitter"              [] (+auth api.emitter/routes))
   (context "/field"                [] (+auth api.field/routes))
   (context "/geojson"              [] api.geojson/routes)
   (context "/ldap"                 [] (+auth api.ldap/routes))

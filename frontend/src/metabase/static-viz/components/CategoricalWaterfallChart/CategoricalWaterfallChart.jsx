@@ -22,6 +22,7 @@ import {
   getWaterfallEntryColor,
 } from "metabase/static-viz/lib/waterfall";
 import { POSITIONAL_ACCESSORS } from "../../constants/accessors";
+import { getWaterfallColors } from "../../lib/colors";
 
 const propTypes = {
   data: PropTypes.array.isRequired,
@@ -39,6 +40,7 @@ const propTypes = {
     left: PropTypes.string,
     bottom: PropTypes.string,
   }),
+  getColor: PropTypes.func,
 };
 
 const layout = {
@@ -54,14 +56,6 @@ const layout = {
     size: 11,
     family: "Lato, sans-serif",
   },
-  colors: {
-    brand: "#509ee3",
-    textLight: "#b8bbc3",
-    textMedium: "#949aab",
-    waterfallTotal: "#4C5773",
-    waterfallPositive: "#88BF4D",
-    waterfallNegative: "#EF8C8C",
-  },
   barPadding: 0.2,
   labelFontWeight: 700,
   labelPadding: 12,
@@ -74,13 +68,13 @@ const CategoricalWaterfallChart = ({
   accessors = POSITIONAL_ACCESSORS,
   settings,
   labels,
+  getColor,
 }) => {
   const entries = calculateWaterfallEntries(
     data,
     accessors,
     settings?.showTotal,
   );
-  const colors = settings?.colors;
   const isVertical = entries.length > 10;
   const xTickWidth = getXTickWidth(
     data,
@@ -100,7 +94,6 @@ const CategoricalWaterfallChart = ({
   const textBaseline = Math.floor(layout.font.size / 2);
   const leftLabel = labels?.left;
   const bottomLabel = !isVertical ? labels?.bottom : undefined;
-  const palette = { ...layout.colors, ...colors };
 
   const xScale = scaleBand({
     domain: entries.map(entry => entry.x),
@@ -119,7 +112,11 @@ const CategoricalWaterfallChart = ({
     const height = Math.abs(yScale(entry.start) - yScale(entry.end));
     const x = xScale(entry.x);
     const y = yScale(Math.max(entry.start, entry.end));
-    const fill = getWaterfallEntryColor(entry, palette);
+
+    const fill = getWaterfallEntryColor(
+      entry,
+      getWaterfallColors(settings?.colors, getColor),
+    );
 
     return { x, y, width, height, fill };
   };
@@ -158,9 +155,9 @@ const CategoricalWaterfallChart = ({
         labelOffset={yLabelOffset}
         hideTicks
         hideAxisLine
-        labelProps={getLabelProps(layout)}
+        labelProps={getLabelProps(layout, getColor)}
         tickFormat={value => formatNumber(value, settings?.y)}
-        tickLabelProps={() => getYTickLabelProps(layout)}
+        tickLabelProps={() => getYTickLabelProps(layout, getColor)}
       />
 
       <AxisBottom
@@ -169,11 +166,11 @@ const CategoricalWaterfallChart = ({
         top={yMax + layout.margin.top}
         label={bottomLabel}
         numTicks={entries.length}
-        stroke={palette.textLight}
-        tickStroke={palette.textLight}
-        labelProps={getLabelProps(layout)}
+        stroke={getColor("text-light")}
+        tickStroke={getColor("text-light")}
+        labelProps={getLabelProps(layout, getColor)}
         tickComponent={props => <Text {...getXTickProps(props)} />}
-        tickLabelProps={() => getXTickLabelProps(layout, isVertical)}
+        tickLabelProps={() => getXTickLabelProps(layout, isVertical, getColor)}
       />
     </svg>
   );

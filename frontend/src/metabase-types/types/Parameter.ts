@@ -1,3 +1,8 @@
+/**
+ * ⚠️
+ * @deprecated use existing types from, or add to metabase-types/api/*
+ */
+
 import { CardId } from "./Card";
 import { LocalFieldReference, ForeignFieldReference } from "./Query";
 
@@ -40,6 +45,7 @@ export interface Parameter {
   sectionId?: string;
   default?: any;
   filteringParameters?: ParameterId[];
+  value?: any;
 }
 
 export type ParameterQueryObject = {

@@ -1,8 +1,8 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-
 import { color, alpha } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
+import { DimensionPicker } from "metabase/query_builder/components/DimensionPicker";
 
 export const SubDimensionButton = styled.button`
   text-align: left;
@@ -14,6 +14,11 @@ export const SubDimensionButton = styled.button`
   visibility: hidden;
   cursor: pointer;
   font-weight: 700;
+`;
+
+export const SubDimensionPicker = styled(DimensionPicker)`
+  color: ${color("summarize")};
+  overflow-y: auto;
 `;
 
 export const DimensionListItemTag = styled.div`

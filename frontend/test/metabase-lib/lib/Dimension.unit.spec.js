@@ -58,6 +58,30 @@ const nestedQuestionCard = {
   display: "table",
 };
 
+const cardWithResultMetadata = {
+  id: 123,
+  dataset: true,
+  display: "table",
+  visualization_settings: {},
+  dataset_query: {
+    type: "query",
+    database: SAMPLE_DATABASE.id,
+    query: {
+      "source-table": ORDERS.id,
+    },
+  },
+  result_metadata: [
+    {
+      id: ORDERS.ID.id,
+      display_name: "Foo",
+    },
+    {
+      name: ORDERS.TOTAL.name,
+      display_name: "Bar",
+    },
+  ],
+};
+
 const PRODUCT_CATEGORY_FIELD_ID = 21;
 
 const ORDERS_USER_ID_FIELD = metadata.field(ORDERS.USER_ID.id).getPlainObject();
@@ -78,6 +102,7 @@ const ORDERS_DATASET = ORDERS.question()
   .setResultsMetadata({
     columns: [OVERWRITTEN_USER_ID_FIELD_METADATA],
   });
+ORDERS_DATASET.card().id = 111;
 
 // It isn't actually possible to overwrite metadata for non-models,
 // it's just needed to test it's only possible for models
@@ -322,11 +347,14 @@ describe("Dimension", () => {
           const emptyMetadata = {
             field: () => {},
             table: () => {},
+            card: () => {},
           };
 
           const question = ORDERS.question().setResultsMetadata({
             columns: [ORDERS.TOTAL],
           });
+          question.card().id = 1;
+
           const query = new StructuredQuery(question, {
             type: "query",
             database: SAMPLE_DATABASE.id,
@@ -902,7 +930,14 @@ describe("Dimension", () => {
             name: "boolean",
             display_name: "boolean",
             base_type: "type/Boolean",
-            semantic_type: null,
+            semantic_type: undefined,
+            id: [
+              "field",
+              "boolean",
+              {
+                "base-type": "type/Boolean",
+              },
+            ],
             field_ref: [
               "field",
               "boolean",
@@ -917,12 +952,82 @@ describe("Dimension", () => {
       describe("field", () => {
         it("should return the `field` from the card's result_metadata", () => {
           const field = dimension.field();
-          expect(field.id).toBeUndefined();
+          expect(field.id).toEqual([
+            "field",
+            "boolean",
+            { "base-type": "type/Boolean" },
+          ]);
           expect(field.name).toEqual("boolean");
           expect(field.isBoolean()).toBe(true);
           expect(field.metadata).toBeDefined();
           expect(field.query).toBeDefined();
         });
+      });
+    });
+  });
+
+  describe("Dimension with cached, trusted Field instance", () => {
+    describe("field", () => {
+      it("should return the cached Field instance", () => {
+        const fieldFromEndpoint = new Field({
+          ...PRODUCTS.CATEGORY.getPlainObject(),
+          _comesFromEndpoint: true,
+        });
+
+        const fieldDimension = fieldFromEndpoint.dimension();
+        expect(fieldDimension._fieldInstance).toBe(fieldFromEndpoint);
+        expect(fieldDimension.field()).toBe(fieldFromEndpoint);
+      });
+    });
+  });
+
+  describe("Dimension connected to saved question with result_metadata", () => {
+    describe("field", () => {
+      it("should return a Field with properties from the field in the question's result_metadata", () => {
+        const questionWithResultMetadata = new Question(
+          cardWithResultMetadata,
+          metadata,
+        );
+        const fieldDimensionUsingIdProp = Dimension.parseMBQL(
+          ["field", ORDERS.ID.id, null],
+          metadata,
+          questionWithResultMetadata.query(),
+        );
+
+        const idField = fieldDimensionUsingIdProp.field();
+        expect(idField.id).toBe(ORDERS.ID.id);
+        expect(idField.display_name).toBe("Foo");
+        expect(idField.description).toBe(ORDERS.ID.description);
+      });
+    });
+  });
+
+  describe("Dimension connected to query based on nested card with result_metadata", () => {
+    describe("field", () => {
+      it("should return a Field with properties from the field in the question's result_metadata", () => {
+        metadata.questions[cardWithResultMetadata.id] = new Question(
+          cardWithResultMetadata,
+          metadata,
+        );
+
+        const questionWithResultMetadata = new Question(
+          cardWithResultMetadata,
+          metadata,
+        );
+        const unsavedQuestionBasedOnCard = questionWithResultMetadata
+          .composeThisQuery()
+          .setResultsMetadata([]);
+
+        const fieldDimensionUsingIdProp = Dimension.parseMBQL(
+          ["field", ORDERS.ID.id, null],
+          metadata,
+          unsavedQuestionBasedOnCard.query(),
+        );
+
+        const idField = fieldDimensionUsingIdProp.field();
+        expect(idField.id).toBe(ORDERS.ID.id);
+        expect(idField.display_name).toBe("Foo");
+        expect(idField.description).toBe(ORDERS.ID.description);
       });
     });
   });

@@ -19,6 +19,10 @@
 
 (models/defmodel TaskHistory :task_history)
 
+(doto TaskHistory
+  (derive ::mi/read-policy.full-perms-for-perms-set)
+  (derive ::mi/write-policy.full-perms-for-perms-set))
+
 (defn cleanup-task-history!
   "Deletes older TaskHistory rows. Will order TaskHistory by `ended_at` and delete everything after `num-rows-to-keep`.
   This is intended for a quick cleanup of old rows. Returns `true` if something was deleted."
@@ -33,10 +37,9 @@
                                                                            :order-by [[:ended_at :desc]]})]
     (db/simple-delete! TaskHistory :ended_at [:<= clean-before-date])))
 
-(defn- perms-objects-set
-  "Permissions to read or write Task.
-  If `advanced-permissions` is enabled it requires superusers or non-admins with monitoring permissions,
-  Otherwise it requires superusers."
+;;; Permissions to read or write Task. If `advanced-permissions` is enabled it requires superusers or non-admins with
+;;; monitoring permissions, Otherwise it requires superusers.
+(defmethod mi/perms-objects-set TaskHistory
   [_task _read-or-write]
   #{(if (premium-features/enable-advanced-permissions?)
       (perms/application-perms-path :monitoring)
@@ -45,32 +48,26 @@
 (defn- task->snowplow-event
   [task]
   (let [task-details (:task_details task)]
-   (merge {:task_id      (:id task)
-           :task_name    (:task task)
-           :duration     (:duration task)
-           :task_details (json/generate-string task-details)
-           :started_at   (u.date/format (:started_at task))
-           :ended_at     (u.date/format (:ended_at task))}
-          (when-let [db-id (:db_id task)]
-            {:db_id     db-id
-             :db_engine (db/select-one-field :engine Database :id db-id)}))))
+    (merge {:task_id      (:id task)
+            :task_name    (:task task)
+            :duration     (:duration task)
+            :task_details (json/generate-string task-details)
+            :started_at   (u.date/format-rfc3339 (:started_at task))
+            :ended_at     (u.date/format-rfc3339 (:ended_at task))}
+           (when-let [db-id (:db_id task)]
+             {:db_id     db-id
+              :db_engine (db/select-one-field :engine Database :id db-id)}))))
 
 (defn- post-insert
   [task]
   (u/prog1 task
     (snowplow/track-event! ::snowplow/new-task-history *current-user-id* (task->snowplow-event <>))))
 
-(u/strict-extend (class TaskHistory)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class TaskHistory)
   models/IModel
   (merge models/IModelDefaults
          {:types      (constantly {:task_details :json})
-          :post-insert post-insert})
-
-  mi/IObjectPermissions
-  (merge mi/IObjectPermissionsDefaults
-         {:can-read?         (partial mi/current-user-has-full-permissions? :read)
-          :can-write?        (partial mi/current-user-has-full-permissions? :write)
-          :perms-objects-set perms-objects-set}))
+          :post-insert post-insert}))
 
 (s/defn all
   "Return all TaskHistory entries, applying `limit` and `offset` if not nil"

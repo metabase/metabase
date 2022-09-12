@@ -39,6 +39,7 @@ import * as navigation from "../navigation";
 import * as querying from "../querying";
 
 import * as core from "./core";
+import * as metadataActions from "./metadata";
 import { initializeQB } from "./initializeQB";
 
 type BaseSetupOpts = {
@@ -121,6 +122,8 @@ async function setup({
       body: JSON.stringify(card),
     });
   }
+
+  jest.spyOn(CardLib, "loadCard").mockReturnValue(Promise.resolve({ ...card }));
 
   return baseSetup({ location, params, ...opts });
 }
@@ -236,7 +239,7 @@ describe("QB Actions > initializeQB", () => {
 
         it("fetches question metadata", async () => {
           const loadMetadataForCardSpy = jest.spyOn(
-            core,
+            metadataActions,
             "loadMetadataForCard",
           );
 
@@ -436,6 +439,10 @@ describe("QB Actions > initializeQB", () => {
         xhrMock.get(`/api/card/${originalQuestion.id()}`, {
           body: JSON.stringify(originalQuestion.card()),
         });
+
+        jest
+          .spyOn(CardLib, "loadCard")
+          .mockReturnValueOnce(Promise.resolve({ ...originalQuestion.card() }));
 
         return setup({ question: q, ...opts });
       }
@@ -692,12 +699,6 @@ describe("QB Actions > initializeQB", () => {
       };
     }
 
-    it("redirects to new question flow if missing any options", async () => {
-      const redirectSpy = jest.spyOn(navigation, "redirectToNewQuestionFlow");
-      await setupBlank();
-      expect(redirectSpy).toHaveBeenCalledTimes(1);
-    });
-
     it("constructs a card based on provided 'db' param", async () => {
       const expectedCard = Question.create({
         databaseId: SAMPLE_DATABASE?.id,
@@ -767,7 +768,10 @@ describe("QB Actions > initializeQB", () => {
     });
 
     it("fetches question metadata", async () => {
-      const loadMetadataForCardSpy = jest.spyOn(core, "loadMetadataForCard");
+      const loadMetadataForCardSpy = jest.spyOn(
+        metadataActions,
+        "loadMetadataForCard",
+      );
 
       const { question } = await setupOrdersTable();
 

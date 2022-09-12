@@ -128,6 +128,7 @@ const DatabaseForm = ({
       database={database}
       onSubmit={handleSubmit}
       submitTitle={t`Connect database`}
+      useLegacyForm
     >
       {({
         Form,

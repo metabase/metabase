@@ -14,6 +14,7 @@
             [metabase.api.public-test :as public-test]
             [metabase.http-client :as client]
             [metabase.models :refer [Card Dashboard DashboardCard DashboardCardSeries]]
+            [metabase.models.interface :as mi]
             [metabase.models.params.chain-filter-test :as chain-filer-test]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
@@ -62,8 +63,8 @@
     (fn [~binding]
       ~@body)))
 
-(defn do-with-temp-dashcard [{:keys [dash card dashcard]} f]
-  (with-temp-card [card card]
+(defn do-with-temp-dashcard [{:keys [dash card dashcard card-fn]} f]
+  (with-temp-card [card (if (ifn? card-fn) (card-fn card) card)]
     (mt/with-temp* [Dashboard     [dashboard (merge
                                               (when-not (:parameters dash)
                                                 {:parameters [{:id      "_VENUE_ID_"
@@ -420,6 +421,23 @@
         (is (= [{:id "_d", :slug "d", :name "d", :type "date"}]
                (:parameters (client/client :get 200 (dashboard-url dash {:params {:c 100}})))))))))
 
+(deftest locked-params-are-substituted-into-text-cards
+  (testing "check that locked params are substituted into text cards with mapped variables on the backend"
+    (with-embedding-enabled-and-new-secret-key
+      (mt/with-temp* [Dashboard     [dash {:enable_embedding true
+                                           :parameters       [{:id "_a" :slug "a", :name "a", :type :string/=}]}]
+                      DashboardCard [_ {:dashboard_id           (:id dash)
+                                        :parameter_mappings     [{:parameter_id "_a",
+                                                                  :target       [:text-tag "foo"]}]
+                                        :visualization_settings {:virtual_card {:display "text"}
+                                                                 :text         "Text card with variable: {{foo}}"}}]]
+        (is (= "Text card with variable: bar"
+               (-> (client/client :get 200 (dashboard-url dash {:params {:a "bar"}}))
+                   :ordered_cards
+                   first
+                   :visualization_settings
+                   :text)))))))
+
 
 ;;; ---------------------- GET /api/embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id -----------------------
 
@@ -549,9 +567,9 @@
                                                        :type     :query
                                                        :query    {:source-table (mt/id :venues)}}}]
         (with-temp-dashcard [dashcard {:dash {:enable_embedding true}}]
-          (mt/with-temp DashboardCardSeries [series {:dashboardcard_id (u/the-id dashcard)
-                                                     :card_id          (u/the-id series-card)
-                                                     :position         0}]
+          (mt/with-temp DashboardCardSeries [_ {:dashboardcard_id (u/the-id dashcard)
+                                                :card_id          (u/the-id series-card)
+                                                :position         0}]
             (is (= "completed"
                    (:status (client/client :get 202 (str (dashcard-url (assoc dashcard :card_id (u/the-id series-card))))))))))))))
 
@@ -560,9 +578,9 @@
 (defn- field-values-url [card-or-dashboard field-or-id]
   (str
    "embed/"
-   (condp instance? card-or-dashboard
-     (class Card)      (str "card/"      (card-token card-or-dashboard))
-     (class Dashboard) (str "dashboard/" (dash-token card-or-dashboard)))
+   (condp mi/instance-of? card-or-dashboard
+     Card      (str "card/"      (card-token card-or-dashboard))
+     Dashboard (str "dashboard/" (dash-token card-or-dashboard)))
    "/field/"
    (u/the-id field-or-id)
    "/values"))
@@ -673,9 +691,9 @@
 
 (defn- field-search-url [card-or-dashboard field-or-id search-field-or-id]
   (str "embed/"
-       (condp instance? card-or-dashboard
-         (class Card)      (str "card/"      (card-token card-or-dashboard))
-         (class Dashboard) (str "dashboard/" (dash-token card-or-dashboard)))
+       (condp mi/instance-of? card-or-dashboard
+         Card      (str "card/"      (card-token card-or-dashboard))
+         Dashboard (str "dashboard/" (dash-token card-or-dashboard)))
        "/field/" (u/the-id field-or-id)
        "/search/" (u/the-id search-field-or-id)))
 
@@ -716,9 +734,9 @@
 
 (defn- field-remapping-url [card-or-dashboard field-or-id remapped-field-or-id]
   (str "embed/"
-       (condp instance? card-or-dashboard
-         (class Card)      (str "card/"      (card-token card-or-dashboard))
-         (class Dashboard) (str "dashboard/" (dash-token card-or-dashboard)))
+       (condp mi/instance-of? card-or-dashboard
+         Card      (str "card/"      (card-token card-or-dashboard))
+         Dashboard (str "dashboard/" (dash-token card-or-dashboard)))
        "/field/" (u/the-id field-or-id)
        "/remapping/" (u/the-id remapped-field-or-id)))
 
@@ -1134,19 +1152,19 @@
                    (mt/rows (client/client :get 202 (str (card-query-url card "") "?NAME=Hudson%20Borer")))
                    (mt/rows (client/client :get 202 (str (card-query-url card "") "?NAME=Hudson%20Borer&NAME=x"))))))
           (testing "Dashcard"
-            (mt/with-temp* [Dashboard [{dashboard-id :id, :as dashboard} {:enable_embedding true
-                                                                          :embedding_params {:name "enabled"}
-                                                                          :parameters       [{:name      "Name"
-                                                                                              :slug      "name"
-                                                                                              :id        "_name_"
-                                                                                              :type      "string/="
-                                                                                              :sectionId "string"}]}]
+            (mt/with-temp* [Dashboard [{dashboard-id :id} {:enable_embedding true
+                                                           :embedding_params {:name "enabled"}
+                                                           :parameters       [{:name      "Name"
+                                                                               :slug      "name"
+                                                                               :id        "_name_"
+                                                                               :type      "string/="
+                                                                               :sectionId "string"}]}]
 
-                            DashboardCard [{dashcard-id :id, :as dashcard} {:card_id            card-id
-                                                                            :dashboard_id       dashboard-id
-                                                                            :parameter_mappings [{:parameter_id "_name_"
-                                                                                                  :card_id      card-id
-                                                                                                  :target       [:dimension [:template-tag "NAME"]]}]}]]
+                            DashboardCard [dashcard {:card_id            card-id
+                                                     :dashboard_id       dashboard-id
+                                                     :parameter_mappings [{:parameter_id "_name_"
+                                                                           :card_id      card-id
+                                                                           :target       [:dimension [:template-tag "NAME"]]}]}]]
               (is (= [[1]]
                      (mt/rows (client/client :get 202 (str (dashcard-url dashcard) "?name=Hudson%20Borer")))
                      (mt/rows (client/client :get 202 (str (dashcard-url dashcard) "?name=Hudson%20Borer&name=x"))))))))))))

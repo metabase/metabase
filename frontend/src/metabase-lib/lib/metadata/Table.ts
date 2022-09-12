@@ -2,12 +2,15 @@
 // @ts-nocheck
 // NOTE: this needs to be imported first due to some cyclical dependency nonsense
 import Question from "../Question";
-import Schema from "./Schema";
 import Base from "./Base";
 import { singularize } from "metabase/lib/formatting";
 import { getAggregationOperators } from "metabase/lib/schema_metadata";
 import { createLookupByProperty, memoizeClass } from "metabase-lib/lib/utils";
-
+import type Metadata from "./Metadata";
+import type Schema from "./Schema";
+import type Field from "./Field";
+import type Database from "./Database";
+import type { TableId } from "metabase-types/types/Table";
 /**
  * @typedef { import("./metadata").SchemaName } SchemaName
  * @typedef { import("./metadata").EntityType } EntityType
@@ -17,13 +20,17 @@ import { createLookupByProperty, memoizeClass } from "metabase-lib/lib/utils";
 /** This is the primary way people interact with tables */
 
 class TableInner extends Base {
-  id: number;
+  id: TableId;
+  name: string;
   description?: string;
   fks?: any[];
   schema?: Schema;
   display_name: string;
   schema_name: string;
   db_id: number;
+  fields: Field[];
+  metadata?: Metadata;
+  db?: Database | undefined | null;
 
   hasSchema() {
     return (this.schema_name && this.db && this.db.schemas.length > 1) || false;
@@ -101,11 +108,6 @@ class TableInner extends Base {
     return this.aggregation_operators_lookup[short];
   }
 
-  // @deprecated: use aggregationOperators
-  get aggregation_operators() {
-    return this.aggregationOperators();
-  }
-
   // @deprecated: use aggregationOperatorsLookup
   get aggregation_operators_lookup() {
     return this.aggregationOperatorsLookup();
@@ -128,6 +130,16 @@ class TableInner extends Base {
   connectedTables(): Table[] {
     const fks = this.fks || [];
     return fks.map(fk => new Table(fk.origin.table));
+  }
+
+  primaryKeys(): { field: Field; index: number }[] {
+    const pks = [];
+    this.fields.forEach((field, index) => {
+      if (field.isPK()) {
+        pks.push({ field, index });
+      }
+    });
+    return pks;
   }
 
   /**

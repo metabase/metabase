@@ -137,29 +137,27 @@
                  (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas "PUBLIC"]))))))
 
     (testing "permissions for new db"
-      (let [new-id (inc (mt/id))]
-        (mt/with-temp* [PermissionsGroup [group]
-                        Database         [{db-id :id}]
-                        Table            [_ {:db_id db-id}]]
-          (mt/user-http-request
-           :crowberto :put 200 "permissions/graph"
-           (assoc-in (perms/data-perms-graph)
-                     [:groups (u/the-id group) db-id :data :schemas]
-                     :all))
-          (is (= :all
-                 (get-in (perms/data-perms-graph) [:groups (u/the-id group) db-id :data :schemas]))))))
+      (mt/with-temp* [PermissionsGroup [group]
+                      Database         [{db-id :id}]
+                      Table            [_ {:db_id db-id}]]
+        (mt/user-http-request
+         :crowberto :put 200 "permissions/graph"
+         (assoc-in (perms/data-perms-graph)
+                   [:groups (u/the-id group) db-id :data :schemas]
+                   :all))
+        (is (= :all
+               (get-in (perms/data-perms-graph) [:groups (u/the-id group) db-id :data :schemas])))))
 
     (testing "permissions for new db with no tables"
-      (let [new-id (inc (mt/id))]
-        (mt/with-temp* [PermissionsGroup [group]
-                        Database         [{db-id :id}]]
-          (mt/user-http-request
-           :crowberto :put 200 "permissions/graph"
-           (assoc-in (perms/data-perms-graph)
-                     [:groups (u/the-id group) db-id :data :schemas]
-                     :all))
-          (is (= :all
-                 (get-in (perms/data-perms-graph) [:groups (u/the-id group) db-id :data :schemas]))))))))
+      (mt/with-temp* [PermissionsGroup [group]
+                      Database         [{db-id :id}]]
+        (mt/user-http-request
+         :crowberto :put 200 "permissions/graph"
+         (assoc-in (perms/data-perms-graph)
+                   [:groups (u/the-id group) db-id :data :schemas]
+                   :all))
+        (is (= :all
+               (get-in (perms/data-perms-graph) [:groups (u/the-id group) db-id :data :schemas])))))))
 
 
 ;;; +---------------------------------------------- permissions membership apis -----------------------------------------------------------+

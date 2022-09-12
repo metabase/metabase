@@ -180,6 +180,13 @@ export const CollectionsApi = {
   updateGraph: PUT("/api/collection/graph"),
 };
 
+export const DataAppsApi = {
+  list: GET("/api/app"),
+  create: POST("/api/app"),
+  scaffold: POST("/api/app/scaffold"),
+  update: PUT("/api/app/:id"),
+};
+
 const PIVOT_PUBLIC_PREFIX = "/api/public/pivot/";
 
 export const PublicApi = {
@@ -261,7 +268,7 @@ export const MetabaseApi = {
   db_fields: GET("/api/database/:dbId/fields"),
   db_idfields: GET("/api/database/:dbId/idfields"),
   db_autocomplete_suggestions: GET(
-    "/api/database/:dbId/autocomplete_suggestions?search=:prefix",
+    "/api/database/:dbId/autocomplete_suggestions?:matchStyle=:query",
   ),
   db_sync_schema: POST("/api/database/:dbId/sync_schema"),
   db_dismiss_sync_spinner: POST("/api/database/:dbId/dismiss_spinner"),
@@ -523,3 +530,14 @@ function setParamsEndpoints(prefix) {
     prefix + "/dashboard/:dashId/params/:paramId/search/:query",
   );
 }
+
+export const ActionsApi = {
+  create: POST("/api/action/row/create"),
+  update: POST("/api/action/row/update"),
+  delete: POST("/api/action/row/delete"),
+  bulkUpdate: POST("/api/action/bulk/update/:tableId"),
+  bulkDelete: POST("/api/action/bulk/delete/:tableId"),
+  execute: POST(
+    "/api/dashboard/:dashboardId/dashcard/:dashcardId/action/execute",
+  ),
+};

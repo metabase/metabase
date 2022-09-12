@@ -137,6 +137,7 @@ class QuestionInner {
         fields: {},
         metrics: {},
         segments: {},
+        questions: {},
       });
     this._parameterValues = parameterValues || {};
     this._update = update;
@@ -304,12 +305,20 @@ class QuestionInner {
     return this._card && this._card.persisted;
   }
 
+  isAction() {
+    return this._card && this._card.is_write;
+  }
+
   setPersisted(isPersisted) {
     return this.setCard(assoc(this.card(), "persisted", isPersisted));
   }
 
   setDataset(dataset) {
     return this.setCard(assoc(this.card(), "dataset", dataset));
+  }
+
+  setIsAction(isAction) {
+    return this.setCard(assoc(this.card(), "is_write", isAction));
   }
 
   // locking the display prevents auto-selection
@@ -660,8 +669,9 @@ class QuestionInner {
       query.columnNames(),
     );
 
+    const graphMetrics = this.setting("graph.metrics");
     if (
-      this.setting("graph.metrics") &&
+      graphMetrics &&
       addedColumnNames.length > 0 &&
       removedColumnNames.length === 0
     ) {
@@ -672,22 +682,22 @@ class QuestionInner {
 
       if (addedMetricColumnNames.length > 0) {
         return this.updateSettings({
-          "graph.metrics": [
-            ...this.setting("graph.metrics"),
-            ...addedMetricColumnNames,
-          ],
+          "graph.metrics": [...graphMetrics, ...addedMetricColumnNames],
         });
       }
     }
 
+    const tableColumns = this.setting("table.columns");
     if (
-      this.setting("table.columns") &&
+      tableColumns &&
       addedColumnNames.length > 0 &&
       removedColumnNames.length === 0
     ) {
       return this.updateSettings({
         "table.columns": [
-          ...this.setting("table.columns"),
+          ...tableColumns.filter(
+            column => !addedColumnNames.includes(column.name),
+          ),
           ...addedColumnNames.map(name => {
             const dimension = query.columnDimensionWithName(name);
             return {
@@ -831,7 +841,7 @@ class QuestionInner {
     return this._card && this._card.name;
   }
 
-  setDisplayName(name: string) {
+  setDisplayName(name: string | null | undefined) {
     return this.setCard(assoc(this.card(), "name", name));
   }
 
@@ -839,7 +849,7 @@ class QuestionInner {
     return this._card && this._card.collection_id;
   }
 
-  setCollectionId(collectionId: number) {
+  setCollectionId(collectionId: number | null | undefined) {
     return this.setCard(assoc(this.card(), "collection_id", collectionId));
   }
 

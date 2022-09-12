@@ -5,6 +5,7 @@
   `toJSMap` functions to turn Clojure's normal datastructures into js native structures."
   (:require [cheshire.core :as json]
             [clojure.string :as str]
+            [metabase.public-settings :as public-settings]
             [metabase.pulse.render.js-engine :as js])
   (:import [java.io ByteArrayInputStream ByteArrayOutputStream]
            java.nio.charset.StandardCharsets
@@ -115,7 +116,8 @@
   [rows labels settings]
   (let [svg-string (.asString (js/execute-fn-name @context "timeseries_waterfall" rows
                                                   (map (fn [[k v]] [(name k) v]) labels)
-                                                  (json/generate-string settings)))]
+                                                  (json/generate-string settings)
+                                                  (json/generate-string (public-settings/application-colors))))]
     (svg-string->bytes svg-string)))
 
 (defn funnel
@@ -174,16 +176,8 @@
   [rows labels settings]
   (let [svg-string (.asString (js/execute-fn-name @context "categorical_waterfall" rows
                                                   (map (fn [[k v]] [(name k) v]) labels)
-                                                  (json/generate-string settings)))]
-    (svg-string->bytes svg-string)))
-
-(defn categorical-bar
-  "Clojure entrypoint to render a categorical bar chart. Rows should be tuples of [stringable numeric-value]. Labels is
-  a map of {:left \"left-label\" :botton \"bottom-label\". Returns a byte array of a png file."
-  [rows labels settings]
-  (let [svg-string (.asString (js/execute-fn-name @context "categorical_bar" rows
-                                                  (map (fn [[k v]] [(name k) v]) labels)
-                                                  (json/generate-string settings)))]
+                                                  (json/generate-string settings)
+                                                  (json/generate-string (public-settings/application-colors))))]
     (svg-string->bytes svg-string)))
 
 (defn categorical-area

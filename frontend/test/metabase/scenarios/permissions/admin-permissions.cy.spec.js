@@ -14,8 +14,11 @@ import {
 } from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID, USER_GROUPS } from "__support__/e2e/cypress_data";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ALL_USERS_GROUP } = USER_GROUPS;
+const { ORDERS_ID } = SAMPLE_DATABASE;
+
+const { ALL_USERS_GROUP, ADMIN_GROUP } = USER_GROUPS;
 
 const COLLECTION_ACCESS_PERMISSION_INDEX = 0;
 
@@ -31,12 +34,18 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
   });
 
   it("shows hidden tables", () => {
-    cy.visit("/admin/datamodel/database/1");
+    cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}`);
     cy.icon("eye_crossed_out").eq(0).click();
 
-    cy.visit("admin/permissions/data/group/1/database/1");
+    cy.visit(
+      `admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}`,
+    );
 
     assertPermissionTable([
+      ["Accounts", "No self-service", "No"],
+      ["Analytic Events", "No self-service", "No"],
+      ["Feedback", "No self-service", "No"],
+      ["Invoices", "No self-service", "No"],
       ["Orders", "No self-service", "No"],
       ["People", "No self-service", "No"],
       ["Products", "No self-service", "No"],
@@ -46,7 +55,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
 
   it("should display error on failed save", () => {
     // revoke some permissions
-    cy.visit("/admin/permissions/data/group/1");
+    cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
     cy.icon("eye").first().click();
     cy.findAllByRole("option").contains("Unrestricted").click();
 
@@ -281,7 +290,10 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
 
         selectSidebarItem("Administrators");
 
-        cy.url().should("include", "/admin/permissions/data/group/2");
+        cy.url().should(
+          "include",
+          `/admin/permissions/data/group/${ADMIN_GROUP}`,
+        );
 
         cy.findByText("Permissions for the Administrators group");
         cy.findByText("1 person");
@@ -292,6 +304,10 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         cy.findByTextEnsureVisible("Sample Database").click();
 
         assertPermissionTable([
+          ["Accounts", "Unrestricted", "Yes"],
+          ["Analytic Events", "Unrestricted", "Yes"],
+          ["Feedback", "Unrestricted", "Yes"],
+          ["Invoices", "Unrestricted", "Yes"],
           ["Orders", "Unrestricted", "Yes"],
           ["People", "Unrestricted", "Yes"],
           ["Products", "Unrestricted", "Yes"],
@@ -310,6 +326,10 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         cy.findByTextEnsureVisible("Sample Database").click();
 
         assertPermissionTable([
+          ["Accounts", "No self-service", "No"],
+          ["Analytic Events", "No self-service", "No"],
+          ["Feedback", "No self-service", "No"],
+          ["Invoices", "No self-service", "No"],
           ["Orders", "No self-service", "No"],
           ["People", "No self-service", "No"],
           ["Products", "No self-service", "No"],
@@ -328,6 +348,10 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         });
 
         assertPermissionTable([
+          ["Accounts", "No self-service", "No"],
+          ["Analytic Events", "No self-service", "No"],
+          ["Feedback", "No self-service", "No"],
+          ["Invoices", "No self-service", "No"],
           ["Orders", "Unrestricted", "No"],
           ["People", "No self-service", "No"],
           ["Products", "No self-service", "No"],
@@ -356,6 +380,10 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         cy.findByTextEnsureVisible("Sample Database").click();
 
         assertPermissionTable([
+          ["Accounts", "Unrestricted", "Yes"],
+          ["Analytic Events", "Unrestricted", "Yes"],
+          ["Feedback", "Unrestricted", "Yes"],
+          ["Invoices", "Unrestricted", "Yes"],
           ["Orders", "Unrestricted", "Yes"],
           ["People", "Unrestricted", "Yes"],
           ["Products", "Unrestricted", "Yes"],
@@ -367,7 +395,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         modal().within(() => {
           cy.findByText("Save permissions?");
           cy.contains(
-            "collection will be given access to 4 tables in Sample Database.",
+            "collection will be given access to 8 tables in Sample Database.",
           );
           cy.contains(
             "collection will now be able to write native queries for Sample Database.",
@@ -378,6 +406,10 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         cy.findByText("Save changes").should("not.exist");
 
         assertPermissionTable([
+          ["Accounts", "Unrestricted", "Yes"],
+          ["Analytic Events", "Unrestricted", "Yes"],
+          ["Feedback", "Unrestricted", "Yes"],
+          ["Invoices", "Unrestricted", "Yes"],
           ["Orders", "Unrestricted", "Yes"],
           ["People", "Unrestricted", "Yes"],
           ["Products", "Unrestricted", "Yes"],
@@ -469,7 +501,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         modal().within(() => {
           cy.findByText("Save permissions?");
           cy.contains(
-            "readonly will be given access to 4 tables in Sample Database.",
+            "readonly will be given access to 8 tables in Sample Database.",
           );
           cy.contains(
             "readonly will now be able to write native queries for Sample Database.",
@@ -499,7 +531,9 @@ describeEE("scenarios > admin > permissions", () => {
   });
 
   it("allows editing sandboxed access in the database focused view", () => {
-    cy.visit("/admin/permissions/data/database/1/schema/PUBLIC/table/2");
+    cy.visit(
+      `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}`,
+    );
 
     modifyPermission("All Users", DATA_ACCESS_PERMISSION_INDEX, "Sandboxed");
 
@@ -510,7 +544,7 @@ describeEE("scenarios > admin > permissions", () => {
 
     cy.url().should(
       "include",
-      "/admin/permissions/data/database/1/schema/PUBLIC/table/2/segmented/group/1",
+      `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}/segmented/group/${ALL_USERS_GROUP}`,
     );
     cy.findByText("Grant sandboxed access to this table");
     cy.button("Save").should("be.disabled");
@@ -539,7 +573,7 @@ describeEE("scenarios > admin > permissions", () => {
 
     cy.url().should(
       "include",
-      "/admin/permissions/data/database/1/schema/PUBLIC/table/2/segmented/group/1",
+      `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}/segmented/group/${ALL_USERS_GROUP}`,
     );
     cy.findByText("Grant sandboxed access to this table");
 
@@ -559,7 +593,7 @@ describeEE("scenarios > admin > permissions", () => {
   });
 
   it("'block' data permission should not have editable 'native query editing' option (metabase#17738)", () => {
-    cy.visit("/admin/permissions/data/database/1");
+    cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
 
     cy.findByText("All Users")
       .closest("tr")

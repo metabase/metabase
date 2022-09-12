@@ -16,6 +16,7 @@
                                      PersistedInfo Pulse PulseCard PulseChannel Revision Segment Setting
                                      Table TaskHistory Timeline TimelineEvent User]]
             [metabase.models.collection :as collection]
+            [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.setting :as setting]
@@ -278,7 +279,7 @@
   (add-watch
    model-var
    ::reload
-   (fn [_ reference _ _]
+   (fn [_key _reference _old-state _new-state]
      (println (format "%s changed, reloading with-temp-defaults" model-var))
      (set-with-temp-defaults!))))
 
@@ -678,13 +679,13 @@
   "Additional conditions that should be used to restrict which instances automatically get deleted by
   `with-model-cleanup`. Conditions should be a HoneySQL `:where` clause."
   {:arglists '([model])}
-  type)
+  mi/model)
 
 (defmethod with-model-cleanup-additional-conditions :default
   [_]
   nil)
 
-(defmethod with-model-cleanup-additional-conditions (type Collection)
+(defmethod with-model-cleanup-additional-conditions Collection
   [_]
   ;; NEVER delete personal collections for the test users.
   [:or
@@ -697,7 +698,8 @@
   (test-runner.parallel/assert-test-is-not-parallel "with-model-cleanup")
   (initialize/initialize-if-needed! :db)
   (let [model->old-max-id (into {} (for [model models]
-                                     [model (:max-id (db/select-one [model [:%max.id :max-id]]))]))]
+                                     [model (:max-id (db/select-one [model [(keyword (str "%max." (name (models/primary-key model))))
+                                                                            :max-id]]))]))]
     (try
       (testing (str "\n" (pr-str (cons 'with-model-cleanup (map name models))) "\n")
         (f))
@@ -706,7 +708,7 @@
                 ;; might not have an old max ID if this is the first time the macro is used in this test run.
                 :let  [old-max-id            (or (get model->old-max-id model)
                                                  0)
-                       max-id-condition      [:> :id old-max-id]
+                       max-id-condition      [:> (models/primary-key model) old-max-id]
                        additional-conditions (with-model-cleanup-additional-conditions model)]]
           (db/execute!
            {:delete-from model
@@ -723,7 +725,9 @@
 
     (with-model-cleanup [Card]
       (create-card-via-api!)
-      (is (= ...)))"
+      (is (= ...)))
+
+  Only works for models that have a numeric primary key e.g. `:id`."
   [models & body]
   `(do-with-model-cleanup ~models (fn [] ~@body)))
 

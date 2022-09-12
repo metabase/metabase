@@ -12,7 +12,7 @@
             metabase.pulse
             [metabase.pulse.render :as render]
             [metabase.pulse.render.body :as body]
-            [metabase.pulse.test-util :refer :all]
+            [metabase.pulse.test-util :as pulse.test-util]
             [metabase.pulse.util :as pu]
             [metabase.query-processor.middleware.constraints :as qp.constraints]
             [metabase.test :as mt]
@@ -28,8 +28,8 @@
 (defn- rasta-pulse-email [& [email]]
   (mt/email-to :rasta (merge {:subject "Pulse: Pulse Name",
                               :body  [{"Pulse Name" true}
-                                      png-attachment
-                                      png-attachment]}
+                                      pulse.test-util/png-attachment
+                                      pulse.test-util/png-attachment]}
                              email)))
 
 (defn- rasta-alert-email
@@ -61,7 +61,7 @@
                                                :channel_type "slack"
                                                :details      {:channel "#general"}})]]
     (if (= channel :email)
-      (mt/with-temp PulseChannelRecipient [_ {:user_id          (rasta-id)
+      (mt/with-temp PulseChannelRecipient [_ {:user_id          (pulse.test-util/rasta-id)
                                               :pulse_channel_id pc-id}]
         (f pulse))
       (f pulse))))
@@ -96,7 +96,7 @@
           :when        f]
     (assert (fn? f))
     (testing (format "sent to %s channel" channel-type)
-      (mt/with-temp* [Card          [{card-id :id} (merge {:name    card-name
+      (mt/with-temp* [Card          [{card-id :id} (merge {:name    pulse.test-util/card-name
                                                            :display (or display :line)}
                                                           card)]]
         (with-pulse-for-card [{pulse-id :id}
@@ -112,8 +112,8 @@
                       (fixture {:card-id card-id, :pulse-id pulse-id} thunk*)
                       (thunk*)))]
             (case channel-type
-              :email (email-test-setup (thunk))
-              :slack (slack-test-setup (thunk)))))))))
+              :email (pulse.test-util/email-test-setup (thunk))
+              :slack (pulse.test-util/slack-test-setup (thunk)))))))))
 
 (defn- tests
   "Convenience for writing multiple tests using `do-test`. `common` is a map of shared properties as passed to `do-test`
@@ -137,8 +137,8 @@
     (testing message
       (do-test (merge-with merge common m)))))
 
-(def ^:private test-card-result {card-name true})
-(def ^:private test-card-regex  (re-pattern card-name))
+(def ^:private test-card-result {pulse.test-util/card-name true})
+(def ^:private test-card-regex  (re-pattern pulse.test-util/card-name))
 
 
 (defn- produces-bytes? [{:keys [rendered-info]}]
@@ -168,7 +168,7 @@
 
 (deftest basic-timeseries-test
   (do-test
-   {:card    (checkins-query-card {:breakout [!day.date]})
+   {:card    (pulse.test-util/checkins-query-card {:breakout [!day.date]})
     :pulse   {:skip_if_empty false}
 
     :assert
@@ -183,23 +183,23 @@
                :attachments
                [{:blocks [{:type "header", :text {:type "plain_text", :text "Pulse: Pulse Name", :emoji true}}
                           {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
-                {:title           card-name
+                {:title           pulse.test-util/card-name
                  :rendered-info   {:attachments false
                                    :content     true}
                  :title_link      (str "https://metabase.com/testmb/question/" card-id)
                  :attachment-name "image.png"
                  :channel-id      "FOO"
-                 :fallback        card-name}]}
-              (thunk->boolean pulse-results))))}}))
+                 :fallback        pulse.test-util/card-name}]}
+              (pulse.test-util/thunk->boolean pulse-results))))}}))
 
 (deftest basic-table-test
   (tests {:pulse {:skip_if_empty false} :display :table}
     "9 results, so no attachment"
-    {:card    (checkins-query-card {:aggregation nil, :limit 9})
+    {:card    (pulse.test-util/checkins-query-card {:aggregation nil, :limit 9})
 
      :fixture
      (fn [_ thunk]
-       (with-redefs [body/attached-results-text (wrap-function @#'body/attached-results-text)]
+       (with-redefs [body/attached-results-text (pulse.test-util/wrap-function @#'body/attached-results-text)]
          (thunk)))
 
      :assert
@@ -209,7 +209,7 @@
                                            "More results have been included"                    false
                                            "ID</th>"                                            true
                                            "<a href=\\\"https://metabase.com/testmb/dashboard/" false}
-                                          png-attachment]})
+                                          pulse.test-util/png-attachment]})
                (mt/summarize-multipart-email
                 #"Pulse Name"
                 #"More results have been included"
@@ -225,23 +225,23 @@
                     [{:blocks
                        [{:type "header", :text {:type "plain_text", :text "Pulse: Pulse Name", :emoji true}}
                         {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
-                     {:title           card-name
+                     {:title           pulse.test-util/card-name
                       :rendered-info   {:attachments false
                                         :content     true}
                       :title_link      (str "https://metabase.com/testmb/question/" card-id)
                       :attachment-name "image.png"
                       :channel-id      "FOO"
-                      :fallback        card-name}]}
-                   (thunk->boolean pulse-results))))
+                      :fallback        pulse.test-util/card-name}]}
+                   (pulse.test-util/thunk->boolean pulse-results))))
           (testing "attached-results-text should be invoked exactly once"
             (is (= 1
-                   (count (input @#'body/attached-results-text)))))
+                   (count (pulse.test-util/input @#'body/attached-results-text)))))
           (testing "attached-results-text should return nil since it's a slack message"
             (is (= [nil]
-                   (output @#'body/attached-results-text))))))}}
+                   (pulse.test-util/output @#'body/attached-results-text))))))}}
 
     "11 results results in a CSV being attached and a table being sent"
-    {:card (checkins-query-card {:aggregation nil, :limit 11})
+    {:card (pulse.test-util/checkins-query-card {:aggregation nil, :limit 11})
 
      :assert
      {:email
@@ -249,15 +249,15 @@
         (is (= (rasta-pulse-email {:body [{"Pulse Name"                      true
                                            "More results have been included" true
                                            "ID</th>"                         true}
-                                          png-attachment
-                                          csv-attachment]})
+                                          pulse.test-util/png-attachment
+                                          pulse.test-util/csv-attachment]})
                (mt/summarize-multipart-email
                 #"Pulse Name"
                 #"More results have been included" #"ID</th>"))))}}))
 
 (deftest csv-test
   (tests {:pulse   {:skip_if_empty false}
-          :card    (checkins-query-card {:breakout [!day.date]})}
+          :card    (pulse.test-util/checkins-query-card {:breakout [!day.date]})}
     "alert with a CSV"
     {:pulse-card {:include_csv true}
 
@@ -265,7 +265,10 @@
      {:email
       (fn [_ _]
         (is (= (rasta-alert-email "Pulse: Pulse Name"
-                                  [test-card-result png-attachment png-attachment csv-attachment])
+                                  [test-card-result
+                                   pulse.test-util/png-attachment
+                                   pulse.test-util/png-attachment
+                                   pulse.test-util/csv-attachment])
                (mt/summarize-multipart-email test-card-regex))))}}
 
     "With a \"rows\" type of pulse (table visualization) we should include the CSV by default"
@@ -276,8 +279,8 @@
       (fn [_ _]
         (is (= (-> (rasta-pulse-email)
                    ;; There's no PNG with a table visualization, so only assert on one png (the dashboard icon)
-                   (assoc-in ["rasta@metabase.com" 0 :body] [{"Pulse Name" true} png-attachment])
-                   (add-rasta-attachment csv-attachment))
+                   (assoc-in ["rasta@metabase.com" 0 :body] [{"Pulse Name" true} pulse.test-util/png-attachment])
+                   (add-rasta-attachment pulse.test-util/csv-attachment))
                (mt/summarize-multipart-email #"Pulse Name"))))}}))
 
 (deftest xls-test
@@ -292,26 +295,26 @@
        (fn [_ _]
          (is (= (-> (rasta-pulse-email)
                    ;; There's no PNG with a table visualization, so only assert on one png (the dashboard icon)
-                    (assoc-in ["rasta@metabase.com" 0 :body] [{"Pulse Name" true} png-attachment])
-                    (add-rasta-attachment xls-attachment))
+                    (assoc-in ["rasta@metabase.com" 0 :body] [{"Pulse Name" true} pulse.test-util/png-attachment])
+                    (add-rasta-attachment pulse.test-util/xls-attachment))
                 (mt/summarize-multipart-email #"Pulse Name"))))}})))
 
 ;; Not really sure how this is significantly different from `xls-test`
 (deftest xls-test-2
   (testing "Basic test, 1 card, 1 recipient, with XLS attachment"
     (do-test
-     {:card       (checkins-query-card {:breakout [!day.date]})
+     {:card       (pulse.test-util/checkins-query-card {:breakout [!day.date]})
       :pulse-card {:include_xls true}
       :assert
       {:email
        (fn [_ _]
-         (is (= (add-rasta-attachment (rasta-pulse-email) xls-attachment)
+         (is (= (add-rasta-attachment (rasta-pulse-email) pulse.test-util/xls-attachment)
                 (mt/summarize-multipart-email #"Pulse Name"))))}})))
 
 (deftest csv-xls-no-data-test
   (testing "card with CSV and XLS attachments, but no data. Should not include an attachment"
     (do-test
-     {:card       (checkins-query-card {:filter   [:> $date "2017-10-24"]
+     {:card       (pulse.test-util/checkins-query-card {:filter   [:> $date "2017-10-24"]
                                         :breakout [!day.date]})
       :pulse      {:skip_if_empty false}
       :pulse-card {:include_csv true
@@ -326,7 +329,7 @@
   (testing "Validate pulse queries are limited by `default-query-constraints`"
     (do-test
      {:card
-      (checkins-query-card {:aggregation nil})
+      (pulse.test-util/checkins-query-card {:aggregation nil})
       :display :table
 
       :fixture
@@ -359,7 +362,7 @@
   (testing "Pulse should be sent to two recipients"
     (do-test
      {:card
-      (checkins-query-card {:breakout [!day.date]})
+      (pulse.test-util/checkins-query-card {:breakout [!day.date]})
 
       :fixture
       (fn [{:keys [pulse-id]} thunk]
@@ -374,8 +377,8 @@
                                 (mt/email-to user-kwd {:subject "Pulse: Pulse Name",
                                                        :to      #{"rasta@metabase.com" "crowberto@metabase.com"}
                                                        :body    [{"Pulse Name" true}
-                                                                 png-attachment
-                                                                 png-attachment]}))
+                                                                 pulse.test-util/png-attachment
+                                                                 pulse.test-util/png-attachment]}))
                               [:rasta :crowberto]))
                 (mt/summarize-multipart-email #"Pulse Name"))))}})))
 
@@ -383,11 +386,11 @@
   (testing "1 pulse that has 2 cards, should contain two query image attachments (as well as an icon attachment)"
     (do-test
      {:card
-      (assoc (checkins-query-card {:breakout [!day.date]}) :name "card 1")
+      (assoc (pulse.test-util/checkins-query-card {:breakout [!day.date]}) :name "card 1")
 
       :fixture
       (fn [{:keys [pulse-id]} thunk]
-        (mt/with-temp* [Card [{card-id-2 :id} (assoc (checkins-query-card {:breakout [!month.date]})
+        (mt/with-temp* [Card [{card-id-2 :id} (assoc (pulse.test-util/checkins-query-card {:breakout [!month.date]})
                                                      :name "card 2"
                                                      :display :line)]
                         PulseCard [_ {:pulse_id pulse-id
@@ -399,14 +402,14 @@
       {:email
        (fn [_ _]
          (is (= (rasta-pulse-email {:body [{"Pulse Name" true}
-                                           png-attachment
-                                           png-attachment
-                                           png-attachment]})
+                                           pulse.test-util/png-attachment
+                                           pulse.test-util/png-attachment
+                                           pulse.test-util/png-attachment]})
                 (mt/summarize-multipart-email #"Pulse Name"))))}})))
 
 (deftest empty-results-test
   (testing "Pulse where the card has no results"
-    (tests {:card (checkins-query-card {:filter   [:> $date "2017-10-24"]
+    (tests {:card (pulse.test-util/checkins-query-card {:filter   [:> $date "2017-10-24"]
                                         :breakout [!day.date]})}
       "skip if empty = false"
       {:pulse    {:skip_if_empty false}
@@ -425,7 +428,7 @@
     (tests {:pulse {:alert_condition "rows", :alert_first_only false}}
       "with data"
       {:card
-       (checkins-query-card {:breakout [!day.date]})
+       (pulse.test-util/checkins-query-card {:breakout [!day.date]})
 
        :assert
        {:email
@@ -433,26 +436,26 @@
           (is (= (rasta-alert-email
                   "Alert: Test card has results"
                   [(assoc test-card-result "More results have been included" false)
-                   png-attachment png-attachment])
+                   pulse.test-util/png-attachment pulse.test-util/png-attachment])
                  (mt/summarize-multipart-email test-card-regex #"More results have been included"))))
 
         :slack
         (fn [{:keys [card-id]} [result]]
           (is (= {:channel-id  "#general",
                   :attachments [{:blocks [{:type "header", :text {:type "plain_text", :text "🔔 Test card", :emoji true}}]}
-                                {:title                  card-name
+                                {:title                  pulse.test-util/card-name
                                  :rendered-info          {:attachments false
                                                           :content     true}
                                  :title_link             (str "https://metabase.com/testmb/question/" card-id)
                                  :attachment-name        "image.png"
                                  :channel-id             "FOO"
-                                 :fallback               card-name}]}
-                 (thunk->boolean result)))
+                                 :fallback               pulse.test-util/card-name}]}
+                 (pulse.test-util/thunk->boolean result)))
           (is (every? produces-bytes? (rest (:attachments result)))))}}
 
       "with no data"
       {:card
-       (checkins-query-card {:filter   [:> $date "2017-10-24"]
+       (pulse.test-util/checkins-query-card {:filter   [:> $date "2017-10-24"]
                              :breakout [!day.date]})
        :assert
        {:email
@@ -462,7 +465,7 @@
 
       "too much data"
       {:card
-       (checkins-query-card {:limit 21, :aggregation nil})
+       (pulse.test-util/checkins-query-card {:limit 21, :aggregation nil})
        :display :table
 
        :assert
@@ -472,28 +475,33 @@
                                     [(merge test-card-result
                                             {"More results have been included" true
                                              "ID</th>"                         true})
-                                     png-attachment csv-attachment])
+                                     pulse.test-util/png-attachment
+                                     pulse.test-util/csv-attachment])
                  (mt/summarize-multipart-email test-card-regex
                                                #"More results have been included"
                                                #"ID</th>"))))}}
 
 
       "with data and a CSV + XLS attachment"
-      {:card       (checkins-query-card {:breakout [!day.date]})
+      {:card       (pulse.test-util/checkins-query-card {:breakout [!day.date]})
        :pulse-card {:include_csv true, :include_xls true}
 
        :assert
        {:email
         (fn [_ _]
           (is (= (rasta-alert-email "Alert: Test card has results"
-                                    [test-card-result png-attachment png-attachment csv-attachment xls-attachment])
+                                    [test-card-result
+                                     pulse.test-util/png-attachment
+                                     pulse.test-util/png-attachment
+                                     pulse.test-util/csv-attachment
+                                     pulse.test-util/xls-attachment])
                  (mt/summarize-multipart-email test-card-regex))))}})))
 
 (deftest alert-first-run-only-test
   (tests {:pulse {:alert_condition "rows", :alert_first_only true}}
     "first run only with data"
     {:card
-     (checkins-query-card {:breakout [!day.date]})
+     (pulse.test-util/checkins-query-card {:breakout [!day.date]})
 
      :assert
      {:email
@@ -501,8 +509,8 @@
         (is (= (rasta-alert-email "Alert: Test card has results"
                                   [;(assoc test-card-result "stop sending you alerts" true)
                                    test-card-result
-                                   png-attachment
-                                   png-attachment])
+                                   pulse.test-util/png-attachment
+                                   pulse.test-util/png-attachment])
                (mt/summarize-multipart-email test-card-regex))) ;#"stop sending you alerts")))
         (testing "Pulse should be deleted"
           (is (= false
@@ -510,7 +518,7 @@
 
     "first run alert with no data"
     {:card
-     (checkins-query-card {:filter   [:> $date "2017-10-24"]
+     (pulse.test-util/checkins-query-card {:filter   [:> $date "2017-10-24"]
                            :breakout [!day.date]})
 
      :assert
@@ -529,7 +537,7 @@
                     :alert_above_goal true}}
       "with data"
       {:card
-       (merge (checkins-query-card {:filter   [:between $date "2014-04-01" "2014-06-01"]
+       (merge (pulse.test-util/checkins-query-card {:filter   [:between $date "2014-04-01" "2014-06-01"]
                                     :breakout [!day.date]})
               {:display                :line
                :visualization_settings {:graph.show_goal true :graph.goal_value 5.9}})
@@ -538,12 +546,12 @@
        {:email
         (fn [_ _]
           (is (= (rasta-alert-email "Alert: Test card has reached its goal"
-                                    [test-card-result png-attachment png-attachment])
+                                    [test-card-result pulse.test-util/png-attachment pulse.test-util/png-attachment])
                  (mt/summarize-multipart-email test-card-regex))))}}
 
       "no data"
       {:card
-       (merge (checkins-query-card {:filter   [:between $date "2014-02-01" "2014-04-01"]
+       (merge (pulse.test-util/checkins-query-card {:filter   [:between $date "2014-02-01" "2014-04-01"]
                                     :breakout [!day.date]})
               {:display                :area
                :visualization_settings {:graph.show_goal true :graph.goal_value 5.9}})
@@ -556,7 +564,7 @@
 
       "with progress bar"
       {:card
-       (merge (venues-query-card "max")
+       (merge (pulse.test-util/venues-query-card "max")
               {:display                :progress
                :visualization_settings {:progress.goal 3}})
 
@@ -564,7 +572,7 @@
        {:email
         (fn [_ _]
           (is (= (rasta-alert-email "Alert: Test card has reached its goal"
-                                    [test-card-result png-attachment png-attachment])
+                                    [test-card-result pulse.test-util/png-attachment pulse.test-util/png-attachment])
                  (mt/summarize-multipart-email test-card-regex))))}})))
 
 (deftest below-goal-alert-test
@@ -575,7 +583,7 @@
                     :alert_above_goal false}}
       "with data"
       {:card
-       (checkins-query-card {:filter   [:between $date "2014-02-12" "2014-02-17"]
+       (pulse.test-util/checkins-query-card {:filter   [:between $date "2014-02-12" "2014-02-17"]
                              :breakout [!day.date]})
        :display :line
 
@@ -583,12 +591,12 @@
        {:email
         (fn [_ _]
           (is (= (rasta-alert-email "Alert: Test card has gone below its goal"
-                                    [test-card-result png-attachment png-attachment])
+                                    [test-card-result pulse.test-util/png-attachment pulse.test-util/png-attachment])
                  (mt/summarize-multipart-email test-card-regex))))}}
 
       "with no satisfying data"
       {:card
-       (checkins-query-card {:filter   [:between $date "2014-02-10" "2014-02-12"]
+       (pulse.test-util/checkins-query-card {:filter   [:between $date "2014-02-10" "2014-02-12"]
                              :breakout [!day.date]})
        :display :bar
 
@@ -600,7 +608,7 @@
 
       "with progress bar"
       {:card
-       (merge (venues-query-card "min")
+       (merge (pulse.test-util/venues-query-card "min")
               {:display                :progress
                :visualization_settings {:progress.goal 2}})
 
@@ -608,7 +616,7 @@
        {:email
         (fn [_ _]
           (is (= (rasta-alert-email "Alert: Test card has gone below its goal"
-                                    [test-card-result png-attachment png-attachment])
+                                    [test-card-result pulse.test-util/png-attachment pulse.test-util/png-attachment])
                  (mt/summarize-multipart-email test-card-regex))))}})))
 
 (deftest goal-met-test
@@ -662,17 +670,17 @@
       (with-pulse-for-card [{pulse-id :id} {:card card-id, :pulse {:alert_condition  "goal"
                                                                    :alert_first_only false
                                                                    :alert_above_goal true}}]
-        (email-test-setup
+        (pulse.test-util/email-test-setup
          (metabase.pulse/send-pulse! (pulse/retrieve-notification pulse-id))
          (is (= (rasta-alert-email "Alert: Test card has reached its goal"
-                                   [test-card-result png-attachment png-attachment])
+                                   [test-card-result pulse.test-util/png-attachment pulse.test-util/png-attachment])
                 (mt/summarize-multipart-email test-card-regex))))))))
 
 (deftest basic-slack-test-2
   (testing "Basic slack test, 2 cards, 1 recipient channel"
-    (mt/with-temp* [Card         [{card-id-1 :id} (checkins-query-card {:breakout [!day.date]})]
+    (mt/with-temp* [Card         [{card-id-1 :id} (pulse.test-util/checkins-query-card {:breakout [!day.date]})]
                     Card         [{card-id-2 :id} (-> {:breakout [[:datetime-field (mt/id :checkins :date) "minute"]]}
-                                                      checkins-query-card
+                                                      pulse.test-util/checkins-query-card
                                                       (assoc :name "Test card 2"))]
                     Pulse        [{pulse-id :id}  {:name          "Pulse Name"
                                                    :skip_if_empty false}]
@@ -682,31 +690,31 @@
                     PulseCard    [_               {:pulse_id pulse-id
                                                    :card_id  card-id-2
                                                    :position 1}]
-                    PulseChannel [{pc-id :id}     {:pulse_id     pulse-id
+                    PulseChannel [_               {:pulse_id     pulse-id
                                                    :channel_type "slack"
                                                    :details      {:channel "#general"}}]]
-      (slack-test-setup
+      (pulse.test-util/slack-test-setup
        (let [[slack-data] (metabase.pulse/send-pulse! (pulse/retrieve-pulse pulse-id))]
          (is (= {:channel-id "#general",
                  :attachments
                  [{:blocks
                    [{:type "header", :text {:type "plain_text", :text "Pulse: Pulse Name", :emoji true}}
                     {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
-                  {:title                  card-name,
-                   :rendered-info          {:attachments false
-                                            :content     true}
-                   :title_link             (str "https://metabase.com/testmb/question/" card-id-1),
-                   :attachment-name        "image.png",
-                   :channel-id             "FOO",
-                   :fallback               card-name}
-                  {:title                  "Test card 2",
-                   :rendered-info          {:attachments false
-                                            :content     true}
-                   :title_link             (str "https://metabase.com/testmb/question/" card-id-2),
-                   :attachment-name        "image.png",
-                   :channel-id             "FOO",
-                   :fallback               "Test card 2"}]}
-                (thunk->boolean slack-data)))
+                  {:title           pulse.test-util/card-name,
+                   :rendered-info   {:attachments false
+                                     :content     true}
+                   :title_link      (str "https://metabase.com/testmb/question/" card-id-1),
+                   :attachment-name "image.png",
+                   :channel-id      "FOO",
+                   :fallback        pulse.test-util/card-name}
+                  {:title           "Test card 2",
+                   :rendered-info   {:attachments false
+                                     :content     true}
+                   :title_link      (str "https://metabase.com/testmb/question/" card-id-2),
+                   :attachment-name "image.png",
+                   :channel-id      "FOO",
+                   :fallback        "Test card 2"}]}
+                (pulse.test-util/thunk->boolean slack-data)))
          (testing "attachments"
            (is (true? (every? produces-bytes? (rest (:attachments slack-data)))))))))))
 
@@ -753,14 +761,14 @@
 
 (deftest multi-channel-test
   (testing "Test with a slack channel and an email"
-    (mt/with-temp Card [{card-id :id} (checkins-query-card {:breakout [!day.date]})]
+    (mt/with-temp Card [{card-id :id} (pulse.test-util/checkins-query-card {:breakout [!day.date]})]
       ;; create a Pulse with an email channel
       (with-pulse-for-card [{pulse-id :id} {:card card-id, :pulse {:skip_if_empty false}}]
         ;; add additional Slack channel
         (mt/with-temp PulseChannel [_ {:pulse_id     pulse-id
                                        :channel_type "slack"
                                        :details      {:channel "#general"}}]
-          (slack-test-setup
+          (pulse.test-util/slack-test-setup
            (let [pulse-data (metabase.pulse/send-pulse! (pulse/retrieve-pulse pulse-id))
                  slack-data (m/find-first #(contains? % :channel-id) pulse-data)
                  email-data (m/find-first #(contains? % :subject) pulse-data)]
@@ -768,14 +776,14 @@
                      :attachments [{:blocks
                                     [{:type "header", :text {:type "plain_text", :text "Pulse: Pulse Name", :emoji true}}
                                      {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
-                                   {:title           card-name
+                                   {:title           pulse.test-util/card-name
                                     :title_link      (str "https://metabase.com/testmb/question/" card-id)
                                     :rendered-info   {:attachments false
                                                       :content     true}
                                     :attachment-name "image.png"
                                     :channel-id      "FOO"
-                                    :fallback        card-name}]}
-                    (thunk->boolean slack-data)))
+                                    :fallback        pulse.test-util/card-name}]}
+                    (pulse.test-util/thunk->boolean slack-data)))
              (is (= [true]
                     (map (comp some? :content :rendered-info) (rest (:attachments slack-data)))))
              (is (= {:subject "Pulse: Pulse Name", :recipients ["rasta@metabase.com"], :message-type :attachments}
@@ -804,7 +812,7 @@
                                                                   :limit    1})
                                                 :collection_id (:id coll)}]]
                 (perms/revoke-collection-permissions! (perms-group/all-users) coll)
-                (send-pulse-created-by-user! user-kw card)))]
+                (pulse.test-util/send-pulse-created-by-user! user-kw card)))]
       (is (= [[1 "2014-04-07T00:00:00Z" 5 12]]
              (send-pulse-created-by-user!* :crowberto)))
       (testing "If the current user doesn't have permissions to execute the Card for a Pulse, an Exception should be thrown."

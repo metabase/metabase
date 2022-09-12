@@ -4,7 +4,6 @@ import { t } from "ttag";
 
 import Tooltip from "metabase/components/Tooltip";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import { DimensionPicker } from "metabase/query_builder/components/DimensionPicker";
 import Icon from "metabase/components/Icon";
 
 import { getSelectedSubDimensionName } from "../utils";
@@ -19,6 +18,7 @@ import {
   DimensionListItemRemoveButton,
   DimensionListItemTag,
   SubDimensionButton,
+  SubDimensionPicker,
 } from "./DimensionListItem.styled";
 
 const noop = () => {};
@@ -95,8 +95,7 @@ export const DimensionListItem = ({
             sizeToFit
           >
             {({ onClose }) => (
-              <DimensionPicker
-                className="scroll-y text-green"
+              <SubDimensionPicker
                 dimension={selectedSubDimension}
                 dimensions={subDimensions}
                 onChangeDimension={dimension => {

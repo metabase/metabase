@@ -913,13 +913,9 @@
 ;;
 ;; Field filters and raw values usually have their value specified by `:parameters` (see [[Parameters]] below).
 
-(def template-tag-types
-  "List of valid template tag types."
-  [:snippet :card :dimension :number :text :date])
-
 (def TemplateTagType
   "Schema for valid values of template tag `:type`."
-  (apply s/enum template-tag-types))
+  (s/enum :snippet :card :dimension :number :text :date))
 
 (def ^:private TemplateTag:Common
   "Things required by all template tag types."
@@ -1489,6 +1485,11 @@
    ;; you should set this yourself. This is only used by the [[metabase.query-processor/preprocess]] function to get
    ;; the fully pre-processed query without attempting to convert it to native.
    (s/optional-key :disable-mbql->native?)
+   s/Bool
+
+   ;; Disable applying a default limit on the query results. Handled in the `add-default-limit` middleware.
+   ;; If true, this will override the `:max-results` and `:max-results-bare-rows` values in [[Constraints]].
+   (s/optional-key :disable-max-results?)
    s/Bool
 
    ;; Userland queries are ones ran as a result of an API call, Pulse, or the like. Special handling is done in the

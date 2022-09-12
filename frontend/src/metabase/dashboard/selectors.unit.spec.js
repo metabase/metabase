@@ -54,6 +54,7 @@ const STATE = {
     },
     metrics: {},
     segments: {},
+    questions: {},
   },
 };
 

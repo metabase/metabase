@@ -188,7 +188,7 @@
 
 (s/defn ^:private database->all-schemas :- #{su/NonBlankString}
   "Return a set of all schema names in this `database`."
-  [driver {{:keys [catalog schema] :as details} :details :as database}]
+  [driver {{:keys [catalog] :as details} :details :as _database}]
   (let [sql            (presto-common/describe-catalog-sql driver catalog)
         {:keys [rows]} (execute-query-for-sync details sql)]
     (set (map first rows))))
@@ -202,7 +202,7 @@
     (catch Throwable _
       false)))
 
-(defn- describe-schema [driver {{:keys [catalog user] :as details} :details :as db} {:keys [schema]}]
+(defn- describe-schema [driver {{:keys [catalog] :as details} :details :as _db} {:keys [schema]}]
   (let [sql (presto-common/describe-schema-sql driver catalog schema)]
     (set (for [[table-name & _] (:rows (execute-query-for-sync details sql))
                :when            (have-select-privilege? driver details schema table-name)]
@@ -229,10 +229,8 @@
 
 (defmethod driver/execute-reducible-query :presto
   [driver
-   {database-id                  :database
-    :keys                        [settings]
+   {:keys                        [settings]
     {sql :query, params :params} :native
-    query-type                   :type
     :as                          outer-query}
    context
    respond]

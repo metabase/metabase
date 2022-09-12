@@ -25,17 +25,17 @@ After filling out the authentication form with your identity provider, you're ta
     http://www.example.com/141xkex604w0Q5PN724v
     ```
 2. Copy the issuer or entity ID from the XML file.
-3. Go to Metabase and select **Admin settings** > **Settings** > **Authentication** > **SAML**. Enter the issuer or entity ID into the **SAML Identity Provider Issuer** field. 
+3. Go to Metabase and select **Admin settings** > **Settings** > **Authentication** > **SAML**. Enter the issuer or entity ID into the **SAML Identity Provider Issuer** field.
 
 ## Is the SAML identity provider certificate value correct?
 
-After filling out the authentication form with your identity provider, you go back to Metabase but it throws an error. Go to **Admin settings** > **Troubleshooting** > **Logs**. You'll see an error that says something like **Invalid assertion error <issuer\>**. 
+After filling out the authentication form with your identity provider, you go back to Metabase but it throws an error. Go to **Admin settings** > **Troubleshooting** > **Logs**. You'll see an error that says something like **Invalid assertion error <issuer\>**.
 
 **Root cause**: The certificate value you entered is incorrect.
 
 **Steps to take**:
 
-1. Go to Metabase and select **Admin settings** > **Settings** > **Authentication** > **SAML**. Check that the certificate that you entered into the **SAML Identity Provider Certificate** field matches the certificate in the XML file you got from your identity provider. 
+1. Go to Metabase and select **Admin settings** > **Settings** > **Authentication** > **SAML**. Check that the certificate that you entered into the **SAML Identity Provider Certificate** field matches the certificate in the XML file you got from your identity provider.
 
     - Depending on your provider, you might need to download the XML file, open it in a text editor, then copy and paste the certificate's contents into the **SAML Identity Provider Certificate** field in Metabase.
 
@@ -61,11 +61,11 @@ This error will only occur if you're using **Signed SSO requests**. That is, in 
 
 ## Checking if SAML is working correctly
 
-Go to your Metabase login page. If SAML is working correctly, you should see [a single button to sign in](/glossary/sso) with your identity provider (IdP). Once you're authenticated, you should be automatically redirected to the Metabase home page.
+Go to your Metabase login page. If SAML is working correctly, you should see [a single button to sign in](https://www.metabase.com/glossary/sso) with your identity provider (IdP). Once you're authenticated, you should be automatically redirected to the Metabase home page.
 
 ## Are you still stuck?
 
 If you can’t solve your problem using the troubleshooting guides:
 
 - Search or ask the [Metabase community](https://discourse.metabase.com/).
-- Search for [known bugs or limitations](./known-issues.html).
+- Search for [known bugs or limitations](./known-issues.md).

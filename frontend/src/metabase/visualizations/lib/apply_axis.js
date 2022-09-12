@@ -116,9 +116,10 @@ export function applyChartTimeseriesXAxis(
       chart.settings["graph.x_axis.gridLine_enabled"],
     );
 
-    if (dimensionColumn.unit == null) {
+    if (dimensionColumn.unit == null && dataInterval.interval !== "ms") {
       dimensionColumn = { ...dimensionColumn, unit: dataInterval.interval };
     }
+
     const waterfallTotalX =
       firstSeries.card.display === "waterfall" &&
       chart.settings["waterfall.show_total"]

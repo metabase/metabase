@@ -11,6 +11,7 @@
             [metabase.driver.mysql.ddl :as mysql.ddl]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+            [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models.database :refer [Database]]
             [metabase.models.field :refer [Field]]
@@ -34,28 +35,27 @@
     (testing (str "MySQL allows 0000-00-00 dates, but JDBC does not; make sure that MySQL is converting them to NULL "
                   "when returning them like we asked")
       (let [spec (sql-jdbc.conn/connection-details->spec :mysql (tx/dbdef->connection-details :mysql :server nil))]
-        (try
-          ;; Create the DB
-          (doseq [sql ["DROP DATABASE IF EXISTS all_zero_dates;"
-                       "CREATE DATABASE all_zero_dates;"]]
+        ;; Create the DB
+        (doseq [sql ["DROP DATABASE IF EXISTS all_zero_dates;"
+                     "CREATE DATABASE all_zero_dates;"]]
+          (jdbc/execute! spec [sql]))
+        ;; Create Table & add data
+        (let [details (tx/dbdef->connection-details :mysql :db {:database-name "all_zero_dates"})
+              spec    (-> (sql-jdbc.conn/connection-details->spec :mysql details)
+                          ;; allow inserting dates where value is '0000-00-00' -- this is disallowed by default on newer
+                          ;; versions of MySQL, but we still want to test that we can handle it correctly for older ones
+                          (assoc :sessionVariables "sql_mode='ALLOW_INVALID_DATES'"))]
+          (doseq [sql ["CREATE TABLE `exciting-moments-in-history` (`id` integer, `moment` timestamp);"
+                       "INSERT INTO `exciting-moments-in-history` (`id`, `moment`) VALUES (1, '0000-00-00');"]]
             (jdbc/execute! spec [sql]))
-          ;; Create Table & add data
-          (let [details (tx/dbdef->connection-details :mysql :db {:database-name "all_zero_dates"})
-                spec    (-> (sql-jdbc.conn/connection-details->spec :mysql details)
-                            ;; allow inserting dates where value is '0000-00-00' -- this is disallowed by default on newer
-                            ;; versions of MySQL, but we still want to test that we can handle it correctly for older ones
-                            (assoc :sessionVariables "sql_mode='ALLOW_INVALID_DATES'"))]
-            (doseq [sql ["CREATE TABLE `exciting-moments-in-history` (`id` integer, `moment` timestamp);"
-                         "INSERT INTO `exciting-moments-in-history` (`id`, `moment`) VALUES (1, '0000-00-00');"]]
-              (jdbc/execute! spec [sql]))
-            ;; create & sync MB DB
-            (tt/with-temp Database [database {:engine "mysql", :details details}]
-              (sync/sync-database! database)
-              (mt/with-db database
-                ;; run the query
-                (is (= [[1 nil]]
-                       (mt/rows
-                         (mt/run-mbql-query exciting-moments-in-history))))))))))))
+          ;; create & sync MB DB
+          (tt/with-temp Database [database {:engine "mysql", :details details}]
+            (sync/sync-database! database)
+            (mt/with-db database
+              ;; run the query
+              (is (= [[1 nil]]
+                     (mt/rows
+                      (mt/run-mbql-query exciting-moments-in-history)))))))))))
 
 ;; Test how TINYINT(1) columns are interpreted. By default, they should be interpreted as integers, but with the
 ;; correct additional options, we should be able to change that -- see
@@ -260,44 +260,43 @@
   (mt/test-driver :mysql
     (testing "system versioned tables appear during a sync"
       (let [spec (sql-jdbc.conn/connection-details->spec :mysql (tx/dbdef->connection-details :mysql :server nil))]
-       (try
-         ;; Create the DB
-         (doseq [sql ["DROP DATABASE IF EXISTS versioned_tables;"
-                      "CREATE DATABASE versioned_tables;"]]
-           (jdbc/execute! spec [sql]))
-         ;; Create Table & add data
-         (let [details (tx/dbdef->connection-details :mysql :db {:database-name "versioned_tables"})
-               spec    (sql-jdbc.conn/connection-details->spec :mysql details)
-               compat  (try
-                         (doseq [sql ["CREATE TABLE IF NOT EXISTS src1 (id INTEGER, t TEXT);"
-                                      "CREATE TABLE IF NOT EXISTS src2 (id INTEGER, t TEXT);"
-                                      "ALTER TABLE src2 ADD SYSTEM VERSIONING;"
-                                      "INSERT INTO src1 VALUES (1, '2020-03-01 12:20:35');"
-                                      "INSERT INTO src2 VALUES (1, '2020-03-01 12:20:35');"]]
-                           (jdbc/execute! spec [sql]))
-                         true
-                         (catch java.sql.SQLSyntaxErrorException se
-                           ;; if an error is received with SYSTEM VERSIONING mentioned, the version
-                           ;; of mysql or mariadb being tested against does not support system versioning,
-                           ;; so do not continue
-                           (if (re-matches #".*VERSIONING'.*" (.getMessage se))
-                             false
-                             (throw se))))]
-           (when compat
-             (tt/with-temp Database [database {:engine "mysql", :details details}]
-               (sync/sync-database! database)
-               (is (= [{:name   "src1"
-                        :fields [{:name      "id"
-                                  :base_type :type/Integer}
-                                 {:name      "t"
-                                  :base_type :type/Text}]}
-                       {:name   "src2"
-                        :fields [{:name      "id"
-                                  :base_type :type/Integer}
-                                 {:name      "t"
-                                  :base_type :type/Text}]}]
-                      (->> (hydrate (db/select Table :db_id (:id database) {:order-by [:name]}) :fields)
-                           (map table-fingerprint))))))))))))
+        ;; Create the DB
+        (doseq [sql ["DROP DATABASE IF EXISTS versioned_tables;"
+                     "CREATE DATABASE versioned_tables;"]]
+          (jdbc/execute! spec [sql]))
+        ;; Create Table & add data
+        (let [details (tx/dbdef->connection-details :mysql :db {:database-name "versioned_tables"})
+              spec    (sql-jdbc.conn/connection-details->spec :mysql details)
+              compat  (try
+                        (doseq [sql ["CREATE TABLE IF NOT EXISTS src1 (id INTEGER, t TEXT);"
+                                     "CREATE TABLE IF NOT EXISTS src2 (id INTEGER, t TEXT);"
+                                     "ALTER TABLE src2 ADD SYSTEM VERSIONING;"
+                                     "INSERT INTO src1 VALUES (1, '2020-03-01 12:20:35');"
+                                     "INSERT INTO src2 VALUES (1, '2020-03-01 12:20:35');"]]
+                          (jdbc/execute! spec [sql]))
+                        true
+                        (catch java.sql.SQLSyntaxErrorException se
+                          ;; if an error is received with SYSTEM VERSIONING mentioned, the version
+                          ;; of mysql or mariadb being tested against does not support system versioning,
+                          ;; so do not continue
+                          (if (re-matches #".*VERSIONING'.*" (.getMessage se))
+                            false
+                            (throw se))))]
+          (when compat
+            (tt/with-temp Database [database {:engine "mysql", :details details}]
+              (sync/sync-database! database)
+              (is (= [{:name   "src1"
+                       :fields [{:name      "id"
+                                 :base_type :type/Integer}
+                                {:name      "t"
+                                 :base_type :type/Text}]}
+                      {:name   "src2"
+                       :fields [{:name      "id"
+                                 :base_type :type/Integer}
+                                {:name      "t"
+                                 :base_type :type/Text}]}]
+                     (->> (hydrate (db/select Table :db_id (:id database) {:order-by [:name]}) :fields)
+                          (map table-fingerprint)))))))))))
 
 (deftest group-on-time-column-test
   (mt/test-driver :mysql
@@ -391,7 +390,7 @@
                     :visibility-type :normal,
                     :nfc-path [:json_bit "genres"]}
                    {:name "json_bit → 1234",
-                    :database-type "integer",
+                    :database-type "bigint",
                     :base-type :type/Integer,
                     :database-position 0,
                     :visibility-type :normal,
@@ -436,25 +435,25 @@
     (mt/dataset json
       (when (not (is-mariadb? (u/id (mt/db))))
         (testing "Nested field column listing, but big"
-          (is (= #{}
-                 (sql-jdbc.sync/describe-nested-field-columns
-                   :mysql
-                   (mt/db)
-                   {:name "big_json"}))))))))
+          (is (= sql-jdbc.describe-table/max-nested-field-columns
+                 (count (sql-jdbc.sync/describe-nested-field-columns
+                         :mysql
+                         (mt/db)
+                         {:name "big_json"})))))))))
 
 (deftest json-query-test
   (let [boop-identifier (:form (hx/with-type-info (hx/identifier :field "boop" "bleh -> meh") {}))]
     (testing "Transforming MBQL query with JSON in it to mysql query works"
-      (let [boop-field {:nfc_path [:bleh :meh] :database_type "integer"}]
-        (is (= ["JSON_EXTRACT(boop.bleh, ?)" "$.\"meh\""]
+      (let [boop-field {:nfc_path [:bleh :meh] :database_type "bigint"}]
+        (is (= ["convert(json_extract(boop.bleh, ?), BIGINT)" "$.\"meh\""]
                (hsql/format (#'sql.qp/json-query :mysql boop-identifier boop-field))))))
     (testing "What if types are weird and we have lists"
-      (let [weird-field {:nfc_path [:bleh "meh" :foobar 1234] :database_type "integer"}]
-        (is (= ["JSON_EXTRACT(boop.bleh, ?)" "$.\"meh\".\"foobar\".\"1234\""]
+      (let [weird-field {:nfc_path [:bleh "meh" :foobar 1234] :database_type "bigint"}]
+        (is (= ["convert(json_extract(boop.bleh, ?), BIGINT)" "$.\"meh\".\"foobar\".\"1234\""]
                (hsql/format (#'sql.qp/json-query :mysql boop-identifier weird-field))))))
     (testing "Doesn't complain when field is boolean"
       (let [boolean-boop-field {:database_type "boolean" :nfc_path [:bleh "boop" :foobar 1234]}]
-        (is (= ["JSON_EXTRACT(boop.bleh, ?)" "$.\"boop\".\"foobar\".\"1234\""]
+        (is (= ["convert(json_extract(boop.bleh, ?), BOOLEAN)" "$.\"boop\".\"foobar\".\"1234\""]
                (hsql/format (#'sql.qp/json-query :mysql boop-identifier boolean-boop-field))))))))
 
 (deftest json-alias-test
@@ -471,9 +470,9 @@
                                  :query    {:source-table (u/the-id table)
                                             :aggregation  [[:count]]
                                             :breakout     [[:field (u/the-id field) nil]]}})]
-              (is (= (str "SELECT JSON_EXTRACT(`json`.`json_bit`, ?) AS `json_bit → 1234`, "
-                          "count(*) AS `count` FROM `json` GROUP BY JSON_EXTRACT(`json`.`json_bit`, ?) "
-                          "ORDER BY JSON_EXTRACT(`json`.`json_bit`, ?) ASC")
+              (is (= (str "SELECT convert(json_extract(json.json_bit, ?), BIGINT) AS `json_bit → 1234`, "
+                          "count(*) AS `count` FROM `json` GROUP BY convert(json_extract(json.json_bit, ?), BIGINT) "
+                          "ORDER BY convert(json_extract(json.json_bit, ?), BIGINT) ASC")
                      (:query compile-res)))
               (is (= '("$.\"1234\"" "$.\"1234\"" "$.\"1234\"") (:params compile-res))))))))))
 
@@ -493,7 +492,7 @@
                                                               :min-value 0.75,
                                                               :max-value 54.0,
                                                               :bin-width 0.75}}]]
-                  (is (= ["((floor(((JSON_EXTRACT(json.json_bit, ?) - 0.75) / 0.75)) * 0.75) + 0.75)" "$.\"1234\""]
+                  (is (= ["((floor(((convert(json_extract(json.json_bit, ?), BIGINT) - 0.75) / 0.75)) * 0.75) + 0.75)" "$.\"1234\""]
                          (hsql/format (sql.qp/->honeysql :mysql field-clause)))))))))))))
 
 (deftest ddl.execute-with-timeout-test

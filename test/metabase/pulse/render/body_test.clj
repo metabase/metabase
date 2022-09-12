@@ -5,6 +5,7 @@
             [metabase.pulse.render.body :as body]
             [metabase.pulse.render.common :as common]
             [metabase.pulse.render.test-util :as render.tu]
+            [metabase.test :as mt]
             [schema.core :as s]))
 
 (use-fixtures :each
@@ -240,11 +241,11 @@
 
 (deftest error-test
   (testing "renders error"
-    (= "An error occurred while displaying this card."
-       (-> (body/render :render-error nil nil nil nil nil) :content last)))
+    (is (= "An error occurred while displaying this card."
+           (-> (body/render :render-error nil nil nil nil nil) :content last))))
   (testing "renders card error"
-    (= "There was a problem with this question."
-       (-> (body/render :card-error nil nil nil nil nil) :content last))))
+    (is (= "There was a problem with this question."
+           (-> (body/render :card-error nil nil nil nil nil) :content last)))))
 
 (defn- render-scalar-value [results]
   (-> (body/render :scalar nil pacific-tz nil nil results)
@@ -468,7 +469,7 @@
 
 (deftest series-with-color-test
   (testing "Check if single x-axis combo series can convert colors"
-    (is (= [{:name "NumPurchased", :color "#a7cf7b", :type :bar, :data [[1.25 20] [5.0 10] [10.0 1]], :yAxisPosition "left"}]
+    (is (= [{:name "NumPurchased", :color "#a7cf7b", :type :bar, :data [[10.0 1] [5.0 10] [1.25 20]], :yAxisPosition "left"}]
            (#'body/single-x-axis-combo-series
             :bar
             [[[10.0] [1]] [[5.0] [10]] [[1.25] [20]]]
@@ -490,6 +491,32 @@
                                :Dobbs {:color "#a7cf7b"}
                                :Robbs {:color "#34517d"}
                                :Mobbs {:color "#e0be40"}}})))))
+
+(deftest series-with-custom-names-test
+  (testing "Check if single x-axis combo series uses custom series names (#21503)"
+    (is (= #{"Bought" "Sold"}
+           (set (map :name
+                     (#'body/single-x-axis-combo-series
+                       :bar
+                       [[[10.0] [1 -1]] [[5.0] [10 -10]] [[1.25] [20 -20]]]
+                       [{:name "Price", :display_name "Price", :base_type :type/Number}]
+                       [{:name "NumPurchased", :display_name "NumPurchased", :base_type :type/Number}
+                        {:name "NumSold", :display_name "NumSold", :base_type :type/Number}]
+                       {:series_settings {:NumPurchased {:color "#a7cf7b" :title "Bought"}
+                                          :NumSold      {:color "#a7cf7b" :title "Sold"}}}))))))
+  (testing "Check if double x-axis combo series uses custom series names (#21503)"
+    (is (= #{"Bobby" "Dobby" "Robby" "Mobby"}
+           (set (map :name
+                     (#'body/double-x-axis-combo-series
+                       nil
+                       [[[10.0 "Bob"] [123]] [[5.0 "Dobbs"] [12]] [[2.5 "Robbs"] [1337]] [[1.25 "Mobbs"] [-22]]]
+                       [{:base_type :type/BigInteger, :display_name "Price", :name "Price", :semantic_type nil}
+                        {:base_type :type/BigInteger, :display_name "NumPurchased", :name "NumPurchased", :semantic_type nil}]
+                       [{:base_type :type/BigInteger, :display_name "NumKazoos", :name "NumKazoos", :semantic_type nil}]
+                       {:series_settings {:Bob   {:color "#c5a9cf" :title "Bobby"}
+                                          :Dobbs {:color "#a7cf7b" :title "Dobby"}
+                                          :Robbs {:color "#34517d" :title "Robby"}
+                                          :Mobbs {:color "#e0be40" :title "Mobby"}}})))))))
 
 (defn- render-waterfall [results]
   (body/render :waterfall :inline pacific-tz render.tu/test-card nil results))
@@ -618,9 +645,9 @@
     (testing "Includes percentages"
       (is (= [:div
               [:img]
-              [:div
-               [:div [:span "•"] [:span "Doohickey"] [:span "75%"]]
-               [:div [:span "•"] [:span "Widget"] [:span "25%"]]]]
+              [:table
+               [:tr [:td [:span "•"]] [:td "Doohickey"] [:td "75%"]]
+               [:tr [:td [:span "•"]] [:td "Widget"] [:td "25%"]]]]
              (prune (:content (render [["Doohickey" 75] ["Widget" 25]]))))))))
 
 (deftest render-progress
@@ -632,13 +659,7 @@
                   (body/render :progress :inline pacific-tz
                                render.tu/test-card
                                nil
-                               {:cols col :rows rows}))
-        prune   (fn prune [html-tree]
-                  (walk/prewalk (fn no-maps [x]
-                                  (if (vector? x)
-                                    (filterv (complement map?) x)
-                                    x))
-                                html-tree))]
+                               {:cols col :rows rows}))]
     (testing "Renders without error"
       (let [rendered-info (render [[25]])]
         (is (has-inline-image? rendered-info))))
@@ -648,7 +669,7 @@
 
 (def donut-info #'body/donut-info)
 
-(deftest donut-info-test
+(deftest ^:parallel donut-info-test
   (let [rows [["a" 45] ["b" 45] ["c" 5] ["d" 5]]]
     (testing "If everything is above the threshold does nothing"
       (is (= rows (:rows (donut-info 4 rows)))))
@@ -663,15 +684,16 @@
         (is (= {"a" "50%" "b" "50%" "Other" "0%"}
                (:percentages (donut-info 5 rows))))))))
 
-(deftest format-percentage-test
-  (let [value 12345.54321]
-    (is (= "1,234,543.21%" (body/format-percentage 12345.4321 ".,")))
-    (is (= "1&234&543^21%" (body/format-percentage 12345.4321 "^&")))
-    (is (= "1,234,543 21%" (body/format-percentage 12345.4321 " ")))
-    (is (= "1,234,543.21%" (body/format-percentage 12345.4321 nil)))
-    (is (= "1,234,543.21%" (body/format-percentage 12345.4321 "")))))
+(deftest ^:parallel format-percentage-test
+  (mt/are+ [value expected] (= expected
+                               (body/format-percentage 12345.4321 value))
+    ".," "1,234,543.21%"
+    "^&" "1&234&543^21%"
+    " "  "1,234,543 21%"
+    nil  "1,234,543.21%"
+    ""   "1,234,543.21%"))
 
-(deftest x-and-y-axis-label-info-test
+(deftest ^:parallel x-and-y-axis-label-info-test
   (let [x-col {:display_name "X col"}
         y-col {:display_name "Y col"}]
     (testing "no custom viz settings"

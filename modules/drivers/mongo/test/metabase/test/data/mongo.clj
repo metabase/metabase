@@ -3,11 +3,8 @@
             [cheshire.generate :as json.generate]
             [clojure.java.io :as io]
             [clojure.test :refer :all]
-            [metabase.driver :as driver]
             [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.mongo.util :refer [with-mongo-connection]]
-            [metabase.models :refer [Field]]
-            [metabase.test.data :as data]
             [metabase.test.data.interface :as tx]
             [monger.collection :as mc]
             [monger.core :as mg])
@@ -86,23 +83,21 @@
            (json/generate-string {:x (json-raw "{{param}}")})))))
 
 (defmethod tx/count-with-template-tag-query :mongo
-  [driver table-name field-name param-type]
-  (let [{base-type :base_type} (Field (driver/with-driver driver (data/id table-name field-name)))]
-    {:projections [:count]
-     :query       (json/generate-string
-                   [{:$match {(name field-name) (json-raw (format "{{%s}}" (name field-name)))}}
-                    {:$group {"_id" nil, "count" {:$sum 1}}}
-                    {:$sort {"_id" 1}}
-                    {:$project {"_id" false, "count" true}}])
-     :collection  (name table-name)}))
+  [_driver table-name field-name _param-type]
+  {:projections [:count]
+   :query       (json/generate-string
+                 [{:$match {(name field-name) (json-raw (format "{{%s}}" (name field-name)))}}
+                  {:$group {"_id" nil, "count" {:$sum 1}}}
+                  {:$sort {"_id" 1}}
+                  {:$project {"_id" false, "count" true}}])
+   :collection  (name table-name)})
 
 (defmethod tx/count-with-field-filter-query :mongo
-  [driver table-name field-name]
-  (let [{base-type :base_type} (Field (driver/with-driver driver (data/id table-name field-name)))]
-    {:projections [:count]
-     :query       (json/generate-string
-                   [{:$match (json-raw (format "{{%s}}" (name field-name)))}
-                    {:$group {"_id" nil, "count" {:$sum 1}}}
-                    {:$sort {"_id" 1}}
-                    {:$project {"_id" false, "count" true}}])
-     :collection  (name table-name)}))
+  [_driver table-name field-name]
+  {:projections [:count]
+   :query       (json/generate-string
+                 [{:$match (json-raw (format "{{%s}}" (name field-name)))}
+                  {:$group {"_id" nil, "count" {:$sum 1}}}
+                  {:$sort {"_id" 1}}
+                  {:$project {"_id" false, "count" true}}])
+   :collection  (name table-name)})
