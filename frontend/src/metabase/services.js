@@ -271,7 +271,7 @@ export const MetabaseApi = {
     "/api/database/:dbId/autocomplete_suggestions?:matchStyle=:query",
   ),
   db_model_autocomplete_suggestions: GET(
-    "/api/database/:dbId/model_autocomplete_suggestions?",
+    "/api/database/:dbId/model_autocomplete_suggestions",
   ),
   db_sync_schema: POST("/api/database/:dbId/sync_schema"),
   db_dismiss_sync_spinner: POST("/api/database/:dbId/dismiss_spinner"),
