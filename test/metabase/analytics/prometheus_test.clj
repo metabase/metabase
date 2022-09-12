@@ -63,7 +63,7 @@
     "process_start_time_seconds"
     "jetty_request_time_seconds_total"})
 
-(defn metric-tags
+(defn- metric-tags
   "Returns a set of tags of prometheus metrics. Ie logs are
   ```
   jvm_threads_state{state=\"TERMINATED\",} 0.0
@@ -80,7 +80,7 @@
                    ;; lines look like "jvm_memory_pool_collection_init_bytes{pool=\"G1 Survivor Space\",} 0.0"
                    (map (fn [line] (re-find #"^[_a-z0-9]*" line)))))))
 
-(defn metric-lines
+(defn- metric-lines
   "Returns a sequence of log lines with comments removed."
   [port]
   (->> (http/get (format "http://localhost:%s/metrics"
