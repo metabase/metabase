@@ -2,9 +2,9 @@ import { cypressWaitAll } from "__support__/e2e/helpers";
 
 Cypress.Commands.add(
   "createDashboardWithQuestions",
-  ({ dashboardName, questions }) => {
+  ({ dashboardName, questions, parameters }) => {
     return cy
-      .createDashboard({ name: dashboardName })
+      .createDashboard({ name: dashboardName, parameters })
       .then(({ body: dashboard }) => {
         return cypressWaitAll(
           questions.map(query =>
