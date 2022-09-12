@@ -160,18 +160,17 @@
                                                        (let [field-name (str/lower-case (:name field))]
                                                          (cond
                                                            (= field-name "updated_at")
-                                                           [0 (:id field)]
+                                                           {:priority 3 :field-id (:id field)}
 
                                                            (= field-name "created_at")
-                                                           [1 (:id field)]
+                                                           {:priority 2 :field-id (:id field)}
 
                                                            (and (= :type/PK (:semantic_type field))
-                                                             (isa? (:base_type field) :type/Number))
-                                                           [2 (:id field)]))))
-
-                                               sort
+                                                                (isa? (:base_type field) :type/Number))
+                                                           {:priority 1 :field-id (:id field)}))))
+                                               (sort-by :priority)
                                                first
-                                               second)]
+                                               :field-id)]
                   page-type ["list" "detail"]]
               {:scaffold-target ["card" table-id page-type]
                :name (format "Query %s %s"
@@ -265,7 +264,7 @@
           ;; now replace targets with actual ids
           {:keys [app pages]} (replace-scaffold-targets scaffold scaffold-target->id)]
       ;; update nav items
-      (db/update! App app-id {:nav_items (into (or nav-items []) (:nav_items app))})
+      (db/update! App app-id {:nav_items (vec (concat nav-items (:nav_items app)))})
       (create-scaffold-dashcards! scaffold-target->id pages)
       (hydrate-details (db/select-one App :id app-id)))))
 
