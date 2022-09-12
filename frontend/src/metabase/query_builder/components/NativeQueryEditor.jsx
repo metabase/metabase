@@ -42,6 +42,7 @@ import {
 
 import "./NativeQueryEditor.css";
 import { NativeQueryEditorRoot } from "./NativeQueryEditor.styled";
+import slugg from "slugg";
 
 const AUTOCOMPLETE_DEBOUNCE_DURATION = 700;
 const AUTOCOMPLETE_CACHE_DURATION = AUTOCOMPLETE_DEBOUNCE_DURATION * 1.2; // tolerate 20%
@@ -321,10 +322,11 @@ class NativeQueryEditor extends Component {
           }
 
           // transform results into what ACE expects
-          const resultsForAce = results.map(result => ({
-            name: result[0],
-            value: result[0],
-            meta: result[1],
+          console.log(results);
+          const resultsForAce = results.map(([name, meta]) => ({
+            name: name,
+            value: name,
+            meta: meta,
           }));
           callback(null, resultsForAce);
         } catch (error) {
@@ -334,12 +336,18 @@ class NativeQueryEditor extends Component {
       },
     });
 
-    const allCompleters = [...this._editor.completers];
-    const snippetCompleter = [{ getCompletions: this.getSnippetCompletions }];
-
     this.swapInCorrectCompletors = pos => {
-      const isInSnippet = this.getSnippetNameAtCursor(pos) !== null;
-      this._editor.completers = isInSnippet ? snippetCompleter : allCompleters;
+      if (this.getSnippetNameAtCursor(pos) !== null) {
+        this._editor.completers = [
+          { getCompletions: this.getSnippetCompletions },
+        ];
+      } else if (this.getQuestionSlugAtCursor(pos) !== null) {
+        this._editor.completers = [
+          { getCompletions: this.getQuestionReferenceCompletions },
+        ];
+      } else {
+        this._editor.completers = [...this._editor.completers];
+      }
     };
   }
 
@@ -347,6 +355,13 @@ class NativeQueryEditor extends Component {
     const lines = this._editor.getValue().split("\n");
     const linePrefix = lines[row].slice(0, column);
     const match = linePrefix.match(/\{\{\s*snippet:\s*([^\}]*)$/);
+    return match ? match[1] : null;
+  };
+
+  getQuestionSlugAtCursor = ({ row, column }) => {
+    const lines = this._editor.getValue().split("\n");
+    const linePrefix = lines[row].slice(0, column);
+    const match = linePrefix.match(/\{\{\s*#([^\}]*)$/);
     return match ? match[1] : null;
   };
 
@@ -363,6 +378,34 @@ class NativeQueryEditor extends Component {
         value: name,
       })),
     );
+  };
+
+  getQuestionReferenceCompletions = async (
+    editor,
+    session,
+    pos,
+    prefix,
+    callback,
+  ) => {
+    const questionSlugPrefix = this.getQuestionSlugAtCursor(pos);
+    // TODO: this is a way to make sure the user hasn't started typing a new word inside the {{#}} block
+    // There's probably a more elegant way to do this
+    if (prefix !== questionSlugPrefix) {
+      callback(null, null);
+      return null;
+    }
+    const questionSearchString = questionSlugPrefix.replace(/-/g, " ");
+    const apiResults = await this.props.modelAutocompleteResultsFn(
+      questionSearchString,
+    );
+
+    // Convert to format ace expects
+    const resultsForAce = apiResults.map(([questionId, name, description]) => ({
+      name: `${questionId}-${slugg(name)}`,
+      value: `${questionId}-${slugg(name)}`,
+      meta: description,
+    }));
+    callback(null, resultsForAce);
   };
 
   _updateSize() {

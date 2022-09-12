@@ -12,6 +12,7 @@
             [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.util :as driver.u]
             [metabase.events :as events]
+            [metabase.util.honeysql-extensions :as hx]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.card :refer [Card]]
@@ -414,6 +415,20 @@
      :order-by [[:%lower.name :asc]]
      :limit    limit}))
 
+(defn- autocomplete-cards [db-id search-string limit]
+  (let [search-id (re-find #"\d*" search-string)
+        search-name (second (re-matches #"\d*\s?(.*)" search-string))]
+    (db/select [Card :id :database_id :name]
+               {:where    [:and
+                           [:= :database_id db-id]
+                           [:= :archived false]
+                           [:= :dataset true]
+                           (cond-> [:or false]
+                             (not-empty search-id) (conj [:like (hx/cast :text :id) (str search-id "%")])
+                             (not-empty search-name) (conj [:like :%lower.name (str "%" search-name "%")]))]
+                :order-by [[:id :asc]]
+                :limit    limit})))
+
 (defn- autocomplete-fields [db-id search-string limit]
   (db/select [Field :name :base_type :semantic_type :id :table_id [:table.name :table_name]]
     :metabase_field.active          true
@@ -425,7 +440,7 @@
      :left-join [[:metabase_table :table] [:= :table.id :metabase_field.table_id]]
      :limit     limit}))
 
-(defn- autocomplete-results [tables fields limit]
+(defn- format-autocomplete-results [tables fields limit]
   (let [tbl-count   (count tables)
         fld-count   (count fields)
         take-tables (min tbl-count (- limit (/ fld-count 2)))
@@ -439,13 +454,17 @@
                          (when semantic_type
                            (str " " semantic_type)))]))))
 
+(defn- format-autocomplete-card-results [cards]
+  (for [card cards]
+    [(:id card) (:name card) "Model"]))
+
 (defn- autocomplete-suggestions
   "match-string is a string that will be used with ilike. The it will be lowercased by autocomplete-{tables,fields}. "
   [db-id match-string]
   (let [limit  50
         tables (filter mi/can-read? (autocomplete-tables db-id match-string limit))
         fields (readable-fields-only (autocomplete-fields db-id match-string limit))]
-    (autocomplete-results tables fields limit)))
+    (format-autocomplete-results tables fields limit)))
 
 (def ^:private autocomplete-matching-options
   "Valid options for the autocomplete types. Can match on a substring (\"%input%\"), on a prefix (\"input%\"), or reject
@@ -489,6 +508,18 @@
       (autocomplete-suggestions id (str prefix "%"))
       :else
       (ex-info "must include prefix or search" {}))
+    (catch Throwable t
+      (log/warn "Error with autocomplete: " (.getMessage t)))))
+
+(api/defendpoint GET "/:id/model_autocomplete_suggestions"
+  "Return a list of autocomplete suggestions for a given string typed inside a {{#...}} template tag."
+  [id query]
+  (api/read-check Database id)
+  (try
+    (if query
+      (-> (autocomplete-cards id query 50)
+          format-autocomplete-card-results)
+      (ex-info "Must have a query parameter" {}))
     (catch Throwable t
       (log/warn "Error with autocomplete: " (.getMessage t)))))
 
