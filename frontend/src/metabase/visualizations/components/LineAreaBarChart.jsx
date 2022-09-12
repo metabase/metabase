@@ -374,8 +374,8 @@ export default class LineAreaBarChart extends Component {
     const orderedSeries =
       (settings["graph.dimensions"]?.length > 1 &&
         settings["graph.series_order"]
-          ?.filter(_series => _series.enabled)
-          .map(_series => series[_series.originalIndex])) ||
+          ?.filter(orderedItem => orderedItem.enabled)
+          .map(orderedItem => series[orderedItem.originalIndex])) ||
       series;
 
     const {

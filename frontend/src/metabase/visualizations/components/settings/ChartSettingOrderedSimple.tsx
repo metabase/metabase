@@ -26,7 +26,7 @@ export const ChartSettingOrderedSimple = ({
   items,
   value: orderedItems,
 }: ChartSettingOrderedSimpleProps) => {
-  const handleDisable = (selectedItem: SortableItem) => {
+  const toggleDisplay = (selectedItem: SortableItem) => {
     const index = orderedItems.findIndex(
       item => item.originalIndex === selectedItem.originalIndex,
     );
@@ -55,8 +55,8 @@ export const ChartSettingOrderedSimple = ({
         <ChartSettingOrderedItems
           items={orderedItems}
           getItemName={getItemTitle}
-          onRemove={handleDisable}
-          onEnable={handleDisable}
+          onRemove={toggleDisplay}
+          onEnable={toggleDisplay}
           onSortEnd={handleSortEnd}
           distance={5}
         />
