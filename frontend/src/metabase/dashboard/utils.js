@@ -80,7 +80,7 @@ export function getNativeDashCardEmptyMappingText(parameter) {
   } else if (isStringParameter(parameter)) {
     return t`Add a string variable to this question to connect it to a dashboard filter.`;
   } else {
-    return t`Add variable to this question to connect it to a dashboard filter.`;
+    return t`Add a variable to this question to connect it to a dashboard filter.`;
   }
 }
 

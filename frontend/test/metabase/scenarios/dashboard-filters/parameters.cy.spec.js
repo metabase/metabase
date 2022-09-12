@@ -301,7 +301,9 @@ describe("scenarios > dashboard > parameters", () => {
       // Confirm that it is not possible to connect filter to the updated question anymore (metabase#9299)
       cy.icon("pencil").click();
       cy.findByText(matchingFilterType.name).find(".Icon-gear").click();
-      cy.findByText(/Add a variable to this question/).should("be.visible");
+      cy.findByText(/Add a string variable to this question/).should(
+        "be.visible",
+      );
     });
   });
 
