@@ -1,6 +1,12 @@
 import _ from "underscore";
 import Utils from "metabase/lib/utils";
 import { isNative } from "metabase/lib/query";
+import { t } from "ttag";
+import {
+  isDateParameter,
+  isNumberParameter,
+  isStringParameter,
+} from "metabase/parameters/utils/parameter-type";
 
 export function syncParametersAndEmbeddingParams(before, after) {
   if (after.parameters && before.embedding_params) {
@@ -63,6 +69,18 @@ export function showVirtualDashCardInfoText(dashcard, isMobile) {
     return isMobile || dashcard.size_y > 2 || dashcard.size_x > 5;
   } else {
     return true;
+  }
+}
+
+export function getNativeDashCardEmptyMappingText(parameter) {
+  if (isDateParameter(parameter)) {
+    return t`Add a date variable to this question to connect it to a dashboard filter.`;
+  } else if (isNumberParameter(parameter)) {
+    return t`Add a number variable to this question to connect it to a dashboard filter.`;
+  } else if (isStringParameter(parameter)) {
+    return t`Add a string variable to this question to connect it to a dashboard filter.`;
+  } else {
+    return t`Add variable to this question to connect it to a dashboard filter.`;
   }
 }
 

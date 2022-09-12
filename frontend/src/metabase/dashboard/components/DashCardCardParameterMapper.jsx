@@ -13,6 +13,7 @@ import { isVariableTarget } from "metabase/parameters/utils/targets";
 import { isDateParameter } from "metabase/parameters/utils/parameter-type";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
+  getNativeDashCardEmptyMappingText,
   isNativeDashCard,
   isVirtualDashCard,
   showVirtualDashCardInfoText,
@@ -195,7 +196,9 @@ function DashCardCardParameterMapper({
       ) : isNative && isDisabled ? (
         <NativeCardDefault>
           <NativeCardIcon name="info" />
-          <NativeCardText>{t`Add a variable to this question to connect it to a dashboard filter.`}</NativeCardText>
+          <NativeCardText>
+            {getNativeDashCardEmptyMappingText(editingParameter)}
+          </NativeCardText>
           <NativeCardLink
             href={MetabaseSettings.docsUrl(
               "questions/native-editor/sql-parameters",
