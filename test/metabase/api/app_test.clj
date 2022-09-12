@@ -140,16 +140,10 @@
 (deftest scaffold-test
   (mt/with-model-cleanup [Card Dashboard Collection]
     (testing "Golden path"
-      (let [next-app-id (-> {:select [[(hsql/call "max" :id) :prev_id]]
-                             :from [App]}
-                            db/query
-                            first
-                            (:prev_id 0)
-                            inc)
-            app (mt/user-http-request
+      (let [app (mt/user-http-request
                   :crowberto :post 200 "app/scaffold"
                   {:table-ids [(data/id :venues)]
-                   :app-name (str "My test app " next-app-id)})
+                   :app-name "My test app"})
             pages (m/index-by :name (hydrate (db/select Dashboard :collection_id (:collection_id app)) :ordered_cards))
             list-page (get pages "Venues List")
             detail-page (get pages "Venues Detail")]
