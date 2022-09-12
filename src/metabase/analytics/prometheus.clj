@@ -205,7 +205,7 @@
 (defn- start-web-server!
   "Start the prometheus web-server. If [[prometheus-server-port]] is not set it will throw."
   [port registry]
-  (log/info (trs "Starting prometheus metrics web-server on port {0}" port))
+  (log/info (trs "Starting prometheus metrics web-server on port {0}" (str port)))
   (when-not port
     (throw (ex-info (trs "Attempting to set up prometheus metrics web-server with no web-server port provided")
                     {})))
