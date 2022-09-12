@@ -189,7 +189,7 @@ export const updateUrl = createThunkAction(
         }),
         search: urlParsed.search,
         hash: urlParsed.hash,
-        state: objectId !== undefined ? { objectId } : undefined,
+        state: { objectId },
       };
 
       const isSameURL =
