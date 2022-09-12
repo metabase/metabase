@@ -1,15 +1,16 @@
 export type FormType = "inline" | "modal";
-export type FieldType = "text" | "number" | "date" | "category";
+export type FieldType = "string" | "number" | "date" | "category";
+
+export type DateInputType = "date" | "datetime" | "monthyear" | "quarteryear";
+
 export type InputType =
+  | DateInputType
   | "string"
   | "text"
   | "number"
-  | "date"
-  | "datetime"
-  | "monthyear"
-  | "quarteryear"
   | "dropdown"
   | "inline-select";
+
 export type Size = "small" | "medium" | "large";
 
 export type DateRange = [string, string];
