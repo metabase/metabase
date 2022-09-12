@@ -33,7 +33,7 @@ Note that there are some kinds of saved questions that can't be used as source d
 
 ## The query builder
 
-Once you select your data, Metabase will take you the query builder. Say you selected **Raw data** > **Sample databse** > **Orders**, then you'll see something like this:
+Once you select your data, Metabase will take you the query builder. Say you selected **Raw data** > **Sample database** > **Orders**, then you'll see something like this:
 
 ![Metabase query builder](../images/notebook-editor.png)
 
