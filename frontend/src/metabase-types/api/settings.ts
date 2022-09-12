@@ -32,6 +32,12 @@ export type LoadingMessage =
   | "running-query"
   | "loading-results";
 
+export type TokenStatusStatus = "unpaid" | "past-due" | string;
+
+export type TokenStatus = {
+  status?: TokenStatusStatus;
+};
+
 export interface Settings {
   "application-font": string;
   "application-font-files": FontFile[] | null;
@@ -49,6 +55,7 @@ export interface Settings {
   "show-homepage-pin-message": boolean;
   "show-lighthouse-illustration": boolean | null;
   "show-metabot": boolean | null;
+  "token-status": TokenStatus | undefined;
   "slack-token": string | undefined;
   "slack-token-valid?": boolean;
   "slack-app-token": string | undefined;
