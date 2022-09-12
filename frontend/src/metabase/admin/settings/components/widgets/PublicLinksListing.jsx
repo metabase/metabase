@@ -1,12 +1,12 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
+import { t } from "ttag";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/core/components/Link";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Confirm from "metabase/components/Confirm";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { t } from "ttag";
 import { CardApi, DashboardApi } from "metabase/services";
 import * as Urls from "metabase/lib/urls";
 

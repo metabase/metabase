@@ -1,17 +1,17 @@
 import React, { useMemo } from "react";
 import { t } from "ttag";
 
+import EmptyState from "metabase/components/EmptyState";
+
+import { color } from "metabase/lib/colors";
+import Icon from "metabase/components/Icon";
+import Dimension from "metabase-lib/lib/Dimension";
 import StructuredQuery, {
   DimensionOption,
   SegmentOption,
   isDimensionOption,
   isSegmentOption,
 } from "metabase-lib/lib/queries/StructuredQuery";
-import Dimension from "metabase-lib/lib/Dimension";
-import EmptyState from "metabase/components/EmptyState";
-
-import { color } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
 
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import { BulkFilterItem } from "../BulkFilterItem";

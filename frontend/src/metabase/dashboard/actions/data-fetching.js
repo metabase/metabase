@@ -2,9 +2,9 @@ import { getIn } from "icepick";
 
 import { t } from "ttag";
 
+import { normalize, schema } from "normalizr";
 import { createAction, createThunkAction } from "metabase/lib/redux";
 import { defer } from "metabase/lib/promise";
-import { normalize, schema } from "normalizr";
 
 import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { applyParameters } from "metabase/meta/Card";
@@ -27,12 +27,12 @@ import {
   maybeUsePivotEndpoint,
 } from "metabase/services";
 
+import { getMetadata } from "metabase/selectors/metadata";
 import {
   getDashboardComplete,
   getParameterValues,
   getLoadingDashCards,
 } from "../selectors";
-import { getMetadata } from "metabase/selectors/metadata";
 
 import {
   expandInlineDashboard,

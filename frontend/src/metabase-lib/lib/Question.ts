@@ -2,6 +2,7 @@
 // @ts-nocheck
 import _ from "underscore";
 import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
+/* eslint-disable import/order */
 // NOTE: the order of these matters due to circular dependency issues
 import StructuredQuery, {
   STRUCTURED_QUERY_TEMPLATE,
@@ -24,6 +25,8 @@ import Mode from "metabase-lib/lib/Mode";
 import { isStandard } from "metabase/lib/query/filter";
 import { isFK } from "metabase/lib/schema_metadata";
 import { memoizeClass, sortObject } from "metabase-lib/lib/utils";
+/* eslint-enable import/order */
+
 // TODO: remove these dependencies
 import * as Urls from "metabase/lib/urls";
 import {
@@ -68,14 +71,15 @@ import { TableId } from "metabase-types/types/Table";
 import { DatabaseId } from "metabase-types/types/Database";
 import { ClickObject } from "metabase-types/types/Visualization";
 import { DependentMetadataItem } from "metabase-types/types/Query";
+import { utf8_to_b64url } from "metabase/lib/encoding";
+import { CollectionId } from "metabase-types/api";
+
+import { getQuestionVirtualTableId } from "metabase/lib/saved-questions/saved-questions";
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
   ALERT_TYPE_ROWS,
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/lib/Alert";
-import { utf8_to_b64url } from "metabase/lib/encoding";
-import { CollectionId } from "metabase-types/api";
-import { getQuestionVirtualTableId } from "metabase/lib/saved-questions/saved-questions";
 
 type QuestionUpdateFn = (q: Question) => Promise<void> | null | undefined;
 

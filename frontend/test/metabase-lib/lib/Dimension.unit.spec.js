@@ -1,4 +1,10 @@
 import _ from "underscore";
+import {
+  metadata,
+  ORDERS,
+  PRODUCTS,
+  SAMPLE_DATABASE,
+} from "__support__/sample_database_fixture";
 import Dimension, {
   FieldDimension,
   TemplateTagDimension,
@@ -8,13 +14,6 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import Question from "metabase-lib/lib/Question";
 import { TemplateTagVariable } from "metabase-lib/lib/Variable";
-
-import {
-  metadata,
-  ORDERS,
-  PRODUCTS,
-  SAMPLE_DATABASE,
-} from "__support__/sample_database_fixture";
 
 const nestedQuestionCard = {
   table_id: null,

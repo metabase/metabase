@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
-import EntityMenu from "metabase/components/EntityMenu";
 import { t } from "ttag";
+import EntityMenu from "metabase/components/EntityMenu";
 export const component = EntityMenu;
 export const category = "navigation";
 

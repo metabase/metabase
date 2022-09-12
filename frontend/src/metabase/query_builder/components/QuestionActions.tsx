@@ -20,13 +20,13 @@ import {
   checkDatabaseCanPersistDatasets,
 } from "metabase/lib/data-modeling/utils";
 
+import BookmarkToggle from "metabase/core/components/BookmarkToggle";
 import Question from "metabase-lib/lib/Question";
 
 import {
   QuestionActionsDivider,
   StrengthIndicator,
 } from "./QuestionActions.styled";
-import BookmarkToggle from "metabase/core/components/BookmarkToggle";
 import { ViewHeaderIconButtonContainer } from "./view/ViewHeader.styled";
 
 const HEADER_ICON_SIZE = 16;

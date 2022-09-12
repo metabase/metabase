@@ -14,16 +14,16 @@ import {
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import Alert from "metabase/components/Alert";
 import AdminPaneLayout from "metabase/components/AdminPaneLayout";
-import { getGroupMembersips, getMembershipsByUser } from "../selectors";
 import { getUser } from "metabase/selectors/user";
-import GroupMembersTable from "./GroupMembersTable";
+import { useConfirmation } from "metabase/hooks/use-confirmation";
+import { getGroupMembersips, getMembershipsByUser } from "../selectors";
 import {
   createMembership,
   deleteMembership,
   updateMembership,
   loadMemberships,
 } from "../people";
-import { useConfirmation } from "metabase/hooks/use-confirmation";
+import GroupMembersTable from "./GroupMembersTable";
 
 const GroupDescription = ({ group }) =>
   isDefaultGroup(group) ? (

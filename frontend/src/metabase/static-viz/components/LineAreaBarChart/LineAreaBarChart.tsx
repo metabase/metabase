@@ -1,7 +1,7 @@
+import React from "react";
 import { color } from "metabase/lib/colors";
 import { colors } from "metabase/lib/colors/palette";
 import { ColorGetter } from "metabase/static-viz/lib/colors";
-import React from "react";
 import { XYChart } from "../XYChart";
 import { ChartSettings, ChartStyle, Series } from "../XYChart/types";
 import { Colors } from "./types";

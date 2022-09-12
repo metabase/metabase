@@ -4,8 +4,8 @@ import _ from "underscore";
 import { getIn } from "icepick";
 
 import ChartNestedSettingSeries from "metabase/visualizations/components/settings/ChartNestedSettingSeries";
-import { nestedSettings } from "./nested";
 import { getColorsForValues } from "metabase/lib/colors/charts";
+import { nestedSettings } from "./nested";
 
 export function keyForSingleSeries(single) {
   // _seriesKey is sometimes set by transformSeries

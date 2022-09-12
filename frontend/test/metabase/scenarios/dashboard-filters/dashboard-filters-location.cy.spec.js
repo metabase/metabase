@@ -8,8 +8,8 @@ import {
   visitDashboard,
 } from "__support__/e2e/helpers";
 
-import { DASHBOARD_LOCATION_FILTERS } from "./dashboard-filters-location";
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
+import { DASHBOARD_LOCATION_FILTERS } from "./dashboard-filters-location";
 
 describe("scenarios > dashboard > filters > location", () => {
   beforeEach(() => {

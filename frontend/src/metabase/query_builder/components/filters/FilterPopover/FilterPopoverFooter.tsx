@@ -4,8 +4,8 @@ import cx from "classnames";
 
 import Button from "metabase/core/components/Button";
 
-import FilterOptions from "./FilterOptions";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
+import FilterOptions from "./FilterOptions";
 
 type Props = {
   className?: string;

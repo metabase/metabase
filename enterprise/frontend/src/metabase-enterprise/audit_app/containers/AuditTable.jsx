@@ -7,10 +7,9 @@ import { push } from "react-router-redux";
 
 import PaginationControls from "metabase/components/PaginationControls";
 
-import Question from "metabase-lib/lib/Question";
-
 import { getMetadata } from "metabase/selectors/metadata";
 import { usePagination } from "metabase/hooks/use-pagination";
+import Question from "metabase-lib/lib/Question";
 
 import { AuditMode } from "../lib/mode";
 import QuestionLoadAndDisplay from "./QuestionLoadAndDisplay";

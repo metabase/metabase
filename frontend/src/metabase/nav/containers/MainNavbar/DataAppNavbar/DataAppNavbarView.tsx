@@ -7,7 +7,6 @@ import * as Urls from "metabase/lib/urls";
 import type { DataApp } from "metabase-types/api";
 
 import { MainNavbarProps, SelectedItem } from "../types";
-import DataAppActionPanel from "./DataAppActionPanel";
 import {
   DataAppNewButton,
   PaddedSidebarLink,
@@ -16,6 +15,7 @@ import {
   SidebarHeadingWrapper,
   SidebarSection,
 } from "../MainNavbar.styled";
+import DataAppActionPanel from "./DataAppActionPanel";
 
 interface Props extends MainNavbarProps {
   dataApp: DataApp;

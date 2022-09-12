@@ -1,7 +1,5 @@
 import _ from "underscore";
 
-import Question from "metabase-lib/lib/Question";
-
 import {
   getParameterTargetField,
   getTemplateTagFromTarget,
@@ -14,6 +12,7 @@ import { ParameterWithTarget, UiParameter } from "metabase/parameters/types";
 import { Parameter, ParameterTarget } from "metabase-types/types/Parameter";
 import { Card } from "metabase-types/types/Card";
 import { TemplateTag } from "metabase-types/types/Query";
+import Question from "metabase-lib/lib/Question";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 
 export function getTemplateTagType(tag: TemplateTag) {

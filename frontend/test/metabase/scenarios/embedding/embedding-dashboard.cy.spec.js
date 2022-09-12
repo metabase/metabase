@@ -7,13 +7,12 @@ import {
   visitIframe,
 } from "__support__/e2e/helpers";
 
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 import {
   questionDetails,
   dashboardDetails,
   mapParameters,
 } from "./embedding-dashboard";
-
-import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, PEOPLE } = SAMPLE_DATABASE;
 

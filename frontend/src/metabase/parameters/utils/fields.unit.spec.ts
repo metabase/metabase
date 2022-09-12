@@ -1,5 +1,5 @@
-import Field from "metabase-lib/lib/metadata/Field";
 import { createMockUiParameter } from "metabase/parameters/mock";
+import Field from "metabase-lib/lib/metadata/Field";
 import { hasFieldValues, hasFields } from "./fields";
 
 describe("parameters/utils/fields", () => {

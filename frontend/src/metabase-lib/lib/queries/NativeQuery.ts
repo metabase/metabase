@@ -2,8 +2,8 @@
 // @ts-nocheck
 import { t } from "ttag";
 
-import Database from "metabase-lib/lib/metadata/Database";
-import Table from "metabase-lib/lib/metadata/Table";
+import { chain, assoc, getIn, assocIn, updateIn } from "icepick";
+import _ from "underscore";
 import { countLines } from "metabase/lib/string";
 import { humanize } from "metabase/lib/formatting";
 import Utils from "metabase/lib/utils";
@@ -12,9 +12,6 @@ import {
   getEngineNativeType,
   getEngineNativeRequiresTable,
 } from "metabase/lib/engine";
-import { chain, assoc, getIn, assocIn, updateIn } from "icepick";
-import _ from "underscore";
-import Question from "metabase-lib/lib/Question";
 import { DatasetQuery, NativeDatasetQuery } from "metabase-types/types/Card";
 import {
   DependentMetadataItem,
@@ -22,12 +19,15 @@ import {
   TemplateTag,
 } from "metabase-types/types/Query";
 import { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
+import Question from "metabase-lib/lib/Question";
+import Table from "metabase-lib/lib/metadata/Table";
+import Database from "metabase-lib/lib/metadata/Database";
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
-import Dimension, { TemplateTagDimension, FieldDimension } from "../Dimension";
-import Variable, { TemplateTagVariable } from "../Variable";
 import { createTemplateTag } from "metabase-lib/lib/queries/TemplateTag";
-import DimensionOptions from "../DimensionOptions";
 import ValidationError from "metabase-lib/lib/ValidationError";
+import DimensionOptions from "../DimensionOptions";
+import Variable, { TemplateTagVariable } from "../Variable";
+import Dimension, { TemplateTagDimension, FieldDimension } from "../Dimension";
 
 import { getNativeQueryTable } from "./utils/native-query-table";
 

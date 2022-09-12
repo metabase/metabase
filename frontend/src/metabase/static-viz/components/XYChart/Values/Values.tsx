@@ -3,11 +3,11 @@ import _ from "underscore";
 
 import { scaleBand } from "@visx/scale";
 
+import type { TextProps } from "@visx/text";
+import type { AnyScaleBand, PositionScale } from "@visx/shape/lib/types";
 import OutlinedText from "metabase/static-viz/components/Text/OutlinedText";
 import { getValueStep, getY } from "../utils";
 
-import type { TextProps } from "@visx/text";
-import type { AnyScaleBand, PositionScale } from "@visx/shape/lib/types";
 import type {
   HydratedSeries,
   SeriesDatum,

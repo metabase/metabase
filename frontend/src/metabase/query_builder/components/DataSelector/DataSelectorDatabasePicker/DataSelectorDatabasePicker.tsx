@@ -2,14 +2,13 @@ import React from "react";
 
 import Icon from "metabase/components/Icon";
 import AccordionList from "metabase/core/components/AccordionList";
-import DataSelectorLoading from "../DataSelectorLoading";
-
 import { isDatabaseWritebackEnabled } from "metabase/writeback/utils";
+import type { Database } from "metabase-types/api/database";
+import DataSelectorLoading from "../DataSelectorLoading";
 
 import { RawDataBackButton } from "../DataSelector.styled";
 
 import type { Schema } from "../types";
-import type { Database } from "metabase-types/api/database";
 
 type DataSelectorDatabasePickerProps = {
   databases: Database[];

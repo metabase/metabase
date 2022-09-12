@@ -27,6 +27,8 @@ import Search from "metabase/entities/search";
 
 import { PLUGIN_MODERATION } from "metabase/plugins";
 
+import { getMetadata } from "metabase/selectors/metadata";
+import { getHasDataAccess } from "metabase/new_query/selectors";
 import {
   SearchResults,
   convertSearchResultToTableLikeItem,
@@ -43,9 +45,6 @@ import {
   CollectionDatasetAllDataLink,
   EmptyStateContainer,
 } from "./DataSelector.styled";
-
-import { getMetadata } from "metabase/selectors/metadata";
-import { getHasDataAccess } from "metabase/new_query/selectors";
 
 import { DATA_BUCKET } from "./constants";
 

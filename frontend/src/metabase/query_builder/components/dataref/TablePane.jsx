@@ -5,8 +5,8 @@ import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
 import Expandable from "metabase/components/Expandable";
-import { TableInfo } from "./TablePane.styled";
 import Table from "metabase/entities/tables";
+import { TableInfo } from "./TablePane.styled";
 
 const mapStateToProps = (state, ownProps) => ({
   tableId: ownProps.table.id,

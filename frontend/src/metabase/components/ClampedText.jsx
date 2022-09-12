@@ -4,8 +4,8 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import styled from "@emotion/styled";
-import { ClampedDiv } from "./ClampedText.styled";
 import { TextButton } from "metabase/components/Button.styled";
+import { ClampedDiv } from "./ClampedText.styled";
 
 const PaddedTextButton = styled(TextButton)`
   margin: 0.5rem 0;

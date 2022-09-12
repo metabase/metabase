@@ -20,6 +20,21 @@ import { useOnUnmount } from "metabase/hooks/use-on-unmount";
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 import { getIsNavbarOpen, setErrorPage } from "metabase/redux/app";
 
+import { getDatabases, getMetadata } from "metabase/selectors/metadata";
+import {
+  getUserIsAdmin,
+  canManageSubscriptions,
+} from "metabase/selectors/user";
+
+import { getEmbedOptions } from "metabase/selectors/embed";
+
+import { parseHashOptions } from "metabase/lib/browser";
+import * as Urls from "metabase/lib/urls";
+
+import Dashboards from "metabase/entities/dashboards";
+
+import DataAppContext from "metabase/writeback/containers/DataAppContext";
+import * as dashboardActions from "../actions";
 import {
   getIsEditing,
   getIsSharing,
@@ -45,21 +60,6 @@ import {
   getIsAdditionalInfoVisible,
   getActionParametersModalAction,
 } from "../selectors";
-import { getDatabases, getMetadata } from "metabase/selectors/metadata";
-import {
-  getUserIsAdmin,
-  canManageSubscriptions,
-} from "metabase/selectors/user";
-
-import { getEmbedOptions } from "metabase/selectors/embed";
-
-import * as dashboardActions from "../actions";
-import { parseHashOptions } from "metabase/lib/browser";
-import * as Urls from "metabase/lib/urls";
-
-import Dashboards from "metabase/entities/dashboards";
-
-import DataAppContext from "metabase/writeback/containers/DataAppContext";
 
 import ActionParametersInputModal from "./ActionParametersInputModal";
 

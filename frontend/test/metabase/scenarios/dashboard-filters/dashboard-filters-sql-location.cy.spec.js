@@ -9,11 +9,11 @@ import {
   visitDashboard,
 } from "__support__/e2e/helpers";
 
+import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 import {
   DASHBOARD_SQL_LOCATION_FILTERS,
   questionDetails,
 } from "./dashboard-filters-sql-location";
-import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 
 describe("scenarios > dashboard > filters > location", () => {
   beforeEach(() => {

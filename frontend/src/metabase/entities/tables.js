@@ -1,4 +1,7 @@
 import { t } from "ttag";
+import _ from "underscore";
+import { createSelector } from "reselect";
+import { updateIn } from "icepick";
 import { createEntity, notify } from "metabase/lib/entities";
 import {
   createThunkAction,
@@ -7,12 +10,9 @@ import {
   withCachedDataAndRequestState,
   withNormalize,
 } from "metabase/lib/redux";
-import _ from "underscore";
 
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
-
-import { createSelector } from "reselect";
 
 import { MetabaseApi } from "metabase/services";
 import { TableSchema } from "metabase/schema";
@@ -29,7 +29,6 @@ import {
 } from "metabase/lib/saved-questions";
 
 import { getMetadata } from "metabase/selectors/metadata";
-import { updateIn } from "icepick";
 
 const listTables = GET("/api/table");
 const listTablesForDatabase = async (...args) =>

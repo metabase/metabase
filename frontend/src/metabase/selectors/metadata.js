@@ -1,5 +1,8 @@
 import { createSelector } from "reselect";
 
+import _ from "underscore";
+import { isVirtualCardId } from "metabase/lib/saved-questions/saved-questions";
+import { getFieldValues, getRemappings } from "metabase/lib/query/field";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Database from "metabase-lib/lib/metadata/Database";
 import Schema from "metabase-lib/lib/metadata/Schema";
@@ -8,10 +11,6 @@ import Field from "metabase-lib/lib/metadata/Field";
 import Metric from "metabase-lib/lib/metadata/Metric";
 import Segment from "metabase-lib/lib/metadata/Segment";
 import Question from "metabase-lib/lib/Question";
-import { isVirtualCardId } from "metabase/lib/saved-questions/saved-questions";
-
-import _ from "underscore";
-import { getFieldValues, getRemappings } from "metabase/lib/query/field";
 
 // fully nomalized, raw "entities"
 export const getNormalizedDatabases = state => state.entities.databases;

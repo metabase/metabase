@@ -1,12 +1,11 @@
 import React from "react";
 
-import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
-
-import { Route } from "metabase/hoc/Title";
 import { Redirect, IndexRedirect, IndexRoute } from "react-router";
 import { routerActions } from "react-router-redux";
 import { UserAuthWrapper } from "redux-auth-wrapper";
 import { t } from "ttag";
+import { Route } from "metabase/hoc/Title";
+import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
 
 import { loadCurrentUser } from "metabase/redux/user";
 import MetabaseSettings from "metabase/lib/settings";

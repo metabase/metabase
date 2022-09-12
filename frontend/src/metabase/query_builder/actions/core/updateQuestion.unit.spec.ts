@@ -1,5 +1,22 @@
 import _ from "underscore";
 
+import { createMockDataset } from "metabase-types/api/mocks";
+import { Card, StructuredDatasetQuery } from "metabase-types/types/Card";
+import { ConcreteField, TemplateTag } from "metabase-types/types/Query";
+import { QueryBuilderMode } from "metabase-types/store";
+import {
+  createMockState,
+  createMockQueryBuilderState,
+  createMockQueryBuilderUIControlsState,
+} from "metabase-types/store/mocks";
+import {
+  SAMPLE_DATABASE,
+  ORDERS,
+  PEOPLE,
+  PRODUCTS,
+  state as entitiesState,
+  metadata,
+} from "__support__/sample_database_fixture";
 import Question from "metabase-lib/lib/Question";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
@@ -14,25 +31,6 @@ import {
   getNativeModel,
   getComposedModel,
 } from "metabase-lib/mocks";
-
-import { createMockDataset } from "metabase-types/api/mocks";
-import { Card, StructuredDatasetQuery } from "metabase-types/types/Card";
-import { ConcreteField, TemplateTag } from "metabase-types/types/Query";
-import { QueryBuilderMode } from "metabase-types/store";
-import {
-  createMockState,
-  createMockQueryBuilderState,
-  createMockQueryBuilderUIControlsState,
-} from "metabase-types/store/mocks";
-
-import {
-  SAMPLE_DATABASE,
-  ORDERS,
-  PEOPLE,
-  PRODUCTS,
-  state as entitiesState,
-  metadata,
-} from "__support__/sample_database_fixture";
 
 import * as navigation from "../navigation";
 import * as native from "../native";
