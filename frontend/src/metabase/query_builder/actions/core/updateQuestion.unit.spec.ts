@@ -446,7 +446,53 @@ describe("QB Actions > updateQuestion", () => {
   });
 
   describe("structured", () => {
-    STRUCTURED_TEST_CASES.forEach(testCase => {
+    const modelTestCases = STRUCTURED_TEST_CASES.filter(testCase => {
+      return testCase.question.isDataset();
+    });
+    const structuredQuestionTestCases = STRUCTURED_TEST_CASES.filter(
+      testCase => {
+        return !testCase.question.isDataset();
+      },
+    );
+
+    modelTestCases.forEach(testCase => {
+      const { question, questionType } = testCase;
+
+      describe(questionType, () => {
+        it("loads metadata for the model", async () => {
+          const loadMetadataSpy = jest.spyOn(
+            metadataActions,
+            "loadMetadataForCard",
+          );
+
+          await setup({ question });
+          expect(loadMetadataSpy).toHaveBeenCalledTimes(1);
+        });
+
+        it("refreshes question metadata if there's difference in dependent metadata", async () => {
+          const loadMetadataSpy = jest.spyOn(
+            metadataActions,
+            "loadMetadataForCard",
+          );
+          const join = new Join(PRODUCTS_JOIN_CLAUSE);
+          const query = question.query() as StructuredQuery;
+          const questionWithJoin = query.join(join).question();
+
+          await setup({
+            question: questionWithJoin,
+            originalQuestion: question,
+          });
+
+          expect(loadMetadataSpy).toHaveBeenCalledWith(
+            expect.objectContaining({
+              dataset_query: questionWithJoin.datasetQuery(),
+            }),
+          );
+        });
+      });
+    });
+
+    structuredQuestionTestCases.forEach(testCase => {
       const { question, questionType } = testCase;
 
       describe(questionType, () => {
@@ -457,13 +503,7 @@ describe("QB Actions > updateQuestion", () => {
           );
 
           await setup({ question });
-
-          // models always call this once, when fetching themselves as a card table
-          if (question.isDataset()) {
-            expect(loadMetadataSpy).toHaveBeenCalledTimes(1);
-          } else {
-            expect(loadMetadataSpy).not.toHaveBeenCalled();
-          }
+          expect(loadMetadataSpy).not.toHaveBeenCalled();
         });
 
         it("refreshes question metadata if there's difference in dependent metadata", async () => {
