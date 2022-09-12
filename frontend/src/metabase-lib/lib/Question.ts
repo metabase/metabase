@@ -1024,6 +1024,9 @@ class QuestionInner {
   dependentMetadata(): DependentMetadataItem[] {
     const dependencies = [];
 
+    // we frequently treat dataset/model questions like they are already nested
+    // so we need to fetch the virtual card table representation of the Question
+    // so that we can properly access the table's fields in various scenarios
     if (this.isDataset()) {
       dependencies.push({
         type: "table",
