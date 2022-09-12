@@ -400,11 +400,14 @@ class NativeQueryEditor extends Component {
     );
 
     // Convert to format ace expects
-    const resultsForAce = apiResults.map(([questionId, name, description]) => ({
-      name: `${questionId}-${slugg(name)}`,
-      value: `${questionId}-${slugg(name)}`,
-      meta: description,
-    }));
+    const resultsForAce = apiResults.map(
+      ([questionId, name, questionType]) => ({
+        name: `${questionId}-${slugg(name)}`,
+        value: `${questionId}-${slugg(name)}`,
+        meta: questionType,
+        score: questionType === "Model" ? 100000 : 0, // prioritize models above questions
+      }),
+    );
     callback(null, resultsForAce);
   };
 

@@ -418,11 +418,10 @@
 (defn- autocomplete-cards [db-id search-string limit]
   (let [search-id (re-find #"\d*" search-string)
         search-name (second (re-matches #"\d*\s?(.*)" search-string))]
-    (db/select [Card :id :database_id :name]
+    (db/select [Card :id :dataset :database_id :name]
                {:where    [:and
                            [:= :database_id db-id]
                            [:= :archived false]
-                           [:= :dataset true]
                            (cond-> [:or false]
                              (not-empty search-id) (conj [:like (hx/cast :text :id) (str search-id "%")])
                              (not-empty search-name) (conj [:like :%lower.name (str "%" search-name "%")]))]
@@ -456,7 +455,9 @@
 
 (defn- format-autocomplete-card-results [cards]
   (for [card cards]
-    [(:id card) (:name card) "Model"]))
+    [(:id card) (:name card) (if (:dataset card)
+                               "Model"
+                               "Question")]))
 
 (defn- autocomplete-suggestions
   "match-string is a string that will be used with ilike. The it will be lowercased by autocomplete-{tables,fields}. "
