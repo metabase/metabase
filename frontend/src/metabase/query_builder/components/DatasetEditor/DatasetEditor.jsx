@@ -255,7 +255,7 @@ function DatasetEditor(props) {
   const focusedField = useMemo(() => {
     const field = fields[focusedFieldIndex];
     if (field) {
-      const fieldMetadata = metadata.field(field.id);
+      const fieldMetadata = metadata.field(field.id, field.table_id);
       return {
         ...fieldMetadata,
         ...field,

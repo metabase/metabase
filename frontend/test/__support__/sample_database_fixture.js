@@ -2,9 +2,11 @@
 import React from "react";
 import { Provider } from "react-redux";
 import { getStore } from "metabase/store";
+import { normalize } from "normalizr";
+import { chain } from "icepick";
 
 import { getMetadata } from "metabase/selectors/metadata";
-import { chain } from "icepick";
+import { FieldSchema } from "metabase/schema";
 
 import state from "./sample_database_fixture.json";
 export { default as state } from "./sample_database_fixture.json";
@@ -34,8 +36,16 @@ function aliasTablesAndFields(metadata) {
   }
 }
 
+function normalizeFields(fields) {
+  return normalize(fields, [FieldSchema]).entities.fields || {};
+}
+
 export function createMetadata(updateState = state => state) {
-  const stateModified = updateState(chain(state)).value();
+  const stateModified = updateState(chain(state)).thaw().value();
+  stateModified.entities.fields = normalizeFields(
+    stateModified.entities.fields,
+  );
+
   const metadata = getMetadata(stateModified);
   aliasTablesAndFields(metadata);
   return metadata;
@@ -106,6 +116,9 @@ export function makeMetadata(metadata) {
       }
     }
   }
+
+  metadata.fields = normalizeFields(metadata.fields);
+
   return getMetadata({ entities: metadata });
 }
 

@@ -252,7 +252,7 @@ const getQuery = (question: Question) => {
 const getTitle = (query: StructuredQuery, singleTable: boolean) => {
   const table = query.table();
 
-  if (singleTable) {
+  if (singleTable && table) {
     return t`Filter ${pluralize(table.displayName())} by`;
   } else {
     return t`Filter by`;
