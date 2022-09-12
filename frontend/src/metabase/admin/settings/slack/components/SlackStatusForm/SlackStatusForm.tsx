@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo } from "react";
+import { t } from "ttag";
 import Form from "metabase/containers/Form";
 import { SlackSettings } from "metabase-types/api";
 import { getSlackForm } from "../../forms";
@@ -17,7 +18,10 @@ const SlackStatusForm = ({ settings }: SlackStatusFormProps): JSX.Element => {
       {({ Form, FormField }: FormProps) => (
         <Form>
           <FormField name="slack-app-token" />
-          <FormField name="slack-files-channel" />
+          <FormField
+            name="slack-files-channel"
+            description={t`We'll upload charts and tables here before sending out dashboard subscriptions.`}
+          />
         </Form>
       )}
     </Form>
