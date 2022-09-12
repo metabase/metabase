@@ -30,19 +30,66 @@ const metadata = makeMetadata({
     },
   },
   fields: {
-    1: { table: 1, display_name: "A", base_type: TYPE.Float },
-    2: { table: 1, display_name: "B", base_type: TYPE.Float },
-    3: { table: 1, display_name: "C", base_type: TYPE.Float },
-    10: { table: 1, display_name: "Toucan Sam", base_type: TYPE.Float },
-    11: { table: 1, display_name: "Sum", base_type: TYPE.Float },
-    12: { table: 1, display_name: "count", base_type: TYPE.Float },
-    13: { table: 1, display_name: "text", base_type: TYPE.Text },
-    14: { table: 1, display_name: "date", base_type: TYPE.DateTime },
+    1: {
+      id: 1,
+      table_id: 1,
+      table: 1,
+      display_name: "A",
+      base_type: TYPE.Float,
+    },
+    2: {
+      id: 2,
+      table_id: 1,
+      table: 1,
+      display_name: "B",
+      base_type: TYPE.Float,
+    },
+    3: {
+      id: 3,
+      table_id: 1,
+      table: 1,
+      display_name: "C",
+      base_type: TYPE.Float,
+    },
+    10: {
+      id: 10,
+      table_id: 1,
+      table: 1,
+      display_name: "Toucan Sam",
+      base_type: TYPE.Float,
+    },
+    11: {
+      id: 11,
+      table_id: 1,
+      table: 1,
+      display_name: "Sum",
+      base_type: TYPE.Float,
+    },
+    12: {
+      id: 12,
+      table_id: 1,
+      table: 1,
+      display_name: "count",
+      base_type: TYPE.Float,
+    },
+    13: {
+      id: 13,
+      table_id: 1,
+      table: 1,
+      display_name: "text",
+      base_type: TYPE.Text,
+    },
+    14: {
+      id: 14,
+      table_id: 1,
+      table: 1,
+      display_name: "date",
+      base_type: TYPE.DateTime,
+    },
   },
 });
 
 export const query = metadata.table(1).query();
-
 export const expressionOpts = { query, startRule: "expression" };
 export const aggregationOpts = { query, startRule: "aggregation" };
 export const filterOpts = { query, startRule: "boolean" };

@@ -39,6 +39,7 @@ export interface ActionFormSettings {
   fields: {
     [tagId: string]: FieldSettings;
   };
+  submitButtonLabel?: string;
   confirmMessage?: string;
   successMessage?: string;
   errorMessage?: string;

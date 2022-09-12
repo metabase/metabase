@@ -1,4 +1,4 @@
-import { Card } from "metabase-types/api";
+import { Card, ActionFormSettings } from "metabase-types/api";
 import {
   Parameter,
   ParameterId,
@@ -16,6 +16,7 @@ export interface WritebackActionBase {
   name: string;
   description: string | null;
   parameters: WritebackParameter[];
+  visualization_settings?: ActionFormSettings;
   "updated-at": string;
   "created-at": string;
 }
