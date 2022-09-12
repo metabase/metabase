@@ -221,7 +221,7 @@
 (deftest area-test
   (let [rows       [["bob" 2]
                     ["dobbs" 3]]
-        series     [{:type          :bar
+        series     [{:type          :area
                      :color         "#999AC4"
                      :data          rows
                      :yAxisPosition "left"}]
@@ -237,7 +237,7 @@
         (is (bytes? svg-bytes))))
     (let [svg-hiccup (combo-chart-hiccup series settings)]
        (testing "it returns a valid svg string with no html"
-        (validate-svg-string :timelineseries-bar svg-string))
+        (validate-svg-string :categorical-area svg-string))
       (testing "The svg string has formatted axes"
         (let [spec       (s/cat :y-axis-labels (s/+ (s/tuple
                                                       #{"#text"}
