@@ -1,7 +1,6 @@
 (ns metabase.api.app-test
   (:require
     [clojure.test :refer [deftest is testing]]
-    [honeysql.core :as hsql]
     [medley.core :as m]
     [metabase.models :refer [App Card Collection Dashboard]]
     [metabase.models.permissions :as perms]
