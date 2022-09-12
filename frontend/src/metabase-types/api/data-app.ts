@@ -1,4 +1,5 @@
 import { Collection, RegularCollectionId } from "./collection";
+import { ClickBehavior } from "./click-behavior";
 import {
   BaseDashboardOrderedCard,
   DashboardParameterMapping,
@@ -41,5 +42,6 @@ export interface ActionButtonDashboardCard
   visualization_settings: {
     [key: string]: unknown;
     "button.label"?: string;
+    click_behavior?: ClickBehavior;
   };
 }

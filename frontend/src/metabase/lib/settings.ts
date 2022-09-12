@@ -87,6 +87,7 @@ export type SettingName =
   | "setup-token"
   | "site-url"
   | "site-uuid"
+  | "token-status"
   | "types"
   | "version-info-last-checked"
   | "version-info"
