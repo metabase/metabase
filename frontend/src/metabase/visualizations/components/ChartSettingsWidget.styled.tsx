@@ -40,6 +40,7 @@ export const Root = styled.div<{
     `}
   ${props =>
     props.inline &&
+    !props.hidden &&
     css`
       display: flex;
       flex-direction: row;

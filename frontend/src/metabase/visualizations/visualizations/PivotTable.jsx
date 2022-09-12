@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
-import { t, jt } from "ttag";
+import { t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
 import { getIn, updateIn } from "icepick";
@@ -25,6 +25,7 @@ import {
 } from "metabase/lib/data_grid";
 import { formatColumn } from "metabase/lib/formatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import { ChartSettingIconRadio } from "metabase/visualizations/components/settings/ChartSettingIconRadio";
 
 import { PLUGIN_SELECTORS } from "metabase/plugins";
 import {
@@ -33,29 +34,30 @@ import {
   PivotTableTopLeftCellsContainer,
   RowToggleIconRoot,
   CELL_HEIGHT,
+  PivotTableSettingLabel,
 } from "./PivotTable.styled";
 
 const partitions = [
   {
     name: "rows",
     columnFilter: isDimension,
-    title: jt`Fields to use for the table ${(
-      <span className="text-dark text-heavy">{t`rows`}</span>
-    )}`,
+    title: (
+      <PivotTableSettingLabel>{t`Fields to use for the table rows`}</PivotTableSettingLabel>
+    ),
   },
   {
     name: "columns",
     columnFilter: isDimension,
-    title: jt`Fields to use for the table ${(
-      <span className="text-dark text-heavy">{t`columns`}</span>
-    )}`,
+    title: (
+      <PivotTableSettingLabel>{t`Fields to use for the table columns`}</PivotTableSettingLabel>
+    ),
   },
   {
     name: "values",
     columnFilter: col => !isDimension(col),
-    title: jt`Fields to use for the table ${(
-      <span className="text-dark text-heavy">{t`values`}</span>
-    )}`,
+    title: (
+      <PivotTableSettingLabel>{t`Fields to use for the table values`}</PivotTableSettingLabel>
+    ),
   },
 ];
 
@@ -232,6 +234,28 @@ class PivotTable extends Component {
   };
 
   static columnSettings = {
+    [COLUMN_SORT_ORDER]: {
+      title: t`Sort Order`,
+      widget: ChartSettingIconRadio,
+      inline: true,
+      getProps: () => ({
+        options: [
+          {
+            name: "arrow_up",
+            value: "ascending",
+          },
+          {
+            name: "arrow_down",
+            value: "descending",
+          },
+        ],
+      }),
+      getHidden: ({ source }, settings) => {
+        console.log(source, source === "aggregation");
+        return source === "aggregation";
+      },
+    },
+
     column_title: {
       title: t`Column title`,
       widget: "input",
@@ -255,7 +279,6 @@ class PivotTable extends Component {
         return currentValue == null ? true : currentValue;
       },
     },
-    [COLUMN_SORT_ORDER]: { hidden: true },
   };
 
   setBodyRef = element => {

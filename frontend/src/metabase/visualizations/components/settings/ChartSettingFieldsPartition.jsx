@@ -22,11 +22,11 @@ import {
 } from "metabase/lib/data_grid";
 import { keyForColumn } from "metabase/lib/dataset";
 import {
-  ExpandIconContainer,
   FormattingOptionsRoot,
   ShowTotalsOptionRoot,
   SortButtonIcon,
   SortOrderOptionRoot,
+  ColumnInnerRoot,
 } from "./ChartSettingFieldsPartition.styled";
 
 const DragWrapper = styled.div`
@@ -309,9 +309,9 @@ class ColumnInner extends React.Component {
     const { expanded } = this.state;
     this.setState({ expanded: !expanded });
   };
-  handleEditFormatting = targetElement => {
+  handleEditFormatting = e => {
     const { column, onEditFormatting } = this.props;
-    onEditFormatting && onEditFormatting(column, targetElement);
+    onEditFormatting && onEditFormatting(column, e.target);
   };
   render() {
     const {
@@ -328,40 +328,49 @@ class ColumnInner extends React.Component {
     return connectDropTarget(
       connectDragSource(
         <div>
-          <DragWrapper
-            className={cx(
-              "text-dark mb1 bordered rounded cursor-grab text-bold",
-              { disabled: isDragging },
-            )}
-          >
-            <div
+          <ColumnInnerRoot>
+            <Icon name="grabber2" size={12} />
+            <DragWrapper
               className={cx(
-                "text-dark text-bold cursor-grab flex justify-between",
+                "text-dark bordered rounded cursor-grab text-bold ml1 flex-full",
+                { disabled: isDragging },
               )}
             >
-              <ExpandIconContainer
-                onClick={this.toggleExpand}
-                className="hover-parent hover--inherit"
+              <div
+                className={cx(
+                  "text-dark text-bold cursor-grab flex align-center justify-between",
+                )}
               >
                 {column.display_name}
+                {/* <Icon
+                    name={expanded ? "chevronup" : "chevrondown"}
+                    size="10"
+                    className="text-light hover-child hover--inherit ml1"
+                  /> */}
                 <Icon
-                  name={expanded ? "chevronup" : "chevrondown"}
-                  size="10"
-                  className="text-light hover-child hover--inherit ml1"
+                  name="ellipsis"
+                  size="12"
+                  className="text-dark hover-child hover--inherit ml1 cursor-pointer"
+                  onClick={this.handleEditFormatting}
                 />
-              </ExpandIconContainer>
-              <Grabber style={{ width: 10 }} />
-            </div>
-            {showOptionsPanel && (
-              <ColumnOptionsPanel
-                className="text-medium"
-                partitionName={partitionName}
-                onChangeColumnSetting={onChangeColumnSetting.bind(null, column)}
-                getColumnSettingValue={getColumnSettingValue.bind(null, column)}
-                onEditFormatting={this.handleEditFormatting}
-              />
-            )}
-          </DragWrapper>
+              </div>
+              {showOptionsPanel && (
+                <ColumnOptionsPanel
+                  className="text-medium"
+                  partitionName={partitionName}
+                  onChangeColumnSetting={onChangeColumnSetting.bind(
+                    null,
+                    column,
+                  )}
+                  getColumnSettingValue={getColumnSettingValue.bind(
+                    null,
+                    column,
+                  )}
+                  onEditFormatting={this.handleEditFormatting}
+                />
+              )}
+            </DragWrapper>
+          </ColumnInnerRoot>
         </div>,
       ),
     );

@@ -43,3 +43,8 @@ export const SortButtonIcon = styled(Icon)<SortButtonIconProps>`
     color: ${props => !props.isSelected && color("brand")};
   }
 `;
+
+export const ColumnInnerRoot = styled.div`
+  display: flex;
+  align-items: center;
+`;
