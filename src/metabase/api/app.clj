@@ -160,14 +160,14 @@
                                                        (let [field-name (str/lower-case (:name field))]
                                                          (cond
                                                            (= field-name "updated_at")
-                                                           {:priority 3 :field-id (:id field)}
+                                                           {:priority 0 :field-id (:id field)}
 
                                                            (= field-name "created_at")
-                                                           {:priority 2 :field-id (:id field)}
+                                                           {:priority 1 :field-id (:id field)}
 
                                                            (and (= :type/PK (:semantic_type field))
                                                                 (isa? (:base_type field) :type/Number))
-                                                           {:priority 1 :field-id (:id field)}))))
+                                                           {:priority 2 :field-id (:id field)}))))
                                                (sort-by :priority)
                                                first
                                                :field-id)]
