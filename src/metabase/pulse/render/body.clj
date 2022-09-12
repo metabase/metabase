@@ -309,24 +309,28 @@
         x-col-settings (or (settings-from-column x-col column-settings) {})
         y-col-settings (or (settings-from-column y-col column-settings) {})
         x-format       (merge
-                         (if (isa? (:effective_type x-col) :type/Temporal)
-                           {:date_style "MMMM D, YYYY"}
-                           default-format)
-                         x-col-settings)
+                        (if (isa? (:effective_type x-col) :type/Temporal)
+                          {:date_style "MMMM D, YYYY"}
+                          default-format)
+                        x-col-settings)
         y-format       (merge
-                         default-format
-                         y-col-settings)
+                        default-format
+                        y-col-settings)
         default-x-type (if (isa? (:effective_type x-col) :type/Temporal)
                          "timeseries"
                          "ordinal")]
-    {:colors      (public-settings/application-colors)
-     :stacking    (if (:stackable.stack_type viz-settings) "stack" "none")
-     :show_values (boolean (:graph.show_values viz-settings))
-     :x           {:type   (or (:graph.x_axis.scale viz-settings) default-x-type)
-                   :format x-format}
-     :y           {:type   (or (:graph.y_axis.scale viz-settings) "linear")
-                   :format y-format}
-     :labels      labels}))
+    (merge
+     {:colors      (public-settings/application-colors)
+      :stacking    (if (:stackable.stack_type viz-settings) "stack" "none")
+      :show_values (boolean (:graph.show_values viz-settings))
+      :x           {:type   (or (:graph.x_axis.scale viz-settings) default-x-type)
+                    :format x-format}
+      :y           {:type   (or (:graph.y_axis.scale viz-settings) "linear")
+                    :format y-format}
+      :labels      labels}
+     (when (:graph.show_goal viz-settings)
+       {:goal {:value (:graph.goal_value viz-settings)
+               :label (or (:graph.goal_label viz-settings) (tru "Goal"))}}))))
 
 (defn- set-default-stacked
   "Default stack type is stacked for area chart with more than one metric.
@@ -356,13 +360,15 @@
   "X and Y axis labels passed into the `labels` argument needs to be different
   for combos specifically (as opposed to multiples)"
   [x-cols y-cols viz-settings]
-  {:bottom (or (:graph.x_axis.title_text viz-settings)
-               (:display_name (first x-cols)))
-   :left   (or (:graph.y_axis.title_text viz-settings)
-               (:display_name (first y-cols)))
-   :right  (or (:graph.y_axis.title_text viz-settings)
-               (:display_name (second y-cols))
-               "")})
+  {:bottom (when (:graph.x_axis.labels_enabled viz-settings)
+             (or (:graph.x_axis.title_text viz-settings)
+                 (:display_name (first x-cols))))
+   :left   (when (:graph.y_axis.labels_enabled viz-settings)
+             (or (:graph.y_axis.title_text viz-settings)
+                 (:display_name (first y-cols))))
+   :right  (when (:graph.y_axis.labels_enabled viz-settings)
+             (or (:graph.y_axis.title_text viz-settings)
+                 (:display_name (second y-cols))))})
 
 (def ^:private colors
   "Colors to cycle through for charts. These are copied from https://stats.metabase.com/_internal/colors"
@@ -568,6 +574,7 @@
   (for [[idx y-col] (map-indexed vector y-cols)]
     (let [y-col-key     (keyword (:name y-col))
           card-name     (or (series-setting viz-settings y-col-key :name)
+                            (series-setting viz-settings y-col-key :title)
                             (:display_name y-col))
           card-color    (or (series-setting viz-settings y-col-key :color)
                             (nth colors idx))
@@ -577,11 +584,11 @@
           selected-rows (mapv #(vector (ffirst %) (nth (second %) idx)) joined-rows)
           y-axis-pos    (or (series-setting viz-settings y-col-key :axis)
                             (nth (default-y-pos viz-settings) idx))]
-     {:name          card-name
-      :color         card-color
-      :type          card-type
-      :data          selected-rows
-      :yAxisPosition y-axis-pos})))
+      {:name          card-name
+       :color         card-color
+       :type          card-type
+       :data          selected-rows
+       :yAxisPosition y-axis-pos})))
 
 (defn- double-x-axis-combo-series
   "This munges rows and columns into series in the format that we want for combo staticviz for literal combo displaytype,
@@ -596,6 +603,7 @@
       (let [row-group          (get grouped-rows group-key)
             selected-row-group (mapv #(vector (ffirst %) (first (second %))) row-group)
             card-name          (or (series-setting viz-settings group-key :name)
+                                   (series-setting viz-settings group-key :title)
                                    group-key)
             card-color         (or (series-setting viz-settings group-key :color)
                                    (nth colors idx))
@@ -870,7 +878,8 @@
                      (style/font-style)
                      {:margin-top :8px
                       :color      style/color-gray-4})}
-       (trs "No results")]]}))
+       (trs "No results")]]
+     :render/text (trs "No results")}))
 
 (s/defmethod render :attached :- common/RenderedPulseCard
   [_ render-type _ _ _ _]

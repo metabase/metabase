@@ -1,10 +1,10 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
+import { jt } from "ttag";
+import MetabaseSettings from "metabase/lib/settings";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import SettingHeader from "./SettingHeader";
-import { t } from "ttag";
-
 import SettingInput from "./widgets/SettingInput";
 import SettingNumber from "./widgets/SettingNumber";
 import SettingPassword from "./widgets/SettingPassword";
@@ -69,7 +69,11 @@ export default class SettingsSetting extends Component {
         <SettingContent>
           {setting.is_env_setting ? (
             <SettingEnvVarMessage>
-              {t`Using ` + setting.env_name}
+              {jt`This has been set by the ${(
+                <ExternalLink href={getEnvVarDocsUrl(setting.env_name)}>
+                  {setting.env_name}
+                </ExternalLink>
+              )} environment variable.`}
             </SettingEnvVarMessage>
           ) : (
             <Widget id={settingId} {...widgetProps} />
@@ -85,3 +89,10 @@ export default class SettingsSetting extends Component {
     );
   }
 }
+
+const getEnvVarDocsUrl = envName => {
+  return MetabaseSettings.docsUrl(
+    "configuring-metabase/environment-variables",
+    envName?.toLowerCase(),
+  );
+};

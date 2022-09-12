@@ -3,7 +3,11 @@ import { color } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
 
-export const ColumnItemRoot = styled.div`
+interface ColumnItemRootProps {
+  isDraggable: boolean;
+}
+
+export const ColumnItemRoot = styled.div<ColumnItemRootProps>`
   margin: 0.5rem 0;
   overflow: hidden;
   display: flex;
@@ -18,7 +22,7 @@ export const ColumnItemRoot = styled.div`
   }
 
   ${props =>
-    props.draggable &&
+    props.isDraggable &&
     `
     cursor: grab;
     &:hover {

@@ -322,7 +322,7 @@ saved later when it is ready."
                   (log/info (trs "Not updating metadata asynchronously for card {0} because query has changed"
                                  id)))))))))
 
-(defn- create-card!
+(defn create-card!
   "Create a new Card. Metadata will be fetched off thread. If the metadata takes longer than [[metadata-sync-wait-ms]]
   the card will be saved without metadata and it will be saved to the card in the future when it is ready."
   [{:keys [dataset_query result_metadata dataset parameters parameter_mappings], :as card-data}]

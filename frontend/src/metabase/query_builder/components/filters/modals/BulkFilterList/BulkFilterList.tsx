@@ -173,7 +173,7 @@ const SegmentListItem = ({
       <InlineOperatorSelector
         fieldName={t`Filter down to a segment`}
         iconName="filter"
-        tableName={isSearch ? query.table().displayName() : undefined}
+        tableName={isSearch ? query.table()?.displayName() : undefined}
       />
       <SegmentFilterSelect
         query={query}

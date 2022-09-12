@@ -31,9 +31,10 @@ import {
   nonPersonalOrArchivedCollection,
 } from "metabase/collections/utils";
 
-import { MainNavbarProps, SelectedItem } from "./types";
+import { MainNavbarProps, SelectedItem } from "../types";
+import NavbarLoadingView from "../NavbarLoadingView";
+
 import MainNavbarView from "./MainNavbarView";
-import NavbarLoadingView from "./NavbarLoadingView";
 
 type NavbarModal = "MODAL_NEW_COLLECTION" | null;
 

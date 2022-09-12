@@ -133,7 +133,7 @@ export const getParameterTarget = createSelector(
     }
     const mapping = _.findWhere(dashcard.parameter_mappings, {
       parameter_id: parameter.id,
-      ...(card & card.id && { card_id: card.id }),
+      ...(card && card.id && { card_id: card.id }),
     });
     return mapping && mapping.target;
   },
