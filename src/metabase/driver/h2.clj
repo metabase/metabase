@@ -366,8 +366,10 @@
   [connection-string]
   {:pre [(string? connection-string)]}
   (let [[file options] (connection-string->file+options connection-string)]
-    (file+options->connection-string file (merge options {"IFEXISTS"         "TRUE"
-                                                          "ACCESS_MODE_DATA" "r"}))))
+    (file+options->connection-string file (merge
+                                           (u/dissoc-by str/lower-case options "INIT")
+                                           {"IFEXISTS"         "TRUE"
+                                            "ACCESS_MODE_DATA" "r"}))))
 
 (defmethod sql-jdbc.conn/connection-details->spec :h2
   [_ details]

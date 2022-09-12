@@ -965,3 +965,19 @@
       (if (pred x)
         [x (concat prefix xs)]
         (recur xs (conj prefix x))))))
+
+(defn dissoc-by
+  "removes all keys in m if (f key) = (f dissoc-k)."
+  ([f m dissoc-k]
+   (reduce-kv
+    (fn [m k v]
+      (if (= (f k) (f dissoc-k))
+        m
+        (assoc m k v)))
+    {}
+    m))
+  ([f m dissoc-k & more]
+   (let [ret (dissoc-by f m dissoc-k)]
+     (if more
+       (recur f ret (first more) (next more))
+       ret))))
