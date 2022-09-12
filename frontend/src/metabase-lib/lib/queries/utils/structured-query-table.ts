@@ -1,8 +1,7 @@
+import type { Field as FieldRef } from "metabase-types/types/Query";
+import { isVirtualCardId } from "metabase/lib/saved-questions";
 import type Field from "metabase-lib/lib/metadata/Field";
 import type Table from "metabase-lib/lib/metadata/Table";
-import type { Field as FieldRef } from "metabase-types/types/Query";
-
-import { isVirtualCardId } from "metabase/lib/saved-questions";
 
 import type StructuredQuery from "../StructuredQuery";
 import { createVirtualTable, createVirtualField } from "./virtual-table";

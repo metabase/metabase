@@ -73,14 +73,13 @@ import { ClickObject } from "metabase-types/types/Visualization";
 import { DependentMetadataItem } from "metabase-types/types/Query";
 import { utf8_to_b64url } from "metabase/lib/encoding";
 import { CollectionId } from "metabase-types/api";
+
+import { getQuestionVirtualTableId } from "metabase/lib/saved-questions/saved-questions";
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
   ALERT_TYPE_ROWS,
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/lib/Alert";
-import { utf8_to_b64url } from "metabase/lib/encoding";
-import { CollectionId } from "metabase-types/api";
-import { getQuestionVirtualTableId } from "metabase/lib/saved-questions/saved-questions";
 
 type QuestionUpdateFn = (q: Question) => Promise<void> | null | undefined;
 

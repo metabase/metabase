@@ -4,14 +4,6 @@ import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
 import { stripId, FK_SYMBOL } from "metabase/lib/formatting";
 import { TYPE } from "metabase/lib/types";
-import { TemplateTagVariable } from "metabase-lib/lib/Variable";
-import Field from "metabase-lib/lib/metadata/Field";
-import {
-  AggregationOperator,
-  FilterOperator,
-  Metadata,
-  Query,
-} from "metabase-lib/lib/metadata/Metadata";
 import {
   Field as AbstractField,
   ConcreteField,
@@ -20,18 +12,26 @@ import {
   DatetimeUnit,
 } from "metabase-types/types/Query";
 import { VariableTarget } from "metabase-types/types/Parameter";
-import ValidationError, {
-  VALIDATION_ERROR_TYPES,
-} from "metabase-lib/lib/ValidationError";
 import { IconName } from "metabase-types/types";
 import { getFieldValues, getRemappings } from "metabase/lib/query/field";
 import { DATETIME_UNITS, formatBucketing } from "metabase/lib/query_time";
+import { infer, MONOTYPE } from "metabase/lib/expressions/typeinferencer";
+import { isa } from "cljs/metabase.types";
+import { TemplateTagVariable } from "metabase-lib/lib/Variable";
+import Field from "metabase-lib/lib/metadata/Field";
+import {
+  AggregationOperator,
+  FilterOperator,
+  Metadata,
+  Query,
+} from "metabase-lib/lib/metadata/Metadata";
+import ValidationError, {
+  VALIDATION_ERROR_TYPES,
+} from "metabase-lib/lib/ValidationError";
 import Aggregation from "metabase-lib/lib/queries/structured/Aggregation";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import { infer, MONOTYPE } from "metabase/lib/expressions/typeinferencer";
-import { isa } from "cljs/metabase.types";
 
 /**
  * A dimension option returned by the query_metadata API

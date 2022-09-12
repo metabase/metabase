@@ -1,7 +1,7 @@
 import _ from "underscore";
+import { t } from "ttag";
 import Utils from "metabase/lib/utils";
 import { isNative } from "metabase/lib/query";
-import { t } from "ttag";
 import {
   isDateParameter,
   isNumberParameter,
