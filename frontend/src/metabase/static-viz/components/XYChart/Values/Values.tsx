@@ -14,8 +14,14 @@ import type {
   StackedDatum,
   VisualizationType,
   XScale,
-  XYAccessor,
 } from "../types";
+
+type XYAccessor<
+  T extends SeriesDatum | StackedDatum = SeriesDatum | StackedDatum,
+> = (
+  datum: T extends SeriesDatum ? SeriesDatum : StackedDatum,
+  flipped?: boolean,
+) => number;
 
 const VALUES_MARGIN = 6;
 const VALUES_STROKE_MARGIN = 3;
@@ -118,7 +124,7 @@ export default function Values({
             return null;
           }
 
-          const { xAccessor, yAccessor } = getXyAccessors(
+          const { xAccessor, yAccessor, dataYAccessor } = getXyAccessors(
             value.series.type,
             value.xScale,
             value.yScale,
@@ -126,17 +132,33 @@ export default function Values({
             value.flipped,
           );
 
+          const shouldRenderDataPoint = (
+            ["line", "area"] as VisualizationType[]
+          ).includes(value.series.type);
           return (
-            <OutlinedText
-              key={index}
-              x={xAccessor(value.datum)}
-              y={yAccessor(value.datum)}
-              textAnchor="middle"
-              verticalAnchor="end"
-              {...valueProps}
-            >
-              {formatter(getY(value.datum), compact)}
-            </OutlinedText>
+            <>
+              <OutlinedText
+                key={index}
+                x={xAccessor(value.datum)}
+                y={yAccessor(value.datum)}
+                textAnchor="middle"
+                verticalAnchor="end"
+                {...valueProps}
+              >
+                {formatter(getY(value.datum), compact)}
+              </OutlinedText>
+              {shouldRenderDataPoint && (
+                <circle
+                  key={index}
+                  r={3}
+                  fill="white"
+                  stroke={value.series.color}
+                  strokeWidth={2}
+                  cx={xAccessor(value.datum)}
+                  cy={dataYAccessor(value.datum)}
+                />
+              )}
+            </>
           );
         });
       })}
@@ -195,12 +217,14 @@ function getXyAccessors(
 ): {
   xAccessor: XYAccessor;
   yAccessor: XYAccessor;
+  dataYAccessor: XYAccessor;
 } {
   return {
     xAccessor: getXAccessor(type, xScale, barXOffset),
     yAccessor: (datum, overriddenFlipped = flipped) =>
       (yScale(getY(datum)) ?? 0) +
       (overriddenFlipped ? FLIPPED_VALUES_MARGIN : -VALUES_MARGIN),
+    dataYAccessor: datum => yScale(getY(datum)) ?? 0,
   };
 }
 
@@ -213,7 +237,7 @@ function getXAccessor(
     return datum => (xScale.barAccessor as XYAccessor)(datum) + barXOffset;
   }
   if (type === "line" || type === "area") {
-    return xScale.lineAccessor;
+    return xScale.lineAccessor as XYAccessor;
   }
   exhaustiveCheck(type);
 }

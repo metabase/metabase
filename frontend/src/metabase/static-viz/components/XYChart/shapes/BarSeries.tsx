@@ -6,15 +6,15 @@ import { PositionScale } from "@visx/shape/lib/types";
 import { getY } from "metabase/static-viz/components/XYChart/utils";
 
 import type {
+  DatumAccessor,
   Series,
-  SeriesDatum,
 } from "metabase/static-viz/components/XYChart/types";
 
 interface BarSeriesProps {
   series: Series[];
   yScaleLeft: PositionScale | null;
   yScaleRight: PositionScale | null;
-  xAccessor: (datum: SeriesDatum) => number;
+  xAccessor: DatumAccessor;
   bandwidth: number;
 }
 

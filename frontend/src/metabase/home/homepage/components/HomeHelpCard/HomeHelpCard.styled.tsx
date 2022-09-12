@@ -5,6 +5,7 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import { breakpointMinLarge } from "metabase/styled-components/theme";
 
 export const CardRoot = styled(ExternalLink)`
+  background: ${color("white")};
   display: flex;
   align-items: center;
   padding: 1rem;

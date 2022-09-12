@@ -37,6 +37,8 @@
 ;;; |                                                TOKEN VALIDATION                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(declare premium-embedding-token)
+
 (defn- active-user-count []
   ;; NOTE: models.user imports public settings, which imports this namespace,
   ;; so we can't import the User model here.
@@ -118,6 +120,12 @@
   (memoize/ttl valid-token->features*
     :ttl/threshold valid-token-recheck-interval-ms))
 
+(defsetting token-status
+  (deferred-tru "Cached token status for premium features. This is to avoid an API request on the the first page load.")
+  :visibility :admin
+  :type       :json
+  :setter     :none
+  :getter     (fn [] (some-> (premium-embedding-token) (fetch-token-status))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             SETTING & RELATED FNS                                              |

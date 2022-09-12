@@ -7,4 +7,5 @@ export interface FormProps {
 
 export interface FormFieldProps {
   name: string;
+  description?: string;
 }

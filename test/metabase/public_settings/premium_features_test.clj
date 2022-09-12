@@ -233,3 +233,13 @@
     (testing "EE schema is not validated if OSS fallback is called"
       (is (= "Hi rasta, the return value was valid"
              (greeting-with-invalid-ee-return-schema :rasta))))))
+
+(deftest token-status-setting-test
+  (testing "If a `premium-embedding-token` has been set, the `token-status` setting should return the response
+            from the store.metabase.com endpoint for that token."
+    (mt/with-temporary-raw-setting-values [premium-embedding-token (random-token)]
+      (is (= {:valid false, :status "Token does not exist."}
+             (premium-features/token-status)))))
+  (testing "If premium-embedding-token is nil, the token-status setting should also be nil."
+    (mt/with-temporary-setting-values [premium-embedding-token nil]
+      (is (nil? (premium-features/token-status))))))

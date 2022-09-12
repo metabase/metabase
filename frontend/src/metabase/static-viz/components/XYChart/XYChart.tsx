@@ -6,12 +6,6 @@ import { Group } from "@visx/group";
 import { assoc } from "icepick";
 
 import { formatNumber } from "metabase/static-viz/lib/numbers";
-import {
-  Series,
-  ChartSettings,
-  ChartStyle,
-  HydratedSeries,
-} from "metabase/static-viz/components/XYChart/types";
 import { LineSeries } from "metabase/static-viz/components/XYChart/shapes/LineSeries";
 import { BarSeries } from "metabase/static-viz/components/XYChart/shapes/BarSeries";
 import { AreaSeries } from "metabase/static-viz/components/XYChart/shapes/AreaSeries";
@@ -34,10 +28,21 @@ import {
   sortSeries,
   getLegendColumns,
   calculateStackedItems,
+  fixTimeseriesTicksExceedXTickCount,
 } from "metabase/static-viz/components/XYChart/utils";
 import { GoalLine } from "metabase/static-viz/components/XYChart/GoalLine";
 import Values from "./Values";
 import { measureText } from "metabase/static-viz/lib/text";
+
+import type {
+  Series,
+  ChartSettings,
+  ChartStyle,
+  HydratedSeries,
+  XScale,
+  XAxisType,
+} from "metabase/static-viz/components/XYChart/types";
+import type { TimeInterval } from "d3-time";
 
 export interface XYChartProps {
   width: number;
@@ -75,11 +80,12 @@ export const XYChart = ({
 
   const yLabelOffsetLeft = yTickWidths.left + LABEL_PADDING;
   const yLabelOffsetRight = LABEL_PADDING;
+  const xTickVerticalMargins = style.axes.labels.fontSize * 2;
 
   const margin = calculateMargin(
     yTickWidths.left,
     yTickWidths.right,
-    xTicksDimensions.height,
+    xTicksDimensions.height + xTickVerticalMargins,
     xTicksDimensions.width,
     settings.labels,
     style.axes.ticks.fontSize,
@@ -97,9 +103,10 @@ export const XYChart = ({
     series,
     VALUE_CHAR_SIZE,
   );
+  const calculatedInnerWidth = innerWidth - valuesLeftOffset;
   const xScale = createXScale(
     series,
-    [0, innerWidth - valuesLeftOffset],
+    [0, calculatedInnerWidth],
     settings.x.type,
   );
   const { yScaleLeft, yScaleRight } = createYScales(
@@ -124,7 +131,7 @@ export const XYChart = ({
     xTicksDimensions.maxTextWidth,
     xScale.bandwidth,
   );
-  const xTicksCount = settings.x.type === "ordinal" ? Infinity : 4;
+  const xTickCount = settings.x.type === "ordinal" ? Infinity : 4;
 
   const labelProps: Partial<TextProps> = {
     fontWeight: style.axes.labels.fontWeight,
@@ -151,10 +158,15 @@ export const XYChart = ({
     strokeWidth: style.value?.strokeWidth,
   };
 
-  const areXTicksRotated = settings.x.tick_display === "rotate-45";
+  const areXTicksRotated = settings.x.tick_display === "rotate-90";
   const areXTicksHidden = settings.x.tick_display === "hide";
   const xLabelOffset = areXTicksHidden ? -style.axes.ticks.fontSize : undefined;
 
+  const tickValues = fixTimeseriesTicksExceedXTickCount(
+    settings.x.type,
+    xScale.scale,
+    xTickCount,
+  );
   return (
     <svg width={width} height={height + legendHeight}>
       {yScaleLeft && (
@@ -202,17 +214,33 @@ export const XYChart = ({
       />
 
       <Group left={valuesLeftOffset}>
+        <Group top={margin.top} left={xMin}>
+          {defaultYScale && (
+            <GridRows
+              scale={defaultYScale}
+              width={calculatedInnerWidth}
+              strokeDasharray="4"
+            />
+          )}
+        </Group>
+
         <AxisBottom
           scale={xScale.scale}
-          label={areXTicksRotated ? undefined : settings.labels.bottom}
+          label={settings.labels.bottom}
           top={yMin}
           left={xMin}
-          numTicks={xTicksCount}
+          numTicks={xTickCount}
           labelOffset={xLabelOffset}
           stroke={style.axes.color}
           tickStroke={style.axes.color}
           hideTicks={settings.x.tick_display === "hide"}
-          labelProps={labelProps}
+          labelProps={{
+            ...labelProps,
+            transform: `translate(0, ${
+              areXTicksRotated ? xTickWidthLimit : CHART_PADDING
+            })`,
+          }}
+          tickValues={tickValues}
           tickFormat={value =>
             formatXTick(value.valueOf(), settings.x.type, settings.x.format)
           }
@@ -232,14 +260,6 @@ export const XYChart = ({
         />
 
         <Group top={margin.top} left={xMin}>
-          {defaultYScale && (
-            <GridRows
-              scale={defaultYScale}
-              width={innerWidth}
-              strokeDasharray="4"
-            />
-          )}
-
           {xScale.barAccessor && xScale.bandwidth && (
             <BarSeries
               series={bars}
@@ -267,7 +287,7 @@ export const XYChart = ({
             <GoalLine
               label={settings.goal.label}
               x1={0}
-              x2={innerWidth}
+              x2={calculatedInnerWidth}
               // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
               y={defaultYScale!(settings.goal.value)}
               color={style.goalColor}
@@ -287,7 +307,7 @@ export const XYChart = ({
               xScale={xScale}
               yScaleLeft={yScaleLeft}
               yScaleRight={yScaleRight}
-              innerWidth={innerWidth}
+              innerWidth={calculatedInnerWidth}
               areStacked={settings.stacking === "stack"}
               xAxisYPos={yMin - margin.top}
             />
