@@ -9,14 +9,14 @@ import { getUserAttributes } from "metabase/selectors/user";
 import Questions from "metabase/entities/questions";
 import Dashboards from "metabase/entities/dashboards";
 
-function hasLinkedQuestionOrDashboard({ type, linkType, action } = {}) {
+function hasLinkedQuestionOrDashboard({ type, linkType } = {}) {
   if (type === "link") {
     return linkType === "question" || linkType === "dashboard";
   }
   return false;
 }
 
-function mapLinkedEntityToEntityQuery({ type, linkType, action, targetId }) {
+function mapLinkedEntityToEntityQuery({ linkType, targetId }) {
   return {
     entity: linkType === "question" ? Questions : Dashboards,
     entityId: targetId,
