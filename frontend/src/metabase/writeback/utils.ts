@@ -71,7 +71,15 @@ export function isActionButtonDashCard(
   return isActionButtonCard(virtualCard as SavedCard);
 }
 
-export function isActionButtonWithMappedAction(
+/**
+ * Checks if a dashboard card is an explicit action (has associated WritebackAction).
+ *
+ * @param {BaseDashboardOrderedCard} dashboard card
+ *
+ * @returns {boolean} true if the button has an associated action.
+ * False for implicit actions using click behavior, and in case a button has no action attached
+ */
+export function isMappedExplicitActionButton(
   dashCard: BaseDashboardOrderedCard,
 ): dashCard is ActionButtonDashboardCard {
   const isAction = isActionButtonDashCard(dashCard);
