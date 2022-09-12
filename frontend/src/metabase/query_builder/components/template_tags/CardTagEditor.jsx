@@ -130,6 +130,7 @@ class CardTagEditor extends Component {
 export default Questions.load({
   id: (state, { tag }) => tag["card-id"],
   loadingAndErrorWrapper: false,
+  dispatchApiErrorEvent: false,
 })(CardTagEditor);
 
 // This formats a timestamp as a date using any custom formatting options.
