@@ -14,7 +14,7 @@
             [metabase.models.user :refer [User]]
             [metabase.plugins :as plugins]
             [metabase.plugins.classloader :as classloader]
-            [metabase.prometheus :as prometheus]
+            [metabase.analytics.prometheus :as prometheus]
             [metabase.public-settings :as public-settings]
             [metabase.sample-data :as sample-data]
             [metabase.server :as server]

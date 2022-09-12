@@ -1,10 +1,10 @@
-(ns metabase.prometheus-test
+(ns metabase.analytics.prometheus-test
   (:require [clj-http.client :as http]
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.test :refer :all]
             [iapetos.registry :as registry]
-            [metabase.prometheus :as prometheus]
+            [metabase.analytics.prometheus :as prometheus]
             [metabase.test.fixtures :as fixtures]
             [metabase.troubleshooting :as troubleshooting]))
 

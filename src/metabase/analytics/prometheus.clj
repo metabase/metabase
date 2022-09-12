@@ -1,4 +1,4 @@
-(ns metabase.prometheus
+(ns metabase.analytics.prometheus
   "Namespace for collection metrics with Prometheus. Will set up a registry and a webserver on startup
   if [[prometheus-server-port]] is set to a port number. This can only be set in the environment and not though the
   web UI due to its sensitivity.
