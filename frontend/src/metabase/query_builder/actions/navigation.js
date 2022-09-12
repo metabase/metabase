@@ -2,7 +2,7 @@ import { parse as parseUrl } from "url";
 import { createAction } from "redux-actions";
 import { push, replace } from "react-router-redux";
 
-import { cleanCopyCard, serializeCardForUrl } from "metabase/lib/card";
+import { cleanCopyCard } from "metabase/lib/card";
 import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
 import { createThunkAction } from "metabase/lib/redux";
 import Utils from "metabase/lib/utils";
@@ -160,7 +160,6 @@ export const updateUrl = createThunkAction(
       const newState = {
         card: copy,
         cardId: copy.id,
-        serializedCard: serializeCardForUrl(copy),
         objectId,
       };
 
@@ -185,7 +184,7 @@ export const updateUrl = createThunkAction(
         (locationDescriptor.search || "") === (window.location.search || "") &&
         (locationDescriptor.hash || "") === (window.location.hash || "");
       const isSameCard =
-        currentState && currentState.serializedCard === newState.serializedCard;
+        currentState && Utils.equals(currentState.card, newState.card);
       const isSameMode =
         getQueryBuilderModeFromLocation(locationDescriptor).mode ===
         getQueryBuilderModeFromLocation(window.location).mode;
