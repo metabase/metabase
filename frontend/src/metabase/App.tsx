@@ -22,6 +22,7 @@ import {
 import { useOnMount } from "metabase/hooks/use-on-mount";
 import { initializeIframeResizer } from "metabase/lib/dom";
 
+import AppBanner from "metabase/components/AppBanner";
 import AppBar from "metabase/nav/containers/AppBar";
 import Navbar from "metabase/nav/containers/Navbar";
 import StatusListing from "metabase/status/containers/StatusListing";
@@ -50,6 +51,7 @@ const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
 interface AppStateProps {
   errorPage: AppErrorDescriptor | null;
   isAdminApp: boolean;
+  bannerMessageDescriptor?: string;
   isAppBarVisible: boolean;
   isNavBarVisible: boolean;
 }
@@ -101,6 +103,7 @@ function App({
     <ErrorBoundary onError={setErrorInfo}>
       <ScrollToTop>
         <AppContainer className="spread">
+          <AppBanner />
           {isAppBarVisible && <AppBar isNavBarVisible={isNavBarVisible} />}
           <AppContentContainer isAdminApp={isAdminApp}>
             {isNavBarVisible && <Navbar />}
