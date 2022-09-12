@@ -6,12 +6,14 @@ import { t } from "ttag";
 import { isLocalField, isSameField } from "metabase/lib/query/field_ref";
 import { addUndo } from "metabase/redux/undo";
 import { loadMetadataForQueries } from "metabase/redux/metadata";
+import Questions from "metabase/entities/questions";
 
 import { getOriginalCard, getQuestion, getResultsMetadata } from "../selectors";
 
 import { apiUpdateQuestion, updateQuestion, API_UPDATE_QUESTION } from "./core";
 import { runQuestionQuery } from "./querying";
 import { setQueryBuilderMode } from "./ui";
+import { getMetadata } from "metabase/selectors/metadata";
 
 export const setDatasetEditorTab = datasetEditorTab => dispatch => {
   dispatch(setQueryBuilderMode("dataset", { datasetEditorTab }));
@@ -28,10 +30,18 @@ export const onCancelDatasetChanges = () => (dispatch, getState) => {
 
 export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
   const question = getQuestion(getState());
-  const dataset = await question
-    .setDataset(true)
-    .setDisplay("table")
-    .reduxUpdate(dispatch);
+
+  await dispatch(
+    Questions.actions.update(
+      {
+        id: question.id(),
+      },
+      question.setDataset(true).setDisplay("table").card(),
+    ),
+  );
+
+  const metadata = getMetadata(getState());
+  const dataset = metadata.question(question.id());
 
   await dispatch(loadMetadataForQueries([], [dataset.dependentMetadata()]));
 
