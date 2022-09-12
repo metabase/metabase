@@ -101,15 +101,6 @@
 (defn- svg-string->bytes [s]
   (-> s parse-svg-string render-svg))
 
-;; (defn timelineseries-line
-;;   "Clojure entrypoint to render a timeseries line char. Rows should be tuples of [datetime numeric-value]. Labels is a
-;;   map of {:left \"left-label\" :botton \"bottom-label\"}. Returns a byte array of a png file."
-;;   [rows labels settings]
-;;   (let [svg-string (.asString (js/execute-fn-name @context "timeseries_line" rows
-;;                                                   (map (fn [[k v]] [(name k) v]) labels)
-;;                                                   (json/generate-string settings)))]
-;;     (svg-string->bytes svg-string)))
-
 (defn timelineseries-waterfall
   "Clojure entrypoint to render a timeseries waterfall chart. Rows should be tuples of [datetime numeric-value]. Labels is
   a map of {:left \"left-label\" :botton \"bottom-label\". Returns a byte array of a png file."
