@@ -12,7 +12,10 @@ import {
   preserveExistingColumnsOrder,
 } from "metabase/visualizations/lib/utils";
 
-import { seriesSetting } from "metabase/visualizations/lib/settings/series";
+import {
+  seriesSetting,
+  keyForSingleSeries,
+} from "metabase/visualizations/lib/settings/series";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
@@ -21,6 +24,8 @@ import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 
 import _ from "underscore";
 import { getMaxMetricsSupported } from "metabase/visualizations";
+
+import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
 
 // NOTE: currently we don't consider any date extracts to be histgrams
 const HISTOGRAM_DATE_EXTRACTS = new Set([
@@ -122,7 +127,7 @@ export const GRAPH_DATA_SETTINGS = {
           options.length > value.length &&
           value.length < 2 &&
           vizSettings["graph.metrics"].length < 2
-            ? t`Add a series breakout...`
+            ? t`Add series breakout`
             : null,
         columns: data.cols,
         showColumnSetting: true,
@@ -132,6 +137,41 @@ export const GRAPH_DATA_SETTINGS = {
     writeDependencies: ["graph.metrics"],
     dashboard: false,
     useRawSeries: true,
+  },
+  "graph.series_order": {
+    section: t`Data`,
+    widget: ChartSettingOrderedSimple,
+    marginBottom: "1rem",
+    isValid: (series, settings) => {
+      const seriesOrder = settings["graph.series_order"];
+
+      if (!seriesOrder || !_.isArray(seriesOrder)) {
+        return false;
+      }
+
+      return seriesOrder.length === series.length;
+    },
+    getDefault: series => {
+      const keys = series.map(s => keyForSingleSeries(s));
+      return keys.map((key, index) => ({
+        name: key,
+        originalIndex: index,
+        enabled: true,
+      }));
+    },
+    getProps: (series, settings) => {
+      const seriesSettings = settings["series_settings"] || {};
+      const keys = series.map(s => keyForSingleSeries(s));
+      return {
+        items: keys.map((key, index) => ({
+          name: seriesSettings[key]?.title || key,
+          originalIndex: index,
+        })),
+      };
+    },
+    getHidden: (series, settings) => {
+      return settings["graph.dimensions"]?.length < 2 || series.length > 20;
+    },
   },
   "graph.metrics": {
     section: t`Data`,

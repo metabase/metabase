@@ -185,6 +185,7 @@ class ChartSettings extends Component {
       children,
       setSidebarPropsOverride,
       dashboard,
+      isDashboard,
     } = this.props;
     const { currentWidget, popoverRef } = this.state;
 
@@ -307,7 +308,13 @@ class ChartSettings extends Component {
     return (
       <div className={cx(className, "flex flex-column")}>
         {showSectionPicker && (
-          <div className="flex flex-no-shrink pl4 pb1">{sectionPicker}</div>
+          <div
+            className={cx("flex flex-no-shrink pl4 pb1", {
+              pt3: isDashboard,
+            })}
+          >
+            {sectionPicker}
+          </div>
         )}
         {noPreview ? (
           <div className="full-height relative scroll-y scroll-show pt2 pb4">
