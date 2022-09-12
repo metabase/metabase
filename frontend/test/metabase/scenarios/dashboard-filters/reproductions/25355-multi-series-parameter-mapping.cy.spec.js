@@ -58,9 +58,11 @@ describe("issue 25248", () => {
   it("should allow mapping parameters to combined cards individually (metabase#25248)", () => {
     createDashboard();
     editDashboard();
+
     cy.findByText(parameterDetails.name).click();
     cy.findAllByText("Select…").first().click();
     popover().findAllByText("Created At").first().click();
+
     cy.findByText("Order.Created At").should("be.visible");
     cy.findByText("Select…").should("be.visible");
   });
