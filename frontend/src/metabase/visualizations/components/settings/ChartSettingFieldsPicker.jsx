@@ -49,7 +49,7 @@ const ChartSettingFieldsPicker = ({
     {addAnother && (
       <AddAnotherContainer>
         <a
-          className="text-brand text-bold py1 rounded bg-light"
+          className="text-brand text-bold py1"
           onClick={() => {
             const remaining = options.filter(o => value.indexOf(o.value) < 0);
             if (remaining.length === 1) {

@@ -85,7 +85,7 @@ export default class Funnel extends Component {
         "funnel.dimension": "Total Sessions",
       },
       dataset_query: { type: "null" },
-      rowIndex: index,
+      originalIndex: index,
     },
     data: {
       rows: [row],
@@ -116,6 +116,7 @@ export default class Funnel extends Component {
       section: t`Data`,
       widget: ChartSettingOrderedSimple,
       isValid: (series, settings) => {
+        console.log(series);
         const funnelRows = settings["funnel.rows"];
 
         if (!funnelRows || !_.isArray(funnelRows)) {
@@ -134,7 +135,7 @@ export default class Funnel extends Component {
       getDefault: transformedSeries => {
         return transformedSeries.map(s => ({
           name: s.card.name,
-          originalIndex: s.card.rowIndex,
+          originalIndex: s.card.originalIndex,
           enabled: true,
         }));
       },
@@ -197,7 +198,7 @@ export default class Funnel extends Component {
           name: formatValue(row[dimensionIndex], {
             column: cols[dimensionIndex],
           }),
-          rowIndex: index,
+          originalIndex: index,
           _transformed: true,
         },
         data: {

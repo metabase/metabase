@@ -138,9 +138,19 @@ export const GRAPH_DATA_SETTINGS = {
     dashboard: false,
     useRawSeries: true,
   },
-  series_order: {
+  "graph.series_order": {
     section: t`Data`,
     widget: ChartSettingOrderedSimple,
+    marginBottom: "1rem",
+    isValid: (series, settings) => {
+      const seriesOrder = settings["graph.series_order"];
+
+      if (!seriesOrder || !_.isArray(seriesOrder)) {
+        return false;
+      }
+
+      return seriesOrder.length === series.length;
+    },
     getDefault: series => {
       const keys = series.map(s => keyForSingleSeries(s));
       return keys.map((key, index) => ({
@@ -149,20 +159,18 @@ export const GRAPH_DATA_SETTINGS = {
         enabled: true,
       }));
     },
-    getProps: series => {
+    getProps: (series, settings) => {
+      const seriesSettings = settings["series_settings"] || {};
       const keys = series.map(s => keyForSingleSeries(s));
       return {
         items: keys.map((key, index) => ({
-          name: key,
+          name: seriesSettings[key]?.title || key,
           originalIndex: index,
         })),
       };
     },
-    getHidden: ({ _raw, ...series }, settings) => {
-      return (
-        settings["graph.dimensions"]?.length < 2 ||
-        Object.keys(series).length > 20
-      );
+    getHidden: (series, settings) => {
+      return settings["graph.dimensions"]?.length < 2 || series.length > 20;
     },
   },
   "graph.metrics": {

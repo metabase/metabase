@@ -26,16 +26,11 @@ export const ChartSettingOrderedSimple = ({
   items,
   value: orderedItems,
 }: ChartSettingOrderedSimpleProps) => {
-  const handleDisable = (item: SortableItem) => {
+  const handleDisable = (selectedItem: SortableItem) => {
     const index = orderedItems.findIndex(
-      r => r.originalIndex === item.originalIndex,
+      item => item.originalIndex === selectedItem.originalIndex,
     );
-    onChange(
-      updateIn(orderedItems, [index], item => ({
-        ...item,
-        enabled: !item.enabled,
-      })),
-    );
+    onChange(updateIn(orderedItems, [index, "enabled"], enabled => !enabled));
   };
 
   const handleSortEnd = ({

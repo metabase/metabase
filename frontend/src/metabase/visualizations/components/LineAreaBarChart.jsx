@@ -117,6 +117,14 @@ export default class LineAreaBarChart extends Component {
         t`Choose fields`,
       );
     }
+    const seriesOrder = (settings["graph.series_order"] || []).filter(
+      series => series.enabled,
+    );
+    if (dimensions.length > 1 && seriesOrder.length === 0) {
+      throw new ChartSettingsError(t`No breakouts are enabled`, {
+        section: t`Data`,
+      });
+    }
   }
 
   static seriesAreCompatible(initialSeries, newSeries) {
@@ -365,7 +373,7 @@ export default class LineAreaBarChart extends Component {
 
     const orderedSeries =
       (settings["graph.dimensions"]?.length > 1 &&
-        settings["series_order"]
+        settings["graph.series_order"]
           ?.filter(_series => _series.enabled)
           .map(_series => series[_series.originalIndex])) ||
       series;
