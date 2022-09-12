@@ -290,12 +290,18 @@ async function handleQBInit(
       const referencedQuestionIds = query.referencedQuestionIds();
       const questions = await Promise.all(
         referencedQuestionIds.map(async id => {
-          const actionResult = await dispatch(Questions.actions.fetch({ id }));
-          return Questions.HACK_getObjectFromAction(actionResult);
+          try {
+            const actionResult = await dispatch(
+              Questions.actions.fetch({ id }, { noEvent: true }),
+            );
+            return Questions.HACK_getObjectFromAction(actionResult);
+          } catch {
+            return null;
+          }
         }),
       );
       question = question.setQuery(
-        query.updateReferencedQuestionNames(questions),
+        query.updateReferencedQuestionNames(questions.filter(Boolean)),
       );
     }
 
