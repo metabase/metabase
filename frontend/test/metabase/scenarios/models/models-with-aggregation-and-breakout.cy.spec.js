@@ -1,12 +1,8 @@
-import {
-  restore,
-  modal,
-  popover,
-  visualize,
-  openOrdersTable,
-} from "__support__/e2e/helpers";
+import { restore } from "__support__/e2e/helpers";
 
 import { turnIntoModel } from "./helpers/e2e-models-helpers";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > models with aggregation and breakout", () => {
   beforeEach(() => {
@@ -14,31 +10,24 @@ describe("scenarios > models with aggregation and breakout", () => {
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("PUT", "/api/card/*").as("updateCard");
+
+    cy.createQuestion(
+      {
+        name: "model with aggregation & breakout",
+        display: "line",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["distinct", ["field", ORDERS.PRODUCT_ID, null]]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+        },
+      },
+      { visitQuestion: true },
+    );
   });
 
   it("should be possible to convert a question with an aggregation and breakout into a model", () => {
-    openOrdersTable({ mode: "notebook" });
-
-    // Add an aggregation
-    cy.findByText("Summarize").click();
-    cy.findByText("Number of distinct values of ...").click();
-    cy.findByText("Product ID").click();
-
-    // Add a breakout
-    cy.findByText("Pick a column to group by").click();
-    popover().within(() => {
-      cy.findByText("Created At").click();
-    });
-
-    // Run question & save
-    visualize();
-    cy.findByText("Save").click();
-    modal().within(() => {
-      cy.findByText("Save").click();
-    });
-    cy.findByText("Not now").click();
-
-    // Convert the question into a model
     turnIntoModel();
     cy.wait("@updateCard");
 
