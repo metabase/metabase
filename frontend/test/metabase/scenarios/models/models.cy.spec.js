@@ -502,7 +502,7 @@ describe("scenarios > models", () => {
       });
       sidebar().contains("Pick a question or a model").click();
       selectFromDropdown("Orders Model");
-      cy.get("@editor").contains("select * from {{#1}}");
+      cy.get("@editor").contains("select * from {{#1-orders-model}}");
       cy.get(".NativeQueryEditor .Icon-play").click();
       cy.wait("@query");
       cy.get(".TableInteractive").within(() => {
