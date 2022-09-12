@@ -271,7 +271,7 @@ describe("scenarios > dashboard > parameters", () => {
       cy.icon("pencil").click();
       cy.icon("filter").click();
       cy.findByText("ID").click();
-      cy.findByText("No valid fields");
+      cy.findByText(/Add a variable to this question/).should("be.visible");
 
       // Confirm that the correct parameter type is connected to the native question's field filter
       cy.findByText(matchingFilterType.name).find(".Icon-gear").click();
@@ -301,7 +301,9 @@ describe("scenarios > dashboard > parameters", () => {
       // Confirm that it is not possible to connect filter to the updated question anymore (metabase#9299)
       cy.icon("pencil").click();
       cy.findByText(matchingFilterType.name).find(".Icon-gear").click();
-      cy.findByText("No valid fields");
+      cy.findByText(/Add a string variable to this question/).should(
+        "be.visible",
+      );
     });
   });
 

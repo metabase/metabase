@@ -142,6 +142,13 @@ class TableInner extends Base {
     return pks;
   }
 
+  clone() {
+    const plainObject = this.getPlainObject();
+    const newTable = new Table(this);
+    newTable._plainObject = plainObject;
+    return newTable;
+  }
+
   /**
    * @private
    * @param {string} description

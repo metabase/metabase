@@ -17,8 +17,9 @@ import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import Bookmarks, { isDataAppBookmark } from "metabase/entities/bookmarks";
 import * as Urls from "metabase/lib/urls";
 
-import { SelectedItem } from "../types";
-import { SidebarHeading } from "../MainNavbar.styled";
+import { SelectedItem } from "../../types";
+import { SidebarHeading } from "../../MainNavbar.styled";
+
 import { DragIcon, SidebarBookmarkItem } from "./BookmarkList.styled";
 
 const mapDispatchToProps = {

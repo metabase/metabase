@@ -181,7 +181,7 @@ function moveColumnToTop(column) {
   cy.findByTestId("sidebar-left").within(() => {
     cy.findByText(column)
       .should("be.visible")
-      .closest("[draggable=true]")
+      .closest("[data-testid^=draggable-item]")
       .trigger("mousedown", 0, 0, { force: true })
       .trigger("mousemove", 5, 5, { force: true })
       .trigger("mousemove", 0, -600, { force: true })
