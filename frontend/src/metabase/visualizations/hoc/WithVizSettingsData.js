@@ -11,7 +11,9 @@ import Dashboards from "metabase/entities/dashboards";
 
 function hasLinkedQuestionOrDashboard({ type, linkType } = {}) {
   if (type === "link") {
-    return linkType === "question" || linkType === "dashboard";
+    return (
+      linkType === "question" || linkType === "dashboard" || linkType === "page"
+    );
   }
   return false;
 }
