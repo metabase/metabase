@@ -367,7 +367,11 @@
   {:pre [(string? connection-string)]}
   (let [[file options] (connection-string->file+options connection-string)]
     (file+options->connection-string file (merge
-                                           (u/dissoc-by str/lower-case options "INIT")
+                                           (->> options
+                                                ;; Remove INIT=... from options for security reasons (Metaboat #165)
+                                                ;; http://h2database.com/html/features.html#execute_sql_on_connection
+                                                (remove (fn [[k _]] (= (str/lower-case k) "init")))
+                                                (into {}))
                                            {"IFEXISTS"         "TRUE"
                                             "ACCESS_MODE_DATA" "r"}))))
 
