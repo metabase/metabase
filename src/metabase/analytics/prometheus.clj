@@ -12,7 +12,7 @@
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.server :as server]
             [metabase.troubleshooting :as troubleshooting]
-            [metabase.util.i18n :refer [trs]]
+            [metabase.util.i18n :refer [deferred-tru trs]]
             [potemkin :as p]
             [potemkin.types :as p.types]
             [ring.adapter.jetty :as ring-jetty])
@@ -30,7 +30,8 @@
 ;; defsetting enables and [[system]] holds the system (webserver and registry)
 
 (defsetting prometheus-server-port
-  "Port to serve prometheus status from. If set"
+  (deferred-tru (str "Port to serve prometheus metrics from. If set, prometheus collectors are registered"
+                     " and served from `localhost:<port>/metrics`."))
   :type       :integer
   :visibility :internal
   ;; settable only through environmental variable
