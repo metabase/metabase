@@ -30,7 +30,11 @@ const ColumnItem = ({
   draggable,
 }) => {
   return (
-    <ColumnItemRoot onClick={onClick} isDraggable={draggable}>
+    <ColumnItemRoot
+      onClick={onClick}
+      isDraggable={draggable}
+      data-testid={`draggable-item-${title}`}
+    >
       <ColumnItemContainer>
         {draggable && <ColumnItemDragHandle name="grabber2" size={12} />}
         <ColumnItemContent>
