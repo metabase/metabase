@@ -68,18 +68,41 @@ export const getShallowFields = getNormalizedFields;
 export const getShallowMetrics = getNormalizedMetrics;
 export const getShallowSegments = getNormalizedSegments;
 
-export const instantiateDatabase = obj => new Database(obj);
-export const instantiateSchema = obj => new Schema(obj);
-export const instantiateTable = obj => new Table(obj);
+export const instantiateDatabase = (obj, metadata) => {
+  const instance = new Database(obj);
+  instance.metadata = metadata;
+  return instance;
+};
+export const instantiateSchema = (obj, metadata) => {
+  const instance = new Schema(obj);
+  instance.metadata = metadata;
+  return instance;
+};
+export const instantiateTable = (obj, metadata) => {
+  const instance = new Table(obj);
+  instance.metadata = metadata;
+  return instance;
+};
 // We need a way to distinguish field objects that come from the server
 // vs. those that are created client-side to handle lossy transformations between
 // Field instances and FieldDimension instances.
 // There are scenarios where we are failing to convert FieldDimensions back into Fields,
 // and as a safeguard we instantiate a new Field that is missing most of its properties.
-export const instantiateField = obj =>
-  new Field({ ...obj, _comesFromEndpoint: true });
-export const instantiateSegment = obj => new Segment(obj);
-export const instantiateMetric = obj => new Metric(obj);
+export const instantiateField = (obj, metadata) => {
+  const instance = new Field({ ...obj, _comesFromEndpoint: true });
+  instance.metadata = metadata;
+  return instance;
+};
+export const instantiateSegment = (obj, metadata) => {
+  const instance = new Segment(obj);
+  instance.metadata = metadata;
+  return instance;
+};
+export const instantiateMetric = (obj, metadata) => {
+  const instance = new Metric(obj);
+  instance.metadata = metadata;
+  return instance;
+};
 export const instantiateQuestion = (obj, metadata) =>
   new Question(obj, metadata);
 
@@ -207,7 +230,6 @@ export function copyObjects(
   for (const object of Object.values(objects)) {
     if (object?.[identifierProp] != null) {
       copies[object[identifierProp]] = instantiate(object, metadata);
-      copies[object[identifierProp]].metadata = metadata;
     } else {
       console.warn(`Missing ${identifierProp}:`, object);
     }

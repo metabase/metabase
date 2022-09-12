@@ -939,7 +939,6 @@ describe("Question", () => {
       const question = new Question(
         {
           ...card,
-          dataset: true,
           result_metadata: [
             { semantic_type: SEMANTIC_TYPE.FK, fk_target_field_id: 5 },
           ],
@@ -954,22 +953,7 @@ describe("Question", () => {
       const question = new Question(
         {
           ...card,
-          dataset: true,
           result_metadata: [{ fk_target_field_id: 5 }],
-        },
-        metadata,
-      );
-
-      expect(question.dependentMetadata()).toEqual([]);
-    });
-
-    it("should return nothing for regular questions", () => {
-      const question = new Question(
-        {
-          ...card,
-          result_metadata: [
-            { semantic_type: SEMANTIC_TYPE.FK, fk_target_field_id: 5 },
-          ],
         },
         metadata,
       );

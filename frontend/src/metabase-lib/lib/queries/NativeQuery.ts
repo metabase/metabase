@@ -29,6 +29,8 @@ import { createTemplateTag } from "metabase-lib/lib/queries/TemplateTag";
 import DimensionOptions from "../DimensionOptions";
 import ValidationError from "metabase-lib/lib/ValidationError";
 
+import { getNativeQueryTable } from "./utils/native-query-table";
+
 type DimensionFilter = (dimension: Dimension) => boolean;
 type VariableFilter = (variable: Variable) => boolean;
 export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
@@ -189,19 +191,8 @@ export default class NativeQuery extends AtomicQuery {
     );
   }
 
-  table(): Table | null | undefined {
-    const database = this.database();
-    const collection = this.collection();
-
-    if (!database || !collection) {
-      return null;
-    }
-
-    return (
-      _.findWhere(database.tables, {
-        name: collection,
-      }) || null
-    );
+  table(): Table | null {
+    return getNativeQueryTable(this);
   }
 
   queryText(): string {
