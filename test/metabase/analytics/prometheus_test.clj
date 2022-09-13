@@ -116,20 +116,20 @@
   (testing "Registry has c3p0 registered"
     (with-prometheus-system [_ system]
       (let [registry       (.registry system)
-            c3p0-collector (registry/get registry {:name "c3p0-stats"
+            c3p0-collector (registry/get registry {:name      "c3p0-stats"
                                                    :namespace "metabase_database"}
                                          nil)]
         (is c3p0-collector "c3p0 stats not found"))))
   (testing "Registry has an entry for each database in [[troubleshooting/connection-pool-info]]"
     (with-prometheus-system [_ system]
-      (let [registry (.registry system)
-            c3p0-collector (registry/get registry {:name "c3p0_stats"
+      (let [registry       (.registry system)
+            c3p0-collector (registry/get registry {:name      "c3p0_stats"
                                                    :namespace "metabase_database"}
                                          nil)
-            _ (assert c3p0-collector "Did not find c3p0 collector")
-            measurements (.collect c3p0-collector)
-            _ (is (pos? (doto (count measurements) tap>))
-                  "No measurements taken")]
+            _              (assert c3p0-collector "Did not find c3p0 collector")
+            measurements   (.collect c3p0-collector)
+            _              (is (pos? (doto (count measurements) tap>))
+                               "No measurements taken")]
         (is (= (count (:connection-pools (troubleshooting/connection-pool-info)))
                (count (.samples (first measurements))))
             "Expected one entry per database for each measurement"))))
@@ -138,9 +138,9 @@
       (let [[db-name values] (first (:connection-pools (troubleshooting/connection-pool-info)))
             tag-name         (comp :label #'prometheus/label-translation)
             expected-lines   (set (for [[tag value] values]
-                                  (format "%s{database=\"%s\",} %s"
-                                          (tag-name tag) db-name (double value))))
+                                    (format "%s{database=\"%s\",} %s"
+                                            (tag-name tag) db-name (double value))))
             actual-lines     (into #{} (filter #(str/starts-with? % "c3p0"))
-                                 (metric-lines port))]
+                                   (metric-lines port))]
         (is (seq (set/intersection expected-lines actual-lines))
             "Registry does not have c3p0 metrics in it")))))
