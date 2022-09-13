@@ -77,6 +77,37 @@
      field
      [:updated_at :id :created_at :last_analyzed :fingerprint :fingerprint_version :fk_target_field_id :position]))))
 
+(defn- card-with-native-query {:style/indent 1} [card-name & {:as kvs}]
+  (merge
+   {:name          card-name
+    :database_id   (mt/id)
+    :dataset_query {:database (mt/id)
+                    :type     :native
+                    :native   {:query (format "SELECT * FROM VENUES")}}}
+   kvs))
+
+(defn- card-with-mbql-query {:style/indent 1} [card-name & {:as inner-query-clauses}]
+  {:name          card-name
+   :database_id   (mt/id)
+   :dataset_query {:database (mt/id)
+                   :type     :query
+                   :query    inner-query-clauses}})
+
+(defn- virtual-table-for-card [card & {:as kvs}]
+  (merge
+   {:id               (format "card__%d" (u/the-id card))
+    :db_id            (:database_id card)
+    :display_name     (:name card)
+    :schema           "Everything else"
+    :moderated_status nil
+    :description      nil}
+   kvs))
+
+(defn- ok-mbql-card []
+  (assoc (card-with-mbql-query "OK Card"
+                               :source-table (mt/id :checkins))
+         :result_metadata [{:name "num_toucans"}]))
+
 (deftest get-database-test
   (testing "GET /api/database/:id"
     (testing "DB details visibility"
@@ -388,43 +419,11 @@
                                               (format "database/%d/card_autocomplete_suggestions" (mt/id))
                                               :query query)))))))
 
-
-(defn- card-with-native-query {:style/indent 1} [card-name & {:as kvs}]
-  (merge
-   {:name          card-name
-    :database_id   (mt/id)
-    :dataset_query {:database (mt/id)
-                    :type     :native
-                    :native   {:query (format "SELECT * FROM VENUES")}}}
-   kvs))
-
-(defn- card-with-mbql-query {:style/indent 1} [card-name & {:as inner-query-clauses}]
-  {:name          card-name
-   :database_id   (mt/id)
-   :dataset_query {:database (mt/id)
-                   :type     :query
-                   :query    inner-query-clauses}})
-
-(defn- virtual-table-for-card [card & {:as kvs}]
-  (merge
-   {:id               (format "card__%d" (u/the-id card))
-    :db_id            (:database_id card)
-    :display_name     (:name card)
-    :schema           "Everything else"
-    :moderated_status nil
-    :description      nil}
-   kvs))
-
 (driver/register! ::no-nested-query-support
                   :parent :sql-jdbc
                   :abstract? true)
 
 (defmethod driver/supports? [::no-nested-query-support :nested-queries] [_ _] false)
-
-(defn- ok-mbql-card []
-  (assoc (card-with-mbql-query "OK Card"
-                               :source-table (mt/id :checkins))
-         :result_metadata [{:name "num_toucans"}]))
 
 (deftest databases-list-test
   (testing "GET /api/database"
