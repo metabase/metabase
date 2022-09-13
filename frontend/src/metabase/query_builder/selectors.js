@@ -832,7 +832,7 @@ export const getIsAdditionalInfoVisible = createSelector(
   (isEmbedded, embedOptions) => !isEmbedded || embedOptions.additional_info,
 );
 
-export const getModelAutocompleteResultsFn = state => {
+export const getQuestionAutocompleteResultsFn = state => {
   return function autocompleteResults(query) {
     const dbId = state.qb.card?.dataset_query?.database;
     if (!dbId) {

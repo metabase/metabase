@@ -396,13 +396,10 @@ class NativeQueryEditor extends Component {
       callback(null, null);
       return null;
     }
-    const questionSearchString = questionSlugPrefix.replace(/-/g, " ");
-    const apiResults = await this.props.modelAutocompleteResultsFn(
+    const questionSearchString = questionSlugPrefix.replaceAll("-", " ");
+    const apiResults = await this.props.questionAutocompleteResultsFn(
       questionSearchString,
     );
-
-    console.log(apiResults);
-
     // Convert to format ace expects
     const resultsForAce = apiResults.map(({ id, name, dataset }) => ({
       name: `${id}-${slugg(name)}`,

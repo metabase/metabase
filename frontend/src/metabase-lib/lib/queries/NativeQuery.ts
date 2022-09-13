@@ -343,7 +343,7 @@ export default class NativeQuery extends AtomicQuery {
   replaceCardSlug(oldId, newCardSlug) {
     const newQueryText = this.queryText().replace(
       new RegExp(`{{\\s*#${oldId}[a-z0-9-]*\\s*}}`, "g"),
-      () => `{{#${newCardSlug}}}`,
+      `{{#${newCardSlug}}}`,
     );
     return this.setQueryText(newQueryText);
   }

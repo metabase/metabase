@@ -90,7 +90,7 @@ import {
   getIsActionListVisible,
   getIsAdditionalInfoVisible,
   getAutocompleteResultsFn,
-  getModelAutocompleteResultsFn,
+  getQuestionAutocompleteResultsFn,
 } from "../selectors";
 import * as actions from "../actions";
 
@@ -165,7 +165,7 @@ const mapStateToProps = (state, props) => {
     visualizationSettings: getVisualizationSettings(state),
 
     autocompleteResultsFn: getAutocompleteResultsFn(state),
-    modelAutocompleteResultsFn: getModelAutocompleteResultsFn(state),
+    questionAutocompleteResultsFn: getQuestionAutocompleteResultsFn(state),
 
     instanceSettings: getSettings(state),
 
