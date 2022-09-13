@@ -280,7 +280,10 @@
   [new-user :- NewUser]
   (db/insert! User (update new-user :password #(or % (str (UUID/randomUUID))))))
 
-(defn serdes-synthesize-user! [new-user]
+(defn serdes-synthesize-user!
+  "Creates a new user with a default password, when deserializing eg. a `:creator_id` field whose email address doesn't
+  match any existing user."
+  [new-user]
   (insert-new-user! new-user))
 
 (s/defn create-and-invite-user!
