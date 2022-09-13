@@ -100,7 +100,7 @@ class CardTagEditor extends Component {
           >
             <QuestionPicker
               className="p2"
-              value={question}
+              value={question && question.id}
               onChange={this.handleQuestionSelection}
             />
           </PopoverWithTrigger>
