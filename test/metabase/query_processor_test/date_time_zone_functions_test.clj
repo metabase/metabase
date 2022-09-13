@@ -1,11 +1,7 @@
 (ns metabase.query-processor-test.date-time-zone-functions-test
   (:require [clojure.test :refer :all]
             [metabase.driver :as driver]
-            [metabase.test :as mt]
-            [metabase.test.data :as data]
-            [metabase.test.data.dataset-definitions :as defs]
-            [metabase.test.data.interface :as tx])
-  (:import java.time.ZonedDateTime))
+            [metabase.test :as mt]))
 
 (defn test-date-extract
   [expr {:keys [aggregation breakout limit fields]

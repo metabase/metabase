@@ -45,7 +45,7 @@
                              :type/TimeWithTZ             "TIME WITH TIME ZONE"}]
   (defmethod sql.tx/field-base-type->sql-type [:presto-jdbc base-type] [_ _] db-type))
 
-(defn dbdef->connection-details [database-name]
+(defn dbdef->connection-details [_database-name]
   (let [base-details
         {:host                               (tx/db-test-env-var-or-throw :presto-jdbc :host "localhost")
          :port                               (tx/db-test-env-var :presto-jdbc :port "8080")
@@ -119,7 +119,7 @@
             (sql-jdbc.execute/set-parameters! driver stmt params)
             (let [tbl-nm        ((comp last :components) (into {} table-identifier))
                   rows-affected (.executeUpdate stmt)]
-              (println (format "[%s] Inserted %d rows into %s." driver rows-affected table-identifier))))
+              (println (format "[%s] Inserted %d rows into %s." driver rows-affected tbl-nm))))
           (catch Throwable e
             (throw (ex-info (format "[%s] Error executing SQL: %s" driver (ex-message e))
                      {:driver driver, :sql sql, :params params}
@@ -130,7 +130,7 @@
 
 (defmethod sql.tx/qualified-name-components :presto-jdbc
   ;; use the default schema from the in-memory connector
-  ([_ db-name]                       [test-catalog-name "default"])
+  ([_ _db-name]                       [test-catalog-name "default"])
   ([_ db-name table-name]            [test-catalog-name "default" (tx/db-qualified-table-name db-name table-name)])
   ([_ db-name table-name field-name] [test-catalog-name "default" (tx/db-qualified-table-name db-name table-name) field-name]))
 

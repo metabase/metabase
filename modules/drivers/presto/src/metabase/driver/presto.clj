@@ -5,7 +5,6 @@
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
             [medley.core :as m]
             [metabase.driver :as driver]
             [metabase.driver.presto-common :as presto-common]
