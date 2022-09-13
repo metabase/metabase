@@ -6,7 +6,9 @@
             [iapetos.registry :as registry]
             [metabase.analytics.prometheus :as prometheus]
             [metabase.test.fixtures :as fixtures]
-            [metabase.troubleshooting :as troubleshooting]))
+            [metabase.troubleshooting :as troubleshooting])
+  (:import org.eclipse.jetty.server.Server
+           [io.prometheus.client Collector GaugeMetricFamily]))
 
 ;; ensure a handler to instrument with jetty_stats and a db so the c3p0 stats have at least one connection
 (use-fixtures :once (fixtures/initialize :db :web-server))
@@ -94,8 +96,10 @@
   be bound to the random port used for the metrics endpoint and system will be a [[PrometheusSystem]] which has a
   registry and web-server."
   [[port system] & body]
-  `(let [~system ^metabase.prometheus.PrometheusSystem (#'prometheus/make-prometheus-system 0 (name (gensym "test-registry")))
-         ~port   (.. ~system -web-server getURI getPort)]
+  `(let [~system ^metabase.analytics.prometheus.PrometheusSystem
+         (#'prometheus/make-prometheus-system 0 (name (gensym "test-registry")))
+         server#  ^Server (.web-server ~system)
+         ~port   (.. server# getURI getPort)]
      (try ~@body
           (finally (prometheus/stop-web-server ~system)))))
 
@@ -127,11 +131,11 @@
                                                    :namespace "metabase_database"}
                                          nil)
             _              (assert c3p0-collector "Did not find c3p0 collector")
-            measurements   (.collect c3p0-collector)
+            measurements   (.collect ^Collector c3p0-collector)
             _              (is (pos? (doto (count measurements) tap>))
                                "No measurements taken")]
         (is (= (count (:connection-pools (troubleshooting/connection-pool-info)))
-               (count (.samples (first measurements))))
+               (count (.samples ^GaugeMetricFamily (first measurements))))
             "Expected one entry per database for each measurement"))))
   (testing "Registry includes c3p0 stats"
     (with-prometheus-system [port _]
