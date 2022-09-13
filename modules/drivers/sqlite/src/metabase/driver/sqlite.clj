@@ -206,6 +206,39 @@
   [driver _ expr]
   (->date (sql.qp/->honeysql driver expr) (hx/literal "start of year")))
 
+;; date extraction functions
+(defmethod sql.qp/->honeysql [:sqlite :get-year]
+  [driver [_ arg]]
+  (hx/->integer (strftime "%Y" (sql.qp/->honeysql driver arg))))
+
+(defmethod sql.qp/->honeysql [:sqlite :get-quarter]
+  [driver [_ arg]]
+  (sql.qp/date driver :quarter-of-year (sql.qp/->honeysql driver arg)))
+
+(defmethod sql.qp/->honeysql [:sqlite :get-month]
+  [driver [_ arg]]
+  (sql.qp/date driver :month-of-year (sql.qp/->honeysql driver arg)))
+
+(defmethod sql.qp/->honeysql [:sqlite :get-day]
+  [driver [_ arg]]
+  (sql.qp/date driver :day-of-month (sql.qp/->honeysql driver arg)))
+
+(defmethod sql.qp/->honeysql [:sqlite :get-day-of-week]
+  [driver [_ arg]]
+  (sql.qp/date driver :day-of-week (sql.qp/->honeysql driver arg)))
+
+(defmethod sql.qp/->honeysql [:sqlite :get-hour]
+  [driver [_ arg]]
+  (sql.qp/date driver :hour-of-day (sql.qp/->honeysql driver arg)))
+
+(defmethod sql.qp/->honeysql [:sqlite :get-minute]
+  [driver [_ arg]]
+  (sql.qp/date driver :minute-of-hour (sql.qp/->honeysql driver arg)))
+
+(defmethod sql.qp/->honeysql [:sqlite :get-second]
+  [driver [_ arg]]
+  (hx/->integer (strftime "%S" (sql.qp/->honeysql driver arg))))
+
 (defmethod sql.qp/add-interval-honeysql-form :sqlite
   [_driver hsql-form amount unit]
   (let [[multiplier sqlite-unit] (case unit
