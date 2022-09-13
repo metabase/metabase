@@ -28,7 +28,7 @@ function DataAppActionPanel({ dataApp, onNewPage, onEditAppSettings }: Props) {
     () => [
       {
         title: t`Page`,
-        icon: "document",
+        icon: "pencil",
         action: onNewPage,
       },
     ],
