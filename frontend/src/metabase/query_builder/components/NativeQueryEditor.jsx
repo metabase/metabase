@@ -582,7 +582,7 @@ class NativeQueryEditor extends Component {
               onSnippetUpdate={(newSnippet, oldSnippet) => {
                 if (newSnippet.name !== oldSnippet.name) {
                   query
-                    .updateQueryTextWithNewSnippetNames([newSnippet])
+                    .updateSnippetNames([newSnippet])
                     .update(this.props.setDatasetQuery);
                 }
               }}

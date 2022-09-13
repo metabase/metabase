@@ -394,58 +394,42 @@ export default class NativeQuery extends AtomicQuery {
     return query;
   }
 
-  updateReferencedQuestionNames(cards): NativeQuery {
-    const tagsByCardId = _.chain(this.templateTags())
-      .filter(tag => tag.type === "card")
-      .groupBy(tag => tag["card-id"])
-      .value();
-
-    if (Object.keys(tagsByCardId).length === 0) {
-      // no need to check if there are no tags
+  updateReferencedQuestionNames(questions): NativeQuery {
+    const referencedQuestionTags = this.templateTags().filter(
+      tag => tag.type === "card",
+    );
+    // if there are no tags, no need to update
+    if (referencedQuestionTags.length === 0) {
       return this;
     }
-
-    let query = this;
+    const questionsById = _.indexBy(questions, "id");
     let queryText = this.queryText();
-
-    // TODO: tidy up this iteration loop
-    for (const card of cards) {
+    for (const tag of referencedQuestionTags) {
+      const card = questionsById[tag["card-id"]];
       const newTagName = `#${card.id}-${slugg(card.name)}`;
-      for (const tag of tagsByCardId[card.id] || []) {
-        if (tag.name !== newTagName) {
-          queryText = queryText.replace(
-            new RegExp(`{{\\s*${tag.name}\\s*}}`, "g"),
-            `{{${newTagName}}}`,
-          );
-          query = this.setTemplateTag(newTagName, {
-            ...tag,
-            name: newTagName,
-            "display-name": newTagName,
-          });
-        }
+      if (tag.name !== newTagName) {
+        queryText = queryText.replace(
+          new RegExp(`{{\\s*${tag.name}\\s*}}`, "g"),
+          `{{${newTagName}}}`,
+        );
       }
     }
-
     if (queryText !== this.queryText()) {
       return this.setQueryText(queryText);
     }
-
     return this;
   }
 
-  updateQueryTextWithNewSnippetNames(snippets): NativeQuery {
+  updateSnippetNames(snippets): NativeQuery {
     const tagsBySnippetId = _.chain(this.templateTags())
       .filter(tag => tag.type === "snippet")
       .groupBy(tag => tag["snippet-id"])
       .value();
-
     if (Object.keys(tagsBySnippetId).length === 0) {
-      // no need to check if there are no tags
+      // if there are no tags, no need to update
       return this;
     }
-
     let queryText = this.queryText();
-
     for (const snippet of snippets) {
       for (const tag of tagsBySnippetId[snippet.id] || []) {
         if (tag["snippet-name"] !== snippet.name) {
@@ -456,11 +440,9 @@ export default class NativeQuery extends AtomicQuery {
         }
       }
     }
-
     if (queryText !== this.queryText()) {
       return this.setQueryText(queryText).updateSnippetsWithIds(snippets);
     }
-
     return this;
   }
 

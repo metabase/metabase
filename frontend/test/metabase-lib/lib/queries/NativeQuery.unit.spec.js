@@ -254,14 +254,14 @@ describe("NativeQuery", () => {
         const q = makeQuery()
           .setQueryText("{{ snippet: foo }}")
           .updateSnippetsWithIds([{ id: 123, name: "foo" }])
-          .updateQueryTextWithNewSnippetNames([{ id: 123, name: "bar" }]);
+          .updateSnippetNames([{ id: 123, name: "bar" }]);
         expect(q.queryText()).toEqual("{{snippet: bar}}");
       });
       it("should update snippet names that differ on spacing", () => {
         const q = makeQuery()
           .setQueryText("{{ snippet: foo }} {{snippet:  foo  }}")
           .updateSnippetsWithIds([{ id: 123, name: "foo" }])
-          .updateQueryTextWithNewSnippetNames([{ id: 123, name: "bar" }]);
+          .updateSnippetNames([{ id: 123, name: "bar" }]);
         expect(q.queryText()).toEqual("{{snippet: bar}} {{snippet: bar}}");
       });
     });
