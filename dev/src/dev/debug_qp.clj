@@ -193,6 +193,17 @@
                                        :class-name      nil}}))
   (println))
 
+(defn- print-transform-result [before after]
+  (when *print-full?*
+    (println (u/pprint-to-str 'cyan (format-output after))))
+  (print-diff before after))
+
+(defn- print-error [location middleware-var e]
+  (println (format "Error %s in %s:\n%s"
+                   location
+                   middleware-var
+                   (u/pprint-to-str 'red (Throwable->map e)))))
+
 (defmulti print-formatted-event
   "Writes the debugger event to the standard output. Uses colors and
   deep diffing to show changes made by middlewares.
@@ -203,54 +214,38 @@
 (defmethod print-formatted-event ::transformed-query
   [[_ middleware-var before after]]
   (println (format "[pre] %s transformed query:" middleware-var))
-  (when *print-full?*
-    (println (u/pprint-to-str 'cyan (format-output after))))
-  (print-diff before after))
+  (print-transform-result before after))
 
 (defmethod print-formatted-event ::pre-process-query-error
   [[_ middleware-var e]]
-  (println (format "Error pre-processing query in %s:\n%s"
-                   middleware-var
-                   (u/pprint-to-str 'red (Throwable->map e)))))
+  (print-error "pre-processing query" middleware-var e))
 
 (defmethod print-formatted-event ::transformed-metadata
   [[_ middleware-var before after]]
   (println (format "[post] %s transformed metadata:" middleware-var))
-  (when *print-full?*
-    (println (u/pprint-to-str 'cyan (format-output after))))
-  (print-diff before after))
+  (print-transform-result before after))
 
 (defmethod print-formatted-event ::post-process-metadata-error
   [[_ middleware-var e]]
-  (println (format "Error post-processing result metadata in %s:\n%s"
-                   middleware-var
-                   (u/pprint-to-str 'red (Throwable->map e)))))
+  (print-error "post-processing result metadata" middleware-var e))
 
 (defmethod print-formatted-event ::post-process-result-error
   [[_ middleware-var e]]
-  (println (format "Error post-processing result in %s:\n%s"
-                   middleware-var
-                   (u/pprint-to-str 'red (Throwable->map e)))))
+  (print-error "post-processing result" middleware-var e))
 
 (defmethod print-formatted-event ::transformed-result
   [[_ middleware-var before after]]
   (println (format "[post] %s transformed result:" middleware-var))
-  (when *print-full?*
-    (println (u/pprint-to-str 'cyan (format-output after))))
-  (print-diff before after))
+  (print-transform-result before after))
 
 (defmethod print-formatted-event ::error-reduce-row
   [[_ middleware-var e]]
-  (println (format "Error reducing row in %s:\n%s"
-                   middleware-var
-                   (u/pprint-to-str 'red (Throwable->map e)))))
+  (print-error "reducing row" middleware-var e))
 
 (defmethod print-formatted-event ::transformed-row
   [[_ middleware-var before after]]
   (println (format "[post] %s transformed row" middleware-var))
-  (when *print-full?*
-    (println (u/pprint-to-str 'cyan (format-output after))))
-  (print-diff before after))
+  (print-transform-result before after))
 
 (def ^:private ^:dynamic *printer* print-formatted-event)
 
