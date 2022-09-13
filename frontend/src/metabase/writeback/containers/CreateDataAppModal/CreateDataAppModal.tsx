@@ -8,7 +8,7 @@ import Button from "metabase/core/components/Button";
 
 import * as Urls from "metabase/lib/urls";
 
-import DataApps, { ScaffoldAppParams } from "metabase/entities/data-apps";
+import DataApps, { ScaffoldNewAppParams } from "metabase/entities/data-apps";
 
 import DataAppDataPicker from "metabase/writeback/components/DataAppDataPicker";
 
@@ -28,7 +28,7 @@ interface OwnProps {
 }
 
 interface DispatchProps {
-  onCreate: (params: ScaffoldAppParams) => Promise<DataApp>;
+  onCreate: (params: ScaffoldNewAppParams) => Promise<DataApp>;
   onChangeLocation: (location: LocationDescriptor) => void;
 }
 
@@ -36,8 +36,10 @@ type Props = OwnProps & DispatchProps;
 
 function mapDispatchToProps(dispatch: Dispatch) {
   return {
-    onCreate: async (params: ScaffoldAppParams) => {
-      const action = await dispatch(DataApps.objectActions.scaffold(params));
+    onCreate: async (params: ScaffoldNewAppParams) => {
+      const action = await dispatch(
+        DataApps.objectActions.scaffoldNewApp(params),
+      );
       return DataApps.HACK_getObjectFromAction(action);
     },
     onChangeLocation: (location: LocationDescriptor) =>

@@ -183,8 +183,9 @@ export const CollectionsApi = {
 export const DataAppsApi = {
   list: GET("/api/app"),
   create: POST("/api/app"),
-  scaffold: POST("/api/app/scaffold"),
   update: PUT("/api/app/:id"),
+
+  scaffoldNewApp: POST("/api/app/scaffold"),
 };
 
 const PIVOT_PUBLIC_PREFIX = "/api/public/pivot/";
