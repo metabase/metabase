@@ -35,59 +35,29 @@ import {
   SelectedEntityPickerContent,
 } from "./LinkOptions.styled";
 
-function getEntityForLinkTarget(
-  linkType: CustomDestinationClickBehaviorEntity,
-) {
-  if (linkType === "question") {
-    return Questions;
-  }
-  if (linkType === "dashboard" || linkType === "page") {
-    return Dashboards;
-  }
-}
-
-function getPickerComponentForLinkTarget(
-  linkType: CustomDestinationClickBehaviorEntity,
-) {
-  if (linkType === "question") {
-    return QuestionPicker;
-  }
-  if (linkType === "dashboard") {
-    return DashboardPicker;
-  }
-  if (linkType === "page") {
-    return DataAppPagePicker;
-  }
-}
-
-function getPickerIconForLinkTarget(
-  linkType: CustomDestinationClickBehaviorEntity,
-) {
-  if (linkType === "question") {
-    return "bar";
-  }
-  if (linkType === "dashboard") {
-    return "dashboard";
-  }
-  if (linkType === "page") {
-    return "document";
-  }
-  return "unknown";
-}
-
-function getPickerModalTitleForLinkTarget(
-  linkType: CustomDestinationClickBehaviorEntity,
-) {
-  if (linkType === "question") {
-    return t`Pick a question to link to`;
-  }
-  if (linkType === "dashboard") {
-    return t`Pick a dashboard to link to`;
-  }
-  if (linkType === "page") {
-    return t`Pick a page to link to`;
-  }
-}
+const LINK_TARGETS = {
+  question: {
+    Entity: Questions,
+    PickerComponent: QuestionPicker,
+    pickerIcon: "bar",
+    getModalTitle: () => t`Pick a question to link to`,
+    getPickerButtonLabel: () => t`Pick a question…`,
+  },
+  dashboard: {
+    Entity: Dashboards,
+    PickerComponent: DashboardPicker,
+    pickerIcon: "dashboard",
+    getModalTitle: () => t`Pick a dashboard to link to`,
+    getPickerButtonLabel: () => t`Pick a dashboard…`,
+  },
+  page: {
+    Entity: Dashboards,
+    PickerComponent: DataAppPagePicker,
+    pickerIcon: "document",
+    getModalTitle: () => t`Pick a page to link to`,
+    getPickerButtonLabel: () => t`Pick a page…`,
+  },
+};
 
 function PickerControl({
   clickBehavior,
@@ -96,30 +66,21 @@ function PickerControl({
   clickBehavior: EntityCustomDestinationClickBehavior;
   onCancel: () => void;
 }) {
-  const Entity = getEntityForLinkTarget(clickBehavior.linkType);
+  const { Entity, pickerIcon, getPickerButtonLabel } =
+    LINK_TARGETS[clickBehavior.linkType];
 
   const renderLabel = useCallback(() => {
     const hasSelectedTarget = clickBehavior.targetId != null;
     if (hasSelectedTarget) {
       return <Entity.Name id={clickBehavior.targetId} />;
     }
-    if (clickBehavior.linkType === "question") {
-      return t`Pick a question…`;
-    }
-    if (clickBehavior.linkType === "dashboard") {
-      return t`Pick a dashboard`;
-    }
-    if (clickBehavior.linkType === "page") {
-      return t`Pick a page`;
-    }
-  }, [Entity, clickBehavior]);
+    return getPickerButtonLabel();
+  }, [Entity, clickBehavior.targetId, getPickerButtonLabel]);
 
   return (
     <SidebarItem.Selectable isSelected padded={false}>
       <LinkTargetEntityPickerContent>
-        <SelectedEntityPickerIcon
-          name={getPickerIconForLinkTarget(clickBehavior.linkType)}
-        />
+        <SelectedEntityPickerIcon name={pickerIcon} />
         <SelectedEntityPickerContent>
           {renderLabel()}
           <Icon name="chevrondown" size={12} className="ml-auto" />
@@ -179,7 +140,7 @@ function LinkedEntityPicker({
 }) {
   const { linkType } = clickBehavior;
   const hasSelectedTarget = clickBehavior.targetId != null;
-  const Picker = getPickerComponentForLinkTarget(linkType);
+  const { PickerComponent, getModalTitle } = LINK_TARGETS[linkType];
 
   const handleSelectLinkTargetEntityId = useCallback(
     targetId => {
@@ -219,12 +180,12 @@ function LinkedEntityPicker({
         >
           {({ onClose }: { onClose: () => void }) => (
             <ModalContent
-              title={getPickerModalTitleForLinkTarget(linkType)}
+              title={getModalTitle()}
               onClose={hasSelectedTarget ? onClose : null}
             >
               {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
               {/* @ts-ignore */}
-              <Picker
+              <PickerComponent
                 value={clickBehavior.targetId}
                 onChange={(targetId: CardId | DashboardId) => {
                   handleSelectLinkTargetEntityId(targetId);
