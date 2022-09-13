@@ -21,8 +21,7 @@
   (:import [java.sql Clob ResultSet ResultSetMetaData]
            java.time.OffsetTime
            org.h2.command.Parser
-           org.h2.engine.Session
-           org.h2.engine.SessionRemote))
+           [org.h2.engine Session SessionRemote]))
 
 (driver/register! :h2, :parent :sql-jdbc)
 
