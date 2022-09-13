@@ -73,6 +73,11 @@ interface DeleteActionClickBehavior extends BaseActionClickBehavior {
   objectDetailDashCardId: number;
 }
 
+export type ImplicitActionClickBehavior =
+  | InsertActionClickBehavior
+  | UpdateActionClickBehavior
+  | DeleteActionClickBehavior;
+
 /**
  * This is a bit of a hack to allow us using click behavior code
  * for mapping _explicit_ action parameters. We don't actually use the click behavior though.
@@ -83,9 +88,7 @@ interface HACK_ExplicitActionClickBehavior {
 }
 
 export type ActionClickBehavior =
-  | InsertActionClickBehavior
-  | UpdateActionClickBehavior
-  | DeleteActionClickBehavior
+  | ImplicitActionClickBehavior
   | HACK_ExplicitActionClickBehavior;
 
 /**
