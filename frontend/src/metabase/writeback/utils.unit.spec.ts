@@ -168,6 +168,7 @@ describe("isImplicitActionButton", () => {
       visualization_settings: {
         click_behavior: {
           type: "action",
+          // @ts-expect-error — testing unrecognized actionType
           actionType: "play-some-tunes",
           objectDetailDashCardId: 5,
         },
