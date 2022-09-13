@@ -20,10 +20,10 @@ import { ActionsApi } from "metabase/services";
 
 import type {
   Dashboard,
+  DashboardOrderedCard,
   ActionButtonDashboardCard,
   ParameterMappedForActionExecution,
 } from "metabase-types/api";
-import type { DashCard } from "metabase-types/types/Dashboard";
 import type { Dispatch } from "metabase-types/store";
 
 import { getCardData } from "../selectors";
@@ -57,22 +57,13 @@ export function updateButtonActionMapping(
   };
 }
 
-export type InsertRowFromDataAppPayload = InsertRowPayload & {
-  dashCard: DashCard;
-};
+export type InsertRowFromDataAppPayload = InsertRowPayload;
 
 export const createRowFromDataApp = (payload: InsertRowFromDataAppPayload) => {
   return async (dispatch: any) => {
     const result = await createRow(payload);
     const { table } = payload;
     if (result?.["created-row"]?.id) {
-      const { dashCard } = payload;
-      dispatch(
-        fetchCardData(dashCard.card, dashCard, {
-          reload: true,
-          ignoreCache: true,
-        }),
-      );
       dispatch(
         addUndo({
           message: t`Successfully inserted a row into the ${table.displayName()} table`,
@@ -84,7 +75,7 @@ export const createRowFromDataApp = (payload: InsertRowFromDataAppPayload) => {
 };
 
 export type UpdateRowFromDataAppPayload = UpdateRowPayload & {
-  dashCard: DashCard;
+  dashCard: DashboardOrderedCard;
 };
 
 export const updateRowFromDataApp = (payload: UpdateRowFromDataAppPayload) => {
@@ -103,7 +94,7 @@ export const updateRowFromDataApp = (payload: UpdateRowFromDataAppPayload) => {
 };
 
 export type DeleteRowFromDataAppPayload = DeleteRowPayload & {
-  dashCard: DashCard;
+  dashCard: DashboardOrderedCard;
 };
 
 export const deleteRowFromDataApp = (payload: DeleteRowFromDataAppPayload) => {
@@ -136,7 +127,7 @@ export type BulkUpdateFromDataAppPayload = Omit<
   BulkUpdatePayload,
   "records"
 > & {
-  dashCard: DashCard;
+  dashCard: DashboardOrderedCard;
   rowIndexes: number[];
   changes: Record<string, unknown>;
 };
@@ -203,7 +194,7 @@ export const updateManyRowsFromDataApp = (
 };
 
 export type BulkDeleteFromDataAppPayload = Omit<BulkDeletePayload, "ids"> & {
-  dashCard: DashCard;
+  dashCard: DashboardOrderedCard;
   rowIndexes: number[];
 };
 
