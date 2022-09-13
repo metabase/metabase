@@ -1,7 +1,7 @@
 (ns metabase.analytics.prometheus
   "Namespace for collection metrics with Prometheus. Will set up a registry and a webserver on startup
-  if [[prometheus-server-port]] is set to a port number. This can only be set in the environment and not though the
-  web UI due to its sensitivity.
+  if [[prometheus-server-port]] is set to a port number. This can only be set in the environment (by starting with
+  `MB_PROMETHEUS_SERVER_PORT` set to a numeric value and not though the web UI due to its sensitivity.
 
   Api is quite simple: [[setup!]] and [[shutdown!]]. After that you can retrieve metrics from
   http://localhost:<prometheus-server-port>/metrics."
