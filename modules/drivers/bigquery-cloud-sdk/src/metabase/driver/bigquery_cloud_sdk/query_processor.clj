@@ -391,27 +391,27 @@
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :get-quarter]
   [driver [_ arg]]
-  (sql.qp/date driver :quarter-of-year arg))
+  (sql.qp/date driver :quarter-of-year (sql.qp/->honeysql driver arg)))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :get-month]
   [driver [_ arg]]
-  (sql.qp/date driver :month-of-year arg))
+  (sql.qp/date driver :month-of-year (sql.qp/->honeysql driver arg)))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :get-day]
   [driver [_ arg]]
-  (sql.qp/date driver :day-of-month arg))
+  (sql.qp/date driver :day-of-month (sql.qp/->honeysql driver arg)))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :get-day-of-week]
   [driver [_ arg]]
-  (sql.qp/date driver :day-of-week arg))
+  (sql.qp/date driver :day-of-week (sql.qp/->honeysql driver arg)))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :get-hour]
   [driver [_ arg]]
-  (sql.qp/date driver :hour-of-day arg))
+  (sql.qp/date driver :hour-of-day (sql.qp/->honeysql driver arg)))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :get-minute]
   [driver [_ arg]]
-  (sql.qp/date driver :minute-of-hour arg))
+  (sql.qp/date driver :minute-of-hour (sql.qp/->honeysql driver arg)))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :get-second]
   [driver [_ arg]]
