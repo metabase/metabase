@@ -341,8 +341,12 @@ export default class NativeQuery extends AtomicQuery {
   // `replaceCardSlug` updates the query text to reference a different card.
   // Template tags are updated as a result of calling `setQueryText`.
   replaceCardSlug(oldId, newCardSlug) {
-    const newQueryText = this.queryText().replace(
-      new RegExp(`{{\\s*#${oldId}[a-z0-9-]*\\s*}}`, "g"),
+    let newQueryText = this.queryText().replace(
+      new RegExp(`{{\\s*#${oldId}\\s*}}`, "g"),
+      `{{#${newCardSlug}}}`,
+    );
+    newQueryText = newQueryText.replace(
+      new RegExp(`{{\\s*#${oldId}-[a-z0-9-]*\\s*}}`, "g"),
       `{{#${newCardSlug}}}`,
     );
     return this.setQueryText(newQueryText);
