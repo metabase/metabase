@@ -848,7 +848,7 @@ class QuestionInner {
   }
 
   slug(): string | null | undefined {
-    return this._card && `${this._card.id}-${slugg(this._card.name)}`;
+    return this._card?.name && `${this._card.id}-${slugg(this._card.name)}`;
   }
 
   setDisplayName(name: string | null | undefined) {
