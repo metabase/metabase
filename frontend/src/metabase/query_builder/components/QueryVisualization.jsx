@@ -59,6 +59,8 @@ export default class QueryVisualization extends Component {
       loadingMessage,
     } = this.props;
 
+    console.log("🚀", "isRunning?", isRunning);
+
     return (
       <div className={cx(className, "relative stacking-context")}>
         {isRunning ? (
