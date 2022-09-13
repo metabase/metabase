@@ -466,6 +466,7 @@
 
 (defmethod supports? [::driver :basic-aggregations] [_ _] true)
 (defmethod supports? [::driver :case-sensitivity-string-filter-options] [_ _] true)
+(defmethod supports? [::driver :date-functions] [_ _] true)
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -492,9 +493,6 @@
   :hierarchy #'hierarchy)
 
 (defmethod database-supports? :default [driver feature _] (supports? driver feature))
-
-(defmethod database-supports? [::driver :date-functions] [_ _ _]
-  true)
 
 (defmulti ^{:deprecated "0.42.0"} format-custom-field-name
   "Unused in Metabase 0.42.0+. Implement [[escape-alias]] instead. This method will be removed in a future release."
