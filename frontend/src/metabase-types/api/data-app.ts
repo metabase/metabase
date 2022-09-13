@@ -2,11 +2,19 @@ import { Collection, RegularCollectionId } from "./collection";
 import { ClickBehavior } from "./click-behavior";
 import {
   BaseDashboardOrderedCard,
+  Dashboard,
   DashboardParameterMapping,
 } from "./dashboard";
 import { WritebackAction } from "./writeback";
 
 export type DataAppId = number;
+export type DataAppPageId = Dashboard["id"];
+
+export interface DataAppNavItem {
+  page_id: DataAppPageId;
+  indent?: number;
+  hidden?: boolean;
+}
 
 export interface DataApp {
   id: DataAppId;
@@ -16,7 +24,7 @@ export interface DataApp {
   collection: Collection;
 
   options: Record<string, unknown> | null;
-  nav_items: null;
+  nav_items: DataAppNavItem[];
 
   created_at: string;
   updated_at: string;
