@@ -147,7 +147,12 @@ function PlaceholderInput({
   return (
     <div>
       <SectionLabel>{t`Placeholder text`}</SectionLabel>
-      <Input fullWidth value={value} onChange={e => onChange(e.target.value)} />
+      <Input
+        fullWidth
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        data-testid="placeholder-input"
+      />
     </div>
   );
 }
