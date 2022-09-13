@@ -193,6 +193,43 @@
    (driver.common/start-of-week-offset driver)
    (partial hsql/call (u/qualified-name ::mod))))
 
+;; date extraction functions
+(defmethod sql.qp/->honeysql [:oracle :get-year]
+  [driver [_ arg]]
+  (hsql/call :extract :year (sql.qp/->honeysql driver arg)))
+
+(defmethod sql.qp/->honeysql [:oracle :get-quarter]
+  [driver [_ arg]]
+  (sql.qp/date driver :quarter-of-year (sql.qp/->honeysql driver arg)))
+
+(defmethod sql.qp/->honeysql [:oracle :get-month]
+  [driver [_ arg]]
+  (sql.qp/date driver :month-of-year (sql.qp/->honeysql driver arg)))
+
+(defmethod sql.qp/->honeysql [:oracle :get-day]
+  [driver [_ arg]]
+  (sql.qp/date driver :day-of-month (sql.qp/->honeysql driver arg)))
+
+(defmethod sql.qp/->honeysql [:oracle :get-day-of-week]
+  [driver [_ arg]]
+  (sql.qp/date driver :day-of-week (sql.qp/->honeysql driver arg)))
+
+(defmethod sql.qp/->honeysql [:oracle :get-hour]
+  [driver [_ arg]]
+  (sql.qp/date driver :hour-of-day (sql.qp/->honeysql driver arg)))
+
+(defmethod sql.qp/->honeysql [:oracle :get-minute]
+  [driver [_ arg]]
+  (sql.qp/date driver :minute-of-hour (sql.qp/->honeysql driver arg)))
+
+(defmethod sql.qp/->honeysql [:oracle :get-second]
+  [driver [_ arg]]
+  (->> (sql.qp/->honeysql driver arg)
+       hx/->timestamp
+       (hsql/call :extract :second)
+       (hsql/call :floor)
+       hx/->integer))
+
 (def ^:private now (hsql/raw "SYSDATE"))
 
 (defmethod sql.qp/current-datetime-honeysql-form :oracle [_] now)
