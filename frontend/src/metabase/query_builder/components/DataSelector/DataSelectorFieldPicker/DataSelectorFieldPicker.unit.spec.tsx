@@ -2,9 +2,9 @@ import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { ORDERS } from "__support__/sample_database_fixture";
 
-import DataSelectorFieldPicker from "./DataSelectorFieldPicker";
 import type { Table } from "metabase-types/api/table";
 import type { Field } from "metabase-types/api/field";
+import DataSelectorFieldPicker from "./DataSelectorFieldPicker";
 
 const props = {
   hasFiltering: true,
