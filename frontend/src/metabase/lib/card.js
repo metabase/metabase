@@ -34,14 +34,13 @@ export async function loadCard(cardId) {
   }
 }
 
-// TODO Atte Keinänen 5/31/17 Deprecated, we should move tests to Questions.spec.js
-export function serializeCardForUrl(card) {
+function getCleanCard(card) {
   const dataset_query = Utils.copy(card.dataset_query);
   if (dataset_query.query) {
     dataset_query.query = Q_DEPRECATED.cleanQuery(dataset_query.query);
   }
 
-  const cardCopy = {
+  return {
     name: card.name,
     description: card.description,
     dataset_query: dataset_query,
@@ -53,20 +52,21 @@ export function serializeCardForUrl(card) {
     visualization_settings: card.visualization_settings,
     original_card_id: card.original_card_id,
   };
+}
 
-  return utf8_to_b64url(JSON.stringify(cardCopy));
+export function isEqualCard(card1, card2) {
+  if (card1 && card2) {
+    return Utils.equals(getCleanCard(card1), getCleanCard(card2));
+  } else {
+    return false;
+  }
+}
+
+// TODO Atte Keinänen 5/31/17 Deprecated, we should move tests to Questions.spec.js
+export function serializeCardForUrl(card) {
+  return utf8_to_b64url(JSON.stringify(getCleanCard(card)));
 }
 
 export function deserializeCardFromUrl(serialized) {
   return JSON.parse(b64hash_to_utf8(serialized));
-}
-
-export function cleanCopyCard(card) {
-  const cardCopy = {};
-  for (const name in card) {
-    if (name.charAt(0) !== "$") {
-      cardCopy[name] = card[name];
-    }
-  }
-  return cardCopy;
 }

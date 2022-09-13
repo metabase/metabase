@@ -79,6 +79,6 @@ Show the Metabase lighthouse image on the home and login pages.
 
 ## Further reading
 
-- [Customer-facing analytics](https://www.metabase.com/learn/embedding/).
+- [Customer-facing analytics](https://www.metabase.com/learn/customer-facing-analytics).
 - [Embedding introduction](../embedding/start.md).
 - [Brand your Metabase](https://www.metabase.com/learn/embedding/brand).
