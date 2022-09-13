@@ -42,7 +42,7 @@ describe("scenarios > embedding > questions ", () => {
     });
 
     cy.icon("share").click();
-    cy.findByText("Embed this question in an application").click();
+    cy.findByText("Embed in your application").click();
 
     visitIframe();
 
@@ -78,7 +78,7 @@ describe("scenarios > embedding > questions ", () => {
     });
 
     cy.icon("share").click();
-    cy.findByText("Embed this question in an application").click();
+    cy.findByText("Embed in your application").click();
 
     visitIframe();
 
@@ -114,7 +114,7 @@ describe("scenarios > embedding > questions ", () => {
     });
 
     cy.icon("share").click();
-    cy.findByText("Embed this question in an application").click();
+    cy.findByText("Embed in your application").click();
 
     visitIframe();
 
@@ -144,7 +144,7 @@ describe("scenarios > embedding > questions ", () => {
     });
 
     cy.icon("share").click();
-    cy.findByText("Embed this question in an application").click();
+    cy.findByText("Embed in your application").click();
 
     visitIframe();
 
@@ -174,7 +174,7 @@ describe("scenarios > embedding > questions ", () => {
     visitQuestion(CARD_ID);
 
     cy.icon("share").click();
-    cy.findByText("Embed this question in an application").click();
+    cy.findByText("Embed in your application").click();
 
     visitIframe();
 

@@ -1,6 +1,7 @@
 import React, { ReactNode, useState } from "react";
 import { t, jt } from "ttag";
 import cx from "classnames";
+import Button from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";
 import Toggle from "metabase/core/components/Toggle";
 import CopyWidget from "metabase/components/CopyWidget";
@@ -66,7 +67,7 @@ export default function SharingPane({
   return (
     <div className="pt2 ml-auto mr-auto" style={{ maxWidth: 600 }}>
       {isAdmin && isPublicSharingEnabled && (
-        <div className="pb2 mb4 border-bottom flex align-center">
+        <div className="px4 py3 mb4 bordered rounded flex align-center">
           <Header>{t`Enable sharing`}</Header>
           <div className="ml-auto">
             {resource.public_uuid ? (
@@ -102,7 +103,7 @@ export default function SharingPane({
       )}
 
       <SharingOption
-        className={cx({
+        className={cx("border-bottom", {
           disabled: !resource.public_uuid,
         })}
         illustration={
@@ -137,7 +138,7 @@ export default function SharingPane({
       </SharingOption>
 
       <SharingOption
-        className={cx({
+        className={cx("border-bottom", {
           disabled: !resource.public_uuid,
         })}
         illustration={
@@ -163,11 +164,12 @@ export default function SharingPane({
           }
         }}
       >
-        <EmbedWidgetHeader>{t`Embed this ${resourceType} in an application`}</EmbedWidgetHeader>
-        <Description>{t`By integrating with your application server code, you can provide a secure stats ${resourceType} limited to a specific user, customer, organization, etc.`}</Description>
+        <EmbedWidgetHeader>{t`Embed in your application`}</EmbedWidgetHeader>
+        <Description>{t`Add this ${resourceType} to your application server code. You’ll be able to preview the way it looks and behaves before making it securely visible for your users.`}</Description>
         {embeddingHelperText && (
           <Description enableMouseEvents>{embeddingHelperText}</Description>
         )}
+        <Button primary>{t`Set up`}</Button>
       </SharingOption>
     </div>
   );
@@ -187,7 +189,10 @@ function SharingOption({
   children,
 }: SharingOptionProps) {
   return (
-    <div className={cx("mb4 flex align-start", className)} onClick={onClick}>
+    <div
+      className={cx("pt1 pb4 mb3 flex align-start", className)}
+      onClick={onClick}
+    >
       {illustration}
       <div className="ml2">{children}</div>
     </div>
