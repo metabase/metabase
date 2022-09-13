@@ -24,7 +24,7 @@ const SlackStatusForm = ({ settings }: SlackStatusFormProps): JSX.Element => {
           <FormField name="slack-app-token" />
           <FormField
             name="slack-files-channel"
-            description={t`We'll upload charts and tables here before sending out dashboard subscriptions.`}
+            description={t`This channel shouldn't really be used by anyone — we'll upload charts and tables here before sending out dashboard subscriptions (it's a Slack requirement).`}
           />
         </Form>
       )}
