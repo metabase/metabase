@@ -4,7 +4,6 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import ArchivedItem from "../../components/ArchivedItem";
 import Button from "metabase/core/components/Button";
 import BulkActionBar from "metabase/components/BulkActionBar";
 import Card from "metabase/components/Card";
@@ -18,6 +17,7 @@ import listSelect from "metabase/hoc/ListSelect";
 import { getIsNavbarOpen, openNavbar } from "metabase/redux/app";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { isSmallScreen, getMainElement } from "metabase/lib/dom";
+import ArchivedItem from "../../components/ArchivedItem";
 
 import {
   ArchiveBarContent,

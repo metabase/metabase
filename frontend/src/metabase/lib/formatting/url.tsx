@@ -1,10 +1,10 @@
 import React from "react";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { renderLinkTextForClick, renderLinkURLForClick } from "./link";
 import { getDataFromClicked } from "metabase/lib/click-behavior";
-import { formatValue, getRemappedValue } from "./value";
 import { isURL } from "metabase/lib/schema_metadata";
+import { renderLinkTextForClick, renderLinkURLForClick } from "./link";
+import { formatValue, getRemappedValue } from "./value";
 
 import type { OptionsType } from "./types";
 

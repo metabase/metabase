@@ -1,6 +1,6 @@
+import type { ScaleBand, ScaleLinear, ScaleTime } from "d3-scale";
 import type { DateFormatOptions } from "metabase/static-viz/lib/dates";
 import type { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
-import type { ScaleBand, ScaleLinear, ScaleTime } from "d3-scale";
 
 export type Range = [number, number];
 export type ContinuousDomain = [number, number];

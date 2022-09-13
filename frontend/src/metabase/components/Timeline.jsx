@@ -1,8 +1,8 @@
 import React, { useMemo } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
-import { getRelativeTime } from "metabase/lib/time";
 import { t } from "ttag";
+import { getRelativeTime } from "metabase/lib/time";
 
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/components/Tooltip";

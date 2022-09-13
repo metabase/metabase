@@ -1,5 +1,5 @@
-import { findSize } from "./utils";
 import * as measureText from "metabase/lib/measure-text";
+import { findSize } from "./utils";
 
 jest.doMock("metabase/lib/measure-text", () => ({
   measureText: jest.fn(),

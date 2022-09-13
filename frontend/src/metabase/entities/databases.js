@@ -1,6 +1,7 @@
 import { normalize } from "normalizr";
 import _ from "underscore";
 
+import { createSelector } from "reselect";
 import { createEntity } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
@@ -12,7 +13,6 @@ import Fields from "metabase/entities/fields";
 import Schemas from "metabase/entities/schemas";
 
 import { getMetadata, getFields } from "metabase/selectors/metadata";
-import { createSelector } from "reselect";
 
 import forms from "./databases/forms";
 

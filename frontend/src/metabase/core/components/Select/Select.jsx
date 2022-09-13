@@ -1,14 +1,12 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
+import _ from "underscore";
+import cx from "classnames";
+import { createSelector } from "reselect";
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import SelectButton from "metabase/core/components/SelectButton";
-
-import _ from "underscore";
-import cx from "classnames";
-
-import { createSelector } from "reselect";
 
 import { color } from "metabase/lib/colors";
 

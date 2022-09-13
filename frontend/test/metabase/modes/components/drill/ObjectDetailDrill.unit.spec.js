@@ -1,4 +1,3 @@
-import Question from "metabase-lib/lib/Question";
 import ObjectDetailDrill from "metabase/modes/components/drill/ObjectDetailDrill";
 import { ZOOM_IN_ROW } from "metabase/query_builder/actions";
 import { TYPE as SEMANTIC_TYPE } from "cljs/metabase.types";
@@ -8,6 +7,7 @@ import {
   SAMPLE_DATABASE,
   metadata,
 } from "__support__/sample_database_fixture";
+import Question from "metabase-lib/lib/Question";
 
 const DEFAULT_CELL_VALUE = 1;
 

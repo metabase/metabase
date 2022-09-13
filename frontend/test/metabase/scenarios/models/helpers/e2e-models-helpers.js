@@ -84,9 +84,9 @@ export function assertIsQuestion() {
 
 export function turnIntoModel() {
   interceptIfNotPreviouslyDefined({
-    method: "POST",
-    url: "/api/dataset",
-    alias: "dataset",
+    method: "PUT",
+    url: "/api/card/*",
+    alias: "cardUpdate",
   });
 
   openQuestionActions();
@@ -96,7 +96,7 @@ export function turnIntoModel() {
   modal().within(() => {
     cy.button("Turn this into a model").click();
   });
-  cy.wait("@dataset");
+  cy.wait("@cardUpdate");
 }
 
 export function selectFromDropdown(option, clickOpts) {

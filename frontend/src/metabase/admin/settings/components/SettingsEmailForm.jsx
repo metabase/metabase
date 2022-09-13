@@ -6,8 +6,6 @@ import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import MarginHostingCTA from "metabase/admin/settings/components/widgets/MarginHostingCTA";
 
-import SettingsBatchForm from "./SettingsBatchForm";
-
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -16,6 +14,7 @@ import {
   updateEmailSettings,
   clearEmailSettings,
 } from "../settings";
+import SettingsBatchForm from "./SettingsBatchForm";
 import { EmailFormRoot } from "./SettingsEmailForm.styled";
 
 const SEND_TEST_BUTTON_STATES = {

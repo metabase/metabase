@@ -5,10 +5,9 @@ import {
   visitQuestionAdhoc,
 } from "__support__/e2e/helpers";
 
-import * as SQLFilter from "../helpers/e2e-sql-filter-helpers";
-
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+import * as SQLFilter from "../helpers/e2e-sql-filter-helpers";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
 

@@ -25,8 +25,8 @@ export const CATEGORIES = {
   search: "Search",
 };
 
-import COMPONENTS from "../lib/components-webpack";
 import { slugify } from "metabase/lib/formatting";
+import COMPONENTS from "../lib/components-webpack";
 
 const req = require.context(
   "metabase/internal/components",

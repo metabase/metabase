@@ -1,14 +1,13 @@
 import { TYPE } from "metabase/lib/types";
 
-import type Database from "metabase-lib/lib/metadata/Database";
-import type Field from "metabase-lib/lib/metadata/Field";
-
 import type {
   ActionButtonDashboardCard,
   BaseDashboardOrderedCard,
   Database as IDatabase,
 } from "metabase-types/api";
 import type { SavedCard } from "metabase-types/types/Card";
+import type Database from "metabase-lib/lib/metadata/Database";
+import type Field from "metabase-lib/lib/metadata/Field";
 
 const DB_WRITEBACK_FEATURE = "actions";
 const DB_WRITEBACK_SETTING = "database-enable-actions";
@@ -71,7 +70,15 @@ export function isActionButtonDashCard(
   return isActionButtonCard(virtualCard as SavedCard);
 }
 
-export function isActionButtonWithMappedAction(
+/**
+ * Checks if a dashboard card is an explicit action (has associated WritebackAction).
+ *
+ * @param {BaseDashboardOrderedCard} dashboard card
+ *
+ * @returns {boolean} true if the button has an associated action.
+ * False for implicit actions using click behavior, and in case a button has no action attached
+ */
+export function isMappedExplicitActionButton(
   dashCard: BaseDashboardOrderedCard,
 ): dashCard is ActionButtonDashboardCard {
   const isAction = isActionButtonDashCard(dashCard);

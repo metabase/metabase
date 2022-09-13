@@ -1,8 +1,8 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import PasswordPanel from "./PasswordPanel";
 import { AuthProvider } from "metabase/auth/types";
+import PasswordPanel from "./PasswordPanel";
 
 describe("PasswordPanel", () => {
   it("should login successfully", () => {

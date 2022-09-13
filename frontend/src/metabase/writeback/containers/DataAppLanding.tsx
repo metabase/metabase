@@ -47,7 +47,7 @@ const DataAppLanding = ({
         loadingAndErrorWrapper={false}
       >
         {({ list: pages = [] }: { list: any[] }) => {
-          const homepageId = getDataAppHomePageId(pages);
+          const homepageId = getDataAppHomePageId(dataApp, pages);
           return homepageId ? (
             <DashboardApp
               dashboardId={homepageId}

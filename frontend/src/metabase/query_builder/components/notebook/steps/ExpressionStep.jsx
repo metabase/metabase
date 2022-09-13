@@ -1,9 +1,8 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
-import ClauseStep from "./ClauseStep";
-
 import ExpressionWidget from "metabase/query_builder/components/expressions/ExpressionWidget";
+import ClauseStep from "./ClauseStep";
 
 export default function ExpressionStep({
   color,

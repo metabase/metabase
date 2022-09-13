@@ -5,14 +5,14 @@ import { t, ngettext, msgid } from "ttag";
 import { isDate } from "metabase/lib/schema_metadata";
 import { parseTimestamp } from "metabase/lib/time";
 import { formatDateTimeForParameter } from "metabase/lib/formatting/date";
-import Question from "metabase-lib/lib/Question";
-import { TemplateTagVariable } from "metabase-lib/lib/Variable";
-import { TemplateTagDimension } from "metabase-lib/lib/Dimension";
 import { isa, TYPE } from "metabase/lib/types";
 import {
   dimensionFilterForParameter,
   variableFilterForParameter,
 } from "metabase/parameters/utils/filters";
+import Question from "metabase-lib/lib/Question";
+import { TemplateTagVariable } from "metabase-lib/lib/Variable";
+import { TemplateTagDimension } from "metabase-lib/lib/Dimension";
 
 export function getDataFromClicked({
   extraData: { dashboard, parameterValuesBySlug, userAttributes } = {},
@@ -251,8 +251,12 @@ export function clickBehaviorIsValid(clickBehavior) {
   if (linkType === "url") {
     return (linkTemplate || "").length > 0;
   }
-  // if we're linking to a question or dashboard we just need a targetId
-  if (linkType === "dashboard" || linkType === "question") {
+  // if we're linking to a Metabase entity we just need a targetId
+  if (
+    linkType === "dashboard" ||
+    linkType === "question" ||
+    linkType === "page"
+  ) {
     return targetId != null;
   }
   // we've picked "link" without picking a link type

@@ -1,8 +1,8 @@
-import Dimension from "metabase-lib/lib/Dimension";
 import {
   ParameterTarget,
   ParameterDimensionTarget,
 } from "metabase-types/types/Parameter";
+import Dimension from "metabase-lib/lib/Dimension";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Question from "metabase-lib/lib/Question";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";

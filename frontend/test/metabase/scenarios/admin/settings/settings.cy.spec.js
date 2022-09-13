@@ -284,7 +284,9 @@ describe("scenarios > admin > settings", () => {
 
       cy.findByText("Metabase on Slack");
       cy.findByLabelText("Slack Bot User OAuth Token").type("xoxb");
-      cy.findByLabelText("Slack channel name").type("metabase_files");
+      cy.findByLabelText("Public channel to store image files").type(
+        "metabase_files",
+      );
       cy.button("Save changes").click();
 
       cy.findByText(": invalid token");

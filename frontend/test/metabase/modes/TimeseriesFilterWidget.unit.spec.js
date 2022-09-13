@@ -1,13 +1,13 @@
 import React from "react";
-import TimeseriesFilterWidget from "metabase/modes/components/TimeseriesFilterWidget";
 import { render, screen } from "@testing-library/react";
+import TimeseriesFilterWidget from "metabase/modes/components/TimeseriesFilterWidget";
 
-import Question from "metabase-lib/lib/Question";
 import {
   SAMPLE_DATABASE,
   ORDERS,
   metadata,
 } from "__support__/sample_database_fixture";
+import Question from "metabase-lib/lib/Question";
 
 const getTimeseriesFilterWidget = question => (
   <TimeseriesFilterWidget

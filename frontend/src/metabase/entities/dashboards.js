@@ -1,3 +1,5 @@
+import { assocIn } from "icepick";
+import { t } from "ttag";
 import {
   compose,
   withAction,
@@ -8,8 +10,6 @@ import {
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
-import { assocIn } from "icepick";
-import { t } from "ttag";
 
 import { addUndo } from "metabase/redux/undo";
 

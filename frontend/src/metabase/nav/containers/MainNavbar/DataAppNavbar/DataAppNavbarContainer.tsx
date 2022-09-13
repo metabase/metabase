@@ -13,8 +13,9 @@ import Search from "metabase/entities/search";
 import type { DataApp, Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import { MainNavbarProps, MainNavbarOwnProps, SelectedItem } from "./types";
-import NavbarLoadingView from "./NavbarLoadingView";
+import { MainNavbarProps, MainNavbarOwnProps, SelectedItem } from "../types";
+import NavbarLoadingView from "../NavbarLoadingView";
+
 import DataAppNavbarView from "./DataAppNavbarView";
 
 const FETCHING_SEARCH_MODELS = ["page"];
@@ -63,13 +64,13 @@ function DataAppNavbarContainer({
       return [
         {
           type: "data-app-page",
-          id: getDataAppHomePageId(pages),
+          id: getDataAppHomePageId(dataApp, pages),
         },
       ];
     }
 
     return selectedItems;
-  }, [pages, selectedItems]);
+  }, [dataApp, pages, selectedItems]);
 
   const onEditAppSettings = useCallback(() => {
     setModal("MODAL_APP_SETTINGS");

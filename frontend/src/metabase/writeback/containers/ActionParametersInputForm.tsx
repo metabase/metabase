@@ -3,16 +3,22 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 
 import Form from "metabase/containers/Form";
+import {
+  getFormFieldForParameter,
+  getSubmitButtonLabel,
+} from "metabase/writeback/components/ActionCreator/FormCreator";
 
 import type {
   ArbitraryParameterForActionExecution,
   WritebackParameter,
+  WritebackAction,
 } from "metabase-types/api";
 import type { Parameter, ParameterId } from "metabase-types/types/Parameter";
 import type { Dispatch, ReduxAction } from "metabase-types/store";
 
 interface Props {
   missingParameters: WritebackParameter[];
+  action: WritebackAction;
   onSubmit: (parameters: ArbitraryParameterForActionExecution[]) => ReduxAction;
   onSubmitSuccess: () => void;
   dispatch: Dispatch;
@@ -24,24 +30,6 @@ function getActionParameterType(parameter: Parameter) {
     return "string/=";
   }
   return type;
-}
-
-function getParameterFieldProps(parameter: Parameter) {
-  if (parameter.type === "date/single") {
-    return { type: "date" };
-  }
-  if (parameter.type === "number/=") {
-    return { type: "integer" };
-  }
-  return { type: "input" };
-}
-
-function getFormFieldForParameter(parameter: Parameter) {
-  return {
-    name: parameter.id,
-    title: parameter.name,
-    ...getParameterFieldProps(parameter),
-  };
 }
 
 function formatParametersBeforeSubmit(
@@ -68,15 +56,23 @@ function formatParametersBeforeSubmit(
 
 function ActionParametersInputForm({
   missingParameters,
+  action,
   dispatch,
   onSubmit,
   onSubmitSuccess,
 }: Props) {
+  const fieldSettings = useMemo(
+    () => action.visualization_settings?.fields ?? {},
+    [action],
+  );
+
   const form = useMemo(() => {
     return {
-      fields: missingParameters.map(getFormFieldForParameter),
+      fields: missingParameters.map(param =>
+        getFormFieldForParameter(param, fieldSettings[param.id]),
+      ),
     };
-  }, [missingParameters]);
+  }, [missingParameters, fieldSettings]);
 
   const handleSubmit = useCallback(
     params => {
@@ -90,7 +86,11 @@ function ActionParametersInputForm({
     [missingParameters, onSubmit, onSubmitSuccess, dispatch],
   );
 
-  return <Form form={form} onSubmit={handleSubmit} submitTitle={t`Execute`} />;
+  const submitButtonLabel = getSubmitButtonLabel(action);
+
+  return (
+    <Form form={form} onSubmit={handleSubmit} submitTitle={submitButtonLabel} />
+  );
 }
 
 export default connect()(ActionParametersInputForm);

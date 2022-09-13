@@ -1,4 +1,3 @@
-import Question from "metabase-lib/lib/Question";
 import QuickFilterDrill from "metabase/modes/components/drill/QuickFilterDrill";
 import { createMockColumn } from "metabase-types/types/mocks/dataset";
 import {
@@ -7,6 +6,7 @@ import {
   SAMPLE_DATABASE,
   metadata,
 } from "__support__/sample_database_fixture";
+import Question from "metabase-lib/lib/Question";
 
 const NUMBER_AND_DATE_FILTERS = ["<", ">", "=", "!="];
 const OTHER_FILTERS = ["=", "!="];

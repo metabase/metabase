@@ -9,12 +9,11 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 
-import SelectSeparator from "../components/SelectSeparator";
-
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
 import Question from "metabase-lib/lib/Question";
+import SelectSeparator from "../components/SelectSeparator";
 import {
   FieldMappingContainer,
   FieldMappingRoot,

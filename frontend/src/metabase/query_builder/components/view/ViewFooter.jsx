@@ -10,23 +10,22 @@ import Icon from "metabase/components/Icon";
 
 import ButtonBar from "metabase/components/ButtonBar";
 
-import ViewButton from "./ViewButton";
-
-import QuestionAlertWidget from "./QuestionAlertWidget";
-import QuestionTimelineWidget from "./QuestionTimelineWidget";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 import QuestionEmbedWidget, {
   QuestionEmbedWidgetTrigger,
 } from "metabase/query_builder/containers/QuestionEmbedWidget";
-
-import QuestionRowCount from "./QuestionRowCount";
-import QuestionLastUpdated from "./QuestionLastUpdated";
-import { ViewFooterRoot } from "./ViewFooter.styled";
-
 import {
   getVisualizationRaw,
   getIconForVisualizationType,
 } from "metabase/visualizations";
+import ViewButton from "./ViewButton";
+
+import QuestionAlertWidget from "./QuestionAlertWidget";
+import QuestionTimelineWidget from "./QuestionTimelineWidget";
+
+import QuestionRowCount from "./QuestionRowCount";
+import QuestionLastUpdated from "./QuestionLastUpdated";
+import { ViewFooterRoot } from "./ViewFooter.styled";
 
 const ViewFooter = ({
   question,

@@ -19,6 +19,7 @@ import { getWritebackEnabled } from "metabase/writeback/selectors";
 import Databases from "metabase/entities/databases";
 import { getSetting } from "metabase/selectors/settings";
 
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Database from "metabase-lib/lib/metadata/Database";
 
 import { getEditingDatabase, getInitializeError } from "../selectors";
@@ -35,7 +36,6 @@ import {
   deleteDatabase,
   selectEngine,
 } from "../database";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import {
   DatabaseEditContent,
   DatabaseEditForm,

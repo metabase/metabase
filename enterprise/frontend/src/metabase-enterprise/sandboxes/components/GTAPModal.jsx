@@ -6,10 +6,7 @@ import { withRouter } from "react-router";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
-import MappingEditor from "./MappingEditor";
-
 import QuestionPicker from "metabase/containers/QuestionPicker";
-import QuestionParameterTargetWidget from "../containers/QuestionParameterTargetWidget";
 import Button from "metabase/core/components/Button";
 import ActionButton from "metabase/components/ActionButton";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -22,10 +19,12 @@ import { GTAPApi } from "metabase/services";
 import EntityObjectLoader from "metabase/entities/containers/EntityObjectLoader";
 import QuestionLoader from "metabase/containers/QuestionLoader";
 
+import { getParentPath } from "metabase/hoc/ModalRoute";
 import Dimension from "metabase-lib/lib/Dimension";
 
-import { getParentPath } from "metabase/hoc/ModalRoute";
+import QuestionParameterTargetWidget from "../containers/QuestionParameterTargetWidget";
 import { updateTableSandboxingPermission } from "../actions";
+import MappingEditor from "./MappingEditor";
 
 const mapStateToProps = () => ({});
 const mapDispatchToProps = {

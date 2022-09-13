@@ -28,12 +28,12 @@ import { checkCanBeModel } from "metabase/lib/data-modeling/utils";
 import { usePrevious } from "metabase/hooks/use-previous";
 import { useToggle } from "metabase/hooks/use-toggle";
 
+import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { EDITOR_TAB_INDEXES } from "./constants";
 import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
 import DatasetQueryEditor from "./DatasetQueryEditor";
 import EditorTabs from "./EditorTabs";
 import { TabHintToast } from "./TabHintToast";
-import { MODAL_TYPES } from "metabase/query_builder/constants";
 
 import {
   Root,
@@ -255,7 +255,7 @@ function DatasetEditor(props) {
   const focusedField = useMemo(() => {
     const field = fields[focusedFieldIndex];
     if (field) {
-      const fieldMetadata = metadata.field(field.id);
+      const fieldMetadata = metadata.field(field.id, field.table_id);
       return {
         ...fieldMetadata,
         ...field,

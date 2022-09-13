@@ -79,7 +79,7 @@ function FormItem({
     <FormItemWrapper>
       <FormItemName>{name}</FormItemName>
       <FormSettings>
-        <FormField type={fieldSettings.inputType} />
+        <FormField tag={tag} fieldSettings={fieldSettings} />
         <FieldSettingsPopover
           fieldSettings={fieldSettings}
           onChange={onChange}

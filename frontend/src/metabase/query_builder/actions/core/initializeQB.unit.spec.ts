@@ -10,18 +10,6 @@ import Databases from "metabase/entities/databases";
 import Snippets from "metabase/entities/snippets";
 import { setErrorPage } from "metabase/redux/app";
 
-import Question from "metabase-lib/lib/Question";
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import {
-  getAdHocQuestion,
-  getSavedStructuredQuestion,
-  getSavedNativeQuestion,
-  getUnsavedNativeQuestion,
-  getStructuredModel,
-  getNativeModel,
-} from "metabase-lib/mocks";
-
 import { User } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
 import { Card, NativeDatasetQuery } from "metabase-types/types/Card";
@@ -34,6 +22,17 @@ import {
   state as entitiesState,
   metadata,
 } from "__support__/sample_database_fixture";
+import {
+  getAdHocQuestion,
+  getSavedStructuredQuestion,
+  getSavedNativeQuestion,
+  getUnsavedNativeQuestion,
+  getStructuredModel,
+  getNativeModel,
+} from "metabase-lib/mocks";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import Question from "metabase-lib/lib/Question";
 
 import * as navigation from "../navigation";
 import * as querying from "../querying";

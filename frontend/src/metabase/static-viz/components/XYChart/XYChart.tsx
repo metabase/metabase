@@ -5,6 +5,7 @@ import { GridRows } from "@visx/grid";
 import { Group } from "@visx/group";
 import { assoc } from "icepick";
 
+import type { TimeInterval } from "d3-time";
 import { formatNumber } from "metabase/static-viz/lib/numbers";
 import { LineSeries } from "metabase/static-viz/components/XYChart/shapes/LineSeries";
 import { BarSeries } from "metabase/static-viz/components/XYChart/shapes/BarSeries";
@@ -31,7 +32,6 @@ import {
   fixTimeseriesTicksExceedXTickCount,
 } from "metabase/static-viz/components/XYChart/utils";
 import { GoalLine } from "metabase/static-viz/components/XYChart/GoalLine";
-import Values from "./Values";
 import { measureText } from "metabase/static-viz/lib/text";
 
 import type {
@@ -42,7 +42,7 @@ import type {
   XScale,
   XAxisType,
 } from "metabase/static-viz/components/XYChart/types";
-import type { TimeInterval } from "d3-time";
+import Values from "./Values";
 
 export interface XYChartProps {
   width: number;

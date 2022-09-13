@@ -1,8 +1,8 @@
 import React from "react";
 import { render } from "@testing-library/react";
 
-import Question from "metabase-lib/lib/Question";
 import { QuestionResultLoader } from "metabase/containers/QuestionResultLoader";
+import Question from "metabase-lib/lib/Question";
 
 describe("QuestionResultLoader", () => {
   it("should load a result given a question", () => {

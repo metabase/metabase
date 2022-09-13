@@ -107,7 +107,7 @@ function InputTypeSelect({
     <Radio
       vertical
       value={value}
-      options={inputTypes[fieldType ?? "text"]}
+      options={inputTypes[fieldType ?? "string"]}
       onChange={onChange}
     />
   );

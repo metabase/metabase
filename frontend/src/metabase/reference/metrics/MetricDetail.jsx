@@ -16,6 +16,8 @@ import Detail from "metabase/reference/components/Detail";
 import FieldsToGroupBy from "metabase/reference/components/FieldsToGroupBy";
 import Formula from "metabase/reference/components/Formula";
 
+import * as metadataActions from "metabase/redux/metadata";
+import * as actions from "metabase/reference/reference";
 import { getQuestionUrl } from "../utils";
 
 import {
@@ -28,9 +30,6 @@ import {
   getIsFormulaExpanded,
   getForeignKeys,
 } from "../selectors";
-
-import * as metadataActions from "metabase/redux/metadata";
-import * as actions from "metabase/reference/reference";
 
 const mapStateToProps = (state, props) => {
   const entity = getMetric(state, props) || {};

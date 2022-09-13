@@ -826,7 +826,8 @@
                      (style/font-style)
                      {:margin-top :8px
                       :color      style/color-gray-4})}
-       (trs "No results")]]}))
+       (trs "No results")]]
+     :render/text (trs "No results")}))
 
 (s/defmethod render :attached :- common/RenderedPulseCard
   [_ render-type _ _ _ _]

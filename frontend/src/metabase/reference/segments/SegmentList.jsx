@@ -13,11 +13,10 @@ import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
+import * as metadataActions from "metabase/redux/metadata";
 import ReferenceHeader from "../components/ReferenceHeader";
 
 import { getSegments, getError, getLoading } from "../selectors";
-
-import * as metadataActions from "metabase/redux/metadata";
 
 const emptyStateData = {
   title: t`Segments are interesting subsets of tables`,

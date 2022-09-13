@@ -9,7 +9,10 @@ export function isDataAppCollection(collection: Collection) {
   return typeof collection.app_id === "number";
 }
 
-export function getDataAppHomePageId(pages: Dashboard[]) {
+export function getDataAppHomePageId(dataApp: DataApp, pages: Dashboard[]) {
+  if (dataApp.dashboard_id) {
+    return dataApp.dashboard_id;
+  }
   const [firstPage] = _.sortBy(pages, "name");
   return firstPage?.id;
 }
