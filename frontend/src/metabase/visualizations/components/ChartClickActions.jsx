@@ -218,7 +218,7 @@ class ChartClickActions extends Component {
           this.close();
         }}
         placement="bottom-start"
-        offset={[0, 8]}
+        offset={[-8, 8]}
         popperOptions={{
           flip: true,
           modifiers: [
