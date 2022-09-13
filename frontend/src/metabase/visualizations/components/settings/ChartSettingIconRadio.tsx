@@ -15,14 +15,25 @@ const RadioIcon = styled(Icon)<RadioIconProps>`
   ${props => props.isSelected && `color: ${color("brand")}`}
 `;
 
-export const ChartSettingIconRadio = ({ value, options, onChange }) => {
+interface ChartSettingIconRadioProps {
+  value: string;
+  onChange: (val: string) => void;
+  options: { iconName: string; value: string }[];
+}
+
+export const ChartSettingIconRadio = ({
+  value,
+  options,
+  onChange,
+}: ChartSettingIconRadioProps) => {
   return (
     <div>
       {options.map(option => (
         <RadioIcon
-          name={option.name}
+          name={option.iconName}
           onClick={() => onChange(option.value)}
           isSelected={option.value === value}
+          key={`radio-icon-${option.iconName}`}
         />
       ))}
     </div>

@@ -241,25 +241,23 @@ class PivotTable extends Component {
       getProps: () => ({
         options: [
           {
-            name: "arrow_up",
+            iconName: "arrow_up",
             value: "ascending",
           },
           {
-            name: "arrow_down",
+            iconName: "arrow_down",
             value: "descending",
           },
         ],
       }),
-      getHidden: ({ source }, settings) => {
-        console.log(source, source === "aggregation");
-        return source === "aggregation";
-      },
+      getHidden: ({ source }) => source === "aggregation",
     },
 
     column_title: {
       title: t`Column title`,
       widget: "input",
       getDefault: column => formatColumn(column),
+      variant: "form-field",
     },
     [COLUMN_SHOW_TOTALS]: {
       hidden: true,

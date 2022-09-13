@@ -73,6 +73,14 @@ export const Title = styled.label<VariantProp>`
     css`
       font-weight: 700;
     `}
+
+  ${props =>
+    props.variant === "form-field" &&
+    css`
+      margin-bottom: 0.5rem;
+      line-height: 0.875rem;
+      font-weight: 700;
+    `}
 `;
 
 export const Description = styled.span`

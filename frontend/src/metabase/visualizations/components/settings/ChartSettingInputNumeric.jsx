@@ -1,7 +1,19 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import styled from "@emotion/styled";
+import { color } from "metabase/lib/colors";
 
-import cx from "classnames";
+const ChartSettingNumericInput = styled.input`
+  font-size: 0.875rem;
+  border: 1px solid ${props => (props.error ? color("error") : color("border"))};
+  border-radius: 0.5rem;
+  color: ${color("text-dark")};
+  padding: 0.625rem 0.75rem;
+  display: block;
+  width: 100%;
+  transition: border 0.3s;
+  font-weight: 700;
+`;
 
 export default class ChartSettingInputNumeric extends Component {
   constructor(props, context) {
@@ -20,13 +32,10 @@ export default class ChartSettingInputNumeric extends Component {
   render() {
     const { onChange, ...props } = this.props;
     return (
-      <input
+      <ChartSettingNumericInput
         type="number"
         {...props}
-        className={cx("input block full", {
-          "border-error":
-            this.state.value !== "" && isNaN(parseFloat(this.state.value)),
-        })}
+        error={this.state.value !== "" && isNaN(parseFloat(this.state.value))}
         value={this.state.value}
         onChange={e => {
           const num = parseFloat(e.target.value);
