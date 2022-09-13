@@ -172,6 +172,10 @@ export const DataAppActionButton = styled(Button)`
   }
 `;
 
+DataAppActionButton.defaultProps = {
+  onlyIcon: true,
+};
+
 const ActionGroupCell = styled.div``;
 
 const _ActionGroup = styled.div`
