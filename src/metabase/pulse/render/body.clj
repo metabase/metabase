@@ -9,7 +9,6 @@
             [metabase.pulse.render.datetime :as datetime]
             [metabase.pulse.render.image-bundle :as image-bundle]
             [metabase.pulse.render.js-svg :as js-svg]
-            [metabase.pulse.render.sparkline :as sparkline]
             [metabase.pulse.render.style :as style]
             [metabase.pulse.render.table :as table]
             [metabase.pulse.util :as pu]
