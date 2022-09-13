@@ -40,7 +40,11 @@ const getSampleOptions = () => [
   { name: t`Option Three`, value: 3 },
 ];
 
+const getOptionsFromArray = (options: (number | string)[]) =>
+  options.map(o => ({ name: o, value: o }));
+
 const getParameterFieldProps = (fieldSettings: FieldSettings) => {
+  console.log(fieldSettings);
   switch (fieldSettings.inputType) {
     case "string":
       return { type: "input" };
@@ -56,12 +60,16 @@ const getParameterFieldProps = (fieldSettings: FieldSettings) => {
     case "dropdown":
       return {
         type: "select",
-        options: fieldSettings.valueOptions ?? getSampleOptions(),
+        options: fieldSettings.valueOptions?.length
+          ? getOptionsFromArray(fieldSettings.valueOptions)
+          : getSampleOptions(),
       };
     case "inline-select":
       return {
         type: "radio",
-        options: fieldSettings.valueOptions ?? getSampleOptions(),
+        options: fieldSettings.valueOptions?.length
+          ? getOptionsFromArray(fieldSettings.valueOptions)
+          : getSampleOptions(),
       };
     default:
       return { type: "input" };
