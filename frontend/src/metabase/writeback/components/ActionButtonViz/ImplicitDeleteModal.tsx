@@ -81,7 +81,6 @@ function ImplicitDeleteModal({
     deleteRow({
       id: primaryKeyValue,
       table,
-      dashCard,
     });
   }
 

@@ -80,7 +80,6 @@ function ImplicitUpdateModal({
       id: primaryKeyValue,
       table,
       values,
-      dashCard,
     });
   }
 
