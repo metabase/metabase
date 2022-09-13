@@ -50,7 +50,7 @@ function DataAppActionPanel({ dataApp, onNewPage, onEditAppSettings }: Props) {
         </ActionGroup.Cell>
         <ActionGroup.Cell>
           <Tooltip tooltip={t`Settings`}>
-            <DataAppActionButton icon="gear" />
+            <DataAppActionButton icon="gear" onClick={onEditAppSettings} />
           </Tooltip>
         </ActionGroup.Cell>
       </ActionGroup>
