@@ -377,6 +377,18 @@
                                                      :substring "a")))))))))))
 
 
+(deftest card-autocomplete-suggestions-test
+  (testing "GET /api/database/:id/card_autocomplete_suggestions"
+    (mt/with-temp* [Card [card-1 (card-with-native-query "Kanye West Quote Views Per Month")]
+                    Card [card-2 (card-with-native-query "Kanye West Quote Views Per Day")]]
+      (doseq [[query expected] {"quote-views"      (->> [card-1 card-2] (map #(select-keys % [:id :name :dataset])))
+                                "per-day"          (->> [card-2] (map #(select-keys % [:id :name :dataset])))
+                                (str (:id card-1)) (->> [card-1] (map #(select-keys % [:id :name :dataset])))}]
+        (is (= expected (mt/user-http-request :rasta :get 200
+                                              (format "database/%d/card_autocomplete_suggestions" (mt/id))
+                                              :query query)))))))
+
+
 (defn- card-with-native-query {:style/indent 1} [card-name & {:as kvs}]
   (merge
    {:name          card-name
