@@ -27,6 +27,11 @@ function DataAppActionPanel({ dataApp, onNewPage, onEditAppSettings }: Props) {
   const addMenuItems = useMemo(
     () => [
       {
+        title: t`Data`,
+        icon: "database",
+        action: onNewPage,
+      },
+      {
         title: t`Page`,
         icon: "pencil",
         action: onNewPage,
