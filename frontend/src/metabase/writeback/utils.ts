@@ -86,7 +86,9 @@ export function isMappedExplicitActionButton(
   return isAction && typeof dashCard.action_id === "number";
 }
 
-function isValidImplicitActionClickBehavior(clickBehavior?: ClickBehavior) {
+export function isValidImplicitActionClickBehavior(
+  clickBehavior?: ClickBehavior,
+) {
   if (
     !clickBehavior ||
     clickBehavior.type !== "action" ||
