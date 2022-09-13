@@ -427,7 +427,7 @@
         search-name (-> (re-matches #"\d*-?(.*)" search-card-slug)
                         second
                         (str/replace #"-" " "))]
-    (db/select [Card :id :dataset :database_id :name]
+    (db/select [Card :id :dataset :database_id :name :collection_id]
                {:where    [:and
                            [:= :database_id database-id]
                            [:= :archived false]
