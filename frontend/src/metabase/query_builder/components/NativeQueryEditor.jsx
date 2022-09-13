@@ -175,11 +175,11 @@ class NativeQueryEditor extends Component {
     document.removeEventListener("contextmenu", this.handleRightClick);
   }
 
-  // this is overwritten when the editor is set up
-  swapInCorrectCompletors = () => undefined;
+  // this is overwritten when the editor mounts
+  swapCompleters = () => undefined;
 
   handleCursorChange = _.debounce((e, { cursor }) => {
-    this.swapInCorrectCompletors(cursor);
+    this.swapCompleters(cursor);
     if (this.props.setNativeEditorSelectedRange) {
       this.props.setNativeEditorSelectedRange(this._editor.getSelectionRange());
     }
@@ -322,7 +322,6 @@ class NativeQueryEditor extends Component {
           }
 
           // transform results into what ACE expects
-          console.log(results);
           const resultsForAce = results.map(([name, meta]) => ({
             name: name,
             value: name,
@@ -336,7 +335,9 @@ class NativeQueryEditor extends Component {
       },
     });
 
-    this.swapInCorrectCompletors = pos => {
+    const standardCompleters = [...this._editor.completers];
+
+    this.swapCompleters = pos => {
       if (this.getSnippetNameAtCursor(pos) !== null) {
         this._editor.completers = [
           { getCompletions: this.getSnippetCompletions },
@@ -346,7 +347,7 @@ class NativeQueryEditor extends Component {
           { getCompletions: this.getQuestionReferenceCompletions },
         ];
       } else {
-        this._editor.completers = [...this._editor.completers];
+        this._editor.completers = standardCompleters;
       }
     };
   }
