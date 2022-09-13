@@ -12,14 +12,14 @@ import type { Schema } from "../types";
 
 type DataSelectorDatabasePickerProps = {
   databases: Database[];
-  hasBackButton: boolean;
-  hasFiltering: boolean;
-  hasInitialFocus: boolean;
-  hasNextStep: boolean;
-  isLoading: boolean;
-  requireWriteback: boolean;
-  selectedDatabase: Database;
-  selectedSchema: Schema;
+  hasBackButton?: boolean;
+  hasFiltering?: boolean;
+  hasInitialFocus?: boolean;
+  hasNextStep?: boolean;
+  isLoading?: boolean;
+  requireWriteback?: boolean;
+  selectedDatabase?: Database;
+  selectedSchema?: Schema;
   onBack?: () => void;
   onChangeDatabase: (database: Database) => void;
   onChangeSchema: (item: { schema?: Schema }) => void;
