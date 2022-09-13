@@ -1,5 +1,4 @@
 /* eslint-disable react/prop-types */
-import slugg from "slugg";
 import React, { Component } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
@@ -20,12 +19,9 @@ class CardTagEditor extends Component {
   handleQuestionSelection = id => {
     const { question, query, setDatasetQuery } = this.props;
     const selectedQuestion = query.metadata().question(id);
-    const newSlug = `${selectedQuestion.id()}-${slugg(
-      selectedQuestion.displayName(),
-    )}`;
     setDatasetQuery(
       query
-        .replaceCardSlug(question ? question.id : "", newSlug)
+        .replaceCardSlug(question ? question.id : "", selectedQuestion.slug())
         .datasetQuery(),
     );
     this._popover && this._popover.close();

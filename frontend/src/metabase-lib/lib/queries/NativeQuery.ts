@@ -405,8 +405,8 @@ export default class NativeQuery extends AtomicQuery {
     const questionsById = _.indexBy(questions, "id");
     let queryText = this.queryText();
     for (const tag of referencedQuestionTags) {
-      const card = questionsById[tag["card-id"]];
-      const newTagName = `#${card.id}-${slugg(card.name)}`;
+      const question = questionsById[tag["card-id"]];
+      const newTagName = `#${question.id}-${slugg(question.name)}`;
       if (tag.name !== newTagName) {
         queryText = queryText.replace(
           new RegExp(`{{\\s*${tag.name}\\s*}}`, "g"),
