@@ -65,7 +65,7 @@ export const createRowFromDataApp = (payload: InsertRowFromDataAppPayload) => {
     if (result?.["created-row"]?.id) {
       dispatch(
         addUndo({
-          message: t`Successfully inserted a row into the ${table.displayName()} table`,
+          message: t`Successfully created a new ${table.objectName()}`,
           toastColor: "success",
         }),
       );
