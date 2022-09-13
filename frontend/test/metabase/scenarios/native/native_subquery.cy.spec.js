@@ -167,6 +167,50 @@ describe("scenarios > question > native subquery", () => {
     });
   });
 
+  it("card reference tags should update when the name of the card changes", () => {
+    cy.createNativeQuestion({
+      name: "A People Question 1",
+      native: {
+        query: "SELECT id AS a_unique_column_name FROM PEOPLE",
+      },
+    }).then(({ body: { id: questionId1 } }) => {
+      const tagID = `#${questionId1}`;
+      cy.createNativeQuestion({
+        name: "Count of People",
+        native: {
+          query: `select COUNT(*) from {{#${questionId1}}}`,
+          "template-tags": {
+            [tagID]: {
+              id: "10422a0f-292d-10a3-fd90-407cc9e3e20e",
+              name: tagID,
+              "display-name": tagID,
+              type: "card",
+              "card-id": questionId1,
+            },
+          },
+        },
+      }).then(({ body: { id: questionId2 } }) => {
+        // check the original name is in the query
+        visitQuestion(questionId2);
+        cy.findByText("Open Editor").click();
+        cy.get(".ace_content:visible").contains("{{#4-a-people-question-1}}");
+
+        // change the name
+        visitQuestion(questionId1);
+        cy.findByText("A People Question 1").type(" changed");
+        // unfocus the input
+        cy.findByText("Open Editor").click();
+
+        // check the name has changed
+        visitQuestion(questionId2);
+        cy.findByText("Open Editor").click();
+        cy.get(".ace_content:visible").contains(
+          "{{#4-a-people-question-1-changed}}",
+        );
+      });
+    });
+  });
+
   it("should allow a user with no data access to execute a native subquery", () => {
     // Create the initial SQL question and followup nested question
     cy.createNativeQuestion({
