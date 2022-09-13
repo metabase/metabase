@@ -9,9 +9,9 @@ import { closeNavbar, openNavbar } from "metabase/redux/app";
 import { getQuestion } from "metabase/query_builder/selectors";
 import { getDashboard } from "metabase/dashboard/selectors";
 
-import type Question from "metabase-lib/lib/Question";
 import type { Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
+import type Question from "metabase-lib/lib/Question";
 
 import DataAppNavbarContainer from "./DataAppNavbar";
 import MainNavbarContainer from "./MainNavbarContainer";

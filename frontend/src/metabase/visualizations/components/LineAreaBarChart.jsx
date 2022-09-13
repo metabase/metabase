@@ -3,16 +3,11 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
+import _ from "underscore";
+import cx from "classnames";
 import { iconPropTypes } from "metabase/components/Icon";
 
-import CardRenderer from "./CardRenderer";
-import LegendLayout from "./legend/LegendLayout";
-
 import "./LineAreaBarChart.css";
-import {
-  LineAreaBarChartRoot,
-  ChartLegendCaption,
-} from "./LineAreaBarChart.styled";
 
 import {
   isNumeric,
@@ -30,9 +25,6 @@ import {
   MinRowsError,
   ChartSettingsError,
 } from "metabase/visualizations/lib/errors";
-
-import _ from "underscore";
-import cx from "classnames";
 
 const MUTE_STYLE = "opacity: 0.25;";
 for (let i = 0; i < MAX_SERIES; i++) {
@@ -75,6 +67,12 @@ for (let i = 0; i < MAX_SERIES; i++) {
 }
 
 import { getAccentColors } from "metabase/lib/colors/groups";
+import {
+  LineAreaBarChartRoot,
+  ChartLegendCaption,
+} from "./LineAreaBarChart.styled";
+import LegendLayout from "./legend/LegendLayout";
+import CardRenderer from "./CardRenderer";
 
 export default class LineAreaBarChart extends Component {
   static noHeader = true;

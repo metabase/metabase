@@ -2,12 +2,22 @@ import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { ORDERS } from "__support__/sample_database_fixture";
 
+import type { Table } from "metabase-types/api/table";
+
 import DataSelectorFieldPicker from "./DataSelectorFieldPicker";
+
+const props = {
+  hasFiltering: true,
+  hasInitialFocus: false,
+  fields: [],
+  onBack: jest.fn(),
+  onChangeField: jest.fn(),
+};
 
 describe("DataSelectorFieldPicker", () => {
   describe("when loading", () => {
     it("uses 'Fields' as title if selectedTable not passed", () => {
-      render(<DataSelectorFieldPicker isLoading={true} />);
+      render(<DataSelectorFieldPicker {...props} isLoading={true} />);
 
       expect(screen.getByText("Fields")).toBeInTheDocument();
     });
@@ -17,8 +27,9 @@ describe("DataSelectorFieldPicker", () => {
 
       render(
         <DataSelectorFieldPicker
+          {...props}
           isLoading={true}
-          selectedTable={{ display_name: displayName }}
+          selectedTable={{ display_name: displayName } as Table}
         />,
       );
 
@@ -28,7 +39,9 @@ describe("DataSelectorFieldPicker", () => {
     it("goes back if clicked", () => {
       const onBack = jest.fn();
 
-      render(<DataSelectorFieldPicker isLoading={true} onBack={onBack} />);
+      render(
+        <DataSelectorFieldPicker {...props} isLoading={true} onBack={onBack} />,
+      );
 
       fireEvent.click(screen.getByText("Fields"));
 
@@ -48,7 +61,8 @@ describe("DataSelectorFieldPicker", () => {
 
       render(
         <DataSelectorFieldPicker
-          selectedTable={selectedTable}
+          {...props}
+          selectedTable={selectedTable as Table}
           fields={fields}
         />,
       );

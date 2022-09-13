@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
 /* flow */
 import React, { Component } from "react";
-import CopyButton from "metabase/components/CopyButton";
 import { t } from "ttag";
+import CopyButton from "metabase/components/CopyButton";
 import { color } from "metabase/lib/colors";
 
 const styles = {

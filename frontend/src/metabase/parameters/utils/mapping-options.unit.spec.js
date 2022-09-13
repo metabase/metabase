@@ -98,13 +98,14 @@ describe("parameters/utils/mapping-options", () => {
           { type: "date/single" },
           structured({
             "source-query": {
-              "source-table": ORDERS.id,
+              "source-table": PRODUCTS.id,
             },
           }),
         );
         expect(options).toEqual([
           {
-            sectionName: null,
+            // this is a source query, and tables for source queries do not have a display_name
+            sectionName: "",
             name: "Created At",
             icon: "calendar",
             target: [

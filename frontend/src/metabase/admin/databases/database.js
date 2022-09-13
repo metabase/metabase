@@ -1,11 +1,11 @@
 import _ from "underscore";
 import { createAction } from "redux-actions";
+import { push } from "react-router-redux";
 import {
   combineReducers,
   createThunkAction,
   handleActions,
 } from "metabase/lib/redux";
-import { push } from "react-router-redux";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { getDefaultEngine } from "metabase/lib/engine";
 

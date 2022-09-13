@@ -8,8 +8,8 @@ import {
   visitDashboard,
 } from "__support__/e2e/helpers";
 
-import { DASHBOARD_NUMBER_FILTERS } from "./dashboard-filters-number";
 import { addWidgetNumberFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
+import { DASHBOARD_NUMBER_FILTERS } from "./dashboard-filters-number";
 
 describe("scenarios > dashboard > filters > number", () => {
   beforeEach(() => {

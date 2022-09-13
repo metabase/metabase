@@ -2,8 +2,8 @@ import React from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 import { Engine } from "metabase-types/api";
-import { WarningLink, WarningRoot } from "./DriverWarning.styled";
 import Icon from "metabase/components/Icon";
+import { WarningLink, WarningRoot } from "./DriverWarning.styled";
 
 export interface DriverWarningProps {
   engine?: string;

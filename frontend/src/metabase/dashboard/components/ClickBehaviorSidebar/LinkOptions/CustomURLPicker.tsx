@@ -17,8 +17,8 @@ import type {
   DashboardOrderedCard,
 } from "metabase-types/api";
 
-import CustomLinkText from "./CustomLinkText";
 import { SidebarItem } from "../SidebarItem";
+import CustomLinkText from "./CustomLinkText";
 
 import ValuesYouCanReference from "./ValuesYouCanReference";
 import {

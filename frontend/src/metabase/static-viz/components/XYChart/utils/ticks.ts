@@ -2,6 +2,7 @@ import { TickRendererProps } from "@visx/axis";
 import { getTicks } from "@visx/scale";
 import { timeWeek, timeMonth } from "d3-time";
 
+import type { TimeInterval } from "d3-time";
 import { formatDate, DateFormatOptions } from "metabase/static-viz/lib/dates";
 import {
   formatNumber,
@@ -23,7 +24,6 @@ import type {
   XScale,
   ChartSettings,
 } from "metabase/static-viz/components/XYChart/types";
-import type { TimeInterval } from "d3-time";
 
 export const getRotatedXTickHeight = (tickWidth: number) => {
   return tickWidth;

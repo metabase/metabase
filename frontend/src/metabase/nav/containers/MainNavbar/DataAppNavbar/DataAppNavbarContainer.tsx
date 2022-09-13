@@ -64,13 +64,13 @@ function DataAppNavbarContainer({
       return [
         {
           type: "data-app-page",
-          id: getDataAppHomePageId(pages),
+          id: getDataAppHomePageId(dataApp, pages),
         },
       ];
     }
 
     return selectedItems;
-  }, [pages, selectedItems]);
+  }, [dataApp, pages, selectedItems]);
 
   const onEditAppSettings = useCallback(() => {
     setModal("MODAL_APP_SETTINGS");

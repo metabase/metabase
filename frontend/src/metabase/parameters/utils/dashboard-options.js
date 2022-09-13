@@ -1,6 +1,6 @@
 import { t } from "ttag";
-import { buildTypedOperatorOptions } from "./operators";
 import { ID_OPTION } from "../constants";
+import { buildTypedOperatorOptions } from "./operators";
 
 export function getDashboardParameterSections() {
   return [

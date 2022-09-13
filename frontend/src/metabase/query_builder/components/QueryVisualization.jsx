@@ -2,18 +2,15 @@
 import React, { Component } from "react";
 import { t } from "ttag";
 
+import cx from "classnames";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
+import Utils from "metabase/lib/utils";
+import { HARD_ROW_LIMIT } from "metabase/lib/query";
 import VisualizationError from "./VisualizationError";
 import VisualizationResult from "./VisualizationResult";
 import Warnings from "./Warnings";
 import RunButtonWithTooltip from "./RunButtonWithTooltip";
-
-import Utils from "metabase/lib/utils";
-
-import cx from "classnames";
-
-import { HARD_ROW_LIMIT } from "metabase/lib/query";
 
 export default class QueryVisualization extends Component {
   constructor(props, context) {
