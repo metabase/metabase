@@ -11,6 +11,7 @@ import type { VisualizationProps } from "metabase-types/types/Visualization";
 
 import ImplicitInsertModal from "./ImplicitInsertModal";
 import ImplicitUpdateModal from "./ImplicitUpdateModal";
+import ImplicitDeleteModal from "./ImplicitDeleteModal";
 
 import ActionButtonView from "./ActionButtonView";
 
@@ -28,6 +29,7 @@ const ACTION_COMPONENT_MAP: Record<
 > = {
   insert: ImplicitInsertModal,
   update: ImplicitUpdateModal,
+  delete: ImplicitDeleteModal,
 };
 
 function ImplicitActionButton({
