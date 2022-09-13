@@ -10,6 +10,7 @@ import type {
 import type { VisualizationProps } from "metabase-types/types/Visualization";
 
 import ImplicitInsertModal from "./ImplicitInsertModal";
+import ImplicitUpdateModal from "./ImplicitUpdateModal";
 
 import ActionButtonView from "./ActionButtonView";
 
@@ -26,6 +27,7 @@ const ACTION_COMPONENT_MAP: Record<
   React.ComponentType<any>
 > = {
   insert: ImplicitInsertModal,
+  update: ImplicitUpdateModal,
 };
 
 function ImplicitActionButton({
