@@ -8,6 +8,7 @@ import Utils from "metabase/lib/utils";
 
 import { getMetadata } from "metabase/selectors/metadata";
 
+import { isEqualCard } from "metabase/lib/card";
 import Question from "metabase-lib/lib/Question";
 
 import {
@@ -29,7 +30,6 @@ import { initializeQB, setCardAndRun } from "./core";
 import { zoomInRow, resetRowZoom } from "./object-detail";
 import { cancelQuery } from "./querying";
 import { setQueryBuilderMode } from "./ui";
-import { isEqualCard } from "metabase/lib/card";
 
 export const SET_CURRENT_STATE = "metabase/qb/SET_CURRENT_STATE";
 const setCurrentState = createAction(SET_CURRENT_STATE);
