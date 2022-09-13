@@ -21,8 +21,8 @@
             [metabase.util.schema :as su]
             [monger.operators :refer [$add $addToSet $and $avg $cond $dayOfMonth $dayOfWeek $dayOfYear $divide $eq
                                       $group $gt $gte $hour $limit $lt $lte $match $max $min $minute $mod $month
-                                      $multiply $ne $not $or $project $regex $size $skip $sort $strcasecmp $subtract
-                                      $sum $toLower]]
+                                      $multiply $ne $not $or $project $regex $second $size $skip $sort $strcasecmp $subtract
+                                      $sum $toLower $year]]
             [schema.core :as s])
   (:import org.bson.types.ObjectId))
 
@@ -200,20 +200,21 @@
       (letfn [(truncate [unit]
                 (truncate-to-resolution column unit))]
         (case unit
-          :default        column
-          :minute         (truncate :minute)
-          :minute-of-hour {$minute column}
-          :hour           (truncate :hour)
-          :hour-of-day    {$hour column}
-          :day            (truncate :day)
-          :day-of-week    (day-of-week column)
-          :day-of-month   {$dayOfMonth column}
-          :day-of-year    {$dayOfYear column}
-          :week           (truncate-to-resolution (week column) :day)
-          :week-of-year   {:$ceil {$divide [{$dayOfYear (week column)}
-                                            7.0]}}
-          :month          (truncate :month)
-          :month-of-year  {$month column}
+          :default          column
+          :second-of-minute {$second column}
+          :minute           (truncate :minute)
+          :minute-of-hour   {$minute column}
+          :hour             (truncate :hour)
+          :hour-of-day      {$hour column}
+          :day              (truncate :day)
+          :day-of-week      (day-of-week column)
+          :day-of-month     {$dayOfMonth column}
+          :day-of-year      {$dayOfYear column}
+          :week             (truncate-to-resolution (week column) :day)
+          :week-of-year     {:$ceil {$divide [{$dayOfYear (week column)}
+                                              7.0]}}
+          :month            (truncate :month)
+          :month-of-year    {$month column}
           ;; For quarter we'll just subtract enough days from the current date to put it in the correct month and
           ;; stringify it as yyyy-MM Subtracting (($dayOfYear(column) % 91) - 3) days will put you in correct month.
           ;; Trust me.
@@ -233,7 +234,10 @@
                       3]})
 
           :year
-          (truncate :year))))))
+          (truncate :year)
+
+          :yyear
+          {$year column})))))
 
 (defmethod ->rvalue :field
   [[_ id-or-name {:keys [temporal-unit]}]]
@@ -341,6 +345,15 @@
 (defmethod ->lvalue :* [[_ & args]] (->lvalue (first args)))
 (defmethod ->lvalue :/ [[_ & args]] (->lvalue (first args)))
 
+(defmethod ->lvalue :get-year        [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :get-quarter     [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :get-month       [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :get-day         [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :get-day-of-week [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :get-hour        [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :get-minute      [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :get-second      [[_ inp]] (->lvalue inp))
+
 (defmethod ->lvalue :coalesce [[_ & args]] (->lvalue (first args)))
 
 (defmethod ->rvalue :avg       [[_ inp]] {"$avg" (->rvalue inp)})
@@ -369,6 +382,15 @@
 (defmethod ->rvalue :replace   [[_ & args]] {"$replaceAll" (mapv ->rvalue args)})
 (defmethod ->rvalue :concat    [[_ & args]] {"$concat" (mapv ->rvalue args)})
 (defmethod ->rvalue :substring [[_ & args]] {"$substrCP" (mapv ->rvalue args)})
+
+(defmethod ->rvalue :get-year        [[_ inp]] (with-rvalue-temporal-bucketing (->rvalue inp) :yyear))
+(defmethod ->rvalue :get-quarter     [[_ inp]] (with-rvalue-temporal-bucketing (->rvalue inp) :quarter-of-year))
+(defmethod ->rvalue :get-month       [[_ inp]] (with-rvalue-temporal-bucketing (->rvalue inp) :month-of-year))
+(defmethod ->rvalue :get-day         [[_ inp]] (with-rvalue-temporal-bucketing (->rvalue inp) :day-of-month))
+(defmethod ->rvalue :get-day-of-week [[_ inp]] (with-rvalue-temporal-bucketing (->rvalue inp) :day-of-week))
+(defmethod ->rvalue :get-hour        [[_ inp]] (with-rvalue-temporal-bucketing (->rvalue inp) :hour-of-day))
+(defmethod ->rvalue :get-minute      [[_ inp]] (with-rvalue-temporal-bucketing (->rvalue inp) :minute-of-hour))
+(defmethod ->rvalue :get-second      [[_ inp]] (with-rvalue-temporal-bucketing (->rvalue inp) :second-of-minute))
 
 ;;; Intervals are not first class Mongo citizens, so they cannot be translated on their own.
 ;;; The only thing we can do with them is adding to or subtracting from a date valued expression.
