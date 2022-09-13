@@ -874,7 +874,8 @@
   (s/if (partial is-clause? arithmetic-expressions)
     ArithmeticExpression
     (one-of count avg cum-count cum-sum distinct stddev sum min max metric share count-where
-            sum-where case median percentile ag:var)))
+            sum-where case median percentile ag:var
+            get-year get-quarter get-month get-day get-day-of-week get-hour get-minute get-second)))
 
 (def ^:private UnnamedAggregation
   (s/recursive #'UnnamedAggregation*))
