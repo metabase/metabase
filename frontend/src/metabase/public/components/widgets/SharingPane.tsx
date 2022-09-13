@@ -169,7 +169,7 @@ export default function SharingPane({
         {embeddingHelperText && (
           <Description enableMouseEvents>{embeddingHelperText}</Description>
         )}
-        <Button primary>{t`Configure`}</Button>
+        <Button primary>{t`Set up`}</Button>
       </SharingOption>
     </div>
   );
