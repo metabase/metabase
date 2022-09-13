@@ -18,6 +18,8 @@ import {
   COLLAPSED_ROWS_SETTING,
   COLUMN_SPLIT_SETTING,
   COLUMN_SORT_ORDER,
+  COLUMN_SORT_ORDER_ASC,
+  COLUMN_SORT_ORDER_DESC,
   COLUMN_SHOW_TOTALS,
   COLUMN_FORMATTING_SETTING,
   isPivotGroupColumn,
@@ -242,11 +244,11 @@ class PivotTable extends Component {
         options: [
           {
             iconName: "arrow_up",
-            value: "ascending",
+            value: COLUMN_SORT_ORDER_ASC,
           },
           {
             iconName: "arrow_down",
-            value: "descending",
+            value: COLUMN_SORT_ORDER_DESC,
           },
         ],
       }),
