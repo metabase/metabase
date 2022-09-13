@@ -1,15 +1,14 @@
-import _ from "underscore";
 import { parse as parseUrl } from "url";
 import { createAction } from "redux-actions";
 import { push, replace } from "react-router-redux";
 
-import { cleanCopyCard, serializeCardForUrl } from "metabase/lib/card";
 import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
 import { createThunkAction } from "metabase/lib/redux";
 import Utils from "metabase/lib/utils";
 
 import { getMetadata } from "metabase/selectors/metadata";
 
+import { isEqualCard } from "metabase/lib/card";
 import Question from "metabase-lib/lib/Question";
 
 import {
@@ -156,12 +155,9 @@ export const updateUrl = createThunkAction(
         datasetEditorTab = getDatasetEditorTab(getState());
       }
 
-      const copy = cleanCopyCard(card);
-
       const newState = {
-        card: copy,
-        cardId: copy.id,
-        serializedCard: serializeCardForUrl(copy),
+        card,
+        cardId: card.id,
         objectId,
       };
 
@@ -186,7 +182,7 @@ export const updateUrl = createThunkAction(
         (locationDescriptor.search || "") === (window.location.search || "") &&
         (locationDescriptor.hash || "") === (window.location.hash || "");
       const isSameCard =
-        currentState && currentState.serializedCard === newState.serializedCard;
+        currentState && isEqualCard(currentState.card, newState.card);
       const isSameMode =
         getQueryBuilderModeFromLocation(locationDescriptor).mode ===
         getQueryBuilderModeFromLocation(window.location).mode;
