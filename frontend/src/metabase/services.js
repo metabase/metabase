@@ -186,6 +186,7 @@ export const DataAppsApi = {
   update: PUT("/api/app/:id"),
 
   scaffoldNewApp: POST("/api/app/scaffold"),
+  scaffoldNewPages: POST("/api/app/:id/scaffold"),
 };
 
 const PIVOT_PUBLIC_PREFIX = "/api/public/pivot/";

@@ -30,6 +30,11 @@ export type ScaffoldNewAppParams = {
   tables: number[]; // list of table IDs
 };
 
+export type ScaffoldNewPagesParams = {
+  dataAppId: DataApp["id"];
+  tables: number[]; // list of table IDs
+};
+
 const DataApps = createEntity({
   name: "dataApps",
   nameOne: "dataApp",
@@ -74,6 +79,16 @@ const DataApps = createEntity({
       });
       return {
         type: DataApps.actionTypes.CREATE,
+        payload: DataApps.normalize(dataApp),
+      };
+    },
+    scaffoldNewPages: async ({ dataAppId, tables }: ScaffoldNewPagesParams) => {
+      const dataApp = await DataAppsApi.scaffoldNewPages({
+        id: dataAppId,
+        "table-ids": tables,
+      });
+      return {
+        type: DataApps.actionTypes.UPDATE,
         payload: DataApps.normalize(dataApp),
       };
     },
