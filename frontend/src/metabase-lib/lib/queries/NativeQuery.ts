@@ -554,13 +554,11 @@ export default class NativeQuery extends AtomicQuery {
 // a variable name can optionally end with :start or :end which is not considered part of the actual variable name
 // expected pattern is like mustache templates, so we are looking for something like {{category}} or {{date:start}}
 // anything that doesn't match our rule is ignored, so {{&foo!}} would simply be ignored
-// variables referencing other questions, by their card ID, are also supported: {{#123}} references question with ID 123
-// variables referencing other questions can either include just the card ID, or the slug for the card, e.g. {{#123-my-card-slug}}
+// variables referencing other questions can either include just the card ID, e.g. {{#123}}, or the slug for the card, e.g. {{#123-my-card-slug}}
 export function recognizeTemplateTags(queryText: string): string[] {
   const tagNames = [];
   let match;
-  const re =
-    /\{\{\s*((snippet:\s*[^}]+)|[A-Za-z0-9_\.]+?|#[0-9]*[a-z0-9-]*)\s*\}\}/g;
+  const re = /\{\{\s*((snippet:\s*[^}]+)|[A-Za-z0-9_\.]+?|#[a-z0-9-]*)\s*\}\}/g;
 
   while ((match = re.exec(queryText)) != null) {
     tagNames.push(match[1]);
