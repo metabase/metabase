@@ -415,12 +415,21 @@
      :order-by [[:%lower.name :asc]]
      :limit    limit}))
 
-(defn- autocomplete-cards [db-id search-string]
-  (let [search-id   (re-find #"\d*" search-string)
-        search-name (second (re-matches #"\d*\s?(.*)" search-string))]
+(defn- autocomplete-cards
+  "Returns cards that match the search string in the given database, ordered by id.
+  `search-card-slug` should be in a format like '123-foo-bar' or '123' or 'foo-bar', where 123 is the card ID
+   and foo-bar is a prefix of the card name converted into a slug.
+
+   If the search string contains a number at the start like '123' or '123-foo', we match that against the card IDs.
+   We match the rest of the string against the card name, with dashes converted to spaces."
+  [database-id search-card-slug]
+  (let [search-id   (re-find #"\d*" search-card-slug)
+        search-name (-> (re-matches #"\d*-?(.*)" search-card-slug)
+                        second
+                        (str/replace #"-" " "))]
     (db/select [Card :id :dataset :database_id :name]
                {:where    [:and
-                           [:= :database_id db-id]
+                           [:= :database_id database-id]
                            [:= :archived false]
                            (cond-> [:or false]
                              (not-empty search-id) (conj [:like (hx/cast :text :id) (str search-id "%")])
@@ -487,7 +496,7 @@
   "Return a list of autocomplete suggestions for a given `prefix`, or `substring`. Should only specify one, but
   `substring` will have priority if both are present.
 
-  This is intened for use with the ACE Editor when the User is typing raw SQL. Suggestions include matching `Tables`
+  This is intended for use with the ACE Editor when the User is typing raw SQL. Suggestions include matching `Tables`
   and `Fields` in this `Database`.
 
   Tables are returned in the format `[table_name \"Table\"]`;
@@ -507,12 +516,15 @@
       (log/warn "Error with autocomplete: " (.getMessage t)))))
 
 (api/defendpoint GET "/:id/card_autocomplete_suggestions"
-  "Return a list of autocomplete suggestions for a given string typed inside a {{#...}} template tag."
+  "Return a list of `Card` autocomplete suggestions for a given `query` in a given `Database`.
+
+  This is intended for use with the ACE Editor when the User is typing in a template tag for a `Card`, e.g. {{#...}}."
   [id query]
   (api/read-check Database id)
   (try
     (if query
       (->> (autocomplete-cards id query)
+           (filter mi/can-read?)
            (map #(select-keys % [:id :name :dataset])))
       (ex-info "Must have a query parameter" {}))
     (catch Throwable t

@@ -20,6 +20,7 @@ import "ace/snippets/json";
 import _ from "underscore";
 import { ResizableBox } from "react-resizable";
 import { connect } from "react-redux";
+import slugg from "slugg";
 
 import { isEventOverElement } from "metabase/lib/dom";
 import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
@@ -43,7 +44,6 @@ import {
 
 import "./NativeQueryEditor.css";
 import { NativeQueryEditorRoot } from "./NativeQueryEditor.styled";
-import slugg from "slugg";
 
 const AUTOCOMPLETE_DEBOUNCE_DURATION = 700;
 const AUTOCOMPLETE_CACHE_DURATION = AUTOCOMPLETE_DEBOUNCE_DURATION * 1.2; // tolerate 20%
@@ -389,17 +389,16 @@ class NativeQueryEditor extends Component {
     prefix,
     callback,
   ) => {
-    const questionSlugPrefix = this.getQuestionSlugAtCursor(pos);
-    // TODO: this is a way to make sure the user hasn't started typing a new word inside the {{#}} block
-    // There's probably a more elegant way to do this
-    if (prefix !== questionSlugPrefix) {
+    // This ensures the user is only typing the first "word" considered by the autocompleter
+    // inside the {{#...}} tag.
+    // e.g. if `|` is the cursor position and the user is typing:
+    //   - {{#123-foo|}} will fetch completions for the word "123-foo"
+    //   - {{#123 foo|}} will not fetch completions because the word "foo" is not the first word in the tag.
+    if (prefix !== this.getQuestionSlugAtCursor(pos)) {
       callback(null, null);
       return null;
     }
-    const questionSearchString = questionSlugPrefix.replaceAll("-", " ");
-    const apiResults = await this.props.questionAutocompleteResultsFn(
-      questionSearchString,
-    );
+    const apiResults = await this.props.questionAutocompleteResultsFn(prefix);
     // Convert to format ace expects
     const resultsForAce = apiResults.map(({ id, name, dataset }) => ({
       name: `${id}-${slugg(name)}`,
