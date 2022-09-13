@@ -1,7 +1,15 @@
-import React, { useCallback, useMemo } from "react";
+import React from "react";
 
-import type { Dashboard } from "metabase-types/api";
+import { useToggle } from "metabase/hooks/use-toggle";
+
+import type {
+  Dashboard,
+  ImplicitActionType,
+  ImplicitActionClickBehavior,
+} from "metabase-types/api";
 import type { VisualizationProps } from "metabase-types/types/Visualization";
+
+import ImplicitInsertModal from "./ImplicitInsertModal";
 
 import ActionButtonView from "./ActionButtonView";
 
@@ -9,32 +17,38 @@ interface ImplicitActionButtonProps extends VisualizationProps {
   dashboard: Dashboard;
 }
 
+function FallbackActionComponent({ children }: { children: React.ReactNode }) {
+  return children;
+}
+
+const ACTION_COMPONENT_MAP: Record<
+  ImplicitActionType,
+  React.ComponentType<any>
+> = {
+  insert: ImplicitInsertModal,
+};
+
 function ImplicitActionButton({
   isSettings,
   settings,
-  getExtraDataForClick,
-  onVisualizationClick,
 }: ImplicitActionButtonProps) {
-  const clickObject = useMemo(() => ({ settings }), [settings]);
+  const [isOpen, { turnOn: handleShowModal, turnOff: handleHideModal }] =
+    useToggle();
 
-  const extraData = useMemo(
-    () => getExtraDataForClick?.(clickObject),
-    [clickObject, getExtraDataForClick],
-  );
+  const { type, actionType, ...actionProps } =
+    settings.click_behavior as ImplicitActionClickBehavior;
 
-  const onClick = useCallback(() => {
-    onVisualizationClick({
-      ...clickObject,
-      extraData,
-    });
-  }, [clickObject, extraData, onVisualizationClick]);
+  const ActionComponent =
+    ACTION_COMPONENT_MAP[actionType] || FallbackActionComponent;
 
   return (
-    <ActionButtonView
-      onClick={onClick}
-      settings={settings}
-      isFullHeight={!isSettings}
-    />
+    <ActionComponent isOpen={isOpen} onClose={handleHideModal} {...actionProps}>
+      <ActionButtonView
+        onClick={handleShowModal}
+        settings={settings}
+        isFullHeight={!isSettings}
+      />
+    </ActionComponent>
   );
 }
 
