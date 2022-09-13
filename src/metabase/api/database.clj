@@ -415,8 +415,8 @@
      :order-by [[:%lower.name :asc]]
      :limit    limit}))
 
-(defn- autocomplete-cards [db-id search-string limit]
-  (let [search-id (re-find #"\d*" search-string)
+(defn- autocomplete-cards [db-id search-string]
+  (let [search-id   (re-find #"\d*" search-string)
         search-name (second (re-matches #"\d*\s?(.*)" search-string))]
     (db/select [Card :id :dataset :database_id :name]
                {:where    [:and
@@ -426,7 +426,7 @@
                              (not-empty search-id) (conj [:like (hx/cast :text :id) (str search-id "%")])
                              (not-empty search-name) (conj [:like :%lower.name (str "%" search-name "%")]))]
                 :order-by [[:id :asc]]
-                :limit    limit})))
+                :limit    50})))
 
 (defn- autocomplete-fields [db-id search-string limit]
   (db/select [Field :name :base_type :semantic_type :id :table_id [:table.name :table_name]]
@@ -439,7 +439,7 @@
      :left-join [[:metabase_table :table] [:= :table.id :metabase_field.table_id]]
      :limit     limit}))
 
-(defn- format-autocomplete-results [tables fields limit]
+(defn- autocomplete-results [tables fields limit]
   (let [tbl-count   (count tables)
         fld-count   (count fields)
         take-tables (min tbl-count (- limit (/ fld-count 2)))
@@ -453,19 +453,13 @@
                          (when semantic_type
                            (str " " semantic_type)))]))))
 
-(defn- format-autocomplete-card-results [cards]
-  (for [card cards]
-    [(:id card) (:name card) (if (:dataset card)
-                               "Model"
-                               "Question")]))
-
 (defn- autocomplete-suggestions
   "match-string is a string that will be used with ilike. The it will be lowercased by autocomplete-{tables,fields}. "
   [db-id match-string]
   (let [limit  50
         tables (filter mi/can-read? (autocomplete-tables db-id match-string limit))
         fields (readable-fields-only (autocomplete-fields db-id match-string limit))]
-    (format-autocomplete-results tables fields limit)))
+    (autocomplete-results tables fields limit)))
 
 (def ^:private autocomplete-matching-options
   "Valid options for the autocomplete types. Can match on a substring (\"%input%\"), on a prefix (\"input%\"), or reject
@@ -518,8 +512,8 @@
   (api/read-check Database id)
   (try
     (if query
-      (-> (autocomplete-cards id query 50)
-          format-autocomplete-card-results)
+      (->> (autocomplete-cards id query)
+           (map #(select-keys % [:id :name :dataset])))
       (ex-info "Must have a query parameter" {}))
     (catch Throwable t
       (log/warn "Error with autocomplete: " (.getMessage t)))))

@@ -1,5 +1,6 @@
 /*global ace*/
 /* eslint-disable react/prop-types */
+import { t } from "ttag";
 import React, { Component } from "react";
 import cx from "classnames";
 import "ace/ace";
@@ -400,15 +401,15 @@ class NativeQueryEditor extends Component {
       questionSearchString,
     );
 
+    console.log(apiResults);
+
     // Convert to format ace expects
-    const resultsForAce = apiResults.map(
-      ([questionId, name, questionType]) => ({
-        name: `${questionId}-${slugg(name)}`,
-        value: `${questionId}-${slugg(name)}`,
-        meta: questionType,
-        score: questionType === "Model" ? 100000 : 0, // prioritize models above questions
-      }),
-    );
+    const resultsForAce = apiResults.map(({ id, name, dataset }) => ({
+      name: `${id}-${slugg(name)}`,
+      value: `${id}-${slugg(name)}`,
+      meta: dataset ? t`Model` : t`Question`,
+      score: dataset ? 100000 : 0, // prioritize models above questions
+    }));
     callback(null, resultsForAce);
   };
 
