@@ -1,6 +1,7 @@
 import querystring from "querystring";
 import { isSupportedTemplateTagForModel } from "metabase/lib/data-modeling/utils";
 import * as Urls from "metabase/lib/urls";
+import { serializeCardForUrl } from "metabase/lib/card";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
 export function getPathNameFromQueryBuilderMode({
@@ -25,14 +26,9 @@ export function getCurrentQueryParams() {
   return querystring.parse(search);
 }
 
-export function getURLForCardState(
-  { card, serializedCard },
-  dirty,
-  query = {},
-  objectId,
-) {
+export function getURLForCardState({ card }, dirty, query = {}, objectId) {
   const options = {
-    hash: serializedCard && dirty ? serializedCard : "",
+    hash: card && dirty ? serializeCardForUrl(card) : "",
     query,
   };
   const isAdHocQuestion = !card.id;
