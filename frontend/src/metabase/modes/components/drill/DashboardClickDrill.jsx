@@ -89,7 +89,11 @@ export default ({ question, clicked }) => {
     } else if (linkType === "page") {
       const { location, routerParams } = extraData;
 
-      if (!Urls.isDataAppPagePath(location.pathname)) {
+      const isInDataApp =
+        Urls.isDataAppPagePath(location.pathname) ||
+        Urls.isDataAppPath(location.pathname);
+
+      if (!isInDataApp) {
         return [];
       }
 
