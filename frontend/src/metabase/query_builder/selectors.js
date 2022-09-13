@@ -839,7 +839,7 @@ export const getModelAutocompleteResultsFn = state => {
       return [];
     }
 
-    const apiCall = MetabaseApi.db_model_autocomplete_suggestions({
+    const apiCall = MetabaseApi.db_card_autocomplete_suggestions({
       dbId,
       query,
     });

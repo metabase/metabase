@@ -506,7 +506,7 @@
     (catch Throwable t
       (log/warn "Error with autocomplete: " (.getMessage t)))))
 
-(api/defendpoint GET "/:id/model_autocomplete_suggestions"
+(api/defendpoint GET "/:id/card_autocomplete_suggestions"
   "Return a list of autocomplete suggestions for a given string typed inside a {{#...}} template tag."
   [id query]
   (api/read-check Database id)
