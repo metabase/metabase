@@ -20,6 +20,7 @@ interface Props extends MainNavbarProps {
   pages: any[];
   selectedItems: SelectedItem[];
   onEditAppSettings: () => void;
+  onAddData: () => void;
   onNewPage: () => void;
 }
 
@@ -28,6 +29,7 @@ function DataAppNavbarView({
   pages,
   selectedItems,
   onEditAppSettings,
+  onAddData,
   onNewPage,
 }: Props) {
   const { "data-app-page": dataAppPage } = _.indexBy(
@@ -55,6 +57,7 @@ function DataAppNavbarView({
       </SidebarSection>
       <DataAppActionPanel
         dataApp={dataApp}
+        onAddData={onAddData}
         onNewPage={onNewPage}
         onEditAppSettings={onEditAppSettings}
       />

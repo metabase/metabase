@@ -19,17 +19,23 @@ import {
 
 interface Props {
   dataApp: DataApp;
+  onAddData: () => void;
   onNewPage: () => void;
   onEditAppSettings: () => void;
 }
 
-function DataAppActionPanel({ dataApp, onNewPage, onEditAppSettings }: Props) {
+function DataAppActionPanel({
+  dataApp,
+  onAddData,
+  onNewPage,
+  onEditAppSettings,
+}: Props) {
   const addMenuItems = useMemo(
     () => [
       {
         title: t`Data`,
         icon: "database",
-        action: onNewPage,
+        action: onAddData,
       },
       {
         title: t`Page`,
@@ -37,7 +43,7 @@ function DataAppActionPanel({ dataApp, onNewPage, onEditAppSettings }: Props) {
         action: onNewPage,
       },
     ],
-    [onNewPage],
+    [onAddData, onNewPage],
   );
 
   return (
