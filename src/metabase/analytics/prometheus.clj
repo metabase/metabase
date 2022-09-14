@@ -130,26 +130,18 @@
   "Create an ArrayList of GaugeMetricFamily objects containing measurements from the c3p0 stats. Stats are grouped by
   the property and the database information is attached as a label to multiple measurements of `:numConnections`."
   [stats]
-  (transduce
-   (comp (filter (fn [[raw-label _measurements]]
-                   (or (label-translation raw-label)
-                       (log/warn (trs "Unrecognized measurement {0} in prometheus stats"
-                                      raw-label)))))
-         (map (fn [[raw-label measurements]]
-                (let [{gauge-label :label desc :description} (label-translation raw-label)
-                      gauge (GaugeMetricFamily.
-                             ^String gauge-label
-                             ^String (str desc) ;; site-localized becomes string
-                             (List/of "database"))]
-                  (doseq [m measurements]
-                    (.addMetric gauge
-                                (List/of (:label m))
-                                (:value m)))
-                  gauge))))
-   (completing conj!
-               (fn [metric-family-samples]
-                 (->array (persistent! metric-family-samples))))
-   stats))
+  (let [arr (ArrayList. (count stats))]
+    (doseq [[raw-label measurements] stats
+            :let [{gauge-label :label desc :description} (label-translation raw-label)]
+            :when gauge-label
+            :let [gauge (GaugeMetricFamily.
+                         ^String gauge-label
+                         ^String (str desc) ;; site-localized becomes string
+                         (List/of "database"))]]
+      (doseq [m measurements]
+        (.addMetric gauge (List/of (:label m)) (:value m)))
+      (.add arr gauge))
+    arr))
 
 (def c3p0-collector
   "c3p0 collector delay"
