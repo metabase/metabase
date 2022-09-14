@@ -67,9 +67,10 @@ function DataAppNavbarContainer({
       // refresh navbar content to show scaffolded pages
       await onReloadNavbar();
 
-      // New pages are added to the end of data app's nav_items list,
-      // so 1st non-hidden page from the end is a good candidate to navigate to
-      const reversedNavItems = nextDataAppState.nav_items.reverse();
+      // 1. New pages are added to the end of data app's nav_items list,
+      // so 1st non-hidden page from the end is a good candidate to navigate to.
+      // 2. Array.prototype.reverse is mutating and it's important not to mess up the real ordering
+      const reversedNavItems = [...nextDataAppState.nav_items].reverse();
       const newPageNavItem = reversedNavItems.find(
         navItem => typeof navItem.page_id === "number" && !navItem.hidden,
       );
