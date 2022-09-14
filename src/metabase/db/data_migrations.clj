@@ -221,6 +221,142 @@
   (remove-admin-group-from-mappings-by-setting-key! :jwt-group-mappings)
   (remove-admin-group-from-mappings-by-setting-key! :saml-group-mappings))
 
+;; the goal here is to create a fn that will turn the table card 786 into an equivalent pivot table
+;; 2 things need to happen:
+
+;; 1. card :display key must go from :table -> :pivot
+;; 2. card :visualization_settings key must be transformed to the appropriate shape
+
+;; the :display key of the card is :table
+;; the :table.pivot_column defines which card result column By NAME will be the table's columns. In this case, the table headers are each Category
+;; the :table.cell_column defines which card result column by NAME will be the source of the values shown in cells
+;; the rows of the table are implicitly the remaining series, which is the other column from the card result
+
+(def example-table-viz
+  {:table.pivot true
+   :table.pivot_column "CATEGORY"
+   :table.cell_column "count"})
+
+;; the :pivot_table.column_split key contains a map with :rows :columns and :values
+;; rows, columns, and values are all defined as a vector of column-data vectors (eg. [:field id {}] )
+
+(def example-pivot-viz
+  {:pivot_table.column_split
+   {:rows [[:field 4 {:temporal-unit :month}]]
+    :columns [[:field 26 {:source-field 5}]]
+    :values [[:aggregation 0]]}})
+
+;; the mappings that matter:
+;; :table.pivot_column -> {:pivot_table.column_split {:columns [ column-data vector here]}}
+;; :table.cell_column  -> {:pivot_table.column_split {:values  [ column-data vector here]}}
+;; implicit pivot_row  -> {:pivot_table.column_split {:rows    [ column-data vector here]}}
+
+
+;; helpers just for REPL-ing stuff,
+;; to be removed if any of this gets merged
+
+(def testing-card (atom nil))
+(defn- keep-test-card [id]
+  (reset! testing-card (into {} (db/select-one Card :id id))))
+
+(defn- revert-test-card! [id]
+  (db/update! Card id
+    :display "table"
+    :visualization_settings (:visualization_settings @testing-card)
+    :result_metadata  (:result_metadata @testing-card)))
+
+#_(keep-test-card 790)
+
+
+;; migratin impl
+
+
+(defn- col-name->col-field-ref
+  [{:keys [result_metadata]} col-name]
+  (->> result_metadata
+       (filter #(= col-name (:name %)))
+       first
+       :field_ref))
+
+(defn- pivot-row-name
+  [{:keys [result_metadata]} pivot-col-and-cell-set]
+  (->> result_metadata
+       (filter #(not (pivot-col-and-cell-set (:name %))))
+       first
+       :name))
+
+(defn- convert-table-pivot-tables
+  "Converts any :table display pivot tables to :pivot based pivot tables. Changes the :visualization_settings to the expected shape."
+  [{id           :id
+    display      :display
+    viz-settings :visualization_settings :as card}]
+  (when (and (= display "table")
+             (:table.pivot viz-settings))
+    (let [{col-name :table.pivot_column
+           val-name :table.cell_column}   viz-settings
+          row-name                        (pivot-row-name card #{col-name val-name})
+          [row-field col-field val-field] (map #(col-name->col-field-ref card %) [row-name col-name val-name])
+          final-settings                  (-> viz-settings
+                                              (dissoc :table.pivot :table.pivot_column :table.cell_column)
+                                              (merge {:pivot_table.column_split
+                                                      {:rows    [row-field]
+                                                       :columns [col-field]
+                                                       :values  [val-field]}}))]
+      {:id                     id
+       :display                "pivot"
+       :visualization_settings final-settings})))
+
+(defn- parse-from-json [& ks]
+  (fn [x]
+    (reduce #(update %1 %2 json/parse-string keyword)
+            x
+            ks)))
+
+;; if you want to run this in your REPL, use this fn
+;; just be careful because it will update your app-db, and will turn all tables that match the query into pivots
+;; you could adjust the db/query to select only the card id you're testing with, if you want.
+
+#_(defn convert-tables! []
+  (db/transaction
+    (transduce (comp (map (parse-from-json :visualization_settings :result_metadata))
+                     (map convert-table-pivot-tables)
+                     (filter :visualization_settings))
+               (completing
+                (fn [_ {:keys [id display visualization_settings]}]
+                  (db/update! Card id :display display :visualization_settings visualization_settings)))
+               nil
+               (db/query {:select [:id :display :visualization_settings :result_metadata]
+                          :from   [[:report_card :card]]
+                          :where  [:and
+                                   [:like
+                                    :card.visualization_settings "%\"table.pivot\":true%"]
+                                   [:like
+                                    :card.display "table"]]}))))
+
+
+(defmigration
+  ^{:author "adam-james"
+    :added  "0.45.0"
+    :doc    "Cards with 'table' visualization can be toggled to a 'pivot-table' when there are 3 columns in the query results.
+             Since there is already a more powerful and comprehensive Pivot Table visualization, this migration converts any
+             such tables to pivot tables, by adjusting the visualization settings as well as the display key of the card."}
+  migrate-tables-with-pivot-toggle-to-pivot-table []
+  (db/transaction
+    (transduce (comp (map (parse-from-json :visualization_settings :result_metadata))
+                     (map convert-table-pivot-tables)
+                     (filter :visualization_settings))
+               (completing
+                (fn [_ {:keys [id display visualization_settings]}]
+                  (db/update! Card id :display display :visualization_settings visualization_settings)))
+               nil
+               (db/query {:select [:id :display :visualization_settings :result_metadata]
+                          :from   [[:report_card :card]]
+                          :where  [:and
+                                   [:like
+                                    :card.visualization_settings "%\"table.pivot\":true%"]
+                                   [:like
+                                    :card.display "table"]]}))))
+
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !!                                                                                                               !!
 ;; !!    Please seriously consider whether any new migrations you write here could be written as Liquibase ones     !!
