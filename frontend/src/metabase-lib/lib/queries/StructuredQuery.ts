@@ -1471,8 +1471,7 @@ class StructuredQueryInner extends AtomicQuery {
    * Returns the "first" of the nested queries, or this query it not nested
    */
   rootQuery(): StructuredQuery {
-    const sourceQuery = this.sourceQuery();
-    return sourceQuery ? sourceQuery.rootQuery() : this;
+    return this;
   }
 
   /**
@@ -1741,6 +1740,10 @@ class NestedStructuredQuery extends StructuredQuery {
       datasetQuery,
       this._parent,
     );
+  }
+
+  rootQuery(): StructuredQuery {
+    return this.parentQuery().rootQuery();
   }
 
   parentQuery() {
