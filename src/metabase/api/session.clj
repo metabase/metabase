@@ -24,7 +24,8 @@
             [schema.core :as s]
             [throttle.core :as throttle]
             [toucan.db :as db]
-            [toucan.models :as models])
+            [toucan.models :as models]
+            [metabase.api.ldap :as api.ldap])
   (:import com.unboundid.util.LDAPSDKException
            java.util.UUID))
 
@@ -92,7 +93,7 @@
   "If LDAP is enabled and a matching user exists return a new Session for them, or `nil` if they couldn't be
   authenticated."
   [username password device-info :- request.u/DeviceInfo]
-  (when (ldap/ldap-configured?)
+  (when (api.ldap/ldap-enabled)
     (try
       (when-let [user-info (ldap/find-user username)]
         (when-not (ldap/verify-password user-info password)

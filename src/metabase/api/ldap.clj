@@ -6,23 +6,9 @@
             [metabase.api.common :as api]
             [metabase.api.common.validation :as validation]
             [metabase.integrations.ldap :as ldap]
-            [metabase.models.setting :as setting]
+            [metabase.models.setting :as setting :refer [defsetting]]
+            [metabase.util.i18n :refer [deferred-tru tru]]
             [metabase.util.schema :as su]))
-
-(def ^:private mb-settings->ldap-details
-  {:ldap-enabled             :enabled
-   :ldap-host                :host
-   :ldap-port                :port
-   :ldap-bind-dn             :bind-dn
-   :ldap-password            :password
-   :ldap-security            :security
-   :ldap-user-base           :user-base
-   :ldap-user-filter         :user-filter
-   :ldap-attribute-email     :attribute-email
-   :ldap-attribute-firstname :attribute-firstname
-   :ldap-attribute-lastname  :attribute-lastname
-   :ldap-group-sync          :group-sync
-   :ldap-group-base          :group-base})
 
 (defn- humanize-error-messages
   "Convert raw error message responses from our LDAP tests into our normal api error response structure."
@@ -86,6 +72,28 @@
         #"(?s).*"
         {:message message}))))
 
+(defsetting ldap-ever-enabled?
+  (deferred-tru "Has LDAP ever been enabled on this instance?")
+  :type       :boolean
+  :visibility :internal
+  :default    false)
+
+(defsetting ldap-enabled
+  (deferred-tru "Is LDAP currently enabled?")
+  :type       :boolean
+  :visibility :public
+  :setter     (fn [new-value]
+                (let [new-value (boolean new-value)]
+                  (when (and new-value (true? (ldap-ever-enabled?)))
+                    ;; Test the LDAP settings before enabling. Skip if this is the first time LDAP is being enabled
+                    ;; since this will have already been done in the /api/ldap/settings handler
+                    (let [result (ldap/test-current-ldap-details)]
+                      (when-not (= :SUCCESS (:status result))
+                        (throw (ex-info (tru "Unable to connect to LDAP server with current settings")
+                                        (humanize-error-messages result))))))
+                  (setting/set! :ldap-enabled? new-value)))
+  :default    false)
+
 (defn- update-password-if-needed
   "Do not update password if `new-password` is an obfuscated value of the current password."
   [new-password]
@@ -100,22 +108,24 @@
   {settings su/Map}
   (validation/check-has-application-permission :setting)
   (let [ldap-settings (-> settings
-                          (select-keys (keys mb-settings->ldap-details))
+                          (select-keys (keys ldap/mb-settings->ldap-details))
                           (assoc :ldap-port (when-let [^String ldap-port (not-empty (str (:ldap-port settings)))]
                                               (Long/parseLong ldap-port)))
                           (update :ldap-password update-password-if-needed))
-        ldap-details  (set/rename-keys ldap-settings mb-settings->ldap-details)
-        results       (if-not (:ldap-enabled settings)
-                        ;; when disabled just respond with a success message
-                        {:status :SUCCESS}
-                        ;; otherwise validate settings
-                        (ldap/test-ldap-connection ldap-details))]
+        ldap-details  (set/rename-keys ldap-settings ldap/mb-settings->ldap-details)
+        results       (ldap/test-ldap-connection ldap-details)]
+    (def ldap-details ldap-details)
     (if (= :SUCCESS (:status results))
       ;; test succeeded, save our settings
-      (setting/set-many! ldap-settings)
+      (do
+        (setting/set-many! ldap-settings)
+        (when-not (ldap-ever-enabled?)
+          ;; Only enable LDAP automatically if this is the first time setting it up; otherwise just save the new details
+          ;; but don't re-enable.
+          (ldap-enabled! true)
+          (ldap-ever-enabled?! true)))
       ;; test failed, return result message
       {:status 500
        :body   (humanize-error-messages results)})))
-
 
 (api/define-routes)
