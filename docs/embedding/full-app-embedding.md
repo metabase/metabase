@@ -28,22 +28,20 @@ If you're dealing with a [multi-tenant](https://www.metabase.com/learn/customer-
 3. Click **Full-app embedding**.
 4. Under **Authorized origins**, add the URL of the website or web app where you want to embed Metabase.
 
-![Enabling Embedding](./images/01-enabling.png)
-
 ## Setting up embedding on your website
 
 1. Create an iframe with a `src` attribute set to:
    - the [URL](#pointing-an-iframe-to-a-metabase-url) of the Metabase page you want to embed, or
    - an [authentication endpoint](#pointing-an-iframe-to-an-authentication-endpoint) that redirects to your Metabase URL.
-2. Optional: Depending on the way your web app is set up, set [environment variables](../configuring-metabase/environment-variables) to:
-   - [Add your license token](../configuring-metabase/environment-variables#mb_premium_embedding_token).
+2. Optional: Depending on the way your web app is set up, set [environment variables](../configuring-metabase/environment-variables.md) to:
+   - [Add your license token](../configuring-metabase/environment-variables.md#mb_premium_embedding_token).
    - [Embed Metabase in a different domain](#embedding-metabase-in-a-different-domain).
    - [Secure your full-app embed](#securing-full-app-embeds).
 3. Optional: Set up [`postMessage` methods](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage) in your JavaScript to:
    - [Fill an entire iframe with an embedded Metabase page](#filling-an-entire-iframe-with-an-embedded-metabase-page).
    - [Fit an iframe to a Metabase page with a fixed size](#fitting-an-iframe-to-a-metabase-page-with-a-fixed-size).
    - [Keep embedding URLs up to date](#keeping-an-embedding-url-up-to-date).
-4. Optional: Set parameters to [show or hide Metabase UI components](#using-parameters-to-hide-full-app-components).
+4. Optional: Set parameters to [show or hide Metabase UI components](#showing-or-hiding-metabase-ui-components).
 
 Once you're ready to roll out your full-app embed, make sure that people **allow** browser cookies from Metabase, otherwise they won't be able to log in.
 
@@ -51,7 +49,7 @@ Once you're ready to roll out your full-app embed, make sure that people **allow
 
 Go to your Metabase instance and find the page that you want to embed.
 
-For example, to embed your Metabase home page, use your [site URL](../configuring-metabase/settings#site-url):
+For example, to embed your Metabase home page, use your [site URL](../configuring-metabase/settings.md#site-url):
 
 ```
 http://metabase.yourcompany.com/
@@ -85,7 +83,7 @@ If you set this environment variable to `None`, you must use HTTPS in Metabase t
 
 Metabase uses HTTP cookies to authenticate people and keep them signed into your embedded Metabase, even when someone closes their browser session.
 
-To limit the amount of time that a person stays logged in, set [`MAX_SESSION_AGE`](../configuring-metabase/environment-variables.md#maxsessionage) to a number in minutes. The default value is 20,160 (two weeks).
+To limit the amount of time that a person stays logged in, set [`MAX_SESSION_AGE`](../configuring-metabase/environment-variables.md#max_session_age) to a number in minutes. The default value is 20,160 (two weeks).
 
 For example, to keep people signed in for 24 hours at most:
 
@@ -141,7 +139,7 @@ And, to send a "location" message _to_ your embedded Metabase:
 
 To change the interface of your full-app embed, you can add parameters to the end of your embedding URL. If you want to change the colors or fonts in your embed, see [Customizing appearance](../configuring-metabase/appearance.md).
 
-For example, you can disable Metabase's [top nav bar](#topnav) and [side nav menu](#sidenav) like this:
+For example, you can disable Metabase's [top nav bar](#top_nav) and [side nav menu](#side_nav) like this:
 
 ```
 your_embedding_url?top_nav=false&side_nav=false
@@ -191,7 +189,7 @@ top_nav=true&side_nav=true
 
 Visible by default on question and dashboard pages.
 
-To hide a question or dashboard's title, [additional info](#additionalinfo), and [action buttons](#actionbuttons):
+To hide a question or dashboard's title, [additional info](#additional_info), and [action buttons](#action_buttons):
 
 ```
 header=false
@@ -229,4 +227,4 @@ To build a sample full-app embed, see our [reference app on GitHub](https://gith
 
 - [Strategies for delivering customer-facing analytics](https://www.metabase.com/learn/embedding/embedding-overview).
 - [Permissions strategies](https://www.metabase.com/learn/permissions/strategy).
-- [Customizing Metabase's appearance](../configuring-metabase/appearance).
+- [Customizing Metabase's appearance](../configuring-metabase/appearance.md).
