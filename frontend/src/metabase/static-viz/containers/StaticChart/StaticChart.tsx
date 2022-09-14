@@ -1,4 +1,5 @@
 import React from "react";
+import { createColorGetter } from "metabase/static-viz/lib/colors";
 import CategoricalAreaChart from "../../components/CategoricalAreaChart";
 import { CATEGORICAL_AREA_CHART_TYPE } from "../../components/CategoricalAreaChart/constants";
 import CategoricalBarChart from "../../components/CategoricalBarChart";
@@ -23,7 +24,6 @@ import LineAreaBarChart from "../../components/LineAreaBarChart";
 import { LINE_AREA_BAR_CHART_TYPE } from "../../components/LineAreaBarChart/constants";
 import Funnel from "../../components/FunnelChart";
 import { FUNNEL_CHART_TYPE } from "../../components/FunnelChart/constants";
-import { createColorGetter } from "metabase/static-viz/lib/colors";
 import { StaticChartProps } from "./types";
 
 const StaticChart = ({ type, options }: StaticChartProps) => {

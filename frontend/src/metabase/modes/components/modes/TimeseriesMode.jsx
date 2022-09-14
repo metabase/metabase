@@ -6,12 +6,11 @@ import { t } from "ttag";
 //     from "metabase/modes/components/TimeseriesGroupingWidget";
 import TimeseriesFilterWidget from "metabase/modes/components/TimeseriesFilterWidget";
 
+import TimeseriesGroupingWidget from "metabase/modes/components/TimeseriesGroupingWidget";
 import { getDefaultDrills } from "../drill";
 
 import PivotByCategoryDrill from "../drill/PivotByCategoryDrill";
 import PivotByLocationDrill from "../drill/PivotByLocationDrill";
-
-import TimeseriesGroupingWidget from "metabase/modes/components/TimeseriesGroupingWidget";
 
 const TimeseriesModeFooter = props => {
   return (

@@ -7,11 +7,11 @@ import { t } from "ttag";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { BackButton } from "metabase/admin/datamodel/containers/FieldApp";
 import ActionButton from "metabase/components/ActionButton";
-import Section, { SectionHeader } from "../components/Section";
 
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import Section, { SectionHeader } from "../components/Section";
 
 import { rescanTableFieldValues, discardTableFieldValues } from "../table";
 

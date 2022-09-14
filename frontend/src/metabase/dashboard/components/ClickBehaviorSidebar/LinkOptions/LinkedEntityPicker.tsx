@@ -9,6 +9,7 @@ import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
 
 import DashboardPicker from "metabase/containers/DashboardPicker";
+import DataAppPagePicker from "metabase/containers/DataAppPagePicker";
 import QuestionPicker from "metabase/containers/QuestionPicker";
 
 import ClickMappings, {
@@ -23,6 +24,7 @@ import type {
   CardId,
   ClickBehavior,
   EntityCustomDestinationClickBehavior,
+  CustomDestinationClickBehaviorEntity,
 } from "metabase-types/api";
 
 import { SidebarItem } from "../SidebarItem";
@@ -33,29 +35,52 @@ import {
   SelectedEntityPickerContent,
 } from "./LinkOptions.styled";
 
+const LINK_TARGETS = {
+  question: {
+    Entity: Questions,
+    PickerComponent: QuestionPicker,
+    pickerIcon: "bar",
+    getModalTitle: () => t`Pick a question to link to`,
+    getPickerButtonLabel: () => t`Pick a question…`,
+  },
+  dashboard: {
+    Entity: Dashboards,
+    PickerComponent: DashboardPicker,
+    pickerIcon: "dashboard",
+    getModalTitle: () => t`Pick a dashboard to link to`,
+    getPickerButtonLabel: () => t`Pick a dashboard…`,
+  },
+  page: {
+    Entity: Dashboards,
+    PickerComponent: DataAppPagePicker,
+    pickerIcon: "document",
+    getModalTitle: () => t`Pick a page to link to`,
+    getPickerButtonLabel: () => t`Pick a page…`,
+  },
+};
+
 function PickerControl({
-  isDash,
   clickBehavior,
   onCancel,
 }: {
-  isDash: boolean;
   clickBehavior: EntityCustomDestinationClickBehavior;
   onCancel: () => void;
 }) {
-  const Entity = isDash ? Dashboards : Questions;
+  const { Entity, pickerIcon, getPickerButtonLabel } =
+    LINK_TARGETS[clickBehavior.linkType];
 
   const renderLabel = useCallback(() => {
     const hasSelectedTarget = clickBehavior.targetId != null;
     if (hasSelectedTarget) {
       return <Entity.Name id={clickBehavior.targetId} />;
     }
-    return isDash ? t`Pick a dashboard...` : t`Pick a question...`;
-  }, [Entity, isDash, clickBehavior]);
+    return getPickerButtonLabel();
+  }, [Entity, clickBehavior.targetId, getPickerButtonLabel]);
 
   return (
     <SidebarItem.Selectable isSelected padded={false}>
       <LinkTargetEntityPickerContent>
-        <SelectedEntityPickerIcon name={isDash ? "dashboard" : "bar"} />
+        <SelectedEntityPickerIcon name={pickerIcon} />
         <SelectedEntityPickerContent>
           {renderLabel()}
           <Icon name="chevrondown" size={12} className="ml-auto" />
@@ -104,7 +129,7 @@ function TargetClickMappings({
   );
 }
 
-function QuestionDashboardPicker({
+function LinkedEntityPicker({
   dashcard,
   clickBehavior,
   updateSettings,
@@ -113,17 +138,16 @@ function QuestionDashboardPicker({
   clickBehavior: EntityCustomDestinationClickBehavior;
   updateSettings: (settings: Partial<ClickBehavior>) => void;
 }) {
-  const isDash = clickBehavior.linkType === "dashboard";
+  const { linkType } = clickBehavior;
   const hasSelectedTarget = clickBehavior.targetId != null;
-  const Picker = isDash ? DashboardPicker : QuestionPicker;
+  const { PickerComponent, getModalTitle } = LINK_TARGETS[linkType];
 
   const handleSelectLinkTargetEntityId = useCallback(
     targetId => {
       const nextSettings = { ...clickBehavior, targetId };
       const isNewTargetEntity = targetId !== clickBehavior.targetId;
       if (isNewTargetEntity) {
-        // For new target question/dashboard,
-        // parameter mappings for the previous link target question/dashboard
+        // For new target entity, parameter mappings for the previous link target
         // don't make sense and have to be reset
         nextSettings.parameterMapping = {};
       }
@@ -142,17 +166,12 @@ function QuestionDashboardPicker({
     });
   }, [clickBehavior, updateSettings]);
 
-  const pickerModalTitle = isDash
-    ? t`Pick a dashboard to link to`
-    : t`Pick a question to link to`;
-
   return (
     <div>
       <div className="pb1">
         <ModalWithTrigger
           triggerElement={
             <PickerControl
-              isDash={isDash}
               clickBehavior={clickBehavior}
               onCancel={handleResetLinkTargetType}
             />
@@ -161,12 +180,12 @@ function QuestionDashboardPicker({
         >
           {({ onClose }: { onClose: () => void }) => (
             <ModalContent
-              title={pickerModalTitle}
+              title={getModalTitle()}
               onClose={hasSelectedTarget ? onClose : null}
             >
               {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
               {/* @ts-ignore */}
-              <Picker
+              <PickerComponent
                 value={clickBehavior.targetId}
                 onChange={(targetId: CardId | DashboardId) => {
                   handleSelectLinkTargetEntityId(targetId);
@@ -179,7 +198,7 @@ function QuestionDashboardPicker({
       </div>
       {hasSelectedTarget && (
         <TargetClickMappings
-          isDash={isDash}
+          isDash={linkType === "dashboard" || linkType === "page"}
           clickBehavior={clickBehavior}
           dashcard={dashcard}
           updateSettings={updateSettings}
@@ -189,4 +208,4 @@ function QuestionDashboardPicker({
   );
 }
 
-export default QuestionDashboardPicker;
+export default LinkedEntityPicker;

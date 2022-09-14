@@ -8,13 +8,13 @@ import Schemas from "metabase/entities/schemas";
 import { getCollectionVirtualSchemaId } from "metabase/lib/saved-questions";
 import EmptyState from "metabase/components/EmptyState";
 
+import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 import {
   SavedQuestionListRoot,
   SavedQuestionListItem,
   SavedQuestionListEmptyState,
   LoadingWrapper,
 } from "./SavedQuestionList.styled";
-import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 
 const propTypes = {
   isDatasets: PropTypes.bool,

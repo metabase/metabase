@@ -3,8 +3,8 @@ import slugg from "slugg";
 import { serializeCardForUrl } from "metabase/lib/card";
 import MetabaseSettings from "metabase/lib/settings";
 
-import Question, { QuestionCreatorOpts } from "metabase-lib/lib/Question";
 import { Card as BaseCard } from "metabase-types/types/Card";
+import Question, { QuestionCreatorOpts } from "metabase-lib/lib/Question";
 
 import { appendSlug, extractQueryParams } from "./utils";
 

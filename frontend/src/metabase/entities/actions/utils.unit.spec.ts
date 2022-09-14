@@ -3,18 +3,16 @@ import {
   getDefaultFieldSettings,
 } from "metabase/writeback/components/ActionCreator/FormCreator/utils";
 
-import Question from "metabase-lib/lib/Question";
 import { metadata } from "__support__/sample_database_fixture";
-
 import type { Parameter as ParameterObject } from "metabase-types/types/Parameter";
+import { NativeDatasetQuery } from "metabase-types/types/Card";
+import Question from "metabase-lib/lib/Question";
 
 import {
   removeOrphanSettings,
   setParameterTypesFromFieldSettings,
   setTemplateTagTypesFromFieldSettings,
 } from "./utils";
-
-import { NativeDatasetQuery } from "metabase-types/types/Card";
 
 const creatQuestionWithTemplateTags = (tagType: string) =>
   new Question(

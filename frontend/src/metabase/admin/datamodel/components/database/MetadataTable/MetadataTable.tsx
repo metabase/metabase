@@ -11,6 +11,8 @@ import { DatabaseEntity, TableEntity } from "metabase-types/entities";
 import { TableVisibilityType } from "metabase-types/api";
 import { State } from "metabase-types/store";
 
+import { Field } from "metabase-types/api/field";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import ColumnsList from "../ColumnsList";
 import MetadataSchema from "../MetadataSchema";
 import TableSyncWarning from "../TableSyncWarning";
@@ -21,8 +23,6 @@ import {
   TableNameInput,
   VisibilityType,
 } from "./MetadataTable.styled";
-import { Field } from "metabase-types/api/field";
-import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 
 const getDescriptionPlaceholder = () => t`No table description yet`;
 

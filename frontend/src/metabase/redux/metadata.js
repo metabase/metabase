@@ -1,7 +1,6 @@
-import { createThunkAction, fetchData } from "metabase/lib/redux";
-
 import { getIn } from "icepick";
 import _ from "underscore";
+import { createThunkAction, fetchData } from "metabase/lib/redux";
 
 import { getMetadata } from "metabase/selectors/metadata";
 

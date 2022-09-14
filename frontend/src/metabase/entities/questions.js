@@ -1,3 +1,4 @@
+import { updateIn } from "icepick";
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
@@ -14,7 +15,6 @@ import Collections, {
 import { canonicalCollectionId } from "metabase/collections/utils";
 
 import forms from "./questions/forms";
-import { updateIn } from "icepick";
 
 const Questions = createEntity({
   name: "questions",

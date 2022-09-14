@@ -14,10 +14,9 @@ import {
   removeCardReview,
 } from "metabase-enterprise/moderation/actions";
 
-import { VerifyButton as DefaultVerifyButton } from "../QuestionModerationSection/QuestionModerationSection.styled";
-
 import { State } from "metabase-types/store";
 import Question from "metabase-lib/lib/Question";
+import { VerifyButton as DefaultVerifyButton } from "../QuestionModerationSection/QuestionModerationSection.styled";
 
 interface Props {
   question: Question;

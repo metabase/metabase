@@ -6,10 +6,10 @@ import _ from "underscore";
 import { createSelector } from "reselect";
 import { createMemoizedSelector } from "metabase/lib/redux";
 
-import entityType from "./EntityType";
 import paginationState from "metabase/hoc/PaginationState";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { capitalize } from "metabase/lib/formatting";
+import entityType from "./EntityType";
 
 const propTypes = {
   entityType: PropTypes.string,

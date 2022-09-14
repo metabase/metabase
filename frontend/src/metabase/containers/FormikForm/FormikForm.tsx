@@ -14,14 +14,14 @@ import {
   PopulatedFormObject,
 } from "metabase-types/forms";
 
-import FormikFormViewAdapter from "./FormikFormViewAdapter";
-import useInlineFields from "./useInlineFields";
 import {
   makeFormObject,
   cleanObject,
   isNestedFieldName,
   getMaybeNestedValue,
 } from "../formUtils";
+import FormikFormViewAdapter from "./FormikFormViewAdapter";
+import useInlineFields from "./useInlineFields";
 
 interface FormContainerProps<Values extends BaseFieldValues> {
   form?: FormObject<Values>;

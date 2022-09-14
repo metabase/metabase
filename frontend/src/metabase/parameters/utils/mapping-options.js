@@ -1,15 +1,13 @@
+import { tag_names } from "cljs/metabase.shared.parameters.parameters";
+import { isActionButtonCard } from "metabase/writeback/utils";
 import Question from "metabase-lib/lib/Question";
 import { ExpressionDimension } from "metabase-lib/lib/Dimension";
-
-import { isActionButtonCard } from "metabase/writeback/utils";
 
 import {
   dimensionFilterForParameter,
   getTagOperatorFilterForParameter,
   variableFilterForParameter,
 } from "./filters";
-
-import { tag_names } from "cljs/metabase.shared.parameters.parameters";
 
 function buildStructuredQuerySectionOptions(section) {
   return section.items.map(({ dimension }) => ({

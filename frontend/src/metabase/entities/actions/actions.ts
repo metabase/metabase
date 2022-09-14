@@ -1,16 +1,16 @@
 import { createEntity } from "metabase/lib/entities";
 
-import type Question from "metabase-lib/lib/Question";
 import type { ActionFormSettings } from "metabase-types/api";
 
 import { CardApi } from "metabase/services";
 
-import { saveForm } from "./forms";
 import {
   removeOrphanSettings,
   setParameterTypesFromFieldSettings,
   setTemplateTagTypesFromFieldSettings,
 } from "metabase/entities/actions/utils";
+import type Question from "metabase-lib/lib/Question";
+import { saveForm } from "./forms";
 
 type ActionParams = {
   name: string;

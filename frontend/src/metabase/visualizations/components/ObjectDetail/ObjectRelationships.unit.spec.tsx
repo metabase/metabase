@@ -1,8 +1,8 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 
-import { Relationships } from "./ObjectRelationships";
 import testForeignKeys from "__support__/testForeignKeys";
+import { Relationships } from "./ObjectRelationships";
 
 describe("Object Relationships", () => {
   it("renders null if no foreign keys are provided", () => {

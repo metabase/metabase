@@ -1,13 +1,11 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import cx from "classnames";
+import ExplicitSize from "metabase/components/ExplicitSize";
 import styles from "./ChartWithLegend.css";
 
 import LegendVertical from "./LegendVertical";
 import LegendHorizontal from "./LegendHorizontal";
-
-import ExplicitSize from "metabase/components/ExplicitSize";
-
-import cx from "classnames";
 
 const GRID_ASPECT_RATIO = 4 / 3;
 const PADDING = 14;

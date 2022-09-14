@@ -5,17 +5,16 @@ import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
 
+import cx from "classnames";
+import Icon from "metabase/components/Icon";
+import IconBorder from "metabase/components/IconBorder";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 import AggregationWidget from "./AggregationWidget";
 import BreakoutWidget from "./BreakoutWidget";
 import ExtendedOptions from "./ExtendedOptions";
 import FilterWidgetList from "./filters/FilterWidgetList";
 import FilterPopover from "./filters/FilterPopover";
-import Icon from "metabase/components/Icon";
-import IconBorder from "metabase/components/IconBorder";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
-
-import cx from "classnames";
 
 export default class GuiQueryEditor extends React.Component {
   constructor(props) {

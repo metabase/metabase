@@ -1,11 +1,11 @@
 import React from "react";
+import userEvent from "@testing-library/user-event";
 import { render, screen, fireEvent } from "__support__/ui";
 import {
   PEOPLE,
   PRODUCTS,
   metadata,
 } from "__support__/sample_database_fixture";
-import userEvent from "@testing-library/user-event";
 
 import { TagEditorParam } from "./TagEditorParam";
 

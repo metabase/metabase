@@ -1,15 +1,15 @@
 import {
-  getParameterTargetField,
-  isDimensionTarget,
-  isVariableTarget,
-  getTemplateTagFromTarget,
-} from "./targets";
-import {
   metadata,
   PRODUCTS,
   SAMPLE_DATABASE,
 } from "__support__/sample_database_fixture";
 import { ParameterDimensionTarget } from "metabase-types/types/Parameter";
+import {
+  getParameterTargetField,
+  isDimensionTarget,
+  isVariableTarget,
+  getTemplateTagFromTarget,
+} from "./targets";
 
 describe("parameters/utils/targets", () => {
   describe("isDimensionTarget", () => {

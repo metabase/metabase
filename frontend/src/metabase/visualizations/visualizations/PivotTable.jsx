@@ -6,6 +6,8 @@ import _ from "underscore";
 import { getIn, updateIn } from "icepick";
 import { Grid, Collection, ScrollSync, AutoSizer } from "react-virtualized";
 
+import { findDOMNode } from "react-dom";
+import { connect } from "react-redux";
 import { getScrollBarSize } from "metabase/lib/dom";
 import ChartSettingsTableFormatting from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 
@@ -24,8 +26,6 @@ import {
 import { formatColumn } from "metabase/lib/formatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
-import { findDOMNode } from "react-dom";
-import { connect } from "react-redux";
 import { PLUGIN_SELECTORS } from "metabase/plugins";
 import {
   PivotTableRoot,

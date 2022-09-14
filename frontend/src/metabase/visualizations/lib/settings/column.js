@@ -3,7 +3,6 @@ import { t } from "ttag";
 import moment from "moment-timezone";
 import _ from "underscore";
 
-import { nestedSettings } from "./nested";
 import ChartNestedSettingColumns from "metabase/visualizations/components/settings/ChartNestedSettingColumns";
 
 import { keyForColumn } from "metabase/lib/dataset";
@@ -53,6 +52,7 @@ export function columnSettings({
 }
 
 import MetabaseSettings from "metabase/lib/settings";
+import { nestedSettings } from "./nested";
 
 export function getGlobalSettingsForColumn(column) {
   const columnSettings = {};

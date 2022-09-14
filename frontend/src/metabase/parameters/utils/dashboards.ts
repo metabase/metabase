@@ -1,6 +1,5 @@
 import _ from "underscore";
 
-import Question from "metabase-lib/lib/Question";
 import { generateParameterId } from "metabase/parameters/utils/parameter-id";
 import {
   getParameterTargetField,
@@ -25,6 +24,7 @@ import {
   DashboardOrderedCard,
 } from "metabase-types/api";
 import { SavedCard } from "metabase-types/types/Card";
+import Question from "metabase-lib/lib/Question";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Field from "metabase-lib/lib/metadata/Field";
 

@@ -7,7 +7,6 @@ import {
   STATIC_CHART_DEFAULT_OPTIONS,
 } from "metabase/static-viz/containers/StaticChart/constants";
 import StaticChart from "metabase/static-viz/containers/StaticChart";
-import { PageRoot, PageSection } from "./StaticVizPage.styled";
 import {
   TIME_SERIES_LINE_CHART_DEFAULT_OPTIONS,
   TIME_SERIES_LINE_CHART_TYPE,
@@ -65,6 +64,7 @@ import {
   LINE_AREA_BAR_DEFAULT_OPTIONS_6,
   LINE_AREA_BAR_DEFAULT_OPTIONS_7,
 } from "../../static-viz/components/LineAreaBarChart/constants";
+import { PageRoot, PageSection } from "./StaticVizPage.styled";
 
 function chartOptionsToStr(options) {
   if (typeof options === "object") {

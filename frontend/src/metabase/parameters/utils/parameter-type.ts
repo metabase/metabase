@@ -33,6 +33,11 @@ export function isNumberParameter(parameter: Parameter) {
   return type === "number";
 }
 
+export function isStringParameter(parameter: Parameter) {
+  const type = getParameterType(parameter);
+  return type === "string";
+}
+
 export function isFieldFilterParameter(
   parameter: Parameter,
 ): parameter is FieldFilterUiParameter {
