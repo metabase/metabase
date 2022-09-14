@@ -399,31 +399,21 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   updateReferencedQuestionNames(questions): NativeQuery {
-    const referencedQuestionTags = this.templateTags().filter(
-      tag => tag.type === "card",
-    );
-    // if there are no tags, no need to update
-    if (referencedQuestionTags.length === 0) {
-      return this;
-    }
     const questionsById = _.indexBy(questions, "id");
-    let queryText = this.queryText();
-    for (const tag of referencedQuestionTags) {
-      const question = questionsById[tag["card-id"]];
-      if (question) {
-        const newTagName = `#${question.id}-${slugg(question.name)}`;
-        if (tag.name !== newTagName) {
-          queryText = queryText.replace(
-            new RegExp(`{{\\s*${tag.name}\\s*}}`, "g"),
-            `{{${newTagName}}}`,
-          );
-        }
-      }
-    }
-    if (queryText !== this.queryText()) {
-      return this.setQueryText(queryText);
-    }
-    return this;
+    const queryText = this.templateTags()
+      // only tags for questions
+      .filter(tag => tag.type === "card")
+      // only tags that match given questions
+      .filter(tag => questionsById[tag["card-id"]])
+      // for each tag, update the name in the queryText
+      .reduce((qText, tag) => {
+        const question = questionsById[tag["card-id"]];
+        return qText.replace(
+          new RegExp(`{{\\s*${tag.name}\\s*}}`, "g"),
+          `#${question.id}-${slugg(question.name)}`,
+        );
+      }, queryText);
+    return queryText === this.queryText() ? this : this.setQueryText(queryText);
   }
 
   updateSnippetNames(snippets): NativeQuery {
