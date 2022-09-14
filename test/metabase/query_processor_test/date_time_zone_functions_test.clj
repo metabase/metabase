@@ -6,7 +6,7 @@
             [metabase.test :as mt]
             [metabase.util.date-2 :as u.date]))
 
-(defn formatting [x]
+(defn- formatting [x]
   (if (number? x)
     (int x)
     (-> x
@@ -142,12 +142,17 @@
               (testing (format "%s function works as expected on %s column for driver %s" op col-type driver/*driver*)
                 (is (= (set expected) (set (test-date-extract query))))))))))))
 
-(defn date-math
+(defn- date-math
   [op x amount unit]
   (let [amount (if (= op :date-add)
                  amount
                  (- amount))]
-    (t/format "yyyy-MM-dd HH:mm:ss" (u.date/add x unit amount))))
+    (if (and (= driver/*driver* :vertica) (#{:year :quarter :month} unit))
+      (t/format "yyyy-MM-dd HH:mm:ss" (u.date/add x :day (* amount (case unit
+                                                                     :year    365
+                                                                     :quarter (* 3 30)
+                                                                     :month   30))))
+      (t/format "yyyy-MM-dd HH:mm:ss" (u.date/add x unit amount)))))
 
 (deftest date-math-tests
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :date-functions) :mongo)
@@ -171,7 +176,8 @@
                        :aggregation [[:count]]
                        :breakout    [[:expression "expr"]]}]]]
               (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
-                (is (= (set expected) (set (test-date-extract query)))))))))
+               (is (= expected (test-date-extract query)))
+               #_(is (= (set expected) (set (test-date-extract query)))))))))
 
       (doseq [[col-type field-id] [[:date (mt/id :times :d)] [:text-as-date (mt/id :times :as_d)]]]
         (doseq [op [:date-add :date-subtract]]
