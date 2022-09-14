@@ -8,6 +8,7 @@
             [metabase.api.common :as api]
             [metabase.api.table :as api.table]
             [metabase.config :as config]
+            [metabase.db.connection :as mdb.connection]
             [metabase.driver :as driver]
             [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.util :as driver.u]
@@ -420,20 +421,33 @@
   `search-card-slug` should be in a format like '123-foo-bar' or '123' or 'foo-bar', where 123 is the card ID
    and foo-bar is a prefix of the card name converted into a slug.
 
-   If the search string contains a number at the start like '123' or '123-foo', we match that against the card IDs.
-   We match the rest of the string against the card name, with dashes converted to spaces."
+   If the search string contains a number like '123' we match that as a prefix against the card IDs.
+   If the search string contains a number at the start AND text like '123-foo' we match do an exact match on card ID, and a substring match on the card name.
+   If the search string does not start with a number, and is text like 'foo' we match that as a substring on the card name."
   [database-id search-card-slug]
   (let [search-id   (re-find #"\d*" search-card-slug)
         search-name (-> (re-matches #"\d*-?(.*)" search-card-slug)
                         second
-                        (str/replace #"-" " "))]
+                        (str/replace #"-" " ")
+                        str/lower-case)]
     (db/select [Card :id :dataset :database_id :name :collection_id]
                {:where    [:and
                            [:= :database_id database-id]
                            [:= :archived false]
-                           (cond-> [:or false]
-                             (not-empty search-id) (conj [:like (hx/cast :text :id) (str search-id "%")])
-                             (not-empty search-name) (conj [:like :%lower.name (str "%" search-name "%")]))]
+                           (cond
+                             ;; e.g. search-string = "123"
+                             (and (not-empty search-id) (empty? search-name))
+                             [:like (hx/cast (if (= (mdb.connection/db-type) :mysql) :char :text) (str search-id "%"))]
+
+                             ;; e.g. search-string = "123-foo"
+                             (and (not-empty search-id) (not-empty search-name))
+                             [:and
+                              [:= :id (Integer/parseInt search-id)]
+                              [:like :%lower.name (str "%" search-name "%")]]
+
+                             ;; e.g. search-string = "foo"
+                             (and (empty search-id) (not-empty search-name))
+                             [:like :%lower.name (str "%" search-name "%")])]
                 :order-by [[:id :asc]]
                 :limit    50})))
 
