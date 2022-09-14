@@ -254,32 +254,32 @@ class PivotTable extends Component {
       }),
       getHidden: ({ source }) => source === "aggregation",
     },
-
+    [COLUMN_SHOW_TOTALS]: {
+      title: t`Show totals`,
+      widget: "toggle",
+      inline: true,
+      getDefault: (column, columnSettings, { settings }) => {
+        //Default to showing totals if appropriate
+        const rows = settings[COLUMN_SPLIT_SETTING].rows || [];
+        return rows
+          .slice(0, rows.length - 1)
+          .some(row => _.isEqual(row, column.field_ref));
+      },
+      getHidden: (column, columnSettings, { settings }) => {
+        const rows = settings[COLUMN_SPLIT_SETTING].rows || [];
+        // to show totals a column needs to be:
+        //  - in the left header ("rows" in COLUMN_SPLIT_SETTING)
+        //  - not the last column
+        return !rows
+          .slice(0, rows.length - 1)
+          .some(row => _.isEqual(row, column.field_ref));
+      },
+    },
     column_title: {
       title: t`Column title`,
       widget: "input",
       getDefault: column => formatColumn(column),
       variant: "form-field",
-    },
-    [COLUMN_SHOW_TOTALS]: {
-      title: t`Show totals`,
-      widget: "toggle",
-      hidden: false,
-      getValue: (column, columnSettings, { settings }) => {
-        const currentValue = columnSettings[COLUMN_SHOW_TOTALS];
-        const rows = settings[COLUMN_SPLIT_SETTING].rows || [];
-        // to show totals a column needs to be:
-        //  - in the left header ("rows" in COLUMN_SPLIT_SETTING)
-        //  - not the last column
-        const canHaveSubtotal = rows
-          .slice(0, rows.length - 1)
-          .some(row => _.isEqual(row, column.field_ref));
-        if (!canHaveSubtotal) {
-          // when this is null, the setting widget hides the toggle
-          return null;
-        }
-        return currentValue == null ? true : currentValue;
-      },
     },
   };
 
