@@ -108,9 +108,7 @@
             (doseq [{:keys [name] :as coll} (get entities "Database")
                     :let [filename (#'u.yaml/leaf-file-name name)]]
               (is (= (-> coll
-                         (dissoc :serdes/meta)
-                         (update :created_at u.date/format)
-                         (update :updated_at u.date/format))
+                         (dissoc :serdes/meta :created_at :updated_at))
                      (yaml/from-file (io/file dump-dir "Database" filename))))))
 
           (testing "for Tables"
@@ -122,9 +120,7 @@
 
             (doseq [{:keys [db_id name] :as coll} (get entities "Table")]
               (is (= (-> coll
-                         (dissoc :serdes/meta)
-                         (update :created_at u.date/format)
-                         (update :updated_at u.date/format))
+                         (dissoc :serdes/meta :created_at :updated_at))
                      (yaml/from-file (io/file dump-dir "Database" db_id "Table" (str name ".yaml")))))))
 
           (testing "for Fields"
@@ -139,9 +135,7 @@
             (doseq [{[db schema table] :table_id name :name :as coll} (get entities "Field")]
               (is (nil? schema))
               (is (= (-> coll
-                         (dissoc :serdes/meta)
-                         (update :created_at u.date/format)
-                         (update :updated_at u.date/format))
+                         (dissoc :serdes/meta :created_at :updated_at))
                      (yaml/from-file (io/file dump-dir "Database" db "Table" table "Field" (str name ".yaml")))))))
 
           (testing "for cards"
@@ -149,9 +143,7 @@
             (doseq [{:keys [entity_id] :as card} (get entities "Card")
                     :let [filename (#'u.yaml/leaf-file-name entity_id)]]
               (is (= (-> card
-                         (dissoc :serdes/meta)
-                         (update :created_at u.date/format)
-                         (update :updated_at u.date/format))
+                         (dissoc :serdes/meta :created_at :updated_at))
                      (yaml/from-file (io/file dump-dir "Card" filename))))))
 
           (testing "for dashboards"
@@ -159,9 +151,7 @@
             (doseq [{:keys [entity_id] :as dash} (get entities "Dashboard")
                     :let [filename (#'u.yaml/leaf-file-name entity_id)]]
               (is (= (-> dash
-                         (dissoc :serdes/meta)
-                         (update :created_at u.date/format)
-                         (update :updated_at u.date/format))
+                         (dissoc :serdes/meta :created_at :updated_at))
                      (yaml/from-file (io/file dump-dir "Dashboard" filename))))))
 
           (testing "for dashboard cards"
@@ -176,9 +166,7 @@
                      :as   dashcard}                (get entities "DashboardCard")
                     :let [filename (#'u.yaml/leaf-file-name entity_id)]]
               (is (= (-> dashcard
-                         (dissoc :serdes/meta)
-                         (update :created_at u.date/format)
-                         (update :updated_at u.date/format))
+                         (dissoc :serdes/meta :created_at :updated_at))
                      (yaml/from-file (io/file dump-dir "Dashboard" dashboard_id "DashboardCard" filename))))))
 
           (testing "for dimensions"
@@ -186,9 +174,7 @@
             (doseq [{:keys [entity_id] :as dim} (get entities "Dimension")
                     :let [filename (#'u.yaml/leaf-file-name entity_id)]]
               (is (= (-> dim
-                         (dissoc :serdes/meta)
-                         (update :created_at u.date/format)
-                         (update :updated_at u.date/format))
+                         (dissoc :serdes/meta :created_at :updated_at))
                      (yaml/from-file (io/file dump-dir "Dimension" filename))))))
 
           (testing "for metrics"
@@ -196,9 +182,7 @@
             (doseq [{:keys [entity_id name] :as metric} (get entities "Metric")
                     :let [filename (#'u.yaml/leaf-file-name entity_id name)]]
               (is (= (-> metric
-                         (dissoc :serdes/meta)
-                         (update :created_at u.date/format)
-                         (update :updated_at u.date/format))
+                         (dissoc :serdes/meta :created_at :updated_at))
                      (yaml/from-file (io/file dump-dir "Metric" filename))))))
 
           (testing "for segments"
@@ -206,9 +190,7 @@
             (doseq [{:keys [entity_id name] :as segment} (get entities "Segment")
                     :let [filename (#'u.yaml/leaf-file-name entity_id name)]]
               (is (= (-> segment
-                         (dissoc :serdes/meta)
-                         (update :created_at u.date/format)
-                         (update :updated_at u.date/format))
+                         (dissoc :serdes/meta :created_at :updated_at))
                      (yaml/from-file (io/file dump-dir "Segment" filename))))))
 
           (testing "for pulses"
@@ -216,9 +198,7 @@
             (doseq [{:keys [entity_id] :as pulse} (get entities "Pulse")
                     :let [filename (#'u.yaml/leaf-file-name entity_id)]]
               (is (= (-> pulse
-                         (dissoc :serdes/meta)
-                         (update :created_at u.date/format)
-                         (update :updated_at u.date/format))
+                         (dissoc :serdes/meta :created_at :updated_at))
                      (yaml/from-file (io/file dump-dir "Pulse" filename))))))
 
           (testing "for pulse cards"
@@ -242,9 +222,7 @@
             (doseq [{:keys [entity_id pulse_id] :as channel} (get entities "PulseChannel")
                     :let [filename (#'u.yaml/leaf-file-name entity_id)]]
               (is (= (-> channel
-                         (dissoc :serdes/meta)
-                         (update :created_at u.date/format)
-                         (update :updated_at u.date/format))
+                         (dissoc :serdes/meta :created_at :updated_at))
                      (yaml/from-file (io/file dump-dir "Pulse" pulse_id "PulseChannel" filename))))))
 
           (testing "for native query snippets"
@@ -252,9 +230,7 @@
             (doseq [{:keys [entity_id name] :as snippet} (get entities "NativeQuerySnippet")
                     :let [filename (#'u.yaml/leaf-file-name entity_id name)]]
               (is (= (-> snippet
-                         (dissoc :serdes/meta)
-                         (update :created_at u.date/format)
-                         (update :updated_at u.date/format))
+                         (dissoc :serdes/meta :created_at :updated_at))
                      (yaml/from-file (io/file dump-dir "NativeQuerySnippet" filename))))))
 
           (testing "for timelines and events"
@@ -262,9 +238,7 @@
             (doseq [{:keys [entity_id] :as timeline} (get entities "Timeline")
                     :let [filename (#'u.yaml/leaf-file-name entity_id)]]
               (is (= (-> timeline
-                         (dissoc :serdes/meta)
-                         (update :created_at u.date/format)
-                         (update :updated_at u.date/format))
+                         (dissoc :serdes/meta :created_at :updated_at))
                      (yaml/from-file (io/file dump-dir "Timeline" filename)))))
 
             (is (= 90 (reduce + (for [timeline (get entities "Timeline")]
@@ -274,9 +248,7 @@
             (doseq [{:keys [name timeline_id timestamp] :as event} (get entities "TimelineEvent")
                     :let [filename (#'u.yaml/leaf-file-name timestamp name)]]
               (is (= (-> event
-                         (dissoc :serdes/meta)
-                         (update :created_at u.date/format)
-                         (update :updated_at u.date/format))
+                         (dissoc :serdes/meta :created_at :updated_at))
                      (yaml/from-file (io/file dump-dir "Timeline" timeline_id "TimelineEvent" filename))))))
 
           (testing "for settings"
@@ -298,11 +270,7 @@
 
             (testing "each entity matches its in-memory original"
               (doseq [entity extraction]
-                (let [->utc   #(t/zoned-date-time % (ZoneId/of "UTC"))]
-                  (is (= (cond-> entity
-                           true                                       (update :serdes/meta strip-labels)
-                           ;; TIMESTAMP WITH TIME ZONE columns come out of the database as OffsetDateTime, but read back
-                           ;; from YAML as ZonedDateTimes; coerce the expected value to match.
-                           (t/offset-date-time? (:created_at entity)) (update :created_at ->utc)
-                           (t/offset-date-time? (:updated_at entity)) (update :updated_at ->utc))
-                         (ingest/ingest-one ingestable (serdes.base/serdes-path entity)))))))))))))
+                (is (= (-> entity
+                           (update :serdes/meta strip-labels)
+                           (dissoc :created_at :updated_at))
+                         (ingest/ingest-one ingestable (serdes.base/serdes-path entity))))))))))))
