@@ -91,6 +91,7 @@
                       (when-not (= :SUCCESS (:status result))
                         (throw (ex-info (tru "Unable to connect to LDAP server with current settings")
                                         (humanize-error-messages result))))))
+                  (when new-value (ldap-ever-enabled?! true))
                   (setting/set-value-of-type! :boolean :ldap-enabled new-value)))
   :default    false)
 

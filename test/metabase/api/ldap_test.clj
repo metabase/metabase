@@ -1,6 +1,7 @@
 (ns metabase.api.ldap-test
   (:require [clojure.set :as set]
             [clojure.test :refer :all]
+            [metabase.api.ldap :as api.ldap]
             [metabase.integrations.ldap :as ldap]
             [metabase.models.setting :as setting]
             [metabase.test :as mt]
@@ -40,3 +41,22 @@
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :put 403 "ldap/settings"
                                      (assoc (ldap-test-details) :ldap-port "" :ldap-enabled false))))))))
+
+(deftest ldap-enabled-test
+  (ldap.test/with-ldap-server
+    (testing "`ldap-enabled` setting validates currently saved LDAP settings, except for on the first time being set"
+      (mt/with-temporary-setting-values [ldap-enabled       false
+                                         ldap-ever-enabled? false]
+        (with-redefs [ldap/test-current-ldap-details (constantly {:status :ERROR})]
+          (api.ldap/ldap-enabled! true)
+          (is (api.ldap/ldap-enabled))
+          (is (api.ldap/ldap-ever-enabled?))
+
+          (api.ldap/ldap-enabled! false)
+          (is (not (api.ldap/ldap-enabled)))
+          (is (api.ldap/ldap-ever-enabled?))
+
+          #_(is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                  #"Unable to connect to LDAP server"
+                                  (api.ldap/ldap-enabled! true))))))))
+
