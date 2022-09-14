@@ -15,7 +15,7 @@ const ActionIcon = ({ icon, onClick }) => (
     name={icon}
     onClick={e => {
       e.stopPropagation();
-      onClick();
+      onClick(e.target);
     }}
   />
 );
@@ -28,19 +28,25 @@ const ColumnItem = ({
   onEdit,
   onEnable,
   draggable,
-}) => (
-  <ColumnItemRoot draggable={draggable} onClick={onClick}>
-    <ColumnItemContainer>
-      {draggable && <ColumnItemDragHandle name="grabber2" size={12} />}
-      <ColumnItemContent>
-        <ColumnItemSpan>{title}</ColumnItemSpan>
-        {onEdit && <ActionIcon icon="ellipsis" onClick={onEdit} />}
-        {onAdd && <ActionIcon icon="add" onClick={onAdd} />}
-        {onRemove && <ActionIcon icon="eye_filled" onClick={onRemove} />}
-        {onEnable && <ActionIcon icon="eye_crossed_out" onClick={onEnable} />}
-      </ColumnItemContent>
-    </ColumnItemContainer>
-  </ColumnItemRoot>
-);
+}) => {
+  return (
+    <ColumnItemRoot
+      onClick={onClick}
+      isDraggable={draggable}
+      data-testid={`draggable-item-${title}`}
+    >
+      <ColumnItemContainer>
+        {draggable && <ColumnItemDragHandle name="grabber2" size={12} />}
+        <ColumnItemContent>
+          <ColumnItemSpan>{title}</ColumnItemSpan>
+          {onEdit && <ActionIcon icon="ellipsis" onClick={onEdit} />}
+          {onAdd && <ActionIcon icon="add" onClick={onAdd} />}
+          {onRemove && <ActionIcon icon="eye_filled" onClick={onRemove} />}
+          {onEnable && <ActionIcon icon="eye_crossed_out" onClick={onEnable} />}
+        </ColumnItemContent>
+      </ColumnItemContainer>
+    </ColumnItemRoot>
+  );
+};
 
 export default ColumnItem;

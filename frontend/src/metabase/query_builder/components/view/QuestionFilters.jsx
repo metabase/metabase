@@ -8,6 +8,7 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import FilterPopover from "metabase/query_builder/components/filters/FilterPopover";
+import { color } from "metabase/lib/colors";
 import ViewPill from "./ViewPill";
 
 import {
@@ -15,8 +16,6 @@ import {
   FilterHeaderContainer,
   FilterHeaderButton,
 } from "./ViewHeader.styled";
-
-import { color } from "metabase/lib/colors";
 
 const FilterPill = props => <ViewPill color={color("filter")} {...props} />;
 

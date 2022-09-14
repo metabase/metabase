@@ -1,4 +1,10 @@
 import { Collection, RegularCollectionId } from "./collection";
+import { ClickBehavior } from "./click-behavior";
+import {
+  BaseDashboardOrderedCard,
+  DashboardParameterMapping,
+} from "./dashboard";
+import { WritebackAction } from "./writeback";
 
 export type DataAppId = number;
 
@@ -20,4 +26,22 @@ export interface DataAppSearchItem {
   id: RegularCollectionId;
   app_id: DataAppId;
   collection: Collection;
+}
+
+export type ActionButtonParametersMapping = Pick<
+  DashboardParameterMapping,
+  "parameter_id" | "target"
+>;
+
+export interface ActionButtonDashboardCard
+  extends Omit<BaseDashboardOrderedCard, "parameter_mappings"> {
+  action_id: number | null;
+  action?: WritebackAction;
+
+  parameter_mappings?: ActionButtonParametersMapping[] | null;
+  visualization_settings: {
+    [key: string]: unknown;
+    "button.label"?: string;
+    click_behavior?: ClickBehavior;
+  };
 }

@@ -18,6 +18,7 @@ import "ace/snippets/sqlserver";
 import "ace/snippets/json";
 import _ from "underscore";
 import { ResizableBox } from "react-resizable";
+import { connect } from "react-redux";
 
 import { isEventOverElement } from "metabase/lib/dom";
 import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
@@ -26,6 +27,7 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 import Snippets from "metabase/entities/snippets";
 import SnippetCollections from "metabase/entities/snippet-collections";
 import SnippetModal from "metabase/query_builder/components/template_tags/SnippetModal";
+import Questions from "metabase/entities/questions";
 import { ResponsiveParametersList } from "./ResponsiveParametersList";
 import NativeQueryEditorSidebar from "./NativeQueryEditor/NativeQueryEditorSidebar";
 import VisibilityToggler from "./NativeQueryEditor/VisibilityToggler";
@@ -67,6 +69,7 @@ class NativeQueryEditor extends Component {
 
   static defaultProps = {
     isOpen: false,
+    enableRun: true,
     cancelQueryOnLeave: true,
     resizable: true,
   };
@@ -114,7 +117,6 @@ class NativeQueryEditor extends Component {
       // close selected text popover if text is deselected
       this.setState({ isSelectedTextPopoverOpen: false });
     }
-
     // Check that the query prop changed before updating the editor. Otherwise,
     // we might overwrite just typed characters before onChange is called.
     const queryPropUpdated = this.props.query !== prevProps.query;
@@ -263,7 +265,7 @@ class NativeQueryEditor extends Component {
       showLineNumbers: true,
     });
 
-    this._lastAutoComplete = { timestamp: 0, prefix: null, results: null };
+    this._lastAutoComplete = { timestamp: 0, prefix: null, results: [] };
 
     aceLanguageTools.addCompleter({
       getCompletions: async (_editor, _session, _pos, prefix, callback) => {
@@ -277,24 +279,54 @@ class NativeQueryEditor extends Component {
             Date.now() - timestamp < AUTOCOMPLETE_CACHE_DURATION &&
             this._lastAutoComplete.prefix === prefix;
           if (!cacheHit) {
+            // Get models and fields from tables
             // HACK: call this.props.autocompleteResultsFn rather than caching the prop since it might change
-            results = await this.props.autocompleteResultsFn(prefix);
+            const apiResults = await this.props.autocompleteResultsFn(prefix);
             this._lastAutoComplete = {
               timestamp: Date.now(),
               prefix,
               results,
             };
+
+            // Get referenced questions
+            const referencedQuestionIds =
+              this.props.query.referencedQuestionIds();
+            // The results of the API call are cached by ID
+            const referencedQuestions = await Promise.all(
+              referencedQuestionIds.map(id => this.props.fetchQuestion(id)),
+            );
+
+            // Get columns from referenced questions that match the prefix
+            const lowerCasePrefix = prefix.toLowerCase();
+            const isMatchForPrefix = name =>
+              name.toLowerCase().includes(lowerCasePrefix);
+            const questionColumns = referencedQuestions
+              .filter(Boolean)
+              .flatMap(question =>
+                question.result_metadata
+                  .filter(columnMetadata =>
+                    isMatchForPrefix(columnMetadata.name),
+                  )
+                  .map(columnMetadata => [
+                    columnMetadata.name,
+                    `${question.name} :${columnMetadata.base_type}`,
+                  ]),
+              );
+
+            // Concat the results from tables, fields, and referenced questions.
+            // The ace editor will deduplicate results based on name, keeping results
+            // that come first. In case of a name conflict, prioritise referenced
+            // questions' columns over tables and fields.
+            results = questionColumns.concat(apiResults);
           }
 
-          // transform results of the API call into what ACE expects
-          const js_results = results.map(function (result) {
-            return {
-              name: result[0],
-              value: result[0],
-              meta: result[1],
-            };
-          });
-          callback(null, js_results);
+          // transform results into what ACE expects
+          const resultsForAce = results.map(result => ({
+            name: result[0],
+            value: result[0],
+            meta: result[1],
+          }));
+          callback(null, resultsForAce);
         } catch (error) {
           console.log("error getting autocompletion data", error);
           callback(null, []);
@@ -524,8 +556,24 @@ class NativeQueryEditor extends Component {
   }
 }
 
+const mapStateToProps = () => ({});
+const mapDispatchToProps = dispatch => {
+  return {
+    fetchQuestion: async id => {
+      const action = await dispatch(
+        Questions.actions.fetch(
+          { id },
+          { noEvent: true, useCachedForbiddenError: true },
+        ),
+      );
+      return Questions.HACK_getObjectFromAction(action);
+    },
+  };
+};
+
 export default _.compose(
   ExplicitSize(),
   Snippets.loadList({ loadingAndErrorWrapper: false }),
   SnippetCollections.loadList({ loadingAndErrorWrapper: false }),
+  connect(mapStateToProps, mapDispatchToProps),
 )(NativeQueryEditor);

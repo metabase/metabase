@@ -3,8 +3,8 @@
  * @deprecated use existing types from, or add to metabase-types/api/*
  */
 
-import { CardId, SavedCard } from "./Card";
 import { VisualizationSettings } from "metabase-types/api/card";
+import { CardId, SavedCard } from "./Card";
 import { Parameter, ParameterMapping } from "./Parameter";
 
 export type DashboardId = number;
@@ -54,8 +54,8 @@ export type DashCard<CardType = SavedCard> = {
 
   col: number;
   row: number;
-  sizeY: number;
-  sizeX: number;
+  size_y: number;
+  size_x: number;
 
   isAdded?: boolean;
   isDirty?: boolean;

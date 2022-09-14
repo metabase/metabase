@@ -1,15 +1,15 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import MBQLClause from "./MBQLClause";
 import { t } from "ttag";
 import { TYPE } from "metabase/lib/types";
 import * as AGGREGATION from "metabase/lib/query/aggregation";
-import Dimension, { AggregationDimension } from "../../Dimension";
 import { Aggregation as AggregationObject } from "metabase-types/types/Query";
-import StructuredQuery from "../StructuredQuery";
 import { AggregationOperator } from "metabase-types/types/Metadata";
 import { MetricId } from "metabase-types/types/Metric";
 import { FieldId } from "metabase-types/types/Field";
+import StructuredQuery from "../StructuredQuery";
+import Dimension, { AggregationDimension } from "../../Dimension";
+import MBQLClause from "./MBQLClause";
 const INTEGER_AGGREGATIONS = new Set(["count", "cum-count", "distinct"]);
 export default class Aggregation extends MBQLClause {
   /**

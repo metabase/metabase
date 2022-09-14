@@ -4,8 +4,8 @@ import {
   ORDERS,
 } from "__support__/sample_database_fixture";
 
-import Question from "metabase-lib/lib/Question";
 import { Card } from "metabase-types/types/Card";
+import Question from "metabase-lib/lib/Question";
 
 import { getObjectName, getDisplayId, getIdValue } from "./utils";
 

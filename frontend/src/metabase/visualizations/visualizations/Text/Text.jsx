@@ -2,7 +2,6 @@
 import React, { Component } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import styles from "./Text.css";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -11,6 +10,7 @@ import { t } from "ttag";
 import { withInstanceLanguage, siteLocale } from "metabase/lib/i18n";
 
 import { substitute_tags } from "cljs/metabase.shared.parameters.parameters";
+import styles from "./Text.css";
 
 const getSettingsStyle = settings => ({
   "align-center": settings["text.align_horizontal"] === "center",

@@ -17,17 +17,15 @@ import Snippets from "metabase/entities/snippets";
 import Questions from "metabase/entities/questions";
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 
-import Question from "metabase-lib/lib/Question";
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-
 import {
   Dispatch,
   GetState,
   QueryBuilderUIControls,
 } from "metabase-types/store";
-
 import { Card, SavedCard } from "metabase-types/types/Card";
+import Question from "metabase-lib/lib/Question";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 import { getQueryBuilderModeFromLocation } from "../../typed-utils";
 import { updateUrl } from "../navigation";

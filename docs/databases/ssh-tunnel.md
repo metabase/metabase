@@ -1,10 +1,10 @@
 ---
-title: SSH tunneling in Metabase
+title: SSH tunneling
 redirect_from:
   - /docs/latest/administration-guide/ssh-tunnel-for-database-connections
 ---
 
-# SSH tunneling in Metabase
+# SSH tunneling
 
 Metabase can connect to some databases by first establishing a connection to a server in between Metabase and a data warehouse, then connecting to the data warehouse using that connection as a bridge. This makes connecting to some data warehouses possible in situations that would otherwise prevent the use of Metabase.
 

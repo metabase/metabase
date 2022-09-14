@@ -1,4 +1,3 @@
-import Question from "metabase-lib/lib/Question";
 import {
   getQuestion,
   getIsResultDirty,
@@ -7,6 +6,7 @@ import {
   getQuestionDetailsTimelineDrawerState,
 } from "metabase/query_builder/selectors";
 import { state as sampleState } from "__support__/sample_database_fixture";
+import Question from "metabase-lib/lib/Question";
 
 function getBaseState({ uiControls = {}, ...state } = {}) {
   return {

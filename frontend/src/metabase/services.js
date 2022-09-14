@@ -2,13 +2,13 @@ import _ from "underscore";
 
 import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
+import getGAMetadata from "promise-loader?global!metabase/lib/ga-metadata"; // eslint-disable-line import/default
+
 import Question from "metabase-lib/lib/Question";
 import { FieldDimension } from "metabase-lib/lib/Dimension";
 
 // use different endpoints for embed previews
 const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
-
-import getGAMetadata from "promise-loader?global!metabase/lib/ga-metadata"; // eslint-disable-line import/default
 
 export const ActivityApi = {
   list: GET("/api/activity"),
@@ -183,6 +183,7 @@ export const CollectionsApi = {
 export const DataAppsApi = {
   list: GET("/api/app"),
   create: POST("/api/app"),
+  scaffold: POST("/api/app/scaffold"),
   update: PUT("/api/app/:id"),
 };
 
@@ -536,11 +537,7 @@ export const ActionsApi = {
   delete: POST("/api/action/row/delete"),
   bulkUpdate: POST("/api/action/bulk/update/:tableId"),
   bulkDelete: POST("/api/action/bulk/delete/:tableId"),
-};
-
-export const EmittersApi = {
-  create: POST("/api/emitter"),
-  update: PUT("/api/emitter/:id"),
-  delete: DELETE("/api/emitter/:id"),
-  execute: POST("/api/emitter/:id/execute"),
+  execute: POST(
+    "/api/dashboard/:dashboardId/dashcard/:dashcardId/action/execute",
+  ),
 };

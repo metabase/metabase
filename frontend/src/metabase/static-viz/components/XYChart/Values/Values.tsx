@@ -3,19 +3,25 @@ import _ from "underscore";
 
 import { scaleBand } from "@visx/scale";
 
+import type { TextProps } from "@visx/text";
+import type { AnyScaleBand, PositionScale } from "@visx/shape/lib/types";
 import OutlinedText from "metabase/static-viz/components/Text/OutlinedText";
 import { getValueStep, getY } from "../utils";
 
-import type { TextProps } from "@visx/text";
-import type { AnyScaleBand, PositionScale } from "@visx/shape/lib/types";
 import type {
   HydratedSeries,
   SeriesDatum,
   StackedDatum,
   VisualizationType,
   XScale,
-  XYAccessor,
 } from "../types";
+
+type XYAccessor<
+  T extends SeriesDatum | StackedDatum = SeriesDatum | StackedDatum,
+> = (
+  datum: T extends SeriesDatum ? SeriesDatum : StackedDatum,
+  flipped?: boolean,
+) => number;
 
 const VALUES_MARGIN = 6;
 const VALUES_STROKE_MARGIN = 3;
@@ -62,8 +68,8 @@ export default function Values({
   if (containBars && xScale.bandwidth) {
     const innerBarScaleDomain = multipleSeries
       .filter(series => series.type === "bar")
-      .map((barSerie, index) => {
-        barSeriesIndexMap.set(barSerie, index);
+      .map((barSeries, index) => {
+        barSeriesIndexMap.set(barSeries, index);
         return index;
       });
     innerBarScale = scaleBand({
@@ -73,8 +79,15 @@ export default function Values({
   }
 
   const multiSeriesValues: MultiSeriesValue[][] = multipleSeries.map(series => {
-    const singleSerieValues = getValues(series, areStacked);
-    return singleSerieValues.map(value => {
+    const singleSeriesValues =
+      series.type === "bar"
+        ? fixSmallBarChartValues(
+            getValues(series, areStacked),
+            innerBarScale?.domain().length ?? 0,
+          )
+        : getValues(series, areStacked);
+
+    return singleSeriesValues.map(value => {
       return {
         ...value,
         series,
@@ -85,6 +98,21 @@ export default function Values({
       };
     });
   });
+
+  function fixSmallBarChartValues(
+    singleSeriesValues: Value[],
+    numberOfBarSeries: number,
+  ) {
+    const barWidth = innerBarScale?.bandwidth() ?? Infinity;
+    const MIN_BAR_WIDTH = 20;
+    // Use the same logic as in https://github.com/metabase/metabase/blob/cb51e574de31c7d4485a9dfbef3261f67c0b7495/frontend/src/metabase/visualizations/lib/chart_values.js#L138
+    if (numberOfBarSeries > 1 && barWidth < MIN_BAR_WIDTH) {
+      singleSeriesValues.forEach(value => {
+        value.hidden = true;
+      });
+    }
+    return singleSeriesValues;
+  }
 
   function getBarXOffset(series: HydratedSeries) {
     if (containBars && innerBarScale) {
@@ -106,19 +134,21 @@ export default function Values({
 
   return (
     <>
-      {verticalOverlappingFreeValues.map((singleSerieValues, seriesIndex) => {
-        const compact = getCompact(singleSerieValues.map(value => value.datum));
+      {verticalOverlappingFreeValues.map((singleSeriesValues, seriesIndex) => {
+        const compact = getCompact(
+          singleSeriesValues.map(value => value.datum),
+        );
 
         return fixHorizontalOverlappingValues(
           seriesIndex,
           compact,
-          singleSerieValues,
+          singleSeriesValues,
         ).map((value, index) => {
           if (value.hidden) {
             return null;
           }
 
-          const { xAccessor, yAccessor } = getXyAccessors(
+          const { xAccessor, yAccessor, dataYAccessor } = getXyAccessors(
             value.series.type,
             value.xScale,
             value.yScale,
@@ -126,17 +156,33 @@ export default function Values({
             value.flipped,
           );
 
+          const shouldRenderDataPoint = (
+            ["line", "area"] as VisualizationType[]
+          ).includes(value.series.type);
           return (
-            <OutlinedText
-              key={index}
-              x={xAccessor(value.datum)}
-              y={yAccessor(value.datum)}
-              textAnchor="middle"
-              verticalAnchor="end"
-              {...valueProps}
-            >
-              {formatter(getY(value.datum), compact)}
-            </OutlinedText>
+            <>
+              <OutlinedText
+                key={index}
+                x={xAccessor(value.datum)}
+                y={yAccessor(value.datum)}
+                textAnchor="middle"
+                verticalAnchor="end"
+                {...valueProps}
+              >
+                {formatter(getY(value.datum), compact)}
+              </OutlinedText>
+              {shouldRenderDataPoint && (
+                <circle
+                  key={index}
+                  r={3}
+                  fill="white"
+                  stroke={value.series.color}
+                  strokeWidth={2}
+                  cx={xAccessor(value.datum)}
+                  cy={dataYAccessor(value.datum)}
+                />
+              )}
+            </>
           );
         });
       })}
@@ -158,7 +204,7 @@ export default function Values({
   function fixHorizontalOverlappingValues(
     seriesIndex: number,
     compact: boolean,
-    singleSerieValues: MultiSeriesValue[],
+    singleSeriesValues: MultiSeriesValue[],
   ) {
     const valueStep = getValueStep(
       multipleSeries,
@@ -168,7 +214,7 @@ export default function Values({
       innerWidth,
     );
 
-    return singleSerieValues.filter((_, index) => index % valueStep === 0);
+    return singleSeriesValues.filter((_, index) => index % valueStep === 0);
   }
 }
 
@@ -195,12 +241,14 @@ function getXyAccessors(
 ): {
   xAccessor: XYAccessor;
   yAccessor: XYAccessor;
+  dataYAccessor: XYAccessor;
 } {
   return {
     xAccessor: getXAccessor(type, xScale, barXOffset),
     yAccessor: (datum, overriddenFlipped = flipped) =>
       (yScale(getY(datum)) ?? 0) +
       (overriddenFlipped ? FLIPPED_VALUES_MARGIN : -VALUES_MARGIN),
+    dataYAccessor: datum => yScale(getY(datum)) ?? 0,
   };
 }
 
@@ -213,7 +261,7 @@ function getXAccessor(
     return datum => (xScale.barAccessor as XYAccessor)(datum) + barXOffset;
   }
   if (type === "line" || type === "area") {
-    return xScale.lineAccessor;
+    return xScale.lineAccessor as XYAccessor;
   }
   exhaustiveCheck(type);
 }

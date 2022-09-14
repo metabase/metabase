@@ -7,12 +7,12 @@ import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 
 import * as Urls from "metabase/lib/urls";
 
-import DataApps from "metabase/entities/data-apps";
-
 import CollectionCreate from "metabase/collections/containers/CollectionCreate";
 import CreateDataAppModal from "metabase/writeback/containers/CreateDataAppModal";
 
-import { Collection, CollectionId } from "metabase-types/api";
+import type { Collection, CollectionId } from "metabase-types/api";
+
+import { WideModal } from "./NewItemMenu.styled";
 
 type ModalType = "new-app" | "new-dashboard" | "new-collection";
 
@@ -135,22 +135,28 @@ const NewItemMenu = ({
         tooltip={triggerTooltip}
       />
       {modal && (
-        <Modal onClose={handleModalClose}>
+        <>
           {modal === "new-collection" ? (
-            <CollectionCreate
-              collectionId={collectionId}
-              onClose={handleModalClose}
-              onSaved={handleCollectionSave}
-            />
+            <Modal onClose={handleModalClose}>
+              <CollectionCreate
+                collectionId={collectionId}
+                onClose={handleModalClose}
+                onSaved={handleCollectionSave}
+              />
+            </Modal>
           ) : modal === "new-dashboard" ? (
-            <CreateDashboardModal
-              collectionId={collectionId}
-              onClose={handleModalClose}
-            />
+            <Modal onClose={handleModalClose}>
+              <CreateDashboardModal
+                collectionId={collectionId}
+                onClose={handleModalClose}
+              />
+            </Modal>
           ) : modal === "new-app" ? (
-            <CreateDataAppModal onClose={handleModalClose} />
+            <WideModal onClose={handleModalClose}>
+              <CreateDataAppModal onClose={handleModalClose} />
+            </WideModal>
           ) : null}
-        </Modal>
+        </>
       )}
     </>
   );

@@ -3,7 +3,6 @@ import { t } from "ttag";
 import moment from "moment-timezone";
 import _ from "underscore";
 
-import { nestedSettings } from "./nested";
 import ChartNestedSettingColumns from "metabase/visualizations/components/settings/ChartNestedSettingColumns";
 
 import { keyForColumn } from "metabase/lib/dataset";
@@ -53,6 +52,7 @@ export function columnSettings({
 }
 
 import MetabaseSettings from "metabase/lib/settings";
+import { nestedSettings } from "./nested";
 
 export function getGlobalSettingsForColumn(column) {
   const columnSettings = {};
@@ -220,9 +220,10 @@ export const DATE_COLUMN_SETTINGS = {
     getHidden: ({ unit }, settings) => !/\//.test(settings["date_style"] || ""),
   },
   date_abbreviate: {
-    title: t`Abbreviate names of days and months`,
+    title: t`Abbreviate days and months`,
     widget: "toggle",
     default: false,
+    inline: true,
     getHidden: ({ unit }, settings) => {
       const format = getDateFormatFromStyle(settings["date_style"], unit);
       return !format.match(/MMMM|dddd/);

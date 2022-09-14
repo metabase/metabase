@@ -4,6 +4,7 @@
             [clojure.pprint :as pprint]
             [clojure.string :as str]
             [clojure.walk :as walk]
+            [lambdaisland.deep-diff2 :as ddiff]
             [medley.core :as m]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
@@ -171,13 +172,26 @@
 
 (defn- print-diff [before after]
   (assert (not= before after))
-  (let [[only-in-before only-in-after] (data/diff before after)]
-    (when *print-full?*
-      (println (u/pprint-to-str 'cyan (format-output after))))
-    (when (seq only-in-before)
-      (println (u/colorize 'red (str "-\n" (u/pprint-to-str (format-output only-in-before))))))
-    (when (seq only-in-after)
-      (println (u/colorize 'green (str "+\n" (u/pprint-to-str (format-output only-in-after))))))))
+  (ddiff/pretty-print (ddiff/diff before after)
+                      ;; the default printer is very (too?) colorful.
+                      ;; this is one that strips color except for the diffs:
+                      (ddiff/printer {:color-scheme
+                                      {:lambdaisland.deep-diff2.printer-impl/deletion  [:red]
+                                       :lambdaisland.deep-diff2.printer-impl/insertion [:green]
+                                       :lambdaisland.deep-diff2.printer-impl/other     [:white]
+                                       :delimiter       nil
+                                       :tag             nil
+                                       :nil             nil
+                                       :boolean         nil
+                                       :number          nil
+                                       :string          nil
+                                       :character       nil
+                                       :keyword         nil
+                                       :symbol          nil
+                                       :function-symbol nil
+                                       :class-delimiter nil
+                                       :class-name      nil}}))
+  (println))
 
 (defn- debug-query-changes [middleware-var middleware]
   (fn [next-middleware]

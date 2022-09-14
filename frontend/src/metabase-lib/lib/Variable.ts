@@ -1,8 +1,8 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
+import { TemplateTag } from "metabase-types/types/Query";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Query from "metabase-lib/lib/queries/Query";
-import { TemplateTag } from "metabase-types/types/Query";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 export default class Variable {
   _args: any;

@@ -41,13 +41,16 @@ const ChartSettingFieldPicker = ({
       {columnKey && (
         <SettingsIcon
           name="ellipsis"
-          onClick={() => {
-            onShowWidget({
-              id: "column_settings",
-              props: {
-                initialKey: columnKey,
+          onClick={e => {
+            onShowWidget(
+              {
+                id: "column_settings",
+                props: {
+                  initialKey: columnKey,
+                },
               },
-            });
+              e.target,
+            );
           }}
         />
       )}

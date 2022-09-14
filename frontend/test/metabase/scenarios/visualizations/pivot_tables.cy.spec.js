@@ -321,7 +321,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText(/Column title/);
 
     cy.log("Change the title for this column");
-    cy.get("input[id=column_title]").clear().type("ModifiedTITLE");
+    cy.get("input[id=column_title]").clear().type("ModifiedTITLE").blur();
     cy.findByText("Done").click();
     cy.get(".Visualization").within(() => {
       cy.findByText("ModifiedTITLE");
@@ -516,8 +516,8 @@ describe("scenarios > visualizations > pivot tables", () => {
                     card_id: QUESTION_ID,
                     row: 0,
                     col: 0,
-                    sizeX: 12,
-                    sizeY: 8,
+                    size_x: 12,
+                    size_y: 8,
                   },
                 ],
               });
@@ -576,8 +576,8 @@ describe("scenarios > visualizations > pivot tables", () => {
                     card_id: QUESTION_ID,
                     row: 0,
                     col: 0,
-                    sizeX: 12,
-                    sizeY: 8,
+                    size_x: 12,
+                    size_y: 8,
                   },
                 ],
               });
@@ -619,18 +619,14 @@ describe("scenarios > visualizations > pivot tables", () => {
 
         // Skipped to avoid flake
         it.skip("should display pivot table in an embed preview", () => {
-          cy.findByText(
-            /Embed this (question|dashboard) in an application/,
-          ).click();
+          cy.findByText(/Embed in your application/).click();
           // we use preview endpoints when MB is iframed in itself
           cy.findByText(test.subject);
           getIframeBody().within(assertOnPivotFields);
         });
 
         it("should display pivot table in an embed URL", () => {
-          cy.findByText(
-            /Embed this (question|dashboard) in an application/,
-          ).click();
+          cy.findByText(/Embed in your application/).click();
 
           cy.findByText("Publish").click();
 

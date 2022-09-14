@@ -504,6 +504,33 @@ describe("scenarios > question > custom column", () => {
     cy.findByText("No discount");
   });
 
+  it("should be able to add a date range filter to a custom column", () => {
+    visitQuestionAdhoc({
+      display: "table",
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          expressions: { CustomDate: ["field", ORDERS.CREATED_AT, null] },
+        },
+      },
+    });
+
+    cy.findByText("CustomDate").click();
+
+    popover().within(() => {
+      cy.findByText("Filter by this column").click();
+      cy.findByText("Specific dates...").click();
+      enterDateFilter("12/10/2018", 0);
+      enterDateFilter("01/05/2019", 1);
+      cy.button("Add filter").click();
+    });
+
+    cy.wait("@dataset");
+    cy.findByText("Showing 463 rows").should("be.visible");
+  });
+
   it("should work with relative date filter applied to a custom column (metabase#16273)", () => {
     openOrdersTable({ mode: "notebook" });
     cy.findByText("Custom column").click();
@@ -601,3 +628,12 @@ describe("scenarios > question > custom column", () => {
     cy.focused().should("have.attr", "class").and("eq", "ace_text-input");
   });
 });
+
+const enterDateFilter = (value, index = 0) => {
+  cy.findAllByTestId("specific-date-picker")
+    .eq(index)
+    .findByRole("textbox")
+    .clear()
+    .type(value)
+    .blur();
+};

@@ -4,10 +4,6 @@ import PropTypes from "prop-types";
 import cx from "classnames";
 import { t } from "ttag";
 
-import NumberPicker from "./NumberPicker";
-import SelectPicker from "./SelectPicker";
-import TextPicker from "./TextPicker";
-
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 
 import {
@@ -19,6 +15,9 @@ import {
 import { getCurrencySymbol } from "metabase/lib/formatting";
 
 import { keyForColumn } from "metabase/lib/dataset";
+import TextPicker from "./TextPicker";
+import SelectPicker from "./SelectPicker";
+import NumberPicker from "./NumberPicker";
 
 import {
   BetweenLayoutContainer,

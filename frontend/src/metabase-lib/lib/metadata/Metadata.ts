@@ -1,11 +1,13 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import _ from "underscore";
-import Base from "./Base";
 import type Question from "../Question";
+import Base from "./Base";
 import type Database from "./Database";
 import type Table from "./Table";
 import type Schema from "./Schema";
+import type Field from "./Field";
+import { getUniqueFieldId } from "./utils";
 
 /**
  * @typedef { import("./metadata").DatabaseId } DatabaseId
@@ -102,12 +104,16 @@ export default class Metadata extends Base {
     return (tableId != null && this.tables[tableId]) || null;
   }
 
-  /**
-   * @param {FieldId} fieldId
-   * @returns {?Field}
-   */
-  field(fieldId): Field | null {
-    return (fieldId != null && this.fields[fieldId]) || null;
+  field(
+    fieldId: Field["id"] | undefined | null,
+    tableId?: Table["id"] | undefined | null,
+  ): Field | null {
+    if (fieldId == null) {
+      return null;
+    }
+
+    const uniqueId = getUniqueFieldId(fieldId, tableId);
+    return this.fields[uniqueId] || null;
   }
 
   question(cardId): Question | null {

@@ -4,7 +4,9 @@
             [java-time :as t]
             [metabase.api.activity :as api.activity]
             [metabase.models.activity :refer [Activity]]
+            [metabase.models.app :refer [App]]
             [metabase.models.card :refer [Card]]
+            [metabase.models.collection :refer [Collection]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.interface :as mi]
             [metabase.models.query-execution :refer [QueryExecution]]
@@ -133,10 +135,13 @@
                                         :display                "table"
                                         :archived               true
                                         :visualization_settings {}}]
+                  Collection [{coll-id :id} {}]
+                  App [{app-id :id} {:collection_id coll-id}]
                   Dashboard [page {:name        "rand-name"
                                    :description "rand-name"
                                    :creator_id  (mt/user->id :crowberto)
-                                   :is_app_page true}]
+                                   :is_app_page true
+                                   :collection_id coll-id}]
                   Dashboard [dash {:name        "rand-name2"
                                    :description "rand-name2"
                                    :creator_id  (mt/user->id :crowberto)}]
@@ -163,7 +168,8 @@
         (is (partial= [{:model "table"     :model_id (:id table1)}
                        {:model "dashboard" :model_id (:id dash) :model_object {:is_app_page false}}
                        {:model "card"      :model_id (:id card1)}
-                       {:model "page"      :model_id (:id page) :model_object {:is_app_page true}}
+                       {:model "page"      :model_id (:id page) :model_object {:is_app_page true
+                                                                               :app_id app-id}}
                        {:model "dataset"   :model_id (:id dataset)}]
                       recent-views))))))
 
@@ -180,10 +186,13 @@
                   Dashboard [dash1 {:name        "rand-name"
                                     :description "rand-name"
                                     :creator_id  (mt/user->id :crowberto)}]
+                  Collection [{coll-id :id} {}]
+                  App [{app-id :id} {:collection_id coll-id}]
                   Dashboard [dash2 {:name        "other-dashboard"
                                     :description "just another dashboard"
                                     :creator_id  (mt/user->id :crowberto)
-                                    :is_app_page true}]
+                                    :is_app_page true
+                                    :collection_id coll-id}]
                   Table     [table1 {:name "rand-name"}]
                   Table     [_hidden-table {:name            "hidden table"
                                             :visibility_type "hidden"}]
@@ -225,14 +234,14 @@
                          [(mt/user->id :rasta) "card"      (:id dataset)]
                          [(mt/user->id :rasta) "table"     (:id table1)]
                          [(mt/user->id :rasta) "card"      (:id card1)]]))
-        (is (= [["dashboard" (:id dash1)]
-                ["page"      (:id dash2)]
-                ["card"      (:id card1)]
-                ["dataset"   (:id dataset)]
-                ["table"     (:id table1)]]
-               ;; all views are from :rasta, but :crowberto can still see popular items
-               (for [popular-item (mt/user-http-request :crowberto :get 200 "activity/popular_items")]
-                 ((juxt :model :model_id) popular-item))))))))
+        (is (partial= [{:model "dashboard" :model_id (:id dash1)}
+                       {:model "page"      :model_id (:id dash2) :model_object {:is_app_page true
+                                                                                :app_id app-id}}
+                       {:model "card"      :model_id (:id card1)}
+                       {:model "dataset"   :model_id (:id dataset)}
+                       {:model "table"     :model_id (:id table1)}]
+                      ;; all views are from :rasta, but :crowberto can still see popular items
+                      (mt/user-http-request :crowberto :get 200 "activity/popular_items")))))))
 
 ;;; activities->referenced-objects, referenced-objects->existing-objects, add-model-exists-info
 

@@ -8,12 +8,11 @@ import {
   createMetadata,
 } from "__support__/sample_database_fixture";
 
+import { deserializeCardFromUrl } from "metabase/lib/card";
+import { TYPE as SEMANTIC_TYPE } from "cljs/metabase.types";
 import Question from "metabase-lib/lib/Question";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import { deserializeCardFromUrl } from "metabase/lib/card";
-
-import { TYPE as SEMANTIC_TYPE } from "cljs/metabase.types";
 
 const card = {
   display: "table",
@@ -939,7 +938,6 @@ describe("Question", () => {
       const question = new Question(
         {
           ...card,
-          dataset: true,
           result_metadata: [
             { semantic_type: SEMANTIC_TYPE.FK, fk_target_field_id: 5 },
           ],
@@ -954,22 +952,7 @@ describe("Question", () => {
       const question = new Question(
         {
           ...card,
-          dataset: true,
           result_metadata: [{ fk_target_field_id: 5 }],
-        },
-        metadata,
-      );
-
-      expect(question.dependentMetadata()).toEqual([]);
-    });
-
-    it("should return nothing for regular questions", () => {
-      const question = new Question(
-        {
-          ...card,
-          result_metadata: [
-            { semantic_type: SEMANTIC_TYPE.FK, fk_target_field_id: 5 },
-          ],
         },
         metadata,
       );

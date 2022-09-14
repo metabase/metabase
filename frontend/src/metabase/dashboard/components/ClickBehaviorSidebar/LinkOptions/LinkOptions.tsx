@@ -3,10 +3,6 @@ import { t } from "ttag";
 
 import { isTableDisplay } from "metabase/lib/click-behavior";
 
-import CustomLinkText from "./CustomLinkText";
-import QuestionDashboardPicker from "./QuestionDashboardPicker";
-import { SidebarContent } from "../ClickBehaviorSidebar.styled";
-
 import type { UiParameter } from "metabase/parameters/types";
 import type {
   DashboardOrderedCard,
@@ -15,6 +11,9 @@ import type {
   CustomDestinationClickBehavior,
   CustomDestinationClickBehaviorLinkType,
 } from "metabase-types/api";
+import { SidebarContent } from "../ClickBehaviorSidebar.styled";
+import CustomLinkText from "./CustomLinkText";
+import LinkedEntityPicker from "./LinkedEntityPicker";
 
 import CustomURLPicker from "./CustomURLPicker";
 import LinkOption from "./LinkOption";
@@ -34,6 +33,7 @@ function LinkTypeOptions({
   const linkTypeOptions: LinkTypeOption[] = [
     { type: "dashboard", icon: "dashboard", name: t`Dashboard` },
     { type: "question", icon: "bar", name: t`Saved question` },
+    { type: "page", icon: "document", name: t`Page` },
     { type: "url", icon: "link", name: t`URL` },
   ];
   return (
@@ -88,7 +88,7 @@ function LinkOptions({
       <div className="mt1">
         {hasSelectedLinkType && clickBehavior.linkType !== "url" && (
           <div>
-            <QuestionDashboardPicker
+            <LinkedEntityPicker
               dashcard={dashcard}
               clickBehavior={clickBehavior}
               updateSettings={updateSettings}

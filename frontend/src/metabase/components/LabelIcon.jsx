@@ -2,10 +2,10 @@
 import React from "react";
 import PropTypes from "prop-types";
 
+import cx from "classnames";
 import S from "./LabelIcon.css";
 
 import Icon from "./Icon";
-import cx from "classnames";
 
 const LabelIcon = ({ icon, size = 18, className, style }) =>
   icon.charAt(0) === "#" ? (

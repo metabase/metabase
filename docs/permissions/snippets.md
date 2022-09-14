@@ -1,10 +1,10 @@
 ---
-title: SQL snippet folders and permissions
+title: SQL snippet folder permissions
 redirect_from:
   - /docs/latest/enterprise-guide/sql-snippets
 ---
 
-# SQL snippet folders and permissions
+# SQL snippet folder permissions
 
 {% include plans-blockquote.html feature="SQL snippet controls" %}
 

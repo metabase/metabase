@@ -15,6 +15,7 @@ import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
 import { DashboardApi } from "metabase/services";
 
+import { getMetadata } from "metabase/selectors/metadata";
 import {
   getDashboard,
   getParameterValues,
@@ -22,7 +23,6 @@ import {
   getDashboardParameterValuesCache,
   getParameters,
 } from "../selectors";
-import { getMetadata } from "metabase/selectors/metadata";
 
 import { isVirtualDashCard } from "../utils";
 

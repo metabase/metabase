@@ -181,8 +181,8 @@ describe("snapshots", () => {
               card_id,
               row: 0,
               col: 0,
-              sizeX: 12,
-              sizeY: 8,
+              size_x: 12,
+              size_y: 8,
             },
           ],
         });

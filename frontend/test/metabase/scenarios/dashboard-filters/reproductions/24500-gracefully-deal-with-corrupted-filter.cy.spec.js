@@ -61,8 +61,8 @@ describe.skip("issues 15279 and 24500", () => {
               card_id,
               row: 0,
               col: 0,
-              sizeX: 18,
-              sizeY: 8,
+              size_x: 18,
+              size_y: 8,
               series: [],
               visualization_settings: {},
               parameter_mappings: [

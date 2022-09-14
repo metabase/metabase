@@ -5,23 +5,23 @@ import { t, ngettext, msgid } from "ttag";
 import { isDate } from "metabase/lib/schema_metadata";
 import { parseTimestamp } from "metabase/lib/time";
 import { formatDateTimeForParameter } from "metabase/lib/formatting/date";
-import Question from "metabase-lib/lib/Question";
-import { TemplateTagVariable } from "metabase-lib/lib/Variable";
-import { TemplateTagDimension } from "metabase-lib/lib/Dimension";
 import { isa, TYPE } from "metabase/lib/types";
 import {
   dimensionFilterForParameter,
   variableFilterForParameter,
 } from "metabase/parameters/utils/filters";
+import Question from "metabase-lib/lib/Question";
+import { TemplateTagVariable } from "metabase-lib/lib/Variable";
+import { TemplateTagDimension } from "metabase-lib/lib/Dimension";
 
 export function getDataFromClicked({
   extraData: { dashboard, parameterValuesBySlug, userAttributes } = {},
-  dimensions,
-  data,
+  dimensions = [],
+  data = [],
 }) {
   const column = [
-    ...(dimensions || []),
-    ...(data || []).map(d => ({
+    ...dimensions,
+    ...data.map(d => ({
       column: d.col,
       // When the data is changed to a display value for use in tooltips, we can set clickBehaviorValue to the raw value for filtering.
       value: d.clickBehaviorValue || d.value,
@@ -243,20 +243,20 @@ export function clickBehaviorIsValid(clickBehavior) {
     linkType,
     targetId,
     linkTemplate,
-    action,
   } = clickBehavior;
   if (type === "crossfilter") {
     return Object.keys(parameterMapping).length > 0;
-  }
-  if (type === "action") {
-    return typeof action === "number";
   }
   // if it's not a crossfilter/action, it's a link
   if (linkType === "url") {
     return (linkTemplate || "").length > 0;
   }
-  // if we're linking to a question or dashboard we just need a targetId
-  if (linkType === "dashboard" || linkType === "question") {
+  // if we're linking to a Metabase entity we just need a targetId
+  if (
+    linkType === "dashboard" ||
+    linkType === "question" ||
+    linkType === "page"
+  ) {
     return targetId != null;
   }
   // we've picked "link" without picking a link type

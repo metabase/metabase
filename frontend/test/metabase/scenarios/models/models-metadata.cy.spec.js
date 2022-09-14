@@ -7,6 +7,7 @@ import {
   openQuestionActions,
   questionInfoButton,
 } from "__support__/e2e/helpers";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 import { startQuestionFromModel } from "./helpers/e2e-models-helpers";
 import {
   openColumnOptions,
@@ -15,7 +16,6 @@ import {
   mapColumnTo,
   setModelMetadata,
 } from "./helpers/e2e-models-metadata-helpers";
-import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PEOPLE, PRODUCTS, PRODUCTS_ID, REVIEWS } = SAMPLE_DATABASE;
 
@@ -241,8 +241,8 @@ describe("scenarios > models metadata", () => {
           const dashboardId = response.body.id;
           cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
             cardId: modelId,
-            sizeX: 18,
-            sizeY: 9,
+            size_x: 18,
+            size_y: 9,
           });
 
           visitDashboard(dashboardId);

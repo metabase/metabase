@@ -22,14 +22,14 @@ describe("static visualizations", () => {
     setupSMTP();
   });
 
-  visualizationTypes.map(type => {
-    it(`${type} chart`, () => {
-      const dashboardName = `${type} charts dashboard`;
+  visualizationTypes.map(visualizationType => {
+    it(`${visualizationType} chart`, () => {
+      const dashboardName = `${visualizationType} charts dashboard`;
       cy.createDashboardWithQuestions({
         dashboardName,
         questions: [
-          createOneMetricTwoDimensionsQuestion(type),
-          createOneDimensionTwoMetricsQuestion(type),
+          createOneMetricTwoDimensionsQuestion(visualizationType),
+          createOneDimensionTwoMetricsQuestion(visualizationType),
         ],
       }).then(({ dashboard }) => {
         visitDashboard(dashboard.id);
@@ -55,15 +55,16 @@ function createOneDimensionTwoMetricsQuestion(display) {
     visualization_settings: {
       "graph.dimensions": ["CREATED_AT"],
       "graph.metrics": ["count", "avg"],
+      "graph.show_values": true,
     },
     display: display,
     database: SAMPLE_DB_ID,
   };
 }
 
-function createOneMetricTwoDimensionsQuestion(display) {
+function createOneMetricTwoDimensionsQuestion(visualizationType) {
   return {
-    name: `${display} one metric two dimensions`,
+    name: `${visualizationType} one metric two dimensions`,
     query: {
       "source-table": ORDERS_ID,
       aggregation: [["count"]],
@@ -75,8 +76,9 @@ function createOneMetricTwoDimensionsQuestion(display) {
     visualization_settings: {
       "graph.dimensions": ["CREATED_AT", "CATEGORY"],
       "graph.metrics": ["count"],
+      "graph.show_values": true,
     },
-    display: display,
+    display: visualizationType,
     database: SAMPLE_DB_ID,
   };
 }

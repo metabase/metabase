@@ -120,14 +120,24 @@
                                            :dataset_query {:database (mt/id)
                                                            :type     :native
                                                            :native   {:query         (str "UPDATE categories\n"
-                                                                                          "SET name = 'Bird Shop'\n"
+                                                                                          "SET name = [[{{name}} || ' ' ||]] 'Shop'\n"
                                                                                           "WHERE id = {{id}}")
                                                                       :template-tags {"id" {:name         "id"
                                                                                             :display-name "ID"
                                                                                             :type         :number
-                                                                                            :required     true}}}}
+                                                                                            :required     true}
+                                                                                      "name" {:name         "name"
+                                                                                              :display-name "Name"
+                                                                                              :type         :text
+                                                                                              :required     false}}}}
                                            :name          "Query Example"
-                                           :parameters    [{:id "id" :type "number"}]
+                                           :parameters    [{:id "id"
+                                                            :type "number"
+                                                            :target [:variable [:template-tag "id"]]}
+                                                           {:id "name"
+                                                            :type "text"
+                                                            :required false
+                                                            :target [:variable [:template-tag "name"]]}]
                                            :is_write      true
                                            :visualization_settings {:inline true}}
                                           (dissoc options-map :type))]]
@@ -144,8 +154,12 @@
                                                     :method "POST"
                                                     :body "{\"the_parameter\": {{id}}}"
                                                     :headers "{\"x-test\": \"{{id}}\"}"
-                                                    :parameters [{:id "id" :type "number"}
-                                                                 {:id "fail" :type "text"}]}
+                                                    :parameters [{:id "id"
+                                                                  :type "number"
+                                                                  :target [:template-tag "id"]}
+                                                                 {:id "fail"
+                                                                  :type "text"
+                                                                  :target [:template-tag "fail"]}]}
                                          :response_handle ".body"}
                                         options-map))]
         (f {:action-id action-id})))))

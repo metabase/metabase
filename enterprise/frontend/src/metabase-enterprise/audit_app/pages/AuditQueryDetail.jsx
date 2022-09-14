@@ -3,16 +3,10 @@ import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import AuditContent from "../components/AuditContent";
-import AuditCustomView from "../containers/AuditCustomView";
-
-import OpenInMetabase from "../components/OpenInMetabase";
-
+import { connect } from "react-redux";
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
-import GuiQueryEditor from "metabase/query_builder/components/GuiQueryEditor";
-import Question from "metabase-lib/lib/Question";
 
-import * as QueryDetailCards from "../lib/cards/query_detail";
+import GuiQueryEditor from "metabase/query_builder/components/GuiQueryEditor";
 
 import { serializeCardForUrl } from "metabase/lib/card";
 
@@ -57,13 +51,16 @@ const AuditQueryDetail = ({ params: { queryHash } }) => (
   </AuditCustomView>
 );
 
-import { connect } from "react-redux";
 import { getMetadata } from "metabase/selectors/metadata";
-
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import { loadMetadataForCard } from "metabase/query_builder/actions";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import Question from "metabase-lib/lib/Question";
+import * as QueryDetailCards from "../lib/cards/query_detail";
+import OpenInMetabase from "../components/OpenInMetabase";
+import AuditCustomView from "../containers/AuditCustomView";
+import AuditContent from "../components/AuditContent";
 
 const mapStateToProps = state => ({ metadata: getMetadata(state) });
 const mapDispatchToProps = { loadMetadataForCard };

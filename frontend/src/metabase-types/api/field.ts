@@ -42,7 +42,7 @@ export interface Field {
   description: string | null;
   nfc_path: string[] | null;
 
-  fingerprint: FieldFingerprint;
+  fingerprint?: FieldFingerprint;
 }
 
 export type FieldDimension = {

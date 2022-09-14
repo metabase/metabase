@@ -3,9 +3,9 @@ import React, { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import { keyForColumn, findColumnForColumnSetting } from "metabase/lib/dataset";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 import ColumnItem from "./ColumnItem";
 
@@ -32,18 +32,21 @@ export default class ChartSettingOrderedColumns extends Component {
     this.props.onChange(fields);
   };
 
-  handleEdit = columnSetting => {
+  handleEdit = (columnSetting, targetElement) => {
     const column = findColumnForColumnSetting(
       this.props.columns,
       columnSetting,
     );
     if (column) {
-      this.props.onShowWidget({
-        id: "column_settings",
-        props: {
-          initialKey: keyForColumn(column),
+      this.props.onShowWidget(
+        {
+          id: "column_settings",
+          props: {
+            initialKey: keyForColumn(column),
+          },
         },
-      });
+        targetElement,
+      );
     }
   };
 

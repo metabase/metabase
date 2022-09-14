@@ -31,8 +31,8 @@
     (mt/with-temp* [Dashboard     [{dashboard-id :id}]
                     Card          [{card-id :id}]
                     DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id, :parameter_mappings [{:foo "bar"}]}]]
-      (is (= {:sizeX                  2
-              :sizeY                  2
+      (is (= {:size_x                 2
+              :size_y                 2
               :col                    0
               :row                    0
               :parameter_mappings     [{:foo "bar"}]
@@ -49,8 +49,8 @@
                     DashboardCard       [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
                     DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}]
                     DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]]
-      (is (= {:sizeX                  2
-              :sizeY                  2
+      (is (= {:size_x                 2
+              :size_y                 2
               :col                    0
               :row                    0
               :parameter_mappings     []
@@ -109,16 +109,16 @@
                             {:creator_id             (mt/user->id :rasta)
                              :dashboard_id           dashboard-id
                              :card_id                card-id
-                             :sizeX                  4
-                             :sizeY                  3
+                             :size_x                 4
+                             :size_y                 3
                              :row                    1
                              :col                    1
                              :parameter_mappings     [{:foo "bar"}]
                              :visualization_settings {}
                              :series                 [card-id]})]
         (testing "return value from function"
-          (is (= {:sizeX                  4
-                  :sizeY                  3
+          (is (= {:size_x                 4
+                  :size_y                 3
                   :col                    1
                   :row                    1
                   :parameter_mappings     [{:foo "bar"}]
@@ -130,8 +130,8 @@
                                             :visualization_settings {}}]}
                  (remove-ids-and-timestamps dashboard-card))))
         (testing "validate db captured everything"
-          (is (= {:sizeX                  4
-                  :sizeY                  3
+          (is (= {:size_x                 4
+                  :size_y                 3
                   :col                    1
                   :row                    1
                   :parameter_mappings     [{:foo "bar"}]
@@ -155,8 +155,8 @@
                     Card          [{card-id-1 :id}   {:name "Test Card 1"}]
                     Card          [{card-id-2 :id}   {:name "Test Card 2"}]]
       (testing "unmodified dashcard"
-        (is (= {:sizeX                  2
-                :sizeY                  2
+        (is (= {:size_x                 2
+                :size_y                 2
                 :col                    0
                 :row                    0
                 :parameter_mappings     [{:foo "bar"}]
@@ -164,8 +164,8 @@
                 :series                 []}
                (remove-ids-and-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id)))))
       (testing "return value from the update call"
-        (is (= {:sizeX                  4
-                :sizeY                  3
+        (is (= {:size_x                 4
+                :size_y                 3
                 :col                    1
                 :row                    1
                 :parameter_mappings     [{:foo "barbar"}]
@@ -186,16 +186,16 @@
                   :actor_id               (mt/user->id :rasta)
                   :dashboard_id           nil
                   :card_id                nil
-                  :sizeX                  4
-                  :sizeY                  3
+                  :size_x                 4
+                  :size_y                 3
                   :row                    1
                   :col                    1
                   :parameter_mappings     [{:foo "barbar"}]
                   :visualization_settings {}
                   :series                 [card-id-2 card-id-1]})))))
       (testing "validate db captured everything"
-        (is (= {:sizeX                  4
-                :sizeY                  3
+        (is (= {:size_x                 4
+                :size_y                 3
                 :col                    1
                 :row                    1
                 :parameter_mappings     [{:foo "barbar"}]

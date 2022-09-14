@@ -1,5 +1,6 @@
+import { isActionButtonCard } from "metabase/writeback/utils";
+import { tag_names } from "cljs/metabase.shared.parameters.parameters";
 import Question from "metabase-lib/lib/Question";
-
 import { ExpressionDimension } from "metabase-lib/lib/Dimension";
 
 import {
@@ -7,8 +8,6 @@ import {
   getTagOperatorFilterForParameter,
   variableFilterForParameter,
 } from "./filters";
-
-import { tag_names } from "cljs/metabase.shared.parameters.parameters";
 
 function buildStructuredQuerySectionOptions(section) {
   return section.items.map(({ dimension }) => ({
@@ -61,8 +60,8 @@ export function getParameterMappingOptions(
     return tagNames ? tagNames.map(buildTextTagOption) : [];
   }
 
-  if (card.display === "action-button") {
-    // action cards don't have parameters
+  if (isActionButtonCard(card)) {
+    // Action parameters are mapped via click behavior UI for now
     return [];
   }
 

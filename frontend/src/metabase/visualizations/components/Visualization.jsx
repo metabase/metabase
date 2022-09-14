@@ -2,6 +2,10 @@
 import React from "react";
 import { connect } from "react-redux";
 
+import { t, jt } from "ttag";
+import { assoc } from "icepick";
+import _ from "underscore";
+import cx from "classnames";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
@@ -9,7 +13,6 @@ import ChartClickActions from "metabase/visualizations/components/ChartClickActi
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
-import { t, jt } from "ttag";
 import { duration, formatNumber } from "metabase/lib/formatting";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
@@ -31,10 +34,6 @@ import {
 } from "metabase/visualizations/lib/errors";
 
 import NoResults from "assets/img/no_results.svg";
-
-import { assoc } from "icepick";
-import _ from "underscore";
-import cx from "classnames";
 
 export const ERROR_MESSAGE_GENERIC = t`There was a problem displaying this chart.`;
 export const ERROR_MESSAGE_PERMISSION = t`Sorry, you don't have permission to see this card.`;
@@ -149,7 +148,7 @@ class Visualization extends React.PureComponent {
       : null;
     this.setState({
       hovered: null,
-      clicked: null,
+      //clicked: null,
       error: null,
       warnings: [],
       yAxisSplit: null,
@@ -325,6 +324,7 @@ class Visualization extends React.PureComponent {
       expectedDuration,
       replacementContent,
       onOpenChartSettings,
+      onUpdateVisualizationSettings,
     } = this.props;
     const { visualization } = this.state;
     const small = width < 330;
@@ -444,7 +444,7 @@ class Visualization extends React.PureComponent {
       (showTitle &&
         hasHeaderContent &&
         (loading || error || noResults || isHeaderEnabled)) ||
-      (replacementContent && (dashcard.sizeY !== 1 || isMobile));
+      (replacementContent && (dashcard.size_y !== 1 || isMobile));
 
     return (
       <div
@@ -551,6 +551,8 @@ class Visualization extends React.PureComponent {
             clickActions={clickActions}
             onChangeCardAndRun={this.handleOnChangeCardAndRun}
             onClose={this.hideActions}
+            series={series}
+            onUpdateVisualizationSettings={onUpdateVisualizationSettings}
           />
         )}
       </div>

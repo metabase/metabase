@@ -1,5 +1,6 @@
 import { PRODUCTS } from "__support__/sample_database_fixture";
 import Table from "./Table";
+import type Field from "./Field";
 
 describe("Table", () => {
   const productsTable = new Table(PRODUCTS);
