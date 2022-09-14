@@ -7,8 +7,6 @@ describe("scenarios > question > native subquery", () => {
   });
 
   it("autocomplete should work for question slugs inside template tags", () => {
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-
     // Create two saved questions, the first will be referenced in the query when it is opened, and the second will be added to the query after it is opened.
     cy.createNativeQuestion({
       name: "A People Question",
@@ -40,15 +38,12 @@ describe("scenarios > question > native subquery", () => {
             },
           },
         }).then(({ body: { id: questionId3 } }) => {
-          // cy.wrap(questionId3).as("toplevelQuestionId");
-          visitQuestion(questionId3);
+          cy.wrap(questionId3).as("toplevelQuestionId");
+          cy.visit(`/question/${questionId3}`);
 
           // Refresh the state, so previously created questions need to be loaded again.
           cy.reload();
-          // cy.wait("@cardQuery");
-
           cy.findByText("Open Editor").click();
-
           cy.get(".ace_editor").should("be.visible").type(" {{#");
 
           // Can't use cy.type here as it doesn't consistently keep the autocomplete open
@@ -63,11 +58,9 @@ describe("scenarios > question > native subquery", () => {
           // (slightly longer than AUTOCOMPLETE_DEBOUNCE_DURATION)
           // See https://github.com/metabase/metabase/pull/20970
           cy.wait(1000);
-
           cy.get(".ace_autocomplete")
             .should("be.visible")
             .findByText(`${questionId1}-a-`);
-
           cy.get(".ace_autocomplete")
             .should("be.visible")
             .findByText(`${questionId2}-a-`);
@@ -77,8 +70,6 @@ describe("scenarios > question > native subquery", () => {
   });
 
   it("autocomplete should work for referencing saved questions", () => {
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-
     // Create two saved questions, the first will be referenced in the query when it is opened, and the second will be added to the query after it is opened.
     cy.createNativeQuestion({
       name: "A People Question 1",
@@ -111,11 +102,10 @@ describe("scenarios > question > native subquery", () => {
           },
         }).then(({ body: { id: questionId3 } }) => {
           cy.wrap(questionId3).as("toplevelQuestionId");
-          visitQuestion(questionId3);
+          cy.visit(`/question/${questionId3}`);
 
           // Refresh the state, so previously created questions need to be loaded again.
           cy.reload();
-          cy.wait("@cardQuery");
 
           cy.findByText("Open Editor").click();
 
@@ -191,18 +181,18 @@ describe("scenarios > question > native subquery", () => {
         },
       }).then(({ body: { id: questionId2 } }) => {
         // check the original name is in the query
-        visitQuestion(questionId2);
+        cy.visit(`/question/${questionId2}`);
         cy.findByText("Open Editor").click();
         cy.get(".ace_content:visible").contains("{{#4-a-people-question-1}}");
 
         // change the name
-        visitQuestion(questionId1);
+        cy.visit(`/question/${questionId1}`);
         cy.findByText("A People Question 1").type(" changed");
         // unfocus the input
         cy.findByText("Open Editor").click();
 
         // check the name has changed
-        visitQuestion(questionId2);
+        cy.visit(`/question/${questionId2}`);
         cy.findByText("Open Editor").click();
         cy.get(".ace_content:visible").contains(
           "{{#4-a-people-question-1-changed}}",
@@ -242,7 +232,7 @@ describe("scenarios > question > native subquery", () => {
       .then(response => {
         cy.wrap(response.body.id).as("toplevelQuestionId");
 
-        visitQuestion(response.body.id);
+        cy.visit(`/question/${response.body.id}`);
         cy.contains("41");
       });
 
