@@ -416,9 +416,9 @@
                                 "per-day"                   (->> [card-2] (map #(select-keys % [:id :name :dataset])))
                                 (str (:id card-1))          (->> [card-1] (map #(select-keys % [:id :name :dataset])))
                                 (str (:id card-2) "-WEST")  (->> [card-2] (map #(select-keys % [:id :name :dataset])))}]
-        (is (= expected (mt/user-http-request :rasta :get 200
-                                              (format "database/%d/card_autocomplete_suggestions" (mt/id))
-                                              :query query)))))))
+        (is (= [query expected] [query (mt/user-http-request :rasta :get 200
+                                                             (format "database/%d/card_autocomplete_suggestions" (mt/id))
+                                                             :query query)]))))))
 
 (driver/register! ::no-nested-query-support
                   :parent :sql-jdbc

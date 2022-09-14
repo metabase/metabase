@@ -437,7 +437,7 @@
                            (cond
                              ;; e.g. search-string = "123"
                              (and (not-empty search-id) (empty? search-name))
-                             [:like (hx/cast (if (= (mdb.connection/db-type) :mysql) :char :text) (str search-id "%"))]
+                             [:like (hx/cast (if (= (mdb.connection/db-type) :mysql) :char :text) :id) (str search-id "%")]
 
                              ;; e.g. search-string = "123-foo"
                              (and (not-empty search-id) (not-empty search-name))
@@ -446,7 +446,7 @@
                               [:like :%lower.name (str "%" search-name "%")]]
 
                              ;; e.g. search-string = "foo"
-                             (and (empty search-id) (not-empty search-name))
+                             (and (empty? search-id) (not-empty search-name))
                              [:like :%lower.name (str "%" search-name "%")])]
                 :order-by [[:id :asc]]
                 :limit    50})))
