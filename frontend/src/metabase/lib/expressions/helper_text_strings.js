@@ -564,6 +564,102 @@ const helperTextStrings = [
       },
     ],
   },
+  {
+    name: "get-year",
+    structure: "year(" + t`column` + ")",
+    description: t`Takes a datetime and returns an integer with the number of the year.`,
+    example: "year([" + t`Created At` + "])",
+    args: [
+      {
+        name: t`column`,
+        description: t`The datetime column.`,
+      },
+    ],
+  },
+  {
+    name: "get-quarter",
+    structure: "quarter(" + t`column` + ")",
+    description: t`Takes a datetime and returns an integer (1-4) with the number of the quarter in the year.`,
+    example: "quarter([" + t`Created At` + "])",
+    args: [
+      {
+        name: t`column`,
+        description: t`The datetime column.`,
+      },
+    ],
+  },
+  {
+    name: "get-month",
+    structure: "month(" + t`column` + ")",
+    description: t`Takes a datetime and returns an integer (1-12) with the number of the month in the year.`,
+    example: "month([" + t`Created At` + "])",
+    args: [
+      {
+        name: t`column`,
+        description: t`The datetime column.`,
+      },
+    ],
+  },
+  {
+    name: "get-day",
+    structure: "day(" + t`column` + ")",
+    description: t`Takes a datetime and returns an integer (1-31) with the number of the day of the month.`,
+    example: "day([" + t`Created At` + "])",
+    args: [
+      {
+        name: t`column`,
+        description: t`The datetime column.`,
+      },
+    ],
+  },
+  {
+    name: "get-day-of-week",
+    structure: "weekday(" + t`column` + ")",
+    description: t`Takes a datetime and returns an integer (1-7) with the number of the day of the week.`,
+    example: "weekday([" + t`Created At` + "])",
+    args: [
+      {
+        name: t`column`,
+        description: t`The datetime column.`,
+      },
+    ],
+  },
+  {
+    name: "get-hour",
+    structure: "hour(" + t`column` + ")",
+    description: t`Takes a datetime and returns an integer (0-23) with the number of the hour. No AM/PM.`,
+    example: "hour([" + t`Created At` + "])",
+    args: [
+      {
+        name: t`column`,
+        description: t`The datetime column.`,
+      },
+    ],
+  },
+  {
+    name: "get-minute",
+    structure: "minute(" + t`column` + ")",
+    description: t`Takes a datetime and returns an integer (0-59) with the number of the minute in the hour.`,
+    example: "minute([" + t`Created At` + "])",
+    args: [
+      {
+        name: t`column`,
+        description: t`The datetime column.`,
+      },
+    ],
+  },
+  {
+    name: "get-second",
+    structure: "second(" + t`column` + ")",
+    description: t`Takes a datetime and returns an integer (0-59) with the number of the seconds in the minute.`,
+    example: "second([" + t`Created At` + "])",
+    args: [
+      {
+        name: t`column`,
+        description: t`The datetime column.`,
+      },
+    ],
+  },
 ];
 
 export default name => helperTextStrings.find(h => h.name === name);
