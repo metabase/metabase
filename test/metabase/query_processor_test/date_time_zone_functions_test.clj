@@ -133,9 +133,8 @@
                     :breakout    [[:expression "expr"]]}]]
 
                  [:get-second
-                  (fn [driver col-type]
-                    (fn [_driver col-type]
-                     (#{:date :text-as-date} col-type)))
+                  (fn [_driver col-type]
+                    (#{:date :text-as-date} col-type))
                   [[[9] [10] [11] [11]]
                    {:expressions {"expr" [:get-second [:field field-id nil]]}
                     :fields      [[:expression "expr"]]}]
