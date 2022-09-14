@@ -444,15 +444,17 @@ describe("scenarios > models", () => {
     }).then(({ body: { id: modelId } }) => {
       cy.request("PUT", `/api/card/${modelId}`, { dataset: true }).then(() => {
         cy.visit(`/model/${modelId}/query`);
-        cy.get(".ace_content")
+        cy.get(".ace_editor:not(.ace_autocomplete)")
           .should("be.visible")
-          .as("editor")
           .type("{movetoend}")
           .type(" WHERE {{F", {
             parseSpecialCharSequences: false,
           });
         cy.findByTestId("tag-editor-sidebar").should("not.exist");
-        cy.get("@editor").type("{leftarrow}{leftarrow}{backspace}#");
+        cy.realPress("Escape"); // close the autocomplete popup
+        cy.get(".ace_editor:not(.ace_autocomplete)").type(
+          "{leftarrow}{leftarrow}{backspace}#",
+        );
         cy.findByTestId("tag-editor-sidebar").should("be.visible");
       });
     });
