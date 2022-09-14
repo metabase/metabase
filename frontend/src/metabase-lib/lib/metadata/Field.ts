@@ -22,8 +22,7 @@ import {
   isCountry,
   isCoordinate,
   isLocation,
-  isDescription,
-  isComment,
+  isLongText,
   isDimension,
   isMetric,
   isPK,
@@ -42,8 +41,6 @@ import Base from "./Base";
 import type Table from "./Table";
 import type Metadata from "./Metadata";
 import { getUniqueFieldId } from "./utils";
-
-export const LONG_TEXT_MIN = 80;
 
 /**
  * @typedef { import("./metadata").FieldValues } FieldValues
@@ -233,13 +230,7 @@ class FieldInner extends Base {
   }
 
   isLongText() {
-    return (
-      isString(this) &&
-      (isComment(this) ||
-        isDescription(this) ||
-        this?.fingerprint?.type?.["type/Text"]?.["average-length"] >=
-          LONG_TEXT_MIN)
-    );
+    return isLongText(this);
   }
 
   /**

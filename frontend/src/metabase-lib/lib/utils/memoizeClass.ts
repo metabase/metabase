@@ -18,10 +18,10 @@ const memoized = new WeakMap();
 
 const createMap = () => new Map();
 
-export function memoizeClass<T>(
+export function memoizeClass<K, T extends K = K>(
   ...keys: string[]
-): (Class: Constructor<T>) => Constructor<T> {
-  return (Class: Constructor<T>): Constructor<T> => {
+): (Class: Constructor<K, T>) => Constructor<K, T> {
+  return (Class: Constructor<K, T>): Constructor<K, T> => {
     const descriptors = Object.getOwnPropertyDescriptors(Class.prototype);
 
     keys.forEach(key => {

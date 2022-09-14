@@ -11,11 +11,12 @@ export const ClickActionButton = styled.div<ClickActionButtonProps>`
   ${({ type }) =>
     type === "sort" &&
     css`
-      color: ${color("brand")};
-      border: 1px solid ${alpha("brand", 0.35)};
+      color: ${color("text-dark")};
+      border: 1px solid ${color("border")};
       margin-right: 0.5rem;
 
       &:hover {
+        color: ${color("white")};
         background-color: ${color("brand")};
       }
     `}
@@ -49,12 +50,12 @@ export const ClickActionButton = styled.div<ClickActionButtonProps>`
   ${({ type }) =>
     type === "token" &&
     css`
-      color: ${color("brand")};
+      color: ${color("text-dark")};
       font-size: 0.875em;
       line-height: 1rem;
       margin-right: 0.5rem;
       padding: 0.3125rem 0.875rem;
-      border: 1px solid ${alpha("brand", 0.35)};
+      border: 1px solid ${color("border")};
       border-radius: 100px;
 
       &:hover {
@@ -66,17 +67,17 @@ export const ClickActionButton = styled.div<ClickActionButtonProps>`
   ${({ type }) =>
     type === "token-filter" &&
     css`
-      color: ${color("filter")};
+      color: ${color("text-dark")};
       font-size: 0.875em;
       line-height: 1rem;
       padding: 0.125rem 1rem;
-      border: 1px solid ${alpha("filter", 0.5)};
+      border: 1px solid ${color("border")};
       border-radius: 100px;
       margin-right: 0.5rem;
 
       &:hover {
         color: ${color("white")};
-        background-color: ${color("filter")};
+        background-color: ${color("brand")};
       }
     `}
 `;

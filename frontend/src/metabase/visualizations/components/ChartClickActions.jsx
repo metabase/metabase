@@ -8,6 +8,7 @@ import cx from "classnames";
 import { Link } from "react-router";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
+import { singularize, stripId } from "metabase/lib/formatting";
 
 import "./ChartClickActions.css";
 
@@ -31,9 +32,6 @@ const SECTIONS = {
   zoom: {
     icon: "zoom_in",
   },
-  details: {
-    icon: "document",
-  },
   sort: {
     icon: "sort",
   },
@@ -45,6 +43,9 @@ const SECTIONS = {
   },
   standalone_filter: {
     icon: "filter",
+  },
+  shortcut: {
+    icon: "shortcut",
   },
   filter: {
     icon: "funnel_outline",
@@ -65,6 +66,10 @@ const SECTIONS = {
   },
   auto: {
     icon: "bolt",
+  },
+  details: {
+    icon: "expand",
+    separator: true,
   },
 };
 // give them indexes so we can sort the sections by the above ordering (JS objects are ordered)
@@ -234,13 +239,13 @@ class ChartClickActions extends Component {
           popover ? (
             popover
           ) : (
-            <div className="text-bold px2 pt2 pb1">
-              {sections.map(([key, actions]) => (
+            <div className="text-bold py2">
+              {sections.map(([key, actions], index) => (
                 <div
                   key={key}
                   className={cx(
-                    "pb1",
                     { pb2: SECTIONS[key].icon === "bolt" },
+                    { px2: !SECTIONS[key].separator },
                     {
                       ml1:
                         SECTIONS[key].icon === "bolt" ||
@@ -252,40 +257,41 @@ class ChartClickActions extends Component {
                   )}
                 >
                   {SECTIONS[key].icon === "sum" && (
-                    <p className="mt0 text-medium text-small">{t`Summarize`}</p>
+                    <div className="mb1 text-medium text-small">{t`Summarize`}</div>
                   )}
                   {SECTIONS[key].icon === "breakout" && (
-                    <p className="my1 text-medium text-small">{t`Break out by a…`}</p>
+                    <div className="mb1 text-medium text-small">{t`Break out by a…`}</div>
                   )}
                   {SECTIONS[key].icon === "bolt" && (
-                    <p className="mt2 text-medium text-small">
+                    <div className="mt2 text-medium text-small">
                       {t`Automatic explorations`}
-                    </p>
+                    </div>
                   )}
                   {SECTIONS[key].icon === "funnel_outline" && (
-                    <p
-                      className={cx(
-                        "text-small",
-                        hasOnlyOneSection ? "mt0" : "mt2",
-                        hasOnlyOneSection ? "text-dark" : "text-medium",
-                      )}
-                    >
+                    <div className={cx("mb1 text-small text-medium")}>
                       {t`Filter by this value`}
-                    </p>
+                    </div>
+                  )}
+                  {SECTIONS[key].icon === "shortcut" && (
+                    <div className={cx("mb1 text-small text-medium")}>
+                      {t`Filter by ${singularize(
+                        stripId(clicked.column.display_name),
+                      )}`}
+                    </div>
                   )}
 
                   <div
-                    className={cx(
-                      "flex",
-                      {
-                        "justify-end": SECTIONS[key].icon === "gear",
-                      },
-                      {
-                        "align-center justify-center":
-                          SECTIONS[key].icon === "gear",
-                      },
-                      { "flex-column my1": SECTIONS[key].icon === "summarize" },
-                    )}
+                    className={cx("flex ", {
+                      "border-top mt2 pt2 px2":
+                        SECTIONS[key].separator &&
+                        index === sections.length - 1,
+                      "justify-end": SECTIONS[key].icon === "gear",
+                      "align-center justify-center":
+                        SECTIONS[key].icon === "gear",
+                      "flex-column my1":
+                        SECTIONS[key].icon === "summarize" ||
+                        SECTIONS[key].icon === "shortcut",
+                    })}
                   >
                     {actions.map((action, index) => (
                       <ChartClickAction
@@ -356,7 +362,7 @@ export const ChartClickAction = ({ action, isLastItem, handleClickAction }) => {
           {action.icon && (
             <Icon
               className={cx("flex mr1", {
-                "text-brand text-white-hover":
+                "text-dark text-white-hover":
                   action.buttonType !== "formatting",
               })}
               size={action.buttonType === "formatting" ? 16 : 12}
@@ -377,7 +383,7 @@ export const ChartClickAction = ({ action, isLastItem, handleClickAction }) => {
       >
         {action.icon && (
           <Icon
-            className="flex mr1 text-brand text-white-hover"
+            className="flex mr1 text-dark text-white-hover"
             size={action.buttonType === "horizontal" ? 14 : 12}
             name={action.icon}
           />

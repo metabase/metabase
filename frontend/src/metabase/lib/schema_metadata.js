@@ -28,6 +28,8 @@ export const DIMENSION = "DIMENSION";
 
 export const UNKNOWN = "UNKNOWN";
 
+export const LONG_TEXT_MIN = 80;
+
 // define various type hierarchies
 // NOTE: be sure not to create cycles using the "other" types
 const TYPES = {
@@ -233,6 +235,13 @@ export const isDescription = field =>
 
 export const isComment = field =>
   field && isa(field.semantic_type, TYPE.Comment);
+
+export const isLongText = field =>
+  isString(field) &&
+  (isComment(field) ||
+    isDescription(field) ||
+    field?.fingerprint?.type?.["type/Text"]?.["average-length"] >=
+      LONG_TEXT_MIN);
 
 export const isID = field => isFK(field) || isPK(field);
 

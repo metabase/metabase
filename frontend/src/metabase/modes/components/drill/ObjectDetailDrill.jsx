@@ -1,6 +1,7 @@
 import { t } from "ttag";
 import { isFK, isPK } from "metabase/lib/schema_metadata";
 import { zoomInRow } from "metabase/query_builder/actions";
+import { isAggregateField } from "metabase/lib/query/field_ref";
 
 function hasManyPKColumns(question) {
   const fields = question.isDataset()
@@ -31,7 +32,7 @@ function getBaseActionObject() {
     section: "details",
     title: t`View details`,
     buttonType: "horizontal",
-    icon: "document",
+    icon: "expand",
     default: true,
   };
 }
@@ -67,6 +68,7 @@ function getFKAction({ question, column, objectId }) {
     return;
   }
   actionObject.question = () => question.drillPK(targetField, objectId);
+  actionObject.icon = "grid";
   return actionObject;
 }
 
@@ -74,16 +76,34 @@ export default ({ question, clicked }) => {
   if (
     !clicked?.column ||
     clicked?.value === undefined ||
-    !(isFK(clicked.column) || isPK(clicked.column)) ||
     !question.query().isEditable()
   ) {
     return [];
   }
-  const { column, value: objectId, extraData } = clicked;
-  const params = { question, column, objectId, extraData };
-  const actionObject = isPK(column) ? getPKAction(params) : getFKAction(params);
-  if (!hasManyPKColumns(question)) {
-    actionObject.extra = () => ({ objectId });
+  const { column, value, extraData, data } = clicked;
+  if (isFK(clicked.column) || isPK(clicked.column)) {
+    const objectId = value;
+    const params = { question, column, objectId, extraData };
+    const actionObject = isPK(column)
+      ? getPKAction(params)
+      : getFKAction(params);
+    if (!hasManyPKColumns(question)) {
+      actionObject.extra = () => ({ objectId });
+    }
+    return actionObject ? [actionObject] : [];
+  } else if (
+    !hasManyPKColumns(question) &&
+    !isAggregateField(column.field_ref)
+  ) {
+    const { value: objectId, col: column } = data.find(({ col }) => isPK(col));
+    const params = {
+      question,
+      column,
+      objectId,
+      extraData,
+      extra: () => ({ objectId }),
+    };
+    return [getPKAction(params)];
   }
-  return actionObject ? [actionObject] : [];
+  return [];
 };

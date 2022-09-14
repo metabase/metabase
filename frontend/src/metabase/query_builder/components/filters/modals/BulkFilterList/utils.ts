@@ -1,8 +1,6 @@
 import { isDate } from "metabase/lib/schema_metadata";
 import { DimensionOption } from "metabase-lib/lib/queries/StructuredQuery";
 
-import { LONG_TEXT_MIN } from "metabase-lib/lib/metadata/Field";
-
 type PriorityMap = { [key: string]: number | undefined };
 
 const fieldSortPriorities: PriorityMap = {
