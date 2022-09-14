@@ -1,6 +1,5 @@
 import { PRODUCTS } from "__support__/sample_database_fixture";
 import Table from "./Table";
-import type Field from "./Field";
 
 describe("Table", () => {
   const productsTable = new Table(PRODUCTS);
@@ -27,6 +26,19 @@ describe("Table", () => {
       });
 
       expect(table.connectedTables()).toEqual([productsTable]);
+    });
+  });
+
+  describe("isVirtualCard", () => {
+    it("should return false when the Table is not a virtual card table", () => {
+      expect(productsTable.isVirtualCard()).toBe(false);
+    });
+
+    it("should return true when the Table is a virtual card table", () => {
+      const virtualCardTable = new Table({
+        id: "card__123",
+      });
+      expect(virtualCardTable.isVirtualCard()).toBe(true);
     });
   });
 });
