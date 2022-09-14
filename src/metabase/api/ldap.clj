@@ -91,7 +91,7 @@
                       (when-not (= :SUCCESS (:status result))
                         (throw (ex-info (tru "Unable to connect to LDAP server with current settings")
                                         (humanize-error-messages result))))))
-                  (setting/set! :ldap-enabled? new-value)))
+                  (setting/set! :ldap-enabled new-value)))
   :default    false)
 
 (defn- update-password-if-needed
@@ -114,7 +114,6 @@
                           (update :ldap-password update-password-if-needed))
         ldap-details  (set/rename-keys ldap-settings ldap/mb-settings->ldap-details)
         results       (ldap/test-ldap-connection ldap-details)]
-    (def ldap-details ldap-details)
     (if (= :SUCCESS (:status results))
       ;; test succeeded, save our settings
       (do

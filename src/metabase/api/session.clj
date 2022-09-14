@@ -5,6 +5,7 @@
             [java-time :as t]
             [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
+            [metabase.api.ldap :as api.ldap]
             [metabase.config :as config]
             [metabase.email.messages :as messages]
             [metabase.events :as events]
@@ -24,8 +25,7 @@
             [schema.core :as s]
             [throttle.core :as throttle]
             [toucan.db :as db]
-            [toucan.models :as models]
-            [metabase.api.ldap :as api.ldap])
+            [toucan.models :as models])
   (:import com.unboundid.util.LDAPSDKException
            java.util.UUID))
 

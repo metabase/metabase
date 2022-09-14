@@ -1,7 +1,6 @@
 (ns metabase.api.ldap-test
   (:require [clojure.set :as set]
             [clojure.test :refer :all]
-            [metabase.api.ldap :as api.ldap]
             [metabase.integrations.ldap :as ldap]
             [metabase.models.setting :as setting]
             [metabase.test :as mt]
@@ -10,7 +9,7 @@
 (defn ldap-test-details
   []
   (-> (ldap.test/get-ldap-details)
-      (set/rename-keys (set/map-invert @#'api.ldap/mb-settings->ldap-details))
+      (set/rename-keys (set/map-invert @#'ldap/mb-settings->ldap-details))
       (assoc :ldap-enabled true)))
 
 (deftest ldap-settings-test

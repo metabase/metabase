@@ -10,7 +10,6 @@
             [metabase.api.ldap :as api.ldap]
             [metabase.email.messages :as messages]
             [metabase.integrations.google :as google]
-            [metabase.integrations.ldap :as ldap]
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.login-history :refer [LoginHistory]]
             [metabase.models.permissions-group :as perms-group]
