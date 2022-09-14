@@ -120,12 +120,6 @@
    :numBusyConnections {:label       "c3p0_num_busy_connections"
                         :description (deferred-trs "C3P0 Number of busy connections")}})
 
-(defn- ->array
-  "Return an array."
-  ^ArrayList
-  [^java.util.Collection coll]
-  (ArrayList. coll))
-
 (defn- stats->prometheus
   "Create an ArrayList of GaugeMetricFamily objects containing measurements from the c3p0 stats. Stats are grouped by
   the property and the database information is attached as a label to multiple measurements of `:numConnections`."
