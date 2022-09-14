@@ -44,7 +44,6 @@ const getOptionsFromArray = (options: (number | string)[]) =>
   options.map(o => ({ name: o, value: o }));
 
 const getParameterFieldProps = (fieldSettings: FieldSettings) => {
-  console.log(fieldSettings);
   switch (fieldSettings.inputType) {
     case "string":
       return { type: "input" };
