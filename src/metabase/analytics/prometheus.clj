@@ -1,7 +1,7 @@
 (ns metabase.analytics.prometheus
   "Namespace for collection metrics with Prometheus. Will set up a registry and a webserver on startup
   if [[prometheus-server-port]] is set to a port number. This can only be set in the environment (by starting with
-  `MB_PROMETHEUS_SERVER_PORT` set to a numeric value and not though the web UI due to its sensitivity.
+  `MB_PROMETHEUS_SERVER_PORT` set to a numeric value and not through the web UI due to its sensitivity.
 
   Api is quite simple: [[setup!]] and [[shutdown!]]. After that you can retrieve metrics from
   http://localhost:<prometheus-server-port>/metrics."
@@ -12,7 +12,7 @@
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.server :as server]
             [metabase.troubleshooting :as troubleshooting]
-            [metabase.util.i18n :refer [deferred-tru trs]]
+            [metabase.util.i18n :refer [deferred-trs trs]]
             [potemkin :as p]
             [potemkin.types :as p.types]
             [ring.adapter.jetty :as ring-jetty])
@@ -23,14 +23,14 @@
             StandardExports
             ThreadExports]
            io.prometheus.client.jetty.JettyStatisticsCollector
-           java.util.ArrayList
+           [java.util ArrayList List]
            org.eclipse.jetty.server.Server))
 
 ;;; Infra:
 ;; defsetting enables and [[system]] holds the system (webserver and registry)
 
 (defsetting prometheus-server-port
-  (deferred-tru (str "Port to serve prometheus metrics from. If set, prometheus collectors are registered"
+  (deferred-trs (str "Port to serve prometheus metrics from. If set, prometheus collectors are registered"
                      " and served from `localhost:<port>/metrics`."))
   :type       :integer
   :visibility :internal
@@ -110,15 +110,15 @@
 
 (def ^:private label-translation
   {:maxPoolSize        {:label       "c3p0_max_pool_size"
-                        :description "C3P0 Max pool size"}
+                        :description (deferred-trs "C3P0 Max pool size")}
    :minPoolSize        {:label       "c3p0_min_pool_size"
-                        :description "C3P0 Minimum pool size"}
+                        :description (deferred-trs "C3P0 Minimum pool size")}
    :numConnections     {:label       "c3p0_num_connections"
-                        :description "C3P0 Number of connections"}
+                        :description (deferred-trs "C3P0 Number of connections")}
    :numIdleConnections {:label       "c3p0_num_idle_connections"
-                        :description "C3P0 Number of idle connections"}
+                        :description (deferred-trs "C3P0 Number of idle connections")}
    :numBusyConnections {:label       "c3p0_num_busy_connections"
-                        :description "C3P0 Number of busy connections"}})
+                        :description (deferred-trs "C3P0 Number of busy connections")}})
 
 (defn- ->array
   "Return an array."
@@ -139,11 +139,11 @@
                 (let [{gauge-label :label desc :description} (label-translation raw-label)
                       gauge (GaugeMetricFamily.
                              ^String gauge-label
-                             ^String desc
-                             (->array ["database"]))]
+                             ^String (str desc) ;; site-localized becomes string
+                             (List/of "database"))]
                   (doseq [m measurements]
                     (.addMetric gauge
-                                (->array [(:label m)])
+                                (List/of (:label m))
                                 (:value m)))
                   gauge))))
    (completing conj!
@@ -236,11 +236,12 @@
   []
   (when system
     (locking #'system
-     (try (stop-web-server system)
-          (alter-var-root #'system (constantly nil))
-          (log/info (trs "Prometheus web-server shut down"))
-          (catch Exception e
-            (log/warn e (trs "Error stopping prometheus web-server")))))))
+      (when system
+        (try (stop-web-server system)
+             (alter-var-root #'system (constantly nil))
+             (log/info (trs "Prometheus web-server shut down"))
+             (catch Exception e
+               (log/warn e (trs "Error stopping prometheus web-server"))))))))
 
 (comment
   (require 'iapetos.export)
