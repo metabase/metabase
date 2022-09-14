@@ -42,6 +42,7 @@ describe("writeback > FormCreator > FieldSettingsPopover", () => {
     expect(changeSpy).toHaveBeenCalledWith({
       ...settings,
       fieldType: "date",
+      inputType: "date", // should set default input type for new field type
     });
   });
 

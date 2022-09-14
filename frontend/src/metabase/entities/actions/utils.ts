@@ -74,7 +74,9 @@ export const setTemplateTagTypesFromFieldSettings = (
       question = question.setQuery(
         (question.query() as NativeQuery).setTemplateTag(tag.name, {
           ...tag,
-          type: getTagTypeFromFieldSettings(fields[tag.id].fieldType),
+          type: getTagTypeFromFieldSettings(
+            fields[tag.id]?.fieldType ?? "string",
+          ),
         }),
       );
     });

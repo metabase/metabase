@@ -251,8 +251,12 @@ export function clickBehaviorIsValid(clickBehavior) {
   if (linkType === "url") {
     return (linkTemplate || "").length > 0;
   }
-  // if we're linking to a question or dashboard we just need a targetId
-  if (linkType === "dashboard" || linkType === "question") {
+  // if we're linking to a Metabase entity we just need a targetId
+  if (
+    linkType === "dashboard" ||
+    linkType === "question" ||
+    linkType === "page"
+  ) {
     return targetId != null;
   }
   // we've picked "link" without picking a link type
