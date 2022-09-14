@@ -1,6 +1,5 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import slugg from "slugg";
 import { t } from "ttag";
 
 import { chain, assoc, getIn, assocIn, updateIn } from "icepick";
@@ -396,26 +395,6 @@ export default class NativeQuery extends AtomicQuery {
     }
 
     return query;
-  }
-
-  updateReferencedQuestionNames(questions): NativeQuery {
-    const questionsById = _.indexBy(questions, "id");
-    const newQueryText = this.templateTags()
-      // only tags for questions
-      .filter(tag => tag.type === "card")
-      // only tags that match given questions
-      .filter(tag => questionsById[tag["card-id"]])
-      // for each tag, update the name in the queryText
-      .reduce((qText, tag) => {
-        const question = questionsById[tag["card-id"]];
-        return qText.replace(
-          new RegExp(`{{\\s*${tag.name}\\s*}}`, "g"),
-          `{{#${question.id}-${slugg(question.name)}}}`,
-        );
-      }, this.queryText());
-    return newQueryText === this.queryText()
-      ? this
-      : this.setQueryText(newQueryText);
   }
 
   updateSnippetNames(snippets): NativeQuery {
