@@ -374,12 +374,13 @@
       (update :visualization_settings serdes.util/import-visualization-settings)))
 
 (defmethod serdes.base/serdes-dependencies "Card"
-  [{:keys [collection_id dataset_query parameter_mappings table_id visualization_settings]}]
-  ;; The Table implicitly depends on the Database.
+  [{:keys [collection_id database_id dataset_query parameter_mappings table_id visualization_settings]}]
   (->> (map serdes.util/mbql-deps parameter_mappings)
        (reduce set/union)
-       (set/union #{(serdes.util/table->path table_id)
-                    [{:model "Collection" :id collection_id}]})
+       (set/union #{[{:model "Database" :id database_id}]})
+       ; table_id and collection_id are nullable.
+       (set/union (when table_id #{(serdes.util/table->path table_id)}))
+       (set/union (when collection_id #{[{:model "Collection" :id collection_id}]}))
        (set/union (serdes.util/mbql-deps dataset_query))
        (set/union (serdes.util/visualization-settings-deps visualization_settings))
        vec))
