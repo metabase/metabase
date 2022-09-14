@@ -590,34 +590,50 @@
 (def date+time+timezone-functions
   "Date, time, and timezone related functions."
   #{;; extraction functions (get some component of a given temporal value/column)
-    :get-year :get-quarter :get-month :get-day :get-day-of-week :get-hour :get-minute :get-second})
+    :get-year :get-quarter :get-month :get-day :get-day-of-week :get-hour :get-minute :get-second
+    :date-add :date-subtract})
 
 (defclause ^{:requires-features #{:date-functions}} get-year
-  date StringExpressionArg)
+  date ExpressionArg)
 
 (defclause ^{:requires-features #{:date-functions}} get-quarter
-  date StringExpressionArg)
+  date ExpressionArg)
 
 (defclause ^{:requires-features #{:date-functions}} get-month
-  date StringExpressionArg)
+  date ExpressionArg)
 
 (defclause ^{:requires-features #{:date-functions}} get-day
-  date StringExpressionArg)
+  date ExpressionArg)
 
 (defclause ^{:requires-features #{:date-functions}} get-day-of-week
-  date StringExpressionArg)
+  date ExpressionArg)
 
 (defclause ^{:requires-features #{:date-functions}} get-hour
-  datetime StringExpressionArg)
+  datetime ExpressionArg)
 
 (defclause ^{:requires-features #{:date-functions}} get-minute
-  datetime StringExpressionArg)
+  datetime ExpressionArg)
 
 (defclause ^{:requires-features #{:date-functions}} get-second
-  datetime StringExpressionArg)
+  datetime ExpressionArg)
+
+(def ^:private ArithmeticDateTimeUnit
+  (s/named
+   (apply s/enum #{:default :second :minute :hour :day :week :month :quarter :year})
+   "arithmetic-datetime-unit"))
+
+(defclause ^{:requires-features #{:date-functions}} date-add
+  datetime StringExpressionArg,
+  amount   NumericExpressionArg
+  unit     ArithmeticDateTimeUnit)
+
+(defclause ^{:requires-features #{:date-functions}} date-subtract
+  datetime StringExpressionArg,
+  amount   NumericExpressionArg
+  unit     ArithmeticDateTimeUnit)
 
 (def ^:private DateFunctionExpression*
-  (one-of get-year get-quarter get-month get-day get-day-of-week get-hour get-minute get-second))
+  (one-of get-year get-quarter get-month get-day get-day-of-week get-hour get-minute get-second date-add date-subtract))
 
 (def ^:private DateFunctionExpression
   "Schema for the definition of a date function expression."
@@ -875,7 +891,8 @@
     ArithmeticExpression
     (one-of count avg cum-count cum-sum distinct stddev sum min max metric share count-where
             sum-where case median percentile ag:var
-            get-year get-quarter get-month get-day get-day-of-week get-hour get-minute get-second)))
+            get-year get-quarter get-month get-day get-day-of-week get-hour get-minute get-second
+            date-add date-subtract)))
 
 (def ^:private UnnamedAggregation
   (s/recursive #'UnnamedAggregation*))

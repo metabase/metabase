@@ -602,6 +602,14 @@
   [driver [_ arg]]
   (hsql/call :second (->honeysql driver arg)))
 
+(defmethod ->honeysql [:sql :date-add]
+  [driver [_ arg amount unit]]
+  (add-interval-honeysql-form driver (->honeysql driver arg) amount unit))
+
+(defmethod ->honeysql [:sql :date-subtract]
+  [driver [_ arg amount unit]]
+  (add-interval-honeysql-form driver (->honeysql driver arg) (- amount) unit))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Field Aliases (AS Forms)                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
