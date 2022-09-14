@@ -25,10 +25,10 @@ export function updateReferencedQuestionNames(
     // only tags for questions
     .filter(tag => tag.type === "card")
     // only tags that match given questions
-    .filter(tag => questionsById[tag["card-id"]])
+    .filter(tag => tag["card-id"] && questionsById[tag["card-id"]])
     // for each tag, update the tag name in the queryText
     .reduce((qText, tag) => {
-      const question = questionsById[tag["card-id"]];
+      const question = tag["card-id"] && questionsById[tag["card-id"]];
       return updateReferencedQuestionTagName(qText, question, tag.name);
     }, query.queryText());
   return newQueryText === query.queryText()
