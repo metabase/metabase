@@ -87,25 +87,36 @@
 ;; e.g. VARCHAR(255) or NUMERIDECIMAL(16,4)
 (def ^:private database-type->base-type
   (sql-jdbc.sync/pattern-based-database-type->base-type
-   [[#"BIGINT"    :type/BigInteger]
+   [[#"ARRAY"     :type/Array]
+    [#"TUPLE"     :type/Array]
+    [#"VARBINARY" :type/*]
+    [#"BINARY"    :type/*]
+    [#"HASH"      :type/*]
+    [#"BYTE"      :type/*]
+    [#"POINT"     :type/*]
+    [#"LINESTRING":type/*]
+    [#"POLYGON"   :type/*]
+    [#"BIGINT"    :type/BigInteger]
+    [#"SMALLINT"  :type/Integer]
+    [#"TINYINT"   :type/Integer]
     [#"INT"       :type/Integer]
     [#"SHORT"     :type/Integer]
-    [#"SMALLINT"  :type/Integer]
-    [#"CHAR"      :type/Text]
     [#"VARCHAR"   :type/Text]
-    [#"TEXT"      :type/Text]
-    [#"BLOB"      :type/*]
-    [#"BINARY"    :type/*]
+    [#"CHAR"      :type/Text]
     [#"REAL"      :type/Float]
     [#"DOUBLE"    :type/Float]
     [#"FLOAT"     :type/Float]
+    [#"SINGLE PRECISION" :type/Float]
     [#"LONG"      :type/BigInteger]
     [#"DECIMAL"   :type/Decimal]
     [#"BOOLEAN"   :type/Boolean]
     [#"TIMESTAMP" :type/DateTime]
     [#"DATETIME"  :type/DateTime]
     [#"DATE"      :type/Date]
-    [#"TIME"      :type/Time]]))
+    [#"TIME"      :type/Time]
+    [#"IPV4"      :type/IPAddress]
+    [#"IP"        :type/IPAddress]
+    [#"UUID"      :type/UUID]]))
 
 (defmethod sql-jdbc.sync/database-type->base-type :ocient
   [_ database-type]
