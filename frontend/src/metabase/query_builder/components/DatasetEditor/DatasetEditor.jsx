@@ -204,11 +204,6 @@ function DatasetEditor(props) {
     [dataset],
   );
 
-  // console.log("🚀", cardId, metadata.question(cardId));
-  // const cardId = dataset.card().id;
-  console.log("🚀", "Question card:", dataset?.card());
-  // console.log("🚀", metadata.question(cardId));
-
   const fields = useMemo(() => {
     // Columns in results_metadata contain all the necessary metadata
     // orderedColumns contain properly sorted columns, but they only contain field names and refs.

@@ -430,15 +430,6 @@ class View extends React.Component {
       isHeaderVisible,
     } = this.props;
 
-    const cardId = question?.card().id;
-    console.log(
-      "🚀",
-      "Question card:",
-      question?.card(),
-      "Metadata question:",
-      this.props.metadata?.question(cardId),
-    );
-
     // if we don't have a card at all or no databases then we are initializing, so keep it simple
     if (!card || !databases) {
       return <LoadingAndErrorWrapper className="full-height" loading />;
