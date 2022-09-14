@@ -40,10 +40,8 @@
 
 (defmethod driver/display-name :mysql [_] "MySQL")
 
-(defmethod driver/database-supports? [:mysql :nested-field-columns] [_ _ database]
-  (or (get-in database [:details :json-unfolding]) true))
-
-(defmethod driver/database-supports? [:mysql :persist-models] [_driver _feat _db] true)
+(defmethod driver/database-supports? [:mysql :nested-field-columns] [_driver _feat _db] true)
+(defmethod driver/database-supports? [:mysql :persist-models]       [_driver _feat _db] true)
 
 (defmethod driver/database-supports? [:mysql :persist-models-enabled]
   [_driver _feat db]
@@ -250,20 +248,28 @@
           field-type        (get database-type->mysql-cast-type-name field-type field-type)
           nfc-path          (:nfc_path stored-field)
           parent-identifier (field/nfc-field->parent-identifier unwrapped-identifier stored-field)
-          jsonpath-query    (format "$.%s" (str/join "." (map handle-name (rest nfc-path))))
-          default-cast      (hsql/call :convert
-                                          (hsql/call :json_extract (hsql/raw (hformat/to-sql parent-identifier)) jsonpath-query)
-                                          (hsql/raw (str/upper-case field-type)))
-          ;; If we see JSON datetimes we expect them to be in ISO8601. However, MySQL expects them as something different.
-          ;; We explicitly tell MySQL to go and accept ISO8601, because that is JSON datetimes, although there is no real standard for JSON, ISO8601 is the de facto standard.
-          iso8601-cast         (hsql/call :convert
-                                          (hsql/call :str_to_date
+          jsonpath-query    (format "$.%s" (str/join "." (map handle-name (rest nfc-path))))]
+      (case field-type
+        ;; If we see JSON datetimes we expect them to be in ISO8601. However, MySQL expects them as something different.
+        ;; We explicitly tell MySQL to go and accept ISO8601, because that is JSON datetimes, although there is no real standard for JSON, ISO8601 is the de facto standard.
+        "timestamp" (hsql/call :convert
+                               (hsql/call :str_to_date
                                           (hsql/call :json_extract (hsql/raw (hformat/to-sql parent-identifier)) jsonpath-query)
                                           "\"%Y-%m-%dT%T.%fZ\"")
-                                          (hsql/raw "DATETIME"))]
-      (case field-type
-        "timestamp" iso8601-cast
-        default-cast))))
+                               (hsql/raw "DATETIME"))
+
+        "bigint" (hsql/call :convert
+                            (hsql/call :json_extract (hsql/raw (hformat/to-sql parent-identifier)) jsonpath-query)
+                            (hsql/raw "UNSIGNED"))
+
+        ;; Boolean in mysql is a fiction. It is an alias for TINYINT. This will get us back to true or false.
+        "boolean" (hsql/call :not (hsql/call :not
+                                             (hsql/call :json_extract
+                                                        (hsql/raw (hformat/to-sql parent-identifier)) jsonpath-query)))
+
+        (hsql/call :convert
+                   (hsql/call :json_extract (hsql/raw (hformat/to-sql parent-identifier)) jsonpath-query)
+                   (hsql/raw (str/upper-case field-type)))))))
 
 (defmethod sql.qp/->honeysql [:mysql :field]
   [driver [_ id-or-name opts :as clause]]
@@ -378,7 +384,8 @@
     :TINYTEXT   :type/Text
     :VARBINARY  :type/*
     :VARCHAR    :type/Text
-    :YEAR       :type/Date}
+    :YEAR       :type/Date
+    :JSON       :type/SerializedJSON}
    ;; strip off " UNSIGNED" from end if present
    (keyword (str/replace (name database-type) #"\sUNSIGNED$" ""))))
 
