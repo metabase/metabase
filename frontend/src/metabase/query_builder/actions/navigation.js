@@ -207,10 +207,16 @@ export const updateUrl = createThunkAction(
 
       // this is necessary because we can't get the state from history.state
       dispatch(setCurrentState(newState));
-      if (replaceState) {
-        dispatch(replace(locationDescriptor));
-      } else {
-        dispatch(push(locationDescriptor));
+
+      try {
+        if (replaceState) {
+          dispatch(replace(locationDescriptor));
+        } else {
+          dispatch(push(locationDescriptor));
+        }
+      } catch (e) {
+        // saving the location state can exceed the session storage quota (metabase#25312)
+        console.warn(e);
       }
     },
 );
