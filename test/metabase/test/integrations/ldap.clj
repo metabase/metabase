@@ -54,8 +54,7 @@
   [f options]
   (binding [*ldap-server* (start-ldap-server! options)]
     (try
-      (tu/with-temporary-setting-values [ldap-enabled    true
-                                         ldap-host       "localhost"
+      (tu/with-temporary-setting-values [ldap-host       "localhost"
                                          ldap-port       (get-ldap-port)
                                          ldap-bind-dn    "cn=Directory Manager"
                                          ldap-password   "password"

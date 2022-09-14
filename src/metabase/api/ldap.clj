@@ -91,7 +91,7 @@
                       (when-not (= :SUCCESS (:status result))
                         (throw (ex-info (tru "Unable to connect to LDAP server with current settings")
                                         (humanize-error-messages result))))))
-                  (setting/set! :ldap-enabled new-value)))
+                  (setting/set-value-of-type! :boolean :ldap-enabled new-value)))
   :default    false)
 
 (defn- update-password-if-needed
@@ -116,13 +116,13 @@
         results       (ldap/test-ldap-connection ldap-details)]
     (if (= :SUCCESS (:status results))
       ;; test succeeded, save our settings
-      (do
-        (setting/set-many! ldap-settings)
+      (let [saved-settings (setting/set-many! ldap-settings)]
         (when-not (ldap-ever-enabled?)
           ;; Only enable LDAP automatically if this is the first time setting it up; otherwise just save the new details
           ;; but don't re-enable.
           (ldap-enabled! true)
-          (ldap-ever-enabled?! true)))
+          (ldap-ever-enabled?! true))
+        saved-settings)
       ;; test failed, return result message
       {:status 500
        :body   (humanize-error-messages results)})))
