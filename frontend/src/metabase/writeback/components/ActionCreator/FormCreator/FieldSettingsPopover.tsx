@@ -43,10 +43,13 @@ export function FormCreatorPopoverBody({
   fieldSettings: FieldSettings;
   onChange: (fieldSettings: FieldSettings) => void;
 }) {
+  const inputTypes = useMemo(getInputTypes, []);
+
   const handleUpdateFieldType = (newFieldType: FieldType) =>
     onChange({
       ...fieldSettings,
       fieldType: newFieldType,
+      inputType: inputTypes[newFieldType][0].value,
     });
 
   const handleUpdateInputType = (newInputType: InputType) =>
