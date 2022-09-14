@@ -68,8 +68,8 @@ export default function Values({
   if (containBars && xScale.bandwidth) {
     const innerBarScaleDomain = multipleSeries
       .filter(series => series.type === "bar")
-      .map((barSerie, index) => {
-        barSeriesIndexMap.set(barSerie, index);
+      .map((barSeries, index) => {
+        barSeriesIndexMap.set(barSeries, index);
         return index;
       });
     innerBarScale = scaleBand({
@@ -79,8 +79,15 @@ export default function Values({
   }
 
   const multiSeriesValues: MultiSeriesValue[][] = multipleSeries.map(series => {
-    const singleSerieValues = getValues(series, areStacked);
-    return singleSerieValues.map(value => {
+    const singleSeriesValues =
+      series.type === "bar"
+        ? fixSmallBarChartValues(
+            getValues(series, areStacked),
+            innerBarScale?.domain().length ?? 0,
+          )
+        : getValues(series, areStacked);
+
+    return singleSeriesValues.map(value => {
       return {
         ...value,
         series,
@@ -91,6 +98,21 @@ export default function Values({
       };
     });
   });
+
+  function fixSmallBarChartValues(
+    singleSeriesValues: Value[],
+    numberOfBarSeries: number,
+  ) {
+    const barWidth = innerBarScale?.bandwidth() ?? Infinity;
+    const MIN_BAR_WIDTH = 20;
+    // Use the same logic as in https://github.com/metabase/metabase/blob/cb51e574de31c7d4485a9dfbef3261f67c0b7495/frontend/src/metabase/visualizations/lib/chart_values.js#L138
+    if (numberOfBarSeries > 1 && barWidth < MIN_BAR_WIDTH) {
+      singleSeriesValues.forEach(value => {
+        value.hidden = true;
+      });
+    }
+    return singleSeriesValues;
+  }
 
   function getBarXOffset(series: HydratedSeries) {
     if (containBars && innerBarScale) {
@@ -112,13 +134,15 @@ export default function Values({
 
   return (
     <>
-      {verticalOverlappingFreeValues.map((singleSerieValues, seriesIndex) => {
-        const compact = getCompact(singleSerieValues.map(value => value.datum));
+      {verticalOverlappingFreeValues.map((singleSeriesValues, seriesIndex) => {
+        const compact = getCompact(
+          singleSeriesValues.map(value => value.datum),
+        );
 
         return fixHorizontalOverlappingValues(
           seriesIndex,
           compact,
-          singleSerieValues,
+          singleSeriesValues,
         ).map((value, index) => {
           if (value.hidden) {
             return null;
@@ -180,7 +204,7 @@ export default function Values({
   function fixHorizontalOverlappingValues(
     seriesIndex: number,
     compact: boolean,
-    singleSerieValues: MultiSeriesValue[],
+    singleSeriesValues: MultiSeriesValue[],
   ) {
     const valueStep = getValueStep(
       multipleSeries,
@@ -190,7 +214,7 @@ export default function Values({
       innerWidth,
     );
 
-    return singleSerieValues.filter((_, index) => index % valueStep === 0);
+    return singleSeriesValues.filter((_, index) => index % valueStep === 0);
   }
 }
 

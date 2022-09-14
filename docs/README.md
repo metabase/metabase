@@ -47,6 +47,14 @@ Metabase's reference documentation.
 - [Supported browsers](./installation-and-operation/supported-browsers.md)
 - [Privacy](./installation-and-operation/privacy.md)
 
+### Databases
+
+- [Databases overview](./databases/start.md)
+- [Adding and managing databases](./databases/connecting.md)
+- [Encrypting your database connection](./databases/encrypting-details-at-rest.md)
+- [SSH tunneling](./databases/ssh-tunnel.md)
+- [SSL certificate](./databases/ssl-certificates.md)
+
 ### Asking questions
 
 - [Questions overview](./questions/start.md)
@@ -136,14 +144,6 @@ Metabase's reference documentation.
 - [Full-app embedding](./embedding/full-app-embedding.md)
 - [Embedding example apps](https://github.com/metabase/embedding-reference-apps)
 
-### Databases
-
-- [Databases overview](./databases/start.md)
-- [Adding and managing databases](./databases/connecting.md)
-- [Encrypting your database connection](./databases/encrypting-details-at-rest.md)
-- [SSH tunneling](./databases/ssh-tunnel.md)
-- [SSL certificate](./databases/ssl-certificates.md)
-
 ### Configuring Metabase
 
 - [Configuring Metabase overview](./configuring-metabase/start.md)
@@ -171,7 +171,7 @@ Metabase's reference documentation.
 - [Metabase API documentation](./api-documentation.md)
 - [API tutorial](https://www.metabase.com/learn/administration/metabase-api)
 
-### Troubleshooting
+### Troubleshooting guides
 
 - [Troubleshooting guides](./troubleshooting-guide/index.md)
 

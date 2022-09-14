@@ -81,7 +81,7 @@ describe("issue 20438", () => {
 
   it("dashboard filter connected to the field filter should work with a single value in embedded dashboards (metabase#20438)", () => {
     cy.icon("share").click();
-    cy.findByText("Embed this dashboard in an application").click();
+    cy.findByText("Embed in your application").click();
 
     visitIframe();
 

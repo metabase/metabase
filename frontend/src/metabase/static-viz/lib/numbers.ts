@@ -1,3 +1,5 @@
+import { merge } from "icepick";
+
 export type NumberFormatOptions = {
   number_style?: "currency" | "decimal" | "scientific" | "percentage";
   currency?: string;
@@ -32,7 +34,7 @@ export const formatNumber = (number: number, options?: NumberFormatOptions) => {
     prefix,
     suffix,
     compact,
-  } = { ...DEFAULT_OPTIONS, ...options };
+  } = handleSmallNumberFormat(number, { ...DEFAULT_OPTIONS, ...options });
 
   function createFormat(compact?: boolean) {
     if (compact) {
@@ -43,6 +45,7 @@ export const formatNumber = (number: number, options?: NumberFormatOptions) => {
         currency: currency,
         currencyDisplay: currency_style,
         useGrouping: true,
+        maximumFractionDigits: decimals != null ? decimals : 2,
       });
     }
 
@@ -65,6 +68,27 @@ export const formatNumber = (number: number, options?: NumberFormatOptions) => {
     .replace(/,/g, grouping_separator ?? "");
 
   return `${prefix}${formattedNumber}${suffix}`;
+};
+
+// Simple hack to handle small decimal numbers (0-1)
+function handleSmallNumberFormat<T>(value: number, options: T): T {
+  const hasAtLeastThreeDecimalPoints = Math.abs(value) < 0.01;
+  if (hasAtLeastThreeDecimalPoints && Math.abs(value) > 0) {
+    options = maybeMerge(options, {
+      compact: true,
+      decimals: 4,
+    });
+  }
+
+  return options;
+}
+
+const maybeMerge = <T, S1>(collection: T, object: S1) => {
+  if (collection == null) {
+    return collection;
+  }
+
+  return merge(collection, object);
 };
 
 export const formatPercent = (percent: number) =>
