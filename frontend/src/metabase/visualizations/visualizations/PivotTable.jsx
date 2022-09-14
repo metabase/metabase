@@ -262,7 +262,9 @@ class PivotTable extends Component {
       variant: "form-field",
     },
     [COLUMN_SHOW_TOTALS]: {
-      hidden: true,
+      title: t`Show totals`,
+      widget: "toggle",
+      hidden: false,
       getValue: (column, columnSettings, { settings }) => {
         const currentValue = columnSettings[COLUMN_SHOW_TOTALS];
         const rows = settings[COLUMN_SPLIT_SETTING].rows || [];

@@ -236,14 +236,14 @@ describe("scenarios > visualizations > pivot tables", () => {
     assertOnPivotSettings();
 
     // Confirm that Product -> Category doesn't have the option to hide subtotals
-    cy.findAllByText("Fields to use for the table")
+    cy.findAllByText(/Fields to use for the table/)
       .parent()
       .findByText(/Product → Category/)
       .click();
     cy.findByText("Show totals").should("not.exist");
 
     // turn off subtotals for User -> Source
-    cy.findAllByText("Fields to use for the table")
+    cy.findAllByText(/Fields to use for the table/)
       .parent()
       .findByText(/Users? → Source/)
       .click();
@@ -252,7 +252,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText("3,520").should("not.exist"); // the subtotal has disappeared!
   });
 
-  it("should uncollapse a value when hiding the subtotals", () => {
+  it.only("should uncollapse a value when hiding the subtotals", () => {
     const rows = testQuery.query.breakout;
     visitQuestionAdhoc({
       dataset_query: testQuery,
@@ -270,7 +270,8 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText("Settings").click();
 
     // turn off subtotals for User -> Source
-    cy.findAllByText("Fields to use for the table")
+    cy.findAllByText(/Fields to use for the table/)
+      .parent()
       .parent()
       .findByText(/Users? → Source/)
       .click();
@@ -287,7 +288,7 @@ describe("scenarios > visualizations > pivot tables", () => {
 
     cy.findByText("Settings").click();
     assertOnPivotSettings();
-    cy.findAllByText("Fields to use for the table")
+    cy.findAllByText(/Fields to use for the table/)
       .parent()
       .findByText(/Users? → Source/)
       .click();
@@ -310,7 +311,7 @@ describe("scenarios > visualizations > pivot tables", () => {
 
     cy.findByText("Settings").click();
     assertOnPivotSettings();
-    cy.findAllByText("Fields to use for the table")
+    cy.findAllByText(/Fields to use for the table/)
       .parent()
       .findByText(/Users? → Source/)
       .click();
@@ -335,7 +336,7 @@ describe("scenarios > visualizations > pivot tables", () => {
 
     cy.findByText("Settings").click();
     assertOnPivotSettings();
-    cy.findAllByText("Fields to use for the table")
+    cy.findAllByText(/Fields to use for the table/)
       .parent()
       .parent()
       .findAllByText(/Count/)
@@ -364,7 +365,7 @@ describe("scenarios > visualizations > pivot tables", () => {
 
     cy.findByText("Settings").click();
     assertOnPivotSettings();
-    cy.findAllByText("Fields to use for the table")
+    cy.findAllByText(/Fields to use for the table/)
       .parent()
       .parent()
       .findAllByText(/Count/)
@@ -399,7 +400,7 @@ describe("scenarios > visualizations > pivot tables", () => {
 
     // open settings and expand Total column settings
     cy.findByText("Settings").click();
-    cy.findAllByText("Fields to use for the table")
+    cy.findAllByText(/Fields to use for the table/)
       .parent()
       .findByText(/Total/)
       .click();
@@ -952,15 +953,15 @@ function assertOnPivotSettings() {
   cy.log("Implicit side-bar assertions");
   cy.findByText(/Pivot Table options/i);
 
-  cy.findAllByText("Fields to use for the table").eq(0);
+  cy.findAllByText(/Fields to use for the table/).eq(0);
   cy.get("@fieldOption")
     .eq(0)
     .contains(/Users? → Source/);
-  cy.findAllByText("Fields to use for the table").eq(1);
+  cy.findAllByText(/Fields to use for the table/).eq(1);
   cy.get("@fieldOption")
     .eq(1)
     .contains(/Products? → Category/);
-  cy.findAllByText("Fields to use for the table").eq(2);
+  cy.findAllByText(/Fields to use for the table/).eq(2);
   cy.get("@fieldOption").eq(2).contains("Count");
 }
 

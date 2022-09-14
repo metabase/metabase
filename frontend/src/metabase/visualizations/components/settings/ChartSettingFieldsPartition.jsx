@@ -5,23 +5,16 @@ import { t } from "ttag";
 import { DragSource, DropTarget } from "react-dnd";
 import _ from "underscore";
 import { assocIn } from "icepick";
-
-import styled from "@emotion/styled";
-import { lighten } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import Label from "metabase/components/type/Label";
 
 import { keyForColumn } from "metabase/lib/dataset";
-import { ColumnInnerRoot } from "./ChartSettingFieldsPartition.styled";
-
-const DragWrapper = styled.div`
-  padding: 12px 14px;
-  box-shadow: 0 2px 3px ${lighten("text-dark", 1.5)};
-  &:hover {
-    box-shadow: 0 2px 5px ${lighten("text-dark", 1.3)};
-    transition: all 300ms linear;
-  }
-`;
+import {
+  DragWrapper,
+  ColumnName,
+  ColumnContent,
+  ColumnIcon,
+} from "./ChartSettingFieldsPartition.styled";
 
 class ChartSettingFieldsPartition extends React.Component {
   constructor(props) {
@@ -168,7 +161,7 @@ const Partition = DropTarget(
 class EmptyPartitionInner extends React.Component {
   render() {
     return this.props.connectDropTarget(
-      <div className="p2 text-centered bg-light rounded text-medium">{t`Drag fields here`}</div>,
+      <div className="p2 bg-light rounded text-medium">{t`Drag fields here`}</div>,
     );
   }
 }
@@ -214,29 +207,19 @@ class ColumnInner extends React.Component {
     return connectDropTarget(
       connectDragSource(
         <div>
-          <ColumnInnerRoot>
-            <Icon name="grabber2" size={12} />
-            <DragWrapper
-              className={cx(
-                "text-dark bordered rounded cursor-grab text-bold ml1 flex-full",
-                { disabled: isDragging },
-              )}
-            >
-              <div
-                className={cx(
-                  "text-dark text-bold cursor-grab flex align-center justify-between",
-                )}
-              >
+          <DragWrapper isDisabled={isDragging}>
+            <ColumnContent>
+              <Icon name="grabber2" size={12} />
+              <ColumnName className="flex-full ml2">
                 {column.display_name}
-                <Icon
-                  name="ellipsis"
-                  size="12"
-                  className="text-dark hover-child hover--inherit ml1 cursor-pointer"
-                  onClick={this.handleEditFormatting}
-                />
-              </div>
-            </DragWrapper>
-          </ColumnInnerRoot>
+              </ColumnName>
+              <ColumnIcon
+                name="ellipsis"
+                size="16"
+                onClick={this.handleEditFormatting}
+              />
+            </ColumnContent>
+          </DragWrapper>
         </div>,
       ),
     );
