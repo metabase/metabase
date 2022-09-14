@@ -402,28 +402,49 @@ export default class NativeQuery extends AtomicQuery {
     const referencedQuestionTags = this.templateTags().filter(
       tag => tag.type === "card",
     );
+
     // if there are no tags, no need to update
     if (referencedQuestionTags.length === 0) {
       return this;
     }
+
+    const queryText = this.getUpdatedQueryTextWithNewModelSlugs(
+      questions,
+      referencedQuestionTags,
+    );
+
+    return this.setQueryText(queryText);
+  }
+
+  getUpdatedQueryTextWithNewModelSlugs(
+    questions,
+    referencedQuestionTags,
+  ): string {
     const questionsById = _.indexBy(questions, "id");
     let queryText = this.queryText();
+
     for (const tag of referencedQuestionTags) {
       const question = questionsById[tag["card-id"]];
+
       if (question) {
-        const newTagName = `#${question.id}-${slugg(question.name)}`;
-        if (tag.name !== newTagName) {
-          queryText = queryText.replace(
-            new RegExp(`{{\\s*${tag.name}\\s*}}`, "g"),
-            `{{${newTagName}}}`,
-          );
-        }
+        queryText = this.updateTagNameInQueryText(question, queryText, tag);
       }
     }
-    if (queryText !== this.queryText()) {
-      return this.setQueryText(queryText);
+
+    return queryText;
+  }
+
+  updateTagNameInQueryText(question, queryText, tag): string {
+    const slug = slugg(question.name);
+    const newTagName = `#${question.id}-${slug}`;
+
+    if (tag.name !== newTagName) {
+      const oldTagInQueryText = new RegExp(`{{\\s*${tag.name}\\s*}}`, "g");
+
+      return queryText.replace(oldTagInQueryText, `{{${newTagName}}}`);
     }
-    return this;
+
+    return queryText;
   }
 
   updateSnippetNames(snippets): NativeQuery {
