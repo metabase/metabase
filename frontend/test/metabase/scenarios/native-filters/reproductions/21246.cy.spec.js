@@ -48,11 +48,13 @@ describe("issue 21246", () => {
       };
 
       cy.createNativeQuestion(nativeQuestionDetails, {
-        visitQuestion: true,
         wrapId: true,
       });
 
-      cy.get(".ScalarValue").invoke("text").should("eq", "18,760");
+      cy.get("@questionId").then(id => {
+        cy.visit(`/question/${id}`);
+        cy.get(".ScalarValue").invoke("text").should("eq", "18,760");
+      });
     });
   });
 
@@ -64,12 +66,10 @@ describe("issue 21246", () => {
       // Let's set filter values directly through URL, rather than through the UI
       // for the sake of speed and reliability
       cy.visit(`/question/${id}?${fieldFilterValue}`);
-      cy.wait("@cardQuery");
 
       resultAssertion("404");
 
       cy.visit(`/question/${id}?${fieldFilterValue}&${dateFilterValue}`);
-      cy.wait("@cardQuery");
 
       resultAssertion("12");
     });
