@@ -410,9 +410,9 @@ export default class NativeQuery extends AtomicQuery {
         const question = questionsById[tag["card-id"]];
         return qText.replace(
           new RegExp(`{{\\s*${tag.name}\\s*}}`, "g"),
-          `#${question.id}-${slugg(question.name)}`,
+          `{{#${question.id}-${slugg(question.name)}}}`,
         );
-      }, queryText);
+      }, this.queryText());
     return queryText === this.queryText() ? this : this.setQueryText(queryText);
   }
 
