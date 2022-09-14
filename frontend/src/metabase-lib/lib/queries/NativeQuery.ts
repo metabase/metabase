@@ -400,7 +400,7 @@ export default class NativeQuery extends AtomicQuery {
 
   updateReferencedQuestionNames(questions): NativeQuery {
     const questionsById = _.indexBy(questions, "id");
-    const queryText = this.templateTags()
+    const newQueryText = this.templateTags()
       // only tags for questions
       .filter(tag => tag.type === "card")
       // only tags that match given questions
@@ -413,7 +413,9 @@ export default class NativeQuery extends AtomicQuery {
           `{{#${question.id}-${slugg(question.name)}}}`,
         );
       }, this.queryText());
-    return queryText === this.queryText() ? this : this.setQueryText(queryText);
+    return newQueryText === this.queryText()
+      ? this
+      : this.setQueryText(newQueryText);
   }
 
   updateSnippetNames(snippets): NativeQuery {
