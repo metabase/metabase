@@ -9,6 +9,7 @@ import {
 import NativeQuery, {
   replaceCardTagNameById,
   recognizeTemplateTags,
+  cardIdFromTagName,
 } from "metabase-lib/lib/queries/NativeQuery";
 
 function makeDatasetQuery(queryText, templateTags, databaseId) {
@@ -409,6 +410,20 @@ describe("NativeQuery", () => {
           "SELECT * from {{#123}} cross join {{ #456-a-card-name }} cross join {{#not-this}} cross join {{#123or-this}}",
         ),
       ).toEqual(["#123", "#456-a-card-name"]);
+    });
+  });
+
+  describe("cardIdFromTagName", () => {
+    it("should get card Ids from a card tag name", () => {
+      expect(cardIdFromTagName("#123-foo")).toEqual(123);
+      expect(cardIdFromTagName("#123-foo-456")).toEqual(123);
+      expect(cardIdFromTagName("#123")).toEqual(123);
+    });
+
+    it("should return null for invalid card tag names", () => {
+      expect(cardIdFromTagName("123-foo")).toEqual(null);
+      expect(cardIdFromTagName("#123foo")).toEqual(null);
+      expect(cardIdFromTagName("123")).toEqual(null);
     });
   });
 });

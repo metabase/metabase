@@ -70,6 +70,7 @@ export function recognizeTemplateTags(queryText: string): string[] {
 }
 
 // needs to match logically with `cardTagRegexFromId`
+// matches '#123-foo-bar' and '#123' but not '#123foo'
 const CARD_TAG_NAME_REGEX: RegExp = /^#([0-9]*)(-[a-z0-9-]*)?$/;
 
 // needs to match logically with `CARD_TAG_NAME_REGEX`
@@ -105,7 +106,7 @@ export function replaceCardTagNameById(
   return query.setQueryText(queryText);
 }
 
-function cardIdFromTagName(name: string): number | null {
+export function cardIdFromTagName(name: string): number | null {
   const match = name.match(CARD_TAG_NAME_REGEX);
   return match && match[1].length > 0 ? parseInt(match[1]) : null;
 }
