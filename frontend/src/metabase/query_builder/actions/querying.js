@@ -1,6 +1,5 @@
 import _ from "underscore";
 import { t } from "ttag";
-
 import { createAction } from "redux-actions";
 
 import { PLUGIN_SELECTORS } from "metabase/plugins";
@@ -128,7 +127,6 @@ export const runQuestionQuery = ({
             duration,
           ),
         );
-        // clearTimeout(timeoutId);
         return dispatch(queryCompleted(question, queryResults));
       })
       .catch(error => dispatch(queryErrored(startTime, error)));
@@ -194,13 +192,45 @@ export const queryCompleted = (question, queryResults) => {
     const isEditingModel = getQueryBuilderMode(getState()) === "dataset";
     const resultsMetadata = data?.results_metadata?.columns;
     if (isEditingModel && Array.isArray(resultsMetadata)) {
-      card.result_metadata = resultsMetadata;
+      const originalQuestion = getOriginalQuestion(getState());
+      preserveModelMetadata(card, queryResults, originalQuestion);
     }
 
-    dispatch.action(QUERY_COMPLETED, { card, queryResults });
+    dispatch.action(QUERY_COMPLETED, {
+      card,
+      queryResults,
+    });
     dispatch(loadCompleteUIControls());
   };
 };
+
+function preserveModelMetadata(card, queryResults, originalQuestion) {
+  const [{ data }] = queryResults;
+  const queryMetadata = data?.results_metadata?.columns || [];
+  const modelMetadata = originalQuestion.getResultMetadata();
+
+  const mergedMetadata = mergeQueryMetadataWithModelMetadata(
+    queryMetadata,
+    modelMetadata,
+  );
+
+  card.result_metadata = mergedMetadata;
+  queryResults[0].data.cols = mergedMetadata;
+}
+
+function mergeQueryMetadataWithModelMetadata(queryMetadata, modelMetadata) {
+  return queryMetadata.map((queryCol, index) => {
+    const modelCol = modelMetadata.find(modelCol => {
+      return _.isEqual(modelCol.field_ref, queryCol.field_ref);
+    });
+
+    if (modelCol) {
+      return modelCol;
+    }
+
+    return queryCol;
+  });
+}
 
 export const QUERY_ERRORED = "metabase/qb/QUERY_ERRORED";
 export const queryErrored = createThunkAction(
