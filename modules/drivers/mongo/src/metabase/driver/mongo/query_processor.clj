@@ -353,6 +353,8 @@
 (defmethod ->lvalue :get-hour        [[_ inp]] (->lvalue inp))
 (defmethod ->lvalue :get-minute      [[_ inp]] (->lvalue inp))
 (defmethod ->lvalue :get-second      [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :date-add        [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :date-subtract   [[_ inp]] (->lvalue inp))
 
 (defmethod ->lvalue :coalesce [[_ & args]] (->lvalue (first args)))
 
@@ -391,6 +393,12 @@
 (defmethod ->rvalue :get-hour        [[_ inp]] (with-rvalue-temporal-bucketing (->rvalue inp) :hour-of-day))
 (defmethod ->rvalue :get-minute      [[_ inp]] (with-rvalue-temporal-bucketing (->rvalue inp) :minute-of-hour))
 (defmethod ->rvalue :get-second      [[_ inp]] (with-rvalue-temporal-bucketing (->rvalue inp) :second-of-minute))
+(defmethod ->rvalue :date-add        [[_ inp amount unit]] {"$dateAdd" {:startDate (->rvalue inp)
+                                                                        :unit      unit
+                                                                        :amount    amount}})
+(defmethod ->rvalue :date-subtract   [[_ inp amount unit]] {"$dateSubtract" {:startDate (->rvalue inp)
+                                                                             :unit      unit
+                                                                             :amount    amount}})
 
 ;;; Intervals are not first class Mongo citizens, so they cannot be translated on their own.
 ;;; The only thing we can do with them is adding to or subtracting from a date valued expression.

@@ -157,6 +157,11 @@
 (defmethod temporal-type OffsetDateTime [_] :timestamp)
 (defmethod temporal-type ZonedDateTime  [_] :timestamp)
 
+(defn- coercion-strategy->temporat-type [coercion-strategy]
+  (case coercion-strategy
+    :Coercion/ISO8601->DateTime :timestamp
+    :else nil))
+
 (defn- base-type->temporal-type [base-type]
   (condp #(isa? %2 %1) base-type
     :type/Date           :date
@@ -174,8 +179,10 @@
     nil))
 
 (defmethod temporal-type Field
-  [{base-type :base_type, effective-type :effective_type, database-type :database_type}]
-  (or (database-type->temporal-type database-type)
+  [{base-type :base_type, effective-type :effective_type, database-type :database_type,
+    coercion-strategy :coercion_strategy}]
+  (or (coercion-strategy->temporat-type coercion-strategy)
+      (database-type->temporal-type database-type)
       (base-type->temporal-type (or effective-type base-type))))
 
 (defmethod temporal-type TypedHoneySQLForm
@@ -696,10 +703,6 @@
 
 (defmethod sql.qp/add-interval-honeysql-form :bigquery-cloud-sdk
   [_ hsql-form amount unit]
-  ;; `timestamp_add()` doesn't support month/quarter/year, so cast it to `datetime` so we can use `datetime_add()`
-  ;; instead in those cases.
-  (println "DEBUGG hsql-form" hsql-form)
-  (println (temporal-type hsql-form))
   (let [hsql-form (cond->> hsql-form
                     (and (= (temporal-type hsql-form) :timestamp)
                          (not (contains? (temporal-type->supported-units :timestamp) unit)))
