@@ -1,51 +1,23 @@
-import React, { useCallback, useMemo } from "react";
+import React from "react";
 
-import type { Dashboard } from "metabase-types/api";
+import { isImplicitActionButton } from "metabase/writeback/utils";
+
+import type { ActionButtonDashboardCard, Dashboard } from "metabase-types/api";
 import type { VisualizationProps } from "metabase-types/types/Visualization";
 
-import { StyledButton } from "./ActionButton.styled";
+import DefaultActionButton from "./DefaultActionButton";
+import ImplicitActionButton from "./ImplicitActionButton";
 
 interface ActionButtonProps extends VisualizationProps {
+  dashcard: ActionButtonDashboardCard;
   dashboard: Dashboard;
 }
 
-function ActionButton({
-  isSettings,
-  settings,
-  getExtraDataForClick,
-  onVisualizationClick,
-}: ActionButtonProps) {
-  const label = settings["button.label"];
-  const variant = settings["button.variant"];
-
-  const variantProps: any = {};
-  if (variant !== "default") {
-    variantProps[variant] = true;
+function ActionButton({ dashcard, ...props }: ActionButtonProps) {
+  if (isImplicitActionButton(dashcard)) {
+    return <ImplicitActionButton {...props} />;
   }
-
-  const clickObject = useMemo(() => ({ settings }), [settings]);
-
-  const extraData = useMemo(
-    () => getExtraDataForClick?.(clickObject),
-    [clickObject, getExtraDataForClick],
-  );
-
-  const onClick = useCallback(() => {
-    onVisualizationClick({
-      ...clickObject,
-      extraData,
-    });
-  }, [clickObject, extraData, onVisualizationClick]);
-
-  return (
-    <StyledButton
-      onClick={onClick}
-      isFullHeight={!isSettings}
-      {...variantProps}
-    >
-      {label}
-    </StyledButton>
-  );
+  return <DefaultActionButton {...props} />;
 }
 
 export default ActionButton;

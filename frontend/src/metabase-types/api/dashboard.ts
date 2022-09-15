@@ -1,10 +1,12 @@
-import { EntityId } from "metabase-types/types";
-import {
+import type { EntityId } from "metabase-types/types";
+import type {
   ParameterTarget,
   ParameterId,
   Parameter,
 } from "metabase-types/types/Parameter";
-import { CardId, SavedCard } from "metabase-types/types/Card";
+import type { CardId, SavedCard } from "metabase-types/types/Card";
+
+import type { Dataset } from "./dataset";
 
 export type DashboardId = number;
 
@@ -46,3 +48,8 @@ export type DashboardParameterMapping = {
   parameter_id: ParameterId;
   target: ParameterTarget;
 };
+
+export type DashCardDataMap = Record<
+  DashCardId,
+  Record<CardId, Dataset | undefined>
+>;

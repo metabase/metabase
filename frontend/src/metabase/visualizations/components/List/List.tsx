@@ -164,7 +164,6 @@ function List({
           id: pkValue,
           table,
           values,
-          dashCard: connectedDashCard,
         });
       }
     },
@@ -189,7 +188,6 @@ function List({
           deleteRow({
             id: pkValue,
             table,
-            dashCard: connectedDashCard,
           });
         },
       });
