@@ -91,43 +91,6 @@
 (defn text-node? [x]
   (and (vector? x) (= (first x) "#text")))
 
-#_(defn goal-line-test []
-  (let [series         [{:name          "Average of Rating",
-                         :color         "#999AC4",
-                         :type          :bar,
-                         :data
-                         [["Doohickey" 3.7285714285714286]
-                          ["Gadget" 3.432075471698113]
-                          ["Gizmo" 3.6372549019607834]
-                          ["Widget" 3.153703703703704]],
-                         :yAxisPosition "left"}
-                        {:name          "Average of Price",
-                         :color         "#A989C5",
-                         :type          :bar,
-                         :data
-                         [["Doohickey" 52.04430453374854]
-                          ["Gadget" 56.96577359222534]
-                          ["Gizmo" 55.58662658036943]
-                          ["Widget" 57.57991087370232]],
-                         :yAxisPosition "right"}]
-        settings       {:colors      {:brand "#5E81AC", :filter "#A3BE8C", :summarize "#B48EAD"},
-                        :stacking    "none",
-                        :show_values false,
-                        :x           {:type   "ordinal",
-                                      :format {:number_style "decimal", :currency "USD", :currency_style "symbol"}},
-                        :y           {:type   "linear",
-                                      :format {:number_style "decimal", :currency "USD", :currency_style "symbol"}},
-                        :labels      {:bottom "", :left "", :right ""},
-                        :goal        {:value 4, :label "Goal"}}
-        svg-bytes      (js-svg/combo-chart series settings)
-        svg-string     (.asString (js/execute-fn-name @context
-                                                  "combo_chart"
-                                                  (json/generate-string series)
-                                                  (json/generate-string settings)
-                                                  (json/generate-string (:colors settings))))
-        svg-hiccup (-> svg-string parse-svg document-tag-hiccup)]
-    (dev.render-png/open-png-bytes svg-bytes)))
-
 (defn- combo-chart-string
   [series settings]
   (let [s (.asString (js/execute-fn-name @context
