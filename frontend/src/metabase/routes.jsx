@@ -91,6 +91,7 @@ import { trackPageView } from "metabase/lib/analytics";
 import { getAdminPaths } from "metabase/admin/app/selectors";
 
 import ActionPage from "metabase/writeback/containers/ActionCreatorPage";
+import ActionsListPage from "metabase/writeback/containers/ActionsListPage";
 
 const MetabaseIsSetup = UserAuthWrapper({
   predicate: authData => authData.hasUserSetup,
@@ -388,6 +389,8 @@ export const getRoutes = store => (
           <Route path="create" component={ActionPage} />
           <Route path=":actionId" component={ActionPage} />
         </Route>
+        {/* DEV PAGE: REMOVE BEFORE SHIPPING */}
+        <Route path="/actions" component={ActionsListPage} />
       </Route>
     </Route>
 
