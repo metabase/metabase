@@ -8,6 +8,7 @@ import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
 import { startTimer } from "metabase/lib/performance";
 import { defer } from "metabase/lib/promise";
 import { createThunkAction } from "metabase/lib/redux";
+import { isLocalField, isSameField } from "metabase/lib/query/field_ref";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSensibleDisplays } from "metabase/visualizations";
@@ -189,39 +190,42 @@ export const queryCompleted = (question, queryResults) => {
     }
 
     const card = question.card();
+
     const isEditingModel = getQueryBuilderMode(getState()) === "dataset";
-    const resultsMetadata = data?.results_metadata?.columns;
-    if (isEditingModel && Array.isArray(resultsMetadata)) {
-      const originalQuestion = getOriginalQuestion(getState());
-      preserveModelMetadata(card, queryResults, originalQuestion);
-    }
+    const modelMetadata = isEditingModel
+      ? preserveModelMetadata(queryResults, originalQuestion)
+      : undefined;
 
     dispatch.action(QUERY_COMPLETED, {
       card,
       queryResults,
+      modelMetadata,
     });
     dispatch(loadCompleteUIControls());
   };
 };
 
-function preserveModelMetadata(card, queryResults, originalQuestion) {
+function preserveModelMetadata(queryResults, originalModel) {
   const [{ data }] = queryResults;
   const queryMetadata = data?.results_metadata?.columns || [];
-  const modelMetadata = originalQuestion.getResultMetadata();
+  const modelMetadata = originalModel.getResultMetadata();
 
   const mergedMetadata = mergeQueryMetadataWithModelMetadata(
     queryMetadata,
     modelMetadata,
   );
 
-  card.result_metadata = mergedMetadata;
-  queryResults[0].data.cols = mergedMetadata;
+  return {
+    columns: mergedMetadata,
+  };
 }
 
 function mergeQueryMetadataWithModelMetadata(queryMetadata, modelMetadata) {
   return queryMetadata.map((queryCol, index) => {
     const modelCol = modelMetadata.find(modelCol => {
-      return _.isEqual(modelCol.field_ref, queryCol.field_ref);
+      const compareExact =
+        !isLocalField(queryCol.field_ref) || !isLocalField(modelCol.field_ref);
+      return isSameField(modelCol.field_ref, queryCol.field_ref, compareExact);
     });
 
     if (modelCol) {
