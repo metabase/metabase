@@ -16,12 +16,10 @@ class SettingsLdapForm extends React.Component {
           [t`Authentication`, "/admin/settings/authentication"],
           [t`LDAP`],
         ]}
-        enabledKey="ldap-enabled"
         layout={[
           {
             title: t`Server Settings`,
             settings: [
-              "ldap-enabled",
               "ldap-host",
               "ldap-port",
               "ldap-security",
