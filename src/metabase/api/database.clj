@@ -517,15 +517,18 @@
   When Fields have a semantic_type, they are returned in the format `[field_name \"table_name base_type semantic_type\"]`
   When Fields lack a semantic_type, they are returned in the format `[field_name \"table_name base_type\"]`"
   [id prefix substring]
+  {id        s/Int
+   prefix    (s/maybe su/NonBlankString)
+   substring (s/maybe su/NonBlankString)}
   (api/read-check Database id)
+  (when (and (str/blank? prefix) (str/blank? substring))
+    (throw (ex-info "Must include prefix or search" {:status-code 400})))
   (try
     (cond
       substring
       (autocomplete-suggestions id (str "%" substring "%"))
       prefix
-      (autocomplete-suggestions id (str prefix "%"))
-      :else
-      (ex-info "must include prefix or search" {}))
+      (autocomplete-suggestions id (str prefix "%")))
     (catch Throwable t
       (log/warn "Error with autocomplete: " (.getMessage t)))))
 
@@ -534,13 +537,13 @@
 
   This is intended for use with the ACE Editor when the User is typing in a template tag for a `Card`, e.g. {{#...}}."
   [id query]
+  {id    s/Int
+   query su/NonBlankString}
   (api/read-check Database id)
   (try
-    (if query
-      (->> (autocomplete-cards id query)
-           (filter mi/can-read?)
-           (map #(select-keys % [:id :name :dataset])))
-      (ex-info "Must have a query parameter" {}))
+    (->> (autocomplete-cards id query)
+         (filter mi/can-read?)
+         (map #(select-keys % [:id :name :dataset])))
     (catch Throwable t
       (log/warn "Error with autocomplete: " (.getMessage t)))))
 
