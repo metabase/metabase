@@ -448,7 +448,7 @@
                              ;; e.g. search-string = "foo"
                              (and (empty? search-id) (not-empty search-name))
                              [:like :%lower.name (str "%" search-name "%")])]
-                :order-by [[:id :asc]]
+                :order-by [[:id :desc]]
                 :limit    50})))
 
 (defn- autocomplete-fields [db-id search-string limit]

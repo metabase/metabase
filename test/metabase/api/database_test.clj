@@ -412,7 +412,7 @@
   (testing "GET /api/database/:id/card_autocomplete_suggestions"
     (mt/with-temp* [Card [card-1 (card-with-native-query "Kanye West Quote Views Per Month")]
                     Card [card-2 (card-with-native-query "Kanye West Quote Views Per Day")]]
-      (doseq [[query expected] {"QUOTE-views"               (->> [card-1 card-2] (map #(select-keys % [:id :name :dataset])))
+      (doseq [[query expected] {"QUOTE-views"               (->> [card-2 card-1] (map #(select-keys % [:id :name :dataset])))
                                 "per-day"                   (->> [card-2] (map #(select-keys % [:id :name :dataset])))
                                 (str (:id card-1))          (->> [card-1] (map #(select-keys % [:id :name :dataset])))
                                 (str (:id card-2) "-WEST")  (->> [card-2] (map #(select-keys % [:id :name :dataset])))}]
