@@ -7,9 +7,9 @@ import _ from "underscore";
 import cx from "classnames";
 import { t } from "ttag";
 
+import { substitute_tags } from "cljs/metabase.shared.parameters.parameters";
 import { withInstanceLanguage, siteLocale } from "metabase/lib/i18n";
 
-import { substitute_tags } from "cljs/metabase.shared.parameters.parameters";
 import styles from "./Text.css";
 
 const getSettingsStyle = settings => ({

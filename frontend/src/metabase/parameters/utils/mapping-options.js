@@ -1,5 +1,5 @@
-import { isActionButtonCard } from "metabase/writeback/utils";
 import { tag_names } from "cljs/metabase.shared.parameters.parameters";
+import { isActionButtonCard } from "metabase/writeback/utils";
 import Question from "metabase-lib/lib/Question";
 import { ExpressionDimension } from "metabase-lib/lib/Dimension";
 
