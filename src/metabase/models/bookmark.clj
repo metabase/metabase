@@ -44,7 +44,6 @@
                             ;; to avoid shadowing the "real" properties.
                             (not= (:type result) "collection")
                             (dissoc :collection.description :collection.name))
-        _ (tap> (keys result))
         normalized-result (zipmap (map unqualify-key (keys result)) (vals result))
         id-str            (str (:type normalized-result) "-" (:item_id normalized-result))]
     (-> normalized-result
