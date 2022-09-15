@@ -210,14 +210,18 @@ async function handleQBInit(
     params,
   }: { location: LocationDescriptorObject; params: QueryParams },
 ) {
+  console.log("🚀", "Starting handleQBInit");
   dispatch(resetQB());
   dispatch(cancelQuery());
 
   const queryParams = location.query;
   const cardId = Urls.extractEntityId(params.slug);
   const uiControls: UIControls = getQueryBuilderModeFromLocation(location);
+  console.log("🚀", { uiControls });
   const { options, serializedCard } = parseHash(location.hash);
+  console.log("🚀", { location, serializedCard, options });
   const hasCard = cardId || serializedCard;
+  console.log("🚀", { hasCard });
 
   const deserializedCard = serializedCard
     ? deserializeCard(serializedCard)
@@ -268,6 +272,7 @@ async function handleQBInit(
     dispatch(fetchAlertsForQuestion(card.id));
   }
 
+  console.log("🚀", "Before dispatching loadMetadataForCard in initializeQB");
   await dispatch(loadMetadataForCard(card));
   const metadata = getMetadata(getState());
 
