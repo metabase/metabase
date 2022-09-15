@@ -91,33 +91,14 @@
 (defn text-node? [x]
   (and (vector? x) (= (first x) "#text")))
 
-(deftest timelineseries-line-test
-  (let [rows     [[#t "2020" 2]
-                  [#t "2021" 3]]
-        labels   {:left "count" :bottom "year"}
-        settings (json/generate-string {:y {:prefix   "prefix"
-                                            :decimals 2}})]
-    (testing "It returns bytes"
-      (let [svg-bytes (js-svg/timelineseries-line rows labels settings)]
-        (is (bytes? svg-bytes))))
-    (let [svg-string (.asString (js/execute-fn-name @context "timeseries_line" rows labels settings))
-          svg-hiccup (-> svg-string parse-svg document-tag-hiccup)]
-      (testing "it returns a valid svg string with no html"
-        (validate-svg-string :timelineseries-line svg-string))
-      (testing "The svg string has formatted axes"
-        (let [spec (s/cat :y-axis-labels (s/+ (s/tuple
-                                               #{"#text"}
-                                               #(and (string? %)
-                                                     ;; ["#text" "prefix0.00"]
-                                                     (re-matches #"prefix\d+\.\d{2}" %))))
-                          :x-axis-labels (s/+ (s/tuple
-                                               #{"#text"}
-                                               #(and (string? %)
-                                                     ;; ["#text" "1/1/2020"]
-                                                     (re-matches #"\d+/\d+/\d{4}" %)))))
-              text-nodes (->> svg-hiccup (tree-seq vector? rest) (filter text-node?))]
-          (is (= true (s/valid? spec text-nodes))
-              text-nodes))))))
+(defn- combo-chart-string
+  [series settings]
+  (let [s (.asString (js/execute-fn-name @context
+                                         "combo_chart"
+                                         (json/generate-string series)
+                                         (json/generate-string settings)
+                                         (json/generate-string (:colors settings))))]
+    s))
 
 (defn- combo-chart-hiccup
   [series settings]
@@ -127,6 +108,111 @@
                                          (json/generate-string settings)
                                          (json/generate-string (:colors settings))))]
     (-> s parse-svg document-tag-hiccup)))
+
+(deftest timelineseries-line-test
+  (let [rows       [[#t "2020" 2]
+                    [#t "2021" 3]]
+        series     [{:type          :line
+                     :color         "#999AC4"
+                     :data          rows
+                     :yAxisPosition "left"}]
+        settings   {:colors {:brand "#5E81AC", :filter "#A3BE8C", :summarize "#B48EAD"},
+                    :x      {:type   "timeseries"
+                             :format {:date_style "YYYY/MM/DD"}}
+                    :y      {:type   "linear"
+                             :format {:prefix   "prefix"
+                                      :decimals 2}}
+                    :labels {:bottom "" :left "" :right ""}}
+        svg-string (combo-chart-string series settings)]
+    (testing "It returns bytes"
+      (let [svg-bytes (js-svg/combo-chart series settings)]
+        (is (bytes? svg-bytes))))
+    (let [svg-hiccup (combo-chart-hiccup series settings)]
+       (testing "it returns a valid svg string with no html"
+        (validate-svg-string :timelineseries-line svg-string))
+      (testing "The svg string has formatted axes"
+        (let [spec       (s/cat :y-axis-labels (s/+ (s/tuple
+                                                      #{"#text"}
+                                                      #(and (string? %)
+                                                            ;; ["#text" "prefix0.00"]
+                                                            (re-matches #"prefix\d+\.\d{2}" %))))
+                                :x-axis-labels (s/+ (s/tuple
+                                                      #{"#text"}
+                                                      #(and (string? %)
+                                                            ;; ["#text" "2020/01/02"]
+                                                            (re-matches #"\d{4}/\d{2}/\d{2}" %)))))
+              text-nodes (->> svg-hiccup (tree-seq vector? rest) (filter text-node?))]
+          (is (= true (s/valid? spec text-nodes))
+              text-nodes))))))
+
+(deftest timelineseries-bar-test
+  (let [rows       [[#t "2020" 2]
+                    [#t "2021" 3]]
+        series     [{:type          :bar
+                     :color         "#999AC4"
+                     :data          rows
+                     :yAxisPosition "left"}]
+        settings   {:colors {:brand "#5E81AC", :filter "#A3BE8C", :summarize "#B48EAD"},
+                    :x      {:type   "timeseries"
+                             :format {:date_style "YYYY/MM/DD"}}
+                    :y      {:type   "linear"
+                             :format {:prefix   "prefix"
+                                      :decimals 4}}
+                    :labels {:bottom "" :left "" :right ""}}
+        svg-string (combo-chart-string series settings)]
+    (testing "It returns bytes"
+      (let [svg-bytes (js-svg/combo-chart series settings)]
+        (is (bytes? svg-bytes))))
+    (let [svg-hiccup (combo-chart-hiccup series settings)]
+       (testing "it returns a valid svg string with no html"
+        (validate-svg-string :timelineseries-bar svg-string))
+      (testing "The svg string has formatted axes"
+        (let [spec       (s/cat :y-axis-labels (s/+ (s/tuple
+                                                      #{"#text"}
+                                                      #(and (string? %)
+                                                            ;; ["#text" "prefix0.0000"]
+                                                            (re-matches #"prefix\d+\.\d{4}" %))))
+                                :x-axis-labels (s/+ (s/tuple
+                                                      #{"#text"}
+                                                      #(and (string? %)
+                                                            ;; ["#text" "2020/01/02"]
+                                                            (re-matches #"\d{4}/\d{2}/\d{2}" %)))))
+              text-nodes (->> svg-hiccup (tree-seq vector? rest) (filter text-node?))]
+          (is (= true (s/valid? spec text-nodes))
+              text-nodes))))))
+
+(deftest area-test
+  (let [rows       [["bob" 2]
+                    ["dobbs" 3]]
+        series     [{:type          :area
+                     :color         "#999AC4"
+                     :data          rows
+                     :yAxisPosition "left"}]
+        settings   {:colors {:brand "#5E81AC", :filter "#A3BE8C", :summarize "#B48EAD"},
+                    :x      {:type   "ordinal"}
+                    :y      {:type   "linear"
+                             :format {:prefix   "prefix"
+                                      :decimals 4}}
+                    :labels {:bottom "" :left "" :right ""}}
+        svg-string (combo-chart-string series settings)]
+    (testing "It returns bytes"
+      (let [svg-bytes (js-svg/combo-chart series settings)]
+        (is (bytes? svg-bytes))))
+    (let [svg-hiccup (combo-chart-hiccup series settings)]
+       (testing "it returns a valid svg string with no html"
+        (validate-svg-string :categorical-area svg-string))
+      (testing "The svg string has formatted axes"
+        (let [spec       (s/cat :y-axis-labels (s/+ (s/tuple
+                                                      #{"#text"}
+                                                      #(and (string? %)
+                                                            ;; ["#text" "prefix0.0000"]
+                                                            (re-matches #"prefix\d+\.\d{4}" %))))
+                                :x-axis-labels (s/+ (s/tuple
+                                                      #{"#text"}
+                                                      string?)))
+              text-nodes (->> svg-hiccup (tree-seq vector? rest) (filter text-node?))]
+          (is (= true (s/valid? spec text-nodes))
+              text-nodes))))))
 
 (deftest goal-line-test
   (let [goal-label      "ASDF"
@@ -145,54 +231,6 @@
         goal-node       (->> goal-hiccup (tree-seq vector? rest) (filter #(= goal-label (second %))) first)]
     (testing "A goal line does exist when goal settings are present in the viz-settings"
       (is (= goal-label (second goal-node)))))))
-
-(deftest timelineseries-bar-test
-  (let [rows     [[#t "2020" 2]
-                  [#t "2021" 3]]
-        labels   {:left "count" :bottom "year"}
-        settings (json/generate-string {:y {:prefix   "prefix"
-                                            :decimals 4}})]
-    (testing "It returns bytes"
-      (let [svg-bytes (js-svg/timelineseries-bar rows labels settings)]
-        (is (bytes? svg-bytes))))
-    (let [svg-string (.asString (js/execute-fn-name @context "timeseries_bar" rows labels settings))
-          svg-hiccup (-> svg-string parse-svg document-tag-hiccup)]
-      (testing "it returns a valid svg string (no html in it)"
-        (validate-svg-string :timelineseries-bar svg-string))
-      (testing "The svg string has formatted axes"
-        (let [spec (s/cat :y-axis-labels (s/+ (s/tuple
-                                               #{"#text"}
-                                               #(and (string? %)
-                                                     ;; ["#text" "prefix0.0000"]
-                                                     (re-matches #"prefix\d+\.\d{4}" %))))
-                          :x-axis-labels (s/+ (s/tuple
-                                               #{"#text"}
-                                               #(and (string? %)
-                                                     ;; ["#text" "1/1/2020"]
-                                                     (re-matches #"\d+/\d+/\d{4}" %)))))
-              text-nodes (->> svg-hiccup (tree-seq vector? rest) (filter text-node?))]
-          (is (= true (s/valid? spec text-nodes))
-              text-nodes))))))
-
-(deftest area-test
-  (let [tl-rows    [[#t "2020" 2]
-                    [#t "2021" 3]]
-        cat-rows   [["bob" 2]
-                    ["dobbs" 3]]
-        tl-labels  {:left "count" :bottom "year"}
-        cat-labels {:left "count" :bottom "string stuff"}
-        settings   (json/generate-string {:y {:prefix   "prefix"
-                                              :decimals 4}})]
-    (testing "It returns bytes"
-      (let [tl-svg-bytes  (js-svg/timelineseries-area tl-rows tl-labels settings)
-            cat-svg-bytes (js-svg/categorical-area cat-rows cat-labels settings)]
-        (is (bytes? tl-svg-bytes))
-        (is (bytes? cat-svg-bytes))))
-    (let [tl-svg-string  (.asString (js/execute-fn-name @context "timeseries_area" tl-rows tl-labels settings))
-          cat-svg-string (.asString (js/execute-fn-name @context "categorical_area" cat-rows cat-labels settings))]
-      (testing "it returns a valid svg string (no html in it)"
-        (validate-svg-string :timelineseries-area tl-svg-string)
-        (validate-svg-string :categorical-area cat-svg-string)))))
 
 (deftest timelineseries-waterfall-test
   (let [rows     [[#t "2020" 2]
