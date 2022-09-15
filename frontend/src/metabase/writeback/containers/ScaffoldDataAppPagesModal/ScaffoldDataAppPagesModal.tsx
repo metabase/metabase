@@ -1,14 +1,10 @@
 import React, { useCallback, useState } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
-import { push } from "react-router-redux";
-import type { LocationDescriptor } from "history";
 
 import Button from "metabase/core/components/Button";
 
-import * as Urls from "metabase/lib/urls";
-
-import DataApps, { ScaffoldNewAppParams } from "metabase/entities/data-apps";
+import DataApps, { ScaffoldNewPagesParams } from "metabase/entities/data-apps";
 
 import DataAppDataPicker from "metabase/writeback/components/DataAppDataPicker";
 
@@ -21,48 +17,52 @@ import {
   ModalTitle,
   ModalBody,
   ModalFooter,
-} from "./CreateDataAppModal.styled";
+} from "./ScaffoldDataAppPagesModal.styled";
 
 interface OwnProps {
+  dataAppId: DataApp["id"];
+  onAdd: (dataApp: DataApp) => void;
   onClose: () => void;
 }
 
 interface DispatchProps {
-  onCreate: (params: ScaffoldNewAppParams) => Promise<DataApp>;
-  onChangeLocation: (location: LocationDescriptor) => void;
+  onScaffold: (params: ScaffoldNewPagesParams) => Promise<DataApp>;
 }
 
 type Props = OwnProps & DispatchProps;
 
 function mapDispatchToProps(dispatch: Dispatch) {
   return {
-    onCreate: async (params: ScaffoldNewAppParams) => {
+    onScaffold: async (params: ScaffoldNewPagesParams) => {
       const action = await dispatch(
-        DataApps.objectActions.scaffoldNewApp(params),
+        DataApps.objectActions.scaffoldNewPages(params),
       );
       return DataApps.HACK_getObjectFromAction(action);
     },
-    onChangeLocation: (location: LocationDescriptor) =>
-      dispatch(push(location)),
   };
 }
 
-function CreateDataAppModal({ onCreate, onChangeLocation, onClose }: Props) {
+function ScaffoldDataAppPagesModal({
+  dataAppId,
+  onAdd,
+  onScaffold,
+  onClose,
+}: Props) {
   const [tableId, setTableId] = useState<TableId | null>(null);
 
-  const handleCreate = useCallback(async () => {
-    const dataApp = await onCreate({
-      name: t`New App`,
+  const handleAdd = useCallback(async () => {
+    const dataApp = await onScaffold({
+      dataAppId,
       tables: [tableId] as number[],
     });
     onClose();
-    onChangeLocation(Urls.dataApp(dataApp));
-  }, [tableId, onCreate, onChangeLocation, onClose]);
+    onAdd(dataApp);
+  }, [dataAppId, tableId, onAdd, onScaffold, onClose]);
 
   return (
     <ModalRoot>
       <ModalHeader>
-        <ModalTitle>{t`Pick your starting data`}</ModalTitle>
+        <ModalTitle>{t`Pick your data`}</ModalTitle>
       </ModalHeader>
       <ModalBody>
         <DataAppDataPicker tableId={tableId} onTableChange={setTableId} />
@@ -72,8 +72,8 @@ function CreateDataAppModal({ onCreate, onChangeLocation, onClose }: Props) {
         <Button
           primary
           disabled={tableId == null}
-          onClick={handleCreate}
-        >{t`Create`}</Button>
+          onClick={handleAdd}
+        >{t`Add`}</Button>
       </ModalFooter>
     </ModalRoot>
   );
@@ -82,4 +82,4 @@ function CreateDataAppModal({ onCreate, onChangeLocation, onClose }: Props) {
 export default connect<unknown, DispatchProps, OwnProps, State>(
   null,
   mapDispatchToProps,
-)(CreateDataAppModal);
+)(ScaffoldDataAppPagesModal);

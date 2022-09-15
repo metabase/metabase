@@ -25,8 +25,13 @@ type UpdateDataAppParams = Pick<DataApp, "id" | "collection_id"> & {
   collection: Pick<Collection, "name" | "description">;
 };
 
-export type ScaffoldAppParams = {
+export type ScaffoldNewAppParams = {
   name: EditableDataAppParams["name"];
+  tables: number[]; // list of table IDs
+};
+
+export type ScaffoldNewPagesParams = {
+  dataAppId: DataApp["id"];
   tables: number[]; // list of table IDs
 };
 
@@ -67,13 +72,23 @@ const DataApps = createEntity({
   },
 
   objectActions: {
-    scaffold: async ({ name, tables }: ScaffoldAppParams) => {
-      const dataApp = await DataAppsApi.scaffold({
+    scaffoldNewApp: async ({ name, tables }: ScaffoldNewAppParams) => {
+      const dataApp = await DataAppsApi.scaffoldNewApp({
         "app-name": name,
         "table-ids": tables,
       });
       return {
         type: DataApps.actionTypes.CREATE,
+        payload: DataApps.normalize(dataApp),
+      };
+    },
+    scaffoldNewPages: async ({ dataAppId, tables }: ScaffoldNewPagesParams) => {
+      const dataApp = await DataAppsApi.scaffoldNewPages({
+        id: dataAppId,
+        "table-ids": tables,
+      });
+      return {
+        type: DataApps.actionTypes.UPDATE,
         payload: DataApps.normalize(dataApp),
       };
     },

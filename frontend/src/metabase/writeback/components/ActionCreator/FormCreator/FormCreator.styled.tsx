@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
 import InputBase from "metabase/core/components/Input";
+import Button from "metabase/core/components/Button";
 
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
@@ -39,4 +40,19 @@ export const EmptyFormPlaceholderWrapper = styled.div`
   text-align: center;
   max-width: 20rem;
   margin: 5rem auto;
+`;
+
+export const EditButton = styled(Button)`
+  color: ${color("brand")};
+  background-opacity: 0;
+  &:hover {
+    color: ${color("accent0-light")};
+  }
+`;
+
+export const FormSettingsPreviewContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${space(1)};
+  min-width: 12rem;
 `;

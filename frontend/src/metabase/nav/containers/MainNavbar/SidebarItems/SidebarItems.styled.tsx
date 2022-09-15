@@ -109,7 +109,7 @@ export const FullWidthLink = styled(Link)`
 const ITEM_NAME_LENGTH_TOOLTIP_THRESHOLD = 35;
 const ITEM_NAME_LABEL_WIDTH = Math.round(parseInt(NAV_SIDEBAR_WIDTH, 10) * 0.7);
 
-const ItemName = styled(TreeNode.NameContainer)`
+export const ItemName = styled(TreeNode.NameContainer)`
   width: ${ITEM_NAME_LABEL_WIDTH}px;
   padding: 6px 3px;
   white-space: nowrap;
