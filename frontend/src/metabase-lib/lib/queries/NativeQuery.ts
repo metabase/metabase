@@ -1,9 +1,9 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import { t } from "ttag";
-
 import { chain, assoc, getIn, assocIn, updateIn } from "icepick";
 import _ from "underscore";
+import slugg from "slugg";
 import { countLines } from "metabase/lib/string";
 import { humanize } from "metabase/lib/formatting";
 import Utils from "metabase/lib/utils";
@@ -12,7 +12,11 @@ import {
   getEngineNativeType,
   getEngineNativeRequiresTable,
 } from "metabase/lib/engine";
-import { DatasetQuery, NativeDatasetQuery } from "metabase-types/types/Card";
+import {
+  Card,
+  DatasetQuery,
+  NativeDatasetQuery,
+} from "metabase-types/types/Card";
 import {
   DependentMetadataItem,
   TemplateTags,
@@ -41,30 +45,88 @@ export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
     "template-tags": {},
   },
 };
-// This regex needs to match logic in replaceCardSlug and _getUpdatedTemplateTags.
-const CARD_TAG_REGEX = /^#([0-9]*)([a-z0-9-]*)$/;
 
-function cardTagCardId(name) {
-  const match = name.match(CARD_TAG_REGEX);
+///////////////////////////
+// QUERY TEXT TAG UTILS
 
-  if (match && match[1].length > 0) {
-    return parseInt(match[1]);
-  }
+// This regex needs to match logically with `cardTagRegexFromId`
+const CARD_TAG_NAME_REGEX: RegExp = /^#([0-9]*)(-[a-z0-9-]*)?$/;
 
-  return null;
+// This regex needs to match logically with `CARD_TAG_NAME_REGEX`
+function cardTagRegexFromId(cardId: number): RegExp {
+  return new RegExp(`{{\\s*#${cardId}(-[a-z0-9-]*)?\\s*}}`, "g");
 }
 
-function isCardQueryName(name) {
-  return CARD_TAG_REGEX.test(name);
+function tagRegex(tagName: string): RegExp {
+  return new RegExp(`{{\\s*${tagName}\\s*}}`, "g");
 }
 
-function snippetNameFromTagName(name) {
+function replaceTagName(
+  query: NativeQuery,
+  oldTagName: string,
+  newTagName: string,
+) {
+  const queryText = query
+    .queryText()
+    .replace(tagRegex(oldTagName), `{{${newTagName}}}`);
+  return query.setQueryText(queryText);
+}
+
+// replaces template tag with given cardId with a new tag name
+// the new tag name could reference a completely different card
+export function replaceCardTagNameById(
+  query: NativeQuery,
+  cardId: number,
+  newTagName: string,
+): NativeQuery {
+  const queryText = query
+    .queryText()
+    .replace(cardTagRegexFromId(cardId), `{{${newTagName}}}`);
+  return query.setQueryText(queryText);
+}
+
+function cardIdFromTagName(name: string): number | null {
+  const match = name.match(CARD_TAG_NAME_REGEX);
+  return match && match[1].length > 0 ? parseInt(match[1]) : null;
+}
+
+function isCardTagName(tagName: string): boolean {
+  return CARD_TAG_NAME_REGEX.test(tagName);
+}
+
+function snippetNameFromTagName(name: string): string {
   return name.slice("snippet:".length).trim();
 }
 
-function isSnippetName(name) {
+function isSnippetTagName(name: string): boolean {
   return name.startsWith("snippet:");
 }
+
+export function updateQuestionTagNames(
+  query: NativeQuery,
+  cards: Card[],
+): NativeQuery {
+  const cardById = _.indexBy(cards, "id");
+  const newQueryText = query
+    .templateTags()
+    // only tags for cards
+    .filter(tag => tag.type === "card")
+    // only tags for given cards
+    .filter(tag => cardById[tag["card-id"]])
+    // reduce over each tag, updating query text with the new tag name
+    .reduce((qText, tag) => {
+      const card = cardById[tag["card-id"]];
+      const newTagName = `#${card.id}-${slugg(card.name)}`;
+      return replaceTagName(qText, tag.name, newTagName);
+    }, query.queryText());
+  // return new query with updated text
+  return newQueryText !== query.queryText()
+    ? query.setQueryText(newQueryText)
+    : query;
+}
+
+// QUERY TEXT TAG UTILS END
+///////////////////////////
 
 export default class NativeQuery extends AtomicQuery {
   // For Flow type completion
@@ -327,7 +389,7 @@ export default class NativeQuery extends AtomicQuery {
     return tagErrors.length === 0;
   }
 
-  setTemplateTag(name, tag) {
+  setTemplateTag(name: string, tag: TemplateTag) {
     return this.setDatasetQuery(
       assocIn(this.datasetQuery(), ["native", "template-tags", name], tag),
     );
@@ -335,20 +397,6 @@ export default class NativeQuery extends AtomicQuery {
 
   setDatasetQuery(datasetQuery: DatasetQuery): NativeQuery {
     return new NativeQuery(this._originalQuestion, datasetQuery);
-  }
-
-  // `replaceCardSlug` updates the query text to reference a different card.
-  // Template tags are updated as a result of calling `setQueryText`.
-  replaceCardSlug(oldId, newCardSlug) {
-    let newQueryText = this.queryText().replace(
-      new RegExp(`{{\\s*#${oldId}\\s*}}`, "g"),
-      `{{#${newCardSlug}}}`,
-    );
-    newQueryText = newQueryText.replace(
-      new RegExp(`{{\\s*#${oldId}-[a-z0-9-]*\\s*}}`, "g"),
-      `{{#${newCardSlug}}}`,
-    );
-    return this.setQueryText(newQueryText);
   }
 
   dimensionOptions(
@@ -402,24 +450,29 @@ export default class NativeQuery extends AtomicQuery {
       .filter(tag => tag.type === "snippet")
       .groupBy(tag => tag["snippet-id"])
       .value();
+
     if (Object.keys(tagsBySnippetId).length === 0) {
-      // if there are no tags, no need to update
+      // no need to check if there are no tags
       return this;
     }
+
     let queryText = this.queryText();
+
     for (const snippet of snippets) {
       for (const tag of tagsBySnippetId[snippet.id] || []) {
         if (tag["snippet-name"] !== snippet.name) {
           queryText = queryText.replace(
-            new RegExp(`{{\\s*${tag.name}\\s*}}`, "g"),
+            tagRegex(tag.name),
             `{{snippet: ${snippet.name}}}`,
           );
         }
       }
     }
+
     if (queryText !== this.queryText()) {
       return this.setQueryText(queryText).updateSnippetsWithIds(snippets);
     }
+
     return this;
   }
 
@@ -450,10 +503,10 @@ export default class NativeQuery extends AtomicQuery {
 
           newTag.name = newTags[0];
 
-          if (isCardQueryName(newTag.name)) {
+          if (isCardTagName(newTag.name)) {
             newTag.type = "card";
-            newTag["card-id"] = cardTagCardId(newTag.name);
-          } else if (isSnippetName(newTag.name)) {
+            newTag["card-id"] = cardIdFromTagName(newTag.name);
+          } else if (isSnippetTagName(newTag.name)) {
             newTag.type = "snippet";
             newTag["snippet-name"] = snippetNameFromTagName(newTag.name);
           }
@@ -471,12 +524,12 @@ export default class NativeQuery extends AtomicQuery {
             templateTags[tagName] = createTemplateTag(tagName);
 
             // parse card ID from tag name for card query template tags
-            if (isCardQueryName(tagName)) {
+            if (isCardTagName(tagName)) {
               templateTags[tagName] = Object.assign(templateTags[tagName], {
                 type: "card",
-                "card-id": cardTagCardId(tagName),
+                "card-id": cardIdFromTagName(tagName),
               });
-            } else if (isSnippetName(tagName)) {
+            } else if (isSnippetTagName(tagName)) {
               // extract snippet name from snippet tag
               templateTags[tagName] = Object.assign(templateTags[tagName], {
                 type: "snippet",
@@ -529,7 +582,7 @@ export default class NativeQuery extends AtomicQuery {
 export function recognizeTemplateTags(queryText: string): string[] {
   const tagNames = [];
   let match;
-  const re = /\{\{\s*((snippet:\s*[^}]+)|[A-Za-z0-9_\.]+?|#[a-z0-9-]*)\s*\}\}/g;
+  const re = /\{\{\s*((snippet:\s*[^}]+)|[A-Za-z0-9_\.]+?|#[0-9]*)\s*\}\}/g;
 
   while ((match = re.exec(queryText)) != null) {
     tagNames.push(match[1]);

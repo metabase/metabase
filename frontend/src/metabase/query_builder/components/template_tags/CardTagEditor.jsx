@@ -14,15 +14,18 @@ import Questions from "metabase/entities/questions";
 import * as Urls from "metabase/lib/urls";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import MetabaseSettings from "metabase/lib/settings";
+import { replaceCardTagNameById } from "metabase-lib/lib/queries/NativeQuery";
 
 class CardTagEditor extends Component {
   handleQuestionSelection = id => {
     const { question, query, setDatasetQuery } = this.props;
     const selectedQuestion = query.metadata().question(id);
     setDatasetQuery(
-      query
-        .replaceCardSlug(question ? question.id : "", selectedQuestion.slug())
-        .datasetQuery(),
+      replaceCardTagNameById(
+        query,
+        question ? question.id : "",
+        `#${selectedQuestion.slug()}`,
+      ).datasetQuery(),
     );
     this._popover && this._popover.close();
   };

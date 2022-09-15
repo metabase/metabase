@@ -24,8 +24,9 @@ import {
 } from "metabase-types/store";
 import { Card, SavedCard } from "metabase-types/types/Card";
 import Question from "metabase-lib/lib/Question";
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import { updateReferencedQuestionNames } from "metabase-lib/lib/queries/utils/native-query";
+import NativeQuery, {
+  updateQuestionTagNames,
+} from "metabase-lib/lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 import { getQueryBuilderModeFromLocation } from "../../typed-utils";
@@ -304,7 +305,7 @@ async function handleQBInit(
         )
       ).filter(Boolean);
       question = question.setQuery(
-        updateReferencedQuestionNames(query, referencedQuestions),
+        updateQuestionTagNames(query, referencedQuestions),
       );
     }
 
