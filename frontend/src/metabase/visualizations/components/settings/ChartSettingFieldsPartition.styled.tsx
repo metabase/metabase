@@ -13,7 +13,7 @@ export const FieldPartitionColumn = styled(
   ${props =>
     props.isDisabled &&
     `
-    pointer-events: none;
-    opacity: 0.4;
-  `}
+        pointer-events: none;
+        opacity: 0.4;
+      `}
 `;
