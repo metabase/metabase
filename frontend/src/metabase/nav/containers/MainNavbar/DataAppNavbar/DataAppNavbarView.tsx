@@ -1,6 +1,5 @@
 import React from "react";
 import _ from "underscore";
-import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
 
@@ -8,7 +7,6 @@ import type { DataApp } from "metabase-types/api";
 
 import { MainNavbarProps, SelectedItem } from "../types";
 import {
-  DataAppNewButton,
   PaddedSidebarLink,
   SidebarContentRoot,
   SidebarHeading,
@@ -22,6 +20,7 @@ interface Props extends MainNavbarProps {
   pages: any[];
   selectedItems: SelectedItem[];
   onEditAppSettings: () => void;
+  onAddData: () => void;
   onNewPage: () => void;
 }
 
@@ -30,6 +29,7 @@ function DataAppNavbarView({
   pages,
   selectedItems,
   onEditAppSettings,
+  onAddData,
   onNewPage,
 }: Props) {
   const { "data-app-page": dataAppPage } = _.indexBy(
@@ -39,32 +39,26 @@ function DataAppNavbarView({
 
   return (
     <SidebarContentRoot>
-      <div>
-        <SidebarSection>
-          <SidebarHeadingWrapper>
-            <SidebarHeading>{dataApp.collection.name}</SidebarHeading>
-          </SidebarHeadingWrapper>
-          <ul>
-            {pages.map(page => (
-              <PaddedSidebarLink
-                key={page.id}
-                url={Urls.dataAppPage(dataApp, page)}
-                isSelected={dataAppPage?.id === page.id}
-              >
-                {page.name}
-              </PaddedSidebarLink>
-            ))}
-          </ul>
-        </SidebarSection>
-        <div>
-          <DataAppNewButton
-            icon="add"
-            onClick={onNewPage}
-          >{t`Add new page`}</DataAppNewButton>
-        </div>
-      </div>
+      <SidebarSection>
+        <SidebarHeadingWrapper>
+          <SidebarHeading>{dataApp.collection.name}</SidebarHeading>
+        </SidebarHeadingWrapper>
+        <ul>
+          {pages.map(page => (
+            <PaddedSidebarLink
+              key={page.id}
+              url={Urls.dataAppPage(dataApp, page)}
+              isSelected={dataAppPage?.id === page.id}
+            >
+              {page.name}
+            </PaddedSidebarLink>
+          ))}
+        </ul>
+      </SidebarSection>
       <DataAppActionPanel
         dataApp={dataApp}
+        onAddData={onAddData}
+        onNewPage={onNewPage}
         onEditAppSettings={onEditAppSettings}
       />
     </SidebarContentRoot>
