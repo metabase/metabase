@@ -84,7 +84,9 @@
 ;; language used on the frontend.
 (s/def ::details (s/or :str->kw #{"yes" "no"}))
 
-(s/def ::db-perms (s/keys :opt-un [::data ::download ::data-model ::details]))
+(s/def ::execute (s/or :str->kw #{"all" "none"}))
+
+(s/def ::db-perms (s/keys :opt-un [::data ::download ::data-model ::details ::execute]))
 
 (s/def ::db-graph (s/map-of ::id ::db-perms
                             :conform-keys true))

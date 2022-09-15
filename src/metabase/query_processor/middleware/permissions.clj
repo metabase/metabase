@@ -98,6 +98,20 @@
           (check-block-permissions outer-query)))
       (check-ad-hoc-query-perms outer-query))))
 
+(defn- query-action-perms
+  [{:keys [database]}]
+  #{(perms/execute-query-perms-path database)})
+
+(s/defn ^:private check-query-action-permissions*
+  "Check that User with `user-id` has permissions to run query action `query`, or throw an exception."
+  [outer-query :- su/Map]
+  (when-not *current-user-id*
+    (throw (ex-info (tru "Query actions have to executed by a user.") {})))
+  (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
+  (check-card-read-perms *card-id*)
+  (when-not (has-data-perms? (query-action-perms outer-query))
+    (throw (perms-exception required-perms))))
+
 (defn check-query-permissions
   "Middleware that check that the current user has permissions to run the current query. This only applies if
   `*current-user-id*` is bound. In other cases, like when running public Cards or sending pulses, permissions need to
@@ -106,6 +120,14 @@
   [qp]
   (fn [query rff context]
     (check-query-permissions* query)
+    (qp query rff context)))
+
+(defn check-query-action-permissions
+  "Middleware that check that the current user has permissions to run the current query action. This only applies if
+  `*current-user-id*` is bound."
+  [qp]
+  (fn [query rff context]
+    (check-query-action-permissions* query)
     (qp query rff context)))
 
 (defn remove-permissions-key

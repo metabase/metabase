@@ -49,6 +49,8 @@
    "/data-model/db/1/schema/PUBLIC/table/1/"
    ;; db details permissions
    "/details/db/1/"
+   ;; execution permissions
+   "/execute/"
    ;; full admin (everything) root permissions
    "/"])
 
@@ -677,7 +679,8 @@
                        :download   {:native  :full
                                     :schemas :full}
                        :data-model {:schemas :all}
-                       :details    :yes}}
+                       :details    :yes
+                       :execute    :all}}
                (-> (perms/data-perms-graph)
                    (get-in [:groups group_id])
                    (select-keys [db-id]))))))))

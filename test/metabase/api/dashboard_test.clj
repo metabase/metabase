@@ -1958,23 +1958,33 @@
                                       "Problem building request:"))))))))))
 
 (deftest dashcard-action-execution-auth-test
-  (actions.test-util/with-actions-test-data
-    (actions.test-util/with-action [{:keys [action-id]} {}]
-      (testing "Executing dashcard with action"
-        (mt/with-temp* [Dashboard [{dashboard-id :id}]
-                        DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
-                                                          :action_id action-id
-                                                          :parameter_mappings [{:parameter_id "my_id"
-                                                                                :target [:variable [:template-tag "id"]]}]}]]
-          (let [execute-path (format "dashboard/%s/dashcard/%s/action/execute"
-                                     dashboard-id
-                                     dashcard-id)]
-            (testing "Without actions enabled"
-              (is (= "Actions are not enabled."
-                     (mt/user-http-request :crowberto :post 400 execute-path
-                                           {:parameters [{:id "my_id" :type :number/= :value 1}]}))))
-            (testing "Without admin"
-              (actions.test-util/with-actions-enabled
-                (is (= "You don't have permissions to do that."
-                       (mt/user-http-request :rasta :post 403 execute-path
-                                             {:parameters [{:id "my_id" :type :number/= :value 1}]})))))))))))
+  (mt/with-temp-copy-of-db
+    (actions.test-util/with-actions-test-data
+      (actions.test-util/with-action [{:keys [action-id]} {}]
+        (testing "Executing dashcard with action"
+          (mt/with-temp* [Dashboard [{dashboard-id :id}]
+                          DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
+                                                            :action_id action-id
+                                                            :parameter_mappings [{:parameter_id "my_id"
+                                                                                  :target [:variable [:template-tag "id"]]}]}]]
+            (let [execute-path (format "dashboard/%s/dashcard/%s/action/execute"
+                                       dashboard-id
+                                       dashcard-id)]
+              (testing "Without actions enabled"
+                (is (= "Actions are not enabled."
+                       (mt/user-http-request :crowberto :post 400 execute-path
+                                             {:parameters [{:id "my_id" :type :number/= :value 1}]}))))
+              (testing "Without execute rights on the DB"
+                (actions.test-util/with-actions-enabled
+                  (is (= "You don't have permissions to do that."
+                         (mt/user-http-request :rasta :post 403 execute-path
+                                               {:parameters [{:id "my_id" :type :number/= :value 1}]})))))
+              (testing "With execute rights on the DB"
+                (perms/update-global-execution-permission (:id (perms-group/all-users)) :all)
+                (try
+                  (actions.test-util/with-actions-enabled
+                    (is (= {:rows-affected 1}
+                           (mt/user-http-request :rasta :post 200 execute-path
+                                                 {:parameters [{:id "my_id" :type :number/= :value 1}]}))))
+                  (finally
+                    (perms/update-global-execution-permission (:id (perms-group/all-users)) :none)))))))))))

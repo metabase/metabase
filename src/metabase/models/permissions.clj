@@ -264,6 +264,10 @@
                ;; any path starting with /details/ is a DATABASE CONNECTION DETAILS permissions path
                ;; /details/db/:id/ -> permissions to edit the connection details and settings for the DB
                (and "details/" #"db/\d+/")
+               ;; .../execute/ -> permissions to run query actions in the DB
+               (and "execute/"
+                    (or ""
+                        #"db/\d+/"))
                ;; any path starting with /collection/ is a COLLECTION permissions path
                (and "collection/"
                     (or
@@ -439,6 +443,12 @@
   ([database-or-id schema-name table-or-id]
    (str (data-perms-path (u/the-id database-or-id) schema-name (u/the-id table-or-id)) "query/segmented/")))
 
+(s/defn execute-query-perms-path :- Path
+  "Return the execute query action permissions path for a database.
+   This grants you permissions to run arbitary query actions."
+  [database-or-id :- MapOrID]
+  (str "/execute" (data-perms-path database-or-id)))
+
 (s/defn database-block-perms-path :- Path
   "Return the permissions path for the Block 'anti-permissions'. Block anti-permissions means a User cannot run a query
   against a Database unless they have data permissions, regardless of whether segmented permissions would normally give
@@ -462,7 +472,10 @@
     (str "/data-model" base-path)
 
     [:details :yes]
-    (str "/details" base-path)))
+    (str "/details" base-path)
+
+    [:execute :all]
+    (str "/execute" base-path)))
 
 (s/defn feature-perms-path :- Path
   "Returns the permissions path to use for a given feature-level permission type (e.g. download) and value (e.g. full
@@ -652,6 +665,11 @@
    (s/enum :write :none)
    "Valid native perms option for a database"))
 
+(def ^:private ExecutePermissionsGraph
+  (s/named
+   (s/enum :all :none)
+   "Valid execute perms option for a database"))
+
 (def ^:private DataPermissionsGraph
   (s/named
    {(s/optional-key :native)  NativePermissionsGraph
@@ -731,10 +749,16 @@
    "Valid details perms graph for a database"))
 
 (def ^:private StrictDBPermissionsGraph
-  {su/IntGreaterThanZero {(s/optional-key :data) StrictDataPermissionsGraph
-                          (s/optional-key :download) DownloadPermissionsGraph
-                          (s/optional-key :data-model) DataModelPermissionsGraph
-                          (s/optional-key :details) DetailsPermissions}})
+  (s/conditional
+   :execute
+   {:execute ExecutePermissionsGraph}
+
+   :else
+   {su/IntGreaterThanZero {(s/optional-key :data) StrictDataPermissionsGraph
+                           (s/optional-key :download) DownloadPermissionsGraph
+                           (s/optional-key :data-model) DataModelPermissionsGraph
+                           (s/optional-key :details) DetailsPermissions
+                           (s/optional-key :execute) ExecutePermissionsGraph}}))
 
 (def ^:private StrictPermissionsGraph
   {:revision s/Int
@@ -754,7 +778,8 @@
                             :download   {:native  :full
                                          :schemas :full}
                             :data-model {:schemas :all}
-                            :details    :yes}))
+                            :details    :yes
+                            :execute    :all}))
           {}
           db-ids))
 
@@ -1132,22 +1157,38 @@
     (update-fn group-id db-id new-perms)
     (throw (ee-permissions-exception perm-type))))
 
+(defn update-global-execution-permission
+  "Set the global execution permission (\"/execute/\") for the group
+  with ID `group-id` to `new-perms`."
+  [group-id new-perms]
+  (when-not (or (= group-id (:id (perms-group/all-users)))
+                (premium-features/has-feature? :advanced-permissions))
+    (throw (ee-permissions-exception :execute)))
+  (delete-related-permissions! group-id "/execute/")
+  (when (= new-perms :all)
+    (grant-permissions! group-id "/execute/")))
+
 (s/defn ^:private update-group-permissions!
   [group-id :- su/IntGreaterThanZero new-group-perms :- StrictDBPermissionsGraph]
   (doseq [[db-id new-db-perms] new-group-perms]
-    (doseq [[perm-type new-perms] new-db-perms]
-      (case perm-type
-        :data
-        (update-db-data-access-permissions! group-id db-id new-perms)
+    (if (= db-id :execute)
+      (update-global-execution-permission group-id new-db-perms)
+      (doseq [[perm-type new-perms] new-db-perms]
+        (case perm-type
+          :data
+          (update-db-data-access-permissions! group-id db-id new-perms)
 
-        :download
-        (update-feature-level-permission! group-id db-id new-perms :download)
+          :download
+          (update-feature-level-permission! group-id db-id new-perms :download)
 
-        :data-model
-        (update-feature-level-permission! group-id db-id new-perms :data-model)
+          :data-model
+          (update-feature-level-permission! group-id db-id new-perms :data-model)
 
-        :details
-        (update-feature-level-permission! group-id db-id new-perms :details)))))
+          :details
+          (update-feature-level-permission! group-id db-id new-perms :details)
+
+          :execute
+          (update-feature-level-permission! group-id db-id new-perms :execute))))))
 
 (defn check-revision-numbers
   "Check that the revision number coming in as part of `new-graph` matches the one from `old-graph`. This way we can
