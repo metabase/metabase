@@ -297,6 +297,9 @@
          (cond
            (and (= k :database)     (string? v)) #{[{:model "Database" :id v}]}
            (and (= k :source-table) (vector? v)) #{(table->path v)}
+           (and (= k :source-table)
+                (string? v)
+                (serdes.base/entity-id? v))      #{[{:model "Card" :id v}]}
            (and (= k :source-field) (vector? v)) #{(field->path v)}
            (map? v)                              (mbql-deps-map v)
            (vector? v)                           (mbql-deps-vector v)))
