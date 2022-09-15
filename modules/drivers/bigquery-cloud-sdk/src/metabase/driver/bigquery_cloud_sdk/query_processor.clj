@@ -181,7 +181,7 @@
 (defmethod temporal-type Field
   [{base-type :base_type, effective-type :effective_type, database-type :database_type,
     coercion-strategy :coercion_strategy}]
-  (or (coercion-strategy->temporat-type coercion-strategy)
+  (or #_(coercion-strategy->temporat-type coercion-strategy)
       (database-type->temporal-type database-type)
       (base-type->temporal-type (or effective-type base-type))))
 
@@ -703,6 +703,8 @@
 
 (defmethod sql.qp/add-interval-honeysql-form :bigquery-cloud-sdk
   [_ hsql-form amount unit]
+  ;; `timestamp_add()` doesn't support month/quarter/year, so cast it to `datetime` so we can use `datetime_add()`
+  ;; instead in those cases.
   (let [hsql-form (cond->> hsql-form
                     (and (= (temporal-type hsql-form) :timestamp)
                          (not (contains? (temporal-type->supported-units :timestamp) unit)))
