@@ -10,6 +10,7 @@ import {
   dimensionFilterForParameter,
   variableFilterForParameter,
 } from "metabase/parameters/utils/filters";
+import { isValidImplicitActionClickBehavior } from "metabase/writeback/utils";
 import Question from "metabase-lib/lib/Question";
 import { TemplateTagVariable } from "metabase-lib/lib/Variable";
 import { TemplateTagDimension } from "metabase-lib/lib/Dimension";
@@ -246,6 +247,9 @@ export function clickBehaviorIsValid(clickBehavior) {
   } = clickBehavior;
   if (type === "crossfilter") {
     return Object.keys(parameterMapping).length > 0;
+  }
+  if (type === "action") {
+    return isValidImplicitActionClickBehavior(clickBehavior);
   }
   // if it's not a crossfilter/action, it's a link
   if (linkType === "url") {
