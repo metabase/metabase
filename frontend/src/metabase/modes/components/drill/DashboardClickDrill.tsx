@@ -15,9 +15,17 @@ import {
 } from "metabase/lib/click-behavior";
 import { renderLinkURLForClick } from "metabase/lib/formatting/link";
 import * as Urls from "metabase/lib/urls";
+import { ClickActionProps } from "metabase-types/types/Visualization";
+import {
+  ClickBehaviorMappingData,
+  ClickBehaviorParameterMapping,
+  EntityCustomDestinationClickBehavior,
+} from "metabase-types/api";
+import { Parameter } from "metabase-types/types/Parameter";
+
 import Question from "metabase-lib/lib/Question";
 
-export default ({ question, clicked }) => {
+export default ({ question, clicked }: ClickActionProps) => {
   const settings = (clicked && clicked.settings) || {};
   const columnSettings =
     (clicked &&
@@ -33,7 +41,7 @@ export default ({ question, clicked }) => {
     return [];
   }
   const { extraData } = clicked || {};
-  const data = getDataFromClicked(clicked);
+  const data = getDataFromClicked(clicked as any);
   const { type, linkType, parameterMapping, targetId } = clickBehavior;
 
   let behavior;
@@ -57,10 +65,10 @@ export default ({ question, clicked }) => {
       behavior = {
         ignoreSiteUrl: true,
         url: () =>
-          renderLinkURLForClick(clickBehavior.linkTemplate || "", data),
+          renderLinkURLForClick(clickBehavior.linkTemplate || "", data as any),
       };
     } else if (linkType === "dashboard") {
-      if (extraData.dashboard.id === targetId) {
+      if (extraData?.dashboard.id === targetId) {
         const parameterIdValuePairs = getParameterIdValuePairs(
           parameterMapping,
           { data, extraData, clickBehavior },
@@ -68,9 +76,9 @@ export default ({ question, clicked }) => {
 
         behavior = {
           action: () => {
-            return dispatch =>
+            return (dispatch: any) =>
               parameterIdValuePairs.forEach(([id, value]) => {
-                setParameterValue(id, value)(dispatch);
+                (setParameterValue(id, value) as any)(dispatch);
               });
           },
         };
@@ -87,7 +95,7 @@ export default ({ question, clicked }) => {
         behavior = { url: () => url };
       }
     } else if (linkType === "page") {
-      const { location, routerParams } = extraData;
+      const { location, routerParams } = extraData || {};
 
       const isInDataApp =
         Urls.isDataAppPagePath(location.pathname) ||
@@ -151,9 +159,15 @@ export default ({ question, clicked }) => {
   ];
 };
 
+type Opts = {
+  data: Data;
+  extraData: ExtraData;
+  clickBehavior: EntityCustomDestinationClickBehavior;
+};
+
 function getParameterIdValuePairs(
-  parameterMapping,
-  { data, extraData, clickBehavior },
+  parameterMapping: ClickBehaviorParameterMapping,
+  { data, extraData, clickBehavior }: Opts,
 ) {
   const value = _.values(parameterMapping).map(({ source, target, id }) => {
     return [
@@ -169,9 +183,11 @@ function getParameterIdValuePairs(
   return value;
 }
 
+type Data = ClickActionProps["data"];
+type ExtraData = ClickActionProps["extraData"];
 function getParameterValuesBySlug(
-  parameterMapping,
-  { data, extraData, clickBehavior },
+  parameterMapping: ClickBehaviorParameterMapping,
+  { data, extraData, clickBehavior }: Opts,
 ) {
   return _.chain(parameterMapping)
     .values()
@@ -184,16 +200,23 @@ function getParameterValuesBySlug(
     .value();
 }
 
-function getTypeForSource(source, extraData) {
+function getTypeForSource(
+  source: ClickBehaviorMappingData["source"],
+  extraData: ExtraData,
+) {
   if (source.type === "parameter") {
     const parameters = getIn(extraData, ["dashboard", "parameters"]) || [];
-    const { type = "text" } = parameters.find(p => p.id === source.id) || {};
+    const { type = "text" } =
+      parameters.find((p: Parameter) => p.id === source.id) || {};
     return type;
   }
   return "text";
 }
 
-function hasLinkTargetData(clickBehavior, extraData) {
+function hasLinkTargetData(
+  clickBehavior: EntityCustomDestinationClickBehavior,
+  extraData: ExtraData,
+) {
   const { linkType, targetId } = clickBehavior;
   if (linkType === "question") {
     return getIn(extraData, ["questions", targetId]) != null;

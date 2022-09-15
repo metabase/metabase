@@ -1,14 +1,25 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
+
 import { fieldRefForColumn } from "metabase/lib/dataset";
 import {
   getAggregationOperator,
   isCompatibleAggregationOperatorForField,
 } from "metabase/lib/schema_metadata";
 import { capitalize } from "metabase/lib/formatting";
+import {
+  ClickAction,
+  ClickActionProps,
+} from "metabase-types/types/Visualization";
+import { AggregationOperator } from "metabase-types/types/Metadata";
 
-export default ({ question, clicked = {} }) => {
+import Dimension from "metabase-lib/lib/Dimension";
+
+export default ({
+  question,
+  clicked = {},
+}: ClickActionProps): ClickAction[] => {
   const { column, value } = clicked;
   const query = question.query();
   const isStructured = question.isStructured();
@@ -16,15 +27,19 @@ export default ({ question, clicked = {} }) => {
     return [];
   }
   const dateDimension = query
-    .dimensionOptions(d => d.field().isDate())
+    .dimensionOptions((d: Dimension) => d.field().isDate())
     .all()[0];
   if (!dateDimension) {
     return [];
   }
-  return ["sum"]
-    .map(getAggregationOperator)
-    .filter(aggregator =>
-      isCompatibleAggregationOperatorForField(aggregator, column),
+  const operators = ["sum"].map(
+    getAggregationOperator,
+  ) as AggregationOperator[];
+  return operators
+    .filter(
+      aggregator =>
+        aggregator &&
+        isCompatibleAggregationOperatorForField(aggregator, column),
     )
     .map(aggregator => ({
       name: "summarize-by-time",

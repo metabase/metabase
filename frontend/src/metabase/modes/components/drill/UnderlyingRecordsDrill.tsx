@@ -1,9 +1,15 @@
 import { ngettext, msgid } from "ttag";
 import { inflect } from "metabase/lib/formatting";
 
+import {
+  ClickAction,
+  ClickActionProps,
+} from "metabase-types/types/Visualization";
+import { Filter } from "metabase-types/types/Query";
+
 import { AggregationDimension } from "metabase-lib/lib/Dimension";
 
-export default ({ question, clicked }) => {
+export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
   // removes post-aggregation filter stage
   clicked = clicked && question.topLevelClicked(clicked);
   question = question.topLevelQuestion();
@@ -22,17 +28,18 @@ export default ({ question, clicked }) => {
   const count = typeof clicked.value === "number" ? clicked.value : 2;
 
   // special case for aggregations that include a filter, such as share, count-where, and sum-where
-  let extraFilter = null;
+  let extraFilter: Filter | null = null;
   const dimension =
     clicked.column && query.parseFieldReference(clicked.column.field_ref);
   if (dimension instanceof AggregationDimension) {
     const aggregation = dimension.aggregation();
     extraFilter =
-      aggregation[0] === "count-where" || aggregation[0] === "share"
+      aggregation &&
+      (aggregation[0] === "count-where" || aggregation[0] === "share"
         ? aggregation[1]
         : aggregation[0] === "sum-where"
         ? aggregation[2]
-        : null;
+        : null);
   }
 
   const recordName = query.table() && query.table().displayName();

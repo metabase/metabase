@@ -1,7 +1,11 @@
 import { t } from "ttag";
 import { drillDownForDimensions } from "metabase/modes/lib/actions";
+import {
+  ClickAction,
+  ClickActionProps,
+} from "metabase-types/types/Visualization";
 
-export default ({ question, clicked }) => {
+export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
   if (!question.query().isEditable()) {
     return [];
   }

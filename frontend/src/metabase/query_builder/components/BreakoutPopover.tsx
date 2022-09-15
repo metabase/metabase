@@ -1,8 +1,25 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+
+import { Field } from "metabase-types/types/Field";
+import DimensionOptions from "metabase-lib/lib/DimensionOptions";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+
 import { BreakoutFieldList } from "./BreakoutPopover.styled";
 
-const BreakoutPopover = ({
+type Props = {
+  className?: string;
+  breakout?: Field;
+  onChangeBreakout: (value: Field) => void;
+  query: StructuredQuery;
+  breakoutOptions: DimensionOptions;
+  onClose: () => void;
+  maxHeight?: number;
+  alwaysExpanded?: boolean;
+  width?: number;
+};
+
+const BreakoutPopover: React.FC<Props> = ({
   className,
   breakout,
   onChangeBreakout,
@@ -29,7 +46,7 @@ const BreakoutPopover = ({
       query={query}
       metadata={query.metadata()}
       fieldOptions={fieldOptions}
-      onFieldChange={field => {
+      onFieldChange={(field: Field) => {
         onChangeBreakout(field);
         if (onClose) {
           onClose();

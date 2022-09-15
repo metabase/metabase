@@ -8,10 +8,14 @@ import {
   getAggregationOperator,
   isCompatibleAggregationOperatorForField,
 } from "metabase/lib/schema_metadata";
+import { ClickActionProps } from "metabase-types/types/Visualization";
+import { AggregationOperator } from "metabase-types/types/Metadata";
 
 const INVALID_TYPES = [TYPE.Structured];
 
-const AGGREGATIONS = {
+type Action = { section: string; buttonType: string; title: string };
+
+const AGGREGATIONS: Record<string, Action> = {
   sum: {
     section: "sum",
     buttonType: "token",
@@ -29,12 +33,15 @@ const AGGREGATIONS = {
   },
 };
 
-export default ({ question, clicked = {} }) => {
+export default ({ question, clicked = {} }: ClickActionProps) => {
   const { column, value } = clicked;
   if (
     !column ||
     value !== undefined ||
-    _.any(INVALID_TYPES, type => isa(clicked.column.base_type, type))
+    _.any(
+      INVALID_TYPES,
+      type => clicked.column?.base_type && isa(clicked.column.base_type, type),
+    )
   ) {
     return [];
   }
@@ -44,11 +51,13 @@ export default ({ question, clicked = {} }) => {
     return [];
   }
 
-  return Object.entries(AGGREGATIONS)
-    .map(([aggregationShort, action]) => [
+  const aggregators = Object.entries(AGGREGATIONS).map(
+    ([aggregationShort, action]) => [
       getAggregationOperator(aggregationShort),
       action,
-    ])
+    ],
+  ) as [AggregationOperator, Action][];
+  return aggregators
     .filter(([aggregator]) =>
       isCompatibleAggregationOperatorForField(aggregator, column),
     )
@@ -60,7 +69,7 @@ export default ({ question, clicked = {} }) => {
           .aggregate([aggregator.short, fieldRefForColumn(column)])
           .question()
           .setDefaultDisplay(),
-      action: () => dispatch => {
+      action: () => (dispatch: any) => {
         // HACK: drill through closes sidebars, so open sidebar asynchronously
         setTimeout(() => {
           dispatch({ type: "metabase/qb/EDIT_SUMMARY" });

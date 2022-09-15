@@ -1,6 +1,10 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
 import { TYPE, isa } from "metabase/lib/types";
+import {
+  ClickAction,
+  ClickActionProps,
+} from "metabase-types/types/Visualization";
 
 const DENYLIST_TYPES = [
   TYPE.PK,
@@ -9,12 +13,15 @@ const DENYLIST_TYPES = [
   TYPE.Comment,
 ];
 
-export default ({ question, clicked }) => {
+export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
   if (
     !clicked ||
     !clicked.column ||
     clicked.value !== undefined ||
-    DENYLIST_TYPES.some(t => isa(clicked.column.semantic_type, t)) ||
+    DENYLIST_TYPES.some(
+      t =>
+        clicked.column?.semantic_type && isa(clicked.column.semantic_type, t),
+    ) ||
     !question.query().isEditable()
   ) {
     return [];

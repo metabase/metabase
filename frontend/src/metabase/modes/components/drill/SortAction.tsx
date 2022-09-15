@@ -1,10 +1,13 @@
 import { t } from "ttag";
+
 import { TYPE, isa } from "metabase/lib/types";
+import { ClickActionProps } from "metabase-types/types/Visualization";
+
 import Dimension from "metabase-lib/lib/Dimension";
 
 const INVALID_TYPES = [TYPE.Structured];
 
-export default ({ question, clicked }) => {
+export default ({ question, clicked }: ClickActionProps) => {
   const query = question.query();
   if (!question.isStructured() || !query.isEditable()) {
     return [];
@@ -14,7 +17,9 @@ export default ({ question, clicked }) => {
     !clicked ||
     !clicked.column ||
     clicked.value !== undefined ||
-    INVALID_TYPES.some(type => isa(clicked.column.base_type, type)) ||
+    INVALID_TYPES.some(
+      type => clicked.column?.base_type && isa(clicked.column.base_type, type),
+    ) ||
     !clicked.column.source
   ) {
     return [];

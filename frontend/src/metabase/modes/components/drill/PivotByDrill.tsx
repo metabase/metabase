@@ -2,11 +2,15 @@
 import React from "react";
 import { jt } from "ttag";
 import BreakoutPopover from "metabase/query_builder/components/BreakoutPopover";
+import {
+  ClickAction,
+  ClickActionProps,
+} from "metabase-types/types/Visualization";
 
 // PivotByDrill displays a breakout picker, and optionally filters by the
 // clicked dimension values (and removes corresponding breakouts)
-export default (name, icon, fieldFilter) =>
-  ({ question, clicked }) => {
+export default (name: string, icon: string, fieldFilter: any) =>
+  ({ question, clicked }: ClickActionProps): ClickAction[] => {
     const query = question.query();
     if (!question.isStructured() || !query.isEditable()) {
       return [];
@@ -15,7 +19,7 @@ export default (name, icon, fieldFilter) =>
     // Click target types: metric value
     if (
       clicked &&
-      (clicked.value === undefined || clicked.column.source !== "aggregation")
+      (clicked.value === undefined || clicked.column?.source !== "aggregation")
     ) {
       return [];
     }

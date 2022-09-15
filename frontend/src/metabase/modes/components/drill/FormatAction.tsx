@@ -5,11 +5,18 @@ import styled from "@emotion/styled";
 import { t } from "ttag";
 
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
 import { updateSettings } from "metabase/visualizations/lib/settings";
 import { keyForColumn } from "metabase/lib/dataset";
+import {
+  ClickAction,
+  ClickActionProps,
+  Series,
+} from "metabase-types/types/Visualization";
+import { VisualizationSettings } from "metabase-types/api";
 
-export default ({ question, clicked }) => {
+import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
+
+export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
   if (
     !clicked ||
     clicked.value !== undefined ||
@@ -32,8 +39,16 @@ export default ({ question, clicked }) => {
         placement: "right-end",
         offset: [0, 20],
       },
-      popover: function FormatPopover({ series, onChange }) {
-        const handleChangeSettings = changedSettings => {
+      popover: function FormatPopover({
+        series,
+        onChange,
+      }: {
+        series: Series;
+        onChange: any;
+      }) {
+        const handleChangeSettings = (
+          changedSettings: VisualizationSettings,
+        ) => {
           onChange(
             updateSettings(
               series[0].card.visualization_settings,
