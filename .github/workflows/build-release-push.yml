@@ -25,4 +25,4 @@ jobs:
         password: ${{ secrets.DOCKERHUB_PASSWORD }}
     
     - name: Build and Push docker image 
-      run: export VERSION=`git tag --sort=committerdate | tail -1` && sh deploy.sh ${VERSION}
+      run: sh deploy.sh $(date +%s)
