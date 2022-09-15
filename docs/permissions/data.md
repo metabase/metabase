@@ -109,7 +109,11 @@ You can define whether a group can [edit metadata](../data-modeling/metadata-edi
 
 {% include plans-blockquote.html feature="Database management permissions" %}
 
-This setting defines whether a person can edit the connection settings for the data source, as well as to sync and scan the database. Note that this setting still prevents people from deleting database connections entirely. Only admins can delete database connections in your Metabase.
+This setting grants access to the settings page for a given database (i.e., the page at **Admin settings** > **Databases** > your database).
+
+From the database settings page, a person can edit any of the [connection options](../databases/connecting.md#database-connection-options) for the data source, manually [sync schemas](../databases/connecting.md#manually-syncing-table-and-column-names), and manually [scan field values](../databases/connecting.md#manually-scanning-column-values).
+
+People with **Manage database** permissions will not see the **Remove database** button. Only admins can delete database connections in your Metabase.
 
 ## Further reading
 
