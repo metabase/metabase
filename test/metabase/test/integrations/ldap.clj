@@ -61,7 +61,7 @@
                                          ldap-user-base  "dc=metabase,dc=com"
                                          ldap-group-sync true
                                          ldap-group-base "dc=metabase,dc=com"]
-         (tu/with-temporary-raw-setting-values [ldap-enabled true]
+         (tu/with-temporary-raw-setting-values [ldap-enabled "true"]
           (f)))
       (finally (.shutDown *ldap-server* true)))))
 
