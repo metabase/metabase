@@ -391,5 +391,24 @@ describe("NativeQuery", () => {
         [],
       );
     });
+
+    it("should handle snippets", () => {
+      expect(
+        recognizeTemplateTags(
+          "SELECT * from {{snippet: A snippet name}} cross join {{ snippet:     another-snippet with *&#) }}",
+        ),
+      ).toEqual([
+        "snippet: A snippet name",
+        "snippet:     another-snippet with *&#) ",
+      ]);
+    });
+
+    it("should handle card references", () => {
+      expect(
+        recognizeTemplateTags(
+          "SELECT * from {{#123}} cross join {{ #456-a-card-name }} cross join {{#not-this}} cross join {{#123or-this}}",
+        ),
+      ).toEqual(["#123", "#456-a-card-name"]);
+    });
   });
 });
