@@ -7,9 +7,11 @@ import type { FieldSettings, FieldType, InputType } from "metabase-types/api";
 import Input from "metabase/core/components/Input";
 import Radio from "metabase/core/components/Radio";
 import Icon from "metabase/components/Icon";
+import Toggle from "metabase/core/components/Toggle";
 
 import { getFieldTypes, getInputTypes } from "./constants";
 import {
+  ToggleContainer,
   SettingsPopoverBody,
   SectionLabel,
   Divider,
@@ -88,6 +90,14 @@ export function FormCreatorPopoverBody({
           onChange={handleUpdatePlaceholder}
         />
       )}
+      <Divider />
+      <RequiredInput
+        value={fieldSettings.required}
+        defaultValue={fieldSettings.defaultValue}
+        onChange={({ required, defaultValue }) =>
+          onChange({ ...fieldSettings, required, defaultValue })
+        }
+      />
     </SettingsPopoverBody>
   );
 }
@@ -153,6 +163,47 @@ function PlaceholderInput({
         onChange={e => onChange(e.target.value)}
         data-testid="placeholder-input"
       />
+    </div>
+  );
+}
+
+function RequiredInput({
+  value,
+  defaultValue,
+  onChange,
+}: {
+  value: boolean;
+  defaultValue?: string | number;
+  onChange: ({
+    required,
+    defaultValue,
+  }: {
+    required: boolean;
+    defaultValue?: string | number;
+  }) => void;
+}) {
+  return (
+    <div>
+      <ToggleContainer>
+        <strong>{t`Required`}</strong>
+        <Toggle
+          value={!!value}
+          onChange={required => onChange({ required, defaultValue })}
+        />
+      </ToggleContainer>
+      {!value && (
+        <>
+          <SectionLabel>{t`Default Value`}</SectionLabel>
+          <Input
+            fullWidth
+            value={defaultValue ?? ""}
+            onChange={e =>
+              onChange({ required: false, defaultValue: e.target.value })
+            }
+            data-testid="placeholder-input"
+          />
+        </>
+      )}
     </div>
   );
 }
