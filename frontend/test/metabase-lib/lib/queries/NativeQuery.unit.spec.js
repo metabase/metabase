@@ -10,6 +10,7 @@ import NativeQuery, {
   replaceCardTagNameById,
   recognizeTemplateTags,
   cardIdFromTagName,
+  updateCardTagNames,
 } from "metabase-lib/lib/queries/NativeQuery";
 
 function makeDatasetQuery(queryText, templateTags, databaseId) {
@@ -371,6 +372,23 @@ describe("NativeQuery", () => {
           id: PRODUCTS.CATEGORY.id,
         },
       ]);
+    });
+  });
+
+  describe("updateCardTagNames", () => {
+    it("should update the query text with new tag names", () => {
+      const query = makeQuery().setQueryText("{{#123-foo}} {{#1234-bar}}");
+      const newCards = [{ id: 123, name: "Foo New" }]; // newCards is deliberately missing a the bar card
+      const templateTagsMap = updateCardTagNames(
+        query,
+        newCards,
+      ).templateTagsMap();
+      const fooTag = templateTagsMap["#123-foo-new"]; // foo's templateTagsMap key is updated
+      const barTag = templateTagsMap["#1234-bar"]; // bar's key isn't updated
+      expect(fooTag["card-id"]).toEqual(123); // foo's card-id is the same
+      expect(fooTag["name"]).toEqual("#123-foo-new"); // foo's name is updated
+      expect(barTag["card-id"]).toEqual(1234); // bar's card-id is the same
+      expect(barTag["name"]).toEqual("#1234-bar"); // bar's name is the same
     });
   });
 
