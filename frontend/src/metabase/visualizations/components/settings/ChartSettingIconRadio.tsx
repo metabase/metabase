@@ -1,19 +1,5 @@
-import React, { useCallback } from "react";
-import styled from "@emotion/styled";
-import Icon from "metabase/components/Icon";
-
-import { color } from "metabase/lib/colors";
-
-interface RadioIconProps {
-  isSelected: boolean;
-}
-
-const RadioIcon = styled(Icon)<RadioIconProps>`
-  margin-left: 1rem;
-  cursor: pointer;
-
-  ${props => props.isSelected && `color: ${color("brand")}`}
-`;
+import React from "react";
+import { RadioIcon } from "./ChartSettingIconRadio.styled";
 
 interface ChartSettingIconRadioProps {
   value: string;
@@ -26,23 +12,20 @@ export const ChartSettingIconRadio = ({
   options,
   onChange,
 }: ChartSettingIconRadioProps) => {
-  const handleClick = useCallback(
-    option => {
-      if (option.value == value) {
-        onChange(null);
-      } else {
-        onChange(option.value);
-      }
-    },
-    [value, onChange],
-  );
+  const handleClick = (newValue: string) => {
+    if (newValue === value) {
+      onChange(null);
+    } else {
+      onChange(newValue);
+    }
+  };
 
   return (
     <div>
       {options.map(option => (
         <RadioIcon
           name={option.iconName}
-          onClick={() => handleClick(option)}
+          onClick={() => handleClick(option.value)}
           isSelected={option.value === value}
           key={`radio-icon-${option.iconName}`}
         />

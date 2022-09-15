@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import React from "react";
 import styled from "@emotion/styled";
 import InputBlurChange from "metabase/components/InputBlurChange";
@@ -17,7 +16,17 @@ const ChartSettingInputBlueChange = styled(InputBlurChange)`
   font-weight: 700;
 `;
 
-const ChartSettingInput = ({ value, onChange, ...props }) => (
+interface ChartSettingInputProps {
+  value: string;
+  onChange: (value: string) => void;
+  id?: string;
+}
+
+const ChartSettingInput = ({
+  value,
+  onChange,
+  ...props
+}: ChartSettingInputProps) => (
   <ChartSettingInputBlueChange
     {...props}
     data-testid={props.id}

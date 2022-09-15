@@ -240,7 +240,7 @@ class PivotTable extends Component {
       title: t`Sort Order`,
       widget: ChartSettingIconRadio,
       inline: true,
-      getProps: () => ({
+      props: {
         options: [
           {
             iconName: "arrow_up",
@@ -251,7 +251,7 @@ class PivotTable extends Component {
             value: COLUMN_SORT_ORDER_DESC,
           },
         ],
-      }),
+      },
       getHidden: ({ source }) => source === "aggregation",
     },
     [COLUMN_SHOW_TOTALS]: {
@@ -261,18 +261,14 @@ class PivotTable extends Component {
       getDefault: (column, columnSettings, { settings }) => {
         //Default to showing totals if appropriate
         const rows = settings[COLUMN_SPLIT_SETTING].rows || [];
-        return rows
-          .slice(0, rows.length - 1)
-          .some(row => _.isEqual(row, column.field_ref));
+        return rows.slice(0, -1).some(row => _.isEqual(row, column.field_ref));
       },
       getHidden: (column, columnSettings, { settings }) => {
         const rows = settings[COLUMN_SPLIT_SETTING].rows || [];
         // to show totals a column needs to be:
         //  - in the left header ("rows" in COLUMN_SPLIT_SETTING)
         //  - not the last column
-        return !rows
-          .slice(0, rows.length - 1)
-          .some(row => _.isEqual(row, column.field_ref));
+        return !rows.slice(0, -1).some(row => _.isEqual(row, column.field_ref));
       },
     },
     column_title: {

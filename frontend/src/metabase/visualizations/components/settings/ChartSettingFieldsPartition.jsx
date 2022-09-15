@@ -5,16 +5,10 @@ import { t } from "ttag";
 import { DragSource, DropTarget } from "react-dnd";
 import _ from "underscore";
 import { assocIn } from "icepick";
-import Icon from "metabase/components/Icon";
 import Label from "metabase/components/type/Label";
 
 import { keyForColumn } from "metabase/lib/dataset";
-import {
-  DragWrapper,
-  ColumnName,
-  ColumnContent,
-  ColumnIcon,
-} from "./ChartSettingFieldsPartition.styled";
+import { FieldPartitionColumn } from "./ChartSettingFieldsPartition.styled";
 
 class ChartSettingFieldsPartition extends React.Component {
   constructor(props) {
@@ -196,9 +190,9 @@ class ColumnInner extends React.Component {
     super(props);
   }
 
-  handleEditFormatting = e => {
+  handleEditFormatting = target => {
     const { column, onEditFormatting } = this.props;
-    onEditFormatting && onEditFormatting(column, e.target);
+    onEditFormatting && onEditFormatting(column, target);
   };
   render() {
     const { column, connectDragSource, connectDropTarget, isDragging } =
@@ -207,19 +201,12 @@ class ColumnInner extends React.Component {
     return connectDropTarget(
       connectDragSource(
         <div>
-          <DragWrapper isDisabled={isDragging}>
-            <ColumnContent>
-              <Icon name="grabber2" size={12} />
-              <ColumnName className="flex-full ml2">
-                {column.display_name}
-              </ColumnName>
-              <ColumnIcon
-                name="ellipsis"
-                size="16"
-                onClick={this.handleEditFormatting}
-              />
-            </ColumnContent>
-          </DragWrapper>
+          <FieldPartitionColumn
+            title={column.display_name}
+            onEdit={this.handleEditFormatting}
+            draggable
+            isDisabled={isDragging}
+          />
         </div>,
       ),
     );
