@@ -61,7 +61,8 @@
                                          ldap-user-base  "dc=metabase,dc=com"
                                          ldap-group-sync true
                                          ldap-group-base "dc=metabase,dc=com"]
-        (f))
+         (tu/with-temporary-raw-setting-values [ldap-enabled true]
+          (f)))
       (finally (.shutDown *ldap-server* true)))))
 
 (defmacro with-ldap-server
