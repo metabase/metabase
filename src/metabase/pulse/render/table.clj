@@ -1,5 +1,6 @@
 (ns metabase.pulse.render.table
-  (:require [hiccup.core :refer [h]]
+  (:require [clojure.string :as str]
+            [hiccup.core :refer [h]]
             [medley.core :as m]
             [metabase.pulse.render.color :as color]
             metabase.pulse.render.common
@@ -78,17 +79,17 @@
 
 (defn- truncate-text [text]
   (if (> (count text) max-column-character-length)
-    (str (subs text 0 max-column-character-length) "...")
+    (str (str/trim (subs text 0 max-column-character-length)) "...")
     text))
 
 (defn- render-table-head [{:keys [bar-width row]}]
   [:thead
-   [:tr
-    (for [header-cell row]
-      [:th {:style (style/style (row-style-for-type header-cell) (heading-style-for-type header-cell) {:min-width :42px}) :title header-cell}
-       (h (truncate-text (str header-cell)))])
-    (when bar-width
-      [:th {:style (style/style (bar-td-style) (bar-th-style) {:width (str bar-width "%")})}])]])
+   (conj (into [:tr]
+               (for [header-cell row]
+                 [:th {:style (style/style (row-style-for-type header-cell) (heading-style-for-type header-cell) {:min-width :42px}) :title header-cell}
+                  (h (truncate-text (str header-cell)))]))
+         (when bar-width
+           [:th {:style (style/style (bar-td-style) (bar-th-style) {:width (str bar-width "%")})}]))])
 
 (defn- render-bar
   [bar-width normalized-zero]
