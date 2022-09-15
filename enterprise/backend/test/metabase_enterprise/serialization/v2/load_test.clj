@@ -693,7 +693,10 @@
           (ts/with-dest-db
             ;; Create another random user to change the user IDs.
             (ts/create! User   :first_name "Gideon" :last_name "Nav" :email "griddle@ninth.tomb")
-            (ts/create! Metric :name "Other metric")
+            ;; Likewise, create some other metrics.
+            (ts/create! Metric :name "Other metric A")
+            (ts/create! Metric :name "Other metric B")
+            (ts/create! Metric :name "Other metric C")
             (reset! user1d  (ts/create! User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
 
             ;; Load the serialized content.
