@@ -8,7 +8,7 @@ import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
 import { startTimer } from "metabase/lib/performance";
 import { defer } from "metabase/lib/promise";
 import { createThunkAction } from "metabase/lib/redux";
-import { isLocalField, isSameField } from "metabase/lib/query/field_ref";
+import { isSameField } from "metabase/lib/query/field_ref";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSensibleDisplays } from "metabase/visualizations";
@@ -223,9 +223,7 @@ function preserveModelMetadata(queryResults, originalModel) {
 function mergeQueryMetadataWithModelMetadata(queryMetadata, modelMetadata) {
   return queryMetadata.map((queryCol, index) => {
     const modelCol = modelMetadata.find(modelCol => {
-      const compareExact =
-        !isLocalField(queryCol.field_ref) || !isLocalField(modelCol.field_ref);
-      return isSameField(modelCol.field_ref, queryCol.field_ref, compareExact);
+      return isSameField(modelCol.field_ref, queryCol.field_ref);
     });
 
     if (modelCol) {
