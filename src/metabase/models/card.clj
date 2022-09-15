@@ -355,7 +355,7 @@
       (update :database_id            serdes.util/export-fk-keyed 'Database :name)
       (update :table_id               serdes.util/export-table-fk)
       (update :collection_id          serdes.util/export-fk 'Collection)
-      (update :creator_id             serdes.util/export-fk-keyed 'User :email)
+      (update :creator_id             serdes.util/export-user)
       (update :dataset_query          serdes.util/export-json-mbql)
       (update :parameter_mappings     serdes.util/export-parameter-mappings)
       (update :visualization_settings serdes.util/export-visualization-settings)
@@ -367,7 +367,7 @@
       serdes.base/load-xform-basics
       (update :database_id            serdes.util/import-fk-keyed 'Database :name)
       (update :table_id               serdes.util/import-table-fk)
-      (update :creator_id             serdes.util/import-fk-keyed 'User :email)
+      (update :creator_id             serdes.util/import-user)
       (update :collection_id          serdes.util/import-fk 'Collection)
       (update :dataset_query          serdes.util/import-json-mbql)
       (update :parameter_mappings     serdes.util/import-parameter-mappings)
