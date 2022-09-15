@@ -125,16 +125,17 @@
   the property and the database information is attached as a label to multiple measurements of `:numConnections`."
   [stats]
   (let [arr (ArrayList. (count stats))]
-    (doseq [[raw-label measurements] stats
-            :let [{gauge-label :label desc :description} (label-translation raw-label)]
-            :when gauge-label
-            :let [gauge (GaugeMetricFamily.
-                         ^String gauge-label
-                         ^String (str desc) ;; site-localized becomes string
-                         (List/of "database"))]]
-      (doseq [m measurements]
-        (.addMetric gauge (List/of (:label m)) (:value m)))
-      (.add arr gauge))
+    (doseq [[raw-label measurements] stats]
+      (if-let [{gauge-label :label desc :description} (label-translation raw-label)]
+        (let [gauge (GaugeMetricFamily.
+                     ^String gauge-label
+                     ^String (str desc) ;; site-localized becomes string
+                     (List/of "database"))]
+          (doseq [m measurements]
+            (.addMetric gauge (List/of (:label m)) (:value m)))
+          (.add arr gauge))
+        (log/warn (trs "Unrecognized measurement {0} in prometheus stats"
+                       raw-label))))
     arr))
 
 (def c3p0-collector
