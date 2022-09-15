@@ -7,18 +7,21 @@ export function updateQuestionTagNames(
   query: NativeQuery,
   questions: any,
 ): NativeQuery {
-  const questionsById = _.indexBy(questions, "id");
+  const questionById = _.indexBy(questions, "id");
   const newQueryText = query
     .templateTags()
-    .filter(tag => tag.type === "card") // only tags for questions
-    .filter(tag => tag["card-id"] && questionsById[tag["card-id"]]) // only tags for given questions
+    // only tags for questions
+    .filter(tag => tag.type === "card")
+    // only tags for given questions
+    .filter(tag => tag["card-id"] && questionById[tag["card-id"]])
+    // reduce over each tag, updating query text
     .reduce((qText, tag) => {
-      // reduce over each tag, updating query text
-      const question = tag["card-id"] && questionsById[tag["card-id"]]; // get question for tag
-      const newTagName = `#${question.id}-${slugg(question.name)}`; // calculate tag name for question
-      return replaceTagName(qText, tag.name, newTagName); // update tag name in query text
+      const question = tag["card-id"] && questionById[tag["card-id"]];
+      const newTagName = `#${question.id}-${slugg(question.name)}`;
+      return replaceTagName(qText, tag.name, newTagName);
     }, query.queryText());
-  return newQueryText !== query.queryText() // return a new query with the updated text
+  // return a new query with the updated text
+  return newQueryText !== query.queryText()
     ? query.setQueryText(newQueryText)
     : query;
 }
