@@ -8,7 +8,8 @@
             [metabase.integrations.ldap :as ldap]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util.i18n :refer [deferred-tru tru]]
-            [metabase.util.schema :as su]))
+            [metabase.util.schema :as su]
+            [toucan.db :as db]))
 
 (defn- humanize-error-messages
   "Convert raw error message responses from our LDAP tests into our normal api error response structure."
@@ -117,13 +118,14 @@
         results       (ldap/test-ldap-connection ldap-details)]
     (if (= :SUCCESS (:status results))
       ;; test succeeded, save our settings
-      (let [saved-settings (setting/set-many! ldap-settings)]
-        (when-not (ldap-ever-enabled?)
-          ;; Only enable LDAP automatically if this is the first time setting it up; otherwise just save the new details
-          ;; but don't re-enable.
-          (ldap-enabled! true)
-          (ldap-ever-enabled?! true))
-        saved-settings)
+      (db/transaction
+        (let [saved-settings (setting/set-many! ldap-settings)]
+          (when-not (ldap-ever-enabled?)
+            ;; Only enable LDAP automatically if this is the first time setting it up; otherwise just save the new details
+            ;; but don't re-enable.
+            (ldap-enabled! true)
+            (ldap-ever-enabled?! true))
+          saved-settings))
       ;; test failed, return result message
       {:status 500
        :body   (humanize-error-messages results)})))
