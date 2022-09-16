@@ -25,8 +25,16 @@ export function isValidField(field) {
   );
 }
 
-export function isSameField(fieldA, fieldB, exact = false) {
-  if (exact) {
+function isNotComparingLocalFieldRefs(refA, refB) {
+  return !isLocalField(refA) || !isLocalField(refB);
+}
+
+export function isSameField(
+  fieldA,
+  fieldB,
+  useDeepEquality = isNotComparingLocalFieldRefs(fieldA, fieldB),
+) {
+  if (useDeepEquality) {
     return _.isEqual(fieldA, fieldB);
   } else {
     return getFieldTargetId(fieldA) === getFieldTargetId(fieldB);
