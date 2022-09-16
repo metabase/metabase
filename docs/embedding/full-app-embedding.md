@@ -10,7 +10,9 @@ redirect_from:
 
 Metabase offers several [types of embedding](./introduction.md) with different levels of customization and security.
 
-**Full-app embedding** is the only type of embedding that integrates with your [permissions](../permissions/introduction.md) and [SSO](../people-and-groups/start.md#authentication) to give people the right level of access to [query](https://www.metabase.com/glossary/query_builder) and [drill-down](https://www.metabase.com/glossary/action_menu) into your data.
+**Full-app embedding** is the only type of embedding that integrates with your [permissions](../permissions/introduction.md) and [SSO](../people-and-groups/start.md#authentication) to give people the right level of access to [query](https://www.metabase.com/glossary/query_builder) and [drill-down](https://www.metabase.com/learn/questions/drill-through) into your data.
+
+If you only want to set up a fixed number of filters and drill-down views into your data (i.e., prevent people from creating their own [questions](https://www.metabase.com/glossary/question)), you might prefer [Signed embedding](./signed-embedding.md).
 
 ## Prerequisites
 
@@ -23,10 +25,10 @@ If you're dealing with a [multi-tenant](https://www.metabase.com/learn/customer-
 
 ## Enabling full-app embedding in Metabase
 
-1. Go to **Admin settings** > **Embedding**.
+1. Go to **Settings** > **Admin settings** > **Embedding**.
 2. Click **Enable**.
 3. Click **Full-app embedding**.
-4. Under **Authorized origins**, add the URL of the website or web app where you want to embed Metabase.
+4. Under **Authorized origins**, add the URL of the website or web app where you want to embed Metabase (e.g., `https://*.example.com`).
 
 ## Setting up embedding on your website
 
@@ -40,7 +42,7 @@ If you're dealing with a [multi-tenant](https://www.metabase.com/learn/customer-
 3. Optional: Set up [`postMessage` methods](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage) in your JavaScript to:
    - [Fill an entire iframe with an embedded Metabase page](#filling-an-entire-iframe-with-an-embedded-metabase-page).
    - [Fit an iframe to a Metabase page with a fixed size](#fitting-an-iframe-to-a-metabase-page-with-a-fixed-size).
-   - [Keep embedding URLs up to date](#keeping-an-embedding-url-up-to-date).
+   - [Get a specific embedding URL](#getting-a-specific-embedding-url).
 4. Optional: Set parameters to [show or hide Metabase UI components](#showing-or-hiding-metabase-ui-components).
 
 Once you're ready to roll out your full-app embed, make sure that people **allow** browser cookies from Metabase, otherwise they won't be able to log in.
@@ -49,7 +51,7 @@ Once you're ready to roll out your full-app embed, make sure that people **allow
 
 Go to your Metabase instance and find the page that you want to embed.
 
-For example, to embed your Metabase home page, use your [site URL](../configuring-metabase/settings.md#site-url):
+For example, to embed your Metabase home page, set the `src` attribute to your [site URL](../configuring-metabase/settings.md#site-url).
 
 ```
 http://metabase.yourcompany.com/
@@ -63,15 +65,29 @@ http://metabase.yourcompany.com/dashboard/1
 
 ### Pointing an iframe to an authentication endpoint
 
-To embed an auth endpoint with a redirect to your Metabase URL, you'll need to double encode the Metabase URL and add it as a parameter:
+Use this option if you want to send people directly to your SSO login screen (i.e., skip over the Metabase login screen with an SSO button), and redirect to Metabase automatically upon authentication.
+
+You'll need to set the `src` attribute to your auth endpoint, with a parameter containing the encoded Metabase URL. For example, to send people to your SSO login page and automatically redirect them to `http://metabase.yourcompany.com/dashboard/1`:
 
 ```
-http://yourcompany.com/api/auth?redirect=http%3A%2F%2Fmetabase.yourcompany.com%2Fdashboard%2F1
+https://metabase.example.com/auth/sso?redirect=http%3A%2F%2Fmetabase.yourcompany.com%2Fdashboard%2F1
+```
+
+If you're using [JWT](../people-and-groups/authenticating-with-jwt.md), you can use the relative path for the redirect (i.e., your Metabase URL without the [site URL](../configuring-metabase/settings.md#site-url)). For example, to send people to a Metabase page at `/dashboard/1`:
+
+```
+https://metabase.example.com/auth/sso?jwt=<token>&redirect=%2Fdashboard%2F1
+```
+
+You must URL encode (or double encode, depending on your web setup) all of the parameters in your redirect link, including parameters for filters (e.g., `filter=value`) and [UI settings](#showing-or-hiding-metabase-ui-components) (e.g., `top_nav=true`). For example, if you added two filter parameters to the JWT example shown above, your `src` link would become:
+
+```
+https://metabase.example.com/auth/sso?jwt=<token>&redirect=%2Fdashboard%2F1%3Ffilter1%3Dvalue%26filter2%3Dvalue
 ```
 
 ## Embedding Metabase in a different domain
 
-If you want to embed Metabase in another domain (e.g., Metabase is hosted at `metabase.yourcompany.com`, but you want to embed Metabase at `yourcompany.github.io`), set the following environment variable:
+If you want to embed Metabase in another domain (e.g., Metabase is hosted at `metabase.yourcompany.com`, but you want to embed Metabase at `yourcompany.github.io`), set the following [environment variable](../configuring-metabase/environment-variables.md):
 
 ```
 MB_SESSION_COOKIE_SAMESITE=None
@@ -97,7 +113,7 @@ To automatically clear a person's login cookies when they end a browser session:
 MB_SESSION_COOKIES=true
 ```
 
-To log everyone out of Metabase, load the following URL (for example, in a hidden iframe on the logout page of your application):
+To manually log someone out of Metabase, load the following URL (for example, in a hidden iframe on the logout page of your application):
 
 ```
 https://metabase.yourcompany.com/auth/logout
@@ -121,15 +137,15 @@ To specify the size of an iframe so that it matches an embedded Metabase page (e
 { “metabase”: { “type”: “frame”, “frame”: { “mode”: “fit”, height: HEIGHT_IN_PIXELS }}}
 ```
 
-## Keeping an embedding URL up to date
+## Getting a specific embedding URL
 
-To get an updated embedding URL (e.g., for deep linking), use [postMessage()](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage) to send a "location" message _from_ your embedded Metabase:
+To make a request for an particular embedding URL (e.g., for deep linking), use [postMessage()](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage) to send a "location" message _from_ your embedded Metabase:
 
 ```
 { “metabase”: { “type”: “location”, “location”: LOCATION_OBJECT }}
 ```
 
-And, to send a "location" message _to_ your embedded Metabase:
+Or, send a "location" message _to_ your embedded Metabase:
 
 ```
 { “metabase”: { “type”: “location”, “location”: LOCATION_OBJECT_OR_URL }}
