@@ -73,26 +73,18 @@
         #"(?s).*"
         {:message message}))))
 
-(defsetting ldap-ever-enabled?
-  (deferred-tru "Has LDAP ever been enabled on this instance?")
-  :type       :boolean
-  :visibility :internal
-  :default    false)
-
 (defsetting ldap-enabled
   (deferred-tru "Is LDAP currently enabled?")
   :type       :boolean
   :visibility :public
   :setter     (fn [new-value]
                 (let [new-value (boolean new-value)]
-                  (when (and new-value (true? (ldap-ever-enabled?)))
-                    ;; Test the LDAP settings before enabling. Skip if this is the first time LDAP is being enabled
-                    ;; since this will have already been done in the /api/ldap/settings handler
+                  (when new-value
+                    ;; Test the LDAP settings before enabling
                     (let [result (ldap/test-current-ldap-details)]
                       (when-not (= :SUCCESS (:status result))
                         (throw (ex-info (tru "Unable to connect to LDAP server with current settings")
                                         (humanize-error-messages result))))))
-                  (when new-value (ldap-ever-enabled?! true))
                   (setting/set-value-of-type! :boolean :ldap-enabled new-value)))
   :default    false)
 
@@ -118,14 +110,7 @@
         results       (ldap/test-ldap-connection ldap-details)]
     (if (= :SUCCESS (:status results))
       ;; test succeeded, save our settings
-      (db/transaction
-        (let [saved-settings (setting/set-many! ldap-settings)]
-          (when-not (ldap-ever-enabled?)
-            ;; Only enable LDAP automatically if this is the first time setting it up; otherwise just save the new details
-            ;; but don't re-enable.
-            (ldap-enabled! true)
-            (ldap-ever-enabled?! true))
-          saved-settings))
+      (setting/set-many! ldap-settings)
       ;; test failed, return result message
       {:status 500
        :body   (humanize-error-messages results)})))

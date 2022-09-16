@@ -44,18 +44,16 @@
 
 (deftest ldap-enabled-test
   (ldap.test/with-ldap-server
-    (testing "`ldap-enabled` setting validates currently saved LDAP settings, except for on the first time being set"
+    (testing "`ldap-enabled` setting validates currently saved LDAP settings"
       (mt/with-temporary-setting-values [ldap-enabled       false
                                          ldap-ever-enabled? false]
         (with-redefs [ldap/test-current-ldap-details (constantly {:status :ERROR :message "test error"})]
-          (api.ldap/ldap-enabled! true)
-          (is (api.ldap/ldap-enabled))
-          (is (api.ldap/ldap-ever-enabled?))
-
-          (api.ldap/ldap-enabled! false)
-          (is (not (api.ldap/ldap-enabled)))
-          (is (api.ldap/ldap-ever-enabled?))
-
           (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                 #"Unable to connect to LDAP server"
-                                (api.ldap/ldap-enabled! true))))))))
+                                (api.ldap/ldap-enabled! true))))
+        (with-redefs [ldap/test-current-ldap-details (constantly {:status :SUCCESS})]
+          (api.ldap/ldap-enabled! true)
+          (is (api.ldap/ldap-enabled))
+
+          (api.ldap/ldap-enabled! false)
+          (is (not (api.ldap/ldap-enabled))))))))
