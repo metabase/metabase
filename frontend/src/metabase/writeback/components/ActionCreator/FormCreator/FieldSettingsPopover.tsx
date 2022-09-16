@@ -67,6 +67,22 @@ export function FormCreatorPopoverBody({
       placeholder: newPlaceholder,
     });
 
+  const handleUpdateRequired = ({
+    required,
+    defaultValue,
+  }: {
+    required: boolean;
+    defaultValue?: string | number;
+  }) =>
+    onChange({
+      ...fieldSettings,
+      required,
+      defaultValue:
+        fieldSettings.fieldType === "number"
+          ? Number(defaultValue)
+          : defaultValue,
+    });
+
   const hasPlaceholder =
     fieldSettings.fieldType !== "date" &&
     fieldSettings.inputType !== "inline-select";
@@ -94,9 +110,7 @@ export function FormCreatorPopoverBody({
       <RequiredInput
         value={fieldSettings.required}
         defaultValue={fieldSettings.defaultValue}
-        onChange={({ required, defaultValue }) =>
-          onChange({ ...fieldSettings, required, defaultValue })
-        }
+        onChange={handleUpdateRequired}
       />
     </SettingsPopoverBody>
   );
