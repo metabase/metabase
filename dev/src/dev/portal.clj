@@ -47,3 +47,24 @@
   `(send-log ~value ~(merge (meta &form)
                             {:ns (list 'quote (ns-name *ns*))}
                             opts)))
+
+(defn debug-qp-log
+  "Sends debug events from `dev.debug-qp/process-query-debug` to portal.
+
+  This is a simplistic function that send known transformation events to
+  portal as a log message. The diff of the second and third parameters
+  form the message and the location of the definition of the var in the
+  first parameter is used as origin.
+  Any other events are sent to portal as is.
+
+  A typical use looks like this:
+
+  (debug-qp/process-query-debug a-query :printer portal/debug-qp-log)"
+  [[tag middleware-var before after :as event]]
+  (if (#{:dev.debug-qp/transformed-query, :dev.debug-qp/transformed-metadata
+         :dev.debug-qp/transformed-result, :dev.debug-qp/transformed-row}
+       tag)
+    (send-log (with-meta [before after]
+                {:portal.viewer/default :portal.viewer/diff})
+              (update (meta middleware-var) :ns #(.name %)))
+    (send-log event)))

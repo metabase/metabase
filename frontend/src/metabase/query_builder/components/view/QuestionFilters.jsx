@@ -56,7 +56,9 @@ export default function QuestionFilters({
               key={index}
               triggerElement={
                 <FilterPill
-                  onRemove={() => filter.remove().update(null, { run: true })}
+                  onRemove={() =>
+                    filter.remove().rootQuery().update(null, { run: true })
+                  }
                 >
                   {filter.displayName()}
                 </FilterPill>
@@ -69,7 +71,7 @@ export default function QuestionFilters({
                 query={query}
                 filter={filter}
                 onChangeFilter={newFilter =>
-                  newFilter.replace().update(null, { run: true })
+                  newFilter.replace().rootQuery().update(null, { run: true })
                 }
                 className="scroll-y"
               />
@@ -124,7 +126,9 @@ export function FilterHeader({ question, expanded }) {
             key={index}
             triggerElement={
               <FilterPill
-                onRemove={() => filter.remove().update(null, { run: true })}
+                onRemove={() =>
+                  filter.remove().rootQuery().update(null, { run: true })
+                }
               >
                 {filter.displayName()}
               </FilterPill>
@@ -137,7 +141,7 @@ export function FilterHeader({ question, expanded }) {
               query={query}
               filter={filter}
               onChangeFilter={newFilter =>
-                newFilter.replace().update(null, { run: true })
+                newFilter.replace().rootQuery().update(null, { run: true })
               }
               className="scroll-y"
             />

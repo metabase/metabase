@@ -13,11 +13,10 @@ import {
 } from "metabase-types/types/Query";
 import { VariableTarget } from "metabase-types/types/Parameter";
 import { IconName } from "metabase-types/types";
-import { getFieldValues, getRemappings } from "metabase/lib/query/field";
 import { DATETIME_UNITS, formatBucketing } from "metabase/lib/query_time";
 import { infer, MONOTYPE } from "metabase/lib/expressions/typeinferencer";
 import { isa } from "cljs/metabase.types";
-import { TemplateTagVariable } from "metabase-lib/lib/Variable";
+import TemplateTagVariable from "metabase-lib/lib/variables/TemplateTagVariable";
 import Field from "metabase-lib/lib/metadata/Field";
 import {
   AggregationOperator,

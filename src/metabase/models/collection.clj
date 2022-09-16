@@ -16,6 +16,7 @@
             [metabase.models.permissions :as perms :refer [Permissions]]
             [metabase.models.serialization.base :as serdes.base]
             [metabase.models.serialization.hash :as serdes.hash]
+            [metabase.models.serialization.util :as serdes.util]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
@@ -942,17 +943,16 @@
         (assoc :parent_id parent-id :personal_owner_id owner-email)
         (assoc-in [:serdes/meta 0 :label] (:slug coll)))))
 
-(defmethod serdes.base/load-xform "Collection" [{:keys [parent_id personal_owner_id] :as contents}]
+(defmethod serdes.base/load-xform "Collection" [{:keys [parent_id] :as contents}]
   (let [loc        (if parent_id
                      (let [{:keys [id location]} (serdes.base/lookup-by-id Collection parent_id)]
                        (str location id "/"))
-                     "/")
-        user-id    (when personal_owner_id
-                     (db/select-one-field :id 'User :email personal_owner_id))]
+                     "/")]
     (-> contents
         serdes.base/load-xform-basics
         (dissoc :parent_id)
-        (assoc :location loc :personal_owner_id user-id))))
+        (assoc :location loc)
+        (update :personal_owner_id serdes.util/import-user))))
 
 (defmethod serdes.base/serdes-dependencies "Collection"
   [{:keys [parent_id]}]
