@@ -64,20 +64,20 @@ const BulkFilterModal = ({
   );
 
   const handleAddFilter = useCallback((filter: Filter) => {
-    setQuery(filter.add());
+    setQuery(filter.add().rootQuery());
     setIsChanged(true);
   }, []);
 
   const handleChangeFilter = useCallback(
     (filter: Filter, newFilter: Filter) => {
-      setQuery(filter.replace(newFilter));
+      setQuery(filter.replace(newFilter).rootQuery());
       setIsChanged(true);
     },
     [],
   );
 
   const handleRemoveFilter = useCallback((filter: Filter) => {
-    setQuery(filter.remove());
+    setQuery(filter.remove().rootQuery());
     setIsChanged(true);
   }, []);
 
