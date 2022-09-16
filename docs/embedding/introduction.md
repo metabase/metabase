@@ -28,7 +28,7 @@ You'll need to put an iframe on your website to act as a window to your Metabase
 | Display interactive [filter widgets](https://www.metabase.com/glossary/filter_widget)                      | ✅                                             | ✅                               | ✅                                  |
 | Restrict data with [locked filters](./signed-embedding-parameters.md#pre-filtering-data-in-a-signed-embed) | ❌                                             | ✅                               | ❌                                  |
 | Restrict data with [sandboxes](../permissions/data-sandboxes.md)                                           | ❌                                             | ❌                               | ✅                                  |
-| Drill-down using the [action menu](https://www.metabase.com/glossary/action_menu)                          | ❌                                             | ❌                               | ✅                                  |
+| Drill-down using the [action menu](https://www.metabase.com/learn/questions/drill-through)                 | ❌                                             | ❌                               | ✅                                  |
 | Self-serve via [query builder](https://www.metabase.com/glossary/query_builder)                            | ❌                                             | ❌                               | ✅                                  |
 
 ## Further reading

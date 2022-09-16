@@ -93,13 +93,17 @@ your_embedding_url?breakfast=Scrambled_eggs#hide_parameters=breakfast
 
 You can change the appearance of an embedded item by adding parameters with the following values:
 
-| Parameter name | Possible values          |
-| -------------- | ------------------------ |
-| bordered       | true, false              |
-| titled         | true, false              |
-| theme          | null, transparent, night |
+| Parameter name         | Possible values                               |
+| ---------------------- | --------------------------------------------- |
+| bordered               | true, false                                   |
+| titled                 | true, false                                   |
+| theme                  | null, transparent, night                      |
+| font\*                 | [font name](../configuring-metabase/fonts.md) |
+| hide_download_button\* | true, false                                   |
 
-Preview the changes from your question or dashboard's [embedded appearance settings](./signed-embedding.md#customizing-the-appearance-of-signed-embeds).
+\* Available on paid plans.
+
+You can preview the changes from your question or dashboard's [embedded appearance settings](./signed-embedding.md#customizing-the-appearance-of-signed-embeds).
 
 For example, the following embedding URL will display an embedded item in dark mode, with its original title, and without a border:
 
