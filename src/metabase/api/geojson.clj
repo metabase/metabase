@@ -10,7 +10,8 @@
             [ring.util.codec :as codec]
             [ring.util.response :as response]
             [schema.core :as s])
-  (:import [java.net InetAddress URL]
+  (:import java.io.BufferedReader
+           [java.net InetAddress URL]
            org.apache.commons.io.input.ReaderInputStream))
 
 (defsetting custom-geojson-enabled
@@ -105,11 +106,11 @@
 (defn- read-url-and-respond
   "Reads the provided URL and responds with the contents as a stream."
   [url respond]
-  (with-open [reader (if-let [resource (io/resource url)]
-                       (io/reader resource)
-                       (:body (http/get url {:as                :reader
-                                             :redirect-strategy :none})))
-              is     (ReaderInputStream. reader)]
+  (with-open [^BufferedReader reader (if-let [resource (io/resource url)]
+                                       (io/reader resource)
+                                       (:body (http/get url {:as                :reader
+                                                             :redirect-strategy :none})))
+              is                     (ReaderInputStream. reader)]
     (respond (-> (response/response is)
                  (response/content-type "application/json")))))
 
