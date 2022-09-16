@@ -93,6 +93,7 @@ export type OnChangeCard = ({
 
 export type ClickActionPopoverProps = {
   series: Series;
+  onResize: () => void;
   onChange: OnChangeCard;
   onChangeCardAndRun: OnChangeCard;
   onClose: () => void;

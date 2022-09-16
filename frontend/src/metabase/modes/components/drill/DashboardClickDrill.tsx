@@ -116,7 +116,10 @@ export default ({ question, clicked }: ClickActionProps) => {
         clickBehavior,
       });
 
-      const path = Urls.dataAppPage({ id: dataAppId }, { id: targetId });
+      const path = Urls.dataAppPage(
+        { id: dataAppId } as any,
+        { id: targetId } as any,
+      );
       const url = `${path}?${querystring.stringify(queryParams)}`;
 
       behavior = { action: () => push(url) };
