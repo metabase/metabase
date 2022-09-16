@@ -1,3 +1,4 @@
+import { onlyOn } from "@cypress/skip-test";
 import {
   restore,
   visitDashboard,
@@ -6,8 +7,6 @@ import {
   questionInfoButton,
   rightSidebar,
 } from "__support__/e2e/helpers";
-
-import { onlyOn } from "@cypress/skip-test";
 
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],

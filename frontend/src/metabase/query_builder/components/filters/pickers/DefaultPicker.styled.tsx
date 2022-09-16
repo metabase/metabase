@@ -1,6 +1,6 @@
-import { color } from "metabase/lib/colors";
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import { color } from "metabase/lib/colors";
 
 export const BetweenLayoutContainer = styled.div`
   display: flex;

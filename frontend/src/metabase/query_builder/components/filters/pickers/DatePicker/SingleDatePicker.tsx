@@ -2,8 +2,8 @@
 import React from "react";
 
 import { SelectAll } from "metabase/components/Calendar";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
 import { setTimeComponent } from "metabase/lib/query_time";
+import Filter from "metabase-lib/lib/queries/structured/Filter";
 import SpecificDatePicker from "./SpecificDatePicker";
 
 export type SingleDatePickerProps = {

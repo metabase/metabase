@@ -1,12 +1,11 @@
 import React from "react";
 
-import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
-
-import { Route } from "metabase/hoc/Title";
 import { Redirect, IndexRedirect, IndexRoute } from "react-router";
 import { routerActions } from "react-router-redux";
 import { UserAuthWrapper } from "redux-auth-wrapper";
 import { t } from "ttag";
+import { Route } from "metabase/hoc/Title";
+import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
 
 import { loadCurrentUser } from "metabase/redux/user";
 import MetabaseSettings from "metabase/lib/settings";
@@ -92,6 +91,7 @@ import { trackPageView } from "metabase/lib/analytics";
 import { getAdminPaths } from "metabase/admin/app/selectors";
 
 import ActionPage from "metabase/writeback/containers/ActionCreatorPage";
+import ActionsListPage from "metabase/writeback/containers/ActionsListPage";
 
 const MetabaseIsSetup = UserAuthWrapper({
   predicate: authData => authData.hasUserSetup,
@@ -389,6 +389,8 @@ export const getRoutes = store => (
           <Route path="create" component={ActionPage} />
           <Route path=":actionId" component={ActionPage} />
         </Route>
+        {/* DEV PAGE: REMOVE BEFORE SHIPPING */}
+        <Route path="/actions" component={ActionsListPage} />
       </Route>
     </Route>
 

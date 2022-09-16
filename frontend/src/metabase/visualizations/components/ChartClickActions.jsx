@@ -3,6 +3,9 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
+import _ from "underscore";
+import cx from "classnames";
+import { Link } from "react-router";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 
@@ -13,9 +16,6 @@ import { getEventTarget } from "metabase/lib/dom";
 
 import { performAction } from "metabase/visualizations/lib/action";
 
-import cx from "classnames";
-import _ from "underscore";
-import { Link } from "react-router";
 import {
   ClickActionButton,
   FlexTippyPopover,

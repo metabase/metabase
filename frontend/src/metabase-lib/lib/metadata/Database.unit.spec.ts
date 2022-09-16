@@ -1,11 +1,11 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
+import Question from "../Question";
 import Database from "./Database";
 import Schema from "./Schema";
 import Metadata from "./Metadata";
 import Table from "./Table";
 import Base from "./Base";
-import Question from "../Question";
 describe("Database", () => {
   describe("instantiation", () => {
     it("should create an instance of Schema", () => {

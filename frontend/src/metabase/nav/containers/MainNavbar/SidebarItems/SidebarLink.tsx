@@ -6,6 +6,7 @@ import { IconProps } from "metabase/components/Icon";
 
 import {
   FullWidthLink,
+  ItemName,
   NameContainer,
   NodeRoot,
   SidebarIcon,
@@ -92,4 +93,6 @@ function SidebarLink({
   );
 }
 
-export default SidebarLink;
+export default Object.assign(SidebarLink, {
+  NameContainers: [ItemName, TreeNode.NameContainer],
+});

@@ -9,12 +9,11 @@ import {
   visitDashboard,
 } from "__support__/e2e/helpers";
 
+import { addWidgetNumberFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 import {
   DASHBOARD_SQL_NUMBER_FILTERS,
   questionDetails,
 } from "./dashboard-filters-sql-number";
-
-import { addWidgetNumberFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 
 describe("scenarios > dashboard > filters > SQL > text/category", () => {
   beforeEach(() => {

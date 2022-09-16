@@ -8,9 +8,8 @@ import AccordionList from "metabase/core/components/AccordionList";
 import DataSelectorLoading from "../DataSelectorLoading";
 
 import { RawDataBackButton } from "../DataSelector.styled";
-import { PickerSpinner } from "./DataSelectorDatabaseSchemaPicker.styled";
-
 import type { Database, Schema } from "../types";
+import { PickerSpinner } from "./DataSelectorDatabaseSchemaPicker.styled";
 
 type DataSelectorDatabaseSchemaPicker = {
   databases: Database[];

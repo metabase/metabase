@@ -3,7 +3,6 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
-import SegmentSidebar from "./SegmentSidebar";
 import SidebarLayout from "metabase/components/SidebarLayout";
 import SegmentDetail from "metabase/reference/segments/SegmentDetail";
 
@@ -17,6 +16,7 @@ import {
   getDatabaseId,
   getIsEditing,
 } from "../selectors";
+import SegmentSidebar from "./SegmentSidebar";
 
 const mapStateToProps = (state, props) => ({
   user: getUser(state, props),

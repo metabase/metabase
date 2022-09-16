@@ -1,7 +1,7 @@
 import React from "react";
 import { Group } from "@visx/group";
-import { LegendItem } from "./LegendItem";
 import { LegendItemData } from "../utils";
+import { LegendItem } from "./LegendItem";
 
 type LegendProps = {
   leftColumn: LegendItemData[];

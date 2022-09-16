@@ -1,9 +1,9 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
-import BodyComponent from "metabase/components/BodyComponent";
 import cx from "classnames";
 import { t } from "ttag";
+import BodyComponent from "metabase/components/BodyComponent";
 
 class HeaderModal extends Component {
   constructor(props, context) {

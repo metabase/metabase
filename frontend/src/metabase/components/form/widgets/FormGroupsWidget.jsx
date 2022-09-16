@@ -1,11 +1,10 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
+import _ from "underscore";
 import MembershipSelect from "metabase/admin/people/components/MembershipSelect";
 
 import Group from "metabase/entities/groups";
-
-import _ from "underscore";
 
 import { isDefaultGroup, isAdminGroup } from "metabase/lib/groups";
 

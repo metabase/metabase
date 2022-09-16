@@ -1,12 +1,16 @@
 import { createEntity } from "metabase/lib/entities";
 
-import type Question from "metabase-lib/lib/Question";
 import type { ActionFormSettings } from "metabase-types/api";
 
 import { CardApi } from "metabase/services";
 
+import {
+  removeOrphanSettings,
+  setParameterTypesFromFieldSettings,
+  setTemplateTagTypesFromFieldSettings,
+} from "metabase/entities/actions/utils";
+import type Question from "metabase-lib/lib/Question";
 import { saveForm } from "./forms";
-import { removeOrphanSettings } from "metabase/entities/actions/utils";
 
 type ActionParams = {
   name: string;
@@ -24,12 +28,17 @@ const getAPIFn =
     question,
     collection_id,
     formSettings,
-  }: ActionParams) =>
-    apifn({
+  }: ActionParams) => {
+    question = setTemplateTagTypesFromFieldSettings(formSettings, question);
+
+    return apifn({
       ...question.card(),
       name,
       description,
-      parameters: question.parameters(),
+      parameters: setParameterTypesFromFieldSettings(
+        formSettings,
+        question.parameters(),
+      ),
       is_write: true,
       display: "table",
       visualization_settings: removeOrphanSettings(
@@ -38,6 +47,7 @@ const getAPIFn =
       ),
       collection_id,
     });
+  };
 
 const createAction = getAPIFn(CardApi.create);
 const updateAction = getAPIFn(CardApi.update);

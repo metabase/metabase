@@ -6,6 +6,7 @@ import { t } from "ttag";
 import _ from "underscore";
 import AceEditor from "react-ace";
 
+import * as ace from "ace-builds/src-noconflict/ace";
 import { format } from "metabase/lib/expressions/format";
 import { suggest } from "metabase/lib/expressions/suggest";
 import { processSource } from "metabase/lib/expressions/process";
@@ -24,8 +25,6 @@ import {
 } from "./ExpressionEditorTextfield.styled";
 
 import ExpressionMode from "./ExpressionMode";
-
-import * as ace from "ace-builds/src-noconflict/ace";
 
 ace.config.set("basePath", "/assets/ui/");
 

@@ -2,10 +2,10 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 
-import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 import Tether from "tether";
 
 import cx from "classnames";
+import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 
 import "./Popover.css";
 

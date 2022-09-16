@@ -1,6 +1,6 @@
 import { t } from "ttag";
-import Dimension from "metabase-lib/lib/Dimension";
 import { TYPE, isa } from "metabase/lib/types";
+import Dimension from "metabase-lib/lib/Dimension";
 
 const INVALID_TYPES = [TYPE.Structured];
 

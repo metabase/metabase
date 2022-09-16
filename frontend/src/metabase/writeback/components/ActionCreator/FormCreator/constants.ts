@@ -8,7 +8,7 @@ interface FieldOptionType {
 
 export const getFieldTypes = (): FieldOptionType[] => [
   {
-    value: "text",
+    value: "string",
     name: t`text`,
   },
   {
@@ -31,7 +31,7 @@ interface InputOptionType {
 }
 
 interface InputOptionsMap {
-  text: InputOptionType[];
+  string: InputOptionType[];
   number: InputOptionType[];
   date: InputOptionType[];
   category: InputOptionType[];
@@ -39,12 +39,12 @@ interface InputOptionsMap {
 
 const getTextInputs = (): InputOptionType[] => [
   {
-    value: "text",
-    name: t`long text`,
-  },
-  {
     value: "string",
     name: t`text`,
+  },
+  {
+    value: "text",
+    name: t`long text`,
   },
 ];
 
@@ -60,7 +60,7 @@ const getSelectInputs = (): InputOptionType[] => [
 ];
 
 export const getInputTypes = (): InputOptionsMap => ({
-  text: [...getTextInputs(), ...getSelectInputs()],
+  string: [...getTextInputs(), ...getSelectInputs()],
   number: [
     {
       value: "number",

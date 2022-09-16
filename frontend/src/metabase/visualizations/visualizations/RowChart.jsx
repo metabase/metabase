@@ -1,11 +1,10 @@
 import { t } from "ttag";
-import LineAreaBarChart from "../components/LineAreaBarChart.jsx";
-import rowRenderer from "../lib/RowRenderer.js";
-
 import {
   GRAPH_DATA_SETTINGS,
   GRAPH_COLORS_SETTINGS,
 } from "metabase/visualizations/lib/settings/graph";
+import LineAreaBarChart from "../components/LineAreaBarChart.jsx";
+import rowRenderer from "../lib/RowRenderer.js";
 
 export default class RowChart extends LineAreaBarChart {
   static uiName = t`Row`;

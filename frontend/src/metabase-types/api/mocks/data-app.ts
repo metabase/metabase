@@ -1,3 +1,4 @@
+import { merge } from "icepick";
 import {
   ActionButtonDashboardCard,
   DataApp,
@@ -15,7 +16,7 @@ export const createMockDataApp = ({
     id: 1,
     dashboard_id: null,
     options: null,
-    nav_items: null,
+    nav_items: [],
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     ...dataAppProps,
@@ -28,12 +29,20 @@ export const createMockDataAppPage = (
   params: Partial<Omit<Dashboard, "is_app_page">>,
 ): Dashboard => createMockDashboard({ ...params, is_app_page: true });
 
-export const createMockDashboardActionButton = (
-  opts?: Partial<ActionButtonDashboardCard>,
-): ActionButtonDashboardCard => ({
+export const createMockDashboardActionButton = ({
+  visualization_settings,
+  ...opts
+}: Partial<ActionButtonDashboardCard> = {}): ActionButtonDashboardCard => ({
   id: 1,
   action_id: null,
   parameter_mappings: null,
-  visualization_settings: {},
+  visualization_settings: merge(
+    {
+      virtual_card: {
+        display: "action-button",
+      },
+    },
+    visualization_settings,
+  ),
   ...opts,
 });

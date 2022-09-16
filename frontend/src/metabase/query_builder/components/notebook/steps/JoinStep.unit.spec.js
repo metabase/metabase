@@ -1,5 +1,7 @@
 /* eslint-disable react/prop-types */
 import React, { useState } from "react";
+import userEvent from "@testing-library/user-event";
+import xhrMock from "xhr-mock";
 import {
   renderWithProviders,
   screen,
@@ -7,14 +9,12 @@ import {
   within,
   waitForElementToBeRemoved,
 } from "__support__/ui";
-import userEvent from "@testing-library/user-event";
-import xhrMock from "xhr-mock";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import {
   ORDERS,
   PRODUCTS,
   SAMPLE_DATABASE,
 } from "__support__/sample_database_fixture";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import JoinStep from "./JoinStep";
 
 // These tests appeared to be flaky, so they're disabled for now
