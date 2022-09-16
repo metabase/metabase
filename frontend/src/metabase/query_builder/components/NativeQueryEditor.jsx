@@ -343,9 +343,9 @@ class NativeQueryEditor extends Component {
         this._editor.completers = [
           { getCompletions: this.getSnippetCompletions },
         ];
-      } else if (this.getQuestionSlugAtCursor(pos) !== null) {
+      } else if (this.getCardSlugAtCursor(pos) !== null) {
         this._editor.completers = [
-          { getCompletions: this.getQuestionReferenceCompletions },
+          { getCompletions: this.getCardTagCompletions },
         ];
       } else {
         this._editor.completers = standardCompleters;
@@ -360,7 +360,7 @@ class NativeQueryEditor extends Component {
     return match ? match[1] : null;
   };
 
-  getQuestionSlugAtCursor = ({ row, column }) => {
+  getCardSlugAtCursor = ({ row, column }) => {
     const lines = this._editor.getValue().split("\n");
     const linePrefix = lines[row].slice(0, column);
     const match = linePrefix.match(/\{\{\s*#([^\}]*)$/);
@@ -382,23 +382,17 @@ class NativeQueryEditor extends Component {
     );
   };
 
-  getQuestionReferenceCompletions = async (
-    editor,
-    session,
-    pos,
-    prefix,
-    callback,
-  ) => {
+  getCardTagCompletions = async (editor, session, pos, prefix, callback) => {
     // This ensures the user is only typing the first "word" considered by the autocompleter
     // inside the {{#...}} tag.
     // e.g. if `|` is the cursor position and the user is typing:
     //   - {{#123-foo|}} will fetch completions for the word "123-foo"
     //   - {{#123 foo|}} will not fetch completions because the word "foo" is not the first word in the tag.
-    if (prefix !== this.getQuestionSlugAtCursor(pos)) {
+    if (prefix !== this.getCardSlugAtCursor(pos)) {
       callback(null, null);
       return null;
     }
-    const apiResults = await this.props.questionAutocompleteResultsFn(prefix);
+    const apiResults = await this.props.cardAutocompleteResultsFn(prefix);
     // Convert to format ace expects
     const resultsForAce = apiResults.map(({ id, name, dataset }) => ({
       name: `${id}-${slugg(name)}`,
