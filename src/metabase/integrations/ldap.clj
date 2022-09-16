@@ -192,9 +192,8 @@
 (defn test-current-ldap-details
   "Tests the connection to an LDAP server using the currently set settings."
   []
-  (let [settings (into {} (map
-                           (fn [[k v]] [v (setting/get k)])
-                           mb-settings->ldap-details))]
+  (let [settings (into {} (for [[k v] mb-settings->ldap-details]
+                             [v (setting/get k)]))]
     (test-ldap-connection settings)))
 
 (defn verify-password
