@@ -8,21 +8,6 @@ redirect_from:
 
 This guide covers the basics for running your Metabase instance in Microsoft Azure using Docker.
 
-- [Running Metabase on Microsoft Azure](#running-metabase-on-microsoft-azure)
-  - [Step 1: Create the resource group (resource grouping)](#step-1-create-the-resource-group-resource-grouping)
-  - [Step 2: Create the VNET (virtual network)](#step-2-create-the-vnet-virtual-network)
-  - [Step 3: Create the Application Database (PostgreSQL)](#step-3-create-the-application-database-postgresql)
-  - [Step 4: Create the private endpoint connection](#step-4-create-the-private-endpoint-connection)
-  - [Step 5: Create web application (deploy Metabase)](#step-5-create-web-application-deploy-metabase)
-  - [Additional configurations](#additional-configurations)
-    - [How to enable Health checks](#how-to-enable-health-checks)
-    - [How to upgrade](#how-to-upgrade)
-    - [How to see the logs](#how-to-see-the-logs)
-    - [Performance tuning](#performance-tuning)
-    - [Custom domains](#custom-domains)
-    - [Scale-up vs Scale-out](#scale-up-vs-scale-out) - [CORS](#cors)
-    - [Database name](#database-name)
-
 ## Step 1: Create the resource group (resource grouping)
 
 On the Azure management console, click on the **Resource Groups** icon at the top of the page (or just search for Resource Groups). If you already have a resource group, you can go straight to [Step 2](#step-2-create-the-vnet-virtual-network).

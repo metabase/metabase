@@ -8,11 +8,6 @@ redirect_from:
 
 Metabase can connect to some databases by first establishing a connection to a server in between Metabase and a data warehouse, then connecting to the data warehouse using that connection as a bridge. This makes connecting to some data warehouses possible in situations that would otherwise prevent the use of Metabase.
 
-- [When to use SSH tunneling](#when-to-use-ssh-tunneling)
-- [How to use SSH tunneling](#how-to-use-ssh-tunneling)
-- [Disadvantages of indirect connections](#disadvantages-of-indirect-connections)
-- [Running SSH directly](#running-ssh-directly)
-
 ## When to use SSH tunneling
 
 In general, there are two basic use cases for an SSH tunnel:
