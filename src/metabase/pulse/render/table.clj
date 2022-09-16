@@ -75,7 +75,7 @@
   [score]
   (int (* (/ score 100.0) max-bar-width)))
 
-(def ^:private max-column-character-length 100)
+(def ^:private max-column-character-length 16)
 
 (defn- truncate-text [text]
   (if (> (count text) max-column-character-length)
