@@ -2,6 +2,7 @@
   (:require [clojure.test :refer :all]
             [medley.core :as m]
             [metabase.driver :as driver]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.models :refer [Card Field]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.annotate :as annotate]
@@ -209,26 +210,26 @@
   (testing "For fields with parents we should return them with a combined name including parent's name"
     (tt/with-temp* [Field [parent {:name "parent", :table_id (mt/id :venues)}]
                     Field [child  {:name "child", :table_id (mt/id :venues), :parent_id (u/the-id parent)}]]
-    (mt/with-everything-store
-        (is (= {:description     nil
-                :table_id        (mt/id :venues)
-                :semantic_type   nil
-                :effective_type  nil
-                ;; these two are a gross symptom. there's some tension. sometimes it makes sense to have an effective
-                ;; type: the db type is different and we have a way to convert. Othertimes, it doesn't make sense:
-                ;; when the info is inferred. the solution to this might be quite extensive renaming
-                :coercion_strategy nil
-                :name            "parent.child"
-                :settings        nil
-                :field_ref       [:field (u/the-id child) nil]
-                :nfc_path        nil
-                :parent_id       (u/the-id parent)
-                :id              (u/the-id child)
-                :visibility_type :normal
-                :display_name    "Child"
-                :fingerprint     nil
-                :base_type       :type/Text}
-               (into {} (#'annotate/col-info-for-field-clause {} [:field (u/the-id child) nil])))))))
+     (mt/with-everything-store
+         (is (= {:description     nil
+                 :table_id        (mt/id :venues)
+                 :semantic_type   nil
+                 :effective_type  nil
+                 ;; these two are a gross symptom. there's some tension. sometimes it makes sense to have an effective
+                 ;; type: the db type is different and we have a way to convert. Othertimes, it doesn't make sense:
+                 ;; when the info is inferred. the solution to this might be quite extensive renaming
+                 :coercion_strategy nil
+                 :name            "parent.child"
+                 :settings        nil
+                 :field_ref       [:field (u/the-id child) nil]
+                 :nfc_path        nil
+                 :parent_id       (u/the-id parent)
+                 :id              (u/the-id child)
+                 :visibility_type :normal
+                 :display_name    "Child"
+                 :fingerprint     nil
+                 :base_type       :type/Text}
+                (into {} (#'annotate/col-info-for-field-clause {} [:field (u/the-id child) nil])))))))
 
   (testing "nested-nested fields should include grandparent name (etc)"
     (tt/with-temp* [Field [grandparent {:name "grandparent", :table_id (mt/id :venues)}]
@@ -413,7 +414,18 @@
                 :display_name  "My Custom Name"}
                (mt/$ids venues
                  (col-info-for-aggregation-clause
-                  [:aggregation-options [:sum $price] {:display-name "My Custom Name"}]))))))
+                  [:aggregation-options [:sum $price] {:display-name "My Custom Name"}])))))
+
+      (testing "`date extract functions`"
+        (doseq [op mbql.s/date-extract-functions]
+          (is (= {:base_type     :type/Integer
+                  :semantic_type :type/Integer
+                  :settings      nil
+                  :name          (name op)
+                  :display_name  "My Custom Name"}
+                 (mt/$ids users
+                   (col-info-for-aggregation-clause
+                     [:aggregation-options [op $last_login] {:display-name "My Custom Name"}])))))))
 
     (testing (str "if a driver is kind enough to supply us with some information about the `:cols` that come back, we "
                   "should include that information in the results. Their information should be preferred over ours")
