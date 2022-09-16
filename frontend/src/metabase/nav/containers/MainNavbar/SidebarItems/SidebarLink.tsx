@@ -103,6 +103,7 @@ export type { SidebarLinkProps };
 
 export default Object.assign(SidebarLink, {
   NameContainers: [ItemName, TreeNode.NameContainer],
+  Icon: SidebarIcon,
   LeftElement: LeftElementContainer,
   RightElement: RightElementContainer,
 });

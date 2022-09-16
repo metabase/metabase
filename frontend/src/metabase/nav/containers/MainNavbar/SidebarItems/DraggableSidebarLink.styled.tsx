@@ -16,6 +16,8 @@ export const DragIcon = styled(Icon)`
   cursor: grab;
 `;
 
+// Notice that dragged item styles are defined in sortable.css file
+// This is a limitation of react-sortable-hoc library
 export const StyledSidebarLink = styled(SidebarLink)<{ isDragging: boolean }>`
   position: relative;
 
@@ -31,7 +33,7 @@ export const StyledSidebarLink = styled(SidebarLink)<{ isDragging: boolean }>`
       &:hover {
         background: ${color("bg-white")};
 
-        ${DragIcon} {
+        ${SidebarLink.Icon}, ${DragIcon} {
           color: ${color("brand-light")} !important;
         }
 
