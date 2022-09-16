@@ -99,10 +99,12 @@ You can change the way an embedded question or dashboard looks in an iframe (whi
 - Border
 - Title
 - Theme (light, dark, transparent)
-- Font (paid plans only)
-- Download data (paid plans only)
+- Font\*
+- Download data\* (Note: This setting only hides the download button. To disable the feature entirely, use the [Download results permission](../permissions/data#download-results).)
 
-To make the changes to your signed embed:
+\* Available on paid plans.
+
+To update the appearance of a signed embed:
 
 1. Optional: Preview the appearance changes from your question or dashboard's embedding settings (**sharing icon** > **Embed this item in an application**).
 2. Optional: Click **Code** to find the updated server code snippet in the top block.
