@@ -5,125 +5,10 @@ import { t } from "ttag";
 import { DragSource, DropTarget } from "react-dnd";
 import _ from "underscore";
 import { assocIn } from "icepick";
-
-import styled from "@emotion/styled";
-import { lighten } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
 import Label from "metabase/components/type/Label";
-import Grabber from "metabase/components/Grabber";
-import Text from "metabase/components/type/Text";
-import Toggle from "metabase/core/components/Toggle";
 
-import {
-  COLUMN_SHOW_TOTALS,
-  COLUMN_SORT_ORDER,
-  COLUMN_SORT_ORDER_ASC,
-  COLUMN_SORT_ORDER_DESC,
-} from "metabase/lib/data_grid";
 import { keyForColumn } from "metabase/lib/dataset";
-import {
-  ExpandIconContainer,
-  FormattingOptionsRoot,
-  ShowTotalsOptionRoot,
-  SortButtonIcon,
-  SortOrderOptionRoot,
-} from "./ChartSettingFieldsPartition.styled";
-
-const DragWrapper = styled.div`
-  padding: 12px 14px;
-  box-shadow: 0 2px 3px ${lighten("text-dark", 1.5)};
-  &:hover {
-    box-shadow: 0 2px 5px ${lighten("text-dark", 1.3)};
-    transition: all 300ms linear;
-  }
-`;
-
-function ShowTotalsOption({ value, onChange }) {
-  if (value === null) {
-    return null;
-  }
-  return (
-    <ShowTotalsOptionRoot>
-      <Text>{t`Show totals`}</Text>
-      <Toggle value={value} onChange={() => onChange(!value)}></Toggle>
-    </ShowTotalsOptionRoot>
-  );
-}
-
-function SortButton({ iconName, onChange, currentValue, buttonValue }) {
-  const isSelected = buttonValue === currentValue;
-  return (
-    <SortButtonIcon
-      className="sort"
-      name={iconName}
-      size={16}
-      isSelected={isSelected}
-      onClick={() => onChange(isSelected ? undefined : buttonValue)}
-    />
-  );
-}
-
-function SortOrderOption({ value, onChange }) {
-  return (
-    <SortOrderOptionRoot>
-      <Text>{t`Sort order`}</Text>
-      <div>
-        <SortButton
-          iconName="arrow_up"
-          onChange={onChange}
-          currentValue={value}
-          buttonValue={COLUMN_SORT_ORDER_ASC}
-        />
-        <SortButton
-          iconName="arrow_down"
-          onChange={onChange}
-          currentValue={value}
-          buttonValue={COLUMN_SORT_ORDER_DESC}
-        />
-      </div>
-    </SortOrderOptionRoot>
-  );
-}
-
-function FormattingOptions({ onEdit }) {
-  const handleOnEdit = e => {
-    onEdit(e.target);
-  };
-  return (
-    <FormattingOptionsRoot>
-      <Text>{t`Formatting`}</Text>
-      <Text
-        onClick={handleOnEdit}
-        className="text-brand text-bold cursor-pointer"
-      >{t`See options…`}</Text>
-    </FormattingOptionsRoot>
-  );
-}
-
-function ColumnOptionsPanel({
-  partitionName,
-  getColumnSettingValue,
-  onChangeColumnSetting,
-  onEditFormatting,
-}) {
-  return (
-    <div>
-      {partitionName !== "values" && (
-        <div>
-          <ShowTotalsOption
-            value={getColumnSettingValue(COLUMN_SHOW_TOTALS)}
-            onChange={onChangeColumnSetting.bind(null, COLUMN_SHOW_TOTALS)}
-          />
-          <SortOrderOption
-            value={getColumnSettingValue(COLUMN_SORT_ORDER)}
-            onChange={onChangeColumnSetting.bind(null, COLUMN_SORT_ORDER)}
-          />
-        </div>
-      )}
-      <FormattingOptions onEdit={onEditFormatting} />
-    </div>
-  );
-}
+import { FieldPartitionColumn } from "./ChartSettingFieldsPartition.styled";
 
 class ChartSettingFieldsPartition extends React.Component {
   constructor(props) {
@@ -270,7 +155,7 @@ const Partition = DropTarget(
 class EmptyPartitionInner extends React.Component {
   render() {
     return this.props.connectDropTarget(
-      <div className="p2 text-centered bg-light rounded text-medium">{t`Drag fields here`}</div>,
+      <div className="p2 bg-light rounded text-medium">{t`Drag fields here`}</div>,
     );
   }
 }
@@ -303,65 +188,25 @@ const EmptyPartition = DropTarget(
 class ColumnInner extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { expanded: false };
   }
-  toggleExpand = () => {
-    const { expanded } = this.state;
-    this.setState({ expanded: !expanded });
-  };
-  handleEditFormatting = targetElement => {
+
+  handleEditFormatting = target => {
     const { column, onEditFormatting } = this.props;
-    onEditFormatting && onEditFormatting(column, targetElement);
+    onEditFormatting && onEditFormatting(column, target);
   };
   render() {
-    const {
-      column,
-      connectDragSource,
-      connectDropTarget,
-      isDragging,
-      partitionName,
-      onChangeColumnSetting,
-      getColumnSettingValue,
-    } = this.props;
-    const { expanded } = this.state;
-    const showOptionsPanel = expanded && !isDragging;
+    const { column, connectDragSource, connectDropTarget, isDragging } =
+      this.props;
+
     return connectDropTarget(
       connectDragSource(
         <div>
-          <DragWrapper
-            className={cx(
-              "text-dark mb1 bordered rounded cursor-grab text-bold",
-              { disabled: isDragging },
-            )}
-          >
-            <div
-              className={cx(
-                "text-dark text-bold cursor-grab flex justify-between",
-              )}
-            >
-              <ExpandIconContainer
-                onClick={this.toggleExpand}
-                className="hover-parent hover--inherit"
-              >
-                {column.display_name}
-                <Icon
-                  name={expanded ? "chevronup" : "chevrondown"}
-                  size="10"
-                  className="text-light hover-child hover--inherit ml1"
-                />
-              </ExpandIconContainer>
-              <Grabber style={{ width: 10 }} />
-            </div>
-            {showOptionsPanel && (
-              <ColumnOptionsPanel
-                className="text-medium"
-                partitionName={partitionName}
-                onChangeColumnSetting={onChangeColumnSetting.bind(null, column)}
-                getColumnSettingValue={getColumnSettingValue.bind(null, column)}
-                onEditFormatting={this.handleEditFormatting}
-              />
-            )}
-          </DragWrapper>
+          <FieldPartitionColumn
+            title={column.display_name}
+            onEdit={this.handleEditFormatting}
+            draggable
+            isDisabled={isDragging}
+          />
         </div>,
       ),
     );

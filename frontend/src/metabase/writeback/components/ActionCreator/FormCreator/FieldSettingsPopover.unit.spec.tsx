@@ -69,4 +69,26 @@ describe("writeback > FormCreator > FieldSettingsPopover", () => {
       inputType: "dropdown",
     });
   });
+
+  it("should fire onChange handler editing placeholder", async () => {
+    const changeSpy = jest.fn();
+    const settings = getDefaultFieldSettings();
+
+    render(
+      <FieldSettingsPopover fieldSettings={settings} onChange={changeSpy} />,
+    );
+
+    await userEvent.click(screen.getByLabelText("gear icon"));
+
+    expect(
+      await screen.findByTestId("field-settings-popover"),
+    ).toBeInTheDocument();
+
+    await userEvent.type(screen.getByTestId("placeholder-input"), "$");
+
+    expect(changeSpy).toHaveBeenLastCalledWith({
+      ...settings,
+      placeholder: "$",
+    });
+  });
 });

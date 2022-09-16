@@ -4,6 +4,7 @@ import { t } from "ttag";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import type { FieldSettings, FieldType, InputType } from "metabase-types/api";
 
+import Input from "metabase/core/components/Input";
 import Radio from "metabase/core/components/Radio";
 import Icon from "metabase/components/Icon";
 
@@ -11,7 +12,7 @@ import { getFieldTypes, getInputTypes } from "./constants";
 import {
   SettingsPopoverBody,
   SectionLabel,
-  FieldTypeWrapper,
+  Divider,
 } from "./FieldSettingsPopover.styled";
 
 export function FieldSettingsPopover({
@@ -58,17 +59,35 @@ export function FormCreatorPopoverBody({
       inputType: newInputType,
     });
 
+  const handleUpdatePlaceholder = (newPlaceholder: string) =>
+    onChange({
+      ...fieldSettings,
+      placeholder: newPlaceholder,
+    });
+
+  const hasPlaceholder =
+    fieldSettings.fieldType !== "date" &&
+    fieldSettings.inputType !== "inline-select";
+
   return (
     <SettingsPopoverBody data-testid="field-settings-popover">
       <FieldTypeSelect
         value={fieldSettings.fieldType}
         onChange={handleUpdateFieldType}
       />
+      <Divider />
       <InputTypeSelect
         value={fieldSettings.inputType}
         fieldType={fieldSettings.fieldType}
         onChange={handleUpdateInputType}
       />
+      <Divider />
+      {hasPlaceholder && (
+        <PlaceholderInput
+          value={fieldSettings.placeholder ?? ""}
+          onChange={handleUpdatePlaceholder}
+        />
+      )}
     </SettingsPopoverBody>
   );
 }
@@ -83,7 +102,7 @@ function FieldTypeSelect({
   const fieldTypes = useMemo(getFieldTypes, []);
 
   return (
-    <FieldTypeWrapper>
+    <div>
       <SectionLabel>{t`Field type`}</SectionLabel>
       <Radio
         variant="bubble"
@@ -91,7 +110,7 @@ function FieldTypeSelect({
         options={fieldTypes}
         onChange={onChange}
       />
-    </FieldTypeWrapper>
+    </div>
   );
 }
 
@@ -113,5 +132,27 @@ function InputTypeSelect({
       options={inputTypes[fieldType ?? "string"]}
       onChange={onChange}
     />
+  );
+}
+
+function PlaceholderInput({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (newPlaceholder: string) => void;
+}) {
+  const inputTypes = useMemo(getInputTypes, []);
+
+  return (
+    <div>
+      <SectionLabel>{t`Placeholder text`}</SectionLabel>
+      <Input
+        fullWidth
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        data-testid="placeholder-input"
+      />
+    </div>
   );
 }
