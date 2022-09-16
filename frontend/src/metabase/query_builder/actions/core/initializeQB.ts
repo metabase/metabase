@@ -323,6 +323,7 @@ async function handleQBInit(
   if (uiControls.queryBuilderMode !== "notebook") {
     if (question.canRun()) {
       // Timeout to allow Parameters widget to set parameterValues
+      console.log("🚀", "In question.canRun");
       setTimeout(
         () => dispatch(runQuestionQuery({ shouldUpdateUrl: false })),
         0,

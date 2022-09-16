@@ -88,6 +88,7 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
     return api;
   }
 
+  console.log("🚀", "In wrap");
   const mapping = [
     [CardApi.query, CardApi.query_pivot],
     [DashboardApi.cardQuery, DashboardApi.cardQueryPivot],

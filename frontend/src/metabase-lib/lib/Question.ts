@@ -1121,6 +1121,7 @@ class QuestionInner {
         collection_preview: collectionPreview,
         parameters,
       };
+      console.log("🚀", "In canUseCardApiEndpoint");
       return [
         await maybeUsePivotEndpoint(
           dashboardId ? DashboardApi.cardQuery : CardApi.query,

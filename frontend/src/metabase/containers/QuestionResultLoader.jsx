@@ -51,6 +51,7 @@ export class QuestionResultLoader extends React.Component {
    * load the result by calling question.apiGetResults
    */
   async _loadResult(question, onLoad, keepPreviousWhileLoading) {
+    console.log("🚀", "In _loadResult");
     const { collectionPreview } = this.props;
 
     // we need to have a question for anything to happen
