@@ -425,7 +425,8 @@
           (doseq [[query expected-cards] {"QUOTE-views"               [card-2 card-1]
                                           "per-day"                   [card-2]
                                           (str (:id card-1))          [card-1]
-                                          (str (:id card-2) "-WEST")  [card-2]}]
+                                          (str (:id card-2) "-kanye") [card-2]
+                                          (str (:id card-2) "-west")  []}]
             (is (= (map result expected-cards)
                    (mt/user-http-request :rasta :get 200
                                          (format "database/%d/card_autocomplete_suggestions" (mt/id))

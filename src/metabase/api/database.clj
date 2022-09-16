@@ -443,7 +443,8 @@
                              (and (not-empty search-id) (not-empty search-name))
                              [:and
                               [:= :id (Integer/parseInt search-id)]
-                              [:like :%lower.name (str "%" search-name "%")]]
+                              ;; this is a prefix match to be consistent with substring matches on the entire slug
+                              [:like :%lower.name (str search-name "%")]]
 
                              ;; e.g. search-string = "foo"
                              (and (empty? search-id) (not-empty search-name))
