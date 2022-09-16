@@ -417,18 +417,19 @@
         (testing "exclude cards without perms"
           (mt/with-non-admin-groups-no-root-collection-perms
             (api.card-test/with-cards-in-readable-collection [card-1]
-              (is (= (->> [card-1] (map result))
+              (is (= [(result card-1)]
                      (mt/user-http-request :rasta :get 200
                                            (format "database/%d/card_autocomplete_suggestions" (mt/id))
                                            :query "kanye")))))
         (testing "cards should match the query"
-          (doseq [[query expected] {"QUOTE-views"               (->> [card-2 card-1] (map result))
-                                    "per-day"                   (->> [card-2] (map result))
-                                    (str (:id card-1))          (->> [card-1] (map result))
-                                    (str (:id card-2) "-WEST")  (->> [card-2] (map result))}]
-            (is (= [query expected] [query (mt/user-http-request :rasta :get 200
-                                                                 (format "database/%d/card_autocomplete_suggestions" (mt/id))
-                                                                 :query query)])))))
+          (doseq [[query expected-cards] {"QUOTE-views"               [card-2 card-1]
+                                          "per-day"                   [card-2]
+                                          (str (:id card-1))          [card-1]
+                                          (str (:id card-2) "-WEST")  [card-2]}]
+            (is (= (map result expected-cards)
+                   (mt/user-http-request :rasta :get 200
+                                         (format "database/%d/card_autocomplete_suggestions" (mt/id))
+                                         :query query))))))
       (testing "should reject requests for databases for which the user has no perms"
         (mt/with-temp* [Database [{database-id :id}]
                         Card     [_ (card-with-native-query "Kanye West Quote Views Per Month" :database_id database-id)]]
