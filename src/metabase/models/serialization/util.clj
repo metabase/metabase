@@ -47,9 +47,9 @@
 
 (defn export-fk-keyed
   "Given a numeric ID, look up a different identifying field for that entity, and return it as a portable ID.
-  Eg. `User.email`, `Database.name`.
+  Eg. `Database.name`.
   [[import-fk-keyed]] is the inverse.
-  Unusual parameter order lets this be called as, for example, `(update x :creator_id export-fk-keyed 'User :email).
+  Unusual parameter order lets this be called as, for example, `(update x :creator_id export-fk-keyed 'Database :name)`.
 
   Note: This assumes the primary key is called `:id`."
   [id model field]
@@ -58,11 +58,31 @@
 (defn import-fk-keyed
   "Given a single, portable, identifying field and the model it refers to, this resolves the entity and returns its
   numeric `:id`.
-  Eg. `User.email` or `Database.name`.
+  Eg. `Database.name`.
 
-  Unusual parameter order lets this be called as, for example, `(update x :creator_id import-fk-keyed 'User :email)`."
+  Unusual parameter order lets this be called as, for example,
+  `(update x :creator_id import-fk-keyed 'Database :name)`."
   [portable model field]
   (db/select-one-id model field portable))
+
+;; -------------------------------------------------- Users ----------------------------------------------------------
+(defn export-user
+  "Exports a user as the email address.
+  This just calls [[export-fk-keyed]], but the counterpart [[import-user]] is more involved. This is a unique function
+  so they form a pair."
+  [id]
+  (when id (export-fk-keyed id 'User :email)))
+
+(defn import-user
+  "Imports a user by their email address.
+  If a user with that email address exists, returns its primary key.
+  If no such user exists, creates a dummy one with the default settings, blank name, and randomized password.
+  Does not send any invite emails."
+  [email]
+  (when email
+    (or (import-fk-keyed email 'User :email)
+        ;; Need to break a circular dependency here.
+        (:id ((resolve 'metabase.models.user/serdes-synthesize-user!) {:email email})))))
 
 ;; -------------------------------------------------- Tables ---------------------------------------------------------
 (defn export-table-fk
@@ -277,6 +297,9 @@
          (cond
            (and (= k :database)     (string? v)) #{[{:model "Database" :id v}]}
            (and (= k :source-table) (vector? v)) #{(table->path v)}
+           (and (= k :source-table)
+                (string? v)
+                (serdes.base/entity-id? v))      #{[{:model "Card" :id v}]}
            (and (= k :source-field) (vector? v)) #{(field->path v)}
            (map? v)                              (mbql-deps-map v)
            (vector? v)                           (mbql-deps-vector v)))

@@ -213,6 +213,18 @@ class Visualization extends React.PureComponent {
       : question;
   }
 
+  getMode(maybeModeOrQueryMode, question) {
+    if (maybeModeOrQueryMode instanceof Mode) {
+      return maybeModeOrQueryMode;
+    }
+
+    if (question && maybeModeOrQueryMode) {
+      return new Mode(question, maybeModeOrQueryMode);
+    }
+
+    return question?.mode();
+  }
+
   getClickActions(clicked) {
     if (!clicked) {
       return [];
@@ -222,9 +234,7 @@ class Visualization extends React.PureComponent {
     const seriesIndex = clicked.seriesIndex || 0;
     const card = this.state.series[seriesIndex].card;
     const question = this._getQuestionForCardCached(metadata, card);
-    const mode = this.props.mode
-      ? question && new Mode(question, this.props.mode)
-      : question && question.mode();
+    const mode = this.getMode(this.props.mode, question);
 
     return mode
       ? mode.actionsForClick(

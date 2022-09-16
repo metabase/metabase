@@ -23,11 +23,12 @@ import Question from "metabase-lib/lib/Question";
 import Table from "metabase-lib/lib/metadata/Table";
 import Database from "metabase-lib/lib/metadata/Database";
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
+import Variable from "metabase-lib/lib/variables/Variable";
+import TemplateTagVariable from "metabase-lib/lib/variables/TemplateTagVariable";
 import { createTemplateTag } from "metabase-lib/lib/queries/TemplateTag";
 import ValidationError from "metabase-lib/lib/ValidationError";
-import DimensionOptions from "../DimensionOptions";
-import Variable, { TemplateTagVariable } from "../Variable";
 import Dimension, { TemplateTagDimension, FieldDimension } from "../Dimension";
+import DimensionOptions from "../DimensionOptions";
 
 import { getNativeQueryTable } from "./utils/native-query-table";
 
