@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
-import { t } from "ttag";
 
 import Form from "metabase/containers/Form";
 import {
@@ -13,8 +12,10 @@ import type {
   WritebackParameter,
   WritebackAction,
 } from "metabase-types/api";
-import type { Parameter, ParameterId } from "metabase-types/types/Parameter";
+
 import type { Dispatch, ReduxAction } from "metabase-types/store";
+
+import { formatParametersBeforeSubmit, setDefaultValues } from "./utils";
 
 interface Props {
   missingParameters: WritebackParameter[];
@@ -22,36 +23,6 @@ interface Props {
   onSubmit: (parameters: ArbitraryParameterForActionExecution[]) => ReduxAction;
   onSubmitSuccess: () => void;
   dispatch: Dispatch;
-}
-
-function getActionParameterType(parameter: Parameter) {
-  const { type } = parameter;
-  if (type === "category") {
-    return "string/=";
-  }
-  return type;
-}
-
-function formatParametersBeforeSubmit(
-  values: Record<ParameterId, string | number>,
-  missingParameters: WritebackParameter[],
-) {
-  const formattedParams: ArbitraryParameterForActionExecution[] = [];
-
-  Object.keys(values).forEach(parameterId => {
-    const parameter = missingParameters.find(
-      parameter => parameter.id === parameterId,
-    );
-    if (parameter) {
-      formattedParams.push({
-        value: values[parameterId],
-        type: getActionParameterType(parameter),
-        target: parameter.target,
-      });
-    }
-  });
-
-  return formattedParams;
 }
 
 function ActionParametersInputForm({
@@ -76,14 +47,16 @@ function ActionParametersInputForm({
 
   const handleSubmit = useCallback(
     params => {
+      const paramsWithDefaultValues = setDefaultValues(params, fieldSettings);
+
       const formattedParams = formatParametersBeforeSubmit(
-        params,
+        paramsWithDefaultValues,
         missingParameters,
       );
       dispatch(onSubmit(formattedParams));
       onSubmitSuccess();
     },
-    [missingParameters, onSubmit, onSubmitSuccess, dispatch],
+    [missingParameters, onSubmit, onSubmitSuccess, dispatch, fieldSettings],
   );
 
   const submitButtonLabel = getSubmitButtonLabel(action);
