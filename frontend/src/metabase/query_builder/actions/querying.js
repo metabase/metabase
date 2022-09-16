@@ -22,6 +22,7 @@ import {
   getQueryResults,
   getQuestion,
   getTimeoutId,
+  getIsDirty,
 } from "../selectors";
 
 import { updateUrl } from "./navigation";
@@ -84,12 +85,6 @@ export const runQuestionQuery = ({
   overrideWithCard = null,
 } = {}) => {
   return async (dispatch, getState) => {
-    if (window.location.href.includes("query")) {
-      console.log("🚀", "Early return in runQuestionQuery");
-      return;
-    }
-
-    dispatch(loadStartUIControls());
     const questionFromCard = card =>
       card && new Question(card, getMetadata(getState()));
 
@@ -97,6 +92,18 @@ export const runQuestionQuery = ({
       ? questionFromCard(overrideWithCard)
       : getQuestion(getState());
     const originalQuestion = getOriginalQuestion(getState());
+
+    const queryResults = getQueryResults(getState());
+    const isDirty = getIsDirty(getState());
+
+    const areLatestQueryResultsLoaded =
+      question.isDataset() && !!queryResults && !isDirty;
+
+    if (areLatestQueryResultsLoaded) {
+      return;
+    }
+
+    dispatch(loadStartUIControls());
 
     const cardIsDirty = originalQuestion
       ? question.isDirtyComparedToWithoutParameters(originalQuestion) ||
@@ -118,7 +125,6 @@ export const runQuestionQuery = ({
 
     const queryTimer = startTimer();
 
-    console.log("🚀", "Inside runQuestionQuery");
     question
       .apiGetResults({
         cancelDeferred: cancelQueryDeferred,

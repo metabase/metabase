@@ -188,7 +188,11 @@ function DatasetEditor(props) {
   // E.g. expression field refs are field literals ["field", "my_formula", ...] instead of ["expression", "my_formula"]
   // Doing a reload will ensure the editor uses the correct metadata
   useEffect(() => {
-    if (!isRunning) {
+    if (!isRunning && !result) {
+      /* eslint-disable */
+      // console.log("🚀", "Early return in DatasetEditor", { result });
+      // return;
+      console.log("🚀", "Inside useEffect of DatasetEditor");
       runQuestionQuery();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
