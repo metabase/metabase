@@ -236,8 +236,9 @@
                        ser))
           (is (not (contains? ser :id)))
 
-          (testing "cards depend on their Table and Collection, and any fields in their parameter_mappings"
-            (is (= #{[{:model "Database"   :id "My Database"}
+          (testing "cards depend on their Database, Table and Collection, and any fields in their parameter_mappings"
+            (is (= #{[{:model "Database"   :id "My Database"}]
+                     [{:model "Database"   :id "My Database"}
                       {:model "Schema"     :id "PUBLIC"}
                       {:model "Table"      :id "Schema'd Table"}]
                      [{:model "Collection" :id coll-eid}]
@@ -283,8 +284,9 @@
                        ser))
           (is (not (contains? ser :id)))
 
-          (testing "cards depend on their Table and Collection, and any fields in their visualization_settings"
-            (is (= #{[{:model "Database"   :id "My Database"}
+          (testing "cards depend on their Database, Table and Collection, and any fields in their visualization_settings"
+            (is (= #{[{:model "Database"   :id "My Database"}]
+                     [{:model "Database"   :id "My Database"}
                       {:model "Schema"     :id "PUBLIC"}
                       {:model "Table"      :id "Schema'd Table"}]
                      [{:model "Collection" :id coll-eid}]

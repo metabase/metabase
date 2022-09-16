@@ -2,6 +2,7 @@
 import { getIn } from "icepick";
 import _ from "underscore";
 import querystring from "querystring";
+import { push } from "react-router-redux";
 
 import {
   setOrUnsetParameterValues,
@@ -85,6 +86,32 @@ export default ({ question, clicked }) => {
 
         behavior = { url: () => url };
       }
+    } else if (linkType === "page") {
+      const { location, routerParams } = extraData;
+
+      const isInDataApp =
+        Urls.isDataAppPagePath(location.pathname) ||
+        Urls.isDataAppPath(location.pathname);
+
+      if (!isInDataApp) {
+        return [];
+      }
+
+      const dataAppId = Urls.extractEntityId(routerParams.slug);
+      if (!dataAppId) {
+        return [];
+      }
+
+      const queryParams = getParameterValuesBySlug(parameterMapping, {
+        data,
+        extraData,
+        clickBehavior,
+      });
+
+      const path = Urls.dataAppPage({ id: dataAppId }, { id: targetId });
+      const url = `${path}?${querystring.stringify(queryParams)}`;
+
+      behavior = { action: () => push(url) };
     } else if (linkType === "question" && extraData && extraData.questions) {
       const queryParams = getParameterValuesBySlug(parameterMapping, {
         data,

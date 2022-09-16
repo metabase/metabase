@@ -619,18 +619,14 @@ describe("scenarios > visualizations > pivot tables", () => {
 
         // Skipped to avoid flake
         it.skip("should display pivot table in an embed preview", () => {
-          cy.findByText(
-            /Embed this (question|dashboard) in an application/,
-          ).click();
+          cy.findByText(/Embed in your application/).click();
           // we use preview endpoints when MB is iframed in itself
           cy.findByText(test.subject);
           getIframeBody().within(assertOnPivotFields);
         });
 
         it("should display pivot table in an embed URL", () => {
-          cy.findByText(
-            /Embed this (question|dashboard) in an application/,
-          ).click();
+          cy.findByText(/Embed in your application/).click();
 
           cy.findByText("Publish").click();
 
