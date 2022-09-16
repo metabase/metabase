@@ -587,10 +587,14 @@
   "Schema for the definition of an arithmetic expression."
   (s/recursive #'ArithmeticExpression*))
 
-(def date+time+timezone-functions
-  "Date, time, and timezone related functions."
+(def date-extract-functions
+  "Functions to extract components of a date, datetime."
   #{;; extraction functions (get some component of a given temporal value/column)
     :get-year :get-quarter :get-month :get-day :get-day-of-week :get-hour :get-minute :get-second})
+
+(def date+time+timezone-functions
+  "Date, time, and timezone related functions."
+  (set/union date-extract-functions))
 
 (defclause ^{:requires-features #{:date-functions}} get-year
   date StringExpressionArg)

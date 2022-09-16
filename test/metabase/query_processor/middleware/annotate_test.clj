@@ -413,7 +413,18 @@
                 :display_name  "My Custom Name"}
                (mt/$ids venues
                  (col-info-for-aggregation-clause
-                  [:aggregation-options [:sum $price] {:display-name "My Custom Name"}]))))))
+                  [:aggregation-options [:sum $price] {:display-name "My Custom Name"}])))))
+
+      (testing "`date extract functions`"
+        (doseq [op mbql.s/date-extract-functions]
+          (is (= {:base_type     :type/Integer
+                  :semantic_type :type/Integer
+                  :settings      nil
+                  :name          (name op)
+                  :display_name  "My Custom Name"}
+                 (mt/$ids users
+                   (col-info-for-aggregation-clause
+                     [:aggregation-options [op $last_login] {:display-name "My Custom Name"}])))))))
 
     (testing (str "if a driver is kind enough to supply us with some information about the `:cols` that come back, we "
                   "should include that information in the results. Their information should be preferred over ours")
