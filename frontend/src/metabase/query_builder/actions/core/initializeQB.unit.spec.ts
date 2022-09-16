@@ -94,10 +94,8 @@ function getQueryParamsForQuestion(
   if (!question.isSaved()) {
     return extra;
   }
-  const id = question.id();
-  const name = question.displayName();
   return {
-    slug: `${id}-${name}`,
+    slug: question.slug(),
     ...extra,
   };
 }

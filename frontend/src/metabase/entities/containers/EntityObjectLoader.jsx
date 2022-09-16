@@ -74,7 +74,11 @@ class EntityObjectLoaderInner extends React.Component {
     ) {
       nextProps.fetch(
         { id: nextProps.entityId, ...nextProps.entityQuery },
-        { reload: nextProps.reload, properties: nextProps.properties },
+        {
+          reload: nextProps.reload,
+          properties: nextProps.properties,
+          noEvent: !nextProps.dispatchApiErrorEvent,
+        },
       );
     }
   }
