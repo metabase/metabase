@@ -6,11 +6,6 @@ title: Troubleshooting models
 
 What kind of problem are you having with your [model][model-docs]?
 
-- [Can't create a model](#cant-create-a-model).
-- [Can't edit or save changes to a model](#cant-edit-or-save-changes-to-a-model).
-- [Model performance is poor](#model-performance-is-poor).
-- [Model doesn't work with data sandboxing][troubleshooting-sandboxing].
-
 ## Can't create a model
 
 If you don't see [the model button][model-button-image] (three squares):

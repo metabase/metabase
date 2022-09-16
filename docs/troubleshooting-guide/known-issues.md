@@ -6,9 +6,6 @@ title: How to find a known bug or limitation
 
 If you can't find or solve your problem using the [troubleshooting guides](./index.md), you may be running into an issue that we're still working on.
 
-- [How to find a known bug](#how-to-find-a-known-bug) 
-- [How to find a known product limitation](#how-to-find-a-known-product-limitation)
-
 ## How to find a known bug
 
 If your work in Metabase is crashing, missing, or not being saved, you might have found a bug.

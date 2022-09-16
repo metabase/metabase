@@ -6,13 +6,7 @@ redirect_from:
 
 # Adding and managing databases
 
-- [Adding a database connection](#adding-a-database-connection)
-- [Connecting to supported databases](#connecting-to-supported-databases)
-- [Connecting to databases hosted by a cloud provider](#connecting-to-databases-hosted-by-a-cloud-provider)
-- [Database connection options](#database-connection-options)
-- [Syncing and scanning databases](#syncing-and-scanning-databases)
-- [Deleting databases](#deleting-databases)
-- [Troubleshooting](#troubleshooting)
+Connect Metabase to your data sources.
 
 ## Adding a database connection
 
