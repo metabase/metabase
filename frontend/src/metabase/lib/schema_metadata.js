@@ -605,6 +605,9 @@ function scopeFields(fields) {
   return _.filter(fields, isScope);
 }
 
+/**
+ * @type { import("metabase-types/types/Metadata").AggregationOperator[] }
+ */
 const AGGREGATION_OPERATORS = [
   {
     // DEPRECATED: "rows" is equivalent to no aggregations

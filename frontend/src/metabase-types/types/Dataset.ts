@@ -29,6 +29,7 @@ export type Column = {
   unit?: DatetimeUnit;
   binning_info?: BinningInfo;
   fk_field_id?: FieldId;
+  fk_target_field_id?: FieldId;
   expression_name?: any;
   settings?: ColumnSettings;
   field_ref?: Field;
@@ -43,6 +44,7 @@ export type Value =
   | null
   | Record<string, unknown>;
 export type Row = Value[];
+export type RowData = { value: Value; col: Column };
 
 export type DatasetData = {
   cols: Column[];

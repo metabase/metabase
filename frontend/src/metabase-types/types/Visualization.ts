@@ -3,10 +3,18 @@
  * @deprecated use existing types from, or add to metabase-types/api/*
  */
 
-import { DatasetData, Column, Row, Value } from "metabase-types/types/Dataset";
+import {
+  DatasetData,
+  Column,
+  Row,
+  RowData,
+  Value,
+} from "metabase-types/types/Dataset";
 import { Card } from "metabase-types/types/Card";
 import { VisualizationSettings } from "metabase-types/api/card";
 import { ReduxAction } from "metabase-types/types/redux";
+import { ITippyPopoverProps } from "metabase/components/Popover/TippyPopover";
+import Dimension from "metabase-lib/lib/Dimension";
 
 // import Question from "metabase-lib/lib/Question";
 type Question = any;
@@ -46,29 +54,36 @@ export type ClickObject = {
     cols: Column[];
   };
   extraData?: Record<string, any>;
+  data?: RowData[];
+  dimension?: Dimension;
 };
 
 export type ClickAction = {
   title?: any; // React Element
   icon?: string;
   popover?: (props: ClickActionPopoverProps) => any; // React Element
+  popoverProps?: ITippyPopoverProps;
   question?: () => Question | undefined;
   url?: () => string;
   action?: () => ReduxAction | undefined;
+  tooltip?: string;
   section?: string;
   name?: string;
   default?: boolean;
   defaultAlways?: boolean;
+  buttonType?: "horizontal" | "token" | "sort" | "formatting" | "token-filter";
+  extra?: () => any;
 };
 
 export type ClickActionProps = {
   question: Question;
-  clicked?: ClickObject;
+  clicked: ClickObject;
   settings?: VisualizationSettings;
   extraData?: Record<string, any>;
+  data?: Record<string, any>;
 };
 
-export type OnChangeCardAndRun = ({
+export type OnChangeCard = ({
   nextCard,
   previousCard,
 }: {
@@ -77,7 +92,9 @@ export type OnChangeCardAndRun = ({
 }) => void;
 
 export type ClickActionPopoverProps = {
-  onChangeCardAndRun: OnChangeCardAndRun;
+  series: Series;
+  onChange: OnChangeCard;
+  onChangeCardAndRun: OnChangeCard;
   onClose: () => void;
 };
 
@@ -122,7 +139,7 @@ export type VisualizationProps = {
   onVisualizationClick: (clickObject?: ClickObject) => void;
   visualizationIsClickable: (clickObject?: ClickObject) => boolean;
   getExtraDataForClick?: (clickObject?: ClickObject) => Record<string, unknown>;
-  onChangeCardAndRun: OnChangeCardAndRun;
+  onChangeCardAndRun: OnChangeCard;
 
   onUpdateVisualizationSettings: (settings: Record<string, any>) => void;
 

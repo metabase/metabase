@@ -83,6 +83,7 @@ export type AggregationOperator = {
   short: string;
   fields: Field[];
   validFieldsFilters: FieldsFilter[];
+  requiresField?: boolean;
 };
 
 export type FieldOptions = {

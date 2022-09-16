@@ -5,20 +5,22 @@ import { ParameterId } from "metabase-types/types/Parameter";
 // Example: "[\"dimension\",[\"field\",17,null]]"
 type StringifiedDimension = string;
 
+export type ClickBehaviorMappingData = {
+  id: ParameterId | StringifiedDimension;
+  source: {
+    id: ParameterId | StringifiedDimension;
+    name: string;
+    type: "column" | "parameter";
+  };
+  target: {
+    id: ParameterId | StringifiedDimension;
+    type: "parameter" | "dimension";
+  };
+};
+
 export type ClickBehaviorParameterMapping = Record<
   ParameterId | StringifiedDimension,
-  {
-    id: ParameterId | StringifiedDimension;
-    source: {
-      id: ParameterId | StringifiedDimension;
-      name: string;
-      type: "column" | "parameter";
-    };
-    target: {
-      id: ParameterId | StringifiedDimension;
-      type: "parameter" | "dimension";
-    };
-  }
+  ClickBehaviorMappingData
 >;
 
 export type ClickBehaviorType =
