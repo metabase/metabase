@@ -8,7 +8,7 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import Icon from "metabase/components/Icon";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
-interface HelpTextProps {
+interface ExpressionEditorHelpTextProps {
   helpText: HelpText;
   width: number;
   target: Element;
@@ -18,7 +18,7 @@ const ExpressionEditorHelpText = ({
   helpText,
   width,
   target,
-}: HelpTextProps) => {
+}: ExpressionEditorHelpTextProps) => {
   if (!helpText) {
     return null;
   }
