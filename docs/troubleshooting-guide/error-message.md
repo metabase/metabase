@@ -4,10 +4,6 @@ title: Troubleshooting error messages
 
 # Troubleshooting error messages
 
-- [API error messages][api-error-message]
-- [SQL error messages][sql-error-message]
-- [Metabase error messages][metabase-error-message]
-
 ## [API error messages][discourse-search-api-error]
 
 - Appear in red text when you load a dashboard or run a question.

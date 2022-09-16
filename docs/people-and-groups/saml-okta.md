@@ -6,13 +6,6 @@ title: SAML with Okta
 
 {% include plans-blockquote.html feature="Okta SAML authentication" %}
 
-1. [Creating an app integration in Okta][okta-saml-docs] (the identity provider).
-2. [Configuring SAML settings in Okta](#configuring-saml-settings-in-okta).
-3. [Managing signing certificates in Okta](#managing-signing-certificates-in-okta).
-4. [Configuring group mappings](#configuring-group-mappings) (optional).
-
-For more information, check out our guide for [authenticating with SAML][saml-doc].
-
 ## Configuring SAML settings in Okta
 
 | Metabase SAML                       | Okta SAML                                                                                                                    |

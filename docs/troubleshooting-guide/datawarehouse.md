@@ -6,11 +6,6 @@ title: Troubleshooting database connections
 
 If you can't connect to your database, you'll need to figure out if the problem is happening with Metabase or your database server.
 
-- [Troubleshooting connections to Metabase](#troubleshooting-connections-to-metabase).
-- [Troubleshooting connections to the database server](#troubleshooting-connections-to-the-database-server).
-- [Common database connection errors](#common-database-connection-errors).
-- [Testing a database connection](#testing-a-database-connection).
-
 If your database connection is successful, but the tables aren't showing up in the [Data Browser](https://www.metabase.com/learn/getting-started/data-browser), go to [Troubleshooting missing tables](./cant-see-tables.md).
 
 ## Troubleshooting connections to Metabase
