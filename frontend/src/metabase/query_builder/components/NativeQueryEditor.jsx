@@ -336,20 +336,16 @@ class NativeQueryEditor extends Component {
       },
     });
 
+    // the completers when the editor mounts are the standard ones
     const standardCompleters = [...this._editor.completers];
 
     this.swapCompleters = pos => {
-      if (this.getSnippetNameAtCursor(pos) !== null) {
-        this._editor.completers = [
-          { getCompletions: this.getSnippetCompletions },
-        ];
-      } else if (this.getCardSlugAtCursor(pos) !== null) {
-        this._editor.completers = [
-          { getCompletions: this.getCardTagCompletions },
-        ];
-      } else {
-        this._editor.completers = standardCompleters;
-      }
+      this._editor.completers =
+        this.getSnippetNameAtCursor(pos) !== null
+          ? { getCompletions: this.getSnippetCompletions }
+          : this.getCardSlugAtCursor(pos) !== null
+          ? { getCompletions: this.getCardTagCompletions }
+          : standardCompleters;
     };
   }
 
