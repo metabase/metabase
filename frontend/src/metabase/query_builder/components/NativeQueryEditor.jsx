@@ -342,9 +342,9 @@ class NativeQueryEditor extends Component {
     this.swapCompleters = pos => {
       this._editor.completers =
         this.getSnippetNameAtCursor(pos) !== null
-          ? { getCompletions: this.getSnippetCompletions }
+          ? [{ getCompletions: this.getSnippetCompletions }]
           : this.getCardSlugAtCursor(pos) !== null
-          ? { getCompletions: this.getCardTagCompletions }
+          ? [{ getCompletions: this.getCardTagCompletions }]
           : standardCompleters;
     };
   }
