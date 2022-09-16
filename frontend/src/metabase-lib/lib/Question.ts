@@ -322,6 +322,12 @@ class QuestionInner {
     return this.setCard(assoc(this.card(), "dataset", dataset));
   }
 
+  setPinned(pinned: boolean) {
+    return this.setCard(
+      assoc(this.card(), "collection_position", pinned ? 1 : null),
+    );
+  }
+
   setIsAction(isAction) {
     return this.setCard(assoc(this.card(), "is_write", isAction));
   }
