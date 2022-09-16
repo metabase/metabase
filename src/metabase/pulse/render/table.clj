@@ -14,10 +14,9 @@
    (style/font-style)
    {:font-size :12px
     :font-weight     700
-    :color           style/color-text-medium
-    :border-bottom   (str "1px solid " style/color-header-row-border)
-    :padding-top     :20px
-    :padding-bottom  :5px}))
+    :color           style/color-text-dark
+    :border-bottom   (str "2px solid " style/color-border)
+    :border-right    0}))
 
 (def ^:private max-bar-width 106)
 
@@ -25,13 +24,12 @@
   (merge
    (style/font-style)
    {:font-size      :12px
-    :font-weight    700
+    :font-weight    400
     :text-align     :left
     :color          style/color-text-dark
-    :border-bottom  (str "1px solid " style/color-body-row-border)
-    :height         :28px
-    :padding-right  :0.375em
-    :padding-left   :0.375em}))
+    :border-bottom  (str "1px solid " style/color-border)
+    :border-right   (str "1px solid " style/color-border)
+    :padding        "0.75em 1em"}))
 
 (defn- bar-th-style-numeric []
   (merge (style/font-style) (bar-th-style) {:text-align :right}))
@@ -124,7 +122,11 @@
                       (row-style-for-type cell)
                       {:background-color (get-background-color cell (get column-names col-idx) row-idx)}
                       (when (and bar-width (= col-idx 1))
-                        {:font-weight 700}))}
+                        {:font-weight 700})
+                      (when (= row-idx (dec (count rows)))
+                        {:border-bottom 0})
+                      (when (= col-idx (dec (count row)))
+                        {:border-right 0}))}
          (h cell)])
       (some-> bar-width (render-bar normalized-zero))])])
 
@@ -139,8 +141,8 @@
   ([color-selector normalized-zero column-names [header & rows]]
    [:table {:style (style/style {:max-width "100%"
                                  :white-space :nowrap
-                                 :padding-bottom :8px
-                                 :border-collapse :collapse
+                                 :border  (str "1px solid " style/color-border)
+                                 :border-radius :6px
                                  :width "1%"})
             :cellpadding "0"
             :cellspacing "0"}
