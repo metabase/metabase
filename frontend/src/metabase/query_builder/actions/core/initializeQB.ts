@@ -25,7 +25,7 @@ import {
 import { Card, SavedCard } from "metabase-types/types/Card";
 import Question from "metabase-lib/lib/Question";
 import NativeQuery, {
-  updateQuestionTagNames,
+  updateCardTagNames,
 } from "metabase-lib/lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
@@ -305,7 +305,7 @@ async function handleQBInit(
         )
       ).filter(Boolean);
       question = question.setQuery(
-        updateQuestionTagNames(query, referencedQuestions),
+        updateCardTagNames(query, referencedQuestions),
       );
     }
 

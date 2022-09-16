@@ -86,7 +86,7 @@ function replaceTagName(
   query: NativeQuery,
   oldTagName: string,
   newTagName: string,
-) {
+): NativeQuery {
   const queryText = query
     .queryText()
     .replace(tagRegex(oldTagName), `{{${newTagName}}}`);
@@ -123,27 +123,23 @@ function isSnippetTagName(name: string): boolean {
   return name.startsWith("snippet:");
 }
 
-export function updateQuestionTagNames(
+export function updateCardTagNames(
   query: NativeQuery,
   cards: Card[],
 ): NativeQuery {
   const cardById = _.indexBy(cards, "id");
-  const newQueryText = query
+  const tags = query
     .templateTags()
     // only tags for cards
     .filter(tag => tag.type === "card")
     // only tags for given cards
-    .filter(tag => cardById[tag["card-id"]])
-    // reduce over each tag, updating query text with the new tag name
-    .reduce((qText, tag) => {
-      const card = cardById[tag["card-id"]];
-      const newTagName = `#${card.id}-${slugg(card.name)}`;
-      return replaceTagName(qText, tag.name, newTagName);
-    }, query.queryText());
-  // return new query with updated text
-  return newQueryText !== query.queryText()
-    ? query.setQueryText(newQueryText)
-    : query;
+    .filter(tag => cardById[tag["card-id"]]);
+  // reduce over each tag, updating query text with the new tag name
+  return tags.reduce((query, tag) => {
+    const card = cardById[tag["card-id"]];
+    const newTagName = `#${card.id}-${slugg(card.name)}`;
+    return replaceTagName(query, tag.name, newTagName);
+  }, query);
 }
 
 // QUERY TEXT TAG UTILS END
