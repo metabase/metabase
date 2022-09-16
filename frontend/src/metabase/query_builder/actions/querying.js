@@ -100,7 +100,7 @@ export const runQuestionQuery = ({
       question.isDataset() && !!queryResults && !isDirty;
 
     if (areLatestQueryResultsLoaded) {
-      return;
+      return dispatch(queryCompleted(question, queryResults));
     }
 
     dispatch(loadStartUIControls());
