@@ -8,30 +8,6 @@ import {
 } from "metabase/static-viz/containers/StaticChart/constants";
 import StaticChart from "metabase/static-viz/containers/StaticChart";
 import {
-  TIME_SERIES_LINE_CHART_DEFAULT_OPTIONS,
-  TIME_SERIES_LINE_CHART_TYPE,
-} from "../../static-viz/components/TimeSeriesLineChart/constants";
-import {
-  TIME_SERIES_AREA_CHART_DEFAULT_OPTIONS,
-  TIME_SERIES_AREA_CHART_TYPE,
-} from "../../static-viz/components/TimeSeriesAreaChart/constants";
-import {
-  TIME_SERIES_BAR_CHART_DEFAULT_OPTIONS,
-  TIME_SERIES_BAR_CHART_TYPE,
-} from "../../static-viz/components/TimeSeriesBarChart/constants";
-import {
-  CATEGORICAL_LINE_CHART_DEFAULT_OPTIONS,
-  CATEGORICAL_LINE_CHART_TYPE,
-} from "../../static-viz/components/CategoricalLineChart/constants";
-import {
-  CATEGORICAL_AREA_CHART_DEFAULT_OPTIONS,
-  CATEGORICAL_AREA_CHART_TYPE,
-} from "../../static-viz/components/CategoricalAreaChart/constants";
-import {
-  CATEGORICAL_BAR_CHART_DEFAULT_OPTIONS,
-  CATEGORICAL_BAR_CHART_TYPE,
-} from "../../static-viz/components/CategoricalBarChart/constants";
-import {
   CATEGORICAL_DONUT_CHART_DEFAULT_OPTIONS,
   CATEGORICAL_DONUT_CHART_TYPE,
 } from "../../static-viz/components/CategoricalDonutChart/constants";
@@ -154,50 +130,6 @@ export default function StaticVizPage() {
               />
             </div>
           )}
-        </PageSection>
-
-        <PageSection>
-          <Subhead>Line chart with timeseries data</Subhead>
-          <StaticChart
-            type={TIME_SERIES_LINE_CHART_TYPE}
-            options={TIME_SERIES_LINE_CHART_DEFAULT_OPTIONS}
-          />
-        </PageSection>
-        <PageSection>
-          <Subhead>Area chart with timeseries data</Subhead>
-          <StaticChart
-            type={TIME_SERIES_AREA_CHART_TYPE}
-            options={TIME_SERIES_AREA_CHART_DEFAULT_OPTIONS}
-          />
-        </PageSection>
-        <PageSection>
-          <Subhead>Bar chart with timeseries data</Subhead>
-          <StaticChart
-            type={TIME_SERIES_BAR_CHART_TYPE}
-            options={TIME_SERIES_BAR_CHART_DEFAULT_OPTIONS}
-          />
-        </PageSection>
-
-        <PageSection>
-          <Subhead>Line chart with categorical data</Subhead>
-          <StaticChart
-            type={CATEGORICAL_LINE_CHART_TYPE}
-            options={CATEGORICAL_LINE_CHART_DEFAULT_OPTIONS}
-          />
-        </PageSection>
-        <PageSection>
-          <Subhead>Area chart with categorical data</Subhead>
-          <StaticChart
-            type={CATEGORICAL_AREA_CHART_TYPE}
-            options={CATEGORICAL_AREA_CHART_DEFAULT_OPTIONS}
-          />
-        </PageSection>
-        <PageSection>
-          <Subhead>Bar chart with categorical data</Subhead>
-          <StaticChart
-            type={CATEGORICAL_BAR_CHART_TYPE}
-            options={CATEGORICAL_BAR_CHART_DEFAULT_OPTIONS}
-          />
         </PageSection>
         <PageSection>
           <Subhead>Donut chart with categorical data</Subhead>
