@@ -100,7 +100,7 @@ You can change the way an embedded question or dashboard looks in an iframe (whi
 - Title
 - Theme (light, dark, transparent)
 - Font\*
-- Download data\* (Note: This setting only hides the download button. To disable the feature entirely, use the [Download results permission](../permissions/data#download-results).)
+- Download data\* (Note: This setting only hides the download button. To disable the feature entirely, use the [Download results permission](../permissions/data.md#download-results).)
 
 \* Available on paid plans.
 
