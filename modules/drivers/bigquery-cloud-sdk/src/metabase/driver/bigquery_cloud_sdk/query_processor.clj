@@ -157,17 +157,20 @@
 (defmethod temporal-type OffsetDateTime [_] :timestamp)
 (defmethod temporal-type ZonedDateTime  [_] :timestamp)
 
-(defn- coercion-strategy->temporat-type [coercion-strategy]
-  (case coercion-strategy
-    :Coercion/ISO8601->DateTime :timestamp
-    :else nil))
-
 (defn- base-type->temporal-type [base-type]
   (condp #(isa? %2 %1) base-type
     :type/Date           :date
     :type/Time           :time
     :type/DateTimeWithTZ :timestamp
     :type/DateTime       :datetime
+    nil))
+
+(defn- coercion-strategy->temporat-type [coercion-strategy]
+  (case coercion-strategy
+    :Coercion/ISO8601->DateTime               :timestamp
+    :Coercion/ISO8601->Date                   :date
+    :Coercion/ISO8601->Time                   :time
+    :Coercion/YYYYMMDDHHMMSSString->Temporal  :timestamp
     nil))
 
 (defn- database-type->temporal-type [database-type]
@@ -181,8 +184,8 @@
 (defmethod temporal-type Field
   [{base-type :base_type, effective-type :effective_type, database-type :database_type,
     coercion-strategy :coercion_strategy}]
-  (or #_(coercion-strategy->temporat-type coercion-strategy)
-      (database-type->temporal-type database-type)
+  (or (database-type->temporal-type database-type)
+      (coercion-strategy->temporat-type coercion-strategy)
       (base-type->temporal-type (or effective-type base-type))))
 
 (defmethod temporal-type TypedHoneySQLForm
