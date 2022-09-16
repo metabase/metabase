@@ -10,12 +10,6 @@ Metabase provides an official Docker image via Dockerhub that can be used for de
 
 If you're trying to upgrade your Metabase version on Docker, check out these [upgrading instructions](upgrading-metabase.md).
 
-- [Open Source quick start](#open-source-quick-start)
-- [Pro or Enterprise quick start](#pro-or-enterprise-quick-start)
-- [Production installation](#production-installation)
-- [Migrating to a production installation](#migrating-to-a-production-installation)
-- [Additional Docker maintenance and configuration](#additional-docker-maintenance-and-configuration)
-
 ## Open Source quick start
 
 Use this quick start to run the Open Source version of Metabase locally. See below for instructions on [running Metabase in production](#production-installation).
