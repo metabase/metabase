@@ -145,6 +145,9 @@ class ChartClickActions extends Component {
       const PopoverContent = popoverAction.popover;
       popover = (
         <PopoverContent
+          onResize={() => {
+            this.instance?.popperInstance?.update();
+          }}
           onChangeCardAndRun={({ nextCard }) => {
             if (popoverAction) {
               MetabaseAnalytics.trackStructEvent(
@@ -204,6 +207,9 @@ class ChartClickActions extends Component {
       <FlexTippyPopover
         reference={popoverAnchor}
         visible={!!popoverAnchor}
+        onShow={instance => {
+          this.instance = instance;
+        }}
         onClose={() => {
           MetabaseAnalytics.trackStructEvent(
             "Action",
@@ -212,7 +218,7 @@ class ChartClickActions extends Component {
           this.close();
         }}
         placement="bottom-start"
-        offset={[-8, 8]}
+        offset={[0, 8]}
         popperOptions={{
           flip: true,
           modifiers: [

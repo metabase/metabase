@@ -35,7 +35,7 @@ type Props = {
   query: StructuredQuery;
   onChange?: (filter: Filter) => void;
   onChangeFilter: (filter: Filter) => void;
-
+  onResize?: () => void;
   onClose?: () => void;
 
   noCommitButton?: boolean;
@@ -70,6 +70,7 @@ export default function FilterPopover({
   checkedColor,
   onChange,
   onChangeFilter,
+  onResize,
   onClose,
 }: Props) {
   const [filter, setFilter] = useState(
@@ -148,6 +149,7 @@ export default function FilterPopover({
   const handleFilterChange = (mbql: any[] = []) => {
     const newFilter = filter ? filter.set(mbql) : new Filter(mbql, null, query);
     setFilter(newFilter);
+    onResize?.();
   };
 
   if (editingFilter) {
