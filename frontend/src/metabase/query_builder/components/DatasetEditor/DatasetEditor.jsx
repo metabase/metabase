@@ -189,10 +189,6 @@ function DatasetEditor(props) {
   // Doing a reload will ensure the editor uses the correct metadata
   useEffect(() => {
     if (!isRunning && !result) {
-      /* eslint-disable */
-      // console.log("🚀", "Early return in DatasetEditor", { result });
-      // return;
-      console.log("🚀", "Inside useEffect of DatasetEditor");
       runQuestionQuery();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

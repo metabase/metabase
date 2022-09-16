@@ -57,7 +57,6 @@ export const softReloadCard = createThunkAction(SOFT_RELOAD_CARD, () => {
 export const RELOAD_CARD = "metabase/qb/RELOAD_CARD";
 export const reloadCard = createThunkAction(RELOAD_CARD, () => {
   return async (dispatch, getState) => {
-    console.log("🚀", "We are in reloadCard");
     const outdatedCard = getCard(getState());
 
     dispatch(resetQB());
