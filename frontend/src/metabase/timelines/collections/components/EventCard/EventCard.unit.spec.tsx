@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import {
   createMockCollection,
   createMockTimeline,
@@ -7,7 +8,6 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 import EventCard, { EventCardProps } from "./EventCard";
-import userEvent from "@testing-library/user-event";
 
 describe("EventCard", () => {
   it("should format a day-only event", () => {

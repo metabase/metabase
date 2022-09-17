@@ -17,15 +17,16 @@ interface LineSeriesProps {
 }
 
 export const LineSeries = ({
-  series,
+  series: multipleSeries,
   yScaleLeft,
   yScaleRight,
   xAccessor,
 }: LineSeriesProps) => {
   return (
     <Group>
-      {series.map(s => {
-        const yScale = s.yAxisPosition === "left" ? yScaleLeft : yScaleRight;
+      {multipleSeries.map((series, seriesIndex) => {
+        const yScale =
+          series.yAxisPosition === "left" ? yScaleLeft : yScaleRight;
         if (!yScale) {
           return null;
         }
@@ -33,11 +34,11 @@ export const LineSeries = ({
         const yAccessor = (datum: SeriesDatum) => yScale(getY(datum)) ?? 0;
         return (
           <LinePath
-            key={s.name}
-            data={s.data}
+            key={series.name}
+            data={series.data}
             x={xAccessor}
             y={yAccessor}
-            stroke={s.color}
+            stroke={series.color}
             strokeWidth={2}
           />
         );

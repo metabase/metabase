@@ -567,11 +567,11 @@
   (cond-> (serdes.base/extract-one-basics "Pulse" pulse)
     (:collection_id pulse) (update :collection_id serdes.util/export-fk 'Collection)
     (:dashboard_id  pulse) (update :dashboard_id  serdes.util/export-fk 'Dashboard)
-    true                   (update :creator_id serdes.util/export-fk-keyed 'User :email)))
+    true                   (update :creator_id    serdes.util/export-user)))
 
 (defmethod serdes.base/load-xform "Pulse" [pulse]
   (cond-> (serdes.base/load-xform-basics pulse)
-      true                   (update :creator_id    serdes.util/import-fk-keyed 'User :email)
+      true                   (update :creator_id    serdes.util/import-user)
       (:collection_id pulse) (update :collection_id serdes.util/import-fk 'Collection)
       (:dashboard_id  pulse) (update :dashboard_id  serdes.util/import-fk 'Dashboard)))
 

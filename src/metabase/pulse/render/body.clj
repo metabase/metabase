@@ -9,7 +9,6 @@
             [metabase.pulse.render.datetime :as datetime]
             [metabase.pulse.render.image-bundle :as image-bundle]
             [metabase.pulse.render.js-svg :as js-svg]
-            [metabase.pulse.render.sparkline :as sparkline]
             [metabase.pulse.render.style :as style]
             [metabase.pulse.render.table :as table]
             [metabase.pulse.util :as pu]
@@ -309,24 +308,28 @@
         x-col-settings (or (settings-from-column x-col column-settings) {})
         y-col-settings (or (settings-from-column y-col column-settings) {})
         x-format       (merge
-                         (if (isa? (:effective_type x-col) :type/Temporal)
-                           {:date_style "MMMM D, YYYY"}
-                           default-format)
-                         x-col-settings)
+                        (if (isa? (:effective_type x-col) :type/Temporal)
+                          {:date_style "MMMM D, YYYY"}
+                          default-format)
+                        x-col-settings)
         y-format       (merge
-                         default-format
-                         y-col-settings)
+                        default-format
+                        y-col-settings)
         default-x-type (if (isa? (:effective_type x-col) :type/Temporal)
                          "timeseries"
                          "ordinal")]
-    {:colors      (public-settings/application-colors)
-     :stacking    (if (:stackable.stack_type viz-settings) "stack" "none")
-     :show_values (boolean (:graph.show_values viz-settings))
-     :x           {:type   (or (:graph.x_axis.scale viz-settings) default-x-type)
-                   :format x-format}
-     :y           {:type   (or (:graph.y_axis.scale viz-settings) "linear")
-                   :format y-format}
-     :labels      labels}))
+    (merge
+     {:colors      (public-settings/application-colors)
+      :stacking    (if (:stackable.stack_type viz-settings) "stack" "none")
+      :show_values (boolean (:graph.show_values viz-settings))
+      :x           {:type   (or (:graph.x_axis.scale viz-settings) default-x-type)
+                    :format x-format}
+      :y           {:type   (or (:graph.y_axis.scale viz-settings) "linear")
+                    :format y-format}
+      :labels      labels}
+     (when (:graph.show_goal viz-settings)
+       {:goal {:value (:graph.goal_value viz-settings)
+               :label (or (:graph.goal_label viz-settings) (tru "Goal"))}}))))
 
 (defn- set-default-stacked
   "Default stack type is stacked for area chart with more than one metric.
@@ -344,7 +347,7 @@
 
 (defn- x-and-y-axis-label-info
   "Generate the X and Y axis labels passed in as the `labels` argument
-  to [[metabase.pulse.render.js-svg/timelineseries-bar]] and other similar functions for rendering charts with X and Y
+  to [[metabase.pulse.render.js-svg/timelineseries-waterfall]] and other similar functions for rendering charts with X and Y
   axes. Respects custom display names in `viz-settings`; otherwise uses `x-col` and `y-col` display names."
   [x-col y-col viz-settings]
   {:bottom (or (:graph.x_axis.title_text viz-settings)
@@ -356,13 +359,15 @@
   "X and Y axis labels passed into the `labels` argument needs to be different
   for combos specifically (as opposed to multiples)"
   [x-cols y-cols viz-settings]
-  {:bottom (or (:graph.x_axis.title_text viz-settings)
-               (:display_name (first x-cols)))
-   :left   (or (:graph.y_axis.title_text viz-settings)
-               (:display_name (first y-cols)))
-   :right  (or (:graph.y_axis.title_text viz-settings)
-               (:display_name (second y-cols))
-               "")})
+  {:bottom (when (:graph.x_axis.labels_enabled viz-settings)
+             (or (:graph.x_axis.title_text viz-settings)
+                 (:display_name (first x-cols))))
+   :left   (when (:graph.y_axis.labels_enabled viz-settings)
+             (or (:graph.y_axis.title_text viz-settings)
+                 (:display_name (first y-cols))))
+   :right  (when (:graph.y_axis.labels_enabled viz-settings)
+             (or (:graph.y_axis.title_text viz-settings)
+                 (:display_name (second y-cols))))})
 
 (def ^:private colors
   "Colors to cycle through for charts. These are copied from https://stats.metabase.com/_internal/colors"
@@ -568,6 +573,7 @@
   (for [[idx y-col] (map-indexed vector y-cols)]
     (let [y-col-key     (keyword (:name y-col))
           card-name     (or (series-setting viz-settings y-col-key :name)
+                            (series-setting viz-settings y-col-key :title)
                             (:display_name y-col))
           card-color    (or (series-setting viz-settings y-col-key :color)
                             (nth colors idx))
@@ -577,11 +583,11 @@
           selected-rows (mapv #(vector (ffirst %) (nth (second %) idx)) joined-rows)
           y-axis-pos    (or (series-setting viz-settings y-col-key :axis)
                             (nth (default-y-pos viz-settings) idx))]
-     {:name          card-name
-      :color         card-color
-      :type          card-type
-      :data          selected-rows
-      :yAxisPosition y-axis-pos})))
+      {:name          card-name
+       :color         card-color
+       :type          card-type
+       :data          selected-rows
+       :yAxisPosition y-axis-pos})))
 
 (defn- double-x-axis-combo-series
   "This munges rows and columns into series in the format that we want for combo staticviz for literal combo displaytype,
@@ -596,6 +602,7 @@
       (let [row-group          (get grouped-rows group-key)
             selected-row-group (mapv #(vector (ffirst %) (first (second %))) row-group)
             card-name          (or (series-setting viz-settings group-key :name)
+                                   (series-setting viz-settings group-key :title)
                                    group-key)
             card-color         (or (series-setting viz-settings group-key :color)
                                    (nth colors idx))
@@ -747,57 +754,6 @@
                         (trs "Nothing to compare to.")]]
          :render/text (str last-value "\n" (trs "Nothing to compare to."))}))))
 
-(s/defmethod render :sparkline :- common/RenderedPulseCard
-  [_ render-type timezone-id card dashcard {:keys [_rows cols viz-settings] :as data}]
-  (let [viz-settings   (merge viz-settings (:visualization_settings dashcard))
-        [x-axis-rowfn
-         y-axis-rowfn] (common/graphing-column-row-fns card data)
-        [x-col y-col]  ((juxt x-axis-rowfn y-axis-rowfn) cols)
-        rows           (sparkline/cleaned-rows timezone-id card data)
-        last-rows      (reverse (take-last 2 rows))
-        values         (for [row last-rows]
-                         (some-> row y-axis-rowfn common/format-number))
-        labels         (datetime/format-temporal-string-pair timezone-id
-                                                             (map x-axis-rowfn last-rows)
-                                                             (x-axis-rowfn cols))
-        render-fn      (if (isa? (-> cols x-axis-rowfn :effective_type) :type/Temporal)
-                         js-svg/timelineseries-line
-                         js-svg/categorical-line)
-        image-bundle   (image-bundle/make-image-bundle
-                        render-type
-                        (render-fn (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)
-                                   (x-and-y-axis-label-info x-col y-col viz-settings)
-                                   (->js-viz x-col y-col viz-settings)))]
-    {:attachments
-     (when image-bundle
-       (image-bundle/image-bundle->attachment image-bundle))
-
-     :content
-     [:div
-      [:img {:style (style/style {:display :block
-                                  :width   :100%})
-             :src   (:image-src image-bundle)}]
-      [:table {:style (style/style {:border-spacing :0px})}
-       [:tr
-        [:td {:style (style/style {:color         style/color-text-dark
-                                   :font-size     :16px
-                                   :font-weight   700
-                                   :padding-right :16px})}
-         (first values)]
-        [:td {:style (style/style {:color       style/color-gray-3
-                                   :font-size   :16px
-                                   :font-weight 700})}
-         (second values)]]
-       [:tr
-        [:td {:style (style/style {:color         style/color-text-dark
-                                   :font-size     :12px
-                                   :font-weight   700
-                                   :padding-right :16px})}
-         (first labels)]
-        [:td {:style (style/style {:color     style/color-gray-3
-                                   :font-size :12px})}
-         (second labels)]]]]}))
-
 (s/defmethod render :waterfall :- common/RenderedPulseCard
   [_ render-type _timezone-id card dashcard {:keys [rows cols viz-settings] :as data}]
   (let [viz-settings   (merge viz-settings (:visualization_settings dashcard))
@@ -870,7 +826,8 @@
                      (style/font-style)
                      {:margin-top :8px
                       :color      style/color-gray-4})}
-       (trs "No results")]]}))
+       (trs "No results")]]
+     :render/text (trs "No results")}))
 
 (s/defmethod render :attached :- common/RenderedPulseCard
   [_ render-type _ _ _ _]

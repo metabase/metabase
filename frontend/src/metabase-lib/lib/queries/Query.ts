@@ -5,7 +5,7 @@ import { DependentMetadataItem } from "metabase-types/types/Query";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Question from "metabase-lib/lib/Question";
 import Dimension from "metabase-lib/lib/Dimension";
-import Variable from "metabase-lib/lib/Variable";
+import Variable from "metabase-lib/lib/variables/Variable";
 import { memoizeClass } from "metabase-lib/lib/utils";
 import DimensionOptions from "metabase-lib/lib/DimensionOptions";
 
@@ -14,7 +14,7 @@ type QueryUpdateFn = (datasetQuery: DatasetQuery) => void;
  * An abstract class for all query types (StructuredQuery & NativeQuery)
  */
 
-class Query {
+class QueryInner {
   _metadata: Metadata;
 
   /**
@@ -66,7 +66,7 @@ class Query {
     return this._datasetQuery;
   }
 
-  setDatasetQuery(datasetQuery: DatasetQuery): Query {
+  setDatasetQuery(datasetQuery: DatasetQuery): QueryInner {
     return this;
   }
 
@@ -116,7 +116,7 @@ class Query {
     return [];
   }
 
-  setDefaultQuery(): Query {
+  setDefaultQuery(): QueryInner {
     return this;
   }
 
@@ -132,4 +132,6 @@ class Query {
   }
 }
 
-export default memoizeClass<Query>("question")(Query);
+export default class Query extends memoizeClass<QueryInner>("question")(
+  QueryInner,
+) {}

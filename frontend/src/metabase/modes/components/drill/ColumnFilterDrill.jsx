@@ -32,11 +32,12 @@ export default function ColumnFilterDrill({ question, clicked }) {
       buttonType: "horizontal",
       icon: "filter",
       // eslint-disable-next-line react/display-name
-      popover: ({ onChangeCardAndRun, onClose }) => (
+      popover: ({ onChangeCardAndRun, onResize, onClose }) => (
         <FilterPopover
           query={query}
           filter={initialFilter}
           onClose={onClose}
+          onResize={onResize}
           onChangeFilter={filter => {
             const nextCard = query.filter(filter).question().card();
             onChangeCardAndRun({ nextCard });

@@ -4,14 +4,13 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 import cx from "classnames";
 import { t } from "ttag";
+import Popover from "metabase/components/Popover";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import AddClauseButton from "./AddClauseButton";
 import Expressions from "./expressions/Expressions";
 import ExpressionWidget from "./expressions/ExpressionWidget";
 import LimitWidget from "./LimitWidget";
 import SortWidget from "./SortWidget";
-import Popover from "metabase/components/Popover";
-
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 export class ExtendedOptionsPopover extends Component {
   state = {

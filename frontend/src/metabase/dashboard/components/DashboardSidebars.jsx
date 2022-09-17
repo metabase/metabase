@@ -4,13 +4,12 @@ import _ from "underscore";
 
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
-import ClickBehaviorSidebar from "./ClickBehaviorSidebar";
-import DashboardInfoSidebar from "./DashboardInfoSidebar";
 import ParameterSidebar from "metabase/parameters/components/ParameterSidebar";
 import SharingSidebar from "metabase/sharing/components/SharingSidebar";
-import { AddCardSidebar } from "./add-card-sidebar/AddCardSidebar";
-
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import ClickBehaviorSidebar from "./ClickBehaviorSidebar";
+import DashboardInfoSidebar from "./DashboardInfoSidebar";
+import { AddCardSidebar } from "./add-card-sidebar/AddCardSidebar";
 
 DashboardSidebars.propTypes = {
   dashboard: PropTypes.object,

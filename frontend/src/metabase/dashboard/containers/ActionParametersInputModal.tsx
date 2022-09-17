@@ -6,13 +6,15 @@ import ModalContent from "metabase/components/ModalContent";
 
 import ActionParametersInputForm from "metabase/writeback/containers/ActionParametersInputForm";
 
-import type { DashboardWithCards } from "metabase-types/types/Dashboard";
+import type { WritebackAction } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-type DataAppDashboard = DashboardWithCards;
+import { getFormTitle } from "metabase/writeback/components/ActionCreator/FormCreator";
+import { closeActionParametersModal } from "../actions";
+import { getActionParametersModalFormProps } from "../selectors";
 
 interface OwnProps {
-  dashboard: DataAppDashboard;
+  action: WritebackAction;
 }
 
 interface StateProps {
@@ -27,25 +29,27 @@ type Props = OwnProps & StateProps & DispatchProps;
 
 function mapStateToProps(state: State) {
   return {
-    formProps: {},
+    formProps: getActionParametersModalFormProps(state),
   };
 }
 
 const mapDispatchToProps = {
-  closeActionParametersModal: () => {
-    // pass
-  },
+  closeActionParametersModal,
 };
 
 function ActionParametersInputModal({
   formProps,
+  action,
   closeActionParametersModal,
 }: Props) {
+  const title = getFormTitle(action);
+
   return (
     <Modal onClose={closeActionParametersModal}>
-      <ModalContent onClose={closeActionParametersModal}>
+      <ModalContent title={title} onClose={closeActionParametersModal}>
         <ActionParametersInputForm
           {...formProps}
+          action={action}
           onSubmitSuccess={closeActionParametersModal}
         />
       </ModalContent>

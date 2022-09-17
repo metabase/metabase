@@ -12,10 +12,6 @@ Application settings are useful for granting groups access to some, but not all,
 
 To set application permissions, got to the top right of the screen and click on the **gear** icon > **Admin settings** > **Permissions** > **Application**.
 
-- [Settings access](#settings-access)
-- [Monitoring access](#monitoring-access)
-- [Subscriptions and alerts](#subscriptions-and-alerts)
-
 ## Settings access
 
 Settings access defines which groups can view and edit the settings under the Admin > Settings tab. These settings include:

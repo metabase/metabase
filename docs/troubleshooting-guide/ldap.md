@@ -4,16 +4,9 @@ title: LDAP
 
 # LDAP
 
-<div class='doc-toc' markdown=1>
-- [LDAP documentation][ldap-docs]
-- [LDAP sample configuration](#ldap-sample-configuration)
-- [Related software for troubleshooting](#related-software-for-troubleshooting)
-- [Current limitations](#current-limitations)
-</div>
-
 Metabase can use LDAP for authentication. [This article][ldap-learn] explains how to set it up, and the guide below will help you troubleshoot if anything goes wrong. If your problem isn't specific to LDAP, go to [our troubleshooting guide for logging in](./cant-log-in.md).
 
-<h2 id="ldap-sample-configuration">LDAP sample configuration</h2>
+## LDAP sample configuration
 
 You can test Metabase with LDAP by using this `docker-compose` definition:
 
@@ -74,7 +67,7 @@ If you don't pass environment variables to Metabase and you want to configure th
 
 For the `USER FILTER`, you can leave the default value, which will look for the user ID in both the `uid` or `email` field.
 
-<h2 id="related-software-for-troubleshooting">Related software for troubleshooting</h2>
+## Related software for troubleshooting
 
 If you run into an issue, check that you can login to your LDAP directory and issue queries using software like [Apache Directory Studio][apache-directory-studio]. It will let you see the whole LDAP tree and view the logs of your LDAP application to see queries run.
 

@@ -11,12 +11,11 @@ import { getCardUiParameters } from "metabase/parameters/utils/cards";
 import { hasMatchingParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 
-import Metadata from "metabase-lib/lib/metadata/Metadata";
-
 import { Dispatch, GetState } from "metabase-types/store";
 
 import { Card, SavedCard } from "metabase-types/types/Card";
 import { Parameter } from "metabase-types/types/Parameter";
+import Metadata from "metabase-lib/lib/metadata/Metadata";
 
 type BlankQueryOptions = {
   db?: string;

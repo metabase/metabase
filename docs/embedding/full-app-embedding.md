@@ -4,161 +4,243 @@ redirect_from:
   - /docs/latest/enterprise-guide/full-app-embedding
 ---
 
-# Full-app embedding 
+# Full-app embedding
 
 {% include plans-blockquote.html feature="Full-app embedding" %}
 
-The open-source edition of Metabase allows you to [embed standalone charts or dashboards](./introduction.md) in your own web applications for simple situations. But what if you want to provide your users with a more interactive, browsable experience? Some plans allow you to embed the entire Metabase app within your own web app, allowing you to provide [drill-through](https://www.metabase.com/learn/basics/questions/drill-through.html) for your embedded charts and dashboards, or even embed the graphical query builder, or collections of dashboards and charts.
+Metabase offers several [types of embedding](./introduction.md) with different levels of customization and security.
 
-You'll be putting the whole Metabase app into an iframe, and the SSO integration you've set up with Metabase will be used to make sure the embedded Metabase respects the collection and data permissions you've set up for your user groups. Clicking on charts and graphs in the embed will do just what they do in Metabase itself. You can even display a specific Metabase collection in an embed to allow your users to browse through all the dashboards and questions that you've made available to them. The only difference is that Metabase's top nav bar and global search will not be rendered in your iframe.
+**Full-app embedding** is the only type of embedding that integrates with your [permissions](../permissions/introduction.md) and [SSO](../people-and-groups/start.md#authentication) to give people the right level of access to [query](https://www.metabase.com/glossary/query_builder) and [drill-down](https://www.metabase.com/learn/questions/drill-through) into your data.
 
-## What you'll be doing
+If you only want to set up a fixed number of filters and drill-down views into your data (i.e., prevent people from creating their own [questions](https://www.metabase.com/glossary/question)), you might prefer [Signed embedding](./signed-embedding.md).
 
-To get this going, you're going to need:
+## Prerequisites
 
-- A [paid plan of Metabase](https://www.metabase.com/pricing) that includes full-app embedding.
-- A separate web application that you want to embed your dashboards and charts in.
+1. Make sure you have a [license token](../paid-features/activating-the-enterprise-edition.md) for a [paid plan](https://store.metabase.com/checkout/login-details).
+2. Organize people into Metabase [groups](../people-and-groups/start.md).
+3. Set up [permissions](../permissions/introduction.md) for each group.
+4. Set up [SSO](../people-and-groups/start.md#authentication) to automatically apply permissions and show people the right data upon sign-in.
 
-## Enabling embedding in Metabase
+If you're dealing with a [multi-tenant](https://www.metabase.com/learn/customer-facing-analytics/multi-tenant-self-service-analytics) situation, check out our recommendations for [Configuring permissions for different customer schemas](https://www.metabase.com/learn/permissions/multi-tenant-permissions).
 
-First, let's enable embedding in your Metabase instance. Go to the Admin Panel, and under Settings, go to the “Embedding in other applications” tab. From there, click “Enable.”
+## Enabling full-app embedding in Metabase
 
-Once you do, you'll see a set of options:
+1. Go to **Settings** > **Admin settings** > **Embedding**.
+2. Click **Enable**.
+3. Click **Full-app embedding**.
+4. Under **Authorized origins**, add the URL of the website or web app where you want to embed Metabase (e.g., `https://*.example.com`).
 
-- **Embedding secret key:** You can ignore this setting, which is only for standalone chart or dashboard embeds.
+## Setting up embedding on your website
 
-- **Embedding the entire Metabase app:** Here's where you'll enter the base URLs of the web applications that you want to allow to embed Metabase. This value will be used to populate the `Content-Security-Policy` HTTP header's [`frame-ancestors` directive](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/frame-ancestors), and should follow the same format.
-  For example, `https://*.metabase.com http://my-web-app.example.com:8080/`. Leaving this empty will default to a `frame-ancestors` value of `'none'`.
-  If you're a fancy person, you can specify this URL in the environment variable [`MB_EMBEDDING_APP_ORIGIN`](../configuring-metabase/environment-variables.md#mb_embedding_app_origin).
+1. Create an iframe with a `src` attribute set to:
+   - the [URL](#pointing-an-iframe-to-a-metabase-url) of the Metabase page you want to embed, or
+   - an [authentication endpoint](#pointing-an-iframe-to-an-authentication-endpoint) that redirects to your Metabase URL.
+2. Optional: Depending on the way your web app is set up, set [environment variables](../configuring-metabase/environment-variables.md) to:
+   - [Add your license token](../configuring-metabase/environment-variables.md#mb_premium_embedding_token).
+   - [Embed Metabase in a different domain](#embedding-metabase-in-a-different-domain).
+   - [Secure your full-app embed](#securing-full-app-embeds).
+3. Optional: Set up [`postMessage` methods](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage) in your JavaScript to:
+   - [Fill an entire iframe with an embedded Metabase page](#filling-an-entire-iframe-with-an-embedded-metabase-page).
+   - [Fit an iframe to a Metabase page with a fixed size](#fitting-an-iframe-to-a-metabase-page-with-a-fixed-size).
+   - [Get a specific embedding URL](#getting-a-specific-embedding-url).
+4. Optional: Set parameters to [show or hide Metabase UI components](#showing-or-hiding-metabase-ui-components).
 
-### Note on incognito mode
+Once you're ready to roll out your full-app embed, make sure that people **allow** browser cookies from Metabase, otherwise they won't be able to log in.
 
-Some browsers, like Chrome, disable `localStorage` in Incognito mode, so people won't be able to login via FullApp embedded iframe unless they explicitly allow cookies from Metabase. You may want to remind Chrome users to go to chrome://settings/cookies and add the Metabase Site URL under "Sites that can always use cookies".
+### Pointing an iframe to a Metabase URL
 
-## Setting things up in your web app
+Go to your Metabase instance and find the page that you want to embed.
 
-To give you a picture of what you'll need to do in your app, we've created this [reference app](https://github.com/metabase/sso-examples/tree/master/app-embed-example). If you use React in your application, [this React component](https://github.com/metabase/sso-examples/blob/master/app-embed-example/src/MetabaseAppEmbed.js) may be helpful.
-
-The main elements you'll need to embed Metabase in your app are:
-
-- An SSO authentication endpoint in your application, typically JWT or SAML, and Metabase configured to use them.
-- An `<iframe>` element in your application, with the `src` attribute set to either a URL in Metabase (e.x. `http://metabase.yourcompany.com/dashboard/1`), or directly to the authentication endpoint in your application, with a parameter specifying where to redirect back to (e.x. `http://yourcompany.com/api/auth?redirect=http%3A%2F%2Fmetabase.yourcompany.com%2Fdashboard%2F1`). The latter will avoid an extra redirect if the user has not been authenticated.
-- Optional: when the embedding website is hosted under a domain _other_ than the one your Metabase instance is hosted under, you may need to set the environment variable `MB_SESSION_COOKIE_SAMESITE=None`. Setting the variable to `None` requires you to use HTTPS in Metabase, otherwise browsers will reject the request. Other options for the SameSite variable are `Lax` (default) or `Strict`. Visit MDN to learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).
-- Optional: JavaScript using [postMessage](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage) in your application for enabling communication to and from the embedded Metabase. Here are the types of `postMessage` messages we currently support:
-
-## Supported `postMessage` messages _from_ embedded Metabase:
-
-- `frame` message with `normal` mode: the current page in the embedded Metabase will fill whatever size `iframe` it is displayed in, e.x. the `/question` pages:
-
-  { "metabase": { "type": "frame", "frame": { "mode": "normal" }}}
-
-- `frame` message with `fit` mode: the current page in the embedded Metabase expects a specific aspect ratio, e.x. `/dashboard` pages, so the `iframe` should be set to specified height if you don't want it to scroll:
-
-  { "metabase": { "type": "frame", "frame": { "mode": "fit", height: HEIGHT_IN_PIXELS }}}
-
-- `location` message: the embedded Metabase changed URLs. Use this for deep-linking, etc (`location` mirrors `window.location`):
-
-  { "metabase": { "type": "location", "location": LOCATION_OBJECT }}
-
-## Supported `postMessage` messages _to_ embedded Metabase:
-
-- `location` message: change the URL of the embedded Metabase:
-
-  { "metabase": { "type": "location", "location": LOCATION_OBJECT_OR_URL }}
-
-## Overriding selected full-app components with parameters
-
-You can add query parameters to the URL to toggle various full-app features.
-
-E.g., the URL
+For example, to embed your Metabase home page, set the `src` attribute to your [site URL](../configuring-metabase/settings.md#site-url).
 
 ```
-http://localhost:3000/?top_nav=false&side_nav=false
+http://metabase.yourcompany.com/
 ```
 
-would disable the top and side nav:
+To embed a specific Metabase dashboard, use the dashboard's URL:
+
+```
+http://metabase.yourcompany.com/dashboard/1
+```
+
+### Pointing an iframe to an authentication endpoint
+
+Use this option if you want to send people directly to your SSO login screen (i.e., skip over the Metabase login screen with an SSO button), and redirect to Metabase automatically upon authentication.
+
+You'll need to set the `src` attribute to your auth endpoint, with a parameter containing the encoded Metabase URL. For example, to send people to your SSO login page and automatically redirect them to `http://metabase.yourcompany.com/dashboard/1`:
+
+```
+https://metabase.example.com/auth/sso?redirect=http%3A%2F%2Fmetabase.yourcompany.com%2Fdashboard%2F1
+```
+
+If you're using [JWT](../people-and-groups/authenticating-with-jwt.md), you can use the relative path for the redirect (i.e., your Metabase URL without the [site URL](../configuring-metabase/settings.md#site-url)). For example, to send people to a Metabase page at `/dashboard/1`:
+
+```
+https://metabase.example.com/auth/sso?jwt=<token>&redirect=%2Fdashboard%2F1
+```
+
+You must URL encode (or double encode, depending on your web setup) all of the parameters in your redirect link, including parameters for filters (e.g., `filter=value`) and [UI settings](#showing-or-hiding-metabase-ui-components) (e.g., `top_nav=true`). For example, if you added two filter parameters to the JWT example shown above, your `src` link would become:
+
+```
+https://metabase.example.com/auth/sso?jwt=<token>&redirect=%2Fdashboard%2F1%3Ffilter1%3Dvalue%26filter2%3Dvalue
+```
+
+## Embedding Metabase in a different domain
+
+If you want to embed Metabase in another domain (e.g., Metabase is hosted at `metabase.yourcompany.com`, but you want to embed Metabase at `yourcompany.github.io`), set the following [environment variable](../configuring-metabase/environment-variables.md):
+
+```
+MB_SESSION_COOKIE_SAMESITE=None
+```
+
+If you set this environment variable to `None`, you must use HTTPS in Metabase to prevent browsers from rejecting the request. For more information, see MDN's documentation on [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).
+
+## Securing full-app embeds
+
+Metabase uses HTTP cookies to authenticate people and keep them signed into your embedded Metabase, even when someone closes their browser session.
+
+To limit the amount of time that a person stays logged in, set [`MAX_SESSION_AGE`](../configuring-metabase/environment-variables.md#max_session_age) to a number in minutes. The default value is 20,160 (two weeks).
+
+For example, to keep people signed in for 24 hours at most:
+
+```
+MAX_SESSION_AGE=2040
+```
+
+To automatically clear a person's login cookies when they end a browser session:
+
+```
+MB_SESSION_COOKIES=true
+```
+
+To manually log someone out of Metabase, load the following URL (for example, in a hidden iframe on the logout page of your application):
+
+```
+https://metabase.yourcompany.com/auth/logout
+```
+
+If you're using [JWT](../people-and-groups/authenticating-with-jwt.md) for SSO, we recommend setting the `exp` (expiration time) property to a short duration (e.g., 1 minute).
+
+## Filling an entire iframe with an embedded Metabase page
+
+To make an embedded Metabase page fill up the entire iframe (e.g., a question page), use [postMessage()](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage) to send a "frame" message from Metabase:
+
+```
+{ “metabase”: { “type”: “frame”, “frame”: { “mode”: “normal” }}}
+```
+
+## Fitting an iframe to a Metabase page with a fixed size
+
+To specify the size of an iframe so that it matches an embedded Metabase page (e.g., a dashboard page), use [postMessage()](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage) to send a "frame" message from Metabase:
+
+```
+{ “metabase”: { “type”: “frame”, “frame”: { “mode”: “fit”, height: HEIGHT_IN_PIXELS }}}
+```
+
+## Getting a specific embedding URL
+
+To make a request for an particular embedding URL (e.g., for deep linking), use [postMessage()](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage) to send a "location" message _from_ your embedded Metabase:
+
+```
+{ “metabase”: { “type”: “location”, “location”: LOCATION_OBJECT }}
+```
+
+Or, send a "location" message _to_ your embedded Metabase:
+
+```
+{ “metabase”: { “type”: “location”, “location”: LOCATION_OBJECT_OR_URL }}
+```
+
+## Showing or hiding Metabase UI components
+
+To change the interface of your full-app embed, you can add parameters to the end of your embedding URL. If you want to change the colors or fonts in your embed, see [Customizing appearance](../configuring-metabase/appearance.md).
+
+For example, you can disable Metabase's [top nav bar](#top_nav) and [side nav menu](#side_nav) like this:
+
+```
+your_embedding_url?top_nav=false&side_nav=false
+```
 
 ![Top nav and side nav disabled](./images/no-top-no-side.png)
 
 ### `top_nav`
 
-Entire top navigation bar, with optional search and new button.
+Hidden by default. To show the top navigation bar:
+
+```
+top_nav=true
+```
 
 ![Top nav bar](./images/top-nav.png)
 
-The top bar is hidden by default. Additionally, if you enable the top bar (`top_nav=true`), you can turn on other hidden-by-default top bar options:
+### `search`
 
-- `search`: Search bar within the top nav.
-- `new_button`: “New” CTA that lets users create questions and more.
+Hidden by default. To show the search box in the top nav:
+
+```
+top_nav=true&search=true
+```
+
+### `new_button`
+
+Hidden by default. To show the **+ New** button used to create queries or dashboards:
+
+```
+top_nav=true&new_button=true
+```
 
 ### `side_nav`
 
-The main navigation bar.
+The navigation sidebar is shown on `/collection` and home page routes, and hidden everywhere else by default.
+
+To allow people to minimize the sidebar:
+
+```
+top_nav=true&side_nav=true
+```
 
 ![Side nav](./images/side-nav.png)
 
-The navigation sidebar is hidden by default, aside from `/collection` and home page product routes. If you want people to be able to minimize the sidebar, you MUST enable the `top_nav`.
-
 ### `header`
 
-The header, visible by default, only applies to dashboards and questions. The header refers to the info and buttons above a question or dashboard. The header includes the title, additional info, and the action buttons (Filter and Summarize).
+Visible by default on question and dashboard pages.
 
-If you enable the header, these sub-components are visible by default:
+To hide a question or dashboard's title, [additional info](#additional_info), and [action buttons](#action_buttons):
 
-#### `additional_info`
+```
+header=false
+```
 
-Applicable to dashboards and questions. Refers to the gray text “Edited X days ago by FirstName LastName”, as well as the collection, database, and table information.
+### `additional_info`
+
+Visible by default on question and dashboard pages, when the [header](#header) is enabled.
+
+To hide the gray text “Edited X days ago by FirstName LastName”, as well as the breadcrumbs with collection, database, and table names:
+
+```
+header=false&additional_info=false
+```
 
 ![Additional info](./images/additional-info.png)
 
-#### `action_buttons`
+### `action_buttons`
 
-Applicable to questions. Refers to the **Save**, **Summarize**, and **Filter** action buttons, as well as the icon to bring up the query builder.
+Visible by default on question pages when the [header](#header) is enabled.
+
+To hide the action buttons such as **Save**, **Summarize**, **Filter**, or the query builder icon:
+
+```
+header=false&action_buttons=false
+```
 
 ![Action buttons](./images/action-buttons.png)
 
-## Choosing what to embed
+## Reference app
 
-The exact next steps will differ depending on your specific needs and goals, but the basic tool you have at hand now is that you can make any link in your web app render a particular page from your Metabase instance.
-
-So if you have for example a "Stats" or "Analytics" page in your web app, you could have that page display one of your Metabase dashboards. What's powerful about this type of embedding vs. standalone chart or dashboard embeds though is that your users will be able to click on the individual charts in that dashboard to see them in more detail, and further explore them using drill-through, or even Metabase's graphical query builder.
-
-## A note on drill-through and permissions
-
-One of the main differences between embedding the full Metabase app vs. standalone embeds is that charts and graphs will have drill-through enabled. This lets your users click on charts to zoom in, pivot, and generally explore more.
-
-### What does drill-through let my users do exactly?
-
-When clicking on any part of a chart — like a dot, bar, slice, or state — your users will see the drill-through action menu.
-
-![Action menu](./images/action-menu.png)
-
-This will let them do things like:
-
-- See the unaggregated rows for that point on the chart.
-- Zoom in on the clicked point on a time series
-- Pivot or break out the clicked point by an available dimension to see a new chart
-- Use the X-ray or Comparison actions, if you haven't turned X-rays off in the Admin Panel, which will display an automatic analysis of the clicked point.
-
-Drill-through also allows users to click on the title of a chart in a dashboard to see the detail view of that question. From the detail view, if they have data permissions, they can use Metabase's graphical query editor to explore further. If they've been given SQL editor permissions, they can also view the SQL for the question and edit it to explore more.
-
-Depending on the collections permissions you set, your users can also save their explorations into collections. If you want to allow them to find these saved explorations, make sure your web application implements a link to view the collections directory.
-
-Check out our article, [Create charts with explorable data](https://www.metabase.com/learn/basics/questions/drill-through.html).
-
-### Using SSO to apply data or collection permissions to embeds
-
-If you're using SSO to authenticate users in your web app and you've also connected your SSO to Metabase, users who authenticate into your web application will automatically have their Metabase group permissions applied when viewing the dashboards, charts, or collections you embed. This means that once you've set up sandboxes and data and collection permissions in Metabase, you don't need to think about what your web app users can see when exploring.
-
-## Suggestions for Securing Embeds
-
-Currently we use HTTP cookies to authenticate embedded Metabase users. A limitation of this is that the embedded Metabase is not automatically logged out when the user closes or logs out of the embedding application. For this reason you may want to set Metabase's `MAX_SESSION_AGE` environment variable to a smaller number of minutes than the default of 20,160 (two weeks), or set `MB_SESSION_COOKIES=true` to cause the cookies to be removed when the browser is exited. Also, you can force Metabase to log out by loading "https://metabase.yourcompany.com/auth/logout" (for example, in a hidden iframe on the logout page of your application).
-
-When signing JWTs for either SSO (i.e., in full-app embedding) or standalone question/dashboard embedding, you should always include an expiration time `exp` property appropriate for your application. For SSO it can be very short (e.g., 1 minute) as the token is immediately used to create a session. For embedding it can be short if there are no parameters you expect the user to change, otherwise it should be as long as you expect the user to view and change parameters.
+To build a sample full-app embed, see our [reference app on GitHub](https://github.com/metabase/sso-examples/tree/master/app-embed-example).
 
 ## Further reading
 
-- [Customizing Metabase's appearance](../configuring-metabase/appearance.md).
 - [Strategies for delivering customer-facing analytics](https://www.metabase.com/learn/embedding/embedding-overview).
-- [Publishing data visualizations to the web](https://www.metabase.com/learn/embedding/embedding-charts-and-dashboards).
-- [Multi-tenant self-service analytics](https://www.metabase.com/learn/embedding/multi-tenant-self-service-analytics).
+- [Permissions strategies](https://www.metabase.com/learn/permissions/strategy).
+- [Customizing Metabase's appearance](../configuring-metabase/appearance.md).

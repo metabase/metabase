@@ -5,13 +5,12 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 
-import Question from "metabase-lib/lib/Question";
-
 import Link from "metabase/core/components/Link";
 import { getMetadata } from "metabase/selectors/metadata";
 import Tables from "metabase/entities/tables";
 import GuiQueryEditor from "metabase/query_builder/components/GuiQueryEditor";
 import * as Urls from "metabase/lib/urls";
+import Question from "metabase-lib/lib/Question";
 
 import withTableMetadataLoaded from "../hoc/withTableMetadataLoaded";
 

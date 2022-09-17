@@ -12,7 +12,12 @@ import {
 import { getParameterMappingOptions as _getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
+
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
+
+import Question from "metabase-lib/lib/Question";
+
+import { isVirtualDashCard } from "./utils";
 
 export const getDashboardId = state => state.dashboard.dashboardId;
 export const getIsEditing = state => !!state.dashboard.isEditing;
@@ -65,6 +70,30 @@ export const getDashboard = createSelector(
 );
 
 export const getLoadingDashCards = state => state.dashboard.loadingDashCards;
+
+export const getDashCardById = (state, dashcardId) => {
+  const dashcards = getDashcards(state);
+  return dashcards[dashcardId];
+};
+
+export const getSingleDashCardData = (state, dashcardId) => {
+  const dashcard = getDashCardById(state, dashcardId);
+  const cardDataMap = getCardData(state);
+  if (!dashcard || !cardDataMap) {
+    return;
+  }
+  return cardDataMap?.[dashcard.id]?.[dashcard.card_id]?.data;
+};
+
+export const getDashCardTable = (state, dashcardId) => {
+  const dashcard = getDashCardById(state, dashcardId);
+  if (!dashcard || isVirtualDashCard(dashcard)) {
+    return null;
+  }
+  const metadata = getMetadata(state);
+  const question = new Question(dashcard.card, metadata);
+  return question.table();
+};
 
 export const getDashboardComplete = createSelector(
   [getDashboard, getDashcards],
@@ -133,7 +162,7 @@ export const getParameterTarget = createSelector(
     }
     const mapping = _.findWhere(dashcard.parameter_mappings, {
       parameter_id: parameter.id,
-      ...(card & card.id && { card_id: card.id }),
+      ...(card && card.id && { card_id: card.id }),
     });
     return mapping && mapping.target;
   },
@@ -207,4 +236,22 @@ export const getIsHeaderVisible = createSelector(
 export const getIsAdditionalInfoVisible = createSelector(
   [getIsEmbedded, getEmbedOptions],
   (isEmbedded, embedOptions) => !isEmbedded || embedOptions.additional_info,
+);
+
+const getMissingActionParametersModalState = state =>
+  state.dashboard.missingActionParameters;
+
+export const getActionParametersModalAction = createSelector(
+  [getDashboardComplete, getMissingActionParametersModalState],
+  (dashboard, missingActionParametersModalState) => {
+    const dashcardId = missingActionParametersModalState?.dashcardId;
+    const dashcard = dashboard?.ordered_cards.find(dc => dc.id === dashcardId);
+    return dashcard?.action;
+  },
+);
+
+export const getActionParametersModalFormProps = createSelector(
+  [getMissingActionParametersModalState],
+  missingActionParametersModalState =>
+    missingActionParametersModalState?.props || {},
 );

@@ -20,6 +20,21 @@ import { useOnUnmount } from "metabase/hooks/use-on-unmount";
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 import { getIsNavbarOpen, setErrorPage } from "metabase/redux/app";
 
+import { getDatabases, getMetadata } from "metabase/selectors/metadata";
+import {
+  getUserIsAdmin,
+  canManageSubscriptions,
+} from "metabase/selectors/user";
+
+import { getEmbedOptions } from "metabase/selectors/embed";
+
+import { parseHashOptions } from "metabase/lib/browser";
+import * as Urls from "metabase/lib/urls";
+
+import Dashboards from "metabase/entities/dashboards";
+
+import DataAppContext from "metabase/writeback/containers/DataAppContext";
+import * as dashboardActions from "../actions";
 import {
   getIsEditing,
   getIsSharing,
@@ -43,22 +58,10 @@ import {
   getIsLoadingComplete,
   getIsHeaderVisible,
   getIsAdditionalInfoVisible,
+  getActionParametersModalAction,
 } from "../selectors";
-import { getDatabases, getMetadata } from "metabase/selectors/metadata";
-import {
-  getUserIsAdmin,
-  canManageSubscriptions,
-} from "metabase/selectors/user";
 
-import { getEmbedOptions } from "metabase/selectors/embed";
-
-import * as dashboardActions from "../actions";
-import { parseHashOptions } from "metabase/lib/browser";
-import * as Urls from "metabase/lib/urls";
-
-import Dashboards from "metabase/entities/dashboards";
-
-import DataAppContext from "metabase/writeback/containers/DataAppContext";
+import ActionParametersInputModal from "./ActionParametersInputModal";
 
 function getDashboardId({ dashboardId, location, params }) {
   if (dashboardId) {
@@ -100,6 +103,7 @@ const mapStateToProps = (state, props) => {
     isHeaderVisible: getIsHeaderVisible(state),
     isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
     embedOptions: getEmbedOptions(state),
+    focusedActionWithMissingParameters: getActionParametersModalAction(state),
   };
 };
 
@@ -115,7 +119,12 @@ const mapDispatchToProps = {
 const DashboardApp = props => {
   const options = parseHashOptions(window.location.hash);
 
-  const { isRunning, isLoadingComplete, dashboard } = props;
+  const {
+    isRunning,
+    isLoadingComplete,
+    dashboard,
+    focusedActionWithMissingParameters,
+  } = props;
 
   const [editingOnLoad] = useState(options.edit);
   const [addCardOnLoad] = useState(options.add && parseInt(options.add));
@@ -172,6 +181,11 @@ const DashboardApp = props => {
         />
         {/* For rendering modal urls */}
         {props.children}
+        {dashboard?.is_app_page && focusedActionWithMissingParameters && (
+          <ActionParametersInputModal
+            action={focusedActionWithMissingParameters}
+          />
+        )}
         <Toaster
           message={
             dashboard?.is_app_page

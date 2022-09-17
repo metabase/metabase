@@ -4,13 +4,11 @@ redirect_from:
   - /docs/latest/operations-guide/running-the-metabase-jar-file
 ---
 
-# Running the Metabase JAR file
+# Running the Metabase OSS JAR file
 
-To run Metabase via a JAR file, you will need to have a Java Runtime Environment (JRE) installed on your system.
+To run the free, Open Source version of Metabase via a JAR file, you will need to have a Java Runtime Environment (JRE) installed on your system.
 
-- [Quick start](#quick-start)
-- [Local installation](#local-installation)
-- [Production installation](#production-installation)
+If you have a token for the [Pro or Enterprise editions](https://www.metabase.com/pricing/) of Metabase, see [Activating your Metabase commercial license](../paid-features/activating-the-enterprise-edition.md).
 
 ## Quick start
 
@@ -18,7 +16,7 @@ To run Metabase via a JAR file, you will need to have a Java Runtime Environment
 
 If you have Java installed:
 
-1. [Download Metabase](https://metabase.com/start/oss/jar).
+1. [Download the JAR file for Metabase OSS](https://metabase.com/start/oss/jar).
 2. Create a new directory and move the Metabase JAR into it.
 3. Change into your new Metabase directory and run the JAR.
    ```
@@ -45,7 +43,9 @@ If Java isn't installed, you'll need to install it before you can run Metabase. 
 
 ### 2. Download Metabase
 
-[Download the Metabase JAR](https://www.metabase.com/start/oss/jar).
+[Download the JAR file for Metabase OSS](https://www.metabase.com/start/oss/jar).
+
+If you want to install the [Pro or Enterprise editions](https://www.metabase.com/pricing/) of Metabase, see [Activating your Metabase commercial license](../paid-features/activating-the-enterprise-edition.md).
 
 ### 3. Create a new directory and move the Metabase JAR into it
 

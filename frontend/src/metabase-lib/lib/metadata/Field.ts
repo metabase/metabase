@@ -2,7 +2,7 @@
 // @ts-nocheck
 import _ from "underscore";
 import moment from "moment-timezone";
-import { createLookupByProperty, memoizeClass } from "metabase-lib/lib/utils";
+
 import { formatField, stripId } from "metabase/lib/formatting";
 import { getFieldValues } from "metabase/lib/query/field";
 import {
@@ -32,14 +32,16 @@ import {
   getIconForField,
   getFilterOperators,
 } from "metabase/lib/schema_metadata";
-import { FieldDimension } from "../Dimension";
-import Base from "./Base";
 import type { FieldFingerprint } from "metabase-types/api/field";
 import type { Field as FieldRef } from "metabase-types/types/Query";
+import { createLookupByProperty, memoizeClass } from "metabase-lib/lib/utils";
 import type StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import type NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import { FieldDimension } from "../Dimension";
+import Base from "./Base";
 import type Table from "./Table";
 import type Metadata from "./Metadata";
+import { getUniqueFieldId } from "./utils";
 
 export const LONG_TEXT_MIN = 80;
 
@@ -65,6 +67,7 @@ class FieldInner extends Base {
   has_field_values?: "list" | "search" | "none";
   values: any[];
   metadata?: Metadata;
+  source?: string;
 
   // added when creating "virtual fields" that are associated with a given query
   query?: StructuredQuery | NativeQuery;
@@ -75,6 +78,19 @@ class FieldInner extends Base {
     }
 
     return this.id;
+  }
+
+  // `uniqueId` is set by our normalizr schema so it is not always available,
+  // if the Field instance was instantiated outside of an entity
+  getUniqueId() {
+    if (this.uniqueId) {
+      return this.uniqueId;
+    }
+
+    const uniqueId = getUniqueFieldId(this.getId(), this.table_id);
+    this.uniqueId = uniqueId;
+
+    return uniqueId;
   }
 
   parent() {
@@ -263,6 +279,10 @@ class FieldInner extends Base {
     }
   }
 
+  // 1. `_fieldInstance` is passed in so that we can shortwire any subsequent calls to `field()` form the dimension instance
+  // 2. The distinction between "fields" and "dimensions" is fairly fuzzy, and this method is "wrong" in the sense that
+  // The `ref` of this Field instance MIGHT be something like ["aggregation", "count"] which means that we should
+  // instantiate an AggregationDimension, not a FieldDimension, but there are bugs with that route, and this seems to work for now...
   dimension() {
     const ref = this.reference();
     const fieldDimension = new FieldDimension(
@@ -418,6 +438,18 @@ class FieldInner extends Base {
       source: "fields",
       ...extra,
     });
+  }
+
+  clone(fieldMetadata) {
+    if (fieldMetadata instanceof Field) {
+      throw new Error("`fieldMetadata` arg must be a plain object");
+    }
+
+    const plainObject = this.getPlainObject();
+    const newField = new Field({ ...this, ...fieldMetadata });
+    newField._plainObject = { ...plainObject, ...fieldMetadata };
+
+    return newField;
   }
 
   /**

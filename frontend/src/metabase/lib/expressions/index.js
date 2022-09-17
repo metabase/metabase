@@ -1,7 +1,7 @@
 export * from "./config";
 
-import Dimension, { ExpressionDimension } from "metabase-lib/lib/Dimension";
 import { FK_SYMBOL } from "metabase/lib/formatting";
+import Dimension, { ExpressionDimension } from "metabase-lib/lib/Dimension";
 import {
   OPERATORS,
   FUNCTIONS,

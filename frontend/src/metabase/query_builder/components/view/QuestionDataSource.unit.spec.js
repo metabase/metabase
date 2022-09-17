@@ -9,8 +9,8 @@ import {
   PEOPLE,
   metadata,
 } from "__support__/sample_database_fixture";
-import Question from "metabase-lib/lib/Question";
 import * as Urls from "metabase/lib/urls";
+import Question from "metabase-lib/lib/Question";
 import QuestionDataSource from "./QuestionDataSource";
 
 const BASE_GUI_QUESTION = {

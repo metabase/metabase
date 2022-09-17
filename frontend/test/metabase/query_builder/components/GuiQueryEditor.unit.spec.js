@@ -2,12 +2,12 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 
 import GuiQueryEditor from "metabase/query_builder/components/GuiQueryEditor";
-import Question from "metabase-lib/lib/Question";
 import {
   SAMPLE_DATABASE,
   ORDERS,
   metadata,
 } from "__support__/sample_database_fixture";
+import Question from "metabase-lib/lib/Question";
 
 const getGuiQueryEditor = query => (
   <GuiQueryEditor

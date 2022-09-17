@@ -1,15 +1,13 @@
+import { tag_names } from "cljs/metabase.shared.parameters.parameters";
+import { isActionButtonCard } from "metabase/writeback/utils";
 import Question from "metabase-lib/lib/Question";
 import { ExpressionDimension } from "metabase-lib/lib/Dimension";
-
-import { isActionButtonCard } from "metabase/writeback/utils";
 
 import {
   dimensionFilterForParameter,
   getTagOperatorFilterForParameter,
   variableFilterForParameter,
 } from "./filters";
-
-import { tag_names } from "cljs/metabase.shared.parameters.parameters";
 
 function buildStructuredQuerySectionOptions(section) {
   return section.items.map(({ dimension }) => ({
@@ -74,8 +72,19 @@ export function getParameterMappingOptions(
   const question = new Question(card, metadata);
   const query = question.query();
   const options = [];
-
-  if (question.isStructured()) {
+  if (question.isDataset()) {
+    // treat the dataset/model question like it is already composed so that we can apply
+    // dataset/model-specific metadata to the underlying dimension options
+    const composedDatasetQuery = question.composeDataset().query();
+    options.push(
+      ...composedDatasetQuery
+        .dimensionOptions(
+          parameter ? dimensionFilterForParameter(parameter) : undefined,
+        )
+        .sections()
+        .flatMap(section => buildStructuredQuerySectionOptions(section)),
+    );
+  } else if (question.isStructured()) {
     options.push(
       ...query
         .dimensionOptions(

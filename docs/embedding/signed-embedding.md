@@ -34,10 +34,8 @@ If you want to embed charts with additional interactive features, like [drill-do
 
 ## Enabling the embedding feature in Metabase
 
-1. Go to **Admin settings** > **Embedding in other Applications**.
+1. Go to **Settings** > **Admin settings** > **Embedding**.
 2. Click **Enable**.
-
-![Enabling Embedding](./images/01-enabling.png)
 
 ## Making a question or dashboard embeddable
 
@@ -87,7 +85,7 @@ If you change the [parameters](./signed-embedding-parameters.md) of your embedde
 
 ## Disabling embedding for a question or dashboard
 
-You can find a list of all embedded questions and dashboards from **Admin settings** > **Embedding in other Applications**.
+You can find a list of all embedded questions and dashboards from **Admin settings** > **Embedding**.
 
 1. Go to the embeddable question or dashboard.
 2. Click on the **sharing icon** (square with an arrow pointing to the top right).
@@ -96,7 +94,17 @@ You can find a list of all embedded questions and dashboards from **Admin settin
 
 ## Customizing the appearance of signed embeds
 
-You can change how an embedded question or dashboard looks in an iframe (which won't change how it looks in your Metabase instance).
+You can change the way an embedded question or dashboard looks in an iframe (which won't change how it looks in your Metabase instance). Settings include:
+
+- Border
+- Title
+- Theme (light, dark, transparent)
+- Font\*
+- Download data\* (Note: This setting only hides the download button. To disable the feature entirely, use the [Download results permission](../permissions/data.md#download-results).)
+
+\* Available on paid plans.
+
+To update the appearance of a signed embed:
 
 1. Optional: Preview the appearance changes from your question or dashboard's embedding settings (**sharing icon** > **Embed this item in an application**).
 2. Optional: Click **Code** to find the updated server code snippet in the top block.
@@ -112,7 +120,7 @@ The banner appears on signed embeds created with the Metabase open source versio
 
 ## Regenerating the secret key
 
-Your embedding secret key is used to sign JWTs for all of your [embedding URLs](#adding-the-embedding-url-to-your-website). You can find it under **Admin settings** > **Embedding in other Applications**.
+Your embedding secret key is used to sign JWTs for all of your [embedding URLs](#adding-the-embedding-url-to-your-website). You can find it under **Settings** > **Admin settings** > **Embedding**.
 
 **Regenerate key** will create a new secret key, and break any embedding URLs that used the old key.
 

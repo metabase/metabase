@@ -3,10 +3,7 @@ import React, { Component } from "react";
 import cx from "classnames";
 import d3 from "d3";
 import _ from "underscore";
-import styles from "./PieChart.css";
 import { t } from "ttag";
-import ChartTooltip from "../../components/ChartTooltip";
-import ChartWithLegend from "../../components/ChartWithLegend";
 
 import {
   ChartSettingsError,
@@ -26,6 +23,9 @@ import { formatValue } from "metabase/lib/formatting";
 
 import { color } from "metabase/lib/colors";
 import { getColorsForValues } from "metabase/lib/colors/charts";
+import ChartWithLegend from "../../components/ChartWithLegend";
+import ChartTooltip from "../../components/ChartTooltip";
+import styles from "./PieChart.css";
 
 import { PieArc } from "./PieArc";
 

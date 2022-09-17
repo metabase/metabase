@@ -1,4 +1,4 @@
-import { Card } from "metabase-types/api";
+import { Card, ActionFormSettings } from "metabase-types/api";
 import {
   Parameter,
   ParameterId,
@@ -16,6 +16,7 @@ export interface WritebackActionBase {
   name: string;
   description: string | null;
   parameters: WritebackParameter[];
+  visualization_settings?: ActionFormSettings;
   "updated-at": string;
   "created-at": string;
 }
@@ -56,13 +57,18 @@ export type WritebackAction = WritebackActionBase & (QueryAction | HttpAction);
 
 export type ParameterMappings = Record<ParameterId, ParameterTarget>;
 
-export type ParametersMappedToValues = Record<
-  ParameterId,
-  { type: string; value: string | number }
->;
-
-export type ParameterMappedForActionExecution = {
-  id: ParameterId;
+type ParameterForActionExecutionBase = {
   type: string;
   value: string | number;
 };
+
+export type ParameterMappedForActionExecution =
+  ParameterForActionExecutionBase & {
+    id: ParameterId;
+    target: ParameterTarget;
+  };
+
+export type ArbitraryParameterForActionExecution =
+  ParameterForActionExecutionBase & {
+    target: ParameterTarget;
+  };

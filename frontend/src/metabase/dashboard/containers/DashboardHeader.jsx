@@ -17,10 +17,6 @@ import EntityMenu from "metabase/components/EntityMenu";
 import Bookmark from "metabase/entities/bookmarks";
 
 import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
-import {
-  DashboardHeaderButton,
-  DashboardHeaderActionDivider,
-} from "./DashboardHeader.styled";
 
 import ParametersPopover from "metabase/dashboard/components/ParametersPopover";
 import DashboardBookmark from "metabase/dashboard/components/DashboardBookmark";
@@ -32,6 +28,10 @@ import {
 
 import Header from "../components/DashboardHeader";
 import { SIDEBAR_NAME } from "../constants";
+import {
+  DashboardHeaderButton,
+  DashboardHeaderActionDivider,
+} from "./DashboardHeader.styled";
 
 const mapStateToProps = (state, props) => {
   return {

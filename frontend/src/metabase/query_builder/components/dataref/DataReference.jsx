@@ -3,6 +3,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
+import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import MainPane from "./MainPane";
 import DatabasePane from "./DatabasePane";
 import SchemaPane from "./SchemaPane";
@@ -10,8 +11,6 @@ import TablePane from "./TablePane";
 import FieldPane from "./FieldPane";
 import SegmentPane from "./SegmentPane";
 import MetricPane from "./MetricPane";
-
-import SidebarContent from "metabase/query_builder/components/SidebarContent";
 
 const PANES = {
   database: DatabasePane, // displays either schemas or tables in a database

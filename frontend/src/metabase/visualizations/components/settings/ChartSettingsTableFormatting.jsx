@@ -3,6 +3,8 @@ import React from "react";
 
 import { t, jt } from "ttag";
 
+import _ from "underscore";
+import cx from "classnames";
 import {
   getAccentColors,
   getStatusColorRanges,
@@ -25,9 +27,6 @@ import {
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { isNumeric, isString } from "metabase/lib/schema_metadata";
-
-import _ from "underscore";
-import cx from "classnames";
 
 const NUMBER_OPERATOR_NAMES = {
   "<": t`is less than`,

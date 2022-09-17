@@ -3,13 +3,15 @@ import _ from "underscore";
 import { merge } from "icepick";
 import { t } from "ttag";
 
-import { isLocalField, isSameField } from "metabase/lib/query/field_ref";
-
+import { isSameField } from "metabase/lib/query/field_ref";
 import { addUndo } from "metabase/redux/undo";
+import { loadMetadataForQueries } from "metabase/redux/metadata";
+import Questions from "metabase/entities/questions";
 
+import { getMetadata } from "metabase/selectors/metadata";
 import { getOriginalCard, getQuestion, getResultsMetadata } from "../selectors";
 
-import { apiUpdateQuestion, updateQuestion } from "./core";
+import { apiUpdateQuestion, updateQuestion, API_UPDATE_QUESTION } from "./core";
 import { runQuestionQuery } from "./querying";
 import { setQueryBuilderMode } from "./ui";
 
@@ -28,8 +30,22 @@ export const onCancelDatasetChanges = () => (dispatch, getState) => {
 
 export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
   const question = getQuestion(getState());
-  const dataset = question.setDataset(true);
-  await dispatch(apiUpdateQuestion(dataset, { rerunQuery: true }));
+
+  await dispatch(
+    Questions.actions.update(
+      {
+        id: question.id(),
+      },
+      question.setDataset(true).setDisplay("table").card(),
+    ),
+  );
+
+  const metadata = getMetadata(getState());
+  const dataset = metadata.question(question.id());
+
+  await dispatch(loadMetadataForQueries([], [dataset.dependentMetadata()]));
+
+  dispatch.action(API_UPDATE_QUESTION, dataset.card());
 
   dispatch(
     addUndo({
@@ -65,13 +81,7 @@ export const setFieldMetadata =
     const resultsMetadata = getResultsMetadata(getState());
 
     const nextColumnMetadata = resultsMetadata.columns.map(fieldMetadata => {
-      const compareExact =
-        !isLocalField(field_ref) || !isLocalField(fieldMetadata.field_ref);
-      const isTargetField = isSameField(
-        field_ref,
-        fieldMetadata.field_ref,
-        compareExact,
-      );
+      const isTargetField = isSameField(field_ref, fieldMetadata.field_ref);
       return isTargetField ? merge(fieldMetadata, changes) : fieldMetadata;
     });
 

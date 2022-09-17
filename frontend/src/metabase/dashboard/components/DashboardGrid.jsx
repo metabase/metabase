@@ -2,6 +2,8 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
+import _ from "underscore";
+import cx from "classnames";
 import ExplicitSize from "metabase/components/ExplicitSize";
 
 import Modal from "metabase/components/Modal";
@@ -22,9 +24,6 @@ import {
 } from "metabase/lib/dashboard_grid";
 import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
 import { DashboardCard } from "./DashboardGrid.styled";
-
-import _ from "underscore";
-import cx from "classnames";
 
 import GridLayout from "./grid/GridLayout";
 import { generateMobileLayout } from "./grid/utils";

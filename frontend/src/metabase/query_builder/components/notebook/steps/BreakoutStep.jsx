@@ -2,9 +2,8 @@
 import React from "react";
 import { t } from "ttag";
 
-import ClauseStep from "./ClauseStep";
-
 import BreakoutPopover from "metabase/query_builder/components/BreakoutPopover";
+import ClauseStep from "./ClauseStep";
 
 const breakoutTetherOptions = {
   attachment: "top left",

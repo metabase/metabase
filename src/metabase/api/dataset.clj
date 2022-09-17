@@ -69,7 +69,7 @@
         (qp-runner query info context)))))
 
 (api/defendpoint ^:streaming POST "/"
-  "Execute a query and retrieve the results in the usual format."
+  "Execute a query and retrieve the results in the usual format. The query will not use the cache."
   [:as {{:keys [database] :as query} :body}]
   {database (s/maybe s/Int)}
   (run-query-async (update-in query [:middleware :js-int-to-string?] (fnil identity true))))
