@@ -15,6 +15,7 @@ import {
   openQuestionActions,
   closeQuestionActions,
   visitCollection,
+  undo,
 } from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -477,11 +478,24 @@ describe("scenarios > models", () => {
 
   it("should automatically pin newly created models", () => {
     visitQuestion(1);
+
     turnIntoModel();
 
     visitCollection("root");
     cy.findByText("Useful data");
     cy.findByText("A model");
+  });
+
+  it("should undo pinning a question if turning into a model was undone", () => {
+    visitQuestion(1);
+
+    turnIntoModel();
+    undo();
+    cy.wait("@cardUpdate");
+
+    visitCollection("root");
+    cy.findByText("Useful data").should("not.exist");
+    cy.findByText("A model").should("not.exist");
   });
 
   describe("listing", () => {
