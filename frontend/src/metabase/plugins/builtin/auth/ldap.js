@@ -32,13 +32,6 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(
       component: SettingsLdapForm,
       settings: [
         {
-          key: "ldap-enabled",
-          display_name: t`LDAP Authentication`,
-          description: null,
-          type: "boolean",
-          getHidden: () => true,
-        },
-        {
           key: "ldap-host",
           display_name: t`LDAP Host`,
           placeholder: "ldap.yourdomain.org",

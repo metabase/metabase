@@ -1,26 +1,10 @@
-import React, { useState } from "react";
+import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import { updateLdapSettings } from "metabase/admin/settings/settings";
 import SettingsBatchForm from "./SettingsBatchForm";
 import { FormButton } from "./SettingsLdapForm.styled";
-
-const DEFAULT_BUTTON_STATES = {
-  default: t`Save changes`,
-  working: t`Saving...`,
-  success: t`Changes saved!`,
-};
-
-const PRIMARY_BUTTON_STATES = {
-  ...DEFAULT_BUTTON_STATES,
-  default: t`Save and enable`,
-};
-
-const SECONDARY_BUTTON_STATES = {
-  ...DEFAULT_BUTTON_STATES,
-  default: t`Save but don't enable`,
-};
 
 const propTypes = {
   settingValues: PropTypes.object.isRequired,
@@ -29,17 +13,10 @@ const propTypes = {
 
 const SettingsLdapForm = ({ settingValues, updateLdapSettings, ...props }) => {
   const isEnabled = settingValues["ldap-enabled"];
-  const [isAutoEnabled, setIsAutoEnabled] = useState(false);
   const layout = getLayout(settingValues);
   const breadcrumbs = getBreadcrumbs();
 
-  const handleDefaultSubmit = formData => {
-    setIsAutoEnabled(false);
-    return updateLdapSettings(formData);
-  };
-
   const handleAutoEnableSubmit = formData => {
-    setIsAutoEnabled(true);
     return updateLdapSettings({ ...formData, "ldap-enabled": true });
   };
 
@@ -52,31 +29,25 @@ const SettingsLdapForm = ({ settingValues, updateLdapSettings, ...props }) => {
       updateSettings={updateLdapSettings}
       renderSubmitButton={
         !isEnabled &&
-        (({ disabled, submitting, pristine, onSubmit }) => (
+        (({ disabled, pristine, onSubmit }) => (
           <FormButton
             primary={!disabled}
-            success={isAutoEnabled && submitting === "success"}
             disabled={disabled || pristine}
-            onClick={event => onSubmit(event, handleAutoEnableSubmit)}
-          >
-            {isAutoEnabled
-              ? PRIMARY_BUTTON_STATES[submitting]
-              : PRIMARY_BUTTON_STATES.default}
-          </FormButton>
+            actionFn={() => onSubmit(handleAutoEnableSubmit)}
+            normalText={t`Save and enable`}
+            successText={t`Changes saved!`}
+          />
         ))
       }
       renderExtraButtons={
         !isEnabled &&
-        (({ disabled, submitting, pristine, onSubmit }) => (
+        (({ disabled, pristine, onSubmit }) => (
           <FormButton
-            success={!isAutoEnabled && submitting === "success"}
             disabled={disabled || pristine}
-            onClick={event => onSubmit(event, handleDefaultSubmit)}
-          >
-            {!isAutoEnabled
-              ? SECONDARY_BUTTON_STATES[submitting]
-              : SECONDARY_BUTTON_STATES.default}
-          </FormButton>
+            actionFn={() => onSubmit(updateLdapSettings)}
+            normalText={t`Save but don't enable`}
+            successText={t`Changes saved!`}
+          />
         ))
       }
     />

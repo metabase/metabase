@@ -188,9 +188,7 @@ class SettingsBatchForm extends Component {
     return formErrors;
   }
 
-  handleSubmit = (event, updateSettings = this.props.updateSettings) => {
-    event.preventDefault();
-
+  handleSubmit = updateSettings => {
     const { formData, valid } = this.state;
 
     if (valid) {
@@ -199,7 +197,7 @@ class SettingsBatchForm extends Component {
         submitting: "working",
       });
 
-      updateSettings(formData).then(
+      return updateSettings(formData).then(
         () => {
           this.setState({ pristine: true, submitting: "success" });
 
@@ -211,9 +209,15 @@ class SettingsBatchForm extends Component {
             submitting: "default",
             formErrors: this.handleFormErrors(error),
           });
+          throw error;
         },
       );
     }
+  };
+
+  handleSubmitClick = event => {
+    event.preventDefault();
+    this.handleSubmit(this.props.updateSettings);
   };
 
   render() {
@@ -306,7 +310,7 @@ class SettingsBatchForm extends Component {
               primary={!disabled}
               success={submitting === "success"}
               disabled={disabled || pristine}
-              onClick={this.handleSubmit}
+              onClick={this.handleSubmitClick}
             >
               {SAVE_SETTINGS_BUTTONS_STATES[submitting]}
             </Button>

@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
-import Button from "metabase/core/components/Button";
+import ActionButton from "metabase/components/ActionButton";
 
-export const FormButton = styled(Button)`
+export const FormButton = styled(ActionButton)`
   margin-right: 0.5rem;
 `;
