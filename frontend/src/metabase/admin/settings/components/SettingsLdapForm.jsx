@@ -1,9 +1,16 @@
-import React, { useMemo } from "react";
+import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import { updateLdapSettings } from "metabase/admin/settings/settings";
 import SettingsBatchForm from "./SettingsBatchForm";
+import { FormButton } from "./SettingsLdapForm.styled";
+
+const DEFAULT_SUBMIT_BUTTON_STATES = {
+  default: t`Save changes`,
+  working: t`Saving...`,
+  success: t`Changes saved!`,
+};
 
 const propTypes = {
   settingValues: PropTypes.object.isRequired,
@@ -11,8 +18,8 @@ const propTypes = {
 };
 
 const SettingsLdapForm = ({ settingValues, updateLdapSettings, ...props }) => {
-  const breadcrumbs = useMemo(() => getBreadcrumbs(), []);
-  const layout = useMemo(() => getLayout(settingValues), [settingValues]);
+  const breadcrumbs = getBreadcrumbs();
+  const layout = getLayout(settingValues);
 
   return (
     <SettingsBatchForm
@@ -20,6 +27,15 @@ const SettingsLdapForm = ({ settingValues, updateLdapSettings, ...props }) => {
       breadcrumbs={breadcrumbs}
       layout={layout}
       updateSettings={updateLdapSettings}
+      renderSubmitButton={({ disabled, submitting, pristine }) => (
+        <FormButton
+          primary={!disabled}
+          success={submitting === "success"}
+          disabled={disabled || pristine}
+        >
+          {DEFAULT_SUBMIT_BUTTON_STATES[submitting]}
+        </FormButton>
+      )}
     />
   );
 };
