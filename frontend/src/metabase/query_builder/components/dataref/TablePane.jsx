@@ -3,7 +3,6 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-import Icon from "metabase/components/Icon";
 import Expandable from "metabase/components/Expandable";
 import Table from "metabase/entities/tables";
 import { TableInfo } from "./TablePane.styled";
@@ -54,10 +53,6 @@ class TablePane extends React.Component {
       return (
         <div>
           <div className="ml1">
-            <div className="flex align-center">
-              <Icon name="table2" className="text-medium pr1" size={16} />
-              <h3 className="text-wrap">{table.name}</h3>
-            </div>
             <TableInfo
               tableId={table.id}
               onConnectedTableClick={table => this.props.show("table", table)}
