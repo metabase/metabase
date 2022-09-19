@@ -85,7 +85,7 @@
    (conj (into [:tr]
                (for [header-cell row]
                  [:th {:style (style/style (row-style-for-type header-cell) (heading-style-for-type header-cell) {:min-width :42px}) :title header-cell}
-                  (h (truncate-text (str header-cell)))]))
+                  (truncate-text (h header-cell))]))
          (when bar-width
            [:th {:style (style/style (bar-td-style) (bar-th-style) {:width (str bar-width "%")})}]))])
 
