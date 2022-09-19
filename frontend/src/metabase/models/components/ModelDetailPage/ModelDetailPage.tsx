@@ -12,6 +12,7 @@ import type Question from "metabase-lib/lib/Question";
 
 import ModelInfoSidePanel from "./ModelInfoSidePanel";
 import ModelSchemaDetails from "./ModelSchemaDetails";
+import ModelUsageDetails from "./ModelUsageDetails";
 import {
   RootLayout,
   ModelMain,
@@ -61,7 +62,7 @@ function ModelDetailPage({ model }: Props) {
             <p>Actions</p>
           </TabPanel>
           <TabPanel value="usage">
-            <p>Used by</p>
+            <ModelUsageDetails model={model} />
           </TabPanel>
         </TabContent>
       </ModelMain>

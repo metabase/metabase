@@ -124,7 +124,7 @@ const Questions = createEntity({
   forms,
 });
 
-function getIcon(question) {
+export function getIcon(question) {
   if (question.dataset || question.model === "dataset") {
     return { name: "model" };
   }
