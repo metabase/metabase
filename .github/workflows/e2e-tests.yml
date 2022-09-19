@@ -92,6 +92,16 @@ jobs:
         credentials:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+      ldap-server-mock:
+        image: thoteam/ldap-server-mock
+        ports:
+          - "3004:3004"
+        credentials:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+        volumes:
+          - ./test_resources/ldap/conf.json:/srv/ldap-server-mock-conf.json
+          - ./test_resources/ldap/users.json:/srv/ldap-server-mock-users.json
       postgres-sample:
         image: metabase/qa-databases:postgres-sample-12
         ports:

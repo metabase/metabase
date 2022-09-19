@@ -13,6 +13,7 @@ export * from "./e2e-collection-helpers";
 export * from "./e2e-data-model-helpers";
 export * from "./e2e-misc-helpers";
 export * from "./e2e-email-helpers";
+export * from "./e2e-ldap-helpers";
 export * from "./e2e-slack-helpers";
 export * from "./e2e-snowplow-helpers";
 export * from "./e2e-custom-column-helpers";
