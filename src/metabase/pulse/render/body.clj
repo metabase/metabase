@@ -266,16 +266,17 @@
     (and (= number_style "currency") (nil? currency))
     (assoc :currency "USD")))
 
-(defn- settings-from-column
-  [col column-settings]
-  (or (get column-settings {::mb.viz/field-id (:id col)})
-      (get column-settings {::mb.viz/column-name (:name col)})))
-
 (defn- update-col-for-js
   [col-settings col]
   (-> (m/map-keys (fn [k] (-> k name (str/replace #"-" "_") keyword)) col-settings)
       (backfill-currency)
       (u/update-if-exists :date_style update-date-style (:unit col) col-settings)))
+
+(defn- settings-from-column
+  [col column-settings]
+  (-> (or (get column-settings {::mb.viz/field-id (:id col)})
+          (get column-settings {::mb.viz/column-name (:name col)}))
+      (update-col-for-js col)))
 
 (defn- ->js-viz
   "Include viz settings for js.
@@ -288,9 +289,9 @@
         y-col-settings (settings-from-column y-col column-settings)]
     (cond-> {:colors (public-settings/application-colors)}
       x-col-settings
-      (assoc :x (update-col-for-js x-col-settings x-col))
+      (assoc :x x-col-settings)
       y-col-settings
-      (assoc :y (update-col-for-js y-col-settings y-col)))))
+      (assoc :y y-col-settings))))
 
 (defn- ->ts-viz
   "Include viz settings for the typed settings, initially in XY charts.
@@ -355,17 +356,25 @@
    :left   (or (:graph.y_axis.title_text viz-settings)
                (:display_name y-col))})
 
+(defn- labels-enabled?
+  "Returns `true` if `:graph.x_axis.labels_enabled` (or y_axis) is `true`, not present, or nil.
+  The only time labels are not enabled is when the key is explicitly set to false."
+  [viz-settings axis-key]
+  (if (contains? viz-settings axis-key)
+    (boolean (get viz-settings axis-key))
+    true))
+
 (defn- combo-label-info
   "X and Y axis labels passed into the `labels` argument needs to be different
   for combos specifically (as opposed to multiples)"
   [x-cols y-cols viz-settings]
-  {:bottom (when (:graph.x_axis.labels_enabled viz-settings)
+  {:bottom (when (labels-enabled? viz-settings :graph.x_axis.labels_enabled)
              (or (:graph.x_axis.title_text viz-settings)
                  (:display_name (first x-cols))))
-   :left   (when (:graph.y_axis.labels_enabled viz-settings)
+   :left   (when (labels-enabled? viz-settings :graph.y_axis.labels_enabled)
              (or (:graph.y_axis.title_text viz-settings)
                  (:display_name (first y-cols))))
-   :right  (when (:graph.y_axis.labels_enabled viz-settings)
+   :right  (when (labels-enabled? viz-settings :graph.y_axis.labels_enabled)
              (or (:graph.y_axis.title_text viz-settings)
                  (:display_name (second y-cols))))})
 
