@@ -14,6 +14,8 @@ import {
   startNewQuestion,
   openQuestionActions,
   closeQuestionActions,
+  visitCollection,
+  undo,
 } from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -71,7 +73,7 @@ describe("scenarios > models", () => {
     });
 
     cy.findByTestId("qb-header").findAllByText("Our analytics").first().click();
-    getCollectionItemRow("Orders Model").within(() => {
+    getCollectionItemCard("Orders Model").within(() => {
       cy.icon("model");
     });
     getCollectionItemRow("Q1").within(() => {
@@ -120,7 +122,7 @@ describe("scenarios > models", () => {
     });
 
     cy.findByTestId("qb-header").findAllByText("Our analytics").first().click();
-    getCollectionItemRow("Orders Model").within(() => {
+    getCollectionItemCard("Orders Model").within(() => {
       cy.icon("model");
     });
     getCollectionItemRow("Q1").within(() => {
@@ -476,6 +478,28 @@ describe("scenarios > models", () => {
     cy.findByText(/This question is written in SQL/i).should("not.exist");
   });
 
+  it("should automatically pin newly created models", () => {
+    visitQuestion(1);
+
+    turnIntoModel();
+
+    visitCollection("root");
+    cy.findByText("Useful data");
+    cy.findByText("A model");
+  });
+
+  it("should undo pinning a question if turning into a model was undone", () => {
+    visitQuestion(1);
+
+    turnIntoModel();
+    undo();
+    cy.wait("@cardUpdate");
+
+    visitCollection("root");
+    cy.findByText("Useful data").should("not.exist");
+    cy.findByText("A model").should("not.exist");
+  });
+
   describe("listing", () => {
     beforeEach(() => {
       cy.request("PUT", "/api/card/1", { name: "Orders Model", dataset: true });
@@ -518,6 +542,10 @@ describe("scenarios > models", () => {
 
 function getCollectionItemRow(itemName) {
   return cy.findByText(itemName).closest("tr");
+}
+
+function getCollectionItemCard(itemName) {
+  return cy.findByText(itemName).parent();
 }
 
 function testDataPickerSearch({
