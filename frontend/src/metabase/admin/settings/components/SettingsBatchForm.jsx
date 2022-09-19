@@ -50,6 +50,8 @@ class SettingsBatchForm extends Component {
     elements: PropTypes.array.isRequired,
     formErrors: PropTypes.object,
     updateSettings: PropTypes.func.isRequired,
+    renderSubmitButton: PropTypes.func,
+    renderExtraButtons: PropTypes.func,
   };
 
   componentDidMount() {
@@ -215,7 +217,14 @@ class SettingsBatchForm extends Component {
   };
 
   render() {
-    const { elements, settingValues } = this.props;
+    const {
+      elements,
+      settingValues,
+      breadcrumbs,
+      renderSubmitButton,
+      renderExtraButtons,
+    } = this.props;
+
     const {
       formData,
       formErrors,
@@ -262,8 +271,8 @@ class SettingsBatchForm extends Component {
     const disabled = !valid || submitting !== "default";
     return (
       <div>
-        {this.props.breadcrumbs && (
-          <Breadcrumbs crumbs={this.props.breadcrumbs} className="ml2 mb3" />
+        {breadcrumbs && (
+          <Breadcrumbs crumbs={breadcrumbs} className="ml2 mb3" />
         )}
 
         {layout.map((section, index) =>
@@ -283,18 +292,27 @@ class SettingsBatchForm extends Component {
         )}
 
         <div className="m2 mb4">
-          <Button
-            mr={1}
-            primary={!disabled}
-            success={submitting === "success"}
-            disabled={disabled || pristine}
-            onClick={this.updateSettings}
-          >
-            {SAVE_SETTINGS_BUTTONS_STATES[submitting]}
-          </Button>
+          {renderSubmitButton ? (
+            renderSubmitButton({
+              valid,
+              submitting,
+              disabled,
+              pristine,
+            })
+          ) : (
+            <Button
+              mr={1}
+              primary={!disabled}
+              success={submitting === "success"}
+              disabled={disabled || pristine}
+              onClick={this.updateSettings}
+            >
+              {SAVE_SETTINGS_BUTTONS_STATES[submitting]}
+            </Button>
+          )}
 
-          {this.props.renderExtraButtons &&
-            this.props.renderExtraButtons({
+          {renderExtraButtons &&
+            renderExtraButtons({
               valid,
               submitting,
               disabled,
