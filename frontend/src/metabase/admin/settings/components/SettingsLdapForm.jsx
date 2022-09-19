@@ -55,7 +55,7 @@ const SettingsLdapForm = ({ settingValues, updateLdapSettings, ...props }) => {
         (({ disabled, submitting, pristine, onSubmit }) => (
           <FormButton
             primary={!disabled}
-            success={submitting === "success"}
+            success={isAutoEnabled && submitting === "success"}
             disabled={disabled || pristine}
             onClick={event => onSubmit(event, handleAutoEnableSubmit)}
           >
@@ -69,7 +69,7 @@ const SettingsLdapForm = ({ settingValues, updateLdapSettings, ...props }) => {
         !isEnabled &&
         (({ disabled, submitting, pristine, onSubmit }) => (
           <FormButton
-            success={submitting === "success"}
+            success={!isAutoEnabled && submitting === "success"}
             disabled={disabled || pristine}
             onClick={event => onSubmit(event, handleDefaultSubmit)}
           >
