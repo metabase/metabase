@@ -1,9 +1,10 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
-export default class Base {
-  _plainObject: Record<string, unknown>;
+import { PlainObjectType } from "./types";
 
-  constructor(object = {}) {
+export default class Base {
+  [key: string]: unknown;
+  _plainObject: PlainObjectType;
+
+  constructor(object: PlainObjectType = {}) {
     this._plainObject = object;
 
     for (const property in object) {
@@ -15,7 +16,7 @@ export default class Base {
    * Get the plain metadata object without hydrated fields.
    * Useful for situations where you want serialize the metadata object.
    */
-  getPlainObject() {
+  getPlainObject(): PlainObjectType {
     return this._plainObject;
   }
 }
