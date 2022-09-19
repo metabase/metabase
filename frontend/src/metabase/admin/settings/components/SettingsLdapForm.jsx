@@ -6,10 +6,20 @@ import { updateLdapSettings } from "metabase/admin/settings/settings";
 import SettingsBatchForm from "./SettingsBatchForm";
 import { FormButton } from "./SettingsLdapForm.styled";
 
-const DEFAULT_SUBMIT_BUTTON_STATES = {
+const SUBMIT_BUTTON_STATES = {
   default: t`Save changes`,
   working: t`Saving...`,
   success: t`Changes saved!`,
+};
+
+const PRIMARY_BUTTON_STATES = {
+  ...SUBMIT_BUTTON_STATES,
+  default: t`Save and enable`,
+};
+
+const SECONDARY_BUTTON_STATES = {
+  ...SUBMIT_BUTTON_STATES,
+  default: t`Save but don't enable`,
 };
 
 const propTypes = {
@@ -18,6 +28,7 @@ const propTypes = {
 };
 
 const SettingsLdapForm = ({ settingValues, updateLdapSettings, ...props }) => {
+  const isEnabled = settingValues["ldap-enabled"];
   const breadcrumbs = getBreadcrumbs();
   const layout = getLayout(settingValues);
 
@@ -27,15 +38,30 @@ const SettingsLdapForm = ({ settingValues, updateLdapSettings, ...props }) => {
       breadcrumbs={breadcrumbs}
       layout={layout}
       updateSettings={updateLdapSettings}
-      renderSubmitButton={({ disabled, submitting, pristine }) => (
+      renderSubmitButton={({ disabled, submitting, pristine, onSubmit }) => (
         <FormButton
           primary={!disabled}
           success={submitting === "success"}
           disabled={disabled || pristine}
+          onClick={onSubmit}
         >
-          {DEFAULT_SUBMIT_BUTTON_STATES[submitting]}
+          {isEnabled
+            ? SUBMIT_BUTTON_STATES[submitting]
+            : PRIMARY_BUTTON_STATES[submitting]}
         </FormButton>
       )}
+      renderExtraButtons={
+        !isEnabled &&
+        (({ disabled, submitting, pristine, onSubmit }) => (
+          <FormButton
+            success={submitting === "success"}
+            disabled={disabled || pristine}
+            onClick={onSubmit}
+          >
+            {SECONDARY_BUTTON_STATES[submitting]}
+          </FormButton>
+        ))
+      }
     />
   );
 };

@@ -298,6 +298,7 @@ class SettingsBatchForm extends Component {
               submitting,
               disabled,
               pristine,
+              onSubmit: this.updateSettings,
             })
           ) : (
             <Button
@@ -317,6 +318,7 @@ class SettingsBatchForm extends Component {
               submitting,
               disabled,
               pristine,
+              onSubmit: this.updateSettings,
             })}
         </div>
       </div>
