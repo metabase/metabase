@@ -9,7 +9,6 @@
             [metabase.pulse.render.datetime :as datetime]
             [metabase.pulse.render.image-bundle :as image-bundle]
             [metabase.pulse.render.js-svg :as js-svg]
-            [metabase.pulse.render.sparkline :as sparkline]
             [metabase.pulse.render.style :as style]
             [metabase.pulse.render.table :as table]
             [metabase.pulse.util :as pu]
@@ -348,7 +347,7 @@
 
 (defn- x-and-y-axis-label-info
   "Generate the X and Y axis labels passed in as the `labels` argument
-  to [[metabase.pulse.render.js-svg/timelineseries-bar]] and other similar functions for rendering charts with X and Y
+  to [[metabase.pulse.render.js-svg/timelineseries-waterfall]] and other similar functions for rendering charts with X and Y
   axes. Respects custom display names in `viz-settings`; otherwise uses `x-col` and `y-col` display names."
   [x-col y-col viz-settings]
   {:bottom (or (:graph.x_axis.title_text viz-settings)
@@ -754,57 +753,6 @@
                                                  :padding-right :16px})}
                         (trs "Nothing to compare to.")]]
          :render/text (str last-value "\n" (trs "Nothing to compare to."))}))))
-
-(s/defmethod render :sparkline :- common/RenderedPulseCard
-  [_ render-type timezone-id card dashcard {:keys [_rows cols viz-settings] :as data}]
-  (let [viz-settings   (merge viz-settings (:visualization_settings dashcard))
-        [x-axis-rowfn
-         y-axis-rowfn] (common/graphing-column-row-fns card data)
-        [x-col y-col]  ((juxt x-axis-rowfn y-axis-rowfn) cols)
-        rows           (sparkline/cleaned-rows timezone-id card data)
-        last-rows      (reverse (take-last 2 rows))
-        values         (for [row last-rows]
-                         (some-> row y-axis-rowfn common/format-number))
-        labels         (datetime/format-temporal-string-pair timezone-id
-                                                             (map x-axis-rowfn last-rows)
-                                                             (x-axis-rowfn cols))
-        render-fn      (if (isa? (-> cols x-axis-rowfn :effective_type) :type/Temporal)
-                         js-svg/timelineseries-line
-                         js-svg/categorical-line)
-        image-bundle   (image-bundle/make-image-bundle
-                        render-type
-                        (render-fn (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)
-                                   (x-and-y-axis-label-info x-col y-col viz-settings)
-                                   (->js-viz x-col y-col viz-settings)))]
-    {:attachments
-     (when image-bundle
-       (image-bundle/image-bundle->attachment image-bundle))
-
-     :content
-     [:div
-      [:img {:style (style/style {:display :block
-                                  :width   :100%})
-             :src   (:image-src image-bundle)}]
-      [:table {:style (style/style {:border-spacing :0px})}
-       [:tr
-        [:td {:style (style/style {:color         style/color-text-dark
-                                   :font-size     :16px
-                                   :font-weight   700
-                                   :padding-right :16px})}
-         (first values)]
-        [:td {:style (style/style {:color       style/color-gray-3
-                                   :font-size   :16px
-                                   :font-weight 700})}
-         (second values)]]
-       [:tr
-        [:td {:style (style/style {:color         style/color-text-dark
-                                   :font-size     :12px
-                                   :font-weight   700
-                                   :padding-right :16px})}
-         (first labels)]
-        [:td {:style (style/style {:color     style/color-gray-3
-                                   :font-size :12px})}
-         (second labels)]]]]}))
 
 (s/defmethod render :waterfall :- common/RenderedPulseCard
   [_ render-type _timezone-id card dashcard {:keys [rows cols viz-settings] :as data}]

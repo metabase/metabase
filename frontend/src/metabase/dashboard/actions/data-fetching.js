@@ -400,6 +400,20 @@ export const fetchDashboardCardData = createThunkAction(
   },
 );
 
+export const reloadDashboardCards = () => async (dispatch, getState) => {
+  const dashboard = getDashboardComplete(getState());
+
+  const reloads = getAllDashboardCards(dashboard)
+    .filter(({ dashcard }) => !isVirtualDashCard(dashcard))
+    .map(({ card, dashcard }) =>
+      dispatch(
+        fetchCardData(card, dashcard, { reload: true, ignoreCache: true }),
+      ),
+    );
+
+  await Promise.all(reloads);
+};
+
 export const cancelFetchDashboardCardData = createThunkAction(
   CANCEL_FETCH_DASHBOARD_CARD_DATA,
   () => (dispatch, getState) => {

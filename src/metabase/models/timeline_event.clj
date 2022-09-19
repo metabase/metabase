@@ -110,14 +110,14 @@
   [_model-name _opts event]
   (-> (serdes.base/extract-one-basics "TimelineEvent" event)
       (update :timeline_id serdes.util/export-fk 'Timeline)
-      (update :creator_id  serdes.util/export-fk-keyed 'User :email)
+      (update :creator_id  serdes.util/export-user)
       (update :timestamp   #(u.date/format (t/offset-date-time %)))))
 
 (defmethod serdes.base/load-xform "TimelineEvent" [event]
   (-> event
       serdes.base/load-xform-basics
       (update :timeline_id serdes.util/import-fk 'Timeline)
-      (update :creator_id  serdes.util/import-fk-keyed 'User :email)
+      (update :creator_id  serdes.util/import-user)
       (update :timestamp   u.date/parse)))
 
 (defmethod serdes.base/serdes-dependencies "TimelineEvent" [{:keys [timeline_id]}]

@@ -354,7 +354,7 @@
          ([] (rf))
          ([result]
           (when-not (= @before result)
-            (*printer* [::transformed-result middleware @before result]))
+            (*printer* [::transformed-result middleware-var @before result]))
           (rf result))
          ([result row] (rf result row)))))))
 

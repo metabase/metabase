@@ -4,6 +4,7 @@ import _ from "underscore";
 import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
 /* eslint-disable import/order */
 // NOTE: the order of these matters due to circular dependency issues
+import slugg from "slugg";
 import StructuredQuery, {
   STRUCTURED_QUERY_TEMPLATE,
 } from "metabase-lib/lib/queries/StructuredQuery";
@@ -844,6 +845,10 @@ class QuestionInner {
    */
   displayName(): string | null | undefined {
     return this._card && this._card.name;
+  }
+
+  slug(): string | null | undefined {
+    return this._card?.name && `${this._card.id}-${slugg(this._card.name)}`;
   }
 
   setDisplayName(name: string | null | undefined) {

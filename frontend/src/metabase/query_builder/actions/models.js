@@ -3,7 +3,7 @@ import _ from "underscore";
 import { merge } from "icepick";
 import { t } from "ttag";
 
-import { isLocalField, isSameField } from "metabase/lib/query/field_ref";
+import { isSameField } from "metabase/lib/query/field_ref";
 import { addUndo } from "metabase/redux/undo";
 import { loadMetadataForQueries } from "metabase/redux/metadata";
 import Questions from "metabase/entities/questions";
@@ -81,13 +81,7 @@ export const setFieldMetadata =
     const resultsMetadata = getResultsMetadata(getState());
 
     const nextColumnMetadata = resultsMetadata.columns.map(fieldMetadata => {
-      const compareExact =
-        !isLocalField(field_ref) || !isLocalField(fieldMetadata.field_ref);
-      const isTargetField = isSameField(
-        field_ref,
-        fieldMetadata.field_ref,
-        compareExact,
-      );
+      const isTargetField = isSameField(field_ref, fieldMetadata.field_ref);
       return isTargetField ? merge(fieldMetadata, changes) : fieldMetadata;
     });
 

@@ -832,6 +832,21 @@ export const getIsAdditionalInfoVisible = createSelector(
   (isEmbedded, embedOptions) => !isEmbedded || embedOptions.additional_info,
 );
 
+export const getCardAutocompleteResultsFn = state => {
+  return function autocompleteResults(query) {
+    const dbId = state.qb.card?.dataset_query?.database;
+    if (!dbId) {
+      return [];
+    }
+
+    const apiCall = MetabaseApi.db_card_autocomplete_suggestions({
+      dbId,
+      query,
+    });
+    return apiCall;
+  };
+};
+
 export const getAutocompleteResultsFn = state => {
   const matchStyle = getSetting(state, "native-query-autocomplete-match-style");
 

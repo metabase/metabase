@@ -47,9 +47,9 @@
 
 (defn export-fk-keyed
   "Given a numeric ID, look up a different identifying field for that entity, and return it as a portable ID.
-  Eg. `User.email`, `Database.name`.
+  Eg. `Database.name`.
   [[import-fk-keyed]] is the inverse.
-  Unusual parameter order lets this be called as, for example, `(update x :creator_id export-fk-keyed 'User :email).
+  Unusual parameter order lets this be called as, for example, `(update x :creator_id export-fk-keyed 'Database :name)`.
 
   Note: This assumes the primary key is called `:id`."
   [id model field]
@@ -58,26 +58,50 @@
 (defn import-fk-keyed
   "Given a single, portable, identifying field and the model it refers to, this resolves the entity and returns its
   numeric `:id`.
-  Eg. `User.email` or `Database.name`.
+  Eg. `Database.name`.
 
-  Unusual parameter order lets this be called as, for example, `(update x :creator_id import-fk-keyed 'User :email)`."
+  Unusual parameter order lets this be called as, for example,
+  `(update x :creator_id import-fk-keyed 'Database :name)`."
   [portable model field]
   (db/select-one-id model field portable))
+
+;; -------------------------------------------------- Users ----------------------------------------------------------
+(defn export-user
+  "Exports a user as the email address.
+  This just calls [[export-fk-keyed]], but the counterpart [[import-user]] is more involved. This is a unique function
+  so they form a pair."
+  [id]
+  (when id (export-fk-keyed id 'User :email)))
+
+(defn import-user
+  "Imports a user by their email address.
+  If a user with that email address exists, returns its primary key.
+  If no such user exists, creates a dummy one with the default settings, blank name, and randomized password.
+  Does not send any invite emails."
+  [email]
+  (when email
+    (or (import-fk-keyed email 'User :email)
+        ;; Need to break a circular dependency here.
+        (:id ((resolve 'metabase.models.user/serdes-synthesize-user!) {:email email})))))
 
 ;; -------------------------------------------------- Tables ---------------------------------------------------------
 (defn export-table-fk
   "Given a numeric `table_id`, return a portable table reference.
+  If the `table_id` is `nil`, return `nil`. This is legal for a native question.
   That has the form `[db-name schema table-name]`, where the `schema` might be nil.
   [[import-table-fk]] is the inverse."
   [table-id]
-  (let [{:keys [db_id name schema]} (db/select-one 'Table :id table-id)
-        db-name                     (db/select-one-field :name 'Database :id db_id)]
-    [db-name schema name]))
+  (when table-id
+    (let [{:keys [db_id name schema]} (db/select-one 'Table :id table-id)
+          db-name                     (db/select-one-field :name 'Database :id db_id)]
+      [db-name schema name])))
 
 (defn import-table-fk
-  "Given a `table_id` as exported by [[export-table-fk]], resolve it back into a numeric `table_id`."
-  [[db-name schema table-name]]
-  (db/select-one-field :id 'Table :name table-name :schema schema :db_id (db/select-one-field :id 'Database :name db-name)))
+  "Given a `table_id` as exported by [[export-table-fk]], resolve it back into a numeric `table_id`.
+  The input might be nil, in which case so is the output. This is legal for a native question."
+  [[db-name schema table-name :as table-id]]
+  (when table-id
+    (db/select-one-field :id 'Table :name table-name :schema schema :db_id (db/select-one-field :id 'Database :name db-name))))
 
 (defn table->path
   "Given a `table_id` as exported by [[export-table-fk]], turn it into a `[{:model ...}]` path for the Table.
@@ -201,10 +225,10 @@
     ;; handle legacy `:field-id` forms encoded prior to 0.39.0
     ;; and also *current* expresion forms used in parameter mapping dimensions
     ;; example relevant clause - [:dimension [:fk-> [:field-id 1] [:field-id 2]]]
-    [:field-id (fully-qualified-name :guard string?)]
+    [(:or :field-id "field-id") (fully-qualified-name :guard string?)]
     (mbql-fully-qualified-names->ids* [:field fully-qualified-name nil])
 
-    [:field (fully-qualified-name :guard vector?) opts]
+    [(:or :field "field") (fully-qualified-name :guard vector?) opts]
     [:field (import-field-fk fully-qualified-name) (mbql-fully-qualified-names->ids* opts)]
 
     ;; source-field is also used within parameter mapping dimensions
@@ -217,15 +241,27 @@
         (assoc :database (db/select-one-id 'Database :name fully-qualified-name))
         mbql-fully-qualified-names->ids*) ; Process other keys
 
-    [:metric (fully-qualified-name :guard serdes.base/entity-id?)]
+    {:card-id (entity-id :guard (every-pred string? serdes.base/entity-id?))}
+    (-> &match
+        (assoc :card-id (import-fk entity-id 'Card))
+        mbql-fully-qualified-names->ids*) ; Process other keys
+
+    [(:or :metric "metric") (fully-qualified-name :guard serdes.base/entity-id?)]
     [:metric (import-fk fully-qualified-name 'Metric)]
 
-    [:segment (fully-qualified-name :guard serdes.base/entity-id?)]
+    [(:or :segment "segment") (fully-qualified-name :guard serdes.base/entity-id?)]
     [:segment (import-fk fully-qualified-name 'Segment)]
 
     (_ :guard (every-pred map? #(vector? (:source-table %))))
     (-> &match
         (assoc :source-table (import-table-fk (:source-table &match)))
+        mbql-fully-qualified-names->ids*)
+
+    (_ :guard (every-pred map?
+                          #(string? (:source-table %))
+                          #(serdes.base/entity-id? (:source-table %))))
+    (-> &match
+        (assoc :source-table (str "card__" (import-fk (:source-table &match) 'Card)))
         mbql-fully-qualified-names->ids*))) ;; process other keys
 
 (defn- mbql-fully-qualified-names->ids
@@ -261,6 +297,9 @@
          (cond
            (and (= k :database)     (string? v)) #{[{:model "Database" :id v}]}
            (and (= k :source-table) (vector? v)) #{(table->path v)}
+           (and (= k :source-table)
+                (string? v)
+                (serdes.base/entity-id? v))      #{[{:model "Card" :id v}]}
            (and (= k :source-field) (vector? v)) #{(field->path v)}
            (map? v)                              (mbql-deps-map v)
            (vector? v)                           (mbql-deps-vector v)))

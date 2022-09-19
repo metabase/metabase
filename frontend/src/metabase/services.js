@@ -183,8 +183,10 @@ export const CollectionsApi = {
 export const DataAppsApi = {
   list: GET("/api/app"),
   create: POST("/api/app"),
-  scaffold: POST("/api/app/scaffold"),
   update: PUT("/api/app/:id"),
+
+  scaffoldNewApp: POST("/api/app/scaffold"),
+  scaffoldNewPages: POST("/api/app/:id/scaffold"),
 };
 
 const PIVOT_PUBLIC_PREFIX = "/api/public/pivot/";
@@ -269,6 +271,9 @@ export const MetabaseApi = {
   db_idfields: GET("/api/database/:dbId/idfields"),
   db_autocomplete_suggestions: GET(
     "/api/database/:dbId/autocomplete_suggestions?:matchStyle=:query",
+  ),
+  db_card_autocomplete_suggestions: GET(
+    "/api/database/:dbId/card_autocomplete_suggestions",
   ),
   db_sync_schema: POST("/api/database/:dbId/sync_schema"),
   db_dismiss_sync_spinner: POST("/api/database/:dbId/dismiss_spinner"),
