@@ -47,7 +47,7 @@ describe("scenarios > admin > settings > SSO > LDAP", () => {
       .type("Smith");
     cy.button("Save changes").click();
     cy.wait("@ldapUpdate").then(interception => {
-      expect(interception.response.statusCode).to.eq(200);
+      expect(interception.response.statusCode).to.eq(500);
     });
     cy.button("Changes saved!");
   });
