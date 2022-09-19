@@ -1,5 +1,6 @@
 (ns metabase.driver.mysql-test
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [cheshire.core :as json]
+            [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.test :refer :all]
             [honeysql.core :as hsql]
@@ -92,6 +93,25 @@
                    {:name "id", :base_type :type/Integer, :semantic_type :type/PK}
                    {:name "thing", :base_type :type/Text, :semantic_type :type/Category}}
                  (db->fields db))))))))
+
+(tx/defdataset bigint-and-boolean
+  [["xjsontestx"
+    [{:field-name "jsoncol", :base-type :type/SerializedJSON}]
+    [[(json/encode {:mybool true  :myint 1234567890123456})]
+     [(json/encode {:mybool false :myint 12345678901234567})]]]])
+
+(deftest json-unwrapping-bigint-and-boolean
+  (mt/test-driver :mysql
+    (println "106 --------------------------------------------------")
+    (mt/dataset bigint-and-boolean
+      (println "in mt/dataset json-bigint-and-boolean")
+      ;; trigger a full sync on this database so fields are categorized correctly
+      (sync/sync-database! (mt/db))
+      (testing "Field is marked as :type/SerializedJSON"
+        (is (= #{{:name "ID", :base_type :type/BigInteger, :semantic_type :type/PK}
+                 {:name "JSONCOL", :base_type :type/Text, :semantic_type :type/SerializedJSON}}
+               (db->fields (mt/db)))))
+      (mt/mbql-query jsoncol))))
 
 (tx/defdataset year-db
   [["years"
@@ -445,15 +465,15 @@
   (let [boop-identifier (:form (hx/with-type-info (hx/identifier :field "boop" "bleh -> meh") {}))]
     (testing "Transforming MBQL query with JSON in it to mysql query works"
       (let [boop-field {:nfc_path [:bleh :meh] :database_type "bigint"}]
-        (is (= ["convert(json_extract(boop.bleh, ?), BIGINT)" "$.\"meh\""]
+        (is (= ["convert(json_extract(boop.bleh, ?), UNSIGNED)" "$.\"meh\""]
                (hsql/format (#'sql.qp/json-query :mysql boop-identifier boop-field))))))
     (testing "What if types are weird and we have lists"
       (let [weird-field {:nfc_path [:bleh "meh" :foobar 1234] :database_type "bigint"}]
-        (is (= ["convert(json_extract(boop.bleh, ?), BIGINT)" "$.\"meh\".\"foobar\".\"1234\""]
+        (is (= ["convert(json_extract(boop.bleh, ?), UNSIGNED)" "$.\"meh\".\"foobar\".\"1234\""]
                (hsql/format (#'sql.qp/json-query :mysql boop-identifier weird-field))))))
     (testing "Doesn't complain when field is boolean"
       (let [boolean-boop-field {:database_type "boolean" :nfc_path [:bleh "boop" :foobar 1234]}]
-        (is (= ["convert(json_extract(boop.bleh, ?), BOOLEAN)" "$.\"boop\".\"foobar\".\"1234\""]
+        (is (= ["not(not(json_extract(boop.bleh, ?)))" "$.\"boop\".\"foobar\".\"1234\""]
                (hsql/format (#'sql.qp/json-query :mysql boop-identifier boolean-boop-field))))))))
 
 (deftest json-alias-test
