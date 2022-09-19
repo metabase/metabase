@@ -1,7 +1,7 @@
 import { PlainObjectType } from "./types";
 
 export default class Base {
-  [key: string]: unknown;
+  [key: string]: unknown | any;
   _plainObject: PlainObjectType;
 
   constructor(object: PlainObjectType = {}) {
