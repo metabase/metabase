@@ -33,9 +33,14 @@ const SettingsLdapForm = ({ settingValues, updateLdapSettings, ...props }) => {
   const breadcrumbs = getBreadcrumbs();
   const layout = getLayout(settingValues);
 
-  const handleSubmit = (settings, { isAutoEnabled }) => {
-    setIsAutoEnabled(isAutoEnabled);
-    return updateLdapSettings({ ...settings, "ldap-enabled": isAutoEnabled });
+  const handleDefaultSubmit = formData => {
+    setIsAutoEnabled(false);
+    return updateLdapSettings(formData);
+  };
+
+  const handleAutoEnableSubmit = formData => {
+    setIsAutoEnabled(true);
+    return updateLdapSettings({ ...formData, "ldap-enabled": true });
   };
 
   return (
@@ -43,26 +48,33 @@ const SettingsLdapForm = ({ settingValues, updateLdapSettings, ...props }) => {
       {...props}
       breadcrumbs={breadcrumbs}
       layout={layout}
-      updateSettings={handleSubmit}
-      renderSubmitButton={({ disabled, submitting, pristine, onSubmit }) => (
-        <FormButton
-          primary={!disabled}
-          success={submitting === "success"}
-          disabled={disabled || pristine}
-          onClick={event => onSubmit(event, { isAutoEnabled: true })}
-        >
-          {getPrimaryButtonText(submitting, isEnabled, isAutoEnabled)}
-        </FormButton>
-      )}
+      updateSettings={updateLdapSettings}
+      renderSubmitButton={
+        !isEnabled &&
+        (({ disabled, submitting, pristine, onSubmit }) => (
+          <FormButton
+            primary={!disabled}
+            success={submitting === "success"}
+            disabled={disabled || pristine}
+            onClick={event => onSubmit(event, handleAutoEnableSubmit)}
+          >
+            {isAutoEnabled
+              ? PRIMARY_BUTTON_STATES[submitting]
+              : PRIMARY_BUTTON_STATES.default}
+          </FormButton>
+        ))
+      }
       renderExtraButtons={
         !isEnabled &&
         (({ disabled, submitting, pristine, onSubmit }) => (
           <FormButton
             success={submitting === "success"}
             disabled={disabled || pristine}
-            onClick={event => onSubmit(event, { isAutoEnabled: false })}
+            onClick={event => onSubmit(event, handleDefaultSubmit)}
           >
-            {getSecondaryButtonText(submitting, isAutoEnabled)}
+            {!isAutoEnabled
+              ? SECONDARY_BUTTON_STATES[submitting]
+              : SECONDARY_BUTTON_STATES.default}
           </FormButton>
         ))
       }
@@ -115,24 +127,6 @@ const getLayout = settingValues => {
       ].filter(Boolean),
     },
   ];
-};
-
-const getPrimaryButtonText = (state, isEnabled, isAutoEnabled) => {
-  if (isEnabled) {
-    return DEFAULT_BUTTON_STATES[state];
-  } else if (isAutoEnabled) {
-    return PRIMARY_BUTTON_STATES[state];
-  } else {
-    return PRIMARY_BUTTON_STATES.default;
-  }
-};
-
-const getSecondaryButtonText = (state, isAutoEnabled) => {
-  if (!isAutoEnabled) {
-    return SECONDARY_BUTTON_STATES[state];
-  } else {
-    return SECONDARY_BUTTON_STATES.default;
-  }
 };
 
 const mapDispatchToProps = { updateLdapSettings };
