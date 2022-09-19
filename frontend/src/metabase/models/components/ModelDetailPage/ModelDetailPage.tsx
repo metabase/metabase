@@ -10,6 +10,7 @@ import * as Urls from "metabase/lib/urls";
 
 import type Question from "metabase-lib/lib/Question";
 
+import ModelActionDetails from "./ModelActionDetails";
 import ModelInfoSidePanel from "./ModelInfoSidePanel";
 import ModelSchemaDetails from "./ModelSchemaDetails";
 import ModelUsageDetails from "./ModelUsageDetails";
@@ -59,7 +60,7 @@ function ModelDetailPage({ model }: Props) {
             <ModelSchemaDetails model={model} />
           </TabPanel>
           <TabPanel value="actions">
-            <p>Actions</p>
+            <ModelActionDetails model={model} />
           </TabPanel>
           <TabPanel value="usage">
             <ModelUsageDetails model={model} />
