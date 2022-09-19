@@ -4,6 +4,7 @@
             [clojure.tools.logging :as log]
             [clojure.tools.trace :as trace]
             [java-time :as t]
+            [metabase.analytics.prometheus :as prometheus]
             [metabase.config :as config]
             [metabase.core.initialization-status :as init-status]
             [metabase.db :as mdb]
@@ -76,6 +77,7 @@
   ;; to a Shutdown hook of some sort instead of having here
   (task/stop-scheduler!)
   (server/stop-web-server!)
+  (prometheus/shutdown!)
   (log/info (trs "Metabase Shutdown COMPLETE")))
 
 (defn- init!*
@@ -97,6 +99,11 @@
   (log/info (trs "Setting up and migrating Metabase DB. Please sit tight, this may take a minute..."))
   (mdb/setup-db!)
   (init-status/set-progress! 0.5)
+
+  (when (prometheus/prometheus-server-port)
+    (log/info (trs "Setting up prometheus metrics"))
+    (prometheus/setup!)
+    (init-status/set-progress! 0.6))
 
   ;; run a very quick check to see if we are doing a first time installation
   ;; the test we are using is if there is at least 1 User in the database
