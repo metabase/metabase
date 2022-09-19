@@ -224,6 +224,11 @@
   ;; TODO - do we want to include tables that should be `:hidden`?
   (db/select 'Table, :db_id id, :active true, {:order-by [[:%lower.display_name :asc]]}))
 
+(defn ^:hydrate models
+  "Return the `Models` associated with this `Database`."
+  [{:keys [id]}]
+  (db/select 'Card, :database_id id, :archived false, :dataset true, {:order-by [[:%lower.name :asc]]}))
+
 (defn schema-names
   "Return a *sorted set* of schema names (as strings) associated with this `Database`."
   [{:keys [id]}]
