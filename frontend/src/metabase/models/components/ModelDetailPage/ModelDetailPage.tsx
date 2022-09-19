@@ -11,6 +11,7 @@ import * as Urls from "metabase/lib/urls";
 import type Question from "metabase-lib/lib/Question";
 
 import ModelInfoSidePanel from "./ModelInfoSidePanel";
+import ModelSchemaDetails from "./ModelSchemaDetails";
 import {
   RootLayout,
   ModelMain,
@@ -54,7 +55,7 @@ function ModelDetailPage({ model }: Props) {
             onChange={tab => setTab(tab as ModelTab)}
           />
           <TabPanel value="schema">
-            <p>Schema</p>
+            <ModelSchemaDetails model={model} />
           </TabPanel>
           <TabPanel value="actions">
             <p>Actions</p>
