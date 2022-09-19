@@ -660,6 +660,47 @@ const helperTextStrings = [
       },
     ],
   },
+  {
+    name: "date-add",
+    structure: "dateAdd(" + t`column` + ", " + t`amount` + ", " + t`unit` + ")",
+    description: t`Returns a datetime after which a certain time/date interval has been added.`,
+    example: "dateAdd([" + t`Created At` + '], 1, "' + t`month` + '")',
+    args: [
+      {
+        name: t`column`,
+        description: t`The datetime column to which the interval should be added.`,
+      },
+      {
+        name: t`amount`,
+        description: t`The amount to be changed.`,
+      },
+      {
+        name: t`unit`,
+        description: t`The unit to be added. Allowed units are "year", "month", "quarter", "day", "hour", "minute", "second".`,
+      },
+    ],
+  },
+  {
+    name: "date-subtract",
+    structure:
+      "dateSubtract(" + t`column` + ", " + t`amount` + ", " + t`unit` + ")",
+    description: t`Returns a datetime after which a certain time/date interval has been subtracted.`,
+    example: "dateSubtract([" + t`Created At` + '], 1, "' + t`month` + '")',
+    args: [
+      {
+        name: t`column`,
+        description: t`The datetime column to which the interval should be subtracted.`,
+      },
+      {
+        name: t`amount`,
+        description: t`The amount to be changed.`,
+      },
+      {
+        name: t`unit`,
+        description: t`The unit to be subtracted. Allowed units are "year", "month", "quarter", "day", "hour", "minute", "second".`,
+      },
+    ],
+  },
 ];
 
 export default name => helperTextStrings.find(h => h.name === name);
