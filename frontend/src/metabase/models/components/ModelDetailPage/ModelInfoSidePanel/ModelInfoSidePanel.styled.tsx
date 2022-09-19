@@ -2,6 +2,7 @@ import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
 import EditableText from "metabase/core/components/EditableText";
+import Link from "metabase/core/components/Link";
 
 import { color } from "metabase/lib/colors";
 
@@ -26,16 +27,21 @@ export const ModelInfoTitle = styled.span`
 `;
 
 const commonInfoTextStyle = css`
+  display: block;
   margin-top: 0.5rem;
   color: ${color("text-medium")};
   padding-left: 4px;
 `;
 
 export const ModelInfoText = styled.span`
-  display: block;
   ${commonInfoTextStyle}
 `;
 
 export const ModelDescription = styled(EditableText)`
   ${commonInfoTextStyle}
+`;
+
+export const ModelInfoLink = styled(Link)`
+  ${commonInfoTextStyle}
+  color: ${color("brand")};
 `;

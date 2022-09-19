@@ -1,7 +1,9 @@
 import React, { useMemo } from "react";
 import { t } from "ttag";
 
-import type { Card } from "metabase-types/api";
+import * as Urls from "metabase/lib/urls";
+
+import type { Card, Table } from "metabase-types/api";
 import type Question from "metabase-lib/lib/Question";
 
 import {
@@ -10,6 +12,7 @@ import {
   ModelInfoText,
   ModelInfoSection,
   ModelDescription,
+  ModelInfoLink,
 } from "./ModelInfoSidePanel.styled";
 
 interface Props {
@@ -49,7 +52,11 @@ function ModelInfoSidePanel({ model, onChangeDescription }: Props) {
       {backingTable && (
         <ModelInfoSection>
           <ModelInfoTitle>{t`Backing table`}</ModelInfoTitle>
-          <ModelInfoText>{backingTable.displayName()}</ModelInfoText>
+          <ModelInfoLink
+            to={backingTable.newQuestion().getUrl({ clean: false })}
+          >
+            {backingTable.displayName()}
+          </ModelInfoLink>
         </ModelInfoSection>
       )}
     </ModelInfoPanel>
