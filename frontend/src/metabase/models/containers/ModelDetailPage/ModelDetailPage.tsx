@@ -50,7 +50,7 @@ const mapDispatchToProps = {
   onChangeModel: Questions.actions.update,
 };
 
-function ModelDetailPage({ model, onChangeModel }: Props) {
+function ModelDetailPage({ model, loadMetadataForCard, onChangeModel }: Props) {
   useOnMount(() => {
     loadMetadataForCard(model.card());
   });
