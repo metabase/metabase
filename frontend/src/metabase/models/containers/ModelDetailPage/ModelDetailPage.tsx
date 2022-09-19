@@ -34,6 +34,7 @@ type StateProps = {
 
 type DispatchProps = {
   loadMetadataForCard: (card: LegacyCardType) => void;
+  onChangeModel: (card: Card) => void;
 };
 
 type Props = OwnProps & EntityLoaderProps & StateProps & DispatchProps;
@@ -46,14 +47,15 @@ function mapStateToProps(state: State, props: OwnProps & EntityLoaderProps) {
 
 const mapDispatchToProps = {
   loadMetadataForCard,
+  onChangeModel: Questions.actions.update,
 };
 
-function ModelDetailPage({ model }: Props) {
+function ModelDetailPage({ model, onChangeModel }: Props) {
   useOnMount(() => {
     loadMetadataForCard(model.card());
   });
 
-  return <ModelDetailPageView model={model} />;
+  return <ModelDetailPageView model={model} onChangeModel={onChangeModel} />;
 }
 
 export default _.compose(

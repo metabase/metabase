@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
@@ -7,6 +7,7 @@ import TabContent from "metabase/core/components/TabContent";
 
 import * as Urls from "metabase/lib/urls";
 
+import type { Card } from "metabase-types/api";
 import type Question from "metabase-lib/lib/Question";
 
 import ModelActionDetails from "./ModelActionDetails";
@@ -25,23 +26,37 @@ import {
 
 interface Props {
   model: Question;
+  onChangeModel: (model: Card) => void;
 }
 
 type ModelTab = "schema" | "actions" | "usage";
 
-function ModelDetailPage({ model }: Props) {
+function ModelDetailPage({ model, onChangeModel }: Props) {
   const [tab, setTab] = useState<ModelTab>("schema");
 
   const modelCard = model.card();
 
   const exploreDataLink = Urls.question(modelCard);
 
+  const handleNameChange = useCallback(
+    name => {
+      if (name && name !== model.displayName()) {
+        onChangeModel(model.setDisplayName(name).card() as Card);
+      }
+    },
+    [model, onChangeModel],
+  );
+
   return (
     <RootLayout>
       <ModelMain>
         <ModelHeader>
           <div>
-            <ModelTitle>{model.displayName()}</ModelTitle>
+            <ModelTitle
+              initialValue={model.displayName()}
+              isDisabled={!model.canWrite()}
+              onChange={handleNameChange}
+            />
             <ModelFootnote>{t`Model`}</ModelFootnote>
           </div>
           <Button primary as={Link} to={exploreDataLink}>{t`Explore`}</Button>
