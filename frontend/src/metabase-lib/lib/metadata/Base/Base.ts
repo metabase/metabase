@@ -12,6 +12,10 @@ export default class Base {
     }
   }
 
+  displayName(): string {
+    return this.name || `${this.constructor.name}.name is undefined`;
+  }
+
   /**
    * Get the plain metadata object without hydrated fields.
    * Useful for situations where you want serialize the metadata object.

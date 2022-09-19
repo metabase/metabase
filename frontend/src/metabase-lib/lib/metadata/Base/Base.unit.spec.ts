@@ -32,6 +32,25 @@ describe("Base", () => {
     });
   });
 
+  describe("displayName", () => {
+    it("should return the correct name", () => {
+      const object = {
+        abc: 123,
+        name: "TheBaseNameProperty",
+      };
+      const instance = new Base(object);
+      expect(instance.displayName()).toEqual(object.name);
+    });
+
+    it("should return the name fallback", () => {
+      const object = {
+        abc: 123,
+      };
+      const instance = new Base(object);
+      expect(instance.displayName()).toEqual(`Base.name is undefined`);
+    });
+  });
+
   describe("getPlainObject", () => {
     it("returns whatever `object` was provided during instantiation", () => {
       const obj = {

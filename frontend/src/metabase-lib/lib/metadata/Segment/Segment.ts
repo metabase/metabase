@@ -1,6 +1,8 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
-import Base from "./Base";
+import { SegmentFilter } from "metabase-types/types/Query";
+import Base from "../Base";
+import Database from "../Database";
+import Table from "../Table";
+
 /**
  * @typedef { import("./metadata").FilterClause } FilterClause
  */
@@ -10,18 +12,14 @@ import Base from "./Base";
  */
 
 export default class Segment extends Base {
-  displayName() {
-    return this.name;
-  }
-
   /**
    * @returns {FilterClause}
    */
-  filterClause() {
+  filterClause(): SegmentFilter {
     return ["segment", this.id];
   }
 
-  isActive() {
+  isActive(): boolean {
     return !this.archived;
   }
 
@@ -36,7 +34,14 @@ export default class Segment extends Base {
    */
 
   /* istanbul ignore next */
-  _constructor(name, description, database, table, id, archived) {
+  _constructor(
+    name: string,
+    description: string,
+    database: Database,
+    table: Table,
+    id: number,
+    archived: boolean,
+  ) {
     this.name = name;
     this.description = description;
     this.database = database;

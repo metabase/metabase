@@ -10,10 +10,6 @@ import Base from "./Base";
  */
 
 export default class Metric extends Base {
-  displayName() {
-    return this.name;
-  }
-
   /**
    * @returns {Aggregation}
    */
