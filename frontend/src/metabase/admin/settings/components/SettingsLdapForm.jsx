@@ -30,8 +30,8 @@ const propTypes = {
 const SettingsLdapForm = ({ settingValues, updateLdapSettings, ...props }) => {
   const isEnabled = settingValues["ldap-enabled"];
   const [isAutoEnabled, setIsAutoEnabled] = useState(false);
-  const breadcrumbs = getBreadcrumbs();
   const layout = getLayout(settingValues);
+  const breadcrumbs = getBreadcrumbs();
 
   const handleDefaultSubmit = formData => {
     setIsAutoEnabled(false);
@@ -46,8 +46,9 @@ const SettingsLdapForm = ({ settingValues, updateLdapSettings, ...props }) => {
   return (
     <SettingsBatchForm
       {...props}
-      breadcrumbs={breadcrumbs}
       layout={layout}
+      breadcrumbs={breadcrumbs}
+      settingValues={settingValues}
       updateSettings={updateLdapSettings}
       renderSubmitButton={
         !isEnabled &&
@@ -83,10 +84,6 @@ const SettingsLdapForm = ({ settingValues, updateLdapSettings, ...props }) => {
 };
 
 SettingsLdapForm.propTypes = propTypes;
-
-const getBreadcrumbs = () => {
-  return [[t`Authentication`, "/admin/settings/authentication"], [t`LDAP`]];
-};
 
 const getLayout = settingValues => {
   return [
@@ -127,6 +124,10 @@ const getLayout = settingValues => {
       ].filter(Boolean),
     },
   ];
+};
+
+const getBreadcrumbs = () => {
+  return [[t`Authentication`, "/admin/settings/authentication"], [t`LDAP`]];
 };
 
 const mapDispatchToProps = { updateLdapSettings };
