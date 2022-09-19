@@ -76,7 +76,7 @@ function ModelDetailPage({ model, onChangeModel }: Props) {
             options={[
               { value: "usage", name: t`Used by` },
               { value: "schema", name: t`Schema` },
-              { value: "actions", name: t`Actions` },
+              // { value: "actions", name: t`Actions` },
             ]}
             onChange={tab => setTab(tab as ModelTab)}
           />
