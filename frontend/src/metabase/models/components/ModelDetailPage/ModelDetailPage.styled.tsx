@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 
 import Radio from "metabase/core/components/Radio";
+import BaseTabPanel from "metabase/core/components/TabPanel";
 
 import { color } from "metabase/lib/colors";
 
@@ -45,3 +46,7 @@ export const TabList = styled(Radio)`
 `;
 
 TabList.defaultProps = { variant: "underlined" };
+
+export const TabPanel = styled(BaseTabPanel)`
+  margin-top: 1rem;
+`;

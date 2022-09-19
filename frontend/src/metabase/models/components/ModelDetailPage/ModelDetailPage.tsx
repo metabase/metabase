@@ -4,7 +4,6 @@ import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import TabContent from "metabase/core/components/TabContent";
-import TabPanel from "metabase/core/components/TabPanel";
 
 import * as Urls from "metabase/lib/urls";
 
@@ -21,6 +20,7 @@ import {
   ModelTitle,
   ModelFootnote,
   TabList,
+  TabPanel,
 } from "./ModelDetailPage.styled";
 
 interface Props {

@@ -12,10 +12,7 @@ export const SchemaHeader = styled.div`
 `;
 
 export const FieldList = styled.ul`
-  margin-top: 1rem;
   padding-top: 1rem;
-
-  border-top: 1px solid ${color("border")};
 `;
 
 export const FieldTitle = styled.span`
