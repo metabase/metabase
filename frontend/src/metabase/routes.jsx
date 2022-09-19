@@ -281,7 +281,7 @@ export const getRoutes = store => (
           <Route path=":slug/:objectId" component={QueryBuilder} />
         </Route>
 
-        <Route path="/model/:id/detail">
+        <Route path="/model/:slug/detail">
           <IndexRoute component={ModelDetailPage} />
         </Route>
 

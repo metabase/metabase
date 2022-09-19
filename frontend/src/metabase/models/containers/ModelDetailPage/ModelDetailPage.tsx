@@ -20,7 +20,7 @@ import Question from "metabase-lib/lib/Question";
 
 type OwnProps = {
   params: {
-    id: string;
+    slug: string;
   };
 };
 
@@ -61,7 +61,7 @@ function ModelDetailPage({ model, loadMetadataForCard, onChangeModel }: Props) {
 export default _.compose(
   Questions.load({
     id: (state: State, props: OwnProps) =>
-      Urls.extractEntityId(props.params.id),
+      Urls.extractEntityId(props.params.slug),
     entityAlias: "modelCard",
   }),
   connect<StateProps, DispatchProps, OwnProps & EntityLoaderProps, State>(
