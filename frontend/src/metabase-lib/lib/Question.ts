@@ -190,7 +190,7 @@ class QuestionInner {
    *
    * This is just a wrapper object, the data is stored in `this._card.dataset_query` in a format specific to the query type.
    */
-  query(): AtomicQuery {
+  getQuery() {
     const datasetQuery = this._card.dataset_query;
 
     for (const QueryClass of [StructuredQuery, NativeQuery, InternalQuery]) {
@@ -200,6 +200,14 @@ class QuestionInner {
     }
 
     throw new Error("Unknown query type: " + datasetQuery.type);
+  }
+
+  query({ composeModel = true } = {}): AtomicQuery {
+    if (this.isDataset()) {
+      return composeModel ? this.composeDataset().getQuery() : this.getQuery();
+    }
+
+    return this.getQuery();
   }
 
   isNative(): boolean {
@@ -883,7 +891,9 @@ class QuestionInner {
   }
 
   database(): Database | null | undefined {
-    const query = this.query();
+    const query = this.query({
+      composeModel: false,
+    });
     return query && typeof query.database === "function"
       ? query.database()
       : null;

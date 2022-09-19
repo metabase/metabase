@@ -200,17 +200,10 @@ class Visualization extends React.PureComponent {
     if (!metadata || !card) {
       return;
     }
-    const { isQueryBuilder, queryBuilderMode } = this.props;
+    // const { isQueryBuilder, queryBuilderMode } = this.props;
     const question = new Question(card, metadata);
 
-    // Datasets in QB should behave as raw tables opened in simple mode
-    // composeDataset replaces the dataset_query with a clean query using the dataset as a source table
-    // Ideally, this logic should happen somewhere else
-    return question.isDataset() &&
-      isQueryBuilder &&
-      queryBuilderMode !== "dataset"
-      ? question.composeDataset()
-      : question;
+    return question;
   }
 
   getMode(maybeModeOrQueryMode, question) {
