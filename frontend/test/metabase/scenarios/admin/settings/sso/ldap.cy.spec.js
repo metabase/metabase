@@ -49,7 +49,6 @@ describe("scenarios > admin > settings > SSO > LDAP", () => {
     cy.wait("@ldapUpdate").then(interception => {
       expect(interception.response.statusCode).to.eq(500);
     });
-    cy.button("Changes saved!");
   });
 
   it("should not reset previously populated fields when validation fails for just one of them (metabase#16226)", () => {
