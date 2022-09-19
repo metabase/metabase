@@ -49,5 +49,9 @@ export const TabList = styled(Radio)`
 TabList.defaultProps = { variant: "underlined" };
 
 export const TabPanel = styled(BaseTabPanel)`
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+
   margin-top: 1rem;
 `;

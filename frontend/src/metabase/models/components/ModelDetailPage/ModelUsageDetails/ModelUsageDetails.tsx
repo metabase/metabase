@@ -1,5 +1,8 @@
 import React, { useMemo } from "react";
+import { t } from "ttag";
 
+import Button from "metabase/core/components/Button";
+import Link from "metabase/core/components/Link";
 import Icon from "metabase/components/Icon";
 
 import * as Urls from "metabase/lib/urls";
@@ -14,7 +17,12 @@ import type { Card as LegacyCardType } from "metabase-types/types/Card";
 import type Question from "metabase-lib/lib/Question";
 
 import { isQuestionUsingModel } from "./utils";
-import { CardListItem, CardTitle } from "./ModelUsageDetails.styled";
+import {
+  CardListItem,
+  CardTitle,
+  EmptyStateContainer,
+  EmptyStateTitle,
+} from "./ModelUsageDetails.styled";
 
 interface Props {
   cards: Card[];
@@ -30,6 +38,19 @@ function ModelUsageDetails({ model, cards }: Props) {
       isQuestionUsingModel(card, modelId, modelTableId),
     );
   }, [model, cards]);
+
+  if (modelConsumers.length === 0) {
+    return (
+      <EmptyStateContainer>
+        <EmptyStateTitle>{t`This model is not used by any questions yet.`}</EmptyStateTitle>
+        <Button
+          as={Link}
+          to={model.composeDataset().getUrl()}
+          icon="add"
+        >{t`Create a new question`}</Button>
+      </EmptyStateContainer>
+    );
+  }
 
   return (
     <ul>
