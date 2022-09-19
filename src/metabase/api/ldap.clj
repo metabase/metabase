@@ -109,8 +109,7 @@
         ldap-details  (set/rename-keys ldap-settings ldap/mb-settings->ldap-details)
         results       (ldap/test-ldap-connection ldap-details)]
     (if (= :SUCCESS (:status results))
-      ;; test succeeded, save our settings
-      (setting/set-many! ldap-settings)
+       (setting/set-many! (assoc ldap-settings :ldap-enabled (:ldap-enabled settings)))
       ;; test failed, return result message
       {:status 500
        :body   (humanize-error-messages results)})))
