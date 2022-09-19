@@ -87,7 +87,6 @@ class MetricPane extends Component {
 
     return (
       <DetailPane
-        name={metricName}
         description={metric.description}
         useForCurrentQuestion={useForCurrentQuestion}
         usefulQuestions={usefulQuestions}

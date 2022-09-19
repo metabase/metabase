@@ -1,4 +1,5 @@
 import React from "react";
+import { jt } from "ttag";
 import PropTypes from "prop-types";
 import Icon from "metabase/components/Icon";
 import Table from "metabase/entities/tables";
@@ -9,12 +10,8 @@ const DatabaseTablesPane = ({ database, show }) => {
     <div>
       <div className="ml1 my2 flex align-center justify-between border-bottom pb1">
         <div className="flex align-center">
-          <Icon name="database" className="text-medium pr1" size={14} />
-          <h3 className="text-wrap">{database.name}</h3>
-        </div>
-        <div className="flex align-center">
-          <Icon name="table2" className="text-light pr1" size={12} />
-          <span className="text-medium">{tables.length}</span>
+          <Icon name="table2" className="pr1" size={12} />
+          <span>{jt`${tables.length} tables`}</span>
         </div>
       </div>
 

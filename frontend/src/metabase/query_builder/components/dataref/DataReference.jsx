@@ -21,6 +21,15 @@ const PANES = {
   metric: MetricPane,
 };
 
+const TITLE_ICONS = {
+  database: "database",
+  schema: "folder", // TODO check
+  table: "table2",
+  field: "field",
+  segment: "segment", // TODO check
+  metric: "metric", // TODO check
+};
+
 export default class DataReference extends Component {
   constructor(props, context) {
     super(props, context);
@@ -84,11 +93,14 @@ export default class DataReference extends Component {
 
     let title = null;
     let content = null;
+    let icon = null;
     if (stack.length === 0) {
       title = t`Data Reference`;
       content = <MainPane {...this.props} show={this.show} />;
     } else {
       const page = stack[stack.length - 1];
+      title = page.item.name;
+      icon = TITLE_ICONS[page.type];
       const Pane = PANES[page.type];
       content = Pane && (
         <Pane
@@ -102,6 +114,7 @@ export default class DataReference extends Component {
     return (
       <SidebarContent
         title={title}
+        icon={icon}
         onBack={stack.length > 0 ? this.back : null}
         onClose={this.close}
       >

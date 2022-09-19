@@ -12,10 +12,6 @@ class SchemaPaneInner extends Component {
       <div>
         <div className="ml1 my2 flex align-center justify-between border-bottom pb1">
           <div className="flex align-center">
-            <Icon name="folder" className="text-medium pr1" size={14} />
-            <h3 className="text-wrap">{schema.name}</h3>
-          </div>
-          <div className="flex align-center">
             <Icon name="table2" className="text-light pr1" size={12} />
             <span className="text-medium">{tables.length}</span>
           </div>
