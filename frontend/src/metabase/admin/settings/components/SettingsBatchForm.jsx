@@ -188,7 +188,7 @@ class SettingsBatchForm extends Component {
     return formErrors;
   }
 
-  updateSettings = e => {
+  updateSettings = (e, options) => {
     e.preventDefault();
 
     const { formData, valid } = this.state;
@@ -199,7 +199,7 @@ class SettingsBatchForm extends Component {
         submitting: "working",
       });
 
-      this.props.updateSettings(formData).then(
+      this.props.updateSettings(formData, options).then(
         () => {
           this.setState({ pristine: true, submitting: "success" });
 

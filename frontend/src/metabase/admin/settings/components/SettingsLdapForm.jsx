@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import { connect } from "react-redux";
@@ -6,19 +6,19 @@ import { updateLdapSettings } from "metabase/admin/settings/settings";
 import SettingsBatchForm from "./SettingsBatchForm";
 import { FormButton } from "./SettingsLdapForm.styled";
 
-const SUBMIT_BUTTON_STATES = {
+const DEFAULT_BUTTON_STATES = {
   default: t`Save changes`,
   working: t`Saving...`,
   success: t`Changes saved!`,
 };
 
 const PRIMARY_BUTTON_STATES = {
-  ...SUBMIT_BUTTON_STATES,
+  ...DEFAULT_BUTTON_STATES,
   default: t`Save and enable`,
 };
 
 const SECONDARY_BUTTON_STATES = {
-  ...SUBMIT_BUTTON_STATES,
+  ...DEFAULT_BUTTON_STATES,
   default: t`Save but don't enable`,
 };
 
@@ -29,25 +29,29 @@ const propTypes = {
 
 const SettingsLdapForm = ({ settingValues, updateLdapSettings, ...props }) => {
   const isEnabled = settingValues["ldap-enabled"];
+  const [isAutoEnabled, setIsAutoEnabled] = useState(false);
   const breadcrumbs = getBreadcrumbs();
   const layout = getLayout(settingValues);
+
+  const handleSubmit = (settings, { isAutoEnabled }) => {
+    setIsAutoEnabled(isAutoEnabled);
+    return updateLdapSettings({ ...settings, "ldap-enabled": isAutoEnabled });
+  };
 
   return (
     <SettingsBatchForm
       {...props}
       breadcrumbs={breadcrumbs}
       layout={layout}
-      updateSettings={updateLdapSettings}
+      updateSettings={handleSubmit}
       renderSubmitButton={({ disabled, submitting, pristine, onSubmit }) => (
         <FormButton
           primary={!disabled}
           success={submitting === "success"}
           disabled={disabled || pristine}
-          onClick={onSubmit}
+          onClick={event => onSubmit(event, { isAutoEnabled: true })}
         >
-          {isEnabled
-            ? SUBMIT_BUTTON_STATES[submitting]
-            : PRIMARY_BUTTON_STATES[submitting]}
+          {getPrimaryButtonText(submitting, isEnabled, isAutoEnabled)}
         </FormButton>
       )}
       renderExtraButtons={
@@ -56,9 +60,9 @@ const SettingsLdapForm = ({ settingValues, updateLdapSettings, ...props }) => {
           <FormButton
             success={submitting === "success"}
             disabled={disabled || pristine}
-            onClick={onSubmit}
+            onClick={event => onSubmit(event, { isAutoEnabled: false })}
           >
-            {SECONDARY_BUTTON_STATES[submitting]}
+            {getSecondaryButtonText(submitting, isAutoEnabled)}
           </FormButton>
         ))
       }
@@ -111,6 +115,24 @@ const getLayout = settingValues => {
       ].filter(Boolean),
     },
   ];
+};
+
+const getPrimaryButtonText = (state, isEnabled, isAutoEnabled) => {
+  if (isEnabled) {
+    return DEFAULT_BUTTON_STATES[state];
+  } else if (isAutoEnabled) {
+    return PRIMARY_BUTTON_STATES[state];
+  } else {
+    return PRIMARY_BUTTON_STATES.default;
+  }
+};
+
+const getSecondaryButtonText = (state, isAutoEnabled) => {
+  if (!isAutoEnabled) {
+    return SECONDARY_BUTTON_STATES[state];
+  } else {
+    return SECONDARY_BUTTON_STATES.default;
+  }
 };
 
 const mapDispatchToProps = { updateLdapSettings };
