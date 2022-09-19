@@ -73,7 +73,7 @@ describe("scenarios > models", () => {
     });
 
     cy.findByTestId("qb-header").findAllByText("Our analytics").first().click();
-    getCollectionItemRow("Orders Model").within(() => {
+    getCollectionItemCard("Orders Model").within(() => {
       cy.icon("model");
     });
     getCollectionItemRow("Q1").within(() => {
@@ -122,7 +122,7 @@ describe("scenarios > models", () => {
     });
 
     cy.findByTestId("qb-header").findAllByText("Our analytics").first().click();
-    getCollectionItemRow("Orders Model").within(() => {
+    getCollectionItemCard("Orders Model").within(() => {
       cy.icon("model");
     });
     getCollectionItemRow("Q1").within(() => {
@@ -540,6 +540,10 @@ describe("scenarios > models", () => {
 
 function getCollectionItemRow(itemName) {
   return cy.findByText(itemName).closest("tr");
+}
+
+function getCollectionItemCard(itemName) {
+  return cy.findByText(itemName).parent();
 }
 
 function testDataPickerSearch({
