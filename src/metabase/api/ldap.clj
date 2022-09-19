@@ -8,8 +8,7 @@
             [metabase.integrations.ldap :as ldap]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util.i18n :refer [deferred-tru tru]]
-            [metabase.util.schema :as su]
-            [toucan.db :as db]))
+            [metabase.util.schema :as su]))
 
 (defn- humanize-error-messages
   "Convert raw error message responses from our LDAP tests into our normal api error response structure."
