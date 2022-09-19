@@ -47,6 +47,15 @@ function ModelDetailPage({ model, onChangeModel }: Props) {
     [model, onChangeModel],
   );
 
+  const handleChangeDescription = useCallback(
+    description => {
+      if (model.description() !== description) {
+        onChangeModel(model.setDescription(description).card() as Card);
+      }
+    },
+    [model, onChangeModel],
+  );
+
   return (
     <RootLayout>
       <ModelMain>
@@ -82,7 +91,10 @@ function ModelDetailPage({ model, onChangeModel }: Props) {
           </TabPanel>
         </TabContent>
       </ModelMain>
-      <ModelInfoSidePanel model={model} />
+      <ModelInfoSidePanel
+        model={model}
+        onChangeDescription={handleChangeDescription}
+      />
     </RootLayout>
   );
 }
