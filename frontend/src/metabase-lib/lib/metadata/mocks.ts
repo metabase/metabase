@@ -2,13 +2,15 @@ import { createMockField } from "metabase-types/api/mocks/field";
 import { Field as ApiField } from "metabase-types/api";
 import Field from "./Field";
 
+interface ICreateMockConcreteFieldProps {
+  apiOpts?: Partial<ApiField>;
+  instanceOpts?: Partial<Field>;
+}
+
 export function createMockConcreteField({
   apiOpts,
   instanceOpts,
-}: {
-  apiOpts?: Partial<ApiField>;
-  instanceOpts?: Partial<Field>;
-}) {
+}: ICreateMockConcreteFieldProps): Field {
   const mockField = createMockField(apiOpts);
   const instance = new Field(mockField);
 
