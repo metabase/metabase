@@ -28,22 +28,22 @@
 (defn number-formatter
   "Return a function that will take a number and format it according to its column viz settings. Useful to compute the
   format string once and then apply it over many values."
-  [{:keys [effective_type base_type] col-id :id col-name :name  :as _column} viz-settings]
-  (let [column-settings    (or (get-in viz-settings [::mb.viz/column-settings {::mb.viz/field-id col-id}])
-                               (get-in viz-settings [::mb.viz/column-settings {::mb.viz/column-name col-name}]))
-        global-settings    (::mb.viz/global-column-settings viz-settings)
-        currency?          (boolean (or (= (::mb.viz/number-style column-settings) "currency")
-                                        (and (nil? (::mb.viz/number-style column-settings))
-                                             (or
-                                              (::mb.viz/currency-style column-settings)
-                                              (::mb.viz/currency column-settings)))))
+  [{:keys [effective_type base_type] col-id :id col-name :name :as _column} viz-settings]
+  (let [column-settings (or (get-in viz-settings [::mb.viz/column-settings {::mb.viz/field-id col-id}])
+                            (get-in viz-settings [::mb.viz/column-settings {::mb.viz/column-name col-name}]))
+        global-settings (::mb.viz/global-column-settings viz-settings)
+        currency?       (boolean (or (= (::mb.viz/number-style column-settings) "currency")
+                                     (and (nil? (::mb.viz/number-style column-settings))
+                                          (or
+                                            (::mb.viz/currency-style column-settings)
+                                            (::mb.viz/currency column-settings)))))
 
         {::mb.viz/keys [number-separators decimals scale number-style
                         prefix suffix currency-style currency]} (merge
-                                                                 (when currency?
-                                                                   (:type/Currency global-settings))
-                                                                 (:type/Number global-settings)
-                                                                 column-settings)
+                                                                  (when currency?
+                                                                    (:type/Currency global-settings))
+                                                                  (:type/Number global-settings)
+                                                                  column-settings)
 
 
         [decimal grouping] (or number-separators ".,")
@@ -52,12 +52,21 @@
                              (cond-> grouping (.setGroupingSeparator grouping)))
         base               (if (= number-style "scientific") "0" "#,###")
         integral?          (isa? (or effective_type base_type) :type/Integer)
+        decimal-digits     (if currency?
+                             (get-in currency/currency [(keyword (or currency "USD")) :decimal_digits])
+                             2)
         fmt-str            (cond-> (cond
-                                     decimals  (if (zero? decimals)
-                                                 base
-                                                 (apply str base "." (repeat decimals "0")))
-                                     integral? base
-                                     :else     (str base ".00"))
+                                     decimals
+                                     (if (zero? decimals)
+                                       base
+                                       (apply str base "." (repeat decimals "0")))
+
+                                     (and integral?
+                                          (not currency?))
+                                     base
+
+                                     :else
+                                     (apply str base (when (> decimal-digits 0) ".") (repeat decimal-digits "0")))
                              (= number-style "scientific") (str "E0")
                              (= number-style "percent")    (str "%"))
         fmtr               (DecimalFormat. fmt-str symbols)]

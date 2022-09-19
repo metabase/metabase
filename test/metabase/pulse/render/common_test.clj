@@ -12,7 +12,7 @@
 
 (deftest number-formatting-test
   (let [value 12345.5432
-        fmt (partial format value)]
+        fmt   (partial format value)]
     (testing "Regular Number formatting"
       (is (= "12,345.54" (fmt nil)))
       (is (= "12*345^54" (fmt {::mb.viz/number-separators "^*"})))
@@ -29,28 +29,30 @@
         (is (= "$12,345.54" (fmt {::mb.viz/currency "USD"}))))
       (testing "Other currencies"
         (is (= "AED12,345.54" (fmt {::mb.viz/currency "AED"})))
-        (is (= "₡12,345.54" (fmt {::mb.viz/currency "CRC"})))
+        (is (= "Af12,346" (fmt {::mb.viz/currency "AFN"})))
+        (is (= "₡12,346" (fmt {::mb.viz/currency "CRC"})))
+        (is (= "ZK12,346" (fmt {::mb.viz/currency "ZMK"})))
         (is (= "12,345.54 Cape Verdean escudos"
-               (fmt {::mb.viz/currency "CVE"
+               (fmt {::mb.viz/currency       "CVE"
                      ::mb.viz/currency-style "name"}))))
       (testing "Understands name, code, and symbol"
         (doseq [[style expected] [["name" "12,345.54 Czech Republic korunas"]
                                   ["symbol" "Kč12,345.54"]
                                   ["code" "CZK 12,345.54"]]]
-          (is (= expected (fmt {::mb.viz/currency "CZK"
+          (is (= expected (fmt {::mb.viz/currency       "CZK"
                                 ::mb.viz/currency-style style}))
               style))))
     (testing "scientific notation"
-      (is (= "1.23E4" (fmt {::mb.viz/number-style "scientific"})))
-      (is (= "1.2346E4" (fmt {::mb.viz/number-style "scientific"
-                              ::mb.viz/decimals 4})))
-      (is (= "1E4" (fmt {::mb.viz/number-style "scientific"
-                         ::mb.viz/decimals 0}))))
+                (is (= "1.23E4" (fmt {::mb.viz/number-style "scientific"})))
+                (is (= "1.2346E4" (fmt {::mb.viz/number-style "scientific"
+                                        ::mb.viz/decimals     4})))
+                (is (= "1E4" (fmt {::mb.viz/number-style "scientific"
+                                   ::mb.viz/decimals     0}))))
     (testing "Percentage"
       (is (= "1,234,554.32%" (fmt {::mb.viz/number-style "percent"})))
       (is (= "1.234.554,3200%"
-             (fmt {::mb.viz/number-style "percent"
-                   ::mb.viz/decimals 4
+             (fmt {::mb.viz/number-style      "percent"
+                   ::mb.viz/decimals          4
                    ::mb.viz/number-separators ",."}))))
     (testing "Column Settings"
       (letfn [(fmt-with-type [type value]
@@ -72,7 +74,7 @@
     (testing "Does not throw on non-numeric types"
         (is (= "bob"
                ((common/number-formatter {:id 1}
-                                       {::mb.viz/column-settings
-                                        {{::mb.viz/column-id 1}
-                                         {::mb.viz/number-style "percent"}}})
+                                         {::mb.viz/column-settings
+                                          {{::mb.viz/column-id 1}
+                                           {::mb.viz/number-style "percent"}}})
                 "bob"))))))

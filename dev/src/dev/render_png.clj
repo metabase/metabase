@@ -94,10 +94,8 @@
                       "gamma" "blue"
                       "delta" "yellow"}]
     (case kind
-      :line  (js-svg/timelineseries-line line|bar-data)
-      :bar   (js-svg/timelineseries-bar line|bar-data)
       :donut (js-svg/categorical-donut donut-data donut-colors)
-      (throw (ex-info (str "Invalid chart type: " kind "\n Valid choices are :line, :bar, :donut")
+      (throw (ex-info (str "Invalid chart type: " kind "\n Valid choices are :donut.")
                       {})))))
 
 (defn preview-html
