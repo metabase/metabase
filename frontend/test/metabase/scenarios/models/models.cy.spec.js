@@ -14,6 +14,7 @@ import {
   startNewQuestion,
   openQuestionActions,
   closeQuestionActions,
+  visitCollection,
 } from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -472,6 +473,15 @@ describe("scenarios > models", () => {
     cy.findByText("TEST MODEL").click();
     cy.wait("@cardQuery");
     cy.findByText(/This question is written in SQL/i).should("not.exist");
+  });
+
+  it("should automatically pin newly created models", () => {
+    visitQuestion(1);
+    turnIntoModel();
+
+    visitCollection("root");
+    cy.findByText("Useful data");
+    cy.findByText("A model");
   });
 
   describe("listing", () => {
