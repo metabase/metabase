@@ -93,6 +93,8 @@ import { getAdminPaths } from "metabase/admin/app/selectors";
 import ActionPage from "metabase/writeback/containers/ActionCreatorPage";
 import ActionsListPage from "metabase/writeback/containers/ActionsListPage";
 
+import ModelDetailPage from "metabase/models/containers/ModelDetailPage";
+
 const MetabaseIsSetup = UserAuthWrapper({
   predicate: authData => authData.hasUserSetup,
   failureRedirectPath: "/setup",
@@ -277,6 +279,10 @@ export const getRoutes = store => (
           <Route path=":slug" component={QueryBuilder} />
           <Route path=":slug/notebook" component={QueryBuilder} />
           <Route path=":slug/:objectId" component={QueryBuilder} />
+        </Route>
+
+        <Route path="/model/:id/detail">
+          <IndexRoute component={ModelDetailPage} />
         </Route>
 
         <Route path="/model">
