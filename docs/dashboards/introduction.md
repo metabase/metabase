@@ -98,11 +98,22 @@ Once you're in edit mode, you'll see a grid appear. You can move and resize the 
 
 Metabase will automatically update a question's display to make sure your data looks great at any size you choose.
 
-## Changing a question's visualization settings
+## Changing a card's visualization settings
 
-You can change a question's visualization settings on a dashboard (to add a goal line, for example,) without affecting the original question. Click on the **pencil** icon to enter dashboard edit mode, hover over the question you want to edit, and click on the palette icon to edit the question's visualization's settings.
+You can change a card's visualization settings (to add a goal line, for example,). Changing a card's settings will _not_ write over the original question's settings. 
+
+Click on the **pencil** icon to enter dashboard edit mode, hover over the question you want to edit, and click on the **palette** icon to edit a card's visualization's settings.
 
 ![Visualization settings](images/visualization-settings.png)
+
+## Resetting a card's visualization settings
+
+1. Go to your dashboard and click the **pencil icon** to go into edit mode.
+2. Hover over the card (question) that you want to edit.
+3. Click the **palette icon** to bring up the visualization settings for that card. 
+4. Click **Reset to defaults**.
+5. Click **Done** to save the card's visualization settings.
+6. Click **Save** to save the dashboard.
 
 ## Finding dashboards
 

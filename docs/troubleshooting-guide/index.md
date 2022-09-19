@@ -34,6 +34,7 @@ Problems, their causes, how to detect them, and how to fix them.
 
 - [I can't save my question or dashboard][proxies].
 - [I can't view or edit my question or dashboard][view-edit].
+- [My visualizations are wrong][visualization].
 - [My dashboard is slow or failing to load][slow-dashboard].
 - [My SQL question doesn't work][sql].
 - [The dates and times in my questions and charts are wrong][incorrect-times].
@@ -121,3 +122,4 @@ Metabase adds new features and squashes bugs with each release. [Upgrading to th
 [timeout]: ./timeout.md
 [upgrade]: ../installation-and-operation/upgrading-metabase.md
 [view-edit]: ./cant-view-or-edit.md
+[visualization]: ./visualization.md
