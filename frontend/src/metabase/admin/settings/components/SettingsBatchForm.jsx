@@ -188,8 +188,8 @@ class SettingsBatchForm extends Component {
     return formErrors;
   }
 
-  updateSettings = (e, options) => {
-    e.preventDefault();
+  updateSettings = (event, options) => {
+    event.preventDefault();
 
     const { formData, valid } = this.state;
 
