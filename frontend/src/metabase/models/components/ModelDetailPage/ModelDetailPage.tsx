@@ -32,7 +32,7 @@ interface Props {
 type ModelTab = "schema" | "actions" | "usage";
 
 function ModelDetailPage({ model, onChangeModel }: Props) {
-  const [tab, setTab] = useState<ModelTab>("schema");
+  const [tab, setTab] = useState<ModelTab>("usage");
 
   const modelCard = model.card();
 
@@ -74,20 +74,20 @@ function ModelDetailPage({ model, onChangeModel }: Props) {
           <TabList
             value={tab}
             options={[
+              { value: "usage", name: t`Used by` },
               { value: "schema", name: t`Schema` },
               { value: "actions", name: t`Actions` },
-              { value: "usage", name: t`Used by` },
             ]}
             onChange={tab => setTab(tab as ModelTab)}
           />
+          <TabPanel value="usage">
+            <ModelUsageDetails model={model} />
+          </TabPanel>
           <TabPanel value="schema">
             <ModelSchemaDetails model={model} />
           </TabPanel>
           <TabPanel value="actions">
             <ModelActionDetails model={model} />
-          </TabPanel>
-          <TabPanel value="usage">
-            <ModelUsageDetails model={model} />
           </TabPanel>
         </TabContent>
       </ModelMain>
