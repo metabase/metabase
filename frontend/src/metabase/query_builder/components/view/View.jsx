@@ -60,6 +60,10 @@ class View extends React.Component {
     ...DEFAULT_POPOVER_STATE,
   };
 
+  onUpdateQuery = (query, options = { run: true }) => {
+    this.props.updateQuestion(query.question(), options);
+  };
+
   handleAddSeries = e => {
     this.setState({
       ...DEFAULT_POPOVER_STATE,
@@ -77,7 +81,7 @@ class View extends React.Component {
 
   handleRemoveSeries = (e, index) => {
     const { query } = this.props;
-    query.removeAggregation(index).update(null, { run: true });
+    this.onUpdateQuery(query.removeAggregation(index));
   };
 
   handleEditBreakout = (e, index) => {
@@ -98,11 +102,11 @@ class View extends React.Component {
     const { query } = this.props;
     const { aggregationIndex } = this.state;
     if (aggregationIndex != null) {
-      query
-        .updateAggregation(aggregationIndex, aggregation)
-        .update(null, { run: true });
+      this.onUpdateQuery(
+        query.updateAggregation(aggregationIndex, aggregation),
+      );
     } else {
-      query.aggregate(aggregation).update(null, { run: true });
+      this.onUpdateQuery(query.aggregate(aggregation));
     }
     this.handleClosePopover();
   };
@@ -111,9 +115,9 @@ class View extends React.Component {
     const { query } = this.props;
     const { breakoutIndex } = this.state;
     if (breakoutIndex != null) {
-      query.updateBreakout(breakoutIndex, breakout).update(null, { run: true });
+      this.onUpdateQuery(query.updateBreakout(breakoutIndex, breakout));
     } else {
-      query.breakout(breakout).update(null, { run: true });
+      this.onUpdateQuery(query.breakout(breakout));
     }
     this.handleClosePopover();
   };
