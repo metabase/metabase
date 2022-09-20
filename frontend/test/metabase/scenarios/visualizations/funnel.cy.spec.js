@@ -26,46 +26,41 @@ describe("scenarios > visualizations > funnel chart", () => {
     sidebar().findByText("Data").click();
   });
 
-  it("should show the list of rows", () => {
-    cy.findAllByTestId(/draggable-item/).should("have.length", 5);
-  });
+  it("hould allow you to reorder and show/hide rows", () => {
+    cy.log("ensure that rows are shown");
+    getDraggableRows().should("have.length", 5);
 
-  it("should allow you to reorder rows", async () => {
-    cy.findAllByTestId(/draggable-item/)
+    getDraggableRows()
       .first()
       .invoke("text")
       .then(name => {
+        cy.log(`mode row ${name} down 2`);
         cy.findAllByTestId("funnel-chart-header")
           .first()
           .should("have.text", name);
 
-        moveColumnDown(cy.findAllByTestId(/draggable-item/).first(), 2);
+        moveColumnDown(getDraggableRows().first(), 2);
 
-        cy.findAllByTestId(/draggable-item/)
-          .eq(2)
-          .should("have.text", name);
+        getDraggableRows().eq(2).should("have.text", name);
 
         cy.findAllByTestId("funnel-chart-header")
           .eq(2)
           .should("have.text", name);
       });
-  });
 
-  it("should allow you toggle row visibility", async () => {
-    cy.findAllByTestId(/draggable-item/)
-      .eq(1)
-      .find(".Icon-eye_filled")
-      .click();
+    cy.log("toggle row visibility");
+    getDraggableRows().eq(1).find(".Icon-eye_filled").click();
     cy.findAllByTestId("funnel-chart-header").should("have.length", 4);
 
-    cy.findAllByTestId(/draggable-item/)
-      .eq(1)
-      .find(".Icon-eye_crossed_out")
-      .click();
+    getDraggableRows().eq(1).find(".Icon-eye_crossed_out").click();
 
     cy.findAllByTestId("funnel-chart-header").should("have.length", 5);
   });
 });
+
+function getDraggableRows() {
+  return cy.findAllByTestId(/draggable-item/);
+}
 
 function moveColumnDown(column, distance) {
   column
