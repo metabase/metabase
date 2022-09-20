@@ -11,7 +11,7 @@ jobs:
   build:
 
     runs-on: ubuntu-20.04
-
+    timeout-minutes: 10
     steps:
     - uses: actions/checkout@v3
     
@@ -27,10 +27,10 @@ jobs:
     - name: Setting Up Default JDK 8
       uses: actions/setup-java@v3
       with:
-        distribution: 'adopt'
         java-version: '8'
 
     - run: yarn install --lockfile
-    - run: lein with-profile +include-all-drivers,+cloverage,+junit,+${{ matrix.edition }} deps    
+    - run: ./bin/build
+
     - name: Build and Push docker image 
-      run: chmod +x deploy.sh && ./deploy.sh $(date +%s)
+      run: sh deploy.sh $(date +%s)

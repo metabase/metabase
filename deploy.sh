@@ -14,12 +14,12 @@ fi
 
 IMAGE_VERSION=${1}
 
-# Checking java version, Make sure it is jdk-8.0
-java -version
-javac -version
+# # Checking java version, Make sure it is jdk-8.0
+# java -version
+# javac -version
 
-echo "Building metabase jar ..."
-./bin/build
+# echo "Building metabase jar ..."
+# ./bin/build
 cp target/uberjar/metabase.jar ./bin/docker/
 
 echo "Building docker image ..."
