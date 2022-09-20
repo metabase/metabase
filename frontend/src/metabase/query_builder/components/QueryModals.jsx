@@ -228,7 +228,6 @@ class QueryModals extends React.Component {
               ...question.card(),
               ...formValues,
               description: formValues.description || null,
-              collection_position: null,
             });
             return { payload: { object } };
           }}

@@ -91,7 +91,9 @@ export function getTableHeaderClickedObject(
   } else {
     return {
       column,
-      dimension: query?.dimensionForColumn(column),
+      dimension:
+        typeof query?.dimensionForColumn === "function" &&
+        query?.dimensionForColumn(column),
     };
   }
 }
