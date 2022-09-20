@@ -75,6 +75,9 @@ export default _.compose(
     }),
   }),
   Questions.loadList({
-    query: { f: "all" },
+    query: (_state, props) => ({
+      f: "database",
+      model_id: props.database?.id,
+    }),
   }),
 )(DatabaseTablesPane);
