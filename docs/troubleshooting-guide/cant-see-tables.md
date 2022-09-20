@@ -61,7 +61,7 @@ Table "SOMEWHERE" not found
 
 If you see this message, use another application (e.g., `psql` for PostreSQL) to send the same query to the database. If it also produces a "table not found" message, check the database schema and the spelling of the table name.
 
-Be sure to log in to the database using the same credentials that Metabase uses. A common problem is that the account Metabase uses to connect to the database lacks the same privileges as a member of IT staff or a developer, so tables that are visible to the latter when they use external applications are invisible to Metabase. You may want to [check if Metabase has the correct permissions](../data-permissions.md#getting-a-permission-denied-error-message).
+Be sure to log in to the database using the same credentials that Metabase uses. A common problem is that the account Metabase uses to connect to the database lacks the same privileges as a member of IT staff or a developer, so tables that are visible to the latter when they use external applications are invisible to Metabase. You may want to [check if Metabase has the correct permissions](./data-permissions.md#getting-a-permission-denied-error-message).
 
 ## Does the person who cannot see the table have permission to view it?
 
