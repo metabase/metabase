@@ -38,7 +38,9 @@ const AuthenticationWidget = ({
     <WidgetRoot>
       <WidgetHeader>
         <WidgetTitle>{authName}</WidgetTitle>
-        {authConfigured && <Toggle value={value} onChange={onChange} />}
+        {authConfigured && (
+          <Toggle value={value} aria-label={authName} onChange={onChange} />
+        )}
       </WidgetHeader>
       <WidgetDescription>{authDescription}</WidgetDescription>
       <Button as={Link} to={`/admin/settings/authentication/${authType}`}>

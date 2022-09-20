@@ -1,9 +1,10 @@
-import { restore } from "__support__/e2e/helpers";
+import { restore, setupLDAP } from "__support__/e2e/helpers";
 
 describe("scenarios > admin > settings > SSO > LDAP", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("PUT", "/api/setting/*").as("updateSetting");
     cy.intercept("PUT", "/api/ldap/settings").as("updateLdapSettings");
   });
 
@@ -18,6 +19,17 @@ describe("scenarios > admin > settings > SSO > LDAP", () => {
     cy.wait("@updateLdapSettings");
 
     cy.findByText("Changes saved!").should("be.visible");
+  });
+
+  it("should allow to toggle the authentication method when it is configured", () => {
+    setupLDAP();
+    cy.visit("/admin/settings/authentication");
+
+    cy.findByRole("switch", { name: "LDAP" }).click();
+    cy.wait("@updateSetting");
+
+    cy.findByRole("switch", { name: "LDAP" }).should("be.checked");
+    cy.findByText("Saved").should("be.visible");
   });
 
   it("should not reset previously populated fields when validation fails for just one of them (metabase#16226)", () => {
