@@ -100,7 +100,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
         volumes:
-          - ${{ github.workspace }}/test_resources/ldap/conf.json:/srv/ldap-server-mock-conf.json \
+          - ${{ github.workspace }}/test_resources/ldap/conf.json:/srv/ldap-server-mock-conf.json
           - ${{ github.workspace }}/test_resources/ldap/users.json:/srv/ldap-server-mock-users.json
       postgres-sample:
         image: metabase/qa-databases:postgres-sample-12
