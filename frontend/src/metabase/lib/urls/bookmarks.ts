@@ -1,6 +1,9 @@
 import slugg from "slugg";
 
-import { isDataAppBookmark } from "metabase/entities/bookmarks";
+import {
+  isDataAppBookmark,
+  isModelBookmark,
+} from "metabase/entities/bookmarks";
 
 import { Bookmark, DataApp } from "metabase-types/api";
 
@@ -22,6 +25,10 @@ export function bookmark(bookmark: Bookmark) {
       { id: bookmark.app_id, collection: { name: bookmark.name } } as DataApp,
       { mode: "preview" },
     );
+  }
+
+  if (isModelBookmark(bookmark)) {
+    return `/model/${itemId}/detail`;
   }
 
   const basePath = getBookmarkBasePath(bookmark);
