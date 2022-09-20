@@ -8,8 +8,6 @@ summary: |
 
 API endpoints for Sandbox table.
 
-  - [GET /api/table/:id/query_metadata](#get-apitableidquery_metadata)
-
 ## `GET /api/table/:id/query_metadata`
 
 This endpoint essentially acts as a wrapper for the OSS version of this route. When a user has segmented permissions

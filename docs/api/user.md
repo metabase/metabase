@@ -8,17 +8,6 @@ summary: |
 
 /api/user endpoints.
 
-  - [DELETE /api/user/:id](#delete-apiuserid)
-  - [GET /api/user/](#get-apiuser)
-  - [GET /api/user/:id](#get-apiuserid)
-  - [GET /api/user/current](#get-apiusercurrent)
-  - [POST /api/user/](#post-apiuser)
-  - [POST /api/user/:id/send_invite](#post-apiuseridsend_invite)
-  - [PUT /api/user/:id](#put-apiuserid)
-  - [PUT /api/user/:id/modal/:modal](#put-apiuseridmodalmodal)
-  - [PUT /api/user/:id/password](#put-apiuseridpassword)
-  - [PUT /api/user/:id/reactivate](#put-apiuseridreactivate)
-
 ## `DELETE /api/user/:id`
 
 Disable a `User`.  This does not remove the `User` from the DB, but instead disables their account.

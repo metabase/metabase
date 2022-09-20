@@ -8,31 +8,6 @@ summary: |
 
 /api/dashboard endpoints.
 
-  - [DELETE /api/dashboard/:dashboard-id/public_link](#delete-apidashboarddashboard-idpublic_link)
-  - [DELETE /api/dashboard/:id](#delete-apidashboardid)
-  - [DELETE /api/dashboard/:id/cards](#delete-apidashboardidcards)
-  - [GET /api/dashboard/](#get-apidashboard)
-  - [GET /api/dashboard/:id](#get-apidashboardid)
-  - [GET /api/dashboard/:id/params/:param-key/search/:query](#get-apidashboardidparamsparam-keysearchquery)
-  - [GET /api/dashboard/:id/params/:param-key/values](#get-apidashboardidparamsparam-keyvalues)
-  - [GET /api/dashboard/:id/related](#get-apidashboardidrelated)
-  - [GET /api/dashboard/:id/revisions](#get-apidashboardidrevisions)
-  - [GET /api/dashboard/embeddable](#get-apidashboardembeddable)
-  - [GET /api/dashboard/params/valid-filter-fields](#get-apidashboardparamsvalid-filter-fields)
-  - [GET /api/dashboard/public](#get-apidashboardpublic)
-  - [POST /api/dashboard/](#post-apidashboard)
-  - [POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query](#post-apidashboarddashboard-iddashcarddashcard-idcardcard-idquery)
-  - [POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query/:export-format](#post-apidashboarddashboard-iddashcarddashcard-idcardcard-idqueryexport-format)
-  - [POST /api/dashboard/:dashboard-id/public_link](#post-apidashboarddashboard-idpublic_link)
-  - [POST /api/dashboard/:from-dashboard-id/copy](#post-apidashboardfrom-dashboard-idcopy)
-  - [POST /api/dashboard/:id/cards](#post-apidashboardidcards)
-  - [POST /api/dashboard/:id/revert](#post-apidashboardidrevert)
-  - [POST /api/dashboard/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query](#post-apidashboardpivotdashboard-iddashcarddashcard-idcardcard-idquery)
-  - [POST /api/dashboard/save](#post-apidashboardsave)
-  - [POST /api/dashboard/save/collection/:parent-collection-id](#post-apidashboardsavecollectionparent-collection-id)
-  - [PUT /api/dashboard/:id](#put-apidashboardid)
-  - [PUT /api/dashboard/:id/cards](#put-apidashboardidcards)
-
 ## `DELETE /api/dashboard/:dashboard-id/public_link`
 
 Delete the publicly-accessible link to this Dashboard.

@@ -8,16 +8,6 @@ summary: |
 
 /api/metric endpoints.
 
-  - [DELETE /api/metric/:id](#delete-apimetricid)
-  - [GET /api/metric/](#get-apimetric)
-  - [GET /api/metric/:id](#get-apimetricid)
-  - [GET /api/metric/:id/related](#get-apimetricidrelated)
-  - [GET /api/metric/:id/revisions](#get-apimetricidrevisions)
-  - [POST /api/metric/](#post-apimetric)
-  - [POST /api/metric/:id/revert](#post-apimetricidrevert)
-  - [PUT /api/metric/:id](#put-apimetricid)
-  - [PUT /api/metric/:id/important_fields](#put-apimetricidimportant_fields)
-
 ## `DELETE /api/metric/:id`
 
 Archive a Metric. (DEPRECATED -- Just pass updated value of `:archived` to the `PUT` endpoint instead.).

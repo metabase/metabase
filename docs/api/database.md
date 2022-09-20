@@ -8,34 +8,6 @@ summary: |
 
 /api/database endpoints.
 
-  - [DELETE /api/database/:id](#delete-apidatabaseid)
-  - [GET /api/database/](#get-apidatabase)
-  - [GET /api/database/:id](#get-apidatabaseid)
-  - [GET /api/database/:id/autocomplete_suggestions](#get-apidatabaseidautocomplete_suggestions)
-  - [GET /api/database/:id/fields](#get-apidatabaseidfields)
-  - [GET /api/database/:id/idfields](#get-apidatabaseididfields)
-  - [GET /api/database/:id/metadata](#get-apidatabaseidmetadata)
-  - [GET /api/database/:id/schema/](#get-apidatabaseidschema)
-  - [GET /api/database/:id/schema/:schema](#get-apidatabaseidschemaschema)
-  - [GET /api/database/:id/schemas](#get-apidatabaseidschemas)
-  - [GET /api/database/:virtual-db/datasets](#get-apidatabasevirtual-dbdatasets)
-  - [GET /api/database/:virtual-db/datasets/:schema](#get-apidatabasevirtual-dbdatasetsschema)
-  - [GET /api/database/:virtual-db/metadata](#get-apidatabasevirtual-dbmetadata)
-  - [GET /api/database/:virtual-db/schema/:schema](#get-apidatabasevirtual-dbschemaschema)
-  - [GET /api/database/:virtual-db/schemas](#get-apidatabasevirtual-dbschemas)
-  - [GET /api/database/db-ids-with-deprecated-drivers](#get-apidatabasedb-ids-with-deprecated-drivers)
-  - [POST /api/database/](#post-apidatabase)
-  - [POST /api/database/:id/discard_values](#post-apidatabaseiddiscard_values)
-  - [POST /api/database/:id/dismiss_spinner](#post-apidatabaseiddismiss_spinner)
-  - [POST /api/database/:id/persist](#post-apidatabaseidpersist)
-  - [POST /api/database/:id/rescan_values](#post-apidatabaseidrescan_values)
-  - [POST /api/database/:id/sync](#post-apidatabaseidsync)
-  - [POST /api/database/:id/sync_schema](#post-apidatabaseidsync_schema)
-  - [POST /api/database/:id/unpersist](#post-apidatabaseidunpersist)
-  - [POST /api/database/sample_database](#post-apidatabasesample_database)
-  - [POST /api/database/validate](#post-apidatabasevalidate)
-  - [PUT /api/database/:id](#put-apidatabaseid)
-
 ## `DELETE /api/database/:id`
 
 Delete a `Database`.
