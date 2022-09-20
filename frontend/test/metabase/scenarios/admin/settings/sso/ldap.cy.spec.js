@@ -34,7 +34,7 @@ describe("scenarios > admin > settings > SSO > LDAP", () => {
     cy.findByDisplayValue("localhost").should("exist");
   });
 
-  it("shouldn't be possible to save non-numeric port (#13313)", () => {
+  it("shouldn't be possible to save a non-numeric port (#13313)", () => {
     cy.visit("/admin/settings/authentication/ldap");
 
     cy.findByLabelText("LDAP Host").type("localhost");
