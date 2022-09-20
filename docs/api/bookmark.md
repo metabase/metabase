@@ -16,11 +16,6 @@ Handle creating bookmarks for the user. Bookmarks are in three tables and should
   underlying tables the id on the actual bookmark itself is not unique among "bookmarks" and is not a good
   identifier for using in the API.
 
-  - [DELETE /api/bookmark/:model/:id](#delete-apibookmarkmodelid)
-  - [GET /api/bookmark/](#get-apibookmark)
-  - [POST /api/bookmark/:model/:id](#post-apibookmarkmodelid)
-  - [PUT /api/bookmark/ordering](#put-apibookmarkordering)
-
 ## `DELETE /api/bookmark/:model/:id`
 
 Delete a bookmark. Will delete a bookmark assigned to the user making the request by model and id.

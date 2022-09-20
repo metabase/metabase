@@ -99,37 +99,10 @@
       desc
       (str desc "\n\n"))))
 
-;;;; API endpoint page route table of contents
-
-(defn- anchor-link
-  "Converts an endpoint string to an anchor link, like [GET /api/alert](#get-apialert),
-  for use in tables of contents for endpoint routes."
-  [ep-name]
-  (let [al (-> (str "#" (str/lower-case ep-name))
-               (str/replace #"[/:%]" "")
-               (str/replace " " "-")
-               (#(str "(" % ")")))]
-    (str "[" ep-name "]" al)))
-
-(defn- toc-links
-  "Creates a list of links to endpoints in the relevant namespace."
-  [endpoint]
-  (-> (:endpoint-str endpoint)
-      (str/replace #"[#+`]" "")
-      str/trim
-      anchor-link
-      (#(str "  - " %))))
-
-(defn route-toc
-  "Generates a table of contents for routes in a page."
-  [ep-data]
-  (str (str/join "\n" (map toc-links ep-data)) "\n\n"))
-
 ;;;; API endpoints
 
 (defn- endpoint-str
-  "Creates a name for an endpoint: VERB /path/to/endpoint.
-  Used to build anchor links in the table of contents."
+  "Creates a name for an endpoint: VERB /path/to/endpoint."
   [endpoint]
   (-> (:doc endpoint)
       (str/split #"\n")
@@ -190,7 +163,6 @@
          (endpoint-page-frontmatter ep ep-data)
          (endpoint-page-title ep)
          (endpoint-page-description ep ep-data)
-         (route-toc ep-data)
          (endpoint-docs ep-data)
          (endpoint-footer ep-data)))
 

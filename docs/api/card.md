@@ -8,27 +8,6 @@ summary: |
 
 /api/card endpoints.
 
-  - [DELETE /api/card/:card-id/public_link](#delete-apicardcard-idpublic_link)
-  - [DELETE /api/card/:id](#delete-apicardid)
-  - [GET /api/card/](#get-apicard)
-  - [GET /api/card/:id](#get-apicardid)
-  - [GET /api/card/:id/related](#get-apicardidrelated)
-  - [GET /api/card/:id/timelines](#get-apicardidtimelines)
-  - [GET /api/card/embeddable](#get-apicardembeddable)
-  - [GET /api/card/public](#get-apicardpublic)
-  - [POST /api/card/](#post-apicard)
-  - [POST /api/card/:card-id/persist](#post-apicardcard-idpersist)
-  - [POST /api/card/:card-id/public_link](#post-apicardcard-idpublic_link)
-  - [POST /api/card/:card-id/query](#post-apicardcard-idquery)
-  - [POST /api/card/:card-id/query/:export-format](#post-apicardcard-idqueryexport-format)
-  - [POST /api/card/:card-id/refresh](#post-apicardcard-idrefresh)
-  - [POST /api/card/:card-id/unpersist](#post-apicardcard-idunpersist)
-  - [POST /api/card/:id/copy](#post-apicardidcopy)
-  - [POST /api/card/collections](#post-apicardcollections)
-  - [POST /api/card/pivot/:card-id/query](#post-apicardpivotcard-idquery)
-  - [POST /api/card/related](#post-apicardrelated)
-  - [PUT /api/card/:id](#put-apicardid)
-
 ## `DELETE /api/card/:card-id/public_link`
 
 Delete the publicly-accessible link to this Card.

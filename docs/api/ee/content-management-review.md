@@ -8,8 +8,6 @@ summary: |
 
 API endpoints for Content management review.
 
-  - [POST /api/moderation-review/review/](#post-apimoderation-reviewreview)
-
 ## `POST /api/moderation-review/review/`
 
 Create a new `ModerationReview`.

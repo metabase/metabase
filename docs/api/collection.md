@@ -16,19 +16,6 @@ summary: |
   To use these endpoints for other Collections namespaces, you can pass the `?namespace=` parameter (e.g.
   `?namespace=snippet`).
 
-  - [GET /api/collection/](#get-apicollection)
-  - [GET /api/collection/:id](#get-apicollectionid)
-  - [GET /api/collection/:id/items](#get-apicollectioniditems)
-  - [GET /api/collection/:id/timelines](#get-apicollectionidtimelines)
-  - [GET /api/collection/graph](#get-apicollectiongraph)
-  - [GET /api/collection/root](#get-apicollectionroot)
-  - [GET /api/collection/root/items](#get-apicollectionrootitems)
-  - [GET /api/collection/root/timelines](#get-apicollectionroottimelines)
-  - [GET /api/collection/tree](#get-apicollectiontree)
-  - [POST /api/collection/](#post-apicollection)
-  - [PUT /api/collection/:id](#put-apicollectionid)
-  - [PUT /api/collection/graph](#put-apicollectiongraph)
-
 ## `GET /api/collection/`
 
 Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
