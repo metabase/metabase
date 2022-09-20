@@ -1,6 +1,9 @@
 import { t } from "ttag";
+import MetabaseSettings from "metabase/lib/settings";
+import { getExpressionName } from "metabase/lib/expressions/config";
+import { HelpText } from "./types";
 
-const helperTextStrings = [
+const helperTextStrings: HelpText[] = [
   {
     name: "count",
     structure: "Count",
@@ -504,6 +507,7 @@ const helperTextStrings = [
         description: t`The column to check.`,
       },
     ],
+    hasDocsPage: true,
   },
   {
     name: "is-empty",
@@ -516,6 +520,7 @@ const helperTextStrings = [
         description: t`The column to check.`,
       },
     ],
+    hasDocsPage: true,
   },
   {
     name: "coalesce",
@@ -536,6 +541,7 @@ const helperTextStrings = [
         description: t`If value1 is empty, value2 gets returned if its not empty, and so on.`,
       },
     ],
+    hasDocsPage: true,
   },
   {
     name: "case",
@@ -563,7 +569,18 @@ const helperTextStrings = [
         description: t`The value that will be returned if the preceding condition is true, and so on.`,
       },
     ],
+    hasDocsPage: true,
   },
 ];
 
-export default name => helperTextStrings.find(h => h.name === name);
+export const getHelpText = (name: string): HelpText | undefined => {
+  return helperTextStrings.find(h => h.name === name);
+};
+
+export const getHelpDocsUrl = ({ name, hasDocsPage }: HelpText): string => {
+  const docsUrl = hasDocsPage
+    ? `questions/query-builder/expressions/${getExpressionName(name)}`
+    : "questions/query-builder/expressions";
+
+  return MetabaseSettings.docsUrl(docsUrl);
+};
