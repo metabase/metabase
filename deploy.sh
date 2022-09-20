@@ -17,6 +17,13 @@ IMAGE_VERSION=${1}
 # Looking up existing java versions
 update-java-alternatives --list
 
+# Switching to jdk 8
+sudo update-java-alternatives --set /usr/lib/jvm/java-1.8.0-openjdk-amd64
+
+# Checking java version
+java --version
+javac --version
+
 # echo "Building metabase jar ..."
 # ./bin/build
 # cp target/uberjar/metabase.jar ./bin/docker/
