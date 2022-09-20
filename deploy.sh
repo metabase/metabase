@@ -22,7 +22,7 @@ echo "Building metabase jar ..."
 ls -lah
 pwd
 ls -lah ./bin/build
-./bin/build
+bash ./bin/build
 cp target/uberjar/metabase.jar ./bin/docker/
 
 echo "Building docker image ..."
