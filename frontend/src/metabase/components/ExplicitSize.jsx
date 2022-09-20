@@ -28,6 +28,8 @@ export default ({
     selector,
     wrapped,
     refreshMode = "throttle",
+    // In rare cases we may need extra long times
+    // between refreshes
     useLongerWaitTime = false,
   } = {}) =>
   ComposedComponent => {
