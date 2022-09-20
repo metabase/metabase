@@ -7,16 +7,29 @@ import _ from "underscore";
 import resizeObserver from "metabase/lib/resize-observer";
 import { isCypressActive } from "metabase/env";
 
-const WAIT_TIME = 300;
+const DEFAULT_WAIT_TIME = 300;
 
-const REFRESH_MODE = {
-  throttle: fn => _.throttle(fn, WAIT_TIME),
-  debounce: fn => _.debounce(fn, WAIT_TIME),
-  debounceLeading: fn => _.debounce(fn, WAIT_TIME, true),
-  none: fn => fn,
+const getRefreshModeFunction = (refreshMode, useLongerWaitTime) => {
+  const waitTime = useLongerWaitTime
+    ? DEFAULT_WAIT_TIME * 15
+    : DEFAULT_WAIT_TIME;
+
+  const refreshModeFunctions = {
+    throttle: fn => _.throttle(fn, waitTime),
+    debounce: fn => _.debounce(fn, waitTime),
+    debounceLeading: fn => _.debounce(fn, waitTime, true),
+    none: fn => fn,
+  };
+
+  return refreshModeFunctions[refreshMode];
 };
 
-export default ({ selector, wrapped, refreshMode = "throttle" } = {}) =>
+export default ({
+    selector,
+    wrapped,
+    refreshMode = "throttle",
+    useLongerWaitTime = false,
+  } = {}) =>
   ComposedComponent => {
     const displayName = ComposedComponent.displayName || ComposedComponent.name;
 
@@ -31,7 +44,11 @@ export default ({ selector, wrapped, refreshMode = "throttle" } = {}) =>
         };
 
         this._printMediaQuery = window.matchMedia && window.matchMedia("print");
-        const refreshFn = REFRESH_MODE[this._getRefreshMode()];
+        const refreshMode = this._getRefreshMode();
+        const refreshFn = getRefreshModeFunction(
+          refreshMode,
+          useLongerWaitTime,
+        );
         this._updateSize = refreshFn(this.__updateSize);
       }
 
@@ -78,7 +95,7 @@ export default ({ selector, wrapped, refreshMode = "throttle" } = {}) =>
           return;
         }
         resizeObserver.unsubscribe(this._currentElement, this._updateSize);
-        const refreshFn = REFRESH_MODE[nextMode];
+        const refreshFn = getRefreshModeFunction(nextMode, useLongerWaitTime);
         this._updateSize = refreshFn(this.__updateSize);
         resizeObserver.subscribe(this._currentElement, this._updateSize);
         this._refreshMode = nextMode;

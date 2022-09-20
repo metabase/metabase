@@ -105,4 +105,4 @@ class DebouncedFrame extends React.Component {
   }
 }
 
-export default ExplicitSize()(DebouncedFrame);
+export default ExplicitSize({ useLongerWaitTime: true })(DebouncedFrame);
