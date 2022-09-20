@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 set -x
 
 print_usage_and_exit () {
