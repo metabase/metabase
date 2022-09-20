@@ -42,8 +42,8 @@
               (if-not (google-auth-client-id)
                 (throw (ex-info (tru "Google Sign-In is not configured. Please set the Client ID first.")
                                 {:status-code 400}))
-                (setting/set-value-of-type! :boolean :google-auth-enabled? new-value))
-              (setting/set-value-of-type! :boolean :google-auth-enabled? new-value))))
+                (setting/set-value-of-type! :boolean :google-auth-enabled new-value))
+              (setting/set-value-of-type! :boolean :google-auth-enabled new-value))))
 
 (define-multi-setting-impl google.i/google-auth-auto-create-accounts-domain :oss
   :getter (fn [] (setting/get-value-of-type :string :google-auth-auto-create-accounts-domain))
