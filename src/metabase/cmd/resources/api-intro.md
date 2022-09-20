@@ -4,7 +4,7 @@ title: "Metabase API documentation"
 
 # Metabase API documentation
 
-_These reference files were generated from source comments by running:
+_These reference files were generated from source comments by running:_
 
 ```
 clojure -M:ee:run api-documentation
