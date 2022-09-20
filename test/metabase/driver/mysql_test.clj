@@ -1,6 +1,5 @@
 (ns metabase.driver.mysql-test
-  (:require [cheshire.core :as json]
-            [clojure.java.jdbc :as jdbc]
+  (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.test :refer :all]
             [honeysql.core :as hsql]
@@ -97,8 +96,8 @@
 (tx/defdataset bigint-and-boolean
   [["xjsontestx"
     [{:field-name "jsoncol", :base-type :type/SerializedJSON}]
-    [[(json/encode {:mybool true  :myint 1234567890123456})]
-     [(json/encode {:mybool false :myint 12345678901234567})]]]])
+    [["{\"mybool\":true,\"myint\":1234567890123456}"]
+     ["{\"mybool\":false,\"myint\":12345678901234567}"]]]])
 
 (deftest json-unwrapping-bigint-and-boolean
   (mt/test-driver :mysql
@@ -108,8 +107,8 @@
       ;; trigger a full sync on this database so fields are categorized correctly
       (sync/sync-database! (mt/db))
       (testing "Field is marked as :type/SerializedJSON"
-        (is (= #{{:name "ID", :base_type :type/BigInteger, :semantic_type :type/PK}
-                 {:name "JSONCOL", :base_type :type/Text, :semantic_type :type/SerializedJSON}}
+        (is (= #{{:name "id", :base_type :type/BigInteger, :semantic_type :type/PK}
+                 {:name "jsoncol", :base_type :type/Text, :semantic_type :type/SerializedJSON}}
                (db->fields (mt/db)))))
       (mt/mbql-query jsoncol))))
 
@@ -490,9 +489,9 @@
                                  :query    {:source-table (u/the-id table)
                                             :aggregation  [[:count]]
                                             :breakout     [[:field (u/the-id field) nil]]}})]
-              (is (= (str "SELECT convert(json_extract(json.json_bit, ?), BIGINT) AS `json_bit → 1234`, "
-                          "count(*) AS `count` FROM `json` GROUP BY convert(json_extract(json.json_bit, ?), BIGINT) "
-                          "ORDER BY convert(json_extract(json.json_bit, ?), BIGINT) ASC")
+              (is (= (str "SELECT convert(json_extract(json.json_bit, ?), UNSIGNED) AS `json_bit → 1234`, "
+                          "count(*) AS `count` FROM `json` GROUP BY convert(json_extract(json.json_bit, ?), UNSIGNED) "
+                          "ORDER BY convert(json_extract(json.json_bit, ?), UNSIGNED) ASC")
                      (:query compile-res)))
               (is (= '("$.\"1234\"" "$.\"1234\"" "$.\"1234\"") (:params compile-res))))))))))
 
@@ -512,7 +511,7 @@
                                                               :min-value 0.75,
                                                               :max-value 54.0,
                                                               :bin-width 0.75}}]]
-                  (is (= ["((floor(((convert(json_extract(json.json_bit, ?), BIGINT) - 0.75) / 0.75)) * 0.75) + 0.75)" "$.\"1234\""]
+                  (is (= ["((floor(((convert(json_extract(json.json_bit, ?), UNSIGNED) - 0.75) / 0.75)) * 0.75) + 0.75)" "$.\"1234\""]
                          (hsql/format (sql.qp/->honeysql :mysql field-clause)))))))))))))
 
 (deftest ddl.execute-with-timeout-test
