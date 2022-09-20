@@ -10,10 +10,10 @@ To start, check if your current browser settings are compatible with Metabase:
 2. Disable all extensions and plugins. Load the page again.
 3. Give it one last shot---try opening your page in an incognito session or a different browser.
 
-## Dashboard cards
+## Formatting dashboard cards
 
 1. Make sure that you're making and saving changes from the [card's settings](../dashboards/introduction.md#changing-a-cards-visualization-settings) (_not_ the original question's settings).
-2. [Reset your card's visualization settings](../dashboards/introduction.md#resetting-a-visualization-on-a-dashboard).
+2. [Reset your card's visualization settings](../dashboards/introduction.md#resetting-a-cards-visualization-settings).
 
 **Explanation**
 
@@ -21,15 +21,15 @@ The visualization settings on a card are independent of the settings on the orig
 
 When you first create a question, your selected visualization type is saved along with the query. When you add that question to a dashboard, the dashboard will display the same visualization as the original question by default. You can override the original visualization type by using the [card's visualization settings](../dashboards/introduction.md#changing-a-cards-visualization-settings).
 
-## Dates and times
+## Formatting dates and times
 
 See [Troubleshooting dates and times](./timezones.md).
 
-## GeoJSON
+## Uploading a file for a custom map
 
-If you're unable to add a GeoJSON file, try reducing the size of the file to 5MB or less.
+If you're unable to add a [GeoJSON file for a custom map](../configuring-metabase/custom-maps.md#custom-region-maps), try reducing the size of the file to 5MB or less.
 
-## SQL questions
+## Visualizing SQL questions
 
 Go to your SQL question and [change the visualization type](../questions/sharing/visualizing-results.md) to a table. Then, check if any of the following situations apply to the raw query results:
 

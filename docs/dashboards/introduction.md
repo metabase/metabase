@@ -108,6 +108,8 @@ Click on the **pencil** icon to enter dashboard edit mode, hover over the questi
 
 ## Resetting a card's visualization settings
 
+If you want to revert a dashboard card to its original visualization settings (i.e., the settings on the question when it was _first_ saved to your dashboard):
+
 1. Go to your dashboard and click the **pencil icon** to go into edit mode.
 2. Hover over the card (question) that you want to edit.
 3. Click the **palette icon** to bring up the visualization settings for that card. 
