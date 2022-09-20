@@ -16,7 +16,7 @@ export const createMockDataApp = ({
     id: 1,
     dashboard_id: null,
     options: null,
-    nav_items: null,
+    nav_items: [],
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     ...dataAppProps,

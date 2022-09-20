@@ -1,15 +1,10 @@
-import React from "react";
+import React, { useCallback, useMemo } from "react";
 import _ from "underscore";
-import { t } from "ttag";
 
-import * as Urls from "metabase/lib/urls";
-
-import type { DataApp } from "metabase-types/api";
+import type { DataApp, DataAppNavItem } from "metabase-types/api";
 
 import { MainNavbarProps, SelectedItem } from "../types";
 import {
-  DataAppNewButton,
-  PaddedSidebarLink,
   SidebarContentRoot,
   SidebarHeading,
   SidebarHeadingWrapper,
@@ -17,11 +12,14 @@ import {
 } from "../MainNavbar.styled";
 import DataAppActionPanel from "./DataAppActionPanel";
 
+import DataAppPageSidebarLink from "./DataAppPageSidebarLink";
+
 interface Props extends MainNavbarProps {
   dataApp: DataApp;
   pages: any[];
   selectedItems: SelectedItem[];
   onEditAppSettings: () => void;
+  onAddData: () => void;
   onNewPage: () => void;
 }
 
@@ -30,6 +28,7 @@ function DataAppNavbarView({
   pages,
   selectedItems,
   onEditAppSettings,
+  onAddData,
   onNewPage,
 }: Props) {
   const { "data-app-page": dataAppPage } = _.indexBy(
@@ -37,34 +36,41 @@ function DataAppNavbarView({
     item => item.type,
   );
 
+  const pageMap = useMemo(() => _.indexBy(pages, "id"), [pages]);
+
+  const renderNavItem = useCallback(
+    (navItem: DataAppNavItem) => {
+      const page = pageMap[navItem.page_id];
+
+      if (!page || navItem.hidden) {
+        return null;
+      }
+
+      return (
+        <DataAppPageSidebarLink
+          key={page.id}
+          dataApp={dataApp}
+          page={page}
+          isSelected={dataAppPage?.id === page.id}
+          indent={navItem.indent}
+        />
+      );
+    },
+    [dataApp, pageMap, dataAppPage],
+  );
+
   return (
     <SidebarContentRoot>
-      <div>
-        <SidebarSection>
-          <SidebarHeadingWrapper>
-            <SidebarHeading>{dataApp.collection.name}</SidebarHeading>
-          </SidebarHeadingWrapper>
-          <ul>
-            {pages.map(page => (
-              <PaddedSidebarLink
-                key={page.id}
-                url={Urls.dataAppPage(dataApp, page)}
-                isSelected={dataAppPage?.id === page.id}
-              >
-                {page.name}
-              </PaddedSidebarLink>
-            ))}
-          </ul>
-        </SidebarSection>
-        <div>
-          <DataAppNewButton
-            icon="add"
-            onClick={onNewPage}
-          >{t`Add new page`}</DataAppNewButton>
-        </div>
-      </div>
+      <SidebarSection>
+        <SidebarHeadingWrapper>
+          <SidebarHeading>{dataApp.collection.name}</SidebarHeading>
+        </SidebarHeadingWrapper>
+        <ul>{dataApp.nav_items.map(renderNavItem)}</ul>
+      </SidebarSection>
       <DataAppActionPanel
         dataApp={dataApp}
+        onAddData={onAddData}
+        onNewPage={onNewPage}
         onEditAppSettings={onEditAppSettings}
       />
     </SidebarContentRoot>

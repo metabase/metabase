@@ -172,20 +172,32 @@ export const DataAppActionButton = styled(Button)`
   }
 `;
 
-export const DataAppNewButton = styled(Button)`
-  color: ${color("brand")};
-  margin-left: 1rem;
-  padding: 0.5rem 0.5rem;
+DataAppActionButton.defaultProps = {
+  onlyIcon: true,
+};
 
-  &:hover {
-    color: ${color("brand")};
-  }
+const ActionGroupCell = styled.div``;
 
-  .Icon {
-    color: ${color("brand")};
+const _ActionGroup = styled.div`
+  display: flex;
+
+  ${ActionGroupCell} {
+    border: 1px solid ${color("border")};
+
+    &:not(:last-of-type) {
+      border-right-width: 0.5px;
+      border-top-left-radius: 8px;
+      border-bottom-left-radius: 8px;
+    }
+
+    &:not(:first-of-type) {
+      border-left-width: 0.5px;
+      border-top-right-radius: 8px;
+      border-bottom-right-radius: 8px;
+    }
   }
 `;
 
-DataAppNewButton.defaultProps = {
-  borderless: true,
-};
+export const ActionGroup = Object.assign(_ActionGroup, {
+  Cell: ActionGroupCell,
+});

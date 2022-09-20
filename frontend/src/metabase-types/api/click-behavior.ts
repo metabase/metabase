@@ -55,14 +55,45 @@ export interface ArbitraryCustomDestinationClickBehavior {
   linkTextTemplate?: string;
 }
 
+export type ImplicitActionType = "insert" | "update" | "delete";
+
+interface BaseActionClickBehavior {
+  type: "action";
+  actionType?: ImplicitActionType;
+}
+
+interface InsertActionClickBehavior extends BaseActionClickBehavior {
+  actionType: "insert";
+  tableId: number;
+}
+
+interface UpdateActionClickBehavior extends BaseActionClickBehavior {
+  actionType: "update";
+  objectDetailDashCardId: number;
+}
+
+interface DeleteActionClickBehavior extends BaseActionClickBehavior {
+  actionType: "delete";
+  objectDetailDashCardId: number;
+}
+
+export type ImplicitActionClickBehavior =
+  | InsertActionClickBehavior
+  | UpdateActionClickBehavior
+  | DeleteActionClickBehavior;
+
 /**
  * This is a bit of a hack to allow us using click behavior code
  * for mapping _explicit_ action parameters. We don't actually use the click behavior though.
  * Remove this type and run the type-check to see the errors.
  */
-interface WritebackActionClickBehavior {
+interface HACK_ExplicitActionClickBehavior {
   type: "action";
 }
+
+export type ActionClickBehavior =
+  | ImplicitActionClickBehavior
+  | HACK_ExplicitActionClickBehavior;
 
 /**
  * Makes click handler use default drills.
@@ -81,4 +112,4 @@ export type ClickBehavior =
   | ActionMenuClickBehavior
   | CrossFilterClickBehavior
   | CustomDestinationClickBehavior
-  | WritebackActionClickBehavior;
+  | ActionClickBehavior;

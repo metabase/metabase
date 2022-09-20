@@ -28,6 +28,7 @@ describe("static visualizations", () => {
       cy.createDashboardWithQuestions({
         dashboardName,
         questions: [
+          createOneDimensionOneMetricQuestion(visualizationType),
           createOneMetricTwoDimensionsQuestion(visualizationType),
           createOneDimensionTwoMetricsQuestion(visualizationType),
         ],
@@ -43,6 +44,24 @@ describe("static visualizations", () => {
     });
   });
 });
+
+function createOneDimensionOneMetricQuestion(display) {
+  return {
+    name: `${display} one dimension one metric`,
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+    },
+    visualization_settings: {
+      "graph.dimensions": ["CREATED_AT"],
+      "graph.metrics": ["count"],
+      "graph.show_values": true,
+    },
+    display: display,
+    database: SAMPLE_DB_ID,
+  };
+}
 
 function createOneDimensionTwoMetricsQuestion(display) {
   return {

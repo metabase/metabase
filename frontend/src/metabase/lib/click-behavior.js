@@ -4,14 +4,15 @@ import { t, ngettext, msgid } from "ttag";
 
 import { isDate } from "metabase/lib/schema_metadata";
 import { parseTimestamp } from "metabase/lib/time";
-import { formatDateTimeForParameter } from "metabase/lib/formatting/date";
 import { isa, TYPE } from "metabase/lib/types";
+import { formatDateTimeForParameter } from "metabase/lib/formatting/date";
 import {
   dimensionFilterForParameter,
   variableFilterForParameter,
 } from "metabase/parameters/utils/filters";
+import { isValidImplicitActionClickBehavior } from "metabase/writeback/utils";
 import Question from "metabase-lib/lib/Question";
-import { TemplateTagVariable } from "metabase-lib/lib/Variable";
+import TemplateTagVariable from "metabase-lib/lib/variables/TemplateTagVariable";
 import { TemplateTagDimension } from "metabase-lib/lib/Dimension";
 
 export function getDataFromClicked({
@@ -246,6 +247,9 @@ export function clickBehaviorIsValid(clickBehavior) {
   } = clickBehavior;
   if (type === "crossfilter") {
     return Object.keys(parameterMapping).length > 0;
+  }
+  if (type === "action") {
+    return isValidImplicitActionClickBehavior(clickBehavior);
   }
   // if it's not a crossfilter/action, it's a link
   if (linkType === "url") {

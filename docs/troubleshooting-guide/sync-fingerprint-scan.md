@@ -4,13 +4,6 @@ title: Troubleshooting syncs and scans
 
 # Troubleshooting syncs and scans
 
-<div class='doc-toc' markdown=1>
-- [Metabase can't sync, fingerprint, or scan](#cant-sync-fingerprint-scan)
-- [Metabase isn't showing all of the values I expect to see](#not-showing-all-values)
-- [I cannot force Metabase to sync or scan using the API](#cant-force-with-api)
-- [Sync and scan take a very long time to run](#sync-scan-long-time)
-</div>
-
 Metabase needs to know what's in your database in order to show tables and fields, populate dropdown menus, and suggest good visualizations, but loading all the data would be very slow (or simply impossible if you have a lot of data). It therefore does three things:
 
 1. Metabase periodically asks the database what tables are available, then asks which columns are available for each table. We call this *syncing*, and it happens [hourly or daily][sync-frequency] depending on how you've configured it. It's very fast with most relational databases, but can be slower with MongoDB and some [community-built database drivers][community-db-drivers].
@@ -19,7 +12,7 @@ Metabase needs to know what's in your database in order to show tables and field
 
 3. A *scan* is similar to fingerprinting. Metabase will scan a database by default every 24 hours (though you can configure Metabase to run a scan less frequently, or disable scanning entirely). When you set a field to "A list of all values" in the [Data Model](../data-modeling/metadata-editing.md), which is used to display options in dropdown menus, scanning looks at the first 1,000 distinct records (ordered ascending). For each field scanned, Metabase stores only the first 100 kilobytes of text. If more values exist, Metabase displays the stored values in the dropdown menus, and only triggers a database search query to look for more values when people type in the search box for that filter widget.
 
-<h2 id="cant-sync-fingerprint-scan">Metabase can't sync, fingerprint, or scan</h2>
+## Metabase can't sync, fingerprint, or scan
 
 If the credentials Metabase is using to connect to the database don't give it privileges to read the tables, the first sign will often be a failure to sync, which would then also stop fingerprint and scan.
 
@@ -40,7 +33,7 @@ LIMIT 1
 
 Note that we only get the first 10,000 documents when scanning a MongoDB collection, so if you're not seeing some new fields, those fields might not exist in the documents we looked at. Please see [this discussion][metabase-mongo-missing] for more details.
 
-<h2 id="not-showing-all-values">Metabase isn't showing all of the values I expect to see</h2>
+## Metabase isn't showing all of the values I expect to see
 
 **How to detect this:**
 
@@ -55,7 +48,7 @@ Note that we only get the first 10,000 documents when scanning a MongoDB collect
 4. Set **Field Type** to "Category" and **Filtering on this field** to "A list of all values."
 5. Click the button **Re-scan this field** in the bottom.
 
-<h2 id="cant-force-with-api">I cannot force Metabase to sync or scan using the API</h2>
+## I cannot force Metabase to sync or scan using the API
 
 Metabase syncs and scans regularly, but if the database administrator has just changed the database schema, or if a lot of data is added automatically at specific times, you may want to write a script that uses the [Metabase API][api-learn] to force sync or scan to take place right away. [Our API][metabase-api] provides two ways to do this:
 
@@ -72,7 +65,7 @@ Metabase syncs and scans regularly, but if the database administrator has just c
 3. Check the error message returned from Metabase.
 4. Check the credentials you're using to authenticate and make sure they identify your script as a user with administrative privileges.
 
-<h2 id="sync-scan-long-time">Sync and scan take a very long time to run</h2>
+## Sync and scan take a very long time to run
 
 **How to detect this:** Sync and scan take a long time to complete.
 

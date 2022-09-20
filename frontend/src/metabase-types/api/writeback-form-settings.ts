@@ -1,3 +1,5 @@
+import type { ParameterId } from "./parameters";
+
 export type FormType = "inline" | "modal";
 export type FieldType = "string" | "number" | "date" | "category";
 
@@ -24,6 +26,7 @@ export interface FieldSettings {
   fieldType: FieldType;
   inputType: InputType;
   required: boolean;
+  defaultValue?: string | number;
   hidden: boolean;
   range?: DateRange | NumberRange;
   valueOptions?: (string | number)[];
@@ -32,13 +35,12 @@ export interface FieldSettings {
   hasSearch?: boolean;
 }
 
+export type FieldSettingsMap = Record<ParameterId, FieldSettings>;
 export interface ActionFormSettings {
   name?: string;
   type: FormType;
   description?: string;
-  fields: {
-    [tagId: string]: FieldSettings;
-  };
+  fields: FieldSettingsMap;
   submitButtonLabel?: string;
   confirmMessage?: string;
   successMessage?: string;

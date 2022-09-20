@@ -338,10 +338,12 @@ export const card = handleActions(
     [UPDATE_QUESTION]: (state, { payload: { card } }) => card,
 
     [QUERY_COMPLETED]: {
-      next: (state, { payload: { card } }) => ({
+      next: (state, { payload: { card, modelMetadata } }) => ({
         ...state,
         display: card.display,
-        result_metadata: card.result_metadata,
+        result_metadata: modelMetadata
+          ? modelMetadata.columns
+          : card.result_metadata,
         visualization_settings: card.visualization_settings,
       }),
     },
@@ -416,30 +418,38 @@ export const lastRunCard = handleActions(
   null,
 );
 
+function mergeMetadatWithQueryResults(queryResults, metadata) {
+  const [result] = queryResults;
+  const { columns } = metadata;
+  return [
+    {
+      ...result,
+      data: {
+        ...result.data,
+        cols: columns,
+        results_metadata: metadata,
+      },
+    },
+  ];
+}
+
 // The results of a query execution.  optionally an error if the query fails to complete successfully.
 export const queryResults = handleActions(
   {
     [RESET_QB]: { next: (state, { payload }) => null },
     [QUERY_COMPLETED]: {
-      next: (state, { payload }) => payload.queryResults,
+      next: (state, { payload: { queryResults, modelMetadata } }) => {
+        return modelMetadata
+          ? mergeMetadatWithQueryResults(queryResults, modelMetadata)
+          : queryResults;
+      },
     },
     [QUERY_ERRORED]: {
       next: (state, { payload }) => (payload ? [payload] : state),
     },
     [SET_RESULTS_METADATA]: {
       next: (state, { payload: results_metadata }) => {
-        const [result] = state;
-        const { columns } = results_metadata;
-        return [
-          {
-            ...result,
-            data: {
-              ...result.data,
-              cols: columns,
-              results_metadata,
-            },
-          },
-        ];
+        return mergeMetadatWithQueryResults(state, results_metadata);
       },
     },
     [CLEAR_QUERY_RESULT]: { next: (state, { payload }) => null },

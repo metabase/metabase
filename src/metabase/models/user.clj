@@ -244,7 +244,7 @@
 
 (defn- send-welcome-email! [new-user invitor sent-from-setup?]
   (let [reset-token               (set-password-reset-token! (u/the-id new-user))
-        should-link-to-login-page (and (public-settings/sso-configured?)
+        should-link-to-login-page (and (public-settings/sso-enabled?)
                                        (not (public-settings/enable-password-login)))
         join-url                  (if should-link-to-login-page
                                     (str (public-settings/site-url) "/auth/login")
@@ -279,6 +279,12 @@
   "Creates a new user, defaulting the password when not provided"
   [new-user :- NewUser]
   (db/insert! User (update new-user :password #(or % (str (UUID/randomUUID))))))
+
+(defn serdes-synthesize-user!
+  "Creates a new user with a default password, when deserializing eg. a `:creator_id` field whose email address doesn't
+  match any existing user."
+  [new-user]
+  (insert-new-user! new-user))
 
 (s/defn create-and-invite-user!
   "Convenience function for inviting a new `User` and sending out the welcome email."

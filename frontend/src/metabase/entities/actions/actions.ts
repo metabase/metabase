@@ -6,6 +6,7 @@ import { CardApi } from "metabase/services";
 
 import {
   removeOrphanSettings,
+  addMissingSettings,
   setParameterTypesFromFieldSettings,
   setTemplateTagTypesFromFieldSettings,
 } from "metabase/entities/actions/utils";
@@ -31,20 +32,23 @@ const getAPIFn =
   }: ActionParams) => {
     question = setTemplateTagTypesFromFieldSettings(formSettings, question);
 
+    const parameters = setParameterTypesFromFieldSettings(
+      formSettings,
+      question.parameters(),
+    );
+    const settings = removeOrphanSettings(
+      addMissingSettings(formSettings, parameters),
+      parameters,
+    );
+
     return apifn({
       ...question.card(),
       name,
       description,
-      parameters: setParameterTypesFromFieldSettings(
-        formSettings,
-        question.parameters(),
-      ),
+      parameters,
       is_write: true,
       display: "table",
-      visualization_settings: removeOrphanSettings(
-        formSettings,
-        question.parameters(),
-      ),
+      visualization_settings: settings,
       collection_id,
     });
   };

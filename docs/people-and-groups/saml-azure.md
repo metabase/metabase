@@ -8,10 +8,6 @@ redirect_from:
 
 {% include plans-blockquote.html feature="SAML authentication" %}
 
-- [Enable SAML in Metabase](#enable-saml-in-metabase)
-- [Add an Enterprise Application in Azure AD](#add-an-enterprise-application-in-azure-ad)
-- [Configure the Enterprise Application with Metabase SSO information](#configure-the-enterprise-application-with-metabase-sso-information)
-
 ## Enable SAML in Metabase
 
 First, follow our guide to [enable SAML authentication](authenticating-with-saml.md).
