@@ -1,29 +1,60 @@
 import React from "react";
 import { jt } from "ttag";
+import _ from "underscore";
 import PropTypes from "prop-types";
-import Icon from "metabase/components/Icon";
-import Table from "metabase/entities/tables";
 
-const DatabaseTablesPane = ({ database, show }) => {
+import Icon from "metabase/components/Icon";
+import Tables from "metabase/entities/tables";
+import Questions from "metabase/entities/questions";
+
+const DatabaseTablesPane = ({ database, show, questions }) => {
   const tables = database.tables.sort((a, b) => a.name.localeCompare(b.name));
+  const sortedQuestions = questions.sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
   return (
     <div>
-      <div className="ml1 my2 flex align-center justify-between border-bottom pb1">
+      <div className="pl1 mt2 flex align-center justify-between">
         <div className="flex align-center">
-          <Icon name="table2" className="pr1" size={12} />
-          <span>{jt`${tables.length} tables`}</span>
+          <Icon name="model" className="pr1" size={12} />
+          <span className="flex-full flex p1 text-bold">{jt`${sortedQuestions.length} models`}</span>
+        </div>
+      </div>
+
+      <ul>
+        {sortedQuestions.map(question => (
+          <li key={question.id}>
+            <div className="pl1 flex align-center bg-medium-hover">
+              <Icon name="model" className="pr1 text-brand" size={12} />
+              <a
+                className="flex-full flex p1 text-bold text-brand text-wrap no-decoration bg-medium-hover"
+                onClick={() => show("question", question)}
+              >
+                {question.name}
+              </a>
+            </div>
+          </li>
+        ))}
+      </ul>
+      <div className="pl1 mt2 flex align-center justify-between">
+        <div className="flex align-center">
+          <Icon name="table" className="pr1" size={12} />
+          <span className="flex-full flex p1 text-bold">{jt`${tables.length} tables`}</span>
         </div>
       </div>
 
       <ul>
         {tables.map(table => (
           <li key={table.id}>
-            <a
-              className="flex-full flex p1 text-bold text-brand text-wrap no-decoration bg-medium-hover"
-              onClick={() => show("table", table)}
-            >
-              {table.name}
-            </a>
+            <div className="pl1 flex align-center bg-medium-hover">
+              <Icon name="table" className="pr1 text-brand" size={12} />
+              <a
+                className="flex-full flex p1 text-bold text-brand text-wrap no-decoration"
+                onClick={() => show("table", table)}
+              >
+                {table.name}
+              </a>
+            </div>
           </li>
         ))}
       </ul>
@@ -34,10 +65,16 @@ const DatabaseTablesPane = ({ database, show }) => {
 DatabaseTablesPane.propTypes = {
   show: PropTypes.func.isRequired,
   database: PropTypes.object.isRequired,
+  questions: PropTypes.object,
 };
 
-export default Table.loadList({
-  query: (_state, props) => ({
-    dbId: props.database?.id,
+export default _.compose(
+  Tables.loadList({
+    query: (_state, props) => ({
+      dbId: props.database?.id,
+    }),
   }),
-})(DatabaseTablesPane);
+  Questions.loadList({
+    query: { f: "all" },
+  }),
+)(DatabaseTablesPane);
