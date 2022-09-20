@@ -43,15 +43,12 @@ export const ModelHeader = styled.div`
 `;
 
 export const TabList = styled(Radio)`
-  margin-top: 1rem;
+  margin: 1rem 0;
 `;
 
 TabList.defaultProps = { variant: "underlined" };
 
 export const TabPanel = styled(BaseTabPanel)`
   display: flex;
-  flex: 1;
   flex-direction: column;
-
-  margin-top: 1rem;
 `;
