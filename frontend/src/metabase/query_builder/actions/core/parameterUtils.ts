@@ -130,8 +130,7 @@ export async function handleDashboardParameters(
   });
   if (
     shouldPropagateParameters &&
-    deserializedCard &&
-    deserializedCard.dashcardId
+    deserializedCard?.dashcardId
   ) {
     const { dashboardId, dashcardId, parameters } = deserializedCard;
     const metadata = getMetadata(getState());
