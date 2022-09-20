@@ -468,12 +468,12 @@ describe("scenarios > models", () => {
       native: {
         query: "select * from orders",
       },
+    }).then(({ body: { id: modelId } }) => {
+      cy.signIn("nodata");
+      cy.visit(`/model/${modelId}`);
+      cy.wait("@cardQuery");
+      cy.findByText(/This question is written in SQL/i).should("not.exist");
     });
-    cy.signIn("nodata");
-    cy.visit("/collection/root");
-    cy.findByText("TEST MODEL").click();
-    cy.wait("@cardQuery");
-    cy.findByText(/This question is written in SQL/i).should("not.exist");
   });
 
   describe("listing", () => {
