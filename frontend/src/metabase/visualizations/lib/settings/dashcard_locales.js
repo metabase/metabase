@@ -371,7 +371,7 @@ const TITLE_LOCALES_BN = {
   'admin.dashboard.school.status': {
     'en' : 'School Status',
     'bn' : 'বিদ্যালয়ের স্ট্যাটাস'
-    }
+  }
 }
 
 export function dashcard_locale_title (locale, title_key) {
