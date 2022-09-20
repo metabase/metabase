@@ -20,7 +20,7 @@ javac -version
 
 echo "Building metabase jar ..."
 npm install --force
-sh ./bin/build
+./bin/build
 cp target/uberjar/metabase.jar ./bin/docker/
 
 echo "Building docker image ..."
