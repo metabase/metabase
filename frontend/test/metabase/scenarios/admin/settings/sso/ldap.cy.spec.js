@@ -22,7 +22,7 @@ describe("scenarios > admin > settings > SSO > LDAP", () => {
   });
 
   it("should allow to toggle the authentication method when it is configured", () => {
-    setupLDAP();
+    setupLDAP({ enabled: false });
     cy.visit("/admin/settings/authentication");
 
     cy.findByRole("switch", { name: "LDAP" }).click();
