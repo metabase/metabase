@@ -12,32 +12,44 @@ describe("scenarios > admin > settings > SSO > LDAP", () => {
     cy.intercept("PUT", "/api/ldap/settings").as("updateLdapSettings");
   });
 
-  it("should allow to toggle the authentication method when it is configured", () => {
-    setupLdap({ enabled: false });
-    cy.visit("/admin/settings/authentication");
-
-    cy.findByRole("switch", { name: "LDAP" }).click();
-    cy.wait("@updateSetting");
-
-    cy.findByRole("switch", { name: "LDAP" }).should("be.checked");
-    cy.findByText("Saved").should("be.visible");
-  });
-
-  it("should use the correct endpoint for saving settings (metabase#16173)", () => {
+  it("should setup ldap (metabase#16173)", () => {
     cy.visit("/admin/settings/authentication/ldap");
 
     enterLdapSettings();
     cy.button("Save and enable").click();
     cy.wait("@updateLdapSettings");
 
-    cy.findByText("Changes saved!").should("be.visible");
+    cy.findByText("Changes saved!").should("exist");
+  });
+
+  it("should update ldap settings", () => {
+    setupLdap();
+    cy.visit("/admin/settings/authentication/ldap");
+
+    enterLdapPort("389");
+    cy.button("Save changes").click();
+    cy.wait("@updateLdapSettings");
+
+    cy.findAllByRole("link", { name: "Authentication" }).first().click();
+    cy.findByRole("switch", { name: "LDAP" }).should("be.checked");
+  });
+
+  it("should toggle ldap via the authentication page", () => {
+    setupLdap();
+    cy.visit("/admin/settings/authentication");
+
+    cy.findByRole("switch", { name: "LDAP" }).click();
+    cy.wait("@updateSetting");
+
+    cy.findByRole("switch", { name: "LDAP" }).should("not.be.checked");
+    cy.findByText("Saved").should("exist");
   });
 
   it("should not reset previously populated fields when validation fails for just one of them (metabase#16226)", () => {
     cy.visit("/admin/settings/authentication/ldap");
 
     enterLdapSettings();
-    typeAndBlurUsingLabel("LDAP Port", "0");
+    enterLdapPort("0");
     cy.button("Save and enable").click();
     cy.wait("@updateLdapSettings");
 
@@ -49,20 +61,24 @@ describe("scenarios > admin > settings > SSO > LDAP", () => {
     cy.visit("/admin/settings/authentication/ldap");
 
     enterLdapSettings();
-    typeAndBlurUsingLabel("LDAP Port", "asd");
-    cy.findByText("That's not a valid port number").should("be.visible");
+    enterLdapPort("asd");
+    cy.findByText("That's not a valid port number").should("exist");
 
-    typeAndBlurUsingLabel("LDAP Port", "21.3");
+    enterLdapPort("21.3");
     cy.button("Save and enable").click();
     cy.wait("@updateLdapSettings");
-    cy.findByText('For input string: "21.3"').should("be.visible");
+    cy.findByText('For input string: "21.3"').should("exist");
 
-    typeAndBlurUsingLabel("LDAP Port", "123 ");
+    enterLdapPort("123 ");
     cy.button("Save failed").click();
     cy.wait("@updateLdapSettings");
-    cy.findByText('For input string: "123 "').should("be.visible");
+    cy.findByText('For input string: "123 "').should("exist");
   });
 });
+
+const enterLdapPort = value => {
+  typeAndBlurUsingLabel("LDAP Port", value);
+};
 
 const enterLdapSettings = () => {
   typeAndBlurUsingLabel("LDAP Host", "localhost");
