@@ -24,7 +24,7 @@ export default function LimitStep({
         onChange={e => {
           const limit = parseInt(e.target.value, 0);
           if (limit >= 1) {
-            query.updateLimit(limit).update(updateQuery);
+            updateQuery(query.updateLimit(limit));
           }
         }}
       />
