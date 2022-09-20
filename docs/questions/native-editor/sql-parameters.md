@@ -1,10 +1,10 @@
 ---
-title: SQL variables
+title: SQL parameters
 redirect_from:
   - /docs/latest/users-guide/13-sql-parameters
 ---
 
-# SQL variables
+# SQL parameters
 
 You can create SQL templates by adding variables to your SQL queries in the [Native/SQL editor][sql-editor]. These variables will create filter widgets that you can use to change the variable's value in the query. You can also add parameters to your question's URL to set the filters' values, so that when the question loads, those values are inserted into the variables.
 

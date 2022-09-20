@@ -208,13 +208,13 @@ const DataSelector = _.compose(
           entityQuery: ownProps.databaseQuery,
         }) ||
         [],
-      hasFetchedDatabasesWithTablesSaved: !!Databases.selectors.getList(state, {
+      hasLoadedDatabasesWithTablesSaved: Databases.selectors.getLoaded(state, {
         entityQuery: { include: "tables", saved: true },
       }),
-      hasFetchedDatabasesWithSaved: !!Databases.selectors.getList(state, {
+      hasLoadedDatabasesWithSaved: Databases.selectors.getLoaded(state, {
         entityQuery: { saved: true },
       }),
-      hasFetchedDatabasesWithTables: !!Databases.selectors.getList(state, {
+      hasLoadedDatabasesWithTables: Databases.selectors.getLoaded(state, {
         entityQuery: { include: "tables" },
       }),
       hasDataAccess: getHasDataAccess(state),
@@ -720,16 +720,16 @@ export class UnconnectedDataSelector extends Component {
 
   hasPreloadedStepData(stepName) {
     const {
-      hasFetchedDatabasesWithTables,
-      hasFetchedDatabasesWithTablesSaved,
-      hasFetchedDatabasesWithSaved,
+      hasLoadedDatabasesWithTables,
+      hasLoadedDatabasesWithTablesSaved,
+      hasLoadedDatabasesWithSaved,
     } = this.props;
     if (stepName === DATABASE_STEP) {
-      return hasFetchedDatabasesWithTablesSaved || hasFetchedDatabasesWithSaved;
+      return hasLoadedDatabasesWithTablesSaved || hasLoadedDatabasesWithSaved;
     } else if (stepName === SCHEMA_STEP || stepName === TABLE_STEP) {
       return (
-        hasFetchedDatabasesWithTablesSaved ||
-        (hasFetchedDatabasesWithTables &&
+        hasLoadedDatabasesWithTablesSaved ||
+        (hasLoadedDatabasesWithTables &&
           !this.state.selectedDatabase.is_saved_questions)
       );
     } else if (stepName === FIELD_STEP) {
@@ -826,10 +826,7 @@ export class UnconnectedDataSelector extends Component {
 
     return (
       <span
-        className={
-          className ||
-          "px2 py2 text-bold cursor-pointer text-default flex-no-shrink"
-        }
+        className={className || "px2 py2 text-bold cursor-pointer text-default"}
         style={style}
       >
         {React.createElement(getTriggerElementContent, {

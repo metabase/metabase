@@ -117,12 +117,6 @@ Similarly, you probably don't need indexes for simple tables with a few tens of 
 2. Check the performance logs for the server where Metabase is running.
 3. If either is a bottleneck, upgrade to a more powerful server or one with more memory.
 
-## Does Metabase appear to freeze when you save a question that has not yet been run?
-
-**Root cause:** If you save a question that has never been executed, Metabase runs the question while saving it, which can make the UI look frozen.
-
-**Steps to take:** This is [a bug][freeze-bug] and we are working to fix it. Until it's corrected, the workaround is to run the question before saving it. However, it's very likely that the root cause is one of the more common problems described above.
-
 [admin-caching]: ../configuring-metabase/caching.md
 [bi-best-practices]: https://www.metabase.com/learn/dashboards/bi-dashboard-best-practices
 [bugs]: ./bugs.md
@@ -131,6 +125,5 @@ Similarly, you probably don't need indexes for simple tables with a few tens of 
 [dbeaver]: https://dbeaver.io/
 [embedding]: https://www.metabase.com/learn/embedding/embedding-charts-and-dashboards
 [faster-dashboards]: https://www.metabase.com/learn/administration/making-dashboards-faster
-[freeze-bug]: https://github.com/metabase/metabase/issues/14957
 [metabase-at-scale]: https://www.metabase.com/learn/administration/metabase-at-scale
 [organizing-sql]: https://www.metabase.com/learn/sql-questions/organizing-sql

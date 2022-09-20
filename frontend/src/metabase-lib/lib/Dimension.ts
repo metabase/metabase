@@ -27,6 +27,7 @@ import { IconName } from "metabase-types/types";
 import { getFieldValues, getRemappings } from "metabase/lib/query/field";
 import { DATETIME_UNITS, formatBucketing } from "metabase/lib/query_time";
 import Aggregation from "metabase-lib/lib/queries/structured/Aggregation";
+import Filter from "metabase-lib/lib/queries/structured/Filter";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import { infer, MONOTYPE } from "metabase/lib/expressions/typeinferencer";
 import { isa } from "cljs/metabase.types";
@@ -323,6 +324,12 @@ export default class Dimension {
     // let the DatePicker choose the default operator, otherwise use the first one
     // TODO: replace with a defaultFilter()- or similar which includes arguments
     return this.field().isDate() ? null : this.filterOperators()[0];
+  }
+
+  defaultFilterForDimension() {
+    return new Filter([], null, this.query()).setDimension(this.mbql(), {
+      useDefaultOperator: true,
+    });
   }
 
   // AGGREGATIONS

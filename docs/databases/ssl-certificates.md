@@ -1,10 +1,10 @@
 ---
-title: Securing database connections using an SSL certificate
+title: SSL certificate
 redirect_from:
   - /docs/latest/administration-guide/secure-database-connections-with-ssl-certificates
 ---
 
-## Securing database connections using an SSL certificate
+## SSL certificate
 
 If you'd like to connect your Metabase Cloud or self-hosted instance to a database, you can secure the connection using Secure Socket Layer (SSL) encryption with a certificate.
 
@@ -56,7 +56,7 @@ You'll need to specify the location of the certificate on the server that's runn
 
 For example, when connecting to a PostgreSQL database, you'll need to add two parameters:
 
-- `sslmode`. You can see the full list of options in [PostgreSQL's documentation](https://jdbc.postgresql.org/documentation/head/ssl-client.html). We recommend you use `verify-full`; it's the most secure, and overhead is minimal.
+- `sslmode`. You can see the full list of options in [PostgreSQL's documentation](https://jdbc.postgresql.org/documentation/ssl). We recommend you use `verify-full`; it's the most secure, and overhead is minimal.
 - `sslrootcert`. Here you'll specify the file path for the certificate.
 
 You'll add an ampersand (`&`) to separate each parameter. For example, In the **Add additional connection string options** field, you'd add something like:

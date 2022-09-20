@@ -187,9 +187,9 @@
         (comp (mapcat get-typenames)
               (map keyword))
         (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
-                       [(str "SELECT nspname, typname "
-                             "FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace "
-                             "WHERE t.oid IN (SELECT DISTINCT enumtypid FROM pg_enum e)")])))
+                    [(str "SELECT nspname, typname "
+                          "FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace "
+                          "WHERE t.oid IN (SELECT DISTINCT enumtypid FROM pg_enum e)")])))
 
 (def ^:private ^:dynamic *enum-types* nil)
 
@@ -349,7 +349,7 @@
 ;; Postgres is not happy with JSON fields which are in group-bys or order-bys
 ;; being described twice instead of using the alias.
 ;; Therefore, force the alias, but only for JSON fields to avoid ambiguity.
-;; The alias names in JSON fields are unique wrt nfc path"
+;; The alias names in JSON fields are unique wrt nfc path
 (defmethod sql.qp/apply-top-level-clause
   [:postgres :breakout]
   [driver clause honeysql-form {breakout-fields :breakout, _fields-fields :fields :as query}]
@@ -500,9 +500,16 @@
     "inet"  :type/IPAddress
     nil))
 
+(defn- pkcs-12-key-value?
+  "If a value was uploaded for the SSL key, return whether it's using the PKCS-12 format."
+  [ssl-key-value]
+  (when ssl-key-value
+    (= (second (re-find secret/uploaded-base-64-prefix-pattern ssl-key-value))
+       "x-pkcs12")))
+
 (defn- ssl-params
   "Builds the params to include in the JDBC connection spec for an SSL connection."
-  [db-details]
+  [{:keys [ssl-key-value] :as db-details}]
   (let [ssl-root-cert   (when (contains? #{"verify-ca" "verify-full"} (:ssl-mode db-details))
                           (secret/db-details-prop->secret-map db-details "ssl-root-cert"))
         ssl-client-key  (when (:ssl-use-client-auth db-details)
@@ -522,13 +529,14 @@
       (assoc :sslrootcert (secret/value->file! ssl-root-cert :postgres))
 
       (has-value? ssl-client-key)
-      (assoc :sslkey (secret/value->file! ssl-client-key :postgres))
+      (assoc :sslkey (secret/value->file! ssl-client-key :postgres (when (pkcs-12-key-value? ssl-key-value) ".p12")))
 
       (has-value? ssl-client-cert)
       (assoc :sslcert (secret/value->file! ssl-client-cert :postgres))
 
-      (has-value? ssl-key-pw)
-      (assoc :sslpassword (secret/value->string ssl-key-pw))
+      ;; Pass an empty string as password if none is provided; otherwise the driver will prompt for one
+      true
+      (assoc :sslpassword (or (secret/value->string ssl-key-pw) ""))
 
       true
       (as-> params ;; from outer cond->

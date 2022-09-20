@@ -62,7 +62,6 @@ class PublicQuestion extends Component {
       setErrorPage,
       params: { uuid, token },
       location: { query },
-      metadata,
     } = this.props;
 
     if (uuid) {
@@ -82,15 +81,15 @@ class PublicQuestion extends Component {
       }
 
       if (card.param_values) {
-        this.props.addParamValues(card.param_values);
+        await this.props.addParamValues(card.param_values);
       }
       if (card.param_fields) {
-        this.props.addFields(card.param_fields);
+        await this.props.addFields(card.param_fields);
       }
 
       const parameters = getCardUiParameters(
         card,
-        metadata,
+        this.props.metadata,
         {},
         card.parameters || undefined,
       );

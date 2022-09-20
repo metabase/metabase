@@ -131,6 +131,7 @@ export default class Calendar extends Component<Props, State> {
   }
 
   renderDayNames() {
+    // translator: weekdays abbreviations
     const names = [t`Su`, t`Mo`, t`Tu`, t`We`, t`Th`, t`Fr`, t`Sa`];
     return (
       <div className="Calendar-day-names Calendar-week py1">

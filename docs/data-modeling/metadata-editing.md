@@ -1,10 +1,10 @@
 ---
-title: "The data model page"
+title: "Metadata editing"
 redirect_from:
   - /docs/latest/administration-guide/03-metadata-editing
 ---
 
-# The Data Model page
+# Metadata editing
 
 Metabase allows admins to annotate the data in your database. Annotations can give Metabase a better understanding of what the data actually means, which allows Metabase to make more intelligent decisions when processing and displaying that data.
 

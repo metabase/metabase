@@ -322,7 +322,7 @@ describe("scenarios > question > custom column", () => {
     cy.findAllByText("57911");
   });
 
-  it.skip("should not be dropped if filter is changed after aggregation (metaabase#14193)", () => {
+  it("should not be dropped if filter is changed after aggregation (metaabase#14193)", () => {
     const CC_NAME = "Double the fun";
 
     cy.createQuestion(

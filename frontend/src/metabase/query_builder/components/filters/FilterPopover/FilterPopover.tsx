@@ -81,9 +81,10 @@ export default class FilterPopover extends Component<Props, State> {
   }
 
   UNSAFE_componentWillReceiveProps(nextProps: Props) {
+    const { query } = this.props;
     const { filter } = this.state;
     // HACK?: if the underlying query changes (e.x. additional metadata is loaded) update the filter's query
-    if (filter && this.props.query !== nextProps.query) {
+    if (filter && filter.query() === query && query !== nextProps.query) {
       this.setState({
         filter: filter.setQuery(nextProps.query),
       });
@@ -152,12 +153,9 @@ export default class FilterPopover extends Component<Props, State> {
   };
 
   handleFilterChange = (mbql: any[] = []) => {
-    const newFilter = new Filter(
-      mbql,
-      this.state.filter?.index(),
-      this.props.query,
-    );
-
+    const { query } = this.props;
+    const { filter } = this.state;
+    const newFilter = filter ? filter.set(mbql) : new Filter(mbql, null, query);
     this.setFilter(newFilter);
   };
 

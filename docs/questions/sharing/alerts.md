@@ -1,9 +1,10 @@
 ---
-title: Getting alerts about questions
+title: Setting and getting alerts
+redirect_from:
   - /docs/latest/users-guide/15-alerts
 ---
 
-# Getting alerts about questions
+# Setting and getting alerts
 
 Whether you're keeping track of revenue, users, or negative reviews, there are often times when you want to be alerted about something. Metabase has a few different kinds of alerts you can set up, and you can choose to be notified via email or Slack.
 

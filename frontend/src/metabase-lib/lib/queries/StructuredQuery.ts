@@ -1451,20 +1451,8 @@ class StructuredQueryInner extends AtomicQuery {
   }
 
   // TODO: better name may be parseDimension?
-  parseFieldReference(fieldRef): Dimension | null | undefined {
-    return Dimension.parseMBQL(fieldRef, this._metadata, this);
-  }
-
-  dimensionForColumn(column) {
-    if (column) {
-      const fieldRef = this.fieldReferenceForColumn(column);
-
-      if (fieldRef) {
-        return this.parseFieldReference(fieldRef);
-      }
-    }
-
-    return null;
+  parseFieldReference(fieldRef, query = this): Dimension | null | undefined {
+    return Dimension.parseMBQL(fieldRef, this._metadata, query);
   }
 
   setDatasetQuery(datasetQuery: DatasetQuery): StructuredQuery {
@@ -1499,8 +1487,7 @@ class StructuredQueryInner extends AtomicQuery {
    * Returns the "first" of the nested queries, or this query it not nested
    */
   rootQuery(): StructuredQuery {
-    const sourceQuery = this.sourceQuery();
-    return sourceQuery ? sourceQuery.rootQuery() : this;
+    return this;
   }
 
   /**
@@ -1546,11 +1533,27 @@ class StructuredQueryInner extends AtomicQuery {
     return null;
   }
 
+  dimensionForColumn(column: Column) {
+    if (column) {
+      const fieldRef = this.fieldReferenceForColumn(column);
+
+      if (fieldRef) {
+        const dimension = this.queries()
+          .flatMap(q => q.dimensions())
+          .find(d => d.isEqual(fieldRef));
+
+        return this.parseFieldReference(fieldRef, dimension?.query());
+      }
+    }
+
+    return null;
+  }
+
   /**
    * Returns the corresponding {Column} in the "top-level" {StructuredQuery}
    */
   topLevelColumn(column: Column): Column | null | undefined {
-    const dimension = this.dimensionForColumn(column);
+    const dimension = this.topLevelDimensionForColumn(column);
 
     if (dimension) {
       const topDimension = this.topLevelDimension(dimension);
@@ -1561,6 +1564,16 @@ class StructuredQueryInner extends AtomicQuery {
     }
 
     return null;
+  }
+
+  topLevelDimensionForColumn(column) {
+    if (column) {
+      const fieldRef = this.fieldReferenceForColumn(column);
+
+      if (fieldRef) {
+        return this.parseFieldReference(fieldRef);
+      }
+    }
   }
 
   /**
@@ -1730,6 +1743,10 @@ class NestedStructuredQuery extends StructuredQuery {
       datasetQuery,
       this._parent,
     );
+  }
+
+  rootQuery(): StructuredQuery {
+    return this.parentQuery().rootQuery();
   }
 
   parentQuery() {
