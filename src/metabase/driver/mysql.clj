@@ -262,10 +262,7 @@
                             (hsql/call :json_extract (hsql/raw (hformat/to-sql parent-identifier)) jsonpath-query)
                             (hsql/raw "UNSIGNED"))
 
-        ;; Boolean in mysql is a fiction. It is an alias for TINYINT. This will get us back to true or false.
-        "boolean" (hsql/call :not (hsql/call :not
-                                             (hsql/call :json_extract
-                                                        (hsql/raw (hformat/to-sql parent-identifier)) jsonpath-query)))
+        "boolean" (hsql/call :json_extract (hsql/raw (hformat/to-sql parent-identifier)) jsonpath-query)
 
         (hsql/call :convert
                    (hsql/call :json_extract (hsql/raw (hformat/to-sql parent-identifier)) jsonpath-query)
