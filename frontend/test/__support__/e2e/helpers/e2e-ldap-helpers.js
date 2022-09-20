@@ -1,8 +1,6 @@
 /**
- * Make sure you have ldap mock server running locally:
- * `docker run -p 3004:3004 thoteam/ldap-server-mock`
- * or
- * `npx ldap-server-mock --conf=./test_resources/ldap/conf.json --database=./test_resources/ldap/users.json`
+ * Make sure you have the ldap test server running locally:
+ * `docker run -p 389:389 osixia/openldap:1.5.0`
  */
 export const setupLdap = ({ enabled = true } = {}) => {
   cy.log("Set up LDAP mock server");

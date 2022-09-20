@@ -86,7 +86,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       openldap:
-        image:  osixia/openldap:1.5.0
+        image: osixia/openldap:1.5.0
         ports:
           - "389:389"
         credentials:

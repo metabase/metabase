@@ -3,7 +3,7 @@ const INBOX_INTERVAL = 100;
 
 /**
  * Make sure you have webmail Docker image running locally:
- * `docker run -p 80:80 -p 25:25 thoteam/ldap-server-mock`
+ * `docker run -p 80:80 -p 25:25 maildev/maildev:1.1.0`
  * or
  * `npx maildev -s 25 -w 80`
  */
