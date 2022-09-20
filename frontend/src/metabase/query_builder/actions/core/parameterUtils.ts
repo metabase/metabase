@@ -128,7 +128,11 @@ export async function handleDashboardParameters(
     deserializedCard,
     originalCard,
   });
-  if (shouldPropagateParameters && deserializedCard) {
+  if (
+    shouldPropagateParameters &&
+    deserializedCard &&
+    deserializedCard.dashcardId
+  ) {
     const { dashboardId, dashcardId, parameters } = deserializedCard;
     const metadata = getMetadata(getState());
     await verifyMatchingDashcardAndParameters({
