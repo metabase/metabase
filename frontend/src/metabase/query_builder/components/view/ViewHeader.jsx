@@ -322,6 +322,7 @@ ViewTitleHeaderRightSide.propTypes = {
   isResultDirty: PropTypes.bool,
   isActionListVisible: PropTypes.bool,
   runQuestionQuery: PropTypes.func,
+  updateQuestion: PropTypes.func.isRequired,
   cancelQuery: PropTypes.func,
   onOpenModal: PropTypes.func,
   onEditSummary: PropTypes.func,
@@ -359,6 +360,7 @@ function ViewTitleHeaderRightSide(props) {
     isResultDirty,
     isActionListVisible,
     runQuestionQuery,
+    updateQuestion,
     cancelQuery,
     onOpenModal,
     onEditSummary,
@@ -453,6 +455,7 @@ function ViewTitleHeaderRightSide(props) {
           <NativeQueryButton
             size={16}
             question={question}
+            updateQuestion={updateQuestion}
             data-metabase-event="Notebook Mode; Convert to SQL Click"
           />
         </ViewHeaderIconButtonContainer>
