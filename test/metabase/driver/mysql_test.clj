@@ -453,7 +453,7 @@
                (hsql/format (#'sql.qp/json-query :mysql boop-identifier weird-field))))))
     (testing "Doesn't complain when field is boolean"
       (let [boolean-boop-field {:database_type "boolean" :nfc_path [:bleh "boop" :foobar 1234]}]
-        (is (= ["not(not(json_extract(boop.bleh, ?)))" "$.\"boop\".\"foobar\".\"1234\""]
+        (is (= ["json_extract(boop.bleh, ?)" "$.\"boop\".\"foobar\".\"1234\""]
                (hsql/format (#'sql.qp/json-query :mysql boop-identifier boolean-boop-field))))))))
 
 (deftest json-alias-test
