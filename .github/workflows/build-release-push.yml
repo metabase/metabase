@@ -9,9 +9,8 @@ on:
 jobs:
 
   build:
-
     runs-on: ubuntu-20.04
-    # timeout-minutes: 25
+    timeout-minutes: 60
     strategy:
       matrix:
         edition: [oss]
@@ -28,8 +27,6 @@ jobs:
       uses: actions/setup-java@v1
       with:
         java-version: 8
-    - name: Install gettext
-      run: sudo apt install gettext
     - name: Install Clojure CLI
       run: |
         curl -O https://download.clojure.org/install/linux-install-1.10.1.708.sh &&
@@ -41,8 +38,6 @@ jobs:
         java -version
         echo "Clojure `clojure -e "(println (clojure-version))"`"
         lein --version
-        msgfmt --version
-
     - name: Get yarn cache
       uses: actions/cache@v2
       with:
@@ -57,6 +52,3 @@ jobs:
     - run: yarn install --lockfile
     - run: lein with-profile +include-all-drivers,+cloverage,+junit,+${{ matrix.edition }} deps
     - run: ./bin/build
-
-    - name: Build and Push docker image 
-      run: sh deploy.sh $(date +%s)
