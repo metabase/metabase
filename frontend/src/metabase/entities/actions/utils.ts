@@ -6,6 +6,8 @@ import type {
   ParameterType,
 } from "metabase-types/api";
 
+import { getDefaultFieldSettings } from "metabase/writeback/components/ActionCreator/FormCreator";
+
 import type { Parameter as ParameterObject } from "metabase-types/types/Parameter";
 import type { TemplateTag, TemplateTagType } from "metabase-types/types/Query";
 import type NativeQuery from "metabase-lib/lib/queries/NativeQuery";
@@ -28,6 +30,29 @@ export const removeOrphanSettings = (
   return {
     ...settings,
     fields: _.omit(settings.fields, orphanIds),
+  };
+};
+
+export const addMissingSettings = (
+  settings: ActionFormSettings,
+  parameters: ParameterObject[],
+): ActionFormSettings => {
+  const parameterIds = parameters.map(p => p.id);
+  const fieldIds = Object.keys(settings.fields);
+  const missingIds = _.difference(parameterIds, fieldIds);
+
+  if (!missingIds.length) {
+    return settings;
+  }
+
+  return {
+    ...settings,
+    fields: {
+      ...settings.fields,
+      ...Object.fromEntries(
+        missingIds.map(id => [id, getDefaultFieldSettings()]),
+      ),
+    },
   };
 };
 

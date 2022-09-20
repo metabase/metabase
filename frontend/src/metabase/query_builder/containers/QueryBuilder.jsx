@@ -90,6 +90,7 @@ import {
   getIsActionListVisible,
   getIsAdditionalInfoVisible,
   getAutocompleteResultsFn,
+  getCardAutocompleteResultsFn,
 } from "../selectors";
 import * as actions from "../actions";
 
@@ -164,6 +165,7 @@ const mapStateToProps = (state, props) => {
     visualizationSettings: getVisualizationSettings(state),
 
     autocompleteResultsFn: getAutocompleteResultsFn(state),
+    cardAutocompleteResultsFn: getCardAutocompleteResultsFn(state),
 
     instanceSettings: getSettings(state),
 
@@ -266,7 +268,7 @@ function QueryBuilder(props) {
 
   const handleCreate = useCallback(
     async card => {
-      const questionWithUpdatedCard = question.setCard(card);
+      const questionWithUpdatedCard = question.setCard(card).setPinned(false);
       await apiCreateQuestion(questionWithUpdatedCard);
       setRecentlySaved("created");
     },

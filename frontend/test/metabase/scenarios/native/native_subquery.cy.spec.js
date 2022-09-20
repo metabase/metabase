@@ -6,18 +6,79 @@ describe("scenarios > question > native subquery", () => {
     cy.signInAsAdmin();
   });
 
-  it("autocomplete should work for referencing saved questions", () => {
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-
+  it("autocomplete should work for question slugs inside template tags", () => {
     // Create two saved questions, the first will be referenced in the query when it is opened, and the second will be added to the query after it is opened.
     cy.createNativeQuestion({
-      name: "A People Model 1",
+      name: "A People Question",
       native: {
         query: "SELECT id AS a_unique_column_name FROM PEOPLE",
       },
     }).then(({ body: { id: questionId1 } }) => {
       cy.createNativeQuestion({
-        name: "A People Model 2",
+        name: "A People Question 2",
+        native: {
+          query: "SELECT id AS another_unique_column_name FROM PEOPLE",
+        },
+      }).then(({ body: { id: questionId2 } }) => {
+        const tagID = `#${questionId1}`;
+
+        // create a question with a template tag
+        cy.createNativeQuestion({
+          name: "Count of People",
+          native: {
+            query: `select COUNT(*) from `,
+            "template-tags": {
+              [tagID]: {
+                id: "10422a0f-292d-10a3-fd90-407cc9e3e20e",
+                name: tagID,
+                "display-name": tagID,
+                type: "card",
+                "card-id": questionId1,
+              },
+            },
+          },
+        }).then(({ body: { id: questionId3 } }) => {
+          cy.wrap(questionId3).as("toplevelQuestionId");
+          cy.visit(`/question/${questionId3}`);
+
+          // Refresh the state, so previously created questions need to be loaded again.
+          cy.reload();
+          cy.findByText("Open Editor").click();
+          cy.get(".ace_editor").should("be.visible").type(" {{#");
+
+          // Can't use cy.type here as it doesn't consistently keep the autocomplete open
+          cy.realPress("p");
+          cy.realPress("e");
+          cy.realPress("o");
+          cy.realPress("p");
+          cy.realPress("l");
+          cy.realPress("e");
+
+          // Wait until another explicit autocomplete is triggered
+          // (slightly longer than AUTOCOMPLETE_DEBOUNCE_DURATION)
+          // See https://github.com/metabase/metabase/pull/20970
+          cy.wait(1000);
+          cy.get(".ace_autocomplete")
+            .should("be.visible")
+            .findByText(`${questionId1}-a-`);
+          cy.get(".ace_autocomplete")
+            .should("be.visible")
+            .findByText(`${questionId2}-a-`);
+        });
+      });
+    });
+  });
+
+  it("autocomplete should work for referencing saved questions", () => {
+    // Create two saved questions, the first will be referenced in the query when it is opened, and the second will be added to the query after it is opened.
+    cy.createNativeQuestion({
+      name: "A People Question 1",
+      native: {
+        query: "SELECT id AS a_unique_column_name FROM PEOPLE",
+      },
+    }).then(({ body: { id: questionId1 } }) => {
+      cy.createNativeQuestion({
+        name: "A People Question 2",
         native: {
           query: "SELECT id AS another_unique_column_name FROM PEOPLE",
         },
@@ -41,11 +102,10 @@ describe("scenarios > question > native subquery", () => {
           },
         }).then(({ body: { id: questionId3 } }) => {
           cy.wrap(questionId3).as("toplevelQuestionId");
-          visitQuestion(questionId3);
+          cy.visit(`/question/${questionId3}`);
 
           // Refresh the state, so previously created questions need to be loaded again.
           cy.reload();
-          cy.wait("@cardQuery");
 
           cy.findByText("Open Editor").click();
 
@@ -97,6 +157,50 @@ describe("scenarios > question > native subquery", () => {
     });
   });
 
+  it("card reference tags should update when the name of the card changes", () => {
+    cy.createNativeQuestion({
+      name: "A People Question 1",
+      native: {
+        query: "SELECT id AS a_unique_column_name FROM PEOPLE",
+      },
+    }).then(({ body: { id: questionId1 } }) => {
+      const tagID = `#${questionId1}`;
+      cy.createNativeQuestion({
+        name: "Count of People",
+        native: {
+          query: `select COUNT(*) from {{#${questionId1}}}`,
+          "template-tags": {
+            [tagID]: {
+              id: "10422a0f-292d-10a3-fd90-407cc9e3e20e",
+              name: tagID,
+              "display-name": tagID,
+              type: "card",
+              "card-id": questionId1,
+            },
+          },
+        },
+      }).then(({ body: { id: questionId2 } }) => {
+        // check the original name is in the query
+        cy.visit(`/question/${questionId2}`);
+        cy.findByText("Open Editor").click();
+        cy.get(".ace_content:visible").contains("{{#4-a-people-question-1}}");
+
+        // change the name
+        cy.visit(`/question/${questionId1}`);
+        cy.findByText("A People Question 1").type(" changed");
+        // unfocus the input
+        cy.findByText("Open Editor").click();
+
+        // check the name has changed
+        cy.visit(`/question/${questionId2}`);
+        cy.findByText("Open Editor").click();
+        cy.get(".ace_content:visible").contains(
+          "{{#4-a-people-question-1-changed}}",
+        );
+      });
+    });
+  });
+
   it("should allow a user with no data access to execute a native subquery", () => {
     // Create the initial SQL question and followup nested question
     cy.createNativeQuestion({
@@ -128,7 +232,7 @@ describe("scenarios > question > native subquery", () => {
       .then(response => {
         cy.wrap(response.body.id).as("toplevelQuestionId");
 
-        visitQuestion(response.body.id);
+        cy.visit(`/question/${response.body.id}`);
         cy.contains("41");
       });
 

@@ -67,7 +67,7 @@ export const isActionButtonCard = (card: SavedCard) =>
 export function isActionButtonDashCard(
   dashCard: BaseDashboardOrderedCard,
 ): dashCard is ActionButtonDashboardCard {
-  const virtualCard = dashCard.visualization_settings?.virtual_card;
+  const virtualCard = dashCard?.visualization_settings?.virtual_card;
   return isActionButtonCard(virtualCard as SavedCard);
 }
 

@@ -7,7 +7,10 @@ import {
 } from "__support__/sample_database_fixture";
 
 import NativeQuery, {
+  replaceCardTagNameById,
   recognizeTemplateTags,
+  cardIdFromTagName,
+  updateCardTagNames,
 } from "metabase-lib/lib/queries/NativeQuery";
 
 function makeDatasetQuery(queryText, templateTags, databaseId) {
@@ -254,52 +257,60 @@ describe("NativeQuery", () => {
         const q = makeQuery()
           .setQueryText("{{ snippet: foo }}")
           .updateSnippetsWithIds([{ id: 123, name: "foo" }])
-          .updateQueryTextWithNewSnippetNames([{ id: 123, name: "bar" }]);
+          .updateSnippetNames([{ id: 123, name: "bar" }]);
         expect(q.queryText()).toEqual("{{snippet: bar}}");
       });
       it("should update snippet names that differ on spacing", () => {
         const q = makeQuery()
           .setQueryText("{{ snippet: foo }} {{snippet:  foo  }}")
           .updateSnippetsWithIds([{ id: 123, name: "foo" }])
-          .updateQueryTextWithNewSnippetNames([{ id: 123, name: "bar" }]);
+          .updateSnippetNames([{ id: 123, name: "bar" }]);
         expect(q.queryText()).toEqual("{{snippet: bar}} {{snippet: bar}}");
       });
     });
     describe("card template tags", () => {
       it("should parse card tags", () => {
-        const q = makeQuery().setQueryText("{{#1}} {{ #2 }} {{ #1 }}");
-        expect(q.templateTags().map(v => v["card-id"])).toEqual([1, 2]);
+        const q = makeQuery().setQueryText(
+          "{{#1}} {{ #2 }} {{ #1-a-card-name }} {{ #1-a-card-name }}",
+        );
+        expect(q.templateTags().map(v => v["card-id"])).toEqual([1, 2, 1]);
       });
     });
-    describe("replaceCardId", () => {
+    describe("replaceCardTagNameById", () => {
       it("should update the query text", () => {
-        const query = makeQuery()
-          .setQueryText("SELECT * from {{ #123 }}")
-          .replaceCardId(123, 321);
-
-        expect(query.queryText()).toBe("SELECT * from {{#321}}");
-        const tags = query.templateTags();
+        const query = makeQuery().setQueryText("SELECT * from {{ #123 }}");
+        const newQuery = replaceCardTagNameById(
+          query,
+          "123",
+          "#456-a-card-name",
+        );
+        expect(newQuery.queryText()).toBe("SELECT * from {{#456-a-card-name}}");
+        const tags = newQuery.templateTags();
         expect(tags.length).toBe(1);
         const [{ "card-id": cardId, type, name }] = tags;
-        expect(cardId).toEqual(321);
+        expect(cardId).toEqual(456);
         expect(type).toEqual("card");
-        expect(name).toEqual("#321");
+        expect(name).toEqual("#456-a-card-name");
       });
 
       it("should perform multiple updates", () => {
-        const query = makeQuery()
-          .setQueryText("{{#123}} {{foo}} {{#1234}} {{ #123 }}")
-          .replaceCardId(123, 321);
-
-        expect(query.queryText()).toBe("{{#321}} {{foo}} {{#1234}} {{#321}}");
+        const query = makeQuery().setQueryText(
+          "{{#123}} {{foo}} {{#1234}} {{ #123-original-card-name }}",
+        );
+        const newQuery = replaceCardTagNameById(
+          query,
+          "123",
+          "#456-a-card-name",
+        );
+        expect(newQuery.queryText()).toBe(
+          "{{#456-a-card-name}} {{foo}} {{#1234}} {{#456-a-card-name}}",
+        );
       });
 
       it("should replace a blank id", () => {
-        const query = makeQuery()
-          .setQueryText("{{#}} {{#123}}")
-          .replaceCardId("", 321);
-
-        expect(query.queryText()).toBe("{{#321}} {{#123}}");
+        const query = makeQuery().setQueryText("{{#}} {{#123}}");
+        const newQuery = replaceCardTagNameById(query, "", "#456-a-card-name");
+        expect(newQuery.queryText()).toBe("{{#456-a-card-name}} {{#123}}");
       });
     });
   });
@@ -364,6 +375,23 @@ describe("NativeQuery", () => {
     });
   });
 
+  describe("updateCardTagNames", () => {
+    it("should update the query text with new tag names", () => {
+      const query = makeQuery().setQueryText("{{#123-foo}} {{#1234-bar}}");
+      const newCards = [{ id: 123, name: "Foo New" }]; // newCards is deliberately missing a the bar card
+      const templateTagsMap = updateCardTagNames(
+        query,
+        newCards,
+      ).templateTagsMap();
+      const fooTag = templateTagsMap["#123-foo-new"]; // foo's templateTagsMap key is updated
+      const barTag = templateTagsMap["#1234-bar"]; // bar's key isn't updated
+      expect(fooTag["card-id"]).toEqual(123); // foo's card-id is the same
+      expect(fooTag["name"]).toEqual("#123-foo-new"); // foo's name is updated
+      expect(barTag["card-id"]).toEqual(1234); // bar's card-id is the same
+      expect(barTag["name"]).toEqual("#1234-bar"); // bar's name is the same
+    });
+  });
+
   describe("recognizeTemplateTags", () => {
     it("should handle standard variable names", () => {
       expect(recognizeTemplateTags("SELECT * from {{products}}")).toEqual([
@@ -381,6 +409,39 @@ describe("NativeQuery", () => {
       expect(recognizeTemplateTags("SELECT * from X -- {{&universe}}")).toEqual(
         [],
       );
+    });
+
+    it("should handle snippets", () => {
+      expect(
+        recognizeTemplateTags(
+          "SELECT * from {{snippet: A snippet name}} cross join {{ snippet:     another-snippet with *&#) }}",
+        ),
+      ).toEqual([
+        "snippet: A snippet name",
+        "snippet:     another-snippet with *&#) ",
+      ]);
+    });
+
+    it("should handle card references", () => {
+      expect(
+        recognizeTemplateTags(
+          "SELECT * from {{#123}} cross join {{ #456-a-card-name }} cross join {{#not-this}} cross join {{#123or-this}}",
+        ),
+      ).toEqual(["#123", "#456-a-card-name"]);
+    });
+  });
+
+  describe("cardIdFromTagName", () => {
+    it("should get card Ids from a card tag name", () => {
+      expect(cardIdFromTagName("#123-foo")).toEqual(123);
+      expect(cardIdFromTagName("#123-foo-456")).toEqual(123);
+      expect(cardIdFromTagName("#123")).toEqual(123);
+    });
+
+    it("should return null for invalid card tag names", () => {
+      expect(cardIdFromTagName("123-foo")).toEqual(null);
+      expect(cardIdFromTagName("#123foo")).toEqual(null);
+      expect(cardIdFromTagName("123")).toEqual(null);
     });
   });
 });

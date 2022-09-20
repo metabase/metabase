@@ -6,6 +6,7 @@ import type {
   FieldSettings,
 } from "metabase-types/api";
 
+import validate from "metabase/lib/validate";
 import type { Parameter } from "metabase-types/types/Parameter";
 import type { TemplateTag } from "metabase-types/types/Query";
 
@@ -37,7 +38,7 @@ export const getDefaultFieldSettings = (
   placeholder: "",
   fieldType: "string",
   inputType: "string",
-  required: false,
+  required: true,
   hidden: false,
   width: "medium",
   ...overrides,
@@ -67,17 +68,21 @@ const fieldPropsTypeMap: FieldPropTypeMap = {
 const inputTypeHasOptions = (fieldSettings: FieldSettings) =>
   ["dropdown", "inline-select"].includes(fieldSettings.inputType);
 
+type validator = (...args: (string | number)[]) => string | void;
+
 interface FieldProps {
   type: string;
-  placeholder?: string;
   options?: OptionType[];
   values?: any;
+  placeholder?: string;
+  validate?: validator;
 }
 
 const getParameterFieldProps = (fieldSettings: FieldSettings) => {
   const fieldProps: FieldProps = {
     type: fieldPropsTypeMap[fieldSettings?.inputType] ?? "input",
     placeholder: fieldSettings.placeholder ?? "",
+    validate: fieldSettings.required ? validate.required() : () => undefined,
   };
 
   if (inputTypeHasOptions(fieldSettings)) {

@@ -1,5 +1,6 @@
 /*global ace*/
 /* eslint-disable react/prop-types */
+import { t } from "ttag";
 import React, { Component } from "react";
 import cx from "classnames";
 import "ace/ace";
@@ -19,6 +20,7 @@ import "ace/snippets/json";
 import _ from "underscore";
 import { ResizableBox } from "react-resizable";
 import { connect } from "react-redux";
+import slugg from "slugg";
 
 import { isEventOverElement } from "metabase/lib/dom";
 import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
@@ -174,11 +176,11 @@ class NativeQueryEditor extends Component {
     document.removeEventListener("contextmenu", this.handleRightClick);
   }
 
-  // this is overwritten when the editor is set up
-  swapInCorrectCompletors = () => undefined;
+  // this is overwritten when the editor mounts
+  swapCompleters = () => undefined;
 
   handleCursorChange = _.debounce((e, { cursor }) => {
-    this.swapInCorrectCompletors(cursor);
+    this.swapCompleters(cursor);
     if (this.props.setNativeEditorSelectedRange) {
       this.props.setNativeEditorSelectedRange(this._editor.getSelectionRange());
     }
@@ -321,10 +323,10 @@ class NativeQueryEditor extends Component {
           }
 
           // transform results into what ACE expects
-          const resultsForAce = results.map(result => ({
-            name: result[0],
-            value: result[0],
-            meta: result[1],
+          const resultsForAce = results.map(([name, meta]) => ({
+            name: name,
+            value: name,
+            meta: meta,
           }));
           callback(null, resultsForAce);
         } catch (error) {
@@ -334,12 +336,16 @@ class NativeQueryEditor extends Component {
       },
     });
 
-    const allCompleters = [...this._editor.completers];
-    const snippetCompleter = [{ getCompletions: this.getSnippetCompletions }];
+    // the completers when the editor mounts are the standard ones
+    const standardCompleters = [...this._editor.completers];
 
-    this.swapInCorrectCompletors = pos => {
-      const isInSnippet = this.getSnippetNameAtCursor(pos) !== null;
-      this._editor.completers = isInSnippet ? snippetCompleter : allCompleters;
+    this.swapCompleters = pos => {
+      this._editor.completers =
+        this.getSnippetNameAtCursor(pos) !== null
+          ? [{ getCompletions: this.getSnippetCompletions }]
+          : this.getCardSlugAtCursor(pos) !== null
+          ? [{ getCompletions: this.getCardTagCompletions }]
+          : standardCompleters;
     };
   }
 
@@ -347,6 +353,13 @@ class NativeQueryEditor extends Component {
     const lines = this._editor.getValue().split("\n");
     const linePrefix = lines[row].slice(0, column);
     const match = linePrefix.match(/\{\{\s*snippet:\s*([^\}]*)$/);
+    return match ? match[1] : null;
+  };
+
+  getCardSlugAtCursor = ({ row, column }) => {
+    const lines = this._editor.getValue().split("\n");
+    const linePrefix = lines[row].slice(0, column);
+    const match = linePrefix.match(/\{\{\s*#([^\}]*)$/);
     return match ? match[1] : null;
   };
 
@@ -363,6 +376,27 @@ class NativeQueryEditor extends Component {
         value: name,
       })),
     );
+  };
+
+  getCardTagCompletions = async (editor, session, pos, prefix, callback) => {
+    // This ensures the user is only typing the first "word" considered by the autocompleter
+    // inside the {{#...}} tag.
+    // e.g. if `|` is the cursor position and the user is typing:
+    //   - {{#123-foo|}} will fetch completions for the word "123-foo"
+    //   - {{#123 foo|}} will not fetch completions because the word "foo" is not the first word in the tag.
+    if (prefix !== this.getCardSlugAtCursor(pos)) {
+      callback(null, null);
+      return null;
+    }
+    const apiResults = await this.props.cardAutocompleteResultsFn(prefix);
+    // Convert to format ace expects
+    const resultsForAce = apiResults.map(({ id, name, dataset }) => ({
+      name: `${id}-${slugg(name)}`,
+      value: `${id}-${slugg(name)}`,
+      meta: dataset ? t`Model` : t`Question`,
+      score: dataset ? 100000 : 0, // prioritize models above questions
+    }));
+    callback(null, resultsForAce);
   };
 
   _updateSize() {
@@ -535,7 +569,7 @@ class NativeQueryEditor extends Component {
               onSnippetUpdate={(newSnippet, oldSnippet) => {
                 if (newSnippet.name !== oldSnippet.name) {
                   query
-                    .updateQueryTextWithNewSnippetNames([newSnippet])
+                    .updateSnippetNames([newSnippet])
                     .update(this.props.setDatasetQuery);
                 }
               }}
