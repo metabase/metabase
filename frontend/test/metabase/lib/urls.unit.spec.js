@@ -290,7 +290,7 @@ describe("urls", () => {
           name: "Product",
           type: "card",
         }),
-      ).toBe("/model/1/detail");
+      ).toBe("/model/1-product");
     });
 
     it("returns dashboard bookmark path", () => {
