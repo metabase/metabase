@@ -19,8 +19,8 @@ java -version
 javac -version
 
 echo "Building metabase jar ..."
-npm install
-./bin/build
+npm install --force
+sh ./bin/build
 cp target/uberjar/metabase.jar ./bin/docker/
 
 echo "Building docker image ..."
