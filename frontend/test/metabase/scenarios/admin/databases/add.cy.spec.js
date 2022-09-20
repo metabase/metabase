@@ -165,9 +165,7 @@ describe("scenarios > admin > databases > add", () => {
     cy.findByText("Need help connecting?");
   });
 
-  // TODO:
-  // Enable once https://github.com/metabase/metabase/issues/24900 gets fixed!
-  it.skip("should respect users' decision to manually sync large database (metabase#17450)", () => {
+  it("should respect users' decision to manually sync large database (metabase#17450)", () => {
     const H2_CONNECTION_STRING =
       "zip:./target/uberjar/metabase.jar!/sample-database.db;USER=GUEST;PASSWORD=guest";
 
