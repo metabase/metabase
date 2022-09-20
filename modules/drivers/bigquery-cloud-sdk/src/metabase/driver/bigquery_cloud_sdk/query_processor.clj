@@ -165,14 +165,6 @@
     :type/DateTime       :datetime
     nil))
 
-(defn- coercion-strategy->temporat-type [coercion-strategy]
-  (case coercion-strategy
-    :Coercion/ISO8601->DateTime               :timestamp
-    :Coercion/ISO8601->Date                   :date
-    :Coercion/ISO8601->Time                   :time
-    :Coercion/YYYYMMDDHHMMSSString->Temporal  :timestamp
-    nil))
-
 (defn- database-type->temporal-type [database-type]
   (condp = (some-> database-type str/upper-case)
     "TIMESTAMP" :timestamp
@@ -182,10 +174,8 @@
     nil))
 
 (defmethod temporal-type Field
-  [{base-type :base_type, effective-type :effective_type, database-type :database_type,
-    coercion-strategy :coercion_strategy}]
+  [{base-type :base_type, effective-type :effective_type, database-type :database_type}]
   (or (database-type->temporal-type database-type)
-      (coercion-strategy->temporat-type coercion-strategy)
       (base-type->temporal-type (or effective-type base-type))))
 
 (defmethod temporal-type TypedHoneySQLForm
@@ -768,7 +758,7 @@
 
 (defmethod sql.qp/cast-temporal-string [:bigquery-cloud-sdk :Coercion/ISO8601->DateTime]
   [_driver _semantic_type expr]
-  (hx/->timestamp expr))
+  (hx/->datetime expr))
 
 (defmethod sql.qp/cast-temporal-string [:bigquery-cloud-sdk :Coercion/ISO8601->Date]
   [_driver _semantic_type expr]
