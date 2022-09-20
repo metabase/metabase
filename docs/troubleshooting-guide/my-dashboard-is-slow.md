@@ -117,6 +117,13 @@ Similarly, you probably don't need indexes for simple tables with a few tens of 
 2. Check the performance logs for the server where Metabase is running.
 3. If either is a bottleneck, upgrade to a more powerful server or one with more memory.
 
+## Do you have a different problem?
+
+- [I can't save my question or dashboard](./proxies.md).
+- [I can't view or edit a question or dashboard](./cant-view-or-edit.md).
+- [My connection or query is timing out](./timeout.md).
+- [My visualizations are wrong](./visualization.md).
+
 [admin-caching]: ../configuring-metabase/caching.md
 [bi-best-practices]: https://www.metabase.com/learn/dashboards/bi-dashboard-best-practices
 [bugs]: ./bugs.md

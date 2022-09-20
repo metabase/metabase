@@ -45,7 +45,7 @@ If you're having problems with things like SQL syntax errors or [SQL variables](
 
 ## Do you have a different problem?
 
-- [My dashboard is slow or failing to load](./my-dashboard-is-slow.md)
+- [My dashboard is slow or failing to load](./my-dashboard-is-slow.md).
 - [I can't view or edit my question or dashboard](./cant-view-or-edit.md).
 - [I can't see my tables](./cant-see-tables.md).
 

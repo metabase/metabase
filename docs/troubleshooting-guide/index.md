@@ -6,31 +6,31 @@ title: Troubleshooting guides
 
 Problems, their causes, how to detect them, and how to fix them.
 
-### Installation
+## Installation
 
 - [Running the Metabase JAR][running].
 - [Running Metabase on Docker][docker].
 - [Using or migrating from an H2 application database][appdb].
 
-### Authentication
+## Authentication
 
 - [People can't log in to Metabase][login].
 - [LDAP][ldap].
 - [SAML][saml].
 
-### Permissions
+## Permissions
 
 - [My permissions aren't working][permissions].
 - [My data sandboxes aren't working][sandbox].
 
-### Databases
+## Databases
 
 - [I can't connect to a database][datawarehouse].
 - [I can't see my tables][cant-see-tables].
 - [The data in Metabase doesn't match my database][sync-fingerprint-scan].
 - [My connection or query is timing out][timeout].
 
-### Questions and dashboards
+## Questions and dashboards
 
 - [I can't save my question or dashboard][proxies].
 - [I can't view or edit my question or dashboard][view-edit].
@@ -41,15 +41,15 @@ Problems, their causes, how to detect them, and how to fix them.
 - [My dashboard filters don't work][filters].
 - [My dashboard's linked filters don't work][linked-filters].
 
-### Models
+## Models
 
 - [My model doesn't work][models].
 
-### Email and alerts
+## Email and alerts
 
 - [Metabase isn't sending email][not-sending-email].
 
-### Error messages
+## Error messages
 
 - [I'm getting an error message][error-message].
 
