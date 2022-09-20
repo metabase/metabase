@@ -16,6 +16,7 @@ const QuestionRowCount = ({
   result,
   className,
   isResultDirty,
+  onQueryChange,
   ...props
 }) => {
   const formatRowCount = count => {
@@ -71,9 +72,9 @@ const QuestionRowCount = ({
             limit={limit}
             onChangeLimit={limit => {
               if (limit > 0) {
-                query.updateLimit(limit).update();
+                onQueryChange(query.updateLimit(limit));
               } else {
-                query.clearLimit().update();
+                onQueryChange(query.clearLimit());
               }
             }}
             onClose={onClose}
