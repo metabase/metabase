@@ -6,7 +6,6 @@ import cx from "classnames";
 import { color } from "metabase/lib/colors";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 
-import { updateAndRunQuery } from "./utils";
 import { AddAggregationButton } from "./AddAggregationButton";
 import { AggregationItem } from "./AggregationItem";
 import { DimensionList } from "./DimensionList";
@@ -20,6 +19,7 @@ const propTypes = {
   question: PropTypes.object,
   isResultDirty: PropTypes.bool,
   runQuestionQuery: PropTypes.func.isRequired,
+  updateQuestion: PropTypes.func.isRequired,
   onClose: PropTypes.func.isRequired,
   className: PropTypes.string,
 };
@@ -35,6 +35,7 @@ const SummarizeSidebar = ({
   question,
   isResultDirty,
   runQuestionQuery,
+  updateQuestion,
   onClose,
   className,
 }) => {
@@ -44,6 +45,12 @@ const SummarizeSidebar = ({
   const [query, setQuery] = useState(
     getQuery(question, isDefaultAggregationRemoved),
   );
+
+  const updateAndRunQuery = query => {
+    updateQuestion(query.question().setDefaultDisplay(), {
+      run: true,
+    });
+  };
 
   useEffect(() => {
     const nextQuery = getQuery(question, isDefaultAggregationRemoved);
@@ -96,7 +103,7 @@ const SummarizeSidebar = ({
           runQuestionQuery();
         }
         if (hasDefaultAggregation) {
-          query.update(null, { run: true });
+          updateQuestion(query.question(), { run: true });
         }
         onClose();
       }}

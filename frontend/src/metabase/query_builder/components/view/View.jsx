@@ -148,6 +148,7 @@ class View extends React.Component {
       isShowingTimelineSidebar,
       isShowingQuestionInfoSidebar,
       runQuestionQuery,
+      updateQuestion,
       visibleTimelineIds,
       selectedTimelineEventIds,
       xDomain,
@@ -170,6 +171,7 @@ class View extends React.Component {
           onClose={onCloseSummary}
           isResultDirty={isResultDirty}
           runQuestionQuery={runQuestionQuery}
+          updateQuestion={updateQuestion}
         />
       );
     }
