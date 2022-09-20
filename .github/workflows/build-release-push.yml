@@ -2,9 +2,9 @@ name: Build and push released images
 
 on:
   push:
-    branches: [ "staging" ]
+    branches: [ "github-action-testing" ]
   pull_request:
-    branches: [ "staging" ]
+    branches: [ "github-action-testing" ]
 
 jobs:
 
@@ -12,11 +12,11 @@ jobs:
 
     runs-on: ubuntu-20.04
     # timeout-minutes: 25
-    strategy:
-      matrix:
-        edition: [oss]
+    # strategy:
+      # matrix:
+        # edition: [oss]
     env:
-      MB_EDITION: ${{ matrix.edition }}
+      # MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
     steps:
     - uses: actions/checkout@v2
