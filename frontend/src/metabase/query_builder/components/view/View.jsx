@@ -430,6 +430,7 @@ class View extends React.Component {
       onConfirmToast,
       isShowingToaster,
       isHeaderVisible,
+      updateQuestion,
     } = this.props;
 
     // if we don't have a card at all or no databases then we are initializing, so keep it simple
@@ -443,7 +444,13 @@ class View extends React.Component {
       isStructured && !query.sourceTableId() && !query.sourceQuery();
 
     if (isNewQuestion && queryBuilderMode === "view") {
-      return <NewQuestionView query={query} className="full-height" />;
+      return (
+        <NewQuestionView
+          query={query}
+          updateQuestion={updateQuestion}
+          className="full-height"
+        />
+      );
     }
 
     if (card.dataset && queryBuilderMode === "dataset") {
