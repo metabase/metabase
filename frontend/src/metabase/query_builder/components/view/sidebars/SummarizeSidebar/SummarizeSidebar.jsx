@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
@@ -46,11 +46,14 @@ const SummarizeSidebar = ({
     getQuery(question, isDefaultAggregationRemoved),
   );
 
-  const updateAndRunQuery = query => {
-    updateQuestion(query.question().setDefaultDisplay(), {
-      run: true,
-    });
-  };
+  const updateAndRunQuery = useCallback(
+    query => {
+      updateQuestion(query.question().setDefaultDisplay(), {
+        run: true,
+      });
+    },
+    [updateQuestion],
+  );
 
   useEffect(() => {
     const nextQuery = getQuery(question, isDefaultAggregationRemoved);
@@ -117,11 +120,13 @@ const SummarizeSidebar = ({
             index={index}
             query={query}
             onRemove={handleAggregationRemove}
+            updateAndRunQuery={updateAndRunQuery}
           />
         ))}
         <AddAggregationButton
           query={query}
           shouldShowLabel={!hasAggregations}
+          updateAndRunQuery={updateAndRunQuery}
         />
       </AggregationsContainer>
 
