@@ -49,11 +49,18 @@ describe("scenarios > visualizations > funnel chart", () => {
       });
 
     cy.log("toggle row visibility");
-    getDraggableRows().eq(1).find(".Icon-eye_filled").click();
+    getDraggableRows()
+      .eq(1)
+      .within(() => {
+        cy.icon("eye_filled").click();
+      });
     cy.findAllByTestId("funnel-chart-header").should("have.length", 4);
 
-    getDraggableRows().eq(1).find(".Icon-eye_crossed_out").click();
-
+    getDraggableRows()
+      .eq(1)
+      .within(() => {
+        cy.icon("eye_crossed_out").click();
+      });
     cy.findAllByTestId("funnel-chart-header").should("have.length", 5);
   });
 });
