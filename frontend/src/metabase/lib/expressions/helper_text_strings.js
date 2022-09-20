@@ -663,20 +663,20 @@ const helperTextStrings = [
   {
     name: "date-add",
     structure: "dateAdd(" + t`column` + ", " + t`amount` + ", " + t`unit` + ")",
-    description: t`Returns a datetime after which a certain time/date interval has been added.`,
+    description: t`Adds some units of time to a date or timestamp value.`,
     example: "dateAdd([" + t`Created At` + '], 1, "' + t`month` + '")',
     args: [
       {
         name: t`column`,
-        description: t`The datetime column to which the interval should be added.`,
+        description: t`The column with your date or timestamp values.`,
       },
       {
         name: t`amount`,
-        description: t`The amount to be changed.`,
+        description: t`The number of units to be added.`,
       },
       {
         name: t`unit`,
-        description: t`The unit to be added. Allowed units are "year", "month", "quarter", "day", "hour", "minute", "second".`,
+        description: t`"year", "month", "quarter", "day", "hour", "minute", or "second".`,
       },
     ],
   },
@@ -684,20 +684,20 @@ const helperTextStrings = [
     name: "date-subtract",
     structure:
       "dateSubtract(" + t`column` + ", " + t`amount` + ", " + t`unit` + ")",
-    description: t`Returns a datetime after which a certain time/date interval has been subtracted.`,
+    description: t`Subtracts some units of time to a date or timestamp value.`,
     example: "dateSubtract([" + t`Created At` + '], 1, "' + t`month` + '")',
     args: [
       {
         name: t`column`,
-        description: t`The datetime column to which the interval should be subtracted.`,
+        description: t`The column with your date or timestamp values.`,
       },
       {
         name: t`amount`,
-        description: t`The amount to be changed.`,
+        description: t`The number of units to be subtracted.`,
       },
       {
         name: t`unit`,
-        description: t`The unit to be subtracted. Allowed units are "year", "month", "quarter", "day", "hour", "minute", "second".`,
+        description: t`"year", "month", "quarter", "day", "hour", "minute", or "second".`,
       },
     ],
   },
