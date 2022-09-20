@@ -5,6 +5,7 @@ import type { Card } from "metabase-types/api";
 import type Question from "metabase-lib/lib/Question";
 import type Table from "metabase-lib/lib/metadata/Table";
 
+import ModelRelationships from "./ModelRelationships";
 import {
   ModelInfoPanel,
   ModelInfoTitle,
@@ -41,6 +42,7 @@ function ModelInfoSidePanel({ model, mainTable, onChangeDescription }: Props) {
           onChange={onChangeDescription}
         />
       </ModelInfoSection>
+      <ModelRelationships model={model} mainTable={mainTable} />
       {modelCard.creator && (
         <ModelInfoSection>
           <ModelInfoTitle>{t`Contact`}</ModelInfoTitle>
