@@ -19,7 +19,9 @@ java -version
 javac -version
 
 echo "Building metabase jar ..."
-npm install --force
+ls -lah
+pwd
+#npm install --force
 chmod +x ./bin/build
 ./bin/build
 cp target/uberjar/metabase.jar ./bin/docker/
