@@ -93,25 +93,6 @@
                    {:name "thing", :base_type :type/Text, :semantic_type :type/Category}}
                  (db->fields db))))))))
 
-(tx/defdataset bigint-and-boolean
-  [["xjsontestx"
-    [{:field-name "jsoncol", :base-type :type/SerializedJSON}]
-    [["{\"mybool\":true,\"myint\":1234567890123456}"]
-     ["{\"mybool\":false,\"myint\":12345678901234567}"]]]])
-
-(deftest json-unwrapping-bigint-and-boolean
-  (mt/test-driver :mysql
-    (println "106 --------------------------------------------------")
-    (mt/dataset bigint-and-boolean
-      (println "in mt/dataset json-bigint-and-boolean")
-      ;; trigger a full sync on this database so fields are categorized correctly
-      (sync/sync-database! (mt/db))
-      (testing "Field is marked as :type/SerializedJSON"
-        (is (= #{{:name "id", :base_type :type/BigInteger, :semantic_type :type/PK}
-                 {:name "jsoncol", :base_type :type/Text, :semantic_type :type/SerializedJSON}}
-               (db->fields (mt/db)))))
-      (mt/mbql-query jsoncol))))
-
 (tx/defdataset year-db
   [["years"
     [{:field-name "year_column", :base-type {:native "YEAR"}, :effective-type :type/Date}]
@@ -513,6 +494,28 @@
                                                               :bin-width 0.75}}]]
                   (is (= ["((floor(((convert(json_extract(json.json_bit, ?), UNSIGNED) - 0.75) / 0.75)) * 0.75) + 0.75)" "$.\"1234\""]
                          (hsql/format (sql.qp/->honeysql :mysql field-clause)))))))))))))
+
+(tx/defdataset bigint-and-boolean
+  [["xjsontestx"
+    [{:field-name "jsoncol", :base-type :type/SerializedJSON}]
+    [["{\"mybool\":true,\"myint\":1234567890123456789}"]
+     ["{\"mybool\":false,\"myint\":12345678901234567890}"]]]])
+
+(deftest json-unwrapping-bigint-and-boolean
+  (mt/test-driver :mysql
+    (mt/dataset bigint-and-boolean
+      (println "in mt/dataset json-bigint-and-boolean")
+      (sync/sync-database! (mt/db)) ;; trigger a full sync on this database so fields are categorized correctly
+      (testing "Field is marked as :type/SerializedJSON are fingerprinted that way."
+        (is (= #{{:name "id", :base_type :type/Integer, :semantic_type :type/PK}
+                 {:name "jsoncol", :base_type :type/Text, :semantic_type :type/SerializedJSON}}
+               (db->fields (mt/db)))))
+      (testing "Nested field columns are correct"
+        (is (= #{::fixme}
+               (sql-jdbc.sync/describe-nested-field-columns
+                :mysql
+                (mt/db)
+                {:name "xjsontestx"})))))))
 
 (deftest ddl.execute-with-timeout-test
   (mt/test-driver :mysql
