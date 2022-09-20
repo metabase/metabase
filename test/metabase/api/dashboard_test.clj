@@ -713,7 +713,78 @@
             (is (not= (:entity_id dashboard) (:entity_id response))
                 "The copy should have a new entity ID generated")
             (finally
-              (db/delete! Dashboard :id (u/the-id response)))))))))
+              (db/delete! Dashboard :id (u/the-id response))))))))
+  (testing "Deep copy: POST /api/dashboard/:id/copy"
+    (mt/dataset sample-dataset
+      (mt/with-temp* [Collection [source-coll {:name "Source collection"}]
+                      Collection [dest-coll   {:name "Destination collection"}]
+                      Dashboard [dashboard {:name        "Dashboard to be Copied"
+                                            :description "A description"
+                                            :collection_id (u/the-id source-coll)
+                                            :creator_id  (mt/user->id :rasta)}]
+                      Card      [total-card  {:name "Total orders per month"
+                                              :collection_id (u/the-id source-coll)
+                                              :display :line
+                                              :visualization_settings
+                                              {:graph.dimensions ["CREATED_AT"]
+                                               :graph.metrics ["sum"]}
+                                              :dataset_query
+                                              (mt/$ids
+                                               {:database (mt/id)
+                                                :type     :query
+                                                :query    {:source-table $$orders
+                                                           :aggregation  [[:sum $orders.total]]
+                                                           :breakout     [!month.orders.created_at]}})}]
+                      Card      [avg-card  {:name "Average orders per month"
+                                            :collection_id (u/the-id source-coll)
+                                            :display :line
+                                            :visualization_settings
+                                            {:graph.dimensions ["CREATED_AT"]
+                                             :graph.metrics ["sum"]}
+                                            :dataset_query
+                                            (mt/$ids
+                                             {:database (mt/id)
+                                              :type     :query
+                                              :query    {:source-table $$orders
+                                                         :aggregation  [[:avg $orders.total]]
+                                                         :breakout     [!month.orders.created_at]}})}]
+                      Card          [model {:name "A model"
+                                            :collection_id (u/the-id source-coll)
+                                            :dataset true
+                                            :dataset_query
+                                            (mt/$ids
+                                             {:database (mt/id)
+                                              :type :query
+                                              :query {:source-table $$orders
+                                                      :limit 4}})}]
+                      DashboardCard [dashcard {:dashboard_id (u/the-id dashboard)
+                                               :card_id    (u/the-id total-card)
+                                               :size_x 6, :size_y 6}]
+                      DashboardCard [_        {:dashboard_id (u/the-id dashboard)
+                                               :card_id    (u/the-id model)
+                                               :size_x 6, :size_y 6}]
+                      DashboardCardSeries [_ {:dashboardcard_id (u/the-id dashcard)
+                                              :card_id (u/the-id avg-card)
+                                              :position 0}]]
+        (mt/with-model-cleanup [Card Dashboard DashboardCard DashboardCardSeries]
+          (let [resp (mt/user-http-request :crowberto :post 200
+                                           (format "dashboard/%d/copy" (:id dashboard))
+                                           {:name        "New dashboard"
+                                            :description "A new description"
+                                            :copy-style :deep
+                                            :destination-collection (u/the-id dest-coll)})]
+            (is (= (:collection_id resp) (u/the-id dest-coll))
+                  "Dashboard should go into the destination collection")
+            (is (= 3 (count (db/select 'Card :collection_id (u/the-id source-coll)))))
+            (let [copied-cards (db/select 'Card :collection_id (u/the-id dest-coll))]
+              (is (= 2 (count copied-cards)))
+              (testing "Should copy cards"
+                (is (= #{"Total orders per month" "Average orders per month"}
+                       (into #{} (map :name) copied-cards))
+                    "Should preserve the titles of the original cards"))
+              (testing "Should not deep-copy models"
+                (is (every? (comp false? :dataset) copied-cards)
+                    "Copied a model")))))))))
 
 (deftest copy-dashboard-cards-test
   (testing "POST /api/dashboard/:id/copy"

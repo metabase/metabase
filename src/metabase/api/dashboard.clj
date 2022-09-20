@@ -7,6 +7,7 @@
             [medley.core :as m]
             [metabase.actions.execution :as actions.execution]
             [metabase.analytics.snowplow :as snowplow]
+            [metabase.api.card :as api.card]
             [metabase.api.common :as api]
             [metabase.api.common.validation :as validation]
             [metabase.api.dataset :as api.dataset]
@@ -215,14 +216,40 @@
       hide-unreadable-cards
       add-query-average-durations))
 
+(defn- duplicate-cards
+  "Takes a dashboard id, and duplicates the cards both on the dashboard's cards and dashcardseries. Returns a map of
+  {old-card-id duplicated-card} so that the new dashboard can adjust accordingly."
+  [dashboard destination-collection]
+  (let [card-ids (into #{} (comp
+                            (mapcat (fn [{:keys [card series]}]
+                                      (into [(:id card)] (map :id) series)))
+                            (keep identity))
+                       (:ordered_cards dashboard))
+        id->card (m/index-by :id (db/select 'Card :id [:in card-ids]))]
+    (reduce (fn [m [id card]]
+              (assoc m id
+                     (if (:dataset card)
+                       card
+                       ;; todo: `create-card!` waits up to 1.5 seconds for metadata. But presumably we have that. So:
+                       ;; we want to avoid the wait either way, and if this transaction fails we don't want the
+                       ;; asynchronous metadata saving to attempt to save metadata to a card that won't be visible (if
+                       ;; transaction hasn't completed yet) or won't exist if transaction fails
+                       (api.card/create-card! (assoc card :collection_id destination-collection)))))
+            {}
+            id->card)))
 
 (api/defendpoint POST "/:from-dashboard-id/copy"
   "Copy a Dashboard."
-  [from-dashboard-id :as {{:keys [name description collection_id collection_position], :as _dashboard} :body}]
-  {name                (s/maybe su/NonBlankString)
-   description         (s/maybe s/Str)
-   collection_id       (s/maybe su/IntGreaterThanZero)
-   collection_position (s/maybe su/IntGreaterThanZero)}
+  [from-dashboard-id :as {{:keys [name description collection_id collection_position
+                                  copy-style destination-collection], :as _dashboard} :body}]
+  {name                   (s/maybe su/NonBlankString)
+   description            (s/maybe s/Str)
+   collection_id          (s/maybe su/IntGreaterThanZero)
+   collection_position    (s/maybe su/IntGreaterThanZero)
+   copy-style             (s/maybe (s/enum "deep" "shallow"))
+   ;; todo: do we want an explicit destination to override the provided collection_id?
+   ;; don't know how the FE likes to work
+   destination-collection (s/maybe su/IntGreaterThanZero)}
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
   (collection/check-write-perms-for-collection collection_id)
   (let [existing-dashboard (get-dashboard from-dashboard-id)
@@ -230,18 +257,36 @@
                         :description         (or description (:description existing-dashboard))
                         :parameters          (or (:parameters existing-dashboard) [])
                         :creator_id          api/*current-user-id*
-                        :collection_id       collection_id
+                        :collection_id       (or destination-collection collection_id)
                         :collection_position collection_position
                         :is_app_page         (:is_app_page existing-dashboard)}
         dashboard      (db/transaction
-                         ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
-                         ;; collection to change position, check that and fix up if needed
-                         (api/maybe-reconcile-collection-position! dashboard-data)
-                         ;; Ok, now save the Dashboard
-                         (u/prog1 (db/insert! Dashboard dashboard-data)
-                           ;; Get cards from existing dashboard and associate to copied dashboard
-                           (doseq [card (:ordered_cards existing-dashboard)]
-                             (api/check-500 (dashboard/add-dashcard! <> (:card_id card) card)))))]
+                        ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
+                        ;; collection to change position, check that and fix up if needed
+                        (api/maybe-reconcile-collection-position! dashboard-data)
+                        ;; Ok, now save the Dashboard
+                        (u/prog1 (db/insert! Dashboard dashboard-data)
+                          ;; Get cards from existing dashboard and associate to copied dashboard
+                          (let [id->new-card (when (= copy-style "deep")
+                                               (duplicate-cards existing-dashboard
+                                                                destination-collection))
+                                id->new-id  (if (seq id->new-card)
+                                              (fn [id]
+                                                (or (:id (id->new-card id))
+                                                    (throw (ex-info (tru "Card {0} not duplicated"
+                                                                         id)
+                                                                    {:id id
+                                                                     :ids id->new-card}))))
+                                              identity)]
+                            (doseq [card (:ordered_cards existing-dashboard)]
+                              (api/check-500 (dashboard/add-dashcard!
+                                              <>
+                                              (id->new-id (:card_id card))
+                                              (update card
+                                                      :series
+                                                      (fn [series]
+                                                        (map #(update % :id id->new-id)
+                                                             series)))))))))]
     (snowplow/track-event! ::snowplow/dashboard-created api/*current-user-id* {:dashboard-id (u/the-id dashboard)})
     (events/publish-event! :dashboard-create dashboard)))
 
