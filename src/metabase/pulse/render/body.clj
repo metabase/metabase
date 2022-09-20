@@ -256,9 +256,12 @@
     (cond-> (or (get-in override-date-styles [date-style unit])
                 (get-in default-date-styles [unit])
                 date-style)
-      (not= date-separator "/") (str/replace #"/" date-separator)
-      date-abbreviate (-> (str/replace #"MMMM" "MMM")
-                          (str/replace #"EEEE" "E")))))
+      date-separator
+      (str/replace #"/" date-separator)
+
+      date-abbreviate
+      (-> (str/replace #"MMMM" "MMM")
+          (str/replace #"EEEE" "E")))))
 
 (defn- backfill-currency
   [{:keys [number_style currency] :as settings}]
