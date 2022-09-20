@@ -19,9 +19,9 @@ java -version
 javac -version
 
 echo "Building metabase jar ..."
-ls -lah
-pwd
-ls -lah ./bin/build
+# ls -lah
+# pwd
+# ls -lah ./bin/build
 bash ./bin/build
 cp target/uberjar/metabase.jar ./bin/docker/
 
