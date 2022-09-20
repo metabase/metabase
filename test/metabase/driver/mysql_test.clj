@@ -497,8 +497,8 @@
 
 (tx/defdataset json-unwrap-bigint-and-boolean
   [["bigint-and-bool-table"
-    [{:field-name "jsoncol", :base-type :type/JSON}]
-    [["{\"mybool\":true,\"myint\":1234567890123456789}"]
+    [{:field-name "jsoncol" :base-type :type/JSON}]
+    [["{\"mybool\":true,\"myint\":1}"]
      ["{\"mybool\":false,\"myint\":12345678901234567890}"]]]])
 
 (deftest json-unwrapping-bigint-and-boolean
@@ -526,6 +526,6 @@
       (let [db-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
         (is (thrown-with-msg?
               Exception
-              #"Killed mysql process id \d+ due to timeout."
+              #"Killed mysql process id [\d,]+ due to timeout."
               (#'mysql.ddl/execute-with-timeout! db-spec db-spec 10 ["select sleep(5)"])))
         (is (= true (#'mysql.ddl/execute-with-timeout! db-spec db-spec 5000 ["select sleep(0.1) as val"])))))))
