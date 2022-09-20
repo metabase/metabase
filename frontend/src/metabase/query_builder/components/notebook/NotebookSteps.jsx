@@ -51,7 +51,8 @@ export default class NotebookSteps extends React.Component {
       <div className={cx(className, "pt3")}>
         {steps.map((step, index) => {
           // pass a version of updateQuery that cleans subsequent steps etc
-          const updateQuery = async datasetQuery => {
+          const updateQuery = async query => {
+            const datasetQuery = query.datasetQuery();
             const updatedQuery = step.update(datasetQuery);
             await updateQuestion(updatedQuery.question());
             // mark the step as "closed" since we can assume it's been added or removed by the updateQuery
