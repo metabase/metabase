@@ -11,8 +11,6 @@ You have connected Metabase to a database, but:
 - the tables don't show up as possible data sources when you create a query using the Notebook Editor, or
 - you can no longer see tables that you used to be able to see.
 
-If you have a different issue, see [related problems](#do-you-have-a-different-problem).
-
 ## Is your browser showing you a cached list of tables?
 
 **Root cause:** Sometimes browsers will show an old cached list of tables.

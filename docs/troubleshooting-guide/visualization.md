@@ -39,7 +39,7 @@ Go to your SQL question and [change the visualization type](../questions/sharing
 
 **Explanation**
 
-If your question or dashboard card is powered by a handwritten [SQL query](../questions/native-editor/writing-sql.md), your Metabase visualization might look wrong if the underlying logic has been disrupted. To learn more, read about some [Common reasons for unexpected query results](https://www.metabase.com/learn/debugging-sql/sql-logic#common-reasons-for-unexpected-query-results).
+If your question or dashboard card is powered by a handwritten [SQL query](../questions/native-editor/writing-sql.md) rather than the [query builder](../questions/query-builder/introduction.md), your visualization is going to be more sensitive to changes in the underlying data (for example, renamed fields, or the sudden appearance of a wild null value). To learn more, read about [Common reasons for unexpected query results](https://www.metabase.com/learn/debugging-sql/sql-logic#common-reasons-for-unexpected-query-results).
 
 If you're having problems with things like SQL syntax errors or [SQL variables](https://www.metabase.com/glossary/variable#example-variable-in-metabase), see [Troubleshooting SQL questions](./sql.md) for more help.
 
