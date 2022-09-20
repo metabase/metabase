@@ -626,12 +626,12 @@
    "arithmetic-datetime-unit"))
 
 (defclause ^{:requires-features #{:date-functions}} date-add
-  datetime StringExpressionArg,
+  datetime ExpressionArg,
   amount   NumericExpressionArg
   unit     ArithmeticDateTimeUnit)
 
 (defclause ^{:requires-features #{:date-functions}} date-subtract
-  datetime StringExpressionArg,
+  datetime ExpressionArg,
   amount   NumericExpressionArg
   unit     ArithmeticDateTimeUnit)
 
