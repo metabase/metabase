@@ -20,6 +20,7 @@ javac -version
 
 echo "Building metabase jar ..."
 npm install --force
+chmod +x ./bin/build
 ./bin/build
 cp target/uberjar/metabase.jar ./bin/docker/
 
