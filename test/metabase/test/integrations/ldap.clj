@@ -54,15 +54,15 @@
   [f options]
   (binding [*ldap-server* (start-ldap-server! options)]
     (try
-      (tu/with-temporary-setting-values [ldap-enabled    true
-                                         ldap-host       "localhost"
+      (tu/with-temporary-setting-values [ldap-host       "localhost"
                                          ldap-port       (get-ldap-port)
                                          ldap-bind-dn    "cn=Directory Manager"
                                          ldap-password   "password"
                                          ldap-user-base  "dc=metabase,dc=com"
                                          ldap-group-sync true
                                          ldap-group-base "dc=metabase,dc=com"]
-        (f))
+         (tu/with-temporary-raw-setting-values [ldap-enabled "true"]
+          (f)))
       (finally (.shutDown *ldap-server* true)))))
 
 (defmacro with-ldap-server

@@ -5,6 +5,7 @@
             [java-time :as t]
             [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
+            [metabase.api.ldap :as api.ldap]
             [metabase.config :as config]
             [metabase.email.messages :as messages]
             [metabase.events :as events]
@@ -92,7 +93,7 @@
   "If LDAP is enabled and a matching user exists return a new Session for them, or `nil` if they couldn't be
   authenticated."
   [username password device-info :- request.u/DeviceInfo]
-  (when (ldap/ldap-configured?)
+  (when (api.ldap/ldap-enabled)
     (try
       (when-let [user-info (ldap/find-user username)]
         (when-not (ldap/verify-password user-info password)

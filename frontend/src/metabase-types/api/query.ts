@@ -18,7 +18,7 @@ export interface StructuredDatasetQuery {
 export interface NativeDatasetQuery {
   type: "native";
   database: DatabaseId;
-  query: NativeQuery;
+  native: NativeQuery;
 }
 
 export type DatasetQuery = StructuredDatasetQuery | NativeDatasetQuery;

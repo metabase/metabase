@@ -8,8 +8,6 @@ summary: |
 
 `/api/tiles` endpoints.
 
-  - [GET /api/tiles/:zoom/:x/:y/:lat-field/:lon-field](#get-apitileszoomxylat-fieldlon-field)
-
 ## `GET /api/tiles/:zoom/:x/:y/:lat-field/:lon-field`
 
 This endpoints provides an image with the appropriate pins rendered given a MBQL `query` (passed as a GET query
