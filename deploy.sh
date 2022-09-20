@@ -19,8 +19,6 @@ java -version
 javac -version
 
 echo "Building metabase jar ..."
-pwd
-yarn build
 ./bin/build
 cp target/uberjar/metabase.jar ./bin/docker/
 
