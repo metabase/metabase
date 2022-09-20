@@ -92,10 +92,10 @@ jobs:
         credentials:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      ldap-server-mock:
-        image: thoteam/ldap-server-mock
+      openldap:
+        image: osixia/openldap:1.5.0
         ports:
-          - "3004:3004"
+          - "389:389"
         credentials:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
