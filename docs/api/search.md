@@ -8,9 +8,6 @@ summary: |
 
 API endpoints for Search.
 
-  - [GET /api/search/](#get-apisearch)
-  - [GET /api/search/models](#get-apisearchmodels)
-
 ## `GET /api/search/`
 
 Search within a bunch of models for the substring `q`.
