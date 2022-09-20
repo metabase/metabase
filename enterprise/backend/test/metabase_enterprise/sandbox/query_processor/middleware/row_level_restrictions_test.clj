@@ -6,21 +6,23 @@
             [medley.core :as m]
             [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
             [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions :as row-level-restrictions]
-            [metabase-enterprise.sandbox.test-util :as mt.tu]
             [metabase.api.common :as api]
             [metabase.driver :as driver]
+            [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.util :as mbql.u]
             [metabase.models :refer [Card Collection Field Table]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
+            [metabase.models.persisted-info :as persisted-info]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.cache-test :as cache-test]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.query-processor.pivot :as qp.pivot]
             [metabase.query-processor.util :as qp.util]
             [metabase.query-processor.util.add-alias-info :as add]
+            [metabase.task.persist-refresh :as task.persist-refresh]
             [metabase.test :as mt]
             [metabase.test.data.env :as tx.env]
             [metabase.util :as u]
@@ -680,7 +682,7 @@
             (is (= [[10]]
                    (mt/rows result)))))
         (testing "Run the query with different User attributes, should not get the cached result"
-          (mt.tu/with-user-attributes :rasta {"cat" 40}
+          (mt/with-user-attributes :rasta {"cat" 40}
             ;; re-bind current user so updated attributes come in to effect
             (mt/with-test-user :rasta
               (is (= {"cat" 40}
@@ -1002,3 +1004,60 @@
             ;; this should *NOT* be cached because we're generating a nested query with sandboxing in play.
             (is (= {:cached? false, :num-rows 5}
                    (run-query)))))))))
+
+(deftest persistence-disabled-when-sandboxed
+  (mt/test-driver :postgres
+    (mt/dataset sample-dataset
+      ;; with-gtaps creates a new copy of the database. So make sure to do that before anything else. Gets really
+      ;; confusing when `(mt/id)` and friends change value halfway through the test
+      (mt/with-gtaps {:gtaps      {:products
+                                   {:remappings {:category
+                                                 ["dimension"
+                                                  [:field (mt/id :products :category)
+                                                   nil]]}}}
+                      :attributes {"category" nil}}
+        (mt/with-temporary-setting-values [:persisted-models-enabled true]
+          (mt/with-temp* [Card [model {:dataset       true
+                                       :dataset_query (mt/mbql-query
+                                                       products
+                                                       ;; note does not include the field we have to filter on. No way
+                                                       ;; to use the sandbox filter on the cached table
+                                                       {:fields [$id $price]})}]]
+            ;; persist model
+            (ddl.i/check-can-persist (mt/db))
+            (persisted-info/ready-database! (mt/id))
+            (#'task.persist-refresh/refresh-tables!
+             (mt/id)
+             (var-get #'task.persist-refresh/dispatching-refresher))
+            (let [persisted-info (db/select-one 'PersistedInfo
+                                                :database_id (mt/id)
+                                                :card_id (:id model))]
+              (is (= "persisted" (:state persisted-info))
+                  "Model failed to persist")
+              (is (string? (:table_name persisted-info)))
+              (let [query         {:type     :query
+                                   ;; just generate a select count(*) from card__<id>
+                                   :query    {:aggregation  [:count]
+                                              :source-table (str "card__" (:id model))}
+                                   :database (mt/id)}
+                    regular-result (mt/with-test-user :crowberto
+                                     (qp/process-query query))
+                    sandboxed-result (mt/with-user-attributes :rasta {"category" "Gizmo"}
+                                       (mt/with-test-user :rasta
+                                         (qp/process-query query)))]
+                (testing "Unsandboxed"
+                  (testing "Sees full result set"
+                    (is (= 200 (-> regular-result mt/rows ffirst))
+                        "Expected 200 product results from cached, non-sandboxed results"))
+                  (testing "Uses the cache table"
+                    (is (str/includes? (-> regular-result :data :native_form :query)
+                                       (:table_name persisted-info))
+                        "Did not use the persisted model cache")))
+                (testing "Sandboxed"
+                  (testing "sees partial result"
+                    (is (= 51 (-> sandboxed-result mt/rows ffirst))
+                        "Sandboxed user got whole results instead of filtered"))
+                  (testing "Does not use the cache table"
+                    (is (not (str/includes? (-> sandboxed-result :data :native_form :query)
+                                            (:table_name persisted-info)))
+                        "Erroneously used the persisted model cache")))))))))))
