@@ -69,6 +69,7 @@ const viewTitleHeaderPropTypes = {
 
   runQuestionQuery: PropTypes.func,
   cancelQuery: PropTypes.func,
+  updateQuestion: PropTypes.func,
 
   onOpenModal: PropTypes.func,
   onEditSummary: PropTypes.func,
@@ -80,7 +81,7 @@ const viewTitleHeaderPropTypes = {
 };
 
 export function ViewTitleHeader(props) {
-  const { question, className, style, isNavBarOpen } = props;
+  const { question, className, style, isNavBarOpen, updateQuestion } = props;
 
   const [
     areFiltersExpanded,
@@ -110,6 +111,13 @@ export function ViewTitleHeader(props) {
   const isSummarized =
     isStructured && question.query().topLevelQuery().hasAggregations();
 
+  const onQueryChange = useCallback(
+    newQuery => {
+      updateQuestion(newQuery.question(), { run: true });
+    },
+    [updateQuestion],
+  );
+
   return (
     <>
       <ViewHeaderContainer
@@ -136,6 +144,7 @@ export function ViewTitleHeader(props) {
           areFiltersExpanded={areFiltersExpanded}
           onExpandFilters={expandFilters}
           onCollapseFilters={collapseFilters}
+          onQueryChange={onQueryChange}
         />
       </ViewHeaderContainer>
       {QuestionFilters.shouldRender(props) && (
@@ -143,6 +152,7 @@ export function ViewTitleHeader(props) {
           {...props}
           expanded={areFiltersExpanded}
           question={question}
+          onQueryChange={onQueryChange}
         />
       )}
     </>
@@ -340,6 +350,7 @@ ViewTitleHeaderRightSide.propTypes = {
   onCloseQuestionInfo: PropTypes.func,
   isShowingQuestionInfoSidebar: PropTypes.bool,
   onModelPersistenceChange: PropTypes.bool,
+  onQueryChange: PropTypes.func,
 };
 
 function ViewTitleHeaderRightSide(props) {
@@ -376,6 +387,7 @@ function ViewTitleHeaderRightSide(props) {
     onCloseQuestionInfo,
     onOpenQuestionInfo,
     onModelPersistenceChange,
+    onQueryChange,
   } = props;
   const isShowingNotebook = queryBuilderMode === "notebook";
   const query = question.query();
@@ -418,6 +430,7 @@ function ViewTitleHeaderRightSide(props) {
           expanded={areFiltersExpanded}
           onExpand={onExpandFilters}
           onCollapse={onCollapseFilters}
+          onQueryChange={onQueryChange}
         />
       )}
       {QuestionFilterWidget.shouldRender(props) && (
