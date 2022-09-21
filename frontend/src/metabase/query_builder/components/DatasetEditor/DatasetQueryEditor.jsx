@@ -27,7 +27,7 @@ function DatasetQueryEditor({
 }) {
   // Datasets/models by default behave like they are already nested,
   // so we need to edit the dataset/model question like it is a normal question
-  const question = dataset_DO_NOT_USE.lockDisplay().setDataset(false);
+  const question = dataset_DO_NOT_USE.setDataset(false);
 
   const [isResizing, setResizing] = useState(false);
 

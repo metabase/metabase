@@ -313,6 +313,9 @@ export const getQuestion = createSelector(
     const question = new Question(card, metadata, parameterValues);
 
     const isEditingModel = queryBuilderMode === "dataset";
+    if (isEditingModel) {
+      return question.lockDisplay();
+    }
 
     // When opening a model, we swap it's `dataset_query`
     // with clean query using the model as a source table,

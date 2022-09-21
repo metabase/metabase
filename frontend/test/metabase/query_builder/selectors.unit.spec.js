@@ -105,6 +105,7 @@ describe("getQuestion", () => {
 
     expect(question.card()).toEqual({
       ...card,
+      displayIsLocked: true,
     });
   });
 });
