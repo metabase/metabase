@@ -298,6 +298,12 @@ export const getOriginalQuestion = createSelector(
   (metadata, card) => metadata && card && new Question(card, metadata),
 );
 
+export const getLastRunQuestion = createSelector(
+  [getMetadata, getLastRunCard, getParameterValues],
+  (metadata, card, parameterValues) =>
+    card && metadata && new Question(card, metadata, parameterValues),
+);
+
 export const getQuestion = createSelector(
   [getMetadata, getCard, getParameterValues, getQueryBuilderMode],
   (metadata, card, parameterValues, queryBuilderMode) => {
@@ -306,9 +312,7 @@ export const getQuestion = createSelector(
     }
     const question = new Question(card, metadata, parameterValues);
 
-    if (queryBuilderMode === "dataset") {
-      return question.lockDisplay();
-    }
+    const isEditingModel = queryBuilderMode === "dataset";
 
     // When opening a model, we swap it's `dataset_query`
     // with clean query using the model as a source table,
@@ -317,7 +321,7 @@ export const getQuestion = createSelector(
     // as it would be blocked by the backend as an ad-hoc query
     // see https://github.com/metabase/metabase/issues/20042
     const hasDataPermission = !!question.database();
-    return question.isDataset() && hasDataPermission
+    return question.isDataset() && hasDataPermission && !isEditingModel
       ? question.composeDataset()
       : question;
   },
@@ -366,6 +370,7 @@ export const getIsResultDirty = createSelector(
   [
     getQuestion,
     getOriginalQuestion,
+    getLastRunQuestion,
     getLastRunDatasetQuery,
     getNextRunDatasetQuery,
     getLastRunParameterValues,
@@ -375,6 +380,7 @@ export const getIsResultDirty = createSelector(
   (
     question,
     originalQuestion,
+    lastRunQuestion,
     lastDatasetQuery,
     nextDatasetQuery,
     lastParameters,
@@ -387,6 +393,10 @@ export const getIsResultDirty = createSelector(
     // and the page will always be covered with a 'rerun' overlay.
     // Once the dataset_query changes, the question will loose the "dataset" flag and it'll work normally
     if (question && isAdHocModelQuestion(question, originalQuestion)) {
+      return false;
+    }
+
+    if (lastRunQuestion && isAdHocModelQuestion(lastRunQuestion, question)) {
       return false;
     }
 
@@ -403,12 +413,6 @@ export const getIsResultDirty = createSelector(
     nextDatasetQuery = normalizeQuery(nextDatasetQuery, tableMetadata);
     return !Utils.equals(lastDatasetQuery, nextDatasetQuery);
   },
-);
-
-export const getLastRunQuestion = createSelector(
-  [getMetadata, getLastRunCard, getParameterValues],
-  (metadata, card, parameterValues) =>
-    card && metadata && new Question(card, metadata, parameterValues),
 );
 
 export const getZoomedObjectId = state => state.qb.zoomedRowObjectId;
