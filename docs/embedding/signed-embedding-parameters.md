@@ -26,6 +26,8 @@ You can add [filter widgets](https://www.metabase.com/glossary/filter_widget) to
 
 **Editable** parameters are responsible for passing filter values from the embedded filter widget (displayed on the iframe) through to the filters on your original dashboard or SQL question (in your Metabase).
 
+Note that [locked parameters](#pre-filtering-data-in-a-signed-embed) may limit the values that show up in an embedded filter widget.
+
 ## Populating an embedded filter widget with a default value
 
 If you want to set a default value for your [embedded filter widget](#adding-a-filter-widget-to-a-signed-embed), you can pass that default value to the corresponding parameter name in the embedding URL. Note that:
@@ -63,7 +65,9 @@ If you want to display filtered data in an embedded dashboard or SQL question, a
 5. Add values for the filter under **Preview locked parameters**.
 6. Click **Publish** to save your changes.
 
-**Locked** parameters will apply the selected filter values to your original dashboard or SQL question, but they won't be displayed as filter widgets on your embed. You can use locked parameters to display filtered data based on attributes captured by your web server (such as a user's login). See the [reference apps repo](https://github.com/metabase/embedding-reference-apps) for more examples.
+**Locked** parameters will apply the selected filter values to your original dashboard or SQL question, but they won't be displayed as filter widgets on your embed. This may also limit the values that are shown in your [embedded filter widgets](#adding-a-filter-widget-to-a-signed-embed).
+
+You can use locked parameters to display filtered data based on attributes captured by your web server (such as a user's login). See the [reference apps repo](https://github.com/metabase/embedding-reference-apps) for more examples.
 
 Note that you can only add filter values that match the filter type on the _original_ dashboard or SQL question. For example, if you have a text box filter on your original dashboard or SQL question, you'll only be able to add a single filter value to your locked parameter. If you want to provide multiple filter values to the parameter, you'll need to change the original filter to a [dropdown filter](../dashboards/filters.md#choosing-between-a-dropdown-or-autocomplete-for-your-filter) first.
 
