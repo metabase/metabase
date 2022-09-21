@@ -103,7 +103,7 @@ export function getParameterValuesForQuestion({
  *  - If the user loses permissions to view the dashboard, the user will be navigated to an unauthed screen.
  *  - If the card is removed from the dashboard or some of the parameters mapped to it have been removed,
  *    the user will be navigated to an unauthed screen.
- * See https://github.com/metabase/metabase/pull/19300 for details on error handling.
+ * See https://github.com/metabase/metabase/pull/19300 for the origin of the error handling.
  */
 export async function propagateDashboardParameters({
   card,
@@ -132,7 +132,6 @@ export async function propagateDashboardParameters({
       dashcardId: dashcardId as number,
       parameters: parameters as Parameter[],
     });
-
     card.parameters = parameters;
     card.dashboardId = dashboardId;
     card.dashcardId = dashcardId;
