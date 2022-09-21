@@ -461,8 +461,8 @@
         legend-colors               (merge (zipmap (map first rows) (cycle colors))
                                            (update-keys (:pie.colors viz-settings) name))
         image-bundle                (image-bundle/make-image-bundle
-                                      render-type
-                                      (js-svg/categorical-donut rows legend-colors))
+                                     render-type
+                                     (js-svg/categorical-donut rows legend-colors))
         {label-viz-settings :x}     (->js-viz (x-axis-rowfn cols) (y-axis-rowfn cols) viz-settings)]
     {:attachments
      (when image-bundle
@@ -473,19 +473,19 @@
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]
       (donut-legend
-        (mapv (fn [row]
-                (let [label (first row)]
-                  {:percentage (percentages (first row))
-                   :color      (legend-colors (first row))
-                   :label      (if (or (datetime/temporal-string? label)
-                                       (boolean (parse-long label)))
-                                 (datetime/format-temporal-str
-                                   timezone-id
-                                   (first row)
-                                   (x-axis-rowfn cols)
-                                   label-viz-settings)
-                                 label)}))
-              rows))]}))
+       (mapv (fn [row]
+               (let [label (first row)]
+                 {:percentage (percentages (first row))
+                  :color      (legend-colors (first row))
+                  :label      (if (and (contains? label-viz-settings :date_style)
+                                       (datetime/temporal-string? label))
+                                (datetime/format-temporal-str
+                                 timezone-id
+                                 (first row)
+                                 (x-axis-rowfn cols)
+                                 label-viz-settings)
+                                label)}))
+             rows))]}))
 
 (s/defmethod render :progress :- common/RenderedPulseCard
   [_ render-type _timezone-id _card dashcard {:keys [cols rows viz-settings] :as _data}]

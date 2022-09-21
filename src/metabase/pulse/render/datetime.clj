@@ -86,7 +86,6 @@
              :hour-of-day     (hour-of-day s (str/replace (or time-style "h a") #"A" "a"))
 
              (:week-of-year :minute-of-hour :day-of-month :day-of-year) (x-of-y (parse-long s))
-             ;; TODO: probably shouldn't even be showing sparkline for x-of-y groupings?
 
              ;; for everything else return in this format
              (reformat-temporal-str timezone-id s "MMM d, yyyy"))))))
