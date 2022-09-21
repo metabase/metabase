@@ -40,7 +40,9 @@
 
 (defmethod driver/display-name :mysql [_] "MySQL")
 
-(defmethod driver/database-supports? [:mysql :nested-field-columns] [_driver _feat _db] true)
+(defmethod driver/database-supports? [:mysql :nested-field-columns] [_ _ database]
+  (or (get-in database [:details :json-unfolding]) true))
+
 (defmethod driver/database-supports? [:mysql :persist-models]       [_driver _feat _db] true)
 
 (defmethod driver/database-supports? [:mysql :persist-models-enabled]
