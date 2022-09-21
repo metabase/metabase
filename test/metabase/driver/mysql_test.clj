@@ -499,26 +499,28 @@
   "Used for testing mysql json value unwrapping"
   [["bigint-and-bool-table"
     [{:field-name "jsoncol" :base-type :type/JSON}]
-    [["{\"mybool\":true,\"myint\":1}"]
-     ["{\"mybool\":false,\"myint\":12345678901234567890}"]]]])
+    [["{\"mybool\":true, \"myint\":1234567890123456789}"]
+     ["{\"mybool\":false,\"myint\":12345678901234567890}"]
+     ["{\"mybool\":true, \"myint\":123}"]]]])
 
 (deftest json-unwrapping-bigint-and-boolean
-  (mt/test-driver :mysql
-    (mt/dataset json-unwrap-bigint-and-boolean
-      (sync/sync-database! (mt/db)) ;; trigger a full sync on this database so fields are categorized correctly
-      (testing "Field is marked as :type/SerializedJSON are fingerprinted that way."
-        (is (= #{{:name "id", :base_type :type/Integer, :semantic_type :type/PK}
-                 {:name "jsoncol", :base_type :type/SerializedJSON, :semantic_type :type/SerializedJSON}
-                 {:name "jsoncol → myint", :base_type :type/Number, :semantic_type nil}
-                 {:name "jsoncol → mybool", :base_type :type/Boolean, :semantic_type nil}}
-             (db->fields (mt/db)))))
-      (testing "Nested field columns are correct"
-        (is (= #{{:name "jsoncol → mybool", :database-type "boolean", :base-type :type/Boolean, :database-position 0, :visibility-type :normal, :nfc-path [:jsoncol "mybool"]}
-                 {:name "jsoncol → myint", :database-type "double precision", :base-type :type/Number, :database-position 0, :visibility-type :normal, :nfc-path [:jsoncol "myint"]}}
-               (sql-jdbc.sync/describe-nested-field-columns
-                :mysql
-                (mt/db)
-                (db/select-one Table :db_id (mt/id) :name "bigint-and-bool-table"))))))))
+  (mt/with-log-level :trace
+    (mt/test-driver :mysql
+      (mt/dataset json-unwrap-bigint-and-boolean
+        (sync/sync-database! (mt/db)) ;; trigger a full sync on this database so fields are categorized correctly
+        (testing "Fields marked as :type/SerializedJSON are fingerprinted that way"
+          (is (= #{{:name "id", :base_type :type/Integer, :semantic_type :type/PK}
+                   {:name "jsoncol", :base_type :type/SerializedJSON, :semantic_type :type/SerializedJSON}
+                   {:name "jsoncol → myint", :base_type :type/Number, :semantic_type nil}
+                   {:name "jsoncol → mybool", :base_type :type/Boolean, :semantic_type nil}}
+                 (db->fields (mt/db)))))
+        (testing "Nested field columns are correct"
+          (is (= #{{:name "jsoncol → mybool", :database-type "boolean", :base-type :type/Boolean, :database-position 0, :visibility-type :normal, :nfc-path [:jsoncol "mybool"]}
+                   {:name "jsoncol → myint", :database-type "double precision", :base-type :type/Number, :database-position 0, :visibility-type :normal, :nfc-path [:jsoncol "myint"]}}
+                 (sql-jdbc.sync/describe-nested-field-columns
+                  :mysql
+                  (mt/db)
+                  (db/select-one Table :db_id (mt/id) :name "bigint-and-bool-table")))))))))
 
 (deftest ddl.execute-with-timeout-test
   (mt/test-driver :mysql
