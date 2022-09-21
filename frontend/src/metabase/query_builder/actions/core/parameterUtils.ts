@@ -97,6 +97,14 @@ export function getParameterValuesForQuestion({
   );
 }
 
+/**
+ * Merges .parameters, .dashboardId, and .dashcardId props from deserializedCard into card.
+ * Sets an error page if there have been permissions or data changes to a dashboard such that:
+ *  - If the user loses permissions to view the dashboard, the user will be navigated to an unauthed screen.
+ *  - If the card is removed from the dashboard or some of the parameters mapped to it have been removed,
+ *    the user will be navigated to an unauthed screen.
+ * See https://github.com/metabase/metabase/pull/19300 for details on error handling.
+ */
 export async function propagateDashboardParameters({
   card,
   deserializedCard,
