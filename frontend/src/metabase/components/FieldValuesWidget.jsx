@@ -301,7 +301,11 @@ class FieldValuesWidgetInner extends Component {
     const isLoading = loadingState === "LOADING";
     const usesListField =
       !disableList &&
-      shouldList(fields, disableSearch) &&
+      hasList({
+        fields,
+        disableSearch,
+        options,
+      }) &&
       valuesMode === "list";
 
     return (
@@ -312,22 +316,19 @@ class FieldValuesWidgetInner extends Component {
           maxWidth: this.props.maxWidth,
         }}
       >
-        {usesListField &&
-          !forceTokenField &&
-          (isLoading ? (
-            <LoadingState />
-          ) : (
-            <ListField
-              isDashboardFilter={parameter}
-              placeholder={tokenFieldPlaceholder}
-              value={value.filter(v => v != null)}
-              onChange={onChange}
-              options={options}
-              optionRenderer={optionRenderer}
-              checkedColor={checkedColor}
-            />
-          ))}
-        {(!usesListField || forceTokenField) && (
+        {isLoading ? (
+          <LoadingState />
+        ) : usesListField && !forceTokenField ? (
+          <ListField
+            isDashboardFilter={parameter}
+            placeholder={tokenFieldPlaceholder}
+            value={value.filter(v => v != null)}
+            onChange={onChange}
+            options={options}
+            optionRenderer={optionRenderer}
+            checkedColor={checkedColor}
+          />
+        ) : (
           <TokenField
             prefix={prefix}
             value={value.filter(v => v != null)}
