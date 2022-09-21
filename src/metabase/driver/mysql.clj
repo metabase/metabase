@@ -41,7 +41,7 @@
 (defmethod driver/display-name :mysql [_] "MySQL")
 
 (defmethod driver/database-supports? [:mysql :nested-field-columns] [_ _ database]
-  (let [json-setting (get-in database [:details :json-unfolding])
+  (let [json-setting (get-in database [:details :json-unfolding])]
     (if (nil? json-setting)
       true
       json-setting)))
