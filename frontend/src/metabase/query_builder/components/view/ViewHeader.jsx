@@ -19,6 +19,7 @@ import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQu
 
 import RunButtonWithTooltip from "../RunButtonWithTooltip";
 
+import QuestionActions from "../QuestionActions";
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
 import QuestionDataSource from "./QuestionDataSource";
 import QuestionDescription from "./QuestionDescription";
@@ -29,7 +30,6 @@ import QuestionFilters, {
   QuestionFilterWidget,
 } from "./QuestionFilters";
 import { QuestionSummarizeWidget } from "./QuestionSummaries";
-import QuestionActions from "../QuestionActions";
 import NativeQueryButton from "./NativeQueryButton";
 import {
   AdHocViewHeading,

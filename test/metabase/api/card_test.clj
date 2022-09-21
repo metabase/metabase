@@ -408,17 +408,17 @@
                                        :query_type    "native"
                                        :dataset_query (:dataset_query card)})))))
       (testing "You can create a card with a saved question CTE as a model"
-        (let [card-reference (str "#" (u/the-id card))]
+        (let [card-tag-name (str "#" (u/the-id card))]
           (mt/user-http-request :rasta :post 200 "card"
                                 (merge
                                  (mt/with-temp-defaults Card)
                                  {:dataset_query {:database (u/the-id db)
                                                   :type     :native
-                                                  :native   {:query         (format "SELECT * FROM {{%s}};" card-reference)
-                                                             :template-tags {card-reference {:card-id      (u/the-id card),
-                                                                                             :display-name card-reference,
+                                                  :native   {:query         (format "SELECT * FROM {{%s}};" card-tag-name)
+                                                             :template-tags {card-tag-name {:card-id      (u/the-id card),
+                                                                                             :display-name card-tag-name,
                                                                                              :id           (str (random-uuid))
-                                                                                             :name         card-reference,
+                                                                                             :name         card-tag-name,
                                                                                              :type         :card}}}}})))))))
 
 (deftest create-card-disallow-setting-enable-embedding-test

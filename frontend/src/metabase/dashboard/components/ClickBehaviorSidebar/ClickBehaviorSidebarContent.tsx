@@ -3,7 +3,7 @@ import { getIn } from "icepick";
 
 import { isTableDisplay } from "metabase/lib/click-behavior";
 
-import { isActionButtonWithMappedAction } from "metabase/writeback/utils";
+import { isMappedExplicitActionButton } from "metabase/writeback/utils";
 
 import type { UiParameter } from "metabase/parameters/types";
 import type {
@@ -51,7 +51,7 @@ function ClickBehaviorSidebar({
     if (clickBehavior) {
       return clickBehavior;
     }
-    if (isActionButtonWithMappedAction(dashcard)) {
+    if (isMappedExplicitActionButton(dashcard)) {
       return { type: "action" };
     }
     return { type: "actionMenu" };

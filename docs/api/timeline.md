@@ -8,12 +8,6 @@ summary: |
 
 /api/timeline endpoints.
 
-  - [DELETE /api/timeline/:id](#delete-apitimelineid)
-  - [GET /api/timeline/](#get-apitimeline)
-  - [GET /api/timeline/:id](#get-apitimelineid)
-  - [POST /api/timeline/](#post-apitimeline)
-  - [PUT /api/timeline/:id](#put-apitimelineid)
-
 ## `DELETE /api/timeline/:id`
 
 Delete a [[Timeline]]. Will cascade delete its events as well.

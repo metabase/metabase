@@ -8,13 +8,13 @@ import { push } from "react-router-redux";
 
 import MetabaseSettings from "metabase/lib/settings";
 import User from "metabase/entities/users";
-import { clearTemporaryPassword } from "../people";
-import { getUserTemporaryPassword } from "../selectors";
 
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import ModalContent from "metabase/components/ModalContent";
 import PasswordReveal from "metabase/components/PasswordReveal";
+import { getUserTemporaryPassword } from "../selectors";
+import { clearTemporaryPassword } from "../people";
 import { PasswordSuccessMessage } from "./UserSuccessModal.styled";
 
 class UserSuccessModal extends React.Component {

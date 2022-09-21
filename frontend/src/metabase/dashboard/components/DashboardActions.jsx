@@ -3,7 +3,6 @@ import React from "react";
 import { t } from "ttag";
 import cx from "classnames";
 
-import DashboardSharingEmbeddingModal from "../containers/DashboardSharingEmbeddingModal.jsx";
 import MetabaseSettings from "metabase/lib/settings";
 import NightModeIcon from "metabase/components/icons/NightModeIcon";
 import RefreshWidget from "metabase/dashboard/components/RefreshWidget";
@@ -11,6 +10,7 @@ import Tooltip from "metabase/components/Tooltip";
 import FullscreenIcon from "metabase/components/icons/FullscreenIcon";
 
 import { DashboardHeaderButton } from "metabase/dashboard/containers/DashboardHeader.styled";
+import DashboardSharingEmbeddingModal from "../containers/DashboardSharingEmbeddingModal.jsx";
 
 export const getDashboardActions = (
   self,

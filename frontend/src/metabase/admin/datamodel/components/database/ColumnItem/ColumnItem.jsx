@@ -4,6 +4,8 @@ import PropTypes from "prop-types";
 import { Link, withRouter } from "react-router";
 import { t } from "ttag";
 
+import _ from "underscore";
+import cx from "classnames";
 import Select, { Option } from "metabase/core/components/Select";
 import Button from "metabase/core/components/Button";
 import * as MetabaseCore from "metabase/lib/core";
@@ -13,12 +15,9 @@ import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings
 
 import { currency } from "cljs/metabase.shared.util.currency";
 
-import _ from "underscore";
-import cx from "classnames";
-
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import { ColumnItemInput } from "./ColumnItem.styled";
 import { getFieldRawName } from "../../../utils";
+import { ColumnItemInput } from "./ColumnItem.styled";
 
 class Column extends Component {
   static propTypes = {

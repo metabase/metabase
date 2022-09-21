@@ -563,42 +563,6 @@
           (render-combo {:cols default-multi-columns
                          :rows [[nil 1 1 23453] [10.0 1 nil nil] [5.0 10 22 1337] [2.50 nil 22 1231] [1.25 nil nil 1231232]]})))))
 
-;; Test rendering a sparkline
-;;
-;; Sparklines are a binary image either in-line or as an attachment, so there's not much introspection that we can do
-;; with the result. The tests below just check that we can render a sparkline (without eceptions) and that the
-;; attachment is included
-
-(defn- render-sparkline [results]
-  (body/render :sparkline :inline pacific-tz render.tu/test-card nil results))
-
-(deftest render-sparkline-test
-  (testing "Test that we can render a sparkline with all valid values"
-    (is (has-inline-image?
-         (render-sparkline
-          {:cols default-columns
-           :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]}))))
-  (testing "Tex that we can have a nil value in the middle"
-    (is (has-inline-image?
-         (render-sparkline
-          {:cols default-columns
-           :rows [[10.0 1] [11.0 2] [5.0 nil] [2.50 20] [1.25 30]]}))))
-  (testing "Test that we can have a nil value for the y-axis at the end of the results"
-    (is (has-inline-image?
-         (render-sparkline
-          {:cols default-columns
-           :rows [[10.0 1] [11.0 2] [2.50 20] [1.25 nil]]}))))
-  (testing "Test that we can have a nil value for the x-axis at the end of the results"
-    (is (has-inline-image?
-         (render-sparkline
-          {:cols default-columns
-           :rows [[10.0 1] [11.0 2] [nil 20] [1.25 30]]}))))
-  (testing "Test that we can have a nil value for both x and y axis for different rows"
-    (is (has-inline-image?
-         (render-sparkline
-          {:cols default-columns
-           :rows [[10.0 1] [11.0 2] [nil 20] [1.25 nil]]})))))
-
 (defn- render-funnel [results]
   (body/render :funnel :inline pacific-tz render.tu/test-card nil results))
 

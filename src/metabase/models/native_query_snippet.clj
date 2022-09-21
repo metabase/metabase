@@ -94,13 +94,13 @@
 (defmethod serdes.base/extract-one "NativeQuerySnippet"
   [_model-name _opts snippet]
   (-> (serdes.base/extract-one-basics "NativeQuerySnippet" snippet)
-      (update :creator_id serdes.util/export-fk-keyed 'User :email)
+      (update :creator_id serdes.util/export-user)
       (update :collection_id #(when % (serdes.util/export-fk % 'Collection)))))
 
 (defmethod serdes.base/load-xform "NativeQuerySnippet" [snippet]
   (-> snippet
       serdes.base/load-xform-basics
-      (update :creator_id serdes.util/import-fk-keyed 'User :email)
+      (update :creator_id serdes.util/import-user)
       (update :collection_id #(when % (serdes.util/import-fk % 'Collection)))))
 
 (defmethod serdes.base/serdes-dependencies "NativeQuerySnippet"

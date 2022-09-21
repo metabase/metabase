@@ -1,7 +1,7 @@
 ---
 title: List of expressions
 redirect_from:
-  - /docs/latest/users-guide/expression-list
+  - /docs/latest/users-guide/expressions-list
 ---
 
 # List of expressions

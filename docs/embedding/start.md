@@ -15,7 +15,3 @@ Also known as standalone embedding. Display interactive charts and dashboards on
 ## [Full-app embedding](./full-app-embedding.md)
 
 Put all of Metabase (including the [query builder](../questions/query-builder/introduction.md#the-query-builder)) in your app to give people secure self-serve access to data.
-
-## [Appearance](../configuring-metabase/appearance.md)
-
-White label Metabase to match your company logo, colors, and other branding.

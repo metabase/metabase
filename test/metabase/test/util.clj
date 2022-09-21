@@ -36,11 +36,13 @@
             [toucan.db :as db]
             [toucan.models :as models]
             [toucan.util.test :as tt])
-  (:import [java.io File FileInputStream]
-           java.net.ServerSocket
-           java.util.concurrent.TimeoutException
-           java.util.Locale
-           [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
+  (:import
+   (java.io File FileInputStream)
+   (java.net ServerSocket)
+   (java.util Locale)
+   (java.util.concurrent TimeoutException)
+   (org.quartz CronTrigger JobDetail JobKey Scheduler Trigger)
+   (org.quartz.impl StdSchedulerFactory)))
 
 (comment tu.log/keep-me
          test-runner.assert-exprs/keep-me)
@@ -600,28 +602,38 @@
 ;; Various functions for letting us check that things get scheduled properly. Use these to put a temporary scheduler
 ;; in place and then check the tasks that get scheduled
 
-(defn do-with-scheduler [scheduler thunk]
-  (binding [task/*quartz-scheduler* scheduler]
-    (thunk)))
+(defn- in-memory-scheduler
+  "An in-memory Quartz Scheduler separate from the usual database-backend one we normally use. Every time you call this
+  it returns the same scheduler! So make sure you shut it down when you're done using it."
+  ^org.quartz.impl.StdScheduler []
+  (.getScheduler
+   (StdSchedulerFactory.
+    (doto (java.util.Properties.)
+      (.setProperty StdSchedulerFactory/PROP_SCHED_INSTANCE_NAME (str `in-memory-scheduler))
+      (.setProperty StdSchedulerFactory/PROP_JOB_STORE_CLASS (.getCanonicalName org.quartz.simpl.RAMJobStore))
+      (.setProperty (str StdSchedulerFactory/PROP_THREAD_POOL_PREFIX ".threadCount") "1")))))
 
-(defmacro with-scheduler
-  "Temporarily bind the Metabase Quartzite scheduler to `scheulder` and run `body`."
-  {:style/indent 1}
-  [scheduler & body]
-  `(do-with-scheduler ~scheduler (fn [] ~@body)))
-
-(defn do-with-temp-scheduler [f]
-  (classloader/the-classloader)
-  (initialize/initialize-if-needed! :db)
-  (let [temp-scheduler        (qs/start (qs/initialize))
-        is-default-scheduler? (identical? temp-scheduler (#'metabase.task/scheduler))]
-    (if is-default-scheduler?
-      (f)
-      (with-scheduler temp-scheduler
+(defn do-with-unstarted-temp-scheduler [thunk]
+  (let [temp-scheduler (in-memory-scheduler)
+        already-bound? (identical? @task/*quartz-scheduler* temp-scheduler)]
+    (if already-bound?
+      (thunk)
+      (binding [task/*quartz-scheduler* (atom temp-scheduler)]
         (try
-          (f)
+          (assert (not (qs/started? temp-scheduler))
+                  "temp in-memory scheduler already started: did you use it elsewhere without shutting it down?")
+          (thunk)
           (finally
             (qs/shutdown temp-scheduler)))))))
+
+(defn do-with-temp-scheduler [thunk]
+  ;; not 100% sure we need to initialize the DB anymore since the temp scheduler is in-memory-only now.
+  (classloader/the-classloader)
+  (initialize/initialize-if-needed! :db)
+  (do-with-unstarted-temp-scheduler
+   (^:once fn* []
+    (qs/start @task/*quartz-scheduler*)
+    (thunk))))
 
 (defmacro with-temp-scheduler
   "Execute `body` with a temporary scheduler in place.

@@ -3,6 +3,9 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
+import _ from "underscore";
+import cx from "classnames";
+import { Link } from "react-router";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 
@@ -13,9 +16,6 @@ import { getEventTarget } from "metabase/lib/dom";
 
 import { performAction } from "metabase/visualizations/lib/action";
 
-import cx from "classnames";
-import _ from "underscore";
-import { Link } from "react-router";
 import {
   ClickActionButton,
   FlexTippyPopover,
@@ -145,6 +145,9 @@ class ChartClickActions extends Component {
       const PopoverContent = popoverAction.popover;
       popover = (
         <PopoverContent
+          onResize={() => {
+            this.instance?.popperInstance?.update();
+          }}
           onChangeCardAndRun={({ nextCard }) => {
             if (popoverAction) {
               MetabaseAnalytics.trackStructEvent(
@@ -204,6 +207,9 @@ class ChartClickActions extends Component {
       <FlexTippyPopover
         reference={popoverAnchor}
         visible={!!popoverAnchor}
+        onShow={instance => {
+          this.instance = instance;
+        }}
         onClose={() => {
           MetabaseAnalytics.trackStructEvent(
             "Action",
@@ -212,7 +218,7 @@ class ChartClickActions extends Component {
           this.close();
         }}
         placement="bottom-start"
-        offset={[-8, 8]}
+        offset={[0, 8]}
         popperOptions={{
           flip: true,
           modifiers: [

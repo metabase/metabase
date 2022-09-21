@@ -141,7 +141,7 @@ describe.skip("issue 15860", () => {
 
   it("should work for locked linked filters connected to different cards with the same source table (metabase#15860)", () => {
     cy.icon("share").click();
-    cy.findByText("Embed this dashboard in an application").click();
+    cy.findByText("Embed in your application").click();
 
     setDefaultValueForLockedFilter("Q1 ID", 1);
     setDefaultValueForLockedFilter("Q2 ID", 3);

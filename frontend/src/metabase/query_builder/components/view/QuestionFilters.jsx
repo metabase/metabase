@@ -8,6 +8,7 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import FilterPopover from "metabase/query_builder/components/filters/FilterPopover";
+import { color } from "metabase/lib/colors";
 import ViewPill from "./ViewPill";
 
 import {
@@ -15,8 +16,6 @@ import {
   FilterHeaderContainer,
   FilterHeaderButton,
 } from "./ViewHeader.styled";
-
-import { color } from "metabase/lib/colors";
 
 const FilterPill = props => <ViewPill color={color("filter")} {...props} />;
 
@@ -57,7 +56,9 @@ export default function QuestionFilters({
               key={index}
               triggerElement={
                 <FilterPill
-                  onRemove={() => filter.remove().update(null, { run: true })}
+                  onRemove={() =>
+                    filter.remove().rootQuery().update(null, { run: true })
+                  }
                 >
                   {filter.displayName()}
                 </FilterPill>
@@ -70,7 +71,7 @@ export default function QuestionFilters({
                 query={query}
                 filter={filter}
                 onChangeFilter={newFilter =>
-                  newFilter.replace().update(null, { run: true })
+                  newFilter.replace().rootQuery().update(null, { run: true })
                 }
                 className="scroll-y"
               />
@@ -125,7 +126,9 @@ export function FilterHeader({ question, expanded }) {
             key={index}
             triggerElement={
               <FilterPill
-                onRemove={() => filter.remove().update(null, { run: true })}
+                onRemove={() =>
+                  filter.remove().rootQuery().update(null, { run: true })
+                }
               >
                 {filter.displayName()}
               </FilterPill>
@@ -138,7 +141,7 @@ export function FilterHeader({ question, expanded }) {
               query={query}
               filter={filter}
               onChangeFilter={newFilter =>
-                newFilter.replace().update(null, { run: true })
+                newFilter.replace().rootQuery().update(null, { run: true })
               }
               className="scroll-y"
             />

@@ -1,9 +1,9 @@
 import React from "react";
 
-import type Question from "metabase-lib/lib/Question";
 import type { DatasetQuery } from "metabase-types/types/Card";
 
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
+import type Question from "metabase-lib/lib/Question";
 import { EditorContainer } from "./ActionCreator.styled";
 
 export function QueryActionEditor({

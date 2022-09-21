@@ -1,16 +1,15 @@
 import { msgid, ngettext } from "ttag";
-import { parseTime, parseTimestamp } from "metabase/lib/time";
 import { Moment } from "moment-timezone";
+import { parseTime, parseTimestamp } from "metabase/lib/time";
 
+import type { Value } from "metabase-types/types/Dataset";
+import type { DatetimeUnit } from "metabase-types/api/query";
 import {
   DEFAULT_TIME_STYLE,
   DEFAULT_DATE_STYLE,
   getTimeFormatFromStyle,
   hasHour,
 } from "./datetime-utils";
-
-import type { Value } from "metabase-types/types/Dataset";
-import type { DatetimeUnit } from "metabase-types/api/query";
 
 export function duration(milliseconds: number) {
   const SECOND = 1000;

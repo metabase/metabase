@@ -32,6 +32,6 @@ export const createMockNativeDatasetQuery = (
 ): NativeDatasetQuery => ({
   type: "native",
   database: 1,
-  query: createMockNativeQuery(),
+  native: createMockNativeQuery(),
   ...opts,
 });

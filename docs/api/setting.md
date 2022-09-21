@@ -8,11 +8,6 @@ summary: |
 
 /api/setting endpoints.
 
-  - [GET /api/setting/](#get-apisetting)
-  - [GET /api/setting/:key](#get-apisettingkey)
-  - [PUT /api/setting/](#put-apisetting)
-  - [PUT /api/setting/:key](#put-apisettingkey)
-
 ## `GET /api/setting/`
 
 Get all `Settings` and their values. You must be a superuser or have `setting` permission to do this.

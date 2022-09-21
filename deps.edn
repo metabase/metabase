@@ -15,6 +15,7 @@
                                                            org.bouncycastle/bcprov-jdk15on]}
   buddy/buddy-sign                          {:mvn/version "3.4.333"}            ; JSON Web Tokens; High-Level message signing library
   cheshire/cheshire                         {:mvn/version "5.10.2"}             ; fast JSON encoding (used by Ring JSON middleware)
+  clj-commons/iapetos                       {:mvn/version "0.1.12"}             ; prometheus metrics
   clj-http/clj-http                         {:mvn/version "3.12.3"              ; HTTP client
                                              :exclusions  [commons-codec/commons-codec
                                                            commons-io/commons-io
@@ -61,6 +62,8 @@
                                                            org.flatland/ordered
                                                            org.yaml/snakeyaml]}
   io.github.resilience4j/resilience4j-retry {:mvn/version "1.7.1"}              ; Support for retrying operations
+  io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
+  io.prometheus/simpleclient_jetty          {:mvn/version "0.16.0"}             ; prometheus jetty collector
   joda-time/joda-time                       {:mvn/version "2.10.13"}
   kixi/stats                                {:mvn/version "0.4.4"               ; Various statistic measures implemented as transducers
                                              :exclusions  [org.clojure/data.avl]}
@@ -174,6 +177,7 @@
                                                            :exclusions  [slingshot/slingshot]}
     clj-kondo/clj-kondo                                   {:mvn/version "2022.08.03"} ; this is not for RUNNING kondo, but so we can hack on custom hooks code from the REPL.
     cloverage/cloverage                                   {:mvn/version "1.2.2"}
+    djblue/portal                                         {:mvn/version "0.30.0"}
     eftest/eftest                                         {:mvn/version "0.5.9"}
     jonase/eastwood                                       {:mvn/version "1.2.2"}
     pjstadig/humane-test-output                           {:mvn/version "0.11.0"}

@@ -18,6 +18,8 @@ import {
   isTime,
   isURL,
 } from "metabase/lib/schema_metadata";
+import { renderLinkTextForClick } from "metabase/lib/formatting/link";
+import { NULL_DISPLAY_VALUE, NULL_NUMERIC_VALUE } from "metabase/lib/constants";
 import { formatEmail } from "./email";
 import { formatTime } from "./time";
 import { formatUrl } from "./url";
@@ -26,9 +28,6 @@ import { formatNumber } from "./numbers";
 import { formatCoordinate } from "./geography";
 import { formatStringFallback } from "./strings";
 import { formatImage } from "./image";
-
-import { renderLinkTextForClick } from "metabase/lib/formatting/link";
-import { NULL_DISPLAY_VALUE, NULL_NUMERIC_VALUE } from "metabase/lib/constants";
 
 import { OptionsType } from "./types";
 

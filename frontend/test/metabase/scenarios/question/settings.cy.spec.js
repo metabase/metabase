@@ -116,7 +116,7 @@ describe("scenarios > question > settings", () => {
       // Remove "Total"
       getSidebarColumns()
         .contains("Total")
-        .closest("[draggable=true]")
+        .closest("[data-testid^=draggable-item]")
         .find(".Icon-eye_filled")
         .click();
 
@@ -267,5 +267,5 @@ function getSidebarColumns() {
     .scrollIntoView()
     .should("be.visible")
     .parent()
-    .find("[draggable=true]");
+    .find("[data-testid^=draggable-item]");
 }

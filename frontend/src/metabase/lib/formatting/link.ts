@@ -1,9 +1,8 @@
 import { isDate } from "metabase/lib/schema_metadata";
 
 import { formatValue } from "metabase/lib/formatting";
-import { formatDateTimeForParameter } from "./date";
-
 import type { DatasetColumn } from "metabase-types/api/dataset";
+import { formatDateTimeForParameter } from "./date";
 
 interface TemplateForClickFormatFunctionParamsType {
   value: string;

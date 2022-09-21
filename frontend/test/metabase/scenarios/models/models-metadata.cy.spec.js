@@ -7,6 +7,7 @@ import {
   openQuestionActions,
   questionInfoButton,
 } from "__support__/e2e/helpers";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 import { startQuestionFromModel } from "./helpers/e2e-models-helpers";
 import {
   openColumnOptions,
@@ -15,7 +16,6 @@ import {
   mapColumnTo,
   setModelMetadata,
 } from "./helpers/e2e-models-metadata-helpers";
-import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PEOPLE, PRODUCTS, PRODUCTS_ID, REVIEWS } = SAMPLE_DATABASE;
 
@@ -134,8 +134,9 @@ describe("scenarios > models metadata", () => {
     cy.button("Save changes").click();
 
     // Revision 1
-    cy.findByText("Subtotal ($)");
-    cy.findByText("Tax ($)").should("not.exist");
+    cy.findAllByTestId("header-cell")
+      .should("contain", "Subtotal ($)")
+      .and("not.contain", "SUBTOTAL");
 
     openQuestionActions();
     cy.findByText("Edit metadata").click();
@@ -149,8 +150,10 @@ describe("scenarios > models metadata", () => {
     setColumnType("No special type", "Cost");
     cy.button("Save changes").click();
 
-    cy.findByText("Subtotal ($)");
-    cy.findByText("Tax ($)");
+    cy.findAllByTestId("header-cell")
+      .should("contain", "Subtotal ($)")
+      .and("contain", "Tax ($)")
+      .and("not.contain", "TAX");
 
     cy.reload();
     questionInfoButton().click();
@@ -161,9 +164,10 @@ describe("scenarios > models metadata", () => {
     });
 
     cy.wait("@revert");
-    cy.findByText("Subtotal ($)");
-    cy.findByText("Tax ($)").should("not.exist");
-    cy.findByText("TAX");
+    cy.findAllByTestId("header-cell")
+      .should("contain", "Subtotal ($)")
+      .and("not.contain", "Tax ($)")
+      .and("contain", "TAX");
   });
 
   describe("native models metadata overwrites", () => {

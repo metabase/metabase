@@ -27,6 +27,8 @@ import Search from "metabase/entities/search";
 
 import { PLUGIN_MODERATION } from "metabase/plugins";
 
+import { getMetadata } from "metabase/selectors/metadata";
+import { getHasDataAccess } from "metabase/new_query/selectors";
 import {
   SearchResults,
   convertSearchResultToTableLikeItem,
@@ -43,9 +45,6 @@ import {
   CollectionDatasetAllDataLink,
   EmptyStateContainer,
 } from "./DataSelector.styled";
-
-import { getMetadata } from "metabase/selectors/metadata";
-import { getHasDataAccess } from "metabase/new_query/selectors";
 
 import { DATA_BUCKET } from "./constants";
 
@@ -297,6 +296,7 @@ export class UnconnectedDataSelector extends Component {
     hasTableSearch: false,
     canChangeDatabase: true,
     hasTriggerExpandControl: true,
+    isPopover: true,
   };
 
   // computes selected metadata objects (`selectedDatabase`, etc) and options (`databases`, etc)
@@ -1026,7 +1026,7 @@ export class UnconnectedDataSelector extends Component {
     return hasDataAccess || databases?.length > 0;
   };
 
-  render() {
+  renderContent = () => {
     const {
       searchText,
       isSavedQuestionPickerShown,
@@ -1042,71 +1042,85 @@ export class UnconnectedDataSelector extends Component {
     const isPickerOpen =
       isSavedQuestionPickerShown ||
       selectedDataBucketId === DATA_BUCKET.DATASETS;
-    return (
-      <PopoverWithTrigger
-        id="DataPopover"
-        autoWidth
-        ref={this.popover}
-        isInitiallyOpen={this.props.isInitiallyOpen}
-        containerClassName={this.props.containerClassName}
-        triggerElement={this.getTriggerElement}
-        triggerClasses={this.getTriggerClasses()}
-        hasArrow={this.props.hasArrow}
-        tetherOptions={this.props.tetherOptions}
-        sizeToFit
-        isOpen={this.props.isOpen}
-        onClose={this.handleClose}
-      >
-        {this.isLoadingDatasets() ? (
-          <LoadingAndErrorWrapper loading />
-        ) : this.hasDataAccess() ? (
-          <>
-            {this.showTableSearch() && (
-              <ListSearchField
-                hasClearButton
-                className="bg-white m1"
-                onChange={this.handleSearchTextChange}
-                value={searchText}
-                placeholder={this.getSearchInputPlaceholder()}
-                autoFocus
-              />
-            )}
-            {isSearchActive && (
-              <SearchResults
-                searchModels={this.getSearchModels()}
-                searchQuery={searchText.trim()}
-                databaseId={currentDatabaseId}
-                onSelect={this.handleSearchItemSelect}
-              />
-            )}
-            {!isSearchActive &&
-              (isPickerOpen ? (
-                <SavedQuestionPicker
-                  collectionName={
-                    selectedTable &&
-                    selectedTable.schema &&
-                    getSchemaName(selectedTable.schema.id)
-                  }
-                  isDatasets={selectedDataBucketId === DATA_BUCKET.DATASETS}
-                  tableId={selectedTable?.id}
-                  databaseId={currentDatabaseId}
-                  onSelect={this.handleSavedQuestionSelect}
-                  onBack={this.handleSavedQuestionPickerClose}
-                />
-              ) : (
-                this.renderActiveStep()
-              ))}
-          </>
-        ) : (
-          <EmptyStateContainer>
-            <EmptyState
-              message={t`To pick some data, you'll need to add some first`}
-              icon="database"
+
+    if (this.isLoadingDatasets()) {
+      return <LoadingAndErrorWrapper loading />;
+    }
+
+    if (this.hasDataAccess()) {
+      return (
+        <>
+          {this.showTableSearch() && (
+            <ListSearchField
+              hasClearButton
+              className="bg-white m1"
+              onChange={this.handleSearchTextChange}
+              value={searchText}
+              placeholder={this.getSearchInputPlaceholder()}
+              autoFocus
             />
-          </EmptyStateContainer>
-        )}
-      </PopoverWithTrigger>
+          )}
+          {isSearchActive && (
+            <SearchResults
+              searchModels={this.getSearchModels()}
+              searchQuery={searchText.trim()}
+              databaseId={currentDatabaseId}
+              onSelect={this.handleSearchItemSelect}
+            />
+          )}
+          {!isSearchActive &&
+            (isPickerOpen ? (
+              <SavedQuestionPicker
+                collectionName={
+                  selectedTable &&
+                  selectedTable.schema &&
+                  getSchemaName(selectedTable.schema.id)
+                }
+                isDatasets={selectedDataBucketId === DATA_BUCKET.DATASETS}
+                tableId={selectedTable?.id}
+                databaseId={currentDatabaseId}
+                onSelect={this.handleSavedQuestionSelect}
+                onBack={this.handleSavedQuestionPickerClose}
+              />
+            ) : (
+              this.renderActiveStep()
+            ))}
+        </>
+      );
+    }
+
+    return (
+      <EmptyStateContainer>
+        <EmptyState
+          message={t`To pick some data, you'll need to add some first`}
+          icon="database"
+        />
+      </EmptyStateContainer>
     );
+  };
+
+  render() {
+    if (this.props.isPopover) {
+      return (
+        <PopoverWithTrigger
+          id="DataPopover"
+          autoWidth
+          ref={this.popover}
+          isInitiallyOpen={this.props.isInitiallyOpen}
+          containerClassName={this.props.containerClassName}
+          triggerElement={this.getTriggerElement}
+          triggerClasses={this.getTriggerClasses()}
+          hasArrow={this.props.hasArrow}
+          tetherOptions={this.props.tetherOptions}
+          sizeToFit
+          isOpen={this.props.isOpen}
+          onClose={this.handleClose}
+        >
+          {this.renderContent()}
+        </PopoverWithTrigger>
+      );
+    }
+    return this.renderContent();
   }
 }
 

@@ -6,8 +6,8 @@ import AggregationPopover from "metabase/query_builder/components/AggregationPop
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Icon from "metabase/components/Icon";
 
-import { AggregationItemRoot } from "./AggregationItem.styled";
 import { updateAndRunQuery } from "../utils";
+import { AggregationItemRoot } from "./AggregationItem.styled";
 
 const propTypes = {
   className: PropTypes.string,

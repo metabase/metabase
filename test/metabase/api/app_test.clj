@@ -142,7 +142,7 @@
       (let [app (mt/user-http-request
                   :crowberto :post 200 "app/scaffold"
                   {:table-ids [(data/id :venues)]
-                   :app-name (str "My test app " (gensym))})
+                   :app-name "My test app"})
             pages (m/index-by :name (hydrate (db/select Dashboard :collection_id (:collection_id app)) :ordered_cards))
             list-page (get pages "Venues List")
             detail-page (get pages "Venues Detail")]
@@ -152,7 +152,7 @@
                       app))
         (is (partial= {:ordered_cards [{:visualization_settings {:click_behavior
                                                                  {:type "link",
-                                                                  :linkType "dashboard",
+                                                                  :linkType "page",
                                                                   :targetId (:id detail-page)}}}
                                        {}]}
                       list-page))))
@@ -165,3 +165,42 @@
                :crowberto :post 400 "app/scaffold"
                {:table-ids [(data/id :venues) (data/id :venues) Integer/MAX_VALUE]
                 :app-name (str "My test app " (gensym))}))))))
+
+(deftest scaffold-app-test
+  (mt/with-model-cleanup [Card Dashboard Collection]
+    (mt/with-temp* [Collection [{collection-id :id}]
+                    App [{app-id :id} {:collection_id collection-id}]]
+      (testing "Without existing pages"
+        (let [app (mt/user-http-request
+                    :crowberto :post 200 (format "app/%s/scaffold" app-id)
+                    {:table-ids [(data/id :venues)]})
+              pages (m/index-by :name (hydrate (db/select Dashboard :collection_id (:collection_id app)) :ordered_cards))
+              list-page (get pages "Venues List")
+              detail-page (get pages "Venues Detail")]
+          (is (partial= {:nav_items [{:page_id (:id list-page)}
+                                     {:page_id (:id detail-page) :hidden true :indent 1}]}
+                        app))
+          (is (partial= {:ordered_cards [{:visualization_settings {:click_behavior
+                                                                   {:type "link",
+                                                                    :linkType "page",
+                                                                    :targetId (:id detail-page)}}}
+                                         {}]}
+                        list-page))))
+      (testing "With existing pages"
+        (let [app (mt/user-http-request
+                    :crowberto :post 200 (format "app/%s/scaffold" app-id)
+                    {:table-ids [(data/id :checkins)]})
+              pages (m/index-by :name (hydrate (db/select Dashboard :collection_id (:collection_id app)) :ordered_cards))
+              list-page (get pages "Checkins List")
+              detail-page (get pages "Checkins Detail")]
+          (is (partial= {:nav_items [{:page_id (get-in pages ["Venues List" :id])}
+                                     {:page_id (get-in pages ["Venues Detail" :id])}
+                                     {:page_id (:id list-page)}
+                                     {:page_id (:id detail-page) :hidden true :indent 1}]}
+                        app))
+          (is (partial= {:ordered_cards [{:visualization_settings {:click_behavior
+                                                                   {:type "link",
+                                                                    :linkType "page",
+                                                                    :targetId (:id detail-page)}}}
+                                         {}]}
+                        list-page)))))))

@@ -8,11 +8,6 @@ summary: |
 
 API endpoints for Setup.
 
-  - [GET /api/setup/admin_checklist](#get-apisetupadmin_checklist)
-  - [GET /api/setup/user_defaults](#get-apisetupuser_defaults)
-  - [POST /api/setup/](#post-apisetup)
-  - [POST /api/setup/validate](#post-apisetupvalidate)
-
 ## `GET /api/setup/admin_checklist`
 
 Return various "admin checklist" steps and whether they've been completed. You must be a superuser to see this!
