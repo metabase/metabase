@@ -29,33 +29,25 @@ type QueryParams = BlankQueryOptions & {
   objectId?: string;
 };
 
-function checkShouldPropagateDashboardParameters({
+function shouldPropagateDashboardParameters({
   cardId,
   deserializedCard,
   originalCard,
 }: {
   cardId?: number;
-  deserializedCard?: Card;
+  deserializedCard: Card;
   originalCard?: Card;
-}) {
-  if (!deserializedCard) {
-    return false;
-  }
-  if (cardId && deserializedCard.parameters) {
-    return true;
-  }
-  if (!originalCard) {
-    return false;
-  }
-  const equalCards = cardIsEquivalent(deserializedCard, originalCard, {
-    checkParameters: false,
-  });
-  const differentParameters = !cardIsEquivalent(
-    deserializedCard,
-    originalCard,
-    { checkParameters: true },
+}): boolean {
+  return Boolean(
+    (cardId && deserializedCard.parameters) ||
+      (originalCard &&
+        cardIsEquivalent(deserializedCard, originalCard, {
+          checkParameters: false,
+        }) &&
+        !cardIsEquivalent(deserializedCard, originalCard, {
+          checkParameters: true,
+        })),
   );
-  return equalCards && differentParameters;
 }
 
 async function verifyMatchingDashcardAndParameters({
@@ -64,14 +56,12 @@ async function verifyMatchingDashcardAndParameters({
   dashcardId,
   cardId,
   parameters,
-  metadata,
 }: {
   dispatch: Dispatch;
   dashboardId: number;
   dashcardId: number;
   cardId: number;
   parameters: Parameter[];
-  metadata: Metadata;
 }) {
   try {
     const dashboard = await DashboardApi.get({ dashId: dashboardId });
@@ -107,34 +97,29 @@ export function getParameterValuesForQuestion({
   );
 }
 
-export async function handleDashboardParameters(
-  card: Card,
-  {
-    deserializedCard,
-    originalCard,
-    dispatch,
-    getState,
-  }: {
-    cardId?: number;
-    deserializedCard?: Card;
-    originalCard?: Card;
-    dispatch: Dispatch;
-    getState: GetState;
-  },
-) {
+export async function propagateDashboardParameters({
+  card,
+  deserializedCard,
+  originalCard,
+  dispatch,
+}: {
+  card: Card;
+  deserializedCard: Card; // DashCard (has dashboardId and dashcardId)
+  originalCard?: Card;
+  dispatch: Dispatch;
+}) {
   const cardId = (card as SavedCard).id;
-  const shouldPropagateParameters = checkShouldPropagateDashboardParameters({
-    cardId,
-    deserializedCard,
-    originalCard,
-  });
-  if (shouldPropagateParameters && deserializedCard?.dashcardId) {
+  if (
+    shouldPropagateDashboardParameters({
+      cardId,
+      deserializedCard,
+      originalCard,
+    })
+  ) {
     const { dashboardId, dashcardId, parameters } = deserializedCard;
-    const metadata = getMetadata(getState());
     await verifyMatchingDashcardAndParameters({
       dispatch,
       cardId,
-      metadata,
       dashboardId: dashboardId as number,
       dashcardId: dashcardId as number,
       parameters: parameters as Parameter[],
@@ -144,4 +129,5 @@ export async function handleDashboardParameters(
     card.dashboardId = dashboardId;
     card.dashcardId = dashcardId;
   }
+  return card;
 }

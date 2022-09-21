@@ -36,7 +36,7 @@ import { cancelQuery, runQuestionQuery } from "../querying";
 import { resetQB } from "./core";
 import { loadMetadataForCard } from "./metadata";
 import {
-  handleDashboardParameters,
+  propagateDashboardParameters,
   getParameterValuesForQuestion,
 } from "./parameterUtils";
 
@@ -225,7 +225,7 @@ async function handleQBInit(
     ? deserializeCard(serializedCard)
     : null;
 
-  const { card, originalCard } = await resolveCards({
+  let { card, originalCard } = await resolveCards({
     cardId,
     deserializedCard,
     options,
@@ -247,17 +247,17 @@ async function handleQBInit(
     return;
   }
 
-  if (hasCard) {
-    await handleDashboardParameters(card, {
+  if (deserializedCard?.dashcardId) {
+    card = await propagateDashboardParameters({
+      card,
       deserializedCard,
       originalCard,
       dispatch,
-      getState,
     });
-  } else {
-    if (options.metric) {
-      uiControls.isShowingSummarySidebar = true;
-    }
+  }
+
+  if (!hasCard && options.metric) {
+    uiControls.isShowingSummarySidebar = true;
   }
 
   MetabaseAnalytics.trackStructEvent(
