@@ -42,9 +42,9 @@
 
 (defmethod driver/database-supports? [:mysql :nested-field-columns] [_ _ database]
   (let [json-setting (get-in database [:details :json-unfolding])
-        ;; If not set at all, default to true.
-        setting-nil? (nil? json-setting)]
-    (or json-setting setting-nil?)))
+    (if (nil? json-setting)
+      true
+      json-setting)))
 
 (defmethod driver/database-supports? [:mysql :persist-models] [_driver _feat _db] true)
 
