@@ -1,11 +1,11 @@
-import React, { useMemo } from "react";
+import React from "react";
 import { t } from "ttag";
 
-import * as Urls from "metabase/lib/urls";
-
-import type { Card, Table } from "metabase-types/api";
+import type { Card } from "metabase-types/api";
 import type Question from "metabase-lib/lib/Question";
+import type Table from "metabase-lib/lib/metadata/Table";
 
+import ModelRelationships from "./ModelRelationships";
 import {
   ModelInfoPanel,
   ModelInfoTitle,
@@ -17,16 +17,15 @@ import {
 
 interface Props {
   model: Question;
+  mainTable?: Table | null;
   onChangeDescription: (description: string | null) => void;
 }
 
-function ModelInfoSidePanel({ model, onChangeDescription }: Props) {
+function ModelInfoSidePanel({ model, mainTable, onChangeDescription }: Props) {
   const modelCard = model.card() as Card;
 
   const canWrite = model.canWrite();
   const description = model.description();
-
-  const backingTable = useMemo(() => model.query().sourceTable(), [model]);
 
   return (
     <ModelInfoPanel>
@@ -43,19 +42,18 @@ function ModelInfoSidePanel({ model, onChangeDescription }: Props) {
           onChange={onChangeDescription}
         />
       </ModelInfoSection>
+      <ModelRelationships model={model} mainTable={mainTable} />
       {modelCard.creator && (
         <ModelInfoSection>
           <ModelInfoTitle>{t`Contact`}</ModelInfoTitle>
           <ModelInfoText>{modelCard.creator.common_name}</ModelInfoText>
         </ModelInfoSection>
       )}
-      {backingTable && (
+      {mainTable && (
         <ModelInfoSection>
           <ModelInfoTitle>{t`Backing table`}</ModelInfoTitle>
-          <ModelInfoLink
-            to={backingTable.newQuestion().getUrl({ clean: false })}
-          >
-            {backingTable.displayName()}
+          <ModelInfoLink to={mainTable.newQuestion().getUrl({ clean: false })}>
+            {mainTable.displayName()}
           </ModelInfoLink>
         </ModelInfoSection>
       )}

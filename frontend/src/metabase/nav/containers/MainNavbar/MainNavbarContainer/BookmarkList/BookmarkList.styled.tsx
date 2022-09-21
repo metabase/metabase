@@ -1,28 +1,11 @@
 import styled from "@emotion/styled";
-import { css } from "@emotion/react";
 
 import { color } from "metabase/lib/colors";
 
-import Icon from "metabase/components/Icon";
+import { DraggableSidebarLink } from "../../SidebarItems";
 
-import { SidebarLink } from "../../SidebarItems";
-
-type SidebarBookmarkItem = {
-  isSorting: boolean;
-};
-
-export const DragIcon = styled(Icon)`
-  left: 2px;
-  opacity: 0;
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  cursor: grab;
-`;
-
-export const SidebarBookmarkItem = styled(SidebarLink)<SidebarBookmarkItem>`
+export const SidebarBookmarkItem = styled(DraggableSidebarLink)`
   padding-left: 0.75rem;
-  position: relative;
 
   &:hover {
     button {
@@ -32,10 +15,6 @@ export const SidebarBookmarkItem = styled(SidebarLink)<SidebarBookmarkItem>`
       > svg:focus {
         outline: none;
       }
-    }
-
-    > svg {
-      opacity: 0.3;
     }
   }
 
@@ -50,20 +29,4 @@ export const SidebarBookmarkItem = styled(SidebarLink)<SidebarBookmarkItem>`
       outline: none;
     }
   }
-
-  ${props =>
-    props.isSorting &&
-    css`
-      &:hover {
-        background: white;
-
-        svg {
-          color: ${color("brand-light")} !important;
-        }
-
-        button {
-          opacity: 0;
-        }
-      }
-    `}
 `;
