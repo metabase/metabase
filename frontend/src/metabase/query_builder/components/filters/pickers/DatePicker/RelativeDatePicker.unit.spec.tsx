@@ -16,7 +16,7 @@ describe("PastPicker", () => {
     expect(onFilterChange).toHaveBeenCalledWith(expectedFilter);
   });
 
-  it("should not allow to enter a zero time interval", () => {
+  it("should not allow to enter an empty time interval", () => {
     const filter = new Filter(["time-interval", null, -10, "month"]);
     const onFilterChange = jest.fn();
 
@@ -39,7 +39,7 @@ describe("NextPicker", () => {
     expect(onFilterChange).toHaveBeenCalledWith(expectedFilter);
   });
 
-  it("should not allow to enter a zero time interval", () => {
+  it("should not allow to enter an empty time interval", () => {
     const filter = new Filter(["time-interval", null, 10, "month"]);
     const onFilterChange = jest.fn();
 
