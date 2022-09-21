@@ -504,10 +504,11 @@
      ["{\"mybool\":true, \"myint\":123}"]]]])
 
 (deftest json-unwrapping-bigint-and-boolean
-  (mt/with-log-level :trace
-    (mt/test-driver :mysql
+  (mt/test-driver :mysql
+    (when (not (is-mariadb? (mt/id)))
       (mt/dataset json-unwrap-bigint-and-boolean
-        (sync/sync-database! (mt/db)) ;; trigger a full sync on this database so fields are categorized correctly
+        (sync/sync-database! (mt/db))
+        (def id (mt/id))
         (testing "Fields marked as :type/SerializedJSON are fingerprinted that way"
           (is (= #{{:name "id", :base_type :type/Integer, :semantic_type :type/PK}
                    {:name "jsoncol", :base_type :type/SerializedJSON, :semantic_type :type/SerializedJSON}
