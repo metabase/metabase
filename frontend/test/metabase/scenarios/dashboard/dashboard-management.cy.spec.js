@@ -96,9 +96,9 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                 assertOnRequest("updateDashboard");
               });
 
-              it.skip("should update dashboard's collection after the move without page reload (metabase#13059)", () => {
+              it("should update dashboard's collection after the move without page reload (metabase#13059)", () => {
                 cy.contains("37.65");
-                cy.get(".DashboardHeader a").contains("First collection");
+                cy.findByTestId("app-bar").contains("First collection");
               });
             });
 
