@@ -41,7 +41,10 @@
 (defmethod driver/display-name :mysql [_] "MySQL")
 
 (defmethod driver/database-supports? [:mysql :nested-field-columns] [_ _ database]
-  (or (get-in database [:details :json-unfolding]) true))
+  (let [json-setting (get-in database [:details :json-unfolding])
+        ;; If not set at all, default to true.
+        setting-nil? (nil? json-setting)]
+    (or json-setting setting-nil?)))
 
 (defmethod driver/database-supports? [:mysql :persist-models] [_driver _feat _db] true)
 

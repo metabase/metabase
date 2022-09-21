@@ -495,6 +495,19 @@
                   (is (= ["((floor(((convert(json_extract(json.json_bit, ?), BIGINT) - 0.75) / 0.75)) * 0.75) + 0.75)" "$.\"1234\""]
                          (hsql/format (sql.qp/->honeysql :mysql field-clause)))))))))))))
 
+(deftest can-shut-off-json-unwrapping
+  (try (mt/test-driver :mysql
+         ;; in here we fiddle with the mysql db details:
+         (let [db (db/select-one Database :id (mt/id))]
+           (db/update! Database (mt/id) {:details (assoc (:details db) :json-unfolding true)})
+           (is (= true (driver/database-supports? :mysql :nested-field-columns (mt/db))))
+           (db/update! Database (mt/id) {:details (assoc (:details db) :json-unfolding false)})
+           (is (= false (driver/database-supports? :mysql :nested-field-columns (mt/db))))
+           (db/update! Database (mt/id) {:details (assoc (:details db) :json-unfolding nil)})
+           (is (= true (driver/database-supports? :mysql :nested-field-columns (mt/db))))))
+       ;; un fiddle with the mysql db details.
+       (finally (db/update! Database (mt/id) :details (:details db)))))
+
 (deftest ddl.execute-with-timeout-test
   (mt/test-driver :mysql
     (mt/dataset json
