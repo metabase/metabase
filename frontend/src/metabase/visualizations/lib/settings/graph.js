@@ -96,6 +96,10 @@ export const GRAPH_DATA_SETTINGS = {
     section: t`Data`,
     title: t`X-axis`,
     widget: "fields",
+    getMarginBottom: (series, vizSettings) =>
+      vizSettings["graph.dimensions"]?.length === 2 && series.length <= 20
+        ? 8
+        : 16,
     isValid: (series, vizSettings) =>
       series.some(
         ({ card, data }) =>
@@ -210,7 +214,7 @@ export const GRAPH_DATA_SETTINGS = {
 
       return {
         options,
-        addAnother: canAddAnother ? t`Add another series...` : null,
+        addAnother: canAddAnother ? t`Add another series` : null,
         columns: data.cols,
         showColumnSetting: true,
       };

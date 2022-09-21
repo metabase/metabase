@@ -4,7 +4,6 @@ import { color } from "metabase/lib/colors";
 export const ChartSettingOrderedSimpleRoot = styled.div`
   padding-left: 1rem;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid ${color("border")};
 `;
 
 export const ChartSettingMessage = styled.div`

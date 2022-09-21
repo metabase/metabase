@@ -122,6 +122,7 @@ function getSettingWidget(
   extra = {},
 ) {
   const settingDef = settingDefs[settingId];
+  console.log(settingDef);
   const value = computedSettings[settingId];
   const onChange = value => {
     const newSettings = { [settingId]: value };
@@ -143,6 +144,9 @@ function getSettingWidget(
     hidden: settingDef.getHidden
       ? settingDef.getHidden(object, computedSettings, extra)
       : settingDef.hidden || false,
+    marginBottom: settingDef.getMarginBottom
+      ? settingDef.getMarginBottom(object, computedSettings, extra)
+      : settingDef.marginBottom,
     disabled: settingDef.getDisabled
       ? settingDef.getDisabled(object, computedSettings, extra)
       : settingDef.disabled || false,
