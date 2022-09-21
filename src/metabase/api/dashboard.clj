@@ -272,11 +272,13 @@
                                                                 destination-collection))
                                 id->new-id  (if (seq id->new-card)
                                               (fn [id]
-                                                (or (:id (id->new-card id))
-                                                    (throw (ex-info (tru "Card {0} not duplicated"
-                                                                         id)
-                                                                    {:id id
-                                                                     :ids id->new-card}))))
+                                                (when id
+                                                  ;; text cards don't have ids
+                                                  (or (:id (id->new-card id))
+                                                      (throw (ex-info (tru "Card {0} not duplicated"
+                                                                           id)
+                                                                      {:id id
+                                                                       :ids id->new-card})))))
                                               identity)]
                             (doseq [card (:ordered_cards existing-dashboard)]
                               (api/check-500 (dashboard/add-dashcard!

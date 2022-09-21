@@ -718,23 +718,23 @@
     (mt/dataset sample-dataset
       (mt/with-temp* [Collection [source-coll {:name "Source collection"}]
                       Collection [dest-coll   {:name "Destination collection"}]
-                      Dashboard [dashboard {:name        "Dashboard to be Copied"
-                                            :description "A description"
-                                            :collection_id (u/the-id source-coll)
-                                            :creator_id  (mt/user->id :rasta)}]
-                      Card      [total-card  {:name "Total orders per month"
-                                              :collection_id (u/the-id source-coll)
-                                              :display :line
-                                              :visualization_settings
-                                              {:graph.dimensions ["CREATED_AT"]
-                                               :graph.metrics ["sum"]}
-                                              :dataset_query
-                                              (mt/$ids
-                                               {:database (mt/id)
-                                                :type     :query
-                                                :query    {:source-table $$orders
-                                                           :aggregation  [[:sum $orders.total]]
-                                                           :breakout     [!month.orders.created_at]}})}]
+                      Dashboard  [dashboard {:name          "Dashboard to be Copied"
+                                             :description   "A description"
+                                             :collection_id (u/the-id source-coll)
+                                             :creator_id    (mt/user->id :rasta)}]
+                      Card       [total-card  {:name "Total orders per month"
+                                               :collection_id (u/the-id source-coll)
+                                               :display :line
+                                               :visualization_settings
+                                               {:graph.dimensions ["CREATED_AT"]
+                                                :graph.metrics ["sum"]}
+                                               :dataset_query
+                                               (mt/$ids
+                                                {:database (mt/id)
+                                                 :type     :query
+                                                 :query    {:source-table $$orders
+                                                            :aggregation  [[:sum $orders.total]]
+                                                            :breakout     [!month.orders.created_at]}})}]
                       Card      [avg-card  {:name "Average orders per month"
                                             :collection_id (u/the-id source-coll)
                                             :display :line
@@ -760,6 +760,11 @@
                       DashboardCard [dashcard {:dashboard_id (u/the-id dashboard)
                                                :card_id    (u/the-id total-card)
                                                :size_x 6, :size_y 6}]
+                      DashboardCard [textcard {:dashboard_id (u/the-id dashboard)
+                                               :visualization_settings
+                                               {:virtual_card
+                                                {:display :text}
+                                                :text "here is some text"}}]
                       DashboardCard [_        {:dashboard_id (u/the-id dashboard)
                                                :card_id    (u/the-id model)
                                                :size_x 6, :size_y 6}]
@@ -776,8 +781,16 @@
             (is (= (:collection_id resp) (u/the-id dest-coll))
                   "Dashboard should go into the destination collection")
             (is (= 3 (count (db/select 'Card :collection_id (u/the-id source-coll)))))
-            (let [copied-cards (db/select 'Card :collection_id (u/the-id dest-coll))]
-              (is (= 2 (count copied-cards)))
+            (let [copied-cards (db/select 'Card :collection_id (u/the-id dest-coll))
+                  copied-db-cards (db/select 'DashboardCard :dashboard_id (u/the-id (:id resp)))
+                  source-db-cards (db/select 'DashboardCard :dashboard_id (u/the-id dashboard))]
+              (testing "Copies all of the questions on the dashboard"
+                (is (= 2 (count copied-cards))))
+              (testing "Copies all of the dashboard cards"
+                (is (= (count copied-db-cards) (count source-db-cards)))
+                (testing "Including text cards"
+                  (is (some (comp nil? :card_id) copied-db-cards))
+                  (is (some (comp :text :visualization_settings) copied-db-cards))))
               (testing "Should copy cards"
                 (is (= #{"Total orders per month" "Average orders per month"}
                        (into #{} (map :name) copied-cards))
