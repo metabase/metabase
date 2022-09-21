@@ -27,7 +27,7 @@ If the saved questions are stored in a restricted collection (such as someone's 
 
 Someone with edit permissions (your Metabase admin is probably a safe bet) will need to move those questions into a collection that you have permissions to.
 
-## Do you have a different problem?
+## Related problems
 
 - [I can't view or edit queries from the SQL editor](./data-permissions.md#a-user-group-cant-access-the-sql-editor).
 - [I'm getting a "permission denied" error message](./data-permissions.md#getting-a-permission-denied-error-message).

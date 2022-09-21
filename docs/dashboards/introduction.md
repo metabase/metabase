@@ -100,7 +100,7 @@ Metabase will automatically update a question's display to make sure your data l
 
 ## Changing a card's visualization settings
 
-You can change a card's visualization settings (to add a goal line, for example,). Changing a card's settings will _not_ write over the original question's settings. 
+You can change a card's visualization settings (to add a goal line, for example,). Changing a card's visualization settings will only affect how the question appears on that dashboard card; these changes won't affect the original question's visualization settings. 
 
 Click on the **pencil** icon to enter dashboard edit mode, hover over the question you want to edit, and click on the **palette** icon to edit a card's visualization's settings.
 

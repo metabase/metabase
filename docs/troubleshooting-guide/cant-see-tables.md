@@ -89,7 +89,7 @@ If the administrator's account can see the tables but an individual person canno
 2. Go to Admin > Troubleshooting > Logs and see if there are any error messages saying that the "sync" operation could not run (e.g., because the network or the database itself was temporarily down).
 3. If there are no suspicious error messages, log out of Metabase, close the browser tab, log back into Metabase in a new browser tab, and try to access your table again.
 
-## Do you have a different problem?
+## Related problems
 
 - [My data sandboxes aren't working](./sandboxing.md).
 - [I can't view or edit a question or dashboard](./cant-view-or-edit.md).

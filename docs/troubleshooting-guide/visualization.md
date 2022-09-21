@@ -8,7 +8,7 @@ To start, check if your current browser settings are compatible with Metabase:
 
 1. Clear your browser cache, and refresh your page.
 2. Disable all extensions and plugins. Load the page again.
-3. Give it one last shot---try opening your page in an incognito session or a different browser.
+3. Give it one last shot---try opening your page in a private/incognito session, or a different browser.
 
 ## Formatting dashboard cards
 
@@ -17,17 +17,7 @@ To start, check if your current browser settings are compatible with Metabase:
 
 **Explanation**
 
-The visualization settings on a card are independent of the settings on the original question.
-
-When you first create a question, your selected visualization type is saved along with the query. When you add that question to a dashboard, the dashboard will display the same visualization as the original question by default. You can override the original visualization type by using the [card's visualization settings](../dashboards/introduction.md#changing-a-cards-visualization-settings).
-
-## Formatting dates and times
-
-See [Troubleshooting dates and times](./timezones.md).
-
-## Uploading a file for a custom map
-
-If you're unable to add a [GeoJSON file for a custom map](../configuring-metabase/custom-maps.md#custom-region-maps), try reducing the size of the file to 5MB or less.
+The visualization settings on a card are independent of the settings on the original question. When you first create a question, your selected visualization type is saved along with the query. When you add that question to a dashboard, the dashboard will display the same visualization as the original question by default. You can override the original visualization type by using the [card's visualization settings](../dashboards/introduction.md#changing-a-cards-visualization-settings).
 
 ## Visualizing SQL questions
 
@@ -43,8 +33,9 @@ If your question or dashboard card is powered by a handwritten [SQL query](../qu
 
 If you're having problems with things like SQL syntax errors or [SQL variables](https://www.metabase.com/glossary/variable#example-variable-in-metabase), see [Troubleshooting SQL questions](./sql.md) for more help.
 
-## Do you have a different problem?
+## Related problems
 
+- [My dates and times are wrong](./timezones.md).
 - [My dashboard is slow or failing to load](./my-dashboard-is-slow.md).
 - [I can't view or edit my question or dashboard](./cant-view-or-edit.md).
 - [I can't see my tables](./cant-see-tables.md).
