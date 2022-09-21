@@ -496,6 +496,7 @@
                          (hsql/format (sql.qp/->honeysql :mysql field-clause)))))))))))))
 
 (tx/defdataset json-unwrap-bigint-and-boolean
+  "Used for testing mysql json value unwrapping"
   [["bigint-and-bool-table"
     [{:field-name "jsoncol" :base-type :type/JSON}]
     [["{\"mybool\":true,\"myint\":1}"]
@@ -511,14 +512,13 @@
                  {:name "jsoncol → myint", :base_type :type/Number, :semantic_type nil}
                  {:name "jsoncol → mybool", :base_type :type/Boolean, :semantic_type nil}}
              (db->fields (mt/db)))))
-      (def db (db/select-one 'Table :db_id (mt/id) :name "bigint_and_bool_table"))
       (testing "Nested field columns are correct"
         (is (= #{{:name "jsoncol → mybool", :database-type "boolean", :base-type :type/Boolean, :database-position 0, :visibility-type :normal, :nfc-path [:jsoncol "mybool"]}
                  {:name "jsoncol → myint", :database-type "double precision", :base-type :type/Number, :database-position 0, :visibility-type :normal, :nfc-path [:jsoncol "myint"]}}
                (sql-jdbc.sync/describe-nested-field-columns
                 :mysql
                 (mt/db)
-                (db/select-one 'Table :db_id (mt/id) :name "bigint-and-bool-table"))))))))
+                (db/select-one Table :db_id (mt/id) :name "bigint-and-bool-table"))))))))
 
 (deftest ddl.execute-with-timeout-test
   (mt/test-driver :mysql
