@@ -70,7 +70,8 @@
   (with-redefs [email/email-configured? (constantly false)
                 slack/slack-configured? (constantly false)]
     (mt/with-temporary-setting-values [site-name          "Test"
-                                       startup-time-millis 1234.0]
+                                       startup-time-millis 1234.0
+                                       google-auth-enabled false]
       (let [stats (anonymous-usage-stats)]
         (is (partial= {:running_on          :unknown
                        :check_for_updates   true
