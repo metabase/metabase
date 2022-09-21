@@ -5,6 +5,7 @@ import { GridRows } from "@visx/grid";
 import { scaleBand, scaleLinear } from "@visx/scale";
 import { Bar } from "@visx/shape";
 import { Group } from "@visx/group";
+import { Text } from "@visx/text";
 import {
   getLabelProps,
   getXTickLabelProps,
@@ -21,6 +22,7 @@ import {
 import { sortTimeSeries } from "../../lib/sort";
 import { DATE_ACCESSORS } from "../../constants/accessors";
 import { getWaterfallColors } from "../../lib/colors";
+import CategoricalWaterfallChart from "../CategoricalWaterfallChart";
 
 const propTypes = {
   data: PropTypes.array.isRequired,
@@ -39,6 +41,7 @@ const propTypes = {
     bottom: PropTypes.string,
   }),
   getColor: PropTypes.func,
+  type: PropTypes.oneOf(["categorical", "timeseries"]),
 };
 
 const layout = {
@@ -54,21 +57,40 @@ const layout = {
     size: 11,
     family: "Lato, sans-serif",
   },
-  numTicks: 4,
   barPadding: 0.2,
   labelFontWeight: 700,
   labelPadding: 12,
   strokeDasharray: "4",
+  numTicks: 4,
 };
 
-const TimeSeriesWaterfallChart = ({
+const WaterfallChart = ({
   data,
-  accessors = DATE_ACCESSORS,
+  accessors,
   settings,
   labels,
   getColor,
+  type,
 }) => {
+  if (type === "categorical") {
+    return (
+      <CategoricalWaterfallChart
+        data={data}
+        accessors={accessors}
+        settings={settings}
+        labels={labels}
+        getColor={getColor}
+      />
+    );
+  }
+  accessors = accessors ?? DATE_ACCESSORS;
   data = sortTimeSeries(data);
+  const entries = calculateWaterfallEntries(
+    data,
+    accessors,
+    settings?.showTotal,
+  );
+
   const yTickWidth = getYTickWidth(data, accessors, settings, layout.font.size);
   const yLabelOffset = yTickWidth + layout.labelPadding;
   const xMin = yLabelOffset + layout.font.size * 1.5;
@@ -76,13 +98,16 @@ const TimeSeriesWaterfallChart = ({
   const yMax = layout.height - layout.margin.bottom;
   const innerWidth = xMax - xMin;
   const leftLabel = labels?.left;
-  const bottomLabel = labels?.bottom;
 
-  const entries = calculateWaterfallEntries(
-    data,
-    accessors,
-    settings?.showTotal,
-  );
+  const getXTickProps = ({ formattedValue, ...props }) => {
+    return {
+      ...props,
+      children: formatTimescaleWaterfallTick(formattedValue, settings),
+    };
+  };
+
+  const numTicks = layout.numTicks;
+  const tickLabelProps = getXTickLabelProps(layout, false, getColor);
 
   const xScale = scaleBand({
     domain: entries.map(entry => entry.x),
@@ -101,6 +126,7 @@ const TimeSeriesWaterfallChart = ({
     const height = Math.abs(yScale(entry.start) - yScale(entry.end));
     const x = xScale(entry.x);
     const y = yScale(Math.max(entry.start, entry.end));
+
     const fill = getWaterfallEntryColor(
       entry,
       getWaterfallColors(settings?.colors, getColor),
@@ -137,18 +163,18 @@ const TimeSeriesWaterfallChart = ({
         scale={xScale}
         left={xMin}
         top={yMax + layout.margin.top}
-        label={bottomLabel}
-        numTicks={layout.numTicks}
+        label={labels?.bottom}
+        numTicks={numTicks}
         stroke={getColor("text-light")}
         tickStroke={getColor("text-light")}
         labelProps={getLabelProps(layout, getColor)}
-        tickFormat={value => formatTimescaleWaterfallTick(value, settings)}
-        tickLabelProps={() => getXTickLabelProps(layout, false, getColor)}
+        tickComponent={props => <Text {...getXTickProps(props)} />}
+        tickLabelProps={() => tickLabelProps}
       />
     </svg>
   );
 };
 
-TimeSeriesWaterfallChart.propTypes = propTypes;
+WaterfallChart.propTypes = propTypes;
 
-export default TimeSeriesWaterfallChart;
+export default WaterfallChart;

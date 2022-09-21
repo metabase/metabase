@@ -14,10 +14,6 @@ export const getXTickWidthFromValues = (values, maxWidth, fontSize) => {
   return Math.min(tickWidth, maxWidth);
 };
 
-export const getRotatedXTickHeight = tickWidth => {
-  return Math.ceil(Math.sqrt(Math.pow(tickWidth, 2) / 2));
-};
-
 export const getYTickWidth = (data, accessors, settings, fontSize) => {
   return data
     .map(accessors.y)

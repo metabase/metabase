@@ -763,9 +763,9 @@
         rows           (map (juxt x-axis-rowfn y-axis-rowfn)
                             (common/row-preprocess x-axis-rowfn y-axis-rowfn rows))
         labels         (x-and-y-axis-label-info x-col y-col viz-settings)
-        render-fn      (if (isa? (-> cols x-axis-rowfn :effective_type) :type/Temporal)
-                         js-svg/timelineseries-waterfall
-                         js-svg/categorical-waterfall)
+        waterfall-type (if (isa? (-> cols x-axis-rowfn :effective_type) :type/Temporal)
+                         "timeseries"
+                         "categorical")
         show-total     (if (nil? (:waterfall.show_total viz-settings))
                          true
                          (:waterfall.show_total viz-settings))
@@ -777,9 +777,10 @@
                            (assoc :showTotal show-total))
         image-bundle   (image-bundle/make-image-bundle
                         render-type
-                        (render-fn rows
-                                   labels
-                                   settings))]
+                        (js-svg/waterfall rows
+                                          labels
+                                          settings
+                                          waterfall-type))]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))

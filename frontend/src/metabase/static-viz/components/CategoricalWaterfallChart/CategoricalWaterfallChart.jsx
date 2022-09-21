@@ -13,7 +13,6 @@ import {
   getYTickLabelProps,
   getYTickWidth,
   getXTickWidth,
-  getRotatedXTickHeight,
 } from "metabase/static-viz/lib/axes";
 import { formatNumber } from "metabase/static-viz/lib/numbers";
 import {
@@ -75,6 +74,7 @@ const CategoricalWaterfallChart = ({
     accessors,
     settings?.showTotal,
   );
+
   const isVertical = entries.length > 10;
   const xTickWidth = getXTickWidth(
     data,
@@ -82,7 +82,7 @@ const CategoricalWaterfallChart = ({
     layout.maxTickWidth,
     layout.font.size,
   );
-  const xTickHeight = getRotatedXTickHeight(xTickWidth);
+  const xTickHeight = xTickWidth;
   const yTickWidth = getYTickWidth(data, accessors, settings, layout.font.size);
   const xLabelOffset = xTickHeight + layout.labelPadding + layout.font.size;
   const yLabelOffset = yTickWidth + layout.labelPadding;
@@ -91,9 +91,28 @@ const CategoricalWaterfallChart = ({
   const yMin = isVertical ? xLabelOffset : layout.margin.bottom;
   const yMax = layout.height - yMin - layout.margin.top;
   const innerWidth = xMax - xMin;
-  const textBaseline = Math.floor(layout.font.size / 2);
   const leftLabel = labels?.left;
-  const bottomLabel = !isVertical ? labels?.bottom : undefined;
+
+  const getXTickProps = ({ x, y, formattedValue, ...props }) => {
+    const textWidth = isVertical ? xTickWidth : xScale.bandwidth();
+    const truncatedText = truncateText(
+      formattedValue,
+      textWidth,
+      layout.font.size,
+    );
+    const transform = isVertical
+      ? `rotate(-90, ${x} ${y}) translate(${Math.floor(
+          layout.font.size / 2,
+        )} ${Math.floor(layout.font.size / 3)})`
+      : undefined;
+
+    const textAnchor = isVertical ? "end" : "middle";
+
+    return { ...props, x, y, transform, children: truncatedText, textAnchor };
+  };
+
+  const numTicks = entries.length;
+  const tickLabelProps = getXTickLabelProps(layout, isVertical, getColor);
 
   const xScale = scaleBand({
     domain: entries.map(entry => entry.x),
@@ -121,20 +140,6 @@ const CategoricalWaterfallChart = ({
     return { x, y, width, height, fill };
   };
 
-  const getXTickProps = ({ x, y, formattedValue, ...props }) => {
-    const textWidth = isVertical ? xTickWidth : xScale.bandwidth();
-    const truncatedText = truncateText(
-      formattedValue,
-      textWidth,
-      layout.font.size,
-    );
-    const transform = isVertical
-      ? `rotate(45, ${x} ${y}) translate(-${textBaseline} 0)`
-      : undefined;
-
-    return { ...props, x, y, transform, children: truncatedText };
-  };
-
   return (
     <svg width={layout.width} height={layout.height}>
       <Group top={layout.margin.top} left={xMin}>
@@ -159,18 +164,17 @@ const CategoricalWaterfallChart = ({
         tickFormat={value => formatNumber(value, settings?.y)}
         tickLabelProps={() => getYTickLabelProps(layout, getColor)}
       />
-
       <AxisBottom
         scale={xScale}
         left={xMin}
         top={yMax + layout.margin.top}
-        label={bottomLabel}
-        numTicks={entries.length}
+        label={labels?.bottom}
+        numTicks={numTicks}
         stroke={getColor("text-light")}
         tickStroke={getColor("text-light")}
         labelProps={getLabelProps(layout, getColor)}
         tickComponent={props => <Text {...getXTickProps(props)} />}
-        tickLabelProps={() => getXTickLabelProps(layout, isVertical, getColor)}
+        tickLabelProps={() => tickLabelProps}
       />
     </svg>
   );
