@@ -122,7 +122,6 @@ function getSettingWidget(
   extra = {},
 ) {
   const settingDef = settingDefs[settingId];
-  console.log(settingDef);
   const value = computedSettings[settingId];
   const onChange = value => {
     const newSettings = { [settingId]: value };
