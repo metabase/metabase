@@ -15,11 +15,6 @@ const mapStateToProps = (state, ownProps) => ({
   }),
 });
 
-const mapDispatchToProps = {
-  // fetchForeignKeys: Model.actions.fetchForeignKeys,
-  // fetchMetadata: Model.actions.fetchMetadata,
-};
-
 class ModelPane extends React.Component {
   state = {
     error: null,
@@ -84,7 +79,7 @@ class ModelPane extends React.Component {
   }
 }
 
-export default connect(mapStateToProps, mapDispatchToProps)(ModelPane);
+export default connect(mapStateToProps)(ModelPane);
 
 const ExpandableItemList = Expandable(
   ({ name, type, show, items, isExpanded, onExpand }) => (
