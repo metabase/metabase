@@ -98,6 +98,27 @@
           (check-block-permissions outer-query)))
       (check-ad-hoc-query-perms outer-query))))
 
+(defn check-query-permissions
+  "Middleware that check that the current user has permissions to run the current query. This only applies if
+  `*current-user-id*` is bound. In other cases, like when running public Cards or sending pulses, permissions need to
+  be checked separately before allowing the relevant objects to be create (e.g., when saving a new Pulse or
+  'publishing' a Card)."
+  [qp]
+  (fn [query rff context]
+    (check-query-permissions* query)
+    (qp query rff context)))
+
+(defn remove-permissions-key
+  "Pre-processing middleware. Removes the `::perms` key from the query. This is where we store important permissions
+  information like perms coming from sandboxing (GTAPs). This is programatically added by middleware when appropriate,
+  but we definitely don't want users passing it in themselves. So remove it if it's present."
+  [query]
+  (dissoc query ::perms))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                Writeback fns                                                   |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
 (defn- query-action-perms
   [{:keys [database]}]
   #{(perms/execute-query-perms-path database)})
@@ -112,16 +133,6 @@
   (when-not (has-data-perms? (query-action-perms outer-query))
     (throw (perms-exception required-perms))))
 
-(defn check-query-permissions
-  "Middleware that check that the current user has permissions to run the current query. This only applies if
-  `*current-user-id*` is bound. In other cases, like when running public Cards or sending pulses, permissions need to
-  be checked separately before allowing the relevant objects to be create (e.g., when saving a new Pulse or
-  'publishing' a Card)."
-  [qp]
-  (fn [query rff context]
-    (check-query-permissions* query)
-    (qp query rff context)))
-
 (defn check-query-action-permissions
   "Middleware that check that the current user has permissions to run the current query action. This only applies if
   `*current-user-id*` is bound."
@@ -129,13 +140,6 @@
   (fn [query rff context]
     (check-query-action-permissions* query)
     (qp query rff context)))
-
-(defn remove-permissions-key
-  "Pre-processing middleware. Removes the `::perms` key from the query. This is where we store important permissions
-  information like perms coming from sandboxing (GTAPs). This is programatically added by middleware when appropriate,
-  but we definitely don't want users passing it in themselves. So remove it if it's present."
-  [query]
-  (dissoc query ::perms))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
