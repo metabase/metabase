@@ -27,7 +27,7 @@ describe("issue 25322", () => {
     cy.signInAsAdmin();
   });
 
-  it("should show a loader when loading field values", () => {
+  it("should show a loader when loading field values (metabase#25322)", () => {
     createDashboard().then(({ dashboard_id }) => {
       visitDashboard(dashboard_id);
       throttleFieldValuesRequest(dashboard_id);
