@@ -75,11 +75,11 @@ const mapStateToProps = (
 });
 
 class ErrorBoundary extends React.Component<{
-  onError: (errorInfo: ErrorInfo) => void;
+  onError: (errorInfo: ErrorInfo & Error) => void;
   countError: () => void;
 }> {
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    this.props.onError({ ...errorInfo, error });
+    this.props.onError({ ...errorInfo, ...error });
     this.props.countError();
   }
 
@@ -98,7 +98,7 @@ function App({
   children,
 }: AppProps) {
   const [viewportElement, setViewportElement] = useState<HTMLElement | null>();
-  const [errorInfo, setErrorInfo] = useState<ErrorInfo | null>(null);
+  const [errorInfo, setErrorInfo] = useState<(ErrorInfo & Error) | null>(null);
   const [errorCount, setErrorCount] = useState(0);
 
   const countError = () => setErrorCount(prev => prev + 1);
@@ -130,7 +130,7 @@ function App({
                 data: {
                   error_code: "looping error",
                   message:
-                    (errorInfo?.error?.message ?? "") +
+                    (errorInfo?.message ?? "") +
                     (errorInfo?.componentStack ?? ""),
                 },
               })
