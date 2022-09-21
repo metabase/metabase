@@ -1,9 +1,9 @@
 import { t } from "ttag";
-import ActionButton from "./ActionButton";
+import Action from "./Action";
 
-export default Object.assign(ActionButton, {
-  uiName: t`Action button`,
-  identifier: "action-button",
+export default Object.assign(Action, {
+  uiName: t`Action`,
+  identifier: "action",
   iconName: "play",
 
   noHeader: true,
@@ -22,6 +22,18 @@ export default Object.assign(ActionButton, {
     },
     "card.description": {
       dashboard: false,
+    },
+    actionDisplayType: {
+      section: t`Display`,
+      title: t`Action Display`,
+      widget: "radio",
+      default: "inline",
+      props: {
+        options: [
+          { name: t`Inline`, value: "inline" },
+          { name: t`Modal`, value: "modal" },
+        ],
+      },
     },
     "button.label": {
       section: t`Display`,
