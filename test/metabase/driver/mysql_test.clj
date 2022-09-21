@@ -496,17 +496,18 @@
                          (hsql/format (sql.qp/->honeysql :mysql field-clause)))))))))))))
 
 (deftest can-shut-off-json-unwrapping
-  (try (mt/test-driver :mysql
-         ;; in here we fiddle with the mysql db details:
-         (let [db (db/select-one Database :id (mt/id))]
-           (db/update! Database (mt/id) {:details (assoc (:details db) :json-unfolding true)})
-           (is (= true (driver/database-supports? :mysql :nested-field-columns (mt/db))))
-           (db/update! Database (mt/id) {:details (assoc (:details db) :json-unfolding false)})
-           (is (= false (driver/database-supports? :mysql :nested-field-columns (mt/db))))
-           (db/update! Database (mt/id) {:details (assoc (:details db) :json-unfolding nil)})
-           (is (= true (driver/database-supports? :mysql :nested-field-columns (mt/db))))))
-       ;; un fiddle with the mysql db details.
-       (finally (db/update! Database (mt/id) :details (:details db)))))
+  (mt/test-driver :mysql
+    ;; in here we fiddle with the mysql db details
+    (let [db (db/select-one Database :id (mt/id))]
+      (try
+        (db/update! Database (mt/id) {:details (assoc (:details db) :json-unfolding true)})
+        (is (= true (driver/database-supports? :mysql :nested-field-columns (mt/db))))
+        (db/update! Database (mt/id) {:details (assoc (:details db) :json-unfolding false)})
+        (is (= false (driver/database-supports? :mysql :nested-field-columns (mt/db))))
+        (db/update! Database (mt/id) {:details (assoc (:details db) :json-unfolding nil)})
+        (is (= true (driver/database-supports? :mysql :nested-field-columns (mt/db))))
+        ;; un fiddle with the mysql db details.
+        (finally (db/update! Database (mt/id) :details (:details db)))))))
 
 (deftest ddl.execute-with-timeout-test
   (mt/test-driver :mysql
@@ -514,6 +515,6 @@
       (let [db-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
         (is (thrown-with-msg?
               Exception
-              #"Killed mysql process id \d+ due to timeout."
+              #"Killed mysql process id [\d,]+ due to timeout."
               (#'mysql.ddl/execute-with-timeout! db-spec db-spec 10 ["select sleep(5)"])))
         (is (= true (#'mysql.ddl/execute-with-timeout! db-spec db-spec 5000 ["select sleep(0.1) as val"])))))))
