@@ -301,11 +301,7 @@ class FieldValuesWidgetInner extends Component {
     const isLoading = loadingState === "LOADING";
     const usesListField =
       !disableList &&
-      hasList({
-        fields,
-        disableSearch,
-        options,
-      }) &&
+      shouldList(fields, disableSearch) &&
       valuesMode === "list";
 
     return (
