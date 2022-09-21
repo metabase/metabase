@@ -39,7 +39,9 @@ function shouldPropagateDashboardParameters({
   originalCard?: Card;
 }): boolean {
   return Boolean(
+    // Either the card is saved and deserializedCard has parameters
     (cardId && deserializedCard.parameters) ||
+      // Or deserializedCard is equivalent to originalCard, except for its parameters
       (originalCard &&
         cardIsEquivalent(deserializedCard, originalCard, {
           checkParameters: false,
