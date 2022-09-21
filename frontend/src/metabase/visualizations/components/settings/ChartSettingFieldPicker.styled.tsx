@@ -14,7 +14,7 @@ export const ChartSettingFieldPickerRoot = styled.div<ChartSettingFieldPickerRoo
   border: 1px solid ${color("border")};
   border-radius: 0.5rem;
   padding-right: 1rem;
-  padding-left: 0.25rem;
+  padding-left: 0.5rem;
   background: ${color("white")};
 
   ${Triggerable.Trigger} {
@@ -49,10 +49,11 @@ export const ChartSettingFieldPickerRoot = styled.div<ChartSettingFieldPickerRoo
 
 interface SettingsIconProps {
   noPointer?: boolean;
+  noMargin?: boolean;
 }
 
 export const SettingsIcon = styled(Icon)<SettingsIconProps>`
-  margin-left: 0.5rem;
+  margin-left: ${props => (props.noMargin ? "0" : "0.75rem")};
   color: ${color("text-medium")};
   cursor: ${props => (props.noPointer ? "inherit" : "pointer")};
 
