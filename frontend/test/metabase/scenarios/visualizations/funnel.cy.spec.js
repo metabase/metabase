@@ -1,4 +1,10 @@
-import { restore, visitQuestionAdhoc, sidebar } from "__support__/e2e/helpers";
+import {
+  restore,
+  visitQuestionAdhoc,
+  sidebar,
+  getDraggableElements,
+  moveColumnDown,
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -28,9 +34,9 @@ describe("scenarios > visualizations > funnel chart", () => {
 
   it("hould allow you to reorder and show/hide rows", () => {
     cy.log("ensure that rows are shown");
-    getDraggableRows().should("have.length", 5);
+    getDraggableElements().should("have.length", 5);
 
-    getDraggableRows()
+    getDraggableElements()
       .first()
       .invoke("text")
       .then(name => {
@@ -39,9 +45,9 @@ describe("scenarios > visualizations > funnel chart", () => {
           .first()
           .should("have.text", name);
 
-        moveColumnDown(getDraggableRows().first(), 2);
+        moveColumnDown(getDraggableElements().first(), 2);
 
-        getDraggableRows().eq(2).should("have.text", name);
+        getDraggableElements().eq(2).should("have.text", name);
 
         cy.findAllByTestId("funnel-chart-header")
           .eq(2)
@@ -49,14 +55,14 @@ describe("scenarios > visualizations > funnel chart", () => {
       });
 
     cy.log("toggle row visibility");
-    getDraggableRows()
+    getDraggableElements()
       .eq(1)
       .within(() => {
         cy.icon("eye_filled").click();
       });
     cy.findAllByTestId("funnel-chart-header").should("have.length", 4);
 
-    getDraggableRows()
+    getDraggableElements()
       .eq(1)
       .within(() => {
         cy.icon("eye_crossed_out").click();
@@ -64,15 +70,3 @@ describe("scenarios > visualizations > funnel chart", () => {
     cy.findAllByTestId("funnel-chart-header").should("have.length", 5);
   });
 });
-
-function getDraggableRows() {
-  return cy.findAllByTestId(/draggable-item/);
-}
-
-function moveColumnDown(column, distance) {
-  column
-    .trigger("mousedown", 0, 0, { force: true })
-    .trigger("mousemove", 5, 5, { force: true })
-    .trigger("mousemove", 0, distance * 50, { force: true })
-    .trigger("mouseup", 0, distance * 50, { force: true });
-}
