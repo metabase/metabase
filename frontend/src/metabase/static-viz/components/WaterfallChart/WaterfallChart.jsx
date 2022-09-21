@@ -5,6 +5,7 @@ import { scaleBand, scaleLinear } from "@visx/scale";
 import { Bar } from "@visx/shape";
 import { Group } from "@visx/group";
 import { Text } from "@visx/text";
+import { merge } from "icepick";
 import {
   getLabelProps,
   getXTickLabelProps,
@@ -19,7 +20,7 @@ import {
   formatTimescaleWaterfallTick,
   getWaterfallEntryColor,
 } from "metabase/static-viz/lib/waterfall";
-import { truncateText } from "metabase/static-viz/lib/text";
+import { measureTextHeight, truncateText } from "metabase/static-viz/lib/text";
 import { sortTimeSeries } from "../../lib/sort";
 import {
   DATE_ACCESSORS,
@@ -31,17 +32,14 @@ const layout = {
   width: 540,
   height: 300,
   margin: {
-    top: 0,
+    // Add some margin so when the chart scale down,
+    // elements that are rendered at the top of the chart doesn't get cut off
+    top: 4,
     left: 55,
     right: 40,
-    bottom: 40,
-  },
-  font: {
-    size: 11,
-    family: "Lato, sans-serif",
+    bottom: 0,
   },
   barPadding: 0.2,
-  labelFontWeight: 700,
   labelPadding: 12,
   strokeDasharray: "4",
   numTicks: 4,
@@ -50,8 +48,9 @@ const layout = {
 
 // If inner chart area is smaller than this then it will look cramped
 const MIN_INNER_HEIGHT = 250;
-
 const MAX_EXTRA_HEIGHT = 40;
+// The default value for tick length
+const TICK_LENGTH = 8;
 
 // Since we're using JSDoc instead, which provide more static type checking than PropTypes.
 /* eslint-disable react/prop-types */
@@ -68,6 +67,34 @@ function WaterfallChart({
   labels,
   getColor,
 }) {
+  const chartStyle = {
+    fontFamily: "Lato, sans-serif",
+    axes: {
+      color: getColor("text-light"),
+      ticks: {
+        color: getColor("text-medium"),
+        fontSize: 12,
+      },
+      labels: {
+        color: getColor("text-medium"),
+        fontSize: 14,
+        fontWeight: 700,
+      },
+    },
+    value: {
+      color: getColor("text-dark"),
+      fontSize: 12,
+      fontWeight: 800,
+      stroke: getColor("white"),
+      strokeWidth: 3,
+    },
+  };
+
+  const axesProps = {
+    stroke: chartStyle.axes.color,
+    tickStroke: chartStyle.axes.color,
+  };
+
   if (type === "timeseries") {
     data = sortTimeSeries(data);
   }
@@ -80,8 +107,15 @@ function WaterfallChart({
   const isVertical = type === "timeseries" ? false : entries.length > 10;
   const xTickWidth =
     type === "timeseries"
-      ? 0
-      : getXTickWidth(data, accessors, layout.maxTickWidth, layout.font.size);
+      ? // We don't know the width of the time-series label because it's formatted inside `<AxisBottom />`.
+        // We could extract those logic out, but it's gonna be nasty, and we didn't need `xTickWidth` for time-series anyway.
+        0
+      : getXTickWidth(
+          data,
+          accessors,
+          layout.maxTickWidth,
+          chartStyle.axes.ticks.fontSize,
+        );
 
   const getXTickProps =
     type === "timeseries"
@@ -96,12 +130,13 @@ function WaterfallChart({
           const truncatedText = truncateText(
             formattedValue,
             textWidth,
-            layout.font.size,
+            chartStyle.axes.ticks.fontSize,
           );
+          const xTickFontSize = chartStyle.axes.ticks.fontSize;
           const transform = isVertical
             ? `rotate(-90, ${x} ${y}) translate(${Math.floor(
-                layout.font.size / 2,
-              )} ${Math.floor(layout.font.size / 3)})`
+                xTickFontSize * 0.9,
+              )} ${Math.floor(xTickFontSize / 3)})`
             : undefined;
 
           const textAnchor = isVertical ? "end" : "middle";
@@ -118,25 +153,35 @@ function WaterfallChart({
 
   const numTicks = type === "timeseries" ? layout.numTicks : entries.length;
   // Below this the code is the same
-  const tickLabelProps = getXTickLabelProps(layout, isVertical, getColor);
+  const tickLabelProps = getXTickLabelProps(chartStyle, isVertical);
 
-  const xTickHeight = xTickWidth;
-  const yTickWidth = getYTickWidth(data, accessors, settings, layout.font.size);
+  const xTickHeight = isVertical ? xTickWidth : chartStyle.axes.ticks.fontSize;
+
+  const yTickWidth = getYTickWidth(
+    data,
+    accessors,
+    settings,
+    chartStyle.axes.ticks.fontSize,
+  );
   const yLabelOffset = yTickWidth + layout.labelPadding;
-  const xMin = yLabelOffset + layout.font.size * 1.5;
+  const xMin = yLabelOffset + chartStyle.axes.labels.fontSize * 1.5;
   const xMax = layout.width - layout.margin.right - layout.margin.left;
-  const xAxisHeight = getXAxisHeight(isVertical, xTickHeight);
+  const xAxisHeight = getXAxisHeight(
+    xTickHeight,
+    measureTextHeight(chartStyle.axes.labels.fontSize),
+  );
   let yMax = layout.height - xAxisHeight - layout.margin.top;
   let height = layout.height;
   // If inner chart area is too short try to expand it but not more than MAX_EXTRA_HEIGHT
   // to match what we do with XYChart (XYChart with legends can have be up to 340px tall)
   if (yMax < MIN_INNER_HEIGHT) {
-    height = minMax(
-      layout.height,
-      layout.height + MAX_EXTRA_HEIGHT,
-      yMax + xAxisHeight + MAX_EXTRA_HEIGHT,
-    );
-    yMax = height - xAxisHeight;
+    yMax =
+      minMax(
+        layout.height,
+        layout.height + MAX_EXTRA_HEIGHT,
+        yMax + xAxisHeight + MAX_EXTRA_HEIGHT,
+      ) - xAxisHeight;
+    height = layout.margin.top + yMax + xAxisHeight;
   }
   const innerWidth = xMax - xMin;
   const leftLabel = labels?.left;
@@ -187,21 +232,27 @@ function WaterfallChart({
         labelOffset={yLabelOffset}
         hideTicks
         hideAxisLine
-        labelProps={getLabelProps(layout, getColor)}
+        labelProps={getLabelProps(chartStyle)}
         tickFormat={value => formatNumber(value, settings?.y)}
-        tickLabelProps={() => getYTickLabelProps(layout, getColor)}
+        tickLabelProps={() => getYTickLabelProps(chartStyle)}
+        {...axesProps}
       />
       <AxisBottom
         scale={xScale}
         left={xMin}
         top={yMax + layout.margin.top}
         label={labels?.bottom}
+        tickLength={TICK_LENGTH}
         numTicks={numTicks}
-        stroke={getColor("text-light")}
-        tickStroke={getColor("text-light")}
-        labelProps={getLabelProps(layout, getColor)}
+        labelProps={merge(getLabelProps(chartStyle, getColor), {
+          dy:
+            -measureTextHeight(chartStyle.axes.labels.fontSize) +
+            xTickHeight +
+            layout.labelPadding,
+        })}
         tickComponent={props => <Text {...getXTickProps(props)} />}
         tickLabelProps={() => tickLabelProps}
+        {...axesProps}
       />
     </svg>
   );
@@ -224,21 +275,13 @@ function getDefaultAccessors(type) {
 
 /**
  *
- * @param {boolean} isVertical
  * @param {number} xTickHeight
+ * @param {number} xLabelHeight
  * @returns {number} The height of the X-axis section of the chart
  */
-function getXAxisHeight(isVertical, xTickHeight) {
-  if (isVertical) {
-    console.log({
-      xTickHeight,
-      padding: layout.labelPadding,
-      fontSize: layout.font.size,
-    });
-    return xTickHeight + layout.labelPadding + layout.font.size;
-  }
-
-  return layout.margin.bottom;
+function getXAxisHeight(xTickHeight, xLabelHeight) {
+  // x-axis height = tick length (dash) + tick label height + label padding + label height
+  return TICK_LENGTH + xTickHeight + layout.labelPadding + xLabelHeight;
 }
 
 /**
@@ -248,9 +291,7 @@ function getXAxisHeight(isVertical, xTickHeight) {
  * @param {number} value
  */
 function minMax(min, max, value) {
-  const minmax = Math.min(max, Math.max(min, value));
-  console.log({ min, max, value, minmax });
-  return minmax;
+  return Math.min(max, Math.max(min, value));
 }
 
 export default WaterfallChart;
