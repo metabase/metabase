@@ -19,7 +19,7 @@ const TITLE_LOCALES_BN = {
   'admin.dashboard.statistics.school': {
       'en': 'Statistics at a glance',
       'bn': 'একনজরে বিদ্যালয়ের পরিসংখ্যান'
-  }, 
+  },
   'admin.dashboard.building.condition': {
       'en': 'Condition of Building',
       'bn': 'ভবনের অবস্থা'
@@ -35,15 +35,15 @@ const TITLE_LOCALES_BN = {
   'admin.dashboard.school.profile.completion': {
       'en': 'Profile completion percentage of schools',
       'bn': 'বিদ্যালয়ের প্রোফাইল পূরণের শতাংশ'
-  }, 
+  },
   'admin.dashboard.teacher.approved.post': {
       'en': 'Approved Posts',
       'bn': 'অনুমোদিত পদ'
-  }, 
+  },
   'admin.dashboard.teacher.active.post': {
       'en': 'Active Posts',
       'bn': 'সক্রিয় পদ'
-  }, 
+  },
   'admin.dashboard.teacher.vacant.post': {
       'en': 'Vacant Posts',
       'bn': 'শূন্য পদ'
@@ -51,7 +51,7 @@ const TITLE_LOCALES_BN = {
   'admin.dashboard.teacher.education': {
       'en': 'Statistics of Education Degree',
       'bn': 'শিক্ষাগত ডিগ্রীর পরিসংখ্যান'
-  }, 
+  },
   'admin.dashboard.teacher.gender': {
       'en': 'Statistics of Gender',
       'bn': 'জেন্ডার পরিসংখ্যান'
@@ -83,11 +83,11 @@ const TITLE_LOCALES_BN = {
   'school.dashboard.teacher.approved.post': {
       'en': 'Approved Posts',
       'bn': 'অনুমোদিত পদ'
-  }, 
+  },
   'school.dashboard.teacher.active.post': {
       'en': 'Active Posts',
       'bn': 'সক্রিয় পদ'
-  }, 
+  },
   'school.dashboard.teacher.vacant.post': {
       'en': 'Vacant Posts',
       'bn': 'শূন্য পদ'
@@ -95,7 +95,7 @@ const TITLE_LOCALES_BN = {
   'school.dashboard.teacher.education': {
       'en': 'Statistics of Education Degree',
       'bn': 'শিক্ষাগত ডিগ্রীর পরিসংখ্যান'
-  }, 
+  },
   'school.dashboard.teacher.gender': {
       'en': 'Statistics of Gender',
       'bn': 'জেন্ডার পরিসংখ্যান'
@@ -263,7 +263,7 @@ const TITLE_LOCALES_BN = {
   'admin.dashboard.census.progress': {
     'en': 'Progress of Census',
     'bn': 'শুমারির অগ্রগতি'
-  }, 
+  },
   'admin.dashboard.census.progress.unsubmitted': {
     'en': 'Unsubmitted Census',
     'bn': 'শুমারি জমা দেওয়া হয়নি'
@@ -323,7 +323,7 @@ const TITLE_LOCALES_BN = {
   'admin.dashboard.nsa.student.performance.level.details': {
     'en': 'Students\' Performance level by Test, Grade and Year',
     'bn': 'পরীক্ষা, গ্রেড এবং বছর অনুসারে শিক্ষার্থীদের পারফরম্যান্সের লেভেল'
-  }, 
+  },
   'admin.dashboard.book.distribution.progress.submitted' : {
     'en': 'Submitted Book Demand',
     'bn': 'বইয়ের চাহিদা জমা হয়েছে'
@@ -371,6 +371,50 @@ const TITLE_LOCALES_BN = {
   'admin.dashboard.school.status': {
     'en' : 'School Status',
     'bn' : 'বিদ্যালয়ের স্ট্যাটাস'
+  },
+  'tangerine.all.school.vs.distinct.school': {
+    'en' : 'Distinct Schools Vs All School',
+    'bn' : 'ট্যানজারিন স্কুল বনাম সব স্কুল'
+  },
+  'tangerine.count.by.subject': {
+    'en' : 'Subject',
+    'bn' : 'সাবজেক্ট'
+  },
+  'tangerine.count.by.summary': {
+    'en' : 'Summary',
+    'bn' : 'সারসংক্ষেপ'
+  },
+  'tangerine.modeling.and.summarizing.the.problem': {
+    'en' : 'Problem Summarizing Process',
+    'bn' : 'সমস্যা সংক্ষিপ্তকরণ প্রক্রিয়া'
+  },
+  'tangerine.problem.presentation': {
+    'en' : 'Problem Presentation Process',
+    'bn' : 'সমস্যা উপস্থাপনা প্রক্রিয়া'
+  },
+  'tangerine.count.by.grouping': {
+    'en' : 'Grouping Process',
+    'bn' : 'গ্রুপিং প্রক্রিয়া'
+  },
+  'tangerine.count.by.reading': {
+    'en' : 'Count By Reading',
+    'bn' : 'পাঠদানের প্রক্রিয়া'
+  },
+  'tangerine.count.formative.assessment': {
+    'en' : 'Count By Formative Assessment',
+    'bn' : 'গঠনমূলক মূল্যায়ন'
+  },
+  'tangerine.problem.discussion': {
+    'en' : 'Problem Discussion',
+    'bn' : 'সমস্যা আলোচনা প্রক্রিয়া'
+  },
+  'tangerine.total.observations': {
+    'en' : 'Total Observation',
+    'bn' : 'মোট পর্যবেক্ষণ'
+  },
+  'tangerine.total.teacher': {
+    'en' : 'Total Teacher',
+    'bn' : 'মোট শিক্ষক'
   }
 }
 
