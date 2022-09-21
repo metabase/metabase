@@ -59,5 +59,11 @@ jobs:
     - run: lein with-profile +cloverage,+junit,+${{ matrix.edition }} deps
     - run: ./bin/build
 
+    - name: Login to Docker Hub
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
     - name: Build and Push docker image 
       run: sh deploy.sh $(date +%s)
