@@ -6,6 +6,7 @@ import {
   DashboardParameterMapping,
 } from "./dashboard";
 import { WritebackAction } from "./writeback";
+import { FormType } from "./writeback-form-settings";
 
 export type DataAppId = number;
 export type DataAppPageId = Dashboard["id"];
@@ -36,20 +37,21 @@ export interface DataAppSearchItem {
   collection: Collection;
 }
 
-export type ActionButtonParametersMapping = Pick<
+export type ActionParametersMapping = Pick<
   DashboardParameterMapping,
   "parameter_id" | "target"
 >;
 
-export interface ActionButtonDashboardCard
+export interface ActionDashboardCard
   extends Omit<BaseDashboardOrderedCard, "parameter_mappings"> {
   action_id: number | null;
   action?: WritebackAction;
 
-  parameter_mappings?: ActionButtonParametersMapping[] | null;
+  parameter_mappings?: ActionParametersMapping[] | null;
   visualization_settings: {
     [key: string]: unknown;
     "button.label"?: string;
     click_behavior?: ClickBehavior;
+    actionDisplayType?: FormType;
   };
 }

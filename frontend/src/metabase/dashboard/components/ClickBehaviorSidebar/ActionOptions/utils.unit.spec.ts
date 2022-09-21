@@ -1,5 +1,5 @@
 import type {
-  ActionButtonParametersMapping,
+  ActionParametersMapping,
   ClickBehaviorParameterMapping,
   WritebackParameter,
 } from "metabase-types/api";
@@ -30,7 +30,7 @@ const DASHBOARD_FILTER_PARAMETER: UiParameter = {
   value: 5,
 };
 
-const PARAMETER_MAPPING: ActionButtonParametersMapping = {
+const PARAMETER_MAPPING: ActionParametersMapping = {
   parameter_id: DASHBOARD_FILTER_PARAMETER.id,
   target: WRITEBACK_PARAMETER.target,
 };
@@ -53,7 +53,7 @@ const CLICK_BEHAVIOR_PARAMETER_MAPPINGS: ClickBehaviorParameterMapping = {
 describe("turnDashCardParameterMappingsIntoClickBehaviorMappings", () => {
   type SetupOpts = {
     actionParameters?: WritebackParameter[] | undefined;
-    dashCardParameterMappings?: ActionButtonParametersMapping[] | null;
+    dashCardParameterMappings?: ActionParametersMapping[] | null;
   };
 
   function setup({
