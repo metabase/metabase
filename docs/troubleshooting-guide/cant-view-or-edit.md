@@ -17,7 +17,7 @@ title: Troubleshooting viewing and editing questions and dashboards
 2. If a saved question is in a collection that you don't have access to, you'll need to ask someone with edit access to the collection to:
     - Grant you permission to the collection.
     - Or, to move the saved question to a collection that you have permissions to.
-3. If the steps above don't solve your problem, ask your Metabase admin if you have [permission to the database that's used by the question][block-access].
+3. If the steps above don't solve your problem, ask your Metabase admin if you have [permission to the database that's used by the question](../permissions/data.md#block-access).
 
 **Explanation**
 
@@ -27,28 +27,17 @@ If the saved questions are stored in a restricted collection (such as someone's 
 
 Someone with edit permissions (your Metabase admin is probably a safe bet) will need to move those questions into a collection that you have permissions to.
 
-## Do you have a different problem?
+## Related problems
 
-- [I can't view or edit queries from the SQL editor][sql-access].
-- [I'm getting a "permission denied" error message][permission-denied].
+- [I can't view or edit queries from the SQL editor](./data-permissions.md#a-user-group-cant-access-the-sql-editor).
+- [I'm getting a "permission denied" error message](./data-permissions.md#getting-a-permission-denied-error-message).
 - [I can't save my question or dashboard](./proxies.md).
-- [I can't see my tables][cant-see-tables].
+- [I can't see my tables](./cant-see-tables.md).
+- [My visualizations are wrong](./visualization.md).
 
 ## Are you still stuck?
 
 If you can’t solve your problem using the troubleshooting guides:
 
-- Search or ask the [Metabase community][discourse].
-- Search for [known bugs or limitations][known-issues].
-
-[admin-permissions]: ../permissions/introduction.md
-[block-access]: ../permissions/data.md#block-access
-[cant-see-tables]: ./cant-see-tables.md
-[collection-permissions]: ../permissions/collections.md
-[data-permissions]: ../permissions/data.md
-[discourse]: https://discourse.metabase.com/
-[known-issues]: ./known-issues.md
-[learn-permissions]: https://www.metabase.com/learn/permissions/index.html
-[permission-denied]: ./data-permissions.md#getting-a-permission-denied-error-message
-[sql-access]: ./data-permissions.md#a-user-group-cant-access-the-sql-editor
-[troubleshooting-data-permissions]: ./data-permissions.md
+- Search or ask the [Metabase community](https://discourse.metabase.com/).
+- Search for [known bugs or limitations](./known-issues.md).
