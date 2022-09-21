@@ -3,8 +3,6 @@ name: Build and push released images
 on:
   push:
     branches: [ "staging" ]
-  pull_request:
-    branches: [ "staging" ]
 
 jobs:
 
