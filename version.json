@@ -1,3 +1,4 @@
 {
-  "edition": "enterprise"
+  "edition": "enterprise",
+  "version" : "v0.38.1.16"
 }

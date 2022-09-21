@@ -66,4 +66,4 @@ jobs:
         password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
     - name: Build and Push docker image 
-      run: sh deploy.sh $(date +%s)
+      run: sh deploy.sh `cat version.json | jq -r '.version'`
