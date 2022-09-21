@@ -12,7 +12,7 @@ import {
   setStartingFrom,
   toTimeInterval,
 } from "metabase/lib/query_time";
-import { isValidDateInterval } from "metabase/lib/time";
+import { isValidTimeInterval } from "metabase/lib/time";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
 import Filter from "metabase-lib/lib/queries/structured/Filter";
@@ -174,14 +174,14 @@ const RelativeDatePicker = (props: RelativeDatePickerProps) => {
   );
 
   const handleChangeDateNumericInput = (newIntervals: number) => {
-    const isValid = isValidDateInterval(newIntervals, unit);
+    const isValid = isValidTimeInterval(newIntervals, unit);
     const valueToUse = isValid ? newIntervals : Math.abs(intervals);
 
     onFilterChange(setRelativeDatetimeValue(filter, formatter(valueToUse)));
   };
 
   const handleChangeUnitInput = (newUnit: DurationInputArg2) => {
-    const isValid = isValidDateInterval(intervals, newUnit);
+    const isValid = isValidTimeInterval(intervals, newUnit);
     const unitToUse = isValid ? newUnit : unit;
 
     onFilterChange(setRelativeDatetimeUnit(filter, unitToUse));

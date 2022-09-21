@@ -74,7 +74,7 @@ function addAbbreviatedLocale() {
   moment.locale(initialLocale);
 }
 
-export function isValidDateInterval(interval: number, unit: DurationInputArg2) {
+export function isValidTimeInterval(interval: number, unit: DurationInputArg2) {
   if (!interval) {
     return false;
   }

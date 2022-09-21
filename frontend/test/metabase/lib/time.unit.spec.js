@@ -2,7 +2,7 @@ import moment from "moment-timezone";
 import {
   getRelativeTimeAbbreviated,
   hoursToSeconds,
-  isValidDateInterval,
+  isValidTimeInterval,
   msToHours,
   msToMinutes,
   msToSeconds,
@@ -153,17 +153,17 @@ describe("time", () => {
     });
   });
 
-  describe("isValidDateInterval", () => {
+  describe("isValidTimeInterval", () => {
     it(`is not valid for 0 time spans`, () => {
-      expect(isValidDateInterval(0, "days")).toBeFalsy();
+      expect(isValidTimeInterval(0, "days")).toBeFalsy();
     });
 
     it(`is valid for small time spans`, () => {
-      expect(isValidDateInterval(10, "days")).toBeTruthy();
+      expect(isValidTimeInterval(10, "days")).toBeTruthy();
     });
 
     it(`is not valid for large time spans`, () => {
-      expect(isValidDateInterval(1000000000, "years")).toBeFalsy();
+      expect(isValidTimeInterval(1000000000, "years")).toBeFalsy();
     });
   });
 });
