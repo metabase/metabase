@@ -28,7 +28,7 @@ const DatabaseTablesPane = ({ database, show, questions }) => {
               <Icon name="model" className="pr1 text-brand" size={12} />
               <a
                 className="flex-full flex p1 text-bold text-brand text-wrap no-decoration bg-medium-hover"
-                onClick={() => show("question", question)}
+                onClick={() => show("model", question)}
               >
                 {question.name}
               </a>

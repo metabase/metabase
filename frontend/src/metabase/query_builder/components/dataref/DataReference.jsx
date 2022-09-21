@@ -11,12 +11,15 @@ import TablePane from "./TablePane";
 import FieldPane from "./FieldPane";
 import SegmentPane from "./SegmentPane";
 import MetricPane from "./MetricPane";
+import ModelPane from "./ModelPane";
 
 const PANES = {
   database: DatabasePane, // displays either schemas or tables in a database
   schema: SchemaPane, // displays tables in a schema
   table: TablePane, // displays fields in a table
   field: FieldPane,
+  modelColumn: FieldPane, // TODO: needs fixing
+  model: ModelPane, // displays columns of a model
   segment: SegmentPane,
   metric: MetricPane,
 };
@@ -24,10 +27,12 @@ const PANES = {
 const TITLE_ICONS = {
   database: "database",
   schema: "folder", // TODO check
-  table: "table2",
+  table: "table",
   field: "field",
   segment: "segment", // TODO check
   metric: "metric", // TODO check
+  model: "model",
+  modelColumn: "field",
 };
 
 export default class DataReference extends Component {
