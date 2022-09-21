@@ -1,4 +1,10 @@
-import { restore, visitQuestionAdhoc, sidebar } from "__support__/e2e/helpers";
+import {
+  restore,
+  visitQuestionAdhoc,
+  sidebar,
+  getDraggableElements,
+  moveColumnDown,
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -130,35 +136,44 @@ describe("scenarios > visualizations > bar chart", () => {
       sidebar().findByText("Data").click();
     });
 
-    it("should allow you to change the order of the columns", () => {
-      cy.findAllByTestId(/draggable-item/)
-        .eq(0)
-        .trigger("mousedown", 0, 0, { force: true })
-        .trigger("mousemove", 5, 5, { force: true })
-        .trigger("mousemove", 0, 100, { force: true })
-        .trigger("mouseup", 0, 100, { force: true });
+    it("should allow you to show/hide and reorder columns", () => {
+      moveColumnDown(getDraggableElements().eq(0), 2);
 
-      cy.findAllByTestId(/draggable-item/).each((element, index) => {
+      getDraggableElements().each((element, index) => {
         const draggableName = element[0].innerText;
         cy.findAllByTestId("legend-item").eq(index).contains(draggableName);
       });
-    });
 
-    it("should allow you to toggle column visibility", () => {
       const columnIndex = 1;
 
-      cy.findAllByTestId(/draggable-item/)
+      getDraggableElements()
         .eq(columnIndex)
-        .find(".Icon-eye_filled")
-        .click();
+        .within(() => {
+          cy.icon("eye_filled").click();
+        });
 
-      cy.findAllByTestId(/draggable-item/)
+      getDraggableElements()
         .eq(columnIndex)
         .invoke("text")
         .then(columnName => {
           cy.get(".Visualization").findByText(columnName).should("not.exist");
           cy.findAllByTestId("legend-item").should("have.length", 3);
           cy.get(".enable-dots").should("have.length", 3);
+        });
+
+      getDraggableElements()
+        .eq(columnIndex)
+        .within(() => {
+          cy.icon("eye_crossed_out").click();
+        });
+
+      getDraggableElements()
+        .eq(columnIndex)
+        .invoke("text")
+        .then(columnName => {
+          cy.get(".Visualization").findByText(columnName).should("exist");
+          cy.findAllByTestId("legend-item").should("have.length", 4);
+          cy.get(".enable-dots").should("have.length", 4);
         });
     });
   });
