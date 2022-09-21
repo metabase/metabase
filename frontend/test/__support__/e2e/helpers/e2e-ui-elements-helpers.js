@@ -79,3 +79,7 @@ export const closeQuestionActions = () => {
 export const questionInfoButton = () => {
   return cy.findByTestId("qb-header-info-button");
 };
+
+export const undo = () => {
+  cy.findByTestId("toast-undo").findByText("Undo").click();
+};

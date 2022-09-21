@@ -268,7 +268,7 @@ function QueryBuilder(props) {
 
   const handleCreate = useCallback(
     async card => {
-      const questionWithUpdatedCard = question.setCard(card);
+      const questionWithUpdatedCard = question.setCard(card).setPinned(false);
       await apiCreateQuestion(questionWithUpdatedCard);
       setRecentlySaved("created");
     },

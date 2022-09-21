@@ -8,8 +8,6 @@ summary: |
 
 /api/notify/* endpoints which receive inbound etl server notifications.
 
-  - [POST /api/notify/db/:id](#post-apinotifydbid)
-
 ## `POST /api/notify/db/:id`
 
 Notification about a potential schema change to one of our `Databases`.

@@ -275,6 +275,12 @@ export default class NativeQuery extends AtomicQuery {
     return getNativeQueryTable(this);
   }
 
+  sourceTable(): null {
+    // Source tables are only available in structured queries,
+    // this method exists to keep query API consistent
+    return null;
+  }
+
   queryText(): string {
     return getIn(this.datasetQuery(), ["native", "query"]) || "";
   }

@@ -39,7 +39,11 @@
   "Normalizes bookmark results. Bookmarks are left joined against the card, collection, and dashboard tables, but only
   points to one of them. Normalizes it so it has just the desired fields."
   [result]
-  (let [result            (into {} (remove (comp nil? second) result))
+  (let [result            (cond-> (into {} (remove (comp nil? second) result))
+                            ;; If not a collection then remove collection properties
+                            ;; to avoid shadowing the "real" properties.
+                            (not= (:type result) "collection")
+                            (dissoc :collection.description :collection.name))
         normalized-result (zipmap (map unqualify-key (keys result)) (vals result))
         id-str            (str (:type normalized-result) "-" (:item_id normalized-result))]
     (-> normalized-result
@@ -100,7 +104,8 @@
          :from      [[(bookmarks-union-query user-id) :bookmark]]
          :left-join [[Card :card] [:= :bookmark.card_id :card.id]
                      [Dashboard :dashboard] [:= :bookmark.dashboard_id :dashboard.id]
-                     [Collection :collection] [:= :bookmark.collection_id :collection.id]
+                     [Collection :collection] [:in :collection.id [:bookmark.collection_id
+                                                                   :dashboard.collection_id]]
                      [App :app] [:= :app.collection_id :collection.id]
                      [BookmarkOrdering :bookmark_ordering] [:and
                                                             [:= :bookmark_ordering.user_id user-id]
