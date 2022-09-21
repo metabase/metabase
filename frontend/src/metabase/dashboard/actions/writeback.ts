@@ -21,7 +21,7 @@ import { ActionsApi } from "metabase/services";
 import type {
   Dashboard,
   DashboardOrderedCard,
-  ActionButtonDashboardCard,
+  ActionDashboardCard,
   ParameterMappedForActionExecution,
 } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
@@ -231,7 +231,7 @@ export const deleteManyRowsFromDataApp = (
 
 export type ExecuteRowActionPayload = {
   dashboard: Dashboard;
-  dashcard: ActionButtonDashboardCard;
+  dashcard: ActionDashboardCard;
   parameters: ParameterMappedForActionExecution[];
   extra_parameters: ParameterMappedForActionExecution[];
 };

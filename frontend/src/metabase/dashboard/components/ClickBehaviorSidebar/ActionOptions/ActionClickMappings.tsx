@@ -3,8 +3,8 @@ import React, { useCallback, useMemo } from "react";
 import ClickMappings from "metabase/dashboard/components/ClickMappings";
 
 import type {
-  ActionButtonDashboardCard,
-  ActionButtonParametersMapping,
+  ActionDashboardCard,
+  ActionParametersMapping,
   ClickBehaviorParameterMapping,
   WritebackAction,
 } from "metabase-types/api";
@@ -27,9 +27,9 @@ interface IntermediateActionClickBehavior {
 
 interface ActionClickMappingsProps {
   action?: WritebackAction;
-  dashcard: ActionButtonDashboardCard;
+  dashcard: ActionDashboardCard;
   parameters: UiParameter[];
-  onChange: (parameterMappings: ActionButtonParametersMapping[] | null) => void;
+  onChange: (parameterMappings: ActionParametersMapping[] | null) => void;
 }
 
 function ActionClickMappings({

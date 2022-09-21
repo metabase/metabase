@@ -2,7 +2,7 @@ import React from "react";
 
 import type { UiParameter } from "metabase/parameters/types";
 import type {
-  ActionButtonDashboardCard,
+  ActionDashboardCard,
   Dashboard,
   DashboardOrderedCard,
   ClickBehavior,
@@ -55,7 +55,7 @@ function ClickBehaviorOptions({
   }
   return (
     <ActionOptions
-      dashcard={dashcard as unknown as ActionButtonDashboardCard}
+      dashcard={dashcard as unknown as ActionDashboardCard}
       parameters={parameters}
     />
   );
