@@ -154,7 +154,7 @@ describe("time", () => {
   });
 
   describe("isValidTimeInterval", () => {
-    it(`is not valid for 0 time spans`, () => {
+    it(`is not valid for 0 time span`, () => {
       expect(isValidTimeInterval(0, "days")).toBeFalsy();
     });
 
