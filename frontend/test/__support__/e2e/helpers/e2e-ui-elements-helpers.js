@@ -83,3 +83,15 @@ export const questionInfoButton = () => {
 export const undo = () => {
   cy.findByTestId("toast-undo").findByText("Undo").click();
 };
+
+export const getDraggableElements = () => {
+  return cy.findAllByTestId(/draggable-item/);
+};
+
+export const moveColumnDown = (column, distance) => {
+  column
+    .trigger("mousedown", 0, 0, { force: true })
+    .trigger("mousemove", 5, 5, { force: true })
+    .trigger("mousemove", 0, distance * 50, { force: true })
+    .trigger("mouseup", 0, distance * 50, { force: true });
+};
