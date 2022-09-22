@@ -13,7 +13,7 @@
            org.apache.commons.io.input.ReaderInputStream))
 
 (defsetting custom-geojson-enabled
-  (deferred-tru "Is custom GeoJSON enabled?")
+  (deferred-tru "Whether or not the use of custom GeoJSON is enabled.")
   :visibility :admin
   :type       :boolean
   :setter     :none
