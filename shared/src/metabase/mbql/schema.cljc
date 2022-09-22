@@ -473,7 +473,7 @@
 
 (declare ArithmeticExpression)
 (declare BooleanExpression)
-(declare DateFunctionExpression)
+(declare DatetimeExpression)
 (declare Aggregation)
 
 (def ^:private NumericExpressionArg
@@ -485,7 +485,7 @@
    (s/recursive #'ArithmeticExpression)
 
    (partial is-clause? date-extract-functions)
-   (s/recursive #'DateFunctionExpression)
+   (s/recursive #'DatetimeExpression)
 
    (partial is-clause? aggregations)
    (s/recursive #'Aggregation)
@@ -528,7 +528,7 @@
    (s/recursive #'StringExpression)
 
    (partial is-clause? date-extract-functions)
-   (s/recursive #'DateFunctionExpression)
+   (s/recursive #'DatetimeExpression)
 
    (partial is-clause? :value)
    value
@@ -638,12 +638,12 @@
 (defclause ^{:requires-features #{:date-extraction}} get-second
   datetime DateTimeExpressionArg)
 
-(def ^:private DateFunctionExpression*
+(def ^:private DatetimeExpression*
   (one-of get-year get-quarter get-month get-day get-day-of-week get-hour get-minute get-second))
 
-(def ^:private DateFunctionExpression
+(def ^:private DatetimeExpression
   "Schema for the definition of a date function expression."
-  (s/recursive #'DateFunctionExpression*))
+  (s/recursive #'DatetimeExpression*))
 
 (declare StringExpression*)
 
@@ -829,7 +829,7 @@
    (partial is-clause? arithmetic-expressions)       ArithmeticExpression
    (partial is-clause? string-expressions)           StringExpression
    (partial is-clause? boolean-expressions)          BooleanExpression
-   (partial is-clause? date+time+timezone-functions) DateFunctionExpression
+   (partial is-clause? date+time+timezone-functions) DatetimeExpression
    (partial is-clause? :case)                        case
    :else                                             Field))
 
