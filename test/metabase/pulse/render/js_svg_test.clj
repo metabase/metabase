@@ -232,19 +232,36 @@
     (testing "A goal line does exist when goal settings are present in the viz-settings"
       (is (= goal-label (second goal-node)))))))
 
-(deftest timelineseries-waterfall-test
-  (let [rows           [[#t "2020" 2]
-                        [#t "2021" 3]]
-        labels         {:left "count" :bottom "year"}
-        settings       (json/generate-string {:y {:prefix   "prefix"
-                                            :decimals 4}})
-        waterfall-type "waterfall"]
-    (testing "It returns bytes"
-      (let [svg-bytes (js-svg/waterfall rows labels settings waterfall-type)]
-        (is (bytes? svg-bytes))))
-    (let [svg-string (.asString (js/execute-fn-name @context "timeseries" rows labels settings waterfall-type (json/generate-string (public-settings/application-colors))))]
-      (testing "it returns a valid svg string (no html in it)"
-        (validate-svg-string :timelineseries-waterfall svg-string)))))
+(deftest waterfall-test
+  (testing "Timeseries Waterfall renders"
+    (let [rows           [[#t "2020" 2]
+                          [#t "2021" 3]]
+          labels         {:left "count" :bottom "year"}
+          settings       (json/generate-string {:y {:prefix   "prefix"
+                                                    :decimals 4}})
+          waterfall-type "timeseries"]
+      (testing "It returns bytes"
+        (let [svg-bytes (js-svg/waterfall rows labels settings waterfall-type)]
+          (is (bytes? svg-bytes))))
+      (let [svg-string (.asString (js/execute-fn-name @context "waterfall"
+                                                      rows labels settings waterfall-type
+                                                      (json/generate-string {})))]
+        (testing "it returns a valid svg string (no html in it)"
+          (validate-svg-string :timelineseries-waterfall svg-string)))))
+  (testing "Categorical Waterfall renders"
+    (let [rows           [["One" 20]
+                          ["Two" 30]]
+          labels         {:left "count" :bottom "process step"}
+          settings       (json/generate-string {})
+          waterfall-type "categorical"]
+      (testing "It returns bytes"
+        (let [svg-bytes (js-svg/waterfall rows labels settings waterfall-type)]
+          (is (bytes? svg-bytes))))
+      (let [svg-string (.asString (js/execute-fn-name @context "waterfall"
+                                                      rows labels settings waterfall-type
+                                                      (json/generate-string {})))]
+        (testing "it returns a valid svg string (no html in it)"
+          (validate-svg-string :categorical-waterfall svg-string))))))
 
 (deftest combo-test
   (let [rows1    [[#t "1998-03-01T00:00:00Z" 2]
