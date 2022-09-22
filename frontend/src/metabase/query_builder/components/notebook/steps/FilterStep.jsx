@@ -23,13 +23,13 @@ export default function FilterStep({
           filter={filter}
           onChangeFilter={newFilter =>
             filter
-              ? filter.replace(newFilter).update(updateQuery)
-              : query.filter(newFilter).update(updateQuery)
+              ? updateQuery(filter.replace(newFilter))
+              : updateQuery(query.filter(newFilter))
           }
         />
       )}
       isLastOpened={isLastOpened}
-      onRemove={filter => filter.remove().update(updateQuery)}
+      onRemove={filter => updateQuery(filter.remove())}
     />
   );
 }

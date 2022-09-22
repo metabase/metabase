@@ -256,6 +256,7 @@ describe("scenarios > admin > people", () => {
         cy.request("PUT", "/api/setting", {
           "google-auth-client-id": "fake-id.apps.googleusercontent.com",
           "google-auth-auto-create-accounts-domain": "metabase.com",
+          "google-auth-enabled": true,
         });
       });
 

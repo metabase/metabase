@@ -20,9 +20,12 @@ export default function SortStep({
           className="flex align-center"
           onClick={e => {
             e.stopPropagation();
-            query
-              .updateSort(index, [sort[0] === "asc" ? "desc" : "asc", sort[1]])
-              .update(updateQuery);
+            updateQuery(
+              query.updateSort(index, [
+                sort[0] === "asc" ? "desc" : "asc",
+                sort[1],
+              ]),
+            );
           }}
         >
           <Icon
@@ -38,13 +41,13 @@ export default function SortStep({
           sort={sort}
           onChangeSort={newSort =>
             sort
-              ? query.updateSort(index, newSort).update(updateQuery)
-              : query.sort(newSort).update(updateQuery)
+              ? updateQuery(query.updateSort(index, newSort))
+              : updateQuery(query.sort(newSort))
           }
         />
       )}
       isLastOpened={isLastOpened}
-      onRemove={(sort, index) => query.removeSort(index).update(updateQuery)}
+      onRemove={(sort, index) => updateQuery(query.removeSort(index))}
     />
   );
 }

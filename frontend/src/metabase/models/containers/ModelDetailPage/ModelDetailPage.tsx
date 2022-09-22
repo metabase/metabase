@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import _ from "underscore";
 import { connect } from "react-redux";
 
@@ -7,6 +7,7 @@ import { useOnMount } from "metabase/hooks/use-on-mount";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import Questions from "metabase/entities/questions";
+import Tables from "metabase/entities/tables";
 
 import { loadMetadataForCard } from "metabase/query_builder/actions";
 
@@ -17,6 +18,7 @@ import type { Card as LegacyCardType } from "metabase-types/types/Card";
 import type { State } from "metabase-types/store";
 
 import Question from "metabase-lib/lib/Question";
+import Table from "metabase-lib/lib/metadata/Table";
 
 type OwnProps = {
   params: {
@@ -34,6 +36,7 @@ type StateProps = {
 
 type DispatchProps = {
   loadMetadataForCard: (card: LegacyCardType) => void;
+  fetchTableForeignKeys: (params: { id: Table["id"] }) => void;
   onChangeModel: (card: Card) => void;
 };
 
@@ -47,15 +50,41 @@ function mapStateToProps(state: State, props: OwnProps & EntityLoaderProps) {
 
 const mapDispatchToProps = {
   loadMetadataForCard,
+  fetchTableForeignKeys: Tables.actions.fetchForeignKeys,
   onChangeModel: Questions.actions.update,
 };
 
-function ModelDetailPage({ model, loadMetadataForCard, onChangeModel }: Props) {
+function ModelDetailPage({
+  model,
+  loadMetadataForCard,
+  fetchTableForeignKeys,
+  onChangeModel,
+}: Props) {
+  const [hasFetchedTableMetadata, setHasFetchedTableMetadata] = useState(false);
+
+  const mainTable = useMemo(
+    () => (model.isStructured() ? model.query().sourceTable() : null),
+    [model],
+  );
+
   useOnMount(() => {
     loadMetadataForCard(model.card());
   });
 
-  return <ModelDetailPageView model={model} onChangeModel={onChangeModel} />;
+  useEffect(() => {
+    if (mainTable && !hasFetchedTableMetadata) {
+      setHasFetchedTableMetadata(true);
+      fetchTableForeignKeys({ id: mainTable.id });
+    }
+  }, [mainTable, hasFetchedTableMetadata, fetchTableForeignKeys]);
+
+  return (
+    <ModelDetailPageView
+      model={model}
+      mainTable={mainTable}
+      onChangeModel={onChangeModel}
+    />
+  );
 }
 
 export default _.compose(

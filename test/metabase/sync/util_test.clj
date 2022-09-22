@@ -5,6 +5,7 @@
             [java-time :as t]
             [metabase.driver :as driver]
             [metabase.models.database :as database :refer [Database]]
+            [metabase.models.interface :as mi]
             [metabase.models.table :refer [Table]]
             [metabase.models.task-history :refer [TaskHistory]]
             [metabase.sync :as sync]
@@ -113,7 +114,7 @@
         step-2-name  (tu/random-name)
         sync-steps   [(sync-util/create-sync-step step-1-name (fn [_] (Thread/sleep 10) {:foo "bar"}))
                       (sync-util/create-sync-step step-2-name (fn [_] (Thread/sleep 10)))]
-        mock-db      (database/map->DatabaseInstance {:name "test", :id 1, :engine :h2})
+        mock-db      (mi/instance Database {:name "test", :id 1, :engine :h2})
         [results]    (:operation-results
                       (call-with-operation-info #(sync-util/run-sync-operation process-name mock-db sync-steps)))]
     (testing "valid operation metadata?"
@@ -151,7 +152,7 @@
                   " contains the important parts and it doesn't throw an exception")
       (let [step-log-text (tu/random-name)
             results       (#'sync-util/make-log-sync-summary-str operation
-                                                                 (database/map->DatabaseInstance {:name db-name})
+                                                                 (mi/instance Database {:name db-name})
                                                                  (create-test-sync-summary step-name
                                                                                            (constantly step-log-text)))]
         (testing "has-operation?"
@@ -175,7 +176,7 @@
     (testing (str "The `log-summary-fn` part of step info is optional as not all steps have it. Validate that we"
                   " properly handle that case")
       (let [results (#'sync-util/make-log-sync-summary-str operation
-                                                           (database/map->DatabaseInstance {:name db-name})
+                                                           (mi/instance Database {:name db-name})
                                                            (create-test-sync-summary step-name nil))]
         (testing "has-operation?"
           (is (= true
