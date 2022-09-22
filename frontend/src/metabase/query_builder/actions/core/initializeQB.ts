@@ -305,6 +305,31 @@ function handleDispatchInitializeQB(
   });
 }
 
+function handleModesOtherThanNotebook(
+  question: Question,
+  finalCard: Card,
+  hasCard?: string | number,
+  uiControls: UIControls,
+  dispatch: Dispatch,
+) {
+  if (uiControls.queryBuilderMode !== "notebook") {
+    if (question.canRun()) {
+      // Timeout to allow Parameters widget to set parameterValues
+      setTimeout(
+        () => dispatch(runQuestionQuery({ shouldUpdateUrl: false })),
+        0,
+      );
+    }
+    dispatch(
+      updateUrl(finalCard, {
+        replaceState: true,
+        preserveParameters: hasCard,
+        objectId,
+      }),
+    );
+  }
+}
+
 async function handleQBInit(
   dispatch: Dispatch,
   getState: GetState,
@@ -388,22 +413,13 @@ async function handleQBInit(
     dispatch,
   );
 
-  if (uiControls.queryBuilderMode !== "notebook") {
-    if (question.canRun()) {
-      // Timeout to allow Parameters widget to set parameterValues
-      setTimeout(
-        () => dispatch(runQuestionQuery({ shouldUpdateUrl: false })),
-        0,
-      );
-    }
-    dispatch(
-      updateUrl(finalCard, {
-        replaceState: true,
-        preserveParameters: hasCard,
-        objectId,
-      }),
-    );
-  }
+  handleModesOtherThanNotebook(
+    question,
+    finalCard,
+    hasCard,
+    uiControls,
+    dispatch,
+  );
 }
 
 export const initializeQB =
