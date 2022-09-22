@@ -276,7 +276,7 @@ async function handleNativeQuestion(
 }
 
 function handleDispatchInitializeQB(
-  originalCard: Card,
+  originalCard: Card | undefined,
   finalCard: Card,
   objectId: QueryParams["objectId"],
   location: LocationDescriptorObject,
