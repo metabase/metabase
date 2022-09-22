@@ -352,7 +352,7 @@
   #{:microsecond :millisecond :second :minute :hour})
 
 (defrecord AtTimeZone
-  ;; record type to support applying Presto's `AT TIME ZONE` operator to an expression
+  ;; record type to support applying BigQuery's `AT TIME ZONE` operator to an expression
   [expr zone]
   hformat/ToSql
   (to-sql [_]
