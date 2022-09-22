@@ -1,6 +1,9 @@
 import _ from "underscore";
 
-import { cardIsEquivalent } from "metabase/meta/Card";
+import {
+  cardIsEquivalent,
+  cardParametersAreEquivalent,
+} from "metabase/meta/Card";
 
 import { DashboardApi } from "metabase/services";
 
@@ -38,18 +41,20 @@ function shouldPropagateDashboardParameters({
   deserializedCard: Card;
   originalCard?: Card;
 }): boolean {
-  return Boolean(
-    // Either the card is saved and deserializedCard has parameters
-    (cardId && deserializedCard.parameters) ||
-      // Or deserializedCard is equivalent to originalCard, except for its parameters
-      (originalCard &&
-        cardIsEquivalent(deserializedCard, originalCard, {
-          checkParameters: false,
-        }) &&
-        !cardIsEquivalent(deserializedCard, originalCard, {
-          checkParameters: true,
-        })),
-  );
+  // Either the card is saved and deserializedCard has parameters
+  if (cardId && deserializedCard.parameters) {
+    return true;
+  } else if (!originalCard) {
+    return false;
+  } else {
+    // Or deserializedCard is equivalent to originalCard, except for its parameters
+    const equivalentCards = cardIsEquivalent(deserializedCard, originalCard);
+    const differentParameters = !cardParametersAreEquivalent(
+      deserializedCard,
+      originalCard,
+    );
+    return equivalentCards && differentParameters;
+  }
 }
 
 async function verifyMatchingDashcardAndParameters({
