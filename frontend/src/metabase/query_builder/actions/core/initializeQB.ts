@@ -242,6 +242,25 @@ export async function updateTemplateTagNames(
   return query;
 }
 
+function handleSavedQuestion(
+  question: Question,
+  uiControls: UIControls,
+  getState: GetState,
+) {
+  if (question.isSaved()) {
+    // Don't set viz automatically for saved questions
+    question = question.lockDisplay();
+
+    const currentUser = getUser(getState());
+    if (currentUser.is_qbnewb) {
+      uiControls.isShowingNewbModal = true;
+      MetabaseAnalytics.trackStructEvent("QueryBuilder", "Show Newb Modal");
+    }
+  }
+
+  return question;
+}
+
 async function handleNativeQuestion(
   question: Question,
   getState: GetState,
@@ -323,17 +342,8 @@ async function handleQBInit(
   const metadata = getMetadata(getState());
 
   let question = new Question(card, metadata);
-  if (question.isSaved()) {
-    // Don't set viz automatically for saved questions
-    question = question.lockDisplay();
 
-    const currentUser = getUser(getState());
-    if (currentUser.is_qbnewb) {
-      uiControls.isShowingNewbModal = true;
-      MetabaseAnalytics.trackStructEvent("QueryBuilder", "Show Newb Modal");
-    }
-  }
-
+  question = handleSavedQuestion(question, uiControls, getState);
   question = await handleNativeQuestion(question, getState, dispatch);
 
   const finalCard = question.card();
