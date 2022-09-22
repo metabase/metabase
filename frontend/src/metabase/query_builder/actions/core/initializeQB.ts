@@ -237,6 +237,20 @@ export async function updateTemplateTagNames(
   return query;
 }
 
+async function handleNativeQuestion(
+  question: Question,
+  getState: GetState,
+  dispatch: Dispatch,
+) {
+  if (question.isNative() && !question.query().readOnly()) {
+    const query = question.query() as NativeQuery;
+    const newQuery = await updateTemplateTagNames(query, getState, dispatch);
+    question = question.setQuery(newQuery);
+  }
+
+  return question;
+}
+
 async function handleQBInit(
   dispatch: Dispatch,
   getState: GetState,
@@ -318,11 +332,7 @@ async function handleQBInit(
     }
   }
 
-  if (question.isNative() && !question.query().readOnly()) {
-    const query = question.query() as NativeQuery;
-    const newQuery = await updateTemplateTagNames(query, getState, dispatch);
-    question = question.setQuery(newQuery);
-  }
+  question = await handleNativeQuestion(question, getState, dispatch);
 
   const finalCard = question.card();
 
