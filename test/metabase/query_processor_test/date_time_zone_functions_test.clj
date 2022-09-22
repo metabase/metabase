@@ -5,16 +5,18 @@
             [metabase.util.date-2 :as u.date]))
 
 (defn test-date-extract
-  [{:keys [aggregation breakout expressions fields limit]}]
+  [{:keys [aggregation breakout expressions fields filter limit]}]
   (if breakout
     (->> (mt/run-mbql-query times {:expressions expressions
                                    :aggregation aggregation
                                    :limit       limit
+                                   :filter      filter
                                    :breakout    breakout})
          (mt/formatted-rows [int int]))
     (->> (mt/run-mbql-query times {:expressions expressions
                                    :aggregation aggregation
                                    :limit       limit
+                                   :filter      filter
                                    :fields      fields})
          (mt/formatted-rows [int]))))
 
@@ -54,7 +56,7 @@
 
 (deftest extraction-function-tests
   (mt/dataset times-mixed
-    (mt/test-drivers (disj (mt/normal-drivers-with-feature :date-functions) :mongo)
+    (mt/test-drivers (disj (mt/normal-drivers-with-feature :date-extraction) :mongo)
       (testing "with datetime columns"
         (doseq [[col-type field-id] [[:datetime (mt/id :times :dt)] [:text-as-datetime (mt/id :times :as_dt)]]
                 op                  [:get-year :get-quarter :get-month :get-day :get-day-of-week
@@ -133,3 +135,37 @@
                      :breakout    [[:expression "expr"]]}]]]
             (testing (format "%s function works as expected on %s column for driver %s" op col-type driver/*driver*)
               (is (= (set expected) (set (test-date-extract query)))))))))))
+
+
+(deftest date-extraction-with-filter-expresion-tests
+  (mt/test-drivers (mt/normal-drivers-with-feature :date-extraction)
+    (mt/dataset times-mixed
+      (doseq [[title expected query]
+              [["Nested expression"
+                [[2004]]
+                {:expressions {"expr" [:abs [:get-year [:field (mt/id :times :dt) nil]]]}
+                 :filter      [:= [:field (mt/id :times :index) nil] 1]
+                 :fields      [[:expression "expr"]]}]
+
+               ["Nested with arithmetic"
+                [[4008]]
+                {:expressions {"expr" [:* [:get-year [:field (mt/id :times :dt) nil]] 2]}
+                 :filter      [:= [:field (mt/id :times :index) nil] 1]
+                 :fields      [[:expression "expr"]]}]
+
+               ["Filter using the extracted result - equality"
+                [[1]]
+                {:filter [:= [:get-year [:field (mt/id :times :dt) nil]] 2004]
+                 :fields [[:field (mt/id :times :index) nil]]}]
+
+               ["Filter using the extracted result - comparable"
+                [[1]]
+                {:filter [:< [:get-year [:field (mt/id :times :dt) nil]] 2005]
+                 :fields [[:field (mt/id :times :index) nil]]}]
+
+               ["Nested expression in fitler"
+                [[1]]
+                {:filter [:= [:* [:get-year [:field (mt/id :times :dt) nil]] 2] 4008]
+                 :fields [[:field (mt/id :times :index) nil]]}]]]
+        (testing title
+          (is (= expected (test-date-extract query))))))))

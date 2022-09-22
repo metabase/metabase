@@ -462,8 +462,18 @@
 
 (def ^:private aggregations #{:sum :avg :stddev :var :median :percentile :min :max :cum-count :cum-sum :count-where :sum-where :share :distinct :metric :aggregation-options :count})
 
+(def date-extract-functions
+  "Functions to extract components of a date, datetime."
+  #{;; extraction functions (get some component of a given temporal value/column)
+    :get-year :get-quarter :get-month :get-day :get-day-of-week :get-hour :get-minute :get-second})
+
+(def date+time+timezone-functions
+  "Date, time, and timezone related functions."
+  (set/union date-extract-functions))
+
 (declare ArithmeticExpression)
 (declare BooleanExpression)
+(declare DateFunctionExpression)
 (declare Aggregation)
 
 (def ^:private NumericExpressionArg
@@ -474,6 +484,9 @@
    (partial is-clause? arithmetic-expressions)
    (s/recursive #'ArithmeticExpression)
 
+   (partial is-clause? date-extract-functions)
+   (s/recursive #'DateFunctionExpression)
+
    (partial is-clause? aggregations)
    (s/recursive #'Aggregation)
 
@@ -482,6 +495,17 @@
 
    :else
    Field))
+
+(def ^:private DateTimeExpressionArg
+  (s/conditional
+    (partial is-clause? aggregations)
+    (s/recursive #'Aggregation)
+
+    (partial is-clause? :value)
+    value
+
+    :else
+    Field))
 
 (def ^:private ExpressionArg
   (s/conditional
@@ -502,6 +526,9 @@
 
    (partial is-clause? string-expressions)
    (s/recursive #'StringExpression)
+
+   (partial is-clause? date-extract-functions)
+   (s/recursive #'DateFunctionExpression)
 
    (partial is-clause? :value)
    value
@@ -587,38 +614,29 @@
   "Schema for the definition of an arithmetic expression."
   (s/recursive #'ArithmeticExpression*))
 
-(def date-extract-functions
-  "Functions to extract components of a date, datetime."
-  #{;; extraction functions (get some component of a given temporal value/column)
-    :get-year :get-quarter :get-month :get-day :get-day-of-week :get-hour :get-minute :get-second})
+(defclause ^{:requires-features #{:date-extraction}} get-year
+  date DateTimeExpressionArg)
 
-(def date+time+timezone-functions
-  "Date, time, and timezone related functions."
-  (set/union date-extract-functions))
+(defclause ^{:requires-features #{:date-extraction}} get-quarter
+  date DateTimeExpressionArg)
 
-(defclause ^{:requires-features #{:date-functions}} get-year
-  date StringExpressionArg)
+(defclause ^{:requires-features #{:date-extraction}} get-month
+  date DateTimeExpressionArg)
 
-(defclause ^{:requires-features #{:date-functions}} get-quarter
-  date StringExpressionArg)
+(defclause ^{:requires-features #{:date-extraction}} get-day
+  date DateTimeExpressionArg)
 
-(defclause ^{:requires-features #{:date-functions}} get-month
-  date StringExpressionArg)
+(defclause ^{:requires-features #{:date-extraction}} get-day-of-week
+  date DateTimeExpressionArg)
 
-(defclause ^{:requires-features #{:date-functions}} get-day
-  date StringExpressionArg)
+(defclause ^{:requires-features #{:date-extraction}} get-hour
+  datetime DateTimeExpressionArg)
 
-(defclause ^{:requires-features #{:date-functions}} get-day-of-week
-  date StringExpressionArg)
+(defclause ^{:requires-features #{:date-extraction}} get-minute
+  datetime DateTimeExpressionArg)
 
-(defclause ^{:requires-features #{:date-functions}} get-hour
-  datetime StringExpressionArg)
-
-(defclause ^{:requires-features #{:date-functions}} get-minute
-  datetime StringExpressionArg)
-
-(defclause ^{:requires-features #{:date-functions}} get-second
-  datetime StringExpressionArg)
+(defclause ^{:requires-features #{:date-extraction}} get-second
+  datetime DateTimeExpressionArg)
 
 (def ^:private DateFunctionExpression*
   (one-of get-year get-quarter get-month get-day get-day-of-week get-hour get-minute get-second))
@@ -814,7 +832,6 @@
    (partial is-clause? date+time+timezone-functions) DateFunctionExpression
    (partial is-clause? :case)                        case
    :else                                             Field))
-
 
 ;;; -------------------------------------------------- Aggregations --------------------------------------------------
 
