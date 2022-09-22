@@ -16,7 +16,6 @@ import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settin
 import { getCardUiParameters } from "metabase/parameters/utils/cards";
 import { normalizeParameterValue } from "metabase/parameters/utils/parameter-values";
 import { isPK } from "metabase/lib/schema_metadata";
-import Utils from "metabase/lib/utils";
 
 import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
 
@@ -369,13 +368,74 @@ export function normalizeQuery(query, tableMetadata) {
   return query;
 }
 
+function isQuestionEditable(question) {
+  return !question?.query().readOnly();
+}
+
+function areQueriesEqual(queryA, queryB, tableMetadata) {
+  const normalizedQueryA = normalizeQuery(queryA, tableMetadata);
+  const normalizedQueryB = normalizeQuery(queryB, tableMetadata);
+  return _.isEqual(normalizedQueryA, normalizedQueryB);
+}
+
+function areDatasetsEquivalent({
+  originalQuestion,
+  lastRunQuestion,
+  currentQuestion,
+  tableMetadata,
+}) {
+  if (!originalQuestion?.isDataset()) {
+    return false;
+  }
+
+  // When viewing a model, its dataset_query is swapped with a clean query using the dataset as a source table
+  // (it's necessary for datasets to behave like tables opened in simple mode)
+  // We need to escape the isDirty check as it will always be true in this case,
+  // and the page will always be covered with a 'rerun' overlay.
+  // Once the dataset_query changes, the question will loose the "dataset" flag and it'll work normally
+  const isCurrentEquivalentToOriginal =
+    currentQuestion && isAdHocModelQuestion(currentQuestion, originalQuestion);
+
+  // When editing a model, the `currentQuestion` reverts to the form of the original question,
+  // but the model query might've already been run in its "ad-hoc" form.
+  const isLastRunUnchangedFromOriginal =
+    lastRunQuestion &&
+    isAdHocModelQuestion(lastRunQuestion, originalQuestion) &&
+    areQueriesEqual(
+      currentQuestion.datasetQuery(),
+      originalQuestion.datasetQuery(),
+      tableMetadata,
+    );
+
+  return isCurrentEquivalentToOriginal || isLastRunUnchangedFromOriginal;
+}
+
+function areQueriesEquivalent({
+  originalQuestion,
+  lastRunQuestion,
+  currentQuestion,
+  tableMetadata,
+}) {
+  return (
+    areDatasetsEquivalent({
+      originalQuestion,
+      lastRunQuestion,
+      currentQuestion,
+      tableMetadata,
+    }) ||
+    areQueriesEqual(
+      lastRunQuestion?.datasetQuery(),
+      currentQuestion?.datasetQuery(),
+      tableMetadata,
+    )
+  );
+}
+
 export const getIsResultDirty = createSelector(
   [
     getQuestion,
     getOriginalQuestion,
     getLastRunQuestion,
-    getLastRunDatasetQuery,
-    getNextRunDatasetQuery,
     getLastRunParameterValues,
     getNextRunParameterValues,
     getTableMetadata,
@@ -384,37 +444,22 @@ export const getIsResultDirty = createSelector(
     question,
     originalQuestion,
     lastRunQuestion,
-    lastDatasetQuery,
-    nextDatasetQuery,
     lastParameters,
     nextParameters,
     tableMetadata,
   ) => {
-    // When viewing a model, its dataset_query is swapped with a clean query using the dataset as a source table
-    // (it's necessary for datasets to behave like tables opened in simple mode)
-    // We need to escape the isDirty check as it will always be true in this case,
-    // and the page will always be covered with a 'rerun' overlay.
-    // Once the dataset_query changes, the question will loose the "dataset" flag and it'll work normally
-    if (question && isAdHocModelQuestion(question, originalQuestion)) {
-      return false;
-    }
+    const haveParametersChanged = !_.isEqual(lastParameters, nextParameters);
 
-    if (lastRunQuestion && isAdHocModelQuestion(lastRunQuestion, question)) {
-      return false;
-    }
-
-    const hasParametersChange = !Utils.equals(lastParameters, nextParameters);
-    if (hasParametersChange) {
-      return true;
-    }
-
-    if (question && question.query().readOnly()) {
-      return false;
-    }
-
-    lastDatasetQuery = normalizeQuery(lastDatasetQuery, tableMetadata);
-    nextDatasetQuery = normalizeQuery(nextDatasetQuery, tableMetadata);
-    return !Utils.equals(lastDatasetQuery, nextDatasetQuery);
+    return (
+      haveParametersChanged ||
+      (isQuestionEditable(question) &&
+        !areQueriesEquivalent({
+          originalQuestion,
+          lastRunQuestion,
+          currentQuestion: question,
+          tableMetadata,
+        }))
+    );
   },
 );
 
