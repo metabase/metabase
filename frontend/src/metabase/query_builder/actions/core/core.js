@@ -18,6 +18,7 @@ import { openUrl } from "metabase/redux/app";
 import Questions from "metabase/entities/questions";
 import Databases from "metabase/entities/databases";
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
+import Query from "metabase-lib/lib/queries/Query";
 
 import { trackNewQuestionSaved } from "../../analytics";
 import {
@@ -160,6 +161,10 @@ export const navigateToNewCardInsideQB = createThunkAction(
 // DEPRECATED, still used in a couple places
 export const setDatasetQuery =
   (datasetQuery, options) => (dispatch, getState) => {
+    if (datasetQuery instanceof Query) {
+      datasetQuery = datasetQuery.datasetQuery();
+    }
+
     const question = getQuestion(getState());
     dispatch(updateQuestion(question.setDatasetQuery(datasetQuery), options));
   };

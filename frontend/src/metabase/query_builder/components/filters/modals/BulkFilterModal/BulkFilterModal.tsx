@@ -36,12 +36,14 @@ import { fixBetweens, getSearchHits } from "./utils";
 
 export interface BulkFilterModalProps {
   question: Question;
+  onQueryChange: (query: StructuredQuery) => void;
   onClose?: () => void;
 }
 
 const BulkFilterModal = ({
   question,
   onClose,
+  onQueryChange,
 }: BulkFilterModalProps): JSX.Element | null => {
   const [query, setQuery] = useState(getQuery(question));
   const [isChanged, setIsChanged] = useState(false);
@@ -87,9 +89,9 @@ const BulkFilterModal = ({
 
   const handleApplyQuery = useCallback(() => {
     const preCleanedQuery = fixBetweens(query);
-    preCleanedQuery.clean().update(undefined, { run: true });
+    onQueryChange(preCleanedQuery.clean());
     onClose?.();
-  }, [query, onClose]);
+  }, [query, onClose, onQueryChange]);
 
   const clearFilters = () => {
     setQuery(query.clearFilters());
