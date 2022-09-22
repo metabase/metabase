@@ -249,6 +249,11 @@ class StructuredQueryInner extends AtomicQuery {
     return this.query()?.["source-table"];
   }
 
+  sourceTable(): Table | null | undefined {
+    const tableId = this.sourceTableId();
+    return tableId != null ? this._metadata.table(tableId) : null;
+  }
+
   /**
    * @returns a new query with the provided Table ID set.
    */

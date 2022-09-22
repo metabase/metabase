@@ -7,8 +7,8 @@ import Actions from "metabase/entities/actions";
 import { updateButtonActionMapping } from "metabase/dashboard/actions";
 
 import type {
-  ActionButtonDashboardCard,
-  ActionButtonParametersMapping,
+  ActionDashboardCard,
+  ActionParametersMapping,
   WritebackAction,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -21,7 +21,7 @@ import ActionOptionItem from "./ActionOptionItem";
 import { ClickMappingsContainer } from "./ActionOptions.styled";
 
 interface ActionOptionsOwnProps {
-  dashcard: ActionButtonDashboardCard;
+  dashcard: ActionDashboardCard;
   parameters: UiParameter[];
 }
 
@@ -30,7 +30,7 @@ interface ActionOptionsDispatchProps {
     dashCardId: number,
     settings: {
       action_id?: number | null;
-      parameter_mappings?: ActionButtonParametersMapping[] | null;
+      parameter_mappings?: ActionParametersMapping[] | null;
     },
   ) => void;
 }
@@ -67,7 +67,7 @@ function ActionOptions({
   );
 
   const handleParameterMappingChange = useCallback(
-    (parameter_mappings: ActionButtonParametersMapping[] | null) => {
+    (parameter_mappings: ActionParametersMapping[] | null) => {
       onUpdateButtonActionMapping(dashcard.id, {
         parameter_mappings,
       });

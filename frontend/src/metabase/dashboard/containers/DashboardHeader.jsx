@@ -109,8 +109,8 @@ class DashboardHeader extends Component {
     this.props.addTextDashCardToDashboard({ dashId: this.props.dashboard.id });
   }
 
-  onAddActionButton() {
-    this.props.addActionButtonDashCardToDashboard({
+  onAddAction() {
+    this.props.addActionDashCardToDashboard({
       dashId: this.props.dashboard.id,
     });
   }
@@ -239,12 +239,12 @@ class DashboardHeader extends Component {
 
       if (isAdmin && dashboard.is_app_page) {
         buttons.push(
-          <Tooltip key="add-action-button" tooltip={t`Add action button`}>
+          <Tooltip key="add-action" tooltip={t`Add action`}>
             <a
-              data-metabase-event="Dashboard;Add Action Button"
-              key="add-action-button"
+              data-metabase-event="Dashboard;Add Action"
+              key="add-action"
               className="text-brand-hover cursor-pointer"
-              onClick={() => this.onAddActionButton()}
+              onClick={() => this.onAddAction()}
             >
               <DashboardHeaderButton>
                 <Icon name="play" size={18} />
