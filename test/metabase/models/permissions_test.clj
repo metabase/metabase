@@ -674,16 +674,16 @@
   (testing "A \"/\" permission grants all dataset permissions"
     (mt/with-temp Database [{db-id :id}]
       (let [{:keys [group_id]} (db/select-one Permissions :object "/")]
-        (is (= {db-id {:data       {:native  :write
-                                    :schemas :all}
-                       :download   {:native  :full
-                                    :schemas :full}
-                       :data-model {:schemas :all}
-                       :details    :yes
-                       :execute    :all}}
+        (is (= {db-id    {:data       {:native  :write
+                                       :schemas :all}
+                          :download   {:native  :full
+                                       :schemas :full}
+                          :data-model {:schemas :all}
+                          :details    :yes}
+                :execute :all}
                (-> (perms/data-perms-graph)
                    (get-in [:groups group_id])
-                   (select-keys [db-id]))))))))
+                   (select-keys [db-id :execute]))))))))
 
 (deftest update-graph-validate-db-perms-test
   (testing "Check that validation of DB `:schemas` and `:native` perms doesn't fail if only one of them changes"

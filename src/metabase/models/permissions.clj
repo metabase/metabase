@@ -749,16 +749,12 @@
    "Valid details perms graph for a database"))
 
 (def ^:private StrictDBPermissionsGraph
-  (s/conditional
-   :execute
-   {:execute ExecutePermissionsGraph}
-
-   :else
-   {su/IntGreaterThanZero {(s/optional-key :data) StrictDataPermissionsGraph
-                           (s/optional-key :download) DownloadPermissionsGraph
-                           (s/optional-key :data-model) DataModelPermissionsGraph
-                           (s/optional-key :details) DetailsPermissions
-                           (s/optional-key :execute) ExecutePermissionsGraph}}))
+  {(s/optional-key :execute) ExecutePermissionsGraph
+   su/IntGreaterThanZero {(s/optional-key :data) StrictDataPermissionsGraph
+                          (s/optional-key :download) DownloadPermissionsGraph
+                          (s/optional-key :data-model) DataModelPermissionsGraph
+                          (s/optional-key :details) DetailsPermissions
+                          (s/optional-key :execute) ExecutePermissionsGraph}})
 
 (def ^:private StrictPermissionsGraph
   {:revision s/Int
@@ -773,13 +769,14 @@
   "Handle '/' permission"
   [db-ids]
   (reduce (fn [g db-id]
-            (assoc g db-id {:data       {:native  :write
-                                         :schemas :all}
-                            :download   {:native  :full
-                                         :schemas :full}
-                            :data-model {:schemas :all}
-                            :details    :yes
-                            :execute    :all}))
+            (assoc g
+                   db-id    {:data       {:native  :write
+                                          :schemas :all}
+                             :download   {:native  :full
+                                          :schemas :full}
+                             :data-model {:schemas :all}
+                             :details    :yes}
+                   :execute :all))
           {}
           db-ids))
 
@@ -789,7 +786,7 @@
   []
   (let [permissions     (db/select [Permissions [:group_id :group-id] [:object :path]]
                                    {:where [:or
-                                            [:= :object (hx/literal "/")]
+                                            [:in :object [(hx/literal "/") (hx/literal "/execute/")]]
                                             [:like :object (hx/literal "%/db/%")]]})
         db-ids          (delay (db/select-ids 'Database))
         group-id->paths (reduce
@@ -800,9 +797,11 @@
         group-id->graph (m/map-vals
                          (fn [paths]
                            (let [permissions-graph (perms-parse/permissions->graph paths)]
-                             (if (= :all permissions-graph)
+                             (if (= permissions-graph :all)
                                (all-permissions @db-ids)
-                               (:db permissions-graph))))
+                               (cond-> (:db permissions-graph)
+                                 (= (get permissions-graph :execute) :all)
+                                 (assoc :execute :all)))))
                          group-id->paths)]
     {:revision (perms-revision/latest-id)
      :groups   group-id->graph}))
