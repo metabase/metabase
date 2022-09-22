@@ -26,6 +26,7 @@ import { StyledButton } from "./ActionButton.styled";
 
 import DefaultActionButton from "./DefaultActionButton";
 import ImplicitActionButton from "./ImplicitActionButton";
+import ActionForm from "./ActionForm";
 
 interface ActionProps extends VisualizationProps {
   dashcard: ActionDashboardCard;
@@ -44,6 +45,11 @@ function ActionComponent({
   onVisualizationClick,
   parameterValues,
 }: ActionProps) {
+  const dashcardSettings = dashcard.visualization_settings;
+  const actionSettings = dashcard.action?.visualization_settings;
+  const actionDisplayType =
+    dashcardSettings?.actionDisplayType ?? actionSettings?.type ?? "modal";
+
   const dashcardParamValues = useMemo(
     () => getDashcardParamValues(dashcard, parameterValues),
     [dashcard, parameterValues],
@@ -59,6 +65,9 @@ function ActionComponent({
     );
   }, [dashcard, dashcardParamValues]);
 
+  const shouldDisplayButton =
+    actionDisplayType !== "inline" || !missingParameters.length;
+
   const onSubmit = useCallback(
     (extra_parameters: ArbitraryParameterForActionExecution[]) =>
       executeRowAction({
@@ -67,23 +76,33 @@ function ActionComponent({
         parameters: dashcardParamValues,
         extra_parameters,
         dispatch,
-        shouldToast: true,
+        shouldToast: shouldDisplayButton,
       }),
-    [dashboard, dashcard, dashcardParamValues, dispatch],
+    [dashboard, dashcard, dashcardParamValues, dispatch, shouldDisplayButton],
   );
 
   if (isImplicitActionButton(dashcard)) {
     return <ImplicitActionButton isSettings={isSettings} settings={settings} />;
   }
 
+  if (shouldDisplayButton) {
+    return (
+      <DefaultActionButton
+        onSubmit={onSubmit}
+        missingParameters={missingParameters}
+        isSettings={isSettings}
+        settings={settings}
+        getExtraDataForClick={getExtraDataForClick}
+        onVisualizationClick={onVisualizationClick}
+      />
+    );
+  }
+
   return (
-    <DefaultActionButton
+    <ActionForm
       onSubmit={onSubmit}
       missingParameters={missingParameters}
-      isSettings={isSettings}
-      settings={settings}
-      getExtraDataForClick={getExtraDataForClick}
-      onVisualizationClick={onVisualizationClick}
+      action={dashcard.action as WritebackQueryAction}
     />
   );
 }
