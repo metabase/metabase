@@ -616,7 +616,8 @@
               "2018-04-18"
 
               ;; TIMEZONE FIXME — Busted
-              (= driver/*driver* :vertica)
+              (or (= driver/*driver* :vertica)
+                  (= driver/*driver* :bigquery))
               "2018-04-17T00:00:00-07:00"
 
               (qp.test/supports-report-timezone? driver/*driver*)
