@@ -43,7 +43,7 @@
 (defmethod driver/database-supports? [:mysql :nested-field-columns] [_ _ database]
   (or (get-in database [:details :json-unfolding]) true))
 
-(defmethod driver/database-supports? [:mysql :persist-models]       [_driver _feat _db] true)
+(defmethod driver/database-supports? [:mysql :persist-models] [_driver _feat _db] true)
 
 (defmethod driver/database-supports? [:mysql :persist-models-enabled]
   [_driver _feat db]
@@ -241,34 +241,28 @@
   If it doesn't support the ordinary SQL standard type, then we coerce it to a different type that MySQL does support here"
   {"integer"          "signed"
    "text"             "char"
-   "double precision" "double"})
+   "double precision" "double"
+   "bigint"           "unsigned"})
 
 (defmethod sql.qp/json-query :mysql
   [_ unwrapped-identifier stored-field]
   (letfn [(handle-name [x] (str "\"" (if (number? x) (str x) (name x)) "\""))]
-    (let [field-type        (:database_type stored-field)
-          field-type        (get database-type->mysql-cast-type-name field-type field-type)
-          nfc-path          (:nfc_path stored-field)
-          parent-identifier (field/nfc-field->parent-identifier unwrapped-identifier stored-field)
-          jsonpath-query    (format "$.%s" (str/join "." (map handle-name (rest nfc-path))))]
+    (let [field-type            (:database_type stored-field)
+          field-type            (get database-type->mysql-cast-type-name field-type field-type)
+          nfc-path              (:nfc_path stored-field)
+          parent-identifier     (field/nfc-field->parent-identifier unwrapped-identifier stored-field)
+          jsonpath-query        (format "$.%s" (str/join "." (map handle-name (rest nfc-path))))
+          json-extract+jsonpath (hsql/call :json_extract (hsql/raw (hformat/to-sql parent-identifier)) jsonpath-query)]
       (case field-type
         ;; If we see JSON datetimes we expect them to be in ISO8601. However, MySQL expects them as something different.
         ;; We explicitly tell MySQL to go and accept ISO8601, because that is JSON datetimes, although there is no real standard for JSON, ISO8601 is the de facto standard.
         "timestamp" (hsql/call :convert
-                               (hsql/call :str_to_date
-                                          (hsql/call :json_extract (hsql/raw (hformat/to-sql parent-identifier)) jsonpath-query)
-                                          "\"%Y-%m-%dT%T.%fZ\"")
+                               (hsql/call :str_to_date json-extract+jsonpath "\"%Y-%m-%dT%T.%fZ\"")
                                (hsql/raw "DATETIME"))
 
-        "bigint" (hsql/call :convert
-                            (hsql/call :json_extract (hsql/raw (hformat/to-sql parent-identifier)) jsonpath-query)
-                            (hsql/raw "UNSIGNED"))
+        "boolean" json-extract+jsonpath
 
-        "boolean" (hsql/call :json_extract (hsql/raw (hformat/to-sql parent-identifier)) jsonpath-query)
-
-        (hsql/call :convert
-                   (hsql/call :json_extract (hsql/raw (hformat/to-sql parent-identifier)) jsonpath-query)
-                   (hsql/raw (str/upper-case field-type)))))))
+        (hsql/call :convert json-extract+jsonpath (hsql/raw (str/upper-case field-type)))))))
 
 (defmethod sql.qp/->honeysql [:mysql :field]
   [driver [_ id-or-name opts :as clause]]
