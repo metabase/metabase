@@ -113,7 +113,8 @@
 
   :unresolved-var               {:exclude [colorize.core
                                            metabase.test/with-gtaps
-                                           metabase.test/with-gtaps-for-user]}
+                                           metabase.test/with-gtaps-for-user
+                                           metabase.test/with-user-attributes]}
   :unsorted-required-namespaces {:level :warning}
 
   :consistent-alias
@@ -436,6 +437,7 @@
    metabase-enterprise.advanced-permissions.models.permissions.application-permissions-test/with-new-group-and-current-graph hooks.common/with-two-top-level-bindings
    metabase-enterprise.audit-app.pages-test/with-temp-objects                                                                hooks.common/with-one-binding
    metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan.util.test/with-temp*
+   metabase.analytics.prometheus-test/with-prometheus-system                                                                 hooks.common/with-two-bindings
    metabase.api.alert-test/with-alert-in-collection                                                                          hooks.common/with-four-bindings
    metabase.api.card-test/with-persistence-setup                                                                             hooks.common/with-one-top-level-binding
    metabase.api.card-test/with-temp-native-card                                                                              hooks.common/with-two-bindings
