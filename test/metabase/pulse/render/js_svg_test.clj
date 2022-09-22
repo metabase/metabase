@@ -239,7 +239,7 @@
           labels         {:left "count" :bottom "year"}
           settings       (json/generate-string {:y {:prefix   "prefix"
                                                     :decimals 4}})
-          waterfall-type "timeseries"]
+          waterfall-type (name :timeseries)]
       (testing "It returns bytes"
         (let [svg-bytes (js-svg/waterfall rows labels settings waterfall-type)]
           (is (bytes? svg-bytes))))
@@ -253,7 +253,7 @@
                           ["Two" 30]]
           labels         {:left "count" :bottom "process step"}
           settings       (json/generate-string {})
-          waterfall-type "categorical"]
+          waterfall-type (name :categorical)]
       (testing "It returns bytes"
         (let [svg-bytes (js-svg/waterfall rows labels settings waterfall-type)]
           (is (bytes? svg-bytes))))

@@ -764,8 +764,8 @@
                             (common/row-preprocess x-axis-rowfn y-axis-rowfn rows))
         labels         (x-and-y-axis-label-info x-col y-col viz-settings)
         waterfall-type (if (isa? (-> cols x-axis-rowfn :effective_type) :type/Temporal)
-                         "timeseries"
-                         "categorical")
+                         :timeseries
+                         :categorical)
         show-total     (if (nil? (:waterfall.show_total viz-settings))
                          true
                          (:waterfall.show_total viz-settings))

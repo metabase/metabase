@@ -108,7 +108,7 @@
   (let [svg-string (.asString (js/execute-fn-name @context "waterfall" rows
                                                   (map (fn [[k v]] [(name k) v]) labels)
                                                   (json/generate-string settings)
-                                                  waterfall-type
+                                                  (name waterfall-type)
                                                   (json/generate-string (public-settings/application-colors))))]
     (svg-string->bytes svg-string)))
 
