@@ -10,6 +10,10 @@ export type BaseFieldValues = {
 type FieldValidateResultOK = undefined | null | false;
 type FieldValidateResultError = string;
 
+export type Validator = (
+  value: any,
+) => FieldValidateResultOK | FieldValidateResultError;
+
 // Extending Record type here as field definition's props
 // will be just spread to the final field widget
 // (e.g. autoFocus, placeholder)
@@ -31,7 +35,7 @@ export type BaseFieldDefinition = Record<string, unknown> & {
   visibleIf?: Record<FieldName, unknown>;
 
   initial?: () => DefaultFieldValue;
-  validate?: (value: any) => FieldValidateResultOK | FieldValidateResultError;
+  validate?: Validator;
   normalize?: (value: any) => DefaultFieldValue;
 };
 
