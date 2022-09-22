@@ -109,6 +109,7 @@ Metabase adds new features and squashes bugs with each release. [Upgrading to th
 [login]: ./cant-log-in.md
 [models]: ./models.md
 [not-sending-email]: ./cant-send-email.md
+[performance]: ./db-performance.md
 [permissions]: ./permissions.md
 [proxies]: ./proxies.md
 [releases]: https://github.com/metabase/metabase/releases
