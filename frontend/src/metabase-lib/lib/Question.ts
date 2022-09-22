@@ -52,7 +52,6 @@ import {
   drillUnderlyingRecords,
   filter,
   pivot,
-  toUnderlyingRecords,
 } from "metabase/modes/lib/actions";
 import {
   DashboardApi,
@@ -576,7 +575,20 @@ class QuestionInner {
   }
 
   toUnderlyingRecords(): Question {
-    return toUnderlyingRecords(this) || this;
+    const query = this.query();
+
+    if (query instanceof StructuredQuery) {
+      return query
+        .clearAggregations()
+        .clearBreakouts()
+        .clearSort()
+        .clearLimit()
+        .clearFields()
+        .question()
+        .setDisplay("table");
+    }
+
+    return this;
   }
 
   toUnderlyingData(): Question {
