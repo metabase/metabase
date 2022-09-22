@@ -9,6 +9,7 @@ import { WritebackAction } from "./writeback";
 import { FormType } from "./writeback-form-settings";
 
 export type DataAppId = number;
+export type DataAppPage = Dashboard;
 export type DataAppPageId = Dashboard["id"];
 
 export interface DataAppNavItem {
