@@ -467,7 +467,9 @@
   #{;; extraction functions (get some component of a given temporal value/column)
     :get-year :get-quarter :get-month :get-day :get-day-of-week :get-hour :get-minute :get-second})
 
-(def date-arithmetic-functions #{:date-add :date-subtract})
+(def date-arithmetic-functions
+  "Functions to do math with date, datetime."
+  #{:date-add :date-subtract})
 
 (def date+time+timezone-functions
   "Date, time, and timezone related functions."
