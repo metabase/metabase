@@ -160,9 +160,8 @@ export default function Values({
             ["line", "area"] as VisualizationType[]
           ).includes(value.series.type);
           return (
-            <>
+            <React.Fragment key={index}>
               <OutlinedText
-                key={index}
                 x={xAccessor(value.datum)}
                 y={yAccessor(value.datum)}
                 textAnchor="middle"
@@ -173,7 +172,6 @@ export default function Values({
               </OutlinedText>
               {shouldRenderDataPoint && (
                 <circle
-                  key={index}
                   r={3}
                   fill="white"
                   stroke={value.series.color}
@@ -182,7 +180,7 @@ export default function Values({
                   cy={dataYAccessor(value.datum)}
                 />
               )}
-            </>
+            </React.Fragment>
           );
         });
       })}
