@@ -774,7 +774,8 @@
                                    :waterfallTotal (:waterfall.total_color viz-settings)
                                    :waterfallPositive (:waterfall.increase_color viz-settings)
                                    :waterfallNegative (:waterfall.decrease_color viz-settings))
-                           (assoc :showTotal show-total))
+                           (assoc :showTotal show-total)
+                           (assoc :show_values (boolean (:graph.show_values viz-settings))))
         image-bundle   (image-bundle/make-image-bundle
                         render-type
                         (js-svg/waterfall rows

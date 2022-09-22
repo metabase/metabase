@@ -5,7 +5,7 @@ import { scaleBand, scaleLinear } from "@visx/scale";
 import { Bar } from "@visx/shape";
 import { Group } from "@visx/group";
 import { Text } from "@visx/text";
-import { merge } from "icepick";
+import { assoc, merge } from "icepick";
 import {
   getLabelProps,
   getXTickLabelProps,
@@ -17,6 +17,7 @@ import { formatNumber } from "metabase/static-viz/lib/numbers";
 import {
   calculateWaterfallDomain,
   calculateWaterfallEntries,
+  calculateWaterfallSeriesForValues,
   formatTimescaleWaterfallTick,
   getWaterfallEntryColor,
 } from "metabase/static-viz/lib/waterfall";
@@ -27,6 +28,8 @@ import {
   POSITIONAL_ACCESSORS,
 } from "../../constants/accessors";
 import { getWaterfallColors } from "../../lib/colors";
+import Values from "../Values";
+import { createXScale } from "../XYChart/utils";
 
 const layout = {
   width: 540,
@@ -34,10 +37,9 @@ const layout = {
   margin: {
     // Add some margin so when the chart scale down,
     // elements that are rendered at the top of the chart doesn't get cut off
-    top: 4,
+    top: 12,
     left: 55,
     right: 40,
-    bottom: 0,
   },
   barPadding: 0.2,
   labelPadding: 12,
@@ -51,6 +53,7 @@ const MIN_INNER_HEIGHT = 250;
 const MAX_EXTRA_HEIGHT = 40;
 // The default value for tick length
 const TICK_LENGTH = 8;
+const VALUES_MARGIN = 6;
 
 // Since we're using JSDoc instead, which provide more static type checking than PropTypes.
 /* eslint-disable react/prop-types */
@@ -93,6 +96,16 @@ function WaterfallChart({
   const axesProps = {
     stroke: chartStyle.axes.color,
     tickStroke: chartStyle.axes.color,
+  };
+
+  const valueProps = {
+    fontSize: chartStyle.value?.fontSize,
+    fontFamily: chartStyle.fontFamily,
+    fontWeight: chartStyle.value?.fontWeight,
+    letterSpacing: 0.5,
+    fill: chartStyle.value?.color,
+    stroke: chartStyle.value?.stroke,
+    strokeWidth: chartStyle.value?.strokeWidth,
   };
 
   if (type === "timeseries") {
@@ -152,11 +165,12 @@ function WaterfallChart({
         };
 
   const numTicks = type === "timeseries" ? layout.numTicks : entries.length;
-  // Below this the code is the same
   const tickLabelProps = getXTickLabelProps(chartStyle, isVertical);
+  const topMargin = settings.show_values
+    ? layout.margin.top + VALUES_MARGIN
+    : layout.margin.top;
 
   const xTickHeight = isVertical ? xTickWidth : chartStyle.axes.ticks.fontSize;
-
   const yTickWidth = getYTickWidth(
     data,
     accessors,
@@ -170,7 +184,7 @@ function WaterfallChart({
     xTickHeight,
     measureTextHeight(chartStyle.axes.labels.fontSize),
   );
-  let yMax = layout.height - xAxisHeight - layout.margin.top;
+  let yMax = layout.height - xAxisHeight - topMargin;
   let height = layout.height;
   // If inner chart area is too short try to expand it but not more than MAX_EXTRA_HEIGHT
   // to match what we do with XYChart (XYChart with legends can have be up to 340px tall)
@@ -181,9 +195,8 @@ function WaterfallChart({
         layout.height + MAX_EXTRA_HEIGHT,
         yMax + xAxisHeight + MAX_EXTRA_HEIGHT,
       ) - xAxisHeight;
-    height = layout.margin.top + yMax + xAxisHeight;
+    height = topMargin + yMax + xAxisHeight;
   }
-  const innerWidth = xMax - xMin;
   const leftLabel = labels?.left;
 
   const xScale = scaleBand({
@@ -212,21 +225,26 @@ function WaterfallChart({
     return { x, y, width, height, fill };
   };
 
+  // Used only for rendering data point values
+  const series = calculateWaterfallSeriesForValues(
+    data,
+    accessors,
+    settings?.showTotal,
+  );
+
   return (
     <svg width={layout.width} height={height}>
-      <Group top={layout.margin.top} left={xMin}>
+      <Group top={topMargin} left={xMin}>
         <GridRows
           scale={yScale}
-          width={innerWidth}
+          width={xMax}
           strokeDasharray={layout.strokeDasharray}
         />
-        {entries.map((entry, index) => (
-          <Bar key={index} {...getBarProps(entry)} />
-        ))}
       </Group>
+
       <AxisLeft
         scale={yScale}
-        top={layout.margin.top}
+        top={topMargin}
         left={xMin}
         label={leftLabel}
         labelOffset={yLabelOffset}
@@ -240,7 +258,7 @@ function WaterfallChart({
       <AxisBottom
         scale={xScale}
         left={xMin}
-        top={yMax + layout.margin.top}
+        top={yMax + topMargin}
         label={labels?.bottom}
         tickLength={TICK_LENGTH}
         numTicks={numTicks}
@@ -254,6 +272,25 @@ function WaterfallChart({
         tickLabelProps={() => tickLabelProps}
         {...axesProps}
       />
+      <Group top={topMargin} left={xMin}>
+        {entries.map((entry, index) => (
+          <Bar key={index} {...getBarProps(entry)} />
+        ))}
+        {settings.show_values && (
+          <Values
+            series={series}
+            formatter={(value, compact) =>
+              formatNumber(value, maybeAssoc(settings.y, "compact", compact))
+            }
+            valueProps={valueProps}
+            xScale={createXScale(series, [0, xMax], "ordinal")}
+            yScaleLeft={yScale}
+            yScaleRight={null}
+            innerWidth={xMax}
+            xAxisYPos={yMax}
+          />
+        )}
+      </Group>
     </svg>
   );
 }
@@ -293,5 +330,13 @@ function getXAxisHeight(xTickHeight, xLabelHeight) {
 function minMax(min, max, value) {
   return Math.min(max, Math.max(min, value));
 }
+
+const maybeAssoc = (collection, key, value) => {
+  if (collection == null) {
+    return collection;
+  }
+
+  return assoc(collection, key, value);
+};
 
 export default WaterfallChart;

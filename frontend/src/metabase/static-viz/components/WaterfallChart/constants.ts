@@ -12,6 +12,9 @@ export const TIME_SERIES_WATERFALL_CHART_DEFAULT_OPTIONS = {
     ["2020-10-27", 20],
     ["2020-10-28", -15],
   ],
+  settings: {
+    show_values: true,
+  },
   labels: {
     left: "Count",
     bottom: "Created At",
@@ -34,6 +37,7 @@ export const CATEGORICAL_WATERFALL_CHART_DEFAULT_OPTIONS = {
   ],
   settings: {
     showTotal: true,
+    show_values: true,
   },
   labels: {
     left: "Count",

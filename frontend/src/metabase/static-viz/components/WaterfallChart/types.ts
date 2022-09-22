@@ -14,6 +14,7 @@ export interface WaterfallChartProps {
     y: object;
     colors: object;
     showTotal: boolean;
+    show_values: boolean;
   };
   labels: {
     left: string;

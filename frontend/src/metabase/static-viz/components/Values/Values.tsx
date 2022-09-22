@@ -6,7 +6,7 @@ import { scaleBand } from "@visx/scale";
 import type { TextProps } from "@visx/text";
 import type { AnyScaleBand, PositionScale } from "@visx/shape/lib/types";
 import OutlinedText from "metabase/static-viz/components/Text/OutlinedText";
-import { getValueStep, getY } from "../XYChart/utils";
+import { getValueStep, getY, setY } from "../XYChart/utils";
 
 import type {
   HydratedSeries,
@@ -24,7 +24,8 @@ type XYAccessor<
 ) => number;
 
 const VALUES_MARGIN = 6;
-const VALUES_STROKE_MARGIN = 3;
+// From testing 1px is equal 3px of the stroke width, I'm not totally sure why.
+const VALUES_STROKE_MARGIN = 1;
 const FLIPPED_VALUES_MARGIN = VALUES_MARGIN + 8;
 
 interface ValuesProps {
@@ -41,6 +42,7 @@ interface ValuesProps {
 
 interface Value {
   datum: SeriesDatum | StackedDatum;
+  datumForLabel: SeriesDatum | StackedDatum;
   flipped?: boolean;
   hidden?: boolean;
 }
@@ -168,7 +170,7 @@ export default function Values({
                 verticalAnchor="end"
                 {...valueProps}
               >
-                {formatter(getY(value.datum), compact)}
+                {formatter(getY(value.datumForLabel), compact)}
               </OutlinedText>
               {shouldRenderDataPoint && (
                 <circle
@@ -258,7 +260,12 @@ function getXAccessor(
   if (type === "bar") {
     return datum => (xScale.barAccessor as XYAccessor)(datum) + barXOffset;
   }
-  if (type === "line" || type === "area") {
+  if (
+    type === "line" ||
+    type === "area" ||
+    type === "waterfall" ||
+    type === "waterfall-total"
+  ) {
     return xScale.lineAccessor as XYAccessor;
   }
   exhaustiveCheck(type);
@@ -285,6 +292,7 @@ function transformDataToValues(
 
       return {
         datum,
+        datumForLabel: datum,
         flipped: showLabelBelow,
       };
     });
@@ -293,15 +301,43 @@ function transformDataToValues(
   if (type === "bar") {
     return data.map(datum => {
       const isNegative = getY(datum) < 0;
-      return { datum, flipped: isNegative };
+      return { datum, datumForLabel: datum, flipped: isNegative };
     });
   }
 
-  return data.map(datum => {
-    return {
-      datum,
-    };
-  });
+  if (type === "area") {
+    return data.map(datum => {
+      return {
+        datum,
+        datumForLabel: datum,
+      };
+    });
+  }
+
+  if (type === "waterfall") {
+    let total = 0;
+    return data.map(datum => {
+      total = total + getY(datum);
+      return {
+        datum: setY(datum, total),
+        datumForLabel: datum,
+      };
+    });
+  }
+
+  if (type === "waterfall-total") {
+    let total = 0;
+    return data.map((datum, index) => {
+      total = total + getY(datum);
+      const isTotal = index === data.length - 1;
+      return {
+        datum: !isTotal ? setY(datum, total) : datum,
+        datumForLabel: datum,
+      };
+    });
+  }
+
+  exhaustiveCheck(type);
 }
 
 interface Position {
