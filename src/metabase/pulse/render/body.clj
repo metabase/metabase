@@ -347,7 +347,7 @@
 
 (defn- x-and-y-axis-label-info
   "Generate the X and Y axis labels passed in as the `labels` argument
-  to [[metabase.pulse.render.js-svg/timelineseries-waterfall]] and other similar functions for rendering charts with X and Y
+  to [[metabase.pulse.render.js-svg/waterfall]] and other similar functions for rendering charts with X and Y
   axes. Respects custom display names in `viz-settings`; otherwise uses `x-col` and `y-col` display names."
   [x-col y-col viz-settings]
   {:bottom (or (:graph.x_axis.title_text viz-settings)
