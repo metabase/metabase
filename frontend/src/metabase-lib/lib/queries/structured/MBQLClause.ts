@@ -49,13 +49,6 @@ export default class MBQLArrayClause extends Array {
     return this._index;
   }
 
-  /**
-   * replaces the previous clause with this one and propagates an update, recursively
-   */
-  update(...args: any) {
-    return this.replace(this).update(undefined, ...args);
-  }
-
   parent() {
     return this.replace(this);
   }
@@ -108,13 +101,6 @@ export class MBQLObjectClause {
 
   index() {
     return this._index;
-  }
-
-  /**
-   * replaces the previous clause with this one and propagates an update, recursively
-   */
-  update(...args: any) {
-    return this.replace(this).update(undefined, ...args);
   }
 
   parent() {

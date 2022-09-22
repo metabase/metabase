@@ -7,17 +7,21 @@ import AggregationPopover from "metabase/query_builder/components/AggregationPop
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Icon from "metabase/components/Icon";
 
-import { updateAndRunQuery } from "../utils";
 import { AddAggregationButtonRoot } from "./AddAggregationButton.styled";
 
 const propTypes = {
   query: PropTypes.object,
   shouldShowLabel: PropTypes.boolean,
+  updateAndRunQuery: PropTypes.func.isRequired,
 };
 
 const LABEL = t`Add a metric`;
 
-export const AddAggregationButton = ({ query, shouldShowLabel = false }) => {
+export const AddAggregationButton = ({
+  query,
+  shouldShowLabel = false,
+  updateAndRunQuery,
+}) => {
   return (
     <PopoverWithTrigger
       triggerElement={
