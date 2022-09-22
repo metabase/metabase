@@ -202,6 +202,44 @@ function isSavedCard(card: Card): card is SavedCard {
   return !!(card as SavedCard).id;
 }
 
+async function initializeNativeQuestion(
+  question: Question,
+  dispatch: Dispatch,
+) {
+  if (question?.isNative()) {
+    const query = question.query() as NativeQuery;
+
+    if (query.hasReferencedQuestions() && !query.readOnly()) {
+      // fetch all referenced questions, ignoring errors
+      const referencedQuestions = (
+        await Promise.all(
+          query.referencedQuestionIds().map(async id => {
+            try {
+              const actionResult = await dispatch(
+                Questions.actions.fetch({ id }, { noEvent: true }),
+              );
+              return Questions.HACK_getObjectFromAction(actionResult);
+            } catch {
+              return null;
+            }
+          }),
+        )
+      ).filter(Boolean);
+      question = question.setQuery(
+        updateCardTagNames(query, referencedQuestions),
+      );
+    }
+
+    if (query.hasSnippets() && !query.readOnly()) {
+      await dispatch(Snippets.actions.fetchList());
+      const snippets = Snippets.selectors.getList(getState());
+      question = question.setQuery(query.updateSnippetNames(snippets));
+    }
+  }
+
+  return question;
+}
+
 export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
 
 async function handleQBInit(
@@ -285,36 +323,7 @@ async function handleQBInit(
     }
   }
 
-  if (question && question.isNative()) {
-    const query = question.query() as NativeQuery;
-
-    if (query.hasReferencedQuestions() && !query.readOnly()) {
-      // fetch all referenced questions, ignoring errors
-      const referencedQuestions = (
-        await Promise.all(
-          query.referencedQuestionIds().map(async id => {
-            try {
-              const actionResult = await dispatch(
-                Questions.actions.fetch({ id }, { noEvent: true }),
-              );
-              return Questions.HACK_getObjectFromAction(actionResult);
-            } catch {
-              return null;
-            }
-          }),
-        )
-      ).filter(Boolean);
-      question = question.setQuery(
-        updateCardTagNames(query, referencedQuestions),
-      );
-    }
-
-    if (query.hasSnippets() && !query.readOnly()) {
-      await dispatch(Snippets.actions.fetchList());
-      const snippets = Snippets.selectors.getList(getState());
-      question = question.setQuery(query.updateSnippetNames(snippets));
-    }
-  }
+  question = await initializeNativeQuestion(question, dispatch);
 
   const finalCard = question.card();
 
