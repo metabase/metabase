@@ -208,10 +208,12 @@ export default class Aggregation extends MBQLClause {
    * Get the operator from a standard aggregation clause
    * Returns `null` if the clause isn't a "standard" or "custom" metric
    */
-  operatorName(): string | null | undefined {
+  operatorName(): string | null {
     if (this.isStandard() || this.isCustom()) {
       return this[0];
     }
+
+    return null;
   }
 
   /**
