@@ -1,5 +1,5 @@
 import { tag_names } from "cljs/metabase.shared.parameters.parameters";
-import { isActionButtonCard } from "metabase/writeback/utils";
+import { isActionCard } from "metabase/writeback/utils";
 import Question from "metabase-lib/lib/Question";
 import { ExpressionDimension } from "metabase-lib/lib/Dimension";
 
@@ -60,7 +60,7 @@ export function getParameterMappingOptions(
     return tagNames ? tagNames.map(buildTextTagOption) : [];
   }
 
-  if (isActionButtonCard(card)) {
+  if (isActionCard(card)) {
     // Action parameters are mapped via click behavior UI for now
     return [];
   }

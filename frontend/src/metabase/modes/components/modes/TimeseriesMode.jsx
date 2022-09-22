@@ -13,12 +13,21 @@ import PivotByCategoryDrill from "../drill/PivotByCategoryDrill";
 import PivotByLocationDrill from "../drill/PivotByLocationDrill";
 
 const TimeseriesModeFooter = props => {
+  const onChange = question => {
+    const { updateQuestion } = props;
+    updateQuestion(question, { run: true });
+  };
+
   return (
     <div className="flex layout-centered">
       <span className="mr1">{t`View`}</span>
       <TimeseriesFilterWidget {...props} card={props.lastRunCard} />
       <span className="mx1">{t`by`}</span>
-      <TimeseriesGroupingWidget {...props} card={props.lastRunCard} />
+      <TimeseriesGroupingWidget
+        {...props}
+        onChange={onChange}
+        card={props.lastRunCard}
+      />
     </div>
   );
 };

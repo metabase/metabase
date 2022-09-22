@@ -127,3 +127,6 @@ export function NameContainer({ children: itemName }: { children: string }) {
   }
   return <TreeNode.NameContainer>{itemName}</TreeNode.NameContainer>;
 }
+
+export const LeftElementContainer = styled.div``;
+export const RightElementContainer = styled.div``;

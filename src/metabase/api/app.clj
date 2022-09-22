@@ -210,7 +210,7 @@
                                                                                                              "id" (str "scaffold_" table-id)}}
                                                              "targetId" ["scaffold-target-id" "page" table-id "detail"]}}}
                                   {:size_y 1 :size_x 2 :row 0 :col 16
-                                   :visualization_settings {"virtual_card" {"display" "action-button"}
+                                   :visualization_settings {"virtual_card" {"display" "action"}
                                                             "button.label" (i18n/tru "New"),
                                                             "click_behavior" {"type" "action" "actionType" "insert" "tableId" table-id}}}]
                                  [{:size_y 8 :size_x 18 :row 1 :col 0
@@ -220,16 +220,16 @@
                                    :card_id ["scaffold-target-id" "card" table-id "detail"]
                                    :scaffold-target ["dashcard" table-id]}
                                   {:size_y 1 :size_x 2 :row 0 :col 0
-                                   :visualization_settings {"virtual_card" {"display" "action-button"}
+                                   :visualization_settings {"virtual_card" {"display" "action"}
                                                             "button.label" (i18n/tru "← Back to list"),
                                                             "click_behavior" {"type" "link" "linkType" "page" "targetId" ["scaffold-target-id" "page" table-id "list"]}}}
                                   {:size_y 1 :size_x 2 :row 0 :col 16
-                                   :visualization_settings {"virtual_card" {"display" "action-button"}
+                                   :visualization_settings {"virtual_card" {"display" "action"}
                                                             "button.label" (i18n/tru "Delete"),
                                                             "button.variant" "danger"
                                                             "click_behavior" {"type" "action" "actionType" "delete" "objectDetailDashCardId" ["scaffold-target-id" "dashcard" table-id]}}}
                                   {:size_y 1 :size_x 2 :row 0 :col 14
-                                   :visualization_settings {"virtual_card" {"display" "action-button"}
+                                   :visualization_settings {"virtual_card" {"display" "action"}
                                                             "button.label" (i18n/tru "Edit"),
                                                             "click_behavior" {"type" "action" "actionType" "update" "objectDetailDashCardId" ["scaffold-target-id" "dashcard" table-id]}}}])}
                 (= "detail" page-type) (assoc :parameters [{:name "ID",

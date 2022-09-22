@@ -522,6 +522,20 @@
                   (mt/db)
                   (db/select-one Table :db_id (mt/id) :name "bigint-and-bool-table")))))))))
 
+(deftest can-shut-off-json-unwrapping
+  (mt/test-driver :mysql
+    ;; in here we fiddle with the mysql db details
+    (let [db (db/select-one Database :id (mt/id))]
+      (try
+        (db/update! Database (mt/id) {:details (assoc (:details db) :json-unfolding true)})
+        (is (= true (driver/database-supports? :mysql :nested-field-columns (mt/db))))
+        (db/update! Database (mt/id) {:details (assoc (:details db) :json-unfolding false)})
+        (is (= false (driver/database-supports? :mysql :nested-field-columns (mt/db))))
+        (db/update! Database (mt/id) {:details (assoc (:details db) :json-unfolding nil)})
+        (is (= true (driver/database-supports? :mysql :nested-field-columns (mt/db))))
+        ;; un fiddle with the mysql db details.
+        (finally (db/update! Database (mt/id) :details (:details db)))))))
+
 (deftest ddl.execute-with-timeout-test
   (mt/test-driver :mysql
     (mt/dataset json

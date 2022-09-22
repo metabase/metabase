@@ -40,7 +40,7 @@ const propTypes = {
 const getOurAnalyticsCollection = collectionEntity => {
   return {
     ...collectionEntity,
-    schemaName: t`Everything else`,
+    schemaName: "Everything else",
     icon: "folder",
   };
 };
