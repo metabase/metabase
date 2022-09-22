@@ -1,5 +1,7 @@
 ---
 title: Troubleshooting database connections
+redirect_from:
+  - /docs/latest/troubleshooting-guide/datawarehouse
 ---
 
 # Troubleshooting database connections

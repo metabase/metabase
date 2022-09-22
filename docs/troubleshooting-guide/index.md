@@ -28,6 +28,7 @@ Problems, their causes, how to detect them, and how to fix them.
 - [I can't connect to a database][datawarehouse].
 - [I can't see my tables][cant-see-tables].
 - [The data in Metabase doesn't match my database][sync-fingerprint-scan].
+- [My database is slow][performance].
 - [My connection or query is timing out][timeout].
 
 ## Questions and dashboards
