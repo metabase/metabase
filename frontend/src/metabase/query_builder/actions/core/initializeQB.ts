@@ -275,6 +275,36 @@ async function handleNativeQuestion(
   return question;
 }
 
+function handleDispatchInitializeQB(
+  originalCard: Card,
+  finalCard: Card,
+  objectId: QueryParams["objectId"],
+  location: LocationDescriptorObject,
+  getState: GetState,
+  dispatch: Dispatch,
+) {
+  const queryParams = location.query;
+  const uiControls: UIControls = getQueryBuilderModeFromLocation(location);
+  const metadata = getMetadata(getState());
+
+  const parameterValues = getParameterValuesForQuestion({
+    card: finalCard,
+    queryParams,
+    metadata,
+  });
+
+  dispatch({
+    type: INITIALIZE_QB,
+    payload: {
+      card: finalCard,
+      originalCard,
+      uiControls,
+      parameterValues,
+      objectId,
+    },
+  });
+}
+
 async function handleQBInit(
   dispatch: Dispatch,
   getState: GetState,
@@ -347,25 +377,16 @@ async function handleQBInit(
   question = await handleNativeQuestion(question, getState, dispatch);
 
   const finalCard = question.card();
-
-  const parameterValues = getParameterValuesForQuestion({
-    card: finalCard,
-    queryParams,
-    metadata,
-  });
-
   const objectId = params?.objectId || queryParams?.objectId;
 
-  dispatch({
-    type: INITIALIZE_QB,
-    payload: {
-      card: finalCard,
-      originalCard,
-      uiControls,
-      parameterValues,
-      objectId,
-    },
-  });
+  handleDispatchInitializeQB(
+    originalCard,
+    finalCard,
+    objectId,
+    location,
+    getState,
+    dispatch,
+  );
 
   if (uiControls.queryBuilderMode !== "notebook") {
     if (question.canRun()) {
