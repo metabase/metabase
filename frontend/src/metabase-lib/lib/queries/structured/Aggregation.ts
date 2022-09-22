@@ -206,10 +206,10 @@ export default class Aggregation extends MBQLClause {
 
   /**
    * Get the operator from a standard aggregation clause
-   * Returns `null` if the clause isn't a "standard" metric
+   * Returns `null` if the clause isn't a "standard" or "custom" metric
    */
   operatorName(): string | null | undefined {
-    if (this.isStandard()) {
+    if (this.isStandard() || this.isCustom()) {
       return this[0];
     }
   }
@@ -294,7 +294,7 @@ export default class Aggregation extends MBQLClause {
 
   customFilter(): Filter | null {
     if (this.isCustom()) {
-      switch (this[0]) {
+      switch (this.operatorName()) {
         case "share":
         case "count-where":
           return new Filter(this[1], null, this.query());
