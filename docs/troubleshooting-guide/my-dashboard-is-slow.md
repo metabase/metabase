@@ -24,7 +24,7 @@ Aside from running faster, a small and focused dashboard is also easier for peop
 
 ## Dashboard used by many people at the same time
 
-1. Optional: Use the admin audit tool to look at your Metabase usage stats\*.
+1. Optional: Use Metabase's [auditing tools](../usage-and-performance-tools/audit.md) to look at your Metabase usage stats\*.
 2. Set up [caching](../configuring-metabase/caching.md) for the questions on your popular dashboard.
 3. Run the dashboard during off-hours so that people can load the cached results in seconds instead of executing a fresh query to your database.
 

@@ -97,6 +97,11 @@ psql -h HOSTNAME -p PORT -d DATABASENAME -U DATABASEUSER
     SELECT 1
     ```
 
+## Related problems
+
+- [My connection or query is timing out](./timeout.md).
+- [My database is slow](./db-performance.md).
+
 ## Are you still stuck?
 
 If you can’t solve your problem using the troubleshooting guides:

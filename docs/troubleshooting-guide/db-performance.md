@@ -21,7 +21,7 @@ To fix problems with your Metabase [application database](../installation-and-op
    - People are accessing your database more often, or
    - Another script or application is accessing the database frequently.
 3. If specific tables are being queried a lot, try [Optimizing your table schemas](https://www.metabase.com/learn/analytics/which-data-warehouse).
-4. If your data, user base, and usage are starting to outgrow your database's resources, it might be time to [upgrade your hardware](https://www.metabase.com/learn/analytics/which-data-warehouse).
+4. If your data, user base, and usage are starting to outgrow your database's resources, think about [scaling Metabase](https://www.metabase.com/learn/administration/metabase-at-scale) or [upgrading your hardware](https://www.metabase.com/learn/analytics/which-data-warehouse).
 5. If a third-party script or application is hitting your database with a lot of queries at a time:
    - Stop your script or application, and [clear any queued queries](#clearing-queued-queries).
    - Recommended: Add a timeout to your script, schedule the script or application to run during off-hours, or replicate your database (and point your tools there instead).
@@ -56,12 +56,13 @@ In general, Metabase will try to close hanging connections to your database afte
 
 1. Stop the process (e.g., a script, or a dashboard with [too many cards](./my-dashboard-is-slow.md#dashboard-has-over-10-cards) that's launching a lot of queries at once.
 2. Go to your database server and stop all queries (from Metabase) that are in progress.
+3. Optional: Increase the [number of connections to your database](../configuring-metabase/environment-variables.md#mb_jdbc_data_warehouse_max_connection_pool_size).
 
 **Explanation**
 
-If someone or something creates 100 queries at the same time, this stampede of queries will take up all of the [available connections](../configuring-metabase/environment-variables#mb_jdbc_data_warehouse_max_connection_pool_size) between Metabase and your database, preventing any new queries from running. If other people continue running questions and dashboards while the first 100 queries are still in progress, the queue will grow at a faster rate than your database can keep up with.
+If someone or something creates 100 queries at the same time, this stampede of queries will take up all of the available connections between Metabase and your database, preventing any new queries from running. If other people continue running questions and dashboards while the first 100 queries are still in progress, the queue will grow at a faster rate than your database can keep up with.
 
-## Resource-intensive queries
+## Managing resource-intensive queries
 
 1. [Reschedule or disable Metabase syncs and scans](../databases/connecting.md#syncing-and-scanning-databases).
 
