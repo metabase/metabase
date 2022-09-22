@@ -95,13 +95,17 @@ function getCardForBlankQuestion({
   return question.card();
 }
 
-function deserializeCard(serializedCard: string) {
-  const card = deserializeCardFromUrl(serializedCard);
-  if (card.dataset_query.database != null) {
-    // Ensure older MBQL is supported
-    card.dataset_query = normalize(card.dataset_query);
+function maybeDeserializeCard(serializedCard?: string) {
+  if (serializedCard) {
+    const card = deserializeCardFromUrl(serializedCard);
+    if (card.dataset_query.database != null) {
+      // Ensure older MBQL is supported
+      card.dataset_query = normalize(card.dataset_query);
+    }
+    return card;
   }
-  return card;
+
+  return null;
 }
 
 async function fetchAndPrepareSavedQuestionCards(
@@ -156,17 +160,18 @@ type ResolveCardsResult = {
 
 async function resolveCards({
   cardId,
-  deserializedCard,
-  options,
+  location,
   dispatch,
   getState,
 }: {
   cardId?: number;
-  deserializedCard?: Card;
-  options: BlankQueryOptions;
+  location: LocationDescriptorObject;
   dispatch: Dispatch;
   getState: GetState;
 }): Promise<ResolveCardsResult> {
+  const { options, serializedCard } = parseHash(location.hash);
+  const deserializedCard = maybeDeserializeCard(serializedCard);
+
   if (!cardId && !deserializedCard) {
     return {
       card: getCardForBlankQuestion(options),
@@ -268,14 +273,11 @@ async function handleQBInit(
   const { options, serializedCard } = parseHash(location.hash);
   const hasCard = cardId || serializedCard;
 
-  const deserializedCard = serializedCard
-    ? deserializeCard(serializedCard)
-    : null;
+  const deserializedCard = maybeDeserializeCard(serializedCard);
 
   const { card, originalCard } = await resolveCards({
     cardId,
-    deserializedCard,
-    options,
+    location,
     dispatch,
     getState,
   });
