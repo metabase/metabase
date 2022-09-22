@@ -25,7 +25,7 @@ import {
 import { Card, SavedCard } from "metabase-types/types/Card";
 import Question from "metabase-lib/lib/Question";
 import NativeQuery, {
-  updateCardTagNames,
+  updateTemplateTagNames,
 } from "metabase-lib/lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
@@ -285,35 +285,10 @@ async function handleQBInit(
     }
   }
 
-  if (question && question.isNative()) {
+  if (question.isNative() && !question.query().readOnly()) {
     const query = question.query() as NativeQuery;
-
-    if (query.hasReferencedQuestions() && !query.readOnly()) {
-      // fetch all referenced questions, ignoring errors
-      const referencedQuestions = (
-        await Promise.all(
-          query.referencedQuestionIds().map(async id => {
-            try {
-              const actionResult = await dispatch(
-                Questions.actions.fetch({ id }, { noEvent: true }),
-              );
-              return Questions.HACK_getObjectFromAction(actionResult);
-            } catch {
-              return null;
-            }
-          }),
-        )
-      ).filter(Boolean);
-      question = question.setQuery(
-        updateCardTagNames(query, referencedQuestions),
-      );
-    }
-
-    if (query.hasSnippets() && !query.readOnly()) {
-      await dispatch(Snippets.actions.fetchList());
-      const snippets = Snippets.selectors.getList(getState());
-      question = question.setQuery(query.updateSnippetNames(snippets));
-    }
+    const newQuery = await updateTemplateTagNames(query, getState, dispatch);
+    question = question.setQuery(newQuery);
   }
 
   const finalCard = question.card();
