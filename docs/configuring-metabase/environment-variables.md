@@ -202,6 +202,13 @@ Default: `"{}"`
 
 JSON object containing information about custom GeoJSON files for use in map visualizations instead of the default US State or World GeoJSON.
 
+### `MB_CUSTOM_GEOJSON_ENABLED`
+
+Type: boolean<br>
+Default: `true`
+
+Whether or not the use of custom GeoJSON is enabled.
+
 ### `MB_DB_AUTOMIGRATE`
 
 Type: boolean<br>
