@@ -64,6 +64,7 @@ If all of your dashboards are slow, you might be limited by the performance of a
 ## Related problems
 
 - [Error message: your question took too long](./timeout.md).
+- [Questions that use numbers, dates, or times are slower than other questions](./db-performance.md#questions-that-use-number-date-or-timestamp-columns).
 - [I can't save my question or dashboard](./proxies.md).
 - [I can't view or edit a question or dashboard](./cant-view-or-edit.md).
 - [My visualizations are wrong](./visualization.md).

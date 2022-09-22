@@ -68,7 +68,16 @@ If someone or something creates 100 queries at the same time, this stampede of q
 
 **Explanation**
 
-Metabase makes sync and scan queries against your database to keep your tables up to date, get fresh values for filter dropdowns, and make helpful suggestions. If you've got a very large database, you can choose to trigger the queries manually instead of on a schedule.
+By default, Metabase makes regular sync and scan queries against your database to keep your tables up to date, get fresh values for filter dropdowns, and make helpful suggestions. If you've got a very large database, you can choose to trigger the queries manually instead of on a schedule.
+
+## Questions that use number, date, or timestamp columns
+
+1. Update your database schema so that the columns are typed correctly.
+2. [Scan the updated columns](../databases/connecting.md#manually-scanning-column-values) to bring the changes into Metabase.
+
+**Explanation**
+
+If a question uses data stored as the wrong data type in your database (most common with number, date, or timestamp values stored as strings), Metabase will generate a query that asks your database to convert the values on the fly. Typing your columns correctly at the schema level will help your database avoid that extra step to return results faster in Metabase.
 
 ## Related problems
 
