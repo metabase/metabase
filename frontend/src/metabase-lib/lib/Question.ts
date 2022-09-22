@@ -49,7 +49,7 @@ import {
   aggregate,
   breakout,
   distribution,
-  drillUnderlyingRecords,
+  drillFilter,
   filter,
   pivot,
 } from "metabase/modes/lib/actions";
@@ -571,7 +571,15 @@ class QuestionInner {
   }
 
   drillUnderlyingRecords(dimensions): Question {
-    return drillUnderlyingRecords(this, dimensions) || this;
+    let query = question.query();
+    if (query instanceof StructuredQuery) {
+      for (const dimension of dimensions) {
+        query = drillFilter(query, dimension.value, dimension.column);
+      }
+      return query.question().toUnderlyingRecords();
+    }
+
+    return this;
   }
 
   toUnderlyingRecords(): Question {

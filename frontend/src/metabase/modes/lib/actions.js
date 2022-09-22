@@ -83,16 +83,6 @@ export function distribution(question, column) {
   }
 }
 
-export function drillUnderlyingRecords(question, dimensions) {
-  let query = question.query();
-  if (query instanceof StructuredQuery) {
-    for (const dimension of dimensions) {
-      query = drillFilter(query, dimension.value, dimension.column);
-    }
-    return query.question().toUnderlyingRecords();
-  }
-}
-
 // STRUCTURED QUERY UTILITIES
 
 const fieldRefWithTemporalUnit = (mbqlClause, unit) => {
