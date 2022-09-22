@@ -100,7 +100,7 @@ Metabase's reference documentation.
 - [Formatting defaults](./data-modeling/formatting.md)
 - [Segments and metrics](./data-modeling/segments-and-metrics.md)
 
-### Exploration and organization overview
+### Exploration and organization
 
 - [Exploration and organization overview](./exploration-and-organization/start.md)
 - [Basic exploration](./exploration-and-organization/exploration.md)

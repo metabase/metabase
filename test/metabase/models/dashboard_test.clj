@@ -190,7 +190,7 @@
                   Card                [{card-id :id}]
                   Pulse               [{pulse-id :id} {:dashboard_id dashboard-id, :collection_id collection-id-1}]
                   DashboardCard       [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
-                  PulseCard           [{pulse-card-id :id} {:pulse_id pulse-id, :card_id card-id, :dashboard_card_id dashcard-id}]]
+                  PulseCard           [_ {:pulse_id pulse-id, :card_id card-id, :dashboard_card_id dashcard-id}]]
     (testing "Pulse name and collection-id updates"
       (db/update! Dashboard dashboard-id :name "Lucky's Close Shaves" :collection_id collection-id-2)
       (is (= "Lucky's Close Shaves"
@@ -222,10 +222,10 @@
 
 (defmacro with-dash-in-collection
   "Execute `body` with a Dashboard in a Collection. Dashboard will contain one Card in a Database."
-  {:style/indent 1}
+  {:style/indent :defn}
   [[db-binding collection-binding dash-binding] & body]
   `(do-with-dash-in-collection
-    (fn [~db-binding ~collection-binding ~dash-binding]
+    (fn [~(or db-binding '_) ~(or collection-binding '_) ~(or dash-binding '_)]
       ~@body)))
 
 (deftest perms-test

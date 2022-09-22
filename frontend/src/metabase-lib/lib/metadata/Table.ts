@@ -139,6 +139,16 @@ class TableInner extends Base {
     return fks.map(fk => new Table(fk.origin.table));
   }
 
+  foreignTables(): Table[] {
+    if (!Array.isArray(this.fields)) {
+      return [];
+    }
+    return this.fields
+      .filter(field => field.isFK() && field.fk_target_field_id)
+      .map(field => this.metadata.field(field.fk_target_field_id)?.table)
+      .filter(Boolean);
+  }
+
   primaryKeys(): { field: Field; index: number }[] {
     const pks = [];
     this.fields.forEach((field, index) => {

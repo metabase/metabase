@@ -349,8 +349,7 @@
     ;; if the user orignally logged in via Google Auth and it's no longer enabled, convert them into a regular user
     ;; (see metabase#3323)
     :google_auth   (boolean (and (:google_auth existing-user)
-                                 ;; if google-auth-client-id is set it means Google Auth is enabled
-                                 (google/google-auth-client-id)))
+                                 (google/google-auth-enabled)))
     :ldap_auth     (boolean (and (:ldap_auth existing-user)
                                  (api.ldap/ldap-enabled))))
   ;; now return the existing user whether they were originally active or not
