@@ -130,19 +130,19 @@
                     :semantic_type    nil
                     :visibility_type :normal}]]
 
-      ;; card contains custom column names
-      (is (= {:row       ["Custom Last Login" "Custom Name"]
-              :bar-width nil}
-             (first (#'body/prep-for-html-rendering pacific-tz
-                                                    card
-                                                    {:cols cols :rows []}))))
+      (testing "card contains custom column names"
+        (is (= {:row       ["Custom Last Login" "Custom Name"]
+                :bar-width nil}
+               (first (#'body/prep-for-html-rendering pacific-tz
+                                                      card
+                                                      {:cols cols :rows []})))))
 
-      ;; card does not contain custom column names
-      (is (= {:row       ["Last Login" "Name"]
-              :bar-width nil}
-             (first (#'body/prep-for-html-rendering pacific-tz
-                                                    {}
-                                                    {:cols cols :rows []})))))))
+      (testing "card does not contain custom column names"
+        (is (= {:row       ["Last Login" "Name"]
+                :bar-width nil}
+               (first (#'body/prep-for-html-rendering pacific-tz
+                                                      {}
+                                                      {:cols cols :rows []}))))))))
 
 ;; When including a bar column, bar-width is 99%
 (deftest bar-width

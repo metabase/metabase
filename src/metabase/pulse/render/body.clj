@@ -81,8 +81,11 @@
 (defn- viz-settings-for-col
   [col viz-settings]
   (let [[_ field-id _] (:field_ref col)
-        strip-ns (fn [m] (update-keys m #(keyword (name %))))
-        col-settings (-> (::mb.viz/column-settings viz-settings)
+        strip-ns (fn [v] (if (map? v)
+                           (update-keys v #(keyword (name %)))
+                           v))
+        col-settings (-> (update-keys viz-settings #(keyword (name %)))
+                         :column-settings
                          (update-keys strip-ns)
                          (update-vals strip-ns))]
     (-> (get col-settings {:field-id field-id})
@@ -125,7 +128,8 @@
   (let [column-settings (some->> (get-in card [:visualization_settings :column_settings])
                                  (m/map-keys (comp vec json/parse-string name)))]
     (name (or (when-let [[k n _] (:field_ref col)]
-                (get-in column-settings [["ref" (mapv #(if (keyword? %) (name %) %) [k n nil])] :column_title]))
+                (or (get-in column-settings [["ref" (mapv #(if (keyword? %) (name %) %) [k n nil])] :column_title])
+                    (get-in column-settings [["ref" (mapv #(if (keyword? %) (name %) %) [k n])] :column_title])))
               (get-in column-settings [["name" (:name col)] :column_title])
               (:display_name col)
               (:name col)))))
