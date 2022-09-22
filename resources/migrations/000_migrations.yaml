@@ -12825,6 +12825,70 @@ databaseChangeLog:
               CHANGE updated_at
               updated_at timestamp(6) NOT NULL DEFAULT current_timestamp(6);
 
+  - changeSet:
+      id: v45.00-036
+      author: snoe
+      comment: Added 0.45.0 - add model action table
+      changes:
+        - createTable:
+            tableName: model_action
+            remarks: Ties actions to models
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity.
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: slug
+                  type: ${text.type}
+                  remarks: The referenceable name for this action
+                  constraints:
+                    nullable: false
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: The associated model
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_model_action_ref_card_id
+                    deleteCascade: true
+              - column:
+                  name: action_id
+                  type: int
+                  remarks: The associated action
+                  constraints:
+                    nullable: true
+                    referencedTableName: action
+                    referencedColumnNames: id
+                    foreignKeyName: fk_model_action_ref_action_id
+                    deleteCascade: true
+              - column:
+                  name: requires_pk
+                  remarks: Indicates that the primary key(s) need to be passed in as parameters
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: parameter_mappings
+                  type: ${text.type}
+                  remarks: Mappings for primary keys to action parameters
+              - column:
+                  name: visualization_settings
+                  type: ${text.type}
+                  remarks: Settings for rendering the action
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

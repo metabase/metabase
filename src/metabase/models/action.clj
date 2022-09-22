@@ -2,6 +2,7 @@
   (:require [cheshire.core :as json]
             [medley.core :as m]
             [metabase.models.interface :as mi]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.util :as u]
             [metabase.util.encryption :as encryption]
             [toucan.db :as db]
@@ -10,6 +11,7 @@
 (models/defmodel QueryAction :query_action)
 (models/defmodel HTTPAction :http_action)
 (models/defmodel Action :action)
+(models/defmodel ModelAction :model_action)
 
 (models/add-type! ::json-with-nested-parameters
   :in  (comp mi/json-in
@@ -51,6 +53,16 @@
   models/IModel
   (merge Action-subtype-IModel-impl
          {:types (constantly {:template ::json-with-nested-parameters})}))
+
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class ModelAction)
+  models/IModel
+  (merge models/IModelDefaults
+         {:properties (constantly {:entity_id    true})
+          :types      (constantly {:parameter_mappings     :parameters-list
+                                   :visualization_settings :visualization-settings})})
+
+  serdes.hash/IdentityHashable
+  {:identity-hash-fields [:entity_id]})
 
 (defn insert!
   "Inserts an Action and related HTTPAction or QueryAction. Returns the action id."
