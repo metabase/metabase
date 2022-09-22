@@ -124,7 +124,7 @@ function isSnippetTagName(name: string): boolean {
   return name.startsWith("snippet:");
 }
 
-export function updateCardTagNames(
+export function updateCardTemplateTagNames(
   query: NativeQuery,
   cards: Card[],
 ): NativeQuery {
@@ -141,37 +141,6 @@ export function updateCardTagNames(
     const newTagName = `#${card.id}-${slugg(card.name)}`;
     return replaceTagName(query, tag.name, newTagName);
   }, query);
-}
-
-export async function updateTemplateTagNames(
-  query: NativeQuery,
-  getState: GetState,
-  dispatch: Dispatch,
-): Promise<NativeQuery> {
-  if (query.hasReferencedQuestions()) {
-    // fetch all referenced questions, ignoring errors
-    const referencedQuestions = (
-      await Promise.all(
-        query.referencedQuestionIds().map(async id => {
-          try {
-            const actionResult = await dispatch(
-              Questions.actions.fetch({ id }, { noEvent: true }),
-            );
-            return Questions.HACK_getObjectFromAction(actionResult);
-          } catch {
-            return null;
-          }
-        }),
-      )
-    ).filter(Boolean);
-    query = updateCardTagNames(query, referencedQuestions);
-  }
-  if (query.hasSnippets()) {
-    await dispatch(Snippets.actions.fetchList());
-    const snippets = Snippets.selectors.getList(getState());
-    query = query.updateSnippetNames(snippets);
-  }
-  return query;
 }
 
 // QUERY TEXT TAG UTILS END
