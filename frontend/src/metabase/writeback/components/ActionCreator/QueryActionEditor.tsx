@@ -1,8 +1,8 @@
 import React from "react";
 
-import type { Query } from "metabase-types/types/Card";
-
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
+import type Query from "metabase-lib/lib/queries/Query";
+
 import type Question from "metabase-lib/lib/Question";
 import { EditorContainer } from "./ActionCreator.styled";
 
