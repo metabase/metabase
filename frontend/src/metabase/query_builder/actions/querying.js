@@ -16,6 +16,7 @@ import { getSensibleDisplays } from "metabase/visualizations";
 import Question from "metabase-lib/lib/Question";
 
 import {
+  getIsResultDirty,
   getIsRunning,
   getOriginalQuestion,
   getQueryBuilderMode,
@@ -84,7 +85,6 @@ export const runQuestionQuery = ({
   overrideWithCard = null,
 } = {}) => {
   return async (dispatch, getState) => {
-    dispatch(loadStartUIControls());
     const questionFromCard = card =>
       card && new Question(card, getMetadata(getState()));
 
@@ -92,6 +92,16 @@ export const runQuestionQuery = ({
       ? questionFromCard(overrideWithCard)
       : getQuestion(getState());
     const originalQuestion = getOriginalQuestion(getState());
+
+    const areResultsDirty = getIsResultDirty(getState());
+    const queryResults = getQueryResults(getState());
+    const hasResults = queryResults && !areResultsDirty;
+    const shouldRerun = ignoreCache || overrideWithCard;
+    if (hasResults && !shouldRerun) {
+      return dispatch(queryCompleted(question, queryResults));
+    }
+
+    dispatch(loadStartUIControls());
 
     const cardIsDirty = originalQuestion
       ? question.isDirtyComparedToWithoutParameters(originalQuestion) ||
