@@ -1479,7 +1479,6 @@ export class AggregationDimension extends Dimension {
       this._query.aggregations()[this.aggregationIndex()]
     );
   }
-
   /**
    * Underlying aggregation, with aggregation-options removed
    */
