@@ -66,6 +66,7 @@
 
            :else
            (case (:unit col)
+             :default (reformat-temporal-str timezone-id s (str/replace date-style #"D" "d"))
              ;; these types have special formatting
              :minute  (reformat-temporal-str timezone-id s
                                              (str (or date-style "MMMM, yyyy") ", "

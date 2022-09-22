@@ -78,13 +78,23 @@
     :else
     (str value)))
 
+(defn- viz-settings-for-col
+  [col viz-settings]
+  (let [[_ field-id _] (:field_ref col)
+        strip-ns (fn [m] (update-keys m #(keyword (name %))))
+        col-settings (-> (::mb.viz/column-settings viz-settings)
+                         (update-keys strip-ns)
+                         (update-vals strip-ns))]
+    (-> (get col-settings {:field-id field-id})
+        (update-keys (fn [k] (-> k name (str/replace #"-" "_") keyword))))))
+
 (s/defn ^:private get-format
   [timezone-id :- (s/maybe s/Str) col visualization-settings]
   (cond
     ;; for numbers, return a format function that has already computed the differences.
     ;; todo: do the same for temporal strings
     (types/temporal-field? col)
-    #(datetime/format-temporal-str timezone-id % col)
+    #(datetime/format-temporal-str timezone-id % col (viz-settings-for-col col visualization-settings))
 
     ;; todo integer columns with a unit
     (or (isa? (:effective_type col) :type/Number)
@@ -114,8 +124,8 @@
   [card col]
   (let [column-settings (some->> (get-in card [:visualization_settings :column_settings])
                                  (m/map-keys (comp vec json/parse-string name)))]
-    (name (or (when-let [fr (:field_ref col)]
-                (get-in column-settings [["ref" (mapv #(if (keyword? %) (name %) %) fr)] :column_title]))
+    (name (or (when-let [[k n _] (:field_ref col)]
+                (get-in column-settings [["ref" (mapv #(if (keyword? %) (name %) %) [k n nil])] :column_title]))
               (get-in column-settings [["name" (:name col)] :column_title])
               (:display_name col)
               (:name col)))))
