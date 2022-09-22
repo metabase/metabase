@@ -36,9 +36,12 @@ const ChartSettingFieldsPicker = ({
             {provided => (
               <div {...provided.droppableProps} ref={provided.innerRef}>
                 {value.map((v, index) => {
-                  console.log(v);
                   return (
-                    <Draggable key={v} draggableId={v} index={index}>
+                    <Draggable
+                      key={`draggable-${v}`}
+                      draggableId={`draggable-${v}`}
+                      index={index}
+                    >
                       {provided => (
                         <div
                           ref={provided.innerRef}
