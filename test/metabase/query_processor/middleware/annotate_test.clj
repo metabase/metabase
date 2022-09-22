@@ -420,7 +420,6 @@
         (doseq [op mbql.s/date-extract-functions]
           (is (= {:base_type     :type/Integer
                   :semantic_type :type/Integer
-                  :settings      nil
                   :name          (name op)
                   :display_name  "My Custom Name"}
                  (mt/$ids users

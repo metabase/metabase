@@ -412,7 +412,6 @@
 
     [(_ :guard mbql.s/date-extract-functions) & args]
     (merge
-     (col-info-for-aggregation-clause inner-query args)
      {:base_type     :type/Integer
       :semantic_type :type/Integer}
      (ag->name-info inner-query &match))
