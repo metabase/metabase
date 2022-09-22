@@ -6,7 +6,7 @@ import { scaleBand } from "@visx/scale";
 import type { TextProps } from "@visx/text";
 import type { AnyScaleBand, PositionScale } from "@visx/shape/lib/types";
 import OutlinedText from "metabase/static-viz/components/Text/OutlinedText";
-import { getValueStep, getY } from "../utils";
+import { getValueStep, getY } from "../XYChart/utils";
 
 import type {
   HydratedSeries,
@@ -14,7 +14,7 @@ import type {
   StackedDatum,
   VisualizationType,
   XScale,
-} from "../types";
+} from "../XYChart/types";
 
 type XYAccessor<
   T extends SeriesDatum | StackedDatum = SeriesDatum | StackedDatum,
