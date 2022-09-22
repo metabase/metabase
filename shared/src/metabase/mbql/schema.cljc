@@ -462,8 +462,20 @@
 
 (def ^:private aggregations #{:sum :avg :stddev :var :median :percentile :min :max :cum-count :cum-sum :count-where :sum-where :share :distinct :metric :aggregation-options :count})
 
+(def date-extract-functions
+  "Functions to extract components of a date, datetime."
+  #{;; extraction functions (get some component of a given temporal value/column)
+    :get-year :get-quarter :get-month :get-day :get-day-of-week :get-hour :get-minute :get-second})
+
+(def date-arithmetic-functions #{:date-add :date-subtract})
+
+(def date+time+timezone-functions
+  "Date, time, and timezone related functions."
+  (set/union date-extract-functions date-arithmetic-functions))
+
 (declare ArithmeticExpression)
 (declare BooleanExpression)
+(declare DatetimeExpression)
 (declare Aggregation)
 
 (def ^:private NumericExpressionArg
@@ -474,6 +486,9 @@
    (partial is-clause? arithmetic-expressions)
    (s/recursive #'ArithmeticExpression)
 
+   (partial is-clause? date-extract-functions)
+   (s/recursive #'DatetimeExpression)
+
    (partial is-clause? aggregations)
    (s/recursive #'Aggregation)
 
@@ -482,6 +497,21 @@
 
    :else
    Field))
+
+(def ^:private DateTimeExpressionArg
+  (s/conditional
+    (partial is-clause? aggregations)
+    (s/recursive #'Aggregation)
+
+    (partial is-clause? :value)
+    value
+
+    ;; Recursively doing date math
+    (partial is-clause? date-arithmetic-functions)
+    (s/recursive #'DatetimeExpression)
+
+    :else
+    Field))
 
 (def ^:private ExpressionArg
   (s/conditional
@@ -502,6 +532,9 @@
 
    (partial is-clause? string-expressions)
    (s/recursive #'StringExpression)
+
+   (partial is-clause? date+time+timezone-functions)
+   (s/recursive #'DatetimeExpression)
 
    (partial is-clause? :value)
    value
@@ -587,60 +620,51 @@
   "Schema for the definition of an arithmetic expression."
   (s/recursive #'ArithmeticExpression*))
 
-(def date-extract-functions
-  "Functions to extract components of a date, datetime."
-  #{;; extraction functions (get some component of a given temporal value/column)
-    :get-year :get-quarter :get-month :get-day :get-day-of-week :get-hour :get-minute :get-second})
+(defclause ^{:requires-features #{:date-extraction}} get-year
+  date DateTimeExpressionArg)
 
-(def date+time+timezone-functions
-  "Date, time, and timezone related functions."
-  (set/union date-extract-functions #{:date-add :date-subtract}))
+(defclause ^{:requires-features #{:date-extraction}} get-quarter
+  date DateTimeExpressionArg)
 
-(defclause ^{:requires-features #{:date-functions}} get-year
-  date ExpressionArg)
+(defclause ^{:requires-features #{:date-extraction}} get-month
+  date DateTimeExpressionArg)
 
-(defclause ^{:requires-features #{:date-functions}} get-quarter
-  date ExpressionArg)
+(defclause ^{:requires-features #{:date-extraction}} get-day
+  date DateTimeExpressionArg)
 
-(defclause ^{:requires-features #{:date-functions}} get-month
-  date ExpressionArg)
+(defclause ^{:requires-features #{:date-extraction}} get-day-of-week
+  date DateTimeExpressionArg)
 
-(defclause ^{:requires-features #{:date-functions}} get-day
-  date ExpressionArg)
+(defclause ^{:requires-features #{:date-extraction}} get-hour
+  datetime DateTimeExpressionArg)
 
-(defclause ^{:requires-features #{:date-functions}} get-day-of-week
-  date ExpressionArg)
+(defclause ^{:requires-features #{:date-extraction}} get-minute
+  datetime DateTimeExpressionArg)
 
-(defclause ^{:requires-features #{:date-functions}} get-hour
-  datetime ExpressionArg)
-
-(defclause ^{:requires-features #{:date-functions}} get-minute
-  datetime ExpressionArg)
-
-(defclause ^{:requires-features #{:date-functions}} get-second
-  datetime ExpressionArg)
+(defclause ^{:requires-features #{:date-extraction}} get-second
+  datetime DateTimeExpressionArg)
 
 (def ^:private ArithmeticDateTimeUnit
   (s/named
    (apply s/enum #{:default :second :minute :hour :day :week :month :quarter :year})
    "arithmetic-datetime-unit"))
 
-(defclause ^{:requires-features #{:date-functions}} date-add
-  datetime ExpressionArg,
+(defclause ^{:requires-features #{:date-arithmetics}} date-add
+  datetime DateTimeExpressionArg,
   amount   NumericExpressionArg
   unit     ArithmeticDateTimeUnit)
 
-(defclause ^{:requires-features #{:date-functions}} date-subtract
-  datetime ExpressionArg,
+(defclause ^{:requires-features #{:date-arithmetics}} date-subtract
+  datetime DateTimeExpressionArg,
   amount   NumericExpressionArg
   unit     ArithmeticDateTimeUnit)
 
-(def ^:private DateFunctionExpression*
+(def ^:private DatetimeExpression*
   (one-of get-year get-quarter get-month get-day get-day-of-week get-hour get-minute get-second date-add date-subtract))
 
-(def ^:private DateFunctionExpression
+(def ^:private DatetimeExpression
   "Schema for the definition of a date function expression."
-  (s/recursive #'DateFunctionExpression*))
+  (s/recursive #'DatetimeExpression*))
 
 (declare StringExpression*)
 
@@ -826,9 +850,16 @@
    (partial is-clause? arithmetic-expressions)       ArithmeticExpression
    (partial is-clause? string-expressions)           StringExpression
    (partial is-clause? boolean-expressions)          BooleanExpression
-   (partial is-clause? date+time+timezone-functions) DateFunctionExpression
+   (partial is-clause? date+time+timezone-functions) DatetimeExpression
    (partial is-clause? :case)                        case
    :else                                             Field))
+
+#_((s/validator DatetimeExpression)
+   [:date-add [:date-add [:field 3 nil] 2 :year] 2 :month])
+
+
+#_((s/validator ArithmeticExpression)
+   [:+ [:+ [:field 3 nil] 2] 2])
 
 
 ;;; -------------------------------------------------- Aggregations --------------------------------------------------

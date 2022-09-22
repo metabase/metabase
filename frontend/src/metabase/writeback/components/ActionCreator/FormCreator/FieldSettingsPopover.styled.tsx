@@ -10,11 +10,19 @@ export const SettingsPopoverBody = styled.div`
 export const SectionLabel = styled.div`
   color: ${color("text-medium")};
   font-weight: bold;
+  padding-left: ${space(0)};
   margin-bottom: ${space(1)};
 `;
 
-export const FieldTypeWrapper = styled.div`
-  margin-bottom: ${space(2)};
-  padding-bottom: ${space(2)};
+export const Divider = styled.div`
   border-bottom: 1px solid ${color("border")};
+  margin: ${space(2)} 0;
+`;
+
+export const ToggleContainer = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-left: ${space(0)};
+  margin-bottom: ${space(1)};
 `;

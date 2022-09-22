@@ -54,6 +54,9 @@ export type TemplateTag = {
   required?: boolean;
   default?: string;
 
+  // Card template specific
+  "card-id"?: number;
+
   // Snippet specific
   "snippet-id"?: number;
   "snippet-name"?: string;

@@ -200,7 +200,7 @@ describe("ObjectDetailDrill", () => {
         it("should return correct URL to object detail", () => {
           const [action] = actions;
           expect(action.question().getUrl()).toBe(
-            `/question/${SAVED_QUESTION.id()}-${SAVED_QUESTION.displayName()}`,
+            `/question/${SAVED_QUESTION.slug()}`,
           );
         });
       });

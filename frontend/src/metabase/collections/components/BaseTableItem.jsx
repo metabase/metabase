@@ -115,7 +115,7 @@ export function BaseTableItem({
           />
         </ItemCell>
         <ItemCell data-testid={`${testId}-name`}>
-          <ItemLink {...linkProps} to={item.getUrl()}>
+          <ItemLink {...linkProps} to={item.getUrl({ isModelDetail: true })}>
             <EntityItem.Name name={item.name} variant="list" />
             <PLUGIN_MODERATION.ModerationStatusIcon
               size={16}

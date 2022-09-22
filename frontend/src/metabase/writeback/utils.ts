@@ -1,8 +1,9 @@
 import { TYPE } from "metabase/lib/types";
 
 import type {
-  ActionButtonDashboardCard,
+  ActionDashboardCard,
   BaseDashboardOrderedCard,
+  ClickBehavior,
   Database as IDatabase,
 } from "metabase-types/api";
 import type { SavedCard } from "metabase-types/types/Card";
@@ -60,14 +61,13 @@ export const isEditableField = (field: Field) => {
   return true;
 };
 
-export const isActionButtonCard = (card: SavedCard) =>
-  card?.display === "action-button";
+export const isActionCard = (card: SavedCard) => card?.display === "action";
 
-export function isActionButtonDashCard(
+export function isActionDashCard(
   dashCard: BaseDashboardOrderedCard,
-): dashCard is ActionButtonDashboardCard {
-  const virtualCard = dashCard.visualization_settings?.virtual_card;
-  return isActionButtonCard(virtualCard as SavedCard);
+): dashCard is ActionDashboardCard {
+  const virtualCard = dashCard?.visualization_settings?.virtual_card;
+  return isActionCard(virtualCard as SavedCard);
 }
 
 /**
@@ -80,12 +80,47 @@ export function isActionButtonDashCard(
  */
 export function isMappedExplicitActionButton(
   dashCard: BaseDashboardOrderedCard,
-): dashCard is ActionButtonDashboardCard {
-  const isAction = isActionButtonDashCard(dashCard);
+): dashCard is ActionDashboardCard {
+  const isAction = isActionDashCard(dashCard);
   return isAction && typeof dashCard.action_id === "number";
 }
 
-export function getActionButtonLabel(dashCard: ActionButtonDashboardCard) {
+export function isValidImplicitActionClickBehavior(
+  clickBehavior?: ClickBehavior,
+) {
+  if (
+    !clickBehavior ||
+    clickBehavior.type !== "action" ||
+    !("actionType" in clickBehavior)
+  ) {
+    return false;
+  }
+  if (clickBehavior.actionType === "insert") {
+    return clickBehavior.tableId != null;
+  }
+  if (
+    clickBehavior.actionType === "update" ||
+    clickBehavior.actionType === "delete"
+  ) {
+    return typeof clickBehavior.objectDetailDashCardId === "number";
+  }
+  return false;
+}
+
+export function isImplicitActionButton(
+  dashCard: BaseDashboardOrderedCard,
+): boolean {
+  const isAction = isActionDashCard(dashCard);
+  return (
+    isAction &&
+    dashCard.action_id == null &&
+    isValidImplicitActionClickBehavior(
+      dashCard.visualization_settings?.click_behavior,
+    )
+  );
+}
+
+export function getActionButtonLabel(dashCard: ActionDashboardCard) {
   const label = dashCard.visualization_settings?.["button.label"];
   return label || "";
 }

@@ -1,4 +1,4 @@
-import { TemplateTagVariable } from "metabase-lib/lib/Variable";
+import TemplateTagVariable from "metabase-lib/lib/variables/TemplateTagVariable";
 import { getParameterType, getParameterSubType } from "./parameter-type";
 import { getParameterOperatorName } from "./operators";
 

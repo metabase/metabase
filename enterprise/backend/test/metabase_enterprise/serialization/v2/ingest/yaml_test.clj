@@ -43,3 +43,24 @@
                      (get abs-path)
                      (assoc :serdes/meta (mapv #(dissoc % :label) abs-path)))
                  (ingest/ingest-one ingestable abs-path))))))))
+
+(deftest flexible-file-matching-test
+  (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+    (io/make-parents dump-dir "Collection" "fake")
+    (spit (io/file dump-dir "Collection" "entity-id+human-readable-things.yaml")
+          (yaml/generate-string {:some "made up" :data "here"}))
+
+    (let [ingestable (ingest.yaml/ingest-yaml dump-dir)
+          exp {:some "made up"
+               :data "here"
+               :serdes/meta [{:model "Collection" :id "entity-id"}]}]
+      (testing "the returned set of files has the human-readable labels"
+        (is (= #{[{:model "Collection" :id "entity-id" :label "human-readable-things"}]}
+               (into #{} (ingest/ingest-list ingestable)))))
+
+      (testing "fetching the file with the label works"
+        (is (= exp
+               (ingest/ingest-one ingestable [{:model "Collection" :id "entity-id" :label "human-readable-things"}]))))
+      (testing "fetching the file without the label also works"
+        (is (= exp
+               (ingest/ingest-one ingestable [{:model "Collection" :id "entity-id"}])))))))

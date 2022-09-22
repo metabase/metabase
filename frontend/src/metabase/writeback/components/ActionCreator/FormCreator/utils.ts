@@ -5,6 +5,8 @@ import type {
   WritebackAction,
   FieldSettings,
 } from "metabase-types/api";
+
+import validate from "metabase/lib/validate";
 import type { Parameter } from "metabase-types/types/Parameter";
 import type { TemplateTag } from "metabase-types/types/Query";
 
@@ -19,6 +21,14 @@ export const getDefaultFormSettings = (
   ...overrides,
 });
 
+type OptionType = {
+  name: string | number;
+  value: string | number;
+};
+
+const getOptionsFromArray = (options: (number | string)[]): OptionType[] =>
+  options.map(o => ({ name: o, value: o }));
+
 export const getDefaultFieldSettings = (
   overrides: Partial<FieldSettings> = {},
 ): FieldSettings => ({
@@ -28,7 +38,7 @@ export const getDefaultFieldSettings = (
   placeholder: "",
   fieldType: "string",
   inputType: "string",
-  required: false,
+  required: true,
   hidden: false,
   width: "medium",
   ...overrides,
@@ -40,32 +50,52 @@ const getSampleOptions = () => [
   { name: t`Option Three`, value: 3 },
 ];
 
+interface FieldPropTypeMap {
+  [key: string]: string;
+}
+
+const fieldPropsTypeMap: FieldPropTypeMap = {
+  string: "input",
+  text: "text",
+  date: "date",
+  datetime: "date",
+  monthyear: "date",
+  quarteryear: "date",
+  dropdown: "select",
+  "inline-select": "radio",
+};
+
+const inputTypeHasOptions = (fieldSettings: FieldSettings) =>
+  ["dropdown", "inline-select"].includes(fieldSettings.inputType);
+
+type validator = (...args: (string | number)[]) => string | void;
+
+interface FieldProps {
+  type: string;
+  options?: OptionType[];
+  values?: any;
+  placeholder?: string;
+  validate?: validator;
+}
+
 const getParameterFieldProps = (fieldSettings: FieldSettings) => {
-  switch (fieldSettings.inputType) {
-    case "string":
-      return { type: "input" };
-    case "text":
-      return { type: "text" };
-    case "number":
-      return { type: "integer" };
-    case "date":
-    case "datetime":
-    case "monthyear":
-    case "quarteryear":
-      return { type: "date", values: {} };
-    case "dropdown":
-      return {
-        type: "select",
-        options: fieldSettings.valueOptions ?? getSampleOptions(),
-      };
-    case "inline-select":
-      return {
-        type: "radio",
-        options: fieldSettings.valueOptions ?? getSampleOptions(),
-      };
-    default:
-      return { type: "input" };
+  const fieldProps: FieldProps = {
+    type: fieldPropsTypeMap[fieldSettings?.inputType] ?? "input",
+    placeholder: fieldSettings.placeholder ?? "",
+    validate: fieldSettings.required ? validate.required() : () => undefined,
+  };
+
+  if (inputTypeHasOptions(fieldSettings)) {
+    fieldProps.options = fieldSettings.valueOptions?.length
+      ? getOptionsFromArray(fieldSettings.valueOptions)
+      : getSampleOptions();
   }
+
+  if (fieldProps.type === "date") {
+    fieldProps.values = {};
+  }
+
+  return fieldProps;
 };
 
 export const getFormFieldForParameter = (

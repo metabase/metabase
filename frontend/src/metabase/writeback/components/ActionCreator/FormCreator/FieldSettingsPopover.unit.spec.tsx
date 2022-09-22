@@ -42,6 +42,7 @@ describe("writeback > FormCreator > FieldSettingsPopover", () => {
     expect(changeSpy).toHaveBeenCalledWith({
       ...settings,
       fieldType: "date",
+      inputType: "date", // should set default input type for new field type
     });
   });
 
@@ -66,6 +67,28 @@ describe("writeback > FormCreator > FieldSettingsPopover", () => {
     expect(changeSpy).toHaveBeenCalledWith({
       ...settings,
       inputType: "dropdown",
+    });
+  });
+
+  it("should fire onChange handler editing placeholder", async () => {
+    const changeSpy = jest.fn();
+    const settings = getDefaultFieldSettings();
+
+    render(
+      <FieldSettingsPopover fieldSettings={settings} onChange={changeSpy} />,
+    );
+
+    await userEvent.click(screen.getByLabelText("gear icon"));
+
+    expect(
+      await screen.findByTestId("field-settings-popover"),
+    ).toBeInTheDocument();
+
+    await userEvent.type(screen.getByTestId("placeholder-input"), "$");
+
+    expect(changeSpy).toHaveBeenLastCalledWith({
+      ...settings,
+      placeholder: "$",
     });
   });
 });

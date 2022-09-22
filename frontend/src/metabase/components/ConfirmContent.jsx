@@ -10,7 +10,7 @@ const nop = () => {};
 
 const ConfirmContent = ({
   title,
-  content,
+  content = null,
   message = t`Are you sure you want to do this?`,
   onClose = nop,
   onAction = nop,

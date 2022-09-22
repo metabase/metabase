@@ -1,7 +1,7 @@
 import * as dashboardActions from "metabase/dashboard/actions/writeback";
 
 import type {
-  ActionButtonParametersMapping,
+  ActionParametersMapping,
   DashboardOrderedCard,
   WritebackParameter,
 } from "metabase-types/api";
@@ -42,7 +42,7 @@ const DASHBOARD_FILTER_PARAMETER: UiParameter = {
   value: 5,
 };
 
-const PARAMETER_MAPPING: ActionButtonParametersMapping = {
+const PARAMETER_MAPPING: ActionParametersMapping = {
   parameter_id: DASHBOARD_FILTER_PARAMETER.id,
   target: WRITEBACK_PARAMETER.target,
 };
@@ -230,7 +230,7 @@ describe("ActionClickDrill", () => {
   }: {
     actionParameters?: WritebackParameter[];
     dashboardParameters?: UiParameter[];
-    parameterMappings?: ActionButtonParametersMapping[];
+    parameterMappings?: ActionParametersMapping[];
     parameterValuesBySlug?: Record<string, { value: ParameterValueOrArray }>;
   } = {}) {
     const executeActionSpy = jest.spyOn(dashboardActions, "executeRowAction");

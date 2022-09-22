@@ -8,10 +8,11 @@ import Button from "metabase/core/components/Button";
 
 import * as Urls from "metabase/lib/urls";
 
-import DataApps, { ScaffoldAppParams } from "metabase/entities/data-apps";
-import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
+import DataApps, { ScaffoldNewAppParams } from "metabase/entities/data-apps";
 
-import type { DataApp } from "metabase-types/api";
+import DataAppDataPicker from "metabase/writeback/components/DataAppDataPicker";
+
+import type { DataApp, TableId } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
 
 import {
@@ -27,7 +28,7 @@ interface OwnProps {
 }
 
 interface DispatchProps {
-  onCreate: (params: ScaffoldAppParams) => Promise<DataApp>;
+  onCreate: (params: ScaffoldNewAppParams) => Promise<DataApp>;
   onChangeLocation: (location: LocationDescriptor) => void;
 }
 
@@ -35,8 +36,10 @@ type Props = OwnProps & DispatchProps;
 
 function mapDispatchToProps(dispatch: Dispatch) {
   return {
-    onCreate: async (params: ScaffoldAppParams) => {
-      const action = await dispatch(DataApps.objectActions.scaffold(params));
+    onCreate: async (params: ScaffoldNewAppParams) => {
+      const action = await dispatch(
+        DataApps.objectActions.scaffoldNewApp(params),
+      );
       return DataApps.HACK_getObjectFromAction(action);
     },
     onChangeLocation: (location: LocationDescriptor) =>
@@ -45,7 +48,7 @@ function mapDispatchToProps(dispatch: Dispatch) {
 }
 
 function CreateDataAppModal({ onCreate, onChangeLocation, onClose }: Props) {
-  const [tableId, setTableId] = useState<number | null>(null);
+  const [tableId, setTableId] = useState<TableId | null>(null);
 
   const handleCreate = useCallback(async () => {
     const dataApp = await onCreate({
@@ -62,12 +65,7 @@ function CreateDataAppModal({ onCreate, onChangeLocation, onClose }: Props) {
         <ModalTitle>{t`Pick your starting data`}</ModalTitle>
       </ModalHeader>
       <ModalBody>
-        <DatabaseSchemaAndTableDataSelector
-          selectedTableId={tableId}
-          setSourceTableFn={setTableId}
-          requireWriteback
-          isPopover={false}
-        />
+        <DataAppDataPicker tableId={tableId} onTableChange={setTableId} />
       </ModalBody>
       <ModalFooter>
         <Button onClick={onClose}>{t`Cancel`}</Button>

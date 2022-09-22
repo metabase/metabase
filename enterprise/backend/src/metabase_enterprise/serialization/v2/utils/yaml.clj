@@ -26,8 +26,19 @@
                                                  [model id]))
         ;; The last part of the hierarchy is used for the basename; this is the only part with the label.
         {:keys [id model label]} (last hierarchy)
-        leaf-name                (leaf-file-name id label)]
-    (apply io/file root-dir (concat prefix [model leaf-name]))))
+        leaf-name                (leaf-file-name id label)
+        as-given                 (apply io/file root-dir (concat prefix [model leaf-name]))]
+    (if (.exists ^File as-given)
+      as-given
+      ; If that file name doesn't exist, check the directory to see if there's one that's the requested file plus a
+      ; human-readable portion.
+      (let [dir       (apply io/file root-dir (concat prefix [model]))
+            matches   (filter #(and (.startsWith ^String % (str id "+"))
+                                    (.endsWith ^String % ".yaml"))
+                              (.list ^File dir))]
+        (if (empty? matches)
+          (io/file dir leaf-name)
+          (io/file dir (first matches)))))))
 
 (defn path-split
   "Given a root directory and a file underneath it, return a sequence of path parts to get there.

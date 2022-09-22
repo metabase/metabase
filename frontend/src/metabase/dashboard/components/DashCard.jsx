@@ -29,7 +29,7 @@ import { isVirtualDashCard } from "metabase/dashboard/utils";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
 
-import { isActionButtonCard } from "metabase/writeback/utils";
+import { isActionCard } from "metabase/writeback/utils";
 
 import { getParameterValuesBySlug } from "metabase/parameters/utils/parameter-values";
 import Utils from "metabase/lib/utils";
@@ -179,13 +179,13 @@ export default class DashCard extends Component {
       parameterValues,
     );
 
-    const isActionButton = isActionButtonCard(mainCard);
+    const isAction = isActionCard(mainCard);
 
     const hideBackground =
       !isEditing &&
       (mainCard.visualization_settings["dashcard.background"] === false ||
         mainCard.display === "list" ||
-        isActionButton);
+        isAction);
 
     const isEditingDashboardLayout =
       isEditing && clickBehaviorSidebarDashcard == null && !isEditingParameter;
@@ -279,7 +279,7 @@ export default class DashCard extends Component {
                     : t`Action button`}
                 </h4>
               </div>
-            ) : isEditingParameter && !isActionButton ? (
+            ) : isEditingParameter && !isAction ? (
               <DashCardParameterMapper
                 dashcard={dashcard}
                 isMobile={isMobile}
@@ -383,7 +383,7 @@ const DashCardActionButtons = ({
         />,
       );
     }
-    if (!isVirtualDashCard || isActionButtonCard(card)) {
+    if (!isVirtualDashCard || isActionCard(card)) {
       buttons.push(
         <Tooltip key="click-behavior-tooltip" tooltip={t`Click behavior`}>
           <a
