@@ -105,14 +105,18 @@ export default class Metadata extends Base {
   }
 
   field(
-    fieldId: Field["id"] | undefined | null,
+    fieldId: Field["id"] | Field["name"] | undefined | null,
     tableId?: Table["id"] | undefined | null,
   ): Field | null {
     if (fieldId == null) {
       return null;
     }
 
-    const uniqueId = getUniqueFieldId(fieldId, tableId);
+    const uniqueId = getUniqueFieldId({
+      id: fieldId,
+      table_id: tableId,
+    } as Field);
+
     return this.fields[uniqueId] || null;
   }
 

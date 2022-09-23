@@ -33,10 +33,10 @@ export interface FieldFingerprint {
 }
 
 export interface Field {
-  id: number;
+  id?: number;
   dimensions?: FieldDimension;
   display_name: string;
-  table_id: number;
+  table_id: number | string;
   name: string;
   base_type: string;
   description: string | null;
