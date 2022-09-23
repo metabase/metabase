@@ -109,7 +109,7 @@ Metabase runs sync and scan queries in order to show tables and columns, populat
 
 ### How database syncs work
 
-A Metabase **sync** query gets a list of updated table and column names from your database. The query runs against your database during setup, and again every hour by default. It's very fast with most relational databases, but can be slower with MongoDB and some [community-built database drivers](../developers-guide/partner-and-community-drivers.md). Syncing can't be turned off completely, otherwise Metabase wouldn't work.
+A Metabase **sync** query gets a list of updated table names, column names, and column data types from your database. The query runs against your database during setup, and again every hour by default. It's very fast with most relational databases, but can be slower with MongoDB and some [community-built database drivers](../developers-guide/partner-and-community-drivers.md). Syncing can't be turned off completely, otherwise Metabase wouldn't work.
 
 ### How database scans work
 
@@ -121,7 +121,7 @@ When Metabase first connects to your database, it performs a **scan** to determi
 
 During the scan, Metabase also takes a sample of each table to look for URLs, JSON, encoded strings, etc. You can map table and column metadata to new values from **Admin settings** > **Data model**. For more on editing metadata, check out [the Data Model page: editing metadata](../data-modeling/metadata-editing.md).
 
-### Manually syncing table and column names
+### Manually syncing tables and columns
 
 1. Go to **Admin settings** > **Databases** > your database.
 2. Click on **Sync database schema now**.
