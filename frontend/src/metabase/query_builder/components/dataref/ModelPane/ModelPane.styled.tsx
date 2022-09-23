@@ -28,7 +28,7 @@ export const ModelPaneDetailText = styled.span`
 
 export const ModelPaneIcon = styled(Icon)`
   margin-top: 1px;
-  width: ${space(2)};
+  width: 12px;
 `;
 
 export const ModelPaneField = styled.li`
