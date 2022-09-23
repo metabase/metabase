@@ -18,32 +18,17 @@ export const ModelPaneDetail = styled.div`
   }
 `;
 
-export const ModelPaneColumns = styled.div`
-  padding-top: ${space(1)};
-`;
-
-export const ModelPaneColumnsTitle = styled.div`
-  display: flex;
-  align-items: center;
-  font-weight: 700;
-  padding: ${space(1)};
-`;
-
 export const ModelPaneDescription = styled.div`
   padding: ${space(1)};
 `;
 
 export const ModelPaneDetailText = styled.span`
-  margin-left: ${space(0)};
+  margin-left: ${space(1)};
 `;
 
 export const ModelPaneIcon = styled(Icon)`
   margin-top: 1px;
-`;
-
-export const ModelPaneColumnIcon = styled(Icon)`
-  color: ${color("brand-light")};
-  margin-top: 1px;
+  width: ${space(2)};
 `;
 
 export const ModelPaneField = styled.li`

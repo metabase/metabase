@@ -8,20 +8,23 @@ import { getMetadata } from "metabase/selectors/metadata";
 import MetabaseSettings from "metabase/lib/settings";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import Question from "metabase-lib/lib/Question";
+import FieldList from "../FieldList";
 import {
-  ModelPaneField,
   ModelPaneDetail,
   ModelPaneDetailText,
   ModelPaneIcon,
   ModelPaneDescription,
-  ModelPaneColumnsTitle,
-  ModelPaneColumnIcon,
-  ModelPaneColumns,
 } from "./ModelPane.styled";
 
+// This formats a timestamp as a date using any custom formatting options.
+function formatDate(value) {
+  const options = MetabaseSettings.get("custom-formatting")["type/Temporal"];
+  return formatDateTimeWithUnit(value, "day", options);
+}
+
 const getQuestion = createSelector(
-  [getMetadata, (_state, model) => model],
-  (metadata, model) => new Question(model, metadata),
+  [getMetadata, (_state, card) => card],
+  (metadata, card) => new Question(card, metadata),
 );
 
 const mapStateToProps = (state, props) => ({
@@ -43,39 +46,25 @@ const ModelPane = ({ show, model, question }) => {
       </ModelPaneDescription>
       <ModelPaneDetail>
         <a href={question.getUrl()}>
-          <ModelPaneIcon name="label" size="14" />
+          <ModelPaneIcon name="label" />
           <ModelPaneDetailText>{t`See it`}</ModelPaneDetailText>
         </a>
       </ModelPaneDetail>
       <ModelPaneDetail>
-        <ModelPaneIcon name="label" size="14" />
+        <ModelPaneIcon name="label" />
         <ModelPaneDetailText>{jt`ID #${question.id()}`}</ModelPaneDetailText>
       </ModelPaneDetail>
       <ModelPaneDetail>
-        <ModelPaneIcon name="label" size="14" />
+        <ModelPaneIcon name="label" />
         <ModelPaneDetailText>{jt`Last edited ${formatDate(
           question.lastEditInfo().timestamp,
         )}`}</ModelPaneDetailText>
       </ModelPaneDetail>
-      {table && (
-        <ModelPaneColumns>
-          <ModelPaneColumnsTitle>
-            <ModelPaneIcon name="label" size="14" />
-            <ModelPaneDetailText>{jt`${table.fields.length} columns`}</ModelPaneDetailText>
-          </ModelPaneColumnsTitle>
-          <ul>
-            {table.fields.map(field => (
-              <ModelPaneField key={field.id}>
-                <a onClick={() => show("field", field)}>
-                  <ModelPaneColumnIcon name="label" size="14" />
-                  <ModelPaneDetailText>
-                    {field.displayName()}
-                  </ModelPaneDetailText>
-                </a>
-              </ModelPaneField>
-            ))}
-          </ul>
-        </ModelPaneColumns>
+      {table?.fields && (
+        <FieldList
+          fields={table.fields}
+          handleFieldClick={field => show("field", field)}
+        />
       )}
     </div>
   );
@@ -84,9 +73,3 @@ const ModelPane = ({ show, model, question }) => {
 ModelPane.propTypes = propTypes;
 
 export default connect(mapStateToProps)(ModelPane);
-
-// This formats a timestamp as a date using any custom formatting options.
-function formatDate(value) {
-  const options = MetabaseSettings.get("custom-formatting")["type/Temporal"];
-  return formatDateTimeWithUnit(value, "day", options);
-}
