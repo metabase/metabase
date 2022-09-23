@@ -59,7 +59,7 @@ export const HeaderTitleContainer = styled.span<{
 `;
 
 export const CloseButton = styled.a`
-  color: ${color("text-medium")};
+  color: ${color("text-dark")};
   text-decoration: none;
 
   margin-left: auto;

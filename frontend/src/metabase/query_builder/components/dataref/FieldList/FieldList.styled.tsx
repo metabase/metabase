@@ -15,7 +15,7 @@ export const FieldListIcon = styled(Icon)`
 `;
 
 export const FieldListItemIcon = styled(Icon)`
-  color: ${color("brand-light")};
+  color: ${color("focus")};
   margin-top: 1px;
   width: ${space(2)};
 `;
@@ -43,14 +43,14 @@ export const FieldListItem = styled.li`
 `;
 
 export const FieldListContainer = styled.ul`
-  padding-top: ${space(1)};
+  padding-top: ${space(2)};
 `;
 
 export const FieldListTitle = styled.div`
   display: flex;
   align-items: center;
   font-weight: 700;
-  padding: ${space(1)};
+  padding: ${space(1)} ${space(1)} ${space(1)} 6px;
 `;
 
 export const FieldListTitleText = styled.span`

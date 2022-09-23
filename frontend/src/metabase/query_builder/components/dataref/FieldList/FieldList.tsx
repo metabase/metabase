@@ -23,7 +23,7 @@ function FieldList({ fields, handleFieldClick }: Props) {
   return (
     <FieldListContainer>
       <FieldListTitle>
-        <FieldListIcon name="table2" />
+        <FieldListIcon name="table2" size="12" />
         <FieldListTitleText>{jt`${fields.length} columns`}</FieldListTitleText>
       </FieldListTitle>
       {fields.map(field => {
