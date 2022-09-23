@@ -9,7 +9,7 @@ export const ModelPaneDetail = styled.div`
   color: ${color("text-medium")};
   display: flex;
   align-items: center;
-  padding: ${space(0)} ${space(1)};
+  padding: 0.25em ${space(1)};
   font-weight: 700;
   a {
     display: flex;

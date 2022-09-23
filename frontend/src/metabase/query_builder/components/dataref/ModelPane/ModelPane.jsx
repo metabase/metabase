@@ -46,7 +46,7 @@ const ModelPane = ({ show, model, question }) => {
       </ModelPaneDescription>
       <ModelPaneDetail>
         <a href={question.getUrl()}>
-          <ModelPaneIcon name="label" />
+          <ModelPaneIcon name="share" />
           <ModelPaneDetailText>{t`See it`}</ModelPaneDetailText>
         </a>
       </ModelPaneDetail>
@@ -55,7 +55,7 @@ const ModelPane = ({ show, model, question }) => {
         <ModelPaneDetailText>{jt`ID #${question.id()}`}</ModelPaneDetailText>
       </ModelPaneDetail>
       <ModelPaneDetail>
-        <ModelPaneIcon name="label" />
+        <ModelPaneIcon name="calendar" />
         <ModelPaneDetailText>{jt`Last edited ${formatDate(
           question.lastEditInfo().timestamp,
         )}`}</ModelPaneDetailText>

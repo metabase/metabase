@@ -2,8 +2,13 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import Icon from "metabase/components/Icon";
 import Databases from "metabase/entities/databases";
+
+import {
+  FieldListItem,
+  FieldListItemName,
+  FieldListItemIcon,
+} from "./FieldList/FieldList.styled";
 
 const MainPane = ({ databases, show }) => (
   <div>
@@ -15,15 +20,12 @@ const MainPane = ({ databases, show }) => (
         databases
           .filter(db => !db.is_saved_questions)
           .map(database => (
-            <li className="mb1" key={database.id}>
-              <a
-                onClick={() => show("database", database)}
-                className="p1 flex align-center no-decoration bg-medium-hover"
-              >
-                <Icon name="database" className="pr1 text-medium" size={14} />
-                <h3 className="text-wrap">{database.name}</h3>
+            <FieldListItem key={database.id}>
+              <a onClick={() => show("database", database)}>
+                <FieldListItemIcon name="database" />
+                <FieldListItemName>{database.name}</FieldListItemName>
               </a>
-            </li>
+            </FieldListItem>
           ))}
     </ul>
   </div>

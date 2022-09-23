@@ -4,8 +4,6 @@ import React from "react";
 import PropTypes from "prop-types";
 import { jt } from "ttag";
 
-import Icon from "metabase/components/Icon";
-
 import Table from "metabase-lib/lib/metadata/Table";
 
 import {

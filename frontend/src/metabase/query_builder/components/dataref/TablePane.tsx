@@ -15,13 +15,8 @@ import {
   AbsoluteContainer,
   Fade,
 } from "metabase/components/MetadataInfo/MetadataInfo.styled";
-import {
-  InfoContainer,
-  MetadataContainer,
-} from "metabase/components/MetadataInfo/TableInfo/TableInfo.styled";
-import ConnectedTables from "metabase/components/MetadataInfo/TableInfo/ConnectedTables";
+import { MetadataContainer } from "metabase/components/MetadataInfo/TableInfo/TableInfo.styled";
 import ConnectedTableList from "metabase/query_builder/components/dataref/ConnectedTableList";
-// import { showAddParameterPopover } from "metabase/dashboard/actions";
 import Table from "metabase-lib/lib/metadata/Table";
 import FieldList from "./FieldList";
 
