@@ -124,12 +124,12 @@ Note that you must have at least one account with email and password login. This
 
 ## Troubleshooting login issues
 
- - [Troubleshooting logins](../troubleshooting-guide/cant-log-in.md).
+ - [Can't log in](../troubleshooting-guide/cant-log-in.md).
+ - [Troubleshooting LDAP](../troubleshooting-guide/ldap.md)
 
  ## Further reading
 
 - [Using LDAP for authentication and access control](https://www.metabase.com/learn/permissions/ldap-auth-access-control).
-- [LDAP troubleshooting guide](../troubleshooting-guide/ldap.md).
 - [Permissions overview](../permissions/start.md).
 
 [data-sandboxing-docs]: ../permissions/data-sandboxes.md
