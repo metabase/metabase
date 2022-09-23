@@ -124,7 +124,7 @@ function isSnippetTagName(name: string): boolean {
   return name.startsWith("snippet:");
 }
 
-export function updateCardTagNames(
+export function updateCardTemplateTagNames(
   query: NativeQuery,
   cards: Card[],
 ): NativeQuery {
