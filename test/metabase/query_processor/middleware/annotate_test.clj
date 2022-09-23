@@ -632,7 +632,43 @@
                         {:name "ID_2",        :id %categories.id,   :field_ref &c.categories.id}
                         {:name "NAME_2",      :id %categories.name, :field_ref &c.categories.name}])
                      (map #(select-keys % [:name :id :field_ref])
-                          (:cols (add-column-info nested-query {}))))))))))))
+                          (:cols (add-column-info nested-query {})))))))))))
+
+  (testing "Aggregated question with source is an aggregated models should infer display_name correctly (#23248)"
+    (mt/dataset sample-dataset
+     (mt/with-temp* [Card [{card-id :id}
+                           {:dataset true
+                            :dataset_query
+                            (mt/$ids :products
+                                     {:type     :query
+                                      :database (mt/id)
+                                      :query    {:source-table $$products
+                                                 :aggregation
+                                                 [[:aggregation-options
+                                                   [:sum $price]
+                                                   {:name "sum"}]
+                                                  [:aggregation-options
+                                                   [:max $rating]
+                                                   {:name "max"}]]
+                                                 :breakout     $category
+                                                 :order-by     [[:asc $category]]}})}]]
+       (let [query (qp/preprocess
+                     (mt/mbql-query nil
+                                    {:source-table (str "card__" card-id)
+                                     :aggregation  [[:aggregation-options
+                                                     [:sum
+                                                      [:field
+                                                       "sum"
+                                                       {:base-type :type/Float}]]
+                                                     {:name "sum"}]
+                                                    [:aggregation-options
+                                                     [:count]
+                                                     {:name "count"}]]
+                                     :limit        1}))]
+        (is (= ["Sum of Sum of Price" "Count"]
+              (->> (add-column-info query {})
+                  :cols
+                  (map :display_name)))))))))
 
 (deftest inception-test
   (testing "Should return correct metadata for an 'inception-style' nesting of source > source > source with a join (#14745)"

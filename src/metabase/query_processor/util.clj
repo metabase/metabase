@@ -128,7 +128,8 @@
   ensure survives."
   [fresh pre-existing]
   (let [by-key (u/key-by (comp field-ref->key :field_ref) pre-existing)]
-    (for [{:keys [field_ref] :as col} fresh]
-      (if-let [existing (get by-key (field-ref->key field_ref))]
+    (for [{:keys [field_ref source] :as col} fresh]
+      (if-let [existing (and (not= :aggregation source)
+                             (get by-key (field-ref->key field_ref)))]
         (merge col (select-keys existing preserved-keys))
         col))))
