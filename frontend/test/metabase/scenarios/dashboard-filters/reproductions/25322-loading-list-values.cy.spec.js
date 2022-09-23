@@ -54,8 +54,8 @@ const createDashboard = () => {
                   card_id,
                   row: 0,
                   col: 0,
-                  size_x: 4,
-                  size_y: 4,
+                  sizeX: 4,
+                  sizeY: 4,
                   parameter_mappings: [
                     {
                       card_id,
