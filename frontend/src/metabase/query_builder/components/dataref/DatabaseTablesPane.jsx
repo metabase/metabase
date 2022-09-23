@@ -3,60 +3,55 @@ import { jt } from "ttag";
 import _ from "underscore";
 import PropTypes from "prop-types";
 
-import Icon from "metabase/components/Icon";
 import Tables from "metabase/entities/tables";
 import Questions from "metabase/entities/questions";
+import {
+  FieldListItem,
+  FieldListItemName,
+  FieldListItemIcon,
+  FieldListTitle,
+  FieldListContainer,
+  FieldListIcon,
+  FieldListTitleText,
+} from "./FieldList/FieldList.styled";
 
 const DatabaseTablesPane = ({ database, show, questions }) => {
   const tables = database.tables.sort((a, b) => a.name.localeCompare(b.name));
   const models = questions.sort((a, b) => a.name.localeCompare(b.name));
   return (
-    <div>
-      <div className="pl1 mt2 flex align-center justify-between">
-        <div className="flex align-center">
-          <Icon name="model" className="pr1" size={12} />
-          <span className="flex-full flex p1 text-bold">{jt`${models.length} models`}</span>
-        </div>
-      </div>
-
+    <FieldListContainer>
+      <FieldListTitle>
+        <FieldListIcon name="model" />
+        <FieldListTitleText>{jt`${models.length} models`}</FieldListTitleText>
+      </FieldListTitle>
       <ul>
         {models.map(model => (
-          <li key={model.id}>
-            <div className="pl1 flex align-center bg-medium-hover">
-              <Icon name="model" className="pr1 text-brand" size={12} />
-              <a
-                className="flex-full flex p1 text-bold text-brand text-wrap no-decoration bg-medium-hover"
-                onClick={() => show("model", model)}
-              >
-                {model.name}
-              </a>
-            </div>
-          </li>
+          <FieldListItem key={model.id}>
+            <a onClick={() => show("model", model)}>
+              <FieldListItemIcon name="model" />
+              <FieldListItemName>{model.name}</FieldListItemName>
+            </a>
+          </FieldListItem>
         ))}
       </ul>
-      <div className="pl1 mt2 flex align-center justify-between">
-        <div className="flex align-center">
-          <Icon name="table" className="pr1" size={12} />
-          <span className="flex-full flex p1 text-bold">{jt`${tables.length} tables`}</span>
-        </div>
-      </div>
-
+      <br></br>
+      <FieldListTitle>
+        <FieldListIcon name="table" />
+        <FieldListTitleText>{jt`${tables.length} tables`}</FieldListTitleText>
+      </FieldListTitle>
       <ul>
         {tables.map(table => (
           <li key={table.id}>
-            <div className="pl1 flex align-center bg-medium-hover">
-              <Icon name="table" className="pr1 text-brand" size={12} />
-              <a
-                className="flex-full flex p1 text-bold text-brand text-wrap no-decoration"
-                onClick={() => show("table", table)}
-              >
-                {table.name}
+            <FieldListItem key={table.id}>
+              <a onClick={() => show("table", table)}>
+                <FieldListItemIcon name="table" />
+                <FieldListItemName>{table.name}</FieldListItemName>
               </a>
-            </div>
+            </FieldListItem>
           </li>
         ))}
       </ul>
-    </div>
+    </FieldListContainer>
   );
 };
 
