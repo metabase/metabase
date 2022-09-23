@@ -257,18 +257,17 @@ function getXAccessor(
   xScale: XScale,
   barXOffset: number,
 ): XYAccessor {
-  if (type === "bar") {
-    return datum => (xScale.barAccessor as XYAccessor)(datum) + barXOffset;
+  switch (type) {
+    case "bar":
+      return datum => (xScale.barAccessor as XYAccessor)(datum) + barXOffset;
+    case "line":
+    case "area":
+    case "waterfall":
+    case "waterfall-total":
+      return xScale.lineAccessor as XYAccessor;
+    default:
+      exhaustiveCheck(type);
   }
-  if (
-    type === "line" ||
-    type === "area" ||
-    type === "waterfall" ||
-    type === "waterfall-total"
-  ) {
-    return xScale.lineAccessor as XYAccessor;
-  }
-  exhaustiveCheck(type);
 }
 
 function exhaustiveCheck(param: never): never {
@@ -279,65 +278,60 @@ function transformDataToValues(
   type: VisualizationType,
   data: (SeriesDatum | StackedDatum)[],
 ): Value[] {
-  if (type === "line") {
-    return data.map((datum, index) => {
-      // Use the similar logic as presented in https://github.com/metabase/metabase/blob/3f4ca9c70bd263a7579613971ea8d7c47b1f776e/frontend/src/metabase/visualizations/lib/chart_values.js#L130
-      const previousValue = data[index - 1];
-      const nextValue = data[index + 1];
-      const showLabelBelow =
-        // first point or prior is greater than y
-        (index === 0 || getY(previousValue) > getY(datum)) &&
-        // last point point or next is greater than y
-        (index >= data.length - 1 || getY(nextValue) > getY(datum));
+  switch (type) {
+    case "line":
+      return data.map((datum, index) => {
+        // Use the similar logic as presented in https://github.com/metabase/metabase/blob/3f4ca9c70bd263a7579613971ea8d7c47b1f776e/frontend/src/metabase/visualizations/lib/chart_values.js#L130
+        const previousValue = data[index - 1];
+        const nextValue = data[index + 1];
+        const showLabelBelow =
+          // first point or prior is greater than y
+          (index === 0 || getY(previousValue) > getY(datum)) &&
+          // last point point or next is greater than y
+          (index >= data.length - 1 || getY(nextValue) > getY(datum));
 
-      return {
-        datum,
-        datumForLabel: datum,
-        flipped: showLabelBelow,
-      };
-    });
+        return {
+          datum,
+          datumForLabel: datum,
+          flipped: showLabelBelow,
+        };
+      });
+    case "bar":
+      return data.map(datum => {
+        const isNegative = getY(datum) < 0;
+        return { datum, datumForLabel: datum, flipped: isNegative };
+      });
+    case "area":
+      return data.map(datum => {
+        return {
+          datum,
+          datumForLabel: datum,
+        };
+      });
+    case "waterfall": {
+      let total = 0;
+      return data.map(datum => {
+        total = total + getY(datum);
+        return {
+          datum: setY(datum, total),
+          datumForLabel: datum,
+        };
+      });
+    }
+    case "waterfall-total": {
+      let total = 0;
+      return data.map((datum, index) => {
+        total = total + getY(datum);
+        const isTotal = index === data.length - 1;
+        return {
+          datum: !isTotal ? setY(datum, total) : datum,
+          datumForLabel: datum,
+        };
+      });
+    }
+    default:
+      exhaustiveCheck(type);
   }
-
-  if (type === "bar") {
-    return data.map(datum => {
-      const isNegative = getY(datum) < 0;
-      return { datum, datumForLabel: datum, flipped: isNegative };
-    });
-  }
-
-  if (type === "area") {
-    return data.map(datum => {
-      return {
-        datum,
-        datumForLabel: datum,
-      };
-    });
-  }
-
-  if (type === "waterfall") {
-    let total = 0;
-    return data.map(datum => {
-      total = total + getY(datum);
-      return {
-        datum: setY(datum, total),
-        datumForLabel: datum,
-      };
-    });
-  }
-
-  if (type === "waterfall-total") {
-    let total = 0;
-    return data.map((datum, index) => {
-      total = total + getY(datum);
-      const isTotal = index === data.length - 1;
-      return {
-        datum: !isTotal ? setY(datum, total) : datum,
-        datumForLabel: datum,
-      };
-    });
-  }
-
-  exhaustiveCheck(type);
 }
 
 interface Position {
