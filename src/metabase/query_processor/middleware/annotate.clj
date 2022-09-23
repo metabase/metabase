@@ -522,7 +522,7 @@
      ;; aggregation fields are not from the source-metadata and their field_ref
      ;; are not unique for a nested query. So do not merge them otherwise the metadata will be messed up.
      ;; TODO: I think the best option here is to introduce a parent_field_ref so that
-     ;; we could merge preserve metadata such as “:sematic_type or :unit” from the source field.
+     ;; we could preserve metadata such as :sematic_type or :unit from the source field.
       (if-let [source-metadata-for-field (and (not= :aggregation source)
                                               (get by-key (qp.util/field-ref->key field_ref)))]
         (merge-source-metadata-col source-metadata-for-field

@@ -150,7 +150,7 @@
 (deftest nested-with-aggregations-at-both-levels-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (mt/dataset sample-dataset
-      (doseq  [dataset? [true false]]
+      (doseq [dataset? [true false]]
         (testing (format "Aggregations in both nested and outer query for %s have correct metadata (#19403) and (#23248)"
                          (if dataset? "questions" "models"))
           (mt/with-temp* [Card [{card-id :id :as card}
@@ -169,27 +169,26 @@
                                                         {:name "max"}]]
                                                       :breakout     $category
                                                       :order-by     [[:asc $category]]}})}]]
-            (is (= {:cols [{:name "sum" :display_name "Sum of Sum of Price"}
-                           {:name "count" :display_name "Count"}]
-                    :rows [[11149 4]]}
-                   (-> (mt/format-rows-by [int int]
-                         (qp/process-query (merge {:type     :query
-                                                   :database (mt/id)
-                                                   :query    {:source-table (str "card__" card-id)
-                                                              :aggregation  [[:aggregation-options
-                                                                              [:sum
-                                                                               [:field
-                                                                                "sum"
-                                                                                {:base-type :type/Float}]]
-                                                                              {:name "sum"}]
-                                                                             [:aggregation-options
-                                                                              [:count]
-                                                                              {:name "count"}]]}}
-                                                  (when dataset?
-                                                    {:info {:metadata/dataset-metadata (:result_metadata card)}}))))
-                       :data
-                       (select-keys [:cols :rows])
-                       (update :cols #(map (fn [c] (select-keys c [:name :display_name])) %)))))))))))
+            (is (partial= {:data {:cols [{:name "sum" :display_name "Sum of Sum of Price"}
+                                         {:name "count" :display_name "Count"}]
+                                  :rows [[11149 4]]}}
+                          (mt/format-rows-by [int int]
+                            (qp/process-query (merge {:type     :query
+                                                      :database (mt/id)
+                                                      :query    {:source-table (str "card__" card-id)
+                                                                 :aggregation  [[:aggregation-options
+                                                                                 [:sum
+                                                                                  [:field
+                                                                                   "sum"
+                                                                                   {:base-type :type/Float}]]
+                                                                                 {:name "sum"}]
+                                                                                [:aggregation-options
+                                                                                 [:count]
+                                                                                 {:name "count"}]]}}
+                                                     (when dataset?
+                                                       {:info {:metadata/dataset-metadata (:result_metadata card)}}))))))))))))
+
+
 
 (deftest sql-source-query-breakout-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
