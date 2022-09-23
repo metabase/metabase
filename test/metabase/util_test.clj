@@ -337,25 +337,23 @@
                     (u/sorted-take size kompare)
                     coll)))))
 (deftest ^:parallel email->domain-test
-  (are [domain email] (is (= domain
-                             (u/email->domain email))
-                          (format "Domain of email address '%s'" email))
+  (are [domain email] (= domain
+                         (u/email->domain email))
     nil              nil
     "metabase.com"   "cam@metabase.com"
     "metabase.co.uk" "cam@metabase.co.uk"
     "metabase.com"   "cam.saul+1@metabase.com"))
 
 (deftest ^:parallel email-in-domain-test
-  (are [in-domain? email domain] (is (= in-domain?
-                                        (u/email-in-domain? email domain))
-                                     (format "Is email '%s' in domain '%s'?" email domain))
+  (are [in-domain? email domain] (= in-domain?
+                                    (u/email-in-domain? email domain))
     true  "cam@metabase.com"          "metabase.com"
     false "cam.saul+1@metabase.co.uk" "metabase.com"
     true  "cam.saul+1@metabase.com"   "metabase.com"))
 
 (deftest ^:parallel round-to-precision-test
-  (are [exp figs n]
-       (is (= exp (u/round-to-precision figs n)))
+  (are [exp figs n] (= exp
+                       (u/round-to-precision figs n))
        1.0     1 1.234
        1.2     2 1.234
        1.3     2 1.278
