@@ -71,9 +71,9 @@ If a question uses data stored as the wrong [data type](https://www.metabase.com
 
 ## Related problems
 
-- [My connection or query is timing out](./timeout).
-- [I can't connect to a database](./db-connection).
-- [My dashboard is slow or failing to load](./my-dashboard-is-slow).
+- [My connection or query is timing out](./timeout.md).
+- [I can't connect to a database](./db-connection.md).
+- [My dashboard is slow or failing to load](./my-dashboard-is-slow.md).
 
 ## Are you still stuck?
 
