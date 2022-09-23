@@ -166,7 +166,7 @@ Go to **Admin settings** > **Databases** > your database and click **Remove this
 
 ## Troubleshooting
 
-- [Troubleshooting database connections](../troubleshooting-guide/datawarehouse.md)
+- [Troubleshooting database connections](../troubleshooting-guide/db-connection.md)
 - [Troubleshooting syncs, scans, and fingerprinting](../troubleshooting-guide/sync-fingerprint-scan.md)
 - Search or ask the [Metabase community](https://discourse.metabase.com/).
 - Search for [known bugs or limitations](../troubleshooting-guide/known-issues.md).

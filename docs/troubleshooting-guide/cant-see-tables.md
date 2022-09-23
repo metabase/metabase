@@ -39,7 +39,7 @@ If you can't connect to the database with another application, the problem is pr
 
 **Steps to take:**
 
-If your connection isn't working, go to [Troubleshooting database connections](./datawarehouse.md).
+If your connection isn't working, go to [Troubleshooting database connections](./db-connection.md).
 
 ## Does the table exist?
 
