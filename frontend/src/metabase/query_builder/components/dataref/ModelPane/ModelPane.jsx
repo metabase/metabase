@@ -7,6 +7,10 @@ import PropTypes from "prop-types";
 import { getMetadata } from "metabase/selectors/metadata";
 import MetabaseSettings from "metabase/lib/settings";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
+import {
+  Description,
+  EmptyDescription,
+} from "metabase/components/MetadataInfo/MetadataInfo.styled";
 import Question from "metabase-lib/lib/Question";
 import FieldList from "../FieldList";
 import {
@@ -43,7 +47,11 @@ const ModelPane = ({ show, model, question }) => {
   return (
     <div>
       <ModelPaneDescription>
-        {question.description() || t`No description`}
+        {question.description() ? (
+          <Description>{question.description()}</Description>
+        ) : (
+          <EmptyDescription>{t`No description`}</EmptyDescription>
+        )}
       </ModelPaneDescription>
       <ModelPaneDetail>
         <a href={question.getUrl()}>
