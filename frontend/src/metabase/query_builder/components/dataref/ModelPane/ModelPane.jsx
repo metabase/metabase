@@ -11,6 +11,7 @@ import Question from "metabase-lib/lib/Question";
 import FieldList from "../FieldList";
 import {
   ModelPaneDetail,
+  ModelPaneDetailLink,
   ModelPaneDetailText,
   ModelPaneIcon,
   ModelPaneDescription,
@@ -47,7 +48,7 @@ const ModelPane = ({ show, model, question }) => {
       <ModelPaneDetail>
         <a href={question.getUrl()}>
           <ModelPaneIcon name="share" />
-          <ModelPaneDetailText>{t`See it`}</ModelPaneDetailText>
+          <ModelPaneDetailLink>{t`See it`}</ModelPaneDetailLink>
         </a>
       </ModelPaneDetail>
       <ModelPaneDetail>

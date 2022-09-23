@@ -24,6 +24,11 @@ export const ModelPaneDescription = styled.div`
 
 export const ModelPaneDetailText = styled.span`
   margin-left: ${space(1)};
+  font-weight: normal;
+`;
+
+export const ModelPaneDetailLink = styled.span`
+  margin-left: ${space(1)};
 `;
 
 export const ModelPaneIcon = styled(Icon)`
