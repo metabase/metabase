@@ -63,7 +63,7 @@ By default, Metabase makes regular sync and scan queries against your database t
 ## Questions that use number, date, or timestamp columns
 
 1. Update your database schema so that the columns are typed correctly.
-2. [Scan the updated columns](../databases/connecting.md#manually-scanning-column-values) to bring the changes into Metabase.
+2. [Sync the updated columns](../databases/connecting.md#manually-syncing-tables-and-columns) to bring the changes into Metabase.
 
 **Explanation**
 
