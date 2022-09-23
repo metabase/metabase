@@ -649,8 +649,8 @@
                (:percentages (donut-info 5 rows))))))))
 
 (deftest ^:parallel format-percentage-test
-  (mt/are+ [value expected] (= expected
-                               (body/format-percentage 12345.4321 value))
+  (are [value expected] (= expected
+                           (body/format-percentage 12345.4321 value))
     ".," "1,234,543.21%"
     "^&" "1&234&543^21%"
     " "  "1,234,543 21%"

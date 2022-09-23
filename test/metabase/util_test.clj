@@ -30,8 +30,8 @@
 
 (deftest ^:parallel host-up?-test
   (testing "host-up?"
-    (mt/are+ [s expected] (= expected
-                             (u/host-up? s))
+    (are [s expected] (= expected
+                         (u/host-up? s))
       "localhost"  true
       "nosuchhost" false))
   (testing "host-port-up?"
@@ -39,8 +39,8 @@
            (u/host-port-up? "nosuchhost" 8005)))))
 
 (deftest ^:parallel url?-test
-  (mt/are+ [s expected] (= expected
-                        (u/url? s))
+  (are [s expected] (= expected
+                       (u/url? s))
     "http://google.com"                                                                      true
     "https://google.com"                                                                     true
     "https://amazon.co.uk"                                                                   true
@@ -74,8 +74,8 @@
     "http:/"                                                                                 false))
 
 (deftest ^:parallel state?-test
-  (mt/are+ [x expected] (= expected
-                           (u/state? x))
+  (are [x expected] (= expected
+                       (u/state? x))
     "louisiana"      true
     "north carolina" true
     "WASHINGTON"     true
@@ -87,8 +87,8 @@
     (Object.)        false))
 
 (deftest ^:parallel qualified-name-test
-  (mt/are+ [k expected] (= expected
-                           (u/qualified-name k))
+  (are [k expected] (= expected
+                       (u/qualified-name k))
     :keyword                          "keyword"
     :namespace/keyword                "namespace/keyword"
     ;; `qualified-name` should return strings as-is
@@ -152,8 +152,8 @@
              (map ex-data (u/full-exception-chain e)))))))
 
 (deftest ^:parallel select-nested-keys-test
-  (mt/are+ [m keyseq expected] (= expected
-                                  (u/select-nested-keys m keyseq))
+  (are [m keyseq expected] (= expected
+                              (u/select-nested-keys m keyseq))
     {:a 100, :b {:c 200, :d 300}}              [:a [:b :d] :c]   {:a 100, :b {:d 300}}
     {:a 100, :b {:c 200, :d 300}}              [:b]              {:b {:c 200, :d 300}}
     {:a 100, :b {:c 200, :d 300}}              [[:b :c :d]]      {:b {:c 200, :d 300}}
@@ -168,8 +168,8 @@
     {}                                         [:c]              {}))
 
 (deftest ^:parallel base64-string?-test
-  (mt/are+ [s expected]    (= expected
-                        (u/base64-string? s))
+  (are [s expected]    (= expected
+                          (u/base64-string? s))
     "ABc="         true
     "ABc/+asdasd=" true
     100            false
@@ -198,8 +198,8 @@
              :non-nil #{:d :e :f})))))
 
 (deftest ^:parallel order-of-magnitude-test
-  (mt/are+ [n expected] (= expected
-                        (u/order-of-magnitude n))
+  (are [n expected] (= expected
+                       (u/order-of-magnitude n))
     0.01  -2
     0.5   -1
     4     0
@@ -222,16 +222,16 @@
          (u/snake-keys {:num-cans 2, :lisp-case? {:nested-maps? true}}))))
 
 (deftest ^:parallel one-or-many-test
-  (mt/are+ [input expected] (= expected
-                               (u/one-or-many input))
+  (are [input expected] (= expected
+                           (u/one-or-many input))
     nil   nil
     [nil] [nil]
     42    [42]
     [42]  [42]))
 
 (deftest ^:parallel topological-sort-test
-  (mt/are+ [input expected] (= expected
-                            (u/topological-sort identity input))
+  (are [input expected] (= expected
+                           (u/topological-sort identity input))
     {:b []
      :c [:a]
      :e [:d]
@@ -253,8 +253,8 @@
            (u/upper-case-en "id")))))
 
 (deftest ^:parallel parse-currency-test
-  (mt/are+ [s expected] (= expected
-                        (u/parse-currency s))
+  (are [s expected] (= expected
+                       (u/parse-currency s))
     nil             nil
     ""              nil
     "   "           nil
@@ -289,8 +289,8 @@
     (is (nil? (u/or-with even? 1 3 5)))))
 
 (deftest ^:parallel ip-address?-test
-  (mt/are+ [x expected] (= expected
-                           (u/ip-address? x))
+  (are [x expected] (= expected
+                       (u/ip-address? x))
     "8.8.8.8"              true
     "185.233.100.23"       true
     "500.1.1.1"            false
