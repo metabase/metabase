@@ -19,8 +19,8 @@
 ;; These modules register settings but are otherwise unused. They still must be imported.
 (comment metabase.public-settings.premium-features/keep-me)
 
-(defn- google-auth-configured? []
-  (boolean (setting/get :google-auth-client-id)))
+(defn- google-auth-enabled? []
+  (boolean (setting/get :google-auth-enabled)))
 
 (defn- ldap-enabled? []
   (classloader/require 'metabase.api.ldap)
@@ -35,7 +35,7 @@
 (defn sso-enabled?
   "Any SSO provider is configured and enabled"
   []
-  (or (google-auth-configured?)
+  (or (google-auth-enabled?)
       (ldap-enabled?)
       (ee-sso-configured?)))
 

@@ -36,7 +36,7 @@
   (testing "Test that when somebody archives a Card, it is removed from any Dashboards it belongs to"
     (tt/with-temp* [Dashboard     [dashboard]
                     Card          [card]
-                    DashboardCard [dashcard  {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card)}]]
+                    DashboardCard [_dashcard {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card)}]]
       (db/update! Card (u/the-id card) :archived true)
       (is (= 0
              (db/count DashboardCard :dashboard_id (u/the-id dashboard)))))))
@@ -60,9 +60,9 @@
    :native   {:query "SELECT count(*) FROM toucan_sightings;"}})
 
 (deftest database-id-test
-  (tt/with-temp Card [{:keys [id] :as card} {:name          "some name"
-                                             :dataset_query (dummy-dataset-query (mt/id))
-                                             :database_id   (mt/id)}]
+  (tt/with-temp Card [{:keys [id]} {:name          "some name"
+                                    :dataset_query (dummy-dataset-query (mt/id))
+                                    :database_id   (mt/id)}]
     (testing "before update"
       (is (= {:name "some name", :database_id (mt/id)}
              (into {} (db/select-one [Card :name :database_id] :id id)))))

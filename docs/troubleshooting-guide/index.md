@@ -25,9 +25,10 @@ Problems, their causes, how to detect them, and how to fix them.
 
 ## Databases
 
-- [I can't connect to a database][datawarehouse].
+- [I can't connect to a database][db-connection].
 - [I can't see my tables][cant-see-tables].
 - [The data in Metabase doesn't match my database][sync-fingerprint-scan].
+- [My database is slow][db-performance].
 - [My connection or query is timing out][timeout].
 
 ## Questions and dashboards
@@ -92,7 +93,8 @@ Metabase adds new features and squashes bugs with each release. [Upgrading to th
 [cant-see-tables]: ./cant-see-tables.md
 [chrome]: https://developers.google.com/web/tools/chrome-devtools/open#console
 [cloud]: https://www.metabase.com/start/
-[datawarehouse]: ./datawarehouse.md
+[db-connection]: ./db-connection.md
+[db-performance]: ./db-performance.md
 [docker]: ./docker.md
 [edge]: https://docs.microsoft.com/en-us/microsoft-edge/devtools-guide-chromium
 [error-message]: error-message.md

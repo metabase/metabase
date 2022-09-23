@@ -536,39 +536,39 @@
 
 (deftest root-collection-descendants-test
   (testing "For the *Root* Collection, can we get top-level Collections?"
-    (with-collection-hierarchy [{:keys [a b c d e f g]}]
-      (= #{{:name        "A"
-            :id          true
-            :description nil
-            :location    "/"
-            :children    #{{:name        "C"
-                            :id          true
-                            :description nil
-                            :location    "/A/"
-                            :children    #{{:name        "D"
-                                            :id          true
-                                            :description nil
-                                            :location    "/A/C/"
-                                            :children    #{{:name        "E"
-                                                            :id          true
-                                                            :description nil
-                                                            :location    "/A/C/D/"
-                                                            :children    #{}}}}
-                                           {:name        "F"
-                                            :id          true
-                                            :description nil
-                                            :location    "/A/C/"
-                                            :children    #{{:name        "G"
-                                                            :id          true
-                                                            :description nil
-                                                            :location    "/A/C/F/"
-                                                            :children    #{}}}}}}
-                           {:name        "B"
-                            :id          true
-                            :description nil
-                            :location    "/A/"
-                            :children    #{}}}}}
-         (descendants collection/root-collection)))))
+    (with-collection-hierarchy [_]
+      (is (= #{{:name        "A"
+                :id          true
+                :description nil
+                :location    "/"
+                :children    #{{:name        "C"
+                                :id          true
+                                :description nil
+                                :location    "/A/"
+                                :children    #{{:name        "D"
+                                                :id          true
+                                                :description nil
+                                                :location    "/A/C/"
+                                                :children    #{{:name        "E"
+                                                                :id          true
+                                                                :description nil
+                                                                :location    "/A/C/D/"
+                                                                :children    #{}}}}
+                                               {:name        "F"
+                                                :id          true
+                                                :description nil
+                                                :location    "/A/C/"
+                                                :children    #{{:name        "G"
+                                                                :id          true
+                                                                :description nil
+                                                                :location    "/A/C/F/"
+                                                                :children    #{}}}}}}
+                               {:name        "B"
+                                :id          true
+                                :description nil
+                                :location    "/A/"
+                                :children    #{}}}}}
+             (descendants collection/root-collection))))))
 
 
 
@@ -823,7 +823,7 @@
                   (perms-path-ids->names collections)))))))
 
 (deftest perms-for-moving-exceptions-test
-  (with-collection-hierarchy [{:keys [a b], :as collections}]
+  (with-collection-hierarchy [{:keys [a b], :as _collections}]
     (testing "If you try to calculate permissions to move or archive the Root Collection, throw an Exception!"
       (is (thrown?
            Exception
@@ -1023,8 +1023,8 @@
   (doseq [model [Card Dashboard NativeQuerySnippet Pulse]]
     (testing (format "Test that archiving applies to %ss" (name model))
       ;; object is in E; archiving E should cause object to be archived
-      (with-collection-hierarchy [{:keys [e], :as collections} (when (= model NativeQuerySnippet)
-                                                                 {:namespace "snippets"})]
+      (with-collection-hierarchy [{:keys [e], :as _collections} (when (= model NativeQuerySnippet)
+                                                                  {:namespace "snippets"})]
         (mt/with-temp model [object {:collection_id (u/the-id e)}]
           (db/update! Collection (u/the-id e) :archived true)
           (is (= true
@@ -1032,8 +1032,8 @@
 
     (testing (format "Test that archiving applies to %ss belonging to descendant Collections" (name model))
       ;; object is in E, a descendant of C; archiving C should cause object to be archived
-      (with-collection-hierarchy [{:keys [c e], :as collections} (when (= model NativeQuerySnippet)
-                                                                   {:namespace "snippets"})]
+      (with-collection-hierarchy [{:keys [c e], :as _collections} (when (= model NativeQuerySnippet)
+                                                                    {:namespace "snippets"})]
         (mt/with-temp model [object {:collection_id (u/the-id e)}]
           (db/update! Collection (u/the-id c) :archived true)
           (is (= true
@@ -1043,8 +1043,8 @@
   (doseq [model [Card Dashboard NativeQuerySnippet Pulse]]
     (testing (format "Test that unarchiving applies to %ss" (name model))
       ;; object is in E; unarchiving E should cause object to be unarchived
-      (with-collection-hierarchy [{:keys [e], :as collections} (when (= model NativeQuerySnippet)
-                                                                 {:namespace "snippets"})]
+      (with-collection-hierarchy [{:keys [e], :as _collections} (when (= model NativeQuerySnippet)
+                                                                  {:namespace "snippets"})]
         (db/update! Collection (u/the-id e) :archived true)
         (mt/with-temp model [object {:collection_id (u/the-id e), :archived true}]
           (db/update! Collection (u/the-id e) :archived false)
@@ -1053,8 +1053,8 @@
 
     (testing (format "Test that unarchiving applies to %ss belonging to descendant Collections" (name model))
       ;; object is in E, a descendant of C; unarchiving C should cause object to be unarchived
-      (with-collection-hierarchy [{:keys [c e], :as collections} (when (= model NativeQuerySnippet)
-                                                                   {:namespace "snippets"})]
+      (with-collection-hierarchy [{:keys [c e], :as _collections} (when (= model NativeQuerySnippet)
+                                                                    {:namespace "snippets"})]
         (db/update! Collection (u/the-id c) :archived true)
         (mt/with-temp model [object {:collection_id (u/the-id e), :archived true}]
           (db/update! Collection (u/the-id c) :archived false)
@@ -1063,27 +1063,27 @@
 
 (deftest archive-while-moving-test
   (testing "Test that we cannot archive a Collection at the same time we are moving it"
-    (with-collection-hierarchy [{:keys [c], :as collections}]
+    (with-collection-hierarchy [{:keys [c], :as _collections}]
       (is (thrown?
            Exception
            (db/update! Collection (u/the-id c), :archived true, :location "/")))))
 
   (testing "Test that we cannot unarchive a Collection at the same time we are moving it"
-    (with-collection-hierarchy [{:keys [c], :as collections}]
+    (with-collection-hierarchy [{:keys [c], :as _collections}]
       (db/update! Collection (u/the-id c), :archived true)
       (is (thrown?
            Exception
            (db/update! Collection (u/the-id c), :archived false, :location "/")))))
 
   (testing "Passing in a value of archived that is the same as the value in the DB shouldn't affect anything however!"
-    (with-collection-hierarchy [{:keys [c], :as collections}]
+    (with-collection-hierarchy [{:keys [c], :as _collections}]
       (db/update! Collection (u/the-id c), :archived false, :location "/")
       (is (= "/"
              (db/select-one-field :location Collection :id (u/the-id c)))))))
 
 (deftest archive-noop-shouldnt-affect-descendants-test
   (testing "Check that attempting to unarchive a Card that's not archived doesn't affect archived descendants"
-    (with-collection-hierarchy [{:keys [c e], :as collections}]
+    (with-collection-hierarchy [{:keys [c e], :as _collections}]
       (db/update! Collection (u/the-id e), :archived true)
       (db/update! Collection (u/the-id c), :archived false)
       (is (= true
