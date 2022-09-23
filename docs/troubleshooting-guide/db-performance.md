@@ -10,23 +10,23 @@ To fix problems with your Metabase [application database](../installation-and-op
 
 - [Running Metabase](./running.md).
 - [Running Metabase on Docker](./docker.md).
-- [Using or migrating from an H2 application database](./loading-from-h2.md)
+- [Using or migrating from an H2 application database](./loading-from-h2.md).
 
 ## Identifying bottlenecks
 
-1. Optional: Use Metabase's [auditing tools](../usage-and-performance-tools/audit.md) to look at your Metabase usage stats.\*
+1. Optional: use Metabase's [auditing tools](../usage-and-performance-tools/audit.md) to look at your Metabase usage stats.\*
 2. Go to your database's server logs and check whether:
    - Your tables are growing in size,
    - More people are using Metabase to access your database,
    - People are accessing your database more often, or
-   - Another script or application is accessing the database frequently.
+   - A script or application (other than Metabase) is accessing the database frequently.
 3. If specific tables are being queried a lot, try [Optimizing your table schemas](https://www.metabase.com/learn/administration/making-dashboards-faster#organize-data-to-anticipate-common-questions).
 4. Run a question from Metabase, then [run the same query](../questions/query-builder/introduction.md#viewing-the-sql-that-powers-your-question) directly against your database.
    - If the queries take about the same time, your data or usage might be outgrowing your database. You can give your database more resources, or consider [upgrading your hardware](https://www.metabase.com/learn/analytics/which-data-warehouse).
-   - If the queries in Metabase take longer, you might need to adjust your deployment of the Metabase app. Check out some options in [Metabase at scale](https://www.metabase.com/learn/administration/metabase-at-scale).
-5. If a third-party script or application is hitting your database with a lot of queries at a time:
+   - If the query in Metabase takes longer than a direct query against your database, you might need to adjust the deployment of your Metabase app. Check out some options in [Metabase at scale](https://www.metabase.com/learn/administration/metabase-at-scale).
+5. If a script or third-party application is hitting your database with a lot of queries at a time:
    - Stop your script or application, and [clear any queued queries](#clearing-queued-queries).
-   - Recommended: Add a timeout to your script, schedule the script or application to run during off-hours, or replicate your database (and point your tools there instead).
+   - Recommended: add a timeout to your script, schedule the script or application to run during off-hours, or replicate your database (and point your tools there instead).
 
 \* Available on paid plans.
 
@@ -34,19 +34,7 @@ To fix problems with your Metabase [application database](../installation-and-op
 
 1. Go to **Settings** > **Admin settings** > **Databases** > your database.
 2. Click **Save changes** (without making changes) to reset Metabase's connections to your database.
-3. Alternatively: Kill the connection(s) directly from your database.
-
-   For example, you can close all open connections on a Postgres database by running:
-
-   ```sql
-   SELECT
-       pg_terminate_backend(pg_stat_activity.pid)
-   FROM
-       pg_stat_activity
-   WHERE
-       pg_stat_activity.datname = 'database_name'
-       AND pid <> pg_backend_pid();
-   ```
+3. Alternatively: kill the connection(s) directly from your database.
 
 **Explanation**
 
@@ -70,7 +58,7 @@ If someone or something creates 100 queries at the same time, this stampede of q
 
 **Explanation**
 
-By default, Metabase makes regular sync and scan queries against your database to keep your tables up to date, get fresh values for filter dropdowns, and make helpful suggestions. If you've got a very large database, you can choose to trigger the queries manually instead of on a schedule.
+By default, Metabase makes regular sync and scan queries against your database to keep your tables up to date, get fresh values for filter dropdowns, and make helpful suggestions. If you've got a very large database, you can choose to trigger these queries manually instead of on a schedule.
 
 ## Questions that use number, date, or timestamp columns
 
@@ -79,13 +67,13 @@ By default, Metabase makes regular sync and scan queries against your database t
 
 **Explanation**
 
-If a question uses data stored as the wrong data type in your database (most common with number, date, or timestamp values stored as strings), Metabase will generate a query that asks your database to convert the values on the fly. Typing your columns correctly at the schema level will help your database avoid that extra step to return results faster in Metabase.
+If a question uses data stored as the wrong [data type](https://www.metabase.com/learn/databases/data-types-overview) in your database (most common with number, date, or timestamp values stored as strings), Metabase will generate a query that asks your database to convert the values on the fly. Typing your columns correctly at the schema level will help your database avoid that extra step to return results faster in Metabase.
 
 ## Related problems
 
-- [My connection or query is timing out](./timeout.md).
-- [My dashboard is slow or failing to load](./my-dashboard-is-slow.md).
-- [I can't connect to a database](./db-connection.md).
+- [My connection or query is timing out](./timeout).
+- [I can't connect to a database](./db-connection).
+- [My dashboard is slow or failing to load](./my-dashboard-is-slow).
 
 ## Are you still stuck?
 
