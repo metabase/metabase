@@ -11,7 +11,7 @@ import {
   FieldListTitle,
   FieldListContainer,
   FieldListIcon,
-  ModelPaneDetailText,
+  FieldListTitleText,
 } from "./FieldList.styled";
 
 interface Props {
@@ -24,7 +24,7 @@ function FieldList({ fields, handleFieldClick }: Props) {
     <FieldListContainer>
       <FieldListTitle>
         <FieldListIcon name="table2" />
-        <ModelPaneDetailText>{jt`${fields.length} columns`}</ModelPaneDetailText>
+        <FieldListTitleText>{jt`${fields.length} columns`}</FieldListTitleText>
       </FieldListTitle>
       {fields.map(field => {
         const tooltip = field.semantic_type ? null : t`Unknown type`;

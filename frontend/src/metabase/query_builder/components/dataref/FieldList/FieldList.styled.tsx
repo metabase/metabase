@@ -53,6 +53,6 @@ export const FieldListTitle = styled.div`
   padding: ${space(1)};
 `;
 
-export const ModelPaneDetailText = styled.span`
+export const FieldListTitleText = styled.span`
   margin-left: ${space(1)};
 `;

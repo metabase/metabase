@@ -20,6 +20,7 @@ import {
   MetadataContainer,
 } from "metabase/components/MetadataInfo/TableInfo/TableInfo.styled";
 import ConnectedTables from "metabase/components/MetadataInfo/TableInfo/ConnectedTables";
+import ConnectedTableList from "metabase/query_builder/components/dataref/ConnectedTableList";
 // import { showAddParameterPopover } from "metabase/dashboard/actions";
 import Table from "metabase-lib/lib/metadata/Table";
 import FieldList from "./FieldList";
@@ -44,40 +45,6 @@ const mapDispatchToProps: {
   fetchForeignKeys: Tables.actions.fetchForeignKeys,
   fetchMetadata: Tables.actions.fetchMetadata,
 };
-
-// type AllProps = OwnProps &
-//   ReturnType<typeof mapStateToProps> &
-//   typeof mapDispatchToProps;
-
-// function useDependentTableMetadata({
-//   tableId,
-//   table,
-//   fetchForeignKeys,
-//   fetchMetadata,
-// }: Pick<AllProps, "tableId" | "table" | "fetchForeignKeys" | "fetchMetadata">) {
-//   const isMissingFields = !table?.numFields();
-//   const isMissingFks = table?.fks == null;
-//   const shouldFetchMetadata = isMissingFields || isMissingFks;
-//   const [hasFetchedMetadata, setHasFetchedMetadata] = useState(
-//     !shouldFetchMetadata,
-//   );
-//   const fetchDependentData = useSafeAsyncFunction(() => {
-//     return Promise.all([
-//       isMissingFields && fetchMetadata({ id: tableId }),
-//       isMissingFks && fetchForeignKeys({ id: tableId }),
-//     ]);
-//   }, [fetchMetadata, tableId, isMissingFks, isMissingFields, fetchForeignKeys]);
-
-//   useEffect(() => {
-//     if (shouldFetchMetadata) {
-//       fetchDependentData().then(() => {
-//         setHasFetchedMetadata(true);
-//       });
-//     }
-//   }, [fetchDependentData, shouldFetchMetadata]);
-
-//   return hasFetchedMetadata;
-// }
 
 const propTypes = {
   query: PropTypes.object.isRequired,
@@ -115,41 +82,38 @@ class TablePane extends React.Component {
   render() {
     const { table } = this.props;
     const { error, hasFetchedMetadata } = this.state;
-    const onConnectedTableClick = () => null; // TODO: replace with something
     if (table) {
       return (
         <div>
           <div className="ml1">
-            <InfoContainer className="">
-              {table.description ? (
-                <Description>{table.description}</Description>
-              ) : (
-                <EmptyDescription>{t`No description`}</EmptyDescription>
-              )}
-              <MetadataContainer>
-                <Fade visible={!hasFetchedMetadata}>
-                  <AbsoluteContainer>
-                    <LoadingSpinner size={24} />
-                  </AbsoluteContainer>
-                </Fade>
-                <Fade visible={hasFetchedMetadata}>
-                  {table && (
-                    <ConnectedTables
-                      table={table}
-                      onConnectedTableClick={onConnectedTableClick}
-                    />
-                  )}
-                </Fade>
-              </MetadataContainer>
-            </InfoContainer>
-            <div className="my2">
-              {table.fields && (
-                <FieldList
-                  fields={table.fields}
-                  handleFieldClick={field => this.props.show("field", field)}
-                />
-              )}
-            </div>
+            {table.description ? (
+              <Description>{table.description}</Description>
+            ) : (
+              <EmptyDescription>{t`No description`}</EmptyDescription>
+            )}
+          </div>
+          <div className="my2">
+            {table.fields && (
+              <FieldList
+                fields={table.fields}
+                handleFieldClick={field => this.props.show("field", field)}
+              />
+            )}
+            <MetadataContainer>
+              <Fade visible={!hasFetchedMetadata}>
+                <AbsoluteContainer>
+                  <LoadingSpinner size={24} />
+                </AbsoluteContainer>
+              </Fade>
+              <Fade visible={hasFetchedMetadata}>
+                {table && (
+                  <ConnectedTableList
+                    tables={table.connectedTables()}
+                    onTableClick={t => this.props.show("table", t)}
+                  />
+                )}
+              </Fade>
+            </MetadataContainer>
           </div>
         </div>
       );
