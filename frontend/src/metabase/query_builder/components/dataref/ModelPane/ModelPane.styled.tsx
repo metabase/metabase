@@ -19,7 +19,7 @@ export const ModelPaneDetail = styled.div`
 `;
 
 export const ModelPaneDescription = styled.div`
-  padding: ${space(1)};
+  padding: 0 ${space(1)} ${space(2)} ${space(1)};
 `;
 
 export const ModelPaneDetailText = styled.span`
