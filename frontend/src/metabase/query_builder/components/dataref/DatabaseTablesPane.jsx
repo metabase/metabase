@@ -1,5 +1,5 @@
 import React from "react";
-import { jt } from "ttag";
+import { t, jt } from "ttag";
 import _ from "underscore";
 import PropTypes from "prop-types";
 
@@ -14,6 +14,7 @@ import {
   FieldListIcon,
   FieldListTitleText,
 } from "./FieldList/FieldList.styled";
+import { ModelId } from "./DatabaseTablesPane.styled";
 
 const DatabaseTablesPane = ({ database, show, questions }) => {
   const tables = database.tables.sort((a, b) => a.name.localeCompare(b.name));
@@ -30,6 +31,7 @@ const DatabaseTablesPane = ({ database, show, questions }) => {
             <a onClick={() => show("model", model)}>
               <FieldListItemIcon name="model" />
               <FieldListItemName>{model.name}</FieldListItemName>
+              <ModelId>{t`#${model.id}`}</ModelId>
             </a>
           </FieldListItem>
         ))}
@@ -41,14 +43,12 @@ const DatabaseTablesPane = ({ database, show, questions }) => {
       </FieldListTitle>
       <ul>
         {tables.map(table => (
-          <li key={table.id}>
-            <FieldListItem key={table.id}>
-              <a onClick={() => show("table", table)}>
-                <FieldListItemIcon name="table" />
-                <FieldListItemName>{table.name}</FieldListItemName>
-              </a>
-            </FieldListItem>
-          </li>
+          <FieldListItem key={table.id}>
+            <a onClick={() => show("table", table)}>
+              <FieldListItemIcon name="table" />
+              <FieldListItemName>{table.name}</FieldListItemName>
+            </a>
+          </FieldListItem>
         ))}
       </ul>
     </FieldListContainer>
@@ -69,7 +69,7 @@ export default _.compose(
   }),
   Questions.loadList({
     query: (_state, props) => ({
-      f: "database",
+      f: "database-models",
       model_id: props.database?.id,
     }),
   }),
