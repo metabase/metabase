@@ -6,7 +6,7 @@ title: Troubleshooting connection timeouts
 
 If your queries are hanging or timing out, the problem could be coming from your:
 
-- [Database connection](./datawarehouse.md)
+- [Database connection](./db-connection.md)
 - Load balancer
 - Reverse proxy server (e.g., Nginx)
 - Jetty
