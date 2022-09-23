@@ -71,6 +71,21 @@ const orders_count_where_card = {
   },
 };
 
+const orders_metric_filter_card = {
+  id: 2,
+  name: "# orders data",
+  display: "table",
+  visualization_settings: {},
+  dataset_query: {
+    type: "query",
+    database: SAMPLE_DATABASE.id,
+    query: {
+      "source-table": ORDERS.id,
+      aggregation: [["metric", 2]],
+    },
+  },
+};
+
 const native_orders_count_card = {
   id: 3,
   name: "# orders data",
@@ -579,6 +594,28 @@ describe("Question", () => {
               "and",
               ["=", ["field", ORDERS.ID.id, null], 1],
               [">", ORDERS.TOTAL.id, 50],
+            ],
+          },
+        });
+      });
+
+      it("applies a filter from a metric to a given query", () => {
+        const question = new Question(orders_metric_filter_card, metadata);
+        const dimensions = [{ value: 1, column: ORDERS.ID.column() }];
+        const column = { field_ref: ["aggregation", 0] };
+
+        const newQuestion = question.drillUnderlyingRecords(dimensions, column);
+
+        expect(newQuestion.canRun()).toBe(true);
+        expect(newQuestion._card.dataset_query).toEqual({
+          type: "query",
+          database: SAMPLE_DATABASE.id,
+          query: {
+            "source-table": ORDERS.id,
+            filter: [
+              "and",
+              ["=", ["field", ORDERS.ID.id, null], 1],
+              [">", ORDERS.TOTAL.id, 20],
             ],
           },
         });

@@ -82,6 +82,7 @@ export function makeMetadata(metadata) {
     },
     metrics: {
       1: { name: "metric" },
+      2: { name: "metric" },
     },
     segments: {
       1: { name: "segment" },
