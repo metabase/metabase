@@ -320,15 +320,3 @@
                                   (json/generate-string {:value value :goal goal})
                                   (json/generate-string settings)))]
       (validate-svg-string :progress svg-string))))
-
-(deftest categorical-waterfall-test
-  (let [rows           [["apples" 2]
-                        ["bananas" 3]]
-        labels         {:left "bob" :right "dobbs"}
-        settings       (json/generate-string {})
-        waterfall-type "categorical"]
-    (testing "It returns bytes"
-      (let [svg-bytes (js-svg/waterfall rows labels {} waterfall-type)]
-        (is (bytes? svg-bytes))))
-    (let [svg-string (.asString ^Value (js/execute-fn-name @context "waterfall" rows labels settings waterfall-type (json/generate-string (public-settings/application-colors))))]
-      (validate-svg-string :categorical/waterfall svg-string))))
