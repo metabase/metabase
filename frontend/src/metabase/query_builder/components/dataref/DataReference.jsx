@@ -18,7 +18,6 @@ const PANES = {
   schema: SchemaPane, // displays tables in a schema
   table: TablePane, // displays fields in a table
   field: FieldPane,
-  modelColumn: FieldPane, // TODO: needs fixing
   model: ModelPane, // displays columns of a model
   segment: SegmentPane,
   metric: MetricPane,
@@ -32,7 +31,6 @@ const TITLE_ICONS = {
   segment: "segment", // TODO check
   metric: "metric", // TODO check
   model: "model",
-  modelColumn: "field",
 };
 
 export default class DataReference extends Component {

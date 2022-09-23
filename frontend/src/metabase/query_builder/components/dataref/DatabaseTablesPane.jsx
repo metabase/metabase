@@ -9,28 +9,26 @@ import Questions from "metabase/entities/questions";
 
 const DatabaseTablesPane = ({ database, show, questions }) => {
   const tables = database.tables.sort((a, b) => a.name.localeCompare(b.name));
-  const sortedQuestions = questions.sort((a, b) =>
-    a.name.localeCompare(b.name),
-  );
+  const models = questions.sort((a, b) => a.name.localeCompare(b.name));
   return (
     <div>
       <div className="pl1 mt2 flex align-center justify-between">
         <div className="flex align-center">
           <Icon name="model" className="pr1" size={12} />
-          <span className="flex-full flex p1 text-bold">{jt`${sortedQuestions.length} models`}</span>
+          <span className="flex-full flex p1 text-bold">{jt`${models.length} models`}</span>
         </div>
       </div>
 
       <ul>
-        {sortedQuestions.map(question => (
-          <li key={question.id}>
+        {models.map(model => (
+          <li key={model.id}>
             <div className="pl1 flex align-center bg-medium-hover">
               <Icon name="model" className="pr1 text-brand" size={12} />
               <a
                 className="flex-full flex p1 text-bold text-brand text-wrap no-decoration bg-medium-hover"
-                onClick={() => show("model", question)}
+                onClick={() => show("model", model)}
               >
-                {question.name}
+                {model.name}
               </a>
             </div>
           </li>
@@ -65,7 +63,7 @@ const DatabaseTablesPane = ({ database, show, questions }) => {
 DatabaseTablesPane.propTypes = {
   show: PropTypes.func.isRequired,
   database: PropTypes.object.isRequired,
-  questions: PropTypes.object,
+  questions: PropTypes.arrayOf(PropTypes.object),
 };
 
 export default _.compose(
