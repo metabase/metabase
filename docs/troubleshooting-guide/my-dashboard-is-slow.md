@@ -7,7 +7,7 @@ title: My dashboard is slow
 First, you'll want to make sure your browser is on friendly terms with Metabase:
 
 - Clear your browser cache and disable all extensions before refreshing the page, or
-- try loading the dashboard in a private/incognito session. 
+- Try loading the dashboard in a private/incognito session.
 
 ## Dashboard has over 10 cards
 
@@ -24,7 +24,7 @@ Aside from running faster, a small and focused dashboard is also easier for peop
 
 ## Dashboard used by many people at the same time
 
-1. Optional: Use Metabase's [auditing tools](../usage-and-performance-tools/audit.md) to look at your Metabase usage stats\*.
+1. Optional: use Metabase's [auditing tools](../usage-and-performance-tools/audit.md) to look at your Metabase usage stats\*.
 2. Set up [caching](../configuring-metabase/caching.md) for the questions on your popular dashboard.
 3. Run the dashboard during off-hours so that people can load the cached results in seconds instead of executing a fresh query to your database.
 
@@ -32,19 +32,19 @@ Aside from running faster, a small and focused dashboard is also easier for peop
 
 **Explanation**
 
-If you have a popular, yet slow dashboard that many people check around the same time (e.g., at the start of the work day), you may end up with queued queries or saturated database connections. Caching allows you to prepare for peak traffic by running those slow queries once, ahead of time, so that the results are ready to go.
+If you have a dashboard that many people check around the same time (e.g., at the start of the work day), you may end up with queued queries or saturated database connections. Caching allows you to prepare for peak traffic by running those slow queries once, ahead of time, so that the results are ready to go.
 
 Caching takes less effort because it doesn't involve any changes to your schemas or databases. If you're ready to invest more resources into the root cause of dashboard performance issues, check out this list of common [schema and database optimizations](https://metabase.com/learn/administration/making-dashboards-faster#organize-data-to-anticipate-common-questions).
 
 ## Embedded dashboard is slow compared to original dashboard
 
-1. Set up a [locked parameter to pre-filter your data](../embedding/signed-embedding-parameters.md#pre-filtering-data-in-a-signed-embed).
+1. To speed up the embedded dashboard, set up a [locked parameter to pre-filter your data](../embedding/signed-embedding-parameters.md#pre-filtering-data-in-a-signed-embed).
 
 **Explanation**
 
 One of the easiest ways to make a question or dashboard run faster is to work with a smaller dataset. Your Metabase admin can apply automatic data limitations using things like [SSO](../people-and-groups/start.md#setting-up-single-sign-on-sso), [data permissions](../permissions/data.md), and [data sandboxing](../permissions/data-sandboxes.md).
 
-However, a standalone embedded dashboard (a [signed embed](../embedding/signed-embedding.md)) won't log people into Metabase. This means that people viewing the signed embed won't be subject to the permissions and data restrictions set up by your admin. When someone loads a question or a dashboard in a signed embed, that question or dashboard will utilize a larger, unrestricted dataset rather than a smaller, permissions-limited dataset.
+When someone loads a question or a dashboard in a signed embed, however, that question or dashboard will query the full dataset (rather than a smaller dataset limited by permissions). Standalone, [signed embeds](../embedding/signed-embedding.md) don't require people to be logged in, and unauthenticated people viewing the signed embed won't be subject to the permissions and data restrictions set up by your admin. 
 
 ## Dashboard is slow compared to similar dashboards
 
@@ -57,7 +57,7 @@ However, a standalone embedded dashboard (a [signed embed](../embedding/signed-e
 
 **Explanation**
 
-When you update your question to use a minimal number of rows or columns (or switch your question to use a smaller table, such as a summary table) your database can spend less time scanning those records in order to return your results. This is especially important to think about if you're [starting from someone else's saved question or model](../questions/query-builder/introduction.md#play-around-with-saved-questions), because you might not need all of the data that the original creator decided to include.
+When you update your question to use a minimal number of rows or columns (or switch your question to use a smaller table, such as a summary table) your database can spend less time scanning those records in order to return your results. Narrowing the scope of your question is especially important to think about if you're [starting from someone else's saved question or model](../questions/query-builder/introduction.md#play-around-with-saved-questions), because you might not need all of the data that the original creator decided to include.
 
 If all of your dashboards are slow, you might be limited by the performance of a particular data source. In that case, we recommend teaming up with your database admin to [Troubleshoot database performance](./db-performance.md).
 

@@ -20,8 +20,10 @@ To fix problems with your Metabase [application database](../installation-and-op
    - More people are using Metabase to access your database,
    - People are accessing your database more often, or
    - Another script or application is accessing the database frequently.
-3. If specific tables are being queried a lot, try [Optimizing your table schemas](https://www.metabase.com/learn/analytics/which-data-warehouse).
-4. If your data, user base, and usage are starting to outgrow your database's resources, think about [scaling Metabase](https://www.metabase.com/learn/administration/metabase-at-scale) or [upgrading your hardware](https://www.metabase.com/learn/analytics/which-data-warehouse).
+3. If specific tables are being queried a lot, try [Optimizing your table schemas](https://www.metabase.com/learn/administration/making-dashboards-faster#organize-data-to-anticipate-common-questions).
+4. Run a question from Metabase, then [run the same query](../questions/query-builder/introduction.md#viewing-the-sql-that-powers-your-question) directly against your database.
+   - If the queries take about the same time, your data or usage might be outgrowing your database. You can give your database more resources, or consider [upgrading your hardware](https://www.metabase.com/learn/analytics/which-data-warehouse).
+   - If the queries in Metabase take longer, you might need to adjust your deployment of the Metabase app. Check out some options in [Metabase at scale](https://www.metabase.com/learn/administration/metabase-at-scale).
 5. If a third-party script or application is hitting your database with a lot of queries at a time:
    - Stop your script or application, and [clear any queued queries](#clearing-queued-queries).
    - Recommended: Add a timeout to your script, schedule the script or application to run during off-hours, or replicate your database (and point your tools there instead).
