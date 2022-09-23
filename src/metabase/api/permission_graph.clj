@@ -84,10 +84,20 @@
 ;; language used on the frontend.
 (s/def ::details (s/or :str->kw #{"yes" "no"}))
 
-(s/def ::db-perms (s/keys :opt-un [::data ::download ::data-model ::details]))
+(s/def ::execute (s/or :str->kw #{"all" "none"}))
 
-(s/def ::db-graph (s/map-of ::id ::db-perms
-                            :conform-keys true))
+(s/def ::db-perms (s/keys :opt-un [::data ::download ::data-model ::details ::execute]))
+
+(s/def ::db-graph
+  (s/and (s/map-of (s/or :global-execute #{:execute}
+                         :db-perms ::id)
+                   (s/or :global-execute ::execute
+                         :db-perms ::db-perms)
+                   :conform-keys true)
+         (s/conformer (fn [m]
+                        (if (every? (fn [[[key-tag] [value-tag]]] (= key-tag value-tag)) m)
+                          (into {} (map (partial mapv second)) m)
+                          :clojure.spec.alpha/invalid)))))
 
 (s/def :metabase.api.permission-graph.data/groups
   (s/map-of ::id ::db-graph
