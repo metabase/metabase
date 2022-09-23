@@ -2,7 +2,9 @@
 // @ts-nocheck
 import _ from "underscore";
 import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
+/* eslint-disable import/order */
 // NOTE: the order of these matters due to circular dependency issues
+import slugg from "slugg";
 import StructuredQuery, {
   STRUCTURED_QUERY_TEMPLATE,
 } from "metabase-lib/lib/queries/StructuredQuery";
@@ -24,6 +26,8 @@ import Mode from "metabase-lib/lib/Mode";
 import { isStandard } from "metabase/lib/query/filter";
 import { isFK } from "metabase/lib/schema_metadata";
 import { memoizeClass, sortObject } from "metabase-lib/lib/utils";
+/* eslint-enable import/order */
+
 // TODO: remove these dependencies
 import * as Urls from "metabase/lib/urls";
 import {
@@ -68,15 +72,15 @@ import { TableId } from "metabase-types/types/Table";
 import { DatabaseId } from "metabase-types/types/Database";
 import { ClickObject } from "metabase-types/types/Visualization";
 import { DependentMetadataItem } from "metabase-types/types/Query";
+import { utf8_to_b64url } from "metabase/lib/encoding";
+import { CollectionId } from "metabase-types/api";
+
+import { getQuestionVirtualTableId } from "metabase/lib/saved-questions/saved-questions";
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
   ALERT_TYPE_ROWS,
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/lib/Alert";
-import { utf8_to_b64url } from "metabase/lib/encoding";
-import { CollectionId } from "metabase-types/api";
-
-type QuestionUpdateFn = (q: Question) => Promise<void> | null | undefined;
 
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
@@ -115,18 +119,12 @@ class QuestionInner {
   _parameterValues: ParameterValues;
 
   /**
-   * Bound update function, if any
-   */
-  _update: QuestionUpdateFn | null | undefined;
-
-  /**
    * Question constructor
    */
   constructor(
     card: CardObject,
     metadata?: Metadata,
     parameterValues?: ParameterValues,
-    update?: QuestionUpdateFn | null | undefined,
   ) {
     this._card = card;
     this._metadata =
@@ -140,16 +138,10 @@ class QuestionInner {
         questions: {},
       });
     this._parameterValues = parameterValues || {};
-    this._update = update;
   }
 
   clone() {
-    return new Question(
-      this._card,
-      this._metadata,
-      this._parameterValues,
-      this._update,
-    );
+    return new Question(this._card, this._metadata, this._parameterValues);
   }
 
   metadata(): Metadata {
@@ -163,27 +155,6 @@ class QuestionInner {
   setCard(card: CardObject): Question {
     const q = this.clone();
     q._card = card;
-    return q;
-  }
-
-  /**
-   * calls the passed in update function (useful for chaining) or bound update function with the question
-   * NOTE: this passes Question instead of card, unlike how Query passes dataset_query
-   */
-  update(update?: QuestionUpdateFn, ...args: any[]) {
-    // TODO: if update returns a new card, create a new Question based on that and return it
-    if (update) {
-      update(this, ...args);
-    } else if (this._update) {
-      this._update(this, ...args);
-    } else {
-      throw new Error("Question update function not provided or bound");
-    }
-  }
-
-  bindUpdate(update: QuestionUpdateFn) {
-    const q = this.clone();
-    q._update = update;
     return q;
   }
 
@@ -305,12 +276,26 @@ class QuestionInner {
     return this._card && this._card.persisted;
   }
 
+  isAction() {
+    return this._card && this._card.is_write;
+  }
+
   setPersisted(isPersisted) {
     return this.setCard(assoc(this.card(), "persisted", isPersisted));
   }
 
   setDataset(dataset) {
     return this.setCard(assoc(this.card(), "dataset", dataset));
+  }
+
+  setPinned(pinned: boolean) {
+    return this.setCard(
+      assoc(this.card(), "collection_position", pinned ? 1 : null),
+    );
+  }
+
+  setIsAction(isAction) {
+    return this.setCard(assoc(this.card(), "is_write", isAction));
   }
 
   // locking the display prevents auto-selection
@@ -575,7 +560,7 @@ class QuestionInner {
           type: "query",
           database: this.databaseId(),
           query: {
-            "source-table": "card__" + this.id(),
+            "source-table": getQuestionVirtualTableId(this.card()),
           },
         },
       };
@@ -592,7 +577,7 @@ class QuestionInner {
       type: "query",
       database: this.databaseId(),
       query: {
-        "source-table": "card__" + this.id(),
+        "source-table": getQuestionVirtualTableId(this.card()),
       },
     });
   }
@@ -833,7 +818,11 @@ class QuestionInner {
     return this._card && this._card.name;
   }
 
-  setDisplayName(name: string) {
+  slug(): string | null | undefined {
+    return this._card?.name && `${this._card.id}-${slugg(this._card.name)}`;
+  }
+
+  setDisplayName(name: string | null | undefined) {
     return this.setCard(assoc(this.card(), "name", name));
   }
 
@@ -841,7 +830,7 @@ class QuestionInner {
     return this._card && this._card.collection_id;
   }
 
-  setCollectionId(collectionId: number) {
+  setCollectionId(collectionId: number | null | undefined) {
     return this.setCard(assoc(this.card(), "collection_id", collectionId));
   }
 
@@ -1013,10 +1002,17 @@ class QuestionInner {
   }
 
   dependentMetadata(): DependentMetadataItem[] {
-    if (!this.isDataset()) {
-      return [];
-    }
     const dependencies = [];
+
+    // we frequently treat dataset/model questions like they are already nested
+    // so we need to fetch the virtual card table representation of the Question
+    // so that we can properly access the table's fields in various scenarios
+    if (this.isDataset()) {
+      dependencies.push({
+        type: "table",
+        id: getQuestionVirtualTableId(this.card()),
+      });
+    }
 
     this.getResultMetadata().forEach(field => {
       if (isFK(field) && field.fk_target_field_id) {

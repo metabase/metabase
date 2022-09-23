@@ -5,9 +5,12 @@ import _ from "underscore";
 
 import { getMainElement } from "metabase/lib/dom";
 
+import DashboardHeader from "metabase/dashboard/containers/DashboardHeader";
+import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
+import { getValuePopulatedParameters } from "metabase/parameters/utils/parameter-values";
 import DashboardControls from "../../hoc/DashboardControls";
 import { DashboardSidebars } from "../DashboardSidebars";
-import DashboardHeader from "metabase/dashboard/containers/DashboardHeader";
+import DashboardGrid from "../DashboardGrid";
 import {
   CardsContainer,
   DashboardStyled,
@@ -17,11 +20,8 @@ import {
   ParametersAndCardsContainer,
   ParametersWidgetContainer,
 } from "./Dashboard.styled";
-import DashboardGrid from "../DashboardGrid";
-import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import DashboardEmptyState from "./DashboardEmptyState/DashboardEmptyState";
 import { updateParametersWidgetStickiness } from "./stickyParameters";
-import { getValuePopulatedParameters } from "metabase/parameters/utils/parameter-values";
 
 const SCROLL_THROTTLE_INTERVAL = 1000 / 24;
 
@@ -321,6 +321,7 @@ class Dashboard extends Component {
                     />
                   ) : (
                     <DashboardEmptyState
+                      isDataApp={dashboard.is_app_page}
                       isNightMode={shouldRenderAsNightMode}
                     />
                   )}

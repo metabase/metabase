@@ -16,7 +16,7 @@ Even if you don't understand SQL or how to use it, it's worthwhile to get an ide
 
 ## Starting a new SQL query
 
-Select **+ New** in the main nav bar. If you have the [permissions](../../administration-guide/05-setting-permissions.md) to use the SQL editor, you'll see an option to start a new **SQL query** next to a little console icon.
+Select **+ New** in the main nav bar. If you have the [permissions](../../permissions/data.md) to use the SQL editor, you'll see an option to start a new **SQL query** next to a little console icon.
 
 After clicking **SQL query**, you'll see an editor where you can write and run queries in SQL (or your database's native querying language).
 
@@ -66,7 +66,7 @@ When you run a query that includes a [variable][variable-gloss], the query will 
 
 This means that your main query must be aware of all the tables that your variable is pointing to, otherwise you'll get a SQL syntax error. For example, if your main query uses the `Products` table, but your variable points to a query that uses the `Orders` table, you'll need to include a join to `Orders` in your main query.
 
-For an example, see the documentation on [Referencing models and saved questions in SQL queries](./referencing-saved-questions-in-queries.html).
+For an example, see the documentation on [Referencing models and saved questions in SQL queries](./referencing-saved-questions-in-queries.md).
 
 ## Learn more
 
@@ -76,7 +76,7 @@ For an example, see the documentation on [Referencing models and saved questions
 [asking-questions]: ../query-builder/introduction.md#creating-a-new-question-with-the-query-builder
 [learn-sql]: https://www.metabase.com/learn/sql-questions
 [ref-models]: ./referencing-saved-questions-in-queries.md
-[sample-database-gloss]: /glossary/sample_database
-[sql-gloss]: /glossary/sql
+[sample-database-gloss]: https://www.metabase.com/glossary/sample_database
+[sql-gloss]: https://www.metabase.com/glossary/sql
 [troubleshooting-sql]: ../../troubleshooting-guide/sql.md
-[variable-gloss]: /glossary/variable
+[variable-gloss]: https://www.metabase.com/glossary/variable

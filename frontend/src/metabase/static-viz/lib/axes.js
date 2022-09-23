@@ -26,24 +26,24 @@ export const getYTickWidth = (data, accessors, settings, fontSize) => {
     .reduce((a, b) => Math.max(a, b), 0);
 };
 
-export const getXTickLabelProps = (layout, isVertical) => ({
+export const getXTickLabelProps = (layout, isVertical, getColor) => ({
   fontSize: layout.font.size,
   fontFamily: layout.font.family,
-  fill: layout.colors.textMedium,
+  fill: getColor("text-medium"),
   textAnchor: isVertical ? "start" : "middle",
 });
 
-export const getYTickLabelProps = layout => ({
+export const getYTickLabelProps = (layout, getColor) => ({
   fontSize: layout.font.size,
   fontFamily: layout.font.family,
-  fill: layout.colors.textMedium,
+  fill: getColor("text-medium"),
   textAnchor: "end",
 });
 
-export const getLabelProps = layout => ({
+export const getLabelProps = (layout, getColor) => ({
   fontWeight: layout.labelFontWeight,
   fontSize: layout.font.size,
   fontFamily: layout.font.family,
-  fill: layout.colors.textMedium,
+  fill: getColor("text-medium"),
   textAnchor: "middle",
 });

@@ -22,18 +22,18 @@ import {
   isResultsMetadataDirty,
 } from "metabase/query_builder/selectors";
 
-import { isLocalField, isSameField } from "metabase/lib/query/field_ref";
+import { isSameField } from "metabase/lib/query/field_ref";
 import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
 import { checkCanBeModel } from "metabase/lib/data-modeling/utils";
 import { usePrevious } from "metabase/hooks/use-previous";
 import { useToggle } from "metabase/hooks/use-toggle";
 
+import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { EDITOR_TAB_INDEXES } from "./constants";
 import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
 import DatasetQueryEditor from "./DatasetQueryEditor";
 import EditorTabs from "./EditorTabs";
 import { TabHintToast } from "./TabHintToast";
-import { MODAL_TYPES } from "metabase/query_builder/constants";
 
 import {
   Root,
@@ -163,11 +163,6 @@ const FIELDS = [
   "settings",
 ];
 
-function compareFields(fieldRef1, fieldRef2) {
-  const compareExact = !isLocalField(fieldRef1) || !isLocalField(fieldRef2);
-  return isSameField(fieldRef1, fieldRef2, compareExact);
-}
-
 function DatasetEditor(props) {
   const {
     question: dataset,
@@ -218,7 +213,7 @@ function DatasetEditor(props) {
       return columns;
     }
     return orderedColumns
-      .map(col => columns.find(c => compareFields(c.field_ref, col.fieldRef)))
+      .map(col => columns.find(c => isSameField(c.field_ref, col.fieldRef)))
       .filter(Boolean);
   }, [orderedColumns, result]);
 
@@ -246,7 +241,7 @@ function DatasetEditor(props) {
       return -1;
     }
     return fields.findIndex(field =>
-      compareFields(focusedFieldRef, field.field_ref),
+      isSameField(focusedFieldRef, field.field_ref),
     );
   }, [focusedFieldRef, fields]);
 
@@ -255,7 +250,7 @@ function DatasetEditor(props) {
   const focusedField = useMemo(() => {
     const field = fields[focusedFieldIndex];
     if (field) {
-      const fieldMetadata = metadata.field(field.id);
+      const fieldMetadata = metadata.field(field.id, field.table_id);
       return {
         ...fieldMetadata,
         ...field,
@@ -464,6 +459,7 @@ function DatasetEditor(props) {
                 className="spread"
                 noHeader
                 queryBuilderMode="dataset"
+                isShowingDetailsOnlyColumns={datasetEditorTab === "metadata"}
                 hasMetadataPopovers={false}
                 handleVisualizationClick={handleTableElementClick}
                 tableHeaderHeight={isEditingMetadata && TABLE_HEADER_HEIGHT}

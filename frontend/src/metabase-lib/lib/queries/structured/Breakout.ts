@@ -1,10 +1,10 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import MBQLClause from "./MBQLClause";
 import { Breakout as BreakoutObject } from "metabase-types/types/Query";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Dimension from "metabase-lib/lib/Dimension";
 import Field from "metabase-lib/lib/metadata/Field";
+import MBQLClause from "./MBQLClause";
 export default class Breakout extends MBQLClause {
   /**
    * Replaces the breakout in the parent query and returns the new StructuredQuery

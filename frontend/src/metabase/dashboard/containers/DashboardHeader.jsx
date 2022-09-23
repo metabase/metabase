@@ -17,10 +17,6 @@ import EntityMenu from "metabase/components/EntityMenu";
 import Bookmark from "metabase/entities/bookmarks";
 
 import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
-import {
-  DashboardHeaderButton,
-  DashboardHeaderActionDivider,
-} from "./DashboardHeader.styled";
 
 import ParametersPopover from "metabase/dashboard/components/ParametersPopover";
 import DashboardBookmark from "metabase/dashboard/components/DashboardBookmark";
@@ -32,6 +28,10 @@ import {
 
 import Header from "../components/DashboardHeader";
 import { SIDEBAR_NAME } from "../constants";
+import {
+  DashboardHeaderButton,
+  DashboardHeaderActionDivider,
+} from "./DashboardHeader.styled";
 
 const mapStateToProps = (state, props) => {
   return {
@@ -109,6 +109,12 @@ class DashboardHeader extends Component {
     this.props.addTextDashCardToDashboard({ dashId: this.props.dashboard.id });
   }
 
+  onAddAction() {
+    this.props.addActionDashCardToDashboard({
+      dashId: this.props.dashboard.id,
+    });
+  }
+
   onDoneEditing() {
     this.props.onEditingChange(false);
   }
@@ -175,6 +181,7 @@ class DashboardHeader extends Component {
       dashboard,
       parametersWidget,
       isBookmarked,
+      isAdmin,
       isEditing,
       isFullscreen,
       isEditable,
@@ -230,6 +237,23 @@ class DashboardHeader extends Component {
         </Tooltip>,
       );
 
+      if (isAdmin && dashboard.is_app_page) {
+        buttons.push(
+          <Tooltip key="add-action" tooltip={t`Add action`}>
+            <a
+              data-metabase-event="Dashboard;Add Action"
+              key="add-action"
+              className="text-brand-hover cursor-pointer"
+              onClick={() => this.onAddAction()}
+            >
+              <DashboardHeaderButton>
+                <Icon name="play" size={18} />
+              </DashboardHeaderButton>
+            </a>
+          </Tooltip>,
+        );
+      }
+
       const {
         isAddParameterPopoverOpen,
         showAddParameterPopover,
@@ -275,7 +299,10 @@ class DashboardHeader extends Component {
 
     if (!isFullscreen && !isEditing && canEdit) {
       buttons.push(
-        <Tooltip key="edit-dashboard" tooltip={t`Edit dashboard`}>
+        <Tooltip
+          key="edit-dashboard"
+          tooltip={dashboard.is_app_page ? t`Edit page` : t`Edit dashboard`}
+        >
           <DashboardHeaderButton
             key="edit"
             data-metabase-event="Dashboard;Edit"
@@ -288,12 +315,14 @@ class DashboardHeader extends Component {
     }
 
     if (!isFullscreen && !isEditing) {
-      extraButtons.push({
-        title: t`Enter fullscreen`,
-        icon: "expand",
-        action: e => onFullscreenChange(!isFullscreen, !e.altKey),
-        event: `Dashboard;Fullscreen Mode;${!isFullscreen}`,
-      });
+      if (!dashboard.is_app_page) {
+        extraButtons.push({
+          title: t`Enter fullscreen`,
+          icon: "expand",
+          action: e => onFullscreenChange(!isFullscreen, !e.altKey),
+          event: `Dashboard;Fullscreen Mode;${!isFullscreen}`,
+        });
+      }
 
       extraButtons.push({
         title: t`Duplicate`,
@@ -381,7 +410,11 @@ class DashboardHeader extends Component {
         isNavBarOpen={this.props.isNavBarOpen}
         headerButtons={this.getHeaderButtons()}
         editWarning={this.getEditWarning(dashboard)}
-        editingTitle={t`You're editing this dashboard.`}
+        editingTitle={
+          dashboard.is_app_page
+            ? t`You're editing this page.`
+            : t`You're editing this dashboard.`
+        }
         editingButtons={this.getEditingButtons()}
         setDashboardAttribute={setDashboardAttribute}
         onLastEditInfoClick={() => setSidebar({ name: SIDEBAR_NAME.info })}

@@ -1,8 +1,9 @@
 (ns metabase.models.card-test
   (:require [cheshire.core :as json]
             [clojure.test :refer :all]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard]]
+            [metabase.models :refer [Action Card Collection Dashboard DashboardCard QueryAction]]
             [metabase.models.card :as card]
+            [metabase.models.serialization.base :as serdes.base]
             [metabase.models.serialization.hash :as serdes.hash]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
@@ -19,7 +20,7 @@
       (letfn [(add-card-to-dash! [dash]
                 (db/insert! DashboardCard :card_id card-id, :dashboard_id (u/the-id dash)))
               (get-dashboard-count []
-                (card/dashboard-count (Card card-id)))]
+                (card/dashboard-count (db/select-one Card :id card-id)))]
         (is (= 0
                (get-dashboard-count)))
         (testing "add to a Dashboard"
@@ -35,7 +36,7 @@
   (testing "Test that when somebody archives a Card, it is removed from any Dashboards it belongs to"
     (tt/with-temp* [Dashboard     [dashboard]
                     Card          [card]
-                    DashboardCard [dashcard  {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card)}]]
+                    DashboardCard [_dashcard {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card)}]]
       (db/update! Card (u/the-id card) :archived true)
       (is (= 0
              (db/count DashboardCard :dashboard_id (u/the-id dashboard)))))))
@@ -59,9 +60,9 @@
    :native   {:query "SELECT count(*) FROM toucan_sightings;"}})
 
 (deftest database-id-test
-  (tt/with-temp Card [{:keys [id] :as card} {:name          "some name"
-                                             :dataset_query (dummy-dataset-query (mt/id))
-                                             :database_id   (mt/id)}]
+  (tt/with-temp Card [{:keys [id]} {:name          "some name"
+                                    :dataset_query (dummy-dataset-query (mt/id))
+                                    :database_id   (mt/id)}]
     (testing "before update"
       (is (= {:name "some name", :database_id (mt/id)}
              (into {} (db/select-one [Card :name :database_id] :id id)))))
@@ -254,6 +255,39 @@
                #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data\", but the query is against Database \d+ \"sample-dataset\""
                (db/update! Card card-id bad-card-data))))))))
 
+(deftest action-creation-test
+  (testing "actions are created when is_write is set"
+    (testing "during create"
+      (mt/with-temp Card [{card-id :id} (assoc (tt/with-temp-defaults Card) :is_write true)]
+        (let [{:keys [action_id] :as qa-rows} (db/select-one QueryAction :card_id card-id)]
+          (is (seq qa-rows)
+              "Inserting a card with :is_write true should create QueryAction")
+          (is (seq (db/select Action :id action_id))))))
+    (testing "during update"
+      (mt/with-temp Card [{card-id :id} (tt/with-temp-defaults Card)]
+        (db/update! Card card-id {:is_write true})
+        (let [{:keys [action_id] :as qa-rows} (db/select-one QueryAction :card_id card-id)]
+          (is (seq qa-rows) "Updating a card to have :is_write true should create QueryAction")
+          (is (seq (db/select Action :id action_id)))))))
+  (testing "actions are not created when is_write is not set"
+    (testing "during create:"
+      (mt/with-temp Card [{card-id :id} (tt/with-temp-defaults Card)]
+        (let [{:keys [action_id] :as qa-rows} (db/select-one QueryAction :card_id card-id)]
+          (is (empty? qa-rows) "Inserting a card with :is_write false should not create QueryAction")
+          (is (empty? (db/select Action :id action_id))))))
+    (testing "during update"
+      (mt/with-temp Card [{card-id :id} (tt/with-temp-defaults Card)]
+        (db/update! Card card-id {:is_write false})
+        (let [{:keys [action_id] :as qa-rows} (db/select-one QueryAction :card_id card-id)]
+          (is (empty? qa-rows) "Updating a card to have :is_write false should delete QueryAction")
+          (is (empty? (db/select Action :id action_id)))))))
+  (testing "actions are deleted when is_write is set to false during update"
+    (mt/with-temp Card [{card-id :id} (assoc (tt/with-temp-defaults Card) :is_write true)]
+      (db/update! Card card-id {:is_write false})
+      (let [{:keys [action_id] :as qa-rows} (db/select-one QueryAction :card_id card-id)]
+        (is (empty? qa-rows) "Updating a card to have :is_write false should create a QueryAction")
+        (is (empty? (db/select Action :id action_id)))))))
+
 ;;; ------------------------------------------ Parameters tests ------------------------------------------
 
 (deftest validate-parameters-test
@@ -328,3 +362,16 @@
       (is (= "ead6cc05"
              (serdes.hash/raw-hash ["the card" (serdes.hash/identity-hash coll)])
              (serdes.hash/identity-hash card))))))
+
+(deftest serdes-descendants-test
+  (testing "regular cards don't depend on anything"
+    (mt/with-temp* [Card [card {:name "some card"}]]
+      (is (empty? (serdes.base/serdes-descendants "Card" (:id card))))))
+
+  (testing "cards which have another card as the source depend on that card"
+    (mt/with-temp* [Card [card1 {:name "base card"}]
+                    Card [card2 {:name "derived card"
+                                 :dataset_query {:query {:source-table (str "card__" (:id card1))}}}]]
+      (is (empty? (serdes.base/serdes-descendants "Card" (:id card1))))
+      (is (= #{["Card" (:id card1)]}
+             (serdes.base/serdes-descendants "Card" (:id card2)))))))

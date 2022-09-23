@@ -20,7 +20,7 @@ import ConnectedTables from "./ConnectedTables";
 
 type OwnProps = {
   className?: string;
-  tableId: number;
+  tableId: Table["id"];
   onConnectedTableClick?: (table: Table) => void;
 };
 
@@ -33,8 +33,8 @@ const mapStateToProps = (state: any, props: OwnProps): { table?: Table } => {
 };
 
 const mapDispatchToProps: {
-  fetchForeignKeys: (args: { id: number }) => Promise<any>;
-  fetchMetadata: (args: { id: number }) => Promise<any>;
+  fetchForeignKeys: (args: { id: Table["id"] }) => Promise<any>;
+  fetchMetadata: (args: { id: Table["id"] }) => Promise<any>;
 } = {
   fetchForeignKeys: Tables.actions.fetchForeignKeys,
   fetchMetadata: Tables.actions.fetchMetadata,

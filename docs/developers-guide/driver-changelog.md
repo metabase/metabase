@@ -12,6 +12,11 @@ title: Driver interface changelog
   `metabase.driver.sql-jdbc.connection/with-connection-spec-for-testing-connection` instead, which properly cleans up
   after itself.
 
+### New methods
+
+- `metabase.driver.sql-jdbc.sync.describe-table-fields` has been added. Implement this method if you want to override
+  the default behavior for fetching field metadata (such as types) for a table.
+
 ## Metabase 0.43.0
 
 - The `:expressions` map in an MBQL query now uses strings as keys rather than keywords (see

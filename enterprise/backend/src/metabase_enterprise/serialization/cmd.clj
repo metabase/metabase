@@ -1,6 +1,7 @@
 (ns metabase-enterprise.serialization.cmd
   (:refer-clojure :exclude [load])
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [metabase-enterprise.serialization.dump :as dump]
             [metabase-enterprise.serialization.load :as load]
             [metabase-enterprise.serialization.v2.extract :as v2.extract]
@@ -73,6 +74,7 @@
   ; TODO This should be restored, but there's no manifest or other meta file written by v2 dumps.
   ;(when-not (load/compatible? path)
   ;  (log/warn (trs "Dump was produced using a different version of Metabase. Things may break!")))
+  (log/info (trs "Loading serialized Metabase files from {0}" path))
   (v2.load/load-metabase (v2.ingest/ingest-yaml path)))
 
 (defn load
@@ -146,16 +148,16 @@
                       [])
         databases   (if (contains? opts :only-db-ids)
                       (db/select Database :id [:in (:only-db-ids opts)] {:order-by [[:id :asc]]})
-                      (Database))
+                      (db/select Database))
         tables      (if (contains? opts :only-db-ids)
                       (db/select Table :db_id [:in (:only-db-ids opts)] {:order-by [[:id :asc]]})
-                      (Table))
+                      (db/select Table))
         fields      (if (contains? opts :only-db-ids)
                       (db/select Field :table_id [:in (map :id tables)] {:order-by [[:id :asc]]})
-                      (Field))
+                      (db/select Field))
         metrics     (if (contains? opts :only-db-ids)
                       (db/select Metric :table_id [:in (map :id tables)] {:order-by [[:id :asc]]})
-                      (Metric))
+                      (db/select Metric))
         collections (select-collections users state)]
     (dump/dump path
                databases
@@ -173,8 +175,15 @@
   (dump/dump-dimensions path)
   (log/info (trs "END DUMP to {0} via user {1}" path user)))
 
+(defn- v2-extract [opts]
+  (if (:collections opts)
+    (v2.extract/extract-subtrees (assoc opts :targets (for [c (str/split (:collections opts) #",")]
+                                                        ["Collection" (Integer/parseInt c)])))
+    (v2.extract/extract-metabase opts)))
+
 (defn- v2-dump [path opts]
-  (v2.storage/store! (v2.extract/extract-metabase opts) path))
+  (-> (v2-extract opts)
+      (v2.storage/store! path)))
 
 (defn dump
   "Serialized metabase instance into directory `path`."

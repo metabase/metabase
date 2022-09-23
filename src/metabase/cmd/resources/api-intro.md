@@ -1,6 +1,14 @@
+---
+title: "Metabase API documentation"
+---
+
 # Metabase API documentation
 
-_These reference files were generated from source comments by running `clojure -M:ee:run api-documentation`_.
+_These reference files were generated from source comments by running:_
+
+```
+clojure -M:ee:run api-documentation
+```
 
 ## About the Metabase API
 

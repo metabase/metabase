@@ -1,7 +1,6 @@
-import { FETCH_REVISIONS } from "./metadata";
-
 import { assocIn } from "icepick";
 import _ from "underscore";
+import { FETCH_REVISIONS } from "./metadata";
 
 // NOTE: actions are still in metabase/redux/metadata
 

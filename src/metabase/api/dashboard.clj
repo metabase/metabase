@@ -5,6 +5,7 @@
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
             [medley.core :as m]
+            [metabase.actions.execution :as actions.execution]
             [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
             [metabase.api.common.validation :as validation]
@@ -67,13 +68,14 @@
 
 (api/defendpoint POST "/"
   "Create a new Dashboard."
-  [:as {{:keys [name description parameters cache_ttl collection_id collection_position], :as _dashboard} :body}]
+  [:as {{:keys [name description parameters cache_ttl collection_id collection_position is_app_page], :as _dashboard} :body}]
   {name                su/NonBlankString
    parameters          (s/maybe [su/Parameter])
    description         (s/maybe s/Str)
    cache_ttl           (s/maybe su/IntGreaterThanZero)
    collection_id       (s/maybe su/IntGreaterThanZero)
-   collection_position (s/maybe su/IntGreaterThanZero)}
+   collection_position (s/maybe su/IntGreaterThanZero)
+   is_app_page         (s/maybe s/Bool)}
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
   (collection/check-write-perms-for-collection collection_id)
   (let [dashboard-data {:name                name
@@ -82,7 +84,8 @@
                         :creator_id          api/*current-user-id*
                         :cache_ttl           cache_ttl
                         :collection_id       collection_id
-                        :collection_position collection_position}
+                        :collection_position collection_position
+                        :is_app_page         (boolean is_app_page)}
         dash           (db/transaction
                         ;; Adding a new dashboard at `collection_position` could cause other dashboards in this collection to change
                         ;; position, check that and fix up if needed
@@ -200,12 +203,13 @@
 (defn- get-dashboard
   "Get Dashboard with ID."
   [id]
-  (-> (Dashboard id)
+  (-> (db/select-one Dashboard :id id)
       api/check-404
       ;; i'm a bit worried that this is an n+1 situation here. The cards can be batch hydrated i think because they
       ;; have a hydration key and an id. moderation_reviews currently aren't batch hydrated but i'm worried they
       ;; cannot be in this situation
-      (hydrate [:ordered_cards [:card [:moderation_reviews :moderator_details]] :series] :collection_authority_level :can_write :param_fields)
+      (hydrate [:ordered_cards [:card [:moderation_reviews :moderator_details]] :series :dashcard/action] :collection_authority_level :can_write :param_fields)
+      (cond-> api/*is-superuser?* (hydrate [:emitters [:action :card]]))
       api/read-check
       api/check-not-archived
       hide-unreadable-cards
@@ -227,7 +231,8 @@
                         :parameters          (or (:parameters existing-dashboard) [])
                         :creator_id          api/*current-user-id*
                         :collection_id       collection_id
-                        :collection_position collection_position}
+                        :collection_position collection_position
+                        :is_app_page         (:is_app_page existing-dashboard)}
         dashboard      (db/transaction
                          ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
                          ;; collection to change position, check that and fix up if needed
@@ -266,7 +271,7 @@
   permissions for the Cards belonging to this Dashboard), but to change the value of `enable_embedding` you must be a
   superuser."
   [id :as {{:keys [description name parameters caveats points_of_interest show_in_getting_started enable_embedding
-                   embedding_params position archived collection_id collection_position cache_ttl]
+                   embedding_params position archived collection_id collection_position cache_ttl is_app_page]
             :as dash-updates} :body}]
   {name                    (s/maybe su/NonBlankString)
    description             (s/maybe s/Str)
@@ -280,7 +285,8 @@
    archived                (s/maybe s/Bool)
    collection_id           (s/maybe su/IntGreaterThanZero)
    collection_position     (s/maybe su/IntGreaterThanZero)
-   cache_ttl               (s/maybe su/IntGreaterThanZero)}
+   cache_ttl               (s/maybe su/IntGreaterThanZero)
+   is_app_page             (s/maybe s/Bool)}
   (let [dash-before-update (api/write-check Dashboard id)]
     ;; Do various permissions checks as needed
     (collection/check-allowed-to-change-collection dash-before-update dash-updates)
@@ -298,9 +304,9 @@
          (u/select-keys-when dash-updates
            :present #{:description :position :collection_id :collection_position :cache_ttl}
            :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
-                      :embedding_params :archived})))))
+                      :embedding_params :archived :is_app_page})))))
   ;; now publish an event and return the updated Dashboard
-  (let [dashboard (Dashboard id)]
+  (let [dashboard (db/select-one Dashboard :id id)]
     (events/publish-event! :dashboard-update (assoc dashboard :actor_id api/*current-user-id*))
     (assoc dashboard :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))
 
@@ -416,8 +422,8 @@
   (su/with-api-error-message
     {:id                                  (su/with-api-error-message su/IntGreaterThanOrEqualToZero
                                             "value must be a DashboardCard ID.")
-     (s/optional-key :sizeX)              (s/maybe su/IntGreaterThanZero)
-     (s/optional-key :sizeY)              (s/maybe su/IntGreaterThanZero)
+     (s/optional-key :size_x)             (s/maybe su/IntGreaterThanZero)
+     (s/optional-key :size_y)             (s/maybe su/IntGreaterThanZero)
      (s/optional-key :row)                (s/maybe su/IntGreaterThanOrEqualToZero)
      (s/optional-key :col)                (s/maybe su/IntGreaterThanOrEqualToZero)
      (s/optional-key :parameter_mappings) (s/maybe [{:parameter_id su/NonBlankString
@@ -432,8 +438,8 @@
   "Update `Cards` on a Dashboard. Request body should have the form:
 
     {:cards [{:id                 ... ; DashboardCard ID
-              :sizeX              ...
-              :sizeY              ...
+              :size_x             ...
+              :size_y             ...
               :row                ...
               :col                ...
               :parameter_mappings ...
@@ -453,7 +459,7 @@
   [id dashcardId]
   {dashcardId su/IntStringGreaterThanZero}
   (api/check-not-archived (api/write-check Dashboard id))
-  (when-let [dashboard-card (DashboardCard (Integer/parseInt dashcardId))]
+  (when-let [dashboard-card (db/select-one DashboardCard :id (Integer/parseInt dashcardId))]
     (api/check-500 (dashboard-card/delete-dashboard-card! dashboard-card api/*current-user-id*))
     api/generic-204-no-content))
 
@@ -520,7 +526,7 @@
 (api/defendpoint GET "/:id/related"
   "Return related entities."
   [id]
-  (-> id Dashboard api/read-check related/related))
+  (-> (db/select-one Dashboard :id id) api/read-check related/related))
 
 ;;; ---------------------------------------------- Transient dashboards ----------------------------------------------
 
@@ -560,7 +566,7 @@
 (defn- param-key->field-ids
   "Get Field ID(s) associated with a parameter in a Dashboard.
 
-    (param-key->field-ids (Dashboard 62) \"ee876336\")
+    (param-key->field-ids (db/select-one Dashboard :id 62) \"ee876336\")
     ;; -> #{276}"
   [dashboard param-key]
   {:pre [(string? param-key)]}
@@ -608,7 +614,7 @@
       (try
         (let [results (map (if (seq query)
                                #(chain-filter/chain-filter-search % constraints query :limit result-limit)
-                                #(chain-filter/chain-filter % constraints :limit result-limit))
+                               #(chain-filter/chain-filter % constraints :limit result-limit))
                            field-ids)
               values (distinct (mapcat :values results))
               has_more_values (boolean (some true? (map :has_more_values results)))]
@@ -683,15 +689,34 @@
       (into {} (for [field-id filtered-field-ids]
                  [field-id (sort (chain-filter/filterable-field-ids field-id filtering-field-ids))])))))
 
-
-;;; ---------------------------------- Running the query associated with a Dashcard ----------------------------------
-
 (def ParameterWithID
   "Schema for a parameter map with an string `:id`."
   (su/with-api-error-message
     {:id       su/NonBlankString
      s/Keyword s/Any}
     "value must be a parameter map with an 'id' key"))
+
+
+(def ParameterWithTarget
+  "Schema for a parameter map with an mbql `:target`."
+  (su/with-api-error-message
+    {:target   [s/Any]
+     s/Keyword s/Any}
+    "value must be a parameter map with a 'target' key"))
+
+;;; ---------------------------------- Executing the action associated with a Dashcard -------------------------------
+
+(api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/action/execute"
+  "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
+
+   `parameters` should be the mapped dashboard parameters with values.
+   `extra_parameters` should be the extra, user entered parameter values."
+  [dashboard-id dashcard-id :as {{:keys [parameters extra_parameters], :as _body} :body}]
+  {parameters (s/maybe [ParameterWithID])
+   extra_parameters (s/maybe [ParameterWithTarget])}
+  (actions.execution/execute-dashcard! dashboard-id dashcard-id parameters extra_parameters))
+
+;;; ---------------------------------- Running the query associated with a Dashcard ----------------------------------
 
 (api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it."

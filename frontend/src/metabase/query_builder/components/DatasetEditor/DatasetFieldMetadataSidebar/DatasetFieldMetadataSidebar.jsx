@@ -15,7 +15,7 @@ import {
   field_visibility_types,
   field_semantic_types,
 } from "metabase/lib/core";
-import { isLocalField, isSameField } from "metabase/lib/query/field_ref";
+import { isSameField } from "metabase/lib/query/field_ref";
 import { isFK, getSemanticTypeIcon } from "metabase/lib/schema_metadata";
 
 import RootForm from "metabase/containers/FormikForm";
@@ -68,7 +68,7 @@ function getSemanticTypeOptions() {
   ];
 }
 
-function getFormFields({ dataset }) {
+function getFormFields({ dataset, field }) {
   const visibilityTypeOptions = field_visibility_types
     .filter(type => type.id !== "sensitive")
     .map(type => ({
@@ -78,7 +78,11 @@ function getFormFields({ dataset }) {
 
   return formFieldValues =>
     [
-      { name: "display_name", title: t`Display name` },
+      {
+        name: "display_name",
+        title: t`Display name`,
+        subtitle: field.name,
+      },
       {
         name: "description",
         title: t`Description`,
@@ -145,13 +149,11 @@ function DatasetFieldMetadataSidebar({
   const previousField = usePrevious(field);
 
   useEffect(() => {
-    const compareExact =
-      !isLocalField(field.field_ref) || !isLocalField(previousField?.field_ref);
-    if (!isSameField(field.field_ref, previousField?.field_ref, compareExact)) {
+    if (!isSameField(field.field_ref, previousField?.field_ref)) {
       setShouldAnimateFieldChange(true);
       // setTimeout is required as form fields are rerendered pretty frequently
       setTimeout(() => {
-        displayNameInputRef.current.select();
+        displayNameInputRef.current?.select();
       });
     }
   }, [field, previousField]);
@@ -172,9 +174,9 @@ function DatasetFieldMetadataSidebar({
 
   const form = useMemo(
     () => ({
-      fields: getFormFields({ dataset }),
+      fields: getFormFields({ dataset, field }),
     }),
-    [dataset],
+    [field, dataset],
   );
 
   const [tab, setTab] = useState(TAB.SETTINGS);
@@ -372,4 +374,4 @@ function DatasetFieldMetadataSidebar({
 
 DatasetFieldMetadataSidebar.propTypes = propTypes;
 
-export default DatasetFieldMetadataSidebar;
+export default React.memo(DatasetFieldMetadataSidebar);

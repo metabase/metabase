@@ -92,4 +92,6 @@ const SelectButton = forwardRef(function SelectButton(
 
 export default Object.assign(SelectButton, {
   Root: SelectButtonRoot,
+  Content: SelectButtonContent,
+  Icon: SelectButtonIcon,
 });

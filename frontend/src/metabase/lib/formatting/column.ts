@@ -1,6 +1,6 @@
-import { capitalize } from "./strings";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import type { DatasetColumn } from "metabase-types/api/dataset";
+import { capitalize } from "./strings";
 
 export function formatColumn(column: DatasetColumn): string {
   if (!column) {

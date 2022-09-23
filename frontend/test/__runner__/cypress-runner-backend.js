@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
 const fs = require("fs");
+const { spawn } = require("child_process");
 const os = require("os");
 const path = require("path");
-const { spawn } = require("child_process");
 
 const fetch = require("isomorphic-fetch");
 
@@ -38,7 +38,7 @@ const CypressBackend = {
         MB_ENABLE_TEST_ENDPOINTS: "true",
         MB_PREMIUM_EMBEDDING_TOKEN:
           (process.env["MB_EDITION"] === "ee" &&
-            process.env["ENTERPRISE_TOKEN"]) ||
+            process.env["MB_PREMIUM_EMBEDDING_TOKEN"]) ||
           undefined,
       };
 

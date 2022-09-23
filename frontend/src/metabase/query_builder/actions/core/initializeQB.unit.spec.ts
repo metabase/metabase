@@ -10,18 +10,6 @@ import Databases from "metabase/entities/databases";
 import Snippets from "metabase/entities/snippets";
 import { setErrorPage } from "metabase/redux/app";
 
-import Question from "metabase-lib/lib/Question";
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import {
-  getAdHocQuestion,
-  getSavedStructuredQuestion,
-  getSavedNativeQuestion,
-  getUnsavedNativeQuestion,
-  getStructuredModel,
-  getNativeModel,
-} from "metabase-lib/mocks";
-
 import { User } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
 import { Card, NativeDatasetQuery } from "metabase-types/types/Card";
@@ -34,6 +22,17 @@ import {
   state as entitiesState,
   metadata,
 } from "__support__/sample_database_fixture";
+import {
+  getAdHocQuestion,
+  getSavedStructuredQuestion,
+  getSavedNativeQuestion,
+  getUnsavedNativeQuestion,
+  getStructuredModel,
+  getNativeModel,
+} from "metabase-lib/mocks";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import Question from "metabase-lib/lib/Question";
 
 import * as navigation from "../navigation";
 import * as querying from "../querying";
@@ -95,10 +94,8 @@ function getQueryParamsForQuestion(
   if (!question.isSaved()) {
     return extra;
   }
-  const id = question.id();
-  const name = question.displayName();
   return {
-    slug: `${id}-${name}`,
+    slug: question.slug(),
     ...extra,
   };
 }
@@ -122,6 +119,8 @@ async function setup({
       body: JSON.stringify(card),
     });
   }
+
+  jest.spyOn(CardLib, "loadCard").mockReturnValue(Promise.resolve({ ...card }));
 
   return baseSetup({ location, params, ...opts });
 }
@@ -438,6 +437,10 @@ describe("QB Actions > initializeQB", () => {
           body: JSON.stringify(originalQuestion.card()),
         });
 
+        jest
+          .spyOn(CardLib, "loadCard")
+          .mockReturnValueOnce(Promise.resolve({ ...originalQuestion.card() }));
+
         return setup({ question: q, ...opts });
       }
 
@@ -692,12 +695,6 @@ describe("QB Actions > initializeQB", () => {
         ...rest,
       };
     }
-
-    it("redirects to new question flow if missing any options", async () => {
-      const redirectSpy = jest.spyOn(navigation, "redirectToNewQuestionFlow");
-      await setupBlank();
-      expect(redirectSpy).toHaveBeenCalledTimes(1);
-    });
 
     it("constructs a card based on provided 'db' param", async () => {
       const expectedCard = Question.create({

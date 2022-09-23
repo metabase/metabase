@@ -116,7 +116,8 @@
   metadata, the types returned should be authoritative. But things like semantic_type, display_name, and description
   can be merged on top."
   ;; TODO: ideally we don't preserve :id but some notion of :user-entered-id or :identified-id
-  [:id :description :display_name :semantic_type :fk_target_field_id :settings])
+  [:id :description :display_name :semantic_type
+   :fk_target_field_id :settings :visibility_type])
 
 (defn combine-metadata
   "Blend saved metadata from previous runs into fresh metadata from an actual run of the query.

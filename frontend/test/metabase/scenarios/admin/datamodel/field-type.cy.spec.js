@@ -1,4 +1,5 @@
 import { restore, visitAlias, popover } from "__support__/e2e/helpers";
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -17,7 +18,7 @@ describe("scenarios > admin > datamodel > field > field type", () => {
 
     ordersColumns.forEach(column => {
       cy.wrap(
-        `/admin/datamodel/database/1/table/${ORDERS_ID}/${ORDERS[column]}/general`,
+        `/admin/datamodel/database/${SAMPLE_DB_ID}/table/${ORDERS_ID}/${ORDERS[column]}/general`,
       ).as(`ORDERS_${column}_URL`);
     });
 

@@ -7,7 +7,6 @@ import * as Urls from "metabase/lib/urls";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
 
-import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import ViewButton from "metabase/query_builder/components/view/ViewButton";
 
@@ -20,6 +19,7 @@ import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQu
 
 import RunButtonWithTooltip from "../RunButtonWithTooltip";
 
+import QuestionActions from "../QuestionActions";
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
 import QuestionDataSource from "./QuestionDataSource";
 import QuestionDescription from "./QuestionDescription";
@@ -30,7 +30,6 @@ import QuestionFilters, {
   QuestionFilterWidget,
 } from "./QuestionFilters";
 import { QuestionSummarizeWidget } from "./QuestionSummaries";
-import QuestionActions from "../QuestionActions";
 import NativeQueryButton from "./NativeQueryButton";
 import {
   AdHocViewHeading,
@@ -67,10 +66,10 @@ const viewTitleHeaderPropTypes = {
   isShowingQuestionDetailsSidebar: PropTypes.bool,
   isObjectDetail: PropTypes.bool,
   isAdditionalInfoVisible: PropTypes.bool,
-  isWritebackEnabled: PropTypes.bool,
 
   runQuestionQuery: PropTypes.func,
   cancelQuery: PropTypes.func,
+  updateQuestion: PropTypes.func,
 
   onOpenModal: PropTypes.func,
   onEditSummary: PropTypes.func,
@@ -82,7 +81,7 @@ const viewTitleHeaderPropTypes = {
 };
 
 export function ViewTitleHeader(props) {
-  const { question, className, style, isNavBarOpen } = props;
+  const { question, className, style, isNavBarOpen, updateQuestion } = props;
 
   const [
     areFiltersExpanded,
@@ -112,6 +111,13 @@ export function ViewTitleHeader(props) {
   const isSummarized =
     isStructured && question.query().topLevelQuery().hasAggregations();
 
+  const onQueryChange = useCallback(
+    newQuery => {
+      updateQuestion(newQuery.question(), { run: true });
+    },
+    [updateQuestion],
+  );
+
   return (
     <>
       <ViewHeaderContainer
@@ -138,6 +144,7 @@ export function ViewTitleHeader(props) {
           areFiltersExpanded={areFiltersExpanded}
           onExpandFilters={expandFilters}
           onCollapseFilters={collapseFilters}
+          onQueryChange={onQueryChange}
         />
       </ViewHeaderContainer>
       {QuestionFilters.shouldRender(props) && (
@@ -145,6 +152,7 @@ export function ViewTitleHeader(props) {
           {...props}
           expanded={areFiltersExpanded}
           question={question}
+          onQueryChange={onQueryChange}
         />
       )}
     </>
@@ -320,16 +328,18 @@ ViewTitleHeaderRightSide.propTypes = {
   isRunning: PropTypes.bool,
   isNativeEditorOpen: PropTypes.bool,
   isShowingSummarySidebar: PropTypes.bool,
-  isWritebackEnabled: PropTypes.bool,
   isDirty: PropTypes.bool,
   isResultDirty: PropTypes.bool,
   isActionListVisible: PropTypes.bool,
   runQuestionQuery: PropTypes.func,
+  updateQuestion: PropTypes.func.isRequired,
   cancelQuery: PropTypes.func,
   onOpenModal: PropTypes.func,
   onEditSummary: PropTypes.func,
   onCloseSummary: PropTypes.func,
   setQueryBuilderMode: PropTypes.func,
+  turnQuestionIntoAction: PropTypes.func,
+  turnActionIntoQuestion: PropTypes.func,
   turnDatasetIntoQuestion: PropTypes.func,
   areFiltersExpanded: PropTypes.bool,
   onExpandFilters: PropTypes.func,
@@ -340,6 +350,7 @@ ViewTitleHeaderRightSide.propTypes = {
   onCloseQuestionInfo: PropTypes.func,
   isShowingQuestionInfoSidebar: PropTypes.bool,
   onModelPersistenceChange: PropTypes.bool,
+  onQueryChange: PropTypes.func,
 };
 
 function ViewTitleHeaderRightSide(props) {
@@ -356,17 +367,19 @@ function ViewTitleHeaderRightSide(props) {
     isRunning,
     isNativeEditorOpen,
     isShowingSummarySidebar,
-    isWritebackEnabled,
     isDirty,
     isResultDirty,
     isActionListVisible,
     runQuestionQuery,
+    updateQuestion,
     cancelQuery,
     onOpenModal,
     onEditSummary,
     onCloseSummary,
     setQueryBuilderMode,
     turnDatasetIntoQuestion,
+    turnQuestionIntoAction,
+    turnActionIntoQuestion,
     areFiltersExpanded,
     onExpandFilters,
     onCollapseFilters,
@@ -374,6 +387,7 @@ function ViewTitleHeaderRightSide(props) {
     onCloseQuestionInfo,
     onOpenQuestionInfo,
     onModelPersistenceChange,
+    onQueryChange,
   } = props;
   const isShowingNotebook = queryBuilderMode === "notebook";
   const query = question.query();
@@ -399,8 +413,6 @@ function ViewTitleHeaderRightSide(props) {
   const hasRunButton =
     isRunnable && !isNativeEditorOpen && !isMissingPermissions;
 
-  const hasNewRowButton = isWritebackEnabled && !isNative && query.isRaw();
-
   const handleInfoClick = useCallback(() => {
     if (isShowingQuestionInfoSidebar) {
       onCloseQuestionInfo();
@@ -418,16 +430,8 @@ function ViewTitleHeaderRightSide(props) {
           expanded={areFiltersExpanded}
           onExpand={onExpandFilters}
           onCollapse={onCollapseFilters}
+          onQueryChange={onQueryChange}
         />
-      )}
-      {hasNewRowButton && (
-        <Button
-          primary
-          icon="add"
-          onClick={() => onOpenModal(MODAL_TYPES.INSERT_ROW)}
-        >
-          {t`New row`}
-        </Button>
       )}
       {QuestionFilterWidget.shouldRender(props) && (
         <QuestionFilterWidget
@@ -464,6 +468,7 @@ function ViewTitleHeaderRightSide(props) {
           <NativeQueryButton
             size={16}
             question={question}
+            updateQuestion={updateQuestion}
             data-metabase-event="Notebook Mode; Convert to SQL Click"
           />
         </ViewHeaderIconButtonContainer>
@@ -496,6 +501,8 @@ function ViewTitleHeaderRightSide(props) {
           question={question}
           setQueryBuilderMode={setQueryBuilderMode}
           turnDatasetIntoQuestion={turnDatasetIntoQuestion}
+          turnQuestionIntoAction={turnQuestionIntoAction}
+          turnActionIntoQuestion={turnActionIntoQuestion}
           onInfoClick={handleInfoClick}
           onModelPersistenceChange={onModelPersistenceChange}
         />

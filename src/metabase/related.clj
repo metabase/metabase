@@ -38,33 +38,32 @@
                 (map #(update % 0 qp.util/normalize-token)))
           (tree-seq sequential? identity form))))
 
-(defmulti
-  ^{:doc "Return the relevant parts of a given entity's definition.
-          Relevant parts are those that carry semantic meaning, and especially
-          context-bearing forms."
-    :arglists '([entity])}
-  definition type)
+(defmulti definition
+  "Return the relevant parts of a given entity's definition. Relevant parts are those that carry semantic meaning, and
+  especially context-bearing forms."
+  {:arglists '([instance])}
+  mi/model)
 
-(defmethod definition (type Card)
+(defmethod definition Card
   [card]
   (-> card
       :dataset_query
       :query
       ((juxt :breakout :aggregation :expressions :fields))))
 
-(defmethod definition (type Metric)
+(defmethod definition Metric
   [metric]
   (-> metric :definition ((juxt :aggregation :filter))))
 
-(defmethod definition (type Segment)
+(defmethod definition Segment
   [segment]
   (-> segment :definition :filter))
 
-(defmethod definition (type Field)
+(defmethod definition Field
   [field]
   [[:field-id (:id field)]])
 
-(defn similarity
+(defn- similarity
   "How similar are entities `a` and `b` based on a structural comparison of their
    definition (MBQL).
    For the purposes of finding related entites we are only interested in
@@ -206,14 +205,14 @@
        (keep (comp Collection :collection_id))
        filter-visible))
 
-(defmulti
-  ^{:doc "Return related entities."
-    :arglists '([entity])}
-  related type)
+(defmulti related
+  "Return related entities."
+  {:arglists '([entity])}
+  mi/model)
 
-(defmethod related (type Card)
+(defmethod related Card
   [card]
-  (let [table             (Table (:table_id card))
+  (let [table             (db/select-one Table :id (:table_id card))
         similar-questions (similar-questions card)]
     {:table             table
      :metrics           (->> table
@@ -230,13 +229,13 @@
      :dashboards        (recommended-dashboards similar-questions)
      :collections       (recommended-collections similar-questions)}))
 
-(defmethod related (type Query)
+(defmethod related Query
   [query]
-  (related (with-meta query {:type (type Card)})))
+  (related (mi/instance Card query)))
 
-(defmethod related (type Metric)
+(defmethod related Metric
   [metric]
-  (let [table (Table (:table_id metric))]
+  (let [table (db/select-one Table :id (:table_id metric))]
     {:table    table
      :metrics  (->> table
                     metrics-for-table
@@ -247,9 +246,9 @@
                     (rank-by-similarity metric)
                     interesting-mix)}))
 
-(defmethod related (type Segment)
+(defmethod related Segment
   [segment]
-  (let [table (Table (:table_id segment))]
+  (let [table (db/select-one Table :id (:table_id segment))]
     {:table       table
      :metrics     (->> table
                        metrics-for-table
@@ -261,7 +260,7 @@
                        interesting-mix)
      :linked-from (linked-from table)}))
 
-(defmethod related (type Table)
+(defmethod related Table
   [table]
   (let [linking-to  (linking-to table)
         linked-from (linked-from table)]
@@ -279,9 +278,9 @@
                        filter-visible
                        interesting-mix)}))
 
-(defmethod related (type Field)
+(defmethod related Field
   [field]
-  (let [table (Table (:table_id field))]
+  (let [table (db/select-one Table :id (:table_id field))]
     {:table    table
      :segments (->> table
                     segments-for-table
@@ -300,7 +299,7 @@
                     filter-visible
                     interesting-mix)}))
 
-(defmethod related (type Dashboard)
+(defmethod related Dashboard
   [dashboard]
   (let [cards (map Card (db/select-field :card_id DashboardCard
                           :dashboard_id (:id dashboard)))]

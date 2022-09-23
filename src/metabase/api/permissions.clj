@@ -112,7 +112,7 @@
   "Fetch the details for a certain permissions group."
   [id]
   (validation/check-group-manager id)
-  (-> (PermissionsGroup id)
+  (-> (db/select-one PermissionsGroup :id id)
       (hydrate :members)))
 
 (api/defendpoint POST "/group"
@@ -132,7 +132,7 @@
   (db/update! PermissionsGroup group-id
     :name name)
   ;; return the updated group
-  (PermissionsGroup group-id))
+  (db/select-one PermissionsGroup :id group-id))
 
 (api/defendpoint DELETE "/group/:group-id"
   "Delete a specific `PermissionsGroup`."

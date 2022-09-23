@@ -35,6 +35,7 @@ describe("dashboard reducers", () => {
       sidebar: { props: {} },
       slowCards: {},
       loadingControls: {},
+      missingActionParameters: null,
     });
   });
 

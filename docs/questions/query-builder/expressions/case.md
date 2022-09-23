@@ -132,7 +132,7 @@ This section covers functions and formulas that can be used interchangeably with
 
 ### Coalesce
 
-Using the table from the [Coalesce: Consolidating values](./coalesce#consolidating-values-from-different-columns) example:
+Using the table from the [Coalesce: Consolidating values](./coalesce.md#consolidating-values-from-different-columns) example:
 
 | Notes          | Comments          | `coalesce([Notes], [Comments] "No notes or comments.")` |
 | -------------- | ----------------- | ------------------------------------------------------- |
@@ -141,7 +141,7 @@ Using the table from the [Coalesce: Consolidating values](./coalesce#consolidati
 | I have a note. |                   | I have a note.                                          |
 |                |                   | No notes or comments.                                   |
 
-The [Metabase `coalesce` expression](./coalesce)
+The [Metabase `coalesce` expression](./coalesce.md)
 
 ```
 coalesce([Notes], [Comments] "No notes or comments.")
@@ -328,18 +328,18 @@ case([Has Wings] = TRUE  AND [Has Face] = TRUE,  "Bird",
 - [Custom expressions documentation][custom-expressions-doc]
 - [Custom expressions tutorial][custom-expressions-learn]
 
-[aggregate-functions]: ../expressions-list#aggregations
-[business-logic]: /learn/analytics/avoiding-data-jargon#create-specific-language-and-shared-definitions
-[countif]: ../expressions-list#countif
+[aggregate-functions]: ../expressions-list.md#aggregations
+[business-logic]: https://www.metabase.com/learn/analytics/avoiding-data-jargon#create-specific-language-and-shared-definitions
+[countif]: ../expressions-list.md#countif
 [custom-expressions-doc]: ../expressions.md
 [custom-expressions-list]: ../expressions-list.md
-[custom-expressions-learn]: /learn/questions/custom-expressions.md
-[data-sandboxing-docs]: ../../../enterprise-guide/data-sandboxes.md#filtering-a-sandboxed-table
-[data-types]: /learn/databases/data-types-overview#examples-of-data-types
-[filter-learn]: /learn/questions/searching-tables
-[notebook-editor-def]: /glossary/notebook_editor
+[custom-expressions-learn]: https://www.metabase.com/learn/questions/custom-expressions
+[data-sandboxing-docs]: ../../../permissions/data-sandboxes.md#filtering-a-sandboxed-table
+[data-types]: https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types
+[filter-learn]: https://www.metabase.com/learn/questions/searching-tables
+[notebook-editor-def]: https://www.metabase.com/glossary/notebook_editor
 [numpy]: https://numpy.org/doc/
 [pandas]: https://pandas.pydata.org/pandas-docs/stable/
 [spreadsheets-to-bi]: /blog/spreadsheets-to-bi
-[sql-reference-guide]: /learn/debugging-sql/sql-syntax.html#common-sql-reference-guides
+[sql-reference-guide]: https://www.metabase.com/learn/debugging-sql/sql-syntax.html#common-sql-reference-guides
 [sumif]: ../expressions-list.md#sumif

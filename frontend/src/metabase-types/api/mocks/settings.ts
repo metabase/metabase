@@ -40,6 +40,24 @@ export const createMockVersion = (opts?: Partial<Version>): Version => ({
   ...opts,
 });
 
+export const createMockTokenStatus = () => ({
+  status: "Token is Valid.",
+  valid: true,
+  trial: false,
+  features: [
+    "audit-app",
+    "advanced-permissions",
+    "embedding",
+    "whitelabel",
+    "no-upsell",
+    "advanced-config",
+    "content-management",
+    "sso",
+    "sandboxes",
+  ],
+  "valid-thru": "2022-12-30T23:00:00Z",
+});
+
 export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "application-font": "Lato",
   "application-font-files": [],
@@ -49,8 +67,10 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "enable-xrays": false,
   engines: createMockEngines(),
   "is-hosted?": false,
+  "google-auth-client-id": null,
   "loading-message": "doing-science",
   "deprecation-notice-version": undefined,
+  "site-locale": "en",
   "show-database-syncing-modal": false,
   "show-homepage-data": false,
   "show-homepage-xrays": false,
@@ -58,6 +78,7 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "show-lighthouse-illustration": true,
   "show-metabot": true,
   "slack-token": undefined,
+  "token-status": createMockTokenStatus(),
   "slack-token-valid?": false,
   "slack-app-token": undefined,
   "slack-files-channel": undefined,

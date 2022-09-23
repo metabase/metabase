@@ -14,7 +14,7 @@ Our articles on [Metabase at scale][metabase-at-scale] and [making dashboards fa
 
 ## Do you see an error message?
 
-If you get an error message that says "Your question took too long", go to [Troubleshooting timeouts](./timeout.html).
+If you get an error message that says "Your question took too long", go to [Troubleshooting timeouts](./timeout.md).
 
 ## Did it used to be fast enough, but has recently slowed down?
 
@@ -117,20 +117,20 @@ Similarly, you probably don't need indexes for simple tables with a few tens of 
 2. Check the performance logs for the server where Metabase is running.
 3. If either is a bottleneck, upgrade to a more powerful server or one with more memory.
 
-## Does Metabase appear to freeze when you save a question that has not yet been run?
+## Related problems
 
-**Root cause:** If you save a question that has never been executed, Metabase runs the question while saving it, which can make the UI look frozen.
+- [I can't save my question or dashboard](./proxies.md).
+- [I can't view or edit a question or dashboard](./cant-view-or-edit.md).
+- [My connection or query is timing out](./timeout.md).
+- [My visualizations are wrong](./visualization.md).
 
-**Steps to take:** This is [a bug][freeze-bug] and we are working to fix it. Until it's corrected, the workaround is to run the question before saving it. However, it's very likely that the root cause is one of the more common problems described above.
-
-[admin-caching]: ../administration-guide/14-caching.html
-[bi-best-practices]: /learn/dashboards/bi-dashboard-best-practices.html
-[bugs]: ./bugs.html
-[custom-destinations]: /learn/dashboards/custom-destinations.html
-[data-sandboxing]: /learn/permissions/data-sandboxing-row-permissions.html
+[admin-caching]: ../configuring-metabase/caching.md
+[bi-best-practices]: https://www.metabase.com/learn/dashboards/bi-dashboard-best-practices
+[bugs]: ./bugs.md
+[custom-destinations]: https://www.metabase.com/learn/dashboards/custom-destinations
+[data-sandboxing]: https://www.metabase.com/learn/permissions/data-sandboxing-row-permissions
 [dbeaver]: https://dbeaver.io/
-[embedding]: /learn/embedding/embedding-charts-and-dashboards.html
-[faster-dashboards]: /learn/administration/making-dashboards-faster.html
-[freeze-bug]: https://github.com/metabase/metabase/issues/14957
-[metabase-at-scale]: /learn/administration/metabase-at-scale.html
-[organizing-sql]: /learn/sql-questions/organizing-sql.html
+[embedding]: https://www.metabase.com/learn/embedding/embedding-charts-and-dashboards
+[faster-dashboards]: https://www.metabase.com/learn/administration/making-dashboards-faster
+[metabase-at-scale]: https://www.metabase.com/learn/administration/metabase-at-scale
+[organizing-sql]: https://www.metabase.com/learn/sql-questions/organizing-sql

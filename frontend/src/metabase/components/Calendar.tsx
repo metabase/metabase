@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
-import PropTypes from "prop-types";
 
 import "./Calendar.css";
 
@@ -8,7 +7,7 @@ import cx from "classnames";
 import moment, { Moment } from "moment-timezone";
 import { t } from "ttag";
 import Icon from "metabase/components/Icon";
-import { alpha, color } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import { CalendarDay } from "./Calendar.styled";
 
 export type SelectAll = "after" | "before";
@@ -18,12 +17,13 @@ type Props = {
   selected?: Moment;
   selectedEnd?: Moment;
   selectAll?: SelectAll | null;
-  onChange: (
+  onChange?: (
     start: string,
     end: string | null,
     startMoment: Moment,
     endMoment?: Moment | null,
   ) => void;
+  onChangeDate?: (date: string, dateMoment: Moment) => void;
   isRangePicker?: boolean;
   primaryColor?: string;
 };
@@ -77,18 +77,19 @@ export default class Calendar extends Component<Props, State> {
 
   onClickDay = (date: Moment) => {
     const { selected, selectedEnd, isRangePicker } = this.props;
+
     if (!isRangePicker || !selected || selectedEnd) {
-      this.props.onChange(date.format("YYYY-MM-DD"), null, date, null);
+      this.props.onChange?.(date.format("YYYY-MM-DD"), null, date, null);
     } else if (!selectedEnd) {
       if (date.isAfter(selected)) {
-        this.props.onChange(
+        this.props.onChange?.(
           selected.format("YYYY-MM-DD"),
           date.format("YYYY-MM-DD"),
           selected,
           date,
         );
       } else {
-        this.props.onChange(
+        this.props.onChange?.(
           date.format("YYYY-MM-DD"),
           selected.format("YYYY-MM-DD"),
           date,
@@ -96,6 +97,8 @@ export default class Calendar extends Component<Props, State> {
         );
       }
     }
+
+    this.props.onChangeDate?.(date.format("YYYY-MM-DD"), date);
   };
 
   previous = () => {
@@ -131,6 +134,7 @@ export default class Calendar extends Component<Props, State> {
   }
 
   renderDayNames() {
+    // translator: weekdays abbreviations
     const names = [t`Su`, t`Mo`, t`Tu`, t`We`, t`Th`, t`Fr`, t`Sa`];
     return (
       <div className="Calendar-day-names Calendar-week py1">

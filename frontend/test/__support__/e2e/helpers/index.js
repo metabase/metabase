@@ -23,3 +23,4 @@ export * from "./e2e-boolean-helpers";
 export * from "./e2e-embedding-helpers";
 export * from "./e2e-permissions-helpers";
 export * from "./e2e-visual-tests-helpers";
+export * from "./e2e-users-helpers";

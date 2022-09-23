@@ -1,8 +1,8 @@
-import { formatParameterValue } from "./formatting";
 import { createMockUiParameter } from "metabase/parameters/mock";
 
-import Field from "metabase-lib/lib/metadata/Field";
 import { PRODUCTS, ORDERS } from "__support__/sample_database_fixture";
+import Field from "metabase-lib/lib/metadata/Field";
+import { formatParameterValue } from "./formatting";
 
 const numberField = ORDERS.TOTAL;
 const textField = PRODUCTS.TITLE;

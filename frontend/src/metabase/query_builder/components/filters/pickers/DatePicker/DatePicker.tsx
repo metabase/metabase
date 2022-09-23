@@ -5,8 +5,6 @@ import cx from "classnames";
 import moment from "moment-timezone";
 import _ from "underscore";
 
-import { FieldDimension } from "metabase-lib/lib/Dimension";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
 import {
   updateRelativeDatetimeFilter,
   isRelativeDatetime,
@@ -16,6 +14,8 @@ import {
   getTimeComponent,
   setTimeComponent,
 } from "metabase/lib/query_time";
+import Dimension from "metabase-lib/lib/Dimension";
+import Filter from "metabase-lib/lib/queries/structured/Filter";
 
 import DatePickerFooter from "./DatePickerFooter";
 import DatePickerHeader from "./DatePickerHeader";
@@ -54,12 +54,10 @@ const hasTime = (value: unknown) =>
  * Returns MBQL :field clause with temporal bucketing applied.
  * @deprecated -- just use FieldDimension to do this stuff.
  */
-function getDateTimeField(filter: any, bucketing?: string | null) {
+function getDateTimeDimension(filter: any, bucketing?: string | null) {
   let dimension = filter?.dimension?.();
   if (!dimension) {
-    dimension = FieldDimension.parseMBQLOrWarn(
-      getRelativeDatetimeField(filter),
-    );
+    dimension = Dimension.parseMBQL(getRelativeDatetimeField(filter));
   }
   if (dimension) {
     if (bucketing) {
@@ -71,20 +69,11 @@ function getDateTimeField(filter: any, bucketing?: string | null) {
   return null;
 }
 
-export function getDateTimeFieldTarget(field: any[]) {
-  const dimension = FieldDimension.parseMBQLOrWarn(field);
-  if (dimension && dimension.temporalUnit()) {
-    return dimension.withoutTemporalBucketing().mbql() as any;
-  } else {
-    return field;
-  }
-}
-
 // add temporal-unit to fields if any of them have a time component
-function getDateTimeFieldAndValues(filter: Filter, count: number) {
-  let values = filter.slice(2, 2 + count).map(value => value && getDate(value));
+function getDateTimeDimensionAndValues(filter: Filter) {
+  let values = filter.slice(2).map(value => value && getDate(value));
   const bucketing = _.any(values, hasTime) ? "minute" : null;
-  const field = getDateTimeField(filter, bucketing);
+  const dimension = getDateTimeDimension(filter, bucketing);
   const { hours, minutes } = getTimeComponent(values[0]);
   if (
     typeof hours === "number" &&
@@ -101,7 +90,51 @@ function getDateTimeFieldAndValues(filter: Filter, count: number) {
       ];
     }
   }
-  return [field, ...values.filter(value => value !== undefined)];
+  return [dimension, ...values.filter(value => value !== undefined)];
+}
+
+function getOnFilterDimensionAndValues(filter: Filter) {
+  const [op] = filter;
+  const [dimension, ...values] = getDateTimeDimensionAndValues(filter);
+
+  if (op === "between") {
+    return [dimension, values[1]];
+  } else {
+    return [dimension, values[0]];
+  }
+}
+
+function getBeforeFilterDimensionAndValues(filter: Filter) {
+  const [op] = filter;
+  const [dimension, ...values] = getDateTimeDimensionAndValues(filter);
+
+  if (op === "between") {
+    return [dimension, values[1]];
+  } else {
+    return [dimension, values[0]];
+  }
+}
+
+function getAfterFilterDimensionAndValues(filter: Filter) {
+  const [field, ...values] = getDateTimeDimensionAndValues(filter);
+  return [field, values[0]];
+}
+
+function getBetweenFilterDimensionAndValues(filter: Filter) {
+  const [op] = filter;
+  const [dimension, ...values] = getDateTimeDimensionAndValues(filter);
+
+  if (op === "=" || op === "<") {
+    const beforeDate = moment(values[0]).subtract(30, "day");
+    const beforeValue = beforeDate.format("YYYY-MM-DD");
+    return [dimension, beforeValue, values[0]];
+  } else if (op === ">") {
+    const afterDate = moment(values[0]).add(30, "day");
+    const afterValue = afterDate.format("YYYY-MM-DD");
+    return [dimension, values[0], afterValue];
+  } else {
+    return [dimension, ...values];
+  }
 }
 
 export type DatePickerGroup = "relative" | "specific";
@@ -124,7 +157,7 @@ export const DATE_OPERATORS: DateOperator[] = [
     init: filter =>
       updateRelativeDatetimeFilter(filter, false) || [
         "time-interval",
-        getDateTimeField(filter),
+        getDateTimeDimension(filter),
         -getIntervals(filter),
         getUnit(filter),
         getOptions(filter),
@@ -144,7 +177,7 @@ export const DATE_OPERATORS: DateOperator[] = [
   {
     name: "current",
     displayName: t`Current`,
-    init: filter => ["time-interval", getDateTimeField(filter), "current"],
+    init: filter => ["time-interval", getDateTimeDimension(filter), "current"],
     test: ([op, field, value]) =>
       op === "time-interval" && (value === "current" || value === null),
     group: "relative",
@@ -156,7 +189,7 @@ export const DATE_OPERATORS: DateOperator[] = [
     init: filter =>
       updateRelativeDatetimeFilter(filter, true) || [
         "time-interval",
-        getDateTimeField(filter),
+        getDateTimeDimension(filter),
         getIntervals(filter),
         getUnit(filter),
         getOptions(filter),
@@ -176,10 +209,7 @@ export const DATE_OPERATORS: DateOperator[] = [
   {
     name: "between",
     displayName: t`Between`,
-    init: filter => {
-      const [field, ...values] = getDateTimeFieldAndValues(filter, 2);
-      return ["between", field, ...values];
-    },
+    init: filter => ["between", ...getBetweenFilterDimensionAndValues(filter)],
     test: ([op, _field, left, right]) =>
       op === "between" &&
       !isRelativeDatetime(left) &&
@@ -190,7 +220,7 @@ export const DATE_OPERATORS: DateOperator[] = [
   {
     name: "before",
     displayName: t`Before`,
-    init: filter => ["<", ...getDateTimeFieldAndValues(filter, 1)],
+    init: filter => ["<", ...getBeforeFilterDimensionAndValues(filter)],
     test: ([op]) => op === "<",
     group: "specific",
     widget: BeforePicker,
@@ -198,7 +228,7 @@ export const DATE_OPERATORS: DateOperator[] = [
   {
     name: "on",
     displayName: t`On`,
-    init: filter => ["=", ...getDateTimeFieldAndValues(filter, 1)],
+    init: filter => ["=", ...getOnFilterDimensionAndValues(filter)],
     test: ([op]) => op === "=",
     group: "specific",
     widget: SingleDatePicker,
@@ -206,7 +236,7 @@ export const DATE_OPERATORS: DateOperator[] = [
   {
     name: "after",
     displayName: t`After`,
-    init: filter => [">", ...getDateTimeFieldAndValues(filter, 1)],
+    init: filter => [">", ...getAfterFilterDimensionAndValues(filter)],
     test: ([op]) => op === ">",
     group: "specific",
     widget: AfterPicker,

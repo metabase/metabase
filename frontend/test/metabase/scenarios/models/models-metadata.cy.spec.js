@@ -7,9 +7,8 @@ import {
   openQuestionActions,
   questionInfoButton,
 } from "__support__/e2e/helpers";
-
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 import { startQuestionFromModel } from "./helpers/e2e-models-helpers";
-
 import {
   openColumnOptions,
   renameColumn,
@@ -17,6 +16,8 @@ import {
   mapColumnTo,
   setModelMetadata,
 } from "./helpers/e2e-models-metadata-helpers";
+
+const { PEOPLE, PRODUCTS, PRODUCTS_ID, REVIEWS } = SAMPLE_DATABASE;
 
 describe("scenarios > models metadata", () => {
   beforeEach(() => {
@@ -133,8 +134,9 @@ describe("scenarios > models metadata", () => {
     cy.button("Save changes").click();
 
     // Revision 1
-    cy.findByText("Subtotal ($)");
-    cy.findByText("Tax ($)").should("not.exist");
+    cy.findAllByTestId("header-cell")
+      .should("contain", "Subtotal ($)")
+      .and("not.contain", "SUBTOTAL");
 
     openQuestionActions();
     cy.findByText("Edit metadata").click();
@@ -148,8 +150,10 @@ describe("scenarios > models metadata", () => {
     setColumnType("No special type", "Cost");
     cy.button("Save changes").click();
 
-    cy.findByText("Subtotal ($)");
-    cy.findByText("Tax ($)");
+    cy.findAllByTestId("header-cell")
+      .should("contain", "Subtotal ($)")
+      .and("contain", "Tax ($)")
+      .and("not.contain", "TAX");
 
     cy.reload();
     questionInfoButton().click();
@@ -160,9 +164,10 @@ describe("scenarios > models metadata", () => {
     });
 
     cy.wait("@revert");
-    cy.findByText("Subtotal ($)");
-    cy.findByText("Tax ($)").should("not.exist");
-    cy.findByText("TAX");
+    cy.findAllByTestId("header-cell")
+      .should("contain", "Subtotal ($)")
+      .and("not.contain", "Tax ($)")
+      .and("contain", "TAX");
   });
 
   describe("native models metadata overwrites", () => {
@@ -186,7 +191,7 @@ describe("scenarios > models metadata", () => {
               id: 11,
               display_name: "User ID",
               semantic_type: "type/FK",
-              fk_target_field_id: 30,
+              fk_target_field_id: PEOPLE.ID,
             };
           }
           if (field.display_name !== "QUANTITY") {
@@ -196,7 +201,7 @@ describe("scenarios > models metadata", () => {
             ...field,
             display_name: "Review ID",
             semantic_type: "type/FK",
-            fk_target_field_id: 36,
+            fk_target_field_id: REVIEWS.ID,
           };
         });
       });
@@ -240,8 +245,8 @@ describe("scenarios > models metadata", () => {
           const dashboardId = response.body.id;
           cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
             cardId: modelId,
-            sizeX: 18,
-            sizeY: 9,
+            size_x: 18,
+            size_y: 9,
           });
 
           visitDashboard(dashboardId);
@@ -268,6 +273,27 @@ describe("scenarios > models metadata", () => {
           });
         });
       });
+    });
+
+    it("models metadata tab should show columns with details-only visibility (metabase#22521)", () => {
+      cy.request("PUT", `/api/field/${PRODUCTS.VENDOR}`, {
+        visibility_type: "details-only",
+      });
+
+      const questionDetails = {
+        name: "22521",
+        dataset: true,
+        query: {
+          "source-table": PRODUCTS_ID,
+        },
+      };
+
+      cy.createQuestion(questionDetails, { visitQuestion: true });
+      openQuestionActions();
+      cy.findByText("Vendor").should("not.exist");
+      cy.findByText("Edit metadata").click();
+      cy.wait(["@cardQuery", "@cardQuery"]);
+      cy.findByText("Vendor").should("be.visible");
     });
   });
 });

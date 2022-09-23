@@ -1,8 +1,8 @@
 ---
-title: "Data modeling"
+title: "Data modeling overview"
 ---
 
-# Data modeling
+# Data modeling overview
 
 Metabase provides tools for organizing your data and making it easier for people to understand.
 
@@ -17,6 +17,10 @@ Admins can edit the metadata for tables and fields in your database.
 ## [Field types](./field-types.md)
 
 Field types dictate how Metabase displays its data, as well as the column’s special functionality, if any.
+
+## [Setting default formatting for your data](./field-types.md)
+
+Define formatting and display defaults for numbers, currencies, datetimes, and more.
 
 ## [Creating segments and metrics](./segments-and-metrics.md)
 

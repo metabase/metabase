@@ -173,7 +173,7 @@
     "TIME"      :time
     nil))
 
-(defmethod temporal-type (class Field)
+(defmethod temporal-type Field
   [{base-type :base_type, effective-type :effective_type, database-type :database_type}]
   (or (database-type->temporal-type database-type)
       (base-type->temporal-type (or effective-type base-type))))

@@ -46,7 +46,7 @@
         user
         (do
           (db/update! User id user-data)
-          (User id))))))
+          (db/select-one User :id id))))))
 
 (defn check-sso-redirect
   "Check if open redirect is being exploited in SSO, blurts out a 400 if so"

@@ -10,9 +10,8 @@ import Breadcrumbs from "metabase/components/Breadcrumbs";
 import Button from "metabase/core/components/Button";
 import DisclosureTriangle from "metabase/components/DisclosureTriangle";
 import MetabaseUtils from "metabase/lib/utils";
-import SettingsSetting from "./SettingsSetting";
-
 import { updateSettings as defaultUpdateSettings } from "../settings";
+import SettingsSetting from "./SettingsSetting";
 
 const VALIDATIONS = {
   email: {
@@ -109,10 +108,11 @@ class SettingsBatchForm extends Component {
 
     let valid = true;
     const validationErrors = {};
+    const availableElements = elements.filter(e => !e.is_env_setting);
 
     // Validate form only if LDAP is enabled
     if (!enabledKey || formData[enabledKey]) {
-      elements.forEach(function (element) {
+      availableElements.forEach(function (element) {
         // test for required elements
         if (element.required && MetabaseUtils.isEmpty(formData[element.key])) {
           valid = false;

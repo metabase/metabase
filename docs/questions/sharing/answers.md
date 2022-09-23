@@ -34,7 +34,7 @@ Once you save your question, a down arrow will appear to the right of the questi
 - **Turn this into a model**. See [Models][model].
 - **Duplicate** (Square with little square). Create a copy of the question. Keep in mind that whenever you start editing a saved question, Metabase will create a copy of the question. You can either save your edits as a new question, or overwrite the original saved question.
 - **Archive** (Folder with down arrow). See [Archiving items][archiving-items].
-- **Bookmark** Save the question as a favorite, which will show up in the bookmarks section of your navigation sidebar. See [Bookmarks](../../users-guide/03-basic-exploration.md#bookmarks).
+- **Bookmark** Save the question as a favorite, which will show up in the bookmarks section of your navigation sidebar. See [Bookmarks](../../exploration-and-organization/exploration.md#bookmarks).
 
 ### Caching results
 
@@ -68,7 +68,7 @@ Below each edit entry in the timeline, you can click on **Revert** to reinstate 
 
 ## Sharing questions with public links
 
-If your Metabase administrator has enabled [public sharing](../../embedding/public-links.md) on a saved question or dashboard, you can go to that question or dashboard and click on the sharing icon to find its public links. Public links can be viewed by anyone, even if they don't have access to Metabase. You can also use the public embedding code to embed your question or dashboard in a simple web page or blog post.
+If your Metabase administrator has enabled [public sharing](../../questions/sharing/public-links.md) on a saved question or dashboard, you can go to that question or dashboard and click on the sharing icon to find its public links. Public links can be viewed by anyone, even if they don't have access to Metabase. You can also use the public embedding code to embed your question or dashboard in a simple web page or blog post.
 
 ![Share icon](../images/share-icon.png)
 
@@ -79,9 +79,9 @@ To share a question, click on the arrow pointing up and to the right in the bott
 You can set up questions to run periodically and notify you if the results are interesting. Check out [Alerts][alerts].
 
 [alerts]: ./alerts.md
-[archiving-items]: ../../users-guide/collections.md#archiving-items
-[caching]: ../../administration-guide/14-caching.md
-[collections]: ../../users-guide/collections.md
-[collection-permissions]: ../../administration-guide/06-collections.md
+[archiving-items]: ../../exploration-and-organization/collections.md#archiving-items
+[caching]: ../../configuring-metabase/caching.md
+[collections]: ../../exploration-and-organization/collections.md
+[collection-permissions]: ../../permissions/collections.md
 [dashboards]: ../../dashboards/start.md
 [model]: ../../data-modeling/models.md

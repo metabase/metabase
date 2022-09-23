@@ -1,9 +1,9 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
-import { isSameSeries } from "metabase/visualizations/lib/utils";
 import d3 from "d3";
 import cx from "classnames";
+import { isSameSeries } from "metabase/visualizations/lib/utils";
 
 const LegacyChoropleth = ({
   series,

@@ -8,12 +8,10 @@ summary: |
 
 API endpoints for Premium features.
 
-  - [GET /api/premium-features/token/status](#get-apipremium-featurestokenstatus)
-
 ## `GET /api/premium-features/token/status`
 
 Fetch info about the current Premium-Features premium features token including whether it is `valid`, a `trial` token, its
-  `features`, and when it is `valid_thru`.
+  `features`, when it is `valid_thru`, and the `status` of the account.
 
 ---
 

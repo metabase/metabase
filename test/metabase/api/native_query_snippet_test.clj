@@ -113,7 +113,7 @@
                   (let [response ((mt/user->client :rasta) :post expected-status-code (snippet-url)
                                   {:name "test-snippet", :description "Just null", :content "NULL", :collection_id collection-id})]
                     {:response response
-                     :db       (some-> (:id response) NativeQuerySnippet)})
+                     :db       (some->> (:id response) (db/select-one NativeQuerySnippet :id))})
                   (finally
                     (db/delete! NativeQuerySnippet :name "test-snippet"))))]
         (mt/with-temp Collection [{collection-id :id} {:namespace "snippets"}]
@@ -173,8 +173,8 @@
 (deftest update-snippet-collection-test
   (testing "PUT /api/native-query-snippet/:id"
     (testing "\nChange collection_id"
-      (tt/with-temp* [Collection [{c1-id :id, :as collection-1} {:name "a Collection", :namespace "snippets"}]
-                      Collection [{c2-id :id, :as collection-2} {:name "another Collection", :namespace "snippets"}]]
+      (tt/with-temp* [Collection [collection-1 {:name "a Collection", :namespace "snippets"}]
+                      Collection [collection-2 {:name "another Collection", :namespace "snippets"}]]
         (let [no-collection {:name "no Collection"}]
           (doseq [[source dest] [[no-collection collection-1]
                                  [collection-1 collection-2]

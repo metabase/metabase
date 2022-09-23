@@ -1,7 +1,7 @@
 import React from "react";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import { t, jt } from "ttag";
 import { updateIn } from "icepick";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import { LOGIN, LOGIN_GOOGLE } from "metabase/auth/actions";
 
 import { hasPremiumFeature } from "metabase-enterprise/settings";
@@ -13,7 +13,6 @@ import {
   PLUGIN_REDUX_MIDDLEWARES,
 } from "metabase/plugins";
 import { UtilApi } from "metabase/services";
-import { createSessionMiddleware } from "../auth/middleware/session-middleware";
 
 import AuthenticationOption from "metabase/admin/settings/components/widgets/AuthenticationOption";
 import GroupMappingsWidget from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
@@ -21,6 +20,7 @@ import SecretKeyWidget from "metabase/admin/settings/components/widgets/SecretKe
 import SessionTimeoutSetting from "metabase-enterprise/auth/components/SessionTimeoutSetting";
 
 import SettingsGoogleForm from "metabase/admin/settings/components/SettingsGoogleForm";
+import { createSessionMiddleware } from "../auth/middleware/session-middleware";
 import SettingsSAMLForm from "./components/SettingsSAMLForm";
 import SettingsJWTForm from "./components/SettingsJWTForm";
 
@@ -87,7 +87,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
         description: jt`Use the settings below to configure your SSO via SAML. If you have any questions, check out our ${(
           <ExternalLink
             href={MetabaseSettings.docsUrl(
-              "enterprise-guide/authenticating-with-saml",
+              "people-and-groups/authenticating-with-saml",
             )}
           >
             {t`documentation`}

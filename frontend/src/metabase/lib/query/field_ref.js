@@ -1,10 +1,9 @@
 import _ from "underscore";
 
+import { TYPE } from "metabase/lib/types";
 import Field from "metabase-lib/lib/metadata/Field";
 import { FieldDimension } from "metabase-lib/lib/Dimension";
 import * as Table from "./table";
-
-import { TYPE } from "metabase/lib/types";
 
 export function isLocalField(field) {
   return Array.isArray(field) && field[0] === "field";
@@ -26,8 +25,16 @@ export function isValidField(field) {
   );
 }
 
-export function isSameField(fieldA, fieldB, exact = false) {
-  if (exact) {
+function isNotComparingLocalFieldRefs(refA, refB) {
+  return !isLocalField(refA) || !isLocalField(refB);
+}
+
+export function isSameField(
+  fieldA,
+  fieldB,
+  useDeepEquality = isNotComparingLocalFieldRefs(fieldA, fieldB),
+) {
+  if (useDeepEquality) {
     return _.isEqual(fieldA, fieldB);
   } else {
     return getFieldTargetId(fieldA) === getFieldTargetId(fieldB);

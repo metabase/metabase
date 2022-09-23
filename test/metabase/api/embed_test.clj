@@ -14,6 +14,7 @@
             [metabase.api.public-test :as public-test]
             [metabase.http-client :as client]
             [metabase.models :refer [Card Dashboard DashboardCard DashboardCardSeries]]
+            [metabase.models.interface :as mi]
             [metabase.models.params.chain-filter-test :as chain-filer-test]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
@@ -62,8 +63,8 @@
     (fn [~binding]
       ~@body)))
 
-(defn do-with-temp-dashcard [{:keys [dash card dashcard]} f]
-  (with-temp-card [card card]
+(defn do-with-temp-dashcard [{:keys [dash card dashcard card-fn]} f]
+  (with-temp-card [card (if (ifn? card-fn) (card-fn card) card)]
     (mt/with-temp* [Dashboard     [dashboard (merge
                                               (when-not (:parameters dash)
                                                 {:parameters [{:id      "_VENUE_ID_"
@@ -308,7 +309,7 @@
 (deftest card-disabled-params-test
   (with-embedding-enabled-and-new-secret-key
     (with-temp-card [card {:enable_embedding true, :embedding_params {:venue_id "disabled"}}]
-      (do-response-formats [response-format request-options]
+      (do-response-formats [response-format _request-options]
         (testing (str "check that if embedding is enabled globally and for the object requests fail if they pass a "
                       "`:disabled` parameter")
           (is (= "You're not allowed to specify a value for :venue_id."
@@ -577,9 +578,9 @@
 (defn- field-values-url [card-or-dashboard field-or-id]
   (str
    "embed/"
-   (condp instance? card-or-dashboard
-     (class Card)      (str "card/"      (card-token card-or-dashboard))
-     (class Dashboard) (str "dashboard/" (dash-token card-or-dashboard)))
+   (condp mi/instance-of? card-or-dashboard
+     Card      (str "card/"      (card-token card-or-dashboard))
+     Dashboard (str "dashboard/" (dash-token card-or-dashboard)))
    "/field/"
    (u/the-id field-or-id)
    "/values"))
@@ -690,9 +691,9 @@
 
 (defn- field-search-url [card-or-dashboard field-or-id search-field-or-id]
   (str "embed/"
-       (condp instance? card-or-dashboard
-         (class Card)      (str "card/"      (card-token card-or-dashboard))
-         (class Dashboard) (str "dashboard/" (dash-token card-or-dashboard)))
+       (condp mi/instance-of? card-or-dashboard
+         Card      (str "card/"      (card-token card-or-dashboard))
+         Dashboard (str "dashboard/" (dash-token card-or-dashboard)))
        "/field/" (u/the-id field-or-id)
        "/search/" (u/the-id search-field-or-id)))
 
@@ -733,9 +734,9 @@
 
 (defn- field-remapping-url [card-or-dashboard field-or-id remapped-field-or-id]
   (str "embed/"
-       (condp instance? card-or-dashboard
-         (class Card)      (str "card/"      (card-token card-or-dashboard))
-         (class Dashboard) (str "dashboard/" (dash-token card-or-dashboard)))
+       (condp mi/instance-of? card-or-dashboard
+         Card      (str "card/"      (card-token card-or-dashboard))
+         Dashboard (str "dashboard/" (dash-token card-or-dashboard)))
        "/field/" (u/the-id field-or-id)
        "/remapping/" (u/the-id remapped-field-or-id)))
 
@@ -815,7 +816,7 @@
                (client/client :get 400 (search-url))))))))
 
 (deftest chain-filter-random-params-test
-  (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
+  (with-chain-filter-fixtures [{:keys [values-url search-url]}]
     (testing "Requests should fail if parameter is not explicitly enabled"
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
         (is (= "Cannot search for values: \"category_id\" is not an enabled parameter."
@@ -825,7 +826,7 @@
                (client/client :get 400 (search-url))))))))
 
 (deftest chain-filter-enabled-params-test
-  (with-chain-filter-fixtures [{:keys [dashboard param-keys values-url search-url]}]
+  (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
     (db/update! Dashboard (:id dashboard)
       :embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"})
     (testing "Should work if the param we're fetching values for is enabled"
@@ -869,7 +870,7 @@
   (testing "Should not fail if request is authenticated but current user does not have data permissions"
     (mt/with-temp-copy-of-db
       (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
-      (with-chain-filter-fixtures [{:keys [dashboard param-keys values-url search-url]}]
+      (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
         (db/update! Dashboard (:id dashboard)
           :embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"})
         (testing "Should work if the param we're fetching values for is enabled"
@@ -883,7 +884,7 @@
                    (chain-filer-test/take-n-values 3 (mt/user-http-request :rasta :get 200 (search-url)))))))))))
 
 (deftest chain-filter-locked-params-test
-  (with-chain-filter-fixtures [{:keys [dashboard param-keys values-url search-url]}]
+  (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
     (testing "Requests should fail if searched param is locked"
       (db/update! Dashboard (:id dashboard)
         :embedding_params {"category_id" "locked", "category_name" "locked"})
@@ -920,7 +921,7 @@
                    (client/client :get 400 (str url "?_PRICE_=4"))))))))))
 
 (deftest chain-filter-disabled-params-test
-  (with-chain-filter-fixtures [{:keys [dashboard param-keys values-url search-url]}]
+  (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
     (testing "Requests should fail if searched param is disabled"
       (db/update! Dashboard (:id dashboard)
         :embedding_params {"category_id" "disabled", "category_name" "disabled"})

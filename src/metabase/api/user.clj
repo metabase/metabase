@@ -7,9 +7,9 @@
             [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
             [metabase.api.common.validation :as validation]
+            [metabase.api.ldap :as api.ldap]
             [metabase.email.messages :as messages]
             [metabase.integrations.google :as google]
-            [metabase.integrations.ldap :as ldap]
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.login-history :refer [LoginHistory]]
             [metabase.models.permissions-group :as perms-group]
@@ -349,10 +349,9 @@
     ;; if the user orignally logged in via Google Auth and it's no longer enabled, convert them into a regular user
     ;; (see metabase#3323)
     :google_auth   (boolean (and (:google_auth existing-user)
-                                 ;; if google-auth-client-id is set it means Google Auth is enabled
-                                 (google/google-auth-client-id)))
+                                 (google/google-auth-enabled)))
     :ldap_auth     (boolean (and (:ldap_auth existing-user)
-                                 (ldap/ldap-configured?))))
+                                 (api.ldap/ldap-enabled))))
   ;; now return the existing user whether they were originally active or not
   (fetch-user :id (u/the-id existing-user)))
 
@@ -422,7 +421,7 @@
   "Resend the user invite email for a given user."
   [id]
   (api/check-superuser)
-  (when-let [user (User :id id, :is_active true)]
+  (when-let [user (db/select-one User :id id, :is_active true)]
     (let [reset-token (user/set-password-reset-token! id)
           ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
           join-url    (str (user/form-password-reset-url reset-token) "#new")]

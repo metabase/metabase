@@ -291,7 +291,7 @@
                                            (assoc user :group_ids '(user/add-group-ids <users>))))]
         (testing "for a single User"
           (is (= '(user/add-group-ids <users>)
-                 (-> (hydrate (User (mt/user->id :lucky)) :group_ids)
+                 (-> (hydrate (db/select-one User :id (mt/user->id :lucky)) :group_ids)
                      :group_ids))))
 
         (testing "for multiple Users"
@@ -330,14 +330,14 @@
                (user-group-names :lucky)))))
 
     (testing "should be able to remove a User from groups"
-      (with-groups [group-1 {:name "Group 1"} #{:lucky}
-                    group-2 {:name "Group 2"} #{:lucky}]
+      (with-groups [_group-1 {:name "Group 1"} #{:lucky}
+                    _group-2 {:name "Group 2"} #{:lucky}]
         (user/set-permissions-groups! (mt/user->id :lucky) #{(perms-group/all-users)})
         (is (= #{"All Users"}
                (user-group-names :lucky)))))
 
     (testing "should be able to add & remove groups at the same time! :wow:"
-      (with-groups [group-1 {:name "Group 1"} #{:lucky}
+      (with-groups [_group-1 {:name "Group 1"} #{:lucky}
                     group-2 {:name "Group 2"} #{}]
         (user/set-permissions-groups! (mt/user->id :lucky) #{(perms-group/all-users) group-2})
         (is (= #{"All Users" "Group 2"}
@@ -405,9 +405,9 @@
                (db/select-one-field :reset_token User :id user-id)))))
 
     (testing "should clear out all existing Sessions"
-      (mt/with-temp* [User    [{user-id :id}]
-                      Session [_ {:id (str (java.util.UUID/randomUUID)), :user_id user-id}]
-                      Session [_ {:id (str (java.util.UUID/randomUUID)), :user_id user-id}]]
+      (mt/with-temp* [User [{user-id :id}]]
+        (dotimes [_ 2]
+          (db/insert! Session {:id (str (java.util.UUID/randomUUID)), :user_id user-id}))
         (letfn [(session-count [] (db/count Session :user_id user-id))]
           (is (= 2
                  (session-count)))

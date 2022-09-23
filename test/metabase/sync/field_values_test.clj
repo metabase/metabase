@@ -34,7 +34,7 @@
       (is (= (repeat 2 {:errors 0, :created 1, :updated 0, :deleted 0})
              (sync-database!' "update-field-values" (data/db)))))
     (testing "Now re-sync the table and make sure they're back"
-      (sync/sync-table! (Table (mt/id :venues)))
+      (sync/sync-table! (db/select-one Table :id (mt/id :venues)))
       (is (= [1 2 3 4]
              (venues-price-field-values))))))
 

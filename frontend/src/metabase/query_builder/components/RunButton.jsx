@@ -3,9 +3,8 @@ import React, { forwardRef } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import Button from "metabase/core/components/Button";
-
 import cx from "classnames";
+import Button from "metabase/core/components/Button";
 
 const propTypes = {
   className: PropTypes.string,

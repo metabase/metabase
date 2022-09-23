@@ -58,13 +58,9 @@
                                             :margin-bottom :8px})}
                  description]})))
 
-(defn- number-field?
-  [{base-type :base_type, semantic-type :semantic_type}]
-  (some #(isa? % :type/Number) [base-type semantic-type]))
-
 (defn detect-pulse-chart-type
   "Determine the pulse (visualization) type of a `card`, e.g. `:scalar` or `:bar`."
-  [{display-type :display, card-name :name, :as card} maybe-dashcard {:keys [cols rows insights], :as data}]
+  [{display-type :display, card-name :name, :as card} maybe-dashcard {:keys [cols rows], :as data}]
   (let [col-sample-count          (delay (count (take 3 cols)))
         row-sample-count          (delay (count (take 2 rows)))
         [col-1-rowfn col-2-rowfn] (common/graphing-column-row-fns card data)
@@ -85,7 +81,15 @@
         (#{:pin_map :state :country} display-type)
         (chart-type nil "display-type is %s" display-type)
 
-        (#{:area
+        ;; for scalar/smartscalar, the display-type might actually be :line, so we can't have line above
+        (and (not= display-type :progress)
+             (= @col-sample-count @row-sample-count 1))
+        (chart-type :scalar "result has one row and one column")
+
+        (#{:scalar
+           :smartscalar
+           :line
+           :area
            :bar
            :combo
            :funnel
@@ -94,33 +98,12 @@
            :waterfall} display-type)
         (chart-type display-type "display-type is %s" display-type)
 
-        (= @col-sample-count @row-sample-count 1)
-        (chart-type :scalar "result has one row and one column")
-
-        (and (= display-type :smartscalar)
-             (= @col-sample-count 2)
-             (seq insights))
-        (chart-type :smartscalar "result has two columns and insights")
-
         (and (some? maybe-dashcard)
              (> (count (dashboard-card/dashcard->multi-cards maybe-dashcard)) 0)
              (not (#{:combo} display-type)))
         (chart-type :multiple "result has multiple card semantics, a multiple chart")
 
-        ;; Default behavior of these to be sparkline, unless the columns and rows don't behave and display type is correct,
-        ;; upon which they're lines
-        (and (= @col-sample-count 2)
-             (> @row-sample-count 1)
-             (number-field? @col-2)
-             (not (#{:waterfall :pie :table :area} display-type)))
-        (chart-type :sparkline "result has 2 cols (%s and %s (number)) and > 1 row" (col-description @col-1) (col-description @col-2))
-
-        (= display-type :line)
-        (chart-type display-type "display-type is %s" display-type)
-
-        (and (= @col-sample-count 2)
-             (number-field? @col-2)
-             (= display-type :pie))
+        (= display-type :pie)
         (chart-type :categorical/donut "result has two cols (%s and %s (number))" (col-description @col-1) (col-description @col-2))
 
         :else
@@ -205,7 +188,7 @@
                    content]}))
 
 (s/defn render-pulse-card-to-png :- bytes
-  "Render a `pulse-card` as a PNG. `data` is the `:data` from a QP result (I think...)"
+  "Render a `pulse-card` as a PNG. `data` is the `:data` from a QP result."
   [timezone-id :- (s/maybe s/Str) pulse-card result width]
   (png/render-html-to-png (render-pulse-card :inline timezone-id pulse-card nil result) width))
 

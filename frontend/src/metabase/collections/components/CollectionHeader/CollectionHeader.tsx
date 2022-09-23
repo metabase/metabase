@@ -1,13 +1,22 @@
 import React from "react";
+import { withRouter } from "react-router";
+import type { Location } from "history";
+
+import { isDataAppCollection } from "metabase/entities/data-apps";
+
 import { Collection } from "metabase-types/api";
+
 import CollectionCaption from "./CollectionCaption";
 import CollectionBookmark from "./CollectionBookmark";
 import CollectionMenu from "./CollectionMenu";
 import CollectionTimeline from "./CollectionTimeline";
+import LaunchDataAppButton from "./LaunchDataAppButton";
+
 import { HeaderActions, HeaderRoot } from "./CollectionHeader.styled";
 
 export interface CollectionHeaderProps {
   collection: Collection;
+  location: Location;
   isAdmin: boolean;
   isBookmarked: boolean;
   isPersonalCollectionChild: boolean;
@@ -18,6 +27,7 @@ export interface CollectionHeaderProps {
 
 const CollectionHeader = ({
   collection,
+  location,
   isAdmin,
   isBookmarked,
   isPersonalCollectionChild,
@@ -25,6 +35,8 @@ const CollectionHeader = ({
   onCreateBookmark,
   onDeleteBookmark,
 }: CollectionHeaderProps): JSX.Element => {
+  const isDataApp = isDataAppCollection(collection);
+
   return (
     <HeaderRoot>
       <CollectionCaption
@@ -32,6 +44,7 @@ const CollectionHeader = ({
         onUpdateCollection={onUpdateCollection}
       />
       <HeaderActions data-testid="collection-menu">
+        {isDataApp && <LaunchDataAppButton collection={collection} />}
         <CollectionTimeline collection={collection} />
         <CollectionBookmark
           collection={collection}
@@ -42,6 +55,7 @@ const CollectionHeader = ({
         <CollectionMenu
           collection={collection}
           isAdmin={isAdmin}
+          isDataApp={isDataApp}
           isPersonalCollectionChild={isPersonalCollectionChild}
           onUpdateCollection={onUpdateCollection}
         />
@@ -50,4 +64,4 @@ const CollectionHeader = ({
   );
 };
 
-export default CollectionHeader;
+export default withRouter(CollectionHeader);

@@ -51,39 +51,47 @@
     ;; copy at top level so that `with-gtaps-for-user` does not have to create a new copy every time it gets called
     (mt/with-temp-copy-of-db
       (testing "gtap with remappings"
-        (letfn [(hash-for-user-id [user-id login-attributes]
+        (letfn [(hash-for-user-id [user-id login-attributes field-id]
                   (mt/with-gtaps-for-user user-id
                     {:gtaps      {:categories {:remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}}
                      :attributes login-attributes}
-                    (ee-params.field-values/hash-key-for-sandbox (mt/id :categories :name))))]
+                    (ee-params.field-values/hash-key-for-sandbox field-id)))]
           (mt/with-temp* [User [{user-id-1 :id}]
                           User [{user-id-2 :id}]]
 
-            (testing "2 users with the same attribute should have the same hash"
-              (is (= (hash-for-user-id user-id-1 {"State" "CA"})
-                     (hash-for-user-id user-id-2 {"State" "CA"})))
+            (testing "2 users with the same attribute"
+              (testing "should have the same hash for the same field"
+                (is (= (hash-for-user-id user-id-1 {"State" "CA"} (mt/id :categories :name))
+                       (hash-for-user-id user-id-2 {"State" "CA"} (mt/id :categories :name)))))
+              (testing "should have different hash for different fields"
+                (is (not= (hash-for-user-id user-id-1 {"State" "CA"} (mt/id :categories :name))
+                          (hash-for-user-id user-id-2 {"State" "CA"} (mt/id :categories :id)))))
               (testing "having extra login attributes won't effect the hash"
                 (is (= (hash-for-user-id user-id-1 {"State" "CA"
-                                                    "City"  "San Jose"})
-                       (hash-for-user-id user-id-2 {"State" "CA"})))))
+                                                    "City"  "San Jose"} (mt/id :categories :name))
+                       (hash-for-user-id user-id-2 {"State" "CA"} (mt/id :categories :name))))))
 
-            (testing "same users but the login_attributes change should have different hash"
-              (is (not= (hash-for-user-id user-id-1 {"State" "CA"})
-                        (hash-for-user-id user-id-1 {"State" "NY"}))))
+            (testing "2 users with the same attribute should have the different hash for different "
+              (is (= (hash-for-user-id user-id-1 {"State" "CA"} (mt/id :categories :name))
+                     (hash-for-user-id user-id-2 {"State" "CA"} (mt/id :categories :name)))))
 
-            (testing "2 users with different login_attributes should have different hash"
-              (is (not= (hash-for-user-id user-id-1 {"State" "CA"})
-                        (hash-for-user-id user-id-2 {"State" "NY"})))
-              (is (not= (hash-for-user-id user-id-1 {})
-                        (hash-for-user-id user-id-2 {"State" "NY"}))))))))
+           (testing "same users but the login_attributes change should have different hash"
+             (is (not= (hash-for-user-id user-id-1 {"State" "CA"} (mt/id :categories :name))
+                       (hash-for-user-id user-id-1 {"State" "NY"} (mt/id :categories :name)))))
+
+           (testing "2 users with different login_attributes should have different hash"
+             (is (not= (hash-for-user-id user-id-1 {"State" "CA"} (mt/id :categories :name))
+                       (hash-for-user-id user-id-2 {"State" "NY"} (mt/id :categories :name))))
+             (is (not= (hash-for-user-id user-id-1 {} (mt/id :categories :name))
+                       (hash-for-user-id user-id-2 {"State" "NY"} (mt/id :categories :name)))))))))
 
     (testing "gtap with card and remappings"
       ;; hack so that we don't have to setup all the sandbox permissions the table
       (with-redefs [ee-params.field-values/field-is-sandboxed? (constantly true)]
-        (letfn [(hash-for-user-id-with-attributes [user-id login_attributes]
+        (letfn [(hash-for-user-id-with-attributes [user-id login_attributes field-id]
                   (mt/with-temp-vals-in-db User user-id {:login_attributes login_attributes}
                     (mw.session/with-current-user user-id
-                      (ee-params.field-values/hash-key-for-sandbox (mt/id :categories :name)))))]
+                      (ee-params.field-values/hash-key-for-sandbox field-id))))]
           (testing "2 users in the same group"
             (mt/with-temp*
               [Card                       [{card-id :id}]
@@ -98,13 +106,44 @@
                                               :group_id group-id
                                               :table_id (mt/id :categories)
                                               :attribute_remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}]]
-              (testing "if the have the same attributes, the hash should be the ssame"
-                (is (= (hash-for-user-id-with-attributes user-id-1 {"State" "CA"})
-                       (hash-for-user-id-with-attributes user-id-2 {"State" "CA"}))))
 
-              (testing "if the have the different attributes, the hash should be the different"
-                (is (not= (hash-for-user-id-with-attributes user-id-1 {"State" "CA"})
-                          (hash-for-user-id-with-attributes user-id-2 {"State" "NY"}))))))
+              (testing "with same attributes, the hash should be the same field"
+                (is (= (hash-for-user-id-with-attributes user-id-1 {"State" "CA"} (mt/id :categories :name))
+                       (hash-for-user-id-with-attributes user-id-2 {"State" "CA"} (mt/id :categories :name)))))
+
+              (testing "with same attributes, the hash should different for different fields"
+                (is (not= (hash-for-user-id-with-attributes user-id-1 {"State" "CA"} (mt/id :categories :name))
+                          (hash-for-user-id-with-attributes user-id-2 {"State" "CA"} (mt/id :categories :id)))))
+
+             (testing "with different attributes, the hash should be the different"
+               (is (not= (hash-for-user-id-with-attributes user-id-1 {"State" "CA"} (mt/id :categories :name))
+                         (hash-for-user-id-with-attributes user-id-2 {"State" "NY"} (mt/id :categories :name)))))))
+
+          (testing "gtap with native question"
+            (mt/with-temp*
+              [Card                       [{card-id :id} {:query_type :native
+                                                          :name "A native query"
+                                                          :dataset_query
+                                                          {:type :native
+                                                           :database (mt/id)
+                                                           :native
+                                                           {:query "SELECT * FROM People WHERE state = {{STATE}}"
+                                                            :template-tags
+                                                            {"STATE" {:id "72461b3b-3877-4538-a5a3-7a3041924517"
+                                                                      :name "STATE"
+                                                                      :display-name "STATE"
+                                                                      :type "text"}}}}}]
+               PermissionsGroup           [{group-id :id}]
+               User                       [{user-id :id}]
+               PermissionsGroupMembership [_ {:group_id group-id
+                                              :user_id user-id}]
+               GroupTableAccessPolicy     [_ {:card_id card-id
+                                              :group_id group-id
+                                              :table_id (mt/id :categories)
+                                              :attribute_remappings {"State" [:variable [:template-tag "STATE"]]}}]]
+              (testing "same users but if the login_attributes change, they should have different hash (#24966)"
+                (is (not= (hash-for-user-id-with-attributes user-id {"State" "CA"} (mt/id :categories :name))
+                          (hash-for-user-id-with-attributes user-id {"State" "NY"} (mt/id :categories :name)))))))
 
           (testing "2 users in different groups but gtaps use the same card"
             (mt/with-temp*
@@ -128,13 +167,17 @@
                                               :group_id group-id-2
                                               :table_id (mt/id :categories)
                                               :attribute_remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}]]
-              (testing "if the have the same attributes, the hash should be the ssame"
-                (is (= (hash-for-user-id-with-attributes user-id-1 {"State" "CA"})
-                       (hash-for-user-id-with-attributes user-id-2 {"State" "CA"}))))
+              (testing "with the same attributes, the hash should be the same"
+                (is (= (hash-for-user-id-with-attributes user-id-1 {"State" "CA"} (mt/id :categories :name))
+                       (hash-for-user-id-with-attributes user-id-2 {"State" "CA"} (mt/id :categories :name)))))
 
-              (testing "if the have the different attributes, the hash should be the different"
-                (is (not= (hash-for-user-id-with-attributes user-id-1 {"State" "CA"})
-                          (hash-for-user-id-with-attributes user-id-2 {"State" "NY"}))))))
+              (testing "with same attributes, the hash should different for different fields"
+                (is (not= (hash-for-user-id-with-attributes user-id-1 {"State" "CA"} (mt/id :categories :name))
+                          (hash-for-user-id-with-attributes user-id-2 {"State" "CA"} (mt/id :categories :id)))))
+
+             (testing "with different attributes, the hash should be the different"
+               (is (not= (hash-for-user-id-with-attributes user-id-1 {"State" "CA"} (mt/id :categories :name))
+                         (hash-for-user-id-with-attributes user-id-2 {"State" "NY"} (mt/id :categories :name)))))))
 
           (testing "2 users in different groups and gtaps use 2 different cards"
             (mt/with-temp*
@@ -158,7 +201,7 @@
                                               :table_id (mt/id :categories)
                                               :attribute_remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}]]
               (testing "the hash are different even though they have the same attribute"
-                (is (not= (hash-for-user-id-with-attributes user-id-1 {"State" "CA"})
-                          (hash-for-user-id-with-attributes user-id-2 {"State" "CA"})))
-                (is (not= (hash-for-user-id-with-attributes user-id-1 {"State" "CA"})
-                          (hash-for-user-id-with-attributes user-id-2 {"State" "NY"})))))))))))
+                (is (not= (hash-for-user-id-with-attributes user-id-1 {"State" "CA"} (mt/id :categories :name))
+                          (hash-for-user-id-with-attributes user-id-2 {"State" "CA"} (mt/id :categories :name))))
+                (is (not= (hash-for-user-id-with-attributes user-id-1 {"State" "CA"} (mt/id :categories :name))
+                          (hash-for-user-id-with-attributes user-id-2 {"State" "NY"} (mt/id :categories :name))))))))))))

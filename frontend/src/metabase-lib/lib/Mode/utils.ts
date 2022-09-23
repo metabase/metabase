@@ -1,8 +1,8 @@
 import Question from "metabase-lib/lib/Question";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import { ModeType } from "./types";
 import {
+  MODE_TYPE_ACTION,
   MODE_TYPE_NATIVE,
   MODE_TYPE_SEGMENT,
   MODE_TYPE_METRIC,
@@ -11,10 +11,15 @@ import {
   MODE_TYPE_PIVOT,
   MODE_TYPE_DEFAULT,
 } from "metabase-lib/lib/Mode/constants";
+import { ModeType } from "./types";
 
 export function getMode(question: Question): ModeType | null {
   if (!question) {
     return null;
+  }
+
+  if (question.card().display === "action") {
+    return MODE_TYPE_ACTION;
   }
 
   const query = question.query();

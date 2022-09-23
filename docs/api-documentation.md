@@ -1,6 +1,14 @@
+---
+title: "Metabase API documentation"
+---
+
 # Metabase API documentation
 
-_These reference files were generated from source comments by running `clojure -M:ee:run api-documentation`_.
+_These reference files were generated from source comments by running:
+
+```
+clojure -M:ee:run api-documentation
+```
 
 ## About the Metabase API
 
@@ -16,9 +24,11 @@ Check out an introduction to the [Metabase API](https://www.metabase.com/learn/a
 _* indicates endpoints used for features available on [paid plans](https://www.metabase.com/pricing/)._
 
 
+- [Action](api/action.md)
 - [Activity](api/activity.md)
 - [Advanced permissions application*](api/ee/advanced-permissions-application.md)
 - [Alert](api/alert.md)
+- [App](api/app.md)
 - [Audit app user*](api/ee/audit-app-user.md)
 - [Automagic dashboards](api/automagic-dashboards.md)
 - [Bookmark](api/bookmark.md)
@@ -30,6 +40,7 @@ _* indicates endpoints used for features available on [paid plans](https://www.m
 - [Dataset](api/dataset.md)
 - [Email](api/email.md)
 - [Embed](api/embed.md)
+- [Emitter](api/emitter.md)
 - [Field](api/field.md)
 - [GeoJSON](api/geojson.md)
 - [LDAP](api/ldap.md)
