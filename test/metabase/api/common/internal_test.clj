@@ -3,7 +3,6 @@
             [medley.core :as m]
             [metabase.api.common.internal :as internal]
             [metabase.config :as config]
-            [metabase.test :as mt]
             [metabase.util :as u]))
 
 (deftest route-fn-name-test

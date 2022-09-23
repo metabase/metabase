@@ -5,7 +5,6 @@
             [metabase.pulse.render.body :as body]
             [metabase.pulse.render.common :as common]
             [metabase.pulse.render.test-util :as render.tu]
-            [metabase.test :as mt]
             [schema.core :as s]))
 
 (use-fixtures :each
