@@ -186,8 +186,8 @@ function WaterfallChart({
   );
   let yMax = layout.height - xAxisHeight - topMargin;
   let height = layout.height;
-  // If inner chart area is too short try to expand it but not more than MAX_EXTRA_HEIGHT
-  // to match what we do with XYChart (XYChart with legends can have be up to 340px tall)
+  // If inner chart area is too short, try to expand it but not more than `MAX_EXTRA_HEIGHT`
+  // to match what we do with XYChart (with legends, it can be up to 340px tall)
   if (yMax < MIN_INNER_HEIGHT) {
     yMax =
       minMax(
@@ -298,7 +298,7 @@ function WaterfallChart({
 /**
  *
  * @param {'timeseries'|'categorical'} type
- * @returns {typeof POSITIONAL_ACCESSORS | undefined}
+ * @returns {typeof POSITIONAL_ACCESSORS}
  */
 function getDefaultAccessors(type) {
   if (type === "timeseries") {
