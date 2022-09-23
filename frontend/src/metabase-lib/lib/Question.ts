@@ -84,8 +84,6 @@ import {
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/lib/Alert";
 
-type QuestionUpdateFn = (q: Question) => Promise<void> | null | undefined;
-
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
   tableId?: TableId;
@@ -123,18 +121,12 @@ class QuestionInner {
   _parameterValues: ParameterValues;
 
   /**
-   * Bound update function, if any
-   */
-  _update: QuestionUpdateFn | null | undefined;
-
-  /**
    * Question constructor
    */
   constructor(
     card: CardObject,
     metadata?: Metadata,
     parameterValues?: ParameterValues,
-    update?: QuestionUpdateFn | null | undefined,
   ) {
     this._card = card;
     this._metadata =
@@ -148,16 +140,10 @@ class QuestionInner {
         questions: {},
       });
     this._parameterValues = parameterValues || {};
-    this._update = update;
   }
 
   clone() {
-    return new Question(
-      this._card,
-      this._metadata,
-      this._parameterValues,
-      this._update,
-    );
+    return new Question(this._card, this._metadata, this._parameterValues);
   }
 
   metadata(): Metadata {
@@ -171,27 +157,6 @@ class QuestionInner {
   setCard(card: CardObject): Question {
     const q = this.clone();
     q._card = card;
-    return q;
-  }
-
-  /**
-   * calls the passed in update function (useful for chaining) or bound update function with the question
-   * NOTE: this passes Question instead of card, unlike how Query passes dataset_query
-   */
-  update(update?: QuestionUpdateFn, ...args: any[]) {
-    // TODO: if update returns a new card, create a new Question based on that and return it
-    if (update) {
-      update(this, ...args);
-    } else if (this._update) {
-      this._update(this, ...args);
-    } else {
-      throw new Error("Question update function not provided or bound");
-    }
-  }
-
-  bindUpdate(update: QuestionUpdateFn) {
-    const q = this.clone();
-    q._update = update;
     return q;
   }
 

@@ -51,16 +51,14 @@ export function cardQueryIsEquivalent(cardA, cardB) {
   );
 }
 
-export function cardIsEquivalent(
-  cardA,
-  cardB,
-  { checkParameters = false } = {},
-) {
+export function cardParametersAreEquivalent(cardA, cardB) {
+  return _.isEqual(cardA.parameters || [], cardB.parameters || []);
+}
+
+export function cardIsEquivalent(cardA, cardB) {
   return (
     cardQueryIsEquivalent(cardA, cardB) &&
-    cardVisualizationIsEquivalent(cardA, cardB) &&
-    (!checkParameters ||
-      _.isEqual(cardA.parameters || [], cardB.parameters || []))
+    cardVisualizationIsEquivalent(cardA, cardB)
   );
 }
 
