@@ -6,13 +6,16 @@
     [metabase.actions.http-action :as http-action]
     [metabase.api.common :as api]
     [metabase.mbql.normalize :as mbql.normalize]
-    [metabase.models :refer [Dashboard DashboardCard]]
+    [metabase.models :refer [Card Dashboard DashboardCard ModelAction Table]]
     [metabase.models.action :as action]
+    [metabase.models.query :as query]
     [metabase.query-processor.error-type :as qp.error-type]
     [metabase.query-processor.writeback :as qp.writeback]
+    [metabase.shared.util.i18n :as i18n]
     [metabase.util :as u]
     [metabase.util.i18n :refer [tru]]
-    [toucan.db :as db]))
+    [toucan.db :as db]
+    [toucan.hydrate :refer [hydrate]]))
 
 (defn- map-parameters
   "Take the `parameters` map passed in to an endpoint and map it to the parameters
@@ -84,26 +87,9 @@
                            (into {}))]
     (http-action/execute-http-action! action params->value)))
 
-(defn execute-dashcard!
-  "Execute the given action in the dashboard/dashcard context with the given unmapped-parameters and extra-parameters.
-   See [[map-parameters]] for a description of their expected shapes."
-  [dashboard-id dashcard-id unmapped-parameters extra-parameters]
-  (actions/check-actions-enabled)
-  (api/check-superuser)
-  (api/read-check Dashboard dashboard-id)
-  (let [dashcard (api/check-404 (db/select-one DashboardCard
-                                               :id dashcard-id
-                                               :dashboard_id dashboard-id))
-        action (api/check-404 (first (action/select-actions :id (:action_id dashcard))))
+(defn- execute-custom-action [action-id parameters]
+  (let [action (api/check-404 (first (action/select-actions :id action-id)))
         action-type (:type action)
-        _ (log/tracef "Mapping parameters\n\n%s\nwith mappings\n\n%s"
-                      (u/pprint-to-str unmapped-parameters)
-                      (u/pprint-to-str (:parameter_mappings dashcard)))
-        mapped-parameters (map-parameters
-                            (mbql.normalize/normalize-fragment [:parameters] unmapped-parameters)
-                            (:parameter_mappings dashcard))
-        parameters (into (mbql.normalize/normalize-fragment [:parameters] extra-parameters)
-                         mapped-parameters)
         destination-parameters-by-target (m/index-by :target (:parameters action))]
     (doseq [{:keys [target]} parameters]
       (when-not (contains? destination-parameters-by-target target)
@@ -122,3 +108,80 @@
       (execute-http-action! action parameters)
 
       (throw (ex-info (tru "Unknown action type {0}." (name action-type)) action)))))
+
+(defn- implicit-action-table
+  [card_id]
+  (let [card (db/select-one Card :id card_id)
+        {:keys [table-id]} (query/query->database-and-table-ids (:dataset_query card))]
+    (hydrate (db/select-one Table :id table-id) :fields)))
+
+(defn- execute-implicit-action
+  [{:keys [card_id slug requires_pk] :as _model-action} parameters]
+  (let [{database-id :db_id table-id :id :as table} (implicit-action-table card_id)
+        {pk-fields true} (group-by #(isa? (:semantic-type %) :type/PK) (:fields table))
+        _ (api/check (<= (count pk-fields) 1) 400 (i18n/tru "Cannot execute implicit action on a table with multiple primary keys."))
+        pk-field (first pk-fields)
+        simple-parameters (dissoc (into {} (map (juxt :id :value)) parameters) (:name pk-field))
+        query (cond-> {:database database-id,
+                       :type :query,
+                       :query {:source-table table-id}}
+                requires_pk
+                (assoc-in [:query :filter]
+                          [:= [:field (:id pk-field) nil] (get simple-parameters (:name pk-field))]))
+        implicit-action (cond
+                          (= slug "delete")
+                          :row/delete
+
+                          requires_pk
+                          :row/update
+
+                          :else
+                          :row/create)
+        arg-map (cond-> query
+                  (= implicit-action :row/create)
+                  (assoc :create-row simple-parameters)
+
+                  (= implicit-action :row/update)
+                  (assoc :update-row simple-parameters))]
+    (actions/perform-action! implicit-action arg-map)))
+
+(defn execute-dashcard!
+  "Execute the given action in the dashboard/dashcard context with the given unmapped-parameters and extra-parameters.
+   See [[map-parameters]] for a description of their expected shapes."
+  [dashboard-id dashcard-id slug unmapped-parameters extra-parameters]
+  (api/check-superuser)
+  (actions/check-actions-enabled)
+  (api/read-check Dashboard dashboard-id)
+  (let [dashcard (api/check-404 (db/select-one DashboardCard
+                                               :id dashcard-id
+                                               :dashboard_id dashboard-id))
+        model-action (api/check-404 (db/select-one ModelAction :card_id (:card_id dashcard) :slug slug))
+        _ (log/tracef "Mapping parameters\n\n%s\nwith mappings\n\n%s"
+                      (u/pprint-to-str unmapped-parameters)
+                      (u/pprint-to-str (:parameter_mappings dashcard)))
+        mapped-parameters (map-parameters
+                            (mbql.normalize/normalize-fragment [:parameters] unmapped-parameters)
+                            (:parameter_mappings dashcard))
+        parameters (into (mbql.normalize/normalize-fragment [:parameters] extra-parameters)
+                         mapped-parameters)]
+    (if-let [action-id (:action_id model-action)]
+      (execute-custom-action action-id parameters)
+      (execute-implicit-action model-action parameters))))
+
+(defn execution-parameters
+  "Return the available parameters for executing the referenced action"
+  [dashboard-id dashcard-id slug]
+  (actions/check-actions-enabled)
+  (api/read-check Dashboard dashboard-id)
+  (let [dashcard (api/check-404 (db/select-one DashboardCard
+                                               :id dashcard-id
+                                               :dashboard_id dashboard-id))
+        model-action (api/check-404 (db/select-one ModelAction :card_id (:card_id dashcard) :slug slug))]
+    (if-let [action-id (:action_id model-action)]
+      (let [action (api/check-404 (first (action/select-actions :id action-id)))]
+        (:parameters action))
+      (let [table (implicit-action-table (:card_id model-action))]
+        (for [field (:fields table)]
+          {:id (:name field)
+           :target [:dimension [:field (:id field) nil]]
+           :type (:base_type field)})))))

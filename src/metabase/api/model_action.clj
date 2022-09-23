@@ -27,8 +27,8 @@
   "Endpoint to associate an action with a model"
   [model-action-id :as {{:keys [action_id slug requires_pk parameter_mappings visualization_settings] :as body} :body}]
   {action_id (s/maybe su/IntGreaterThanZero)
-   slug su/NonBlankString
-   requires_pk s/Bool
+   slug (s/maybe su/NonBlankString)
+   requires_pk (s/maybe s/Bool)
    parameter_mappings (s/maybe [su/ParameterMapping])
    visualization_settings (s/maybe su/Map)}
   (db/update! ModelAction model-action-id (dissoc body :card_id))
@@ -38,6 +38,7 @@
   "Endpoint to delete an action"
   [model-action-id]
   (let [action_id (db/select-field :action_id ModelAction :id model-action-id)]
+    ;; Let cascade delete handle this
     (db/delete! Action :id action_id)
     api/generic-204-no-content))
 

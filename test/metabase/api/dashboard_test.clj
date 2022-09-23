@@ -20,6 +20,7 @@
                                      Emitter
                                      Field
                                      FieldValues
+                                     ModelAction
                                      Pulse
                                      QueryAction
                                      Revision
@@ -1875,12 +1876,14 @@
     (actions.test-util/with-actions-test-data-and-actions-enabled
       (actions.test-util/with-action [{:keys [action-id]} {}]
         (testing "Executing dashcard with action"
-          (mt/with-temp* [Dashboard [{dashboard-id :id}]
+          (mt/with-temp* [Card [{card-id :id} {:dataset true}]
+                          ModelAction [_ {:slug "custom" :card_id card-id :action_id action-id}]
+                          Dashboard [{dashboard-id :id}]
                           DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
-                                                            :action_id action-id
+                                                            :card_id card-id
                                                             :parameter_mappings [{:parameter_id "my_id"
                                                                                   :target [:variable [:template-tag "id"]]}]}]]
-            (let [execute-path (format "dashboard/%s/dashcard/%s/action/execute"
+            (let [execute-path (format "dashboard/%s/dashcard/%s/execute/custom"
                                        dashboard-id
                                        dashcard-id)]
               (testing "Dashcard parameter"
@@ -1906,7 +1909,7 @@
                                              {:parameters [{:id "my_id" :type  :number/= :value Integer/MAX_VALUE}]}))))
               (testing "Should 404 if bad dashcard-id"
                 (is (= "Not found."
-                       (mt/user-http-request :crowberto :post 404 (format "dashboard/%d/dashcard/%s/action/execute"
+                       (mt/user-http-request :crowberto :post 404 (format "dashboard/%d/dashcard/%s/execute/custom"
                                                                           dashboard-id
                                                                           Integer/MAX_VALUE)
                                              {}))))
@@ -1925,14 +1928,16 @@
     (actions.test-util/with-actions-test-data-and-actions-enabled
       (actions.test-util/with-action [{:keys [action-id]} {:type :http}]
         (testing "Executing dashcard with action"
-          (mt/with-temp* [Dashboard [{dashboard-id :id}]
+          (mt/with-temp* [Card [{card-id :id} {:dataset true}]
+                          ModelAction [_ {:slug "custom" :card_id card-id :action_id action-id}]
+                          Dashboard [{dashboard-id :id}]
                           DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
-                                                            :action_id action-id
+                                                            :card_id card-id
                                                             :parameter_mappings [{:parameter_id "my_id"
                                                                                   :target [:template-tag "id"]}
                                                                                  {:parameter_id "my_fail"
                                                                                   :target [:template-tag "fail"]}]}]]
-            (let [execute-path (format "dashboard/%s/dashcard/%s/action/execute"
+            (let [execute-path (format "dashboard/%s/dashcard/%s/execute/custom"
                                        dashboard-id
                                        dashcard-id)]
               (testing "Should be able to execute an emitter"
@@ -1956,17 +1961,48 @@
                 (is (str/starts-with? (:message (mt/user-http-request :crowberto :post 500 execute-path
                                                                       {:parameters [{:id "my_id" :type :number/= :value "BAD"}]}))
                                       "Problem building request:"))))))))))
+(defn- format-field-name
+  "Format `field-name` appropriately for the current driver (e.g. uppercase it if we're testing against H2)."
+  [field-name]
+  (keyword (mt/format-name (name field-name))))
+
+(deftest dashcard-implicit-action-execution-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+    (actions.test-util/with-actions-test-data-and-actions-enabled
+      (testing "Executing dashcard with action"
+        (mt/with-temp* [Card [{card-id :id} {:dataset true :dataset_query (mt/mbql-query categories)}]
+                        ModelAction [_ {:slug "custom" :card_id card-id}]
+                        Dashboard [{dashboard-id :id}]
+                        DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
+                                                          :card_id card-id
+                                                          :parameter_mappings [{:parameter_id (format-field-name :id)
+                                                                                :target [:template-tag "id"]} ]}]]
+          (let [execute-path (format "dashboard/%s/dashcard/%s/execute/custom"
+                                     dashboard-id
+                                     dashcard-id)]
+            (testing "Should be able to execute an emitter"
+              (is (= {:the_parameter 1}
+                     (mt/user-http-request :crowberto :post 200 execute-path
+                                           {:parameters [{:id (format-field-name :id)
+                                                          :type :number/=
+                                                          :value 1}]
+                                            :extra_parameters [{:id (format-field-name :name)
+                                                                :type :text
+                                                                :target ["NAME"]
+                                                                :value "Birds"}]}))))))))))
 
 (deftest dashcard-action-execution-auth-test
   (actions.test-util/with-actions-test-data
     (actions.test-util/with-action [{:keys [action-id]} {}]
       (testing "Executing dashcard with action"
-        (mt/with-temp* [Dashboard [{dashboard-id :id}]
+        (mt/with-temp* [Card [{card-id :id} {:dataset true}]
+                        ModelAction [_ {:slug "custom" :card_id card-id :action_id action-id}]
+                        Dashboard [{dashboard-id :id}]
                         DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
-                                                          :action_id action-id
+                                                          :card_id card-id
                                                           :parameter_mappings [{:parameter_id "my_id"
                                                                                 :target [:variable [:template-tag "id"]]}]}]]
-          (let [execute-path (format "dashboard/%s/dashcard/%s/action/execute"
+          (let [execute-path (format "dashboard/%s/dashcard/%s/execute/custom"
                                      dashboard-id
                                      dashcard-id)]
             (testing "Without actions enabled"

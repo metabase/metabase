@@ -705,16 +705,22 @@
     "value must be a parameter map with a 'target' key"))
 
 ;;; ---------------------------------- Executing the action associated with a Dashcard -------------------------------
+(api/defendpoint GET "/:dashboard-id/dashcard/:dashcard-id/execute/:slug"
+  "Fetches the parameters needed for execution for the given dashcard and slug action."
+  [dashboard-id dashcard-id slug]
+  {slug su/NonBlankString}
+  (actions.execution/execution-parameters dashboard-id dashcard-id slug))
 
-(api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/action/execute"
+(api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/execute/:slug"
   "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
 
    `parameters` should be the mapped dashboard parameters with values.
    `extra_parameters` should be the extra, user entered parameter values."
-  [dashboard-id dashcard-id :as {{:keys [parameters extra_parameters], :as _body} :body}]
+  [dashboard-id dashcard-id slug :as {{:keys [parameters extra_parameters], :as _body} :body}]
   {parameters (s/maybe [ParameterWithID])
+   slug su/NonBlankString
    extra_parameters (s/maybe [ParameterWithTarget])}
-  (actions.execution/execute-dashcard! dashboard-id dashcard-id parameters extra_parameters))
+  (actions.execution/execute-dashcard! dashboard-id dashcard-id slug parameters extra_parameters))
 
 ;;; ---------------------------------- Running the query associated with a Dashcard ----------------------------------
 
