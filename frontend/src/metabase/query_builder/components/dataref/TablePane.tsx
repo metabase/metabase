@@ -11,15 +11,15 @@ import Tables from "metabase/entities/tables";
 import {
   Description,
   EmptyDescription,
-  // LoadingSpinner,
-  // AbsoluteContainer,
-  // Fade,
+  LoadingSpinner,
+  AbsoluteContainer,
+  Fade,
 } from "metabase/components/MetadataInfo/MetadataInfo.styled";
 import {
   InfoContainer,
   MetadataContainer,
 } from "metabase/components/MetadataInfo/TableInfo/TableInfo.styled";
-// import ConnectedTables from "metabase/components/MetadataInfo/TableInfo/ConnectedTables";
+import ConnectedTables from "metabase/components/MetadataInfo/TableInfo/ConnectedTables";
 // import { showAddParameterPopover } from "metabase/dashboard/actions";
 import Table from "metabase-lib/lib/metadata/Table";
 import FieldList from "./FieldList";
@@ -79,54 +79,6 @@ const mapDispatchToProps: {
 //   return hasFetchedMetadata;
 // }
 
-const TableInfo = ({
-  className,
-  // tableId,
-  table,
-  // fetchForeignKeys,
-  // fetchMetadata,
-  // onConnectedTableClick,
-}) => {
-  const description = table?.description;
-  // const hasFetchedMetadata = useDependentTableMetadata({
-  //   tableId,
-  //   table,
-  //   fetchForeignKeys,
-  //   fetchMetadata,
-  // });
-
-  return (
-    <InfoContainer className={className}>
-      {description ? (
-        <Description>{description}</Description>
-      ) : (
-        <EmptyDescription>{t`No description`}</EmptyDescription>
-      )}
-      <MetadataContainer>
-        {/* <Fade visible={!hasFetchedMetadata}>
-          <AbsoluteContainer>
-            <LoadingSpinner size={24} />
-          </AbsoluteContainer>
-        </Fade>
-        <Fade visible={hasFetchedMetadata}>
-          {table && (
-            <ConnectedTables
-              table={table}
-              onConnectedTableClick={onConnectedTableClick}
-            />
-          )}
-        </Fade> */}
-      </MetadataContainer>
-    </InfoContainer>
-  );
-};
-
-TableInfo.propTypes = {
-  className: PropTypes.string,
-  // tableId: PropTypes.number.isRequired,
-  table: PropTypes.instanceOf(Table),
-};
-
 const propTypes = {
   query: PropTypes.object.isRequired,
   show: PropTypes.func.isRequired,
@@ -141,6 +93,7 @@ const propTypes = {
 class TablePane extends React.Component {
   state = {
     error: null,
+    hasFetchedMetadata: false,
   };
 
   async UNSAFE_componentWillMount() {
@@ -149,6 +102,9 @@ class TablePane extends React.Component {
         this.props.fetchForeignKeys({ id: this.props.tableId }),
         this.props.fetchMetadata({ id: this.props.tableId }),
       ]);
+      this.setState({
+        hasFetchedMetadata: true,
+      });
     } catch (e) {
       this.setState({
         error: t`An error occurred loading the table`,
@@ -158,18 +114,34 @@ class TablePane extends React.Component {
 
   render() {
     const { table } = this.props;
-    const { error } = this.state;
+    const { error, hasFetchedMetadata } = this.state;
+    const onConnectedTableClick = () => null; // TODO: replace with something
     if (table) {
       return (
         <div>
           <div className="ml1">
-            <TableInfo
-              // tableId={table.id}
-              table={table}
-              // onConnectedTableClick={table => this.props.show("table", table)}
-              // fetchForeignKeys={this.props.fetchForeignKeys}
-              // fetchMetadata={this.props.fetchMetadata}
-            />
+            <InfoContainer className="">
+              {table.description ? (
+                <Description>{table.description}</Description>
+              ) : (
+                <EmptyDescription>{t`No description`}</EmptyDescription>
+              )}
+              <MetadataContainer>
+                <Fade visible={!hasFetchedMetadata}>
+                  <AbsoluteContainer>
+                    <LoadingSpinner size={24} />
+                  </AbsoluteContainer>
+                </Fade>
+                <Fade visible={hasFetchedMetadata}>
+                  {table && (
+                    <ConnectedTables
+                      table={table}
+                      onConnectedTableClick={onConnectedTableClick}
+                    />
+                  )}
+                </Fade>
+              </MetadataContainer>
+            </InfoContainer>
             <div className="my2">
               {table.fields && (
                 <FieldList
