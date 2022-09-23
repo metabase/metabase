@@ -9,7 +9,6 @@
             [clojure.set :as set]
             [clojure.spec.alpha :as s]
             [clojure.test :refer :all]
-            [metabase.public-settings :as public-settings]
             [metabase.pulse.render.js-engine :as js]
             [metabase.pulse.render.js-svg :as js-svg])
   (:import org.apache.batik.anim.dom.SVGOMDocument
