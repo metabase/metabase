@@ -292,6 +292,8 @@ export default class Aggregation extends MBQLClause {
       const filters = this.metricFilters();
       return filters ?? [];
     }
+
+    return [];
   }
 
   customFilter(): Filter | null {
