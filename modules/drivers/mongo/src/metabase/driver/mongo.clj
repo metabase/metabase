@@ -221,11 +221,19 @@
                  :native-parameters]]
   (defmethod driver/supports? [:mongo feature] [_ _] true))
 
+(defn- db-major-version
+  [db]
+  (some-> (get-in db [:details :version])
+          (str/split #"\.")
+          first
+          Integer/parseInt))
+
 (defmethod driver/database-supports? [:mongo :expressions] [_ _ db]
-  (let [version (some-> (get-in db [:details :version])
-                        (str/split #"\.")
-                        first
-                        Integer/parseInt)]
+  (let [version (db-major-version db)]
+    (and (some? version) (<= 4 version))))
+
+(defmethod driver/database-supports? [:mongo :date-arithmetics] [_ _ db]
+  (let [version (db-major-version db)]
     (and (some? version) (<= 4 version))))
 
 (defmethod driver/mbql->native :mongo

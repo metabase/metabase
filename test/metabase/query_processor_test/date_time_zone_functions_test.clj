@@ -6,12 +6,9 @@
             [metabase.test :as mt]
             [metabase.util.date-2 :as u.date]))
 
-(defn- formatting [x]
-  (if (number? x)
-    (int x)
-    (-> x
-        (str/replace  #"T" " ")
-        (str/replace  #"Z" ""))))
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                Date extract tests                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn test-date-extract
   [{:keys [aggregation breakout expressions fields filter limit]}]
@@ -21,13 +18,13 @@
                                    :limit       limit
                                    :filter      filter
                                    :breakout    breakout})
-         (mt/formatted-rows [formatting formatting]))
+         (mt/formatted-rows [int int]))
     (->> (mt/run-mbql-query times {:expressions expressions
                                    :aggregation aggregation
                                    :limit       limit
                                    :filter      filter
                                    :fields      fields})
-         (mt/formatted-rows [formatting]))))
+         (mt/formatted-rows [int]))))
 
 (mt/defdataset times-mixed
   [["times" [{:field-name "index"
@@ -178,7 +175,11 @@
         (testing title
           (is (= expected (test-date-extract query))))))))
 
-(defn- date-math
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              Date arithmetics tests                                            |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn date-math
   [op x amount unit col-type]
   (let [amount (if (= op :date-add)
                  amount
@@ -189,15 +190,41 @@
                  (and (= driver/*driver* :presto) (#{:text-as-date} col-type))
                  "yyyy-MM-dd"
 
+                 (= unit :millisecond)
+                 "yyyy-MM-dd HH:mm:ss.SSS"
+
                  :else
                  "yyyy-MM-dd HH:mm:ss")]
     (t/format fmt (u.date/add x unit amount))))
 
-(defn- mongo-major-version [db]
+(defn- db-major-version [db]
   (-> (get-in db [:details :version])
       (str/split #"\.")
       first
       parse-long))
+
+(defn- normalize-timestamp-str [x]
+  (if (number? x)
+    (int x)
+    (-> x
+        (str/replace  #"T" " ")
+        (str/replace  #"Z" ""))))
+
+(defn test-date-math
+  [{:keys [aggregation breakout expressions fields filter limit]}]
+  (if breakout
+    (->> (mt/run-mbql-query times {:expressions expressions
+                                   :aggregation aggregation
+                                   :limit       limit
+                                   :filter      filter
+                                   :breakout    breakout})
+         (mt/formatted-rows [normalize-timestamp-str normalize-timestamp-str]))
+    (->> (mt/run-mbql-query times {:expressions expressions
+                                   :aggregation aggregation
+                                   :limit       limit
+                                   :filter      filter
+                                   :fields      fields})
+         (mt/formatted-rows [normalize-timestamp-str]))))
 
 (deftest date-math-tests
   (mt/dataset times-mixed
@@ -205,7 +232,7 @@
       (testing "date arithmetic with datetime columns"
         (doseq [[col-type field-id] [[:datetime (mt/id :times :dt)] [:text-as-datetime (mt/id :times :as_dt)]]
                 op                  [:date-add :date-subtract]
-                unit                [:year :quarter :month :day :hour :minute :second]
+                unit                [:year :quarter :month :day :hour :minute :second :millisecond]
                 [expected query]
                 [[[[(date-math op #t "2004-03-19 09:19:09" 2 unit col-type)] [(date-math op #t "2008-06-20 10:20:10" 2 unit col-type)]
                    [(date-math op #t "2012-11-21 11:21:11" 2 unit col-type)] [(date-math op #t "2012-11-21 11:21:11" 2 unit col-type)]]
@@ -223,7 +250,7 @@
                    :aggregation [[:count]]
                    :breakout    [[:expression "expr"]]}]]]
           (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
-            (is (= (set expected) (set (test-date-extract query)))))))
+            (is (= (set expected) (set (test-date-math query)))))))
 
       (testing "date arithmetic with datetime columns"
         (doseq [[col-type field-id] [[:date (mt/id :times :d)] [:text-as-date (mt/id :times :as_d)]]
@@ -246,54 +273,47 @@
                    :aggregation [[:count]]
                    :breakout    [[:expression "expr"]]}]]]
           (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
-            (is (= (set expected) (set (test-date-extract query))))))))
+            (is (= (set expected) (set (test-date-math query))))))))
 
-   (mt/test-driver :mongo
-     ;; date arithmetic doesn't supports until mongo 5+
-     (when (> (mongo-major-version (mt/db)) 4)
-       (testing "date arithmetic with datetime columns"
-         (let [[col-type field-id] [:datetime (mt/id :times :dt)]]
-           (doseq [op               [:date-add :date-subtract]
-                   unit             [:year :quarter :month :day :hour :minute :second]
-                   [expected query]
-                   [[[[(date-math op #t "2004-03-19 09:19:09" 2 unit col-type)] [(date-math op #t "2008-06-20 10:20:10" 2 unit col-type)]
-                      [(date-math op #t "2012-11-21 11:21:11" 2 unit col-type)] [(date-math op #t "2012-11-21 11:21:11" 2 unit col-type)]]
-                     {:expressions {"expr" [op [:field field-id nil] 2 unit]}
-                      :fields      [[:expression "expr"]]}]
+    (mt/test-driver :mongo
+      ;; date arithmetic doesn't supports until mongo 5+
+      (testing "date arithmetic with datetime columns"
+        (let [[col-type field-id] [:datetime (mt/id :times :dt)]]
+          (doseq [op               [:date-add :date-subtract]
+                  unit             [:year :quarter :month :day :hour :minute :second :millisecond]
+                  [expected query]
+                  [[[[(date-math op #t "2004-03-19 09:19:09" 2 unit col-type)] [(date-math op #t "2008-06-20 10:20:10" 2 unit col-type)]
+                     [(date-math op #t "2012-11-21 11:21:11" 2 unit col-type)] [(date-math op #t "2012-11-21 11:21:11" 2 unit col-type)]]
+                    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
+                     :fields      [[:expression "expr"]]}]
 
-                    [(into [] (frequencies
-                                [(date-math op #t "2004-03-19 09:19:09" 2 unit col-type) (date-math op #t "2008-06-20 10:20:10" 2 unit col-type)
-                                 (date-math op #t "2012-11-21 11:21:11" 2 unit col-type) (date-math op #t "2012-11-21 11:21:11" 2 unit col-type)]))
-                     {:expressions {"expr" [op [:field field-id nil] 2 unit]}
-                      :aggregation [[:count]]
-                      :breakout    [[:expression "expr"]]}]]]
-             (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
-               (is (= (set expected) (set (test-date-extract query))))))))
+                   [(into [] (frequencies
+                               [(date-math op #t "2004-03-19 09:19:09" 2 unit col-type) (date-math op #t "2008-06-20 10:20:10" 2 unit col-type)
+                                (date-math op #t "2012-11-21 11:21:11" 2 unit col-type) (date-math op #t "2012-11-21 11:21:11" 2 unit col-type)]))
+                    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
+                     :aggregation [[:count]]
+                     :breakout    [[:expression "expr"]]}]]]
+            (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
+              (is (= (set expected) (set (test-date-math query))))))))
 
-       (testing "date arithmetic with date columns"
-         (let [[col-type field-id] [:date (mt/id :times :d)]]
-           (doseq [op               [:date-add :date-subtract]
-                   unit             [:year :quarter :month :day]
-                   [expected query]
-                   [[[[(date-math op #t "2004-03-19 00:00:00" 2 unit col-type)] [(date-math op #t "2008-06-20 00:00:00" 2 unit col-type)]
-                      [(date-math op #t "2012-11-21 00:00:00" 2 unit col-type)] [(date-math op #t "2012-11-21 00:00:00" 2 unit col-type)]]
-                     {:expressions {"expr" [op [:field field-id nil] 2 unit]}
-                      :fields      [[:expression "expr"]]}]
+      (testing "date arithmetic with date columns"
+        (let [[col-type field-id] [:date (mt/id :times :d)]]
+          (doseq [op               [:date-add :date-subtract]
+                  unit             [:year :quarter :month :day]
+                  [expected query]
+                  [[[[(date-math op #t "2004-03-19 00:00:00" 2 unit col-type)] [(date-math op #t "2008-06-20 00:00:00" 2 unit col-type)]
+                     [(date-math op #t "2012-11-21 00:00:00" 2 unit col-type)] [(date-math op #t "2012-11-21 00:00:00" 2 unit col-type)]]
+                    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
+                     :fields      [[:expression "expr"]]}]
 
-                    [(into [] (frequencies
-                                [(date-math op #t "2004-03-19 00:00:00" 2 unit col-type) (date-math op #t "2008-06-20 00:00:00" 2 unit col-type)
-                                 (date-math op #t "2012-11-21 00:00:00" 2 unit col-type) (date-math op #t "2012-11-21 00:00:00" 2 unit col-type)]))
-                     {:expressions {"expr" [op [:field field-id nil] 2 unit]}
-                      :aggregation [[:count]]
-                      :breakout    [[:expression "expr"]]}]]]
-             (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
-               (is (= (set expected) (set (test-date-extract query))))))))
-
-      (when-not (> (mongo-major-version (mt/db)) 4)
-        (doseq [op [:date-add :date-subtract]]
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Date arithmetic not supported in versions before 5"
-                                (mt/compile (mt/mbql-query times {:expressions {"expr" [op [:field (mt/id :times :dt) nil] 2 :year]}
-                                                                  :fields      [[:expression "expr"]]}))))))))))
+                   [(into [] (frequencies
+                               [(date-math op #t "2004-03-19 00:00:00" 2 unit col-type) (date-math op #t "2008-06-20 00:00:00" 2 unit col-type)
+                                (date-math op #t "2012-11-21 00:00:00" 2 unit col-type) (date-math op #t "2012-11-21 00:00:00" 2 unit col-type)]))
+                    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
+                     :aggregation [[:count]]
+                     :breakout    [[:expression "expr"]]}]]]
+            (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
+              (is (= (set expected) (set (test-date-math query)))))))))))
 
 (deftest date-math-with-extract-test
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :date-arithmetics) :mongo)
@@ -314,4 +334,4 @@
                 {:filter [:= [:get-year [:date-add [:field (mt/id :times :dt) nil] 2 :year]] 2006]
                  :fields [[:field (mt/id :times :index)]]}]]]
         (testing title
-          (is (= (set expected) (set (test-date-extract query)))))))))
+          (is (= (set expected) (set (test-date-math query)))))))))

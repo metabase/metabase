@@ -648,16 +648,16 @@
 
 (def ^:private ArithmeticDateTimeUnit
   (s/named
-   (apply s/enum #{:default :second :minute :hour :day :week :month :quarter :year})
+   (apply s/enum #{:millisecond :second :minute :hour :day :week :month :quarter :year})
    "arithmetic-datetime-unit"))
 
 (defclause ^{:requires-features #{:date-arithmetics}} date-add
-  datetime DateTimeExpressionArg,
+  datetime DateTimeExpressionArg
   amount   NumericExpressionArg
   unit     ArithmeticDateTimeUnit)
 
 (defclause ^{:requires-features #{:date-arithmetics}} date-subtract
-  datetime DateTimeExpressionArg,
+  datetime DateTimeExpressionArg
   amount   NumericExpressionArg
   unit     ArithmeticDateTimeUnit)
 
@@ -855,14 +855,6 @@
    (partial is-clause? date+time+timezone-functions) DatetimeExpression
    (partial is-clause? :case)                        case
    :else                                             Field))
-
-#_((s/validator DatetimeExpression)
-   [:date-add [:date-add [:field 3 nil] 2 :year] 2 :month])
-
-
-#_((s/validator ArithmeticExpression)
-   [:+ [:+ [:field 3 nil] 2] 2])
-
 
 ;;; -------------------------------------------------- Aggregations --------------------------------------------------
 
