@@ -25,11 +25,11 @@ const PANES = {
 
 const TITLE_ICONS = {
   database: "database",
-  schema: "folder", // TODO check
+  schema: "folder",
   table: "table",
   field: "field",
-  segment: "segment", // TODO check
-  metric: "metric", // TODO check
+  segment: "segment",
+  metric: "metric",
   model: "model",
 };
 
