@@ -9,6 +9,7 @@
     [metabase.models :refer [Dashboard DashboardCard]]
     [metabase.models.action :as action]
     [metabase.query-processor.error-type :as qp.error-type]
+    [metabase.query-processor.middleware.permissions :as qp.perms]
     [metabase.query-processor.writeback :as qp.writeback]
     [metabase.util :as u]
     [metabase.util.i18n :refer [tru]]
@@ -51,7 +52,6 @@
               (assoc parameter :target target)))
           parameters)))
 
-
 (defn- execute-query-action!
   "Execute a `QueryAction` with parameters as passed in from an
   endpoint (see [[map-parameters]] for a description of their shape).
@@ -70,12 +70,15 @@
   (try
     (let [query (assoc (:dataset_query card) :parameters parameters)]
       (log/debugf "Query (before preprocessing):\n\n%s" (u/pprint-to-str query))
-      (qp.writeback/execute-write-query! query))
+      (binding [qp.perms/*card-id* (:id card)]
+        (qp.writeback/execute-write-query! query)))
     (catch Throwable e
-      (throw (ex-info (tru "Error executing Action: {0}" (ex-message e))
-                      {:action     action
-                       :parameters parameters}
-                      e)))))
+      (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
+        (api/throw-403 e)
+        (throw (ex-info (tru "Error executing Action: {0}" (ex-message e))
+           {:action     action
+            :parameters parameters}
+           e))))))
 
 (defn- execute-http-action!
   [action parameters]
@@ -89,7 +92,6 @@
    See [[map-parameters]] for a description of their expected shapes."
   [dashboard-id dashcard-id unmapped-parameters extra-parameters]
   (actions/check-actions-enabled)
-  (api/check-superuser)
   (api/read-check Dashboard dashboard-id)
   (let [dashcard (api/check-404 (db/select-one DashboardCard
                                                :id dashcard-id
