@@ -172,28 +172,14 @@ function DatasetEditor(props) {
     isMetadataDirty,
     height,
     isDirty: isModelQueryDirty,
-    isRunning,
     setQueryBuilderMode,
     setDatasetEditorTab,
     setFieldMetadata,
     onCancelDatasetChanges,
     onSave,
     handleResize,
-    runQuestionQuery,
     onOpenModal,
   } = props;
-
-  // It's important to reload the query to refresh metadata when coming from the model page
-  // On the model page, results metadata has a shape assuming you're building a nested question
-  // E.g. expression field refs are field literals ["field", "my_formula", ...] instead of ["expression", "my_formula"]
-  // Doing a reload will ensure the editor uses the correct metadata
-  useEffect(() => {
-    if (!isRunning) {
-      runQuestionQuery();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const orderedColumns = useMemo(
     () => dataset.setting("table.columns"),
     [dataset],
