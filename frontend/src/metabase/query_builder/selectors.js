@@ -378,7 +378,7 @@ function areQueriesEqual(queryA, queryB, tableMetadata) {
   return _.isEqual(normalizedQueryA, normalizedQueryB);
 }
 
-function areDatasetsEquivalent({
+function areModelsEquivalent({
   originalQuestion,
   lastRunQuestion,
   currentQuestion,
@@ -417,7 +417,7 @@ function areQueriesEquivalent({
   tableMetadata,
 }) {
   return (
-    areDatasetsEquivalent({
+    areModelsEquivalent({
       originalQuestion,
       lastRunQuestion,
       currentQuestion,
