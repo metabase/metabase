@@ -39,8 +39,6 @@ import type {
   ChartSettings,
   ChartStyle,
   HydratedSeries,
-  XScale,
-  XAxisType,
 } from "metabase/static-viz/components/XYChart/types";
 import Values from "./Values";
 
