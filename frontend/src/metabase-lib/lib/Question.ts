@@ -86,6 +86,7 @@ import {
 
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
+  dataset?: boolean;
   tableId?: TableId;
   collectionId?: CollectionId;
   metadata?: Metadata;
@@ -941,6 +942,7 @@ class QuestionInner {
     query,
     includeDisplayIsLocked,
     creationType,
+    ...options
   }: {
     originalQuestion?: Question;
     clean?: boolean;
@@ -954,7 +956,7 @@ class QuestionInner {
       !question.id() ||
       (originalQuestion && question.isDirtyComparedTo(originalQuestion))
     ) {
-      return Urls.question(null, {
+      return Urls.question(question.card(), {
         hash: question._serializeForUrl({
           clean,
           includeDisplayIsLocked,
@@ -1374,12 +1376,14 @@ export default class Question extends memoizeClass<QuestionInner>(
     name,
     display = "table",
     visualization_settings = {},
+    dataset,
     dataset_query = type === "native"
       ? NATIVE_QUERY_TEMPLATE
       : STRUCTURED_QUERY_TEMPLATE,
   }: QuestionCreatorOpts = {}) {
     let card: CardObject = {
       name,
+      dataset,
       collection_id: collectionId,
       display,
       visualization_settings,
