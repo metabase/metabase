@@ -96,6 +96,7 @@ type NewQuestionUrlBuilderParams = QuestionCreatorOpts & {
   mode?: "view" | "notebook";
   creationType?: string;
   objectId?: number | string;
+  dataset?: true;
 };
 
 export function newQuestion({
@@ -112,6 +113,23 @@ export function newQuestion({
   if (mode) {
     const entity = question.isDataset() ? "model" : "question";
     return url.replace(/^\/(question|model)/, `/${entity}\/${mode}`);
+  } else {
+    return url;
+  }
+}
+
+export function newDataset({
+  mode,
+  creationType,
+  objectId,
+  ...options
+}: NewQuestionUrlBuilderParams = {}) {
+  const url = Question.create(options).getUrl({
+    creationType,
+    query: objectId ? { objectId } : undefined,
+  });
+  if (mode) {
+    return url.replace(/^\/model/, `/model\/${mode}`);
   } else {
     return url;
   }

@@ -116,6 +116,21 @@ const NewItemMenu = ({
       },
     );
 
+    if (hasNativeWrite) {
+      // we should probably get more granular with who sees this
+      items.push({
+        title: t`Model`,
+        icon: "model",
+        link: Urls.newDataset({
+          type: "native",
+          creationType: "native_question",
+          dataset: true,
+        }),
+        event: `${analyticsContext};New Model Click;`,
+        onClose: onCloseNavbar,
+      });
+    }
+
     return items;
   }, [
     hasDataAccess,
