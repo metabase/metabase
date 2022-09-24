@@ -364,9 +364,7 @@
   (let [db (-> (if include-editable-data-model?
                  (api/check-404 (db/select-one Database :id id))
                  (api/read-check Database id))
-               (hydrate [:tables :models :segments :metrics [:fields [:target :has_field_values] :has_field_values]])
-               ;; TODO: get hydration to work properly
-               (merge {:cards (db/select 'Card, :database_id id, :archived false, :dataset true, {:order-by [[:%lower.name :asc]]})}))
+               (hydrate [:tables [:fields [:target :has_field_values] :has_field_values] :segments :metrics]))
         db (if include-editable-data-model?
              ;; We need to check data model perms after hydrating tables, since this will also filter out tables for
              ;; which the *current-user* does not have data model perms
@@ -392,7 +390,7 @@
                                 (update :metrics  (partial filter mi/can-read?)))))))))
 
 (api/defendpoint GET "/:id/metadata"
-  "Get metadata about a `Database`, including all of its `Tables`, `Models` and `Fields`. Returns DB, fields, and field values.
+  "Get metadata about a `Database`, including all of its `Tables` and `Fields`. Returns DB, fields, and field values.
   By default only non-hidden tables and fields are returned. Passing include_hidden=true includes them.
 
   Passing include_editable_data_model will only return tables for which the current user has data model editing
