@@ -36,13 +36,13 @@ export default function BreakoutStep({
           breakout={breakout}
           onChangeBreakout={newBreakout =>
             breakout
-              ? breakout.replace(newBreakout).update(updateQuery)
-              : query.breakout(newBreakout).update(updateQuery)
+              ? updateQuery(breakout.replace(newBreakout))
+              : updateQuery(query.breakout(newBreakout))
           }
         />
       )}
       isLastOpened={isLastOpened}
-      onRemove={breakout => breakout.remove().update(updateQuery)}
+      onRemove={breakout => updateQuery(breakout.remove())}
     />
   );
 }

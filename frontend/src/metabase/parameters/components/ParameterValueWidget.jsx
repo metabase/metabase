@@ -146,6 +146,7 @@ class ParameterValueWidget extends Component {
       return (
         <PopoverWithTrigger
           ref={this.valuePopover}
+          targetOffsetX={16}
           triggerElement={
             <div
               ref={this.trigger}

@@ -85,10 +85,10 @@ export const addTextDashCardToDashboard = function ({ dashId }) {
   });
 };
 
-export const addActionButtonDashCardToDashboard = ({ dashId }) => {
+export const addActionDashCardToDashboard = ({ dashId }) => {
   const virtualActionsCard = {
     ...createCard(),
-    display: "action-button",
+    display: "action",
     archived: false,
   };
   const dashcardOverrides = {

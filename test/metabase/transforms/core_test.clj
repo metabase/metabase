@@ -5,6 +5,7 @@
             [metabase.domain-entities.specs :as de.specs]
             [metabase.models.card :as card :refer [Card]]
             [metabase.models.collection :refer [Collection]]
+            [metabase.models.interface :as mi]
             [metabase.models.table :as table :refer [Table]]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
@@ -99,10 +100,11 @@
   (with-test-domain-entity-specs
     (with-test-transform-specs
       (testing "Is the validation of results working?"
-        (is (#'tf/validate-results {"VenuesEnhanced" {:entity     (card/map->CardInstance
-                                                                    {:result_metadata [{:name "AvgPrice"}
-                                                                                       {:name "MaxPrice"}
-                                                                                       {:name "MinPrice"}]})
+        (is (#'tf/validate-results {"VenuesEnhanced" {:entity     (mi/instance
+                                                                   Card
+                                                                   {:result_metadata [{:name "AvgPrice"}
+                                                                                      {:name "MaxPrice"}
+                                                                                      {:name "MinPrice"}]})
                                                       :dimensions {"D1" [:field-id 1]}}}
                                    (first @tf.specs/transform-specs))))
 

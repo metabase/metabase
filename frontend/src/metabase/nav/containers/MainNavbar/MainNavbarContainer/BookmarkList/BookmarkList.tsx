@@ -2,8 +2,6 @@ import React, { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
-import "./sortable.css";
-
 import {
   SortableContainer,
   SortableElement,
@@ -20,7 +18,7 @@ import * as Urls from "metabase/lib/urls";
 import { SelectedItem } from "../../types";
 import { SidebarHeading } from "../../MainNavbar.styled";
 
-import { DragIcon, SidebarBookmarkItem } from "./BookmarkList.styled";
+import { SidebarBookmarkItem } from "./BookmarkList.styled";
 
 const mapDispatchToProps = {
   onDeleteBookmark: ({ item_id, type }: Bookmark) =>
@@ -91,10 +89,9 @@ const BookmarkItem = ({
         url={url}
         icon={icon}
         isSelected={isSelected}
-        isSorting={isSorting}
+        isDragging={isSorting}
         hasDefaultIconStyle={!isIrregularCollection}
         onClick={onSelect}
-        left={<DragIcon name="grabber2" size={12} />}
         right={
           <button onClick={onRemove}>
             <Tooltip tooltip={t`Remove bookmark`} placement="bottom">

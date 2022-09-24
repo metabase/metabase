@@ -9,6 +9,7 @@ import * as Urls from "metabase/lib/urls";
 
 import type { Card } from "metabase-types/api";
 import type Question from "metabase-lib/lib/Question";
+import type Table from "metabase-lib/lib/metadata/Table";
 
 import ModelActionDetails from "./ModelActionDetails";
 import ModelInfoSidePanel from "./ModelInfoSidePanel";
@@ -26,12 +27,13 @@ import {
 
 interface Props {
   model: Question;
+  mainTable?: Table | null;
   onChangeModel: (model: Card) => void;
 }
 
 type ModelTab = "schema" | "actions" | "usage";
 
-function ModelDetailPage({ model, onChangeModel }: Props) {
+function ModelDetailPage({ model, mainTable, onChangeModel }: Props) {
   const [tab, setTab] = useState<ModelTab>("usage");
 
   const modelCard = model.card();
@@ -93,6 +95,7 @@ function ModelDetailPage({ model, onChangeModel }: Props) {
       </ModelMain>
       <ModelInfoSidePanel
         model={model}
+        mainTable={mainTable}
         onChangeDescription={handleChangeDescription}
       />
     </RootLayout>

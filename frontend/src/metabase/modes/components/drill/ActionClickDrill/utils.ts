@@ -1,7 +1,7 @@
 import _ from "underscore";
 
 import type {
-  ActionButtonParametersMapping,
+  ActionParametersMapping,
   ParameterMappedForActionExecution,
   WritebackAction,
   WritebackParameter,
@@ -18,7 +18,7 @@ function formatParameterValue(value: ParameterValueOrArray) {
 }
 
 export function prepareParameter(
-  mapping: ActionButtonParametersMapping,
+  mapping: ActionParametersMapping,
   {
     data,
     action,
@@ -49,7 +49,7 @@ export function prepareParameter(
 
 function isMappedParameter(
   parameter: WritebackParameter,
-  parameterMappings: ActionButtonParametersMapping[],
+  parameterMappings: ActionParametersMapping[],
 ) {
   return parameterMappings.some(mapping =>
     _.isEqual(mapping.target, parameter.target),
@@ -58,7 +58,7 @@ function isMappedParameter(
 
 export function getNotProvidedActionParameters(
   action: WritebackAction,
-  parameterMappings: ActionButtonParametersMapping[],
+  parameterMappings: ActionParametersMapping[],
   mappedParameters: ParameterMappedForActionExecution[],
 ) {
   const emptyParameterTargets: ParameterTarget[] = [];

@@ -5,7 +5,7 @@ import Icon from "metabase/components/Icon";
 
 import { isTableDisplay } from "metabase/lib/click-behavior";
 import {
-  isActionButtonDashCard,
+  isActionDashCard,
   getActionButtonLabel,
 } from "metabase/writeback/utils";
 
@@ -47,7 +47,7 @@ function HeaderContent({ dashcard, selectedColumn, onUnsetColumn }: Props) {
     }
     return <Heading>{t`On-click behavior for each column`}</Heading>;
   }
-  if (isActionButtonDashCard(dashcard)) {
+  if (isActionDashCard(dashcard)) {
     const label = getActionButtonLabel(dashcard);
     return <DefaultHeader>{label || t`an action button`}</DefaultHeader>;
   }
