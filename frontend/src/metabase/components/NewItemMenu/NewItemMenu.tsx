@@ -121,11 +121,7 @@ const NewItemMenu = ({
       items.push({
         title: t`Model`,
         icon: "model",
-        link: Urls.newDataset({
-          type: "native",
-          creationType: "native_question",
-          dataset: true,
-        }),
+        link: "/model/new",
         event: `${analyticsContext};New Model Click;`,
         onClose: onCloseNavbar,
       });
