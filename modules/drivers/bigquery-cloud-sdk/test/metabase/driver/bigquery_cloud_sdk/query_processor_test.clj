@@ -394,21 +394,21 @@
   (testing "relative-datetime clauses on their own when a reporting timezone is set"
     (doseq [timezone ["UTC" "US/Pacific"]]
       (mt/with-temporary-setting-values [report-timezone timezone]
-      (doseq [[t [unit expected-sql]]
-              {:time      [:hour (str "time_trunc(time_add(current_time('" timezone "'), INTERVAL -1 hour), hour)")]
-               :date      [:year (str "date_trunc(date_add(current_date('" timezone "'), INTERVAL -1 year), year)")]
-               :datetime  [:year (str "datetime_trunc(datetime_add(current_datetime('" timezone "'), INTERVAL -1 year), year)")]
-               ;; timestamp_add doesn't support `year` so this should cast a datetime instead
-               :timestamp [:year (str "timestamp(datetime_trunc(datetime_add(current_datetime('" timezone "'), INTERVAL -1 year), year), '" timezone "')")]}]
-        (testing t
-          (let [reconciled-clause (#'bigquery.qp/->temporal-type t [:relative-datetime -1 unit])]
-            (testing "Should have correct type metadata after reconciliation"
-              (is (= t
-                     (#'bigquery.qp/temporal-type reconciled-clause))))
-            (testing "Should get converted to the correct SQL"
-              (is (= [(str "WHERE " expected-sql)]
-                     (sql.qp/format-honeysql :bigquery-cloud-sdk
-                                             {:where (sql.qp/->honeysql :bigquery-cloud-sdk reconciled-clause)}))))))))))
+        (doseq [[t [unit expected-sql]]
+                {:time      [:hour (str "time_trunc(time_add(current_time('" timezone "'), INTERVAL -1 hour), hour)")]
+                 :date      [:year (str "date_trunc(date_add(current_date('" timezone "'), INTERVAL -1 year), year)")]
+                 :datetime  [:year (str "datetime_trunc(datetime_add(current_datetime('" timezone "'), INTERVAL -1 year), year)")]
+                 ;; timestamp_add doesn't support `year` so this should cast a datetime instead
+                 :timestamp [:year (str "timestamp(datetime_trunc(datetime_add(current_datetime('" timezone "'), INTERVAL -1 year), year), '" timezone "')")]}]
+          (testing t
+            (let [reconciled-clause (#'bigquery.qp/->temporal-type t [:relative-datetime -1 unit])]
+              (testing "Should have correct type metadata after reconciliation"
+                (is (= t
+                       (#'bigquery.qp/temporal-type reconciled-clause))))
+              (testing "Should get converted to the correct SQL"
+                (is (= [(str "WHERE " expected-sql)]
+                       (sql.qp/format-honeysql :bigquery-cloud-sdk
+                                               {:where (sql.qp/->honeysql :bigquery-cloud-sdk reconciled-clause)}))))))))))
 
   (testing "relative-datetime clauses inside filter clauses"
     (doseq [[expected-type t] {:date      #t "2020-01-31"
