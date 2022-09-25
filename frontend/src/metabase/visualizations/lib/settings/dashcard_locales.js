@@ -374,15 +374,15 @@ const TITLE_LOCALES_BN = {
   },
   'tangerine.all.school.vs.distinct.school': {
     'en' : 'Distinct Schools Vs All School',
-    'bn' : 'ট্যানজারিন স্কুল বনাম সব স্কুল'
+    'bn' : 'মূল্যায়িত বনাম অমূল্যায়িত বিদ্যালয়'
   },
   'tangerine.count.by.subject': {
     'en' : 'Subject',
-    'bn' : 'সাবজেক্ট'
+    'bn' : 'মূল্যায়িত সাবজেক্ট'
   },
   'tangerine.count.by.summary': {
     'en' : 'Summary',
-    'bn' : 'সারসংক্ষেপ'
+    'bn' : 'মূল্যায়নের সারসংক্ষেপ'
   },
   'tangerine.modeling.and.summarizing.the.problem': {
     'en' : 'Problem Summarizing Process',
@@ -415,6 +415,10 @@ const TITLE_LOCALES_BN = {
   'tangerine.total.teacher': {
     'en' : 'Total Teacher',
     'bn' : 'মোট শিক্ষক'
+  },
+  'school.dashboard.shift.wise.count': {
+    'en' : 'School shift',
+    'bn' : 'বিদ্যালয়ের শিফট'
   }
 }
 
