@@ -665,10 +665,10 @@
    (s/enum :write :none)
    "Valid native perms option for a database"))
 
-(def ^:private ExecutePermissionsGraph
+(def ExecutePermissions
   (s/named
    (s/enum :all :none)
-   "Valid execute perms option for a database"))
+   "Valid execute perms option type"))
 
 (def ^:private DataPermissionsGraph
   (s/named
@@ -749,17 +749,22 @@
    "Valid details perms graph for a database"))
 
 (def ^:private StrictDBPermissionsGraph
-  {(s/optional-key :execute) ExecutePermissionsGraph
-   su/IntGreaterThanZero {(s/optional-key :data) StrictDataPermissionsGraph
+  {su/IntGreaterThanZero {(s/optional-key :data) StrictDataPermissionsGraph
                           (s/optional-key :download) DownloadPermissionsGraph
                           (s/optional-key :data-model) DataModelPermissionsGraph
-                          (s/optional-key :details) DetailsPermissions
-                          (s/optional-key :execute) ExecutePermissionsGraph}})
+                          (s/optional-key :details) DetailsPermissions}})
 
 (def ^:private StrictPermissionsGraph
   {:revision s/Int
    :groups   {su/IntGreaterThanZero StrictDBPermissionsGraph}})
 
+(def ^:private ExecutionGroupPermissionsGraph
+  (s/cond-pre ExecutePermissions
+              {su/IntGreaterThanZero ExecutePermissions}))
+
+(def ^:private ExecutionPermissionsGraph
+  {:revision s/Int
+   :groups   {su/IntGreaterThanZero ExecutionGroupPermissionsGraph}})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  GRAPH FETCH                                                   |
@@ -769,43 +774,57 @@
   "Handle '/' permission"
   [db-ids]
   (reduce (fn [g db-id]
-            (assoc g
-                   db-id    {:data       {:native  :write
-                                          :schemas :all}
-                             :download   {:native  :full
-                                          :schemas :full}
-                             :data-model {:schemas :all}
-                             :details    :yes}
-                   :execute :all))
+            (assoc g db-id {:data       {:native  :write
+                                         :schemas :all}
+                            :download   {:native  :full
+                                         :schemas :full}
+                            :data-model {:schemas :all}
+                            :details    :yes}))
           {}
           db-ids))
+
+(defn- permissions-by-group-ids [where-clause]
+  (let [permissions (db/select [Permissions [:group_id :group-id] [:object :path]]
+                      {:where where-clause})]
+    (reduce (fn [m {:keys [group-id path]}]
+              (update m group-id conj path))
+            {}
+            permissions)))
 
 (s/defn data-perms-graph
   "Fetch a graph representing the current *data* permissions status for every Group and all permissioned databases.
   See [[metabase.models.collection.graph]] for the Collection permissions graph code."
   []
-  (let [permissions     (db/select [Permissions [:group_id :group-id] [:object :path]]
-                                   {:where [:or
-                                            [:in :object [(hx/literal "/") (hx/literal "/execute/")]]
-                                            [:like :object (hx/literal "%/db/%")]]})
+  (let [group-id->paths (permissions-by-group-ids [:or
+                                                   [:= :object (hx/literal "/")]
+                                                   [:like :object (hx/literal "%/db/%")]])
         db-ids          (delay (db/select-ids 'Database))
-        group-id->paths (reduce
-                         (fn [m {:keys [group-id path]}]
-                           (update m group-id conj path))
-                         {}
-                         permissions)
         group-id->graph (m/map-vals
                          (fn [paths]
                            (let [permissions-graph (perms-parse/permissions->graph paths)]
                              (if (= permissions-graph :all)
                                (all-permissions @db-ids)
-                               (cond-> (:db permissions-graph)
-                                 (= (get permissions-graph :execute) :all)
-                                 (assoc :execute :all)))))
+                               (:db permissions-graph))))
                          group-id->paths)]
     {:revision (perms-revision/latest-id)
      :groups   group-id->graph}))
 
+(s/defn execution-perms-graph
+  "Fetch a graph representing the current *execution* permissions status for
+  every Group and all permissioned databases."
+  []
+  (let [group-id->paths (permissions-by-group-ids [:or
+                                                   [:= :object (hx/literal "/")]
+                                                   [:like :object (hx/literal "/execute/%")]])
+        group-id->graph (m/map-vals
+                         (fn [paths]
+                           (let [permissions-graph (perms-parse/permissions->graph paths)]
+                             (if (#{:all {:execute :all}} permissions-graph)
+                               :all
+                               (:execute permissions-graph))))
+                         group-id->paths)]
+    {:revision (perms-revision/latest-id)
+     :groups   group-id->graph}))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  GRAPH UPDATE                                                  |
@@ -1150,13 +1169,31 @@
 
 (defn- update-feature-level-permission!
   [group-id db-id new-perms perm-type]
-  (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
-  (if-let [update-fn (resolve (symbol "metabase-enterprise.advanced-permissions.models.permissions"
-                                      (str "update-db-" (name perm-type) "-permissions!")))]
+  (if-let [update-fn (u/ignore-exceptions
+                       (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
+                       (resolve (symbol "metabase-enterprise.advanced-permissions.models.permissions"
+                                        (str "update-db-" (name perm-type) "-permissions!"))))]
     (update-fn group-id db-id new-perms)
     (throw (ee-permissions-exception perm-type))))
 
-(defn update-global-execution-permission
+(s/defn ^:private update-group-permissions!
+  [group-id :- su/IntGreaterThanZero new-group-perms :- StrictDBPermissionsGraph]
+  (doseq [[db-id new-db-perms] new-group-perms]
+    (doseq [[perm-type new-perms] new-db-perms]
+      (case perm-type
+        :data
+        (update-db-data-access-permissions! group-id db-id new-perms)
+
+        :download
+        (update-feature-level-permission! group-id db-id new-perms :download)
+
+        :data-model
+        (update-feature-level-permission! group-id db-id new-perms :data-model)
+
+        :details
+        (update-feature-level-permission! group-id db-id new-perms :details)))))
+
+(defn update-global-execution-permission!
   "Set the global execution permission (\"/execute/\") for the group
   with ID `group-id` to `new-perms`."
   [group-id new-perms]
@@ -1167,27 +1204,12 @@
   (when (= new-perms :all)
     (grant-permissions! group-id "/execute/")))
 
-(s/defn ^:private update-group-permissions!
-  [group-id :- su/IntGreaterThanZero new-group-perms :- StrictDBPermissionsGraph]
-  (doseq [[db-id new-db-perms] new-group-perms]
-    (if (= db-id :execute)
-      (update-global-execution-permission group-id new-db-perms)
-      (doseq [[perm-type new-perms] new-db-perms]
-        (case perm-type
-          :data
-          (update-db-data-access-permissions! group-id db-id new-perms)
-
-          :download
-          (update-feature-level-permission! group-id db-id new-perms :download)
-
-          :data-model
-          (update-feature-level-permission! group-id db-id new-perms :data-model)
-
-          :details
-          (update-feature-level-permission! group-id db-id new-perms :details)
-
-          :execute
-          (update-feature-level-permission! group-id db-id new-perms :execute))))))
+(s/defn ^:private update-execution-permissions!
+  [group-id :- su/IntGreaterThanZero new-group-perms :- ExecutionGroupPermissionsGraph]
+  (if (map? new-group-perms)
+    (doseq [[db-id new-db-perms] new-group-perms]
+      (update-feature-level-permission! group-id db-id new-db-perms :execute))
+    (update-global-execution-permission! group-id new-group-perms)))
 
 (defn check-revision-numbers
   "Check that the revision number coming in as part of `new-graph` matches the one from `old-graph`. This way we can
@@ -1249,3 +1271,27 @@
   ;; The following arity is provided soley for convenience for tests/REPL usage
   ([ks :- [s/Any] new-value]
    (update-data-perms-graph! (assoc-in (data-perms-graph) (cons :groups ks) new-value))))
+
+(s/defn update-execution-perms-graph!
+  "Update the *execution* permissions graph, making any changes necessary to make it match NEW-GRAPH.
+   This should take in a graph that is exactly the same as the one obtained by `graph` with any changes made as
+   needed. The graph is revisioned, so if it has been updated by a third party since you fetched it this function will
+   fail and return a 409 (Conflict) exception. If nothing needs to be done, this function returns `nil`; otherwise it
+   returns the newly created `PermissionsRevision` entry.
+
+  Code for updating the Collection permissions graph is in [[metabase.models.collection.graph]]."
+  ([new-graph :- ExecutionPermissionsGraph]
+   (let [old-graph (execution-perms-graph)
+         [old new] (data/diff (:groups old-graph) (:groups new-graph))
+         old       (or old {})]
+     (when (or (seq old) (seq new))
+       (log-permissions-changes old new)
+       (check-revision-numbers old-graph new-graph)
+       (db/transaction
+         (doseq [[group-id changes] new]
+           (update-execution-permissions! group-id changes))
+         (save-perms-revision! PermissionsRevision (:revision old-graph) old new)))))
+
+  ;; The following arity is provided soley for convenience for tests/REPL usage
+  ([ks :- [s/Any] new-value]
+   (update-execution-perms-graph! (assoc-in (execution-perms-graph) (cons :groups ks) new-value))))
