@@ -99,6 +99,18 @@
   [_driver]
   :%now)
 
+(def datetime-extract-unit->date-unit
+  "Mapping from the unit we used in `extract` function to the unit we used for `date` function."
+  {:second      :second-of-minute
+   :minute      :minute-of-hour
+   :hour        :hour-of-day
+   :day-of-week :day-of-week
+   :day         :day-of-month
+   :week        :week-of-year
+   :month       :month-of-year
+   :quarter     :quarter-of-year
+   :year        :yyear})
+
 ;; TODO - rename this to `temporal-bucket` or something that better describes what it actually does
 (defmulti date
   "Return a HoneySQL form for truncating a date or timestamp field or value to a given resolution, or extracting a date
@@ -109,12 +121,17 @@
 
 ;; default implementation for `:default` bucketing returns expression as-is
 (defmethod date [:sql :default] [_ _ expr] expr)
-
 ;; We have to roll our own to account for arbitrary start of week
-(defmethod date [:sql :week-of-year]
-  [driver _ expr]
+
+(defmethod date [:sql :second-of-minute] [_driver _ expr] (hx/second expr))
+(defmethod date [:sql :minute-of-hour]   [_driver _ expr] (hx/minute expr))
+(defmethod date [:sql :hour-of-day]      [_driver _ expr] (hx/hour expr))
+(defmethod date [:sql :week-of-year]     [driver _ expr]
   ;; Some DBs truncate when doing integer division, therefore force float arithmetics
   (->honeysql driver [:ceil (hx// (date driver :day-of-year (date driver :week expr)) 7.0)]))
+(defmethod date [:sql :month-of-year]    [_driver _ expr] (hx/month expr))
+(defmethod date [:sql :quarter-of-year]  [_driver _ expr] (hx/quarter expr))
+(defmethod date [:sql :yyear]            [_driver _ expr] (hx/year expr))
 
 (defmulti add-interval-honeysql-form
   "Return a HoneySQL form that performs represents addition of some temporal interval to the original `hsql-form`.
@@ -569,38 +586,9 @@
                       (current-datetime-honeysql-form driver)
                       (add-interval-honeysql-form driver (current-datetime-honeysql-form driver) amount unit))))
 
-;; date extraction functions
-(defmethod ->honeysql [:sql :get-year]
-  [driver [_ arg]]
-  (hx/year (->honeysql driver arg)))
-
-(defmethod ->honeysql [:sql :get-quarter]
-  [driver [_ arg]]
-  (hx/quarter (->honeysql driver arg)))
-
-(defmethod ->honeysql [:sql :get-month]
-  [driver [_ arg]]
-  (hx/month (->honeysql driver arg)))
-
-(defmethod ->honeysql [:sql :get-day]
-  [driver [_ arg]]
-  (hx/day (->honeysql driver arg)))
-
-(defmethod ->honeysql [:sql :get-day-of-week]
-  [driver [_ arg]]
-  (date driver :day-of-week (->honeysql driver arg)))
-
-(defmethod ->honeysql [:sql :get-hour]
-  [driver [_ arg]]
-  (hx/hour (->honeysql driver arg)))
-
-(defmethod ->honeysql [:sql :get-minute]
-  [driver [_ arg]]
-  (hx/minute (->honeysql driver arg)))
-
-(defmethod ->honeysql [:sql :get-second]
-  [driver [_ arg]]
-  (hsql/call :second (->honeysql driver arg)))
+(defmethod ->honeysql [:sql :datetime-extract]
+  [driver [_ arg unit]]
+  (date driver (datetime-extract-unit->date-unit unit) (->honeysql driver arg)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Field Aliases (AS Forms)                                            |

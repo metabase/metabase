@@ -345,14 +345,7 @@
 (defmethod ->lvalue :* [[_ & args]] (->lvalue (first args)))
 (defmethod ->lvalue :/ [[_ & args]] (->lvalue (first args)))
 
-(defmethod ->lvalue :get-year        [[_ inp]] (->lvalue inp))
-(defmethod ->lvalue :get-quarter     [[_ inp]] (->lvalue inp))
-(defmethod ->lvalue :get-month       [[_ inp]] (->lvalue inp))
-(defmethod ->lvalue :get-day         [[_ inp]] (->lvalue inp))
-(defmethod ->lvalue :get-day-of-week [[_ inp]] (->lvalue inp))
-(defmethod ->lvalue :get-hour        [[_ inp]] (->lvalue inp))
-(defmethod ->lvalue :get-minute      [[_ inp]] (->lvalue inp))
-(defmethod ->lvalue :get-second      [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :datetime-extract [[_ inp unit]] (->lvalue inp))
 
 (defmethod ->lvalue :coalesce [[_ & args]] (->lvalue (first args)))
 
@@ -383,14 +376,19 @@
 (defmethod ->rvalue :concat    [[_ & args]] {"$concat" (mapv ->rvalue args)})
 (defmethod ->rvalue :substring [[_ & args]] {"$substrCP" (mapv ->rvalue args)})
 
-(defmethod ->rvalue :get-year        [[_ inp]] (with-rvalue-temporal-bucketing (->rvalue inp) :yyear))
-(defmethod ->rvalue :get-quarter     [[_ inp]] (with-rvalue-temporal-bucketing (->rvalue inp) :quarter-of-year))
-(defmethod ->rvalue :get-month       [[_ inp]] (with-rvalue-temporal-bucketing (->rvalue inp) :month-of-year))
-(defmethod ->rvalue :get-day         [[_ inp]] (with-rvalue-temporal-bucketing (->rvalue inp) :day-of-month))
-(defmethod ->rvalue :get-day-of-week [[_ inp]] (with-rvalue-temporal-bucketing (->rvalue inp) :day-of-week))
-(defmethod ->rvalue :get-hour        [[_ inp]] (with-rvalue-temporal-bucketing (->rvalue inp) :hour-of-day))
-(defmethod ->rvalue :get-minute      [[_ inp]] (with-rvalue-temporal-bucketing (->rvalue inp) :minute-of-hour))
-(defmethod ->rvalue :get-second      [[_ inp]] (with-rvalue-temporal-bucketing (->rvalue inp) :second-of-minute))
+(def ^:private datetime-extract-unit->date-unit
+  {:second      :second-of-minute
+   :minute      :minute-of-hour
+   :hour        :hour-of-day
+   :day-of-week :day-of-week
+   :day         :day-of-month
+   :week        :week-of-year
+   :month       :month-of-year
+   :quarter     :quarter-of-year
+   :year        :yyear})
+
+(defmethod ->rvalue :datetime-extract [[_ inp unit]]
+  (with-rvalue-temporal-bucketing (->rvalue inp) (datetime-extract-unit->date-unit unit)))
 
 ;;; Intervals are not first class Mongo citizens, so they cannot be translated on their own.
 ;;; The only thing we can do with them is adding to or subtracting from a date valued expression.
