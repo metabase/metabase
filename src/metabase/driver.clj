@@ -438,7 +438,7 @@
 
     ;; Does the driver support date extraction functions? (i.e get year component of a datetime column)
     ;; DEFAULTS TO TRUE
-    :date-extract
+    :temporal-extract
 
     :date-arithmetics
     ;; Does the driver support doing math with datetime? (i.e Adding 1 year to a datetime column)
@@ -471,7 +471,7 @@
 (defmethod supports? [::driver :basic-aggregations] [_ _] true)
 (defmethod supports? [::driver :case-sensitivity-string-filter-options] [_ _] true)
 (defmethod supports? [::driver :date-arithmetics] [_ _] true)
-(defmethod supports? [::driver :date-extract] [_ _] true)
+(defmethod supports? [::driver :temporal-extract] [_ _] true)
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?

@@ -3,6 +3,7 @@
             [metabase.analytics.snowplow-test :as snowplow-test]
             [metabase.models.database :refer [Database]]
             [metabase.models.field :as field :refer [Field]]
+            [metabase.models.interface :as mi]
             [metabase.models.table :refer [Table]]
             [metabase.sync.analyze :as analyze]
             [metabase.sync.analyze.classifiers.category :as classifiers.category]
@@ -97,7 +98,7 @@
     (sync-survives-crash? classifiers.name/infer-entity-type)))
 
 (defn- classified-semantic-type [values]
-  (let [field (field/map->FieldInstance {:base_type :type/Text})]
+  (let [field (mi/instance Field {:base_type :type/Text})]
     (:semantic_type (classifiers.text-fingerprint/infer-semantic-type
                      field
                      (transduce identity (fingerprinters/fingerprinter field) values)))))

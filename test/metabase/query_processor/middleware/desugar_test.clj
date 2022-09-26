@@ -15,8 +15,8 @@
                                      [:relative-datetime -1 :day]]
                                     [:!= [:field 3 nil] "(not set)"]
                                     [:!= [:field 3 nil] "url"]
-                                    [:> [:datetime-extract [:field 4 nil] :year] 2004]]
-                     :expressions  {"year" [:datetime-extract [:field 4 nil] :year]}
+                                    [:> [:temporal-extract [:field 4 nil] :year] 2004]]
+                     :expressions  {"year" [:temporal-extract [:field 4 nil] :year]}
                      :aggregation  [[:share [:and
                                              [:= [:field 1 nil] "Run Query"]
                                              [:between

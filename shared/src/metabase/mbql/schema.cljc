@@ -82,7 +82,7 @@
   "Valid units to extract from a datetime."
   (s/named
     (apply s/enum #{:second :minute :hour :day :day-of-week :week :month :quarter :year})
-    "date-extract-units"))
+    "temporal-extract-units"))
 
 (def ^:private RelativeDatetimeUnit
   (s/named
@@ -468,10 +468,10 @@
 
 (def ^:private aggregations #{:sum :avg :stddev :var :median :percentile :min :max :cum-count :cum-sum :count-where :sum-where :share :distinct :metric :aggregation-options :count})
 
-(def date-extract-functions
+(def temporal-extract-functions
   "Functions to extract components of a date, datetime."
   #{;; extraction functions (get some component of a given temporal value/column)
-    :datetime-extract
+    :temporal-extract
     ;; SUGAR drivers do not need to implement
     :get-year :get-quarter :get-month :get-day :get-day-of-week :get-hour :get-minute :get-second})
 
@@ -481,7 +481,7 @@
 
 (def date+time+timezone-functions
   "Date, time, and timezone related functions."
-  (set/union date-extract-functions date-arithmetic-functions))
+  (set/union temporal-extract-functions date-arithmetic-functions))
 
 (declare ArithmeticExpression)
 (declare BooleanExpression)
@@ -496,7 +496,7 @@
    (partial is-clause? arithmetic-expressions)
    (s/recursive #'ArithmeticExpression)
 
-   (partial is-clause? date-extract-functions)
+   (partial is-clause? temporal-extract-functions)
    (s/recursive #'DatetimeExpression)
 
    (partial is-clause? aggregations)
@@ -543,7 +543,7 @@
    (partial is-clause? string-expressions)
    (s/recursive #'StringExpression)
 
-   (partial is-clause? date+time+timezone-functions)
+   (partial is-clause? temporal-extract-functions)
    (s/recursive #'DatetimeExpression)
 
    (partial is-clause? :value)
@@ -630,33 +630,33 @@
   "Schema for the definition of an arithmetic expression."
   (s/recursive #'ArithmeticExpression*))
 
-(defclause ^{:requires-features #{:date-extract}} datetime-extract
+(defclause ^{:requires-features #{:temporal-extract}} temporal-extract
   datetime DateTimeExpressionArg
   unit     DateExtractUnits)
 
-;; SUGAR CLAUSE: get-year, get-month... clauses are all sugars clause that will be rewritten as [:datetime-extract column :year]
-(defclause ^{:requires-features #{:date-extract}} ^:sugar get-year
+;; SUGAR CLAUSE: get-year, get-month... clauses are all sugars clause that will be rewritten as [:temporal-extract column :year]
+(defclause ^{:requires-features #{:temporal-extract}} ^:sugar get-year
   date DateTimeExpressionArg)
 
-(defclause ^{:requires-features #{:date-extract}} ^:sugar get-quarter
+(defclause ^{:requires-features #{:temporal-extract}} ^:sugar get-quarter
   date DateTimeExpressionArg)
 
-(defclause ^{:requires-features #{:date-extract}} ^:sugar get-month
+(defclause ^{:requires-features #{:temporal-extract}} ^:sugar get-month
   date DateTimeExpressionArg)
 
-(defclause ^{:requires-features #{:date-extract}} ^:sugar get-day
+(defclause ^{:requires-features #{:temporal-extract}} ^:sugar get-day
   date DateTimeExpressionArg)
 
-(defclause ^{:requires-features #{:date-extract}} ^:sugar get-day-of-week
+(defclause ^{:requires-features #{:temporal-extract}} ^:sugar get-day-of-week
   date DateTimeExpressionArg)
 
-(defclause ^{:requires-features #{:date-extract}} ^:sugar get-hour
+(defclause ^{:requires-features #{:temporal-extract}} ^:sugar get-hour
   datetime DateTimeExpressionArg)
 
-(defclause ^{:requires-features #{:date-extract}} ^:sugar get-minute
+(defclause ^{:requires-features #{:temporal-extract}} ^:sugar get-minute
   datetime DateTimeExpressionArg)
 
-(defclause ^{:requires-features #{:date-extract}} ^:sugar get-second
+(defclause ^{:requires-features #{:temporal-extract}} ^:sugar get-second
   datetime DateTimeExpressionArg)
 
 (def ^:private ArithmeticDateTimeUnit
@@ -675,7 +675,7 @@
   unit     ArithmeticDateTimeUnit)
 
 (def ^:private DatetimeExpression*
-  (one-of datetime-extract date-add date-subtract
+  (one-of temporal-extract date-add date-subtract
           ;; SUGAR drivers do not need to implement
           get-year get-quarter get-month get-day get-day-of-week get-hour
           get-minute get-second))

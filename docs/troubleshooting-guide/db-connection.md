@@ -1,5 +1,7 @@
 ---
 title: Troubleshooting database connections
+redirect_from:
+  - /docs/latest/troubleshooting-guide/datawarehouse
 ---
 
 # Troubleshooting database connections
@@ -94,6 +96,11 @@ psql -h HOSTNAME -p PORT -d DATABASENAME -U DATABASEUSER
     ```
     SELECT 1
     ```
+
+## Related problems
+
+- [My connection or query is timing out](./timeout.md).
+- [My database is slow](./db-performance.md).
 
 ## Are you still stuck?
 

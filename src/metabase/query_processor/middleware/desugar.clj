@@ -15,5 +15,5 @@
                                        (filter-clause :guard mbql.preds/Filter?)
                                        (mbql.u/desugar-filter-clause filter-clause)
 
-                                       (datetime-extract-clause :guard mbql.preds/DatetimeExpression?)
-                                       (mbql.u/desugar-datetime-extract datetime-extract-clause)))))
+                                       (temporal-extract-clause :guard mbql.preds/DatetimeExpression?)
+                                       (mbql.u/desugar-temporal-extract temporal-extract-clause)))))

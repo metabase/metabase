@@ -458,7 +458,8 @@
            ~@body)))))
 
 (defmacro with-temporary-raw-setting-values
-  "Like `with-temporary-setting-values` but works with raw value and it allows settings that are not defined using `defsetting`."
+  "Like [[with-temporary-setting-values]] but works with raw value and it allows settings that are not defined
+  using [[metabase.models.setting/defsetting]]."
   [[setting-k value & more :as bindings] & body]
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
   (test-runner.parallel/assert-test-is-not-parallel "with-temporary-raw-setting-values")
@@ -489,9 +490,8 @@
   [settings & body]
   `(do-with-discarded-setting-changes ~(mapv keyword settings) (fn [] ~@body)))
 
-
 (defn do-with-temp-vals-in-db
-  "Implementation function for `with-temp-vals-in-db` macro. Prefer that to using this directly."
+  "Implementation function for [[with-temp-vals-in-db]] macro. Prefer that to using this directly."
   [model object-or-id column->temp-value f]
   (test-runner.parallel/assert-test-is-not-parallel "with-temp-vals-in-db")
   ;; use low-level `query` and `execute` functions here, because Toucan `select` and `update` functions tend to do
@@ -860,7 +860,7 @@
   admin has removed them.
 
   Only affects the Root Collection for the default namespace. Use
-  `with-non-admin-groups-no-root-collection-for-namespace-perms` to do the same thing for the Root Collection of other
+  [[with-non-admin-groups-no-root-collection-for-namespace-perms]] to do the same thing for the Root Collection of other
   namespaces."
   [& body]
   `(do-with-non-admin-groups-no-collection-perms collection/root-collection (fn [] ~@body)))

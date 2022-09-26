@@ -10,7 +10,7 @@ import NativeQuery, {
   replaceCardTagNameById,
   recognizeTemplateTags,
   cardIdFromTagName,
-  updateCardTagNames,
+  updateCardTemplateTagNames,
 } from "metabase-lib/lib/queries/NativeQuery";
 
 function makeDatasetQuery(queryText, templateTags, databaseId) {
@@ -375,11 +375,11 @@ describe("NativeQuery", () => {
     });
   });
 
-  describe("updateCardTagNames", () => {
+  describe("updateCardTemplateTagNames", () => {
     it("should update the query text with new tag names", () => {
       const query = makeQuery().setQueryText("{{#123-foo}} {{#1234-bar}}");
       const newCards = [{ id: 123, name: "Foo New" }]; // newCards is deliberately missing a the bar card
-      const templateTagsMap = updateCardTagNames(
+      const templateTagsMap = updateCardTemplateTagNames(
         query,
         newCards,
       ).templateTagsMap();

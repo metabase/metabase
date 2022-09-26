@@ -362,11 +362,11 @@
     (t/is (= [:not [:contains [:field 1 nil] "ABC" {:case-sensitive false}]]
              (mbql.u/desugar-filter-clause [:does-not-contain [:field 1 nil] "ABC" {:case-sensitive false}])))))
 
-(t/deftest ^:parallel desugar-datetime-extract-test
+(t/deftest ^:parallel desugar-temporal-extract-test
   (t/testing "desugaring :get-year, :get-month, etc"
-    (doseq [[op unit] mbql.u/datetime-extract-ops->unit]
-      (t/is (= [:datetime-extract [:field 1 nil] unit]
-               (mbql.u/desugar-datetime-extract [op [:field 1 nil]]))))))
+    (doseq [[op unit] mbql.u/temporal-extract-ops->unit]
+      (t/is (= [:temporal-extract [:field 1 nil] unit]
+               (mbql.u/desugar-temporal-extract [op [:field 1 nil]]))))))
 
 (t/deftest ^:parallel negate-simple-filter-clause-test
   (t/testing :=

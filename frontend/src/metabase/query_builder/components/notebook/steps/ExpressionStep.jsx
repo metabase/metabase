@@ -23,16 +23,16 @@ export default function ExpressionStep({
           expression={expression}
           onChangeExpression={(newName, newExpression) =>
             expression
-              ? query
-                  .updateExpression(newName, newExpression, name)
-                  .update(updateQuery)
-              : query.addExpression(newName, newExpression).update(updateQuery)
+              ? updateQuery(
+                  query.updateExpression(newName, newExpression, name),
+                )
+              : updateQuery(query.addExpression(newName, newExpression))
           }
         />
       )}
       isLastOpened={isLastOpened}
       onRemove={([name, expression]) =>
-        query.removeExpression(name).update(updateQuery)
+        updateQuery(query.removeExpression(name))
       }
     />
   );

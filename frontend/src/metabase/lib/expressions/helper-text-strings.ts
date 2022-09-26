@@ -683,7 +683,7 @@ const helperTextStrings: HelpText[] = [
       },
       {
         name: t`unit`,
-        description: t`"year", "month", "quarter", "day", "hour", "minute", or "second".`,
+        description: t`"year", "month", "quarter", "day", "hour", "minute", "second" or "millisecond".`,
       },
     ],
   },
@@ -704,7 +704,7 @@ const helperTextStrings: HelpText[] = [
       },
       {
         name: t`unit`,
-        description: t`"year", "month", "quarter", "day", "hour", "minute", or "second".`,
+        description: t`"year", "month", "quarter", "day", "hour", "minute", "second" or "millisecond".`,
       },
     ],
   },

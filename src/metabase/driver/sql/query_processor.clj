@@ -99,7 +99,7 @@
   [_driver]
   :%now)
 
-(def datetime-extract-unit->date-unit
+(def temporal-extract-unit->date-unit
   "Mapping from the unit we used in `extract` function to the unit we used for `date` function."
   {:second      :second-of-minute
    :minute      :minute-of-hour
@@ -586,9 +586,9 @@
                       (current-datetime-honeysql-form driver)
                       (add-interval-honeysql-form driver (current-datetime-honeysql-form driver) amount unit))))
 
-(defmethod ->honeysql [:sql :datetime-extract]
+(defmethod ->honeysql [:sql :temporal-extract]
   [driver [_ arg unit]]
-  (date driver (datetime-extract-unit->date-unit unit) (->honeysql driver arg)))
+  (date driver (temporal-extract-unit->date-unit unit) (->honeysql driver arg)))
 
 (defmethod ->honeysql [:sql :date-add]
   [driver [_ arg amount unit]]
