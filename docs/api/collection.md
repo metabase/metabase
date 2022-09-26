@@ -16,19 +16,6 @@ summary: |
   To use these endpoints for other Collections namespaces, you can pass the `?namespace=` parameter (e.g.
   `?namespace=snippet`).
 
-  - [GET /api/collection/](#get-apicollection)
-  - [GET /api/collection/:id](#get-apicollectionid)
-  - [GET /api/collection/:id/items](#get-apicollectioniditems)
-  - [GET /api/collection/:id/timelines](#get-apicollectionidtimelines)
-  - [GET /api/collection/graph](#get-apicollectiongraph)
-  - [GET /api/collection/root](#get-apicollectionroot)
-  - [GET /api/collection/root/items](#get-apicollectionrootitems)
-  - [GET /api/collection/root/timelines](#get-apicollectionroottimelines)
-  - [GET /api/collection/tree](#get-apicollectiontree)
-  - [POST /api/collection/](#post-apicollection)
-  - [PUT /api/collection/:id](#put-apicollectionid)
-  - [PUT /api/collection/graph](#put-apicollectiongraph)
-
 ## `GET /api/collection/`
 
 Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
@@ -65,7 +52,7 @@ Fetch a specific Collection's items with the following options:
 
 *  **`id`** 
 
-*  **`models`** value may be nil, or if non-nil, value must satisfy one of the following requirements: 1) value must be an array. Each value must be one of: `card`, `collection`, `dashboard`, `dataset`, `no_models`, `pulse`, `snippet`, `timeline`. 2) value must be one of: `card`, `collection`, `dashboard`, `dataset`, `no_models`, `pulse`, `snippet`, `timeline`.
+*  **`models`** value may be nil, or if non-nil, value must satisfy one of the following requirements: 1) value must be an array. Each value must be one of: `app`, `card`, `collection`, `dashboard`, `dataset`, `no_models`, `page`, `pulse`, `snippet`, `timeline`. 2) value must be one of: `app`, `card`, `collection`, `dashboard`, `dataset`, `no_models`, `page`, `pulse`, `snippet`, `timeline`.
 
 *  **`archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
@@ -123,7 +110,7 @@ Fetch objects that the current user should see at their root level. As mentioned
 
 ### PARAMS:
 
-*  **`models`** value may be nil, or if non-nil, value must satisfy one of the following requirements: 1) value must be an array. Each value must be one of: `card`, `collection`, `dashboard`, `dataset`, `no_models`, `pulse`, `snippet`, `timeline`. 2) value must be one of: `card`, `collection`, `dashboard`, `dataset`, `no_models`, `pulse`, `snippet`, `timeline`.
+*  **`models`** value may be nil, or if non-nil, value must satisfy one of the following requirements: 1) value must be an array. Each value must be one of: `app`, `card`, `collection`, `dashboard`, `dataset`, `no_models`, `page`, `pulse`, `snippet`, `timeline`. 2) value must be one of: `app`, `card`, `collection`, `dashboard`, `dataset`, `no_models`, `page`, `pulse`, `snippet`, `timeline`.
 
 *  **`archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 

@@ -50,7 +50,6 @@ describe("scenarios > models metadata", () => {
 
     cy.findByText("Edit metadata").click();
 
-    cy.wait(["@cardQuery", "@cardQuery"]);
     cy.url().should("include", "/metadata");
     cy.findByTextEnsureVisible("Product ID");
 
@@ -93,7 +92,6 @@ describe("scenarios > models metadata", () => {
 
     cy.findByText("Edit metadata").click();
 
-    cy.wait(["@cardQuery", "@cardQuery"]);
     cy.url().should("include", "/metadata");
     cy.findByTextEnsureVisible("PRODUCT_ID");
 
@@ -141,7 +139,6 @@ describe("scenarios > models metadata", () => {
     openQuestionActions();
     cy.findByText("Edit metadata").click();
 
-    cy.wait(["@cardQuery", "@cardQuery"]);
     cy.findByTextEnsureVisible("TAX");
 
     // Revision 2
@@ -292,7 +289,6 @@ describe("scenarios > models metadata", () => {
       openQuestionActions();
       cy.findByText("Vendor").should("not.exist");
       cy.findByText("Edit metadata").click();
-      cy.wait(["@cardQuery", "@cardQuery"]);
       cy.findByText("Vendor").should("be.visible");
     });
   });

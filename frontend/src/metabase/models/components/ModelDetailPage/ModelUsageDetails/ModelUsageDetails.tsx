@@ -13,6 +13,7 @@ import Questions, {
 import { getQuestionVirtualTableId } from "metabase/lib/saved-questions";
 
 import type { Card } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 import type { Card as LegacyCardType } from "metabase-types/types/Card";
 import type Question from "metabase-lib/lib/Question";
 
@@ -24,10 +25,15 @@ import {
   EmptyStateTitle,
 } from "./ModelUsageDetails.styled";
 
-interface Props {
-  cards: Card[];
+interface OwnProps {
   model: Question;
 }
+
+interface EntityLoaderProps {
+  cards: Card[];
+}
+
+type Props = OwnProps & EntityLoaderProps;
 
 function ModelUsageDetails({ model, cards }: Props) {
   const modelConsumers = useMemo(() => {
@@ -66,4 +72,14 @@ function ModelUsageDetails({ model, cards }: Props) {
   );
 }
 
-export default Questions.loadList({ listName: "cards" })(ModelUsageDetails);
+function getCardListingQuery(state: State, { model }: OwnProps) {
+  return {
+    f: "database",
+    model_id: model.databaseId(),
+  };
+}
+
+export default Questions.loadList({
+  listName: "cards",
+  query: getCardListingQuery,
+})(ModelUsageDetails);

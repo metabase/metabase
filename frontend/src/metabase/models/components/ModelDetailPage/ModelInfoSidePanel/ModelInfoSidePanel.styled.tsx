@@ -26,11 +26,15 @@ export const ModelInfoTitle = styled.span`
   padding-left: 4px;
 `;
 
-const commonInfoTextStyle = css`
+export const valueBlockStyle = css`
   display: block;
   margin-top: 0.5rem;
-  color: ${color("text-medium")};
   padding-left: 4px;
+`;
+
+const commonInfoTextStyle = css`
+  ${valueBlockStyle}
+  color: ${color("text-medium")};
 `;
 
 export const ModelInfoText = styled.span`

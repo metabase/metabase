@@ -92,6 +92,13 @@ jobs:
         credentials:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+      openldap:
+        image: osixia/openldap:1.5.0
+        ports:
+          - "389:389"
+        credentials:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
       postgres-sample:
         image: metabase/qa-databases:postgres-sample-12
         ports:
