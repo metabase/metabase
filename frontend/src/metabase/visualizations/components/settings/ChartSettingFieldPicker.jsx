@@ -18,7 +18,7 @@ const ChartSettingFieldPicker = ({
   className,
   columns,
   showColumnSetting,
-  dragHandle,
+  showDragHandle,
 }) => {
   let columnKey;
   if (value && showColumnSetting && columns) {
@@ -32,7 +32,7 @@ const ChartSettingFieldPicker = ({
       className={className}
       disabled={options.length === 1 && options[0].value === value}
     >
-      {dragHandle && (
+      {showDragHandle && (
         <SettingsIcon name="grabber2" size={12} noPointer noMargin />
       )}
       <ChartSettingSelect

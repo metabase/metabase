@@ -45,6 +45,10 @@ export const ChartSettingFieldPickerRoot = styled.div<ChartSettingFieldPickerRoo
     overflow: hidden;
     color: ${color("text-dark")};
   }
+
+  ${SelectButton.Root} {
+    ${props => props.disabled && `background-color: ${color("white")};`}
+  }
 `;
 
 interface SettingsIconProps {
