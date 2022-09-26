@@ -8,7 +8,10 @@ import type {
 } from "metabase-types/api";
 
 import ActionParametersInputForm from "../../containers/ActionParametersInputForm";
-import { DashboardFormWrapper, DashboardFormTitle } from "./ActionForm.styled";
+import {
+  DataAppPageFormWrapper,
+  DataAppPageFormTitle,
+} from "./ActionForm.styled";
 
 interface ActionFormProps {
   onSubmit: OnSubmitActionForm;
@@ -18,14 +21,14 @@ interface ActionFormProps {
 
 function ActionForm({ onSubmit, missingParameters, action }: ActionFormProps) {
   return (
-    <DashboardFormWrapper>
-      <DashboardFormTitle>{action.name}</DashboardFormTitle>
+    <DataAppPageFormWrapper>
+      <DataAppPageFormTitle>{action.name}</DataAppPageFormTitle>
       <ActionParametersInputForm
         onSubmit={onSubmit}
         missingParameters={missingParameters}
         action={action}
       />
-    </DashboardFormWrapper>
+    </DataAppPageFormWrapper>
   );
 }
 
