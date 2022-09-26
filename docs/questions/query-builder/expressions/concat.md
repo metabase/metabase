@@ -6,10 +6,10 @@ title: Concat
 
 `concat` joins text data (strings) from two or more columns.
 
-| Syntax                        | Example                                 |
-|-------------------------------|-----------------------------------------|
-| concat(value1, value2, ...)   | concat("San Francisco, ", "California") |
-| Combines two or more strings. | "San Francisco, California"             |
+| Syntax                        | Example                                  |
+|-------------------------------|------------------------------------------|
+| `concat(value1, value2, ...)` | `concat("San Francisco, ", "California")`|
+| Combines two or more strings. | "San Francisco, California"              |
 
 ## Combining text from different columns 
 
