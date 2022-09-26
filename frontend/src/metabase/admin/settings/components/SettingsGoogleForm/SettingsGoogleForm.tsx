@@ -74,7 +74,6 @@ const SettingsGoogleForm = ({
         </FormFooter>
       )}
       disablePristineSubmit
-      overwriteOnInitialValuesChange
       onSubmit={handleSubmit}
     >
       <Breadcrumbs
