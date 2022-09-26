@@ -546,3 +546,10 @@ export const ActionsApi = {
     "/api/dashboard/:dashboardId/dashcard/:dashcardId/action/execute",
   ),
 };
+
+export const ModelActionsApi = {
+  getModelActions: GET("/api/model-action"),
+  connectActionToModel: POST("/api/model-action"),
+  updateConnection: PUT("/api/model-action/:id"),
+  disconnectActionFromModel: POST("/api/model-action"),
+};

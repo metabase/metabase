@@ -2,7 +2,7 @@ import { createEntity } from "metabase/lib/entities";
 
 import type { ActionFormSettings } from "metabase-types/api";
 
-import { CardApi } from "metabase/services";
+import { CardApi, ModelActionsApi } from "metabase/services";
 
 import {
   removeOrphanSettings,
@@ -11,11 +11,12 @@ import {
   setTemplateTagTypesFromFieldSettings,
 } from "metabase/entities/actions/utils";
 import type Question from "metabase-lib/lib/Question";
-import { saveForm } from "./forms";
+import { saveForm, updateForm } from "./forms";
 
 type ActionParams = {
   name: string;
   description?: string;
+  model_id?: number;
   collection_id?: number;
   question: Question;
   formSettings: ActionFormSettings;
@@ -56,16 +57,41 @@ const getAPIFn =
 const createAction = getAPIFn(CardApi.create);
 const updateAction = getAPIFn(CardApi.update);
 
+const associateAction = ({
+  model_id,
+  action_id,
+}: {
+  model_id: number;
+  action_id: number;
+}) =>
+  ModelActionsApi.connectActionToModel({
+    card_id: model_id,
+    action_id: action_id,
+    slug: `action_${action_id}`,
+    requires_pk: false,
+  });
+
 const Actions = createEntity({
   name: "actions",
   nameOne: "action",
   path: "/api/action",
   api: {
-    create: createAction,
+    create: async ({ model_id, ...params }: ActionParams) => {
+      const card = await createAction(params);
+      if (card?.action_id && model_id) {
+        const association = await associateAction({
+          model_id,
+          action_id: card.action_id,
+        });
+        return { ...card, association };
+      }
+      return card;
+    },
     update: updateAction,
   },
   forms: {
     saveForm,
+    updateForm,
   },
 });
 
