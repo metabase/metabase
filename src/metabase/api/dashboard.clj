@@ -722,6 +722,18 @@
    extra_parameters (s/maybe [ParameterWithTarget])}
   (actions.execution/execute-dashcard! dashboard-id dashcard-id slug parameters extra_parameters))
 
+(api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/execute"
+  "Deprecated - until front end catches up.
+
+   Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
+
+   `parameters` should be the mapped dashboard parameters with values.
+   `extra_parameters` should be the extra, user entered parameter values."
+  [dashboard-id dashcard-id :as {{:keys [parameters extra_parameters], :as _body} :body}]
+  {parameters (s/maybe [ParameterWithID])
+   extra_parameters (s/maybe [ParameterWithTarget])}
+  (actions.execution/execute-dashcard! dashboard-id dashcard-id nil parameters extra_parameters))
+
 ;;; ---------------------------------- Running the query associated with a Dashcard ----------------------------------
 
 (api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
