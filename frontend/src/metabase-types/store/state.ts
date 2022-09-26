@@ -27,4 +27,5 @@ export type GetState = () => State;
 export type ReduxAction<Type = string, Payload = any> = {
   type: Type;
   payload: Payload;
+  error?: string;
 };

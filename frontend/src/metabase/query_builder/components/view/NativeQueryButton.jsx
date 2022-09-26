@@ -56,13 +56,17 @@ export default class NativeQueryButton extends React.Component {
     this.setState({ open: false });
   };
   handleConvert = () => {
-    this.props.question
-      .setDatasetQuery({
-        type: "native",
-        native: { query: this.getFormattedQuery() },
-        database: this.state.datasetQuery.database,
-      })
-      .update(null, { shouldUpdateUrl: true });
+    const { question, updateQuestion } = this.props;
+
+    const newQuestion = question.setDatasetQuery({
+      type: "native",
+      native: { query: this.getFormattedQuery() },
+      database: this.state.datasetQuery.database,
+    });
+
+    updateQuestion(newQuestion, {
+      shouldUpdateUrl: true,
+    });
   };
 
   getFormattedQuery() {

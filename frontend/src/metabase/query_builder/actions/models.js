@@ -36,7 +36,7 @@ export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
       {
         id: question.id(),
       },
-      question.setDataset(true).setDisplay("table").card(),
+      question.setDataset(true).setPinned(true).setDisplay("table").card(),
     ),
   );
 

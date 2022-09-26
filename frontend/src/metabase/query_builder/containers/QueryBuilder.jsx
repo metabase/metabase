@@ -206,7 +206,6 @@ function QueryBuilder(props) {
     initializeQB,
     apiCreateQuestion,
     apiUpdateQuestion,
-    updateQuestion,
     updateUrl,
     locationChanged,
     onChangeLocation,
@@ -268,7 +267,7 @@ function QueryBuilder(props) {
 
   const handleCreate = useCallback(
     async card => {
-      const questionWithUpdatedCard = question.setCard(card);
+      const questionWithUpdatedCard = question.setCard(card).setPinned(false);
       await apiCreateQuestion(questionWithUpdatedCard);
       setRecentlySaved("created");
     },
@@ -356,12 +355,6 @@ function QueryBuilder(props) {
       locationChanged(previousLocation, location, params);
     }
   }, [location, params, previousLocation, locationChanged]);
-
-  useEffect(() => {
-    if (question) {
-      question._update = updateQuestion;
-    }
-  });
 
   const [isShowingToaster, setIsShowingToaster] = useState(false);
 

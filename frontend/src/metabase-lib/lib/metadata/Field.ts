@@ -87,7 +87,7 @@ class FieldInner extends Base {
       return this.uniqueId;
     }
 
-    const uniqueId = getUniqueFieldId(this.getId(), this.table_id);
+    const uniqueId = getUniqueFieldId(this);
     this.uniqueId = uniqueId;
 
     return uniqueId;

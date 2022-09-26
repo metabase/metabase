@@ -1,14 +1,22 @@
 import { isVirtualCardId } from "metabase/lib/saved-questions/saved-questions";
 import type Field from "./Field";
-import type Table from "./Table";
 
-export function getUniqueFieldId(
-  id: Field["id"],
-  tableId: Table["id"],
-): string | Field["id"] {
-  if (isVirtualCardId(tableId)) {
-    return `${tableId}:${id}`;
+function getFieldIdentifier(field: Field): number | string {
+  const { id, name } = field;
+  if (Array.isArray(id)) {
+    return id[1];
   }
 
-  return id;
+  return id || name;
+}
+
+export function getUniqueFieldId(field: Field): number | string {
+  const { table_id } = field;
+  const fieldIdentifier = getFieldIdentifier(field);
+
+  if (isVirtualCardId(table_id)) {
+    return `${table_id}:${fieldIdentifier}`;
+  }
+
+  return fieldIdentifier;
 }

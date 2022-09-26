@@ -19,12 +19,12 @@
 ;; These modules register settings but are otherwise unused. They still must be imported.
 (comment metabase.public-settings.premium-features/keep-me)
 
-(defn- google-auth-configured? []
-  (boolean (setting/get :google-auth-client-id)))
+(defn- google-auth-enabled? []
+  (boolean (setting/get :google-auth-enabled)))
 
-(defn- ldap-configured? []
-  (classloader/require 'metabase.integrations.ldap)
-  ((resolve 'metabase.integrations.ldap/ldap-configured?)))
+(defn- ldap-enabled? []
+  (classloader/require 'metabase.api.ldap)
+  ((resolve 'metabase.api.ldap/ldap-enabled)))
 
 (defn- ee-sso-configured? []
   (u/ignore-exceptions
@@ -32,11 +32,11 @@
   (when-let [varr (resolve 'metabase-enterprise.sso.integrations.sso-settings/other-sso-configured?)]
     (varr)))
 
-(defn sso-configured?
-  "Any SSO provider is configured"
+(defn sso-enabled?
+  "Any SSO provider is configured and enabled"
   []
-  (or (google-auth-configured?)
-      (ldap-configured?)
+  (or (google-auth-enabled?)
+      (ldap-enabled?)
       (ee-sso-configured?)))
 
 (defsetting check-for-updates
@@ -364,7 +364,7 @@
                 ;; otherwise this always returns true.
                 (let [v (setting/get-value-of-type :boolean :enable-password-login)]
                   (if (and (some? v)
-                           (sso-configured?))
+                           (sso-enabled?))
                     v
                     true))))
 

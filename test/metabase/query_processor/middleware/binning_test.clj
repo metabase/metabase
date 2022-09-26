@@ -2,6 +2,7 @@
   (:require [clojure.test :refer :all]
             [metabase.models.card :refer [Card]]
             [metabase.models.field :as field :refer [Field]]
+            [metabase.models.interface :as mi]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.binning :as binning]
             [metabase.sync :as sync]
@@ -89,7 +90,8 @@
 
 ;; Try an end-to-end test of the middleware
 (defn- test-field []
-  (field/map->FieldInstance
+  (mi/instance
+   Field
    {:database_type  "DOUBLE"
     :table_id       (mt/id :checkins)
     :semantic_type  :type/Income

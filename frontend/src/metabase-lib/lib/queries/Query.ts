@@ -9,11 +9,9 @@ import Variable from "metabase-lib/lib/variables/Variable";
 import { memoizeClass } from "metabase-lib/lib/utils";
 import DimensionOptions from "metabase-lib/lib/DimensionOptions";
 
-type QueryUpdateFn = (datasetQuery: DatasetQuery) => void;
 /**
  * An abstract class for all query types (StructuredQuery & NativeQuery)
  */
-
 class QueryInner {
   _metadata: Metadata;
 
@@ -118,17 +116,6 @@ class QueryInner {
 
   setDefaultQuery(): QueryInner {
     return this;
-  }
-
-  /**
-   * Helper for updating with functions that expect a DatasetQuery object, or proxy to parent question
-   */
-  update(update?: QueryUpdateFn, ...args: any[]) {
-    if (update) {
-      return update(this.datasetQuery(), ...args);
-    } else {
-      return this.question().update(undefined, ...args);
-    }
   }
 }
 

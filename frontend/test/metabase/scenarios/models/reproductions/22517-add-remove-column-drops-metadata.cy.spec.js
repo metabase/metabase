@@ -20,8 +20,6 @@ describe("issue 22517", () => {
     openQuestionActions();
     cy.findByText("Edit metadata").click();
 
-    cy.wait(["@cardQuery", "@cardQuery"]);
-
     renameColumn("ID", "Foo");
 
     cy.button("Save changes").click();
@@ -31,7 +29,6 @@ describe("issue 22517", () => {
   it("adding or removging a column should not drop previously edited metadata (metabase#22517)", () => {
     openQuestionActions();
     cy.findByText("Edit query definition").click();
-    cy.wait(["@cardQuery", "@cardQuery"]);
 
     // Make sure previous metadata changes are reflected in the UI
     cy.findByText("Foo");

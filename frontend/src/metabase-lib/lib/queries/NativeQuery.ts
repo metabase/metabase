@@ -124,7 +124,7 @@ function isSnippetTagName(name: string): boolean {
   return name.startsWith("snippet:");
 }
 
-export function updateCardTagNames(
+export function updateCardTemplateTagNames(
   query: NativeQuery,
   cards: Card[],
 ): NativeQuery {
@@ -273,6 +273,12 @@ export default class NativeQuery extends AtomicQuery {
 
   table(): Table | null {
     return getNativeQueryTable(this);
+  }
+
+  sourceTable(): null {
+    // Source tables are only available in structured queries,
+    // this method exists to keep query API consistent
+    return null;
   }
 
   queryText(): string {

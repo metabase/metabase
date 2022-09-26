@@ -6,23 +6,10 @@
             [metabase.api.common :as api]
             [metabase.api.common.validation :as validation]
             [metabase.integrations.ldap :as ldap]
-            [metabase.models.setting :as setting]
-            [metabase.util.schema :as su]))
-
-(def ^:private mb-settings->ldap-details
-  {:ldap-enabled             :enabled
-   :ldap-host                :host
-   :ldap-port                :port
-   :ldap-bind-dn             :bind-dn
-   :ldap-password            :password
-   :ldap-security            :security
-   :ldap-user-base           :user-base
-   :ldap-user-filter         :user-filter
-   :ldap-attribute-email     :attribute-email
-   :ldap-attribute-firstname :attribute-firstname
-   :ldap-attribute-lastname  :attribute-lastname
-   :ldap-group-sync          :group-sync
-   :ldap-group-base          :group-base})
+            [metabase.models.setting :as setting :refer [defsetting]]
+            [metabase.util.i18n :refer [deferred-tru tru]]
+            [metabase.util.schema :as su]
+            [toucan.db :as db]))
 
 (defn- humanize-error-messages
   "Convert raw error message responses from our LDAP tests into our normal api error response structure."
@@ -86,6 +73,21 @@
         #"(?s).*"
         {:message message}))))
 
+(defsetting ldap-enabled
+  (deferred-tru "Is LDAP currently enabled?")
+  :type       :boolean
+  :visibility :public
+  :setter     (fn [new-value]
+                (let [new-value (boolean new-value)]
+                  (when new-value
+                    ;; Test the LDAP settings before enabling
+                    (let [result (ldap/test-current-ldap-details)]
+                      (when-not (= :SUCCESS (:status result))
+                        (throw (ex-info (tru "Unable to connect to LDAP server with current settings")
+                                        (humanize-error-messages result))))))
+                  (setting/set-value-of-type! :boolean :ldap-enabled new-value)))
+  :default    false)
+
 (defn- update-password-if-needed
   "Do not update password if `new-password` is an obfuscated value of the current password."
   [new-password]
@@ -100,22 +102,18 @@
   {settings su/Map}
   (validation/check-has-application-permission :setting)
   (let [ldap-settings (-> settings
-                          (select-keys (keys mb-settings->ldap-details))
+                          (select-keys (keys ldap/mb-settings->ldap-details))
                           (assoc :ldap-port (when-let [^String ldap-port (not-empty (str (:ldap-port settings)))]
                                               (Long/parseLong ldap-port)))
                           (update :ldap-password update-password-if-needed))
-        ldap-details  (set/rename-keys ldap-settings mb-settings->ldap-details)
-        results       (if-not (:ldap-enabled settings)
-                        ;; when disabled just respond with a success message
-                        {:status :SUCCESS}
-                        ;; otherwise validate settings
-                        (ldap/test-ldap-connection ldap-details))]
+        ldap-details  (set/rename-keys ldap-settings ldap/mb-settings->ldap-details)
+        results       (ldap/test-ldap-connection ldap-details)]
     (if (= :SUCCESS (:status results))
-      ;; test succeeded, save our settings
-      (setting/set-many! ldap-settings)
+      (db/transaction
+       (setting/set-many! ldap-settings)
+       (setting/set-value-of-type! :boolean :ldap-enabled (boolean (:ldap-enabled settings))))
       ;; test failed, return result message
       {:status 500
        :body   (humanize-error-messages results)})))
-
 
 (api/define-routes)

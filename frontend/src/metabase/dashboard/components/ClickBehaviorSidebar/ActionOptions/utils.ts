@@ -1,15 +1,15 @@
 import _ from "underscore";
 
 import type {
-  ActionButtonDashboardCard,
-  ActionButtonParametersMapping,
+  ActionDashboardCard,
+  ActionParametersMapping,
   ClickBehaviorParameterMapping,
   WritebackAction,
 } from "metabase-types/api";
 import type { UiParameter } from "metabase/parameters/types";
 
 export function turnDashCardParameterMappingsIntoClickBehaviorMappings(
-  dashCard: ActionButtonDashboardCard,
+  dashCard: ActionDashboardCard,
   parameters: UiParameter[],
   action: WritebackAction,
 ): ClickBehaviorParameterMapping {
@@ -51,9 +51,9 @@ export function turnDashCardParameterMappingsIntoClickBehaviorMappings(
 export function turnClickBehaviorParameterMappingsIntoDashCardMappings(
   clickBehaviorParameterMappings: ClickBehaviorParameterMapping,
   action: WritebackAction,
-): ActionButtonParametersMapping[] {
+): ActionParametersMapping[] {
   const mappings = Object.values(clickBehaviorParameterMappings);
-  const parameter_mappings: ActionButtonParametersMapping[] = [];
+  const parameter_mappings: ActionParametersMapping[] = [];
 
   mappings.forEach(mapping => {
     const { source, target } = mapping;
