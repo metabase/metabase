@@ -133,8 +133,17 @@ describe("instantiateField", () => {
 });
 
 describe("instantiateSegment", () => {
+  const DEFAULT_SEGMENT = {
+    name: "default-segment",
+    description: "Default segment description",
+    database: new Database(),
+    table: new Table(),
+    id: 1,
+    archived: true,
+  };
+
   it("should return an instance of Segment", () => {
-    const instance = instantiateSegment({ abc: 123 });
+    const instance = instantiateSegment({ ...DEFAULT_SEGMENT, abc: 123 });
     expect(instance).toBeInstanceOf(Segment);
     expect(instance).toHaveProperty("abc", 123);
   });
