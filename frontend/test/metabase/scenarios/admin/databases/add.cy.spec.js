@@ -376,7 +376,7 @@ describe("scenarios > admin > databases > add", () => {
       sslMode = "SSL Mode",
       useClientCert = "Authenticate client certificate?",
       clientPemCert = "SSL Client Certificate (PEM)",
-      clientPkcsCert = "SSL Client Key (PKCS-8/DER or PKCS-12)",
+      clientPkcsCert = "SSL Client Key (PKCS-8/DER)",
       sslRootCert = "SSL Root Certificate (PEM)";
 
     cy.visit("/admin/databases/create");
