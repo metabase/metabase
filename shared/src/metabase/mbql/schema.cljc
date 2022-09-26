@@ -473,7 +473,7 @@
   #{;; extraction functions (get some component of a given temporal value/column)
     :datetime-extract
     ;; SUGAR drivers do not need to implement
-    :get-year :get-quarter :get-month :get-day :get-hour :get-minute :get-second})
+    :get-year :get-quarter :get-month :get-day :get-day-of-week :get-hour :get-minute :get-second})
 
 (def date+time+timezone-functions
   "Date, time, and timezone related functions."
@@ -654,7 +654,7 @@
   (one-of datetime-extract
           ;; SUGAR drivers do not need to implement
           get-year get-quarter get-month get-day get-day-of-week get-hour
-          get-month get-minute get-hour))
+          get-minute get-second))
 
 (def DatetimeExpression
   "Schema for the definition of a date function expression."
@@ -915,7 +915,7 @@
             ;; SUGAR clauses
             cum-count count
             get-year get-quarter get-month get-day get-day-of-week get-hour
-            get-month get-minute get-hour)))
+            get-minute get-second)))
 
 
 (def ^:private UnnamedAggregation
