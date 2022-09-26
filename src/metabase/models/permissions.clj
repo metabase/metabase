@@ -666,6 +666,7 @@
    "Valid native perms option for a database"))
 
 (def ExecutePermissions
+  "Schema for execution permission values."
   (s/named
    (s/enum :all :none)
    "Valid execute perms option type"))
