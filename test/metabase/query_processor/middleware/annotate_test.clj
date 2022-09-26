@@ -209,26 +209,26 @@
   (testing "For fields with parents we should return them with a combined name including parent's name"
     (tt/with-temp* [Field [parent {:name "parent", :table_id (mt/id :venues)}]
                     Field [child  {:name "child", :table_id (mt/id :venues), :parent_id (u/the-id parent)}]]
-     (mt/with-everything-store
-        (is (= {:description     nil
-                 :table_id        (mt/id :venues)
-                 :semantic_type   nil
-                 :effective_type  nil
-                 ;; these two are a gross symptom. there's some tension. sometimes it makes sense to have an effective
-                 ;; type: the db type is different and we have a way to convert. Othertimes, it doesn't make sense:
-                 ;; when the info is inferred. the solution to this might be quite extensive renaming
-                 :coercion_strategy nil
-                 :name            "parent.child"
-                 :settings        nil
-                 :field_ref       [:field (u/the-id child) nil]
-                 :nfc_path        nil
-                 :parent_id       (u/the-id parent)
-                 :id              (u/the-id child)
-                 :visibility_type :normal
-                 :display_name    "Child"
-                 :fingerprint     nil
-                 :base_type       :type/Text}
-                (into {} (#'annotate/col-info-for-field-clause {} [:field (u/the-id child) nil])))))))
+    (mt/with-everything-store
+       (is (= {:description     nil
+                :table_id        (mt/id :venues)
+                :semantic_type   nil
+                :effective_type  nil
+                ;; these two are a gross symptom. there's some tension. sometimes it makes sense to have an effective
+                ;; type: the db type is different and we have a way to convert. Othertimes, it doesn't make sense:
+                ;; when the info is inferred. the solution to this might be quite extensive renaming
+                :coercion_strategy nil
+                :name            "parent.child"
+                :settings        nil
+                :field_ref       [:field (u/the-id child) nil]
+                :nfc_path        nil
+                :parent_id       (u/the-id parent)
+                :id              (u/the-id child)
+                :visibility_type :normal
+                :display_name    "Child"
+                :fingerprint     nil
+                :base_type       :type/Text}
+              (into {} (#'annotate/col-info-for-field-clause {} [:field (u/the-id child) nil])))))))
 
   (testing "nested-nested fields should include grandparent name (etc)"
     (tt/with-temp* [Field [grandparent {:name "grandparent", :table_id (mt/id :venues)}]
@@ -430,7 +430,7 @@
     (testing "col info for an `expression` aggregation w/ a named expression should work as expected"
       (is (= {:base_type :type/Float, :name "sum", :display_name "Sum of double-price"}
              (mt/$ids venues
-               (col-info-for-aggregation-clause {:expressions {"double-price" [:* $price 2]}} [:sum [:expression "double-price"]])))))))
+               (col-info-for-aggregation-clause {:expressions {"double-price" [:* $price 2]}} [:sum [:expression "double-price"]]))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
