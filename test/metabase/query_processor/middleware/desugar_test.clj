@@ -15,6 +15,7 @@
                                      [:relative-datetime -1 :day]]
                                     [:!= [:field 3 nil] "(not set)"]
                                     [:!= [:field 3 nil] "url"]]
+                     :expressions  {"year" [:datetime-extract [:field 4 nil] :year]}
                      :aggregation  [[:share [:and
                                              [:= [:field 1 nil] "Run Query"]
                                              [:between
@@ -22,7 +23,8 @@
                                               [:relative-datetime -30 :day]
                                               [:relative-datetime -1 :day]]
                                              [:!= [:field 3 nil] "(not set)"]
-                                             [:!= [:field 3 nil] "url"]]]]}}
+                                             [:!= [:field 3 nil] "url"]]]
+                                    [:datetime-extract [:field 4 nil] :year]]}}
          (desugar/desugar
           {:database 1
            :type     :query
@@ -31,7 +33,9 @@
                                      [:= [:field 1 nil] "Run Query"]
                                      [:time-interval [:field 2 nil] -30 :day]
                                      [:!= [:field 3 nil] "(not set)" "url"]]
+                      :expressions  {"year" [:get-year [:field 4 nil]]}
                       :aggregation  [[:share [:and
                                               [:= [:field 1 nil] "Run Query"]
                                               [:time-interval [:field 2 nil] -30 :day]
-                                              [:!= [:field 3 nil] "(not set)" "url"]]]]}}))))
+                                              [:!= [:field 3 nil] "(not set)" "url"]]]
+                                     [:get-year [:field 4 nil]]]}}))))

@@ -250,6 +250,27 @@
                              [:relative-datetime :current]
                              [:relative-datetime 0 temporal-unit])))))
 
+(def datetime-extract-ops->unit
+  "Mapping from the sugar syntax to extract datetime to the unit."
+  {:get-year        :year
+   :get-quarter     :quarter
+   :get-month       :month
+   :get-day         :day
+   :get-day-of-week :day-of-week
+   :get-hour        :hour
+   :get-minute      :minute
+   :get-second      :second})
+
+(def ^:private datetime-extract-ops
+  (set (keys datetime-extract-ops->unit)))
+
+(defn desugar-datetime-extract
+  "Replace datetime extractions clauses like `[:get-year field]` with `[:datetime-extract field :year]`."
+  [m]
+  (mbql.match/replace m
+    [(op :guard datetime-extract-ops) field]
+    [:datetime-extract field (datetime-extract-ops->unit op)]))
+
 (s/defn desugar-filter-clause :- mbql.s/Filter
   "Rewrite various 'syntatic sugar' filter clauses like `:time-interval` and `:inside` as simpler, logically
   equivalent clauses. This can be used to simplify the number of filter clauses that need to be supported by anything
@@ -264,7 +285,8 @@
       desugar-is-null-and-not-null
       desugar-is-empty-and-not-empty
       desugar-inside
-      simplify-compound-filter))
+      simplify-compound-filter
+      desugar-datetime-extract))
 
 (defmulti ^:private negate* first)
 

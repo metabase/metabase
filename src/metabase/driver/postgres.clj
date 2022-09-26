@@ -245,19 +245,21 @@
 
 (def ^:private extract-integer (comp hx/->integer extract))
 
-(defmethod sql.qp/date [:postgres :default]         [_ _ expr] expr)
-(defmethod sql.qp/date [:postgres :minute]          [_ _ expr] (date-trunc :minute expr))
-(defmethod sql.qp/date [:postgres :minute-of-hour]  [_ _ expr] (extract-integer :minute expr))
-(defmethod sql.qp/date [:postgres :hour]            [_ _ expr] (date-trunc :hour expr))
-(defmethod sql.qp/date [:postgres :hour-of-day]     [_ _ expr] (extract-integer :hour expr))
-(defmethod sql.qp/date [:postgres :day]             [_ _ expr] (hx/->date expr))
-(defmethod sql.qp/date [:postgres :day-of-month]    [_ _ expr] (extract-integer :day expr))
-(defmethod sql.qp/date [:postgres :day-of-year]     [_ _ expr] (extract-integer :doy expr))
-(defmethod sql.qp/date [:postgres :month]           [_ _ expr] (date-trunc :month expr))
-(defmethod sql.qp/date [:postgres :month-of-year]   [_ _ expr] (extract-integer :month expr))
-(defmethod sql.qp/date [:postgres :quarter]         [_ _ expr] (date-trunc :quarter expr))
-(defmethod sql.qp/date [:postgres :quarter-of-year] [_ _ expr] (extract-integer :quarter expr))
-(defmethod sql.qp/date [:postgres :year]            [_ _ expr] (date-trunc :year expr))
+(defmethod sql.qp/date [:postgres :default]          [_ _ expr] expr)
+(defmethod sql.qp/date [:postgres :second-of-minute] [_ _ expr] (extract-integer :second expr))
+(defmethod sql.qp/date [:postgres :minute]           [_ _ expr] (date-trunc :minute expr))
+(defmethod sql.qp/date [:postgres :minute-of-hour]   [_ _ expr] (extract-integer :minute expr))
+(defmethod sql.qp/date [:postgres :hour]             [_ _ expr] (date-trunc :hour expr))
+(defmethod sql.qp/date [:postgres :hour-of-day]      [_ _ expr] (extract-integer :hour expr))
+(defmethod sql.qp/date [:postgres :day]              [_ _ expr] (hx/->date expr))
+(defmethod sql.qp/date [:postgres :day-of-month]     [_ _ expr] (extract-integer :day expr))
+(defmethod sql.qp/date [:postgres :day-of-year]      [_ _ expr] (extract-integer :doy expr))
+(defmethod sql.qp/date [:postgres :month]            [_ _ expr] (date-trunc :month expr))
+(defmethod sql.qp/date [:postgres :month-of-year]    [_ _ expr] (extract-integer :month expr))
+(defmethod sql.qp/date [:postgres :quarter]          [_ _ expr] (date-trunc :quarter expr))
+(defmethod sql.qp/date [:postgres :quarter-of-year]  [_ _ expr] (extract-integer :quarter expr))
+(defmethod sql.qp/date [:postgres :year]             [_ _ expr] (date-trunc :year expr))
+(defmethod sql.qp/date [:postgres :yyear]            [_ _ expr] (extract-integer :year expr))
 
 (defmethod sql.qp/date [:postgres :day-of-week]
   [_ driver expr]
@@ -272,42 +274,6 @@
 (defmethod sql.qp/date [:postgres :week]
   [_ _ expr]
   (sql.qp/adjust-start-of-week :postgres (partial date-trunc :week) expr))
-
-;; date extraction functions
-(defmethod sql.qp/->honeysql [:postgres :get-year]
-  [driver [_ arg]]
-  (extract-integer :year (sql.qp/->honeysql driver arg)))
-
-(defmethod sql.qp/->honeysql [:postgres :get-quarter]
-  [driver [_ arg]]
-  (sql.qp/date driver :quarter-of-year (sql.qp/->honeysql driver arg)))
-
-(defmethod sql.qp/->honeysql [:postgres :get-month]
-  [driver [_ arg]]
-  (sql.qp/date driver :month-of-year (sql.qp/->honeysql driver arg)))
-
-(defmethod sql.qp/->honeysql [:postgres :get-day]
-  [driver [_ arg]]
-  (sql.qp/date driver :day-of-month (sql.qp/->honeysql driver arg)))
-
-(defmethod sql.qp/->honeysql [:postgres :get-day-of-week]
-  [driver [_ arg]]
-  (sql.qp/date driver :day-of-week (sql.qp/->honeysql driver arg)))
-
-(defmethod sql.qp/->honeysql [:postgres :get-hour]
-  [driver [_ arg]]
-  (sql.qp/date driver :hour-of-day (sql.qp/->honeysql driver arg)))
-
-(defmethod sql.qp/->honeysql [:postgres :get-minute]
-  [driver [_ arg]]
-  (sql.qp/date driver :minute-of-hour (sql.qp/->honeysql driver arg)))
-
-(defmethod sql.qp/->honeysql [:postgres :get-second]
-  [driver [_ arg]]
-  (->> (sql.qp/->honeysql driver arg)
-       (extract :second)
-       (hsql/call :floor)
-       hx/->integer))
 
 (defn- quoted? [database-type]
   (and (str/starts-with? database-type "\"")

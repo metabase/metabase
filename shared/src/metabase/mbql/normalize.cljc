@@ -149,6 +149,7 @@
   [[_ amount unit]]
   [:interval amount (maybe-normalize-token unit)])
 
+
 (defmethod normalize-mbql-clause-tokens :date-add
   [[_ field amount unit]]
   [:date-add (normalize-tokens field :ignore-path) amount (maybe-normalize-token unit)])
@@ -156,6 +157,10 @@
 (defmethod normalize-mbql-clause-tokens :date-subtract
   [[_ field amount unit]]
   [:date-subtract (normalize-tokens field :ignore-path) amount (maybe-normalize-token unit)])
+
+(defmethod normalize-mbql-clause-tokens :datetime-extract
+  [[_ field unit]]
+  [:datetime-extract (normalize-tokens field :ignore-path) (maybe-normalize-token unit)])
 
 (defmethod normalize-mbql-clause-tokens :value
   ;; The args of a `value` clause shouldn't be normalized.

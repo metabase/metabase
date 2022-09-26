@@ -144,8 +144,8 @@
                      (str
                       (api-error-message k (inc indent-depth))
                       " : "
-                      (api-error-message (get schema k) (inc indent-depth)))
-                     ))
+                      (api-error-message (get schema k) (inc indent-depth)))))
+
                   "\n"
                   spaces
                   ")")))))))
