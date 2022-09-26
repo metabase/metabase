@@ -10,7 +10,7 @@ import {
   FormMessage,
   FormSubmit,
 } from "metabase/containers/FormikForm";
-import { updateSettings } from "metabase/admin/settings/settings";
+import { updateGoogleSettings } from "metabase/admin/settings/settings";
 import { settingToFormField } from "metabase/admin/settings/utils";
 import {
   FormCaption,
@@ -126,7 +126,7 @@ const getDocsLink = () => {
 };
 
 const mapDispatchToProps = {
-  onSubmit: updateSettings,
+  onSubmit: updateGoogleSettings,
 };
 
 export default connect(null, mapDispatchToProps)(SettingsGoogleForm);
