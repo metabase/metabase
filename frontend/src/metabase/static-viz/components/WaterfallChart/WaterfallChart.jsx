@@ -288,6 +288,7 @@ function WaterfallChart({
             yScaleRight={null}
             innerWidth={xMax}
             xAxisYPos={yMax}
+            settings={settings}
           />
         )}
       </Group>

@@ -23,6 +23,8 @@ type XYAccessor<
   flipped?: boolean,
 ) => number;
 
+type Settings = Record<string, any>;
+
 const VALUES_MARGIN = 6;
 // From testing 1px is equal 3px of the stroke width, I'm not totally sure why.
 const VALUES_STROKE_MARGIN = 1;
@@ -38,6 +40,7 @@ interface ValuesProps {
   innerWidth: number;
   areStacked: boolean;
   xAxisYPos: number;
+  settings?: Settings;
 }
 
 interface Value {
@@ -63,6 +66,7 @@ export default function Values({
   innerWidth,
   areStacked,
   xAxisYPos,
+  settings,
 }: ValuesProps) {
   const containBars = Boolean(xScale.bandwidth);
   const barSeriesIndexMap = new WeakMap();
@@ -84,10 +88,10 @@ export default function Values({
     const singleSeriesValues =
       series.type === "bar"
         ? fixSmallBarChartValues(
-            getValues(series, areStacked),
+            getValues(series, areStacked, settings),
             innerBarScale?.domain().length ?? 0,
           )
-        : getValues(series, areStacked);
+        : getValues(series, areStacked, settings);
 
     return singleSeriesValues.map(value => {
       return {
@@ -218,10 +222,14 @@ export default function Values({
   }
 }
 
-function getValues(series: HydratedSeries, areStacked: boolean): Value[] {
+function getValues(
+  series: HydratedSeries,
+  areStacked: boolean,
+  settings?: Settings,
+): Value[] {
   const data = getData(series, areStacked);
 
-  return transformDataToValues(series.type, data);
+  return transformDataToValues(series.type, data, settings);
 }
 
 function getData(series: HydratedSeries, areStacked: boolean) {
@@ -263,7 +271,6 @@ function getXAccessor(
     case "line":
     case "area":
     case "waterfall":
-    case "waterfall-total":
       return xScale.lineAccessor as XYAccessor;
     default:
       exhaustiveCheck(type);
@@ -277,6 +284,7 @@ function exhaustiveCheck(param: never): never {
 function transformDataToValues(
   type: VisualizationType,
   data: (SeriesDatum | StackedDatum)[],
+  settings?: Settings,
 ): Value[] {
   switch (type) {
     case "line":
@@ -310,21 +318,11 @@ function transformDataToValues(
       });
     case "waterfall": {
       let total = 0;
-      return data.map(datum => {
-        total = total + getY(datum);
-        return {
-          datum: setY(datum, total),
-          datumForLabel: datum,
-        };
-      });
-    }
-    case "waterfall-total": {
-      let total = 0;
       return data.map((datum, index) => {
         total = total + getY(datum);
-        const isTotal = index === data.length - 1;
+        const isShowingTotal = settings?.showTotal && index === data.length - 1;
         return {
-          datum: !isTotal ? setY(datum, total) : datum,
+          datum: !isShowingTotal ? setY(datum, total) : datum,
           datumForLabel: datum,
         };
       });

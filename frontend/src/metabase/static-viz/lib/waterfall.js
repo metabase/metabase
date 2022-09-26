@@ -52,7 +52,7 @@ export const calculateWaterfallSeriesForValues = (
     return [
       {
         data: [...data, [WATERFALL_TOTAL, total]],
-        type: "waterfall-total",
+        type: "waterfall",
         yAxisPosition: "left",
       },
     ];
