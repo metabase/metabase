@@ -17,4 +17,4 @@ Check out an introduction to the [Metabase API](https://www.metabase.com/learn/a
 
 ## API endpoints
 
-_* indicates endpoints used for features available on [paid plans](https://www.metabase.com/pricing/)._
+_* indicates endpoints used for features available on [paid plans](https://www.metabase.com/pricing)._
