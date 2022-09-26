@@ -2,6 +2,7 @@ import { SegmentFilter } from "metabase-types/types/Query";
 import Base from "../Base";
 import Database from "../Database";
 import Table from "../Table";
+import { SegmentProps } from "./types";
 
 /**
  * @typedef { import("./metadata").FilterClause } FilterClause
@@ -13,17 +14,6 @@ import Table from "../Table";
 
 export default class Segment extends Base {
   /**
-   * @returns {FilterClause}
-   */
-  filterClause(): SegmentFilter {
-    return ["segment", this.id];
-  }
-
-  isActive(): boolean {
-    return !this.archived;
-  }
-
-  /**
    * @private
    * @param {string} name
    * @param {string} description
@@ -32,21 +22,26 @@ export default class Segment extends Base {
    * @param {number} id
    * @param {boolean} archived
    */
+  constructor(object: SegmentProps) {
+    super();
 
-  /* istanbul ignore next */
-  _constructor(
-    name: string,
-    description: string,
-    database: Database,
-    table: Table,
-    id: number,
-    archived: boolean,
-  ) {
+    const { name, description, database, table, id, archived } = object;
     this.name = name;
     this.description = description;
     this.database = database;
     this.table = table;
     this.id = id;
     this.archived = archived;
+  }
+
+  /**
+   * @returns {FilterClause}
+   */
+  filterClause(): SegmentFilter {
+    return ["segment", this.id];
+  }
+
+  isActive(): boolean {
+    return !this.archived;
   }
 }
