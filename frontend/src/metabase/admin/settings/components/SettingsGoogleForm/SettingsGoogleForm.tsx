@@ -14,7 +14,7 @@ import { updateGoogleSettings } from "metabase/admin/settings/settings";
 import { settingToFormField } from "metabase/admin/settings/utils";
 import {
   FormCaption,
-  FormFooter,
+  FormSection,
   FormHeader,
   FormRoot,
 } from "./SettingsGoogleForm.styled";
@@ -55,7 +55,7 @@ const SettingsGoogleForm = ({
     <FormRoot
       initialValues={settingValues}
       renderSubmit={({ canSubmit, handleSubmit }) => (
-        <FormFooter>
+        <>
           <ActionButton
             actionFn={() => handleSaveAndEnableClick(handleSubmit)}
             primary={canSubmit}
@@ -71,7 +71,7 @@ const SettingsGoogleForm = ({
               successText={t`Changes saved!`}
             />
           )}
-        </FormFooter>
+        </>
       )}
       disablePristineSubmit
       overwriteOnInitialValuesChange
@@ -104,12 +104,12 @@ const SettingsGoogleForm = ({
         {...getField("google-auth-auto-create-accounts-domain", elements)}
         title={t`Domain`}
       />
-      <div>
+      <FormSection>
         <FormMessage />
-      </div>
-      <div>
+      </FormSection>
+      <FormSection>
         <FormSubmit>{t`Save changes`}</FormSubmit>
-      </div>
+      </FormSection>
     </FormRoot>
   );
 };

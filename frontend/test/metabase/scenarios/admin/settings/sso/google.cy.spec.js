@@ -1,6 +1,6 @@
 import { restore, typeAndBlurUsingLabel } from "__support__/e2e/helpers";
 
-const SUFFIX = "apps.googleusercontent.com";
+const CLIENT_ID_SUFFIX = "apps.googleusercontent.com";
 
 describe("scenarios > admin > settings > SSO > Google", () => {
   beforeEach(() => {
@@ -17,9 +17,9 @@ describe("scenarios > admin > settings > SSO > Google", () => {
     cy.button("Save and enable").click();
     cy.wait("@updateGoogleSettings");
     cy.reload();
-    cy.findByDisplayValue(`example1.${SUFFIX}`).should("be.visible");
+    cy.findByDisplayValue(`example1.${CLIENT_ID_SUFFIX}`).should("be.visible");
 
-    typeAndBlurUsingLabel("Client ID", `example2.${SUFFIX}`);
+    typeAndBlurUsingLabel("Client ID", `example2.${CLIENT_ID_SUFFIX}`);
     cy.button("Save changes").click();
     cy.wait("@updateGoogleSettings");
     cy.findByText("Changes saved!").should("be.visible");
@@ -29,9 +29,11 @@ describe("scenarios > admin > settings > SSO > Google", () => {
     setupGoogleAuth();
     cy.visit("/admin/settings/authentication");
 
-    cy.findByRole("switch", { name: "Google" }).click();
+    cy.findByRole("switch", { name: "Sign in with Google" }).click();
     cy.wait("@updateSetting");
-    cy.findByRole("switch", { name: "Google" }).should("not.be.checked");
+    cy.findByRole("switch", { name: "Sign in with Google" }).should(
+      "not.be.checked",
+    );
     cy.findByText("Saved").should("be.visible");
   });
 
@@ -41,7 +43,7 @@ describe("scenarios > admin > settings > SSO > Google", () => {
     typeAndBlurUsingLabel("Client ID", "fake-client-id");
     cy.button("Save and enable").click();
     cy.findByText(
-      `Invalid Google Sign-In Client ID: must end with ".${SUFFIX}"`,
+      `Invalid Google Sign-In Client ID: must end with ".${CLIENT_ID_SUFFIX}"`,
     ).should("be.visible");
   });
 });
@@ -49,7 +51,7 @@ describe("scenarios > admin > settings > SSO > Google", () => {
 const setupGoogleAuth = () => {
   cy.request("PUT", "/api/google/settings", {
     "google-auth-enabled": true,
-    "google-auth-client-id": `example.${SUFFIX}`,
+    "google-auth-client-id": `example.${CLIENT_ID_SUFFIX}`,
     "google-auth-auto-create-accounts-domain": "example.test",
   });
 };

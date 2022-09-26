@@ -15,7 +15,7 @@ export const FormCaption = styled.p`
   color: ${color("text-medium")};
 `;
 
-export const FormFooter = styled.div`
+export const FormSection = styled.div`
   display: flex;
   gap: 0.5rem;
 `;
