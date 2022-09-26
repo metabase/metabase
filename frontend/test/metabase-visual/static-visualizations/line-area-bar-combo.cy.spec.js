@@ -15,7 +15,7 @@ const { admin } = USERS;
 
 const visualizationTypes = ["line", "area", "bar", "combo"];
 
-describe("static visualizations", () => {
+describe("static visualizations", { tags: "@external" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
