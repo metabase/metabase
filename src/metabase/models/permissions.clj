@@ -1179,20 +1179,20 @@
 
 (s/defn ^:private update-group-permissions!
   [group-id :- su/IntGreaterThanZero new-group-perms :- StrictDBPermissionsGraph]
-  (doseq [[db-id new-db-perms] new-group-perms]
-    (doseq [[perm-type new-perms] new-db-perms]
-      (case perm-type
-        :data
-        (update-db-data-access-permissions! group-id db-id new-perms)
+  (doseq [[db-id new-db-perms] new-group-perms
+          [perm-type new-perms] new-db-perms]
+    (case perm-type
+      :data
+      (update-db-data-access-permissions! group-id db-id new-perms)
 
-        :download
-        (update-feature-level-permission! group-id db-id new-perms :download)
+      :download
+      (update-feature-level-permission! group-id db-id new-perms :download)
 
-        :data-model
-        (update-feature-level-permission! group-id db-id new-perms :data-model)
+      :data-model
+      (update-feature-level-permission! group-id db-id new-perms :data-model)
 
-        :details
-        (update-feature-level-permission! group-id db-id new-perms :details)))))
+      :details
+      (update-feature-level-permission! group-id db-id new-perms :details))))
 
 (defn update-global-execution-permission!
   "Set the global execution permission (\"/execute/\") for the group
