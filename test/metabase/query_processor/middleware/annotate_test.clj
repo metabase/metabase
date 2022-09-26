@@ -210,7 +210,7 @@
     (tt/with-temp* [Field [parent {:name "parent", :table_id (mt/id :venues)}]
                     Field [child  {:name "child", :table_id (mt/id :venues), :parent_id (u/the-id parent)}]]
      (mt/with-everything-store
-         (is (= {:description     nil
+        (is (= {:description     nil
                  :table_id        (mt/id :venues)
                  :semantic_type   nil
                  :effective_type  nil
@@ -414,15 +414,6 @@
                (mt/$ids venues
                  (col-info-for-aggregation-clause
                   [:aggregation-options [:sum $price] {:display-name "My Custom Name"}])))))
-
-      (testing "`date extract functions`"
-        (is (= {:base_type     :type/Integer
-                :semantic_type :type/Integer
-                :name          "datetime-extract"
-                :display_name  "My Custom Name"}
-               (mt/$ids users
-                 (col-info-for-aggregation-clause
-                   [:aggregation-options [:datetime-extract $last_login :year] {:display-name "My Custom Name"}]))))))
 
     (testing (str "if a driver is kind enough to supply us with some information about the `:cols` that come back, we "
                   "should include that information in the results. Their information should be preferred over ours")
