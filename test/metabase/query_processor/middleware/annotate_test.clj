@@ -210,7 +210,7 @@
     (tt/with-temp* [Field [parent {:name "parent", :table_id (mt/id :venues)}]
                     Field [child  {:name "child", :table_id (mt/id :venues), :parent_id (u/the-id parent)}]]
     (mt/with-everything-store
-       (is (= {:description     nil
+        (is (= {:description     nil
                 :table_id        (mt/id :venues)
                 :semantic_type   nil
                 :effective_type  nil
@@ -228,7 +228,7 @@
                 :display_name    "Child"
                 :fingerprint     nil
                 :base_type       :type/Text}
-              (into {} (#'annotate/col-info-for-field-clause {} [:field (u/the-id child) nil])))))))
+               (into {} (#'annotate/col-info-for-field-clause {} [:field (u/the-id child) nil])))))))
 
   (testing "nested-nested fields should include grandparent name (etc)"
     (tt/with-temp* [Field [grandparent {:name "grandparent", :table_id (mt/id :venues)}]
@@ -413,7 +413,7 @@
                 :display_name  "My Custom Name"}
                (mt/$ids venues
                  (col-info-for-aggregation-clause
-                  [:aggregation-options [:sum $price] {:display-name "My Custom Name"}])))))
+                  [:aggregation-options [:sum $price] {:display-name "My Custom Name"}]))))))
 
     (testing (str "if a driver is kind enough to supply us with some information about the `:cols` that come back, we "
                   "should include that information in the results. Their information should be preferred over ours")
@@ -430,7 +430,7 @@
     (testing "col info for an `expression` aggregation w/ a named expression should work as expected"
       (is (= {:base_type :type/Float, :name "sum", :display_name "Sum of double-price"}
              (mt/$ids venues
-               (col-info-for-aggregation-clause {:expressions {"double-price" [:* $price 2]}} [:sum [:expression "double-price"]]))))))))
+               (col-info-for-aggregation-clause {:expressions {"double-price" [:* $price 2]}} [:sum [:expression "double-price"]])))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

@@ -39,4 +39,3 @@
                                               [:= [:field 1 nil] "Run Query"]
                                               [:time-interval [:field 2 nil] -30 :day]
                                               [:!= [:field 3 nil] "(not set)" "url"]]]]}}))))
-
