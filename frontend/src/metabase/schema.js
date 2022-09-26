@@ -47,14 +47,14 @@ export const TableSchema = new schema.Entity(
 
 export const FieldSchema = new schema.Entity("fields", undefined, {
   processStrategy(field) {
-    const uniqueId = getUniqueFieldId(field.id, field.table_id);
+    const uniqueId = getUniqueFieldId(field);
     return {
       ...field,
       uniqueId,
     };
   },
   idAttribute: field => {
-    return getUniqueFieldId(field.id, field.table_id);
+    return getUniqueFieldId(field);
   },
 });
 

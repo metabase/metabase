@@ -8,21 +8,18 @@
             [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions :as row-level-restrictions]
             [metabase.api.common :as api]
             [metabase.driver :as driver]
-            [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.util :as mbql.u]
             [metabase.models :refer [Card Collection Field Table]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
-            [metabase.models.persisted-info :as persisted-info]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.cache-test :as cache-test]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.query-processor.pivot :as qp.pivot]
             [metabase.query-processor.util :as qp.util]
             [metabase.query-processor.util.add-alias-info :as add]
-            [metabase.task.persist-refresh :as task.persist-refresh]
             [metabase.test :as mt]
             [metabase.test.data.env :as tx.env]
             [metabase.util :as u]
@@ -1016,7 +1013,7 @@
                                                   [:field (mt/id :products :category)
                                                    nil]]}}}
                       :attributes {"category" nil}}
-        (mt/with-temporary-setting-values [:persisted-models-enabled true]
+        (mt/with-persistence-enabled [persist-models!]
           (mt/with-temp* [Card [model {:dataset       true
                                        :dataset_query (mt/mbql-query
                                                        products
@@ -1024,11 +1021,7 @@
                                                        ;; to use the sandbox filter on the cached table
                                                        {:fields [$id $price]})}]]
             ;; persist model
-            (ddl.i/check-can-persist (mt/db))
-            (persisted-info/ready-database! (mt/id))
-            (#'task.persist-refresh/refresh-tables!
-             (mt/id)
-             (var-get #'task.persist-refresh/dispatching-refresher))
+            (persist-models!)
             (let [persisted-info (db/select-one 'PersistedInfo
                                                 :database_id (mt/id)
                                                 :card_id (:id model))]
