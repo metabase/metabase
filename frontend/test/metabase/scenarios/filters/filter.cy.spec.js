@@ -542,11 +542,6 @@ describe("scenarios > question > filter", () => {
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
     cy.contains('contains([Reviewer], "MULLER", "case-insensitive")');
-    cy.button("Done").click();
-    cy.wait("@dataset").then(xhr => {
-      expect(xhr.response.body.data.rows).to.have.lengthOf(1);
-    });
-    cy.findByText("wilma-muller");
   });
 
   it("should reject a number literal", () => {
