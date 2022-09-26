@@ -24,10 +24,9 @@
   [:as {{:keys [collection_ids path]} :body}]
   {collection_ids (su/with-api-error-message
                     (su/distinct (su/non-empty [su/IntGreaterThanZero]))
-                    (tru "Non-empty, distinct array of Collection IDs"))
-   path           (su/with-api-error-message
-                    su/NonBlankString
-                    (tru "Valid directory to serialize results to"))}
+                    "Non-empty, distinct array of Collection IDs")
+   path           (su/with-api-error-message su/NonBlankString
+                    "Valid directory to serialize results to")}
   ;; Make sure all the specified collection IDs exist.
   (let [existing-collection-ids (db/select-ids Collection :id [:in (set collection_ids)])]
     (when-not (= (set collection_ids) (set existing-collection-ids))
