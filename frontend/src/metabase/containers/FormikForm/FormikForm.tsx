@@ -41,6 +41,7 @@ interface FormContainerProps<Values extends BaseFieldValues>
   submitTitle?: string;
   onClose?: () => void;
   footerExtraButtons?: any;
+  disablePristineSubmit?: boolean;
   children?: ReactNode | ((opts: any) => any);
 }
 

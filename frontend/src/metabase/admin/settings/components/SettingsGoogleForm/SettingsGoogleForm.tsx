@@ -54,7 +54,6 @@ const SettingsGoogleForm = ({
   return (
     <FormRoot
       initialValues={settingValues}
-      onSubmit={handleSubmit}
       renderSubmit={({ canSubmit, handleSubmit }) => (
         <FormFooter>
           <ActionButton
@@ -74,7 +73,9 @@ const SettingsGoogleForm = ({
           )}
         </FormFooter>
       )}
+      disablePristineSubmit
       overwriteOnInitialValuesChange
+      onSubmit={handleSubmit}
     >
       <Breadcrumbs
         crumbs={[
