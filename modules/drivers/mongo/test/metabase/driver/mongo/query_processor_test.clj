@@ -358,22 +358,21 @@
           (let [[col-type field-id] [:datetime (mt/id :times :dt)]]
             (doseq [op               [:date-add :date-subtract]
                     unit             [:year :quarter :month :day :hour :minute :second :millisecond]
-                    [expected query]
-                    [[[[(qp.datetime-test/date-math op #t "2004-03-19 09:19:09" 2 unit col-type)]
-                       [(qp.datetime-test/date-math op #t "2008-06-20 10:20:10" 2 unit col-type)]
-                       [(qp.datetime-test/date-math op #t "2012-11-21 11:21:11" 2 unit col-type)]
-                       [(qp.datetime-test/date-math op #t "2012-11-21 11:21:11" 2 unit col-type)]]
-                      {:expressions {"expr" [op [:field field-id nil] 2 unit]}
-                       :fields      [[:expression "expr"]]}]
-
-                     [(into [] (frequencies
-                                 [(qp.datetime-test/date-math op #t "2004-03-19 09:19:09" 2 unit col-type)
-                                  (qp.datetime-test/date-math op #t "2008-06-20 10:20:10" 2 unit col-type)
-                                  (qp.datetime-test/date-math op #t "2012-11-21 11:21:11" 2 unit col-type)
-                                  (qp.datetime-test/date-math op #t "2012-11-21 11:21:11" 2 unit col-type)]))
-                      {:expressions {"expr" [op [:field field-id nil] 2 unit]}
-                       :aggregation [[:count]]
-                       :breakout    [[:expression "expr"]]}]]]
+                    {:keys [expected query]}
+                    [{:expected [(qp.datetime-test/date-math op #t "2004-03-19 09:19:09" 2 unit col-type)
+                                 (qp.datetime-test/date-math op #t "2008-06-20 10:20:10" 2 unit col-type)
+                                 (qp.datetime-test/date-math op #t "2012-11-21 11:21:11" 2 unit col-type)
+                                 (qp.datetime-test/date-math op #t "2012-11-21 11:21:11" 2 unit col-type)]
+                      :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
+                                 :fields      [[:expression "expr"]]}}
+                     {:expected (into [] (frequencies
+                                          [(qp.datetime-test/date-math op #t "2004-03-19 09:19:09" 2 unit col-type)
+                                           (qp.datetime-test/date-math op #t "2008-06-20 10:20:10" 2 unit col-type)
+                                           (qp.datetime-test/date-math op #t "2012-11-21 11:21:11" 2 unit col-type)
+                                           (qp.datetime-test/date-math op #t "2012-11-21 11:21:11" 2 unit col-type)]))
+                      :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
+                                 :aggregation [[:count]]
+                                 :breakout    [[:expression "expr"]]}}]]
               (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
                 (is (= (set expected) (set (qp.datetime-test/test-date-math query))))))))
 
@@ -381,21 +380,20 @@
           (let [[col-type field-id] [:date (mt/id :times :d)]]
             (doseq [op               [:date-add :date-subtract]
                     unit             [:year :quarter :month :day]
-                    [expected query]
-                    [[[[(qp.datetime-test/date-math op #t "2004-03-19 00:00:00" 2 unit col-type)]
-                       [(qp.datetime-test/date-math op #t "2008-06-20 00:00:00" 2 unit col-type)]
-                       [(qp.datetime-test/date-math op #t "2012-11-21 00:00:00" 2 unit col-type)]
-                       [(qp.datetime-test/date-math op #t "2012-11-21 00:00:00" 2 unit col-type)]]
-                      {:expressions {"expr" [op [:field field-id nil] 2 unit]}
-                       :fields      [[:expression "expr"]]}]
-
-                     [(into [] (frequencies
-                                 [(qp.datetime-test/date-math op #t "2004-03-19 00:00:00" 2 unit col-type)
-                                  (qp.datetime-test/date-math op #t "2008-06-20 00:00:00" 2 unit col-type)
-                                  (qp.datetime-test/date-math op #t "2012-11-21 00:00:00" 2 unit col-type)
-                                  (qp.datetime-test/date-math op #t "2012-11-21 00:00:00" 2 unit col-type)]))
-                      {:expressions {"expr" [op [:field field-id nil] 2 unit]}
-                       :aggregation [[:count]]
-                       :breakout    [[:expression "expr"]]}]]]
+                    {:keys [expected query]}
+                    [{:expected [(qp.datetime-test/date-math op #t "2004-03-19 00:00:00" 2 unit col-type)
+                                 (qp.datetime-test/date-math op #t "2008-06-20 00:00:00" 2 unit col-type)
+                                 (qp.datetime-test/date-math op #t "2012-11-21 00:00:00" 2 unit col-type)
+                                 (qp.datetime-test/date-math op #t "2012-11-21 00:00:00" 2 unit col-type)]
+                       :query   {:expressions {"expr" [op [:field field-id nil] 2 unit]}
+                                 :fields      [[:expression "expr"]]}}
+                     {:expected (into [] (frequencies
+                                           [(qp.datetime-test/date-math op #t "2004-03-19 00:00:00" 2 unit col-type)
+                                            (qp.datetime-test/date-math op #t "2008-06-20 00:00:00" 2 unit col-type)
+                                            (qp.datetime-test/date-math op #t "2012-11-21 00:00:00" 2 unit col-type)
+                                            (qp.datetime-test/date-math op #t "2012-11-21 00:00:00" 2 unit col-type)]))
+                      :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
+                                 :aggregation [[:count]]
+                                 :breakout    [[:expression "expr"]]}}]]
               (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
                 (is (= (set expected) (set (qp.datetime-test/test-date-math query))))))))))))

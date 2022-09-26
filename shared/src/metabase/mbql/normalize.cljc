@@ -149,6 +149,7 @@
   [[_ amount unit]]
   [:interval amount (maybe-normalize-token unit)])
 
+
 (defmethod normalize-mbql-clause-tokens :date-add
   [[_ field amount unit]]
   [:date-add (normalize-tokens field :ignore-path) amount (maybe-normalize-token unit)])

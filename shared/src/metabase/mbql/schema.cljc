@@ -937,10 +937,6 @@
             sum-where case median percentile ag:var
             ;; SUGAR clauses
             cum-count count)))
-<<<<<<< HEAD
-=======
-
->>>>>>> ngoc-advanced-datetime-extraction
 
 (def ^:private UnnamedAggregation
   (s/recursive #'UnnamedAggregation*))

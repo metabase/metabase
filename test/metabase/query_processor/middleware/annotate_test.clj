@@ -413,24 +413,24 @@
                 :display_name  "My Custom Name"}
                (mt/$ids venues
                  (col-info-for-aggregation-clause
-                  [:aggregation-options [:sum $price] {:display-name "My Custom Name"}])))))
+                  [:aggregation-options [:sum $price] {:display-name "My Custom Name"}]))))))
 
-     (testing (str "if a driver is kind enough to supply us with some information about the `:cols` that come back, we "
-                   "should include that information in the results. Their information should be preferred over ours")
-       (is (= {:cols [{:name         "metric"
-                       :display_name "Total Events"
-                       :base_type    :type/Text
-                       :effective_type :type/Text
-                       :source       :aggregation
-                       :field_ref    [:aggregation 0]}]}
-              (add-column-info
-               (mt/mbql-query venues {:aggregation [[:metric "ga:totalEvents"]]})
-               {:cols [{:name "totalEvents", :display_name "Total Events", :base_type :type/Text}]}))))
+    (testing (str "if a driver is kind enough to supply us with some information about the `:cols` that come back, we "
+                  "should include that information in the results. Their information should be preferred over ours")
+      (is (= {:cols [{:name         "metric"
+                      :display_name "Total Events"
+                      :base_type    :type/Text
+                      :effective_type :type/Text
+                      :source       :aggregation
+                      :field_ref    [:aggregation 0]}]}
+             (add-column-info
+              (mt/mbql-query venues {:aggregation [[:metric "ga:totalEvents"]]})
+              {:cols [{:name "totalEvents", :display_name "Total Events", :base_type :type/Text}]}))))
 
-     (testing "col info for an `expression` aggregation w/ a named expression should work as expected"
-       (is (= {:base_type :type/Float, :name "sum", :display_name "Sum of double-price"}
-              (mt/$ids venues
-                (col-info-for-aggregation-clause {:expressions {"double-price" [:* $price 2]}} [:sum [:expression "double-price"]]))))))))
+    (testing "col info for an `expression` aggregation w/ a named expression should work as expected"
+      (is (= {:base_type :type/Float, :name "sum", :display_name "Sum of double-price"}
+             (mt/$ids venues
+               (col-info-for-aggregation-clause {:expressions {"double-price" [:* $price 2]}} [:sum [:expression "double-price"]])))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
