@@ -24,8 +24,7 @@
                                               [:relative-datetime -30 :day]
                                               [:relative-datetime -1 :day]]
                                              [:!= [:field 3 nil] "(not set)"]
-                                             [:!= [:field 3 nil] "url"]]]
-                                    [:datetime-extract [:field 4 nil] :year]]}}
+                                             [:!= [:field 3 nil] "url"]]]]}}
          (desugar/desugar
           {:database 1
            :type     :query
