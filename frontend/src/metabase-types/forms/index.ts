@@ -11,7 +11,7 @@ type FieldValidateResultOK = undefined | null | false;
 type FieldValidateResultError = string;
 
 export type Validator = (
-  value: any,
+  value: string,
 ) => FieldValidateResultOK | FieldValidateResultError;
 
 // Extending Record type here as field definition's props
