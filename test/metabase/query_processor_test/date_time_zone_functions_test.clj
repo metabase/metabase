@@ -4,7 +4,7 @@
             [metabase.test :as mt]
             [metabase.util.date-2 :as u.date]))
 
-(defn test-date-extract
+(defn test-temporal-extract
   [{:keys [aggregation breakout expressions fields filter limit]}]
   (if breakout
     (->> (mt/run-mbql-query times {:expressions expressions
@@ -41,7 +41,7 @@
      [3 #t "2012-11-21 11:21:11" #t "2012-11-21" "2012-11-21 11:21:11" "2012-11-21"]
      [4 #t "2012-11-21 11:21:11" #t "2012-11-21" "2012-11-21 11:21:11" "2012-11-21"]]]])
 
-(def ^:private date-extraction-op->unit
+(def ^:private temporal-extraction-op->unit
   {:get-second      :second-of-minute
    :get-minute      :minute-of-hour
    :get-hour        :hour-of-day
@@ -54,7 +54,7 @@
 
 (defn- extract
   [x op]
-  (u.date/extract x (date-extraction-op->unit op)))
+  (u.date/extract x (temporal-extraction-op->unit op)))
 
 (def ^:private extraction-test-cases
   [{:expected-fn (fn [op]          [(extract #t "2004-03-19 09:19:09" op) (extract #t "2008-06-20 10:20:10" op)
@@ -71,7 +71,7 @@
 
 (deftest extraction-function-tests
   (mt/dataset times-mixed
-    (mt/test-drivers (disj (mt/normal-drivers-with-feature :date-extract) :mongo)
+    (mt/test-drivers (disj (mt/normal-drivers-with-feature :temporal-extract) :mongo)
       (testing "with datetime columns"
         (doseq [[col-type field-id] [[:datetime (mt/id :times :dt)] [:text-as-datetime (mt/id :times :as_dt)]]
                 op                  [:get-year :get-quarter :get-month :get-day
@@ -79,7 +79,7 @@
                 {:keys [expected-fn query-fn]}
                 extraction-test-cases]
           (testing (format "extract %s function works as expected on %s column for driver %s" op col-type driver/*driver*)
-            (is (= (set (expected-fn op)) (set (test-date-extract (query-fn op field-id))))))))
+            (is (= (set (expected-fn op)) (set (test-temporal-extract (query-fn op field-id))))))))
 
      (testing "with date columns"
        (doseq [[col-type field-id] [[:date (mt/id :times :d)] [:text-as-date (mt/id :times :as_d)]]
@@ -87,7 +87,7 @@
                {:keys [expected-fn query-fn]}
                extraction-test-cases]
         (testing (format "extract %s function works as expected on %s column for driver %s" op col-type driver/*driver*)
-          (is (= (set (expected-fn op)) (set (test-date-extract (query-fn op field-id)))))))))
+          (is (= (set (expected-fn op)) (set (test-temporal-extract (query-fn op field-id)))))))))
 
     ;; need to have seperate tests for mongo because it doesn't have supports for casting yet
     (mt/test-driver :mongo
@@ -98,7 +98,7 @@
                   {:keys [expected-fn query-fn]}
                   extraction-test-cases]
            (testing (format "extract %s function works as expected on %s column for driver %s" op col-type driver/*driver*)
-             (is (= (set (expected-fn op)) (set (test-date-extract (query-fn op field-id)))))))))
+             (is (= (set (expected-fn op)) (set (test-temporal-extract (query-fn op field-id)))))))))
 
       (testing "with date columns"
         (let [[col-type field-id] [:date (mt/id :times :d)]]
@@ -106,11 +106,11 @@
                   {:keys [expected-fn query-fn]}
                   extraction-test-cases]
            (testing (format "extract %s function works as expected on %s column for driver %s" op col-type driver/*driver*)
-             (is (= (set (expected-fn op)) (set (test-date-extract (query-fn op field-id))))))))))))
+             (is (= (set (expected-fn op)) (set (test-temporal-extract (query-fn op field-id))))))))))))
 
 
-(deftest date-extraction-with-filter-expresion-tests
-  (mt/test-drivers (mt/normal-drivers-with-feature :date-extract)
+(deftest temporal-extraction-with-filter-expresion-tests
+  (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
     (mt/dataset times-mixed
       (doseq [{:keys [title expected query]}
               [{:title    "Nested expression"
@@ -140,4 +140,4 @@
                 :query    {:filter [:= [:* [:get-year [:field (mt/id :times :dt) nil]] 2] 4008]
                            :fields [[:field (mt/id :times :index) nil]]}}]]
         (testing title
-          (is (= expected (test-date-extract query))))))))
+          (is (= expected (test-temporal-extract query))))))))
