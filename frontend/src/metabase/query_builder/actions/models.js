@@ -50,7 +50,7 @@ export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
   dispatch(
     addUndo({
       message: t`This is a model now.`,
-      actions: [apiUpdateQuestion(question, { rerunQuery: true })],
+      actions: [apiUpdateQuestion(question)],
     }),
   );
 };
@@ -58,12 +58,12 @@ export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
 export const turnDatasetIntoQuestion = () => async (dispatch, getState) => {
   const dataset = getQuestion(getState());
   const question = dataset.setDataset(false);
-  await dispatch(apiUpdateQuestion(question, { rerunQuery: true }));
+  await dispatch(apiUpdateQuestion(question));
 
   dispatch(
     addUndo({
       message: t`This is a question now.`,
-      actions: [apiUpdateQuestion(dataset, { rerunQuery: true })],
+      actions: [apiUpdateQuestion(dataset)],
     }),
   );
 };
