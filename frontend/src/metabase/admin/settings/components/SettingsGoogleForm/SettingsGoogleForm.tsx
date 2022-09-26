@@ -38,7 +38,7 @@ const SettingsGoogleForm = ({
   const isEnabledRef = useRef(isEnabled);
 
   const handleSubmit = (values: Record<string, unknown>) => {
-    onSubmit({ ...values, "google-auth-enabled": isEnabledRef.current });
+    return onSubmit({ ...values, "google-auth-enabled": isEnabledRef.current });
   };
 
   const handleSaveAndEnableClick = (handleSubmit: () => void) => {
@@ -74,6 +74,7 @@ const SettingsGoogleForm = ({
         </FormFooter>
       )}
       disablePristineSubmit
+      overwriteOnInitialValuesChange
       onSubmit={handleSubmit}
     >
       <Breadcrumbs

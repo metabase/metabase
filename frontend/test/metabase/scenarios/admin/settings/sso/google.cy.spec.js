@@ -1,45 +1,55 @@
-import { restore } from "__support__/e2e/helpers";
+import { restore, typeAndBlurUsingLabel } from "__support__/e2e/helpers";
+
+const SUFFIX = "apps.googleusercontent.com";
 
 describe("scenarios > admin > settings > SSO > Google", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.visit("/admin/settings/authentication/google");
+    cy.intercept("PUT", "/api/setting/*").as("updateSetting");
+    cy.intercept("PUT", "/api/google/settings").as("updateGoogleSettings");
   });
 
-  it("Google sign-in client ID should save on subsequent tries (metabase#15974)", () => {
-    cy.findByLabelText("Client ID").type(
-      "fake-client-id.apps.googleusercontent.com",
-    );
-    successfullySaveSettings();
+  it("should save the client id on subsequent tries (metabase#15974)", () => {
+    cy.visit("/admin/settings/authentication/google");
+
+    typeAndBlurUsingLabel("Client ID", "example1.apps.googleusercontent.com");
+    cy.button("Save and enable").click();
+    cy.wait("@updateGoogleSettings");
     cy.reload();
-    cy.findByDisplayValue("fake-client-id.apps.googleusercontent.com")
-      .clear()
-      .type("fake-client-id2.apps.googleusercontent.com");
-    successfullySaveSettings();
-  });
+    cy.findByDisplayValue(`example1.${SUFFIX}`).should("be.visible");
 
-  it("Remove Google Sing-In Setup (metabase#20442)", () => {
-    cy.request("PUT", "/api/setting", {
-      "google-auth-client-id": "example.apps.googleusercontent.com",
-      "google-auth-auto-create-accounts-domain": "example.test",
-    });
-    cy.visit("/admin/settings/authentication/google");
-    cy.findByLabelText("Client ID").clear();
-    cy.findByLabelText("Domain").clear();
-    successfullySaveSettings();
-  });
-
-  it("Google sign-in client ID form should show an error message if it does not end with the correct suffix (metabase#15975)", () => {
-    cy.findByLabelText("Client ID").type("fake-client-id");
+    typeAndBlurUsingLabel("Client ID", `example2.${SUFFIX}`);
     cy.button("Save changes").click();
+    cy.wait("@updateGoogleSettings");
+    cy.findByText("Changes saved!").should("be.visible");
+  });
+
+  it("should disable google auth (metabase#20442)", () => {
+    setupGoogleAuth();
+    cy.visit("/admin/settings/authentication");
+
+    cy.findByRole("switch", { name: "Google" }).click();
+    cy.wait("@updateSetting");
+    cy.findByRole("switch", { name: "Google" }).should("not.be.checked");
+    cy.findByText("Saved").should("be.visible");
+  });
+
+  it("should show an error message if the client id does not end with the correct suffix (metabase#15975)", () => {
+    cy.visit("/admin/settings/authentication/google");
+
+    typeAndBlurUsingLabel("Client ID", "fake-client-id");
+    cy.button("Save and enable").click();
     cy.findByText(
-      'Invalid Google Sign-In Client ID: must end with ".apps.googleusercontent.com"',
-    );
+      `Invalid Google Sign-In Client ID: must end with ".${SUFFIX}"`,
+    ).should("be.visible");
   });
 });
 
-function successfullySaveSettings() {
-  cy.button("Save changes").click();
-  cy.findByText("Success");
-}
+const setupGoogleAuth = () => {
+  cy.request("PUT", "/api/google/settings", {
+    "google-auth-enabled": true,
+    "google-auth-client-id": `example.${SUFFIX}`,
+    "google-auth-auto-create-accounts-domain": "example.test",
+  });
+};
