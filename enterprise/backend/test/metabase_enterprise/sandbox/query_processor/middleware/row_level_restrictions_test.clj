@@ -1016,7 +1016,7 @@
                                                   [:field (mt/id :products :category)
                                                    nil]]}}}
                       :attributes {"category" nil}}
-        (mt/with-temporary-setting-values [:persisted-models-enabled true]
+        (mt/with-persistence-enabled [persist-models!]
           (mt/with-temp* [Card [model {:dataset       true
                                        :dataset_query (mt/mbql-query
                                                        products
@@ -1024,11 +1024,7 @@
                                                        ;; to use the sandbox filter on the cached table
                                                        {:fields [$id $price]})}]]
             ;; persist model
-            (ddl.i/check-can-persist (mt/db))
-            (persisted-info/ready-database! (mt/id))
-            (#'task.persist-refresh/refresh-tables!
-             (mt/id)
-             (var-get #'task.persist-refresh/dispatching-refresher))
+            (persist-models!)
             (let [persisted-info (db/select-one 'PersistedInfo
                                                 :database_id (mt/id)
                                                 :card_id (:id model))]

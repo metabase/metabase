@@ -199,26 +199,22 @@
     (with-redefs [qp.i/absolute-max-results 3]
       (mt/dataset daily-bird-counts
         (mt/test-driver :postgres
-          (mt/with-temporary-setting-values [:persisted-models-enabled true]
-            (db/update! Database (mt/id) :options {:persist-models-enabled true})
-            (mt/with-temp* [Card          [model {:dataset       true
-                                                  :database_id   (mt/id)
-                                                  :query_type    :query
-                                                  :dataset_query {:database (mt/id)
-                                                                  :type     :query
-                                                                  :query    {:source-table (mt/id :bird-count)}}}]]
-              (let [;; Get the number of rows before the model is persisted
+          (mt/with-persistence-enabled [persist-models!]
+            (mt/with-temp* [Card [model {:dataset       true
+                                         :database_id   (mt/id)
+                                         :query_type    :query
+                                         :dataset_query {:database (mt/id)
+                                                         :type     :query
+                                                         :query    {:source-table (mt/id :bird-count)}}}]]
+              (let [ ;; Get the number of rows before the model is persisted
                     query-on-top       {:database (mt/id)
                                         :type     :query
                                         :query    {:aggregation  [[:count]]
                                                    :source-table (str "card__" (:id model))}}
-                    [[num-rows-query]] (mt/rows (qp/process-query query-on-top))
-                    ;; Create PersistedInfo for model
-                    [persisted-info-id] (persisted-info/ready-unpersisted-models! (mt/id))]
+                    [[num-rows-query]] (mt/rows (qp/process-query query-on-top))]
                 ;; Persist the model
-                (ddl.i/check-can-persist (db/select-one Database :id (mt/id)))
-                (#'task.persist-refresh/refresh-individual! persisted-info-id (var-get #'task.persist-refresh/dispatching-refresher))
-                 ;; Check the number of rows is the same after persisting
+                (persist-models!)
+                ;; Check the number of rows is the same after persisting
                 (let [query-on-top {:database (mt/id)
                                     :type     :query
                                     :query    {:aggregation [[:count]]

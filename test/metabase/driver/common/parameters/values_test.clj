@@ -285,31 +285,7 @@
              clojure.lang.ExceptionInfo
              (query->params-map query)))))))
 
-(defn with-persisted*
-  [f]
-  (mt/with-temporary-setting-values [:persisted-models-enabled true]
-    (ddl.i/check-can-persist (mt/db))
-    (persisted-info/ready-database! (mt/id))
-    (let [persist-fn (fn persist-fn []
-                       (#'task.persist-refresh/refresh-tables!
-                        (mt/id)
-                        (var-get #'task.persist-refresh/dispatching-refresher)))]
-      (f persist-fn))))
 
-(defmacro with-persisted
-  "Does the necessary setup to enable persistence on the current db. Provide a binding for a function to persist
-  everything.
-
-  (with-persisted [persist-models!]
-    (let [mbql-query (mt/mbql-query categories)]
-      (mt/with-temp* [Card [model {:name \"model\"
-                                   :dataset true
-                                   :dataset_query mbql-query
-                                   :database_id (mt/id)}]]
-        (persist-models!))
-        ...))"
-  [[persist-fn-binding] & body]
-  `(with-persisted* (fn [~persist-fn-binding] ~@body)))
 
 (deftest card-query-test
   (testing "Card query template tag gets card's native query"
@@ -353,7 +329,7 @@
   (testing "Persisted Models are substituted"
     (mt/test-driver :postgres
       (mt/dataset test-data
-        (with-persisted [persist-models!]
+        (mt/with-persistence-enabled [persist-models!]
           (let [mbql-query (mt/mbql-query categories)]
             (mt/with-temp* [Card [model {:name "model"
                                          :dataset true
