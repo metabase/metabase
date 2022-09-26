@@ -30,7 +30,8 @@
        (not (segmented-user?))))
 
 (defn persisted-info-native-query
-  "Returns a query for "
+  "Returns a native query that selects from the persisted cached table from `persisted-info`. Does not check if
+  persistence is appropriate. Use [[can-substitute?]] for that check."
   [persisted-info]
   (let [database-id (:database_id persisted-info)
         driver (or driver/*driver* (driver.u/database->driver database-id))]
