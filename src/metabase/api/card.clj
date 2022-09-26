@@ -208,25 +208,38 @@
             valid-metadata?)
        ;; only sent valid metadata in the edit. Metadata might be the same, might be different. We save in either case
        (and (nil? query)
+            valid-metadata?)
+
+       ;; copying card and reusing existing metadata
+       (and (nil? original-query)
+            query
             valid-metadata?))
-      (a/to-chan! [metadata])
+      (do
+        (log/debug (trs "Reusing provided metadata"))
+        (a/to-chan! [metadata]))
 
       ;; frontend always sends query. But sometimes programatic don't (cypress, API usage). Returning an empty channel
       ;; means the metadata won't be updated at all.
       (nil? query)
-      (doto (a/chan) a/close!)
+      (do
+        (log/debug (trs "No query provided so not querying for metadata"))
+        (doto (a/chan) a/close!))
 
       ;; datasets need to incorporate the metadata either passed in or already in the db. Query has changed so we
       ;; re-run and blend the saved into the new metadata
       (and dataset? (or valid-metadata? (seq original-metadata)))
-      (a/go (let [metadata' (if valid-metadata?
-                              (map mbql.normalize/normalize-source-metadata metadata)
-                              original-metadata)
-                  fresh     (a/<! (qp.async/result-metadata-for-query-async query))]
-              (qp.util/combine-metadata fresh metadata')))
+      (do
+       (log/debug (trs "Querying for metadata and blending model metadata"))
+       (a/go (let [metadata' (if valid-metadata?
+                               (map mbql.normalize/normalize-source-metadata metadata)
+                               original-metadata)
+                   fresh     (a/<! (qp.async/result-metadata-for-query-async query))]
+               (qp.util/combine-metadata fresh metadata'))))
       :else
       ;; compute fresh
-      (qp.async/result-metadata-for-query-async query))))
+      (do
+        (log/debug (trs "Querying for metadata"))
+        (qp.async/result-metadata-for-query-async query)))))
 
 (defn check-data-permissions-for-query
   "Make sure the Current User has the appropriate *data* permissions to run `query`. We don't want Users saving Cards
@@ -345,7 +358,7 @@ saved later when it is ready."
                               ;; collection to change position, check that and fix it if needed
                               (api/maybe-reconcile-collection-position! card-data)
                               (db/insert! Card (cond-> card-data
-                                                 (not timed-out?)
+                                                 (and metadata (not timed-out?))
                                                  (assoc :result_metadata metadata))))]
     (events/publish-event! :card-create card)
     (when timed-out?

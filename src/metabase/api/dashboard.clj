@@ -230,10 +230,6 @@
               (assoc m id
                      (if (:dataset card)
                        card
-                       ;; todo: `create-card!` waits up to 1.5 seconds for metadata. But presumably we have that. So:
-                       ;; we want to avoid the wait either way, and if this transaction fails we don't want the
-                       ;; asynchronous metadata saving to attempt to save metadata to a card that won't be visible (if
-                       ;; transaction hasn't completed yet) or won't exist if transaction fails
                        (api.card/create-card! (assoc card :collection_id destination-collection)))))
             {}
             id->card)))
