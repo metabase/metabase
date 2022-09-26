@@ -82,4 +82,4 @@ You can export Metabase application data and use that to spin up new instances p
 
 - [Serialization](../installation-and-operation/serialization.md)
 
-[pricing]: https://www.metabase.com/pricing/
+[pricing]: https://www.metabase.com/pricing

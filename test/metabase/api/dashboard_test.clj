@@ -1978,11 +1978,11 @@
                          (mt/user-http-request :rasta :post 403 execute-path
                                                {:parameters [{:id "my_id" :type :number/= :value 1}]})))))
               (testing "With execute rights on the DB"
-                (perms/update-global-execution-permission (:id (perms-group/all-users)) :all)
+                (perms/update-global-execution-permission! (:id (perms-group/all-users)) :all)
                 (try
                   (actions.test-util/with-actions-enabled
                     (is (= {:rows-affected 1}
                            (mt/user-http-request :rasta :post 200 execute-path
                                                  {:parameters [{:id "my_id" :type :number/= :value 1}]}))))
                   (finally
-                    (perms/update-global-execution-permission (:id (perms-group/all-users)) :none)))))))))))
+                    (perms/update-global-execution-permission! (:id (perms-group/all-users)) :none)))))))))))

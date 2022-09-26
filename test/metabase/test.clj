@@ -32,6 +32,7 @@
             [metabase.test.data.interface :as tx]
             [metabase.test.data.users :as test.users]
             [metabase.test.initialize :as initialize]
+            [metabase.test.persistence :as test.persistence]
             metabase.test.redefs
             [metabase.test.util :as tu]
             [metabase.test.util.async :as tu.async]
@@ -60,6 +61,7 @@
   initialize/keep-me
   metabase.test.redefs/keep-me
   mw.session/keep-me
+  test.persistence/keep-me
   qp/keep-me
   qp.test-util/keep-me
   qp.test/keep-me
@@ -164,6 +166,9 @@
 
  [test-runner.assert-exprs
   derecordize]
+
+ [test.persistence
+  with-persistence-enabled]
 
  [test.users
   fetch-user
