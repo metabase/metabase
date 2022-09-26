@@ -761,10 +761,10 @@
                                                :card_id    (u/the-id total-card)
                                                :size_x 6, :size_y 6}]
                       DashboardCard [_textcard {:dashboard_id (u/the-id dashboard)
-                                                :text "here is some text"
                                                 :visualization_settings
                                                 {:virtual_card
-                                                 {:display :text}}}]
+                                                 {:display :text}
+                                                 :text "here is some text"}}]
                       DashboardCard [_        {:dashboard_id (u/the-id dashboard)
                                                :card_id    (u/the-id model)
                                                :size_x 6, :size_y 6}]
