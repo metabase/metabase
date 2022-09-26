@@ -5,16 +5,14 @@
             [metabase.driver.common.parameters :as params]
             [metabase.driver.common.parameters.values :as params.values]
             [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.driver.sql-jdbc.connection :as sql.conn]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.models :refer [Card Collection NativeQuerySnippet]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
-            [metabase.models.persisted-info :as persisted-info]
             [metabase.public-settings :as public-settings]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.query-processor.store :as qp.store]
-            [metabase.task.persist-refresh :as task.persist-refresh]
             [metabase.test :as mt]
             [metabase.util :as u]
             [metabase.util.schema :as su]
@@ -359,7 +357,7 @@
                                                order by c_orig.id desc limit 3"
                                               (u/the-id model))
                           tag-name    (format "#%d" (u/the-id model))]
-                      (jdbc/execute! (sql.conn/db->pooled-connection-spec (mt/db))
+                      (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
                                      [update-query])
                       (is (= [["Winery" "Winery from cached table"]
                               ["Wine Bar" "Wine Bar from cached table"]
