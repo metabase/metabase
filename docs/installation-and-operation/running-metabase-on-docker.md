@@ -44,7 +44,7 @@ docker run -d -p 12345:3000 --name metabase metabase/metabase
 
 ## Pro or Enterprise quick start
 
-Use this quick start if you have a [license token](../paid-features/activating-the-enterprise-edition.md) for a [paid version](https://www.metabase.com/pricing/) of Metabase, and you want to run Metabase locally. See below for instructions on [running Metabase in production](#production-installation).
+Use this quick start if you have a [license token](../paid-features/activating-the-enterprise-edition.md) for a [paid version](https://www.metabase.com/pricing) of Metabase, and you want to run Metabase locally. See below for instructions on [running Metabase in production](#production-installation).
 
 Assuming you have [Docker](https://www.docker.com/) installed and running, get the latest Docker image:
 

@@ -8,7 +8,7 @@ redirect_from:
 
 To run Metabase via a JAR file, you will need to have a Java Runtime Environment (JRE) installed on your system.
 
-If you have a token for the [Pro or Enterprise editions](https://www.metabase.com/pricing/) of Metabase, see [Activating your Metabase commercial license](../paid-features/activating-the-enterprise-edition.md).
+If you have a token for the [Pro or Enterprise editions](https://www.metabase.com/pricing) of Metabase, see [Activating your Metabase commercial license](../paid-features/activating-the-enterprise-edition.md).
 
 ## Quick start
 
