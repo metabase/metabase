@@ -48,6 +48,8 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
     settings: [
       {
         key: "google-auth-client-id",
+        required: true,
+        autoFocus: true,
       },
       {
         key: "google-auth-auto-create-accounts-domain",

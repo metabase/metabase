@@ -4,7 +4,7 @@ import _ from "underscore";
 import { assocIn, getIn, merge } from "icepick";
 
 // eslint-disable-next-line import/named
-import { Formik, FormikProps, FormikErrors, FormikHelpers } from "formik";
+import { Formik, FormikErrors, FormikHelpers } from "formik";
 
 import {
   BaseFieldValues,
@@ -14,16 +14,13 @@ import {
   PopulatedFormObject,
 } from "metabase-types/forms";
 
-import {
-  makeFormObject,
-  cleanObject,
-  isNestedFieldName,
-  getMaybeNestedValue,
-} from "../formUtils";
+import { OptionalFormViewProps } from "metabase/components/form/FormikCustomForm/types";
+import { makeFormObject, cleanObject, isNestedFieldName } from "../formUtils";
 import FormikFormViewAdapter from "./FormikFormViewAdapter";
 import useInlineFields from "./useInlineFields";
 
-interface FormContainerProps<Values extends BaseFieldValues> {
+interface FormContainerProps<Values extends BaseFieldValues>
+  extends OptionalFormViewProps {
   form?: FormObject<Values>;
 
   fields?: FormFieldDefinition[];
