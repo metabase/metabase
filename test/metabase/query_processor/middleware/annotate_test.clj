@@ -2,7 +2,6 @@
   (:require [clojure.test :refer :all]
             [medley.core :as m]
             [metabase.driver :as driver]
-            [metabase.mbql.schema :as mbql.s]
             [metabase.models :refer [Card Field]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.annotate :as annotate]

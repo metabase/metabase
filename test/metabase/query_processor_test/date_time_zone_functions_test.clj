@@ -40,132 +40,134 @@
      [3 #t "2012-11-21 11:21:11" #t "2012-11-21" "2012-11-21 11:21:11" "2012-11-21"]
      [4 #t "2012-11-21 11:21:11" #t "2012-11-21" "2012-11-21 11:21:11" "2012-11-21"]]]])
 
-(def ^:private date-extraction-op->-unit
-  {:second      :second-of-minute
-   :minute      :minute-of-hour
-   :hour        :hour-of-day
-   :day-of-week :day-of-week
-   :day         :day-of-month
-   :week        :week-of-year
-   :month       :month-of-year
-   :quarter     :quarter-of-year
-   :year        :year})
+(def ^:private date-extraction-op->unit
+  {:get-second      :second-of-minute
+   :get-minute      :minute-of-hour
+   :get-hour        :hour-of-day
+   :get-day-of-week :day-of-week
+   :get-day         :day-of-month
+   :get-week        :week-of-year
+   :get-month       :month-of-year
+   :get-quarter     :quarter-of-year
+   :get-year        :year})
 
 (defn- extract
-  [x unit]
-  (u.date/extract x (date-extraction-op->-unit unit)))
+  [x op]
+  (u.date/extract x (date-extraction-op->unit op)))
 
 (deftest extraction-function-tests
   (mt/dataset times-mixed
-    (mt/test-drivers (disj (mt/normal-drivers-with-feature :date-extraction) :mongo)
+    (mt/test-drivers (disj (mt/normal-drivers-with-feature :date-extract) :mongo)
       (testing "with datetime columns"
         (doseq [[col-type field-id] [[:datetime (mt/id :times :dt)] [:text-as-datetime (mt/id :times :as_dt)]]
-                unit                [:year :quarter :month :day :day-of-week :hour :minute :second]
+                op                  [:get-year :get-quarter :get-month :get-day
+                                     :get-day-of-week :get-hour :get-minute :get-second]
                 [expected query]
-                [[[[(extract #t "2004-03-19 09:19:09" unit)] [(extract #t "2008-06-20 10:20:10" unit)]
-                   [(extract #t "2012-11-21 11:21:11" unit)] [(extract #t "2012-11-21 11:21:11" unit)]]
-                  {:expressions {"expr" [:datetime-extract [:field field-id nil] unit]}
+                [[[[(extract #t "2004-03-19 09:19:09" op)] [(extract #t "2008-06-20 10:20:10" op)]
+                   [(extract #t "2012-11-21 11:21:11" op)] [(extract #t "2012-11-21 11:21:11" op)]]
+                  {:expressions {"expr" [op [:field field-id nil]]}
                    :fields      [[:expression "expr"]]}]
 
-                 [[[(extract #t "2004-03-19 09:19:09" unit)] [(extract #t "2008-06-20 10:20:10" unit)]
-                   [(extract #t "2012-11-21 11:21:11" unit)] [(extract #t "2012-11-21 11:21:11" unit)]]
-                  {:aggregation [[:datetime-extract [:field field-id nil] unit]]}]
+                 [[[(extract #t "2004-03-19 09:19:09" op)] [(extract #t "2008-06-20 10:20:10" op)]
+                   [(extract #t "2012-11-21 11:21:11" op)] [(extract #t "2012-11-21 11:21:11" op)]]
+                  {:aggregation [[op [:field field-id nil]]]}]
 
-                 [(into [] (frequencies [(extract #t "2004-03-19 09:19:09" unit) (extract #t "2008-06-20 10:20:10" unit)
-                                         (extract #t "2012-11-21 11:21:11" unit) (extract #t "2012-11-21 11:21:11" unit)]))
-                  {:expressions {"expr" [:datetime-extract [:field field-id nil] unit]}
+                 [(into [] (frequencies [(extract #t "2004-03-19 09:19:09" op) (extract #t "2008-06-20 10:20:10" op)
+                                         (extract #t "2012-11-21 11:21:11" op) (extract #t "2012-11-21 11:21:11" op)]))
+                  {:expressions {"expr" [op [:field field-id nil]]}
                    :aggregation [[:count]]
                    :breakout    [[:expression "expr"]]}]]]
-          (testing (format "extract %s function works as expected on %s column for driver %s" unit col-type driver/*driver*)
+          (testing (format "extract %s function works as expected on %s column for driver %s" op col-type driver/*driver*)
             (is (= (set expected) (set (test-date-extract query)))))))
 
      (testing "with date columns"
        (doseq [[col-type field-id] [[:date (mt/id :times :d)] [:text-as-date (mt/id :times :as_d)]]
-               unit                [:year :quarter :month :day :day-of-week]
+               op                  [:get-year :get-quarter :get-month :get-day :get-day-of-week]
                [expected query]
-               [[[[(extract #t "2004-03-19 09:19:09" unit)] [(extract #t "2008-06-20 10:20:10" unit)]
-                  [(extract #t "2012-11-21 11:21:11" unit)] [(extract #t "2012-11-21 11:21:11" unit)]]
-                 {:expressions {"expr" [:datetime-extract [:field field-id nil] unit]}
+               [[[[(extract #t "2004-03-19 09:19:09" op)] [(extract #t "2008-06-20 10:20:10" op)]
+                  [(extract #t "2012-11-21 11:21:11" op)] [(extract #t "2012-11-21 11:21:11" op)]]
+                 {:expressions {"expr" [op [:field field-id nil]]}
                   :fields      [[:expression "expr"]]}]
 
-                [[[(extract #t "2004-03-19 09:19:09" unit)] [(extract #t "2008-06-20 10:20:10" unit)]
-                  [(extract #t "2012-11-21 11:21:11" unit)] [(extract #t "2012-11-21 11:21:11" unit)]]
-                 {:aggregation [[:datetime-extract [:field field-id nil] unit]]}]
+                [[[(extract #t "2004-03-19 09:19:09" op)] [(extract #t "2008-06-20 10:20:10" op)]
+                  [(extract #t "2012-11-21 11:21:11" op)] [(extract #t "2012-11-21 11:21:11" op)]]
+                 {:aggregation [[op [:field field-id nil]]]}]
 
-                [(into [] (frequencies [(extract #t "2004-03-19 09:19:09" unit) (extract #t "2008-06-20 10:20:10" unit)
-                                        (extract #t "2012-11-21 11:21:11" unit) (extract #t "2012-11-21 11:21:11" unit)]))
-                 {:expressions {"expr" [:datetime-extract [:field field-id nil] unit]}
+                [(into [] (frequencies [(extract #t "2004-03-19 09:19:09" op) (extract #t "2008-06-20 10:20:10" op)
+                                        (extract #t "2012-11-21 11:21:11" op) (extract #t "2012-11-21 11:21:11" op)]))
+                 {:expressions {"expr" [op [:field field-id nil]]}
                   :aggregation [[:count]]
                   :breakout    [[:expression "expr"]]}]]]
-         (testing (format "extract %s function works as expected on %s column for driver %s" unit col-type driver/*driver*)
+         (testing (format "extract %s function works as expected on %s column for driver %s" op col-type driver/*driver*)
            (is (= (set expected) (set (test-date-extract query))))))))
 
     ;; need to have seperate tests for mongo it doesn't have supports for casting yet
     (mt/test-driver :mongo
       (testing "with datetimes columns"
         (let [[col-type field-id] [:datetime (mt/id :times :dt)]]
-          (doseq [unit             [:year :quarter :month :day :day-of-week :hour :minute :second]
+          (doseq [op               [:get-year :get-quarter :get-month :get-day
+                                    :get-day-of-week :get-hour :get-minute :get-second]
                   [expected query]
-                  [[[[(extract #t "2004-03-19 09:19:09" unit)] [(extract #t "2008-06-20 10:20:10" unit)]
-                     [(extract #t "2012-11-21 11:21:11" unit)] [(extract #t "2012-11-21 11:21:11" unit)]]
-                    {:expressions {"expr" [:datetime-extract [:field field-id nil] unit]}
+                  [[[[(extract #t "2004-03-19 09:19:09" op)] [(extract #t "2008-06-20 10:20:10" op)]
+                     [(extract #t "2012-11-21 11:21:11" op)] [(extract #t "2012-11-21 11:21:11" op)]]
+                    {:expressions {"expr" [op [:field field-id nil]]}
                      :fields      [[:expression "expr"]]}]
 
-                   [(into [] (frequencies [(extract #t "2004-03-19 09:19:09" unit) (extract #t "2008-06-20 10:20:10" unit)
-                                           (extract #t "2012-11-21 11:21:11" unit) (extract #t "2012-11-21 11:21:11" unit)]))
-                    {:expressions {"expr" [:datetime-extract[:field field-id nil] unit]}
+                   [(into [] (frequencies [(extract #t "2004-03-19 09:19:09" op) (extract #t "2008-06-20 10:20:10" op)
+                                           (extract #t "2012-11-21 11:21:11" op) (extract #t "2012-11-21 11:21:11" op)]))
+                    {:expressions {"expr" [op [:field field-id nil]]}
                      :aggregation [[:count]]
                      :breakout    [[:expression "expr"]]}]]]
-            (testing (format "extract %s function works as expected on %s column for driver %s" unit col-type driver/*driver*)
+            (testing (format "extract %s function works as expected on %s column for driver %s" op col-type driver/*driver*)
               (is (= (set expected) (set (test-date-extract query))))))))
 
       (testing "with date columns"
         (let [[col-type field-id] [:date (mt/id :times :d)]]
-          (doseq [unit             [:year :quarter :month :day :day-of-week]
+          (doseq [op               [:get-year :get-quarter :get-month :get-day :get-day-of-week]
                   [expected query]
-                  [[[[(extract #t "2004-03-19 09:19:09" unit)] [(extract #t "2008-06-20 10:20:10" unit)]
-                     [(extract #t "2012-11-21 11:21:11" unit)] [(extract #t "2012-11-21 11:21:11" unit)]]
-                    {:expressions {"expr" [:datetime-extract [:field field-id nil] unit]}
+                  [[[[(extract #t "2004-03-19 09:19:09" op)] [(extract #t "2008-06-20 10:20:10" op)]
+                     [(extract #t "2012-11-21 11:21:11" op)] [(extract #t "2012-11-21 11:21:11" op)]]
+                    {:expressions {"expr" [op [:field field-id nil]]}
                      :fields      [[:expression "expr"]]}]
 
-                   [(into [] (frequencies [(extract #t "2004-03-19 09:19:09" unit) (extract #t "2008-06-20 10:20:10" unit)
-                                           (extract #t "2012-11-21 11:21:11" unit) (extract #t "2012-11-21 11:21:11" unit)]))
-                    {:expressions {"expr" [:datetime-extract[:field field-id nil] unit]}
+                   [(into [] (frequencies [(extract #t "2004-03-19 09:19:09" op) (extract #t "2008-06-20 10:20:10" op)
+                                           (extract #t "2012-11-21 11:21:11" op) (extract #t "2012-11-21 11:21:11" op)]))
+                    {:expressions {"expr" [op [:field field-id nil]]}
                      :aggregation [[:count]]
                      :breakout    [[:expression "expr"]]}]]]
-            (testing (format "extract %s function works as expected on %s column for driver %s" unit col-type driver/*driver*)
+            (testing (format "extract %s function works as expected on %s column for driver %s" op col-type driver/*driver*)
               (is (= (set expected) (set (test-date-extract query)))))))))))
 
 
 (deftest date-extraction-with-filter-expresion-tests
-  (mt/test-drivers (mt/normal-drivers-with-feature :date-extraction)
+  (mt/test-drivers (mt/normal-drivers-with-feature :date-extract)
     (mt/dataset times-mixed
       (doseq [[title expected query]
               [["Nested expression"
                 [[2004]]
-                {:expressions {"expr" [:abs [:datetime-extract [:field (mt/id :times :dt) nil] :year]]}
+                {:expressions {"expr" [:abs [:get-year [:field (mt/id :times :dt) nil]]]}
                  :filter      [:= [:field (mt/id :times :index) nil] 1]
                  :fields      [[:expression "expr"]]}]
 
                ["Nested with arithmetic"
                 [[4008]]
-                {:expressions {"expr" [:* [:datetime-extract [:field (mt/id :times :dt) nil] :year] 2]}
+                {:expressions {"expr" [:* [:get-year [:field (mt/id :times :dt) nil]] 2]}
                  :filter      [:= [:field (mt/id :times :index) nil] 1]
                  :fields      [[:expression "expr"]]}]
 
                ["Filter using the extracted result - equality"
                 [[1]]
-                {:filter [:= [:datetime-extract [:field (mt/id :times :dt) nil] :year] 2004]
+                {:filter [:= [:get-year [:field (mt/id :times :dt) nil]] 2004]
                  :fields [[:field (mt/id :times :index) nil]]}]
 
                ["Filter using the extracted result - comparable"
                 [[1]]
-                {:filter [:< [:datetime-extract [:field (mt/id :times :dt) nil] :year] 2005]
+                {:filter [:< [:get-year [:field (mt/id :times :dt) nil]] 2005]
                  :fields [[:field (mt/id :times :index) nil]]}]
 
                ["Nested expression in fitler"
                 [[1]]
-                {:filter [:= [:* [:datetime-extract [:field (mt/id :times :dt) nil] :year] 2] 4008]
+                {:filter [:= [:* [:get-year [:field (mt/id :times :dt) nil]] 2] 4008]
                  :fields [[:field (mt/id :times :index) nil]]}]]]
         (testing title
           (is (= expected (test-date-extract query))))))))

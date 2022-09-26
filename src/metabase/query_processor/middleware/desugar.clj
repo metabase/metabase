@@ -5,15 +5,15 @@
             [metabase.mbql.util :as mbql.u]
             [schema.core :as s]))
 
-(s/defn desugar :- mbql.s/Query
+(defn desugar
   "Middleware that uses MBQL lib functions to replace high-level 'syntactic sugar' clauses like `time-interval` and
   `inside` with lower-level clauses like `between`. This is done to minimize the number of MBQL clauses individual
   drivers need to support. Clauses replaced by this middleware are marked `^:sugar` in the MBQL schema."
   [query]
   (m/update-existing query :query (fn [query]
-                                    (mbql.u/replace query
-                                      (filter-clause :guard mbql.preds/Filter?)
-                                      (mbql.u/desugar-filter-clause filter-clause)
+                                     (mbql.u/replace query
+                                       (filter-clause :guard mbql.preds/Filter?)
+                                       (mbql.u/desugar-filter-clause filter-clause)
 
-                                      (datetime-extract-clause :guard mbql.preds/DatetimeExpression?)
-                                      (mbql.u/desugar-datetime-extract datetime-extract-clause)))))
+                                       (datetime-extract-clause :guard mbql.preds/DatetimeExpression?)
+                                       (mbql.u/desugar-datetime-extract datetime-extract-clause)))))

@@ -79,6 +79,7 @@
    "datetime-bucketing-unit"))
 
 (def DateExtractUnits
+  "Valid units to extract from a datetime."
   (s/named
     (apply s/enum #{:second :minute :hour :day :day-of-week :week :month :quarter :year})
     "date-extract-units"))
@@ -470,7 +471,9 @@
 (def date-extract-functions
   "Functions to extract components of a date, datetime."
   #{;; extraction functions (get some component of a given temporal value/column)
-    :datetime-extract})
+    :datetime-extract
+    ;; SUGAR drivers do not need to implement
+    :get-year :get-quarter :get-month :get-day :get-hour :get-minute :get-second})
 
 (def date+time+timezone-functions
   "Date, time, and timezone related functions."
@@ -619,32 +622,32 @@
   "Schema for the definition of an arithmetic expression."
   (s/recursive #'ArithmeticExpression*))
 
-(defclause ^{:requires-features #{:date-extraction}} datetime-extract
+(defclause ^{:requires-features #{:date-extract}} datetime-extract
   datetime DateTimeExpressionArg
   unit     DateExtractUnits)
 
-(defclause ^{:requires-features #{:date-extraction}} ^:sugar get-year
+(defclause ^{:requires-features #{:date-extract}} ^:sugar get-year
   date DateTimeExpressionArg)
 
-(defclause ^{:requires-features #{:date-extraction}} ^:sugar get-quarter
+(defclause ^{:requires-features #{:date-extract}} ^:sugar get-quarter
   date DateTimeExpressionArg)
 
-(defclause ^{:requires-features #{:date-extraction}} ^:sugar get-month
+(defclause ^{:requires-features #{:date-extract}} ^:sugar get-month
   date DateTimeExpressionArg)
 
-(defclause ^{:requires-features #{:date-extraction}} ^:sugar get-day
+(defclause ^{:requires-features #{:date-extract}} ^:sugar get-day
   date DateTimeExpressionArg)
 
-(defclause ^{:requires-features #{:date-extraction}} ^:sugar get-day-of-week
+(defclause ^{:requires-features #{:date-extract}} ^:sugar get-day-of-week
   date DateTimeExpressionArg)
 
-(defclause ^{:requires-features #{:date-extraction}} ^:sugar get-hour
+(defclause ^{:requires-features #{:date-extract}} ^:sugar get-hour
   datetime DateTimeExpressionArg)
 
-(defclause ^{:requires-features #{:date-extraction}} ^:sugar get-minute
+(defclause ^{:requires-features #{:date-extract}} ^:sugar get-minute
   datetime DateTimeExpressionArg)
 
-(defclause ^{:requires-features #{:date-extraction}} ^:sugar get-second
+(defclause ^{:requires-features #{:date-extract}} ^:sugar get-second
   datetime DateTimeExpressionArg)
 
 (def ^:private DatetimeExpression*

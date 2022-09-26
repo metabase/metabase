@@ -275,17 +275,6 @@
   [_ _ expr]
   (sql.qp/adjust-start-of-week :postgres (partial date-trunc :week) expr))
 
-(def ^:private date-extraction-op->unit
-  {:second      :second-of-minute
-   :minute      :minute-of-hour
-   :hour        :hour-of-day
-   :day-of-week :day-of-week
-   :day         :day-of-month
-   :week        :week-of-year
-   :month       :month-of-year
-   :quarter     :quarter-of-year
-   :year        :yyear})
-
 (defn- quoted? [database-type]
   (and (str/starts-with? database-type "\"")
        (str/ends-with? database-type "\"")))

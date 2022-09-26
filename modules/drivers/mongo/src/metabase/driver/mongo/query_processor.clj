@@ -345,8 +345,6 @@
 (defmethod ->lvalue :* [[_ & args]] (->lvalue (first args)))
 (defmethod ->lvalue :/ [[_ & args]] (->lvalue (first args)))
 
-(defmethod ->lvalue :datetime-extract [[_ inp unit]] (->lvalue inp))
-
 (defmethod ->lvalue :coalesce [[_ & args]] (->lvalue (first args)))
 
 (defmethod ->rvalue :avg       [[_ inp]] {"$avg" (->rvalue inp)})

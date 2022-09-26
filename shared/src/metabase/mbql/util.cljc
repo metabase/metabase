@@ -251,6 +251,7 @@
                              [:relative-datetime 0 temporal-unit])))))
 
 (def datetime-extract-ops->unit
+  "Mapping from the sugar syntax to extract datetime to the unit."
   {:get-year        :year
    :get-quarter     :quarter
    :get-month       :month
@@ -264,6 +265,7 @@
   (set (keys datetime-extract-ops->unit)))
 
 (defn desugar-datetime-extract
+  "Replace datetime extractions clauses like `[:get-year field]` with `[:datetime-extract field :year]`."
   [m]
   (mbql.match/replace m
     [(op :guard datetime-extract-ops) field]
@@ -283,7 +285,8 @@
       desugar-is-null-and-not-null
       desugar-is-empty-and-not-empty
       desugar-inside
-      simplify-compound-filter))
+      simplify-compound-filter
+      desugar-datetime-extract))
 
 (defmulti ^:private negate* first)
 

@@ -1,5 +1,5 @@
 (ns metabase.util.honeysql-extensions
-  (:refer-clojure :exclude [+ - / * mod inc dec cast concat format])
+  (:refer-clojure :exclude [+ - / * mod inc dec cast concat format second])
   (:require [clojure.pprint :as pprint]
             [clojure.string :as str]
             [honeysql.core :as hsql]
