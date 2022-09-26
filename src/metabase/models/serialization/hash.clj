@@ -18,9 +18,10 @@
     - NO numeric database IDs!
     - Any foreign keys should be hydrated and the identity-hash of the foreign entity used as part of the hash.
       - There's a [[hydrated-hash]] helper for this with several example uses."
-  (:require [potemkin.types :as p.types]
-            [toucan.hydrate :refer [hydrate]]
-            [metabase.util.i18n :refer [tru]]))
+  (:require
+   [metabase.util.i18n :refer [tru]]
+   [potemkin.types :as p.types]
+   [toucan.hydrate :refer [hydrate]]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Identity Hashes                                                   |
