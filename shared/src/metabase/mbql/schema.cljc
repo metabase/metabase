@@ -626,6 +626,7 @@
   datetime DateTimeExpressionArg
   unit     DateExtractUnits)
 
+;; SUGAR CLAUSE: get-year, get-month... clauses are all sugars clause that will be rewritten as [:datetime-extract column :year]
 (defclause ^{:requires-features #{:date-extract}} ^:sugar get-year
   date DateTimeExpressionArg)
 
@@ -911,11 +912,8 @@
     ArithmeticExpression
     (one-of avg cum-sum distinct stddev sum min max metric share count-where
             sum-where case median percentile ag:var
-            datetime-extract
             ;; SUGAR clauses
-            cum-count count
-            get-year get-quarter get-month get-day get-day-of-week get-hour
-            get-minute get-second)))
+            cum-count count)))
 
 
 (def ^:private UnnamedAggregation

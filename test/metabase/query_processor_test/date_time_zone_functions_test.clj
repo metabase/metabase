@@ -68,10 +68,6 @@
                   {:expressions {"expr" [op [:field field-id nil]]}
                    :fields      [[:expression "expr"]]}]
 
-                 [[[(extract #t "2004-03-19 09:19:09" op)] [(extract #t "2008-06-20 10:20:10" op)]
-                   [(extract #t "2012-11-21 11:21:11" op)] [(extract #t "2012-11-21 11:21:11" op)]]
-                  {:aggregation [[op [:field field-id nil]]]}]
-
                  [(into [] (frequencies [(extract #t "2004-03-19 09:19:09" op) (extract #t "2008-06-20 10:20:10" op)
                                          (extract #t "2012-11-21 11:21:11" op) (extract #t "2012-11-21 11:21:11" op)]))
                   {:expressions {"expr" [op [:field field-id nil]]}
@@ -88,10 +84,6 @@
                   [(extract #t "2012-11-21 11:21:11" op)] [(extract #t "2012-11-21 11:21:11" op)]]
                  {:expressions {"expr" [op [:field field-id nil]]}
                   :fields      [[:expression "expr"]]}]
-
-                [[[(extract #t "2004-03-19 09:19:09" op)] [(extract #t "2008-06-20 10:20:10" op)]
-                  [(extract #t "2012-11-21 11:21:11" op)] [(extract #t "2012-11-21 11:21:11" op)]]
-                 {:aggregation [[op [:field field-id nil]]]}]
 
                 [(into [] (frequencies [(extract #t "2004-03-19 09:19:09" op) (extract #t "2008-06-20 10:20:10" op)
                                         (extract #t "2012-11-21 11:21:11" op) (extract #t "2012-11-21 11:21:11" op)]))
