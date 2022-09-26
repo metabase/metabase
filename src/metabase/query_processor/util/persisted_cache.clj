@@ -34,7 +34,7 @@
   persistence is appropriate. Use [[can-substitute?]] for that check."
   [persisted-info]
   (let [database-id (:database_id persisted-info)
-        driver (or driver/*driver* (driver.u/database->driver database-id))]
+        driver      (or driver/*driver* (driver.u/database->driver database-id))]
     (format "select %s from %s.%s"
             (str/join ", " (map #(sql.u/quote-name
                                   driver

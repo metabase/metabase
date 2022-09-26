@@ -142,7 +142,8 @@
     (throw (ex-info (tru "Invalid :card parameter: missing `:card-id`")
                     {:tag tag, :type qp.error-type/invalid-parameter})))
   (let [card           (db/select-one Card :id card-id)
-        persisted-info (db/select-one PersistedInfo :card_id card-id)
+        persisted-info (when (:dataset card)
+                         (db/select-one PersistedInfo :card_id card-id))
         query          (or (:dataset_query card)
                            (throw (ex-info (tru "Card {0} not found." card-id)
                                            {:card-id card-id, :tag tag, :type qp.error-type/invalid-parameter})))]
