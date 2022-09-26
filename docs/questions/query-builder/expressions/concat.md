@@ -27,7 +27,7 @@ CONCAT([City], ", ", [State])
 
 ## Accepted data types
 
-| [Data type][data-types] | Works with `concat`  |
+| [Data type](https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types) | Works with `concat`  |
 | ----------------------- | -------------------- |
 | String                  | ✅                   |
 | Number                  | ❌                   |
@@ -45,7 +45,7 @@ This section covers functions and formulas that can be used interchangeably with
 
 ### SQL
 
-In most cases (unless you're using a NoSQL database), questions created from the [notebook editor][notebook-editor-def] are converted into SQL queries that run against your database or data warehouse.
+In most cases (unless you're using a NoSQL database), questions created from the [notebook editor](https://www.metabase.com/glossary/notebook_editor) are converted into SQL queries that run against your database or data warehouse.
 
 ```sql
 SELECT
