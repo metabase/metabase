@@ -35,7 +35,7 @@ CONCAT([City], ", ", [State])
 | Boolean                 | ❌                   |
 | JSON                    | ❌                   |
 
-## Converting a function into an `concat` expression
+## Related functions
 
 This section covers functions and formulas that can be used interchangeably with the Metabase `concat` expression, with notes on how to choose the best option for your use case.
 

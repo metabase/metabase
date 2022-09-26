@@ -56,7 +56,7 @@ The second row's blank cell doesn't have a `null`, but we're not sure what's in 
 - `isnull` only accepts one value at a time. If you need to deal with blank cells across multiple columns, see the [coalesce expression](./coalesce.md).
 - If `isnull` doesn't seem to do anything to your blank cells, you might have empty strings. Try the [`isempty` expression](./isempty.md) instead.
 
-## Converting a function into an `isnull` expression
+## Related functions
 
 This section covers functions and formulas that can be used interchangeably with the Metabase `isnull` expression, with notes on how to choose the best option for your use case.
 
