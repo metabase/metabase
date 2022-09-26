@@ -374,4 +374,4 @@ function DatasetFieldMetadataSidebar({
 
 DatasetFieldMetadataSidebar.propTypes = propTypes;
 
-export default React.memo(DatasetFieldMetadataSidebar);
+export default DatasetFieldMetadataSidebar;
