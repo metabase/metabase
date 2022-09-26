@@ -154,7 +154,7 @@
      :secret-kind  :pem-cert
      :visible-if   {"ssl-use-client-auth" true}}
     {:name         "ssl-key"
-     :display-name (trs "SSL Client Key (PKCS-8/DER or PKCS-12)")
+     :display-name (trs "SSL Client Key (PKCS-8/DER)")
      :type         :secret
      ;; since this can be either PKCS-8 or PKCS-12, we can't model it as a :keystore
      :secret-kind  :binary-blob
