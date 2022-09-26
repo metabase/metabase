@@ -15,7 +15,7 @@ const secondDatabaseId = SAMPLE_DB_ID + 1;
 
 const { PRODUCTS } = SAMPLE_DATABASE;
 
-describe("issue 21597", () => {
+describe("issue 21597", { tags: "@external" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
