@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { ReactNode, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { assocIn, getIn, merge } from "icepick";
@@ -44,7 +44,7 @@ interface FormContainerProps<Values extends BaseFieldValues> {
   submitTitle?: string;
   onClose?: () => void;
   footerExtraButtons?: any;
-  children?: (opts: any) => any;
+  children?: ReactNode | ((opts: any) => any);
 }
 
 type ServerErrorResponse = {
