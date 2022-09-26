@@ -15,7 +15,7 @@
             [metabase.events :as events]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.card :refer [Card]]
-            [metabase.models.collection :as collection]
+            [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.dashboard :as dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
             [metabase.models.field :refer [Field]]
@@ -252,6 +252,8 @@
    destination-collection (s/maybe su/IntGreaterThanZero)}
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
   (collection/check-write-perms-for-collection collection_id)
+  (when destination-collection
+    (api/read-check Collection destination-collection))
   (let [existing-dashboard (get-dashboard from-dashboard-id)
         dashboard-data {:name                (or name (:name existing-dashboard))
                         :description         (or description (:description existing-dashboard))
