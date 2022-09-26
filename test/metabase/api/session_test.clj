@@ -461,7 +461,7 @@
         (mt/with-temporary-raw-setting-values
           [ldap-group-mappings (json/generate-string {"cn=Accounting,ou=Groups,dc=metabase,dc=com" [(:id group)]})]
           (is (schema= SessionResponse
-                    (mt/client :post 200 "session" {:username "fred.taylor@metabase.com", :password "pa$$word"})))
+                       (mt/client :post 200 "session" {:username "fred.taylor@metabase.com", :password "pa$$word"})))
           (let [user-id (db/select-one-id User :email "fred.taylor@metabase.com")]
             (is (= true (db/exists? PermissionsGroupMembership :group_id (:id group) (:user_id user-id))))))))))
 

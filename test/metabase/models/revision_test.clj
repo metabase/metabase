@@ -1,7 +1,8 @@
 (ns metabase.models.revision-test
   (:require [clojure.test :refer :all]
             [metabase.models.card :refer [Card]]
-            [metabase.models.revision :as revision]
+            [metabase.models.interface :as mi]
+            [metabase.models.revision :as revision :refer [Revision]]
             [metabase.test :as mt]
             [toucan.db :as db]
             [toucan.models :as models]))
@@ -11,7 +12,7 @@
 
 (models/defmodel ^:private FakedCard :report_card)
 
-(extend-type FakedCardInstance
+(extend-type #_{:clj-kondo/ignore [:unresolved-symbol]} FakedCardInstance
   revision/IRevisioned
   (serialize-instance [_ _ obj]
     (into {} (assoc obj :serialized true)))
@@ -87,10 +88,11 @@
   (testing "Test that we can add a revision"
     (mt/with-temp Card [{card-id :id}]
       (push-fake-revision! card-id, :name "Tips Created by Day", :message "yay!")
-      (is (= [(revision/map->RevisionInstance
+      (is (= [(mi/instance
+               Revision
                {:model        "FakedCard"
                 :user_id      (mt/user->id :rasta)
-                :object       (map->FakedCardInstance {:name "Tips Created by Day", :serialized true})
+                :object       (mi/instance FakedCard {:name "Tips Created by Day", :serialized true})
                 :is_reversion false
                 :is_creation  false
                 :message      "yay!"})]
@@ -102,17 +104,19 @@
     (mt/with-temp Card [{card-id :id}]
       (push-fake-revision! card-id, :name "Tips Created by Day")
       (push-fake-revision! card-id, :name "Spots Created by Day")
-      (is (= [(revision/map->RevisionInstance
+      (is (= [(mi/instance
+               Revision
                {:model        "FakedCard"
                 :user_id      (mt/user->id :rasta)
-                :object       (map->FakedCardInstance {:name "Spots Created by Day", :serialized true})
+                :object       (mi/instance FakedCard {:name "Spots Created by Day", :serialized true})
                 :is_reversion false
                 :is_creation  false
                 :message      nil})
-              (revision/map->RevisionInstance
+              (mi/instance
+               Revision
                {:model        "FakedCard"
                 :user_id      (mt/user->id :rasta)
-                :object       (map->FakedCardInstance {:name "Tips Created by Day", :serialized true})
+                :object       (mi/instance FakedCard {:name "Tips Created by Day", :serialized true})
                 :is_reversion false
                 :is_creation  false
                 :message      nil})]
@@ -152,7 +156,8 @@
   (testing "Check that revisions+details pulls in user info and adds description"
     (mt/with-temp Card [{card-id :id}]
       (push-fake-revision! card-id, :name "Tips Created by Day")
-      (is (= [(revision/map->RevisionInstance
+      (is (= [(mi/instance
+               Revision
                {:is_reversion false,
                 :is_creation  false,
                 :message      nil,
@@ -168,7 +173,8 @@
     (mt/with-temp Card [{card-id :id}]
       (push-fake-revision! card-id, :name "Tips Created by Day")
       (push-fake-revision! card-id, :name "Spots Created by Day")
-      (is (= [(revision/map->RevisionInstance
+      (is (= [(mi/instance
+               Revision
                {:is_reversion false,
                 :is_creation  false,
                 :message      nil
@@ -177,7 +183,8 @@
                                :o2 {:name "Spots Created by Day", :serialized true}}
                 :description  (str "BEFORE={:name \"Tips Created by Day\", :serialized true},AFTER="
                                    "{:name \"Spots Created by Day\", :serialized true}")})
-              (revision/map->RevisionInstance
+              (mi/instance
+               Revision
                {:is_reversion false,
                 :is_creation  false,
                 :message      nil
@@ -219,21 +226,24 @@
       (let [[_ {old-revision-id :id}] (revision/revisions FakedCard card-id)]
         (revision/revert! :entity FakedCard, :id card-id, :user-id (mt/user->id :rasta), :revision-id old-revision-id)
         (is (partial=
-             [(revision/map->RevisionInstance
+             [(mi/instance
+               Revision
                {:model        "FakedCard"
                 :user_id      (mt/user->id :rasta)
                 :object       {:name "Tips Created by Day", :serialized true}
                 :is_reversion true
                 :is_creation  false
                 :message      nil})
-              (revision/map->RevisionInstance
+              (mi/instance
+               Revision
                {:model        "FakedCard",
                 :user_id      (mt/user->id :rasta)
                 :object       {:name "Spots Created by Day", :serialized true}
                 :is_reversion false
                 :is_creation  false
                 :message      nil})
-              (revision/map->RevisionInstance
+              (mi/instance
+               Revision
                {:model        "FakedCard",
                 :user_id      (mt/user->id :rasta)
                 :object       {:name "Tips Created by Day", :serialized true}
@@ -242,9 +252,3 @@
                 :message      nil})]
              (->> (revision/revisions FakedCard card-id)
                   (map #(dissoc % :timestamp :id :model_id)))))))))
-
-(comment
-  (defrecord A [a])
-  (is (partial= {:a 1} (->A 1)))
-  (is (partial=))
-  )

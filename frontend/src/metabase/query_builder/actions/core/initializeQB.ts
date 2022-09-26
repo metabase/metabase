@@ -25,7 +25,7 @@ import {
 import { Card, SavedCard } from "metabase-types/types/Card";
 import Question from "metabase-lib/lib/Question";
 import NativeQuery, {
-  updateCardTagNames,
+  updateCardTemplateTagNames,
 } from "metabase-lib/lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
@@ -36,7 +36,7 @@ import { cancelQuery, runQuestionQuery } from "../querying";
 import { resetQB } from "./core";
 import { loadMetadataForCard } from "./metadata";
 import {
-  handleDashboardParameters,
+  propagateDashboardParameters,
   getParameterValuesForQuestion,
 } from "./parameterUtils";
 
@@ -204,6 +204,39 @@ function isSavedCard(card: Card): card is SavedCard {
 
 export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
 
+/**
+ * Updates the template tag names in the query
+ * to match the latest on the backend, because
+ * they might have changed since the query was last opened.
+ */
+export async function updateTemplateTagNames(
+  query: NativeQuery,
+  getState: GetState,
+  dispatch: Dispatch,
+): Promise<NativeQuery> {
+  const referencedCards = (
+    await Promise.all(
+      query.referencedQuestionIds().map(async id => {
+        try {
+          const actionResult = await dispatch(
+            Questions.actions.fetch({ id }, { noEvent: true }),
+          );
+          return Questions.HACK_getObjectFromAction(actionResult);
+        } catch {
+          return null;
+        }
+      }),
+    )
+  ).filter(Boolean);
+  query = updateCardTemplateTagNames(query, referencedCards);
+  if (query.hasSnippets()) {
+    await dispatch(Snippets.actions.fetchList());
+    const snippets = Snippets.selectors.getList(getState());
+    query = query.updateSnippetNames(snippets);
+  }
+  return query;
+}
+
 async function handleQBInit(
   dispatch: Dispatch,
   getState: GetState,
@@ -225,7 +258,7 @@ async function handleQBInit(
     ? deserializeCard(serializedCard)
     : null;
 
-  const { card, originalCard } = await resolveCards({
+  let { card, originalCard } = await resolveCards({
     cardId,
     deserializedCard,
     options,
@@ -247,17 +280,17 @@ async function handleQBInit(
     return;
   }
 
-  if (hasCard) {
-    await handleDashboardParameters(card, {
+  if (deserializedCard?.dashcardId) {
+    card = await propagateDashboardParameters({
+      card,
       deserializedCard,
       originalCard,
       dispatch,
-      getState,
     });
-  } else {
-    if (options.metric) {
-      uiControls.isShowingSummarySidebar = true;
-    }
+  }
+
+  if (!hasCard && options.metric) {
+    uiControls.isShowingSummarySidebar = true;
   }
 
   MetabaseAnalytics.trackStructEvent(
@@ -285,35 +318,10 @@ async function handleQBInit(
     }
   }
 
-  if (question && question.isNative()) {
+  if (question.isNative() && !question.query().readOnly()) {
     const query = question.query() as NativeQuery;
-
-    if (query.hasReferencedQuestions() && !query.readOnly()) {
-      // fetch all referenced questions, ignoring errors
-      const referencedQuestions = (
-        await Promise.all(
-          query.referencedQuestionIds().map(async id => {
-            try {
-              const actionResult = await dispatch(
-                Questions.actions.fetch({ id }, { noEvent: true }),
-              );
-              return Questions.HACK_getObjectFromAction(actionResult);
-            } catch {
-              return null;
-            }
-          }),
-        )
-      ).filter(Boolean);
-      question = question.setQuery(
-        updateCardTagNames(query, referencedQuestions),
-      );
-    }
-
-    if (query.hasSnippets() && !query.readOnly()) {
-      await dispatch(Snippets.actions.fetchList());
-      const snippets = Snippets.selectors.getList(getState());
-      question = question.setQuery(query.updateSnippetNames(snippets));
-    }
+    const newQuery = await updateTemplateTagNames(query, getState, dispatch);
+    question = question.setQuery(newQuery);
   }
 
   const finalCard = question.card();

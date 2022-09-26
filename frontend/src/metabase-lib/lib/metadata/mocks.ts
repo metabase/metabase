@@ -16,3 +16,17 @@ export function createMockConcreteField({
 
   return instance;
 }
+
+export function createMockVirtualField({
+  constructorOpts,
+  instanceOpts,
+}: {
+  constructorOpts?: Partial<Field>;
+  instanceOpts?: Partial<Field>;
+}) {
+  const instance = new Field(constructorOpts);
+
+  Object.assign(instance, instanceOpts);
+
+  return instance;
+}

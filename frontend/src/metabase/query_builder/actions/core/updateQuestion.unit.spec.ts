@@ -524,6 +524,15 @@ describe("QB Actions > updateQuestion", () => {
             }),
           );
         });
+
+        it("converts the question into a model if the query builder is in 'dataset' mode", async () => {
+          const { result } = await setup({
+            question,
+            queryBuilderMode: "dataset",
+          });
+
+          expect(result.card.dataset).toBe(true);
+        });
       });
     });
   });

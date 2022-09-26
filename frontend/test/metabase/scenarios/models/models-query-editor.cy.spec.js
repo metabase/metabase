@@ -19,7 +19,10 @@ describe("scenarios > models query editor", () => {
 
   describe("GUI models", () => {
     beforeEach(() => {
-      cy.request("PUT", "/api/card/1", { dataset: true });
+      cy.request("PUT", "/api/card/1", {
+        name: "Orders Model",
+        dataset: true,
+      });
     });
 
     it("allows to edit GUI model query", () => {
@@ -34,6 +37,7 @@ describe("scenarios > models query editor", () => {
         cy.findByText("Edit query definition").click();
       });
 
+      cy.findByTestId("data-step-cell").contains("Orders");
       cy.button("Save changes").should("be.disabled");
 
       cy.findByText("Row limit").click();
@@ -114,8 +118,6 @@ describe("scenarios > models query editor", () => {
     });
 
     it("handles failing queries", () => {
-      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-
       cy.createNativeQuestion(
         {
           name: "Erroring Model",
@@ -134,12 +136,10 @@ describe("scenarios > models query editor", () => {
         cy.findByText("Edit metadata").click();
       });
 
-      cy.wait("@cardQuery");
       cy.findByText(/Syntax error in SQL/).should("be.visible");
 
       cy.findByText("Query").click();
 
-      cy.wait("@cardQuery");
       cy.findByText(/Syntax error in SQL/).should("be.visible");
 
       cy.get(".ace_content").type("1");
