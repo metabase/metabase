@@ -8,21 +8,21 @@ title: Concat
 
 | Syntax                        | Example                                  |
 |-------------------------------|------------------------------------------|
-| `concat(value1, value2, ...)` | `concat("San Francisco, ", "California")`|
-| Combines two or more strings. | "San Francisco, California"              |
+| `concat(value1, value2, ...)` | `concat("Vienna, ", "Austria")`|
+| Combines two or more strings. | "Vienna, Austria"              |
 
 ## Combining text from different columns 
 
-| City          | State         | Location                  |
-|---------------|---------------|---------------------------|
-| San Francisco | California    | San Francisco, California |
-| Boston        | Massachusetts | Boston, Massachusetts     |
-| New York      | New York      | New York, New York        |
+| City     | Country | Location         |
+|----------|---------|------------------|
+| Vienna   | Austria | Vienna, Austria  |
+| Paris    | France  | Paris, France    |
+| Kalamata | Greece  | Kalamata, Greece |
 
 where **Location** is a custom column with the expression:
 
 ```
-CONCAT([City], ", ", [State])
+CONCAT([City], ", ", [Country])
 ```
 
 ## Accepted data types
@@ -37,7 +37,7 @@ CONCAT([City], ", ", [State])
 
 ## Related functions
 
-This section covers functions and formulas that can be used interchangeably with the Metabase `concat` expression, with notes on how to choose the best option for your use case.
+This section covers functions and formulas that work the same way as the Metabase `concat` expression, with notes on how to choose the best option for your use case.
 
 - [SQL](#sql)
 - [Spreadsheets](#spreadsheets)
@@ -49,20 +49,20 @@ In most cases (unless you're using a NoSQL database), questions created from the
 
 ```sql
 SELECT
-    CONCAT(City, ", ", State) AS "Location"
+    CONCAT(City, ", ", Country) AS "Location"
 FROM
-    People;
+    richard_linklater_films;
 ```
 
 is equivalent to the Metabase `concat` expression:
 
 ```
-concat([City], ",", [State])
+concat([City], ",", [Country])
 ```
 
 ### Spreadsheets
 
-If our [sample data](#combining-text-from-different-columns) is in a spreadsheet where "City" is in column A, and "State" in column B, we can create a third column "Location" like this:
+If our [sample data](#combining-text-from-different-columns) is in a spreadsheet where "City" is in column A, and "Country" in column B, we can create a third column "Location" like this,
 
 ```
 =CONCATENATE(A2, ", ", B2)
@@ -71,21 +71,21 @@ If our [sample data](#combining-text-from-different-columns) is in a spreadsheet
 which is equivalent to the Metabase `concat` expression:
 
 ```
-concat([City], ",", [State])
+concat([City], ",", [Country])
 ```
 
 ### Python
 
-Assuming the [sample data](#combining-text-from-different-columns) is in a dataframe column called df:
+Assuming the [sample data](#combining-text-from-different-columns) is in a dataframe column called df,
 
 ```
-df["Location"] = df["City"] + ", " + df["State"]
+df["Location"] = df["City"] + ", " + df["Country"]
 ```
 
-is equivalent to the Metabase `isempty` expression:
+is the same as the Metabase `concat` expression:
 
 ```
-concat([City], ",", [State])
+concat([City], ",", [Country])
 ```
 
 ## Further reading
