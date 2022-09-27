@@ -394,7 +394,12 @@ function areModelsEquivalent({
   // and the page will always be covered with a 'rerun' overlay.
   // Once the dataset_query changes, the question will loose the "dataset" flag and it'll work normally
   const isCurrentEquivalentToOriginal =
-    currentQuestion && isAdHocModelQuestion(currentQuestion, originalQuestion);
+    currentQuestion &&
+    isAdHocModelQuestion(currentQuestion, originalQuestion) &&
+    areQueriesEqual(
+      lastRunQuestion?.datasetQuery(),
+      currentQuestion.datasetQuery(),
+    );
 
   // When editing a model, the `currentQuestion` reverts to the form of the original question,
   // but the model query might've already been run in its "ad-hoc" form.
