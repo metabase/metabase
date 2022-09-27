@@ -55,6 +55,7 @@ function getCleanCard(card) {
     dashcardId: card.dashcardId,
     visualization_settings: card.visualization_settings,
     original_card_id: card.original_card_id,
+    site_uuid: card.site_uuid,
   };
 }
 
