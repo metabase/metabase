@@ -143,6 +143,9 @@ function getSettingWidget(
     hidden: settingDef.getHidden
       ? settingDef.getHidden(object, computedSettings, extra)
       : settingDef.hidden || false,
+    marginBottom: settingDef.getMarginBottom
+      ? settingDef.getMarginBottom(object, computedSettings, extra)
+      : settingDef.marginBottom,
     disabled: settingDef.getDisabled
       ? settingDef.getDisabled(object, computedSettings, extra)
       : settingDef.disabled || false,
