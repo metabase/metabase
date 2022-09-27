@@ -1,6 +1,7 @@
 import _ from "underscore";
 import { assocIn } from "icepick";
 
+import MetabaseSettings from "metabase/lib/settings";
 import { isSupportedTemplateTagForModel } from "metabase/lib/data-modeling/utils";
 import {
   getTemplateTagsForParameters,
@@ -134,7 +135,9 @@ export const updateQuestion = (
       queryBuilderMode !== "dataset";
 
     if (shouldTurnIntoAdHoc) {
-      newQuestion = newQuestion.withoutNameAndId();
+      newQuestion = newQuestion
+        .withoutNameAndId()
+        .setSiteUUID(MetabaseSettings.siteUUID());
 
       // When the dataset query changes, we should loose the dataset flag,
       // to start building a new ad-hoc question based on a dataset
