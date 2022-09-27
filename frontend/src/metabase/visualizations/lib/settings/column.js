@@ -390,6 +390,9 @@ export const NUMBER_COLUMN_SETTINGS = {
     title: t`Minimum number of decimal places`,
     widget: "number",
     variant: "form-field",
+    props: {
+      placeholder: t`Min.`,
+    },
   },
   scale: {
     title: t`Multiply by a number`,
@@ -403,11 +406,17 @@ export const NUMBER_COLUMN_SETTINGS = {
     title: t`Add a prefix`,
     widget: "input",
     variant: "form-field",
+    props: {
+      placeholder: t`$`,
+    },
   },
   suffix: {
     title: t`Add a suffix`,
     widget: "input",
     variant: "form-field",
+    props: {
+      placeholder: t`dollars`,
+    },
   },
   // Optimization: build a single NumberFormat object that is used by formatting.js
   _numberFormatter: {
