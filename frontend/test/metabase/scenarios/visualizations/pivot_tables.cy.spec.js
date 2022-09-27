@@ -901,15 +901,15 @@ function assertOnPivotSettings() {
   cy.log("Implicit side-bar assertions");
   cy.findByText(/Pivot Table options/i);
 
-  cy.findAllByText(/Fields to use for the table/).eq(0);
+  cy.findAllByTestId("pivot-table-setting").eq(0);
   cy.get("@fieldOption")
     .eq(0)
     .contains(/Users? → Source/);
-  cy.findAllByText(/Fields to use for the table/).eq(1);
+  cy.findAllByTestId("pivot-table-setting").eq(1);
   cy.get("@fieldOption")
     .eq(1)
     .contains(/Products? → Category/);
-  cy.findAllByText(/Fields to use for the table/).eq(2);
+  cy.findAllByTestId("pivot-table-setting").eq(2);
   cy.get("@fieldOption").eq(2).contains("Count");
 }
 

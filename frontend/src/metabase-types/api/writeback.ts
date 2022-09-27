@@ -68,3 +68,13 @@ export type ArbitraryParameterForActionExecution =
   ParameterForActionExecutionBase & {
     target: ParameterTarget;
   };
+
+export interface ActionFormSubmitResult {
+  success: boolean;
+  message?: string;
+  error?: string;
+}
+
+export type OnSubmitActionForm = (
+  parameters: ArbitraryParameterForActionExecution[],
+) => Promise<ActionFormSubmitResult>;

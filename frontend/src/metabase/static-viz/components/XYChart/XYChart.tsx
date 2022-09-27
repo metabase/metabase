@@ -39,7 +39,7 @@ import type {
   ChartStyle,
   HydratedSeries,
 } from "metabase/static-viz/components/XYChart/types";
-import Values from "./Values";
+import Values from "../Values";
 
 export interface XYChartProps {
   width: number;

@@ -42,7 +42,7 @@ export const createXScale = (
     const xScale = scaleBand({
       domain,
       range,
-      padding: 0.1,
+      padding: 0.2,
     });
 
     return {

@@ -6,8 +6,8 @@
   (:refer-clojure :exclude [compile])
   (:require clojure.data
             [clojure.test :refer :all]
-            [clojure.tools.macro :as tools.macro]
             [environ.core :as env]
+            [humane-are.core :as humane-are]
             [java-time :as t]
             [medley.core :as m]
             [metabase.driver :as driver]
@@ -45,6 +45,7 @@
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
+(humane-are/install!)
 (humane-test-output/activate!)
 
 ;; Fool the linters into thinking these namespaces are used! See discussion on
@@ -359,27 +360,6 @@
      (test-runner.init/assert-tests-are-not-initializing (list 'object-defaults (symbol (name toucan-model))))
      (initialize/initialize-if-needed! :db)
      (db/resolve-model toucan-model))))
-
-(defn are+-message [expr arglist args]
-  (pr-str
-   (second
-    (macroexpand-1
-     (list
-      `tools.macro/symbol-macrolet
-      (vec (apply concat (map-indexed (fn [i arg]
-                                        [arg (nth args i)])
-                                      arglist)))
-      expr)))))
-
-(defmacro are+
-  "Like [[clojure.test/are]] but includes a message for easier test failure debugging. (Also this is somewhat more
-  efficient since it generates far less code ­ it uses `doseq` rather than repeating the entire test each time.)"
-  {:style/indent 2}
-  [argv expr & args]
-  `(doseq [args# ~(mapv vec (partition (count argv) args))
-           :let [~argv args#]]
-     (is ~expr
-         (str (are+-message '~expr '~argv args#)))))
 
 (defmacro disable-flaky-test-when-running-driver-tests-in-ci
   "Only run `body` when we're not running driver tests in CI (i.e., `DRIVERS` and `CI` are both not set). Perfect for

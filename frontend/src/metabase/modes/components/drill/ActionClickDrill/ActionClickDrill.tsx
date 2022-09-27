@@ -1,39 +1,17 @@
 import { getDataFromClicked } from "metabase/lib/click-behavior";
 
-import {
-  executeRowAction,
-  openActionParametersModal,
-} from "metabase/dashboard/actions";
+import { openActionParametersModal } from "metabase/dashboard/actions";
 
-import type { ParameterMappedForActionExecution } from "metabase-types/api";
 import type { ActionClickObject } from "./types";
 
-import { prepareParameter, getNotProvidedActionParameters } from "./utils";
-
 function ActionClickDrill({ clicked }: { clicked: ActionClickObject }) {
-  const { dashboard, dashcard } = clicked.extraData;
+  const { dashcard } = clicked.extraData;
+  const { onSubmit, missingParameters } = clicked;
   const { action } = dashcard;
 
   if (!action) {
     return [];
   }
-
-  const parameters: ParameterMappedForActionExecution[] = [];
-  const data = getDataFromClicked(clicked);
-  const parameterMappings = dashcard.parameter_mappings || [];
-
-  parameterMappings.forEach(mapping => {
-    const parameter = prepareParameter(mapping, { action, data });
-    if (parameter) {
-      parameters.push(parameter);
-    }
-  });
-
-  const missingParameters = getNotProvidedActionParameters(
-    action,
-    parameterMappings,
-    parameters,
-  );
 
   function clickAction() {
     if (missingParameters.length > 0) {
@@ -41,22 +19,11 @@ function ActionClickDrill({ clicked }: { clicked: ActionClickObject }) {
         dashcardId: dashcard.id,
         props: {
           missingParameters,
-          onSubmit: (extra_parameters: ParameterMappedForActionExecution[]) =>
-            executeRowAction({
-              dashboard,
-              dashcard,
-              parameters,
-              extra_parameters,
-            }),
+          onSubmit,
         },
       });
     }
-    return executeRowAction({
-      dashboard,
-      dashcard,
-      parameters,
-      extra_parameters: [],
-    });
+    return onSubmit();
   }
 
   return [
