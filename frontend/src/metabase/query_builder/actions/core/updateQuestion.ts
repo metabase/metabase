@@ -217,7 +217,7 @@ export const updateQuestion = (
     });
 
     if (shouldUpdateUrl) {
-      dispatch(updateUrl(null, { dirty: true }));
+      dispatch(updateUrl(newQuestion.card(), { dirty: true }));
     }
 
     if (currentQuestion?.isNative?.() || newQuestion.isNative()) {
