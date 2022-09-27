@@ -64,7 +64,8 @@ module.exports = defineConfig({
        ********************************************************************/
 
       if (!isQaDatabase) {
-        config.ignoreTestFiles = "qa-db.cy.snap.js";
+        config.excludeSpecPattern =
+          "frontend/test/snapshot-creators/qa-db.cy.snap.js";
       }
 
       config.env.HAS_ENTERPRISE_TOKEN = hasEnterpriseToken;
