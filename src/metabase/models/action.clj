@@ -173,3 +173,30 @@
       (for [dashcard dashcards]
         (m/assoc-some dashcard :action (get actions-by-id (:action_id dashcard)))))
     dashcards))
+
+(defn dashcard-model-action
+  "Hydrates model-action from DashboardCard"
+  {:batched-hydrate :dashcard/model-action}
+  [dashcards]
+  (if-let [model-slug-by-dashcard-id (->> dashcards
+                                          (keep (fn [dashcard]
+                                                  (when-let [slug (get-in dashcard [:visualization_settings :action_slug])]
+                                                    [(:id dashcard) [(:card_id dashcard) slug]])))
+                                          (into {})
+                                          not-empty)]
+    (let [model-actions (db/select ModelAction [:card_id :slug] [:in (vals model-slug-by-dashcard-id)])
+          model-action-by-model-slug (m/index-by (juxt :card_id :slug)
+                                                 model-actions)
+          actions-by-id (when-let [action-ids (not-empty (keep :action_id (vals model-action-by-model-slug)))]
+                          (m/index-by :id (select-actions :id [:in action-ids])))]
+
+      (for [dashcard dashcards]
+        (if-let [model-slug (get model-slug-by-dashcard-id (:id dashcard))]
+          (let [model-action (get model-action-by-model-slug model-slug)
+                action (get actions-by-id (:action_id model-action))
+                wanted-keys [:visualization_settings :parameters :parameter_mappings :name]
+                hydration-value (not-empty (m/deep-merge (select-keys model-action wanted-keys)
+                                                         (select-keys action wanted-keys)))]
+            (m/assoc-some dashcard :model_action hydration-value))
+          dashcard)))
+    dashcards))

@@ -1854,19 +1854,15 @@
     (actions.test-util/with-actions-test-data-and-actions-enabled
       (actions.test-util/with-action [{:keys [action-id]} {}]
         (testing "Creating dashcard with action"
-          (mt/with-temp* [Dashboard [{dashboard-id :id}]]
-            (is (partial= {:action_id action-id}
+          (mt/with-temp* [Card [{card-id :id} {:dataset true}]
+                          ModelAction [_ {:card_id card-id :action_id action-id :slug "insert" :visualization_settings {:hello true}}]
+                          Dashboard [{dashboard-id :id}]]
+            (is (partial= {:visualization_settings {:action_slug "insert"}}
                           (mt/user-http-request :crowberto :post 200 (format "dashboard/%s/cards" dashboard-id)
-                                                {:size_x 1 :size_y 1 :row 1 :col 1 :action_id action-id})))
-            (is (partial= {:ordered_cards [{:action_id action-id :action {:id action-id}}]}
-                          (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id))))))
-        (testing "Updating dashcard action"
-          (mt/with-temp* [Dashboard [{dashboard-id :id}]
-                          DashboardCard [dashcard {:dashboard_id dashboard-id}]]
-            (is (partial= {:status "ok"}
-                          (mt/user-http-request :crowberto :put 200 (format "dashboard/%s/cards" dashboard-id)
-                                                {:cards [(assoc dashcard :action_id action-id)]})))
-            (is (partial= {:ordered_cards [{:action_id action-id :action {:id action-id}}]}
+                                                {:size_x 1 :size_y 1 :row 1 :col 1 :cardId card-id
+                                                 :visualization_settings {:action_slug "insert"}})))
+            (is (partial= {:ordered_cards [{:model_action {:visualization_settings {:hello true :inline true}
+                                                           :parameters []}}]}
                           (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id))))))))))
 
 (deftest dashcard-query-action-execution-test
