@@ -1861,8 +1861,9 @@
                           (mt/user-http-request :crowberto :post 200 (format "dashboard/%s/cards" dashboard-id)
                                                 {:size_x 1 :size_y 1 :row 1 :col 1 :cardId card-id
                                                  :visualization_settings {:action_slug "insert"}})))
-            (is (partial= {:ordered_cards [{:model_action {:visualization_settings {:hello true :inline true}
-                                                           :parameters []}}]}
+            (is (partial= {:ordered_cards [{:action {:visualization_settings {:hello true :inline true}
+                                                     :parameters []
+                                                     :slug "insert"}}]}
                           (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id))))))))))
 
 (deftest dashcard-query-action-execution-test
@@ -1960,6 +1961,7 @@
   [field-name]
   (keyword (mt/format-name (name field-name))))
 
+#_
 (deftest dashcard-implicit-action-execution-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (actions.test-util/with-actions-test-data-and-actions-enabled
