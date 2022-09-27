@@ -79,7 +79,7 @@ class ErrorBoundary extends React.Component<{
   countError: () => void;
 }> {
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    this.props.onError({ ...errorInfo, ...error });
+    this.props.onError({ ...error, componentStack: errorInfo.componentStack });
     this.props.countError();
   }
 
@@ -102,7 +102,6 @@ function App({
   const [errorCount, setErrorCount] = useState(0);
 
   const countError = () => setErrorCount(prev => prev + 1);
-  console.log("errorInfo", errorInfo);
 
   useOnMount(() => {
     initializeIframeResizer();
@@ -131,6 +130,7 @@ function App({
                   error_code: "looping error",
                   message:
                     (errorInfo?.message ?? "") +
+                    " " +
                     (errorInfo?.componentStack ?? ""),
                 },
               })
