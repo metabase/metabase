@@ -5,7 +5,7 @@ export const ModalRoot = styled.div`
   display: flex;
   flex-direction: column;
   flex: 1 0 auto;
-  min-height: 50vh;
+  height: 60vh;
 `;
 
 export const ModalHeader = styled.div`
@@ -27,6 +27,8 @@ export const ModalBody = styled.div`
   flex: 1;
 
   padding: 0 1rem 1rem 1rem;
+
+  overflow-y: scroll;
 `;
 
 export const ModalFooter = styled.div`

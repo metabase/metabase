@@ -7,6 +7,7 @@
             [metabase.driver.util :as driver.u]
             [metabase.models :refer [Database Permissions]]
             [metabase.models.database :as database]
+            [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
             [metabase.models.secret :as secret :refer [Secret]]
             [metabase.models.serialization.hash :as serdes.hash]
@@ -68,7 +69,8 @@
   (let [encode-decode (fn [obj] (decode (encode obj)))
         project-id    "random-project-id" ; the actual value here doesn't seem to matter
         ;; this is trimmed for the parts we care about in the test
-        pg-db         (database/map->DatabaseInstance
+        pg-db         (mi/instance
+                       Database
                        {:description nil
                         :name        "testpg"
                         :details     {:additional-options            nil
@@ -86,7 +88,8 @@
                                       :tunnel-user                   "a-tunnel-user"
                                       :tunnel-private-key-passphrase "Password1234"}
                         :id          3})
-        bq-db         (database/map->DatabaseInstance
+        bq-db         (mi/instance
+                       Database
                        {:description nil
                         :name        "testbq"
                         :details     {:use-service-account  nil
@@ -99,48 +102,48 @@
     (testing "sensitive fields are redacted when database details are encoded"
       (testing "details removed for non-admin users"
         (mw.session/with-current-user
-          (mt/user->id :rasta)
-          (is (= {"description" nil
-                  "name"        "testpg"
-                  "id"          3}
-                 (encode-decode pg-db)))
-          (is (= {"description" nil
-                  "name"        "testbq"
-                  "id"          2
-                  "engine"      "bigquery-cloud-sdk"}
-                 (encode-decode bq-db)))))
+            (mt/user->id :rasta)
+            (is (= {"description" nil
+                    "name"        "testpg"
+                    "id"          3}
+                   (encode-decode pg-db)))
+            (is (= {"description" nil
+                    "name"        "testbq"
+                    "id"          2
+                    "engine"      "bigquery-cloud-sdk"}
+                   (encode-decode bq-db)))))
 
       (testing "details are obfuscated for admin users"
         (mw.session/with-current-user
-          (mt/user->id :crowberto)
-          (is (= {"description" nil
-                  "name"        "testpg"
-                  "details"     {"tunnel-user"                   "a-tunnel-user"
-                                 "dbname"                        "mydb"
-                                 "host"                          "localhost"
-                                 "tunnel-auth-option"            "ssh-key"
-                                 "tunnel-private-key-passphrase" "**MetabasePass**"
-                                 "additional-options"            nil
-                                 "tunnel-port"                   22
-                                 "user"                          "metabase"
-                                 "tunnel-private-key"            "**MetabasePass**"
-                                 "ssl"                           false
-                                 "tunnel-enabled"                true
-                                 "port"                          5432
-                                 "password"                      "**MetabasePass**"
-                                 "tunnel-host"                   "localhost"}
-                  "id"          3}
-                 (encode-decode pg-db)))
-          (is (= {"description" nil
-                  "name"        "testbq"
-                  "details"     {"use-service-account"  nil
-                                 "dataset-id"           "office_checkins"
-                                 "service-account-json" "**MetabasePass**"
-                                 "use-jvm-timezone"     false
-                                 "project-id"           project-id}
-                  "id"          2
-                  "engine"      "bigquery-cloud-sdk"}
-                 (encode-decode bq-db))))))))
+            (mt/user->id :crowberto)
+            (is (= {"description" nil
+                    "name"        "testpg"
+                    "details"     {"tunnel-user"                   "a-tunnel-user"
+                                   "dbname"                        "mydb"
+                                   "host"                          "localhost"
+                                   "tunnel-auth-option"            "ssh-key"
+                                   "tunnel-private-key-passphrase" "**MetabasePass**"
+                                   "additional-options"            nil
+                                   "tunnel-port"                   22
+                                   "user"                          "metabase"
+                                   "tunnel-private-key"            "**MetabasePass**"
+                                   "ssl"                           false
+                                   "tunnel-enabled"                true
+                                   "port"                          5432
+                                   "password"                      "**MetabasePass**"
+                                   "tunnel-host"                   "localhost"}
+                    "id"          3}
+                   (encode-decode pg-db)))
+            (is (= {"description" nil
+                    "name"        "testbq"
+                    "details"     {"use-service-account"  nil
+                                   "dataset-id"           "office_checkins"
+                                   "service-account-json" "**MetabasePass**"
+                                   "use-jvm-timezone"     false
+                                   "project-id"           project-id}
+                    "id"          2
+                    "engine"      "bigquery-cloud-sdk"}
+                   (encode-decode bq-db))))))))
 
 ;; register a dummy "driver" for the sole purpose of running sensitive-fields-test
 (driver/register! :test-sensitive-driver, :parent #{:h2})

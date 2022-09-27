@@ -38,8 +38,6 @@
   {dimension-type (su/api-param "type" (s/enum "internal" "external"))
    dimension-name su/NonBlankString})
 
-(alter-meta! #'POST_:id_dimension assoc :private true)
-
 (deftest ^:parallel api-param-test
   (testing "check that API error message respects `api-param` when specified"
     (is (= (str/join "\n"
@@ -54,7 +52,7 @@
                       "*  **`type`** value must be one of: `external`, `internal`."
                       ""
                       "*  **`dimension-name`** value must be a non-blank string."])
-           (:doc (meta #'POST_:id_dimension))))))
+           (:doc (meta #_{:clj-kondo/ignore [:unresolved-symbol]} #'POST_:id_dimension))))))
 
 (defn- ex-info-msg [f]
   (try

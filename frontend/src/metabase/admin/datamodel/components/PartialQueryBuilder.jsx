@@ -11,6 +11,7 @@ import Tables from "metabase/entities/tables";
 import GuiQueryEditor from "metabase/query_builder/components/GuiQueryEditor";
 import * as Urls from "metabase/lib/urls";
 import Question from "metabase-lib/lib/Question";
+import Query from "metabase-lib/lib/queries/Query";
 
 import withTableMetadataLoaded from "../hoc/withTableMetadataLoaded";
 
@@ -75,6 +76,10 @@ class PartialQueryBuilder extends Component {
   }
 
   setDatasetQuery = datasetQuery => {
+    if (datasetQuery instanceof Query) {
+      datasetQuery = datasetQuery.datasetQuery();
+    }
+
     this.props.onChange(datasetQuery.query);
     this.props.updatePreviewSummary(datasetQuery);
   };

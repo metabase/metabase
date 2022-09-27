@@ -206,7 +206,6 @@ function QueryBuilder(props) {
     initializeQB,
     apiCreateQuestion,
     apiUpdateQuestion,
-    updateQuestion,
     updateUrl,
     locationChanged,
     onChangeLocation,
@@ -356,12 +355,6 @@ function QueryBuilder(props) {
       locationChanged(previousLocation, location, params);
     }
   }, [location, params, previousLocation, locationChanged]);
-
-  useEffect(() => {
-    if (question) {
-      question._update = updateQuestion;
-    }
-  });
 
   const [isShowingToaster, setIsShowingToaster] = useState(false);
 

@@ -8,7 +8,6 @@
             [metabase.automagic-dashboards.rules :as rules]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models :refer [Card Collection Database Field Metric Table]]
-            [metabase.models.field :as field]
             [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
@@ -28,11 +27,11 @@
 
 (deftest ->reference-test
   (is (= [:field 1 nil]
-         (->> (assoc (field/->FieldInstance) :id 1)
+         (->> (assoc (mi/instance Field) :id 1)
               (#'magic/->reference :mbql))))
 
   (is (= [:field 2 {:source-field 1}]
-         (->> (assoc (field/->FieldInstance) :id 1 :fk_target_field_id 2)
+         (->> (assoc (mi/instance Field) :id 1 :fk_target_field_id 2)
               (#'magic/->reference :mbql))))
 
   (is (= 42
@@ -549,7 +548,8 @@
 (deftest filter-referenced-fields-test
   (testing "X-Ray should work if there's a filter in the question (#19241)"
     (mt/dataset sample-dataset
-      (let [query (query/map->QueryInstance
+      (let [query (mi/instance
+                   Query
                    {:database-id   (mt/id)
                     :table-id      (mt/id :products)
                     :dataset_query {:database (mt/id)
