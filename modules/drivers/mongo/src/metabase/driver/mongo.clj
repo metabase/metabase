@@ -230,11 +230,11 @@
 
 (defmethod driver/database-supports? [:mongo :expressions] [_ _ db]
   (let [version (db-major-version db)]
-    (and (some? version) (<= 4 version))))
+    (and (some? version) (>= version 4))))
 
 (defmethod driver/database-supports? [:mongo :date-arithmetics] [_ _ db]
   (let [version (db-major-version db)]
-    (and (some? version) (<= 4 version))))
+    (and (some? version) (>= version 5))))
 
 (defmethod driver/mbql->native :mongo
   [_ query]
