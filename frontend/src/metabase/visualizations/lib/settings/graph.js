@@ -301,7 +301,10 @@ export const STACKABLE_SETTINGS = {
         : null,
     getHidden: (series, settings) => {
       const displays = series.map(single => settings.series(single).display);
-      return !_.any(displays, display => STACKABLE_DISPLAY_TYPES.has(display));
+      const stackableDisplays = displays.filter(display =>
+        STACKABLE_DISPLAY_TYPES.has(display),
+      );
+      return stackableDisplays.length <= 1;
     },
     readDependencies: ["graph.metrics", "series"],
   },
