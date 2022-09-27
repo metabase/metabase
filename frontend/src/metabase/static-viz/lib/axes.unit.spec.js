@@ -1,4 +1,4 @@
-import { getRotatedXTickHeight, getXTickWidth, getYTickWidth } from "./axes";
+import { getXTickWidth, getYTickWidth } from "./axes";
 
 const fontSize = 11;
 
@@ -11,12 +11,6 @@ describe("getXTickWidth", () => {
     const xTickHeight = getXTickWidth(data, accessors, maxWidth, fontSize);
 
     expect(Math.round(xTickHeight)).toBe(19);
-  });
-});
-
-describe("getRotatedXTickHeight", () => {
-  it("should get tick height by width assuming 45deg rotation", () => {
-    expect(getRotatedXTickHeight(12)).toBe(9);
   });
 });
 

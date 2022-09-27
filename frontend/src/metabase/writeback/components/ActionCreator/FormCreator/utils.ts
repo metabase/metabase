@@ -9,12 +9,13 @@ import type {
 import validate from "metabase/lib/validate";
 import type { Parameter } from "metabase-types/types/Parameter";
 import type { TemplateTag } from "metabase-types/types/Query";
+import type { Validator } from "metabase-types/forms";
 
 export const getDefaultFormSettings = (
   overrides: Partial<ActionFormSettings> = {},
 ): ActionFormSettings => ({
   name: "",
-  type: "inline",
+  type: "modal",
   description: "",
   fields: {},
   confirmMessage: "",
@@ -68,14 +69,12 @@ const fieldPropsTypeMap: FieldPropTypeMap = {
 const inputTypeHasOptions = (fieldSettings: FieldSettings) =>
   ["dropdown", "inline-select"].includes(fieldSettings.inputType);
 
-type validator = (...args: (string | number)[]) => string | void;
-
 interface FieldProps {
   type: string;
   options?: OptionType[];
   values?: any;
   placeholder?: string;
-  validate?: validator;
+  validate?: Validator;
 }
 
 const getParameterFieldProps = (fieldSettings: FieldSettings) => {

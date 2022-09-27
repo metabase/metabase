@@ -44,21 +44,21 @@ const partitions = [
     name: "rows",
     columnFilter: isDimension,
     title: (
-      <PivotTableSettingLabel>{t`Fields to use for the table rows`}</PivotTableSettingLabel>
+      <PivotTableSettingLabel data-testId="pivot-table-setting">{t`Rows`}</PivotTableSettingLabel>
     ),
   },
   {
     name: "columns",
     columnFilter: isDimension,
     title: (
-      <PivotTableSettingLabel>{t`Fields to use for the table columns`}</PivotTableSettingLabel>
+      <PivotTableSettingLabel data-testId="pivot-table-setting">{t`Columns`}</PivotTableSettingLabel>
     ),
   },
   {
     name: "values",
     columnFilter: col => !isDimension(col),
     title: (
-      <PivotTableSettingLabel>{t`Fields to use for the table values`}</PivotTableSettingLabel>
+      <PivotTableSettingLabel data-testId="pivot-table-setting">{t`Measures`}</PivotTableSettingLabel>
     ),
   },
 ];
