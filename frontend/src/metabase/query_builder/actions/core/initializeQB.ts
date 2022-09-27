@@ -347,7 +347,10 @@ async function handleQBInit(
   });
 
   if (uiControls.queryBuilderMode !== "notebook") {
-    if (question.canRun() && question.isSameSite(MetabaseSettings.siteUUID())) {
+    if (
+      question.canRun() &&
+      question.isSameOrigin(MetabaseSettings.siteUUID())
+    ) {
       // Timeout to allow Parameters widget to set parameterValues
       setTimeout(
         () => dispatch(runQuestionQuery({ shouldUpdateUrl: false })),

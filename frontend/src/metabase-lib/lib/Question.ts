@@ -479,7 +479,7 @@ class QuestionInner {
     return (db && db.auto_run_queries) || false;
   }
 
-  isSameSite(siteUUID: string): boolean {
+  isSameOrigin(siteUUID: string): boolean {
     if (this.isSaved() || this.isStructured()) {
       return true;
     } else {

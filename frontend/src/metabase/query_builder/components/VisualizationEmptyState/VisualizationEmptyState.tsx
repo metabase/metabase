@@ -1,5 +1,18 @@
 import React from "react";
-import { t } from "ttag";
+import { t, jt } from "ttag";
+import { connect } from "react-redux";
+import {
+  cancelQuery,
+  runQuestionQuery,
+  updateQuestionOrigin,
+} from "metabase/query_builder/actions";
+import {
+  getFirstQueryResult,
+  getIsResultDirty,
+  getIsRunning,
+  getIsSameOrigin,
+} from "metabase/query_builder/selectors";
+import { State } from "metabase-types/store";
 import {
   EmptyStateBody,
   EmptyStateCaption,
@@ -7,6 +20,7 @@ import {
   EmptyStateRoot,
   EmptyStateTitle,
   EmptyStateRunButton,
+  EmptyStateLink,
 } from "./VisualizationEmptyState.styled";
 
 export interface VisualizationEmptyStateProps {
@@ -15,8 +29,9 @@ export interface VisualizationEmptyStateProps {
   isRunning: boolean;
   isSameOrigin: boolean;
   isResultDirty: boolean;
-  runQuestionQuery: () => void;
-  cancelQuery: () => void;
+  onRunQuery: () => void;
+  onCancelQuery: () => void;
+  onUpdateOrigin: () => void;
 }
 
 const VisualizationEmptyState = ({
@@ -25,8 +40,9 @@ const VisualizationEmptyState = ({
   isRunning,
   isSameOrigin,
   isResultDirty,
-  runQuestionQuery,
-  cancelQuery,
+  onRunQuery,
+  onCancelQuery,
+  onUpdateOrigin,
 }: VisualizationEmptyStateProps): JSX.Element => {
   return (
     <EmptyStateRoot className={className}>
@@ -40,7 +56,12 @@ const VisualizationEmptyState = ({
             {t`This query looks a little fishy`}
           </EmptyStateTitle>
           <EmptyStateMessage>
-            {t`The URL doesn’t look quite right. It could be nothing more than that it’s an old URL, so you can try updating it.`}
+            {jt`The URL doesn’t look quite right. It could be nothing more than that it’s an old URL, so you can ${(
+              <EmptyStateLink
+                key="link"
+                onClick={onUpdateOrigin}
+              >{t`try updating it`}</EmptyStateLink>
+            )}.`}
           </EmptyStateMessage>
           <EmptyStateMessage>
             {t`But before you run this query, make sure you trust where this link came from, then go ahead and run the query.`}
@@ -51,8 +72,8 @@ const VisualizationEmptyState = ({
             result={result}
             isRunning={isRunning}
             isDirty={isResultDirty}
-            onRun={() => runQuestionQuery()}
-            onCancel={() => cancelQuery()}
+            onRun={onRunQuery}
+            onCancel={onCancelQuery}
           />
         </EmptyStateBody>
       )}
@@ -60,4 +81,20 @@ const VisualizationEmptyState = ({
   );
 };
 
-export default VisualizationEmptyState;
+const mapStateToProps = (state: State) => ({
+  result: getFirstQueryResult(state),
+  isRunning: getIsRunning(state),
+  isSameOrigin: getIsSameOrigin(state),
+  isResultDirty: getIsResultDirty(state),
+});
+
+const mapDispatchToProps = {
+  onRunQuery: runQuestionQuery,
+  onCancelQuery: cancelQuery,
+  onUpdateOrigin: updateQuestionOrigin,
+};
+
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(VisualizationEmptyState);

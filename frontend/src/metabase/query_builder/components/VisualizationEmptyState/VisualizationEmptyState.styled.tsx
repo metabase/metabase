@@ -40,6 +40,11 @@ export const EmptyStateMessage = styled.div`
   }
 `;
 
+export const EmptyStateLink = styled.span`
+  cursor: pointer;
+  color: ${color("brand")};
+`;
+
 export const EmptyStateRunButton = styled(RunButtonWithTooltip)`
   align-self: center;
   box-shadow: 0 2px 2px ${color("shadow")};

@@ -1,7 +1,7 @@
-import _ from "underscore";
 import { createAction } from "redux-actions";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import MetabaseSettings from "metabase/lib/settings";
 import { loadCard } from "metabase/lib/card";
 import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
 import { shouldOpenInBlankWindow } from "metabase/lib/dom";
@@ -268,5 +268,15 @@ export const revertToRevision = createThunkAction(
       await revision.revert();
       await dispatch(reloadCard());
     };
+  },
+);
+
+export const UPDATE_QUESTION_ORIGIN = "metabase/qb/UPDATE_QUESTION_ORIGIN";
+export const updateQuestionOrigin = createThunkAction(
+  UPDATE_QUESTION_ORIGIN,
+  () => (dispatch, getState) => {
+    const question = getQuestion(getState());
+    const newQuestion = question.setSiteUUID(MetabaseSettings.siteUUID());
+    dispatch(updateQuestion(newQuestion, { shouldUpdateUrl: true }));
   },
 );

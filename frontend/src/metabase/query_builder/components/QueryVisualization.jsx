@@ -36,12 +36,6 @@ export default class QueryVisualization extends Component {
     }
   }
 
-  runQuery = () => {
-    const { isResultDirty } = this.props;
-    // ignore the cache if we're hitting "Refresh" (which we only show if isResultDirty = false)
-    this.props.runQuestionQuery({ ignoreCache: !isResultDirty });
-  };
-
   handleUpdateWarnings = warnings => {
     this.setState({ warnings });
   };
@@ -99,7 +93,7 @@ export default class QueryVisualization extends Component {
               onUpdateWarnings={this.handleUpdateWarnings}
             />
           ) : !isRunning ? (
-            <VisualizationEmptyState className="spread" {...this.props} />
+            <VisualizationEmptyState className="spread" />
           ) : null}
         </div>
       </div>

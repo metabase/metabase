@@ -579,9 +579,9 @@ export const getIsRunnable = createSelector(
   },
 );
 
-export const getIsSameSite = createSelector([getQuestion], question => {
+export const getIsSameOrigin = createSelector([getQuestion], question => {
   if (question) {
-    return question.isSameSite(MetabaseSettings.siteUUID());
+    return question.isSameOrigin(MetabaseSettings.siteUUID());
   } else {
     return false;
   }

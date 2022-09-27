@@ -58,7 +58,7 @@ import {
   getSampleDatabaseId,
   getNativeDatabases,
   getIsRunnable,
-  getIsSameSite,
+  getIsSameOrigin,
   getIsResultDirty,
   getMode,
   getModalSnippet,
@@ -160,7 +160,7 @@ const mapStateToProps = (state, props) => {
     sampleDatabaseId: getSampleDatabaseId(state),
 
     isRunnable: getIsRunnable(state),
-    isSameSite: getIsSameSite(state),
+    isSameOrigin: getIsSameOrigin(state),
     isResultDirty: getIsResultDirty(state),
 
     questionAlerts: getQuestionAlerts(state),
