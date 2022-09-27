@@ -153,6 +153,10 @@ class Settings {
     this._listeners[key]!.push(callback);
   }
 
+  siteUUID() {
+    return this.get("site-uuid");
+  }
+
   // these are all special accessors which provide a lookup of a property plus some additional help
   adminEmail() {
     return this.get("admin-email");

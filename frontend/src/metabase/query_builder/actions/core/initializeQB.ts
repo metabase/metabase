@@ -3,6 +3,7 @@ import querystring from "querystring";
 import { LocationDescriptorObject } from "history";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import MetabaseSettings from "metabase/lib/settings";
 import { deserializeCardFromUrl, loadCard } from "metabase/lib/card";
 import { normalize } from "metabase/lib/query/normalize";
 import * as Urls from "metabase/lib/urls";
@@ -346,7 +347,10 @@ async function handleQBInit(
   });
 
   if (uiControls.queryBuilderMode !== "notebook") {
-    if (question.canRun()) {
+    if (
+      question.canRun() &&
+      question.isSameOrigin(MetabaseSettings.siteUUID())
+    ) {
       // Timeout to allow Parameters widget to set parameterValues
       setTimeout(
         () => dispatch(runQuestionQuery({ shouldUpdateUrl: false })),
