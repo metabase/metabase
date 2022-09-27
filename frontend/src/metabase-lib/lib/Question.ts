@@ -86,6 +86,7 @@ export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
   tableId?: TableId;
   collectionId?: CollectionId;
+  siteUUID?: string;
   metadata?: Metadata;
   parameterValues?: ParameterValues;
   type?: "query" | "native";
@@ -604,6 +605,7 @@ class QuestionInner {
           databaseId: this.databaseId(),
           tableId: field.table_id,
           metadata: this.metadata(),
+          siteUUID: this.siteUUID(),
         }).query();
         return drillQuery.addFilter(["=", field.reference(), value]).question();
       }
@@ -1354,6 +1356,7 @@ export default class Question extends memoizeClass<QuestionInner>(
     databaseId,
     tableId,
     collectionId,
+    siteUUID,
     metadata,
     parameterValues,
     type = "query",
@@ -1382,6 +1385,10 @@ export default class Question extends memoizeClass<QuestionInner>(
 
     if (databaseId != null) {
       card = assocIn(card, ["dataset_query", "database"], databaseId);
+    }
+
+    if (siteUUID != null) {
+      card = assocIn(card, ["site_uuid"], siteUUID);
     }
 
     return new Question(card, metadata, parameterValues);

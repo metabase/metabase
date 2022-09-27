@@ -1,4 +1,3 @@
-import _ from "underscore";
 import querystring from "querystring";
 import { LocationDescriptorObject } from "history";
 
@@ -77,8 +76,9 @@ function getCardForBlankQuestion({
 }: BlankQueryOptions) {
   const databaseId = db ? parseInt(db) : undefined;
   const tableId = table ? parseInt(table) : undefined;
+  const siteUUID = MetabaseSettings.siteUUID();
 
-  let question = Question.create({ databaseId, tableId });
+  let question = Question.create({ databaseId, tableId, siteUUID });
 
   if (databaseId && tableId) {
     if (segment) {
