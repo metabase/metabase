@@ -45,7 +45,9 @@ This section covers functions and formulas that work the same way as the Metabas
 
 ### SQL
 
-In most cases (unless you're using a NoSQL database), questions created from the [notebook editor](https://www.metabase.com/glossary/notebook_editor) are converted into SQL queries that run against your database or data warehouse.
+In most cases (unless you're using a NoSQL database), questions created from the [notebook editor](https://www.metabase.com/glossary/notebook_editor) are converted into SQL queries that run against your database or data warehouse. 
+
+If our [sample data](#combining-text-from-different-columns) is stored in a relational database:
 
 ```sql
 SELECT
