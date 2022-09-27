@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import { isStructured } from "metabase/lib/query";
 import { getQuestionVirtualTableId } from "metabase/lib/saved-questions";
 import MetabaseSettings from "metabase/lib/settings";
@@ -68,6 +70,21 @@ export function isAdHocModelQuestion(
     return false;
   }
   return isAdHocModelQuestionCard(question.card(), originalQuestion.card());
+}
+
+export function isEquivalentAdHocModelQuestion(
+  question: Question,
+  otherQuestion: Question,
+) {
+  const dataset_query = question.datasetQuery() as StructuredDatasetQuery;
+  const query = dataset_query.query;
+
+  return (
+    isAdHocModelQuestion(question, otherQuestion) &&
+    _.isEqual(query, {
+      "source-table": getQuestionVirtualTableId(question.card()),
+    })
+  );
 }
 
 export function checkCanRefreshModelCache(

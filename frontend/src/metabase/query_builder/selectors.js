@@ -17,7 +17,10 @@ import { getCardUiParameters } from "metabase/parameters/utils/cards";
 import { normalizeParameterValue } from "metabase/parameters/utils/parameter-values";
 import { isPK } from "metabase/lib/schema_metadata";
 
-import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
+import {
+  isAdHocModelQuestion,
+  isEquivalentAdHocModelQuestion,
+} from "metabase/lib/data-modeling/utils";
 
 import Databases from "metabase/entities/databases";
 import Timelines from "metabase/entities/timelines";
@@ -378,41 +381,55 @@ function areQueriesEqual(queryA, queryB, tableMetadata) {
   return _.isEqual(normalizedQueryA, normalizedQueryB);
 }
 
+// question can be composed or not composed
+// A, A', B, B' should be equivalent if B == A
 function areModelsEquivalent({
   originalQuestion,
   lastRunQuestion,
   currentQuestion,
   tableMetadata,
 }) {
-  if (!originalQuestion?.isDataset()) {
+  if (!lastRunQuestion || !currentQuestion || !originalQuestion?.isDataset()) {
     return false;
   }
 
-  // When viewing a model, its dataset_query is swapped with a clean query using the dataset as a source table
-  // (it's necessary for datasets to behave like tables opened in simple mode)
-  // We need to escape the isDirty check as it will always be true in this case,
-  // and the page will always be covered with a 'rerun' overlay.
-  // Once the dataset_query changes, the question will loose the "dataset" flag and it'll work normally
-  const isCurrentEquivalentToOriginal =
-    currentQuestion &&
-    isAdHocModelQuestion(currentQuestion, originalQuestion) &&
-    areQueriesEqual(
-      lastRunQuestion?.datasetQuery(),
-      currentQuestion.datasetQuery(),
-    );
+  const isLastRunAdhoc = isEquivalentAdHocModelQuestion(
+    lastRunQuestion,
+    originalQuestion,
+  );
 
-  // When editing a model, the `currentQuestion` reverts to the form of the original question,
-  // but the model query might've already been run in its "ad-hoc" form.
-  const isLastRunUnchangedFromOriginal =
-    lastRunQuestion &&
-    isAdHocModelQuestion(lastRunQuestion, originalQuestion) &&
-    areQueriesEqual(
+  const isCurrentAdhoc = isEquivalentAdHocModelQuestion(
+    currentQuestion,
+    originalQuestion,
+  );
+
+  // if last run was composed, that means it is equiv to the current,
+  // so dirty is determined by whether current is equal to original
+  // or composed original
+  const a =
+    isLastRunAdhoc &&
+    (areQueriesEqual(
       currentQuestion.datasetQuery(),
+      originalQuestion.datasetQuery(),
+      tableMetadata,
+    ) ||
+      areQueriesEqual(
+        currentQuestion.datasetQuery(),
+        originalQuestion.composeDataset().datasetQuery(),
+        tableMetadata,
+      ));
+
+  // if the last run wasn't composed but the current is composed,
+  // check that the last run
+  const b =
+    isCurrentAdhoc &&
+    areQueriesEqual(
+      lastRunQuestion.datasetQuery(),
       originalQuestion.datasetQuery(),
       tableMetadata,
     );
 
-  return isCurrentEquivalentToOriginal || isLastRunUnchangedFromOriginal;
+  return a || b;
 }
 
 function areQueriesEquivalent({
