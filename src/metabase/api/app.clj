@@ -8,6 +8,7 @@
     [metabase.api.collection :as api.collection]
     [metabase.api.common :as api]
     [metabase.models :refer [App Collection Dashboard Table]]
+    [metabase.models.app.graph :as graph]
     [metabase.models.collection :as collection]
     [metabase.models.dashboard :as dashboard]
     [metabase.util.i18n :as i18n]
@@ -27,6 +28,7 @@
                         (select-keys [:dashboard_id :options :nav_items])
                         (assoc :collection_id (:id collection-instance)))
          app (db/insert! App app-params)]
+     (graph/set-default-permissions! app)
      (hydrate-details app))))
 
 (api/defendpoint POST "/"
@@ -267,5 +269,38 @@
       (db/update! App app-id {:nav_items (vec (concat nav-items (:nav_items app)))})
       (create-scaffold-dashcards! scaffold-target->id pages)
       (hydrate-details (db/select-one App :id app-id)))))
+
+
+;;; ------------------------------------------------ GRAPH ENDPOINTS -------------------------------------------------
+
+(api/defendpoint GET "/global-graph"
+  "Fetch the global graph of all App Permissions."
+  []
+  (api/check-superuser)
+  (graph/global-graph))
+
+(defn- ->int [id] (Integer/parseInt (name id)))
+
+(defn- dejsonify-id->permission-map [m]
+  (into {}
+        (map (fn [[k v]]
+               [(->int k) (keyword v)]))
+        m))
+
+(defn- dejsonify-global-graph
+  "Fix the types in the graph when it comes in from the API, e.g. converting things like `\"none\"` to `:none` and
+  parsing object keys as integers."
+  [graph]
+  (update graph :groups dejsonify-id->permission-map))
+
+(api/defendpoint PUT "/global-graph"
+  "Do a batch update of the global App Permissions by passing in a modified graph."
+  [:as {body :body}]
+  {body su/Map}
+  (api/check-superuser)
+  (-> body
+      dejsonify-global-graph
+      graph/update-global-graph!)
+  (graph/global-graph))
 
 (api/define-routes)

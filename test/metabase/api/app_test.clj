@@ -2,7 +2,9 @@
   (:require
     [clojure.test :refer [deftest is testing]]
     [medley.core :as m]
-    [metabase.models :refer [App Card Collection Dashboard]]
+    [metabase.models :refer [App Card Collection Dashboard Permissions]]
+    [metabase.models.app.graph :as app.graph]
+    [metabase.models.collection.graph :as graph]
     [metabase.models.permissions :as perms]
     [metabase.models.permissions-group :as perms-group]
     [metabase.test :as mt]
@@ -11,7 +13,7 @@
     [toucan.hydrate :refer [hydrate]]))
 
 (deftest create-test
-  (mt/with-model-cleanup [Collection]
+  (mt/with-model-cleanup [Collection Permissions]
     (let [base-params {:name "App collection"
                        :color "#123456"}]
       (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
@@ -22,13 +24,20 @@
               (is (pos-int? (:id response)))
               (is (pos-int? (:collection_id response)))
               (is (partial= (assoc base-params :location "/")
-                            (:collection response))))))
+                            (:collection response)))
+              (is (partial= {:groups {(:id (perms-group/all-users)) {(:collection_id response) :none}}}
+                            (graph/graph))
+                  "''All Users'' should have the default permission on the app collection"))))
         (testing "Create app in the root"
-          (let [response (mt/user-http-request :crowberto :post 200 "app" {:collection base-params})]
-            (is (pos-int? (:id response)))
-            (is (pos-int? (:collection_id response)))
-            (is (partial= (assoc base-params :location "/")
-                          (:collection response)))))
+          (mt/with-temporary-setting-values [all-users-app-permission :read]
+            (let [response (mt/user-http-request :crowberto :post 200 "app" {:collection base-params})]
+             (is (pos-int? (:id response)))
+             (is (pos-int? (:collection_id response)))
+             (is (partial= (assoc base-params :location "/")
+                           (:collection response)))
+             (is (partial= {:groups {(:id (perms-group/all-users)) {(:collection_id response) :read}}}
+                           (graph/graph))
+                 "''All Users'' should have the default permission on the app collection"))))
         (testing "With initial dashboard and nav_items"
           (mt/with-temp Dashboard [{dashboard-id :id}]
             (let [nav_items [{:options {:click_behavior {}}}]]
@@ -137,25 +146,29 @@
                  (mt/user-http-request :rasta :get 403 (str "app/" app-id)))))))))
 
 (deftest scaffold-test
-  (mt/with-model-cleanup [Card Dashboard Collection]
+  (mt/with-model-cleanup [Card Dashboard Collection Permissions]
     (testing "Golden path"
-      (let [app (mt/user-http-request
-                  :crowberto :post 200 "app/scaffold"
-                  {:table-ids [(data/id :venues)]
-                   :app-name "My test app"})
-            pages (m/index-by :name (hydrate (db/select Dashboard :collection_id (:collection_id app)) :ordered_cards))
-            list-page (get pages "Venues List")
-            detail-page (get pages "Venues Detail")]
-        (is (partial= {:nav_items [{:page_id (:id list-page)}
-                                   {:page_id (:id detail-page) :hidden true :indent 1}]
-                       :dashboard_id (:id list-page)}
-                      app))
-        (is (partial= {:ordered_cards [{:visualization_settings {:click_behavior
-                                                                 {:type "link",
-                                                                  :linkType "page",
-                                                                  :targetId (:id detail-page)}}}
-                                       {}]}
-                      list-page))))
+      (mt/with-temporary-setting-values [all-users-app-permission :read]
+        (let [app (mt/user-http-request
+                   :crowberto :post 200 "app/scaffold"
+                   {:table-ids [(data/id :venues)]
+                    :app-name "My test app"})
+              pages (m/index-by :name (hydrate (db/select Dashboard :collection_id (:collection_id app)) :ordered_cards))
+              list-page (get pages "Venues List")
+              detail-page (get pages "Venues Detail")]
+          (is (partial= {:nav_items [{:page_id (:id list-page)}
+                                     {:page_id (:id detail-page) :hidden true :indent 1}]
+                         :dashboard_id (:id list-page)}
+                        app))
+          (is (partial= {:ordered_cards [{:visualization_settings {:click_behavior
+                                                                   {:type "link",
+                                                                    :linkType "page",
+                                                                    :targetId (:id detail-page)}}}
+                                         {}]}
+                        list-page))
+          (is (partial= {:groups {(:id (perms-group/all-users)) {(:collection_id app) :read}}}
+                        (graph/graph))
+              "''All Users'' should have the default permission on the app collection"))))
     (testing "Bad or duplicate tables"
       (is (= (format "Some tables could not be found. Given: (%s %s) Found: (%s)"
                      (data/id :venues)
@@ -167,7 +180,7 @@
                 :app-name (str "My test app " (gensym))}))))))
 
 (deftest scaffold-app-test
-  (mt/with-model-cleanup [Card Dashboard Collection]
+  (mt/with-model-cleanup [Card Dashboard]
     (mt/with-temp* [Collection [{collection-id :id}]
                     App [{app-id :id} {:collection_id collection-id}]]
       (testing "Without existing pages"
@@ -204,3 +217,24 @@
                                                                     :targetId (:id detail-page)}}}
                                          {}]}
                         list-page)))))))
+
+(deftest global-ggraph-test
+  (mt/with-model-cleanup [Collection Permissions]
+    (let [base-params {:name "App collection"
+                       :color "#123456"}]
+      (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
+        (testing "changing default permission"
+          (mt/with-temp* [Collection [{collection-id :id}]]
+            (let [coll-params (assoc base-params :parent_id collection-id)
+                  response1 (mt/user-http-request :crowberto :post 200 "app" {:collection coll-params})
+                  response2 (mt/user-http-request :crowberto :post 200 "app" {:collection base-params})]
+              (is (partial= {:groups {(:id (perms-group/all-users)) {(:collection_id response1) :none
+                                                                     (:collection_id response2) :none}}}
+                            (graph/graph)))
+              (mt/user-http-request :crowberto :put 200 "app/global-graph"
+                                    (assoc-in (mt/user-http-request :crowberto :get 200 "app/global-graph")
+                                              [:groups (:id (perms-group/all-users))]
+                                              :write))
+              (is (partial= {:groups {(:id (perms-group/all-users)) {(:collection_id response1) :write
+                                                                     (:collection_id response2) :write}}}
+                            (graph/graph))))))))))
