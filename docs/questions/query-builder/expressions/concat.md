@@ -57,7 +57,7 @@ FROM
 is equivalent to the Metabase `concat` expression:
 
 ```
-concat([City], ",", [Country])
+concat([City], ", ", [Country])
 ```
 
 ### Spreadsheets
@@ -71,7 +71,7 @@ If our [sample data](#combining-text-from-different-columns) is in a spreadsheet
 which is equivalent to the Metabase `concat` expression:
 
 ```
-concat([City], ",", [Country])
+concat([City], ", ", [Country])
 ```
 
 ### Python
@@ -85,7 +85,7 @@ df["Location"] = df["City"] + ", " + df["Country"]
 is the same as the Metabase `concat` expression:
 
 ```
-concat([City], ",", [Country])
+concat([City], ", ", [Country])
 ```
 
 ## Further reading
