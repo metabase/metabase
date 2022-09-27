@@ -8,12 +8,17 @@
 (deftest get-test
   (actions.test-util/with-actions-enabled
     (actions.test-util/with-action [{:keys [action-id]} {}]
-      (mt/with-temp* [Card [{card-id :id} {:dataset true}]
-                      ModelAction [_ {:action_id action-id :card_id card-id :slug "insert"}]]
-        (let [response (mt/user-http-request :crowberto :get 200 (str "model-action?card-id=" card-id))]
-          (is (partial=
-                [{:slug "insert"}]
-                response)))))))
+      (actions.test-util/with-action [{http-action-id :action-id} {:name "HTTP Example"}]
+        (mt/with-temp* [Card [{card-id :id} {:dataset true}]
+                        ModelAction [_ {:card_id card-id :action_id action-id :slug "query"}]
+                        ModelAction [_ {:card_id card-id :action_id http-action-id :slug "http"}]
+                        ModelAction [_ {:card_id card-id :slug "implicit"}]]
+          (let [response (mt/user-http-request :crowberto :get 200 (str "model-action?card-id=" card-id))]
+            (is (partial=
+                  [{:slug "query" :name "Query Example"}
+                   {:slug "http" :name "HTTP Example"}
+                   {:slug "implicit" :name nil}]
+                  response))))))))
 
 (deftest post-test
   (actions.test-util/with-actions-enabled

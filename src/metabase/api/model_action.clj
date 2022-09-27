@@ -1,7 +1,8 @@
 (ns metabase.api.model-action
   (:require
+    [honeysql.core :as hsql]
     [metabase.api.common :as api]
-    [metabase.models :refer [Action ModelAction]]
+    [metabase.models :refer [Action Card HTTPAction ModelAction QueryAction]]
     [metabase.util.schema :as su]
     [schema.core :as s]
     [toucan.db :as db]))
@@ -10,7 +11,14 @@
   "Endpoint to fetch actions for a model, must filter with card-id="
   [card-id]
   {card-id su/IntGreaterThanZero}
-  (db/select ModelAction :card_id card-id))
+  (db/query {:select [:model_action.*
+                      [(hsql/call :coalesce :report_card.name :http_action.name) :name]]
+             :from [ModelAction]
+             :left-join [QueryAction [:= :model_action.action_id :query_action.action_id]
+                         Card [:= :report_card.id :query_action.card_id]
+                         HTTPAction [:= :model_action.action_id :http_action.action_id]]
+             :where [:= :model_action.card_id card-id]
+             :order-by [:model_action.id]}))
 
 (api/defendpoint POST "/"
   "Endpoint to associate an action with a model"
