@@ -212,8 +212,7 @@ export const GRAPH_DATA_SETTINGS = {
         addedMetricsCount < maxMetricsSupportedCount &&
         hasMetricsToAdd &&
         !hasBreakout &&
-        addedMetrics.filter(metric => metric === null || metric === undefined)
-          .length === 0;
+        addedMetrics.every(metric => metric != null);
 
       return {
         options,
