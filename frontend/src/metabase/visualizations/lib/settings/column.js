@@ -407,7 +407,7 @@ export const NUMBER_COLUMN_SETTINGS = {
     widget: "input",
     variant: "form-field",
     props: {
-      placeholder: t`$`,
+      placeholder: "$",
     },
   },
   suffix: {
