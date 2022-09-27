@@ -76,5 +76,30 @@ module.exports = defineConfig({
 
       return config;
     },
+    supportFile: "frontend/test/__support__/e2e/cypress.js",
+    // New `specPattern` is the combination of the old:
+    //   1. testFiles and
+    //   2. integrationFolder
+    specPattern: "frontend/test/**/*.cy.spec.js",
+
+    // Cypress.json
+    videoUploadOnPasses: false,
+    chromeWebSecurity: false,
+    modifyObstructiveCode: false,
+    projectId: "KetpiS",
+    viewportHeight: 800,
+    viewportWidth: 1280,
+    reporter: "mochawesome",
+    reporterOptions: {
+      reportDir: "cypress/reports/mochareports",
+      reportFilename: "[status]-[name]",
+      quiet: true,
+      html: false,
+      json: true,
+    },
+    retries: {
+      runMode: 2,
+      openMode: 0,
+    },
   },
 });
