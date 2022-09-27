@@ -339,6 +339,8 @@ export const GRAPH_GOAL_SETTINGS = {
     title: t`Goal line`,
     widget: "toggle",
     default: false,
+    inline: true,
+    marginBottom: "1rem",
   },
   "graph.goal_value": {
     section: t`Display`,
@@ -366,6 +368,8 @@ export const GRAPH_GOAL_SETTINGS = {
       return !insights || insights.length === 0;
     },
     useRawSeries: true,
+    inline: true,
+    marginBottom: "1rem",
   },
 };
 
@@ -377,27 +381,31 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
     getHidden: (series, vizSettings) =>
       vizSettings["stackable.stack_type"] === "normalized",
     default: false,
+    inline: true,
+    marginBottom: "1rem",
   },
   "graph.label_value_frequency": {
     section: t`Display`,
     title: t`Values to show`,
-    widget: "radio",
+    widget: "segmentedControl",
     getHidden: (series, vizSettings) =>
       vizSettings["graph.show_values"] !== true ||
       vizSettings["stackable.stack_type"] === "normalized",
     props: {
       options: [
-        { name: t`As many as can fit nicely`, value: "fit" },
+        { name: t`Some`, value: "fit" },
         { name: t`All`, value: "all" },
       ],
+      variant: "fill-background",
+      inactiveColor: "text-dark",
     },
     default: "fit",
     readDependencies: ["graph.show_values"],
   },
   "graph.label_value_formatting": {
     section: t`Display`,
-    title: t`Value formatting`,
-    widget: "radio",
+    title: t`Auto formatting`,
+    widget: "segmentedControl",
     getHidden: (series, vizSettings) =>
       vizSettings["graph.show_values"] !== true ||
       vizSettings["stackable.stack_type"] === "normalized",
@@ -407,6 +415,8 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
         { name: t`Compact`, value: "compact" },
         { name: t`Full`, value: "full" },
       ],
+      variant: "fill-background",
+      inactiveColor: "text-dark",
     },
     default: "auto",
     readDependencies: ["graph.show_values"],
