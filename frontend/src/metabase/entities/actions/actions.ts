@@ -2,13 +2,14 @@ import { createEntity } from "metabase/lib/entities";
 
 import type { ActionFormSettings } from "metabase-types/api";
 
-import { CardApi, ModelActionsApi } from "metabase/services";
+import { ActionsApi, CardApi, ModelActionsApi } from "metabase/services";
 
 import {
   removeOrphanSettings,
   addMissingSettings,
   setParameterTypesFromFieldSettings,
   setTemplateTagTypesFromFieldSettings,
+  mapModelActionsToActions,
 } from "metabase/entities/actions/utils";
 import type Question from "metabase-lib/lib/Question";
 import { saveForm, updateForm } from "./forms";
@@ -88,6 +89,18 @@ const Actions = createEntity({
       return card;
     },
     update: updateAction,
+    list: async (props: any) => {
+      const { modelId } = props;
+
+      if (modelId) {
+        const modelActions = await ModelActionsApi.getModelActions({
+          id: modelId,
+        });
+        return modelActions.map(mapModelActionsToActions);
+      }
+
+      return ActionsApi.list(props);
+    },
   },
   forms: {
     saveForm,

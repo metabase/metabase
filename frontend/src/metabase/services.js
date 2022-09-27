@@ -537,6 +537,7 @@ function setParamsEndpoints(prefix) {
 }
 
 export const ActionsApi = {
+  list: GET("/api/action"),
   create: POST("/api/action/row/create"),
   update: POST("/api/action/row/update"),
   delete: POST("/api/action/row/delete"),
@@ -548,7 +549,7 @@ export const ActionsApi = {
 };
 
 export const ModelActionsApi = {
-  getModelActions: GET("/api/model-action"),
+  getModelActions: GET("/api/model-action?card-id=:id"),
   connectActionToModel: POST("/api/model-action"),
   updateConnection: PUT("/api/model-action/:id"),
   disconnectActionFromModel: POST("/api/model-action"),
