@@ -49,7 +49,7 @@ For an introduction to expressions, check out [Writing expressions in the notebo
   - [round](#round)
   - [sqrt](#sqrt)
   - [startswith](#startswith)
-  - [substring](#substring)
+  - [substring](./expressions/substring.md)
   - [trim](#trim)
   - [upper](#upper)
 - [Database limitations](#database-limitations)
@@ -422,7 +422,7 @@ Example: `startsWith([Course Name], "Computer Science")` would return true for c
 
 Related: [endswith](#endswith), [contains](#contains).
 
-### substring
+### [substring](./expressions/substring.md)
 
 Returns a portion of the supplied text, specified by a starting position and a length.
 
