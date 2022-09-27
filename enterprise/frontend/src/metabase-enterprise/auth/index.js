@@ -301,6 +301,8 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
     settings: [
       {
         key: "google-auth-client-id",
+        required: true,
+        autoFocus: true,
       },
       {
         // Default to OSS fields if enterprise SSO is not enabled

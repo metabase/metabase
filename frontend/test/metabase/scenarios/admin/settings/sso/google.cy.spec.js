@@ -34,7 +34,7 @@ describe("scenarios > admin > settings > SSO > Google", () => {
     cy.findByRole("switch", { name: "Sign in with Google" }).should(
       "not.be.checked",
     );
-    cy.findByText("Saved").should("be.visible");
+    cy.findByText("Saved").should("exist");
   });
 
   it("should show an error message if the client id does not end with the correct suffix (metabase#15975)", () => {
