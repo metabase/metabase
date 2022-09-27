@@ -57,10 +57,9 @@ const VisualizationEmptyState = ({
           </EmptyStateTitle>
           <EmptyStateMessage>
             {jt`The URL doesn’t look quite right. It could be nothing more than that it’s an old URL, so you can ${(
-              <EmptyStateLink
-                key="link"
-                onClick={onUpdateOrigin}
-              >{t`try updating it`}</EmptyStateLink>
+              <EmptyStateLink key="link" onClick={onUpdateOrigin}>
+                {t`try updating it`}
+              </EmptyStateLink>
             )}.`}
           </EmptyStateMessage>
           <EmptyStateMessage>
