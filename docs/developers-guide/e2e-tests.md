@@ -80,7 +80,7 @@ This is caused by the `@bahmutov/cypress-esbuild-preprocessor` that is using `es
 
 A subset of our tests depend on the external services that are available through the Docker images. At the time of this writing, those are three supported external QA databases, Webmail and LDAP server. It's tedious to have five Docker containers running locally. An escape hatch is provided for people that do not care about these tests, but still need to run specs containing them locally. Run this command:
 
-- `yarn test-cypress-run --env grapTags="-@external" --spec path/to/spec/foo.cy.spec.js`
+- `yarn test-cypress-run --env grepTags="-@external" --spec path/to/spec/foo.cy.spec.js`
 
 Please note the minus sign before the `@external` tag. For more details, consult [the official documentation](https://github.com/cypress-io/cypress-grep#filter-with-tags).
 
