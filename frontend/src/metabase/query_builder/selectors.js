@@ -12,6 +12,7 @@ import {
   getVisualizationTransformed,
 } from "metabase/visualizations";
 import { MetabaseApi } from "metabase/services";
+import MetabaseSettings from "metabase/lib/settings";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { getCardUiParameters } from "metabase/parameters/utils/cards";
 import { normalizeParameterValue } from "metabase/parameters/utils/parameter-values";
@@ -577,6 +578,14 @@ export const getIsRunnable = createSelector(
     return question.canRun();
   },
 );
+
+export const getIsSameSite = createSelector([getQuestion], question => {
+  if (question) {
+    return question.isSameSite(MetabaseSettings.siteUUID());
+  } else {
+    return false;
+  }
+});
 
 export const getQuestionAlerts = createSelector(
   [getAlerts, getCard],
