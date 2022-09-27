@@ -8,6 +8,10 @@ import {
 } from "metabase/static-viz/containers/StaticChart/constants";
 import StaticChart from "metabase/static-viz/containers/StaticChart";
 import {
+  GAUGE_CHART_DEFAULT_OPTIONS,
+  GAUGE_CHART_TYPE,
+} from "metabase/static-viz/components/Gauge/constants";
+import {
   CATEGORICAL_DONUT_CHART_DEFAULT_OPTIONS,
   CATEGORICAL_DONUT_CHART_TYPE,
 } from "../../static-viz/components/CategoricalDonutChart/constants";
@@ -133,6 +137,13 @@ export default function StaticVizPage() {
           <StaticChart
             type={CATEGORICAL_DONUT_CHART_TYPE}
             options={CATEGORICAL_DONUT_CHART_DEFAULT_OPTIONS}
+          />
+        </PageSection>
+        <PageSection>
+          <Subhead>Gauge</Subhead>
+          <StaticChart
+            type={GAUGE_CHART_TYPE}
+            options={GAUGE_CHART_DEFAULT_OPTIONS}
           />
         </PageSection>
         <PageSection>
