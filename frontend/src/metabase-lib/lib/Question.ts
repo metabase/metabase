@@ -453,7 +453,7 @@ class QuestionInner {
   }
 
   creationType(): string | undefined {
-    return this._card?.creation_type;
+    return this._card && this._card.creation_type;
   }
 
   setCreationType(creationType: string | undefined) {
