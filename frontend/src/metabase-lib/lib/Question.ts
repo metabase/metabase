@@ -451,8 +451,12 @@ class QuestionInner {
     return this.datasetQuery().type;
   }
 
-  creationType(): string {
-    return this.card().creationType;
+  creationType(): string | undefined {
+    return this._card?.creation_type;
+  }
+
+  setCreationType(creationType: string | undefined) {
+    return this.setCard(assoc(this.card(), "creation_type", creationType));
   }
 
   isEmpty(): boolean {
@@ -878,6 +882,14 @@ class QuestionInner {
     return !!this.id();
   }
 
+  siteUUID() {
+    return this._card && this._card.site_uuid;
+  }
+
+  setSiteUUID(siteUUID: string) {
+    return this.setCard(assoc(this.card(), "site_uuid", siteUUID));
+  }
+
   publicUUID(): string {
     return this._card && this._card.public_uuid;
   }
@@ -909,13 +921,11 @@ class QuestionInner {
     clean = true,
     query,
     includeDisplayIsLocked,
-    creationType,
   }: {
     originalQuestion?: Question;
     clean?: boolean;
     query?: Record<string, any>;
     includeDisplayIsLocked?: boolean;
-    creationType?: string;
   } = {}): string {
     const question = this.omitTransientCardIds();
 
@@ -927,7 +937,6 @@ class QuestionInner {
         hash: question._serializeForUrl({
           clean,
           includeDisplayIsLocked,
-          creationType,
         }),
         query,
       });
@@ -1223,7 +1232,6 @@ class QuestionInner {
     includeOriginalCardId = true,
     clean = true,
     includeDisplayIsLocked = false,
-    creationType,
   } = {}) {
     const query = clean ? this.query().clean() : this.query();
     const cardCopy = {
@@ -1251,7 +1259,8 @@ class QuestionInner {
           }
         : {}),
 
-      ...(creationType ? { creationType } : {}),
+      site_uuid: this._card.site_uuid,
+      creation_type: this._card.creation_type,
       dashboardId: this._card.dashboardId,
       dashcardId: this._card.dashcardId,
     };

@@ -105,10 +105,11 @@ export function newQuestion({
   objectId,
   ...options
 }: NewQuestionUrlBuilderParams = {}) {
-  const url = Question.create(options).getUrl({
-    creationType,
-    query: objectId ? { objectId } : undefined,
-  });
+  const url = Question.create(options)
+    .setSiteUUID(MetabaseSettings.get("site-uuid"))
+    .setCreationType(creationType)
+    .getUrl({ query: objectId ? { objectId } : undefined });
+
   if (mode) {
     return url.replace(/^\/question/, `/question\/${mode}`);
   } else {
