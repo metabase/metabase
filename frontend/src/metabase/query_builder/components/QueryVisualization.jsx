@@ -1,12 +1,11 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
-import { t } from "ttag";
-
 import cx from "classnames";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
 
+import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Utils from "metabase/lib/utils";
 import { HARD_ROW_LIMIT } from "metabase/lib/query";
+import VisualizationEmptyState from "./VisualizationEmptyState";
 import VisualizationError from "./VisualizationError";
 import VisualizationResult from "./VisualizationResult";
 import Warnings from "./Warnings";
@@ -52,7 +51,6 @@ export default class QueryVisualization extends Component {
       className,
       question,
       isRunning,
-      isSameSite,
       isObjectDetail,
       isResultDirty,
       isNativeEditorOpen,
@@ -100,26 +98,14 @@ export default class QueryVisualization extends Component {
               lastRunDatasetQuery={this.state.lastRunDatasetQuery}
               onUpdateWarnings={this.handleUpdateWarnings}
             />
-          ) : !isRunning && !isSameSite ? (
-            <VisualizationBlockedState className="spread" />
           ) : !isRunning ? (
-            <VisualizationEmptyState className="spread" />
+            <VisualizationEmptyState className="spread" {...this.props} />
           ) : null}
         </div>
       </div>
     );
   }
 }
-
-export const VisualizationEmptyState = ({ className }) => (
-  <div className={cx(className, "flex flex-column layout-centered text-light")}>
-    <h3>{t`Here's where your results will appear`}</h3>
-  </div>
-);
-
-export const VisualizationBlockedState = ({ className }) => {
-  return <div>{t`This query looks a little fishy`}</div>;
-};
 
 export const VisualizationRunningState = ({ className, loadingMessage }) => (
   <div
