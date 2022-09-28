@@ -17,10 +17,7 @@ import { getCardUiParameters } from "metabase/parameters/utils/cards";
 import { normalizeParameterValue } from "metabase/parameters/utils/parameter-values";
 import { isPK } from "metabase/lib/schema_metadata";
 
-import {
-  isAdHocModelQuestion,
-  isEquivalentAdHocModelQuestion,
-} from "metabase/lib/data-modeling/utils";
+import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
 
 import Databases from "metabase/entities/databases";
 import Timelines from "metabase/entities/timelines";
@@ -381,8 +378,10 @@ function areQueriesEqual(queryA, queryB, tableMetadata) {
   return _.isEqual(normalizedQueryA, normalizedQueryB);
 }
 
-// question can be composed or not composed
-// A, A', B, B' should be equivalent if B == A
+// Model questions may be composed via the `composeDataset` method.
+// A composed model question should be treated as equivalent to its original form.
+// We need to handle scenarios where both the `lastRunQuestion` and the `currentQuestion` are
+// in either form.
 function areModelsEquivalent({
   originalQuestion,
   lastRunQuestion,
@@ -393,43 +392,36 @@ function areModelsEquivalent({
     return false;
   }
 
-  const isLastRunAdhoc = isEquivalentAdHocModelQuestion(
-    lastRunQuestion,
-    originalQuestion,
+  const composedOriginal = originalQuestion.composeDataset();
+
+  const isLastRunComposed = areQueriesEqual(
+    lastRunQuestion.datasetQuery(),
+    composedOriginal.datasetQuery(),
+    tableMetadata,
+  );
+  const isCurrentComposed = areQueriesEqual(
+    currentQuestion.datasetQuery(),
+    composedOriginal.datasetQuery(),
+    tableMetadata,
   );
 
-  const isCurrentAdhoc = isEquivalentAdHocModelQuestion(
-    currentQuestion,
-    originalQuestion,
-  );
-
-  // if last run was composed, that means it is equiv to the current,
-  // so dirty is determined by whether current is equal to original
-  // or composed original
-  const a =
-    isLastRunAdhoc &&
-    (areQueriesEqual(
+  const isLastRunEquivalentToCurrent =
+    isLastRunComposed &&
+    areQueriesEqual(
       currentQuestion.datasetQuery(),
       originalQuestion.datasetQuery(),
       tableMetadata,
-    ) ||
-      areQueriesEqual(
-        currentQuestion.datasetQuery(),
-        originalQuestion.composeDataset().datasetQuery(),
-        tableMetadata,
-      ));
+    );
 
-  // if the last run wasn't composed but the current is composed,
-  // check that the last run
-  const b =
-    isCurrentAdhoc &&
+  const isCurrentEquivalentToLastRun =
+    isCurrentComposed &&
     areQueriesEqual(
       lastRunQuestion.datasetQuery(),
       originalQuestion.datasetQuery(),
       tableMetadata,
     );
 
-  return a || b;
+  return isLastRunEquivalentToCurrent || isCurrentEquivalentToLastRun;
 }
 
 function areQueriesEquivalent({
@@ -439,17 +431,17 @@ function areQueriesEquivalent({
   tableMetadata,
 }) {
   return (
+    areQueriesEqual(
+      lastRunQuestion?.datasetQuery(),
+      currentQuestion?.datasetQuery(),
+      tableMetadata,
+    ) ||
     areModelsEquivalent({
       originalQuestion,
       lastRunQuestion,
       currentQuestion,
       tableMetadata,
-    }) ||
-    areQueriesEqual(
-      lastRunQuestion?.datasetQuery(),
-      currentQuestion?.datasetQuery(),
-      tableMetadata,
-    )
+    })
   );
 }
 

@@ -72,21 +72,6 @@ export function isAdHocModelQuestion(
   return isAdHocModelQuestionCard(question.card(), originalQuestion.card());
 }
 
-export function isEquivalentAdHocModelQuestion(
-  question: Question,
-  otherQuestion: Question,
-) {
-  const dataset_query = question.datasetQuery() as StructuredDatasetQuery;
-  const query = dataset_query.query;
-
-  return (
-    isAdHocModelQuestion(question, otherQuestion) &&
-    _.isEqual(query, {
-      "source-table": getQuestionVirtualTableId(question.card()),
-    })
-  );
-}
-
 export function checkCanRefreshModelCache(
   refreshInfo: ModelCacheRefreshStatus,
 ) {
