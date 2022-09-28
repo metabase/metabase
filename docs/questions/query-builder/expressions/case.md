@@ -114,7 +114,7 @@ case(condition1, "string", condition2, TRUE, condition3, 1)
 case(condition1, "string", condition2, "TRUE", condition3, "1")
 ```
 
-## Converting a function into a `case` expression
+## Related functions
 
 This section covers functions and formulas that can be used interchangeably with the Metabase `case` expression, with notes on how to choose the best option for your use case.
 

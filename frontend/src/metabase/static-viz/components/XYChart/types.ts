@@ -15,7 +15,7 @@ export type YAxisType = "linear" | "pow" | "log";
 
 export type YAxisPosition = "left" | "right";
 
-export type VisualizationType = "line" | "area" | "bar";
+export type VisualizationType = "line" | "area" | "bar" | "waterfall";
 
 export type Series = {
   name: string;

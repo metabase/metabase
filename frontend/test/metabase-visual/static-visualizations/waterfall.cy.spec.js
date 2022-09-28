@@ -46,7 +46,9 @@ function createWaterfallQuestion({ showTotal } = {}) {
         "SELECT * FROM ( VALUES ('Stage 1', 10), ('Stage 2', 30), ('Stage 3', -50), ('Stage 4', -10), ('Stage 5', 80), ('Stage 6', 10), ('Stage 7', 15))",
       "template-tags": {},
     },
-    visualization_settings: {},
+    visualization_settings: {
+      "graph.show_values": true,
+    },
     display: "waterfall",
     database: SAMPLE_DB_ID,
   };

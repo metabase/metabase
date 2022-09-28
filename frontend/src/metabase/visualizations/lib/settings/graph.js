@@ -96,6 +96,10 @@ export const GRAPH_DATA_SETTINGS = {
     section: t`Data`,
     title: t`X-axis`,
     widget: "fields",
+    getMarginBottom: (series, vizSettings) =>
+      vizSettings["graph.dimensions"]?.length === 2 && series.length <= 20
+        ? "0.5rem"
+        : "1rem",
     isValid: (series, vizSettings) =>
       series.some(
         ({ card, data }) =>
@@ -198,19 +202,21 @@ export const GRAPH_DATA_SETTINGS = {
         .filter(vizSettings["graph._metric_filter"])
         .map(getOptionFromColumn);
 
+      const addedMetrics = vizSettings["graph.metrics"];
       const hasBreakout = vizSettings["graph.dimensions"].length > 1;
-      const addedMetricsCount = vizSettings["graph.metrics"].length;
+      const addedMetricsCount = addedMetrics.length;
       const maxMetricsSupportedCount = getMaxMetricsSupported(card.display);
 
       const hasMetricsToAdd = options.length > addedMetricsCount;
       const canAddAnother =
         addedMetricsCount < maxMetricsSupportedCount &&
         hasMetricsToAdd &&
-        !hasBreakout;
+        !hasBreakout &&
+        addedMetrics.every(metric => metric != null);
 
       return {
         options,
-        addAnother: canAddAnother ? t`Add another series...` : null,
+        addAnother: canAddAnother ? t`Add another series` : null,
         columns: data.cols,
         showColumnSetting: true,
       };

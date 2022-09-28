@@ -3,13 +3,10 @@ import {
   CATEGORICAL_DONUT_CHART_TYPE,
 } from "../../components/CategoricalDonutChart/constants";
 import {
-  CATEGORICAL_WATERFALL_CHART_DEFAULT_OPTIONS,
-  CATEGORICAL_WATERFALL_CHART_TYPE,
-} from "../../components/CategoricalWaterfallChart/constants";
-import {
   TIME_SERIES_WATERFALL_CHART_DEFAULT_OPTIONS,
-  TIME_SERIES_WATERFALL_CHART_TYPE,
-} from "../../components/TimeSeriesWaterfallChart/constants";
+  CATEGORICAL_WATERFALL_CHART_DEFAULT_OPTIONS,
+  WATERFALL_CHART_TYPE,
+} from "../../components/WaterfallChart/constants";
 import {
   PROGRESS_BAR_DEFAULT_DATA_1,
   PROGRESS_BAR_TYPE,
@@ -25,8 +22,7 @@ import {
 
 export const STATIC_CHART_TYPES = [
   CATEGORICAL_DONUT_CHART_TYPE,
-  CATEGORICAL_WATERFALL_CHART_TYPE,
-  TIME_SERIES_WATERFALL_CHART_TYPE,
+  WATERFALL_CHART_TYPE,
   PROGRESS_BAR_TYPE,
   LINE_AREA_BAR_CHART_TYPE,
   FUNNEL_CHART_TYPE,

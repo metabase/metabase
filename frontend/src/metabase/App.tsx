@@ -1,4 +1,5 @@
 import React, { ErrorInfo, ReactNode, useRef, useState } from "react";
+import { t } from "ttag";
 import { connect } from "react-redux";
 import { Location } from "history";
 
@@ -74,16 +75,20 @@ const mapStateToProps = (
 });
 
 class ErrorBoundary extends React.Component<{
-  onError: (errorInfo: ErrorInfo) => void;
+  onError: (errorInfo: ErrorInfo & Error) => void;
+  countError: () => void;
 }> {
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    this.props.onError(errorInfo);
+    this.props.onError({ ...error, componentStack: errorInfo.componentStack });
+    this.props.countError();
   }
 
   render() {
     return this.props.children;
   }
 }
+
+const MAX_ERRORS_ALLOWED = 3;
 
 function App({
   errorPage,
@@ -93,25 +98,43 @@ function App({
   children,
 }: AppProps) {
   const [viewportElement, setViewportElement] = useState<HTMLElement | null>();
-  const [errorInfo, setErrorInfo] = useState<ErrorInfo | null>(null);
+  const [errorInfo, setErrorInfo] = useState<(ErrorInfo & Error) | null>(null);
+  const [errorCount, setErrorCount] = useState(0);
+
+  const countError = () => setErrorCount(prev => prev + 1);
 
   useOnMount(() => {
     initializeIframeResizer();
   });
 
   return (
-    <ErrorBoundary onError={setErrorInfo}>
+    <ErrorBoundary onError={setErrorInfo} countError={countError}>
       <ScrollToTop>
         <AppContainer className="spread">
           <AppBanner />
           {isAppBarVisible && <AppBar isNavBarVisible={isNavBarVisible} />}
           <AppContentContainer isAdminApp={isAdminApp}>
             {isNavBarVisible && <Navbar />}
-            <AppContent ref={setViewportElement}>
-              <ContentViewportContext.Provider value={viewportElement ?? null}>
-                {errorPage ? getErrorComponent(errorPage) : children}
-              </ContentViewportContext.Provider>
-            </AppContent>
+            {errorCount < MAX_ERRORS_ALLOWED ? (
+              <AppContent ref={setViewportElement}>
+                <ContentViewportContext.Provider
+                  value={viewportElement ?? null}
+                >
+                  {errorPage ? getErrorComponent(errorPage) : children}
+                </ContentViewportContext.Provider>
+              </AppContent>
+            ) : (
+              getErrorComponent({
+                status: 500,
+                data: {
+                  error_code: "looping error",
+                  message:
+                    (errorInfo?.message ?? "") +
+                    " " +
+                    (errorInfo?.componentStack ?? ""),
+                },
+              })
+            )}
             <UndoListing />
             <StatusListing />
           </AppContentContainer>
