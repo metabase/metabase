@@ -391,7 +391,7 @@ export const NUMBER_COLUMN_SETTINGS = {
     widget: "number",
     variant: "form-field",
     props: {
-      placeholder: t`Min.`,
+      placeholder: "1",
     },
   },
   scale: {
