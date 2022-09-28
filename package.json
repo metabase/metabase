@@ -121,7 +121,7 @@
     "@storybook/client-api": "6.4.22",
     "@storybook/manager-webpack5": "^6.4.22",
     "@storybook/react": "^6.4.22",
-    "@testing-library/cypress": "^8.0.2",
+    "@testing-library/cypress": "^8.0.3",
     "@testing-library/dom": "^7.29.0",
     "@testing-library/jest-dom": "^4.0.0",
     "@testing-library/react": "^11.0.2",
