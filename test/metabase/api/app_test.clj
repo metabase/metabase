@@ -3,7 +3,6 @@
     [clojure.test :refer [deftest is testing]]
     [medley.core :as m]
     [metabase.models :refer [App Card Collection Dashboard Permissions]]
-    [metabase.models.app.graph :as app.graph]
     [metabase.models.collection.graph :as graph]
     [metabase.models.permissions :as perms]
     [metabase.models.permissions-group :as perms-group]

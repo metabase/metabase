@@ -2,13 +2,13 @@
   "Code for generating and updating the App permissions graph. App permissions
   are based on the permissions of the app's collection."
   (:require [clojure.data :as data]
-            [metabase.models.collection.graph :as graph]
             [metabase.models.collection-permission-graph-revision :as c-perm-revision
              :refer [CollectionPermissionGraphRevision]]
+            [metabase.models.collection.graph :as graph]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
-            [metabase.public-settings.premium-features :as premium-features]
             [metabase.models.setting :as setting :refer [defsetting]]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.util.i18n :as i18n :refer [tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
