@@ -1,11 +1,11 @@
 import React from "react";
 
-import Icon from "metabase/components/Icon";
+import { SidebarItem } from "../../dashboard/components/ClickBehaviorSidebar/SidebarItem";
 import {
-  ActionOptionListItem,
-  ActionOptionTitle,
-  ActionOptionDescription,
-} from "./ActionOptionItem.styled";
+  ActionSidebarItem,
+  ActionSidebarItemIcon,
+  ActionDescription,
+} from "./ActionPicker.styled";
 
 interface ActionOptionProps {
   name: string;
@@ -14,25 +14,25 @@ interface ActionOptionProps {
   onClick: () => void;
 }
 
-export default function ActionOptionItem({
+function ActionOptionItem({
   name,
   description,
   isSelected,
   onClick,
 }: ActionOptionProps) {
   return (
-    <ActionOptionListItem
+    <ActionSidebarItem
       onClick={onClick}
       isSelected={isSelected}
       hasDescription={!!description}
     >
-      <Icon name="insight" size={22} />
+      <ActionSidebarItemIcon name="insight" isSelected={isSelected} />
       <div>
-        <ActionOptionTitle>{name}</ActionOptionTitle>
-        {!!description && (
-          <ActionOptionDescription>{description}</ActionOptionDescription>
-        )}
+        <SidebarItem.Name>{name}</SidebarItem.Name>
+        {description && <ActionDescription>{description}</ActionDescription>}
       </div>
-    </ActionOptionListItem>
+    </ActionSidebarItem>
   );
 }
+
+export default ActionOptionItem;
