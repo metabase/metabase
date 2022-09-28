@@ -1,5 +1,5 @@
 import React from "react";
-import { t, ngettext, msgid } from "ttag";
+import { ngettext, msgid } from "ttag";
 import _ from "underscore";
 import PropTypes from "prop-types";
 
@@ -37,7 +37,7 @@ const DatabaseTablesPane = ({ database, show, questions }) => {
             <a onClick={() => show("model", model)}>
               <NodeListItemIcon name="model" />
               <NodeListItemName>{model.name}</NodeListItemName>
-              <ModelId>{t`#${model.id}`}</ModelId>
+              <ModelId>{`#${model.id}`}</ModelId>
             </a>
           </NodeListItem>
         ))}
