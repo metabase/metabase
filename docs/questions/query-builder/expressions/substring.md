@@ -15,7 +15,7 @@ title: Substring
 - Position and length should both be positive whole numbers. 
 - The first character in your text is at position 1.
 
-## Cleaning consistently formatted text data
+## Cleaning text data
 
 | Mission ID  | Agent |
 |-------------|-------|
@@ -43,7 +43,7 @@ substring([Mission ID], 9, 3)
 
 `substring` extracts text by counting characters from left to right. If you need to extract text based on some more complicated logic, try [`regexextract`](../expressions-list.md#regexextract).
 
-And if you only need to clean up extra whitespace around your text, you can use the [`trim`](../expressions-list.md#trim), [`lefttrim`]((../expressions-list.md#lefttrim)), or [`righttrim`](../expressions-list.md#righttrim) expressions instead.
+And if you only need to clean up extra whitespace around your text, you can use the [`trim`](../expressions-list.md#trim), [`lefttrim`](../expressions-list.md#lefttrim), or [`righttrim`](../expressions-list.md#righttrim) expressions instead.
 
 ## Related functions
 
@@ -57,7 +57,7 @@ This section covers functions and formulas that work the same way as the Metabas
 
 In most cases (unless you're using a NoSQL database), questions created from the [notebook editor](https://www.metabase.com/glossary/notebook_editor) are converted into SQL queries that run against your database or data warehouse. 
 
-If our [sample data](#combining-text-from-different-columns) is stored in a relational database:
+If our [sample data](#cleaning-text-data) is stored in a relational database:
 
 ```sql
 SELECT
@@ -89,7 +89,7 @@ substring([Mission ID], 9, 3)
 
 ### Python
 
-Assuming the [sample data](#combining-text-from-different-columns) is in a dataframe column called df,
+Assuming the [sample data](#cleaning-text-data) is in a dataframe column called df,
 
 ```
 df['Agent'] = df['Mission ID'].str.slice(8, 11)
