@@ -61,3 +61,7 @@ This repository contains the source code for both the Open Source edition of Met
 See [LICENSE.txt](./LICENSE.txt) for details.
 
 Unless otherwise noted, all files © 2022 Metabase, Inc.
+
+## [Metabase experts](https://www.metabase.com/partners/)
+
+If you’d like more technical resources to set up your data stack with Metabase, connect with a [Metabase Expert](https://www.metabase.com/partners/){:target="_blank"}.
