@@ -209,7 +209,7 @@ export default class Aggregation extends MBQLClause {
    * Returns `null` if the clause isn't a "standard" metric
    */
   operatorName(): string | null {
-    if (this.isStandard() || this.isCustom()) {
+    if (this.isStandard()) {
       return this[0];
     }
 
