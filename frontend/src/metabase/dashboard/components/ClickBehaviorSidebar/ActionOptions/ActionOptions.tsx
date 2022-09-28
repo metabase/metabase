@@ -60,9 +60,9 @@ function ActionOptions({
         action,
         visualization_settings: updateSettings(
           { 
-            "button.label": action.name,
-            action_slug: action.slug, // :-( so hacky
-          },
+			"button.label": action.name,
+			action_slug: action.slug, // :-( so hacky
+		  },
           dashcard.visualization_settings,
         ),
         // Clean mappings from previous action
