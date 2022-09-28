@@ -4,7 +4,9 @@ title: Substring
 
 # Substring
 
-`substring` extracts part of some text. This function is useful for cleaning up text data that has a consistent format (that is, the same number of characters, arranged in the same order, such as a SKU number).
+`substring` extracts part of some text. This function is useful for cleaning up text data (i.e., columns with a [string data type](https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types)) that has a consistent format.
+
+For example, `substring` should work well on strings such as SKU numbers, ISO codes, or standardized email addresses.
 
 | `substring(text, position, length)`                                                              | `substring("user_id@email.com", 1, 7) |
 |--------------------------------------------------------------------------------------------------|---------------------------------------|
@@ -12,8 +14,9 @@ title: Substring
 
 ## Parameters
 
-- Position and length should both be positive whole numbers. 
-- The first character in your text is at position 1.
+- Generally, position and length should both be positive whole numbers.
+- The first character in your string is at position 1.
+- Some databases support negative numbers for position (to count from the right end of the string).
 
 ## Cleaning text data
 
@@ -27,6 +30,12 @@ where **Agent** is a custom column with the expression:
 
 ```
 substring([Mission ID], 9, 3)
+```
+
+If your database supports negative starting positions, you could also use:
+
+```
+substring([Mission ID], -3, 3)
 ```
 
 ## Accepted data types
