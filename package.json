@@ -199,7 +199,7 @@
     "css-loader": "^0.28.7",
     "cypress": "^10.9.0",
     "cypress-grep": "^3.0.3",
-    "cypress-real-events": "^1.7.0",
+    "cypress-real-events": "^1.7.1",
     "documentation": "^13.2.5",
     "esbuild": "^0.14.49",
     "eslint": "7.32.0",

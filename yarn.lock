@@ -9099,10 +9099,10 @@ cypress-grep@^3.0.3:
     find-test-names "^1.17.2"
     globby "^11.0.4"
 
-cypress-real-events@^1.7.0:
-  version "1.7.0"
-  resolved "https://registry.yarnpkg.com/cypress-real-events/-/cypress-real-events-1.7.0.tgz#ad6a78de33af3af0e6437f5c713e30691c44472c"
-  integrity sha512-iyXp07j0V9sG3YClVDcvHN2DAQDgr+EjTID82uWDw6OZBlU3pXEBqTMNYqroz3bxlb0k+F74U81aZwzMNaKyew==
+cypress-real-events@^1.7.1:
+  version "1.7.1"
+  resolved "https://registry.yarnpkg.com/cypress-real-events/-/cypress-real-events-1.7.1.tgz#8f430d67c29ea4f05b9c5b0311780120cbc9b935"
+  integrity sha512-/Bg15RgJ0SYsuXc6lPqH08x19z6j2vmhWN4wXfJqm3z8BTAFiK2MvipZPzxT8Z0jJP0q7kuniWrLIvz/i/8lCQ==
 
 cypress@^10.9.0:
   version "10.9.0"
