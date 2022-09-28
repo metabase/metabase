@@ -193,6 +193,28 @@ describe("data app utils", () => {
       ]);
     });
 
+    it("moves nested pages together with parent from bottom to top", () => {
+      const navItems: DataAppNavItem[] = [
+        { page_id: 1 },
+        { page_id: 2, indent: 1 },
+        { page_id: 3 },
+        { page_id: 4, indent: 1 },
+        { page_id: 5 },
+        { page_id: 6, indent: 1 },
+        { page_id: 7 },
+      ];
+
+      expect(moveNavItems(navItems, 4, 0, { page_id: 5 })).toEqual([
+        { page_id: 5 },
+        { page_id: 6, indent: 1 },
+        { page_id: 1 },
+        { page_id: 2, indent: 1 },
+        { page_id: 3 },
+        { page_id: 4, indent: 1 },
+        { page_id: 7 },
+      ]);
+    });
+
     it("swaps page groups", () => {
       const navItems: DataAppNavItem[] = [
         { page_id: 1 },
@@ -209,28 +231,6 @@ describe("data app utils", () => {
         { page_id: 2, indent: 1 },
         { page_id: 5 },
         { page_id: 6, indent: 1 },
-        { page_id: 3 },
-        { page_id: 4, indent: 1 },
-        { page_id: 7 },
-      ]);
-    });
-
-    it("moves nested pages together with parent from top to bottom", () => {
-      const navItems: DataAppNavItem[] = [
-        { page_id: 1 },
-        { page_id: 2, indent: 1 },
-        { page_id: 3 },
-        { page_id: 4, indent: 1 },
-        { page_id: 5 },
-        { page_id: 6, indent: 1 },
-        { page_id: 7 },
-      ];
-
-      expect(moveNavItems(navItems, 4, 0, { page_id: 5 })).toEqual([
-        { page_id: 5 },
-        { page_id: 6, indent: 1 },
-        { page_id: 1 },
-        { page_id: 2, indent: 1 },
         { page_id: 3 },
         { page_id: 4, indent: 1 },
         { page_id: 7 },
