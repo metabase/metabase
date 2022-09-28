@@ -78,8 +78,8 @@
    (apply s/enum datetime-bucketing-units)
    "datetime-bucketing-unit"))
 
-(def DateExtractUnits
-  "Valid units to extract from a datetime."
+(def TemporalExtractUnits
+  "Valid units to extract from a temporal."
   (s/named
     (apply s/enum #{:second :minute :hour :day :day-of-week :week :month :quarter :year})
     "temporal-extract-units"))
@@ -624,7 +624,7 @@
 
 (defclause ^{:requires-features #{:temporal-extract}} temporal-extract
   datetime DateTimeExpressionArg
-  unit     DateExtractUnits)
+  unit     TemporalExtractUnits)
 
 ;; SUGAR CLAUSE: get-year, get-month... clauses are all sugars clause that will be rewritten as [:temporal-extract column :year]
 (defclause ^{:requires-features #{:temporal-extract}} ^:sugar get-year

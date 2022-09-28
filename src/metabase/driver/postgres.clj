@@ -259,7 +259,7 @@
 (defmethod sql.qp/date [:postgres :quarter]          [_ _ expr] (date-trunc :quarter expr))
 (defmethod sql.qp/date [:postgres :quarter-of-year]  [_ _ expr] (extract-integer :quarter expr))
 (defmethod sql.qp/date [:postgres :year]             [_ _ expr] (date-trunc :year expr))
-(defmethod sql.qp/date [:postgres :yyear]            [_ _ expr] (extract-integer :year expr))
+(defmethod sql.qp/date [:postgres :year-of-era]      [_ _ expr] (extract-integer :year expr))
 
 (defmethod sql.qp/date [:postgres :day-of-week]
   [_ driver expr]

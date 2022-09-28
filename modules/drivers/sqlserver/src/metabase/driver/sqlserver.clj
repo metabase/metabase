@@ -207,7 +207,7 @@
     (hx/year expr)
     (hsql/call :DateFromParts (hx/year expr) 1 1)))
 
-(defmethod sql.qp/date [:sqlserver :yyear]
+(defmethod sql.qp/date [:sqlserver :year-of-era]
   [_ _ expr]
   (date-part :year expr))
 
