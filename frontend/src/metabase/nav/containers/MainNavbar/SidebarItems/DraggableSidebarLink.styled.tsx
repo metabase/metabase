@@ -1,13 +1,11 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
-import Icon from "metabase/components/Icon";
-
 import { color } from "metabase/lib/colors";
 
 import SidebarLink from "./SidebarLink";
 
-export const DragIcon = styled(Icon)`
+export const DragIconContainer = styled.div`
   left: 2px;
   opacity: 0;
   position: absolute;
@@ -22,7 +20,7 @@ export const StyledSidebarLink = styled(SidebarLink)<{ isDragging: boolean }>`
   position: relative;
 
   &:hover {
-    ${DragIcon} {
+    ${DragIconContainer} {
       opacity: 0.3;
     }
   }
@@ -33,7 +31,7 @@ export const StyledSidebarLink = styled(SidebarLink)<{ isDragging: boolean }>`
       &:hover {
         background: ${color("bg-white")};
 
-        ${SidebarLink.Icon}, ${DragIcon} {
+        ${SidebarLink.Icon}, ${DragIconContainer} {
           color: ${color("brand-light")} !important;
         }
 

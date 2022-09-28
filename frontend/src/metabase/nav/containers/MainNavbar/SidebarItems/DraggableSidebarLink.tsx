@@ -1,21 +1,39 @@
-import React from "react";
+import React, { HTMLAttributes } from "react";
+
+import Icon from "metabase/components/Icon";
 
 import { SidebarLinkProps } from "./SidebarLink";
-import { DragIcon, StyledSidebarLink } from "./DraggableSidebarLink.styled";
+import {
+  DragIconContainer,
+  StyledSidebarLink,
+} from "./DraggableSidebarLink.styled";
 
 import "./sortable.css";
 
-interface Props extends Omit<SidebarLinkProps, "left"> {
+export interface DraggableSidebarLinkProps
+  extends Omit<SidebarLinkProps, "left"> {
   isDragging: boolean;
+  DragHandle?: React.ReactElement;
 }
 
-function DraggableSidebarLink(props: Props) {
-  return (
-    <StyledSidebarLink
-      {...props}
-      left={<DragIcon name="grabber2" size={12} />}
-    />
-  );
-}
+const Handle = (props: HTMLAttributes<HTMLDivElement>) => (
+  <DragIconContainer {...props}>
+    <Icon name="grabber2" size={12} />
+  </DragIconContainer>
+);
 
-export default DraggableSidebarLink;
+const DefaultHandle = <Handle />;
+
+const DraggableSidebarLink = React.forwardRef<
+  HTMLLIElement,
+  DraggableSidebarLinkProps
+>(function DraggableSidebarLink(
+  { DragHandle = DefaultHandle, ...props }: DraggableSidebarLinkProps,
+  ref,
+) {
+  return <StyledSidebarLink {...props} left={DragHandle} ref={ref} />;
+});
+
+export default Object.assign(DraggableSidebarLink, {
+  Handle,
+});

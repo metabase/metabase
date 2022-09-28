@@ -44,60 +44,66 @@ function disableImageDragging(e: React.MouseEvent) {
   e.preventDefault();
 }
 
-function SidebarLink({
-  children,
-  icon,
-  url,
-  isSelected = false,
-  hasDefaultIconStyle,
-  left = null,
-  right = null,
-  ...props
-}: SidebarLinkProps) {
-  const renderIcon = useCallback(() => {
-    if (!icon) {
-      return null;
-    }
-    if (React.isValidElement(icon)) {
-      return icon;
-    }
-    const iconProps = isIconPropsObject(icon) ? icon : { name: icon };
+const SidebarLink = React.forwardRef<HTMLLIElement, SidebarLinkProps>(
+  function SidebarLink(
+    {
+      children,
+      icon,
+      url,
+      isSelected = false,
+      hasDefaultIconStyle,
+      left = null,
+      right = null,
+      ...props
+    }: SidebarLinkProps,
+    ref,
+  ) {
+    const renderIcon = useCallback(() => {
+      if (!icon) {
+        return null;
+      }
+      if (React.isValidElement(icon)) {
+        return icon;
+      }
+      const iconProps = isIconPropsObject(icon) ? icon : { name: icon };
+      return (
+        <TreeNode.IconContainer transparent={false}>
+          <SidebarIcon {...iconProps} isSelected={isSelected} />
+        </TreeNode.IconContainer>
+      );
+    }, [icon, isSelected]);
+
+    const Content = useMemo(() => {
+      return url
+        ? (props: ContentProps) => <FullWidthLink {...props} to={url} />
+        : (props: ContentProps) => (
+            <FullWidthButton {...props} isSelected={isSelected} />
+          );
+    }, [url, isSelected]);
+
     return (
-      <TreeNode.IconContainer transparent={false}>
-        <SidebarIcon {...iconProps} isSelected={isSelected} />
-      </TreeNode.IconContainer>
+      <NodeRoot
+        depth={0}
+        isSelected={isSelected}
+        hasDefaultIconStyle={hasDefaultIconStyle}
+        onMouseDown={disableImageDragging}
+        {...props}
+        ref={ref}
+      >
+        {React.isValidElement(left) && (
+          <LeftElementContainer>{left}</LeftElementContainer>
+        )}
+        <Content>
+          {icon && renderIcon()}
+          <NameContainer>{children}</NameContainer>
+        </Content>
+        {React.isValidElement(right) && (
+          <RightElementContainer>{right}</RightElementContainer>
+        )}
+      </NodeRoot>
     );
-  }, [icon, isSelected]);
-
-  const Content = useMemo(() => {
-    return url
-      ? (props: ContentProps) => <FullWidthLink {...props} to={url} />
-      : (props: ContentProps) => (
-          <FullWidthButton {...props} isSelected={isSelected} />
-        );
-  }, [url, isSelected]);
-
-  return (
-    <NodeRoot
-      depth={0}
-      isSelected={isSelected}
-      hasDefaultIconStyle={hasDefaultIconStyle}
-      onMouseDown={disableImageDragging}
-      {...props}
-    >
-      {React.isValidElement(left) && (
-        <LeftElementContainer>{left}</LeftElementContainer>
-      )}
-      <Content>
-        {icon && renderIcon()}
-        <NameContainer>{children}</NameContainer>
-      </Content>
-      {React.isValidElement(right) && (
-        <RightElementContainer>{right}</RightElementContainer>
-      )}
-    </NodeRoot>
-  );
-}
+  },
+);
 
 export type { SidebarLinkProps };
 
