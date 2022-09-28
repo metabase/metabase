@@ -54,7 +54,7 @@ const ModelPane = ({ show, model, question }) => {
         )}
       </ModelPaneDescription>
       <ModelPaneDetail>
-        <a href={question.getUrl()}>
+        <a href={question.getUrl()} target="_blank" rel="noreferrer">
           <ModelPaneIcon name="share" />
           <ModelPaneDetailLink>{t`See it`}</ModelPaneDetailLink>
         </a>
