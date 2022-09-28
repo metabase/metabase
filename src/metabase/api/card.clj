@@ -132,13 +132,13 @@
 
 (api/defendpoint GET "/"
   "Get all the Cards. Option filter param `f` can be used to change the set of Cards that are returned; default is
-  `all`, but other options include `mine`, `bookmarked`, `database`, `database-models`, `table`, `recent`, `popular`, and `archived`.
-  See corresponding implementation functions for the specific behavior of each filter option. :card_index:"
+  `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `recent`, `popular`, and `archived`. See
+  corresponding implementation functions above for the specific behavior of each filter option. :card_index:"
   [f model_id]
   {f        (s/maybe CardFilterOption)
    model_id (s/maybe su/IntGreaterThanZero)}
   (let [f (keyword f)]
-    (when (contains? #{:database :table :database-models} f)
+    (when (contains? #{:database :table} f)
       (api/checkp (integer? model_id) "model_id" (format "model_id is a required parameter when filter mode is '%s'"
                                                          (name f)))
       (case f

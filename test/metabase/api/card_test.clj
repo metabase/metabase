@@ -203,12 +203,12 @@
 ;;; |                                           FETCHING CARDS & FILTERING                                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- card-returned? [f object-or-id card-or-id]
-  (contains? (set (for [card (mt/user-http-request :rasta :get 200 "card", :f f, :model_id (u/the-id object-or-id))]
+(defn- card-returned? [model object-or-id card-or-id]
+  (contains? (set (for [card (mt/user-http-request :rasta :get 200 "card", :f model, :model_id (u/the-id object-or-id))]
                     (u/the-id card)))
              (u/the-id card-or-id)))
 
-(deftest filter-cards-by-database-test
+(deftest filter-cards-by-db-test
   (mt/with-temp* [Database [db]
                   Card     [card-1 {:database_id (mt/id)}]
                   Card     [card-2 {:database_id (u/the-id db)}]]
@@ -220,24 +220,12 @@
       (is (= true
              (card-returned? :database db        card-2))))))
 
-(deftest filter-cards-by-database-models-test
-  (testing "GET /api/card?f=database-models&model_id=:id"
-    (mt/with-temp* [Database [db]
-                    Card     [card-1 {:dataset true  :archived false :database_id (mt/id)}]
-                    Card     [card-2 {:dataset true  :archived true  :database_id (mt/id)}]
-                    Card     [card-3 {:dataset false :archived false :database_id (mt/id)}]
-                    Card     [card-4 {:dataset true  :archived false :database_id (u/the-id db)}]]
-      (with-cards-in-readable-collection [card-1 card-2 card-3 card-4]
-        (is (= [(:id card-1)] (map :id (mt/user-http-request :rasta :get 200 "card", :f :database-models, :model_id (mt/id))))
-            (= [(:id card-4)] (map :id (mt/user-http-request :rasta :get 200 "card", :f :database-models, :model_id (u/the-id db)))))))))
 
 (deftest authentication-test
   (is (= (get mw.util/response-unauthentic :body) (client/client :get 401 "card")))
   (is (= (get mw.util/response-unauthentic :body) (client/client :put 401 "card/13"))))
 
-(deftest model-id-required-when-f-is-database-test
-  (is (= {:errors {:model_id "model_id is a required parameter when filter mode is 'database-models'"}}
-         (mt/user-http-request :crowberto :get 400 "card" :f :database-models)))
+(deftest model-id-requied-when-f-is-database-test
   (is (= {:errors {:model_id "model_id is a required parameter when filter mode is 'database'"}}
          (mt/user-http-request :crowberto :get 400 "card" :f :database))))
 
@@ -257,7 +245,7 @@
                (card-returned? :table (u/the-id table-2) (u/the-id card-2))))))))
 
 ;; Make sure `model_id` is required when `f` is :table
-(deftest model_id-required-when-f-is-table
+(deftest model_id-requied-when-f-is-table
   (is (= {:errors {:model_id "model_id is a required parameter when filter mode is 'table'"}}
          (mt/user-http-request :crowberto :get 400 "card", :f :table))))
 
@@ -378,14 +366,14 @@
                        :dashboard_count        0
                        :result_metadata        true
                        :last-edit-info         {:timestamp true :id true :first_name "Rasta"
-                                                :last_name "Toucan" :email "rasta@metabase."}
+                                                :last_name "Toucan" :email "rasta@metabase.com"}
                        :creator                (merge
                                                 (select-keys (mt/fetch-user :rasta) [:id :date_joined :last_login :locale])
                                                 {:common_name  "Rasta Toucan"
                                                  :is_superuser false
                                                  :last_name    "Toucan"
                                                  :first_name   "Rasta"
-                                                 :email        "rasta@metabase."})})
+                                                 :email        "rasta@metabase.com"})})
                      (-> (mt/user-http-request :rasta :post 200 "card" card)
                          (dissoc :created_at :updated_at :id)
                          (update :table_id integer?)
