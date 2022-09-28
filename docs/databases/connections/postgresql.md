@@ -70,8 +70,6 @@ If you instead have a PEM SSL client key, you can convert that key to the PKCS-8
 openssl pkcs8 -topk8 -inform PEM -outform DER -in client-key.pem -out client-key.pk8 -nocrypt
 ```
 
-Use either `sslmode=require` or `verify-ca`, enter your converted client key in Metabase, and you should be good to go.
-
 ## Use an SSH tunnel
 
 You can set up an SSH tunnel by supplying the tunnel host, port, tunnel username, and SSH authentication credentials, either using an SSH Key and passphrase, or a password.
