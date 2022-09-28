@@ -39,7 +39,7 @@ function FieldList({ fields, handleFieldClick }: Props) {
                 name={getSemanticTypeIcon(field.semantic_type, "warning")}
                 tooltip={tooltip}
               />
-              <NodeListItemName>{field.displayName()}</NodeListItemName>
+              <NodeListItemName>{field.name}</NodeListItemName>
             </a>
           </NodeListItem>
         );
