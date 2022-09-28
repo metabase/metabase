@@ -9,6 +9,7 @@
             [metabase.models.permissions-group :refer [PermissionsGroup]]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.i18n :as i18n :refer [tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -93,6 +94,17 @@
 
 ;;; -------------------------------------------------- Update Graph --------------------------------------------------
 
+(defn- check-no-app-collections [changes]
+  (let [coll-ids (into #{}
+                       (comp (mapcat second)
+                             (map first))
+                       changes)]
+    (when-let [app-ids (and (seq coll-ids)
+                            (db/select-ids 'App :collection_id [:in coll-ids]))]
+      (throw (ex-info (tru "Cannot set app permissions using this endpoint")
+                      {:status-code 400
+                       :app-ids app-ids})))))
+
 (s/defn ^:private update-collection-permissions!
   [collection-namespace :- (s/maybe su/KeywordOrString)
    group-id             :- su/IntGreaterThanZero
@@ -134,6 +146,7 @@
          [diff-old changes] (data/diff old-perms new-perms)]
      (perms/log-permissions-changes diff-old changes)
      (perms/check-revision-numbers old-graph new-graph)
+     (check-no-app-collections changes)
      (when (seq changes)
        (db/transaction
          (doseq [[group-id changes] changes]
