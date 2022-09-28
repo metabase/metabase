@@ -142,8 +142,9 @@
       (api/checkp (integer? model_id) "model_id" (format "model_id is a required parameter when filter mode is '%s'"
                                                          (name f)))
       (case f
-        :database (api/read-check Database model_id)
-        :table    (api/read-check Database (db/select-one-field :db_id Table, :id model_id))))
+        (:database
+         :database-models) (api/read-check Database model_id)
+        :table             (api/read-check Database (db/select-one-field :db_id Table, :id model_id))))
     (let [cards (filter mi/can-read? (cards-for-filter-option f model_id))
           last-edit-info (:card (last-edit/fetch-last-edited-info {:card-ids (map :id cards)}))]
       (into []
