@@ -23,6 +23,7 @@ import Query from "metabase-lib/lib/queries/Query";
 import { trackNewQuestionSaved } from "../../analytics";
 import {
   getCard,
+  getIsResultDirty,
   getOriginalQuestion,
   getQuestion,
   getResultsMetadata,
@@ -210,10 +211,12 @@ export const apiCreateQuestion = question => {
 };
 
 export const API_UPDATE_QUESTION = "metabase/qb/API_UPDATE_QUESTION";
-export const apiUpdateQuestion = (question, { rerunQuery = false } = {}) => {
+export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
   return async (dispatch, getState) => {
     const originalQuestion = getOriginalQuestion(getState());
     question = question || getQuestion(getState());
+
+    rerunQuery = rerunQuery || getIsResultDirty(getState());
 
     // Needed for persisting visualization columns for pulses/alerts, see #6749
     const series = getTransformedSeries(getState());
