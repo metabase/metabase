@@ -1,5 +1,5 @@
 import React from "react";
-import { t, jt } from "ttag";
+import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
 import PropTypes from "prop-types";
 
@@ -23,7 +23,13 @@ const DatabaseTablesPane = ({ database, show, questions }) => {
     <NodeListContainer>
       <NodeListTitle>
         <NodeListIcon name="model" />
-        <NodeListTitleText>{jt`${models.length} models`}</NodeListTitleText>
+        <NodeListTitleText>
+          {ngettext(
+            msgid`${models.length} model`,
+            `${models.length} models`,
+            models.length,
+          )}
+        </NodeListTitleText>
       </NodeListTitle>
       <ul>
         {models.map(model => (
@@ -39,7 +45,13 @@ const DatabaseTablesPane = ({ database, show, questions }) => {
       <br></br>
       <NodeListTitle>
         <NodeListIcon name="table" />
-        <NodeListTitleText>{jt`${tables.length} tables`}</NodeListTitleText>
+        <NodeListTitleText>
+          {ngettext(
+            msgid`${tables.length} table`,
+            `${tables.length} tables`,
+            tables.length,
+          )}
+        </NodeListTitleText>
       </NodeListTitle>
       <ul>
         {tables.map(table => (

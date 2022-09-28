@@ -1,7 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import React from "react";
-import { t, jt } from "ttag";
+import { t, ngettext, msgid } from "ttag";
 import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
 
 import {
@@ -24,7 +24,13 @@ function NodeList({ fields, handleFieldClick }: Props) {
     <NodeListContainer>
       <NodeListTitle>
         <NodeListIcon name="table2" size="12" />
-        <NodeListTitleText>{jt`${fields.length} columns`}</NodeListTitleText>
+        <NodeListTitleText>
+          {ngettext(
+            msgid`${fields.length} column`,
+            `${fields.length} columns`,
+            fields.length,
+          )}
+        </NodeListTitleText>
       </NodeListTitle>
       {fields.map(field => {
         const tooltip = field.semantic_type ? null : t`Unknown type`;
