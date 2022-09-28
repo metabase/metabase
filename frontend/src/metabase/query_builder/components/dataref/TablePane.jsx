@@ -73,7 +73,7 @@ class TablePane extends React.Component {
             {table.fields && (
               <FieldList
                 fields={table.fields}
-                handleFieldClick={field => show("field", field)}
+                handleFieldClick={f => show("field", f)}
               />
             )}
             <MetadataContainer>

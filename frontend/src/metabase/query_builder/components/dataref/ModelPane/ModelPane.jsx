@@ -72,7 +72,7 @@ const ModelPane = ({ show, model, question }) => {
       {table?.fields && (
         <FieldList
           fields={table.fields}
-          handleFieldClick={field => show("field", field)}
+          handleFieldClick={f => show("field", f)}
         />
       )}
     </div>
