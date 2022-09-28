@@ -120,7 +120,3 @@ If you're on a [Metabase Cloud](https://www.metabase.com/pricing) plan, your Met
 - [Azure Web Apps deployments](./running-metabase-on-azure.md#additional-configurations)
 - [Heroku deployments](./running-metabase-on-heroku.md#deploying-new-versions-of-metabase)
 
-
-*** 
-
-If you’d like more technical resources to set up your data stack with Metabase, connect with a [Metabase Expert](https://www.metabase.com/partners/){:target="_blank"}.
