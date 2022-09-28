@@ -17,7 +17,6 @@ import ConnectedTableList from "metabase/query_builder/components/dataref/Connec
 import FieldList from "./FieldList";
 
 const mapStateToProps = (state, props) => ({
-  tableId: props.table.id,
   table: Tables.selectors.getObject(state, {
     entityId: props.table.id,
   }),
@@ -29,11 +28,7 @@ const mapDispatchToProps = {
 };
 
 const propTypes = {
-  query: PropTypes.object.isRequired,
   show: PropTypes.func.isRequired,
-  onClose: PropTypes.func.isRequired,
-  setCardAndRun: PropTypes.func.isRequired,
-  tableId: PropTypes.number.isRequired,
   table: PropTypes.object,
   fetchForeignKeys: PropTypes.func.isRequired,
   fetchMetadata: PropTypes.func.isRequired,
@@ -48,8 +43,8 @@ class TablePane extends React.Component {
   async UNSAFE_componentWillMount() {
     try {
       await Promise.all([
-        this.props.fetchForeignKeys({ id: this.props.tableId }),
-        this.props.fetchMetadata({ id: this.props.tableId }),
+        this.props.fetchForeignKeys({ id: this.props.table.id }),
+        this.props.fetchMetadata({ id: this.props.table.id }),
       ]);
       this.setState({
         hasFetchedMetadata: true,
@@ -62,7 +57,7 @@ class TablePane extends React.Component {
   }
 
   render() {
-    const { table } = this.props;
+    const { table, show } = this.props;
     const { error, hasFetchedMetadata } = this.state;
     if (table) {
       return (
@@ -78,7 +73,7 @@ class TablePane extends React.Component {
             {table.fields && (
               <FieldList
                 fields={table.fields}
-                handleFieldClick={field => this.props.show("field", field)}
+                handleFieldClick={field => show("field", field)}
               />
             )}
             <MetadataContainer>
@@ -91,7 +86,7 @@ class TablePane extends React.Component {
                 {table && (
                   <ConnectedTableList
                     tables={table.connectedTables()}
-                    onTableClick={t => this.props.show("table", t)}
+                    onTableClick={t => show("table", t)}
                   />
                 )}
               </Fade>
