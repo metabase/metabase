@@ -6,18 +6,35 @@ describe("scenarios > native question > data reference sidebar", () => {
     cy.signInAsAdmin();
   });
 
-  it("should load needed data", () => {
+  it("should show tables", () => {
     openNativeEditor();
     cy.icon("reference").click();
-    // Force-clicking was needed here because Cypress complains that "ORDERS" is covered by a <div>
-    // TODO: Maybe re-think the structure of that component because that div seems unnecessary anyway
-    cy.findByText("ORDERS").click({ force: true });
+    cy.findByText("ORDERS").click();
     cy.findByText(
       "Confirmed Sample Company orders for a product, from a user.",
     );
     cy.findByText("9 columns");
-
-    cy.findByText("QUANTITY").click({ force: true });
+    cy.findByText("QUANTITY").click();
     cy.findByText("Number of products bought.");
+  });
+
+  it("should show models", () => {
+    cy.createNativeQuestion(
+      {
+        name: "Native Products Model",
+        description: "A model of the Products table",
+        native: { query: "select id as renamed_id from products" },
+        dataset: true,
+      },
+      { visitQuestion: true },
+    );
+    openNativeEditor();
+    cy.icon("reference").click();
+    cy.findByText("1 model");
+    cy.findByText("Native Products Model").click();
+    cy.findByText("A model of the Products table");
+    cy.findByText("1 column");
+    cy.findByText("RENAMED_ID").click();
+    cy.findByText("No description");
   });
 });
