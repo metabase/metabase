@@ -96,8 +96,8 @@ export const runQuestionQuery = ({
     const areResultsDirty = getIsResultDirty(getState());
     const queryResults = getQueryResults(getState());
     const hasResults = queryResults && !areResultsDirty;
-    const shouldRerun = ignoreCache || overrideWithCard;
-    if (hasResults && !shouldRerun) {
+    const shouldForcefullyRerun = ignoreCache || overrideWithCard;
+    if (hasResults && !shouldForcefullyRerun) {
       return dispatch(queryCompleted(question, queryResults));
     }
 
