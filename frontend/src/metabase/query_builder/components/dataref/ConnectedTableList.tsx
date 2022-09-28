@@ -1,7 +1,4 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
 import React from "react";
-import PropTypes from "prop-types";
 import { jt } from "ttag";
 
 import Table from "metabase-lib/lib/metadata/Table";
@@ -16,17 +13,13 @@ import {
   NodeListTitleText,
 } from "./NodeList.styled";
 
-ConnectedTableList.propTypes = {
-  table: PropTypes.instanceOf(Table).isRequired,
-};
-
 type Props = {
   tables: Table[];
-  onTableClick?: (table: Table) => void;
+  onTableClick: (table: Table) => void;
 };
 
 function ConnectedTableList({ tables, onTableClick }: Props) {
-  return tables.length ? (
+  return (
     <NodeListContainer>
       <NodeListTitle>
         <NodeListIcon name="connections" size="14" />
@@ -41,7 +34,7 @@ function ConnectedTableList({ tables, onTableClick }: Props) {
         </NodeListItem>
       ))}
     </NodeListContainer>
-  ) : null;
+  );
 }
 
 export default ConnectedTableList;

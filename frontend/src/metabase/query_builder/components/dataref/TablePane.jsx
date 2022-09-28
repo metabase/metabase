@@ -82,7 +82,7 @@ class TablePane extends React.Component {
               </AbsoluteContainer>
             </Fade>
             <Fade visible={hasFetchedMetadata}>
-              {table && (
+              {table?.connectedTables() && (
                 <ConnectedTableList
                   tables={table.connectedTables()}
                   onTableClick={t => show("table", t)}
