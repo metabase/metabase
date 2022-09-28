@@ -22,6 +22,7 @@ import {
   getQueryResults,
   getQuestion,
   getTimeoutId,
+  getIsResultDirty,
 } from "../selectors";
 
 import { updateUrl } from "./navigation";
@@ -72,6 +73,19 @@ const loadCompleteUIControls = createThunkAction(
     }
   },
 );
+
+export const runDirtyQuestionQuery = () => async (dispatch, getState) => {
+  const areResultsDirty = getIsResultDirty(getState());
+  const queryResults = getQueryResults(getState());
+  const hasResults = !!queryResults;
+
+  if (hasResults && !areResultsDirty) {
+    const question = getQuestion(getState());
+    return dispatch(queryCompleted(question, queryResults));
+  }
+
+  return dispatch(runQuestionQuery());
+};
 
 /**
  * Queries the result for the currently active question or alternatively for the card provided in `overrideWithCard`.
