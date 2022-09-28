@@ -33,19 +33,19 @@ substring([Mission ID], 9, 3)
 
 ## Getting a substring from the right
 
+Instead of using a number for the position, you'll use the formula: `1 + length([column]) - position_from_right`, where position_from_right is the number of characters you want to count from right to left.
+
 | Mission ID  | Agent |
 |-------------|-------|
 | 19951113006 | 006   |
 | 20061114007 | 007   |
 | 19640917008 | 008   |
 
-**Agent** is a custom column with the expression:
+Here, **Agent** is a custom column with the expression:
 
 ```
 substring([Mission ID], (1 + length([Mission ID]) - 3), 3)
 ```
-
-Instead of using a number for the position, you'll use the formula: `1 + length([column]) - position_from_right`, where position_from_right is the number of characters you want to count from right to left.
 
 ## Accepted data types
 
@@ -73,7 +73,7 @@ This section covers functions and formulas that work the same way as the Metabas
 
 ### SQL
 
-In most cases (unless you're using a NoSQL database), questions created from the [notebook editor](https://www.metabase.com/glossary/notebook_editor) are converted into SQL queries that run against your database or data warehouse. 
+Unless you're using a NoSQL database, when you run a question that you created using the [notebook editor](https://www.metabase.com/glossary/notebook_editor), under the hood Metabase will convert your graphical query settings (your filters, summaries, etc.) into SQL code, and run that SQL query against your database to get your results. 
 
 If our [sample data](#getting-a-substring-from-the-left) is stored in a relational database:
 
@@ -107,7 +107,7 @@ substring([Mission ID], 9, 3)
 
 ### Python
 
-Assuming the [sample data](#getting-a-substring-from-the-left) is in a dataframe column called df,
+Assuming the [sample data](#getting-a-substring-from-the-left) is in a dataframe column called `df`,
 
 ```
 df['Agent'] = df['Mission ID'].str.slice(8, 11)
