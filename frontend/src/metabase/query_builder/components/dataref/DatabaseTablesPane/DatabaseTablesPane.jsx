@@ -21,28 +21,32 @@ const DatabaseTablesPane = ({ database, show, questions }) => {
   const models = questions.sort((a, b) => a.name.localeCompare(b.name));
   return (
     <NodeListContainer>
-      <NodeListTitle>
-        <NodeListIcon name="model" />
-        <NodeListTitleText>
-          {ngettext(
-            msgid`${models.length} model`,
-            `${models.length} models`,
-            models.length,
-          )}
-        </NodeListTitleText>
-      </NodeListTitle>
-      <ul>
-        {models.map(model => (
-          <NodeListItem key={model.id}>
-            <a onClick={() => show("model", model)}>
-              <NodeListItemIcon name="model" />
-              <NodeListItemName>{model.name}</NodeListItemName>
-              <ModelId>{`#${model.id}`}</ModelId>
-            </a>
-          </NodeListItem>
-        ))}
-      </ul>
-      <br></br>
+      {models.length ? (
+        <>
+          <NodeListTitle>
+            <NodeListIcon name="model" />
+            <NodeListTitleText>
+              {ngettext(
+                msgid`${models.length} model`,
+                `${models.length} models`,
+                models.length,
+              )}
+            </NodeListTitleText>
+          </NodeListTitle>
+          <ul>
+            {models.map(model => (
+              <NodeListItem key={model.id}>
+                <a onClick={() => show("model", model)}>
+                  <NodeListItemIcon name="model" />
+                  <NodeListItemName>{model.name}</NodeListItemName>
+                  <ModelId>{`#${model.id}`}</ModelId>
+                </a>
+              </NodeListItem>
+            ))}
+          </ul>
+          <br></br>
+        </>
+      ) : null}
       <NodeListTitle>
         <NodeListIcon name="table" />
         <NodeListTitleText>
