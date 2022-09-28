@@ -77,11 +77,6 @@
   [_ database-id]
   (db/select Card, :database_id database-id, :archived false, {:order-by [[:%lower.name :asc]]}))
 
-;; Return all Models belonging to Collection with `database-id`.
-(defmethod cards-for-filter-option* :database-models
-  [_ database-id]
-  (db/select Card, :database_id database-id, :archived false, :dataset true, {:order-by [[:%lower.name :asc]]}))
-
 ;; Return all Cards belonging to `Table` with `table-id`.
 (defmethod cards-for-filter-option* :table
   [_ table-id]
