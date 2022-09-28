@@ -12,7 +12,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { getOriginalCard, getQuestion, getResultsMetadata } from "../selectors";
 
 import { apiUpdateQuestion, updateQuestion, API_UPDATE_QUESTION } from "./core";
-import { runQuestionQuery } from "./querying";
+import { runDirtyQuestionQuery } from "./querying";
 import { setQueryBuilderMode } from "./ui";
 
 export const setDatasetEditorTab = datasetEditorTab => dispatch => {
@@ -25,7 +25,7 @@ export const onCancelDatasetChanges = () => (dispatch, getState) => {
   dispatch.action(CANCEL_DATASET_CHANGES, {
     card: cardBeforeChanges,
   });
-  dispatch(runQuestionQuery());
+  dispatch(runDirtyQuestionQuery());
 };
 
 export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
@@ -63,7 +63,7 @@ export const turnDatasetIntoQuestion = () => async (dispatch, getState) => {
   dispatch(
     addUndo({
       message: t`This is a question now.`,
-      actions: [apiUpdateQuestion(dataset, { rerunQuery: true })],
+      actions: [apiUpdateQuestion(dataset)],
     }),
   );
 };
