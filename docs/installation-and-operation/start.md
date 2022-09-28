@@ -1,8 +1,8 @@
 ---
-title: "Installation and operation overview"
+title: "Installation overview"
 ---
 
-# Installation and operation overview
+# Installation overview
 
 The birth, care, and feeding of your Metabase.
 

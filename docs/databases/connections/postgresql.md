@@ -58,7 +58,7 @@ If you set the SSL Mode to either "verify-ca" or "verify-full", you'll need to s
 
 You have the option of using a **Local file path** or an **Uploaded file path**. If you're on Metabase Cloud, you'll need to select **Uploaded file path** and upload your certificate.
 
-#### SSL Client KEY (PKCS-8/DER or PKCS-12)
+#### SSL Client KEY (PKCS-8/DER)
 
 Again, you have the option of using a **Local file path** or an **Uploaded file path**. If you're on Metabase Cloud, you'll need to select **Uploaded file path** and upload your certificate.
 

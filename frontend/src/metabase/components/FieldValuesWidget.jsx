@@ -280,15 +280,12 @@ class FieldValuesWidgetInner extends Component {
       valuesMode,
     });
 
-    const isLoading = loadingState === "LOADING";
-    const usesListField =
+    const isListMode =
       !disableList &&
-      hasList({
-        fields,
-        disableSearch,
-        options,
-      }) &&
+      shouldList(fields, disableSearch) &&
       valuesMode === "list";
+    const isLoading = loadingState === "LOADING";
+    const hasListValues = hasList({ fields, disableSearch, options });
 
     return (
       <div
@@ -298,25 +295,23 @@ class FieldValuesWidgetInner extends Component {
           maxWidth: this.props.maxWidth,
         }}
       >
-        {usesListField &&
-          (isLoading ? (
-            <LoadingState />
-          ) : (
-            <ListField
-              isDashboardFilter={parameter}
-              placeholder={tokenFieldPlaceholder}
-              value={value.filter(v => v != null)}
-              onChange={onChange}
-              options={options}
-              optionRenderer={option =>
-                renderValue(fields, formatOptions, option[0], {
-                  autoLoad: false,
-                })
-              }
-              checkedColor={checkedColor}
-            />
-          ))}
-        {!usesListField && (
+        {isListMode && isLoading ? (
+          <LoadingState />
+        ) : isListMode && hasListValues ? (
+          <ListField
+            isDashboardFilter={parameter}
+            placeholder={tokenFieldPlaceholder}
+            value={value.filter(v => v != null)}
+            onChange={onChange}
+            options={options}
+            optionRenderer={option =>
+              renderValue(fields, formatOptions, option[0], {
+                autoLoad: false,
+              })
+            }
+            checkedColor={checkedColor}
+          />
+        ) : (
           <TokenField
             prefix={prefix}
             value={value.filter(v => v != null)}
