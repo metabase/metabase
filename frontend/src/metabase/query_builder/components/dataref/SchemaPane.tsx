@@ -1,15 +1,15 @@
-/* eslint-disable react/prop-types */
 import React from "react";
-import PropTypes from "prop-types";
 import Icon from "metabase/components/Icon";
 import Schemas from "metabase/entities/schemas";
+import { State } from "metabase-types/store";
+import Schema from "metabase-lib/lib/metadata/Schema";
 
-const propTypes = {
-  show: PropTypes.func.isRequired,
-  schema: PropTypes.object.isRequired,
-};
+interface Props {
+  show: (type: string, object: any) => void;
+  schema: Schema;
+}
 
-const SchemaPaneInner = ({ schema, show }) => {
+function SchemaPaneInner({ schema, show }: Props) {
   const tables = schema.tables.sort((a, b) => a.name.localeCompare(b.name));
   return (
     <div>
@@ -33,12 +33,10 @@ const SchemaPaneInner = ({ schema, show }) => {
       </ul>
     </div>
   );
-};
+}
 
-const SchemaPane = Schemas.load({ id: (state, { schema }) => schema.id })(
-  SchemaPaneInner,
-);
-SchemaPane.propTypes = propTypes;
-SchemaPaneInner.propTypes = propTypes;
+const SchemaPane = Schemas.load({
+  id: (_state: State, { schema }: Props) => schema.id,
+})(SchemaPaneInner);
 
 export default SchemaPane;
