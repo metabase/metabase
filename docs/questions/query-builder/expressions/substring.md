@@ -4,12 +4,13 @@ title: Substring
 
 # Substring
 
-`substring` extracts part of some text. This function is useful for cleaning up text data (i.e., columns with a [string data type](https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types)) that has a consistent format.
+`substring` extracts part of some text. This function is useful for cleaning up text (or any value with a [string data type](https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types)) that has a consistent format.
 
-For example, `substring` should work well on strings such as SKU numbers, ISO codes, or standardized email addresses.
+For example, `substring` should work well on strings like SKU numbers, ISO codes, and standardized email addresses.
 
-| `substring(text, position, length)`                                                              | `substring("user_id@email.com", 1, 7) |
+| Syntax                                                                                           | Example                               |
 |--------------------------------------------------------------------------------------------------|---------------------------------------|
+| `substring(text, position, length)`                                                              | `substring("user_id@email.com", 1, 7)`|
 | Extracts part of the text given a starting point (position) and a length (number of characters). | "user_id"                             |
 
 ## Parameters
@@ -33,7 +34,13 @@ substring([Mission ID], 9, 3)
 
 ## Getting a substring from the right
 
-Instead of using a number for the position, you'll use the formula: `1 + length([column]) - position_from_right`, where position_from_right is the number of characters you want to count from right to left.
+Instead of using a number for the position, you'll use the formula
+
+```
+1 + length([column]) - position_from_right
+```
+
+where `position_from_right` is the number of characters you want to count from right to left.
 
 | Mission ID  | Agent |
 |-------------|-------|
@@ -73,14 +80,14 @@ This section covers functions and formulas that work the same way as the Metabas
 
 ### SQL
 
-Unless you're using a NoSQL database, when you run a question that you created using the [notebook editor](https://www.metabase.com/glossary/notebook_editor), under the hood Metabase will convert your graphical query settings (your filters, summaries, etc.) into SQL code, and run that SQL query against your database to get your results. 
+When you run a question using the [notebook editor](https://www.metabase.com/glossary/notebook_editor), Metabase will convert your graphical query settings (filters, summaries, etc.) into a query, and run that query against your database to get your results.
 
-If our [sample data](#getting-a-substring-from-the-left) is stored in a relational database:
+If our [sample data](#getting-a-substring-from-the-left) is stored in a SQL database:
 
 ```sql
 SELECT
     mission_id,
-    substring(mission_id, 9, 3) AS agent
+    SUBSTRING(mission_id, 9, 3) AS agent
 FROM
     this_message_will_self_destruct;
 ```
@@ -99,7 +106,7 @@ If our [sample data](#getting-a-substring-from-the-left) is in a spreadsheet whe
 =mid(A2,9,3)
 ```
 
-is equivalent to the Metabase `substring` expression:
+is the same as the Metabase `substring` expression:
 
 ```
 substring([Mission ID], 9, 3)
@@ -113,7 +120,7 @@ Assuming the [sample data](#getting-a-substring-from-the-left) is in a dataframe
 df['Agent'] = df['Mission ID'].str.slice(8, 11)
 ```
 
-would do the same thing as the Metabase `substring` expression:
+does the same thing as the Metabase `substring` expression:
 
 ```
 substring([Mission ID], 9, 3)
