@@ -1,7 +1,6 @@
 import React from "react";
 
 import type {
-  ArbitraryParameterForActionExecution,
   WritebackQueryAction,
   WritebackParameter,
   OnSubmitActionForm,

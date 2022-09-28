@@ -13,7 +13,6 @@ import {
   removeOrphanSettings,
   setParameterTypesFromFieldSettings,
   setTemplateTagTypesFromFieldSettings,
-  mapModelActionsToActions,
 } from "./utils";
 
 const creatQuestionWithTemplateTags = (tagType: string) =>
@@ -212,38 +211,6 @@ describe("entities > actions > utils", () => {
 
       expect(tags.name.type).toEqual("date");
       expect(tags.price.type).toEqual("date");
-    });
-  });
-
-  describe("mapModelActionsToAction", () => {
-    it("puts action_id into the id property", () => {
-      const modelAction = {
-        id: 123,
-        card_id: 456,
-        action_id: 789,
-        slug: "slug_name",
-        name: "Action Name",
-      };
-
-      const action = mapModelActionsToActions(modelAction as ModelAction);
-
-      expect(action.id).toEqual(789);
-      expect(action.model_action_id).toEqual(123);
-      expect(action.name).toEqual("Action Name");
-    });
-
-    it("preserves name property", () => {
-      const modelAction = {
-        id: 123,
-        card_id: 456,
-        action_id: 789,
-        slug: "slug_name",
-        name: "Action Name",
-      };
-
-      const action = mapModelActionsToActions(modelAction as ModelAction);
-
-      expect(action.name).toEqual("Action Name");
     });
   });
 });

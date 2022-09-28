@@ -9,6 +9,8 @@ export type WritebackActionType = "http" | "query";
 
 export interface WritebackActionBase {
   id: number;
+  model_id?: number;
+  slug?: string;
   name: string;
   description: string | null;
   parameters: WritebackParameter[];
@@ -53,21 +55,9 @@ export type WritebackAction = WritebackActionBase & (QueryAction | HttpAction);
 
 export type ParameterMappings = Record<ParameterId, ParameterTarget>;
 
-type ParameterForActionExecutionBase = {
-  type: string;
-  value: string | number;
+export type ParametersForActionExecution = {
+  [id: ParameterId]: string | number;
 };
-
-export type ParameterMappedForActionExecution =
-  ParameterForActionExecutionBase & {
-    id: ParameterId;
-    target: ParameterTarget;
-  };
-
-export type ArbitraryParameterForActionExecution =
-  ParameterForActionExecutionBase & {
-    target: ParameterTarget;
-  };
 
 export interface ActionFormSubmitResult {
   success: boolean;
@@ -76,7 +66,7 @@ export interface ActionFormSubmitResult {
 }
 
 export type OnSubmitActionForm = (
-  parameters: ArbitraryParameterForActionExecution[],
+  parameters: ParametersForActionExecution,
 ) => Promise<ActionFormSubmitResult>;
 
 export interface ModelAction {

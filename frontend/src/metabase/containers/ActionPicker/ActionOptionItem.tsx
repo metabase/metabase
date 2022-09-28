@@ -1,11 +1,11 @@
 import React from "react";
 
-import { SidebarItem } from "../SidebarItem";
+import { SidebarItem } from "../../dashboard/components/ClickBehaviorSidebar/SidebarItem";
 import {
   ActionSidebarItem,
   ActionSidebarItemIcon,
   ActionDescription,
-} from "./ActionOptions.styled";
+} from "./ActionPicker.styled";
 
 interface ActionOptionProps {
   name: string;

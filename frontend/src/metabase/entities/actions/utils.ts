@@ -109,9 +109,3 @@ export const setTemplateTagTypesFromFieldSettings = (
 
   return question;
 };
-
-export const mapModelActionsToActions = (modelAction: ModelAction) => ({
-  ...modelAction,
-  model_action_id: modelAction.id,
-  id: modelAction.action_id,
-});

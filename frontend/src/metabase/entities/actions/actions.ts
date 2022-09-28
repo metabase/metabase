@@ -9,7 +9,6 @@ import {
   addMissingSettings,
   setParameterTypesFromFieldSettings,
   setTemplateTagTypesFromFieldSettings,
-  mapModelActionsToActions,
 } from "metabase/entities/actions/utils";
 import type Question from "metabase-lib/lib/Question";
 import { saveForm, updateForm } from "./forms";
@@ -89,18 +88,6 @@ const Actions = createEntity({
       return card;
     },
     update: updateAction,
-    list: async (props: any) => {
-      const { modelId } = props;
-
-      if (modelId) {
-        const modelActions = await ModelActionsApi.getModelActions({
-          id: modelId,
-        });
-        return modelActions.map(mapModelActionsToActions);
-      }
-
-      return ActionsApi.list(props);
-    },
   },
   forms: {
     saveForm,

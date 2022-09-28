@@ -13,7 +13,7 @@ import type {
 } from "metabase-types/api";
 import type { FormFieldDefinition } from "metabase-types/forms";
 
-import { formatParametersBeforeSubmit, setDefaultValues } from "./utils";
+import { setDefaultValues } from "./utils";
 
 interface Props {
   missingParameters: WritebackParameter[];
@@ -51,11 +51,8 @@ function ActionParametersInputForm({
       actions.setSubmitting(true);
       const paramsWithDefaultValues = setDefaultValues(params, fieldSettings);
 
-      const formattedParams = formatParametersBeforeSubmit(
-        paramsWithDefaultValues,
-        formParams,
-      );
-      const { success, error } = await onSubmit(formattedParams);
+      const { success, error } = await onSubmit(paramsWithDefaultValues);
+
       if (success) {
         actions.setErrors({});
         onSubmitSuccess?.();
@@ -64,7 +61,7 @@ function ActionParametersInputForm({
         throw new Error(error);
       }
     },
-    [onSubmit, onSubmitSuccess, fieldSettings, formParams],
+    [onSubmit, onSubmitSuccess, fieldSettings],
   );
 
   const initialValues = useMemo(

@@ -82,7 +82,9 @@ export function isMappedExplicitActionButton(
   dashCard: BaseDashboardOrderedCard,
 ): dashCard is ActionDashboardCard {
   const isAction = isActionDashCard(dashCard);
-  return isAction && typeof dashCard.action_id === "number";
+  return (
+    isAction && typeof dashCard.visualization_settings.action_slug === "string"
+  );
 }
 
 export function isValidImplicitActionClickBehavior(
