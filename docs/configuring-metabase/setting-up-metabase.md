@@ -60,4 +60,10 @@ At this point you are all set and ready to use Metabase.  Since we like keeping 
 Once you're done here simply follow the link to **Take me to Metabase**.  And if you decided to skip the newsletter sign-up, it's cool, we still like you :)
 
 ## Getting started with Metabase
+
 For a tutorial on getting up and running with questions and dashboards, head over to [Learn Metabase](https://www.metabase.com/learn/getting-started/getting-started.html).
+
+***
+
+If you’d like more technical resources to set up your data stack with Metabase, connect with a [Metabase Expert](https://www.metabase.com/partners/){:target="_blank"}.
+
