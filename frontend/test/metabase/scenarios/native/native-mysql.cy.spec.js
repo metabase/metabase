@@ -2,7 +2,7 @@ import { restore, modal, openNativeEditor } from "__support__/e2e/helpers";
 
 const MYSQL_DB_NAME = "QA MySQL8";
 
-describe("scenatios > question > native > mysql", () => {
+describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/card").as("createQuestion");
     cy.intercept("POST", "/api/dataset").as("dataset");
