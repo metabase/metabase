@@ -3,7 +3,11 @@ import {
   createMockDataApp,
   createMockDataAppPage,
 } from "metabase-types/api/mocks";
-import { getDataAppHomePageId, getParentDataAppPageId } from "./utils";
+import {
+  getDataAppHomePageId,
+  getParentDataAppPageId,
+  moveNavItems,
+} from "./utils";
 
 describe("data app utils", () => {
   const dataAppWithoutHomepage = createMockDataApp({ dashboard_id: null });
@@ -89,6 +93,148 @@ describe("data app utils", () => {
 
     it("skips hidden pages when looking for a parent", () => {
       expect(getParentDataAppPageId(6, navItems)).toBe(4);
+    });
+  });
+
+  describe("moveNavItems", () => {
+    it("swaps top level pages order", () => {
+      const navItems: DataAppNavItem[] = [
+        { page_id: 1 },
+        { page_id: 2 },
+        { page_id: 3 },
+      ];
+
+      expect(moveNavItems(navItems, 0, 2, { page_id: 1 })).toEqual([
+        { page_id: 2 },
+        { page_id: 3 },
+        { page_id: 1 },
+      ]);
+    });
+
+    it("swaps nested pages order", () => {
+      const navItems: DataAppNavItem[] = [
+        { page_id: 1 },
+        { page_id: 2, indent: 1 },
+        { page_id: 3, indent: 1 },
+        { page_id: 4, indent: 1 },
+        { page_id: 5 },
+      ];
+
+      expect(moveNavItems(navItems, 1, 2, { page_id: 2, indent: 1 })).toEqual([
+        { page_id: 1 },
+        { page_id: 3, indent: 1 },
+        { page_id: 2, indent: 1 },
+        { page_id: 4, indent: 1 },
+        { page_id: 5 },
+      ]);
+    });
+
+    it("moves a top-level page under another page", () => {
+      const navItems: DataAppNavItem[] = [
+        { page_id: 1 },
+        { page_id: 2 },
+        { page_id: 3 },
+      ];
+
+      expect(moveNavItems(navItems, 2, 1, { page_id: 3, indent: 1 })).toEqual([
+        { page_id: 1 },
+        { page_id: 3, indent: 1 },
+        { page_id: 2 },
+      ]);
+    });
+
+    it("moves a nested page to the top-level", () => {
+      const navItems: DataAppNavItem[] = [
+        { page_id: 1 },
+        { page_id: 2, indent: 1 },
+        { page_id: 3 },
+      ];
+
+      expect(moveNavItems(navItems, 1, 1, { page_id: 2, indent: 0 })).toEqual([
+        { page_id: 1 },
+        { page_id: 2, indent: 0 },
+        { page_id: 3 },
+      ]);
+    });
+
+    it("moves a nested page under another page", () => {
+      const navItems: DataAppNavItem[] = [
+        { page_id: 1 },
+        { page_id: 2, indent: 1 },
+        { page_id: 3 },
+      ];
+
+      expect(moveNavItems(navItems, 1, 2, { page_id: 2, indent: 1 })).toEqual([
+        { page_id: 1 },
+        { page_id: 3 },
+        { page_id: 2, indent: 1 },
+      ]);
+    });
+
+    it("moves nested pages together with parent", () => {
+      const navItems: DataAppNavItem[] = [
+        { page_id: 1 },
+        { page_id: 2 },
+        { page_id: 3, indent: 1 },
+        { page_id: 4, indent: 1 },
+        { page_id: 5, indent: 2 },
+        { page_id: 6 },
+        { page_id: 7 },
+      ];
+
+      expect(moveNavItems(navItems, 1, 5, { page_id: 2 })).toEqual([
+        { page_id: 1 },
+        { page_id: 6 },
+        { page_id: 2 },
+        { page_id: 3, indent: 1 },
+        { page_id: 4, indent: 1 },
+        { page_id: 5, indent: 2 },
+        { page_id: 7 },
+      ]);
+    });
+
+    it("swaps page groups", () => {
+      const navItems: DataAppNavItem[] = [
+        { page_id: 1 },
+        { page_id: 2, indent: 1 },
+        { page_id: 3 },
+        { page_id: 4, indent: 1 },
+        { page_id: 5 },
+        { page_id: 6, indent: 1 },
+        { page_id: 7 },
+      ];
+
+      expect(moveNavItems(navItems, 4, 2, { page_id: 5 })).toEqual([
+        { page_id: 1 },
+        { page_id: 2, indent: 1 },
+        { page_id: 5 },
+        { page_id: 6, indent: 1 },
+        { page_id: 3 },
+        { page_id: 4, indent: 1 },
+        { page_id: 7 },
+      ]);
+    });
+
+    it("moves nested pages together with parent from top to bottom", () => {
+      const navItems: DataAppNavItem[] = [
+        { page_id: 1 },
+        { page_id: 2, indent: 1 },
+        { page_id: 3 },
+        { page_id: 4, indent: 1 },
+        { page_id: 5 },
+        { page_id: 6, indent: 1 },
+        { page_id: 7 },
+      ];
+
+      expect(moveNavItems(navItems, 4, 0, { page_id: 5 })).toEqual([
+        { page_id: 5 },
+        { page_id: 6, indent: 1 },
+        { page_id: 1 },
+        { page_id: 2, indent: 1 },
+        { page_id: 3 },
+        { page_id: 4, indent: 1 },
+        { page_id: 7 },
+      ]);
     });
   });
 });

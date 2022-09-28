@@ -64,3 +64,55 @@ export function getParentDataAppPageId(
 
   return pagesBeforeTarget[parentPageIndex]?.page_id || null;
 }
+
+function getChildNavItems(
+  navItems: DataAppNavItem[],
+  targetNavItem: DataAppNavItem,
+  targetNavItemIndex: number,
+): DataAppNavItem[] {
+  const children: DataAppNavItem[] = [];
+
+  const baseIndent = targetNavItem.indent || 0;
+
+  for (let i = targetNavItemIndex + 1; i < navItems.length; i++) {
+    const item = navItems[i];
+    const indent = item.indent;
+
+    // Top-level page
+    if (!indent || indent === 0) {
+      break;
+    }
+
+    if (indent > baseIndent) {
+      children.push(item);
+    } else {
+      break;
+    }
+  }
+
+  return children;
+}
+
+export function moveNavItems(
+  navItems: DataAppNavItem[],
+  oldIndex: number,
+  newIndex: number,
+  movedItem: DataAppNavItem,
+): DataAppNavItem[] {
+  const nextNavItems = [...navItems];
+  const movedItems = [
+    movedItem,
+    ...getChildNavItems(navItems, movedItem, oldIndex),
+  ];
+
+  nextNavItems.splice(oldIndex, movedItems.length);
+
+  const insertIndex =
+    newIndex > nextNavItems.length
+      ? Math.max(newIndex - movedItems.length + 1, 0)
+      : newIndex;
+
+  nextNavItems.splice(insertIndex, 0, ...movedItems);
+
+  return nextNavItems;
+}
