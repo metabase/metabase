@@ -14,12 +14,10 @@ For example, `substring` should work well on strings such as SKU numbers, ISO co
 
 ## Parameters
 
-- Generally, position should be a positive number. 
 - The first character in your string is at position 1.
-- Some databases support negative numbers for position, so that you can reference the last character at position -1.
-- Length should always be a positive number.
+- The length of your substring should always be a positive number.
 
-## Cleaning text data
+## Getting a substring from the left
 
 | Mission ID  | Agent |
 |-------------|-------|
@@ -27,17 +25,27 @@ For example, `substring` should work well on strings such as SKU numbers, ISO co
 | 20061114007 | 007   |
 | 19640917008 | 008   |
 
-where **Agent** is a custom column with the expression:
+**Agent** is a custom column with the expression:
 
 ```
 substring([Mission ID], 9, 3)
 ```
 
-If your database supports negative starting positions, you could also use:
+## Getting a substring from the right
+
+| Mission ID  | Agent |
+|-------------|-------|
+| 19951113006 | 006   |
+| 20061114007 | 007   |
+| 19640917008 | 008   |
+
+**Agent** is a custom column with the expression:
 
 ```
-substring([Mission ID], -3, 3)
+substring([Mission ID], (1 + length([Mission ID]) - 3), 3)
 ```
+
+Instead of using a number for the position, you'll use the formula: `1 + length([column]) - position_from_right`, where position_from_right is the number of characters you want to count from right to left.
 
 ## Accepted data types
 
@@ -67,7 +75,7 @@ This section covers functions and formulas that work the same way as the Metabas
 
 In most cases (unless you're using a NoSQL database), questions created from the [notebook editor](https://www.metabase.com/glossary/notebook_editor) are converted into SQL queries that run against your database or data warehouse. 
 
-If our [sample data](#cleaning-text-data) is stored in a relational database:
+If our [sample data](#getting-a-substring-from-the-left) is stored in a relational database:
 
 ```sql
 SELECT
@@ -85,7 +93,7 @@ substring([Mission ID], 9, 3)
 
 ### Spreadsheets
 
-If our [sample data](#cleaning-text-data) is in a spreadsheet where "Mission ID" is in column A,
+If our [sample data](#getting-a-substring-from-the-left) is in a spreadsheet where "Mission ID" is in column A,
 
 ```
 =mid(A2,9,3)
@@ -99,7 +107,7 @@ substring([Mission ID], 9, 3)
 
 ### Python
 
-Assuming the [sample data](#cleaning-text-data) is in a dataframe column called df,
+Assuming the [sample data](#getting-a-substring-from-the-left) is in a dataframe column called df,
 
 ```
 df['Agent'] = df['Mission ID'].str.slice(8, 11)
