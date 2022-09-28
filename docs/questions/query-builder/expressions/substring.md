@@ -14,9 +14,10 @@ For example, `substring` should work well on strings such as SKU numbers, ISO co
 
 ## Parameters
 
-- Generally, position and length should both be positive whole numbers.
+- Generally, position should be a positive number. 
 - The first character in your string is at position 1.
-- Some databases support negative numbers for position (to count from the right end of the string).
+- Some databases support negative numbers for position, so that you can reference the last character at position -1.
+- Length should always be a positive number.
 
 ## Cleaning text data
 
