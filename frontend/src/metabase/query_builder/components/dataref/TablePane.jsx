@@ -59,44 +59,42 @@ class TablePane extends React.Component {
   render() {
     const { table, show } = this.props;
     const { error, hasFetchedMetadata } = this.state;
-    if (table) {
-      return (
-        <div>
-          <div className="ml1">
-            {table.description ? (
-              <Description>{table.description}</Description>
-            ) : (
-              <EmptyDescription>{t`No description`}</EmptyDescription>
-            )}
-          </div>
-          <div className="my2">
-            {table.fields && (
-              <FieldList
-                fields={table.fields}
-                handleFieldClick={f => show("field", f)}
-              />
-            )}
-            <MetadataContainer>
-              <Fade visible={!hasFetchedMetadata}>
-                <AbsoluteContainer>
-                  <LoadingSpinner size={24} />
-                </AbsoluteContainer>
-              </Fade>
-              <Fade visible={hasFetchedMetadata}>
-                {table && (
-                  <ConnectedTableList
-                    tables={table.connectedTables()}
-                    onTableClick={t => show("table", t)}
-                  />
-                )}
-              </Fade>
-            </MetadataContainer>
-          </div>
+    return table ? (
+      <div>
+        <div className="ml1">
+          {table.description ? (
+            <Description>{table.description}</Description>
+          ) : (
+            <EmptyDescription>{t`No description`}</EmptyDescription>
+          )}
         </div>
-      );
-    } else {
-      return <div>{error}</div>;
-    }
+        <div className="my2">
+          {table.fields && (
+            <FieldList
+              fields={table.fields}
+              handleFieldClick={f => show("field", f)}
+            />
+          )}
+          <MetadataContainer>
+            <Fade visible={!hasFetchedMetadata}>
+              <AbsoluteContainer>
+                <LoadingSpinner size={24} />
+              </AbsoluteContainer>
+            </Fade>
+            <Fade visible={hasFetchedMetadata}>
+              {table && (
+                <ConnectedTableList
+                  tables={table.connectedTables()}
+                  onTableClick={t => show("table", t)}
+                />
+              )}
+            </Fade>
+          </MetadataContainer>
+        </div>
+      </div>
+    ) : (
+      <div>{error}</div>
+    );
   }
 }
 

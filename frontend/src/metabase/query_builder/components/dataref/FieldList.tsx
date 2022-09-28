@@ -1,9 +1,7 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
 import React from "react";
 import { t, ngettext, msgid } from "ttag";
 import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
-
+import Field from "metabase-lib/lib/metadata/Field";
 import {
   NodeListItem,
   NodeListItemName,
@@ -19,7 +17,7 @@ interface Props {
   handleFieldClick: (field: Field) => any;
 }
 
-function NodeList({ fields, handleFieldClick }: Props) {
+function FieldList({ fields, handleFieldClick }: Props) {
   return (
     <NodeListContainer>
       <NodeListTitle>
@@ -50,4 +48,4 @@ function NodeList({ fields, handleFieldClick }: Props) {
   );
 }
 
-export default NodeList;
+export default FieldList;
