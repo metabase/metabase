@@ -18,10 +18,10 @@ import { ModelId } from "./DatabaseTablesPane.styled";
 
 const DatabaseTablesPane = ({ database, show, questions }) => {
   const tables = database.tables.sort((a, b) => a.name.localeCompare(b.name));
-  const models = questions.sort((a, b) => a.name.localeCompare(b.name));
-  return (
+  const models = questions?.sort((a, b) => a.name.localeCompare(b.name));
+  return models ? (
     <NodeListContainer>
-      {models.length ? (
+      {models?.length ? (
         <>
           <NodeListTitle>
             <NodeListIcon name="model" />
@@ -68,7 +68,7 @@ const DatabaseTablesPane = ({ database, show, questions }) => {
         ))}
       </ul>
     </NodeListContainer>
-  );
+  ) : null;
 };
 
 DatabaseTablesPane.propTypes = {
@@ -82,11 +82,13 @@ export default _.compose(
     query: (_state, props) => ({
       dbId: props.database?.id,
     }),
+    loadingAndErrorWrapper: false,
   }),
   Questions.loadList({
     query: (_state, props) => ({
       f: "database-models",
-      model_id: props.database?.id,
+      dbId: props.database?.id, // TODO: why could this be undefined?
     }),
+    loadingAndErrorWrapper: false,
   }),
 )(DatabaseTablesPane);

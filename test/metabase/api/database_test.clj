@@ -1363,3 +1363,14 @@
           (testing "App DB"
             (is (= {:database-enable-actions false}
                    (settings)))))))))
+
+(deftest filter-cards-by-database-models-test
+  (testing "GET /api/database/:id/models"
+    (mt/with-temp* [Database [db]
+                    Card     [card-1 {:dataset true  :archived false :database_id (mt/id)}]
+                    Card     [card-2 {:dataset true  :archived true  :database_id (mt/id)}]
+                    Card     [card-3 {:dataset false :archived false :database_id (mt/id)}]
+                    Card     [card-4 {:dataset true  :archived false :database_id (u/the-id db)}]]
+      (api.card-test/with-cards-in-readable-collection [card-1 card-2 card-3 card-4]
+        (is (= [(u/the-id card-1)] (map :id (mt/user-http-request :rasta :get 200 (format "database/%d/models" (mt/id)))))
+            (= [(u/the-id card-4)] (map :id (mt/user-http-request :rasta :get 200 (format "database/%d/models" (u/the-id db))))))))))

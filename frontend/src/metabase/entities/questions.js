@@ -3,11 +3,14 @@ import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
 
+import { GET } from "metabase/lib/api";
 import {
   API_UPDATE_QUESTION,
   SOFT_RELOAD_CARD,
 } from "metabase/query_builder/actions";
 
+const listQuestions = GET("/api/questions");
+const listModelsForDatabase = GET("/api/database/:dbId/models");
 import Collections, {
   getCollectionType,
   normalizedCollection,
@@ -20,6 +23,13 @@ const Questions = createEntity({
   name: "questions",
   nameOne: "question",
   path: "/api/card",
+
+  api: {
+    list: async (params, ...args) =>
+      params.f === "database-models"
+        ? listModelsForDatabase(params, ...args)
+        : listQuestions(params, ...args),
+  },
 
   objectActions: {
     setArchived: ({ id, model }, archived, opts) =>
