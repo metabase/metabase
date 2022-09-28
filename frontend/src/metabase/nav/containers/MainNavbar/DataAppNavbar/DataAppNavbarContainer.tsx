@@ -156,20 +156,23 @@ function DataAppNavbarContainerLoader({
   dataApp,
   ...props
 }: DataAppNavbarContainerLoaderProps) {
+  const query = useMemo(() => {
+    if (!dataApp) {
+      return {};
+    }
+    return {
+      collection: dataApp.collection_id,
+      models: FETCHING_SEARCH_MODELS,
+      limit: LIMIT,
+    };
+  }, [dataApp]);
+
   if (!dataApp) {
     return <NavbarLoadingView />;
   }
 
   return (
-    <Search.ListLoader
-      query={{
-        collection: dataApp.collection_id,
-        models: FETCHING_SEARCH_MODELS,
-        limit: LIMIT,
-      }}
-      keepListWhileLoading
-      loadingAndErrorWrapper={false}
-    >
+    <Search.ListLoader query={query} loadingAndErrorWrapper={false}>
       {({
         list = [],
         loading: loadingAppContent,
