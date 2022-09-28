@@ -97,7 +97,8 @@
 (defn- check-no-app-collections [changes]
   (let [coll-ids (into #{}
                        (comp (mapcat second)
-                             (map first))
+                             (map first)
+                             (filter int?))
                        changes)]
     (when-let [app-ids (and (seq coll-ids)
                             (db/select-ids 'App :collection_id [:in coll-ids]))]
