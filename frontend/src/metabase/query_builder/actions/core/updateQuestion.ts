@@ -265,7 +265,7 @@ export const updateQuestion = (
     }
 
     if (run) {
-      dispatch(runQuestionQuery());
+      dispatch(runQuestionQuery({ ignoreCache: true }));
     }
   };
 };
