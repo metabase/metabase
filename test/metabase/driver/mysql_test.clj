@@ -522,6 +522,7 @@
                   (mt/db)
                   (db/select-one Table :db_id (mt/id) :name "bigint-and-bool-table")))))))))
 
+
 (deftest can-shut-off-json-unwrapping
   (mt/test-driver :mysql
     ;; in here we fiddle with the mysql db details
@@ -542,6 +543,6 @@
       (let [db-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
         (is (thrown-with-msg?
               Exception
-              #"Killed mysql process id \d+ due to timeout."
+              #"Killed mysql process id [\d,]+ due to timeout."
               (#'mysql.ddl/execute-with-timeout! db-spec db-spec 10 ["select sleep(5)"])))
         (is (= true (#'mysql.ddl/execute-with-timeout! db-spec db-spec 5000 ["select sleep(0.1) as val"])))))))
