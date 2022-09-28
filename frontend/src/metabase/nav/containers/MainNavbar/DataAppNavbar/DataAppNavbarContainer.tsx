@@ -1,18 +1,23 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
-import { LocationDescriptor } from "history";
+import type { LocationDescriptor } from "history";
+import _ from "underscore";
+import { connect } from "react-redux";
 
 import Modal from "metabase/components/Modal";
 
 import * as Urls from "metabase/lib/urls";
 
-import DataApps from "metabase/entities/data-apps";
+import DataApps, {
+  moveNavItems,
+  UpdateDataAppParams,
+} from "metabase/entities/data-apps";
 import Dashboards from "metabase/entities/dashboards";
 import Search from "metabase/entities/search";
 
 import ScaffoldDataAppPagesModal from "metabase/writeback/containers/ScaffoldDataAppPagesModal";
 
-import type { DataApp, Dashboard } from "metabase-types/api";
+import type { DataApp, DataAppNavItem, Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import { MainNavbarProps, MainNavbarOwnProps, SelectedItem } from "../types";
@@ -34,6 +39,7 @@ interface DataAppNavbarContainerProps extends MainNavbarProps {
   dataApp: DataApp;
   pages: any[];
   selectedItems: SelectedItem[];
+  onDataAppChange: (params: UpdateDataAppParams) => void;
   onChangeLocation: (location: LocationDescriptor) => void;
 }
 
@@ -47,10 +53,15 @@ type SearchRenderProps = {
   reload: () => Promise<void>;
 };
 
+const mapDispatchToProps = {
+  onDataAppChange: DataApps.actions.update,
+};
+
 function DataAppNavbarContainer({
   dataApp,
   pages,
   selectedItems,
+  onDataAppChange,
   onReloadNavbar,
   onChangeLocation,
   ...props
@@ -80,6 +91,17 @@ function DataAppNavbarContainer({
       }
     },
     [onReloadNavbar, onChangeLocation],
+  );
+
+  const handleNavItemsOrderChange = useCallback(
+    (oldIndex: number, newIndex: number, navItem: DataAppNavItem) => {
+      onDataAppChange({
+        id: dataApp.id,
+        collection_id: dataApp.collection_id,
+        nav_items: moveNavItems(dataApp.nav_items, oldIndex, newIndex, navItem),
+      });
+    },
+    [dataApp, onDataAppChange],
   );
 
   const onAddData = useCallback(() => {
@@ -143,6 +165,7 @@ function DataAppNavbarContainer({
         dataApp={dataApp}
         pages={pages}
         selectedItems={finalSelectedItems}
+        onNavItemsOrderChange={handleNavItemsOrderChange}
         onAddData={onAddData}
         onNewPage={onNewPage}
         onEditAppSettings={onEditAppSettings}
@@ -201,6 +224,7 @@ function getDataAppId(state: State, props: MainNavbarOwnProps) {
   return Urls.extractEntityId(props.params.slug);
 }
 
-export default DataApps.load({ id: getDataAppId })(
-  DataAppNavbarContainerLoader,
-);
+export default _.compose(
+  DataApps.load({ id: getDataAppId }),
+  connect(null, mapDispatchToProps),
+)(DataAppNavbarContainerLoader);
