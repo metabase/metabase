@@ -258,7 +258,10 @@ PLUGIN_AUTH_PROVIDERS.push(providers => {
   if (MetabaseSettings.get("other-sso-configured?")) {
     providers = [SSO_PROVIDER, ...providers];
   }
-  if (!MetabaseSettings.isPasswordLoginEnabled()) {
+  if (
+    !MetabaseSettings.isPasswordLoginEnabled() &&
+    !MetabaseSettings.isLdapConfigured()
+  ) {
     providers = providers.filter(p => p.name !== "password");
   }
   return providers;

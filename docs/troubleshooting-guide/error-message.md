@@ -29,6 +29,7 @@ title: Troubleshooting error messages
 ### Common Metabase error messages
 
 - [Your question took too long](./timeout.md).
+- [Still waiting...](./my-dashboard-is-slow.md).
 
 [api-error-message]: #api-error-messages
 [debugging-sql-syntax]: https://www.metabase.com/learn/debugging-sql/sql-syntax.html

@@ -30,7 +30,7 @@ For an introduction to expressions, check out [Writing expressions in the notebo
   - [case](./expressions/case.md)
   - [ceil](#ceil)
   - [coalesce](./expressions/coalesce.md)
-  - [concat](#concat)
+  - [concat](./expressions/concat.md)
   - [contains](#contains)
   - [endswith](#endswith)
   - [exp](#exp)
@@ -240,7 +240,7 @@ Syntax: `coalesce(value1, value2, …)`
 
 Example: `coalesce([Comments], [Notes], "No comments")`. If both the `Comments` and `Notes` columns are null for that row, the expression will return the string "No comments".
 
-### concat
+### [concat](./expressions/concat.md)
 
 Combine two or more strings together.
 

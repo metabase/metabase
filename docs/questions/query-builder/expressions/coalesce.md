@@ -74,7 +74,7 @@ Use the same data types within a single `coalesce` function. If you want to coal
 
 If you want to use `coalesce` with JSON or JSONB data types, you'll need to flatten the JSON objects first. For more information, look up the JSON functions that are available in your SQL dialect. You can find some [common SQL reference guides here][sql-reference-guide].
 
-## Converting a function into a `coalesce` expression
+## Related functions
 
 This section covers functions and formulas that can be used interchangeably with the Metabase `coalesce` expression, with notes on how to choose the best option for your use case.
 

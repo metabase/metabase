@@ -445,15 +445,15 @@
   (let [boop-identifier (:form (hx/with-type-info (hx/identifier :field "boop" "bleh -> meh") {}))]
     (testing "Transforming MBQL query with JSON in it to mysql query works"
       (let [boop-field {:nfc_path [:bleh :meh] :database_type "bigint"}]
-        (is (= ["convert(json_extract(boop.bleh, ?), BIGINT)" "$.\"meh\""]
+        (is (= ["convert(json_extract(boop.bleh, ?), UNSIGNED)" "$.\"meh\""]
                (hsql/format (#'sql.qp/json-query :mysql boop-identifier boop-field))))))
     (testing "What if types are weird and we have lists"
       (let [weird-field {:nfc_path [:bleh "meh" :foobar 1234] :database_type "bigint"}]
-        (is (= ["convert(json_extract(boop.bleh, ?), BIGINT)" "$.\"meh\".\"foobar\".\"1234\""]
+        (is (= ["convert(json_extract(boop.bleh, ?), UNSIGNED)" "$.\"meh\".\"foobar\".\"1234\""]
                (hsql/format (#'sql.qp/json-query :mysql boop-identifier weird-field))))))
     (testing "Doesn't complain when field is boolean"
       (let [boolean-boop-field {:database_type "boolean" :nfc_path [:bleh "boop" :foobar 1234]}]
-        (is (= ["convert(json_extract(boop.bleh, ?), BOOLEAN)" "$.\"boop\".\"foobar\".\"1234\""]
+        (is (= ["json_extract(boop.bleh, ?)" "$.\"boop\".\"foobar\".\"1234\""]
                (hsql/format (#'sql.qp/json-query :mysql boop-identifier boolean-boop-field))))))))
 
 (deftest json-alias-test
@@ -470,9 +470,9 @@
                                  :query    {:source-table (u/the-id table)
                                             :aggregation  [[:count]]
                                             :breakout     [[:field (u/the-id field) nil]]}})]
-              (is (= (str "SELECT convert(json_extract(json.json_bit, ?), BIGINT) AS `json_bit → 1234`, "
-                          "count(*) AS `count` FROM `json` GROUP BY convert(json_extract(json.json_bit, ?), BIGINT) "
-                          "ORDER BY convert(json_extract(json.json_bit, ?), BIGINT) ASC")
+              (is (= (str "SELECT convert(json_extract(json.json_bit, ?), UNSIGNED) AS `json_bit → 1234`, "
+                          "count(*) AS `count` FROM `json` GROUP BY convert(json_extract(json.json_bit, ?), UNSIGNED) "
+                          "ORDER BY convert(json_extract(json.json_bit, ?), UNSIGNED) ASC")
                      (:query compile-res)))
               (is (= '("$.\"1234\"" "$.\"1234\"" "$.\"1234\"") (:params compile-res))))))))))
 
@@ -492,8 +492,50 @@
                                                               :min-value 0.75,
                                                               :max-value 54.0,
                                                               :bin-width 0.75}}]]
-                  (is (= ["((floor(((convert(json_extract(json.json_bit, ?), BIGINT) - 0.75) / 0.75)) * 0.75) + 0.75)" "$.\"1234\""]
+                  (is (= ["((floor(((convert(json_extract(json.json_bit, ?), UNSIGNED) - 0.75) / 0.75)) * 0.75) + 0.75)" "$.\"1234\""]
                          (hsql/format (sql.qp/->honeysql :mysql field-clause)))))))))))))
+
+(tx/defdataset json-unwrap-bigint-and-boolean
+  "Used for testing mysql json value unwrapping"
+  [["bigint-and-bool-table"
+    [{:field-name "jsoncol" :base-type :type/JSON}]
+    [["{\"mybool\":true, \"myint\":1234567890123456789}"]
+     ["{\"mybool\":false,\"myint\":12345678901234567890}"]
+     ["{\"mybool\":true, \"myint\":123}"]]]])
+
+(deftest json-unwrapping-bigint-and-boolean
+  (mt/test-driver :mysql
+    (when-not (is-mariadb? (mt/id))
+      (mt/dataset json-unwrap-bigint-and-boolean
+        (sync/sync-database! (mt/db))
+        (testing "Fields marked as :type/SerializedJSON are fingerprinted that way"
+          (is (= #{{:name "id", :base_type :type/Integer, :semantic_type :type/PK}
+                   {:name "jsoncol", :base_type :type/SerializedJSON, :semantic_type :type/SerializedJSON}
+                   {:name "jsoncol → myint", :base_type :type/Number, :semantic_type nil}
+                   {:name "jsoncol → mybool", :base_type :type/Boolean, :semantic_type nil}}
+                 (db->fields (mt/db)))))
+        (testing "Nested field columns are correct"
+          (is (= #{{:name "jsoncol → mybool", :database-type "boolean", :base-type :type/Boolean, :database-position 0, :visibility-type :normal, :nfc-path [:jsoncol "mybool"]}
+                   {:name "jsoncol → myint", :database-type "double precision", :base-type :type/Number, :database-position 0, :visibility-type :normal, :nfc-path [:jsoncol "myint"]}}
+                 (sql-jdbc.sync/describe-nested-field-columns
+                  :mysql
+                  (mt/db)
+                  (db/select-one Table :db_id (mt/id) :name "bigint-and-bool-table")))))))))
+
+
+(deftest can-shut-off-json-unwrapping
+  (mt/test-driver :mysql
+    ;; in here we fiddle with the mysql db details
+    (let [db (db/select-one Database :id (mt/id))]
+      (try
+        (db/update! Database (mt/id) {:details (assoc (:details db) :json-unfolding true)})
+        (is (= true (driver/database-supports? :mysql :nested-field-columns (mt/db))))
+        (db/update! Database (mt/id) {:details (assoc (:details db) :json-unfolding false)})
+        (is (= false (driver/database-supports? :mysql :nested-field-columns (mt/db))))
+        (db/update! Database (mt/id) {:details (assoc (:details db) :json-unfolding nil)})
+        (is (= true (driver/database-supports? :mysql :nested-field-columns (mt/db))))
+        ;; un fiddle with the mysql db details.
+        (finally (db/update! Database (mt/id) :details (:details db)))))))
 
 (deftest ddl.execute-with-timeout-test
   (mt/test-driver :mysql
@@ -501,6 +543,6 @@
       (let [db-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
         (is (thrown-with-msg?
               Exception
-              #"Killed mysql process id \d+ due to timeout."
+              #"Killed mysql process id [\d,]+ due to timeout."
               (#'mysql.ddl/execute-with-timeout! db-spec db-spec 10 ["select sleep(5)"])))
         (is (= true (#'mysql.ddl/execute-with-timeout! db-spec db-spec 5000 ["select sleep(0.1) as val"])))))))

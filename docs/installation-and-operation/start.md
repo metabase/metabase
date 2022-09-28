@@ -1,8 +1,8 @@
 ---
-title: "Installation and operation overview"
+title: "Installation overview"
 ---
 
-# Installation and operation overview
+# Installation overview
 
 The birth, care, and feeding of your Metabase.
 
@@ -61,3 +61,7 @@ Some notes on Java versions.
 ## [Supported browsers](./supported-browsers.md)
 
 Rest in peace, Internet Explorer.
+
+*** 
+
+If you’d like more technical resources to set up your data stack with Metabase, connect with a [Metabase Expert](https://www.metabase.com/partners/){:target="_blank"}.
