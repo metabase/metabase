@@ -22,8 +22,10 @@ type EditableDataAppParams = Pick<
 type CreateDataAppParams = Partial<EditableDataAppParams> &
   Pick<EditableDataAppParams, "name">;
 
-type UpdateDataAppParams = Pick<DataApp, "id" | "collection_id"> & {
-  collection: Pick<Collection, "name" | "description">;
+export type UpdateDataAppParams = Partial<EditableDataAppParams> & {
+  id: DataApp["id"];
+  collection_id: DataApp["collection_id"];
+  collection?: Pick<Collection, "name" | "description">;
 };
 
 export type ScaffoldNewAppParams = {
@@ -67,7 +69,9 @@ const DataApps = createEntity({
       collection_id,
       ...rest
     }: UpdateDataAppParams) => {
-      await CollectionsApi.update({ ...collection, id: collection_id });
+      if (collection) {
+        await CollectionsApi.update({ ...collection, id: collection_id });
+      }
       return DataAppsApi.update({ id, ...rest });
     },
   },
