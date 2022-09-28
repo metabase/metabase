@@ -5,10 +5,10 @@ import { t } from "ttag";
 import Databases from "metabase/entities/databases";
 
 import {
-  FieldListItem,
-  FieldListItemName,
-  FieldListItemIcon,
-} from "./FieldList/FieldList.styled";
+  NodeListItem,
+  NodeListItemName,
+  NodeListItemIcon,
+} from "./NodeList.styled";
 
 const MainPane = ({ databases, show }) => (
   <div>
@@ -20,12 +20,12 @@ const MainPane = ({ databases, show }) => (
         databases
           .filter(db => !db.is_saved_questions)
           .map(database => (
-            <FieldListItem key={database.id}>
+            <NodeListItem key={database.id}>
               <a onClick={() => show("database", database)}>
-                <FieldListItemIcon name="database" />
-                <FieldListItemName>{database.name}</FieldListItemName>
+                <NodeListItemIcon name="database" />
+                <NodeListItemName>{database.name}</NodeListItemName>
               </a>
-            </FieldListItem>
+            </NodeListItem>
           ))}
     </ul>
   </div>

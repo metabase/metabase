@@ -5,22 +5,22 @@ import Icon from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
-export const FieldListItemName = styled.span`
+export const NodeListItemName = styled.span`
   font-weight: 700;
 `;
 
-export const FieldListIcon = styled(Icon)`
+export const NodeListIcon = styled(Icon)`
   margin-top: 1px;
   width: ${space(2)};
 `;
 
-export const FieldListItemIcon = styled(Icon)`
+export const NodeListItemIcon = styled(Icon)`
   color: ${color("focus")};
   margin-top: 1px;
   width: ${space(2)};
 `;
 
-export const FieldListItem = styled.li`
+export const NodeListItem = styled.li`
   a {
     border-radius: 8px;
     display: flex;
@@ -37,22 +37,22 @@ export const FieldListItem = styled.li`
       background-color: ${color("bg-medium")};
     }
   }
-  ${FieldListItemName} {
+  ${NodeListItemName} {
     margin-left: ${space(1)};
   }
 `;
 
-export const FieldListContainer = styled.ul`
+export const NodeListContainer = styled.ul`
   padding-top: ${space(2)};
 `;
 
-export const FieldListTitle = styled.div`
+export const NodeListTitle = styled.div`
   display: flex;
   align-items: center;
   font-weight: 700;
   padding: ${space(1)} ${space(1)} ${space(1)} 6px;
 `;
 
-export const FieldListTitleText = styled.span`
+export const NodeListTitleText = styled.span`
   margin-left: ${space(1)};
 `;
