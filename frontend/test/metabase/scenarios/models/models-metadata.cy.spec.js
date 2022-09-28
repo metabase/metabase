@@ -258,7 +258,6 @@ describe("scenarios > models metadata", () => {
           });
 
           cy.go("back");
-          cy.wait("@dataset");
 
           // Drill to Reviews table
           // FK column has a FK semantic type, no mapping to real DB columns
