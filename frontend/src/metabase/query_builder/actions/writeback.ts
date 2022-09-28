@@ -18,7 +18,7 @@ export const turnQuestionIntoAction =
     dispatch(
       addUndo({
         message: t`This is an action now.`,
-        actions: [apiUpdateQuestion(question, { rerunQuery: true })],
+        actions: [apiUpdateQuestion(question, { forcefullyRerunQuery: true })],
       }),
     );
   };
@@ -27,12 +27,12 @@ export const turnActionIntoQuestion =
   () => async (dispatch: Dispatch, getState: GetState) => {
     const action = getQuestion(getState());
     const question = action?.setIsAction(false);
-    await dispatch(apiUpdateQuestion(question, { rerunQuery: true }));
+    await dispatch(apiUpdateQuestion(question, { forcefullyRerunQuery: true }));
 
     dispatch(
       addUndo({
         message: t`This is a question now.`,
-        actions: [apiUpdateQuestion(action, { rerunQuery: true })],
+        actions: [apiUpdateQuestion(action, { forcefullyRerunQuery: true })],
       }),
     );
   };
