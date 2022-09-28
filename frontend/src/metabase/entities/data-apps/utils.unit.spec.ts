@@ -236,5 +236,16 @@ describe("data app utils", () => {
         { page_id: 7 },
       ]);
     });
+
+    it("handles pages without corresponding nav items", () => {
+      const navItems = [{ page_id: 1 }, { page_id: 2 }, { page_id: 3 }];
+
+      expect(moveNavItems(navItems, 5, 1, { page_id: 4 })).toEqual([
+        { page_id: 1 },
+        { page_id: 4 },
+        { page_id: 2 },
+        { page_id: 3 },
+      ]);
+    });
   });
 });
