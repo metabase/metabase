@@ -2,7 +2,7 @@ import { restore, withDatabase, popover } from "__support__/e2e/helpers";
 
 const externalDatabaseId = 2;
 
-describe("issue 16170", () => {
+describe("issue 16170", { tags: "@external" }, () => {
   beforeEach(() => {
     restore("mongo-4");
     cy.signInAsAdmin();
