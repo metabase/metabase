@@ -36,7 +36,7 @@ const rawTestCases = [
   },
 ];
 
-describe("scenarios > alert > types", () => {
+describe("scenarios > alert > types", { tags: "@external" }, () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/alert").as("savedAlert");
 
