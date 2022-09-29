@@ -23,7 +23,10 @@ import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils"
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 
-import { getMaxMetricsSupported } from "metabase/visualizations";
+import {
+  getMaxMetricsSupported,
+  getMaxDimensionsSupported,
+} from "metabase/visualizations";
 
 import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
 
@@ -121,15 +124,16 @@ export const GRAPH_DATA_SETTINGS = {
       ),
     persistDefault: true,
     getProps: ([{ card, data }], vizSettings) => {
-      const value = vizSettings["graph.dimensions"];
+      const addedDimensions = vizSettings["graph.dimensions"];
+      const maxDimensionsSupported = getMaxDimensionsSupported(card.display);
       const options = data.cols
         .filter(vizSettings["graph._dimension_filter"])
         .map(getOptionFromColumn);
       return {
         options,
         addAnother:
-          options.length > value.length &&
-          value.length < 2 &&
+          options.length > addedDimensions.length &&
+          addedDimensions.length < maxDimensionsSupported &&
           vizSettings["graph.metrics"].length < 2
             ? t`Add series breakout`
             : null,
