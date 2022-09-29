@@ -1054,10 +1054,12 @@
         (io/delete-file (io/file filename) :silently)))))
 
 (defmacro with-temp-file
-  "Execute `body` with newly created temporary file(s) in the system temporary directory. You may optionally specify the
+  "Execute `body` with a path for temporary file(s) in the system temporary directory. You may optionally specify the
   `filename` (without directory components) to be created in the temp directory; if `filename` is nil, a random
   filename will be used. The file will be deleted if it already exists, but will not be touched; use `spit` to load
   something in to it.
+
+  DOES NOT CREATE A FILE!
 
     ;; create a random temp filename. File is deleted if it already exists.
     (with-temp-file [filename]
@@ -1117,6 +1119,24 @@
                  (macroexpand form))
       `(with-temp-file [])
       `(with-temp-file (+ 1 2)))))
+
+(defn do-with-temp-dir
+  "Impl for [[with-temp-dir]] macro."
+  [temp-dir-name f]
+  (do-with-temp-file
+   temp-dir-name
+   (^:once fn* [path]
+    (let [file (io/file path)]
+      (when (.exists file)
+        (org.apache.commons.io.FileUtils/deleteDirectory file)))
+    (u.files/create-dir-if-not-exists! (u.files/get-path path))
+    (f path))))
+
+(defmacro with-temp-dir
+  "Like [[with-temp-file]], but creates a new temporary directory in the system temp dir. Deletes existing directory if
+  it already exists."
+  [[directory-binding dir-name] & body]
+  `(do-with-temp-dir ~dir-name (^:once fn* [~directory-binding] ~@body)))
 
 (defn do-with-user-in-groups
   ([f groups-or-ids]

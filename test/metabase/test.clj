@@ -211,6 +211,7 @@
   with-non-admin-groups-no-root-collection-for-namespace-perms
   with-non-admin-groups-no-root-collection-perms
   with-temp-env-var-value
+  with-temp-dir
   with-temp-file
   with-temp-scheduler
   with-temp-vals-in-db
