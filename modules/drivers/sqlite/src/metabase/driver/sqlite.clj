@@ -128,6 +128,10 @@
   [driver _ expr]
   (->datetime (strftime "%Y-%m-%d %H:%M:%S" (sql.qp/->honeysql driver expr))))
 
+(defmethod sql.qp/date [:sqlite :second-of-minute]
+  [driver _ expr]
+  (hx/->integer (strftime "%S" (sql.qp/->honeysql driver expr))))
+
 (defmethod sql.qp/date [:sqlite :minute]
   [driver _ expr]
   (->datetime (strftime "%Y-%m-%d %H:%M" (sql.qp/->honeysql driver expr))))
@@ -205,6 +209,10 @@
 (defmethod sql.qp/date [:sqlite :year]
   [driver _ expr]
   (->date (sql.qp/->honeysql driver expr) (hx/literal "start of year")))
+
+(defmethod sql.qp/date [:sqlite :year-of-era]
+  [driver _ expr]
+  (hx/->integer (strftime "%Y" (sql.qp/->honeysql driver expr))))
 
 (defmethod sql.qp/add-interval-honeysql-form :sqlite
   [_driver hsql-form amount unit]

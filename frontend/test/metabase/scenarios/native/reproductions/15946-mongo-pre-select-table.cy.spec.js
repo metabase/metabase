@@ -2,7 +2,7 @@ import { restore, modal, startNewQuestion } from "__support__/e2e/helpers";
 
 const MONGO_DB_NAME = "QA Mongo4";
 
-describe.skip("issue 15946", () => {
+describe.skip("issue 15946", { tags: "@external" }, () => {
   before(() => {
     restore("mongo-4");
     cy.signInAsAdmin();

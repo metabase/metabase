@@ -286,10 +286,10 @@ export const STACKABLE_SETTINGS = {
     isValid: (series, settings) => {
       if (settings["stackable.stack_type"] != null) {
         const displays = series.map(single => settings.series(single).display);
-        const hasStackable = _.any(displays, display =>
+        const stackableDisplays = displays.filter(display =>
           STACKABLE_DISPLAY_TYPES.has(display),
         );
-        return hasStackable;
+        return stackableDisplays.length > 1;
       }
       return true;
     },
@@ -301,7 +301,10 @@ export const STACKABLE_SETTINGS = {
         : null,
     getHidden: (series, settings) => {
       const displays = series.map(single => settings.series(single).display);
-      return !_.any(displays, display => STACKABLE_DISPLAY_TYPES.has(display));
+      const stackableDisplays = displays.filter(display =>
+        STACKABLE_DISPLAY_TYPES.has(display),
+      );
+      return stackableDisplays.length <= 1;
     },
     readDependencies: ["graph.metrics", "series"],
   },
@@ -339,6 +342,8 @@ export const GRAPH_GOAL_SETTINGS = {
     title: t`Goal line`,
     widget: "toggle",
     default: false,
+    inline: true,
+    marginBottom: "1rem",
   },
   "graph.goal_value": {
     section: t`Display`,
@@ -366,6 +371,8 @@ export const GRAPH_GOAL_SETTINGS = {
       return !insights || insights.length === 0;
     },
     useRawSeries: true,
+    inline: true,
+    marginBottom: "1rem",
   },
 };
 
@@ -377,17 +384,19 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
     getHidden: (series, vizSettings) =>
       vizSettings["stackable.stack_type"] === "normalized",
     default: false,
+    inline: true,
+    marginBottom: "1rem",
   },
   "graph.label_value_frequency": {
     section: t`Display`,
     title: t`Values to show`,
-    widget: "radio",
+    widget: "segmentedControl",
     getHidden: (series, vizSettings) =>
       vizSettings["graph.show_values"] !== true ||
       vizSettings["stackable.stack_type"] === "normalized",
     props: {
       options: [
-        { name: t`As many as can fit nicely`, value: "fit" },
+        { name: t`Some`, value: "fit" },
         { name: t`All`, value: "all" },
       ],
     },
@@ -396,8 +405,8 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
   },
   "graph.label_value_formatting": {
     section: t`Display`,
-    title: t`Value formatting`,
-    widget: "radio",
+    title: t`Auto formatting`,
+    widget: "segmentedControl",
     getHidden: (series, vizSettings) =>
       vizSettings["graph.show_values"] !== true ||
       vizSettings["stackable.stack_type"] === "normalized",

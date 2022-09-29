@@ -18,7 +18,7 @@ const questionDetails = {
   },
 };
 
-describe("issue 18352", () => {
+describe("issue 18352", { tags: "@external" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
