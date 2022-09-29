@@ -5,7 +5,7 @@ import { State } from "metabase-types/store";
 import Schema from "metabase-lib/lib/metadata/Schema";
 
 interface Props {
-  show: (type: string, object: any) => void;
+  show: (type: string, item: unknown) => void;
   schema: Schema;
 }
 

@@ -9,6 +9,9 @@ import {
   EmptyDescription,
 } from "metabase/components/MetadataInfo/MetadataInfo.styled";
 import { getQuestionFromCard } from "metabase/query_builder/selectors";
+import type { Card } from "metabase-types/api";
+import type { State } from "metabase-types/store";
+import Question from "metabase-lib/lib/Question";
 import FieldList from "../FieldList";
 import {
   ModelPaneDetail,
@@ -19,17 +22,17 @@ import {
   ModelPaneDescription,
 } from "./ModelPane.styled";
 
-const mapStateToProps = (state, props) => ({
+interface ModelPaneProps {
+  show: (type: string, item: unknown) => void;
+  model: Card;
+  question: Question;
+}
+
+const mapStateToProps = (state: State, props: any) => ({
   question: getQuestionFromCard(state, props.model),
 });
 
-const propTypes = {
-  show: PropTypes.func.isRequired,
-  model: PropTypes.object.isRequired,
-  question: PropTypes.object.isRequired,
-};
-
-const ModelPane = ({ show, question }) => {
+const ModelPane = ({ show, question }: ModelPaneProps) => {
   const table = question.table();
   return (
     <div>
@@ -72,7 +75,5 @@ const ModelPane = ({ show, question }) => {
     </div>
   );
 };
-
-ModelPane.propTypes = propTypes;
 
 export default connect(mapStateToProps)(ModelPane);
