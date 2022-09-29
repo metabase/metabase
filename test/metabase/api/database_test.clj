@@ -1382,11 +1382,8 @@
             (is (= [(u/the-id card-1)]
                    (map :id (mt/user-http-request :rasta :get 200 (format "database/%d/models" (mt/id)))))
                 (= []
-                   (map :id (mt/user-http-request :rasta :get 200 (format "database/%d/models" (u/the-id db))))))))))
-    (testing "should reject requests for databases for which the user has no perms"
-      (mt/with-temp* [Database [db]
-                      Card [_ {:dataset true :archived false :database_id (mt/id)}]]
+                   (map :id (mt/user-http-request :rasta :get 200 (format "database/%d/models" (u/the-id db)))))))))
+      (testing "should reject requests for databases for which the user has no perms"
         (perms/revoke-data-perms! (perms-group/all-users) (u/the-id db))
         (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :get 403
-                                     (format "database/%d/models" (u/the-id db)))))))))
+               (mt/user-http-request :rasta :get 403 (format "database/%d/models" (u/the-id db)))))))))
