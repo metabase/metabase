@@ -231,3 +231,7 @@ Contribute to the Metabase open source project!
 ### [Data and Business Intelligence Glossary](https://www.metabase.com/glossary)
 
 Data jargon explained.
+
+### [Metabase Experts](https://www.metabase.com/partners/)
+
+If you’d like more technical resources to set up your data stack with Metabase, connect with a [Metabase Expert](https://www.metabase.com/partners/).
