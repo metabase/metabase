@@ -40,11 +40,11 @@ export function openNativeEditor({
 /**
  * Executes native query and waits for the results to load.
  * Makes sure that the question is not "dirty" after the query successfully ran.
- * @param {string} [xhrAlias ="dataset"]
  */
-export function runNativeQuery(xhrAlias = "dataset") {
+export function runNativeQuery({ wait = true } = {}) {
+  cy.intercept("POST", "api/dataset").as("dataset");
   cy.get(".NativeQueryEditor .Icon-play").click();
-  cy.wait("@" + xhrAlias);
+  cy.wait("@dataset");
   cy.icon("play").should("not.exist");
 }
 
