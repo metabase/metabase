@@ -667,6 +667,47 @@ const helperTextStrings: HelpText[] = [
       },
     ],
   },
+  {
+    name: "date-add",
+    structure: "dateAdd(" + t`column` + ", " + t`amount` + ", " + t`unit` + ")",
+    description: t`Adds some units of time to a date or timestamp value.`,
+    example: "dateAdd([" + t`Created At` + '], 1, "' + t`month` + '")',
+    args: [
+      {
+        name: t`column`,
+        description: t`The column with your date or timestamp values.`,
+      },
+      {
+        name: t`amount`,
+        description: t`The number of units to be added.`,
+      },
+      {
+        name: t`unit`,
+        description: t`"year", "month", "quarter", "day", "hour", "minute", "second" or "millisecond".`,
+      },
+    ],
+  },
+  {
+    name: "date-subtract",
+    structure:
+      "dateSubtract(" + t`column` + ", " + t`amount` + ", " + t`unit` + ")",
+    description: t`Subtracts some units of time to a date or timestamp value.`,
+    example: "dateSubtract([" + t`Created At` + '], 1, "' + t`month` + '")',
+    args: [
+      {
+        name: t`column`,
+        description: t`The column with your date or timestamp values.`,
+      },
+      {
+        name: t`amount`,
+        description: t`The number of units to be subtracted.`,
+      },
+      {
+        name: t`unit`,
+        description: t`"year", "month", "quarter", "day", "hour", "minute", "second" or "millisecond".`,
+      },
+    ],
+  },
 ];
 
 export const getHelpText = (name: string): HelpText | undefined => {

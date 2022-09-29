@@ -475,9 +475,13 @@
     ;; SUGAR drivers do not need to implement
     :get-year :get-quarter :get-month :get-day :get-day-of-week :get-hour :get-minute :get-second})
 
+(def date-arithmetic-functions
+  "Functions to do math with date, datetime."
+  #{:date-add :date-subtract})
+
 (def date+time+timezone-functions
   "Date, time, and timezone related functions."
-  (set/union temporal-extract-functions))
+  (set/union temporal-extract-functions date-arithmetic-functions))
 
 (declare ArithmeticExpression)
 (declare BooleanExpression)
@@ -511,6 +515,10 @@
 
     (partial is-clause? :value)
     value
+
+    ;; Recursively doing date math
+    (partial is-clause? date-arithmetic-functions)
+    (s/recursive #'DatetimeExpression)
 
     :else
     Field))
@@ -651,8 +659,23 @@
 (defclause ^{:requires-features #{:temporal-extract}} ^:sugar get-second
   datetime DateTimeExpressionArg)
 
+(def ^:private ArithmeticDateTimeUnit
+  (s/named
+   (apply s/enum #{:millisecond :second :minute :hour :day :week :month :quarter :year})
+   "arithmetic-datetime-unit"))
+
+(defclause ^{:requires-features #{:date-arithmetics}} date-add
+  datetime DateTimeExpressionArg
+  amount   NumericExpressionArg
+  unit     ArithmeticDateTimeUnit)
+
+(defclause ^{:requires-features #{:date-arithmetics}} date-subtract
+  datetime DateTimeExpressionArg
+  amount   NumericExpressionArg
+  unit     ArithmeticDateTimeUnit)
+
 (def ^:private DatetimeExpression*
-  (one-of temporal-extract
+  (one-of temporal-extract date-add date-subtract
           ;; SUGAR drivers do not need to implement
           get-year get-quarter get-month get-day get-day-of-week get-hour
           get-minute get-second))
@@ -914,7 +937,6 @@
             sum-where case median percentile ag:var
             ;; SUGAR clauses
             cum-count count)))
-
 
 (def ^:private UnnamedAggregation
   (s/recursive #'UnnamedAggregation*))

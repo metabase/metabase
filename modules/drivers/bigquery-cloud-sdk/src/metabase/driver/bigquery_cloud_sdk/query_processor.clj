@@ -727,7 +727,7 @@
 
 (defmethod sql.qp/cast-temporal-string [:bigquery-cloud-sdk :Coercion/ISO8601->DateTime]
   [_driver _semantic_type expr]
-  (hx/->timestamp expr))
+  (hx/->datetime expr))
 
 (defmethod sql.qp/cast-temporal-string [:bigquery-cloud-sdk :Coercion/ISO8601->Date]
   [_driver _semantic_type expr]

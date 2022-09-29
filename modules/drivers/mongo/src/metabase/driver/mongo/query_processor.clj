@@ -455,6 +455,17 @@
 
 (defmethod ->rvalue :coalesce [[_ & args]] {"$ifNull" (mapv ->rvalue args)})
 
+(defmethod ->rvalue :date-add        [[_ inp amount unit]] (do
+                                                             (check-date-operations-supported)
+                                                             {"$dateAdd" {:startDate (->rvalue inp)
+                                                                          :unit      unit
+                                                                          :amount    amount}}))
+(defmethod ->rvalue :date-subtract   [[_ inp amount unit]] (do
+                                                             (check-date-operations-supported)
+                                                             {"$dateSubtract" {:startDate (->rvalue inp)
+                                                                               :unit      unit
+                                                                               :amount    amount}}))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               CLAUSE APPLICATION                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+

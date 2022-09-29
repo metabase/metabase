@@ -590,6 +590,14 @@
   [driver [_ arg unit]]
   (date driver (temporal-extract-unit->date-unit unit) (->honeysql driver arg)))
 
+(defmethod ->honeysql [:sql :date-add]
+  [driver [_ arg amount unit]]
+  (add-interval-honeysql-form driver (->honeysql driver arg) amount unit))
+
+(defmethod ->honeysql [:sql :date-subtract]
+  [driver [_ arg amount unit]]
+  (add-interval-honeysql-form driver (->honeysql driver arg) (- amount) unit))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Field Aliases (AS Forms)                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+

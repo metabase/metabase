@@ -361,6 +361,16 @@ export const MBQL_CLAUSES = {
     type: "number",
     args: ["expression"],
   },
+  "date-add": {
+    displayName: `dateAdd`,
+    type: "number",
+    args: ["expression", "number", "string"],
+  },
+  "date-subtract": {
+    displayName: `dateSubtract`,
+    type: "number",
+    args: ["expression", "number", "string"],
+  },
 };
 
 for (const [name, clause] of Object.entries(MBQL_CLAUSES)) {
@@ -441,6 +451,8 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "get-hour",
   "get-minute",
   "get-second",
+  "date-add",
+  "date-subtract",
   // boolean
   "contains",
   "ends-with",

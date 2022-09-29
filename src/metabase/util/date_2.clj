@@ -186,8 +186,8 @@
                  :quarter     (t/months (* amount 3))
                  :year        (t/years amount))))))
 
-;; TIMEZONE FIXME - we should add `:millisecond-of-second` (or `:fraction-of-second`?) and `:second-of-minute` as
-;; well. Not sure where we'd use these, but we should have them for consistency
+;; TIMEZONE FIXME - we should add `:millisecond-of-second` (or `:fraction-of-second`?) .
+;; Not sure where we'd use these, but we should have them for consistency
 (def extract-units
   "Units which return a (numerical, periodic) component of a date"
   #{:second-of-minute
