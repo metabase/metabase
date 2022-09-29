@@ -173,7 +173,6 @@
  [test.users
   fetch-user
   test-user?
-  user->client
   user->credentials
   user->id
   user-descriptor
@@ -227,7 +226,6 @@
  [tu.log
   ns-log-level
   set-ns-log-level!
-  suppress-output
   with-log-messages-for-level
   with-log-level]
 
@@ -262,7 +260,7 @@
                                 with-gtaps-for-user
                                 with-user-attributes])))
 
-;; TODO -- move this stuff into some other namespace and refer to it here
+;;; TODO -- move all the stuff below into some other namespace and import it here.
 
 (defn do-with-clock [clock thunk]
   (test-runner.parallel/assert-test-is-not-parallel "with-clock")
@@ -285,10 +283,16 @@
   [clock & body]
   `(do-with-clock ~clock (fn [] ~@body)))
 
-;; New QP middleware test util fns. Experimental. These will be put somewhere better if confirmed useful.
+;;;; New QP middleware test util fns. Experimental. These will be put somewhere better if confirmed useful.
 
-(defn ^:deprecated test-qp-middleware
-  "Helper for testing QP middleware. Changes are returned in a map with keys:
+(defn test-qp-middleware
+  "Helper for testing QP middleware that uses the
+
+    (defn middleware [qp]
+      (fn [query rff context]
+        (qp query rff context)))
+
+  pattern, such as stuff in [[metabase.query-processor/around-middleware]]. Changes are returned in a map with keys:
 
     * `:result`   ­ final result
     * `:pre`      ­ `query` after preprocessing

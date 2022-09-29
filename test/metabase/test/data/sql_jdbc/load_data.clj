@@ -181,13 +181,13 @@
   (let [statements (ddl/insert-rows-ddl-statements driver table-identifier row-or-rows)]
     ;; `set-parameters` might try to look at DB timezone; we don't want to do that while loading the data because the
     ;; DB hasn't been synced yet
-    (when-let [set-timezone-format-string (sql-jdbc.execute/set-timezone-sql driver)]
+    (when-let [set-timezone-format-string #_{:clj-kondo/ignore [:deprecated-var]} (sql-jdbc.execute/set-timezone-sql driver)]
       (let [set-timezone-sql (format set-timezone-format-string "'UTC'")]
         (log/debugf "Setting timezone to UTC before inserting data with SQL \"%s\"" set-timezone-sql)
         (jdbc/execute! spec [set-timezone-sql])))
     (mt/with-database-timezone-id nil
       (try
-        ;; TODO - why don't we use `execute/execute-sql!` here like we do below?
+        ;; TODO - why don't we use [[execute/execute-sql!]] here like we do below?
         (doseq [sql+args statements]
           (log/tracef "[insert] %s" (pr-str sql+args))
           (jdbc/execute! spec sql+args {:set-parameters (fn [stmt params]
