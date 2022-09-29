@@ -1,6 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import _ from "underscore";
+import Metric from "metabase-lib/lib/metadata/Metric";
 import Base from "./Base";
 import Question from "../Question";
 import Database from "./Database";
@@ -68,7 +69,7 @@ export default class Metadata extends Base {
    * @param {MetricId} metricId
    * @returns {?Metric}
    */
-  metric(metricId) {
+  metric(metricId): Metric | null {
     return (metricId != null && this.metrics[metricId]) || null;
   }
 
