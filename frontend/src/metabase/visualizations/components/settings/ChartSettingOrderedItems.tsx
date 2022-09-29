@@ -1,11 +1,10 @@
 import React, { ReactElement } from "react";
 
+import type { SortableElementProps } from "react-sortable-hoc";
 import {
   SortableContainer,
   SortableElement,
 } from "metabase/components/sortable";
-
-import type { SortableElementProps } from "react-sortable-hoc";
 
 import ColumnItem from "./ColumnItem";
 

@@ -41,7 +41,7 @@ const correctValues = [
   },
 ];
 
-describe("issue 15876", () => {
+describe("issue 15876", { tags: "@external" }, () => {
   beforeEach(() => {
     restore("postgres-12");
     cy.signInAsAdmin();

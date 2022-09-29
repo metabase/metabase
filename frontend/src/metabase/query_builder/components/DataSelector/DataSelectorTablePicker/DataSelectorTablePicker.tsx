@@ -7,6 +7,9 @@ import { isSyncCompleted } from "metabase/lib/syncing";
 import Icon from "metabase/components/Icon";
 import AccordionList from "metabase/core/components/AccordionList";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import type { Database } from "metabase-types/api/database";
+import type Schema from "metabase-lib/lib/metadata/Schema";
+import type Table from "metabase-lib/lib/metadata/Table";
 import DataSelectorSectionHeader from "../DataSelectorSectionHeader";
 
 import { DataSelectorSection as Section } from "../DataSelector.styled";
@@ -20,20 +23,16 @@ import {
   NoTablesFound,
 } from "./DataSelectorTablePicker.styled";
 
-import type { Database } from "metabase-types/api/database";
-import type Schema from "metabase-lib/lib/metadata/Schema";
-import type Table from "metabase-lib/lib/metadata/Table";
-
 type DataSelectorTablePickerProps = {
-  hasFiltering: boolean;
-  hasInitialFocus: boolean;
-  hasNextStep: boolean;
-  isLoading: boolean;
-  minTablesToShowSearch: number;
+  hasFiltering?: boolean;
+  hasInitialFocus?: boolean;
+  hasNextStep?: boolean;
+  isLoading?: boolean;
+  minTablesToShowSearch?: number;
   schemas: Schema[];
   selectedDatabase: Database;
-  selectedSchema: Schema;
-  selectedTable: Table;
+  selectedSchema?: Schema;
+  selectedTable?: Table;
   tables: Table[];
   onBack?: () => void;
   onChangeTable: (table: Table) => void;

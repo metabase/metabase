@@ -3,6 +3,7 @@
 import { schema } from "normalizr";
 import { generateSchemaId, entityTypeForObject } from "metabase/lib/schema";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
+import { getUniqueFieldId } from "metabase-lib/lib/metadata/utils";
 
 export const QuestionSchema = new schema.Entity("questions");
 export const BookmarkSchema = new schema.Entity("bookmarks");
@@ -43,7 +44,20 @@ export const TableSchema = new schema.Entity(
     },
   },
 );
-export const FieldSchema = new schema.Entity("fields");
+
+export const FieldSchema = new schema.Entity("fields", undefined, {
+  processStrategy(field) {
+    const uniqueId = getUniqueFieldId(field);
+    return {
+      ...field,
+      uniqueId,
+    };
+  },
+  idAttribute: field => {
+    return getUniqueFieldId(field);
+  },
+});
+
 export const SegmentSchema = new schema.Entity("segments");
 export const MetricSchema = new schema.Entity("metrics");
 export const PersistedModelSchema = new schema.Entity("persistedModels");

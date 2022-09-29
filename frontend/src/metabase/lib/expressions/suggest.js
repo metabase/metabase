@@ -9,7 +9,7 @@ import {
 
 import { partialMatch, enclosingFunction } from "./completer";
 
-import getHelpText from "./helper_text_strings";
+import { getHelpText } from "./helper-text-strings";
 
 import {
   EXPRESSION_FUNCTIONS,

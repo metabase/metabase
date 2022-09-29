@@ -1,15 +1,13 @@
-import { op, args, noNullValues, add, update, remove, clear } from "./util";
-import { isValidField } from "./field_ref";
+import _ from "underscore";
 import {
   STANDARD_FILTERS,
   FILTER_OPERATORS,
   isLiteral,
 } from "metabase/lib/expressions";
-
 import { STRING, getOperatorByTypeAndName } from "metabase/lib/schema_metadata";
-
-import _ from "underscore";
 import { isStartingFrom } from "../query_time";
+import { op, args, noNullValues, add, update, remove, clear } from "./util";
+import { isValidField } from "./field_ref";
 
 // returns canonical list of Filters
 export function getFilters(filter) {

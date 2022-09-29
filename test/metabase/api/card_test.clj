@@ -408,17 +408,17 @@
                                        :query_type    "native"
                                        :dataset_query (:dataset_query card)})))))
       (testing "You can create a card with a saved question CTE as a model"
-        (let [card-reference (str "#" (u/the-id card))]
+        (let [card-tag-name (str "#" (u/the-id card))]
           (mt/user-http-request :rasta :post 200 "card"
                                 (merge
                                  (mt/with-temp-defaults Card)
                                  {:dataset_query {:database (u/the-id db)
                                                   :type     :native
-                                                  :native   {:query         (format "SELECT * FROM {{%s}};" card-reference)
-                                                             :template-tags {card-reference {:card-id      (u/the-id card),
-                                                                                             :display-name card-reference,
+                                                  :native   {:query         (format "SELECT * FROM {{%s}};" card-tag-name)
+                                                             :template-tags {card-tag-name {:card-id      (u/the-id card),
+                                                                                             :display-name card-tag-name,
                                                                                              :id           (str (random-uuid))
-                                                                                             :name         card-reference,
+                                                                                             :name         card-tag-name,
                                                                                              :type         :card}}}}})))))))
 
 (deftest create-card-disallow-setting-enable-embedding-test
@@ -964,7 +964,7 @@
 
 (deftest update-card-validation-test
   (testing "PUT /api/card"
-    (with-temp-native-card-with-params [db card]
+    (with-temp-native-card-with-params [_db card]
       (testing  "You cannot update a model to have variables"
         (is (= "A model made from a native SQL question cannot have a variable or field filter."
                (mt/user-http-request :rasta :put 400 (format "card/%d" (:id card)) {:dataset true})))))))
@@ -987,6 +987,7 @@
 
 (defmacro with-ordered-items
   "Macro for creating many sequetial collection_position model instances, putting each in `collection`"
+  {:style/indent :defn}
   [collection model-and-name-syms & body]
   `(mt/with-temp* ~(vec (mapcat (fn [idx [model-instance name-sym]]
                                   [model-instance [name-sym {:name                (name name-sym)
@@ -2358,16 +2359,6 @@
       :result-fn   (fn [result _]
                      (is (= {:errors {:is_write "Cannot mark Saved Question as 'is_write': Saved Question is a Dataset."}}
                             result)))})))
-
-(deftest set-is-write-user-is-not-admin-test
-  (with-actions-enabled
-    (doseq [f [test-update-is-write-card
-               test-create-is-write-card]]
-      (f {:status-code 403
-          :user                 :rasta
-          :result-fn            (fn [result _]
-                                  (is (= "You don't have permissions to do that."
-                                         result)))}))))
 
 (deftest set-is-write-card-query-is-not-native-query-test
   (with-actions-enabled

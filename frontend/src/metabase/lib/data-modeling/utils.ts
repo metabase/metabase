@@ -1,7 +1,3 @@
-import Question from "metabase-lib/lib/Question";
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import Database from "metabase-lib/lib/metadata/Database";
-
 import { isStructured } from "metabase/lib/query";
 import { getQuestionVirtualTableId } from "metabase/lib/saved-questions";
 import MetabaseSettings from "metabase/lib/settings";
@@ -13,6 +9,9 @@ import {
   CardId,
   StructuredDatasetQuery,
 } from "metabase-types/types/Card";
+import Database from "metabase-lib/lib/metadata/Database";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import Question from "metabase-lib/lib/Question";
 
 export function isSupportedTemplateTagForModel(tag: TemplateTag) {
   return ["card", "snippet"].includes(tag.type);

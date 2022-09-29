@@ -1,9 +1,8 @@
 import { combineReducers, applyMiddleware, createStore, compose } from "redux";
 import { reducer as form } from "redux-form";
 import { routerReducer as routing, routerMiddleware } from "react-router-redux";
-import { PLUGIN_REDUX_MIDDLEWARES } from "metabase/plugins";
-
 import promise from "redux-promise";
+import { PLUGIN_REDUX_MIDDLEWARES } from "metabase/plugins";
 
 /**
  * Provides the same functionality as redux-thunk and augments the dispatch method with

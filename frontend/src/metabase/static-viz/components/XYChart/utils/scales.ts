@@ -14,7 +14,7 @@ import {
 import type {
   SeriesDatum,
   XAxisType,
-  ContiniousDomain,
+  ContinuousDomain,
   Range,
   Series,
   YAxisType,
@@ -42,7 +42,7 @@ export const createXScale = (
     const xScale = scaleBand({
       domain,
       range,
-      padding: 0.1,
+      padding: 0.2,
     });
 
     return {
@@ -90,7 +90,7 @@ export const createXScale = (
 const calculateYDomain = (
   series: HydratedSeries[],
   goalValue?: number,
-): ContiniousDomain => {
+): ContinuousDomain => {
   const values = series
     .flatMap<SeriesDatum | StackedDatum>(
       series => series.stackedData ?? series.data,
@@ -130,7 +130,7 @@ export const calculateYDomains = (
 };
 
 export const createYScale = (
-  domain: ContiniousDomain,
+  domain: ContinuousDomain,
   range: Range,
   axisType: YAxisType,
 ) => {
@@ -158,8 +158,8 @@ export const createYScale = (
 export const createYScales = (
   range: Range,
   axisType: YAxisType,
-  leftYDomain?: ContiniousDomain,
-  rightYDomain?: ContiniousDomain,
+  leftYDomain?: ContinuousDomain,
+  rightYDomain?: ContinuousDomain,
 ) => {
   return {
     yScaleLeft: leftYDomain ? createYScale(leftYDomain, range, axisType) : null,

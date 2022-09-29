@@ -1,5 +1,7 @@
 #! /usr/bin/env bash
 
+set -euxo pipefail
+
 # Convenience for running clj-kondo against all the appropriate directories.
 
 find modules/drivers shared enterprise/backend \

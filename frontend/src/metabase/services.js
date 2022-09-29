@@ -2,13 +2,13 @@ import _ from "underscore";
 
 import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
+import getGAMetadata from "promise-loader?global!metabase/lib/ga-metadata"; // eslint-disable-line import/default
+
 import Question from "metabase-lib/lib/Question";
 import { FieldDimension } from "metabase-lib/lib/Dimension";
 
 // use different endpoints for embed previews
 const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
-
-import getGAMetadata from "promise-loader?global!metabase/lib/ga-metadata"; // eslint-disable-line import/default
 
 export const ActivityApi = {
   list: GET("/api/activity"),
@@ -184,6 +184,9 @@ export const DataAppsApi = {
   list: GET("/api/app"),
   create: POST("/api/app"),
   update: PUT("/api/app/:id"),
+
+  scaffoldNewApp: POST("/api/app/scaffold"),
+  scaffoldNewPages: POST("/api/app/:id/scaffold"),
 };
 
 const PIVOT_PUBLIC_PREFIX = "/api/public/pivot/";
@@ -268,6 +271,9 @@ export const MetabaseApi = {
   db_idfields: GET("/api/database/:dbId/idfields"),
   db_autocomplete_suggestions: GET(
     "/api/database/:dbId/autocomplete_suggestions?:matchStyle=:query",
+  ),
+  db_card_autocomplete_suggestions: GET(
+    "/api/database/:dbId/card_autocomplete_suggestions",
   ),
   db_sync_schema: POST("/api/database/:dbId/sync_schema"),
   db_dismiss_sync_spinner: POST("/api/database/:dbId/dismiss_spinner"),
@@ -536,11 +542,7 @@ export const ActionsApi = {
   delete: POST("/api/action/row/delete"),
   bulkUpdate: POST("/api/action/bulk/update/:tableId"),
   bulkDelete: POST("/api/action/bulk/delete/:tableId"),
-};
-
-export const EmittersApi = {
-  create: POST("/api/emitter"),
-  update: PUT("/api/emitter/:id"),
-  delete: DELETE("/api/emitter/:id"),
-  execute: POST("/api/emitter/:id/execute"),
+  execute: POST(
+    "/api/dashboard/:dashboardId/dashcard/:dashcardId/action/execute",
+  ),
 };

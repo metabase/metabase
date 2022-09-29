@@ -7,11 +7,8 @@ import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
 import Radio from "metabase/core/components/Radio";
-import { SectionContainer, SectionWarnings } from "./ChartSettings.styled";
 
 import Visualization from "metabase/visualizations/components/Visualization";
-import ChartSettingsWidgetPopover from "./ChartSettingsWidgetPopover";
-import ChartSettingsWidget from "./ChartSettingsWidget";
 
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
@@ -23,6 +20,9 @@ import {
   updateSettings,
   getClickBehaviorSettings,
 } from "metabase/visualizations/lib/settings";
+import ChartSettingsWidget from "./ChartSettingsWidget";
+import ChartSettingsWidgetPopover from "./ChartSettingsWidgetPopover";
+import { SectionContainer, SectionWarnings } from "./ChartSettings.styled";
 
 // section names are localized
 const DEFAULT_TAB_PRIORITY = [t`Display`];
@@ -185,6 +185,7 @@ class ChartSettings extends Component {
       children,
       setSidebarPropsOverride,
       dashboard,
+      isDashboard,
     } = this.props;
     const { currentWidget, popoverRef } = this.state;
 
@@ -307,7 +308,13 @@ class ChartSettings extends Component {
     return (
       <div className={cx(className, "flex flex-column")}>
         {showSectionPicker && (
-          <div className="flex flex-no-shrink pl4 pb1">{sectionPicker}</div>
+          <div
+            className={cx("flex flex-no-shrink pl4 pb1", {
+              pt3: isDashboard,
+            })}
+          >
+            {sectionPicker}
+          </div>
         )}
         {noPreview ? (
           <div className="full-height relative scroll-y scroll-show pt2 pb4">

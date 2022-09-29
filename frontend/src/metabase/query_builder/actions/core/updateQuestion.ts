@@ -7,13 +7,12 @@ import {
   getTemplateTagParameters,
 } from "metabase/parameters/utils/cards";
 
-import Question from "metabase-lib/lib/Question";
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-
 import { Dataset } from "metabase-types/api";
 import { Series } from "metabase-types/types/Visualization";
 import { Dispatch, GetState, QueryBuilderMode } from "metabase-types/store";
+import Question from "metabase-lib/lib/Question";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 import {
   getFirstQueryResult,
@@ -145,6 +144,13 @@ export const updateQuestion = (
       }
     }
 
+    // This scenario happens because the DatasetQueryEditor converts the dataset/model question into a normal question
+    // so that its query is shown properly in the notebook editor. Various child components of the notebook editor have access to
+    // this `updateQuestion` action, so they end up triggering the action with the altered question.
+    if (queryBuilderMode === "dataset" && !newQuestion.isDataset()) {
+      newQuestion = newQuestion.setDataset(true);
+    }
+
     const queryResult = getFirstQueryResult(getState());
     newQuestion = newQuestion.syncColumnsAndSettings(
       currentQuestion,
@@ -227,8 +233,16 @@ export const updateQuestion = (
       }
     }
 
-    const currentDependencies = currentQuestion?.query().dependentMetadata();
-    const nextDependencies = newQuestion.query().dependentMetadata();
+    const currentDependencies = currentQuestion
+      ? [
+          ...currentQuestion.dependentMetadata(),
+          ...currentQuestion.query().dependentMetadata(),
+        ]
+      : [];
+    const nextDependencies = [
+      ...newQuestion.dependentMetadata(),
+      ...newQuestion.query().dependentMetadata(),
+    ];
     try {
       if (!_.isEqual(currentDependencies, nextDependencies)) {
         await dispatch(loadMetadataForCard(newQuestion.card()));

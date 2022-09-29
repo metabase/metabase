@@ -1,5 +1,5 @@
-import { PLUGIN_APPLICATION_PERMISSIONS } from "metabase/plugins";
 import { createSelector } from "reselect";
+import { PLUGIN_APPLICATION_PERMISSIONS } from "metabase/plugins";
 
 export const getUser = state => state.currentUser;
 

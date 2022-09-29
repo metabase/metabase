@@ -1,10 +1,10 @@
 ---
-title: Setting up SAML with Google
+title: SAML with Google
 redirect_from:
   - /docs/latest/enterprise-guide/saml-google
 ---
 
-# Setting up SAML with Google
+# SAML with Google
 
 {% include plans-blockquote.html feature="Google SAML authentication" %}
 

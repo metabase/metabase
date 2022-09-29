@@ -1,18 +1,12 @@
 ---
-title: Setting up email
+title: Email
 redirect_from:
   - /docs/latest/administration-guide/02-setting-up-email.html
 ---
 
-# Setting up email
+# Email
 
 Once you connect your database to Metabase, you'll want to configure an email account to send system notifications to your organization's users.  Metabase uses email to reset passwords, onboard new users, and notify you when something happens.
-
-- [Configuring your email account](#configuring-your-email-account)
-  - [Google Apps](#google-apps)
-  - [Amazon SES](#amazon-ses)
-  - [Mandrill](#mandrill)
-- [Recommended settings](#recommended-settings)
 
 ## Configuring your email account
 

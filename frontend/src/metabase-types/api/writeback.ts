@@ -1,14 +1,9 @@
-import { SavedCard, NativeDatasetQuery } from "metabase-types/types/Card";
-import { DashboardWithCards } from "metabase-types/types/Dashboard";
-import { Column } from "metabase-types/types/Dataset";
-import {
-  Parameter,
-  ParameterId,
-  ParameterTarget,
-  ParameterValueOrArray,
-} from "metabase-types/types/Parameter";
+import { Card, ActionFormSettings, ParameterId } from "metabase-types/api";
+import { Parameter, ParameterTarget } from "metabase-types/types/Parameter";
 
-export type ActionParameterTuple = [string, Parameter];
+export interface WritebackParameter extends Parameter {
+  target: ParameterTarget;
+}
 
 export type WritebackActionType = "http" | "query";
 
@@ -16,12 +11,13 @@ export interface WritebackActionBase {
   id: number;
   name: string;
   description: string | null;
-  parameters: ActionParameterTuple[];
+  parameters: WritebackParameter[];
+  visualization_settings?: ActionFormSettings;
   "updated-at": string;
   "created-at": string;
 }
 
-type QueryActionCard = SavedCard<NativeDatasetQuery> & {
+export type QueryActionCard = Card & {
   is_write: true;
   action_id: number;
 };
@@ -55,51 +51,30 @@ export type WritebackQueryAction = WritebackActionBase & QueryAction;
 export type WritebackHttpAction = WritebackActionBase & HttpAction;
 export type WritebackAction = WritebackActionBase & (QueryAction | HttpAction);
 
-export interface WritebackActionEmitter {
-  id: number;
-  dashboard_id: number;
-  action: WritebackAction & {
-    emitter_id: number;
-  };
-  parameter_mappings: Record<ParameterId, ParameterTarget>;
-  updated_at: string;
-  created_at: string;
-}
-
 export type ParameterMappings = Record<ParameterId, ParameterTarget>;
 
-export type ActionClickBehaviorData = {
-  column: Partial<Column>;
-  parameter: Record<ParameterId, { value: ParameterValueOrArray }>;
-  parameterByName: Record<string, { value: ParameterValueOrArray }>;
-  parameterBySlug: Record<string, { value: ParameterValueOrArray }>;
-  userAttributes: Record<string, unknown>;
+type ParameterForActionExecutionBase = {
+  type: string;
+  value: string | number;
 };
 
-export type ActionClickBehavior = {
-  action: number; // action id
-  emitter_id: number;
-  type: "action";
-  parameterMapping: ParameterMappings;
-};
-
-export type ActionClickExtraData = {
-  actions: Record<number, WritebackAction>;
-  dashboard: DashboardWithCards;
-  parameterBySlug: Record<string, { value: ParameterValueOrArray }>;
-  userAttributes: unknown[];
-};
-
-export type ParametersSourceTargetMap = Record<
-  ParameterId,
-  {
+export type ParameterMappedForActionExecution =
+  ParameterForActionExecutionBase & {
     id: ParameterId;
-    source: { id: string; type: string; name: string };
-    target: { id: string; type: string };
-  }
->;
+    target: ParameterTarget;
+  };
 
-export type ParametersMappedToValues = Record<
-  ParameterId,
-  { type: string; value: string | number }
->;
+export type ArbitraryParameterForActionExecution =
+  ParameterForActionExecutionBase & {
+    target: ParameterTarget;
+  };
+
+export interface ActionFormSubmitResult {
+  success: boolean;
+  message?: string;
+  error?: string;
+}
+
+export type OnSubmitActionForm = (
+  parameters: ArbitraryParameterForActionExecution[],
+) => Promise<ActionFormSubmitResult>;

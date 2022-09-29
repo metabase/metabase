@@ -1,6 +1,6 @@
 import React, { HTMLAttributes } from "react";
-import { SkeletonRoot, SkeletonImage } from "./RowSkeleton.styled";
 import SkeletonCaption from "../SkeletonCaption";
+import { SkeletonRoot, SkeletonImage } from "./RowSkeleton.styled";
 
 export interface RowSkeletonProps extends HTMLAttributes<HTMLDivElement> {
   name?: string | null;

@@ -1,12 +1,12 @@
 import React from "react";
+import userEvent from "@testing-library/user-event";
+import xhrMock from "xhr-mock";
 import {
   fireEvent,
   renderWithProviders,
   screen,
   waitFor,
 } from "__support__/ui";
-import userEvent from "@testing-library/user-event";
-import xhrMock from "xhr-mock";
 import { setupEnterpriseTest } from "__support__/enterprise";
 import MetabaseSettings from "metabase/lib/settings";
 import CreateDashboardModal from "./CreateDashboardModal";

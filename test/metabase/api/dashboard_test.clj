@@ -441,7 +441,7 @@
 (deftest update-dashboard-change-collection-id-test
   (testing "PUT /api/dashboard/:id"
     (testing "Can we change the Collection a Dashboard is in (assuming we have the permissions to do so)?"
-      (dashboard-test/with-dash-in-collection [db collection dash]
+      (dashboard-test/with-dash-in-collection [_db collection dash]
         (mt/with-temp Collection [new-collection]
           ;; grant Permissions for both new and old collections
           (doseq [coll [collection new-collection]]
@@ -454,7 +454,7 @@
 
     (testing "if we don't have the Permissions for the old collection, we should get an Exception"
       (mt/with-non-admin-groups-no-root-collection-perms
-        (dashboard-test/with-dash-in-collection [db collection dash]
+        (dashboard-test/with-dash-in-collection [_db _collection dash]
           (mt/with-temp Collection [new-collection]
             ;; grant Permissions for only the *new* collection
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) new-collection)
@@ -465,7 +465,7 @@
 
     (testing "if we don't have the Permissions for the new collection, we should get an Exception"
       (mt/with-non-admin-groups-no-root-collection-perms
-        (dashboard-test/with-dash-in-collection [db collection dash]
+        (dashboard-test/with-dash-in-collection [_db collection dash]
           (mt/with-temp Collection [new-collection]
             ;; grant Permissions for only the *old* collection
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
@@ -742,7 +742,7 @@
 (deftest copy-dashboard-into-correct-collection-test
   (testing "POST /api/dashboard/:id/copy"
     (testing "Ensure the correct collection is set when copying"
-      (dashboard-test/with-dash-in-collection [db collection dash]
+      (dashboard-test/with-dash-in-collection [_db collection dash]
         (mt/with-temp Collection [new-collection]
           ;; grant Permissions for both new and old collections
           (doseq [coll [collection new-collection]]
@@ -1656,27 +1656,25 @@
                 (testing (format "\nGET %s" (pr-str url))
                   (is (= expected
                          (mt/user-http-request :rasta :get 200 url))))))]
-      (with-chain-filter-fixtures [{{dashboard-id :id} :dashboard}]
-        (mt/$ids
-          (testing (format "\nvenues.price = %d categories.name = %d\n" %venues.price %categories.name)
-            (result= {%venues.price [%categories.name]}
-                     {:filtered [%venues.price], :filtering [%categories.name]})
-            (testing "Multiple Field IDs for each param"
-              (result= {%venues.price    (sort [%venues.price %categories.name])
-                        %categories.name (sort [%venues.price %categories.name])}
-                       {:filtered [%venues.price %categories.name], :filtering [%categories.name %venues.price]}))
-            (testing "filtered-ids cannot be nil"
-              (is (= {:errors {:filtered (str "value must satisfy one of the following requirements:"
-                                              " 1) value must be a valid integer greater than zero."
-                                              " 2) value must be an array. Each value must be a valid integer greater than zero."
-                                              " The array cannot be empty.")}}
-                     (mt/user-http-request :rasta :get 400 (url [] [%categories.name]))))))))
+      (mt/$ids
+        (testing (format "\nvenues.price = %d categories.name = %d\n" %venues.price %categories.name)
+          (result= {%venues.price [%categories.name]}
+                   {:filtered [%venues.price], :filtering [%categories.name]})
+          (testing "Multiple Field IDs for each param"
+            (result= {%venues.price    (sort [%venues.price %categories.name])
+                      %categories.name (sort [%venues.price %categories.name])}
+                     {:filtered [%venues.price %categories.name], :filtering [%categories.name %venues.price]}))
+          (testing "filtered-ids cannot be nil"
+            (is (= {:errors {:filtered (str "value must satisfy one of the following requirements:"
+                                            " 1) value must be a valid integer greater than zero."
+                                            " 2) value must be an array. Each value must be a valid integer greater than zero."
+                                            " The array cannot be empty.")}}
+                   (mt/user-http-request :rasta :get 400 (url [] [%categories.name])))))))
       (testing "should check perms for the Fields in question"
-        (with-chain-filter-fixtures [{{dashboard-id :id} :dashboard}]
-          (mt/with-temp-copy-of-db
-            (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :get 403 (mt/$ids (url [%venues.price] [%categories.name])))))))))))
+        (mt/with-temp-copy-of-db
+          (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (mt/$ids (url [%venues.price] [%categories.name]))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1880,26 +1878,35 @@
                                                             :action_id action-id
                                                             :parameter_mappings [{:parameter_id "my_id"
                                                                                   :target [:variable [:template-tag "id"]]}]}]]
-            (let [execute-path (format "dashboard/%s/dashcard/%s/action/%s/execute"
+            (let [execute-path (format "dashboard/%s/dashcard/%s/action/execute"
                                        dashboard-id
-                                       dashcard-id
-                                       action-id)]
-              (is (partial= {:rows-affected 1}
-                            (mt/user-http-request :crowberto :post 200 execute-path
-                                                  {:parameters [{:id "my_id" :type "id" :value 1}]})))
-              (is (= [1 "Bird Shop"]
-                     (mt/first-row
-                       (mt/run-mbql-query categories {:filter [:= $id 1]}))))
+                                       dashcard-id)]
+              (testing "Dashcard parameter"
+                (is (partial= {:rows-affected 1}
+                              (mt/user-http-request :crowberto :post 200 execute-path
+                                                    {:parameters [{:id "my_id" :type "id" :value 1}]})))
+                (is (= [1 "Shop"]
+                       (mt/first-row
+                         (mt/run-mbql-query categories {:filter [:= $id 1]})))))
+              (testing "Extra target parameter"
+                (is (partial= {:rows-affected 1}
+                              (mt/user-http-request :crowberto :post 200 execute-path
+                                                    {:parameters [{:id "my_id" :type "id" :value 1}]
+                                                     :extra_parameters [{:target [:variable [:template-tag "name"]]
+                                                                         :type "text"
+                                                                         :value "Bird"}]})))
+                (is (= [1 "Bird Shop"]
+                       (mt/first-row
+                         (mt/run-mbql-query categories {:filter [:= $id 1]})))))
               (testing "Should affect 0 rows if id is out of range"
                 (is (= {:rows-affected 0}
                        (mt/user-http-request :crowberto :post 200 execute-path
                                              {:parameters [{:id "my_id" :type  :number/= :value Integer/MAX_VALUE}]}))))
               (testing "Should 404 if bad dashcard-id"
                 (is (= "Not found."
-                       (mt/user-http-request :crowberto :post 404 (format "dashboard/%d/dashcard/%s/action/%s/execute"
+                       (mt/user-http-request :crowberto :post 404 (format "dashboard/%d/dashcard/%s/action/execute"
                                                                           dashboard-id
-                                                                          Integer/MAX_VALUE
-                                                                          action-id)
+                                                                          Integer/MAX_VALUE)
                                              {}))))
               (testing "Missing parameter should fail gracefully"
                 (is (partial= {:message "Error executing Action: Error building query parameter map: Error determining value for parameter \"id\": You'll need to pick a value for 'ID' before this query can run."}
@@ -1923,10 +1930,9 @@
                                                                                   :target [:template-tag "id"]}
                                                                                  {:parameter_id "my_fail"
                                                                                   :target [:template-tag "fail"]}]}]]
-            (let [execute-path (format "dashboard/%s/dashcard/%s/action/%s/execute"
+            (let [execute-path (format "dashboard/%s/dashcard/%s/action/execute"
                                        dashboard-id
-                                       dashcard-id
-                                       action-id)]
+                                       dashcard-id)]
               (testing "Should be able to execute an emitter"
                 (is (= {:the_parameter 1}
                        (mt/user-http-request :crowberto :post 200 execute-path
@@ -1950,24 +1956,33 @@
                                       "Problem building request:"))))))))))
 
 (deftest dashcard-action-execution-auth-test
-  (actions.test-util/with-actions-test-data
-    (actions.test-util/with-action [{:keys [action-id]} {}]
-      (testing "Executing dashcard with action"
-        (mt/with-temp* [Dashboard [{dashboard-id :id}]
-                        DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
-                                                          :action_id action-id
-                                                          :parameter_mappings [{:parameter_id "my_id"
-                                                                                :target [:variable [:template-tag "id"]]}]}]]
-          (let [execute-path (format "dashboard/%s/dashcard/%s/action/%s/execute"
-                                     dashboard-id
-                                     dashcard-id
-                                     action-id)]
-            (testing "Without actions enabled"
-              (is (= "Actions are not enabled."
-                     (mt/user-http-request :crowberto :post 400 execute-path
-                                           {:parameters [{:id "my_id" :type :number/= :value 1}]}))))
-            (testing "Without admin"
-              (actions.test-util/with-actions-enabled
-                (is (= "You don't have permissions to do that."
-                       (mt/user-http-request :rasta :post 403 execute-path
-                                             {:parameters [{:id "my_id" :type :number/= :value 1}]})))))))))))
+  (mt/with-temp-copy-of-db
+    (actions.test-util/with-actions-test-data
+      (actions.test-util/with-action [{:keys [action-id]} {}]
+        (testing "Executing dashcard with action"
+          (mt/with-temp* [Dashboard [{dashboard-id :id}]
+                          DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
+                                                            :action_id action-id
+                                                            :parameter_mappings [{:parameter_id "my_id"
+                                                                                  :target [:variable [:template-tag "id"]]}]}]]
+            (let [execute-path (format "dashboard/%s/dashcard/%s/action/execute"
+                                       dashboard-id
+                                       dashcard-id)]
+              (testing "Without actions enabled"
+                (is (= "Actions are not enabled."
+                       (mt/user-http-request :crowberto :post 400 execute-path
+                                             {:parameters [{:id "my_id" :type :number/= :value 1}]}))))
+              (testing "Without execute rights on the DB"
+                (actions.test-util/with-actions-enabled
+                  (is (= "You don't have permissions to do that."
+                         (mt/user-http-request :rasta :post 403 execute-path
+                                               {:parameters [{:id "my_id" :type :number/= :value 1}]})))))
+              (testing "With execute rights on the DB"
+                (perms/update-global-execution-permission! (:id (perms-group/all-users)) :all)
+                (try
+                  (actions.test-util/with-actions-enabled
+                    (is (= {:rows-affected 1}
+                           (mt/user-http-request :rasta :post 200 execute-path
+                                                 {:parameters [{:id "my_id" :type :number/= :value 1}]}))))
+                  (finally
+                    (perms/update-global-execution-permission! (:id (perms-group/all-users)) :none)))))))))))

@@ -7,8 +7,8 @@ import {
   STRING,
   PRIMARY_KEY,
 } from "metabase/lib/schema_metadata";
-import { getParameterType, getParameterSubType } from "./parameter-type";
 import { PARAMETER_OPERATOR_TYPES } from "../constants";
+import { getParameterType, getParameterSubType } from "./parameter-type";
 
 type OperatorType = "date" | "number" | "string";
 

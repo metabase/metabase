@@ -1,7 +1,5 @@
-import { color } from "metabase/lib/colors";
-import { colors } from "metabase/lib/colors/palette";
-import { ColorGetter } from "metabase/static-viz/lib/colors";
 import React from "react";
+import { ColorGetter } from "metabase/static-viz/lib/colors";
 import { XYChart } from "../XYChart";
 import { ChartSettings, ChartStyle, Series } from "../XYChart/types";
 import { Colors } from "./types";
@@ -29,21 +27,21 @@ const LineAreaBarChart = ({
       color: getColor("text-light"),
       ticks: {
         color: getColor("text-medium"),
-        fontSize: 11,
+        fontSize: 12,
       },
       labels: {
         color: getColor("text-medium"),
-        fontSize: 11,
+        fontSize: 14,
         fontWeight: 700,
       },
     },
     legend: {
-      fontSize: 13,
-      lineHeight: 16,
+      fontSize: 16,
+      lineHeight: 20,
     },
     value: {
       color: getColor("text-dark"),
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: 800,
       stroke: getColor("white"),
       strokeWidth: 3,

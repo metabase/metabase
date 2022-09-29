@@ -32,38 +32,45 @@ Metabase is a deep product with a lot of tools to simplify business intelligence
 ## Documentation topics
 
 Metabase's reference documentation.
+### Installation
 
-### Installation and operation
-
-- [Overview](./installation-and-operation/start.md)
+- [Installation overview](./installation-and-operation/start.md)
 - [Installing Metabase](./installation-and-operation/installing-metabase.md)
-- [How to upgrade Metabase](./installation-and-operation/upgrading-metabase.md)
-- [Application database](./installation-and-operation/configuring-application-database.md)
+- [Upgrading Metabase](./installation-and-operation/upgrading-metabase.md)
+- [Configuring the Metabase application database](./installation-and-operation/configuring-application-database.md)
 - [Backing up Metabase](./installation-and-operation/backing-up-metabase-application-data.md)
 - [Migrating to a production application database](./installation-and-operation/migrating-from-h2.md)
-- [A word on Java versions](./installation-and-operation/java-versions.md)
-- [How to setup monitoring via JMX](./installation-and-operation/monitoring-metabase.md)
-- [Serialization: copying one Metabase instance to another](./installation-and-operation/serialization.md)
+- [Java versions](./installation-and-operation/java-versions.md)
+- [Monitoring your Metabase](./installation-and-operation/monitoring-metabase.md)
+- [Serialization](./installation-and-operation/serialization.md)
 - [Supported browsers](./installation-and-operation/supported-browsers.md)
-- [Some info on privacy and GDPR](./installation-and-operation/privacy.md)
+- [Privacy](./installation-and-operation/privacy.md)
 
-### Asking questions
+### Databases
 
-- [Overview](./questions/start.md)
+- [Databases overview](./databases/start.md)
+- [Adding and managing databases](./databases/connecting.md)
+- [Encrypting your database connection](./databases/encrypting-details-at-rest.md)
+- [SSH tunneling](./databases/ssh-tunnel.md)
+- [SSL certificate](./databases/ssl-certificates.md)
+
+### Questions
+
+- [Questions overview](./questions/start.md)
 
 #### Query builder
 
 - [Asking questions](./questions/query-builder/introduction.md)
 - [Custom expressions](./questions/query-builder/expressions.md)
-- [List of expressions: aggregations and functions](./questions/query-builder/expressions-list.md)
+- [List of expressions](./questions/query-builder/expressions-list.md)
 - [Joining data](./questions/query-builder//join.md)
 
 #### SQL and native queries
 
-- [The native SQL editor](./questions/native-editor/writing-sql.md)
-- [Viewing metadata](./questions/native-editor/data-model-reference.md)
-- [SQL templates](./questions/native-editor/sql-parameters.md)
-- [Using results to ask new questions](./questions/native-editor/referencing-saved-questions-in-queries.md)
+- [The SQL editor](./questions/native-editor/writing-sql.md)
+- [Data reference](./questions/native-editor/data-model-reference.md)
+- [SQL parameters](./questions/native-editor/sql-parameters.md)
+- [Referencing models and saved questions](./questions/native-editor/referencing-saved-questions-in-queries.md)
 - [SQL snippets](./questions/native-editor/sql-snippets.md)
 - [SQL snippet folder permissions](./permissions/snippets.md)
 
@@ -76,33 +83,33 @@ Metabase's reference documentation.
 
 ### Dashboards
 
-- [Overview](./dashboards/start.md)
-- [Creating dashboards](./dashboards/introduction.md)
+- [Dashboards overview](./dashboards/start.md)
+- [Introduction to dashboards](./dashboards/introduction.md)
 - [Dashboard filters](./dashboards/filters.md)
 - [Interactive dashboards](./dashboards/interactive.md)
-- [Dashboard charts with multiple series](./dashboards/multiple-series.md)
-- [Setting up dashboard subscriptions](./dashboards/subscriptions.md)
+- [Charts with multiple series](./dashboards/multiple-series.md)
+- [Dashboard subscriptions](./dashboards/subscriptions.md)
 
 ### Data modeling
 
-- [Overview](./data-modeling/start.md)
+- [Data modeling overview](./data-modeling/start.md)
 - [Models](./data-modeling/models.md)
-- [Metadata-editing](./data-modeling/metadata-editing.md)
+- [Metadata editing](./data-modeling/metadata-editing.md)
 - [Field types](./data-modeling/field-types.md)
-- [Default formatting](./data-modeling/formatting.md)
-- [Creating segments and metrics](./data-modeling/segments-and-metrics.md)
+- [Formatting defaults](./data-modeling/formatting.md)
+- [Segments and metrics](./data-modeling/segments-and-metrics.md)
 
-### Finding things and keeping organized
+### Organization
 
-- [Overview](./exploration-and-organization/start.md)
+- [Organization overview](./exploration-and-organization/start.md)
 - [Basic exploration](./exploration-and-organization/exploration.md)
 - [Collections](./exploration-and-organization/collections.md)
 - [Events and timelines](./exploration-and-organization/events-and-timelines.md)
 
-### People and groups
+### People
 
-- [Overview](./people-and-groups/start.md)
-- [Editing your account settings](./people-and-groups/account-settings.md)
+- [People overview](./people-and-groups/start.md)
+- [Account settings](./people-and-groups/account-settings.md)
 - [Managing people and groups](./people-and-groups/managing.md)
 - [Password complexity](./people-and-groups/changing-password-complexity.md)
 - [Session expiration](./people-and-groups/changing-session-expiration.md)
@@ -110,70 +117,66 @@ Metabase's reference documentation.
 
 #### Paid SSO options
 
-- [JWT](./people-and-groups/authenticating-with-jwt.md)
-- [SAML](./people-and-groups/authenticating-with-saml.md)
-  - [Auth0](./people-and-groups/saml-auth0.md)
-  - [Azure AD](./people-and-groups/saml-azure.md)
-  - [Google](./people-and-groups/saml-google.md)
-  - [Keycloak](./people-and-groups/saml-keycloak.md)
-  - [Okta](./people-and-groups/saml-okta.md)
+- [JWT-based authentication](./people-and-groups/authenticating-with-jwt.md)
+- [SAML-based authentication](./people-and-groups/authenticating-with-saml.md)
+  - [SAML with Auth0](./people-and-groups/saml-auth0.md)
+  - [SAML with Azure AD](./people-and-groups/saml-azure.md)
+  - [SAML with Google](./people-and-groups/saml-google.md)
+  - [SAML with Keycloak](./people-and-groups/saml-keycloak.md)
+  - [SAML with Okta](./people-and-groups/saml-okta.md)
 
 ### Permissions
 
-- [Overview](./permissions/start.md)
+- [Permissions overview](./permissions/start.md)
 - [Permissions introduction](./permissions/introduction.md)
 - [Data permissions](./permissions/data.md)
 - [Collection permissions](./permissions/collections.md)
 - [Application permissions](./permissions/application.md)
-- [Sandboxing data based on user attributes](./permissions/data-sandboxes.md)
+- [Data sandboxes](./permissions/data-sandboxes.md)
 - [SQL snippets folder permissions](./permissions/snippets.md)
 
-### Embedding questions and dashboards
+### Embedding
 
-- [Overview](./embedding/start.md)
+- [Embedding overview](./embedding/start.md)
 - [Embedding introduction](./embedding/introduction.md)
 - [Signed embedding](./embedding/signed-embedding.md)
 - [Full-app embedding](./embedding/full-app-embedding.md)
 - [Embedding example apps](https://github.com/metabase/embedding-reference-apps)
 
-### Databases
+### Configuration
 
-- [Overview](./databases/start.md)
-- [Adding data sources](./databases/connecting.md)
-- [Encrypting your database connection](./databases/encrypting-details-at-rest.md)
-- [SSH tunneling](./databases/ssh-tunnel.md)
-- [SSL certificate](./databases/ssl-certificates.md)
-
-### Configuring Metabase
-
-- [Overview](./configuring-metabase/start.md)
+- [Configuration overview](./configuring-metabase/start.md)
 - [Setting up Metabase](./configuring-metabase/setting-up-metabase.md)
-- [Settings](./configuring-metabase/settings.md)
+- [General settings](./configuring-metabase/settings.md)
 - [Email](./configuring-metabase/email.md)
 - [Slack](./configuring-metabase/slack.md)
 - [Environment variables](./configuring-metabase/environment-variables.md)
-- [Configuring logging](./configuring-metabase/log-configuration.md)
-- [Handling timezones](./configuring-metabase/timezones.md)
-- [Localization](./configuring-metabase/localization.md)
+- [Metabase logs](./configuring-metabase/log-configuration.md)
+- [Timezones](./configuring-metabase/timezones.md)
+- [Languages and localization](./configuring-metabase/localization.md)
 - [Appearance](./configuring-metabase/appearance.md)
 - [Caching query results](./configuring-metabase/caching.md)
-- [Custom map settings](./configuring-metabase/custom-maps.md)
-- [Customizing the Metabase Jetty Webserver](./configuring-metabase/customizing-jetty-webserver.md)
+- [Custom maps](./configuring-metabase/custom-maps.md)
+- [Customizing the Metabase Jetty webserver](./configuring-metabase/customizing-jetty-webserver.md)
 
-### Usage and performance tools
+### Tools
 
-- [Overview](./usage-and-performance-tools/start.md)
+- [Tools overview](./usage-and-performance-tools/start.md)
 - [Auditing tools](./usage-and-performance-tools/audit.md)
-- [Tracking query errors](./usage-and-performance-tools/tools.md)
+- [Admin tools](./usage-and-performance-tools/tools.md)
 
 ### Metabase API
 
-- [API reference](./api-documentation.md)
+- [Metabase API documentation](./api-documentation.md)
 - [API tutorial](https://www.metabase.com/learn/administration/metabase-api)
 
 ### Troubleshooting
 
-- [Get unstuck](./troubleshooting-guide/index.md)
+- [Troubleshooting guides](./troubleshooting-guide/index.md)
+
+### Developer guide
+
+- [Developer guide](./developers-guide/start.md)
 
 ## Getting help
 
@@ -219,7 +222,7 @@ Real companies, real data, real stories.
 
 ### [Metabase Twitter](https://twitter.com/metabase)
 
-We tweet stuff. 
+We tweet stuff.
 
 ### [Source code repository on GitHub](https://github.com/metabase/metabase)
 
@@ -232,3 +235,7 @@ Contribute to the Metabase open source project!
 ### [Data and Business Intelligence Glossary](https://www.metabase.com/glossary)
 
 Data jargon explained.
+
+### [Metabase Experts](https://www.metabase.com/partners/)
+
+If you’d like more technical resources to set up your data stack with Metabase, connect with a [Metabase Expert](https://www.metabase.com/partners/).

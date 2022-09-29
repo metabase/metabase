@@ -18,7 +18,7 @@ export type ParameterDimensionTarget = [
   DimensionTarget | VariableTarget,
 ];
 
-export type ParameterValueOrArray = string | Array<any>;
+export type ParameterValueOrArray = string | number | Array<any>;
 
 export type ParameterTarget =
   | ParameterVariableTarget

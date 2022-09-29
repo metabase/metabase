@@ -8,13 +8,6 @@ summary: |
 
 API endpoints for Persist.
 
-  - [GET /api/persist/](#get-apipersist)
-  - [GET /api/persist/:persisted-info-id](#get-apipersistpersisted-info-id)
-  - [GET /api/persist/card/:card-id](#get-apipersistcardcard-id)
-  - [POST /api/persist/disable](#post-apipersistdisable)
-  - [POST /api/persist/enable](#post-apipersistenable)
-  - [POST /api/persist/set-refresh-schedule](#post-apipersistset-refresh-schedule)
-
 ## `GET /api/persist/`
 
 List the entries of [[PersistedInfo]] in order to show a status page.

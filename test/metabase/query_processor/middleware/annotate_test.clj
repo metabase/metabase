@@ -209,25 +209,25 @@
   (testing "For fields with parents we should return them with a combined name including parent's name"
     (tt/with-temp* [Field [parent {:name "parent", :table_id (mt/id :venues)}]
                     Field [child  {:name "child", :table_id (mt/id :venues), :parent_id (u/the-id parent)}]]
-    (mt/with-everything-store
+     (mt/with-everything-store
         (is (= {:description     nil
-                :table_id        (mt/id :venues)
-                :semantic_type   nil
-                :effective_type  nil
-                ;; these two are a gross symptom. there's some tension. sometimes it makes sense to have an effective
-                ;; type: the db type is different and we have a way to convert. Othertimes, it doesn't make sense:
-                ;; when the info is inferred. the solution to this might be quite extensive renaming
-                :coercion_strategy nil
-                :name            "parent.child"
-                :settings        nil
-                :field_ref       [:field (u/the-id child) nil]
-                :nfc_path        nil
-                :parent_id       (u/the-id parent)
-                :id              (u/the-id child)
-                :visibility_type :normal
-                :display_name    "Child"
-                :fingerprint     nil
-                :base_type       :type/Text}
+                 :table_id        (mt/id :venues)
+                 :semantic_type   nil
+                 :effective_type  nil
+                 ;; these two are a gross symptom. there's some tension. sometimes it makes sense to have an effective
+                 ;; type: the db type is different and we have a way to convert. Othertimes, it doesn't make sense:
+                 ;; when the info is inferred. the solution to this might be quite extensive renaming
+                 :coercion_strategy nil
+                 :name            "parent.child"
+                 :settings        nil
+                 :field_ref       [:field (u/the-id child) nil]
+                 :nfc_path        nil
+                 :parent_id       (u/the-id parent)
+                 :id              (u/the-id child)
+                 :visibility_type :normal
+                 :display_name    "Child"
+                 :fingerprint     nil
+                 :base_type       :type/Text}
                (into {} (#'annotate/col-info-for-field-clause {} [:field (u/the-id child) nil])))))))
 
   (testing "nested-nested fields should include grandparent name (etc)"
@@ -633,7 +633,43 @@
                         {:name "ID_2",        :id %categories.id,   :field_ref &c.categories.id}
                         {:name "NAME_2",      :id %categories.name, :field_ref &c.categories.name}])
                      (map #(select-keys % [:name :id :field_ref])
-                          (:cols (add-column-info nested-query {}))))))))))))
+                          (:cols (add-column-info nested-query {})))))))))))
+
+  (testing "Aggregated question with source is an aggregated models should infer display_name correctly (#23248)"
+    (mt/dataset sample-dataset
+     (mt/with-temp* [Card [{card-id :id}
+                           {:dataset true
+                            :dataset_query
+                            (mt/$ids :products
+                                     {:type     :query
+                                      :database (mt/id)
+                                      :query    {:source-table $$products
+                                                 :aggregation
+                                                 [[:aggregation-options
+                                                   [:sum $price]
+                                                   {:name "sum"}]
+                                                  [:aggregation-options
+                                                   [:max $rating]
+                                                   {:name "max"}]]
+                                                 :breakout     $category
+                                                 :order-by     [[:asc $category]]}})}]]
+       (let [query (qp/preprocess
+                     (mt/mbql-query nil
+                                    {:source-table (str "card__" card-id)
+                                     :aggregation  [[:aggregation-options
+                                                     [:sum
+                                                      [:field
+                                                       "sum"
+                                                       {:base-type :type/Float}]]
+                                                     {:name "sum"}]
+                                                    [:aggregation-options
+                                                     [:count]
+                                                     {:name "count"}]]
+                                     :limit        1}))]
+        (is (= ["Sum of Sum of Price" "Count"]
+              (->> (add-column-info query {})
+                  :cols
+                  (map :display_name)))))))))
 
 (deftest inception-test
   (testing "Should return correct metadata for an 'inception-style' nesting of source > source > source with a join (#14745)"

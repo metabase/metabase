@@ -17,12 +17,11 @@ import {
   getHasDataAccess,
   getHasNativeWrite,
 } from "metabase/new_query/selectors";
+import Database from "metabase/entities/databases";
 import {
   QueryOptionsGridItem,
   QueryOptionsRoot,
 } from "./NewQueryOptions.styled";
-
-import Database from "metabase/entities/databases";
 
 const mapStateToProps = state => ({
   hasDataAccess: getHasDataAccess(state),

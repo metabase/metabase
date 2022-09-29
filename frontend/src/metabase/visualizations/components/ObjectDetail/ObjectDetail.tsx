@@ -2,14 +2,11 @@ import React, { useState, useEffect, useCallback } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-import Question from "metabase-lib/lib/Question";
 import { isPK } from "metabase/lib/schema_metadata";
-import Table from "metabase-lib/lib/metadata/Table";
 
 import { State } from "metabase-types/store";
 import type { ForeignKey, ConcreteTableId } from "metabase-types/api";
 import { DatasetData } from "metabase-types/types/Dataset";
-import { ObjectId, OnVisualizationClickType } from "./types";
 
 import Button from "metabase/core/components/Button";
 import { NotFound } from "metabase/containers/ErrorPages";
@@ -36,6 +33,9 @@ import {
 } from "metabase/query_builder/selectors";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { isVirtualCardId } from "metabase/lib/saved-questions";
+import Table from "metabase-lib/lib/metadata/Table";
+import Question from "metabase-lib/lib/Question";
+import { ObjectId, OnVisualizationClickType } from "./types";
 
 import {
   getObjectName,

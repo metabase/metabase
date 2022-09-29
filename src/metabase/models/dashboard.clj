@@ -424,14 +424,14 @@
   [_model-name _opts dash]
   (-> (serdes.base/extract-one-basics "Dashboard" dash)
       (update :collection_id serdes.util/export-fk 'Collection)
-      (update :creator_id    serdes.util/export-fk-keyed 'User :email)))
+      (update :creator_id    serdes.util/export-user)))
 
 (defmethod serdes.base/load-xform "Dashboard"
   [dash]
   (-> dash
       serdes.base/load-xform-basics
       (update :collection_id serdes.util/import-fk 'Collection)
-      (update :creator_id    serdes.util/import-fk-keyed 'User :email)))
+      (update :creator_id    serdes.util/import-user)))
 
 (defmethod serdes.base/serdes-dependencies "Dashboard"
   [{:keys [collection_id]}]

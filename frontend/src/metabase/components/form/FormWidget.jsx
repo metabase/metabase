@@ -41,7 +41,7 @@ const WIDGETS = {
   textFile: FormTextFileWidget,
 };
 
-function getWidgetComponent(formField) {
+export function getWidgetComponent(formField) {
   if (typeof formField.type === "string") {
     const widget =
       WIDGETS[formField.type] || PLUGIN_FORM_WIDGETS[formField.type];

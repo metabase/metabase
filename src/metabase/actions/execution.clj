@@ -5,9 +5,11 @@
     [metabase.actions :as actions]
     [metabase.actions.http-action :as http-action]
     [metabase.api.common :as api]
+    [metabase.mbql.normalize :as mbql.normalize]
     [metabase.models :refer [Dashboard DashboardCard]]
     [metabase.models.action :as action]
     [metabase.query-processor.error-type :as qp.error-type]
+    [metabase.query-processor.middleware.permissions :as qp.perms]
     [metabase.query-processor.writeback :as qp.writeback]
     [metabase.util :as u]
     [metabase.util.i18n :refer [tru]]
@@ -68,12 +70,15 @@
   (try
     (let [query (assoc (:dataset_query card) :parameters parameters)]
       (log/debugf "Query (before preprocessing):\n\n%s" (u/pprint-to-str query))
-      (qp.writeback/execute-write-query! query))
+      (binding [qp.perms/*card-id* (:id card)]
+        (qp.writeback/execute-write-query! query)))
     (catch Throwable e
-      (throw (ex-info (tru "Error executing Action: {0}" (ex-message e))
-                      {:action     action
-                       :parameters parameters}
-                      e)))))
+      (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
+        (api/throw-403 e)
+        (throw (ex-info (tru "Error executing Action: {0}" (ex-message e))
+           {:action     action
+            :parameters parameters}
+           e))))))
 
 (defn- execute-http-action!
   [action parameters]
@@ -83,22 +88,34 @@
     (http-action/execute-http-action! action params->value)))
 
 (defn execute-dashcard!
-  "Execute the given action in the dashboard/dashcard context with the given incoming-parameters.
+  "Execute the given action in the dashboard/dashcard context with the given unmapped-parameters and extra-parameters.
    See [[map-parameters]] for a description of their expected shapes."
-  [action-id dashboard-id dashcard-id incoming-parameters]
+  [dashboard-id dashcard-id unmapped-parameters extra-parameters]
   (actions/check-actions-enabled)
-  (api/check-superuser)
   (api/read-check Dashboard dashboard-id)
   (let [dashcard (api/check-404 (db/select-one DashboardCard
                                                :id dashcard-id
-                                               :dashboard_id dashboard-id
-                                               :action_id action-id))
-        action (api/check-404 (first (action/select-actions :id action-id)))
+                                               :dashboard_id dashboard-id))
+        action (api/check-404 (first (action/select-actions :id (:action_id dashcard))))
         action-type (:type action)
         _ (log/tracef "Mapping parameters\n\n%s\nwith mappings\n\n%s"
-                      (u/pprint-to-str incoming-parameters)
+                      (u/pprint-to-str unmapped-parameters)
                       (u/pprint-to-str (:parameter_mappings dashcard)))
-        parameters (map-parameters incoming-parameters (:parameter_mappings dashcard))]
+        mapped-parameters (map-parameters
+                            (mbql.normalize/normalize-fragment [:parameters] unmapped-parameters)
+                            (:parameter_mappings dashcard))
+        parameters (into (mbql.normalize/normalize-fragment [:parameters] extra-parameters)
+                         mapped-parameters)
+        destination-parameters-by-target (m/index-by :target (:parameters action))]
+    (doseq [{:keys [target]} parameters]
+      (when-not (contains? destination-parameters-by-target target)
+        (throw (ex-info (tru "No destination parameter found for target {0}. Found: {1}"
+                             (pr-str target)
+                             (pr-str (set (keys destination-parameters-by-target))))
+                        {:status-code 400
+                         :type qp.error-type/invalid-parameter
+                         :parameters parameters
+                         :destination-parameters (:parameters action)}))))
     (case action-type
       :query
       (execute-query-action! action parameters)

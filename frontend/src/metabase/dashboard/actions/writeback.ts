@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
 import { createAction } from "metabase/lib/redux";
-import { EmittersApi } from "metabase/services";
 import { addUndo } from "metabase/redux/undo";
 
 import {
@@ -17,11 +16,21 @@ import {
   BulkDeletePayload,
 } from "metabase/writeback/actions";
 
-import { DashboardWithCards, DashCard } from "metabase-types/types/Dashboard";
+import { ActionsApi } from "metabase/services";
+
+import type {
+  Dashboard,
+  DashboardOrderedCard,
+  ActionDashboardCard,
+  ParameterMappedForActionExecution,
+  ArbitraryParameterForActionExecution,
+  ActionFormSubmitResult,
+} from "metabase-types/api";
+import type { Dispatch } from "metabase-types/store";
 
 import { getCardData } from "../selectors";
-import { isVirtualDashCard } from "../utils";
-import { fetchCardData } from "./data-fetching";
+import { setDashCardAttributes } from "./core";
+import { reloadDashboardCards } from "./data-fetching";
 
 export const OPEN_ACTION_PARAMETERS_MODAL =
   "metabase/data-app/OPEN_ACTION_PARAMETERS_MODAL";
@@ -35,25 +44,30 @@ export const closeActionParametersModal = createAction(
   CLOSE_ACTION_PARAMETERS_MODAL,
 );
 
-export type InsertRowFromDataAppPayload = InsertRowPayload & {
-  dashCard: DashCard;
-};
+export function updateButtonActionMapping(
+  dashCardId: number,
+  attributes: { action_id?: number | null; parameter_mappings?: any },
+) {
+  return (dispatch: Dispatch) => {
+    dispatch(
+      setDashCardAttributes({
+        id: dashCardId,
+        attributes: attributes,
+      }),
+    );
+  };
+}
+
+export type InsertRowFromDataAppPayload = InsertRowPayload;
 
 export const createRowFromDataApp = (payload: InsertRowFromDataAppPayload) => {
   return async (dispatch: any) => {
     const result = await createRow(payload);
     const { table } = payload;
     if (result?.["created-row"]?.id) {
-      const { dashCard } = payload;
-      dispatch(
-        fetchCardData(dashCard.card, dashCard, {
-          reload: true,
-          ignoreCache: true,
-        }),
-      );
       dispatch(
         addUndo({
-          message: t`Successfully inserted a row into the ${table.displayName()} table`,
+          message: t`Successfully created a new ${table.objectName()}`,
           toastColor: "success",
         }),
       );
@@ -61,41 +75,25 @@ export const createRowFromDataApp = (payload: InsertRowFromDataAppPayload) => {
   };
 };
 
-export type UpdateRowFromDataAppPayload = UpdateRowPayload & {
-  dashCard: DashCard;
-};
+export type UpdateRowFromDataAppPayload = UpdateRowPayload;
 
 export const updateRowFromDataApp = (payload: UpdateRowFromDataAppPayload) => {
   return async (dispatch: any) => {
     const result = await updateRow(payload);
     if (result?.["rows-updated"]?.length > 0) {
-      const { dashCard } = payload;
-      dispatch(
-        fetchCardData(dashCard.card, dashCard, {
-          reload: true,
-          ignoreCache: true,
-        }),
-      );
+      dispatch(reloadDashboardCards());
     }
   };
 };
 
-export type DeleteRowFromDataAppPayload = DeleteRowPayload & {
-  dashCard: DashCard;
-};
+export type DeleteRowFromDataAppPayload = DeleteRowPayload;
 
 export const deleteRowFromDataApp = (payload: DeleteRowFromDataAppPayload) => {
   return async (dispatch: any) => {
     try {
       const result = await deleteRow(payload);
       if (result?.["rows-deleted"]?.length > 0) {
-        const { dashCard } = payload;
-        dispatch(
-          fetchCardData(dashCard.card, dashCard, {
-            reload: true,
-            ignoreCache: true,
-          }),
-        );
+        dispatch(reloadDashboardCards());
       }
     } catch (err) {
       console.error(err);
@@ -114,7 +112,7 @@ export type BulkUpdateFromDataAppPayload = Omit<
   BulkUpdatePayload,
   "records"
 > & {
-  dashCard: DashCard;
+  dashCard: DashboardOrderedCard;
   rowIndexes: number[];
   changes: Record<string, unknown>;
 };
@@ -158,12 +156,7 @@ export const updateManyRowsFromDataApp = (
 
       const result = await updateManyRows({ records, table });
       if (result?.["rows-updated"] > 0) {
-        dispatch(
-          fetchCardData(dashCard.card, dashCard, {
-            reload: true,
-            ignoreCache: true,
-          }),
-        );
+        dispatch(reloadDashboardCards());
         dispatch(
           addUndo({
             message: t`Successfully updated ${rowIndexes.length} records`,
@@ -181,7 +174,7 @@ export const updateManyRowsFromDataApp = (
 };
 
 export type BulkDeleteFromDataAppPayload = Omit<BulkDeletePayload, "ids"> & {
-  dashCard: DashCard;
+  dashCard: DashboardOrderedCard;
   rowIndexes: number[];
 };
 
@@ -221,12 +214,7 @@ export const deleteManyRowsFromDataApp = (
 
       const result = await deleteManyRows({ ids, table });
       if (result?.["success"]) {
-        dispatch(
-          fetchCardData(dashCard.card, dashCard, {
-            reload: true,
-            ignoreCache: true,
-          }),
-        );
+        dispatch(reloadDashboardCards());
         dispatch(
           addUndo({
             message: t`Successfully deleted ${rowIndexes.length} records`,
@@ -244,52 +232,51 @@ export const deleteManyRowsFromDataApp = (
 };
 
 export type ExecuteRowActionPayload = {
-  dashboard: DashboardWithCards;
-  emitterId: number;
-  parameters: Record<string, unknown>;
+  dashboard: Dashboard;
+  dashcard: ActionDashboardCard;
+  parameters: ParameterMappedForActionExecution[];
+  extra_parameters: ArbitraryParameterForActionExecution[];
+  dispatch: Dispatch;
+  shouldToast?: boolean;
 };
 
-export const executeRowAction = ({
+export const executeRowAction = async ({
   dashboard,
-  emitterId,
+  dashcard,
   parameters,
-}: ExecuteRowActionPayload) => {
-  return async function (dispatch: any) {
-    try {
-      const result = await EmittersApi.execute({
-        id: emitterId,
-        parameters,
-      });
-      if (result["rows-affected"] > 0) {
-        dashboard.ordered_cards
-          .filter(dashCard => !isVirtualDashCard(dashCard))
-          .forEach(dashCard =>
-            dispatch(
-              fetchCardData(dashCard.card, dashCard, {
-                reload: true,
-                ignoreCache: true,
-              }),
-            ),
-          );
-        dispatch(
-          addUndo({
-            toastColor: "success",
-            message: t`Successfully executed the action`,
-          }),
-        );
-      } else {
-        dispatch(
-          addUndo({
-            toastColor: "success",
-            message: t`Success! The action returned: ${JSON.stringify(result)}`,
-          }),
-        );
-      }
-    } catch (err) {
-      console.error(err);
-      const message =
-        (<any>err)?.data?.message ||
-        t`Something went wrong while executing the action`;
+  extra_parameters,
+  dispatch,
+  shouldToast = true,
+}: ExecuteRowActionPayload): Promise<ActionFormSubmitResult> => {
+  let message = "";
+  try {
+    const result = await ActionsApi.execute({
+      dashboardId: dashboard.id,
+      dashcardId: dashcard.id,
+      parameters,
+      extra_parameters,
+    });
+
+    if (result["rows-affected"] > 0) {
+      dispatch(reloadDashboardCards());
+      message = t`Successfully executed the action`;
+    } else {
+      message = t`Success! The action returned: ${JSON.stringify(result)}`;
+    }
+    if (shouldToast) {
+      dispatch(
+        addUndo({
+          toastColor: "success",
+          message,
+        }),
+      );
+    }
+    return { success: true, message };
+  } catch (err) {
+    const message =
+      (<any>err)?.data?.message ||
+      t`Something went wrong while executing the action`;
+    if (shouldToast) {
       dispatch(
         addUndo({
           icon: "warning",
@@ -298,5 +285,6 @@ export const executeRowAction = ({
         }),
       );
     }
-  };
+    return { success: false, error: message, message };
+  }
 };

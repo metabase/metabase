@@ -1,7 +1,7 @@
 import { connect } from "react-redux";
+import { getExternalAuthProviders } from "metabase/auth/selectors";
 import { login } from "../../actions";
 import PasswordPanel from "../../components/PasswordPanel";
-import { getExternalAuthProviders } from "metabase/auth/selectors";
 
 const mapStateToProps = (state: any) => ({
   providers: getExternalAuthProviders(state),

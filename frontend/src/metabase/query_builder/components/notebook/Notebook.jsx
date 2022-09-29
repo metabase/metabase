@@ -16,6 +16,7 @@ export default function Notebook({ className, ...props }) {
     isResultDirty,
     runQuestionQuery,
     setQueryBuilderMode,
+    updateQuestion,
     hasVisualizeButton = true,
   } = props;
 
@@ -26,7 +27,8 @@ export default function Notebook({ className, ...props }) {
     if (cleanQuestion.display() === "table") {
       cleanQuestion = cleanQuestion.setDefaultDisplay();
     }
-    await cleanQuestion.update();
+
+    await updateQuestion(cleanQuestion);
   }
 
   // vizualize switches the view to the question's visualization.

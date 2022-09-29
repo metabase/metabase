@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
 const fs = require("fs");
+const { spawn } = require("child_process");
 const os = require("os");
 const path = require("path");
-const { spawn } = require("child_process");
 
 const fetch = require("isomorphic-fetch");
 

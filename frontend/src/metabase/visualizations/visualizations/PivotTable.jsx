@@ -1,11 +1,13 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
-import { t, jt } from "ttag";
+import { t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
 import { getIn, updateIn } from "icepick";
 import { Grid, Collection, ScrollSync, AutoSizer } from "react-virtualized";
 
+import { findDOMNode } from "react-dom";
+import { connect } from "react-redux";
 import { getScrollBarSize } from "metabase/lib/dom";
 import ChartSettingsTableFormatting from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 
@@ -16,6 +18,8 @@ import {
   COLLAPSED_ROWS_SETTING,
   COLUMN_SPLIT_SETTING,
   COLUMN_SORT_ORDER,
+  COLUMN_SORT_ORDER_ASC,
+  COLUMN_SORT_ORDER_DESC,
   COLUMN_SHOW_TOTALS,
   COLUMN_FORMATTING_SETTING,
   isPivotGroupColumn,
@@ -23,9 +27,8 @@ import {
 } from "metabase/lib/data_grid";
 import { formatColumn } from "metabase/lib/formatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import { ChartSettingIconRadio } from "metabase/visualizations/components/settings/ChartSettingIconRadio";
 
-import { findDOMNode } from "react-dom";
-import { connect } from "react-redux";
 import { PLUGIN_SELECTORS } from "metabase/plugins";
 import {
   PivotTableRoot,
@@ -33,29 +36,30 @@ import {
   PivotTableTopLeftCellsContainer,
   RowToggleIconRoot,
   CELL_HEIGHT,
+  PivotTableSettingLabel,
 } from "./PivotTable.styled";
 
 const partitions = [
   {
     name: "rows",
     columnFilter: isDimension,
-    title: jt`Fields to use for the table ${(
-      <span className="text-dark text-heavy">{t`rows`}</span>
-    )}`,
+    title: (
+      <PivotTableSettingLabel data-testId="pivot-table-setting">{t`Rows`}</PivotTableSettingLabel>
+    ),
   },
   {
     name: "columns",
     columnFilter: isDimension,
-    title: jt`Fields to use for the table ${(
-      <span className="text-dark text-heavy">{t`columns`}</span>
-    )}`,
+    title: (
+      <PivotTableSettingLabel data-testId="pivot-table-setting">{t`Columns`}</PivotTableSettingLabel>
+    ),
   },
   {
     name: "values",
     columnFilter: col => !isDimension(col),
-    title: jt`Fields to use for the table ${(
-      <span className="text-dark text-heavy">{t`values`}</span>
-    )}`,
+    title: (
+      <PivotTableSettingLabel data-testId="pivot-table-setting">{t`Measures`}</PivotTableSettingLabel>
+    ),
   },
 ];
 
@@ -232,30 +236,47 @@ class PivotTable extends Component {
   };
 
   static columnSettings = {
-    column_title: {
-      title: t`Column title`,
-      widget: "input",
-      getDefault: column => formatColumn(column),
+    [COLUMN_SORT_ORDER]: {
+      title: t`Sort Order`,
+      widget: ChartSettingIconRadio,
+      inline: true,
+      props: {
+        options: [
+          {
+            iconName: "arrow_up",
+            value: COLUMN_SORT_ORDER_ASC,
+          },
+          {
+            iconName: "arrow_down",
+            value: COLUMN_SORT_ORDER_DESC,
+          },
+        ],
+      },
+      getHidden: ({ source }) => source === "aggregation",
     },
     [COLUMN_SHOW_TOTALS]: {
-      hidden: true,
-      getValue: (column, columnSettings, { settings }) => {
-        const currentValue = columnSettings[COLUMN_SHOW_TOTALS];
+      title: t`Show totals`,
+      widget: "toggle",
+      inline: true,
+      getDefault: (column, columnSettings, { settings }) => {
+        //Default to showing totals if appropriate
+        const rows = settings[COLUMN_SPLIT_SETTING].rows || [];
+        return rows.slice(0, -1).some(row => _.isEqual(row, column.field_ref));
+      },
+      getHidden: (column, columnSettings, { settings }) => {
         const rows = settings[COLUMN_SPLIT_SETTING].rows || [];
         // to show totals a column needs to be:
         //  - in the left header ("rows" in COLUMN_SPLIT_SETTING)
         //  - not the last column
-        const canHaveSubtotal = rows
-          .slice(0, rows.length - 1)
-          .some(row => _.isEqual(row, column.field_ref));
-        if (!canHaveSubtotal) {
-          // when this is null, the setting widget hides the toggle
-          return null;
-        }
-        return currentValue == null ? true : currentValue;
+        return !rows.slice(0, -1).some(row => _.isEqual(row, column.field_ref));
       },
     },
-    [COLUMN_SORT_ORDER]: { hidden: true },
+    column_title: {
+      title: t`Column title`,
+      widget: "input",
+      getDefault: column => formatColumn(column),
+      variant: "form-field",
+    },
   };
 
   setBodyRef = element => {

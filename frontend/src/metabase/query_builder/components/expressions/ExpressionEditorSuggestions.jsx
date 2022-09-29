@@ -5,13 +5,12 @@ import cx from "classnames";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 
+import { isObscured } from "metabase/lib/dom";
 import {
   ExpressionListItem,
   ExpressionList,
   ExpressionPopover,
 } from "./ExpressionEditorSuggestions.styled";
-
-import { isObscured } from "metabase/lib/dom";
 
 const SuggestionSpan = ({ suggestion, isHighlighted }) => {
   const className = cx("text-dark text-bold hover-child", {

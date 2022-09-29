@@ -1,10 +1,14 @@
 (ns metabase.api.app-test
   (:require
     [clojure.test :refer [deftest is testing]]
-    [metabase.models :refer [App Collection Dashboard]]
+    [medley.core :as m]
+    [metabase.models :refer [App Card Collection Dashboard]]
     [metabase.models.permissions :as perms]
     [metabase.models.permissions-group :as perms-group]
-    [metabase.test :as mt]))
+    [metabase.test :as mt]
+    [metabase.test.data :as data]
+    [toucan.db :as db]
+    [toucan.hydrate :refer [hydrate]]))
 
 (deftest create-test
   (mt/with-model-cleanup [Collection]
@@ -131,3 +135,72 @@
         (testing "that app detail properly checks permissions"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (str "app/" app-id)))))))))
+
+(deftest scaffold-test
+  (mt/with-model-cleanup [Card Dashboard Collection]
+    (testing "Golden path"
+      (let [app (mt/user-http-request
+                  :crowberto :post 200 "app/scaffold"
+                  {:table-ids [(data/id :venues)]
+                   :app-name "My test app"})
+            pages (m/index-by :name (hydrate (db/select Dashboard :collection_id (:collection_id app)) :ordered_cards))
+            list-page (get pages "Venues List")
+            detail-page (get pages "Venues Detail")]
+        (is (partial= {:nav_items [{:page_id (:id list-page)}
+                                   {:page_id (:id detail-page) :hidden true :indent 1}]
+                       :dashboard_id (:id list-page)}
+                      app))
+        (is (partial= {:ordered_cards [{:visualization_settings {:click_behavior
+                                                                 {:type "link",
+                                                                  :linkType "page",
+                                                                  :targetId (:id detail-page)}}}
+                                       {}]}
+                      list-page))))
+    (testing "Bad or duplicate tables"
+      (is (= (format "Some tables could not be found. Given: (%s %s) Found: (%s)"
+                     (data/id :venues)
+                     Integer/MAX_VALUE
+                     (data/id :venues))
+             (mt/user-http-request
+               :crowberto :post 400 "app/scaffold"
+               {:table-ids [(data/id :venues) (data/id :venues) Integer/MAX_VALUE]
+                :app-name (str "My test app " (gensym))}))))))
+
+(deftest scaffold-app-test
+  (mt/with-model-cleanup [Card Dashboard Collection]
+    (mt/with-temp* [Collection [{collection-id :id}]
+                    App [{app-id :id} {:collection_id collection-id}]]
+      (testing "Without existing pages"
+        (let [app (mt/user-http-request
+                    :crowberto :post 200 (format "app/%s/scaffold" app-id)
+                    {:table-ids [(data/id :venues)]})
+              pages (m/index-by :name (hydrate (db/select Dashboard :collection_id (:collection_id app)) :ordered_cards))
+              list-page (get pages "Venues List")
+              detail-page (get pages "Venues Detail")]
+          (is (partial= {:nav_items [{:page_id (:id list-page)}
+                                     {:page_id (:id detail-page) :hidden true :indent 1}]}
+                        app))
+          (is (partial= {:ordered_cards [{:visualization_settings {:click_behavior
+                                                                   {:type "link",
+                                                                    :linkType "page",
+                                                                    :targetId (:id detail-page)}}}
+                                         {}]}
+                        list-page))))
+      (testing "With existing pages"
+        (let [app (mt/user-http-request
+                    :crowberto :post 200 (format "app/%s/scaffold" app-id)
+                    {:table-ids [(data/id :checkins)]})
+              pages (m/index-by :name (hydrate (db/select Dashboard :collection_id (:collection_id app)) :ordered_cards))
+              list-page (get pages "Checkins List")
+              detail-page (get pages "Checkins Detail")]
+          (is (partial= {:nav_items [{:page_id (get-in pages ["Venues List" :id])}
+                                     {:page_id (get-in pages ["Venues Detail" :id])}
+                                     {:page_id (:id list-page)}
+                                     {:page_id (:id detail-page) :hidden true :indent 1}]}
+                        app))
+          (is (partial= {:ordered_cards [{:visualization_settings {:click_behavior
+                                                                   {:type "link",
+                                                                    :linkType "page",
+                                                                    :targetId (:id detail-page)}}}
+                                         {}]}
+                        list-page)))))))

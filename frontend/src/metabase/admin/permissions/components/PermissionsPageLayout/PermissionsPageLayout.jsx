@@ -11,6 +11,9 @@ import fitViewport from "metabase/hoc/FitViewPort";
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
 
+import { useLeaveConfirmation } from "../../hooks/use-leave-confirmation";
+import { clearSaveError } from "../../permissions";
+import { ToolbarButton } from "../ToolbarButton";
 import { PermissionsTabs } from "./PermissionsTabs";
 import {
   FullHeightContainer,
@@ -22,9 +25,6 @@ import {
   ToolbarButtonsContainer,
 } from "./PermissionsPageLayout.styled";
 import { PermissionsEditBar } from "./PermissionsEditBar";
-import { useLeaveConfirmation } from "../../hooks/use-leave-confirmation";
-import { clearSaveError } from "../../permissions";
-import { ToolbarButton } from "../ToolbarButton";
 
 const mapDispatchToProps = {
   navigateToTab: tab => push(`/admin/permissions/${tab}`),

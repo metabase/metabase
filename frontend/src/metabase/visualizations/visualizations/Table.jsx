@@ -1,9 +1,10 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
-import TableInteractive from "../components/TableInteractive/TableInteractive.jsx";
-import TableSimple from "../components/TableSimple";
 import { t } from "ttag";
+import _ from "underscore";
+import cx from "classnames";
+import { getIn } from "icepick";
 import * as DataGrid from "metabase/lib/data_grid";
 import { findColumnIndexForColumnSetting } from "metabase/lib/dataset";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
@@ -29,10 +30,8 @@ import ChartSettingsTableFormatting, {
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
-import _ from "underscore";
-import cx from "classnames";
-
-import { getIn } from "icepick";
+import TableSimple from "../components/TableSimple";
+import TableInteractive from "../components/TableInteractive/TableInteractive.jsx";
 
 export default class Table extends Component {
   static uiName = t`Table`;
@@ -293,6 +292,9 @@ export default class Table extends Component {
       getHidden: (_, settings) =>
         settings["view_as"] !== "link" && settings["view_as"] !== "email_link",
       readDependencies: ["view_as"],
+      props: {
+        placeholder: t`Link to {{bird_id}}`,
+      },
     };
 
     settings["link_url"] = {
@@ -302,6 +304,9 @@ export default class Table extends Component {
       default: null,
       getHidden: (_, settings) => settings["view_as"] !== "link",
       readDependencies: ["view_as"],
+      props: {
+        placeholder: t`http://toucan.example/{{bird_id}}`,
+      },
     };
 
     return settings;

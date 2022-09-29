@@ -36,11 +36,13 @@
             [toucan.db :as db]
             [toucan.models :as models]
             [toucan.util.test :as tt])
-  (:import [java.io File FileInputStream]
-           java.net.ServerSocket
-           java.util.concurrent.TimeoutException
-           java.util.Locale
-           [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
+  (:import
+   (java.io File FileInputStream)
+   (java.net ServerSocket)
+   (java.util Locale)
+   (java.util.concurrent TimeoutException)
+   (org.quartz CronTrigger JobDetail JobKey Scheduler Trigger)
+   (org.quartz.impl StdSchedulerFactory)))
 
 (comment tu.log/keep-me
          test-runner.assert-exprs/keep-me)
@@ -456,7 +458,8 @@
            ~@body)))))
 
 (defmacro with-temporary-raw-setting-values
-  "Like `with-temporary-setting-values` but works with raw value and it allows settings that are not defined using `defsetting`."
+  "Like [[with-temporary-setting-values]] but works with raw value and it allows settings that are not defined
+  using [[metabase.models.setting/defsetting]]."
   [[setting-k value & more :as bindings] & body]
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
   (test-runner.parallel/assert-test-is-not-parallel "with-temporary-raw-setting-values")
@@ -487,9 +490,8 @@
   [settings & body]
   `(do-with-discarded-setting-changes ~(mapv keyword settings) (fn [] ~@body)))
 
-
 (defn do-with-temp-vals-in-db
-  "Implementation function for `with-temp-vals-in-db` macro. Prefer that to using this directly."
+  "Implementation function for [[with-temp-vals-in-db]] macro. Prefer that to using this directly."
   [model object-or-id column->temp-value f]
   (test-runner.parallel/assert-test-is-not-parallel "with-temp-vals-in-db")
   ;; use low-level `query` and `execute` functions here, because Toucan `select` and `update` functions tend to do
@@ -600,28 +602,38 @@
 ;; Various functions for letting us check that things get scheduled properly. Use these to put a temporary scheduler
 ;; in place and then check the tasks that get scheduled
 
-(defn do-with-scheduler [scheduler thunk]
-  (binding [task/*quartz-scheduler* scheduler]
-    (thunk)))
+(defn- in-memory-scheduler
+  "An in-memory Quartz Scheduler separate from the usual database-backend one we normally use. Every time you call this
+  it returns the same scheduler! So make sure you shut it down when you're done using it."
+  ^org.quartz.impl.StdScheduler []
+  (.getScheduler
+   (StdSchedulerFactory.
+    (doto (java.util.Properties.)
+      (.setProperty StdSchedulerFactory/PROP_SCHED_INSTANCE_NAME (str `in-memory-scheduler))
+      (.setProperty StdSchedulerFactory/PROP_JOB_STORE_CLASS (.getCanonicalName org.quartz.simpl.RAMJobStore))
+      (.setProperty (str StdSchedulerFactory/PROP_THREAD_POOL_PREFIX ".threadCount") "1")))))
 
-(defmacro with-scheduler
-  "Temporarily bind the Metabase Quartzite scheduler to `scheulder` and run `body`."
-  {:style/indent 1}
-  [scheduler & body]
-  `(do-with-scheduler ~scheduler (fn [] ~@body)))
-
-(defn do-with-temp-scheduler [f]
-  (classloader/the-classloader)
-  (initialize/initialize-if-needed! :db)
-  (let [temp-scheduler        (qs/start (qs/initialize))
-        is-default-scheduler? (identical? temp-scheduler (#'metabase.task/scheduler))]
-    (if is-default-scheduler?
-      (f)
-      (with-scheduler temp-scheduler
+(defn do-with-unstarted-temp-scheduler [thunk]
+  (let [temp-scheduler (in-memory-scheduler)
+        already-bound? (identical? @task/*quartz-scheduler* temp-scheduler)]
+    (if already-bound?
+      (thunk)
+      (binding [task/*quartz-scheduler* (atom temp-scheduler)]
         (try
-          (f)
+          (assert (not (qs/started? temp-scheduler))
+                  "temp in-memory scheduler already started: did you use it elsewhere without shutting it down?")
+          (thunk)
           (finally
             (qs/shutdown temp-scheduler)))))))
+
+(defn do-with-temp-scheduler [thunk]
+  ;; not 100% sure we need to initialize the DB anymore since the temp scheduler is in-memory-only now.
+  (classloader/the-classloader)
+  (initialize/initialize-if-needed! :db)
+  (do-with-unstarted-temp-scheduler
+   (^:once fn* []
+    (qs/start @task/*quartz-scheduler*)
+    (thunk))))
 
 (defmacro with-temp-scheduler
   "Execute `body` with a temporary scheduler in place.
@@ -848,7 +860,7 @@
   admin has removed them.
 
   Only affects the Root Collection for the default namespace. Use
-  `with-non-admin-groups-no-root-collection-for-namespace-perms` to do the same thing for the Root Collection of other
+  [[with-non-admin-groups-no-root-collection-for-namespace-perms]] to do the same thing for the Root Collection of other
   namespaces."
   [& body]
   `(do-with-non-admin-groups-no-collection-perms collection/root-collection (fn [] ~@body)))
@@ -1042,10 +1054,12 @@
         (io/delete-file (io/file filename) :silently)))))
 
 (defmacro with-temp-file
-  "Execute `body` with newly created temporary file(s) in the system temporary directory. You may optionally specify the
+  "Execute `body` with a path for temporary file(s) in the system temporary directory. You may optionally specify the
   `filename` (without directory components) to be created in the temp directory; if `filename` is nil, a random
   filename will be used. The file will be deleted if it already exists, but will not be touched; use `spit` to load
   something in to it.
+
+  DOES NOT CREATE A FILE!
 
     ;; create a random temp filename. File is deleted if it already exists.
     (with-temp-file [filename]
@@ -1105,6 +1119,24 @@
                  (macroexpand form))
       `(with-temp-file [])
       `(with-temp-file (+ 1 2)))))
+
+(defn do-with-temp-dir
+  "Impl for [[with-temp-dir]] macro."
+  [temp-dir-name f]
+  (do-with-temp-file
+   temp-dir-name
+   (^:once fn* [path]
+    (let [file (io/file path)]
+      (when (.exists file)
+        (org.apache.commons.io.FileUtils/deleteDirectory file)))
+    (u.files/create-dir-if-not-exists! (u.files/get-path path))
+    (f path))))
+
+(defmacro with-temp-dir
+  "Like [[with-temp-file]], but creates a new temporary directory in the system temp dir. Deletes existing directory if
+  it already exists."
+  [[directory-binding dir-name] & body]
+  `(do-with-temp-dir ~dir-name (^:once fn* [~directory-binding] ~@body)))
 
 (defn do-with-user-in-groups
   ([f groups-or-ids]

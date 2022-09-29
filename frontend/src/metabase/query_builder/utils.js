@@ -1,5 +1,6 @@
 import querystring from "querystring";
 import * as Urls from "metabase/lib/urls";
+import { serializeCardForUrl } from "metabase/lib/card";
 
 export function getPathNameFromQueryBuilderMode({
   pathname,
@@ -23,14 +24,9 @@ export function getCurrentQueryParams() {
   return querystring.parse(search);
 }
 
-export function getURLForCardState(
-  { card, serializedCard },
-  dirty,
-  query = {},
-  objectId,
-) {
+export function getURLForCardState({ card }, dirty, query = {}, objectId) {
   const options = {
-    hash: serializedCard && dirty ? serializedCard : "",
+    hash: card && dirty ? serializeCardForUrl(card) : "",
     query,
   };
   const isAdHocQuestion = !card.id;

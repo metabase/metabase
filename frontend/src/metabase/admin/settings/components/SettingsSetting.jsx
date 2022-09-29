@@ -1,10 +1,10 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
+import { jt } from "ttag";
+import MetabaseSettings from "metabase/lib/settings";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import SettingHeader from "./SettingHeader";
-import { t } from "ttag";
-
 import SettingInput from "./widgets/SettingInput";
 import SettingNumber from "./widgets/SettingNumber";
 import SettingPassword from "./widgets/SettingPassword";
@@ -34,6 +34,7 @@ const SETTING_WIDGET_MAP = {
 export default class SettingsSetting extends Component {
   static propTypes = {
     setting: PropTypes.object.isRequired,
+    settingValues: PropTypes.object,
     onChange: PropTypes.func.isRequired,
     onChangeSetting: PropTypes.func,
     autoFocus: PropTypes.bool,
@@ -41,7 +42,7 @@ export default class SettingsSetting extends Component {
   };
 
   render() {
-    const { setting, errorMessage } = this.props;
+    const { setting, settingValues, errorMessage } = this.props;
     const settingId = settingToFormFieldId(setting);
 
     let Widget = setting.widget || SETTING_WIDGET_MAP[setting.type];
@@ -55,7 +56,7 @@ export default class SettingsSetting extends Component {
     }
 
     const widgetProps = {
-      ...setting.getProps?.(setting),
+      ...setting.getProps?.(setting, settingValues),
       ...setting.props,
       ...this.props,
     };
@@ -69,7 +70,11 @@ export default class SettingsSetting extends Component {
         <SettingContent>
           {setting.is_env_setting ? (
             <SettingEnvVarMessage>
-              {t`Using ` + setting.env_name}
+              {jt`This has been set by the ${(
+                <ExternalLink href={getEnvVarDocsUrl(setting.env_name)}>
+                  {setting.env_name}
+                </ExternalLink>
+              )} environment variable.`}
             </SettingEnvVarMessage>
           ) : (
             <Widget id={settingId} {...widgetProps} />
@@ -85,3 +90,10 @@ export default class SettingsSetting extends Component {
     );
   }
 }
+
+const getEnvVarDocsUrl = envName => {
+  return MetabaseSettings.docsUrl(
+    "configuring-metabase/environment-variables",
+    envName?.toLowerCase(),
+  );
+};

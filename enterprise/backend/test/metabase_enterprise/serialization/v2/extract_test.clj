@@ -155,6 +155,30 @@
                                                                   :enabled true}]
                                                                 :column_settings
                                                                 {(str "[\"ref\",[\"field\"," field2-id ",null]]") {:column_title "Locus"}}}}]
+
+                       Card       [{c4-id  :id
+                                    c4-eid :entity_id}        {:name          "Referenced Question"
+                                                               :database_id   db-id
+                                                               :table_id      schema-id
+                                                               :collection_id coll-id
+                                                               :creator_id    mark-id
+                                                               :dataset_query
+                                                               (json/generate-string
+                                                                 {:query {:source-table no-schema-id
+                                                                          :filter [:>= [:field field-id nil] 18]}
+                                                                  :database db-id})}]
+                       Card       [{c5-id  :id
+                                    c5-eid :entity_id}        {:name          "Dependent Question"
+                                                               :database_id   db-id
+                                                               :table_id      schema-id
+                                                               :collection_id coll-id
+                                                               :creator_id    mark-id
+                                                               :dataset_query
+                                                               (json/generate-string
+                                                                 {:query {:source-table (str "card__" c4-id)
+                                                                          :aggregation [[:count]]}
+                                                                  :database db-id})}]
+
                        Dashboard  [{dash-id  :id
                                     dash-eid :entity_id}      {:name          "Shared Dashboard"
                                                                :collection_id coll-id
@@ -236,8 +260,9 @@
                        ser))
           (is (not (contains? ser :id)))
 
-          (testing "cards depend on their Table and Collection, and any fields in their parameter_mappings"
-            (is (= #{[{:model "Database"   :id "My Database"}
+          (testing "cards depend on their Database, Table and Collection, and any fields in their parameter_mappings"
+            (is (= #{[{:model "Database"   :id "My Database"}]
+                     [{:model "Database"   :id "My Database"}
                       {:model "Schema"     :id "PUBLIC"}
                       {:model "Table"      :id "Schema'd Table"}]
                      [{:model "Collection" :id coll-eid}]
@@ -283,8 +308,9 @@
                        ser))
           (is (not (contains? ser :id)))
 
-          (testing "cards depend on their Table and Collection, and any fields in their visualization_settings"
-            (is (= #{[{:model "Database"   :id "My Database"}
+          (testing "cards depend on their Database, Table and Collection, and any fields in their visualization_settings"
+            (is (= #{[{:model "Database"   :id "My Database"}]
+                     [{:model "Database"   :id "My Database"}
                       {:model "Schema"     :id "PUBLIC"}
                       {:model "Table"      :id "Schema'd Table"}]
                      [{:model "Collection" :id coll-eid}]
@@ -319,6 +345,30 @@
                       {:model "Schema"     :id "PUBLIC"}
                       {:model "Table"      :id "Schema'd Table"}
                       {:model "Field"      :id "Other Field"}]}
+                   (set (serdes.base/serdes-dependencies ser)))))))
+
+      (testing "Cards can be based on other cards"
+        (let [ser (serdes.base/extract-one "Card" {} (select-one "Card" [:= :id c5-id]))]
+          (is (schema= {:serdes/meta                 (s/eq [{:model "Card" :id c5-eid}])
+                        :table_id                    (s/eq ["My Database" "PUBLIC" "Schema'd Table"])
+                        :creator_id                  (s/eq "mark@direstrai.ts")
+                        :collection_id               (s/eq coll-eid)
+                        :dataset_query               (s/eq {:query    {:source-table c4-eid
+                                                                       :aggregation [[:count]]}
+                                                            :database "My Database"})
+                        :created_at                  LocalDateTime
+                        (s/optional-key :updated_at) LocalDateTime
+                        s/Keyword      s/Any}
+                       ser))
+          (is (not (contains? ser :id)))
+
+          (testing "and depend on their Database, Table and Collection, and the upstream Card"
+            (is (= #{[{:model "Database"   :id "My Database"}]
+                     [{:model "Database"   :id "My Database"}
+                      {:model "Schema"     :id "PUBLIC"}
+                      {:model "Table"      :id "Schema'd Table"}]
+                     [{:model "Collection" :id coll-eid}]
+                     [{:model "Card"       :id c4-eid}]}
                    (set (serdes.base/serdes-dependencies ser)))))))
 
       (testing "Dashcard :visualization_settings are included in their deps"

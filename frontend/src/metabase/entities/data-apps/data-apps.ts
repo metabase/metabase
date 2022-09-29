@@ -10,6 +10,7 @@ import { Collection, DataApp, DataAppSearchItem } from "metabase-types/api";
 import { DEFAULT_COLLECTION_COLOR_ALIAS } from "../collections/constants";
 
 import { createNewAppForm, createAppSettingsForm } from "./forms";
+import reducer from "./reducer";
 import { getDataAppIcon } from "./utils";
 
 type EditableDataAppParams = Pick<
@@ -23,6 +24,16 @@ type CreateDataAppParams = Partial<EditableDataAppParams> &
 
 type UpdateDataAppParams = Pick<DataApp, "id" | "collection_id"> & {
   collection: Pick<Collection, "name" | "description">;
+};
+
+export type ScaffoldNewAppParams = {
+  name: EditableDataAppParams["name"];
+  tables: number[]; // list of table IDs
+};
+
+export type ScaffoldNewPagesParams = {
+  dataAppId: DataApp["id"];
+  tables: number[]; // list of table IDs
 };
 
 const DataApps = createEntity({
@@ -61,6 +72,29 @@ const DataApps = createEntity({
     },
   },
 
+  objectActions: {
+    scaffoldNewApp: async ({ name, tables }: ScaffoldNewAppParams) => {
+      const dataApp = await DataAppsApi.scaffoldNewApp({
+        "app-name": name,
+        "table-ids": tables,
+      });
+      return {
+        type: DataApps.actionTypes.CREATE,
+        payload: DataApps.normalize(dataApp),
+      };
+    },
+    scaffoldNewPages: async ({ dataAppId, tables }: ScaffoldNewPagesParams) => {
+      const dataApp = await DataAppsApi.scaffoldNewPages({
+        id: dataAppId,
+        "table-ids": tables,
+      });
+      return {
+        type: DataApps.actionTypes.UPDATE,
+        payload: DataApps.normalize(dataApp),
+      };
+    },
+  },
+
   objectSelectors: {
     getIcon: getDataAppIcon,
     getUrl: (dataApp: DataApp | DataAppSearchItem) => {
@@ -76,6 +110,8 @@ const DataApps = createEntity({
       fields: createAppSettingsForm,
     },
   },
+
+  reducer,
 });
 
 export * from "./utils";

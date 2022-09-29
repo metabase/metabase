@@ -565,7 +565,13 @@
     {:query {:expressions {"prev_month" [:+ [:field-id 13] [:interval -1 :month]]}}}
 
     {:query {:expressions {:prev_month ["-" ["field-id" 13] ["interval" 1 "month"] ["interval" 1 "day"]]}}}
-    {:query {:expressions {"prev_month" [:- [:field-id 13] [:interval 1 :month] [:interval 1 :day]]}}}}
+    {:query {:expressions {"prev_month" [:- [:field-id 13] [:interval 1 :month] [:interval 1 :day]]}}}
+
+    {:query {:expressions {:date-add ["date-add" ["field" 1 nil] 1 "month"]}}}
+    {:query {:expressions {"date-add" [:date-add [:field 1 nil] 1 :month]}}}
+
+    {:query {:expressions {:date-subtract ["date-subtract" ["field" 1 nil] 1 "month"]}}}
+    {:query {:expressions {"date-subtract" [:date-subtract [:field 1 nil] 1 :month]}}}}
 
    "expressions handle namespaced keywords correctly"
    {{:query {"expressions" {:abc/def ["+" 1 2]}
@@ -1179,12 +1185,12 @@
              (mbql.normalize/normalize
               {:database 1
                :native {:template-tags {"name" {:id "1f56330b-3dcb-75a3-8f3d-5c2c2792b749"
-                                               :name "name"
-                                               :display-name "Name"
-                                               :type "dimension"
-                                               :dimension ["field" 14 nil]
-                                               :widget-type "string/="
-                                               :default ["Hudson Borer"]}}
+                                                :name "name"
+                                                :display-name "Name"
+                                                :type "dimension"
+                                                :dimension ["field" 14 nil]
+                                                :widget-type "string/="
+                                                :default ["Hudson Borer"]}}
                         :query "select * from PEOPLE where {{name}}"}
                :type "native"
                :parameters []})))))

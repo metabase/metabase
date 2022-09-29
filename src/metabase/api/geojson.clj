@@ -12,6 +12,13 @@
   (:import [java.net InetAddress URL]
            org.apache.commons.io.input.ReaderInputStream))
 
+(defsetting custom-geojson-enabled
+  (deferred-tru "Whether or not the use of custom GeoJSON is enabled.")
+  :visibility :admin
+  :type       :boolean
+  :setter     :none
+  :default    true)
+
 (def ^:private CustomGeoJSON
   {s/Keyword {:name                     su/NonBlankString
               :url                      su/NonBlankString
@@ -99,6 +106,8 @@
   file specified for `key`)."
   [{{:keys [key]} :params} respond raise]
   {key su/NonBlankString}
+  (when-not (or (custom-geojson-enabled) (builtin-geojson (keyword key)))
+    (raise (ex-info (tru "Custom GeoJSON is not enabled") {:status-code 400})))
   (if-let [url (get-in (custom-geojson) [(keyword key) :url])]
     (try
       (with-open [reader (io/reader (or (io/resource url)
@@ -116,6 +125,8 @@
   [{{:keys [url]} :params} respond raise]
   {url su/NonBlankString}
   (validation/check-has-application-permission :setting)
+  (when-not (custom-geojson-enabled)
+    (raise (ex-info (tru "Custom GeoJSON is not enabled") {:status-code 400})))
   (let [decoded-url (codec/url-decode url)]
     (try
       (when-not (valid-geojson-url? decoded-url)

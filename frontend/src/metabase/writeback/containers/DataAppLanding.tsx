@@ -41,13 +41,13 @@ const DataAppLanding = ({
       <Search.ListLoader
         query={{
           collection: dataApp.collection_id,
-          models: ["dashboard"],
+          models: ["page"],
           limit: 100,
         }}
         loadingAndErrorWrapper={false}
       >
         {({ list: pages = [] }: { list: any[] }) => {
-          const homepageId = getDataAppHomePageId(pages);
+          const homepageId = getDataAppHomePageId(dataApp, pages);
           return homepageId ? (
             <DashboardApp
               dashboardId={homepageId}

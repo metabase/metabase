@@ -8,13 +8,13 @@ import { push } from "react-router-redux";
 
 import MetabaseSettings from "metabase/lib/settings";
 import User from "metabase/entities/users";
-import { clearTemporaryPassword } from "../people";
-import { getUserTemporaryPassword } from "../selectors";
 
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import ModalContent from "metabase/components/ModalContent";
 import PasswordReveal from "metabase/components/PasswordReveal";
+import { getUserTemporaryPassword } from "../selectors";
+import { clearTemporaryPassword } from "../people";
 import { PasswordSuccessMessage } from "./UserSuccessModal.styled";
 
 class UserSuccessModal extends React.Component {
@@ -23,8 +23,8 @@ class UserSuccessModal extends React.Component {
   }
   render() {
     const { onClose, user, temporaryPassword } = this.props;
-    const isSsoConfigured =
-      MetabaseSettings.isSsoConfigured() &&
+    const isSsoEnabled =
+      MetabaseSettings.isSsoEnabled() &&
       !MetabaseSettings.isPasswordLoginEnabled();
     return (
       <ModalContent
@@ -35,15 +35,15 @@ class UserSuccessModal extends React.Component {
         {temporaryPassword ? (
           <PasswordSuccess user={user} temporaryPassword={temporaryPassword} />
         ) : (
-          <EmailSuccess isEeSsoConfigured={isSsoConfigured} user={user} />
+          <EmailSuccess isSsoEnabled={isSsoEnabled} user={user} />
         )}
       </ModalContent>
     );
   }
 }
 
-const EmailSuccess = ({ user, isEeSsoConfigured }) => {
-  if (isEeSsoConfigured) {
+const EmailSuccess = ({ user, isSsoEnabled }) => {
+  if (isSsoEnabled) {
     return (
       <div>{jt`We’ve sent an invite to ${(
         <strong>{user.email}</strong>

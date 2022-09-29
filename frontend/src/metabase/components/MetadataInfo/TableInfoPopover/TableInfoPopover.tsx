@@ -1,13 +1,13 @@
 import React, { ReactElement } from "react";
 import { hideAll } from "tippy.js";
 
+import PropTypes from "prop-types";
 import TippyPopover, {
   ITippyPopoverProps,
 } from "metabase/components/Popover/TippyPopover";
 import { isVirtualCardId } from "metabase/lib/saved-questions/saved-questions";
 
 import { WidthBoundTableInfo } from "./TableInfoPopover.styled";
-import PropTypes from "prop-types";
 
 export const POPOVER_DELAY: [number, number] = [500, 300];
 

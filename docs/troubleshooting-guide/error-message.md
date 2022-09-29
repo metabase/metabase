@@ -4,10 +4,6 @@ title: Troubleshooting error messages
 
 # Troubleshooting error messages
 
-- [API error messages][api-error-message]
-- [SQL error messages][sql-error-message]
-- [Metabase error messages][metabase-error-message]
-
 ## [API error messages][discourse-search-api-error]
 
 - Appear in red text when you load a dashboard or run a question.
@@ -33,6 +29,7 @@ title: Troubleshooting error messages
 ### Common Metabase error messages
 
 - [Your question took too long](./timeout.md).
+- [Still waiting...](./my-dashboard-is-slow.md).
 
 [api-error-message]: #api-error-messages
 [debugging-sql-syntax]: https://www.metabase.com/learn/debugging-sql/sql-syntax.html

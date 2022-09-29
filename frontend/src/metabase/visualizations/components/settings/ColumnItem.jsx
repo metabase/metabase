@@ -28,9 +28,15 @@ const ColumnItem = ({
   onEdit,
   onEnable,
   draggable,
+  className = "",
 }) => {
   return (
-    <ColumnItemRoot draggable={draggable} onClick={onClick}>
+    <ColumnItemRoot
+      className={className}
+      onClick={onClick}
+      isDraggable={draggable}
+      data-testid={`draggable-item-${title}`}
+    >
       <ColumnItemContainer>
         {draggable && <ColumnItemDragHandle name="grabber2" size={12} />}
         <ColumnItemContent>
@@ -45,4 +51,7 @@ const ColumnItem = ({
   );
 };
 
-export default ColumnItem;
+export default Object.assign(ColumnItem, {
+  Root: ColumnItemRoot,
+  Container: ColumnItemContainer,
+});

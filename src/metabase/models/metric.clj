@@ -85,14 +85,14 @@
   [_model-name _opts metric]
   (-> (serdes.base/extract-one-basics "Metric" metric)
       (update :table_id   serdes.util/export-table-fk)
-      (update :creator_id serdes.util/export-fk-keyed 'User :email)
+      (update :creator_id serdes.util/export-user)
       (update :definition serdes.util/export-json-mbql)))
 
 (defmethod serdes.base/load-xform "Metric" [metric]
   (-> metric
       serdes.base/load-xform-basics
       (update :table_id   serdes.util/import-table-fk)
-      (update :creator_id serdes.util/import-fk-keyed 'User :email)
+      (update :creator_id serdes.util/import-user)
       (update :definition serdes.util/import-json-mbql)))
 
 (defmethod serdes.base/serdes-dependencies "Metric" [{:keys [definition table_id]}]

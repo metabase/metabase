@@ -58,7 +58,7 @@ The first row's blank cell doesn't have an empty string, but because it's blank,
 - `isempty` only accepts one value at a time. If you need to deal with empty strings from multiple columns, you'll need to use multiple `isempty` expressions with the [case expression](./case.md).
 - If `isempty` doesn't seem to do anything to your blank cells, you might have `null` values. Try the [`isnull` expression](./isnull.md) instead.
 
-## Converting a function into an `isempty` expression
+## Related functions
 
 This section covers functions and formulas that can be used interchangeably with the Metabase `isempty` expression, with notes on how to choose the best option for your use case.
 

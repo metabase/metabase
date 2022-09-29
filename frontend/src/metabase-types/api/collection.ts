@@ -42,7 +42,7 @@ export interface CollectionItem {
   collection_preview?: boolean | null;
   fully_parametrized?: boolean | null;
   getIcon: () => { name: string };
-  getUrl: () => string;
+  getUrl: (opts?: Record<string, unknown>) => string;
   setArchived?: (isArchived: boolean) => void;
   setPinned?: (isPinned: boolean) => void;
   setCollection?: (collection: Collection) => void;

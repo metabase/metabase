@@ -1,10 +1,10 @@
 import React from "react";
 import { renderWithProviders } from "__support__/ui";
 
-import { NumberColumn } from "../__support__/visualizations";
 import { createMockQueryBuilderState } from "metabase-types/store/mocks/qb";
 
 import Visualization from "metabase/visualizations/components/Visualization";
+import { NumberColumn } from "../__support__/visualizations";
 
 const series = (rows, settings = {}) => {
   const cols = [NumberColumn({ name: "Foo" })];

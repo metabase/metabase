@@ -2,12 +2,10 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 
-import S from "./Breadcrumbs.css";
-
+import cx from "classnames";
 import Icon from "metabase/components/Icon";
 import Ellipsified from "metabase/core/components/Ellipsified";
-
-import cx from "classnames";
+import S from "./Breadcrumbs.css";
 
 // TODO: merge with BrowserCrumbs
 

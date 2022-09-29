@@ -5,8 +5,6 @@ import cx from "classnames";
 import moment from "moment-timezone";
 import _ from "underscore";
 
-import Dimension from "metabase-lib/lib/Dimension";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
 import {
   updateRelativeDatetimeFilter,
   isRelativeDatetime,
@@ -16,6 +14,8 @@ import {
   getTimeComponent,
   setTimeComponent,
 } from "metabase/lib/query_time";
+import Dimension from "metabase-lib/lib/Dimension";
+import Filter from "metabase-lib/lib/queries/structured/Filter";
 
 import DatePickerFooter from "./DatePickerFooter";
 import DatePickerHeader from "./DatePickerHeader";

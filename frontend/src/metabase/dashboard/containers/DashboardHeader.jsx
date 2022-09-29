@@ -17,10 +17,6 @@ import EntityMenu from "metabase/components/EntityMenu";
 import Bookmark from "metabase/entities/bookmarks";
 
 import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
-import {
-  DashboardHeaderButton,
-  DashboardHeaderActionDivider,
-} from "./DashboardHeader.styled";
 
 import ParametersPopover from "metabase/dashboard/components/ParametersPopover";
 import DashboardBookmark from "metabase/dashboard/components/DashboardBookmark";
@@ -32,6 +28,10 @@ import {
 
 import Header from "../components/DashboardHeader";
 import { SIDEBAR_NAME } from "../constants";
+import {
+  DashboardHeaderButton,
+  DashboardHeaderActionDivider,
+} from "./DashboardHeader.styled";
 
 const mapStateToProps = (state, props) => {
   return {
@@ -109,8 +109,8 @@ class DashboardHeader extends Component {
     this.props.addTextDashCardToDashboard({ dashId: this.props.dashboard.id });
   }
 
-  onAddActionButton() {
-    this.props.addActionButtonDashCardToDashboard({
+  onAddAction() {
+    this.props.addActionDashCardToDashboard({
       dashId: this.props.dashboard.id,
     });
   }
@@ -239,12 +239,12 @@ class DashboardHeader extends Component {
 
       if (isAdmin && dashboard.is_app_page) {
         buttons.push(
-          <Tooltip key="add-action-button" tooltip={t`Add action button`}>
+          <Tooltip key="add-action" tooltip={t`Add action`}>
             <a
-              data-metabase-event="Dashboard;Add Action Button"
-              key="add-action-button"
+              data-metabase-event="Dashboard;Add Action"
+              key="add-action"
               className="text-brand-hover cursor-pointer"
-              onClick={() => this.onAddActionButton()}
+              onClick={() => this.onAddAction()}
             >
               <DashboardHeaderButton>
                 <Icon name="play" size={18} />

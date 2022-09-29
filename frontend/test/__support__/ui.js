@@ -10,11 +10,11 @@ import { ThemeProvider } from "@emotion/react";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
 import { state as sampleDatabaseReduxState } from "__support__/sample_database_fixture";
-import { getStore } from "./entities-store";
 import {
   createMockSettingsState,
   createMockEmbedState,
 } from "metabase-types/store/mocks";
+import { getStore } from "./entities-store";
 
 function getUser(user = {}) {
   return {

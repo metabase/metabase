@@ -15,7 +15,7 @@ import {
   field_visibility_types,
   field_semantic_types,
 } from "metabase/lib/core";
-import { isLocalField, isSameField } from "metabase/lib/query/field_ref";
+import { isSameField } from "metabase/lib/query/field_ref";
 import { isFK, getSemanticTypeIcon } from "metabase/lib/schema_metadata";
 
 import RootForm from "metabase/containers/FormikForm";
@@ -149,9 +149,7 @@ function DatasetFieldMetadataSidebar({
   const previousField = usePrevious(field);
 
   useEffect(() => {
-    const compareExact =
-      !isLocalField(field.field_ref) || !isLocalField(previousField?.field_ref);
-    if (!isSameField(field.field_ref, previousField?.field_ref, compareExact)) {
+    if (!isSameField(field.field_ref, previousField?.field_ref)) {
       setShouldAnimateFieldChange(true);
       // setTimeout is required as form fields are rerendered pretty frequently
       setTimeout(() => {
