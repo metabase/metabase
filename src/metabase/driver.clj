@@ -476,7 +476,7 @@
 (defmethod supports? [::driver :case-sensitivity-string-filter-options] [_ _] true)
 (defmethod supports? [::driver :date-arithmetics] [_ _] true)
 (defmethod supports? [::driver :temporal-extract] [_ _] true)
-(defmethod supports? [::driver :convert-timezone] [_ _] false)
+(defmethod supports? [::driver :convert-timezone] [_ _] true)
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
