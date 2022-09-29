@@ -1048,7 +1048,6 @@
   [id]
   {id su/IntGreaterThanZero}
   (api/read-check Database id)
-  (prn "GET /api/database/:id/models" id)
   (let [cards (-> (db/select Card, :database_id id, :archived false, :dataset true, {:order-by [[:%lower.name :asc]]})
                   (hydrate :creator :collection))
         cards (filter mi/can-read? cards)
