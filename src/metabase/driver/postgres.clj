@@ -25,6 +25,7 @@
             [metabase.models.field :as field]
             [metabase.models.secret :as secret]
             [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
@@ -56,13 +57,12 @@
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
-(defmethod driver/database-supports? [:postgres :persist-models]
-  [_driver _feat _db]
-  true)
-
-(defmethod driver/database-supports? [:postgres :persist-models-enabled]
-  [_driver _feat db]
-  (-> db :options :persist-models-enabled))
+(doseq [[feature supported?] {:persist-models         (constantly true)
+                              :convert-timezone       (constantly true)
+                              :persist-models-enabled (fn [db] (-> db :options :persist-models-enabled))}]
+  (defmethod driver/database-supports? [:postgres feature]
+    [_driver _feature database]
+    (supported? database)))
 
 (doseq [feature [:actions :actions/custom]]
   (defmethod driver/database-supports? [:postgres feature]
@@ -278,6 +278,16 @@
 (defn- quoted? [database-type]
   (and (str/starts-with? database-type "\"")
        (str/ends-with? database-type "\"")))
+
+(defmethod sql.qp/->honeysql [:postgres :convert-timezone]
+  [driver [_ arg to from]]
+  ;; TODO: guard for datetime/date/timestamp columns only?
+  (let [from (or from (qp.timezone/results-timezone-id))]
+    (cond->> (sql.qp/->honeysql driver arg)
+      from
+      (hsql/call :timezone from)
+      to
+      (hsql/call :timezone to))))
 
 (defmethod sql.qp/->honeysql [:postgres :value]
   [driver value]

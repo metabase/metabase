@@ -363,13 +363,18 @@ export const MBQL_CLAUSES = {
   },
   "date-add": {
     displayName: `dateAdd`,
-    type: "number",
+    type: "expression",
     args: ["expression", "number", "string"],
   },
   "date-subtract": {
     displayName: `dateSubtract`,
-    type: "number",
+    type: "expression",
     args: ["expression", "number", "string"],
+  },
+  "convert-timezone": {
+    displayName: `convertTimezone`,
+    type: "number",
+    args: ["expression", "string", "string"],
   },
 };
 
@@ -453,6 +458,7 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "get-second",
   "date-add",
   "date-subtract",
+  "convert-timezone",
   // boolean
   "contains",
   "ends-with",

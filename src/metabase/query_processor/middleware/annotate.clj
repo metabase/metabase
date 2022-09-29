@@ -159,6 +159,11 @@
            (select-keys (infer-expression-type expression) type-info-columns)))
        clauses))
 
+    ;; order important
+    (mbql.u/is-clause? :convert-timezone expression)
+    {:col-timezone (nth expression 2)
+     :base_type    :type/DateTime}
+
     (mbql.u/datetime-arithmetics? expression)
     {:base_type :type/DateTime}
 

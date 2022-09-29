@@ -481,7 +481,7 @@
 
 (def date+time+timezone-functions
   "Date, time, and timezone related functions."
-  (set/union temporal-extract-functions date-arithmetic-functions))
+  (set/union temporal-extract-functions date-arithmetic-functions #{:convert-timezone}))
 
 (declare ArithmeticExpression)
 (declare BooleanExpression)
@@ -659,6 +659,11 @@
 (defclause ^{:requires-features #{:temporal-extract}} ^:sugar get-second
   datetime DateTimeExpressionArg)
 
+(defclause ^{:requires-features #{:convert-timezone}} convert-timezone
+  datetime DateTimeExpressionArg
+  to       StringExpressionArg
+  from     (optional StringExpressionArg))
+
 (def ^:private ArithmeticDateTimeUnit
   (s/named
    (apply s/enum #{:millisecond :second :minute :hour :day :week :month :quarter :year})
@@ -675,7 +680,7 @@
   unit     ArithmeticDateTimeUnit)
 
 (def ^:private DatetimeExpression*
-  (one-of temporal-extract date-add date-subtract
+  (one-of temporal-extract date-add date-subtract convert-timezone
           ;; SUGAR drivers do not need to implement
           get-year get-quarter get-month get-day get-day-of-week get-hour
           get-minute get-second))

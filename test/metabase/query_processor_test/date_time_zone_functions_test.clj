@@ -27,25 +27,33 @@
          (mt/formatted-rows [int])
          (map first))))
 
+
 (mt/defdataset times-mixed
   [["times" [{:field-name "index"
-              :base-type :type/Integer}
+              :base-type  :type/Integer}
              {:field-name "dt"
-              :base-type :type/DateTime}
-             {:field-name "d"
-              :base-type :type/Date}
-             {:field-name "as_dt"
-              :base-type :type/Text
-              :effective-type :type/DateTime
+              :base-type  :type/DateTime}
+             {:field-name "dt_tz"
+              :base-type  :type/DateTimeWithZoneOffset}
+             {:field-name        "as_dt"
+              :base-type         :type/Text
+              :effective-type    :type/DateTime
               :coercion-strategy :Coercion/ISO8601->DateTime}
-             {:field-name "as_d"
-              :base-type :type/Text
-              :effective-type :type/Date
+             {:field-name        "as_d"
+              :base-type         :type/Text
+              :effective-type    :type/Date
               :coercion-strategy :Coercion/ISO8601->Date}]
-    [[1 #t "2004-03-19 09:19:09" #t "2004-03-19" "2004-03-19 09:19:09" "2004-03-19"]
-     [2 #t "2008-06-20 10:20:10" #t "2008-06-20" "2008-06-20 10:20:10" "2008-06-20"]
-     [3 #t "2012-11-21 11:21:11" #t "2012-11-21" "2012-11-21 11:21:11" "2012-11-21"]
-     [4 #t "2012-11-21 11:21:11" #t "2012-11-21" "2012-11-21 11:21:11" "2012-11-21"]]]])
+    (for [[idx t]
+          (map-indexed vector [#t "2004-03-19 09:19:09-00:00[Asia/Ho_Chi_Minh]"
+                               #t "2008-06-20 10:20:10-00:00[Asia/Ho_Chi_Minh]"
+                               #t "2012-11-21 11:21:11-00:00[Asia/Ho_Chi_Minh]"
+                               #t "2012-11-21 11:21:11-00:00[Asia/Ho_Chi_Minh]"])]
+      [(inc idx)
+       (t/local-date-time t)                                  ;; dt
+       (t/offset-date-time t)                                 ;; dt_tz
+       (t/local-date t)                                       ;; d
+       (t/format "yyyy-MM-dd HH:mm:ss" (t/local-date-time t)) ;; as_dt
+       (t/format "yyyy-MM-dd" (t/local-date t))])]])          ;; as_d
 
 (def ^:private temporal-extraction-op->unit
   {:get-second      :second-of-minute
@@ -256,3 +264,52 @@
                           :fields [[:field (mt/id :times :index)]]}}]]
         (testing title
           (is (= (set expected) (set (test-date-math query)))))))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           Convert Timezone tests                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmacro ^:private with-report-timezeone
+  [tz & body]
+  `(mt/with-temporary-setting-values [:report-timezone ~tz]
+     ~@body))
+
+(defn- test-date-convert
+  [{:keys [aggregation breakout expressions fields limit]}]
+  (if breakout
+    (->> (mt/run-mbql-query times {:expressions expressions
+                                   :aggregation aggregation
+                                   :limit       limit
+                                   :breakout    breakout})
+         mt/rows
+         ffirst)
+    (->> (mt/run-mbql-query times {:expressions expressions
+                                   :aggregation aggregation
+                                   :limit       limit
+                                   :fields      fields})
+         mt/rows
+         ffirst)))
+
+(deftest convert-timezone-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
+    (mt/dataset times-mixed
+      (test-date-convert {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt) nil ] "Asia/Ho_Chi_Minh"]}
+                          :fields      [[:expression "expr"]]}))))
+
+#_(mt/with-driver :postgres
+    (mt/dataset times-mixed
+      (mt/process-query
+        (mt/mbql-query times
+                       {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt) nil ] "Asia/Ho_Chi_Minh" "Asia/Tokyo"]}
+                        :fields      [[:expression "expr"]
+                                      [:field (mt/id :times :dt) nil]]}))))
+
+
+(mt/with-driver :postgres
+    (mt/dataset times-mixed
+      (mt/process-query
+        (mt/mbql-query times
+                       {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt_tz) nil] "Asia/Ho_Chi_Minh"]}
+                        :fields      [[:expression "expr"]
+                                      [:field (mt/id :times :dt_tz) nil]]}))))
