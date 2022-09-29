@@ -1,5 +1,5 @@
 import { LocationDescriptorObject } from "history";
-import _ from "underscore";
+
 import xhrMock from "xhr-mock";
 
 import * as CardLib from "metabase/lib/card";
