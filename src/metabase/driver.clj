@@ -436,6 +436,10 @@
     ;; Does the driver support percentile calculations (including median)
     :percentile-aggregations
 
+    ;; Does the driver support date, time, and timezone manipulation functions?
+    ;; DEFAULTS TO TRUE
+    :temporal-extract
+
     ;; Does the driver support experimental "writeback" actions like "delete this row" or "insert a new row" from 44+?
     :actions
 
@@ -462,6 +466,7 @@
 
 (defmethod supports? [::driver :basic-aggregations] [_ _] true)
 (defmethod supports? [::driver :case-sensitivity-string-filter-options] [_ _] true)
+(defmethod supports? [::driver :temporal-extract] [_ _] true)
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?

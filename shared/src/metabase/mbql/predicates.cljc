@@ -29,3 +29,7 @@
 (def ^{:arglists '([filter-clause])} Filter?
   "Is this a valid `:filter` clause?"
   (complement (s/checker mbql.s/Filter)))
+
+(def ^{:arglists '([filter-clause])} DatetimeExpression?
+  "Is this a valid DatetimeExpression clause?"
+  (complement (s/checker mbql.s/DatetimeExpression)))

@@ -156,14 +156,14 @@
 (defn- describe-table-field [field-kw field-info idx]
   (let [most-common-object-type  (most-common-object-type (vec (:types field-info)))
         [nested-fields idx-next]
-          (reduce
-           (fn [[nested-fields idx] nested-field]
-             (let [[nested-field idx-next] (describe-table-field nested-field
-                                                                 (nested-field (:nested-fields field-info))
-                                                                 idx)]
-               [(conj nested-fields nested-field) idx-next]))
-           [#{} (inc idx)]
-           (keys (:nested-fields field-info)))]
+        (reduce
+         (fn [[nested-fields idx] nested-field]
+           (let [[nested-field idx-next] (describe-table-field nested-field
+                                                               (nested-field (:nested-fields field-info))
+                                                               idx)]
+             [(conj nested-fields nested-field) idx-next]))
+         [#{} (inc idx)]
+         (keys (:nested-fields field-info)))]
     [(cond-> {:name              (name field-kw)
               :database-type     (some-> most-common-object-type .getName)
               :base-type         (class->base-type most-common-object-type)

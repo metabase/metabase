@@ -26,20 +26,20 @@
 
 (deftest describe-database-test
   (mt/test-driver :presto-jdbc
-    (is (= {:tables #{{:name "categories" :schema "default"}
-                      {:name "venues" :schema "default"}
-                      {:name "checkins" :schema "default"}
-                      {:name "users" :schema "default"}}}
+    (is (= {:tables #{{:name "test_data_categories" :schema "default"}
+                      {:name "test_data_venues" :schema "default"}
+                      {:name "test_data_checkins" :schema "default"}
+                      {:name "test_data_users" :schema "default"}}}
            (-> (driver/describe-database :presto-jdbc (mt/db))
-               (update :tables (comp set (partial filter (comp #{"categories"
-                                                                 "venues"
-                                                                 "checkins"
-                                                                 "users"}
+               (update :tables (comp set (partial filter (comp #{"test_data_categories"
+                                                                 "test_data_venues"
+                                                                 "test_data_checkins"
+                                                                 "test_data_users"}
                                                                :name)))))))))
 
 (deftest describe-table-test
   (mt/test-driver :presto-jdbc
-    (is (= {:name   "venues"
+    (is (= {:name   "test_data_venues"
             :schema "default"
             :fields #{{:name          "name",
                        ;; for HTTP based Presto driver, this is coming back as varchar(255)
@@ -135,8 +135,8 @@
                    :filter      [:= $name "wow"]})]
       (testing "The native query returned in query results should use user-friendly splicing"
         (is (= (str "SELECT count(*) AS \"count\" "
-                    "FROM \"default\".\"venues\" "
-                    "WHERE \"default\".\"venues\".\"name\" = 'wow'")
+                    "FROM \"default\".\"test_data_venues\" "
+                    "WHERE \"default\".\"test_data_venues\".\"name\" = 'wow'")
                (:query (qp/compile-and-splice-parameters query))
                (-> (qp/process-query query) :data :native_form :query)))))))
 
