@@ -325,7 +325,7 @@
 
 
 
-#_(mt/with-driver :postgres
+#_(mt/with-driver :oracle
     (mt/dataset times-mixed
       (mt/process-query
         (mt/mbql-query times
@@ -334,7 +334,7 @@
                                       [:field (mt/id :times :dt) nil]]}))))
 
 
-#_(mt/with-driver :oracle
+#_(mt/with-driver :mysql
       (mt/dataset times-mixed
         (mt/process-query
           (mt/mbql-query times

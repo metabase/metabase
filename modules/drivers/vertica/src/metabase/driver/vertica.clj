@@ -93,6 +93,7 @@
 (defmethod sql.qp/date [:vertica :quarter]         [_ _ expr] (date-trunc :quarter expr))
 (defmethod sql.qp/date [:vertica :quarter-of-year] [_ _ expr] (extract-integer :quarter expr))
 (defmethod sql.qp/date [:vertica :year]            [_ _ expr] (date-trunc :year expr))
+(defmethod sql.qp/date [:vertica :year-of-era]     [_ _ expr] (date-trunc :year expr))
 
 (defmethod sql.qp/date [:vertica :week]
   [_ _ expr]
@@ -111,7 +112,7 @@
       (hformat/to-sql expr)
       (hformat/to-sql (hx/literal zone)))))
 
-(defmethod sql.qp/->honeysql [:sqlserver :convert-timezone]
+(defmethod sql.qp/->honeysql [:vertica :convert-timezone]
   [driver [_ arg to from]]
   (let [from (or from (qp.timezone/report-timezone-id-if-supported driver))]
     (cond-> (sql.qp/->honeysql driver arg)

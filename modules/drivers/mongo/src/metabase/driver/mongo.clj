@@ -216,10 +216,11 @@
                         [#{} 0]
                         column-info))})))
 
-(doseq [feature [:basic-aggregations
-                 :nested-fields
-                 :native-parameters]]
-  (defmethod driver/supports? [:mongo feature] [_ _] true))
+(doseq [[feature supports?] {:basic-aggregations true
+                             :nested-fields      true
+                             :native-parameters  true
+                             :convert-timezone   false}]
+  (defmethod driver/supports? [:mongo feature] [_ _] supports?))
 
 (defn- db-major-version
   [db]
