@@ -130,7 +130,7 @@ export default {
     ],
   }),
   login: () => {
-    const ldap = MetabaseSettings.isLdapConfigured();
+    const ldap = MetabaseSettings.isLdapEnabled();
     const cookies = MetabaseSettings.get("session-cookies");
 
     return {

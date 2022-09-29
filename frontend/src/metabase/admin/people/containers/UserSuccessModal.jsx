@@ -23,8 +23,8 @@ class UserSuccessModal extends React.Component {
   }
   render() {
     const { onClose, user, temporaryPassword } = this.props;
-    const isSsoConfigured =
-      MetabaseSettings.isSsoConfigured() &&
+    const isSsoEnabled =
+      MetabaseSettings.isSsoEnabled() &&
       !MetabaseSettings.isPasswordLoginEnabled();
     return (
       <ModalContent
@@ -35,15 +35,15 @@ class UserSuccessModal extends React.Component {
         {temporaryPassword ? (
           <PasswordSuccess user={user} temporaryPassword={temporaryPassword} />
         ) : (
-          <EmailSuccess isEeSsoConfigured={isSsoConfigured} user={user} />
+          <EmailSuccess isSsoEnabled={isSsoEnabled} user={user} />
         )}
       </ModalContent>
     );
   }
 }
 
-const EmailSuccess = ({ user, isEeSsoConfigured }) => {
-  if (isEeSsoConfigured) {
+const EmailSuccess = ({ user, isSsoEnabled }) => {
+  if (isSsoEnabled) {
     return (
       <div>{jt`We’ve sent an invite to ${(
         <strong>{user.email}</strong>

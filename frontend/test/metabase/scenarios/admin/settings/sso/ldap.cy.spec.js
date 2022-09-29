@@ -77,6 +77,16 @@ describe(
       cy.wait("@updateLdapSettings");
       cy.findByText('For input string: "123 "').should("exist");
     });
+
+    it("should show the login form when ldap is enabled but password login isn't (metabase#25661)", () => {
+      setupLdap();
+      cy.request("PUT", "/api/setting/enable-password-login", { value: false });
+      cy.signOut();
+      cy.visit("/auth/login");
+
+      cy.findByText("Username or email address").should("be.visible");
+      cy.findByText("Password").should("be.visible");
+    });
   },
 );
 

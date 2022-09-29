@@ -76,6 +76,7 @@ export type SettingName =
   | "has-user-setup"
   | "hide-embed-branding?"
   | "is-hosted?"
+  | "ldap-enabled"
   | "ldap-configured?"
   | "other-sso-configured?"
   | "enable-password-login"
@@ -186,6 +187,10 @@ class Settings {
     return this.get("google-auth-client-id") != null;
   }
 
+  isLdapEnabled() {
+    return this.get("ldap-enabled");
+  }
+
   isLdapConfigured() {
     return this.get("ldap-configured?");
   }
@@ -195,10 +200,10 @@ class Settings {
     return this.get("other-sso-configured?");
   }
 
-  isSsoConfigured() {
+  isSsoEnabled() {
     return (
       this.isGoogleAuthConfigured() ||
-      this.isLdapConfigured() ||
+      this.isLdapEnabled() ||
       this.isGoogleAuthConfigured()
     );
   }
