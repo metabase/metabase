@@ -3,8 +3,10 @@ import React, { ComponentProps, Fragment } from "react";
 import { Pie } from "@visx/shape";
 import { Group } from "@visx/group";
 import type { PieArcDatum } from "@visx/shape/lib/shapes/Pie";
+
 import { formatNumber } from "metabase/static-viz/lib/numbers";
 import { measureText } from "metabase/static-viz/lib/text";
+import type { ColorGetter } from "metabase/static-viz/lib/colors";
 import OutlinedText from "../Text/OutlinedText";
 
 type GaugeSegmentDatum = [number, number, string, string];
@@ -34,6 +36,7 @@ interface Data {
 interface GaugeProps {
   card: Card;
   data: Data;
+  getColor: ColorGetter;
 }
 
 type TextAnchor = ComponentProps<typeof OutlinedText>["textAnchor"];
@@ -50,7 +53,7 @@ const BASE_FONT_SIZE = GAUGE_THICKNESS * 0.8;
 // TODO: Make this dynamic and calculated from font size,
 const THRESHOLD_ANGLE_DEGREE = toRadian(30);
 
-export default function Gauge({ card, data }: GaugeProps) {
+export default function Gauge({ card, data, getColor }: GaugeProps) {
   const settings = card.visualization_settings;
   const gaugeSegmentData: GaugeSegmentData = settings["gauge.segments"].map(
     segment => [segment.min, segment.max, segment.color, segment.label],
@@ -89,7 +92,7 @@ export default function Gauge({ card, data }: GaugeProps) {
       ),
     );
   }
-
+  const outlineColor = getColor("white");
   return (
     <svg width={WIDTH} height={HEIGHT}>
       <Group top={centerY} left={centerX}>
@@ -104,7 +107,14 @@ export default function Gauge({ card, data }: GaugeProps) {
           endAngle={endAngle}
         />
       </Group>
-      <GaugeNeedle position={valuePosition} valueAngle={valueAngle} />
+      <GaugeNeedle
+        color={getColor("text-medium")}
+        outlineColor={outlineColor}
+        position={valuePosition}
+        valueAngle={valueAngle}
+      />
+      {/* TODO: Make both segment min/max and labels a component. */}
+      {/* TODO: Fix segment min/max and labels overflow */}
       {gaugeSegmentData.map((gaugeSegmentDatum, index) => {
         const fontSize = BASE_FONT_SIZE * 0.3;
         const isFirstSegment = index === 0;
@@ -217,8 +227,8 @@ export default function Gauge({ card, data }: GaugeProps) {
         return (
           <GaugeLabel
             key={index}
-            // TODO: Fix hard-coded color
-            fill="#4c5773"
+            fill={getColor("text-dark")}
+            stroke={outlineColor}
             fontSize={fontSize}
             position={position}
             label={gaugeSegmentLabel}
@@ -227,8 +237,8 @@ export default function Gauge({ card, data }: GaugeProps) {
         );
       })}
       <GaugeLabel
-        // TODO: Fix hard-coded color
-        fill="#4C5773"
+        fill={getColor("text-dark")}
+        stroke={outlineColor}
         fontSize={dynamicValueFontSize}
         position={[centerX, centerY - gaugeInnerRadius / 3]}
         label={displayValue}
@@ -239,6 +249,7 @@ export default function Gauge({ card, data }: GaugeProps) {
 
 interface GaugeLabelProps {
   fill: string;
+  stroke: string;
   fontSize: number;
   position: Position;
   label: string;
@@ -264,6 +275,7 @@ function calculateValueAngle(
 
 function GaugeLabel({
   fill,
+  stroke,
   fontSize,
   position,
   label,
@@ -274,7 +286,7 @@ function GaugeLabel({
       fill={fill}
       fontWeight={700}
       fontSize={fontSize}
-      stroke="white"
+      stroke={stroke}
       strokeWidth={fontSize / 6}
       x={position[0]}
       y={position[1]}
@@ -324,12 +336,19 @@ function toDegree(radian: number) {
 }
 
 interface GaugeNeedleProps {
+  color: string;
+  outlineColor: string;
   position: Position;
   valueAngle: number;
 }
 const GAUGE_NEEDLE_RADIUS = GAUGE_THICKNESS / 6;
 const GAUGE_OUTLINE_RADIUS = GAUGE_NEEDLE_RADIUS * 1.6;
-function GaugeNeedle({ position, valueAngle }: GaugeNeedleProps) {
+function GaugeNeedle({
+  color,
+  outlineColor,
+  position,
+  valueAngle,
+}: GaugeNeedleProps) {
   const HALF_EQUILATERAL_TRIANGLE_ANGLE = 60 / 2;
   const translationYOffset =
     GAUGE_NEEDLE_RADIUS * Math.tan(toRadian(HALF_EQUILATERAL_TRIANGLE_ANGLE));
@@ -341,15 +360,9 @@ function GaugeNeedle({ position, valueAngle }: GaugeNeedleProps) {
       <Triangle
         center={position}
         radius={GAUGE_OUTLINE_RADIUS}
-        // TODO: Fix hard-coded color
-        color="white"
+        color={outlineColor}
       />
-      <Triangle
-        center={position}
-        radius={GAUGE_NEEDLE_RADIUS}
-        // TODO: Fix hard-coded color
-        color="#949AAB"
-      />
+      <Triangle center={position} radius={GAUGE_NEEDLE_RADIUS} color={color} />
     </g>
   );
 }
