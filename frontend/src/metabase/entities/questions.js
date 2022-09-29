@@ -3,7 +3,6 @@ import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
 
-import { GET } from "metabase/lib/api";
 import {
   API_UPDATE_QUESTION,
   SOFT_RELOAD_CARD,
@@ -14,11 +13,9 @@ import Collections, {
   normalizedCollection,
 } from "metabase/entities/collections";
 import { canonicalCollectionId } from "metabase/collections/utils";
+import { CardApi } from "metabase/services";
 
 import forms from "./questions/forms";
-
-const listQuestions = GET("/api/card");
-const listModelsForDatabase = GET("/api/database/:dbId/models");
 
 const Questions = createEntity({
   name: "questions",
@@ -27,9 +24,9 @@ const Questions = createEntity({
 
   api: {
     list: async (params, ...args) =>
-      params.f === "database-models"
-        ? listModelsForDatabase(params, ...args)
-        : listQuestions(params, ...args),
+      params.model === true && params.dbId
+        ? CardApi.listModelsForDatabase(params, ...args)
+        : CardApi.list(params, ...args),
   },
 
   objectActions: {

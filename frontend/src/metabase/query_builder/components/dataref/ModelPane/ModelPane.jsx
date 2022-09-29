@@ -1,39 +1,26 @@
 import React from "react";
 import { connect } from "react-redux";
 import { t, jt } from "ttag";
-import { createSelector } from "reselect";
 import PropTypes from "prop-types";
 
-import { getMetadata } from "metabase/selectors/metadata";
-import MetabaseSettings from "metabase/lib/settings";
-import { formatDateTimeWithUnit } from "metabase/lib/formatting";
+import DateTime from "metabase/components/DateTime";
 import {
   Description,
   EmptyDescription,
 } from "metabase/components/MetadataInfo/MetadataInfo.styled";
-import Question from "metabase-lib/lib/Question";
+import { getQuestionFromCard } from "metabase/query_builder/selectors";
 import FieldList from "../FieldList";
 import {
   ModelPaneDetail,
   ModelPaneDetailLink,
+  ModelPaneDetailLinkText,
   ModelPaneDetailText,
   ModelPaneIcon,
   ModelPaneDescription,
 } from "./ModelPane.styled";
 
-// This formats a timestamp as a date using any custom formatting options.
-function formatDate(value) {
-  const options = MetabaseSettings.get("custom-formatting")["type/Temporal"];
-  return formatDateTimeWithUnit(value, "day", options);
-}
-
-const getQuestion = createSelector(
-  [getMetadata, (_state, card) => card],
-  (metadata, card) => new Question(card, metadata),
-);
-
 const mapStateToProps = (state, props) => ({
-  question: getQuestion(state, props.model),
+  question: getQuestionFromCard(state, props.model),
 });
 
 const propTypes = {
@@ -42,7 +29,7 @@ const propTypes = {
   question: PropTypes.object.isRequired,
 };
 
-const ModelPane = ({ show, model, question }) => {
+const ModelPane = ({ show, question }) => {
   const table = question.table();
   return (
     <div>
@@ -54,26 +41,33 @@ const ModelPane = ({ show, model, question }) => {
         )}
       </ModelPaneDescription>
       <ModelPaneDetail>
-        <a href={question.getUrl()} target="_blank" rel="noreferrer">
+        <ModelPaneDetailLink
+          href={question.getUrl()}
+          target="_blank"
+          rel="noreferrer"
+        >
           <ModelPaneIcon name="share" />
-          <ModelPaneDetailLink>{t`See it`}</ModelPaneDetailLink>
-        </a>
+          <ModelPaneDetailLinkText>{t`See it`}</ModelPaneDetailLinkText>
+        </ModelPaneDetailLink>
       </ModelPaneDetail>
       <ModelPaneDetail>
         <ModelPaneIcon name="label" />
-        <ModelPaneDetailText>{jt`ID #${question.id()}`}</ModelPaneDetailText>
+        <ModelPaneDetailText>{t`ID #${question.id()}`}</ModelPaneDetailText>
       </ModelPaneDetail>
       <ModelPaneDetail>
         <ModelPaneIcon name="calendar" />
-        <ModelPaneDetailText>{jt`Last edited ${formatDate(
-          question.lastEditInfo().timestamp,
-        )}`}</ModelPaneDetailText>
+        <ModelPaneDetailText>
+          {jt`Last edited ${(
+            <DateTime
+              key="day"
+              unit="day"
+              value={question.lastEditInfo().timestamp}
+            />
+          )}`}
+        </ModelPaneDetailText>
       </ModelPaneDetail>
       {table?.fields && (
-        <FieldList
-          fields={table.fields}
-          handleFieldClick={f => show("field", f)}
-        />
+        <FieldList fields={table.fields} onFieldClick={f => show("field", f)} />
       )}
     </div>
   );

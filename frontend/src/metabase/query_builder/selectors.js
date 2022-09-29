@@ -2,6 +2,7 @@
 
 import d3 from "d3";
 import { createSelector } from "reselect";
+import createCachedSelector from "re-reselect";
 import _ from "underscore";
 import { assocIn, getIn, merge, updateIn } from "icepick";
 
@@ -328,6 +329,11 @@ export const getQuestion = createSelector(
       : question;
   },
 );
+
+export const getQuestionFromCard = createCachedSelector(
+  [getMetadata, (_state, card) => card],
+  (metadata, card) => new Question(card, metadata),
+)((_state, card) => card.id);
 
 function normalizeClause(clause) {
   return typeof clause?.raw === "function" ? clause.raw() : clause;

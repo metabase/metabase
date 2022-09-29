@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { ngettext, msgid } from "ttag";
 import _ from "underscore";
 import PropTypes from "prop-types";
@@ -6,7 +6,7 @@ import PropTypes from "prop-types";
 import Tables from "metabase/entities/tables";
 import Questions from "metabase/entities/questions";
 import {
-  NodeListItem,
+  NodeListItemLink,
   NodeListItemName,
   NodeListItemIcon,
   NodeListTitle,
@@ -16,9 +16,15 @@ import {
 } from "../NodeList.styled";
 import { ModelId } from "./DatabaseTablesPane.styled";
 
-const DatabaseTablesPane = ({ database, show, questions }) => {
-  const tables = database.tables.sort((a, b) => a.name.localeCompare(b.name));
-  const models = questions?.sort((a, b) => a.name.localeCompare(b.name));
+const DatabaseTablesPane = ({ database, show, models }) => {
+  const tables = useMemo(
+    () => database.tables.sort((a, b) => a.name.localeCompare(b.name)),
+    [database.tables],
+  );
+  models = useMemo(
+    () => models?.sort((a, b) => a.name.localeCompare(b.name)),
+    [models],
+  );
   return models ? (
     <NodeListContainer>
       {models?.length ? (
@@ -35,13 +41,13 @@ const DatabaseTablesPane = ({ database, show, questions }) => {
           </NodeListTitle>
           <ul>
             {models.map(model => (
-              <NodeListItem key={model.id}>
-                <a onClick={() => show("model", model)}>
+              <li key={model.id}>
+                <NodeListItemLink onClick={() => show("model", model)}>
                   <NodeListItemIcon name="model" />
                   <NodeListItemName>{model.name}</NodeListItemName>
                   <ModelId>{`#${model.id}`}</ModelId>
-                </a>
-              </NodeListItem>
+                </NodeListItemLink>
+              </li>
             ))}
           </ul>
           <br></br>
@@ -59,12 +65,12 @@ const DatabaseTablesPane = ({ database, show, questions }) => {
       </NodeListTitle>
       <ul>
         {tables.map(table => (
-          <NodeListItem key={table.id}>
-            <a onClick={() => show("table", table)}>
+          <li key={table.id}>
+            <NodeListItemLink onClick={() => show("table", table)}>
               <NodeListItemIcon name="table" />
               <NodeListItemName>{table.name}</NodeListItemName>
-            </a>
-          </NodeListItem>
+            </NodeListItemLink>
+          </li>
         ))}
       </ul>
     </NodeListContainer>
@@ -74,7 +80,7 @@ const DatabaseTablesPane = ({ database, show, questions }) => {
 DatabaseTablesPane.propTypes = {
   show: PropTypes.func.isRequired,
   database: PropTypes.object.isRequired,
-  questions: PropTypes.arrayOf(PropTypes.object),
+  models: PropTypes.arrayOf(PropTypes.object),
 };
 
 export default _.compose(
@@ -86,9 +92,10 @@ export default _.compose(
   }),
   Questions.loadList({
     query: (_state, props) => ({
-      f: "database-models",
+      model: true,
       dbId: props.database?.id, // TODO: why could this be undefined?
     }),
     loadingAndErrorWrapper: false,
+    listName: "models",
   }),
 )(DatabaseTablesPane);

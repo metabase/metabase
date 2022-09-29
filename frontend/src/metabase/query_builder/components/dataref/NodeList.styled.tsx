@@ -7,6 +7,7 @@ import { space } from "metabase/styled-components/theme";
 
 export const NodeListItemName = styled.span`
   font-weight: 700;
+  margin-left: ${space(1)};
 `;
 
 export const NodeListIcon = styled(Icon)`
@@ -20,25 +21,20 @@ export const NodeListItemIcon = styled(Icon)`
   width: ${space(2)};
 `;
 
-export const NodeListItem = styled.li`
-  a {
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    color: ${color("brand")};
-    font-weight: 700;
-    overflow-wrap: anywhere;
-    word-break: break-word;
-    word-wrap: anywhere;
-    display: flex;
-    padding: ${space(1)};
-    text-decoration: none;
-    :hover {
-      background-color: ${color("bg-medium")};
-    }
-  }
-  ${NodeListItemName} {
-    margin-left: ${space(1)};
+export const NodeListItemLink = styled.a`
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  color: ${color("brand")};
+  font-weight: 700;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  word-wrap: anywhere;
+  display: flex;
+  padding: ${space(1)};
+  text-decoration: none;
+  :hover {
+    background-color: ${color("bg-medium")};
   }
 `;
 

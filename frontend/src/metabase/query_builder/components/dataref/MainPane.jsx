@@ -5,7 +5,7 @@ import { t } from "ttag";
 import Databases from "metabase/entities/databases";
 
 import {
-  NodeListItem,
+  NodeListItemLink,
   NodeListItemName,
   NodeListItemIcon,
 } from "./NodeList.styled";
@@ -20,12 +20,12 @@ const MainPane = ({ databases, show }) => (
         databases
           .filter(db => !db.is_saved_questions)
           .map(database => (
-            <NodeListItem key={database.id}>
-              <a onClick={() => show("database", database)}>
+            <li key={database.id}>
+              <NodeListItemLink onClick={() => show("database", database)}>
                 <NodeListItemIcon name="database" />
                 <NodeListItemName>{database.name}</NodeListItemName>
-              </a>
-            </NodeListItem>
+              </NodeListItemLink>
+            </li>
           ))}
     </ul>
   </div>

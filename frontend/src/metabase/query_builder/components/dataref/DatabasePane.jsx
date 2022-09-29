@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Databases from "metabase/entities/databases";
 import DatabaseSchemasPane from "./DatabaseSchemasPane";
-import DatabaseTablesPane from "./DatabaseTablesPane/DatabaseTablesPane";
+import DatabaseTablesPane from "./DatabaseTablesPane";
 
 class DatabasePaneInner extends React.Component {
   componentDidMount() {

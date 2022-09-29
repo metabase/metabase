@@ -128,6 +128,7 @@ export const CardApi = {
   },
   listPublic: GET("/api/card/public"),
   listEmbeddable: GET("/api/card/embeddable"),
+  listModelsForDatabase: GET("/api/database/:dbId/models"),
   createPublicLink: POST("/api/card/:id/public_link"),
   deletePublicLink: DELETE("/api/card/:id/public_link"),
   // related
