@@ -16,6 +16,7 @@
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.interface :as qp.i]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs]])
   (:import [java.sql Connection ResultSet Time]
@@ -221,6 +222,17 @@
   ;; integer overflow errors (especially for millisecond timestamps).
   ;; Work around this by converting the timestamps to minutes instead before calling DATEADD().
   (date-add :minute (hx// expr 60) (hx/literal "1970-01-01")))
+
+(defn- get-offset-of-zoneid
+  [zone-id]
+  (/ (.getTotalSeconds (.getOffset (t/offset-date-time (t/zone-id zone-id)))) 60))
+
+(defmethod sql.qp/->honeysql [:sqlserver :convert-timezone]
+  [driver [_ arg to from]]
+  (let [from (or from (qp.timezone/results-timezone-id))]
+   (as-> (sql.qp/->honeysql driver arg) form
+     (hsql/call :todatetimeoffset form (get-offset-of-zoneid from))
+     (hsql/call :todatetimeoffset form (get-offset-of-zoneid to)))))
 
 (defmethod sql.qp/cast-temporal-string [:sqlserver :Coercion/ISO8601->DateTime]
   [_driver _semantic_type expr]

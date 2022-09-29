@@ -12,6 +12,7 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx])
   (:import [java.sql ResultSet Types]
@@ -125,6 +126,11 @@
     (hx/* (hx/- (hsql/call :quarter (hx/->timestamp expr))
                 1)
           3)))
+
+(defmethod sql.qp/->honeysql [:snowflake :convert-timezone]
+  [driver [_ arg to from]]
+  (let [from (or from (qp.timezone/results-timezone-id))]
+    (hsql/call :convert_timezone from to (sql.qp/->honeysql driver arg))))
 
 (defmethod sql.qp/->honeysql [:hive-like :replace]
   [driver [_ arg pattern replacement]]

@@ -33,8 +33,8 @@
               :base-type  :type/Integer}
              {:field-name "dt"
               :base-type  :type/DateTime}
-             {:field-name "dt_tz"
-              :base-type  :type/DateTimeWithZoneOffset}
+             #_{:field-name "dt_tz"
+                :base-type  :type/DateTimeWithZoneOffset}
              {:field-name "d"
               :base-type  :type/Date}
              {:field-name        "as_dt"
@@ -52,7 +52,7 @@
                                #t "2012-11-21 11:21:11-00:00[Asia/Ho_Chi_Minh]"])]
       [(inc idx)
        (t/local-date-time t)                                  ;; dt
-       (t/offset-date-time t)                                 ;; dt_tz
+       #_(t/offset-date-time t)                                 ;; dt_tz
        (t/local-date t)                                       ;; d
        (t/format "yyyy-MM-dd HH:mm:ss" (t/local-date-time t)) ;; as_dt
        (t/format "yyyy-MM-dd" (t/local-date t))])]])          ;; as_d

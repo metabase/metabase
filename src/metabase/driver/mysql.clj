@@ -343,6 +343,10 @@
                                 2)
                           (hx/literal "-01"))))
 
+(defmethod sql.qp/->honeysql [:mysql :convert-timezone]
+  [driver [_ arg to from]]
+  (let [from (or from (qp.timezone/results-timezone-id))]
+    (hsql/call :convert_tz from to (sql.qp/->honeysql driver arg))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
