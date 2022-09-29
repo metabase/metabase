@@ -1,5 +1,8 @@
 (ns metabase.driver.common.parameters.dates-test
   (:require [clojure.test :refer :all]
+            [clojure.test.check :as tc]
+            [clojure.test.check.generators :as gen]
+            [clojure.test.check.properties :as prop]
             [java-time :as t]
             [metabase.driver.common.parameters.dates :as params.dates]
             [metabase.test :as mt]
@@ -209,6 +212,36 @@
           (is (= expected
                  (params.dates/date-string->range s options))
               (format "%s with options %s should parse to %s" (pr-str s) (pr-str options) (pr-str expected))))))))
+
+(deftest relative-dates-with-starting-from-zero-must-match
+  (testing "relative dates need to behave the same way, offset or not."
+    (t/with-clock (t/mock-clock #t "2016-06-07T12:13:55Z")
+      (testing "'past1months-from-0months' should be the same as: 'past1months'"
+        (is (= {:start "2016-05-01", :end "2016-05-31"}
+               (params.dates/date-string->range "past1months")
+               (params.dates/date-string->range "past1months-from-0months"))))
+      (testing "'next1months-from-0months' should be the same as: 'next1months'"
+        (is (= {:start "2016-07-01", :end "2016-07-31"}
+               (params.dates/date-string->range "next1months")
+               (params.dates/date-string->range "next1months-from-0months")))))))
+
+(def time-range-generator
+  (let [time-units (mapv #(str % "s") (keys @#'params.dates/operations-by-date-unit))]
+    (gen/fmap
+     (fn [[frame n unit unit2]]
+       [(str frame n unit)
+        (str frame n unit "-from-0" unit2)])
+     (gen/tuple
+      (gen/elements #{"next" "past"})
+      (gen/such-that #(not= % 0) gen/pos-int)
+      (gen/elements time-units)
+      (gen/elements time-units)))))
+
+(tc/quick-check 1000
+  (prop/for-all [[tr tr+from-zero] time-range-generator]
+    (tap> [tr tr+from-zero])
+    (= (params.dates/date-string->range tr)
+       (params.dates/date-string->range tr+from-zero))))
 
 (deftest custom-start-of-week-test
   (testing "Relative filters should respect the custom `start-of-week` Setting (#14294)"
