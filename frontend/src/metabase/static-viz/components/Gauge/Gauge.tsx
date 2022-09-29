@@ -1,4 +1,4 @@
-import React, { ComponentProps } from "react";
+import React, { ComponentProps, Fragment } from "react";
 
 import { Pie } from "@visx/shape";
 import { Group } from "@visx/group";
@@ -151,13 +151,11 @@ export default function Gauge({ card, data }: GaugeProps) {
           return "start";
         }
         return (
-          <>
-            (
+          <Fragment key={index}>
             {minPosition && (
               <GaugeLabel
-                key={index}
-                // TODO: Fix hard-coded color
-                fill="#949AAB"
+                fill={getColor("text-medium")}
+                stroke={outlineColor}
                 fontSize={fontSize}
                 position={minPosition}
                 label={formatNumber(gaugeSegmentDatum[0])}
@@ -166,15 +164,14 @@ export default function Gauge({ card, data }: GaugeProps) {
             )}
             {maxPosition && (
               <GaugeLabel
-                key={index}
-                // TODO: Fix hard-coded color
-                fill="#949AAB"
+                fill={getColor("text-medium")}
+                stroke={outlineColor}
                 fontSize={fontSize}
                 position={maxPosition}
                 label={formatNumber(gaugeSegmentDatum[1])}
               />
             )}
-          </>
+          </Fragment>
         );
       })}
       {gaugeSegmentData.map((gaugeSegmentDatum, index) => {
