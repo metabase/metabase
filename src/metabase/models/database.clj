@@ -184,8 +184,9 @@
                       :metadata_sync_schedule      new-metadata-schedule
                       :cache_field_values_schedule new-fieldvalues-schedule)))))))))
 
-(defn- pre-insert [database]
-  (-> database
+(defn- pre-insert [{:keys [details], :as database}]
+  (-> (cond-> database
+        (not details) (assoc :details {}))
       handle-secrets-changes
       (assoc :initial_sync_status "incomplete")))
 
@@ -206,7 +207,6 @@
                                        :cache_field_values_schedule :cron-string
                                        :start_of_week               :keyword
                                        :settings                    :encrypted-json})
-          :properties     (constantly {:timestamped? true})
           :post-insert    post-insert
           :post-select    post-select
           :pre-insert     pre-insert
