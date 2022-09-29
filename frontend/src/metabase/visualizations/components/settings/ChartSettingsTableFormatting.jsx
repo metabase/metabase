@@ -376,6 +376,7 @@ const RuleEditor = ({
               type="number"
               value={rule.value}
               onChange={value => onChange({ ...rule, value })}
+              placeholder="0"
             />
           ) : hasOperand ? (
             <input
@@ -383,6 +384,7 @@ const RuleEditor = ({
               className={INPUT_CLASSNAME}
               value={rule.value}
               onChange={e => onChange({ ...rule, value: e.target.value })}
+              placeholder={t`Column value`}
             />
           ) : null}
           <h3 className="mt3 mb1">{t`…turn its background this color:`}</h3>

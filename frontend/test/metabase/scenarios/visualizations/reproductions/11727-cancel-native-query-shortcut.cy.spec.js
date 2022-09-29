@@ -16,7 +16,7 @@ const questionDetails = {
   },
 };
 
-describe("issue 11727", () => {
+describe("issue 11727", { tags: "@external" }, () => {
   beforeEach(() => {
     restore("postgres-12");
     cy.signInAsAdmin();

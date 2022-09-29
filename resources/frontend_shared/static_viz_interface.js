@@ -23,11 +23,12 @@ function combo_chart(series, settings, colors) {
   });
 }
 
-function timeseries_waterfall(data, labels, settings, instanceColors) {
-  return StaticViz.RenderChart("timeseries/waterfall", {
+function waterfall(data, labels, settings, waterfallType, instanceColors) {
+  return StaticViz.RenderChart("waterfall", {
     data: toJSArray(data),
     labels: toJSMap(labels),
     settings: JSON.parse(settings),
+    type: waterfallType,
     colors: JSON.parse(instanceColors),
   });
 }
@@ -43,15 +44,6 @@ function categorical_donut(rows, colors) {
   return StaticViz.RenderChart("categorical/donut", {
     data: toJSArray(rows),
     colors: toJSMap(colors),
-  });
-}
-
-function categorical_waterfall(data, labels, settings, instanceColors) {
-  return StaticViz.RenderChart("categorical/waterfall", {
-    data: toJSArray(data),
-    labels: toJSMap(labels),
-    settings: JSON.parse(settings),
-    colors: JSON.parse(instanceColors),
   });
 }
 

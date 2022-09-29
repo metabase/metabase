@@ -77,6 +77,7 @@
 
 (deftest extraction-function-tests
   (mt/dataset times-mixed
+    ;; need to have seperate tests for mongo because it doesn't have supports for casting yet
     (mt/test-drivers (disj (mt/normal-drivers-with-feature :temporal-extract) :mongo)
       (testing "with datetime columns"
         (doseq [[col-type field-id] [[:datetime (mt/id :times :dt)] [:text-as-datetime (mt/id :times :as_dt)]]
@@ -95,7 +96,6 @@
         (testing (format "extract %s function works as expected on %s column for driver %s" op col-type driver/*driver*)
           (is (= (set (expected-fn op)) (set (test-temporal-extract (query-fn op field-id)))))))))
 
-    ;; need to have seperate tests for mongo because it doesn't have supports for casting yet
     (mt/test-driver :mongo
       (testing "with datetimes columns"
         (let [[col-type field-id] [:datetime (mt/id :times :dt)]]
@@ -113,6 +113,7 @@
                   extraction-test-cases]
            (testing (format "extract %s function works as expected on %s column for driver %s" op col-type driver/*driver*)
              (is (= (set (expected-fn op)) (set (test-temporal-extract (query-fn op field-id))))))))))))
+
 
 (deftest temporal-extraction-with-filter-expresion-tests
   (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)

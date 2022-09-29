@@ -109,7 +109,7 @@
    :week        :week-of-year
    :month       :month-of-year
    :quarter     :quarter-of-year
-   :year        :yyear})
+   :year        :year-of-era})
 
 ;; TODO - rename this to `temporal-bucket` or something that better describes what it actually does
 (defmulti date
@@ -131,7 +131,7 @@
   (->honeysql driver [:ceil (hx// (date driver :day-of-year (date driver :week expr)) 7.0)]))
 (defmethod date [:sql :month-of-year]    [_driver _ expr] (hx/month expr))
 (defmethod date [:sql :quarter-of-year]  [_driver _ expr] (hx/quarter expr))
-(defmethod date [:sql :yyear]            [_driver _ expr] (hx/year expr))
+(defmethod date [:sql :year-of-era]      [_driver _ expr] (hx/year expr))
 
 (defmulti add-interval-honeysql-form
   "Return a HoneySQL form that performs represents addition of some temporal interval to the original `hsql-form`.

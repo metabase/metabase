@@ -384,7 +384,7 @@
 (defmethod sql.qp/date [:bigquery-cloud-sdk :quarter]          [_ _ expr] (trunc   :quarter   expr))
 (defmethod sql.qp/date [:bigquery-cloud-sdk :quarter-of-year]  [_ _ expr] (extract :quarter   expr))
 (defmethod sql.qp/date [:bigquery-cloud-sdk :year]             [_ _ expr] (trunc   :year      expr))
-(defmethod sql.qp/date [:bigquery-cloud-sdk :yyear]            [_ _ expr] (extract :year      expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :year-of-era]      [_ _ expr] (extract :year      expr))
 
 ;; BigQuery mod is a function like mod(x, y) rather than an operator like x mod y
 (defmethod hformat/fn-handler (u/qualified-name ::mod)

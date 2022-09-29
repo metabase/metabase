@@ -236,7 +236,7 @@
           :year
           (truncate :year)
 
-          :yyear
+          :year-of-era
           {$year column})))))
 
 (defmethod ->rvalue :field
@@ -383,7 +383,7 @@
    :week        :week-of-year
    :month       :month-of-year
    :quarter     :quarter-of-year
-   :year        :yyear})
+   :year        :year-of-era})
 
 (defmethod ->rvalue :temporal-extract [[_ inp unit]]
   (with-rvalue-temporal-bucketing (->rvalue inp) (temporal-extract-unit->date-unit unit)))

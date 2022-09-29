@@ -175,7 +175,7 @@
 (defmethod sql.qp/date [:oracle :month-of-year]    [_ _ v] (hsql/call :extract :month v))
 (defmethod sql.qp/date [:oracle :quarter]          [_ _ v] (trunc :q v))
 (defmethod sql.qp/date [:oracle :year]             [_ _ v] (trunc :year v))
-(defmethod sql.qp/date [:oracle :yyear]            [_ _ v] (hsql/call :extract :year v))
+(defmethod sql.qp/date [:oracle :year-of-era]      [_ _ v] (hsql/call :extract :year v))
 
 (defmethod sql.qp/date [:oracle :week]
   [driver _ v]

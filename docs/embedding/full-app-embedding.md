@@ -104,7 +104,7 @@ To limit the amount of time that a person stays logged in, set [`MAX_SESSION_AGE
 For example, to keep people signed in for 24 hours at most:
 
 ```
-MAX_SESSION_AGE=2040
+MAX_SESSION_AGE=1440
 ```
 
 To automatically clear a person's login cookies when they end a browser session:

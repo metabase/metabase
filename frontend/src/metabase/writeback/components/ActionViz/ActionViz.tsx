@@ -11,7 +11,7 @@ export default Object.assign(Action, {
   hidden: true,
   supportPreviewing: false,
 
-  minSize: { width: 2, height: 1 },
+  minSize: { width: 1, height: 1 },
 
   checkRenderable: () => true,
   isSensible: () => false,
@@ -25,9 +25,8 @@ export default Object.assign(Action, {
     },
     actionDisplayType: {
       section: t`Display`,
-      title: t`Action Display`,
+      title: t`Action Form Display`,
       widget: "radio",
-      default: "inline",
       props: {
         options: [
           { name: t`Inline`, value: "inline" },

@@ -17,11 +17,11 @@ const ChartSettingSelect = ({
   ...props
 }) => (
   <Select
-    className={cx(className, "block", {
-      disabled:
-        options.length === 0 ||
-        (options.length === 1 && options[0].value === value),
-    })}
+    className={cx(className, "block")}
+    disabled={
+      options.length === 0 ||
+      (options.length === 1 && options[0].value === value)
+    }
     value={value}
     onChange={e => onChange(e.target.value)}
     placeholder={options.length === 0 ? placeholderNoOptions : placeholder}

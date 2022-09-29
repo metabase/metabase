@@ -210,7 +210,7 @@
   [driver _ expr]
   (->date (sql.qp/->honeysql driver expr) (hx/literal "start of year")))
 
-(defmethod sql.qp/date [:sqlite :yyear]
+(defmethod sql.qp/date [:sqlite :year-of-era]
   [driver _ expr]
   (hx/->integer (strftime "%Y" (sql.qp/->honeysql driver expr))))
 

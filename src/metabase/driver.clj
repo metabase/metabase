@@ -440,9 +440,9 @@
     ;; DEFAULTS TO TRUE
     :temporal-extract
 
-    :date-arithmetics
     ;; Does the driver support doing math with datetime? (i.e Adding 1 year to a datetime column)
     ;; DEFAULTS TO TRUE
+    :date-arithmetics
 
     ;; Does the driver support experimental "writeback" actions like "delete this row" or "insert a new row" from 44+?
     :actions
