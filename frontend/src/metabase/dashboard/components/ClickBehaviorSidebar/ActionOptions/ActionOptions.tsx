@@ -30,6 +30,8 @@ interface ActionOptionsDispatchProps {
     dashCardId: number,
     settings: {
       action_id?: number | null;
+      action?: WritebackAction;
+      visualization_settings?: ActionDashboardCard["visualization_settings"];
       parameter_mappings?: ActionParametersMapping[] | null;
     },
   ) => void;
@@ -57,6 +59,12 @@ function ActionOptions({
     (action: WritebackAction) => {
       onUpdateButtonActionMapping(dashcard.id, {
         action_id: action.id,
+        action,
+        visualization_settings: {
+          ...dashcard.visualization_settings,
+          "button.label":
+            dashcard.visualization_settings["button.label"] ?? action.name,
+        },
 
         // Clean mappings from previous action
         // as they're most likely going to be irrelevant

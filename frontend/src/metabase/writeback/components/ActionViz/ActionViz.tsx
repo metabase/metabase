@@ -38,7 +38,6 @@ export default Object.assign(Action, {
       section: t`Display`,
       title: t`Label`,
       widget: "input",
-      default: "Click Me",
     },
     "button.variant": {
       section: t`Display`,
