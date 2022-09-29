@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
@@ -22,16 +23,20 @@ import {
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import MetabaseSettings from "metabase/lib/settings";
+import { getUserIsAdmin } from "metabase/selectors/user";
 
 const PIN_MAP_TYPES = new Set(["pin", "heat", "grid"]);
 
 import { getAccentColors } from "metabase/lib/colors/groups";
 import ColorRangeSelector from "metabase/core/components/ColorRangeSelector";
+import Button from "metabase/core/components/Button";
 import LeafletGridHeatMap from "../components/LeafletGridHeatMap";
 import PinMap from "../components/PinMap";
 import ChoroplethMap, {
   getColorplethColorScale,
 } from "../components/ChoroplethMap";
+
+import { CustomMapContainer } from "./Maps.styled";
 
 export default class Map extends Component {
   static uiName = t`Map`;
@@ -241,6 +246,9 @@ export default class Map extends Component {
           .map(([key, value]) => ({ name: value.name || "", value: key }))
           .sortBy(x => x.name.toLowerCase())
           .value(),
+        placeholder: t`Select a region`,
+        footerFn: () => <CustomMapFooter />,
+        hiddenIcons: true,
       }),
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
     },
@@ -341,3 +349,27 @@ export default class Map extends Component {
     }
   }
 }
+
+const mapStateToProps = (state, props) => {
+  return {
+    isAdmin: getUserIsAdmin(state, props),
+  };
+};
+
+const CustomMapFooter = connect(mapStateToProps)(({ isAdmin }) => (
+  <CustomMapContainer>
+    <Button
+      borderless
+      iconRight="share"
+      fullWidth
+      as="a"
+      href={
+        isAdmin
+          ? "/admin/settings/maps"
+          : "https://www.metabase.com/docs/latest/configuring-metabase/custom-maps"
+      }
+    >
+      Custom Map
+    </Button>
+  </CustomMapContainer>
+));
