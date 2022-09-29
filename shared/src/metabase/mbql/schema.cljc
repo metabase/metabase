@@ -84,6 +84,12 @@
     (apply s/enum #{:second :minute :hour :day :day-of-week :week :month :quarter :year})
     "temporal-extract-units"))
 
+(def DateDiffUnits
+  "Valid units to extract from a temporal."
+  (s/named
+    (apply s/enum #{:second :minute :hour :day :week :month :year})
+    "temporal-extract-units"))
+
 (def ^:private RelativeDatetimeUnit
   (s/named
    (apply s/enum #{:default :minute :hour :day :week :month :quarter :year})
@@ -460,7 +466,8 @@
 
 (def arithmetic-expressions
   "Set of valid arithmetic expression clause keywords."
-  #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp :case})
+  #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp :case
+    :datediff})
 
 (def boolean-expressions
   "Set of valid boolean expression clause keywords."
@@ -629,6 +636,11 @@
 (def ^:private ArithmeticExpression
   "Schema for the definition of an arithmetic expression."
   (s/recursive #'ArithmeticExpression*))
+
+(defclause ^{:requires-features #{:datediff}} datediff
+  datetime-x DateTimeExpressionArg
+  datetime-y DateTimeExpressionArg
+  unit       DateDiffUnits)
 
 (defclause ^{:requires-features #{:temporal-extract}} temporal-extract
   datetime DateTimeExpressionArg
@@ -855,7 +867,7 @@
   clauses CaseClauses, options (optional CaseOptions))
 
 (def ^:private ArithmeticExpression*
-  (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case))
+  (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case datediff))
 
 (def ^:private StringExpression*
   (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce case))

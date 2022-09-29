@@ -56,6 +56,10 @@
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
+(defmethod driver/database-supports? [:postgres :datediff]
+  [_driver _feat _db]
+  true)
+
 (defmethod driver/database-supports? [:postgres :persist-models]
   [_driver _feat _db]
   true)
@@ -295,6 +299,31 @@
 (defmethod sql.qp/->honeysql [:postgres :median]
   [driver [_ arg]]
   (sql.qp/->honeysql driver [:percentile arg 0.5]))
+
+(defmethod sql.qp/->honeysql [:postgres :datediff]
+  [driver [_ date-x date-y unit]]
+  (case unit
+    (:year :day)
+    (hsql/call :date_part (hsql/raw (format "'%s'" (name unit)))
+               (hsql/call (case unit :year :age :day :-)
+                          (sql.qp/->honeysql driver date-x)
+                          (sql.qp/->honeysql driver date-y)))
+    (:month :hour :minute :second)
+    (let [[from-unit-above unit-above] ({:month [12 :year]
+                                         :hour [24 :day]
+                                         :minute [60 :hour]
+                                         :second [60 :minute]} unit)]
+      (hsql/call
+       :+
+       (hsql/call :* from-unit-above
+                  (sql.qp/->honeysql driver [:datediff date-x date-y unit-above]))
+       (hsql/call :date_part (hsql/raw (format "'%s'" (name unit)))
+                  (hsql/call :age
+                             (sql.qp/->honeysql driver date-x)
+                             (sql.qp/->honeysql driver date-y)))))
+    (:week)
+    (throw (ex-info "Working on it"
+                    {:date-x date-x :date-y date-y :unit unit}))))
 
 (p/defrecord+ RegexMatchFirst [identifier pattern]
   hformat/ToSql
