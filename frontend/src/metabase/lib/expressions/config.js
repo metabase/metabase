@@ -373,7 +373,7 @@ export const MBQL_CLAUSES = {
   },
   "convert-timezone": {
     displayName: `convertTimezone`,
-    type: "number",
+    type: "expression",
     args: ["expression", "string", "string"],
   },
 };

@@ -32,16 +32,14 @@ export function infer(mbql, env) {
       return MONOTYPE.Boolean;
   }
 
-  if (op === "case") {
-    const clauses = mbql[1];
-    const first = clauses[0];
-    // TODO: type-checker must ensure the consistent types of all clauses.
-    return infer(first[1], env);
-  }
-
-  if (op === "coalesce") {
-    // TODO: type-checker must ensure the consistent types of all arguments
-    return infer(mbql[1], env);
+  switch (op) {
+    case "case":
+      return infer(mbql[1][0][1], env);
+    case "coalesce":
+    case "date-add":
+    case "date-subtract":
+    case "convert-timezone":
+      return infer(mbql[1], env);
   }
 
   const func = MBQL_CLAUSES[op];
