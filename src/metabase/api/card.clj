@@ -17,7 +17,7 @@
             [metabase.email.messages :as messages]
             [metabase.events :as events]
             [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.models :refer [Card CardBookmark Collection Database PersistedInfo Pulse Table ViewLog]]
+            [metabase.models :refer [Card Collection Database PersistedInfo Pulse]]
             [metabase.models.collection :as collection]
             [metabase.models.interface :as mi]
             [metabase.models.moderation-review :as moderation-review]
@@ -42,8 +42,7 @@
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]])
   (:import clojure.core.async.impl.channels.ManyToManyChannel
-           java.util.UUID
-           metabase.models.card.CardInstance))
+           java.util.UUID))
 
 ;;; ----------------------------------------------- Filtered Fetch Fns -----------------------------------------------
 
@@ -73,9 +72,9 @@
   (apply s/enum (map name (keys (methods cards-for-filter-option*)))))
 
 (api/defendpoint GET "/"
-  "Get all the Cards. Option filter param `f` can be used to change the set of Cards that are returned; default is
-  `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `recent`, `popular`, and `archived`. See
-  corresponding implementation functions above for the specific behavior of each filter option. :card_index:"
+  "Get all the Cards. Optional filter parameter `f` can be used to change the set of Cards that are returned;
+  The default filter parameter is `all` which returns all Cards. Using `database` returns all cards
+  in a database of the given `model_id` parameter."
   [f model_id]
   {f        (s/maybe CardFilterOption)
    model_id (s/maybe su/IntGreaterThanZero)}
