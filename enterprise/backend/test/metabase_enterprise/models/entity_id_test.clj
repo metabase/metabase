@@ -1,20 +1,19 @@
-(ns metabase_enterprise.models.entity-id-test
+(ns metabase-enterprise.models.entity-id-test
   "To support serialization, all exported entities should have either an external name (eg. a database path) or a
   generated NanoID in a column called entity_id. There's a property :entity_id to automatically populate that field.
 
   This file makes it impossible to forget to add entity_id to new entities. It tests that every entity is either
   explicitly excluded, or has the :entity_id property."
   (:require
-    [clojure.test :refer :all]
-    metabase.db.data-migrations
-    metabase.models
-    metabase.models.dependency-test
-    metabase.models.revision-test
-    [toucan.models :refer [IModel properties]]))
+   [clojure.test :refer :all]
+   metabase.db.data-migrations
+   metabase.models
+   metabase.models.revision-test
+   [metabase.models.serialization.hash :as serdes.hash]
+   [toucan.models :refer [IModel]]))
 
 (comment metabase.models/keep-me
          metabase.db.data-migrations/keep-me
-         metabase.models.dependency-test/keep-me
          metabase.models.revision-test/keep-me)
 
 (def entities-external-name
@@ -24,10 +23,7 @@
     metabase.models.table.TableInstance
     metabase.models.field.FieldInstance
     ;; Settings have human-selected unique names.
-    metabase.models.setting.SettingInstance
-    ;; Dependencies are serialized but no extra ID is necessary since they're just many-to-many links between entities
-    ;; with unique IDs, and don't need unique IDs of their own.
-    metabase.models.dependency.DependencyInstance})
+    metabase.models.setting.SettingInstance})
 
 (def entities-not-exported
   "Entities that are either:
@@ -35,6 +31,9 @@
   - exported as a child of something else (eg. timeline_event under timeline)
   so they don't need a generated entity_id."
   #{metabase.db.data_migrations.DataMigrationsInstance
+    metabase.models.action.ActionInstance
+    metabase.models.action.HTTPActionInstance
+    metabase.models.action.QueryActionInstance
     metabase.models.activity.ActivityInstance
     metabase.models.application_permissions_revision.ApplicationPermissionsRevisionInstance
     metabase.models.bookmark.BookmarkOrderingInstance
@@ -44,7 +43,9 @@
     metabase.models.collection.root.RootCollection
     metabase.models.collection_permission_graph_revision.CollectionPermissionGraphRevisionInstance
     metabase.models.dashboard_card_series.DashboardCardSeriesInstance
-    metabase.models.dependency_test.MockInstance
+    metabase.models.emitter.CardEmitterInstance
+    metabase.models.emitter.DashboardEmitterInstance
+    metabase.models.emitter.EmitterInstance
     metabase.models.field_values.FieldValuesInstance
     metabase.models.login_history.LoginHistoryInstance
     metabase.models.metric_important_field.MetricImportantFieldInstance
@@ -84,4 +85,4 @@
   (doseq [model (->> (extenders IModel)
                      (remove entities-not-exported))]
     (testing (format "Model %s should implement IdentityHashable" (.getSimpleName model))
-      (is (extends? metabase.models.serialization.hash/IdentityHashable model)))))
+      (is (extends? serdes.hash/IdentityHashable model)))))

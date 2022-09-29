@@ -1,10 +1,11 @@
 ---
 title: "Collection"
-summary: "`/api/collection` endpoints. By default, these endpoints operate on Collections in the 'default' namespace, which is
-  the one that has things like Dashboards and Cards. Other namespaces of Collections exist as well, such as the
-  `:snippet` namespace, (called 'Snippet folders' in the UI). These namespaces are completely independent hierarchies.
-  To use these endpoints for other Collections namespaces, you can pass the `?namespace=` parameter (e.g.
-  `?namespace=snippet`)."
+summary: |
+  `/api/collection` endpoints. By default, these endpoints operate on Collections in the 'default' namespace, which is
+    the one that has things like Dashboards and Cards. Other namespaces of Collections exist as well, such as the
+    `:snippet` namespace, (called 'Snippet folders' in the UI). These namespaces are completely independent hierarchies.
+    To use these endpoints for other Collections namespaces, you can pass the `?namespace=` parameter (e.g.
+    `?namespace=snippet`).
 ---
 
 # Collection
@@ -14,19 +15,6 @@ summary: "`/api/collection` endpoints. By default, these endpoints operate on Co
   `:snippet` namespace, (called 'Snippet folders' in the UI). These namespaces are completely independent hierarchies.
   To use these endpoints for other Collections namespaces, you can pass the `?namespace=` parameter (e.g.
   `?namespace=snippet`).
-
-  - [GET /api/collection/](#get-apicollection)
-  - [GET /api/collection/:id](#get-apicollectionid)
-  - [GET /api/collection/:id/items](#get-apicollectioniditems)
-  - [GET /api/collection/:id/timelines](#get-apicollectionidtimelines)
-  - [GET /api/collection/graph](#get-apicollectiongraph)
-  - [GET /api/collection/root](#get-apicollectionroot)
-  - [GET /api/collection/root/items](#get-apicollectionrootitems)
-  - [GET /api/collection/root/timelines](#get-apicollectionroottimelines)
-  - [GET /api/collection/tree](#get-apicollectiontree)
-  - [POST /api/collection/](#post-apicollection)
-  - [PUT /api/collection/:id](#put-apicollectionid)
-  - [PUT /api/collection/graph](#put-apicollectiongraph)
 
 ## `GET /api/collection/`
 
@@ -64,7 +52,7 @@ Fetch a specific Collection's items with the following options:
 
 *  **`id`** 
 
-*  **`models`** value may be nil, or if non-nil, value must satisfy one of the following requirements: 1) value must be an array. Each value must be one of: `card`, `collection`, `dashboard`, `dataset`, `no_models`, `pulse`, `snippet`, `timeline`. 2) value must be one of: `card`, `collection`, `dashboard`, `dataset`, `no_models`, `pulse`, `snippet`, `timeline`.
+*  **`models`** value may be nil, or if non-nil, value must satisfy one of the following requirements: 1) value must be an array. Each value must be one of: `app`, `card`, `collection`, `dashboard`, `dataset`, `no_models`, `page`, `pulse`, `snippet`, `timeline`. 2) value must be one of: `app`, `card`, `collection`, `dashboard`, `dataset`, `no_models`, `page`, `pulse`, `snippet`, `timeline`.
 
 *  **`archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
@@ -122,7 +110,7 @@ Fetch objects that the current user should see at their root level. As mentioned
 
 ### PARAMS:
 
-*  **`models`** value may be nil, or if non-nil, value must satisfy one of the following requirements: 1) value must be an array. Each value must be one of: `card`, `collection`, `dashboard`, `dataset`, `no_models`, `pulse`, `snippet`, `timeline`. 2) value must be one of: `card`, `collection`, `dashboard`, `dataset`, `no_models`, `pulse`, `snippet`, `timeline`.
+*  **`models`** value may be nil, or if non-nil, value must satisfy one of the following requirements: 1) value must be an array. Each value must be one of: `app`, `card`, `collection`, `dashboard`, `dataset`, `no_models`, `page`, `pulse`, `snippet`, `timeline`. 2) value must be one of: `app`, `card`, `collection`, `dashboard`, `dataset`, `no_models`, `page`, `pulse`, `snippet`, `timeline`.
 
 *  **`archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
@@ -197,23 +185,21 @@ Modify an existing Collection, including archiving or unarchiving it, or moving 
 
 ### PARAMS:
 
-*  **`authority_level`** value may be nil, or if non-nil, value must be one of: `official`.
+*  **`id`** 
+
+*  **`name`** value may be nil, or if non-nil, value must be a non-blank string.
+
+*  **`color`** value may be nil, or if non-nil, value must be a string that matches the regex `^#[0-9A-Fa-f]{6}$`.
 
 *  **`description`** value may be nil, or if non-nil, value must be a non-blank string.
 
 *  **`archived`** value may be nil, or if non-nil, value must be a boolean.
 
-*  **`collection-updates`** 
-
-*  **`color`** value may be nil, or if non-nil, value must be a string that matches the regex `^#[0-9A-Fa-f]{6}$`.
-
-*  **`name`** value may be nil, or if non-nil, value must be a non-blank string.
-
 *  **`parent_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
-*  **`id`** 
+*  **`authority_level`** value may be nil, or if non-nil, value must be one of: `official`.
 
-*  **`update_collection_tree_authority_level`** value may be nil, or if non-nil, value must be a boolean.
+*  **`collection-updates`**
 
 ## `PUT /api/collection/graph`
 

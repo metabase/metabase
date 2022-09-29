@@ -36,8 +36,10 @@ const BUTTON_VARIANTS = [
 interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
   as?: ElementType;
   className?: string;
+  to?: string;
+  href?: string;
 
-  icon?: string;
+  icon?: string | ReactNode;
   iconSize?: number;
   iconColor?: string;
   iconRight?: string;
@@ -85,16 +87,19 @@ const BaseButton = forwardRef(function BaseButton(
 
   return (
     <ButtonRoot
+      ref={ref}
       as={as}
       {..._.omit(props, ...BUTTON_VARIANTS)}
       className={cx("Button", className, variantClasses, {
         p1: !children,
       })}
-      ref={ref}
+      purple={props.purple}
     >
       <ButtonContent iconVertical={iconVertical}>
-        {icon && (
+        {icon && typeof icon === "string" ? (
           <Icon color={iconColor} name={icon} size={iconSize ? iconSize : 14} />
+        ) : (
+          icon
         )}
         {children && (
           <ButtonTextContainer

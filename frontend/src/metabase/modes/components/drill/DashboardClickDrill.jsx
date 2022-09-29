@@ -2,8 +2,8 @@
 import { getIn } from "icepick";
 import _ from "underscore";
 import querystring from "querystring";
+import { push } from "react-router-redux";
 
-import Question from "metabase-lib/lib/Question";
 import {
   setOrUnsetParameterValues,
   setParameterValue,
@@ -15,6 +15,7 @@ import {
 } from "metabase/lib/click-behavior";
 import { renderLinkURLForClick } from "metabase/lib/formatting/link";
 import * as Urls from "metabase/lib/urls";
+import Question from "metabase-lib/lib/Question";
 
 export default ({ question, clicked }) => {
   const settings = (clicked && clicked.settings) || {};
@@ -74,21 +75,43 @@ export default ({ question, clicked }) => {
           },
         };
       } else {
-        const targetDashboard = extraData.dashboards[targetId];
         const queryParams = getParameterValuesBySlug(parameterMapping, {
           data,
           extraData,
           clickBehavior,
         });
 
-        const path =
-          clickBehavior.use_public_link && targetDashboard.public_uuid
-            ? Urls.publicDashboard(targetDashboard.public_uuid)
-            : Urls.dashboard({ id: targetId });
+        const path = Urls.dashboard({ id: targetId });
         const url = `${path}?${querystring.stringify(queryParams)}`;
 
         behavior = { url: () => url };
       }
+    } else if (linkType === "page") {
+      const { location, routerParams } = extraData;
+
+      const isInDataApp =
+        Urls.isDataAppPagePath(location.pathname) ||
+        Urls.isDataAppPath(location.pathname);
+
+      if (!isInDataApp) {
+        return [];
+      }
+
+      const dataAppId = Urls.extractEntityId(routerParams.slug);
+      if (!dataAppId) {
+        return [];
+      }
+
+      const queryParams = getParameterValuesBySlug(parameterMapping, {
+        data,
+        extraData,
+        clickBehavior,
+      });
+
+      const path = Urls.dataAppPage({ id: dataAppId }, { id: targetId });
+      const url = `${path}?${querystring.stringify(queryParams)}`;
+
+      behavior = { action: () => push(url) };
     } else if (linkType === "question" && extraData && extraData.questions) {
       const queryParams = getParameterValuesBySlug(parameterMapping, {
         data,
@@ -111,18 +134,9 @@ export default ({ question, clicked }) => {
         }))
         .value();
 
-      let url = null;
-      if (clickBehavior.use_public_link && targetQuestion.publicUUID()) {
-        url = Urls.publicQuestion(
-          targetQuestion.publicUUID(),
-          null,
-          querystring.stringify(queryParams),
-        );
-      } else {
-        url = targetQuestion.isStructured()
-          ? targetQuestion.getUrlWithParameters(parameters, queryParams)
-          : `${targetQuestion.getUrl()}?${querystring.stringify(queryParams)}`;
-      }
+      const url = targetQuestion.isStructured()
+        ? targetQuestion.getUrlWithParameters(parameters, queryParams)
+        : `${targetQuestion.getUrl()}?${querystring.stringify(queryParams)}`;
 
       behavior = { url: () => url };
     }

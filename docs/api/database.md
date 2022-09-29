@@ -1,38 +1,12 @@
 ---
 title: "Database"
-summary: "/api/database endpoints."
+summary: |
+  /api/database endpoints.
 ---
 
 # Database
 
 /api/database endpoints.
-
-  - [DELETE /api/database/:id](#delete-apidatabaseid)
-  - [GET /api/database/](#get-apidatabase)
-  - [GET /api/database/:id](#get-apidatabaseid)
-  - [GET /api/database/:id/autocomplete_suggestions](#get-apidatabaseidautocomplete_suggestions)
-  - [GET /api/database/:id/fields](#get-apidatabaseidfields)
-  - [GET /api/database/:id/idfields](#get-apidatabaseididfields)
-  - [GET /api/database/:id/metadata](#get-apidatabaseidmetadata)
-  - [GET /api/database/:id/schema/](#get-apidatabaseidschema)
-  - [GET /api/database/:id/schema/:schema](#get-apidatabaseidschemaschema)
-  - [GET /api/database/:id/schemas](#get-apidatabaseidschemas)
-  - [GET /api/database/:virtual-db/datasets](#get-apidatabasevirtual-dbdatasets)
-  - [GET /api/database/:virtual-db/datasets/:schema](#get-apidatabasevirtual-dbdatasetsschema)
-  - [GET /api/database/:virtual-db/metadata](#get-apidatabasevirtual-dbmetadata)
-  - [GET /api/database/:virtual-db/schema/:schema](#get-apidatabasevirtual-dbschemaschema)
-  - [GET /api/database/:virtual-db/schemas](#get-apidatabasevirtual-dbschemas)
-  - [GET /api/database/db-ids-with-deprecated-drivers](#get-apidatabasedb-ids-with-deprecated-drivers)
-  - [POST /api/database/](#post-apidatabase)
-  - [POST /api/database/:id/discard_values](#post-apidatabaseiddiscard_values)
-  - [POST /api/database/:id/persist](#post-apidatabaseidpersist)
-  - [POST /api/database/:id/rescan_values](#post-apidatabaseidrescan_values)
-  - [POST /api/database/:id/sync](#post-apidatabaseidsync)
-  - [POST /api/database/:id/sync_schema](#post-apidatabaseidsync_schema)
-  - [POST /api/database/:id/unpersist](#post-apidatabaseidunpersist)
-  - [POST /api/database/sample_database](#post-apidatabasesample_database)
-  - [POST /api/database/validate](#post-apidatabasevalidate)
-  - [PUT /api/database/:id](#put-apidatabaseid)
 
 ## `DELETE /api/database/:id`
 
@@ -104,9 +78,10 @@ Get a single Database with `id`. Optionally pass `?include=tables` or `?include=
 
 ## `GET /api/database/:id/autocomplete_suggestions`
 
-Return a list of autocomplete suggestions for a given `prefix`.
+Return a list of autocomplete suggestions for a given `prefix`, or `substring`. Should only specify one, but
+  `substring` will have priority if both are present.
 
-  This is intened for use with the ACE Editor when the User is typing raw SQL. Suggestions include matching `Tables`
+  This is intended for use with the ACE Editor when the User is typing raw SQL. Suggestions include matching `Tables`
   and `Fields` in this `Database`.
 
   Tables are returned in the format `[table_name "Table"]`;
@@ -115,11 +90,23 @@ Return a list of autocomplete suggestions for a given `prefix`.
 
 ### PARAMS:
 
-*  **`id`** 
+*  **`id`** value must be an integer.
 
-*  **`prefix`** 
+*  **`prefix`** value may be nil, or if non-nil, value must be a non-blank string.
 
-*  **`search`**
+*  **`substring`** value may be nil, or if non-nil, value must be a non-blank string.
+
+## `GET /api/database/:id/card_autocomplete_suggestions`
+
+Return a list of `Card` autocomplete suggestions for a given `query` in a given `Database`.
+
+  This is intended for use with the ACE Editor when the User is typing in a template tag for a `Card`, e.g. {{#...}}.
+
+### PARAMS:
+
+*  **`id`** value must be an integer.
+
+*  **`query`** value must be a non-blank string.
 
 ## `GET /api/database/:id/fields`
 
@@ -243,6 +230,15 @@ You must be a superuser to do this.
 ## `POST /api/database/:id/discard_values`
 
 Discards all saved field values for this `Database`.
+
+### PARAMS:
+
+*  **`id`**
+
+## `POST /api/database/:id/dismiss_spinner`
+
+Manually set the initial sync status of the `Database` and corresponding
+  tables to be `complete` (see #20863).
 
 ### PARAMS:
 

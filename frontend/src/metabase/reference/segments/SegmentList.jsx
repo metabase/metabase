@@ -13,11 +13,10 @@ import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
+import * as metadataActions from "metabase/redux/metadata";
 import ReferenceHeader from "../components/ReferenceHeader";
 
 import { getSegments, getError, getLoading } from "../selectors";
-
-import * as metadataActions from "metabase/redux/metadata";
 
 const emptyStateData = {
   title: t`Segments are interesting subsets of tables`,
@@ -26,7 +25,7 @@ const emptyStateData = {
   image: "app/assets/img/segments-list",
   adminAction: t`Learn how to create segments`,
   adminLink: MetabaseSettings.docsUrl(
-    "administration-guide/07-segments-and-metrics",
+    "data-modeling/segments-and-metrics",
     "creating-a-segment",
   ),
 };

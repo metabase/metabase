@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
-import Form from "metabase/containers/Form";
+import Form from "metabase/containers/FormikForm";
 import forms from "metabase/entities/timeline-events/forms";
 import { Timeline, TimelineEvent } from "metabase-types/api";
 import ModalBody from "../ModalBody";
@@ -47,7 +47,7 @@ const EditEventModal = ({
     <div>
       <ModalHeader title={t`Edit event`} onClose={onClose} />
       <ModalBody>
-        <Form
+        <Form<TimelineEvent>
           form={form}
           initialValues={event}
           isModal={true}

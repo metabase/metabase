@@ -24,12 +24,11 @@
 
 (deftest retrieve-metrics-test
   (mt/with-temp* [Database [{database-id :id}]
-                  Table    [{table-id-1 :id}    {:db_id database-id}]
-                  Table    [{table-id-2 :id}    {:db_id database-id}]
-                  Metric   [{segement-id-1 :id
-                             :as segment-1}     {:table_id table-id-1, :name "Metric 1", :description nil}]
-                  Metric   [{metric-id-2 :id}   {:table_id table-id-2}]
-                  Metric   [{metric-id3 :id}    {:table_id table-id-1, :archived true}]]
+                  Table    [{table-id-1 :id} {:db_id database-id}]
+                  Table    [{table-id-2 :id} {:db_id database-id}]
+                  Metric   [segment-1        {:table_id table-id-1, :name "Metric 1", :description nil}]
+                  Metric   [_                {:table_id table-id-2}]
+                  Metric   [_                {:table_id table-id-1, :archived true}]]
     (is (= [(merge
              metric-defaults
              {:creator_id (mt/user->id :rasta)
@@ -133,37 +132,6 @@
                                     {:name        "A"
                                      :description "Unchanged"
                                      :definition  {:filter [:and [:> 4 "2014-10-19"]]}}))))))
-
-(deftest metric-dependencies-test
-  (is (= {:Segment #{2 3}}
-         (metric/metric-dependencies
-          Metric
-          12
-          {:definition {:breakout [[:field 4 nil] [:field 5 nil]]
-                        :filter   [:and
-                                   [:> 4 "2014-10-19"]
-                                   [:= 5 "yes"]
-                                   [:segment 2]
-                                   [:segment 3]]}})))
-
-  (is (= {:Segment #{1}}
-         (metric/metric-dependencies
-          Metric
-          12
-          {:definition {:aggregation [:metric 7]
-                        :filter      [:and
-                                      [:> 4 "2014-10-19"]
-                                      [:= 5 "yes"]
-                                      [:or
-                                       [:segment 1]
-                                       [:!= 5 "5"]]]}})))
-
-  (is (= {:Segment #{}}
-         (metric/metric-dependencies
-          Metric
-          12
-          {:definition {:aggregation nil
-                        :filter      nil}}))))
 
 (deftest identity-hash-test
   (testing "Metric hashes are composed of the metric name and table identity-hash"

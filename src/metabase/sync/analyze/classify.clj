@@ -19,6 +19,7 @@
   (:require [clojure.data :as data]
             [clojure.tools.logging :as log]
             [metabase.models.field :refer [Field]]
+            [metabase.models.interface :as mi]
             [metabase.models.table :refer [Table]]
             [metabase.sync.analyze.classifiers.category :as classifiers.category]
             [metabase.sync.analyze.classifiers.name :as classifiers.name]
@@ -55,7 +56,7 @@
         (throw (Exception. (format "Classifiers are not allowed to set the value of %s." k)))))
     ;; cool, now we should be ok to update the model
     (when values-to-set
-      (db/update! (if (instance? (type Field) original-model)
+      (db/update! (if (mi/instance-of? Field original-model)
                     Field
                     Table)
           (u/the-id original-model)

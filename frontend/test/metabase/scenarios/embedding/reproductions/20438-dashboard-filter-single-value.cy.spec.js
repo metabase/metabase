@@ -55,8 +55,8 @@ describe("issue 20438", () => {
               card_id,
               row: 0,
               col: 0,
-              sizeX: 18,
-              sizeY: 8,
+              size_x: 18,
+              size_y: 8,
               parameter_mappings: [
                 {
                   parameter_id: filter.id,
@@ -81,7 +81,7 @@ describe("issue 20438", () => {
 
   it("dashboard filter connected to the field filter should work with a single value in embedded dashboards (metabase#20438)", () => {
     cy.icon("share").click();
-    cy.findByText("Embed this dashboard in an application").click();
+    cy.findByText("Embed in your application").click();
 
     visitIframe();
 

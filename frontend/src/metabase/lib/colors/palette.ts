@@ -39,7 +39,6 @@ export const colors: ColorPalette = {
   "bg-error": "#ED6E6E55",
   shadow: "rgba(0,0,0,0.08)",
   border: "#EEECEC",
-  "border-dark": "#C9CED3",
 
   /* Saturated colors for the SQL editor. Shouldn't be used elsewhere since they're not white-labelable. */
   "saturated-blue": "#2D86D4",
@@ -125,4 +124,44 @@ export const isLight = (c: string) => {
 
 export const isDark = (c: string) => {
   return Color(color(c)).isDark();
+};
+
+const LIGHT_HSL_RANGES = [
+  [
+    [42, 105],
+    [70, 100],
+    [75, 100],
+  ],
+  [
+    [140, 185],
+    [70, 100],
+    [75, 100],
+  ],
+  [
+    [40, 120],
+    [70, 100],
+    [70, 100],
+  ],
+  [
+    [40, 110],
+    [90, 100],
+    [0, 100],
+  ],
+  [
+    [150, 185],
+    [90, 100],
+    [0, 100],
+  ],
+];
+
+export const getTextColorForBackground = (backgroundColor: string) => {
+  const whiteTextContrast = Color(color(backgroundColor)).contrast(
+    Color(color("white")),
+  );
+  const darkTextContrast = Color(color(backgroundColor)).contrast(
+    Color(color("text-dark")),
+  );
+  return whiteTextContrast > darkTextContrast
+    ? color("white")
+    : color("text-dark");
 };

@@ -3,17 +3,18 @@ import { Bar } from "@visx/shape";
 import { Group } from "@visx/group";
 import { scaleBand } from "@visx/scale";
 import { PositionScale } from "@visx/shape/lib/types";
-import {
-  Series,
-  SeriesDatum,
-} from "metabase/static-viz/components/XYChart/types";
 import { getY } from "metabase/static-viz/components/XYChart/utils";
+
+import type {
+  DatumAccessor,
+  Series,
+} from "metabase/static-viz/components/XYChart/types";
 
 interface BarSeriesProps {
   series: Series[];
   yScaleLeft: PositionScale | null;
   yScaleRight: PositionScale | null;
-  xAccessor: (datum: SeriesDatum) => number;
+  xAccessor: DatumAccessor;
   bandwidth: number;
 }
 

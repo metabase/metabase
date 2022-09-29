@@ -1,7 +1,6 @@
-import { createThunkAction, fetchData } from "metabase/lib/redux";
-
 import { getIn } from "icepick";
 import _ from "underscore";
+import { createThunkAction, fetchData } from "metabase/lib/redux";
 
 import { getMetadata } from "metabase/selectors/metadata";
 
@@ -313,11 +312,10 @@ export const loadMetadataForQuery = (query, extraDependencies) =>
   loadMetadataForQueries([query], extraDependencies);
 
 export const loadMetadataForQueries =
-  (queries, extraDependencies = []) =>
-  dispatch => {
+  (queries, extraDependencies, options) => dispatch => {
     const dependencies = _.chain(queries)
       .map(q => q.dependentMetadata())
-      .push(...extraDependencies)
+      .push(...(extraDependencies ?? []))
       .flatten()
       .uniq(false, dep => dep.type + dep.id)
       .map(({ type, id, foreignTables }) => {
@@ -326,11 +324,11 @@ export const loadMetadataForQueries =
             foreignTables
               ? Tables.actions.fetchMetadataAndForeignTables
               : Tables.actions.fetchMetadata
-          )({ id });
+          )({ id }, options);
         } else if (type === "field") {
-          return Fields.actions.fetch({ id });
+          return Fields.actions.fetch({ id }, options);
         } else if (type === "schema") {
-          return Schemas.actions.fetchList({ dbId: id });
+          return Schemas.actions.fetchList({ dbId: id }, options);
         } else {
           console.warn(`loadMetadataForQueries: type ${type} not implemented`);
         }

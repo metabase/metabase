@@ -319,7 +319,7 @@ export const adjustBooleans = tree =>
             const [op, _id, opts] = operand;
             const isBooleanField =
               op === "field" && opts?.["base-type"] === "type/Boolean";
-            if (isBooleanField || op === "segment") {
+            if (isBooleanField) {
               return withAST([["=", operand, true], value], operand);
             }
             return [operand, value];

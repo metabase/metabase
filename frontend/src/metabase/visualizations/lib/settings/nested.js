@@ -2,9 +2,8 @@
 import _ from "underscore";
 import { t } from "ttag";
 
-import { getComputedSettings, getSettingsWidgets } from "../settings";
-
 import chartSettingNestedSettings from "metabase/visualizations/components/settings/ChartSettingNestedSettings";
+import { getComputedSettings, getSettingsWidgets } from "../settings";
 
 export function nestedSettings(
   id,

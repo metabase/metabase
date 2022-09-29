@@ -1,10 +1,14 @@
 import React, { useEffect } from "react";
 import { jt, t } from "ttag";
 import { connect } from "react-redux";
-import moment from "moment";
+import moment from "moment-timezone";
 import AdminLayout from "metabase/components/AdminLayout";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
+import { LicenseInput } from "../../components/LicenseInput";
+import { initializeSettings } from "../../settings";
+import { getSettings } from "../../selectors";
+import { TokenStatus, useLicense } from "../../hooks/use-license";
 import {
   LicenseInputTitle,
   Loader,
@@ -12,10 +16,6 @@ import {
   PremiumEmbeddingHeading,
   PremiumEmbeddingLicensePageContent,
 } from "./PremiumEmbeddingLicensePage.styled";
-import { LicenseInput } from "../../components/LicenseInput";
-import { initializeSettings } from "../../settings";
-import { getSettings } from "../../selectors";
-import { TokenStatus, useLicense } from "../../hooks/use-license";
 
 const getDescription = (tokenStatus?: TokenStatus, hasToken?: boolean) => {
   if (!hasToken) {

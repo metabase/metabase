@@ -1,6 +1,6 @@
-import { color } from "metabase/lib/colors";
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import { color } from "metabase/lib/colors";
 
 export const BetweenLayoutContainer = styled.div`
   display: flex;
@@ -19,16 +19,7 @@ export const BetweenLayoutFieldSeparator = styled.div`
   color: ${color("text-medium")};
 `;
 
-interface DefaultPickerContainerProps {
-  limitHeight: boolean;
-}
-
-export const DefaultPickerContainer = styled.div<DefaultPickerContainerProps>`
-  ${props =>
-    props.limitHeight
-      ? css`
-          max-height: 300px;
-          overflow: auto;
-        `
-      : null}
+export const DefaultPickerContainer = styled.div`
+  max-height: 300px;
+  overflow: auto;
 `;

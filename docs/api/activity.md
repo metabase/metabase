@@ -1,15 +1,12 @@
 ---
 title: "Activity"
-summary: "API endpoints for Activity."
+summary: |
+  API endpoints for Activity.
 ---
 
 # Activity
 
 API endpoints for Activity.
-
-  - [GET /api/activity/](#get-apiactivity)
-  - [GET /api/activity/popular_items](#get-apiactivitypopular_items)
-  - [GET /api/activity/recent_views](#get-apiactivityrecent_views)
 
 ## `GET /api/activity/`
 

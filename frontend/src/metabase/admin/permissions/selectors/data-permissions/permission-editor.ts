@@ -8,6 +8,10 @@ import Groups from "metabase/entities/groups";
 import Tables from "metabase/entities/tables";
 
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
+import { Group, GroupsPermissions } from "metabase-types/api";
+import { State } from "metabase-types/store";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import Schema from "metabase-lib/lib/metadata/Schema";
 import {
   getTableEntityId,
   getSchemaEntityId,
@@ -15,6 +19,7 @@ import {
   getPermissionSubject,
 } from "../../utils/data-entity-id";
 
+import { DataRouteParams, RawGroupRouteParams } from "../../types";
 import { buildFieldsPermissions } from "./fields";
 import { buildTablesPermissions } from "./tables";
 import { buildSchemasPermissions } from "./schemas";
@@ -22,11 +27,6 @@ import {
   getDatabasesEditorBreadcrumbs,
   getGroupsDataEditorBreadcrumbs,
 } from "./breadcrumbs";
-import { Group, GroupsPermissions } from "metabase-types/api";
-import Schema from "metabase-lib/lib/metadata/Schema";
-import { DataRouteParams, RawGroupRouteParams } from "../../types";
-import { State } from "metabase-types/store";
-import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { getOrderedGroups } from "./groups";
 
 export const getIsLoadingDatabaseTables = (
@@ -164,7 +164,7 @@ export const getDatabasesPermissionEditor = createSelector(
     if (database && (schemaName != null || hasSingleSchema)) {
       const schema: Schema = hasSingleSchema
         ? database.getSchemas()[0]
-        : database.schema(schemaName);
+        : (database.schema(schemaName) as Schema);
 
       entities = schema
         .getTables()

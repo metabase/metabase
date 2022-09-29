@@ -162,7 +162,7 @@
   (when (or config/is-dev? config/is-test?)
     (load-local-plugin-manifests!)))
 
-(defonce ^:private load!* (delay (load!)))
+(defonce ^:private loaded? (atom false))
 
 (defn load-plugins!
   "Load Metabase plugins. The are JARs shipped as part of Metabase itself, under the `resources/modules` directory (the
@@ -182,4 +182,8 @@
   This function will only perform loading steps the first time it is called — it is safe to call this function more
   than once."
   []
-  @load!*)
+  (when-not @loaded?
+    (locking loaded?
+      (when-not @loaded?
+        (load!)
+        (reset! loaded? true)))))

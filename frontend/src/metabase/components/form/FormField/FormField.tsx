@@ -6,7 +6,7 @@ import {
   FormField as FormFieldType,
   BaseFieldDefinition,
   FormFieldDefinition,
-} from "metabase-types/forms";
+} from "metabase-types/forms/legacy";
 
 import FormFieldView from "./FormFieldView";
 

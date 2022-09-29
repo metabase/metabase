@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
-import { fieldRefForColumn } from "metabase/lib/dataset";
 import { t } from "ttag";
 import _ from "underscore";
+import { fieldRefForColumn } from "metabase/lib/dataset";
 
 import { TYPE, isa } from "metabase/lib/types";
 import {

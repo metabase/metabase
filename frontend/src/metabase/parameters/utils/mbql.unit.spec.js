@@ -1,12 +1,12 @@
-import moment from "moment";
+import moment from "moment-timezone";
 
+import { metadata, PRODUCTS } from "__support__/sample_database_fixture";
 import {
   dateParameterValueToMBQL,
   stringParameterValueToMBQL,
   numberParameterValueToMBQL,
   fieldFilterParameterToMBQLFilter,
 } from "./mbql";
-import { metadata, PRODUCTS } from "__support__/sample_database_fixture";
 
 describe("parameters/utils/mbql", () => {
   describe("dateParameterValueToMBQL", () => {

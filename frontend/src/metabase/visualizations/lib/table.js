@@ -74,7 +74,12 @@ export function getTableCellClickedObject(
   }
 }
 
-export function getTableHeaderClickedObject(data, columnIndex, isPivoted) {
+export function getTableHeaderClickedObject(
+  data,
+  columnIndex,
+  isPivoted,
+  query,
+) {
   const column = data.cols[columnIndex];
   if (isPivoted) {
     // if it's a pivot table, the first column is
@@ -84,7 +89,13 @@ export function getTableHeaderClickedObject(data, columnIndex, isPivoted) {
       return null; // FIXME?
     }
   } else {
-    return { column };
+    return {
+      column,
+      dimension:
+        typeof query?.dimensionForColumn === "function"
+          ? query?.dimensionForColumn(column)
+          : null,
+    };
   }
 }
 

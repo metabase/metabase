@@ -30,6 +30,7 @@
       (update :channels (fn [channels]
                           (for [channel channels]
                             (-> (dissoc channel :id :pulse_id :created_at :updated_at)
+                                (update :entity_id boolean)
                                 (m/dissoc-in [:details :emails])))))))
 ;; create a channel then select its details
 (defn- create-pulse-then-select!
@@ -56,11 +57,11 @@
 
 (deftest retrieve-pulse-test
   (testing "this should cover all the basic Pulse attributes"
-    (tt/with-temp* [Pulse        [{pulse-id :id}               {:name "Lodi Dodi"}]
-                    PulseChannel [{channel-id :id :as channel} {:pulse_id pulse-id
-                                                                :details  {:other  "stuff"
-                                                                           :emails ["foo@bar.com"]}}]
-                    Card         [{card-id :id}                {:name "Test Card"}]]
+    (tt/with-temp* [Pulse        [{pulse-id :id}   {:name "Lodi Dodi"}]
+                    PulseChannel [{channel-id :id} {:pulse_id pulse-id
+                                                    :details  {:other  "stuff"
+                                                               :emails ["foo@bar.com"]}}]
+                    Card         [{card-id :id}    {:name "Test Card"}]]
       (db/insert! PulseCard, :pulse_id pulse-id, :card_id card-id, :position 0)
       (db/insert! PulseChannelRecipient, :pulse_channel_id channel-id, :user_id (mt/user->id :rasta))
       (is (= (merge
@@ -92,6 +93,7 @@
                                                  (dissoc card :id))))
                  (update :channels (fn [channels] (for [channel channels]
                                                     (-> (dissoc channel :id :pulse_id :created_at :updated_at)
+                                                        (update :entity_id boolean)
                                                         (m/dissoc-in [:details :emails])))))
                  mt/derecordize))))))
 
@@ -132,9 +134,10 @@
                    :schedule_hour 4
                    :recipients    [{:email "foo@bar.com"}
                                    (dissoc (user-details :rasta) :is_superuser :is_qbnewb)]})
-           (-> (PulseChannel :pulse_id id)
+           (-> (db/select-one PulseChannel :pulse_id id)
                (hydrate :recipients)
                (dissoc :id :pulse_id :created_at :updated_at)
+               (update :entity_id boolean)
                (m/dissoc-in [:details :emails])
                mt/derecordize)))))
 
@@ -287,14 +290,14 @@
     (testing "automatically archive a Pulse when the last user unsubscribes"
       (testing "one subscriber"
         (do-with-objects
-         (fn [{:keys [archived? user-id pulse-id]}]
+         (fn [{:keys [archived? user-id]}]
            (testing "make the User inactive"
              (is (db/update! User user-id :is_active false)))
            (testing "Pulse should be archived"
              (is (archived?))))))
       (testing "multiple subscribers"
         (do-with-objects
-         (fn [{:keys [archived? user-id pulse-id pulse-channel-id]}]
+         (fn [{:keys [archived? user-id pulse-channel-id]}]
            ;; create a second user + subscription so we can verify that we don't archive the Pulse if a User unsubscribes
            ;; but there is still another subscription.
            (mt/with-temp* [User                  [{user-2-id :id}]
@@ -333,7 +336,7 @@
       (testing "still sent to email addresses\n"
         (testing "emails on the same channel as deleted User\n"
           (do-with-objects
-           (fn [{:keys [archived? user-id pulse-id pulse-channel-id]}]
+           (fn [{:keys [archived? user-id pulse-channel-id]}]
              (db/update! PulseChannel pulse-channel-id :details {:emails ["foo@bar.com"]})
              (testing "make the User inactive"
                (is (db/update! User user-id :is_active false)))
@@ -369,7 +372,7 @@
 
 (defmacro with-pulse-in-collection
   "Execute `body` with a temporary Pulse, in a Collection, containing a single Card."
-  {:style/indent 1}
+  {:style/indent :defn}
   [[db-binding collection-binding pulse-binding card-binding] & body]
   `(do-with-pulse-in-collection
     (fn [~(or db-binding '_) ~(or collection-binding '_) ~(or pulse-binding '_) ~(or card-binding '_)]

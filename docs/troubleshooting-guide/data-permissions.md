@@ -30,13 +30,13 @@ If a person has the wrong level of access to the data that's returned by a quest
 4. Select **Unrestricted** from the **Data access** dropdown.
 5. [Check if the access problem is fixed](#checking-someones-access-to-a-table-or-schema).
 
-**Explanation** 
+**Explanation**
 
 To give a group access to the [native SQL editor][native-query-editing], you must grant that group **Unrestricted** access to the database.
 
 For more information about the different types of database permissions, check out the [section on data access][data-access] in our permissions documentation.
 
-## A user group has the wrong access to a table or schema 
+## A user group has the wrong access to a table or schema
 
 1. Go to **Admin** > **People** and check if the person is in [more than one group with conflicting permissions][group-permissions].
 2. If the person is in multiple groups:
@@ -44,7 +44,7 @@ For more information about the different types of database permissions, check ou
     - Go to **Admin** > **Permissions** and change the **Data access** permission type.
 3. [Check if the access problem is fixed](#checking-someones-access-to-a-table-or-schema).
 
-**Explanation** 
+**Explanation**
 
 If a person is a member of multiple [groups][groups], Metabase will grant the _most permissive_ level of access across all the groups in which they're a member.
 
@@ -83,11 +83,11 @@ If you get an error message that says something like "permission denied to \<you
     - Provide a set of database credentials with the correct permissions.
 5. [Check if the access problem is fixed](#checking-someones-access-to-a-table-or-schema).
 
-**Explanation** 
+**Explanation**
 
-Your database has its own set of permissions that are configured for each person (or application) that logs in. 
+Your database has its own set of permissions that are configured for each person (or application) that logs in.
 
-Database permissions apply at the level of your database connection, _before_ your data and collection permissions are applied in Metabase. 
+Database permissions apply at the level of your database connection, _before_ your data and collection permissions are applied in Metabase.
 
 This means that settings configured on the database side can prevent Metabase from connecting to certain schemas or tables, regardless of what you've set up on the Metabase side.
 
@@ -110,25 +110,25 @@ If you can’t solve your problem using the troubleshooting guides:
 - Search or ask the [Metabase community][discourse].
 - Search for [known bugs or limitations][known-issues].
 
-[admin-permissions]: ../administration-guide/05-setting-permissions.html
-[block-data-permission]: ../administration-guide/data-permissions.html#block-access
-[cant-see-tables]: ./cant-see-tables.html
-[collection-permissions]: ../administration-guide/06-collections.html
-[data-access]: ../administration-guide/data-permissions.html#data-access
-[data-permissions]: ../administration-guide/data-permissions.html
+[admin-permissions]: ../permissions/introduction.md
+[block-data-permission]: ../permissions/data.md#block-access
+[cant-see-tables]: ./cant-see-tables.md
+[collection-permissions]: ../permissions/collections.md
+[data-access]: ../permissions/data.md#data-access
+[data-permissions]: ../permissions/data.md
 [discourse]: https://discourse.metabase.com/
-[groups]: ../administration-guide/04-managing-users.html#groups
-[group-permissions]: ../administration-guide/05-setting-permissions.html#key-points-regarding-permissions
-[known-issues]: ./known-issues.html
-[learn-permissions]: /learn/permissions/index.html
-[native-query-editing]: ../administration-guide/data-permissions.html#native-querying
-[no-self-service]: ../administration-guide/data-permissions.html#no-self-service-access
+[groups]: ../people-and-groups/managing.md#groups
+[group-permissions]: ../permissions/introduction.md#key-points-regarding-permissions
+[known-issues]: ./known-issues.md
+[learn-permissions]: https://www.metabase.com/learn/permissions
+[native-query-editing]: ../permissions/data.md#native-query-editing
+[no-self-service]: ../permissions/data.md#no-self-service-access
 [pricing]: https://www.metabase.com/pricing
-[proxies]: ./proxies.html
-[sql-access]: ./data-permissions#a-user-group-cant-access-the-sql-editor
-[sql-sandboxing]: ./sandboxing.html#is-the-question-written-in-sql
-[table-schema-access]: ./data-permissions#people-have-the-wrong-access-to-a-table-or-schema
-[troubleshooting-data-sandboxing]: ./sandboxing.html
-[troubleshooting-permissions]: ./permissions.html
-[unrestricted]: ../administration-guide/data-permissions.html#unrestricted-access
-[view-edit]: ./cant-view-or-edit.html
+[proxies]: ./proxies.md
+[sql-access]: ./data-permissions.md#a-user-group-cant-access-the-sql-editor
+[sql-sandboxing]: ./sandboxing.md#is-the-question-written-in-sql
+[table-schema-access]: ./data-permissions.md#people-have-the-wrong-access-to-a-table-or-schema
+[troubleshooting-data-sandboxing]: ./sandboxing.md
+[troubleshooting-permissions]: ./permissions.md
+[unrestricted]: ../permissions/data.md#unrestricted-access
+[view-edit]: ./cant-view-or-edit.md

@@ -1,6 +1,5 @@
-import testAcrossTimezones from "__support__/timezones";
-
 import moment from "moment-timezone";
+import testAcrossTimezones from "__support__/timezones";
 
 import fillMissingValuesInDatas from "metabase/visualizations/lib/fill_data";
 

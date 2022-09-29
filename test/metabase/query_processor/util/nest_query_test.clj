@@ -2,7 +2,7 @@
   (:require [clojure.test :refer :all]
             [clojure.walk :as walk]
             [metabase.driver :as driver]
-            [metabase.models.field :refer [Field]]
+            [metabase.models :refer [Card Field]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.util.add-alias-info :as add]
             [metabase.query-processor.util.nest-query :as nest-query]
@@ -214,43 +214,138 @@
                    :limit        1})]
       (mt/with-native-query-testing-context query
         (is (partial= (mt/$ids venues
-                        {:fields       [[:field %id {::add/source-table  ::add/source
-                                                     ::add/source-alias  "ID"
-                                                     ::add/desired-alias "ID"
-                                                     ::add/position      0}]
-                                        [:field "x_2" {:base-type          :type/Float
-                                                       ::add/source-table  ::add/source
-                                                       ::add/source-alias  "x_2"
-                                                       ::add/desired-alias "x_2"
-                                                       ::add/position      1}]]
-                         :source-query {:expressions  {"x" [:*
-                                                            [:field %price {::add/source-table ::add/source
-                                                                            ::add/source-alias "PRICE"}]
-                                                            4]}
-                                        :fields       [[:field %id {::add/source-table  ::add/source
-                                                                    ::add/source-alias  "ID"
-                                                                    ::add/desired-alias "ID"
-                                                                    ::add/position      0}]
-                                                       [:field "x" {:base-type          :type/Float
-                                                                    ::add/source-table  ::add/source
-                                                                    ::add/source-alias  "x"
-                                                                    ::add/desired-alias "x"
-                                                                    ::add/position      1}]
-                                                       [:expression "x" {::add/desired-alias "x_2"
-                                                                         ::add/position      2}]]
-                                        :source-query {:source-table $$venues
-                                                       :expressions  {"x" [:*
-                                                                           [:field %price {::add/source-table $$venues
-                                                                                           ::add/source-alias "PRICE"}]
-                                                                           2]}
-                                                       :fields       [[:field %id {::add/source-table  $$venues
-                                                                                   ::add/source-alias  "ID"
-                                                                                   ::add/desired-alias "ID"
-                                                                                   ::add/position      0}]
-                                                                      [:expression "x" {::add/desired-alias "x"
-                                                                                        ::add/position      1}]]}}
+                        {:fields
+                         [[:field %id #::add{:source-table  ::add/source
+                                             :source-alias  "ID"
+                                             :desired-alias "ID"
+                                             :position      0}]
+                          [:field "x_2" {:base-type          :type/Float
+                                         ::add/source-table  ::add/source
+                                         ::add/source-alias  "x_2"
+                                         ::add/desired-alias "x_2"
+                                         ::add/position      1}]]
+                         :source-query
+                         {:expressions
+                          {"x" [:*
+                                [:field %price #::add{:source-table ::add/source
+                                                      :source-alias "PRICE"}]
+                                4]}
+                          :fields
+                          [[:field %id #::add{:source-table  ::add/source
+                                              :source-alias  "ID"
+                                              :desired-alias "ID"}]
+                           [:field "x" {:base-type          :type/Float
+                                        ::add/source-table  ::add/source
+                                        ::add/source-alias  "x"
+                                        ::add/desired-alias "x"}]
+                           [:expression "x" #::add{:desired-alias "x_2"}]]
+                          :source-query
+                          {:fields
+                           [[:field %id #::add{:source-table  ::add/source
+                                               :source-alias  "ID"
+                                               :desired-alias "ID"}]
+                            [:field "x" {:base-type          :type/Float
+                                         ::add/source-table  ::add/source
+                                         ::add/source-alias  "x"
+                                         ::add/desired-alias "x"}]]
+                           :source-query
+                           {:source-table $$venues
+                            :expressions
+                            {"x" [:*
+                                  [:field %price #::add{:source-table  $$venues
+                                                        :source-alias  "PRICE"
+                                                        :desired-alias "PRICE"}]
+                                  2]}
+                            :fields
+                            [[:field %id #::add{:source-table  $$venues
+                                                :source-alias  "ID"
+                                                :desired-alias "ID"}]
+                             [:field %name #::add{:source-table  $$venues
+                                                  :source-alias  "NAME"
+                                                  :desired-alias "NAME"}]
+                             [:field %category_id #::add{:source-table  $$venues
+                                                         :source-alias  "CATEGORY_ID"
+                                                         :desired-alias "CATEGORY_ID"}]
+                             [:field %latitude #::add{:source-table  $$venues
+                                                      :source-alias  "LATITUDE"
+                                                      :desired-alias "LATITUDE"}]
+                             [:field %longitude #::add{:source-table  $$venues
+                                                       :source-alias  "LONGITUDE"
+                                                       :desired-alias "LONGITUDE"}]
+                             [:field %price #::add{:source-table  $$venues
+                                                   :source-alias  "PRICE"
+                                                   :desired-alias "PRICE"}]
+                             [:expression "x" #::add{:desired-alias "x"}]]}}}
                          :limit        1})
-                      (nest-expressions query)))))))
+                      (nest-expressions query))))))
+  (testing "Ignores source-query from joins (#20809)"
+    (let [query {:source-table 2,
+                 :expressions  {"CC" [:+ 1 1]},
+                 :fields       [[:field 33 {:join-alias "Question 4918",}]
+                                [:field "count" {:join-alias "Question 4918"}]]
+                 :joins        [{:alias           "Question 4918",
+                                 :strategy        :left-join,
+                                 :fields          [[:field 33 {:join-alias "Question 4918"}]
+                                          [:field
+                                           "count"
+                                           {:join-alias "Question 4918"}]]
+                                 :condition       [:=
+                                             [:field 5 nil]
+                                                   [:field 33 {:join-alias "Question 4918",}]],
+                                 :source-card-id  4918,
+                                 :source-query    {:source-table 4,
+                                                   ;; nested query has filter values with join-alias that should not
+                                                   ;; be selected
+                                                   :filter       [:=
+                                                                  [:field 26 {:join-alias "PRODUCTS__via__PRODUCT_ID"}]
+                                                                  [:value "Doohickey" {}]],
+                                                   :aggregation  [[:aggregation-options
+                                                                  [:count]
+                                                                   {:name "count"}]],
+                                                   :breakout     [[:field 33 nil]],
+                                                   :limit        2,
+                                                   :order-by     [[:asc
+                                                               [:field 33 nil]]],
+                                                   ;; nested query has an implicit join with conditions that should
+                                                   ;; not be selected
+                                                   :joins        [{:alias        "PRODUCTS__via__PRODUCT_ID",
+                                                                   :strategy     :left-join,
+                                                                   :condition    [:=
+                                                                                  [:field 33 nil]
+                                                                                  [:field
+                                                                                   30
+                                                                                   {:join-alias "PRODUCTS__via__PRODUCT_ID"}]]
+                                                                   :source-table 1,
+                                                                   :fk-field-id  33}]},
+                                 :source-metadata [{:field_ref [:field 33 nil]}
+                                                   {:field_ref [:aggregation 0]}]}]}]
+      (is (= [[:field 33 {:join-alias "Question 4918"}]
+              [:field "count" {:join-alias "Question 4918"}]]
+             (#'nest-query/joined-fields query))))
+    (mt/dataset sample-dataset
+      (mt/with-temp* [Card [base {:dataset_query
+                                  (mt/mbql-query
+                                   reviews
+                                   {:breakout [$product_id],
+                                    :aggregation [[:count]],
+                                    ;; filter on an implicit join
+                                    :filter [:= $product_id->products.category "Doohickey"]})}]]
+        ;; the result returned is not important, just important that the query is valid and completes
+        (is (vector?
+             (mt/rows
+              (qp/process-query
+               (mt/mbql-query
+                orders
+                {:joins [{:source-table (str "card__" (:id base)),
+                          :alias (str "Question " (:id base)),
+                          :condition [:=
+                                      $product_id
+                                      [:field
+                                       %reviews.product_id
+                                       {:join-alias (str "Question " (:id base))}]],
+                          :fields :all}],
+                 :expressions {"CC" [:+ 1 1]}
+                 :limit 2})))))))))
 
 (deftest nest-expressions-with-joins-test
   (testing "If there are any `:joins`, those need to be nested into the `:source-query` as well."

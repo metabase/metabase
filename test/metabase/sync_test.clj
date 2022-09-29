@@ -226,7 +226,7 @@
                                    :semantic_type nil
                                    :has_field_values :auto-list)
                             (field:movie-title)]})
-           (table-details (Table (:id table)))))))
+           (table-details (db/select-one Table :id (:id table)))))))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !!                                                                                                               !!

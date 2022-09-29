@@ -1,3 +1,4 @@
+import type { DatetimeUnit } from "metabase-types/api/query";
 import { DatabaseId } from "./database";
 import { DownloadPermission } from "./permissions";
 
@@ -5,6 +6,8 @@ export interface DatasetColumn {
   display_name: string;
   source: string;
   name: string;
+  remapped_to_column?: DatasetColumn;
+  unit?: DatetimeUnit;
 }
 
 export interface DatasetData {

@@ -12,6 +12,8 @@ import Modal from "metabase/components/Modal";
 import { ALERT_TYPE_ROWS } from "metabase-lib/lib/Alert";
 
 const ALLOWED_VISUALIZATION_PROPS = [
+  // Table
+  "isShowingDetailsOnlyColumns",
   // Table Interactive
   "hasMetadataPopovers",
   "tableHeaderHeight",

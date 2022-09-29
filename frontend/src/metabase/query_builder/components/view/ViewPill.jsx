@@ -1,9 +1,9 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
+import cx from "classnames";
 import Icon from "metabase/components/Icon";
 import { color as c, alpha } from "metabase/lib/colors";
-import cx from "classnames";
 
 export default function ViewPill({
   className,

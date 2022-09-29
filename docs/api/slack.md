@@ -1,14 +1,12 @@
 ---
 title: "Slack"
-summary: "/api/slack endpoints."
+summary: |
+  /api/slack endpoints.
 ---
 
 # Slack
 
 /api/slack endpoints.
-
-  - [GET /api/slack/manifest](#get-apislackmanifest)
-  - [PUT /api/slack/settings](#put-apislacksettings)
 
 ## `GET /api/slack/manifest`
 

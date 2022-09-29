@@ -1,13 +1,12 @@
 ---
 title: "Tiles"
-summary: "`/api/tiles` endpoints."
+summary: |
+  `/api/tiles` endpoints.
 ---
 
 # Tiles
 
 `/api/tiles` endpoints.
-
-  - [GET /api/tiles/:zoom/:x/:y/:lat-field/:lon-field](#get-apitileszoomxylat-fieldlon-field)
 
 ## `GET /api/tiles/:zoom/:x/:y/:lat-field/:lon-field`
 

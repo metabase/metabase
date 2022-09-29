@@ -1,13 +1,12 @@
 ---
 title: "LDAP"
-summary: "/api/ldap endpoints."
+summary: |
+  /api/ldap endpoints.
 ---
 
 # LDAP
 
 /api/ldap endpoints.
-
-  - [PUT /api/ldap/settings](#put-apildapsettings)
 
 ## `PUT /api/ldap/settings`
 

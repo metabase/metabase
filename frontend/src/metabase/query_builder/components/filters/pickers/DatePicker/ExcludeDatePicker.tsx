@@ -1,8 +1,13 @@
 import React from "react";
 import { t } from "ttag";
-import moment from "moment";
+import moment from "moment-timezone";
 import _ from "underscore";
 
+import { Field } from "metabase-types/types/Field";
+import { color } from "metabase/lib/colors";
+import { EXCLUDE_OPTIONS } from "metabase/lib/query_time";
+import Filter from "metabase-lib/lib/queries/structured/Filter";
+import { FieldDimension } from "metabase-lib/lib/Dimension";
 import {
   ExcludeCheckBox,
   ExcludeColumn,
@@ -11,12 +16,6 @@ import {
   OptionButton,
   Separator,
 } from "./ExcludeDatePicker.styled";
-
-import { FieldDimension } from "metabase-lib/lib/Dimension";
-import { Field } from "metabase-types/types/Field";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
-import { color } from "metabase/lib/colors";
-import { EXCLUDE_OPTIONS } from "metabase/lib/query_time";
 
 function getDateTimeField(field: Field, bucketing?: string) {
   const dimension =
@@ -112,7 +111,7 @@ export default function ExcludeDatePicker({
 
   if (!temporalUnit || operator === "is-null" || operator === "not-null") {
     return (
-      <div className={className}>
+      <div className={className} data-testid="exclude-date-picker">
         {EXCLUDE_OPERATORS.map(({ displayName, init }) => (
           <OptionButton
             key={displayName}

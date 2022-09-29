@@ -21,11 +21,9 @@
             [monger.core :as mg]
             [monger.db :as mdb]
             monger.json
-            [schema.core :as s]
             [taoensso.nippy :as nippy])
   (:import com.mongodb.DB
            [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
-           org.bson.BsonUndefined
            org.bson.types.ObjectId))
 
 ;; See http://clojuremongodb.info/articles/integration.html Loading this namespace will load appropriate Monger
@@ -138,13 +136,13 @@
                                  (find-nested-fields field-value nested-fields)
                                  nested-fields)))))
 
-;; TODO - use `driver.common/class->base-type` to implement this functionality
-(s/defn ^:private ^Class most-common-object-type :- (s/maybe Class)
+;; TODO - use [[metabase.driver.common/class->base-type]] to implement this functionality
+(defn- most-common-object-type
   "Given a sequence of tuples like [Class <number-of-occurances>] return the Class with the highest number of
   occurances. The basic idea here is to take a sample of values for a Field and then determine the most common type
   for its values, and use that as the Metabase base type. For example if we have a Field called `zip_code` and it's a
   number 90% of the time and a string the other 10%, we'll just call it a `:type/Number`."
-  [field-types :- [(s/pair (s/maybe Class) "Class", s/Int "Int")]]
+  ^Class [field-types]
   (->> field-types
        (sort-by second)
        last
@@ -158,14 +156,14 @@
 (defn- describe-table-field [field-kw field-info idx]
   (let [most-common-object-type  (most-common-object-type (vec (:types field-info)))
         [nested-fields idx-next]
-          (reduce
-           (fn [[nested-fields idx] nested-field]
-             (let [[nested-field idx-next] (describe-table-field nested-field
-                                                                 (nested-field (:nested-fields field-info))
-                                                                 idx)]
-               [(conj nested-fields nested-field) idx-next]))
-           [#{} (inc idx)]
-           (keys (:nested-fields field-info)))]
+        (reduce
+         (fn [[nested-fields idx] nested-field]
+           (let [[nested-field idx-next] (describe-table-field nested-field
+                                                               (nested-field (:nested-fields field-info))
+                                                               idx)]
+             [(conj nested-fields nested-field) idx-next]))
+         [#{} (inc idx)]
+         (keys (:nested-fields field-info)))]
     [(cond-> {:name              (name field-kw)
               :database-type     (some-> most-common-object-type .getName)
               :base-type         (class->base-type most-common-object-type)
@@ -223,12 +221,20 @@
                  :native-parameters]]
   (defmethod driver/supports? [:mongo feature] [_ _] true))
 
+(defn- db-major-version
+  [db]
+  (some-> (get-in db [:details :version])
+          (str/split #"\.")
+          first
+          Integer/parseInt))
+
 (defmethod driver/database-supports? [:mongo :expressions] [_ _ db]
-  (let [version (some-> (get-in db [:details :version])
-                        (str/split #"\.")
-                        first
-                        Integer/parseInt)]
-    (and (some? version) (<= 4 version))))
+  (let [version (db-major-version db)]
+    (and (some? version) (>= version 4))))
+
+(defmethod driver/database-supports? [:mongo :date-arithmetics] [_ _ db]
+  (let [version (db-major-version db)]
+    (and (some? version) (>= version 5))))
 
 (defmethod driver/mbql->native :mongo
   [_ query]
@@ -288,9 +294,9 @@
   :sunday)
 
 (comment
-  (require '[metabase.driver.util :as driver.u]
-           '[monger.credentials :as mcred]
-           '[clojure.java.io :as io])
+  (require '[clojure.java.io :as io]
+           '[metabase.driver.util :as driver.u]
+           '[monger.credentials :as mcred])
   (import javax.net.ssl.SSLSocketFactory)
 
   ;; The following forms help experimenting with the behaviour of Mongo

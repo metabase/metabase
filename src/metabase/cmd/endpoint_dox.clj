@@ -99,32 +99,6 @@
       desc
       (str desc "\n\n"))))
 
-;;;; API endpoint page route table of contents
-
-(defn- anchor-link
-  "Converts an endpoint string to an anchor link, like [GET /api/alert](#get-apialert),
-  for use in tables of contents for endpoint routes."
-  [ep-name]
-  (let [al (-> (str "#" (str/lower-case ep-name))
-               (str/replace #"[/:%]" "")
-               (str/replace " " "-")
-               (#(str "(" % ")")))]
-    (str "[" ep-name "]" al)))
-
-(defn- toc-links
-  "Creates a list of links to endpoints in the relevant namespace."
-  [endpoint]
-  (-> (:endpoint-str endpoint)
-      (str/replace #"[#+`]" "")
-      str/trim
-      anchor-link
-      (#(str "  - " %))))
-
-(defn route-toc
-  "Generates a table of contents for routes in a page."
-  [ep-data]
-  (str (str/join "\n" (map toc-links ep-data)) "\n\n"))
-
 ;;;; API endpoints
 
 (defn- endpoint-str
@@ -141,7 +115,7 @@
   [endpoint]
   (assoc endpoint
          :endpoint-str (endpoint-str endpoint)
-         :ns-name  (endpoint-ns-name endpoint)))
+         :ns-name (endpoint-ns-name endpoint)))
 
 (defn- api-namespaces []
   (for [ns-symb (ns.find/find-namespaces (classpath/system-classpath))
@@ -167,7 +141,12 @@
 (defn- paid?
   "Is the endpoint a paid feature?"
   [ep-data]
-  (str/includes? (:endpoint-str (first ep-data)) "/api/ee"))
+  (or (str/includes? (:endpoint-str (first ep-data)) "/api/ee")
+      ;; some ee endpoints are inconsistent in naming, see #22687
+      (str/includes? (:endpoint-str (first ep-data)) "/api/mt")
+      (= 'metabase-enterprise.sandbox.api.table (ns-name (:ns (first ep-data))))
+      (str/includes? (:endpoint-str (first ep-data)) "/auth/sso")
+      (str/includes? (:endpoint-str (first ep-data)) "/api/moderation-review")))
 
 (defn endpoint-footer
   "Adds a footer with a link back to the API index."
@@ -185,7 +164,6 @@
          (endpoint-page-frontmatter ep ep-data)
          (endpoint-page-title ep)
          (endpoint-page-description ep ep-data)
-         (route-toc ep-data)
          (endpoint-docs ep-data)
          (endpoint-footer ep-data)))
 

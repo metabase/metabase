@@ -99,6 +99,18 @@
   [_driver]
   :%now)
 
+(def temporal-extract-unit->date-unit
+  "Mapping from the unit we used in `extract` function to the unit we used for `date` function."
+  {:second      :second-of-minute
+   :minute      :minute-of-hour
+   :hour        :hour-of-day
+   :day-of-week :day-of-week
+   :day         :day-of-month
+   :week        :week-of-year
+   :month       :month-of-year
+   :quarter     :quarter-of-year
+   :year        :year-of-era})
+
 ;; TODO - rename this to `temporal-bucket` or something that better describes what it actually does
 (defmulti date
   "Return a HoneySQL form for truncating a date or timestamp field or value to a given resolution, or extracting a date
@@ -109,12 +121,17 @@
 
 ;; default implementation for `:default` bucketing returns expression as-is
 (defmethod date [:sql :default] [_ _ expr] expr)
-
 ;; We have to roll our own to account for arbitrary start of week
-(defmethod date [:sql :week-of-year]
-  [driver _ expr]
+
+(defmethod date [:sql :second-of-minute] [_driver _ expr] (hx/second expr))
+(defmethod date [:sql :minute-of-hour]   [_driver _ expr] (hx/minute expr))
+(defmethod date [:sql :hour-of-day]      [_driver _ expr] (hx/hour expr))
+(defmethod date [:sql :week-of-year]     [driver _ expr]
   ;; Some DBs truncate when doing integer division, therefore force float arithmetics
   (->honeysql driver [:ceil (hx// (date driver :day-of-year (date driver :week expr)) 7.0)]))
+(defmethod date [:sql :month-of-year]    [_driver _ expr] (hx/month expr))
+(defmethod date [:sql :quarter-of-year]  [_driver _ expr] (hx/quarter expr))
+(defmethod date [:sql :year-of-era]      [_driver _ expr] (hx/year expr))
 
 (defmulti add-interval-honeysql-form
   "Return a HoneySQL form that performs represents addition of some temporal interval to the original `hsql-form`.
@@ -518,7 +535,7 @@
 (defmethod ->honeysql [:sql :case]
   [driver [_ cases options]]
   (->> (concat cases
-               (when (:default options)
+               (when (some? (:default options))
                  [[:else (:default options)]]))
        (apply concat)
        (mapv (partial ->honeysql driver))
@@ -569,6 +586,17 @@
                       (current-datetime-honeysql-form driver)
                       (add-interval-honeysql-form driver (current-datetime-honeysql-form driver) amount unit))))
 
+(defmethod ->honeysql [:sql :temporal-extract]
+  [driver [_ arg unit]]
+  (date driver (temporal-extract-unit->date-unit unit) (->honeysql driver arg)))
+
+(defmethod ->honeysql [:sql :date-add]
+  [driver [_ arg amount unit]]
+  (add-interval-honeysql-form driver (->honeysql driver arg) amount unit))
+
+(defmethod ->honeysql [:sql :date-subtract]
+  [driver [_ arg amount unit]]
+  (add-interval-honeysql-form driver (->honeysql driver arg) (- amount) unit))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Field Aliases (AS Forms)                                            |
@@ -621,19 +649,24 @@
 
 (defn rewrite-fields-to-force-using-column-aliases
   "Rewrite `:field` clauses to force them to use the column alias regardless of where they appear."
-  [form]
-  (mbql.u/replace form
-    [:field id-or-name opts]
-    [:field id-or-name (-> opts
-                           (assoc ::add/source-alias        (::add/desired-alias opts)
-                                  ::add/source-table        ::add/none
-                                  ;; sort of a HACK but this key will tell the SQL QP not to apply casting here either.
-                                  ::nest-query/outer-select true
-                                  ;; used to indicate that this is a forced alias
-                                  ::forced-alias            true)
-                           ;; don't want to do temporal bucketing or binning inside the order by or breakout either.
-                           ;; That happens inside the `SELECT`
-                           (dissoc :temporal-unit :binning))]))
+  ([form]
+   (rewrite-fields-to-force-using-column-aliases form {:is-breakout false}))
+  ([form {is-breakout :is-breakout}]
+   (mbql.u/replace form
+     [:field id-or-name opts]
+     [:field id-or-name (cond-> opts
+                          true
+                          (assoc ::add/source-alias        (::add/desired-alias opts)
+                                 ::add/source-table        ::add/none
+                                 ;; sort of a HACK but this key will tell the SQL QP not to apply casting here either.
+                                 ::nest-query/outer-select true
+                                 ;; used to indicate that this is a forced alias
+                                 ::forced-alias            true)
+                          ;; don't want to do temporal bucketing or binning inside the order by only.
+                          ;; That happens inside the `SELECT`
+                          ;; (#22831) however, we do want it in breakout
+                          (not is-breakout)
+                          (dissoc :temporal-unit :binning))])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Clause Handlers                                                 |
@@ -849,7 +882,7 @@
 
 ;;; -------------------------------------------------- source-table --------------------------------------------------
 
-(defmethod ->honeysql [:sql (class Table)]
+(defmethod ->honeysql [:sql Table]
   [driver table]
   (let [{table-name :name, schema :schema} table]
     (->honeysql driver (hx/identifier :table schema table-name))))
@@ -998,7 +1031,7 @@
   prefix-field-alias])
 
 ;; deprecated, but we'll keep it here for now for backwards compatibility.
-(defmethod ->honeysql [:sql (type Field)]
+(defmethod ->honeysql [:sql Field]
   [driver field]
   (deprecated/log-deprecation-warning driver "->honeysql [:sql (class Field)]" "0.42.0")
   (->honeysql driver [:field (:id field) nil]))

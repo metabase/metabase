@@ -1,11 +1,11 @@
 import React, { useCallback } from "react";
 import { t } from "ttag";
-import { Moment } from "moment";
-import Question from "metabase-lib/lib/Question";
+import { Moment } from "moment-timezone";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import TimelinePanel from "metabase/timelines/questions/containers/TimelinePanel";
 import { Timeline, TimelineEvent } from "metabase-types/api";
+import Question from "metabase-lib/lib/Question";
 
 export interface TimelineSidebarProps {
   question: Question;

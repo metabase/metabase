@@ -18,7 +18,7 @@ To complete any build of the Metabase code, you'll need to install the following
 
 1. [Clojure (https://clojure.org)](https://clojure.org/guides/getting_started) - install the latest release by following the guide depending on your OS
 
-2. [Java Development Kit JDK (https://adoptopenjdk.net/releases.html)](https://adoptopenjdk.net/releases.html) - you need to install JDK 11 ([more info on Java versions](../operations-guide/java-versions.md))
+2. [Java Development Kit JDK (https://adoptopenjdk.net/releases.html)](https://adoptopenjdk.net/releases.html) - you need to install JDK 11 ([more info on Java versions](../installation-and-operation/java-versions.md))
 
 3. [Node.js (http://nodejs.org/)](http://nodejs.org/) - latest LTS release
 
@@ -147,7 +147,7 @@ The “official” branch of Metabase is called `master`, and other feature deve
 If you're having trouble with this step, make sure you are using the LTS version of [Node.js (http://nodejs.org/)](http://nodejs.org/).
 
 {:start="11"}
-11. In your web browser of choice, navigate to [localhost:3000](http://localhost:3000), where you should see Metabase!
+11. In your web browser of choice, navigate to `http://localhost:3000`, where you should see Metabase!
      
    This is the local “server” on your computer, and 3000 is the “port” that Metabase is running on. You can have multiple different apps running on different ports on your own computer. Note that if you share any URLs with others that begin with `localhost`, they won’t be able to access them because your computer by default isn’t open up to the whole world, for security.    
 

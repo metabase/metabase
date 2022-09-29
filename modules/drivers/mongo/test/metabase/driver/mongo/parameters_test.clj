@@ -7,6 +7,7 @@
             [java-time :as t]
             [metabase.driver.common.parameters :as params]
             [metabase.driver.mongo.parameters :as mongo.params]
+            [metabase.models :refer [NativeQuerySnippet]]
             [metabase.query-processor :as qp]
             [metabase.test :as mt])
   (:import com.fasterxml.jackson.core.JsonGenerator))
@@ -219,6 +220,11 @@
                 (substitute {:price (field-filter "price" :type/Integer :number/!= [1 2])}
                             ["[{$match: " (param :price) "}]"]))))))))
 
+(deftest ^:parallel substitute-native-query-snippets-test
+  (testing "Native query snippet substitution"
+    (is (= (strip (to-bson [{:$match {"price" {:$gt 2}}}]))
+           (strip (substitute {"snippet: high price" (params/->ReferencedQuerySnippet 123 (to-bson {"price" {:$gt 2}}))}
+                              ["[{$match: " (param "snippet: high price") "}]"]))))))
 (defn- json-raw
   "Wrap a string so it will be spliced directly into resulting JSON as-is. Analogous to HoneySQL `raw`."
   [^String s]
@@ -381,9 +387,29 @@
                    (into #{} (map second)
                          (run-query! :string/=))))
             (is (= #{}
-                     (set/intersection
-                      #{"bob" "tupac"}
-                      ;; most of these are nil as most records don't have a username. not equal is a bit ambiguous in
-                      ;; mongo. maybe they might want present but not equal semantics
-                      (into #{} (map second)
-                            (run-query! :string/!=)))))))))))
+                    (set/intersection
+                     #{"bob" "tupac"}
+                     ;; most of these are nil as most records don't have a username. not equal is a bit ambiguous in
+                     ;; mongo. maybe they might want present but not equal semantics
+                     (into #{} (map second)
+                           (run-query! :string/!=)))))))))))
+
+(deftest e2e-snippet-test
+  (mt/test-driver :mongo
+    (is (= [[1 "African"]
+            [2 "American"]
+            [3 "Artisan"]]
+           (mt/with-temp NativeQuerySnippet [snippet {:name    "first 3 checkins"
+                                                      :content (to-bson {:_id {:$in [1 2 3]}})}]
+             (mt/rows
+               (qp/process-query
+                 (mt/query categories
+                           {:type       :native
+                            :native     {:query         (json/generate-string [{:$match (json-raw "{{snippet: first 3 checkins}}")}])
+                                         :collection    "categories"
+                                         :template-tags {"snippet: first 3 checkins" {:name         "snippet: first 3 checkins"
+                                                                                      :display-name "Snippet: First 3 checkins"
+                                                                                      :type         :snippet
+                                                                                      :snippet-name "first 3 checkins"
+                                                                                      :snippet-id   (:id snippet)}}}
+                            :parameters []}))))))))

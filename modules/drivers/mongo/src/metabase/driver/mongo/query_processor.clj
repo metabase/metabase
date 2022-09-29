@@ -19,7 +19,10 @@
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
-            [monger.operators :refer :all]
+            [monger.operators :refer [$add $addToSet $and $avg $cond $dayOfMonth $dayOfWeek $dayOfYear $divide $eq
+                                      $group $gt $gte $hour $limit $lt $lte $match $max $min $minute $mod $month
+                                      $multiply $ne $not $or $project $regex $second $size $skip $sort $strcasecmp $subtract
+                                      $sum $toLower $year]]
             [schema.core :as s])
   (:import org.bson.types.ObjectId))
 
@@ -102,7 +105,7 @@
           :in   `(let [~field ~(keyword (str "$$" (name field)))]
                    ~@body)}})
 
-(defmethod ->lvalue (class Field)
+(defmethod ->lvalue Field
   [field]
   (field->name field \.))
 
@@ -118,18 +121,18 @@
   [[_ expression-name]]
   (->rvalue (mbql.u/expression-with-name (:query *query*) expression-name)))
 
-(defmethod ->rvalue (class Field)
+(defmethod ->rvalue Field
   [{coercion :coercion_strategy, :as field}]
   (let [field-name (str \$ (field->name field "."))]
     (cond
       (isa? coercion :Coercion/UNIXMicroSeconds->DateTime)
-      {:$dateFromParts {:millisecond {$divide [field-name 1000]}, :year 1970}}
+      {:$dateFromParts {:millisecond {$divide [field-name 1000]}, :year 1970, :timezone "UTC"}}
 
       (isa? coercion :Coercion/UNIXMilliSeconds->DateTime)
-      {:$dateFromParts {:millisecond field-name, :year 1970}}
+      {:$dateFromParts {:millisecond field-name, :year 1970, :timezone "UTC"}}
 
       (isa? coercion :Coercion/UNIXSeconds->DateTime)
-      {:$dateFromParts {:second field-name, :year 1970}}
+      {:$dateFromParts {:second field-name, :year 1970, :timezone "UTC"}}
 
       (isa? coercion :Coercion/YYYYMMDDHHMMSSString->Temporal)
       {"$dateFromString" {:dateString field-name
@@ -181,11 +184,13 @@
                           (* 24 60 60 1000)]}]})
 
 (defn- truncate-to-resolution [column resolution]
-  (mongo-let [parts {:$dateToParts {:date column}}]
-    {:$dateFromParts (into {} (for [part (concat (take-while (partial not= resolution)
-                                                             [:year :month :day :hour :minute :second :millisecond])
-                                                 [resolution])]
-                                [part (str (name parts) \. (name part))]))}))
+  (mongo-let [parts {:$dateToParts {:timezone (qp.timezone/results-timezone-id)
+                                    :date column}}]
+    {:$dateFromParts (into {:timezone (qp.timezone/results-timezone-id)}
+                           (for [part (concat (take-while (partial not= resolution)
+                                                          [:year :month :day :hour :minute :second :millisecond])
+                                              [resolution])]
+                             [part (str (name parts) \. (name part))]))}))
 
 (defn- with-rvalue-temporal-bucketing
   [field unit]
@@ -195,25 +200,26 @@
       (letfn [(truncate [unit]
                 (truncate-to-resolution column unit))]
         (case unit
-          :default        column
-          :minute         (truncate :minute)
-          :minute-of-hour {$minute column}
-          :hour           (truncate :hour)
-          :hour-of-day    {$hour column}
-          :day            (truncate :day)
-          :day-of-week    (day-of-week column)
-          :day-of-month   {$dayOfMonth column}
-          :day-of-year    {$dayOfYear column}
-          :week           (truncate-to-resolution (week column) :day)
-          :week-of-year   {:$ceil {$divide [{$dayOfYear (week column)}
-                                            7.0]}}
-          :month          (truncate :month)
-          :month-of-year  {$month column}
+          :default          column
+          :second-of-minute {$second column}
+          :minute           (truncate :minute)
+          :minute-of-hour   {$minute column}
+          :hour             (truncate :hour)
+          :hour-of-day      {$hour column}
+          :day              (truncate :day)
+          :day-of-week      (day-of-week column)
+          :day-of-month     {$dayOfMonth column}
+          :day-of-year      {$dayOfYear column}
+          :week             (truncate-to-resolution (week column) :day)
+          :week-of-year     {:$ceil {$divide [{$dayOfYear (week column)}
+                                              7.0]}}
+          :month            (truncate :month)
+          :month-of-year    {$month column}
           ;; For quarter we'll just subtract enough days from the current date to put it in the correct month and
           ;; stringify it as yyyy-MM Subtracting (($dayOfYear(column) % 91) - 3) days will put you in correct month.
           ;; Trust me.
           :quarter
-          (mongo-let [parts {:$dateToParts {:date column}}]
+          (mongo-let [#_:clj-kondo/ignore parts {:$dateToParts {:date column}}]
             {:$dateFromParts {:year  :$$parts.year
                               :month {$subtract [:$$parts.month
                                                  {$mod [{$add [:$$parts.month 2]}
@@ -228,7 +234,10 @@
                       3]})
 
           :year
-          (truncate :year))))))
+          (truncate :year)
+
+          :year-of-era
+          {$year column})))))
 
 (defmethod ->rvalue :field
   [[_ id-or-name {:keys [temporal-unit]}]]
@@ -365,6 +374,20 @@
 (defmethod ->rvalue :concat    [[_ & args]] {"$concat" (mapv ->rvalue args)})
 (defmethod ->rvalue :substring [[_ & args]] {"$substrCP" (mapv ->rvalue args)})
 
+(def ^:private temporal-extract-unit->date-unit
+  {:second      :second-of-minute
+   :minute      :minute-of-hour
+   :hour        :hour-of-day
+   :day-of-week :day-of-week
+   :day         :day-of-month
+   :week        :week-of-year
+   :month       :month-of-year
+   :quarter     :quarter-of-year
+   :year        :year-of-era})
+
+(defmethod ->rvalue :temporal-extract [[_ inp unit]]
+  (with-rvalue-temporal-bucketing (->rvalue inp) (temporal-extract-unit->date-unit unit)))
+
 ;;; Intervals are not first class Mongo citizens, so they cannot be translated on their own.
 ;;; The only thing we can do with them is adding to or subtracting from a date valued expression.
 ;;; Also, date arithmetic with intervals was first implemented in version 5. (Before that only
@@ -431,6 +454,17 @@
 (defmethod ->rvalue :/ [[_ & args]] {"$divide" (mapv ->rvalue args)})
 
 (defmethod ->rvalue :coalesce [[_ & args]] {"$ifNull" (mapv ->rvalue args)})
+
+(defmethod ->rvalue :date-add        [[_ inp amount unit]] (do
+                                                             (check-date-operations-supported)
+                                                             {"$dateAdd" {:startDate (->rvalue inp)
+                                                                          :unit      unit
+                                                                          :amount    amount}}))
+(defmethod ->rvalue :date-subtract   [[_ inp amount unit]] (do
+                                                             (check-date-operations-supported)
+                                                             {"$dateSubtract" {:startDate (->rvalue inp)
+                                                                               :unit      unit
+                                                                               :amount    amount}}))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               CLAUSE APPLICATION                                               |
@@ -688,14 +722,6 @@
     [{$group (into (ordered-map/ordered-map "_id" id) group-ags)}
      (when (not-empty post-ags)
        {:$addFields (into (ordered-map/ordered-map) post-ags)})]))
-
-(defn- ordered-map-assoc-in [m ks v]
-  (cond
-    (= (count ks) 1)
-    (assoc (ordered-map/ordered-map m) (first ks) v)
-
-    (pos? (count ks))
-    (update (ordered-map/ordered-map m) (first ks) ordered-map-assoc-in (rest ks) v)))
 
 (defn- projection-group-map [fields]
   (reduce

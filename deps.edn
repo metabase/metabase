@@ -15,6 +15,7 @@
                                                            org.bouncycastle/bcprov-jdk15on]}
   buddy/buddy-sign                          {:mvn/version "3.4.333"}            ; JSON Web Tokens; High-Level message signing library
   cheshire/cheshire                         {:mvn/version "5.10.2"}             ; fast JSON encoding (used by Ring JSON middleware)
+  clj-commons/iapetos                       {:mvn/version "0.1.12"}             ; prometheus metrics
   clj-http/clj-http                         {:mvn/version "3.12.3"              ; HTTP client
                                              :exclusions  [commons-codec/commons-codec
                                                            commons-io/commons-io
@@ -24,12 +25,6 @@
                                                            org.quartz-scheduler/quartz]}
   colorize/colorize                         {:mvn/version "0.1.1"               ; string output with ANSI color codes (for logging)
                                              :exclusions  [org.clojure/clojure]}
-  com.cemerick/friend                       {:mvn/version "0.2.3"               ; auth library
-                                             :exclusions  [commons-codec/commons-codec
-                                                           net.sourceforge.nekohtml/nekohtml
-                                                           org.apache.httpcomponents/httpclient
-                                                           ring/ring-core
-                                                           slingshot/slingshot]}
   com.clearspring.analytics/stream          {:mvn/version "2.9.8"               ; Various sketching algorithms
                                              :exclusions  [it.unimi.dsi/fastutil
                                                            org.slf4j/slf4j-api]}
@@ -67,6 +62,8 @@
                                                            org.flatland/ordered
                                                            org.yaml/snakeyaml]}
   io.github.resilience4j/resilience4j-retry {:mvn/version "1.7.1"}              ; Support for retrying operations
+  io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
+  io.prometheus/simpleclient_jetty          {:mvn/version "0.16.0"}             ; prometheus jetty collector
   joda-time/joda-time                       {:mvn/version "2.10.13"}
   kixi/stats                                {:mvn/version "0.4.4"               ; Various statistic measures implemented as transducers
                                              :exclusions  [org.clojure/data.avl]}
@@ -84,19 +81,20 @@
                                                            org.slf4j/slf4j-api]}
   net.sf.cssbox/cssbox                      {:mvn/version "5.0.0"               ; HTML / CSS rendering
                                              :exclusions  [org.slf4j/slf4j-api]}
+  net.thisptr/jackson-jq                    {:mvn/version "1.0.0-preview.20210928"} ; Java implementation of the JQ json query language
   org.apache.commons/commons-compress       {:mvn/version "1.21"}               ; compression utils
   org.apache.commons/commons-lang3          {:mvn/version "3.12.0"}             ; helper methods for working with java.lang stuff
-  org.apache.logging.log4j/log4j-1.2-api    {:mvn/version "2.17.2"}             ; apache logging framework
-  org.apache.logging.log4j/log4j-api        {:mvn/version "2.17.2"}             ; add compatibility with log4j 1.2
-  org.apache.logging.log4j/log4j-core       {:mvn/version "2.17.2"}             ; apache logging framework
-  org.apache.logging.log4j/log4j-jcl        {:mvn/version "2.17.2"}             ; allows the commons-logging API to work with log4j 2
-  org.apache.logging.log4j/log4j-jul        {:mvn/version "2.17.2"}             ; java.util.logging (JUL) -> Log4j2 adapter
-  org.apache.logging.log4j/log4j-slf4j-impl {:mvn/version "2.17.2"}             ; allows the slf4j API to work with log4j 2
+  org.apache.logging.log4j/log4j-1.2-api    {:mvn/version "2.18.0"}             ; apache logging framework
+  org.apache.logging.log4j/log4j-api        {:mvn/version "2.18.0"}             ; add compatibility with log4j 1.2
+  org.apache.logging.log4j/log4j-core       {:mvn/version "2.18.0"}             ; apache logging framework
+  org.apache.logging.log4j/log4j-jcl        {:mvn/version "2.18.0"}             ; allows the commons-logging API to work with log4j 2
+  org.apache.logging.log4j/log4j-jul        {:mvn/version "2.18.0"}             ; java.util.logging (JUL) -> Log4j2 adapter
+  org.apache.logging.log4j/log4j-slf4j-impl {:mvn/version "2.18.0"}             ; allows the slf4j API to work with log4j 2
   org.apache.poi/poi                        {:mvn/version "5.2.2"}              ; Work with Office documents (e.g. Excel spreadsheets) -- newer version than one specified by Docjure
   org.apache.poi/poi-ooxml                  {:mvn/version "5.2.2"
                                              :exclusions  [org.bouncycastle/bcpkix-jdk15on
                                                            org.bouncycastle/bcprov-jdk15on]}
-  org.apache.sshd/sshd-core                 {:mvn/version "2.8.0"}              ; ssh tunneling and test server -- do not use 2.6.0 to 2.7.0, see metabase#18316
+  org.apache.sshd/sshd-core                 {:mvn/version "2.9.1"}              ; ssh tunneling and test server
   org.apache.xmlgraphics/batik-all          {:mvn/version "1.14"}               ; SVG -> image
   org.clojars.pntblnk/clj-ldap              {:mvn/version "0.0.17"}             ; LDAP client
   org.bouncycastle/bcpkix-jdk15on           {:mvn/version "1.70"}               ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
@@ -117,14 +115,14 @@
   org.clojure/tools.namespace               {:mvn/version "1.3.0"}
   org.clojure/tools.reader                  {:mvn/version "1.3.6"}
   org.clojure/tools.trace                   {:mvn/version "0.7.11"}             ; function tracing
-  org.eclipse.jetty/jetty-server            {:mvn/version "9.4.44.v20210927"}   ; web server
+  org.eclipse.jetty/jetty-server            {:mvn/version "9.4.48.v20220622"}   ; web server
   org.flatland/ordered                      {:mvn/version "1.15.10"}            ; ordered maps & sets
   org.graalvm.js/js                         {:mvn/version "22.1.0"}             ; JavaScript engine
   org.liquibase/liquibase-core              {:mvn/version "4.10.0"              ; migration management (Java lib)
                                              :exclusions  [ch.qos.logback/logback-classic]}
-  org.mariadb.jdbc/mariadb-java-client      {:mvn/version "2.7.5"}              ; MySQL/MariaDB driver
+  org.mariadb.jdbc/mariadb-java-client      {:mvn/version "2.7.6"}              ; MySQL/MariaDB driver
   org.mindrot/jbcrypt                       {:mvn/version "0.4"}                ; Crypto library
-  org.postgresql/postgresql                 {:mvn/version "42.3.5"}             ; Postgres driver
+  org.postgresql/postgresql                 {:mvn/version "42.5.0"}             ; Postgres driver
   org.quartz-scheduler/quartz               {:mvn/version "2.3.2"}              ; Quartz job scheduler, provided by quartzite but this is a newer version.
   org.slf4j/slf4j-api                       {:mvn/version "1.7.36"}             ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
   org.tcrawley/dynapath                     {:mvn/version "1.1.0"}              ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
@@ -177,16 +175,19 @@
   {:extra-deps
    {clj-http-fake/clj-http-fake                           {:mvn/version "1.0.3"
                                                            :exclusions  [slingshot/slingshot]}
+    clj-kondo/clj-kondo                                   {:mvn/version "2022.08.03"} ; this is not for RUNNING kondo, but so we can hack on custom hooks code from the REPL.
     cloverage/cloverage                                   {:mvn/version "1.2.2"}
+    djblue/portal                                         {:mvn/version "0.30.0"}
     eftest/eftest                                         {:mvn/version "0.5.9"}
+    io.github.camsaul/humane-are                          {:mvn/version "1.0.2"}
     jonase/eastwood                                       {:mvn/version "1.2.2"}
-    lein-check-namespace-decls/lein-check-namespace-decls {:mvn/version "1.0.4"} ; misnomer since this works on Clojure CLI now too
     pjstadig/humane-test-output                           {:mvn/version "0.11.0"}
     reifyhealth/specmonstah                               {:mvn/version "2.0.0"
                                                            :exclusions  [org.clojure/clojure
                                                                          org.clojure/clojurescript]}
     ring/ring-mock                                        {:mvn/version "0.4.0"}
-    talltale/talltale                                     {:mvn/version "0.5.8"}}
+    talltale/talltale                                     {:mvn/version "0.5.8"}
+    lambdaisland/deep-diff2                               {:mvn/version "2.3.127"}}
 
    :extra-paths ["dev/src" "local/src" "test" "shared/test" "test_resources"]
    :jvm-opts    ["-Dmb.run.mode=dev"
@@ -196,6 +197,9 @@
                  "-Dfile.encoding=UTF-8"
                  "-Duser.language=en"
                  "-Duser.country=US"
+                 ;; set the logging properties set in metabase.bootstrap. calling (dev) will load it but putting here to be sure
+                 "-Dlog4j2.contextSelector=org.apache.logging.log4j.core.selector.BasicContextSelector"
+                 "-Dclojure.tools.logging.factory=clojure.tools.logging.impl/log4j2-factory"
                  ;; If Clojure fails to start (e.g. because of a compilation error somewhere) print the error
                  ;; report/stacktrace to stderr rather than to a random EDN file in /tmp/
                  "-Dclojure.main.report=stderr"
@@ -224,7 +228,7 @@
   ;; clojure -M:run:drivers (include all drivers)
   ;; clojure -M:run:ee (include EE code)
   :run
-  {:main-opts ["-m" "metabase.core"]
+  {:main-opts ["-m" "metabase.bootstrap"]
    :jvm-opts  ["-Dmb.run.mode=dev"
                "-Djava.awt.headless=true"                   ; prevent Java icon from randomly popping up in macOS dock
                "-Dmb.jetty.port=3000"]}
@@ -284,11 +288,6 @@
 
 ;;; Linters
 
-  ;; clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:namespace-checker
-  :namespace-checker
-  {:exec-fn   metabase.linters.namespace-checker/check-namespace-decls
-   :exec-args {:prefix-rewriting false}}
-
   ;; clojure -M:dev:ee:ee-dev:drivers:drivers-dev:check
   :check
   {:extra-deps {athos/clj-check {:git/url "https://github.com/athos/clj-check.git"
@@ -343,11 +342,13 @@
   :whitespace-linter
   {:deps       {com.github.camsaul/whitespace-linter {:sha "912644a2b9cc91edcce31a6fa997c46479341a1d"}}
    :ns-default whitespace-linter
+   :exec-fn    whitespace-linter/lint
    :exec-args  {:paths            ["./.dir-locals.el"
                                    "./deps.edn"
                                    "./package.json"
                                    "./shadow-cljs.edn"
                                    ".circleci"
+                                   ".clj-kondo"
                                    ".github"
                                    "bin"
                                    "enterprise"
@@ -372,7 +373,9 @@
                                    "frontend/src/cljs"
                                    "frontend/test/metabase/lib/urls\\.unit\\.spec\\.js$"
                                    "frontend/test/metabase/lib/formatting\\.unit\\.spec\\.js$"
-                                   "shared/src/metabase/shared/util/currency\\.cljc$"]}}
+                                   "shared/src/metabase/shared/util/currency\\.cljc$"
+                                   "#.+#$"
+                                   "\\.transit\\.json$"]}}
 
   ;; clojure -X:dev:ee:ee-dev:test:cloverage
   :cloverage

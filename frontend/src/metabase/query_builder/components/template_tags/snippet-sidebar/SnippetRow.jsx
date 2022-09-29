@@ -4,8 +4,8 @@ import { t } from "ttag";
 
 import cx from "classnames";
 import Icon from "metabase/components/Icon";
-import Button from "metabase/core/components/Button";
 import Snippets from "metabase/entities/snippets";
+import { SnippetButton } from "./SnippetRow.styled";
 
 const ICON_SIZE = 16;
 
@@ -70,7 +70,7 @@ class SnippetRowInner extends React.Component {
               {content}
             </pre>
             {canWrite && (
-              <Button
+              <SnippetButton
                 onClick={
                   snippet.archived
                     ? () => snippet.update({ archived: false })
@@ -78,11 +78,10 @@ class SnippetRowInner extends React.Component {
                 }
                 borderless
                 medium
-                className="text-brand text-white-hover bg-light bg-brand-hover mt1"
                 icon={snippet.archived ? "unarchive" : "pencil"}
               >
                 {snippet.archived ? t`Unarchive` : t`Edit`}
-              </Button>
+              </SnippetButton>
             )}
           </div>
         )}

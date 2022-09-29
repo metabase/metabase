@@ -1,27 +1,38 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+import { color, alpha } from "metabase/lib/colors";
 
 import SelectButton from "metabase/core/components/SelectButton";
-import FilterPopover from "../../FilterPopover";
 import Select from "metabase/core/components/Select";
+import FilterPopover from "../../FilterPopover";
 
 type SelectFilterButtonProps = {
   isActive?: boolean;
+  hasValue?: boolean;
 };
 
-export const SelectFilterButton = styled(SelectButton)<SelectFilterButtonProps>`
-  grid-column: 2;
-  height: 55px;
+const lightSelectButton = ({ hasValue, isActive }: SelectFilterButtonProps) => `
+    padding: 0.5rem 1rem;
+    height: 40px;
 
-  ${({ isActive }) => (isActive ? `border-color: ${color("brand")};` : "")}
+    background-color: ${hasValue ? alpha("brand", 0.2) : color("white")};
+    color: ${hasValue ? color("brand") : color("text-medium")};
+    border-color: ${
+      isActive ? color("brand") : hasValue ? "transparent" : color("border")
+    };
 
-  &:not(:first-of-type) {
-    margin-top: 0.75rem;
-  }
+    .Icon {
+      color: ${hasValue ? color("brand") : color("text-medium")};
+    }
 `;
 
-export const SegmentSelect = styled(Select)`
-  height: 55px;
+export const SelectFilterButton = styled(SelectButton)<SelectFilterButtonProps>`
+  ${({ hasValue, isActive }) => lightSelectButton({ hasValue, isActive })}
+`;
+
+export const SegmentSelect = styled(Select)<SelectFilterButtonProps>`
+  button {
+    ${({ hasValue, isActive }) => lightSelectButton({ hasValue, isActive })}
+  }
 `;
 
 export const SelectFilterPopover = styled(FilterPopover)`

@@ -9,9 +9,10 @@ import {
   openNavigationSidebar,
   closeNavigationSidebar,
   openCollectionMenu,
+  visitCollection,
 } from "__support__/e2e/helpers";
-import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
+import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 
 const { nocollection } = USERS;
 const { DATA_GROUP } = USER_GROUPS;
@@ -218,7 +219,7 @@ describe("scenarios > collection defaults", () => {
       cy.findByText("Orders");
     });
 
-    describe.skip("nested collections with revoked parent access", () => {
+    describe("nested collections with revoked parent access", () => {
       const { first_name, last_name } = nocollection;
       const revokedUsersPersonalCollectionName = `${first_name} ${last_name}'s Personal Collection`;
 
@@ -279,7 +280,7 @@ describe("scenarios > collection defaults", () => {
         // Click to choose which collection should this question be saved to
         cy.findByText(revokedUsersPersonalCollectionName).click();
         popover().within(() => {
-          cy.findByText(/Our analytics/i);
+          cy.findByText(/Collections/i);
           cy.findByText(/My personal collection/i);
           cy.findByText("Parent").should("not.exist");
           cy.log("Reported failing from v0.34.3");
@@ -445,6 +446,22 @@ describe("scenarios > collection defaults", () => {
         cy.findByText("First collection");
       });
     });
+
+    it("should create new collections within the current collection", () => {
+      getCollectionIdFromSlug("third_collection", collection_id => {
+        visitCollection(collection_id);
+        cy.findByText("New").click();
+
+        popover().within(() => {
+          cy.findByText("Collection").click();
+        });
+
+        modal().within(() => {
+          cy.findByText("Collection it's saved in").should("be.visible");
+          cy.findByText("Third collection").should("be.visible");
+        });
+      });
+    });
   });
 });
 
@@ -472,16 +489,6 @@ function visitRootCollection() {
   cy.visit("/collection/root");
 
   cy.wait(["@fetchRootCollectionItems", "@fetchRootCollectionItems"]);
-}
-
-function visitCollection(id) {
-  const alias = `getCollection${id}Items`;
-
-  cy.intercept("GET", `/api/collection/${id}/items?**`).as(alias);
-
-  cy.visit(`/collection/${id}`);
-
-  cy.wait([`@${alias}`, `@${alias}`]);
 }
 
 function ensureCollectionHasNoChildren(collection) {

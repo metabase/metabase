@@ -3,11 +3,10 @@ import { t } from "ttag";
 import {
   isFullyParametrized,
   isPreviewShown,
-  Item,
 } from "metabase/collections/utils";
 import Visualization from "metabase/visualizations/components/Visualization";
+import { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
-import { Bookmark, Collection } from "metabase-types/api";
 import PinnedQuestionLoader from "./PinnedQuestionLoader";
 import {
   CardActionMenu,
@@ -17,12 +16,12 @@ import {
 } from "./PinnedQuestionCard.styled";
 
 export interface PinnedQuestionCardProps {
-  item: Item;
+  item: CollectionItem;
   collection: Collection;
   metadata: Metadata;
   bookmarks?: Bookmark[];
-  onCopy: (items: Item[]) => void;
-  onMove: (items: Item[]) => void;
+  onCopy: (items: CollectionItem[]) => void;
+  onMove: (items: CollectionItem[]) => void;
   onCreateBookmark?: (id: string, model: string) => void;
   onDeleteBookmark?: (id: string, model: string) => void;
 }
@@ -82,7 +81,7 @@ const PinnedQuestionCard = ({
   );
 };
 
-const getSkeletonTooltip = (item: Item) => {
+const getSkeletonTooltip = (item: CollectionItem) => {
   if (!isFullyParametrized(item)) {
     return t`Open this question and fill in its variables to see it.`;
   } else {

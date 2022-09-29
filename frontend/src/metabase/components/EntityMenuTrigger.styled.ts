@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import Button from "metabase/core/components/Button";
 
-interface EntityMenuIconButtonProps {
+export interface EntityMenuIconButtonProps {
   color?: string;
   hover?: {
     color: string;

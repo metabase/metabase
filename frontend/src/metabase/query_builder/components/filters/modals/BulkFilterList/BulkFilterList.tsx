@@ -1,17 +1,17 @@
 import React, { useMemo } from "react";
 import { t } from "ttag";
 
+import EmptyState from "metabase/components/EmptyState";
+
+import { color } from "metabase/lib/colors";
+import Icon from "metabase/components/Icon";
+import Dimension from "metabase-lib/lib/Dimension";
 import StructuredQuery, {
   DimensionOption,
   SegmentOption,
   isDimensionOption,
   isSegmentOption,
 } from "metabase-lib/lib/queries/StructuredQuery";
-import Dimension from "metabase-lib/lib/Dimension";
-import EmptyState from "metabase/components/EmptyState";
-
-import { color } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
 
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import { BulkFilterItem } from "../BulkFilterItem";
@@ -168,13 +168,12 @@ const SegmentListItem = ({
   onRemoveFilter,
   onClearSegments,
 }: SegmentListItemProps): JSX.Element => (
-  <>
-    <ListRow data-testid="filter-field-segments">
+  <ListRow>
+    <FilterContainer data-testid="filter-field-segments">
       <InlineOperatorSelector
-        fieldName={t`Segments`}
+        fieldName={t`Filter down to a segment`}
         iconName="filter"
-        tableName={isSearch ? query.table().displayName() : undefined}
-        value="is"
+        tableName={isSearch ? query.table()?.displayName() : undefined}
       />
       <SegmentFilterSelect
         query={query}
@@ -183,8 +182,8 @@ const SegmentListItem = ({
         onRemoveFilter={onRemoveFilter}
         onClearSegments={onClearSegments}
       />
-    </ListRow>
-  </>
+    </FilterContainer>
+  </ListRow>
 );
 
 export default BulkFilterList;

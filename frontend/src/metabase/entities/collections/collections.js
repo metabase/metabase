@@ -1,17 +1,15 @@
+import { t } from "ttag";
 import _ from "underscore";
-import { createEntity, undo } from "metabase/lib/entities";
-
-import * as Urls from "metabase/lib/urls";
-
-import { CollectionSchema } from "metabase/schema";
 import { createSelector } from "reselect";
 
 import { GET } from "metabase/lib/api";
+import { createEntity, undo } from "metabase/lib/entities";
+import * as Urls from "metabase/lib/urls";
 
+import { CollectionSchema } from "metabase/schema";
 import { getUser, getUserPersonalCollectionId } from "metabase/selectors/user";
-import { canonicalCollectionId } from "metabase/collections/utils";
 
-import { t } from "ttag";
+import { canonicalCollectionId } from "metabase/collections/utils";
 
 import {
   ROOT_COLLECTION,
@@ -159,6 +157,9 @@ export function getExpandedCollectionsById(
   // "Our Analytics"
   collectionsById[ROOT_COLLECTION.id] = {
     ...ROOT_COLLECTION,
+    name: collectionsById[ROOT_COLLECTION.id]
+      ? ROOT_COLLECTION.name
+      : t`Collections`,
     parent: null,
     children: [],
     ...(collectionsById[ROOT_COLLECTION.id] || {}),

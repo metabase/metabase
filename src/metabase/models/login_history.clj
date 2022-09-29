@@ -85,7 +85,7 @@
 (defn- pre-update [_login-history]
   (throw (RuntimeException. (tru "You can''t update a LoginHistory after it has been created."))))
 
-(extend (class LoginHistory)
+(extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class LoginHistory)
   models/IModel
   (merge
    models/IModelDefaults

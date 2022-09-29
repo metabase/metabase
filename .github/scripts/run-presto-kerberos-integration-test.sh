@@ -3,6 +3,7 @@
 set -eo pipefail
 
 # Need Java commands on $PATH, which apparently is not yet the case
+export JAVA_HOME="/usr/lib/jvm/msopenjdk-current"
 export PATH="$PATH:$JAVA_HOME/bin"
 
 # ensure java commmand is available
@@ -45,20 +46,20 @@ openssl x509 -outform der -in $RESOURCES_DIR/presto-ssl-root-ca.pem  -out $RESOU
 keytool -noprompt -import -alias presto-kerberos -keystore $RESOURCES_DIR/cacerts-with-presto-ca.jks \
         -storepass changeit -file $RESOURCES_DIR/presto-ssl-root-ca.der -trustcacerts
 
-ADDITIONAL_OPTS="SSLKeyStorePath=$RESOURCES_DIR/ssl_keystore.jks&SSLKeyStorePassword=presto\
-&SSLTrustStorePath=$RESOURCES_DIR/cacerts-with-presto-ca.jks&SSLTrustStorePassword=changeit"
-
 # Set up the environment variables pointing to all of this, and run some tests
 DRIVERS=presto-jdbc \
 MB_ENABLE_PRESTO_JDBC_DRIVER=true \
 MB_PRESTO_JDBC_TEST_HOST=presto-kerberos \
 MB_PRESTO_JDBC_TEST_PORT=7778 \
 MB_PRESTO_JDBC_TEST_SSL=true \
+MB_PRESTO_JDBC_TEST_SSL_KEYSTORE_PATH=$RESOURCES_DIR/ssl_keystore.jks \
+MB_PRESTO_JDBC_TEST_SSL_KEYSTORE_PASSWORD=presto \
+MB_PRESTO_JDBC_TEST_SSL_TRUSTSTORE_PATH=$RESOURCES_DIR/cacerts-with-presto-ca.jks \
+MB_PRESTO_JDBC_TEST_SSL_TRUSTSTORE_PASSWORD=changeit \
 MB_PRESTO_JDBC_TEST_KERBEROS=true \
 MB_PRESTO_JDBC_TEST_USER=bob@EXAMPLE.COM \
 MB_PRESTO_JDBC_TEST_KERBEROS_PRINCIPAL=bob@EXAMPLE.COM \
 MB_PRESTO_JDBC_TEST_KERBEROS_REMOTE_SERVICE_NAME=HTTP \
 MB_PRESTO_JDBC_TEST_KERBEROS_KEYTAB_PATH=$RESOURCES_DIR/client.keytab \
 MB_PRESTO_JDBC_TEST_KERBEROS_CONFIG_PATH=$RESOURCES_DIR/krb5.conf \
-MB_PRESTO_JDBC_TEST_ADDITIONAL_OPTIONS=$ADDITIONAL_OPTS \
 clojure -X:dev:test:drivers:drivers-dev :only metabase.driver.presto-jdbc-test

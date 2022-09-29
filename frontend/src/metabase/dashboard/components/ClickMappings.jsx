@@ -8,7 +8,6 @@ import { getIn, assocIn, dissocIn } from "icepick";
 import Icon from "metabase/components/Icon";
 import Select from "metabase/core/components/Select";
 
-import Question from "metabase-lib/lib/Question";
 import MetabaseSettings from "metabase/lib/settings";
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { getTargetsWithSourceFilters } from "metabase/lib/click-behavior";
@@ -17,6 +16,7 @@ import { GTAPApi } from "metabase/services";
 import { loadMetadataForQuery } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getParameters } from "metabase/dashboard/selectors";
+import Question from "metabase-lib/lib/Question";
 
 class ClickMappingsInner extends React.Component {
   render() {
@@ -114,7 +114,9 @@ class ClickMappingsInner extends React.Component {
 }
 
 const ClickMappings = _.compose(
-  loadQuestionMetadata((state, props) => (props.isDash ? null : props.object)),
+  loadQuestionMetadata((state, props) =>
+    props.isDash || props.isAction ? null : props.object,
+  ),
   withUserAttributes,
   connect((state, props) => {
     const { object, isDash, dashcard, clickBehavior } = props;
@@ -135,12 +137,18 @@ const ClickMappings = _.compose(
     }
 
     const [setTargets, unsetTargets] = _.partition(
-      getTargetsWithSourceFilters({ isDash, dashcard, object, metadata }),
+      getTargetsWithSourceFilters({
+        isAction: props.isAction,
+        isDash,
+        dashcard,
+        object,
+        metadata,
+      }),
       ({ id }) =>
         getIn(clickBehavior, ["parameterMapping", id, "source"]) != null,
     );
     const sourceOptions = {
-      column: dashcard.card.result_metadata.filter(isMappableColumn),
+      column: dashcard.card.result_metadata?.filter(isMappableColumn) || [],
       parameter: parameters,
     };
     return { setTargets, unsetTargets, sourceOptions };

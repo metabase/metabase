@@ -18,6 +18,7 @@
             [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
             [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.models.secret :as secret]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
@@ -208,18 +209,22 @@
       remove-blank-vals
       (set/rename-keys kerb-props->url-param-names))))
 
-(defn- prepare-addl-opts [{:keys [SSL kerberos additional-options] :as details}]
+(defn- append-additional-options [additional-options props]
+  (let [opts-str (sql-jdbc.common/additional-opts->string :url props)]
+    (if (str/blank? additional-options)
+      opts-str
+      (str additional-options "&" opts-str))))
+
+(defn- prepare-addl-opts [{:keys [SSL kerberos] :as details}]
   (let [det (if kerberos
               (if-not SSL
                 (throw (ex-info (trs "SSL must be enabled to use Kerberos authentication")
                                 {:db-details details}))
+                ;; convert Kerberos options map to URL string
                 (update details
                         :additional-options
-                        str
-                        ;; add separator if there are already additional-options
-                        (when-not (str/blank? additional-options) "&")
-                        ;; convert Kerberos options map to URL string
-                        (sql-jdbc.common/additional-opts->string :url (details->kerberos-url-params details))))
+                        append-additional-options
+                        (details->kerberos-url-params details)))
               details)]
     ;; in any case, remove the standalone Kerberos properties from details map
     (apply dissoc (cons det (keys kerb-props->url-param-names)))))
@@ -250,36 +255,61 @@
               :subname     (mdb.spec/make-subname host port (db-name catalog schema))})
       prepare-addl-opts
       (dissoc :host :port :db :catalog :schema :tunnel-enabled :engine :kerberos)
-    sql-jdbc.common/handle-additional-options))
+      sql-jdbc.common/handle-additional-options))
 
 (defn- str->bool [v]
   (if (string? v)
     (Boolean/parseBoolean v)
     v))
 
+(defn- get-valid-secret-file [details-map property-name]
+  (let [secret-map (secret/db-details-prop->secret-map details-map property-name)]
+    (when-not (:value secret-map)
+      (throw (ex-info (format "Property %s should be defined" property-name)
+                      {:connection-details details-map
+                       :propery-name property-name})))
+    (.getCanonicalPath (secret/value->file! secret-map :presto-jdbc))))
+
+(defn- maybe-add-ssl-stores [details-map]
+  (let [props
+        (cond-> {}
+          (str->bool (:ssl-use-keystore details-map))
+          (assoc :SSLKeyStorePath (get-valid-secret-file details-map "ssl-keystore")
+                 :SSLKeyStorePassword (secret/value->string
+                                       (secret/db-details-prop->secret-map details-map "ssl-keystore-password")))
+          (str->bool (:ssl-use-truststore details-map))
+          (assoc :SSLTrustStorePath (get-valid-secret-file details-map "ssl-truststore")
+                 :SSLTrustStorePassword (secret/value->string
+                                         (secret/db-details-prop->secret-map details-map "ssl-truststore-password"))))]
+    (cond-> details-map
+      (seq props)
+      (update :additional-options append-additional-options props))))
+
 (defmethod sql-jdbc.conn/connection-details->spec :presto-jdbc
   [_ details-map]
   (let [props (-> details-map
-                (update :port (fn [port]
-                                (if (string? port)
-                                  (Integer/parseInt port)
-                                  port)))
-                (update :ssl str->bool)
-                (update :kerberos str->bool)
-                (assoc :SSL (:ssl details-map))
-                ;; remove any Metabase specific properties that are not recognized by the PrestoDB JDBC driver, which is
-                ;; very picky about properties (throwing an error if any are unrecognized)
-                ;; all valid properties can be found in the JDBC Driver source here:
-                ;; https://github.com/prestodb/presto/blob/master/presto-jdbc/src/main/java/com/facebook/presto/jdbc/ConnectionProperties.java
-                (select-keys (concat
-                              [:host :port :catalog :schema :additional-options ; needed for `jdbc-spec`
-                               ;; JDBC driver specific properties
-                               :kerberos ; we need our boolean property indicating if Kerberos is enabled
-                                         ; but the rest of them come from `kerb-props->url-param-names` (below)
-                               :user :password :socksProxy :httpProxy :applicationNamePrefix :disableCompression :SSL
-                               :SSLKeyStorePath :SSLKeyStorePassword :SSLTrustStorePath :SSLTrustStorePassword
-                               :accessToken :extraCredentials :sessionProperties :protocols :queryInterceptors]
-                              (keys kerb-props->url-param-names))))]
+                  (update :port (fn [port]
+                                  (if (string? port)
+                                    (Integer/parseInt port)
+                                    port)))
+                  (update :ssl str->bool)
+                  (update :kerberos str->bool)
+                  (assoc :SSL (:ssl details-map))
+                  maybe-add-ssl-stores
+                  ;; remove any Metabase specific properties that are not recognized by the PrestoDB JDBC driver, which is
+                  ;; very picky about properties (throwing an error if any are unrecognized)
+                  ;; all valid properties can be found in the JDBC Driver source here:
+                  ;; https://github.com/prestodb/presto/blob/master/presto-jdbc/src/main/java/com/facebook/presto/jdbc/ConnectionProperties.java
+                  (select-keys (concat
+                                [:host :port :catalog :schema :additional-options ; needed for `jdbc-spec`
+                                 ;; JDBC driver specific properties
+                                 :kerberos ; we need our boolean property indicating if Kerberos is enabled
+                                           ; but the rest of them come from `kerb-props->url-param-names` (below)
+                                 :user :password :socksProxy :httpProxy :applicationNamePrefix :disableCompression :SSL
+                                 ;; Passing :SSLKeyStorePath :SSLKeyStorePassword :SSLTrustStorePath :SSLTrustStorePassword
+                                 ;; in the properties map doesn't seem to work, they are included as additional options.
+                                 :accessToken :extraCredentials :sessionProperties :protocols :queryInterceptors]
+                                (keys kerb-props->url-param-names))))]
     (jdbc-spec props)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -322,13 +352,13 @@
   (let [sql (presto-common/describe-catalog-sql driver catalog)]
     (log/trace (trs "Running statement in all-schemas: {0}" sql))
     (into []
-          (map (fn [{:keys [schema] :as full}]
+          (map (fn [{:keys [schema]}]
                  (when-not (contains? presto-common/excluded-schemas schema)
                    (describe-schema driver conn catalog schema))))
           (jdbc/reducible-query {:connection conn} sql))))
 
 (defmethod driver/describe-database :presto-jdbc
-  [driver {{:keys [catalog schema] :as details} :details :as database}]
+  [driver {{:keys [catalog schema] :as _details} :details :as database}]
   (with-open [conn (-> (sql-jdbc.conn/db->pooled-connection-spec database)
                        jdbc/get-connection)]
     (let [schemas (if schema #{(describe-schema driver conn catalog schema)}
@@ -336,7 +366,7 @@
       {:tables (reduce set/union schemas)})))
 
 (defmethod driver/describe-table :presto-jdbc
-  [driver {{:keys [catalog] :as details} :details :as database} {schema :schema, table-name :name}]
+  [driver {{:keys [catalog] :as _details} :details :as database} {schema :schema, table-name :name}]
   (with-open [conn (-> (sql-jdbc.conn/db->pooled-connection-spec database)
                      jdbc/get-connection)]
     (let [sql (presto-common/describe-table-sql driver catalog schema table-name)]
@@ -345,7 +375,7 @@
        :name   table-name
        :fields (into
                  #{}
-                 (map-indexed (fn [idx {:keys [column type] :as col}]
+                 (map-indexed (fn [idx {:keys [column type] :as _col}]
                                 {:name column
                                  :database-type type
                                  :base-type         (presto-common/presto-type->base-type type)
@@ -388,9 +418,9 @@
         (log/debug e (trs "Error setting statement fetch direction to FETCH_FORWARD"))))
     stmt))
 
-(defn- ^PrestoConnection pooled-conn->presto-conn
+(defn- pooled-conn->presto-conn
   "Unwraps the C3P0 `pooled-conn` and returns the underlying `PrestoConnection` it holds."
-  [^C3P0ProxyConnection pooled-conn]
+  ^PrestoConnection [^C3P0ProxyConnection pooled-conn]
   (.unwrap pooled-conn PrestoConnection))
 
 (defmethod sql-jdbc.execute/connection-with-timezone :presto-jdbc
@@ -463,10 +493,10 @@
   ;; same rationale as above
   (set-time-param ps i t))
 
-(defn- ^LocalTime sql-time->local-time
+(defn- sql-time->local-time
   "Converts the given instance of `java.sql.Time` into a `java.time.LocalTime`, including milliseconds. Needed for
   similar reasons as `set-time-param` above."
-  [^Time sql-time]
+  ^LocalTime [^Time sql-time]
   ;; Java 11 adds a simpler `ofInstant` method, but since we need to run on JDK 8, we can't use it
   ;; https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/time/LocalTime.html#ofInstant(java.time.Instant,java.time.ZoneId)
   (let [^LocalTime lt (t/local-time sql-time)
@@ -492,14 +522,14 @@
           ;; else the base-type is time without time zone, so just return the local-time value
           local-time)))))
 
-(defn- ^PrestoConnection rs->presto-conn
+(defn- rs->presto-conn
   "Returns the `PrestoConnection` associated with the given `ResultSet` `rs`."
-  [^ResultSet rs]
+  ^PrestoConnection [^ResultSet rs]
   (-> (.. rs getStatement getConnection)
       pooled-conn->presto-conn))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:presto-jdbc Types/TIMESTAMP]
-  [_ ^ResultSet rset ^ResultSetMetaData rsmeta ^Integer i]
+  [_driver ^ResultSet rset _rsmeta ^Integer i]
   (let [zone     (.getTimeZoneId (rs->presto-conn rset))]
     (fn []
       (when-let [s (.getString rset i)]

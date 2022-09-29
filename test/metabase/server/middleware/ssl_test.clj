@@ -7,7 +7,7 @@
 
 (defn- handler [request]
   ((mw.ssl/redirect-to-https-middleware
-    (fn [request respond _] (respond (response/response ""))))
+    (fn [_request respond _raise] (respond (response/response ""))))
    request
    identity
    (fn [e] (throw e))))

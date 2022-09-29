@@ -1,6 +1,5 @@
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-
 import _ from "underscore";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 // This converts an MBQL query into a sequence of notebook "steps", with special logic to determine which steps are
 // allowed to be added at every other step, generating a preview query at each step, how to delete a step,
@@ -38,8 +37,7 @@ const STEPS = [
   },
   {
     type: "expression",
-    valid: query =>
-      query.hasData() && query.database().hasFeature("expressions"),
+    valid: query => query.hasData() && query.database().supportsExpressions(),
     active: query => query.hasExpressions(),
     revert: query => query.clearExpressions(),
     clean: query => query.cleanExpressions(),

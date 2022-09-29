@@ -13,11 +13,11 @@ describe("issue 21246", () => {
     cy.signInAsAdmin();
 
     cy.createQuestion(questionDetails).then(({ body: { id } }) => {
-      const questionReference = "#" + id;
+      const cardTagName = "#" + id;
 
       const nativeQuestionDetails = {
         native: {
-          query: `with exclude_products as {{${questionReference}}}\nselect count(*) from orders where true [[and {{filter}}]] [[and orders.created_at::date={{datevariable}}]]`,
+          query: `with exclude_products as {{${cardTagName}}}\nselect count(*) from orders where true [[and {{filter}}]] [[and orders.created_at::date={{datevariable}}]]`,
           "template-tags": {
             filter: {
               id: "e1c37b07-7a85-1df9-a5e4-a0bf748e6dcf",
@@ -35,10 +35,10 @@ describe("issue 21246", () => {
               type: "date",
               default: null,
             },
-            [questionReference]: {
+            [cardTagName]: {
               id: "3a0be5e9-e46f-f34f-8e1b-f91567ca4317",
-              name: questionReference,
-              "display-name": questionReference,
+              name: cardTagName,
+              "display-name": cardTagName,
               type: "card",
               "card-id": id,
             },
@@ -48,11 +48,13 @@ describe("issue 21246", () => {
       };
 
       cy.createNativeQuestion(nativeQuestionDetails, {
-        visitQuestion: true,
         wrapId: true,
       });
 
-      cy.get(".ScalarValue").invoke("text").should("eq", "18,760");
+      cy.get("@questionId").then(id => {
+        cy.visit(`/question/${id}`);
+        cy.get(".ScalarValue").invoke("text").should("eq", "18,760");
+      });
     });
   });
 
@@ -64,12 +66,10 @@ describe("issue 21246", () => {
       // Let's set filter values directly through URL, rather than through the UI
       // for the sake of speed and reliability
       cy.visit(`/question/${id}?${fieldFilterValue}`);
-      cy.wait("@cardQuery");
 
       resultAssertion("404");
 
       cy.visit(`/question/${id}?${fieldFilterValue}&${dateFilterValue}`);
-      cy.wait("@cardQuery");
 
       resultAssertion("12");
     });

@@ -1,6 +1,8 @@
 :local .ChartWithLegend {
   display: flex;
   justify-content: flex-end;
+  width: 100%;
+  height: 100%;
 }
 
 :local .ChartWithLegend .Legend {

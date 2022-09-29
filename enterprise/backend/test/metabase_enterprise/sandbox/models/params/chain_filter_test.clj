@@ -13,23 +13,27 @@
       (mt/with-gtaps {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:< $id 3]})}}}
         (field-values/clear-advanced-field-values-for-field! (mt/id :categories :name))
         (testing "values"
-          (is (= ["African" "American"]
+          (is (= {:values          ["African" "American"]
+                  :has_more_values false}
                  (mt/$ids (chain-filter/chain-filter %categories.name nil))))
           (is (= 1 (db/count FieldValues :field_id (mt/id :categories :name) :type :sandbox))))
 
         (testing "search"
-          (is (= ["African" "American"]
+          (is (= {:values          ["African" "American"]
+                  :has_more_values false}
                  (mt/$ids (chain-filter/chain-filter-search %categories.name nil "a")))))
 
         (testing "When chain-filter with constraints"
           (testing "creates a linked-filter FieldValues if not sandboxed"
             ;; HACK to run this outside of sandboxing
             (binding [api/*current-user-permissions-set* (atom #{"/"})]
-              (is (= ["Artisan"]
+              (is (= {:values          ["Artisan"]
+                      :has_more_values false}
                      (mt/$ids (chain-filter/chain-filter %categories.name {%categories.id 3})))))
             (is (= 1 (db/count FieldValues :field_id (mt/id :categories :name) :type :linked-filter))))
 
           (testing "creates another linked-filter FieldValues if  sandboxed"
-            (is (= []
+            (is (= {:values          []
+                    :has_more_values false}
                    (mt/$ids (chain-filter/chain-filter %categories.name {%categories.id 3}))))
             (is (= 2 (db/count FieldValues :field_id (mt/id :categories :name) :type :linked-filter)))))))))

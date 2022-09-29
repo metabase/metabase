@@ -57,7 +57,7 @@ const NotificationCard = ({
               {getChannelMessage(channel)}
             </NotificationMessage>
           ))}
-          <NotificationMessage>
+          <NotificationMessage data-server-date>
             {getCreatorMessage(item, user)}
           </NotificationMessage>
         </NotificationDescription>

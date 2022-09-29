@@ -8,7 +8,16 @@
             [metabase.api.pivots :as api.pivots]
             [metabase.api.public :as api.public]
             [metabase.http-client :as client]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Dimension Field FieldValues]]
+            [metabase.models :refer [Card
+                                     Collection
+                                     Dashboard
+                                     DashboardCard
+                                     DashboardCardSeries
+                                     Dimension
+                                     Field
+                                     FieldValues]]
+            [metabase.models.interface :as mi]
+            [metabase.models.params.chain-filter-test :as chain-filter-test]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.test :as mt]
@@ -91,7 +100,6 @@
                ~card-binding      card#
                ~dashcard-binding  (add-card-to-dashboard! card# dash#)]
            ~@body)))))
-
 
 ;;; ------------------------------------------- GET /api/public/card/:uuid -------------------------------------------
 
@@ -443,6 +451,16 @@
                                                                :value  ["PizzaHacker"]
                                                                :id     "_VENUE_NAME_"}])))))))))))
 
+(deftest execute-public-dashcard-params-validation-test-with-writable-card
+  (testing "GET /api/public/dashboard/:uuid/card/:card-id"
+    (testing "Should not work with a writable card"
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (with-temp-public-dashboard [dash]
+          (with-temp-public-card [card {:is_write true}]
+            (let [dashcard (add-card-to-dashboard! card dash)]
+              ;; the 405 is caught and rethrown as a 400
+              (client/client :get 400 (dashcard-url dash card dashcard)))))))))
+
 (deftest execute-public-dashcard-additional-series-test
   (testing "GET /api/public/dashboard/:uuid/card/:card-id"
     (testing "should work with an additional Card series"
@@ -754,9 +772,9 @@
 
 (defn- field-values-url [card-or-dashboard field-or-id]
   (str "public/"
-       (condp instance? card-or-dashboard
-         (class Card)      "card"
-         (class Dashboard) "dashboard")
+       (condp mi/instance-of? card-or-dashboard
+         Card      "card"
+         Dashboard "dashboard")
        "/" (or (:public_uuid card-or-dashboard)
                (throw (Exception. (str "Missing public UUID: " card-or-dashboard))))
        "/field/" (u/the-id field-or-id)
@@ -773,7 +791,6 @@
   `(do-with-sharing-enabled-and-temp-card-referencing ~table-kw ~field-kw
      (fn [~card-binding]
        ~@body)))
-
 
 (deftest should-be-able-to-fetch-values-for-a-field-referenced-by-a-public-card
   (is (= {:values          [["20th Century Cafe"]
@@ -867,9 +884,9 @@
 
 (defn- field-search-url [card-or-dashboard field-or-id search-field-or-id]
   (str "public/"
-       (condp instance? card-or-dashboard
-         (class Card)      "card"
-         (class Dashboard) "dashboard")
+       (condp mi/instance-of? card-or-dashboard
+         Card      "card"
+         Dashboard "dashboard")
        "/" (:public_uuid card-or-dashboard)
        "/field/" (u/the-id field-or-id)
        "/search/" (u/the-id search-field-or-id)))
@@ -933,9 +950,9 @@
 
 (defn- field-remapping-url [card-or-dashboard field-or-id remapped-field-or-id]
   (str "public/"
-       (condp instance? card-or-dashboard
-         (class Card)      "card"
-         (class Dashboard) "dashboard")
+       (condp mi/instance-of? card-or-dashboard
+         Card      "card"
+         Dashboard "dashboard")
        "/" (:public_uuid card-or-dashboard)
        "/field/" (u/the-id field-or-id)
        "/remapping/" (u/the-id remapped-field-or-id)))
@@ -1005,12 +1022,14 @@
                (db/update! Dashboard (u/the-id dashboard) :public_uuid uuid)))
         (testing "GET /api/public/dashboard/:uuid/params/:param-key/values"
           (let [url (format "public/dashboard/%s/params/%s/values" uuid (:category-id param-keys))]
-            (is (= [2 3 4 5 6]
-                   (take 5 (client/client :get 200 url))))))
+            (is (= {:values          [2 3 4 5 6]
+                    :has_more_values false}
+                   (chain-filter-test/take-n-values 5 (client/client :get 200 url))))))
         (testing "GET /api/public/dashboard/:uuid/params/:param-key/search/:query"
           (let [url (format "public/dashboard/%s/params/%s/search/food" uuid (:category-name param-keys))]
-            (is (= ["Fast Food" "Food Truck" "Seafood"]
-                   (take 3 (client/client :get 200 url))))))))))
+            (is (= {:values          ["Fast Food" "Food Truck" "Seafood"]
+                    :has_more_values false}
+                   (chain-filter-test/take-n-values 3 (client/client :get 200 url))))))))))
 
 (deftest chain-filter-ignore-current-user-permissions-test
   (testing "Should not fail if request is authenticated but current user does not have data permissions"
@@ -1023,12 +1042,14 @@
                    (db/update! Dashboard (u/the-id dashboard) :public_uuid uuid)))
             (testing "GET /api/public/dashboard/:uuid/params/:param-key/values"
               (let [url (format "public/dashboard/%s/params/%s/values" uuid (:category-id param-keys))]
-                (is (= [2 3 4 5 6]
-                       (take 5 (mt/user-http-request :rasta :get 200 url))))))
+                (is (= {:values          [2 3 4 5 6]
+                        :has_more_values false}
+                       (chain-filter-test/take-n-values 5 (mt/user-http-request :rasta :get 200 url))))))
             (testing "GET /api/public/dashboard/:uuid/params/:param-key/search/:prefix"
               (let [url (format "public/dashboard/%s/params/%s/search/food" uuid (:category-name param-keys))]
-                (is (= ["Fast Food" "Food Truck" "Seafood"]
-                       (take 3 (mt/user-http-request :rasta :get 200 url))))))))))))
+                (is (= {:values          ["Fast Food" "Food Truck" "Seafood"]
+                        :has_more_values false}
+                       (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url))))))))))))
 
 ;; Pivot tables
 

@@ -18,7 +18,6 @@ import Tooltip from "metabase/components/Tooltip";
 
 import { formatValue } from "metabase/lib/formatting";
 import { isID, isPK, isFK } from "metabase/lib/schema_metadata";
-import { memoizeClass } from "metabase-lib/lib/utils";
 import {
   getTableCellClickedObject,
   getTableHeaderClickedObject,
@@ -28,16 +27,22 @@ import {
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
 import { fieldRefForColumn } from "metabase/lib/dataset";
 import { isAdHocModelQuestionCard } from "metabase/lib/data-modeling/utils";
-import Dimension from "metabase-lib/lib/Dimension";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { zoomInRow } from "metabase/query_builder/actions";
+import { getQueryBuilderMode } from "metabase/query_builder/selectors";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
-import MiniBar from "../MiniBar";
 
 import Ellipsified from "metabase/core/components/Ellipsified";
 import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
-import { ExpandButton } from "./TableInteractive.styled";
+import Dimension from "metabase-lib/lib/Dimension";
+import { memoizeClass } from "metabase-lib/lib/utils";
+import MiniBar from "../MiniBar";
+import {
+  ExpandButton,
+  HeaderCell,
+  ResizeHandle,
+} from "./TableInteractive.styled";
 
 // approximately 120 chars
 const TRUNCATE_WIDTH = 780;
@@ -68,6 +73,10 @@ function pickRowsToMeasure(rows, columnIndex, count = 10) {
   }
   return rowIndexes;
 }
+
+const mapStateToProps = state => ({
+  queryBuilderMode: getQueryBuilderMode(state),
+});
 
 const mapDispatchToProps = dispatch => ({
   onZoomRow: objectId => dispatch(zoomInRow({ objectId })),
@@ -173,9 +182,19 @@ class TableInteractive extends Component {
 
   _showDetailShortcut = (query, isPivoted) => {
     const hasAggregation = !!query?.aggregations?.()?.length;
-    this.setState({
-      showDetailShortcut: !(isPivoted || hasAggregation),
-    });
+    const isNotebookPreview = this.props.queryBuilderMode === "notebook";
+    const newShowDetailState = !(
+      isPivoted ||
+      hasAggregation ||
+      isNotebookPreview
+    );
+
+    if (newShowDetailState !== this.state.showDetailShortcut) {
+      this.setState({
+        showDetailShortcut: newShowDetailState,
+      });
+      this.recomputeColumnSizes();
+    }
   };
 
   _getColumnSettings(props) {
@@ -388,14 +407,15 @@ class TableInteractive extends Component {
         this.props.data,
         columnIndex,
         this.props.isPivoted,
+        this.props.query,
       );
     } catch (e) {
       console.error(e);
     }
   }
   // NOTE: all arguments must be passed to the memoized method, not taken from this.props etc
-  _getHeaderClickedObjectCached(data, columnIndex, isPivoted) {
-    return getTableHeaderClickedObject(data, columnIndex, isPivoted);
+  _getHeaderClickedObjectCached(data, columnIndex, isPivoted, query) {
+    return getTableHeaderClickedObject(data, columnIndex, isPivoted, query);
   }
 
   visualizationIsClickable(clicked) {
@@ -736,7 +756,7 @@ class TableInteractive extends Component {
           });
         }}
       >
-        <div
+        <HeaderCell
           data-testid="header-cell"
           ref={e => (this.headerRefs[columnIndex] = e)}
           style={{
@@ -748,7 +768,7 @@ class TableInteractive extends Component {
               : this.getColumnLeft(style, columnIndex),
           }}
           className={cx(
-            "TableInteractive-cellWrapper TableInteractive-headerCellData text-medium text-brand-hover",
+            "TableInteractive-cellWrapper TableInteractive-headerCellData",
             {
               "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
               padLeft: columnIndex === 0 && !showDetailShortcut,
@@ -819,8 +839,7 @@ class TableInteractive extends Component {
               this.setState({ dragColIndex: null });
             }}
           >
-            <div
-              className="bg-brand-hover bg-brand-active"
+            <ResizeHandle
               style={{
                 zIndex: 99,
                 position: "absolute",
@@ -832,7 +851,7 @@ class TableInteractive extends Component {
               }}
             />
           </Draggable>
-        </div>
+        </HeaderCell>
       </Draggable>
     );
   };
@@ -1114,7 +1133,7 @@ export default _.compose(
   ExplicitSize({
     refreshMode: props => (props.isDashboard ? "debounce" : "throttle"),
   }),
-  connect(null, mapDispatchToProps),
+  connect(mapStateToProps, mapDispatchToProps),
   memoizeClass(
     "_getCellClickedObjectCached",
     "_getHeaderClickedObjectCached",

@@ -14,10 +14,12 @@ import Breadcrumbs from "metabase/components/Breadcrumbs";
 import Sidebar from "metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar";
 import DriverWarning from "metabase/containers/DriverWarning";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { getWritebackEnabled } from "metabase/writeback/selectors";
 
 import Databases from "metabase/entities/databases";
 import { getSetting } from "metabase/selectors/settings";
 
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Database from "metabase-lib/lib/metadata/Database";
 
 import { getEditingDatabase, getInitializeError } from "../selectors";
@@ -26,6 +28,7 @@ import {
   reset,
   initializeDatabase,
   saveDatabase,
+  updateDatabase,
   syncDatabaseSchema,
   dismissSyncSpinner,
   rescanDatabaseFields,
@@ -33,7 +36,6 @@ import {
   deleteDatabase,
   selectEngine,
 } from "../database";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import {
   DatabaseEditContent,
   DatabaseEditForm,
@@ -51,6 +53,7 @@ const mapStateToProps = state => {
     database: database ? new Database(database) : undefined,
     initializeError: getInitializeError(state),
     isAdmin: getUserIsAdmin(state),
+    isWritebackEnabled: getWritebackEnabled(state),
     isModelPersistenceEnabled: getSetting(state, "persisted-models-enabled"),
   };
 };
@@ -59,6 +62,7 @@ const mapDispatchToProps = {
   reset,
   initializeDatabase,
   saveDatabase,
+  updateDatabase,
   syncDatabaseSchema,
   dismissSyncSpinner,
   rescanDatabaseFields,
@@ -84,9 +88,11 @@ class DatabaseEditApp extends Component {
     discardSavedFieldValues: PropTypes.func.isRequired,
     deleteDatabase: PropTypes.func.isRequired,
     saveDatabase: PropTypes.func.isRequired,
+    updateDatabase: PropTypes.func.isRequired,
     selectEngine: PropTypes.func.isRequired,
     location: PropTypes.object,
     isAdmin: PropTypes.bool,
+    isWritebackEnabled: PropTypes.bool,
     isModelPersistenceEnabled: PropTypes.bool,
   };
 
@@ -99,12 +105,14 @@ class DatabaseEditApp extends Component {
     const {
       database,
       deleteDatabase,
+      updateDatabase,
       discardSavedFieldValues,
       initializeError,
       rescanDatabaseFields,
       syncDatabaseSchema,
       dismissSyncSpinner,
       isAdmin,
+      isWritebackEnabled,
       isModelPersistenceEnabled,
     } = this.props;
     const editingExistingDatabase = database?.id != null;
@@ -142,6 +150,7 @@ class DatabaseEditApp extends Component {
                     onSubmit={handleSubmit}
                     submitTitle={addingNewDatabase ? t`Save` : t`Save changes`}
                     submitButtonComponent={Button}
+                    useLegacyForm
                   >
                     {({
                       Form,
@@ -194,7 +203,9 @@ class DatabaseEditApp extends Component {
             <Sidebar
               database={database}
               isAdmin={isAdmin}
+              isWritebackEnabled={isWritebackEnabled}
               isModelPersistenceEnabled={isModelPersistenceEnabled}
+              updateDatabase={updateDatabase}
               deleteDatabase={deleteDatabase}
               discardSavedFieldValues={discardSavedFieldValues}
               rescanDatabaseFields={rescanDatabaseFields}

@@ -8,6 +8,7 @@
               [metabase.mbql.schema :as mbql.s]
               [metabase.mbql.schema.helpers :as schema.helpers]
               [metabase.mbql.util.match :as mbql.match]
+              [metabase.models.dispatch :as models.dispatch]
               [metabase.shared.util.i18n :as i18n]
               metabase.util.i18n
               [potemkin :as p]
@@ -249,6 +250,27 @@
                              [:relative-datetime :current]
                              [:relative-datetime 0 temporal-unit])))))
 
+(def temporal-extract-ops->unit
+  "Mapping from the sugar syntax to extract datetime to the unit."
+  {:get-year        :year
+   :get-quarter     :quarter
+   :get-month       :month
+   :get-day         :day
+   :get-day-of-week :day-of-week
+   :get-hour        :hour
+   :get-minute      :minute
+   :get-second      :second})
+
+(def ^:private temporal-extract-ops
+  (set (keys temporal-extract-ops->unit)))
+
+(defn desugar-temporal-extract
+  "Replace datetime extractions clauses like `[:get-year field]` with `[:temporal-extract field :year]`."
+  [m]
+  (mbql.match/replace m
+    [(op :guard temporal-extract-ops) field]
+    [:temporal-extract field (temporal-extract-ops->unit op)]))
+
 (s/defn desugar-filter-clause :- mbql.s/Filter
   "Rewrite various 'syntatic sugar' filter clauses like `:time-interval` and `:inside` as simpler, logically
   equivalent clauses. This can be used to simplify the number of filter clauses that need to be supported by anything
@@ -263,7 +285,8 @@
       desugar-is-null-and-not-null
       desugar-is-empty-and-not-empty
       desugar-inside
-      simplify-compound-filter))
+      simplify-compound-filter
+      desugar-temporal-extract))
 
 (defmulti ^:private negate* first)
 
@@ -344,9 +367,15 @@
   "Dispatch function perfect for use with multimethods that dispatch off elements of an MBQL query. If `x` is an MBQL
   clause, dispatches off the clause name; otherwise dispatches off `x`'s class."
   ([x]
-   (if (mbql-clause? x)
-     (first x)
-     (type x)))
+   #?(:clj
+      (if (mbql-clause? x)
+        (first x)
+        (or (metabase.models.dispatch/model x)
+            (type x)))
+      :cljs
+      (if (mbql-clause? x)
+        (first x)
+        (type x))))
   ([x _]
    (dispatch-by-clause-name-or-class x)))
 

@@ -1,0 +1,15 @@
+name: Lint doc Markdown links
+
+on:
+  push:
+    paths:
+      - docs/**
+jobs:
+  markdown-link-check:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Lint doc links
+        run: yarn run docs-lint-links

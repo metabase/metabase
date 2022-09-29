@@ -6,12 +6,10 @@ title: I can't see my tables
 
 You have connected Metabase to a database, but:
 
-- you don't see the tables in the [Data Model][data-model] section of the Admin Panel,
-- the tables don't appear in the [Data Browser][data-browser],
+- you don't see the tables in the [Data Model](../data-modeling/metadata-editing.md) section of the Admin Panel,
+- the tables don't appear in the [Data Browser](https://www.metabase.com/learn/getting-started/data-browser),
 - the tables don't show up as possible data sources when you create a query using the Notebook Editor, or
 - you can no longer see tables that you used to be able to see.
-
-If you have a different issue, see [related problems](#do-you-have-a-different-problem).
 
 ## Is your browser showing you a cached list of tables?
 
@@ -41,7 +39,7 @@ If you can't connect to the database with another application, the problem is pr
 
 **Steps to take:**
 
-If your connection isn't working, go to [Troubleshooting database connections](./datawarehouse.html). 
+If your connection isn't working, go to [Troubleshooting database connections](./db-connection.md).
 
 ## Does the table exist?
 
@@ -61,7 +59,7 @@ Table "SOMEWHERE" not found
 
 If you see this message, use another application (e.g., `psql` for PostreSQL) to send the same query to the database. If it also produces a "table not found" message, check the database schema and the spelling of the table name.
 
-Be sure to log in to the database using the same credentials that Metabase uses. A common problem is that the account Metabase uses to connect to the database lacks the same privileges as a member of IT staff or a developer, so tables that are visible to the latter when they use external applications are invisible to Metabase. For more information, see [Troubleshooting database permissions][troubleshooting-database-permissions].
+Be sure to log in to the database using the same credentials that Metabase uses. A common problem is that the account Metabase uses to connect to the database lacks the same privileges as a member of IT staff or a developer, so tables that are visible to the latter when they use external applications are invisible to Metabase. You may want to [check if Metabase has the correct permissions](./data-permissions.md#getting-a-permission-denied-error-message).
 
 ## Does the person who cannot see the table have permission to view it?
 
@@ -91,23 +89,15 @@ If the administrator's account can see the tables but an individual person canno
 2. Go to Admin > Troubleshooting > Logs and see if there are any error messages saying that the "sync" operation could not run (e.g., because the network or the database itself was temporarily down).
 3. If there are no suspicious error messages, log out of Metabase, close the browser tab, log back into Metabase in a new browser tab, and try to access your table again.
 
-## Do you have a different problem?
+## Related problems
 
-- [My data sandboxes aren't working][troubleshooting-sandboxing].
-- [My permissions aren't working][troubleshooting-permissions].
-- [I can't view or edit a question or dashboard][troubleshooting-view-edit].
+- [My data sandboxes aren't working](./sandboxing.md).
+- [I can't view or edit a question or dashboard](./cant-view-or-edit.md).
+- [My visualizations are wrong](./visualization.md).
 
 ## Are you still stuck?
 
 If you can’t solve your problem using the troubleshooting guides:
 
-- Search or ask the [Metabase community][discourse].
-- Search for [known bugs or limitations][known-issues].
-
-[data-browser]: /learn/getting-started/data-browser.html
-[data-model]: ../administration-guide/03-metadata-editing.html
-[discourse]: https://discourse.metabase.com/
-[known-issues]: ./known-issues.html
-[troubleshooting-permissions]: ./permissions.html
-[troubleshooting-sandboxing]: ./sandboxing.html
-[troubleshooting-view-edit]: ./cant-view-or-edit.html
+- Search or ask the [Metabase community](https://discourse.metabase.com/).
+- Search for [known bugs or limitations](./known-issues.md).

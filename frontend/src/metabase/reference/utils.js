@@ -45,15 +45,6 @@ export const databaseToForeignKeys = database =>
         .reduce((map, foreignKey) => assoc(map, foreignKey.id, foreignKey), {})
     : {};
 
-export const fieldsToFormFields = fields =>
-  Object.keys(fields)
-    .map(key => [
-      `${key}.display_name`,
-      `${key}.semantic_type`,
-      `${key}.fk_target_field_id`,
-    ])
-    .reduce((array, keys) => array.concat(keys), []);
-
 // TODO Atte Keinänen 7/3/17: Construct question with Question of metabase-lib instead of this using function
 export const getQuestion = ({
   dbId,
@@ -106,20 +97,6 @@ export const getQuestion = ({
 
 export const getQuestionUrl = getQuestionArgs =>
   Urls.question(null, { hash: getQuestion(getQuestionArgs) });
-
-export const typeToLinkClass = {
-  dashboard: "text-green",
-  metric: "text-brand",
-  segment: "text-purple",
-  table: "text-purple",
-};
-
-export const typeToBgClass = {
-  dashboard: "bg-green",
-  metric: "bg-brand",
-  segment: "bg-purple",
-  table: "bg-purple",
-};
 
 // little utility function to determine if we 'has' things, useful
 // for handling entity empty states

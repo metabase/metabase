@@ -31,12 +31,11 @@
 
 (deftest retrieve-segments-test
   (mt/with-temp* [Database [{database-id :id}]
-                  Table    [{table-id-1 :id}    {:db_id database-id}]
-                  Table    [{table-id-2 :id}    {:db_id database-id}]
-                  Segment  [{segement-id-1 :id
-                             :as segment-1}     {:table_id table-id-1, :name "Segment 1", :description nil}]
-                  Segment  [{segment-id-2 :id}  {:table_id table-id-2}]
-                  Segment  [{segment-id3 :id}   {:table_id table-id-1, :archived true}]]
+                  Table    [{table-id-1 :id} {:db_id database-id}]
+                  Table    [{table-id-2 :id} {:db_id database-id}]
+                  Segment  [segment-1 {:table_id table-id-1, :name "Segment 1", :description nil}]
+                  Segment  [_         {:table_id table-id-2}]
+                  Segment  [_         {:table_id table-id-1, :archived true}]]
     (is (= [{:creator_id              (mt/user->id :rasta)
              :creator                 (user-details :rasta)
              :name                    "Segment 1"

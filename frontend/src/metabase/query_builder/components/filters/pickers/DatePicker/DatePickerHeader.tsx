@@ -1,9 +1,9 @@
 import React from "react";
 import _ from "underscore";
 
+import Filter from "metabase-lib/lib/queries/structured/Filter";
 import { Container, BackButton, TabButton } from "./DatePickerHeader.styled";
 import { DateOperator, DATE_OPERATORS } from "./DatePicker";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
 import { getHeaderText } from "./ExcludeDatePicker";
 
 type Props = {

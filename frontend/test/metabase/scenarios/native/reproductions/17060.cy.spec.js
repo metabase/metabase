@@ -50,7 +50,7 @@ describe("issue 17060", () => {
 });
 
 function rearrangeColumns() {
-  cy.get(".cursor-grab")
+  cy.findAllByTestId(/draggable-item/)
     .first()
     .trigger("mousedown", 0, 0, { force: true })
     .trigger("mousemove", 5, 5, { force: true })

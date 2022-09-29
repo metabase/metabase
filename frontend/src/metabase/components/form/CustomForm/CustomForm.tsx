@@ -1,12 +1,15 @@
 import React from "react";
 import _ from "underscore";
 
-import { FormFieldDefinition, FormObject } from "metabase-types/forms";
+import {
+  FormFieldDefinition,
+  PopulatedFormObject,
+} from "metabase-types/forms/legacy";
 
 import {
   BaseFormProps,
   OptionalFormViewProps,
-  FormLegacyContext,
+  CustomFormLegacyContext,
   LegacyContextTypes,
 } from "./types";
 
@@ -17,7 +20,7 @@ import CustomFormSubmit from "./CustomFormSubmit";
 import Form from "./Form";
 
 interface FormRenderProps extends BaseFormProps {
-  form: FormObject;
+  form: PopulatedFormObject;
   formFields: FormFieldDefinition[];
   Form: React.ComponentType<{ children: React.ReactNode }>;
   FormField: React.ComponentType<CustomFormFieldProps>;
@@ -50,7 +53,7 @@ function CustomForm(props: CustomFormProps) {
 class CustomFormWithLegacyContext extends React.Component<CustomFormProps> {
   static childContextTypes = LegacyContextTypes;
 
-  getChildContext(): FormLegacyContext {
+  getChildContext(): CustomFormLegacyContext {
     const {
       fields,
       values,

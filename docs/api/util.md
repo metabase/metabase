@@ -1,20 +1,14 @@
 ---
 title: "Util"
-summary: "Random utilty endpoints for things that don't belong anywhere else in particular, e.g. endpoints for certain admin
-  page tasks."
+summary: |
+  Random utilty endpoints for things that don't belong anywhere else in particular, e.g. endpoints for certain admin
+    page tasks.
 ---
 
 # Util
 
 Random utilty endpoints for things that don't belong anywhere else in particular, e.g. endpoints for certain admin
   page tasks.
-
-  - [GET /api/util/bug_report_details](#get-apiutilbug_report_details)
-  - [GET /api/util/diagnostic_info/connection_pool_info](#get-apiutildiagnostic_infoconnection_pool_info)
-  - [GET /api/util/logs](#get-apiutillogs)
-  - [GET /api/util/random_token](#get-apiutilrandom_token)
-  - [GET /api/util/stats](#get-apiutilstats)
-  - [POST /api/util/password_check](#post-apiutilpassword_check)
 
 ## `GET /api/util/bug_report_details`
 

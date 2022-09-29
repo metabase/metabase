@@ -8,6 +8,10 @@ import { createThunkAction } from "metabase/lib/redux";
 import Utils from "metabase/lib/utils";
 
 import {
+  getTemplateTagsForParameters,
+  getTemplateTagParameters,
+} from "metabase/parameters/utils/cards";
+import {
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
   getQuestion,
@@ -16,11 +20,6 @@ import {
 
 import { updateQuestion } from "./core";
 import { SET_UI_CONTROLS } from "./ui";
-
-import {
-  getTemplateTagsForParameters,
-  getTemplateTagParameters,
-} from "metabase/parameters/utils/cards";
 
 export const TOGGLE_DATA_REFERENCE = "metabase/qb/TOGGLE_DATA_REFERENCE";
 export const toggleDataReference = createAction(TOGGLE_DATA_REFERENCE, () => {
@@ -118,11 +117,7 @@ export const setTemplateTag = createThunkAction(
       const updatedCard = Utils.copy(card);
 
       // when the query changes on saved card we change this into a new query w/ a known starting point
-      if (
-        !uiControls.isEditing &&
-        uiControls.queryBuilderMode !== "dataset" &&
-        updatedCard.id
-      ) {
+      if (uiControls.queryBuilderMode !== "dataset" && updatedCard.id) {
         delete updatedCard.id;
         delete updatedCard.name;
         delete updatedCard.description;

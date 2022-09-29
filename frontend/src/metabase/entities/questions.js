@@ -1,8 +1,12 @@
+import { updateIn } from "icepick";
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
 
-import { API_UPDATE_QUESTION } from "metabase/query_builder/actions";
+import {
+  API_UPDATE_QUESTION,
+  SOFT_RELOAD_CARD,
+} from "metabase/query_builder/actions";
 
 import Collections, {
   getCollectionType,
@@ -69,7 +73,7 @@ const Questions = createEntity({
 
   objectSelectors: {
     getName: question => question && question.name,
-    getUrl: question => question && Urls.question(question),
+    getUrl: (question, opts) => question && Urls.question(question, opts),
     getColor: () => color("text-medium"),
     getCollection: question =>
       question && normalizedCollection(question.collection),
@@ -77,6 +81,17 @@ const Questions = createEntity({
   },
 
   reducer: (state = {}, { type, payload, error }) => {
+    if (type === SOFT_RELOAD_CARD) {
+      const { id } = payload;
+      const latestReview = payload.moderation_reviews?.find(x => x.most_recent);
+
+      if (latestReview) {
+        return updateIn(state, [id], question => ({
+          ...question,
+          moderated_status: latestReview.status,
+        }));
+      }
+    }
     return state;
   },
 
@@ -98,6 +113,7 @@ const Questions = createEntity({
     "collection_position",
     "collection_preview",
     "result_metadata",
+    "is_write",
   ],
 
   getAnalyticsMetadata([object], { action }, getState) {
@@ -108,7 +124,7 @@ const Questions = createEntity({
   forms,
 });
 
-function getIcon(question) {
+export function getIcon(question) {
   if (question.dataset || question.model === "dataset") {
     return { name: "model" };
   }

@@ -5,7 +5,7 @@
             [clojure.tools.reader.edn :as edn]
             [metabase.api.common :as api]
             [metabase.config :as config]
-            [metabase.db.connection :as mdb.conn]
+            [metabase.db.connection :as mdb.connection]
             [metabase.driver :as driver]
             [metabase.models :refer [Database Field FieldValues Table]]
             [metabase.plugins.classloader :as classloader]
@@ -59,7 +59,7 @@
 
 (defn- add-extra-metadata!
   "Add extra metadata like Field base-type, etc."
-  [{:keys [table-definitions], :as database-definition} db]
+  [{:keys [table-definitions], :as _database-definition} db]
   {:pre [(seq table-definitions)]}
   (doseq [{:keys [table-name], :as table-definition} table-definitions]
     (let [table (delay (or (tx/metabase-instance table-definition db)
@@ -88,7 +88,7 @@
 (defonce ^:private reference-sync-durations
   (delay (edn/read-string (slurp "test_resources/sync-durations.edn"))))
 
-(defn- create-database! [driver {:keys [database-name table-definitions], :as database-definition}]
+(defn- create-database! [driver {:keys [database-name], :as database-definition}]
   {:pre [(seq database-name)]}
   (try
     ;; Create the database and load its data
@@ -119,7 +119,7 @@
                 (catch Throwable e
                   (log/error e "Error adding extra metadata"))))))
         ;; make sure we're returing an up-to-date copy of the DB
-        (Database (u/the-id db))
+        (db/select-one Database :id (u/the-id db))
         (catch Throwable e
           (let [e (ex-info (format "Failed to create test database: %s" (ex-message e))
                            {:driver             driver
@@ -218,7 +218,7 @@
 (defn- the-field-id* [table-id field-name & {:keys [parent-id]}]
   (or (db/select-one-id Field, :active true, :table_id table-id, :name field-name, :parent_id parent-id)
       (let [{db-id :db_id, table-name :name} (db/select-one [Table :name :db_id] :id table-id)
-            {driver :engine, db-name :name}  (db/select-one [Database :engine :name] :id db-id)
+            db-name                          (db/select-one-field :name Database :id db-id)
             field-name                       (qualified-field-name {:parent_id parent-id, :name field-name})
             all-field-names                  (all-field-names table-id)]
         (throw
@@ -295,7 +295,7 @@
   (copy-db-fks! old-db-id new-db-id))
 
 (def ^:dynamic *db-is-temp-copy?*
-    "Whether the current test database is a temp copy created with the [[metabase.test/with-temp-copy-of-db]] macro."
+  "Whether the current test database is a temp copy created with the [[metabase.test/with-temp-copy-of-db]] macro."
   false)
 
 (defn do-with-temp-copy-of-db
@@ -303,14 +303,14 @@
   from the standard test database, and syncs it."
   [f]
   (let [{old-db-id :id, :as old-db} (*get-db*)
-        original-db                 (select-keys old-db [:details :engine :name])]
-    (let [{new-db-id :id, :as new-db} (db/insert! Database original-db)]
-      (try
-        (copy-db-tables-and-fields! old-db-id new-db-id)
-        (binding [*db-is-temp-copy?* true]
-          (do-with-db new-db f))
-        (finally
-          (db/delete! Database :id new-db-id))))))
+        original-db                 (select-keys old-db [:details :engine :name])
+        {new-db-id :id, :as new-db} (db/insert! Database original-db)]
+    (try
+      (copy-db-tables-and-fields! old-db-id new-db-id)
+      (binding [*db-is-temp-copy?* true]
+        (do-with-db new-db f))
+      (finally
+        (db/delete! Database :id new-db-id)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -332,9 +332,9 @@
   "Impl for [[metabase.test/dataset]] macro."
   [dataset-definition f]
   (let [dbdef             (tx/get-dataset-definition dataset-definition)
-        get-db-for-driver (mdb.conn/memoize-for-application-db
+        get-db-for-driver (mdb.connection/memoize-for-application-db
                            (fn [driver]
-                             (binding [db/*disable-db-logging* true]
+                            (binding [db/*disable-db-logging* true]
                                (let [db (get-or-create-database! driver dbdef)]
                                  (assert db)
                                  (assert (db/exists? Database :id (u/the-id db)))

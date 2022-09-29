@@ -16,6 +16,7 @@
            [com.snowplowanalytics.snowplow.tracker.events Unstructured Unstructured$Builder]
            [com.snowplowanalytics.snowplow.tracker.http ApacheHttpClientAdapter ApacheHttpClientAdapter$Builder]
            com.snowplowanalytics.snowplow.tracker.payload.SelfDescribingJson
+           [org.apache.http.client.config CookieSpecs RequestConfig]
            org.apache.http.impl.client.HttpClients
            org.apache.http.impl.conn.PoolingHttpClientConnectionManager))
 
@@ -66,7 +67,6 @@
 (defsetting instance-creation
   (deferred-tru "The approximate timestamp at which this instance of Metabase was created, for inclusion in analytics.")
   :visibility :public
-  :type       :timestamp
   :setter     :none
   :getter     (fn []
                 (when-not (db/exists? Setting :key "instance-creation")
@@ -76,13 +76,19 @@
                   (let [value (or (first-user-creation) (t/offset-date-time))]
                     (setting/set-value-of-type! :timestamp :instance-creation value)
                     (track-event! ::new-instance-created)))
-                (setting/get-value-of-type :timestamp :instance-creation)))
+                (u.date/format-rfc3339 (setting/get-value-of-type :timestamp :instance-creation))))
 
 (def ^:private emitter
   "Returns an instance of a Snowplow emitter"
   (let [emitter* (delay
-                   (let [client (-> (HttpClients/custom)
+                   (let [request-config (-> (RequestConfig/custom)
+                                            ;; Set cookie spec to `STANDARD` to avoid warnings about an invalid cookie
+                                            ;; header in request response (PR #24579)
+                                            (.setCookieSpec CookieSpecs/STANDARD)
+                                            (.build))
+                         client (-> (HttpClients/custom)
                                     (.setConnectionManager (PoolingHttpClientConnectionManager.))
+                                    (.setDefaultRequestConfig request-config)
                                     (.build))
                          builder (-> (ApacheHttpClientAdapter/builder)
                                      (.httpClient client)
@@ -129,7 +135,7 @@
        {"id"             (analytics-uuid)
         "version"        {"tag" (:tag (public-settings/version))}
         "token_features" (m/map-keys name (public-settings/token-features))
-        "created_at"     (u.date/format (instance-creation))}))
+        "created_at"     (instance-creation)}))
 
 (defn- normalize-kw
   [kw]
@@ -168,7 +174,7 @@
   "Send a single analytics event to the Snowplow collector, if tracking is enabled for this MB instance and a collector
   is available."
   [event-kw & [user-id data]]
-  (when (and (public-settings/anon-tracking-enabled) (snowplow-available))
+  (when (snowplow-enabled)
     (try
       (let [schema (event->schema event-kw)
             ^Unstructured$Builder builder (-> (. Unstructured builder)

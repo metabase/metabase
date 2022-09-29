@@ -4,9 +4,6 @@
 :root {
   --color-brand: #509ee3;
   --color-brand-light: #ddecfa;
-  --color-accent1: #88bf4d;
-  --color-accent2: #a989c5;
-  --color-accent7: #7172ad;
   --color-admin-navbar: #7172ad;
   --color-white: #ffffff;
   --color-black: #2e353b;
@@ -26,7 +23,6 @@
   --color-focus: #cbe2f7;
   --color-shadow: rgba(0, 0, 0, 0.13);
   --color-border: #eeecec;
-  --color-border-dark: #c9ced3;
 }
 
 .text-default,
@@ -46,11 +42,6 @@
   color: var(--color-brand);
 }
 
-.text-brand-darken,
-.text-brand-darken-hover:hover {
-  color: var(--color-brand);
-}
-
 .text-brand-light,
 :local(.text-brand-light),
 .text-brand-light-hover:hover,
@@ -62,31 +53,12 @@
   background-color: var(--color-brand-light);
 }
 
-.bg-brand-dark,
-.bg-brand-dark-hover:hover {
+.bg-brand-dark {
   background-color: color-mod(var(--color-brand) blackness(12%));
 }
 
-.bg-brand-dark,
-.bg-brand-dark-hover:hover {
-  background-color: color-mod(var(--color-brand) blackness(12%));
-}
-
-.bg-brand-dark,
-.bg-brand-dark-hover:hover {
-  background-color: color-mod(var(--color-brand) blackness(12%));
-}
-
-.bg-brand,
-.bg-brand-hover:hover,
-.bg-brand-active:active {
+.bg-brand {
   background-color: var(--color-brand);
-}
-
-@media screen and (--breakpoint-min-md) {
-  .md-bg-brand {
-    background-color: var(--color-brand) !important;
-  }
 }
 
 /* success */
@@ -114,21 +86,6 @@
   background-color: var(--color-bg-white);
 }
 
-.text-purple,
-.text-purple-hover:hover {
-  color: var(--color-accent7);
-}
-
-.text-green,
-.text-green-hover:hover {
-  color: var(--color-accent1);
-}
-
-.text-green-saturated,
-.text-green-saturated-hover:hover {
-  color: var(--color-accent1);
-}
-
 .text-orange,
 .text-orange-hover:hover {
   color: var(--color-warning);
@@ -142,24 +99,6 @@
 }
 .text-slate-extra-light {
   background-color: var(--color-bg-light);
-}
-
-.bg-purple,
-.bg-purple-hover:hover {
-  background-color: var(--color-accent2);
-}
-
-.bg-purple-light {
-  background-color: color-mod(var(--color-accent7) alpha(-85%));
-}
-
-.bg-green,
-.bg-green-hover:hover {
-  background-color: var(--color-accent1);
-}
-.bg-green-saturated,
-.bg-green-saturated-hover:hover {
-  background-color: var(--color-accent1);
 }
 
 /* alt */
@@ -229,8 +168,7 @@
 }
 
 .bg-white,
-:local(.bg-white),
-.bg-white-hover:hover {
+:local(.bg-white) {
   background-color: var(--color-bg-white);
 }
 
@@ -255,34 +193,6 @@
 }
 
 /* entity colors */
-
-.bg-metric {
-  background-color: var(--color-accent1);
-}
-.text-metric {
-  color: var(--color-accent1);
-}
-
-.bg-data {
-  background-color: var(--color-accent1);
-}
-.text-data {
-  color: var(--color-accent1);
-}
-
-.bg-segment {
-  background-color: var(--color-accent2);
-}
-.text-segment {
-  color: var(--color-accent2);
-}
-
-.bg-dashboard {
-  background-color: var(--color-brand);
-}
-.text-dashboard {
-  color: var(--color-brand);
-}
 
 .bg-question {
   background-color: var(--color-bg-dark);

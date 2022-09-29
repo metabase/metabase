@@ -1,22 +1,19 @@
 import styled from "@emotion/styled";
+import ColumnItem from "./ColumnItem";
 
-export const ShowTotalsOptionRoot = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: 1rem;
-`;
+interface FieldPartitionColumnProps {
+  isDisabled: boolean;
+}
 
-export const SortOrderOptionRoot = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: 0.5rem;
-`;
+export const FieldPartitionColumn = styled(
+  ColumnItem,
+)<FieldPartitionColumnProps>`
+  padding: 0.25rem 0;
 
-export const FormattingOptionsRoot = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: 0.5rem;
+  ${props =>
+    props.isDisabled &&
+    `
+        pointer-events: none;
+        opacity: 0.4;
+      `}
 `;

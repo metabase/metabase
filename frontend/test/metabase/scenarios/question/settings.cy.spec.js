@@ -38,7 +38,7 @@ describe("scenarios > question > settings", () => {
       cy.get("@tableOptions")
         .contains("Total")
         .scrollIntoView()
-        .nextAll(".Icon-close")
+        .nextAll(".Icon-eye_filled")
         .click();
 
       // Add people.category
@@ -116,8 +116,8 @@ describe("scenarios > question > settings", () => {
       // Remove "Total"
       getSidebarColumns()
         .contains("Total")
-        .closest(".cursor-grab")
-        .find(".Icon-close")
+        .closest("[data-testid^=draggable-item]")
+        .find(".Icon-eye_filled")
         .click();
 
       reloadResults();
@@ -177,7 +177,7 @@ describe("scenarios > question > settings", () => {
       cy.get(".TableInteractive").findByText("Subtotal").click(); // open subtotal column header actions
       popover().within(() => cy.icon("gear").click()); // open subtotal column settings
 
-      cy.findByText("Table options").should("not.exist"); // no longer displaying the top level settings
+      //cy.findByText("Table options").should("not.exist"); // no longer displaying the top level settings
       cy.findByText("Separator style"); // shows subtotal column settings
 
       cy.get(".TableInteractive").findByText("Created At").click(); // open created_at column header actions
@@ -220,7 +220,7 @@ describe("scenarios > question > settings", () => {
       getSidebarColumns()
         .eq("4")
         .within(() => {
-          cy.icon("gear").click();
+          cy.icon("ellipsis").click();
         });
 
       cy.findByText("Normal").click();
@@ -263,9 +263,9 @@ describe("scenarios > question > settings", () => {
 
 function getSidebarColumns() {
   return cy
-    .findByText("Click and drag to change their order")
+    .findByText("Columns", { selector: "label" })
     .scrollIntoView()
     .should("be.visible")
     .parent()
-    .find(".cursor-grab");
+    .find("[data-testid^=draggable-item]");
 }

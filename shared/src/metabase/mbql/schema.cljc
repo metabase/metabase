@@ -78,6 +78,12 @@
    (apply s/enum datetime-bucketing-units)
    "datetime-bucketing-unit"))
 
+(def TemporalExtractUnits
+  "Valid units to extract from a temporal."
+  (s/named
+    (apply s/enum #{:second :minute :hour :day :day-of-week :week :month :quarter :year})
+    "temporal-extract-units"))
+
 (def ^:private RelativeDatetimeUnit
   (s/named
    (apply s/enum #{:default :minute :hour :day :week :month :quarter :year})
@@ -462,8 +468,24 @@
 
 (def ^:private aggregations #{:sum :avg :stddev :var :median :percentile :min :max :cum-count :cum-sum :count-where :sum-where :share :distinct :metric :aggregation-options :count})
 
+(def temporal-extract-functions
+  "Functions to extract components of a date, datetime."
+  #{;; extraction functions (get some component of a given temporal value/column)
+    :temporal-extract
+    ;; SUGAR drivers do not need to implement
+    :get-year :get-quarter :get-month :get-day :get-day-of-week :get-hour :get-minute :get-second})
+
+(def date-arithmetic-functions
+  "Functions to do math with date, datetime."
+  #{:date-add :date-subtract})
+
+(def date+time+timezone-functions
+  "Date, time, and timezone related functions."
+  (set/union temporal-extract-functions date-arithmetic-functions))
+
 (declare ArithmeticExpression)
 (declare BooleanExpression)
+(declare DatetimeExpression)
 (declare Aggregation)
 
 (def ^:private NumericExpressionArg
@@ -474,6 +496,9 @@
    (partial is-clause? arithmetic-expressions)
    (s/recursive #'ArithmeticExpression)
 
+   (partial is-clause? temporal-extract-functions)
+   (s/recursive #'DatetimeExpression)
+
    (partial is-clause? aggregations)
    (s/recursive #'Aggregation)
 
@@ -482,6 +507,21 @@
 
    :else
    Field))
+
+(def ^:private DateTimeExpressionArg
+  (s/conditional
+    (partial is-clause? aggregations)
+    (s/recursive #'Aggregation)
+
+    (partial is-clause? :value)
+    value
+
+    ;; Recursively doing date math
+    (partial is-clause? date-arithmetic-functions)
+    (s/recursive #'DatetimeExpression)
+
+    :else
+    Field))
 
 (def ^:private ExpressionArg
   (s/conditional
@@ -502,6 +542,9 @@
 
    (partial is-clause? string-expressions)
    (s/recursive #'StringExpression)
+
+   (partial is-clause? temporal-extract-functions)
+   (s/recursive #'DatetimeExpression)
 
    (partial is-clause? :value)
    value
@@ -587,12 +630,65 @@
   "Schema for the definition of an arithmetic expression."
   (s/recursive #'ArithmeticExpression*))
 
+(defclause ^{:requires-features #{:temporal-extract}} temporal-extract
+  datetime DateTimeExpressionArg
+  unit     TemporalExtractUnits)
+
+;; SUGAR CLAUSE: get-year, get-month... clauses are all sugars clause that will be rewritten as [:temporal-extract column :year]
+(defclause ^{:requires-features #{:temporal-extract}} ^:sugar get-year
+  date DateTimeExpressionArg)
+
+(defclause ^{:requires-features #{:temporal-extract}} ^:sugar get-quarter
+  date DateTimeExpressionArg)
+
+(defclause ^{:requires-features #{:temporal-extract}} ^:sugar get-month
+  date DateTimeExpressionArg)
+
+(defclause ^{:requires-features #{:temporal-extract}} ^:sugar get-day
+  date DateTimeExpressionArg)
+
+(defclause ^{:requires-features #{:temporal-extract}} ^:sugar get-day-of-week
+  date DateTimeExpressionArg)
+
+(defclause ^{:requires-features #{:temporal-extract}} ^:sugar get-hour
+  datetime DateTimeExpressionArg)
+
+(defclause ^{:requires-features #{:temporal-extract}} ^:sugar get-minute
+  datetime DateTimeExpressionArg)
+
+(defclause ^{:requires-features #{:temporal-extract}} ^:sugar get-second
+  datetime DateTimeExpressionArg)
+
+(def ^:private ArithmeticDateTimeUnit
+  (s/named
+   (apply s/enum #{:millisecond :second :minute :hour :day :week :month :quarter :year})
+   "arithmetic-datetime-unit"))
+
+(defclause ^{:requires-features #{:date-arithmetics}} date-add
+  datetime DateTimeExpressionArg
+  amount   NumericExpressionArg
+  unit     ArithmeticDateTimeUnit)
+
+(defclause ^{:requires-features #{:date-arithmetics}} date-subtract
+  datetime DateTimeExpressionArg
+  amount   NumericExpressionArg
+  unit     ArithmeticDateTimeUnit)
+
+(def ^:private DatetimeExpression*
+  (one-of temporal-extract date-add date-subtract
+          ;; SUGAR drivers do not need to implement
+          get-year get-quarter get-month get-day get-day-of-week get-hour
+          get-minute get-second))
+
+(def DatetimeExpression
+  "Schema for the definition of a date function expression."
+  (s/recursive #'DatetimeExpression*))
+
 (declare StringExpression*)
 
 (def ^:private StringExpression
   "Schema for the definition of an string expression."
   (s/recursive #'StringExpression*))
-
 
 ;;; ----------------------------------------------------- Filter -----------------------------------------------------
 
@@ -769,18 +865,18 @@
   "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a
   `:+` clause or a `:field` clause."
   (s/conditional
-   (partial is-clause? arithmetic-expressions) ArithmeticExpression
-   (partial is-clause? string-expressions)     StringExpression
-   (partial is-clause? boolean-expressions)    BooleanExpression
-   (partial is-clause? :case)                  case
-   :else                                       Field))
-
+   (partial is-clause? arithmetic-expressions)       ArithmeticExpression
+   (partial is-clause? string-expressions)           StringExpression
+   (partial is-clause? boolean-expressions)          BooleanExpression
+   (partial is-clause? date+time+timezone-functions) DatetimeExpression
+   (partial is-clause? :case)                        case
+   :else                                             Field))
 
 ;;; -------------------------------------------------- Aggregations --------------------------------------------------
 
 ;; For all of the 'normal' Aggregations below (excluding Metrics) fields are implicit Field IDs
 
-;; cum-sum and cum-count are SUGAR because they're implemented in middleware. They clauses are swapped out with
+;; cum-sum and cum-count are SUGAR because they're implemented in middleware. The clauses are swapped out with
 ;; `count` and `sum` aggregations respectively and summation is done in Clojure-land
 (defclause ^{:requires-features #{:basic-aggregations}} ^:sugar count,     field (optional Field))
 (defclause ^{:requires-features #{:basic-aggregations}} ^:sugar cum-count, field (optional Field))
@@ -837,8 +933,10 @@
 (def ^:private UnnamedAggregation*
   (s/if (partial is-clause? arithmetic-expressions)
     ArithmeticExpression
-    (one-of count avg cum-count cum-sum distinct stddev sum min max metric share count-where
-            sum-where case median percentile ag:var)))
+    (one-of avg cum-sum distinct stddev sum min max metric share count-where
+            sum-where case median percentile ag:var
+            ;; SUGAR clauses
+            cum-count count)))
 
 (def ^:private UnnamedAggregation
   (s/recursive #'UnnamedAggregation*))
@@ -913,13 +1011,9 @@
 ;;
 ;; Field filters and raw values usually have their value specified by `:parameters` (see [[Parameters]] below).
 
-(def template-tag-types
-  "List of valid template tag types."
-  [:snippet :card :dimension :number :text :date])
-
 (def TemplateTagType
   "Schema for valid values of template tag `:type`."
-  (apply s/enum template-tag-types))
+  (s/enum :snippet :card :dimension :number :text :date))
 
 (def ^:private TemplateTag:Common
   "Things required by all template tag types."
@@ -1352,8 +1446,8 @@
    :number/between          {:type :numeric, :operator :binary, :allowed-for #{:number/between}}
    :string/!=               {:type :string, :operator :variadic, :allowed-for #{:string/!=}}
    :string/=                {:type :string, :operator :variadic, :allowed-for #{:string/= :text :id :category
-                                                                                 :location/city :location/state
-                                                                                 :location/zip_code :location/country}}
+                                                                                :location/city :location/state
+                                                                                :location/zip_code :location/country}}
    :string/contains         {:type :string, :operator :unary, :allowed-for #{:string/contains}}
    :string/does-not-contain {:type :string, :operator :unary, :allowed-for #{:string/does-not-contain}}
    :string/ends-with        {:type :string, :operator :unary, :allowed-for #{:string/ends-with}}
@@ -1489,6 +1583,11 @@
    ;; you should set this yourself. This is only used by the [[metabase.query-processor/preprocess]] function to get
    ;; the fully pre-processed query without attempting to convert it to native.
    (s/optional-key :disable-mbql->native?)
+   s/Bool
+
+   ;; Disable applying a default limit on the query results. Handled in the `add-default-limit` middleware.
+   ;; If true, this will override the `:max-results` and `:max-results-bare-rows` values in [[Constraints]].
+   (s/optional-key :disable-max-results?)
    s/Bool
 
    ;; Userland queries are ones ran as a result of an API call, Pulse, or the like. Special handling is done in the

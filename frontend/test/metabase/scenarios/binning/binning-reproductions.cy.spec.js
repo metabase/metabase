@@ -188,7 +188,7 @@ describe("binning related reproductions", () => {
     cy.findByText("Hour of Day");
   });
 
-  it.skip("shouldn't duplicate the breakout field (metabase#22382)", () => {
+  it("shouldn't duplicate the breakout field (metabase#22382)", () => {
     const questionDetails = {
       name: "22382",
       query: {
@@ -206,7 +206,7 @@ describe("binning related reproductions", () => {
 
     cy.findByTestId("sidebar-left").within(() => {
       cy.findByTextEnsureVisible("Table options");
-      cy.findByText("Count").siblings(".Icon-close").click();
+      cy.findByText("Created At").siblings(".Icon-eye_filled").click();
       cy.button("Done").click();
     });
 
@@ -254,7 +254,7 @@ describe("binning related reproductions", () => {
 
       changeBinningForDimension({
         name: "Average of Subtotal",
-        fromBinning: "Auto binned",
+        fromBinning: "Auto bin",
         toBinning: "10 bins",
       });
 
@@ -270,7 +270,7 @@ describe("binning related reproductions", () => {
 
       changeBinningForDimension({
         name: "Average of Subtotal",
-        fromBinning: "Auto binned",
+        fromBinning: "Auto bin",
         toBinning: "10 bins",
       });
 

@@ -15,7 +15,6 @@ import Icon from "metabase/components/Icon";
 import ChannelSetupModal from "metabase/components/ChannelSetupModal";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import PulseEditChannels from "metabase/pulse/components/PulseEditChannels";
-import { AlertModalFooter, DangerZone } from "./AlertModals.styled";
 
 import User from "metabase/entities/users";
 
@@ -38,17 +37,18 @@ import {
 } from "metabase/pulse/selectors";
 
 // lib
+import MetabaseCookies from "metabase/lib/cookies";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
+
+// types
+import { alertIsValid } from "metabase/lib/alert";
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
   ALERT_TYPE_ROWS,
   ALERT_TYPE_TIMESERIES_GOAL,
   getDefaultAlert,
 } from "metabase-lib/lib/Alert";
-import MetabaseCookies from "metabase/lib/cookies";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
-
-// types
-import { alertIsValid } from "metabase/lib/alert";
+import { AlertModalFooter, DangerZone } from "./AlertModals.styled";
 
 const getScheduleFromChannel = channel =>
   _.pick(
@@ -405,8 +405,8 @@ export class DeleteAlertSection extends Component {
             <ModalWithTrigger
               ref={ref => (this.deleteModal = ref)}
               as={Button}
-              triggerClasses="Button--danger flex-align-right flex-no-shrink"
-              triggerElement={t`Delete this Alert`}
+              triggerClasses="Button--danger flex-align-right flex-no-shrink align-self-end"
+              triggerElement={t`Delete this alert`}
             >
               <DeleteModalWithConfirm
                 objectType="alert"

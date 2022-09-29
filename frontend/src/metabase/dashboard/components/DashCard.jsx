@@ -5,6 +5,9 @@ import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
+import cx from "classnames";
+import _ from "underscore";
+import { getIn } from "icepick";
 import visualizations, { getVisualizationRaw } from "metabase/visualizations";
 import { mergeSettings } from "metabase/visualizations/lib/settings";
 import Visualization, {
@@ -22,16 +25,15 @@ import Icon, { iconPropTypes } from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 
 import { isVirtualDashCard } from "metabase/dashboard/utils";
-import DashCardParameterMapper from "./DashCardParameterMapper";
 
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
 
-import cx from "classnames";
-import _ from "underscore";
-import { getIn } from "icepick";
+import { isActionCard } from "metabase/writeback/utils";
+
 import { getParameterValuesBySlug } from "metabase/parameters/utils/parameter-values";
 import Utils from "metabase/lib/utils";
+import DashCardParameterMapper from "./DashCardParameterMapper";
 import { DashCardRoot } from "./DashCard.styled";
 
 const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;
@@ -177,14 +179,18 @@ export default class DashCard extends Component {
       parameterValues,
     );
 
+    const isAction = isActionCard(mainCard);
+
     const hideBackground =
       !isEditing &&
-      mainCard.visualization_settings["dashcard.background"] === false;
+      (mainCard.visualization_settings["dashcard.background"] === false ||
+        mainCard.display === "list" ||
+        isAction);
 
     const isEditingDashboardLayout =
       isEditing && clickBehaviorSidebarDashcard == null && !isEditingParameter;
 
-    const gridSize = { width: dashcard.sizeX, height: dashcard.sizeY };
+    const gridSize = { width: dashcard.size_x, height: dashcard.size_y };
 
     return (
       <DashCardRoot
@@ -200,6 +206,7 @@ export default class DashCard extends Component {
         {isEditingDashboardLayout ? (
           <DashboardCardActionsPanel onMouseDown={this.preventDragging}>
             <DashCardActionButtons
+              card={mainCard}
               series={series}
               isLoading={loading}
               isVirtualDashCard={isVirtualDashCard(dashcard)}
@@ -227,10 +234,12 @@ export default class DashCard extends Component {
           headerIcon={headerIcon}
           errorIcon={errorIcon}
           isSlow={isSlow}
+          isDataApp={dashboard.is_app_page}
           expectedDuration={expectedDuration}
           rawSeries={series}
-          showTitle
+          showTitle={!dashboard.is_app_page}
           isFullscreen={isFullscreen}
+          isNightMode={isNightMode}
           isDashboard
           dispatch={this.props.dispatch}
           dashboard={dashboard}
@@ -263,9 +272,14 @@ export default class DashCard extends Component {
             clickBehaviorSidebarDashcard != null &&
             isVirtualDashCard(dashcard) ? (
               <div className="flex full-height align-center justify-center">
-                <h4 className="text-medium">{t`Text card`}</h4>
+                <h4 className="text-medium">
+                  {dashcard.visualization_settings.virtual_card.display ===
+                  "text"
+                    ? t`Text card`
+                    : t`Action button`}
+                </h4>
               </div>
-            ) : isEditingParameter ? (
+            ) : isEditingParameter && !isAction ? (
               <DashCardParameterMapper
                 dashcard={dashcard}
                 isMobile={isMobile}
@@ -330,6 +344,7 @@ const DashboardCardActionsPanel = styled.div`
 `;
 
 const DashCardActionButtons = ({
+  card,
   series,
   isLoading,
   isVirtualDashCard,
@@ -368,7 +383,7 @@ const DashCardActionButtons = ({
         />,
       );
     }
-    if (!isVirtualDashCard) {
+    if (!isVirtualDashCard || isActionCard(card)) {
       buttons.push(
         <Tooltip key="click-behavior-tooltip" tooltip={t`Click behavior`}>
           <a

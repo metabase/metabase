@@ -1,8 +1,8 @@
 import _ from "underscore";
 import { t, ngettext, msgid } from "ttag";
+import moment from "moment-timezone";
 import { parseTimestamp } from "metabase/lib/time";
 import MetabaseUtils from "metabase/lib/utils";
-import moment from "moment";
 
 const n2w = (n: number) => MetabaseUtils.numberToWord(n);
 
@@ -66,6 +66,7 @@ export type SettingName =
   | "enable-enhancements?"
   | "enable-public-sharing"
   | "enable-xrays"
+  | "experimental-enable-actions"
   | "persisted-models-enabled"
   | "engines"
   | "ga-code"
@@ -75,6 +76,7 @@ export type SettingName =
   | "has-user-setup"
   | "hide-embed-branding?"
   | "is-hosted?"
+  | "ldap-enabled"
   | "ldap-configured?"
   | "other-sso-configured?"
   | "enable-password-login"
@@ -86,6 +88,7 @@ export type SettingName =
   | "setup-token"
   | "site-url"
   | "site-uuid"
+  | "token-status"
   | "types"
   | "version-info-last-checked"
   | "version-info"
@@ -184,6 +187,10 @@ class Settings {
     return this.get("google-auth-client-id") != null;
   }
 
+  isLdapEnabled() {
+    return this.get("ldap-enabled");
+  }
+
   isLdapConfigured() {
     return this.get("ldap-configured?");
   }
@@ -193,10 +200,10 @@ class Settings {
     return this.get("other-sso-configured?");
   }
 
-  isSsoConfigured() {
+  isSsoEnabled() {
     return (
       this.isGoogleAuthConfigured() ||
-      this.isLdapConfigured() ||
+      this.isLdapEnabled() ||
       this.isGoogleAuthConfigured()
     );
   }

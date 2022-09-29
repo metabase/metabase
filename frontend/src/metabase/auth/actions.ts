@@ -5,6 +5,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import { createThunkAction } from "metabase/lib/redux";
 import { loadLocalization } from "metabase/lib/i18n";
 import { deleteSession } from "metabase/lib/auth";
+import * as Urls from "metabase/lib/urls";
 import { clearCurrentUser, refreshCurrentUser } from "metabase/redux/user";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { getUser } from "metabase/selectors/user";
@@ -66,27 +67,17 @@ export const loginGoogle = createThunkAction(
 );
 
 export const LOGOUT = "metabase/auth/LOGOUT";
-export const logout = createThunkAction(
-  LOGOUT,
-  (redirectUrl: string, isSessionAlreadyExpired: boolean) => {
-    return async (dispatch: any) => {
-      if (!isSessionAlreadyExpired) {
-        await deleteSession();
-      }
-      await dispatch(clearCurrentUser());
-      await dispatch(refreshLocale());
-      trackLogout();
+export const logout = createThunkAction(LOGOUT, (redirectUrl: string) => {
+  return async (dispatch: any) => {
+    await deleteSession();
+    await dispatch(clearCurrentUser());
+    await dispatch(refreshLocale());
+    trackLogout();
 
-      let loginUrl = "/auth/login";
-      if (redirectUrl) {
-        loginUrl += `?redirect=${encodeURIComponent(redirectUrl)}`;
-      }
-
-      dispatch(push(loginUrl));
-      window.location.reload(); // clears redux state and browser caches
-    };
-  },
-);
+    dispatch(push(Urls.login(redirectUrl)));
+    window.location.reload(); // clears redux state and browser caches
+  };
+});
 
 export const FORGOT_PASSWORD = "metabase/auth/FORGOT_PASSWORD";
 export const forgotPassword = createThunkAction(

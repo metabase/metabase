@@ -28,11 +28,9 @@ import QueryModals from "../QueryModals";
 import ChartSettingsSidebar from "./sidebars/ChartSettingsSidebar";
 import ChartTypeSidebar from "./sidebars/ChartTypeSidebar";
 import SummarizeSidebar from "./sidebars/SummarizeSidebar/SummarizeSidebar";
-import FilterSidebar from "./sidebars/FilterSidebar";
 import { QuestionInfoSidebar } from "./sidebars/QuestionInfoSidebar";
 import TimelineSidebar from "./sidebars/TimelineSidebar";
 
-import { ViewSubHeader } from "./ViewHeader";
 import NewQuestionHeader from "./NewQuestionHeader";
 import ViewFooter from "./ViewFooter";
 import ViewSidebar from "./ViewSidebar";
@@ -62,6 +60,10 @@ class View extends React.Component {
     ...DEFAULT_POPOVER_STATE,
   };
 
+  onUpdateQuery = (query, options = { run: true }) => {
+    this.props.updateQuestion(query.question(), options);
+  };
+
   handleAddSeries = e => {
     this.setState({
       ...DEFAULT_POPOVER_STATE,
@@ -79,7 +81,7 @@ class View extends React.Component {
 
   handleRemoveSeries = (e, index) => {
     const { query } = this.props;
-    query.removeAggregation(index).update(null, { run: true });
+    this.onUpdateQuery(query.removeAggregation(index));
   };
 
   handleEditBreakout = (e, index) => {
@@ -100,11 +102,11 @@ class View extends React.Component {
     const { query } = this.props;
     const { aggregationIndex } = this.state;
     if (aggregationIndex != null) {
-      query
-        .updateAggregation(aggregationIndex, aggregation)
-        .update(null, { run: true });
+      this.onUpdateQuery(
+        query.updateAggregation(aggregationIndex, aggregation),
+      );
     } else {
-      query.aggregate(aggregation).update(null, { run: true });
+      this.onUpdateQuery(query.aggregate(aggregation));
     }
     this.handleClosePopover();
   };
@@ -113,9 +115,9 @@ class View extends React.Component {
     const { query } = this.props;
     const { breakoutIndex } = this.state;
     if (breakoutIndex != null) {
-      query.updateBreakout(breakoutIndex, breakout).update(null, { run: true });
+      this.onUpdateQuery(query.updateBreakout(breakoutIndex, breakout));
     } else {
-      query.breakout(breakout).update(null, { run: true });
+      this.onUpdateQuery(query.breakout(breakout));
     }
     this.handleClosePopover();
   };
@@ -147,10 +149,10 @@ class View extends React.Component {
       timelines,
       isResultDirty,
       isShowingSummarySidebar,
-      isShowingFilterSidebar,
       isShowingTimelineSidebar,
       isShowingQuestionInfoSidebar,
       runQuestionQuery,
+      updateQuestion,
       visibleTimelineIds,
       selectedTimelineEventIds,
       xDomain,
@@ -160,7 +162,6 @@ class View extends React.Component {
       deselectTimelineEvents,
       onOpenModal,
       onCloseSummary,
-      onCloseFilter,
       onCloseTimelines,
       onSave,
     } = this.props;
@@ -174,12 +175,9 @@ class View extends React.Component {
           onClose={onCloseSummary}
           isResultDirty={isResultDirty}
           runQuestionQuery={runQuestionQuery}
+          updateQuestion={updateQuestion}
         />
       );
-    }
-
-    if (isShowingFilterSidebar) {
-      return <FilterSidebar question={question} onClose={onCloseFilter} />;
     }
 
     if (isShowingTimelineSidebar) {
@@ -322,16 +320,8 @@ class View extends React.Component {
   };
 
   renderMain = ({ leftSidebar, rightSidebar }) => {
-    const {
-      query,
-      mode,
-      parameters,
-      isLiveResizable,
-      isPreviewable,
-      isPreviewing,
-      setParameterValue,
-      setIsPreviewing,
-    } = this.props;
+    const { query, mode, parameters, isLiveResizable, setParameterValue } =
+      this.props;
 
     const queryMode = mode && mode.queryMode();
     const ModeFooter = queryMode && queryMode.ModeFooter;
@@ -363,12 +353,6 @@ class View extends React.Component {
             commitImmediately
           />
         )}
-
-        <ViewSubHeader
-          isPreviewable={isPreviewable}
-          isPreviewing={isPreviewing}
-          setIsPreviewing={setIsPreviewing}
-        />
 
         {validationError ? (
           <QueryValidationError error={validationError} />
@@ -450,6 +434,7 @@ class View extends React.Component {
       onConfirmToast,
       isShowingToaster,
       isHeaderVisible,
+      updateQuestion,
     } = this.props;
 
     // if we don't have a card at all or no databases then we are initializing, so keep it simple
@@ -463,11 +448,22 @@ class View extends React.Component {
       isStructured && !query.sourceTableId() && !query.sourceQuery();
 
     if (isNewQuestion && queryBuilderMode === "view") {
-      return <NewQuestionView query={query} className="full-height" />;
+      return (
+        <NewQuestionView
+          query={query}
+          updateQuestion={updateQuestion}
+          className="full-height"
+        />
+      );
     }
 
     if (card.dataset && queryBuilderMode === "dataset") {
-      return <DatasetEditor {...this.props} />;
+      return (
+        <>
+          <DatasetEditor {...this.props} />
+          <QueryModals {...this.props} />
+        </>
+      );
     }
 
     const isNotebookContainerOpen =

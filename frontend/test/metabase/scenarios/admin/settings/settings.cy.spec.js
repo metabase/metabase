@@ -72,15 +72,6 @@ describe("scenarios > admin > settings", () => {
       "To allow users to sign in with Google you'll need to give Metabase a Google Developers console application client ID.",
     );
     cy.findByText("Save changes");
-
-    // SSO
-    cy.visit("/admin/settings/authentication");
-
-    configureAuth("LDAP");
-
-    cy.findByText("LDAP Authentication");
-    cy.findByText("User Schema");
-    cy.findByText("Save changes");
   });
 
   it("should save a setting", () => {
@@ -284,7 +275,9 @@ describe("scenarios > admin > settings", () => {
 
       cy.findByText("Metabase on Slack");
       cy.findByLabelText("Slack Bot User OAuth Token").type("xoxb");
-      cy.findByLabelText("Slack channel name").type("metabase_files");
+      cy.findByLabelText("Public channel to store image files").type(
+        "metabase_files",
+      );
       cy.button("Save changes").click();
 
       cy.findByText(": invalid token");

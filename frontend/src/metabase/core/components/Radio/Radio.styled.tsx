@@ -66,7 +66,7 @@ export const RadioContainer = styled.div<RadioContainerProps>`
   &:hover {
     color: ${props =>
       !props.checked && !props.showButtons
-        ? getContrastSchemeColor(props.colorScheme)
+        ? getSchemeColor(props.colorScheme)
         : ""};
   }
 
@@ -103,6 +103,10 @@ export const RadioContainerBubble = styled(RadioContainer)`
       : lighten(getSchemeColor(props.colorScheme))};
 
   &:hover {
+    color: ${props =>
+      !props.checked && !props.showButtons
+        ? getContrastSchemeColor(props.colorScheme)
+        : ""};
     background-color: ${props =>
       props.checked ? "" : lighten(getSchemeColor(props.colorScheme), 0.38)};
     transition: background-color 300ms linear;
@@ -138,7 +142,7 @@ const getSchemeColor = (colorScheme: RadioColorScheme): string => {
     case "default":
       return color("brand");
     case "accent7":
-      return color("accent7");
+      return color("filter");
   }
 };
 

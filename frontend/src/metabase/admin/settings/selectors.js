@@ -4,8 +4,12 @@ import _ from "underscore";
 import { createSelector } from "reselect";
 import { t, jt } from "ttag";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import SettingCommaDelimitedInput from "./components/widgets/SettingCommaDelimitedInput";
 import MetabaseSettings from "metabase/lib/settings";
+import { PersistedModelsApi, UtilApi } from "metabase/services";
+import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
+import { getUserIsAdmin } from "metabase/selectors/user";
+import Breadcrumbs from "metabase/components/Breadcrumbs";
+import SettingCommaDelimitedInput from "./components/widgets/SettingCommaDelimitedInput";
 import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";
 import SettingsLicense from "./components/SettingsLicense";
 import SiteUrlWidget from "./components/widgets/SiteUrlWidget";
@@ -29,10 +33,6 @@ import SettingsSetupList from "./components/SettingsSetupList";
 import SlackSettings from "./slack/containers/SlackSettings";
 import { trackTrackingPermissionChanged } from "./analytics";
 
-import { PersistedModelsApi, UtilApi } from "metabase/services";
-import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
-import { getUserIsAdmin } from "metabase/selectors/user";
-import Breadcrumbs from "metabase/components/Breadcrumbs";
 import EmbeddingOption from "./components/widgets/EmbeddingOption";
 import RedirectWidget from "./components/widgets/RedirectWidget";
 
@@ -521,7 +521,7 @@ const SECTIONS = updateSectionsWithPlugins({
         description: jt`Enabling cache will create tables for your models in a dedicated schema and Metabase will refresh them on a schedule. Questions based on your models will query these tables. ${(
           <ExternalLink
             key="model-caching-link"
-            href={MetabaseSettings.docsUrl("users-guide/models")}
+            href={MetabaseSettings.docsUrl("data-modeling/models")}
           >{t`Learn more`}</ExternalLink>
         )}.`,
         type: "boolean",
