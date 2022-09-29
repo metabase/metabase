@@ -281,7 +281,6 @@
 
 (defmethod sql.qp/->honeysql [:postgres :convert-timezone]
   [driver [_ arg to from]]
-  ;; TODO: guard for datetime/date/timestamp columns only?
   (let [from (or from (qp.timezone/results-timezone-id))]
     (cond->> (sql.qp/->honeysql driver arg)
       from

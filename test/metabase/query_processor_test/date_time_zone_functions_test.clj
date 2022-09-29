@@ -35,6 +35,8 @@
               :base-type  :type/DateTime}
              {:field-name "dt_tz"
               :base-type  :type/DateTimeWithZoneOffset}
+             {:field-name "d"
+              :base-type  :type/Date}
              {:field-name        "as_dt"
               :base-type         :type/Text
               :effective-type    :type/DateTime
@@ -291,25 +293,51 @@
          mt/rows
          ffirst)))
 
+(def offset->zone
+  "A map of all Offset to a zone-id.
+  {\"+07\00\" \"Asia/Saigon\"}"
+  (into {"+00:00" "UTC"}
+        (for [zone-id (java.time.ZoneId/getAvailableZoneIds)]
+         [(-> (t/zone-id zone-id)
+              .getRules
+              (.getOffset (java.time.Instant/now))
+              .toString)
+          zone-id])))
+
 (deftest convert-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
     (mt/dataset times-mixed
-      (test-date-convert {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt) nil ] "Asia/Ho_Chi_Minh"]}
-                          :fields      [[:expression "expr"]]}))))
+      (is (= "2004-03-19T16:19:09+07:00"
+             (test-date-convert {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt) nil ] (offset->zone "+07:00")]}
+                                 :fields      [[:expression "expr"]]})))
+
+      (with-report-timezeone "America/New_York"
+        (is (= "2004-03-19T16:19:09+07:00"
+               (test-date-convert {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt) nil]
+                                                         (offset->zone "+07:00")
+                                                         (offset->zone "+00:00")]}
+                                   :fields      [[:expression "expr"]]})))
+
+        (is (= "2004-03-19T21:19:09+07:00"
+               (test-date-convert {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt) nil]
+                                                         (offset->zone "+07:00")]}
+                                   :fields      [[:expression "expr"]]})))))))
+
+
 
 #_(mt/with-driver :postgres
     (mt/dataset times-mixed
       (mt/process-query
         (mt/mbql-query times
-                       {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt) nil ] "Asia/Ho_Chi_Minh" "Asia/Tokyo"]}
+                       {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt) nil ] (offset->zone "+07:00") (offset->zone "+09:00")]}
                         :fields      [[:expression "expr"]
                                       [:field (mt/id :times :dt) nil]]}))))
 
 
-(mt/with-driver :postgres
-    (mt/dataset times-mixed
-      (mt/process-query
-        (mt/mbql-query times
-                       {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt_tz) nil] "Asia/Ho_Chi_Minh"]}
-                        :fields      [[:expression "expr"]
-                                      [:field (mt/id :times :dt_tz) nil]]}))))
+#_(mt/with-driver :postgres
+      (mt/dataset times-mixed
+        (mt/process-query
+          (mt/mbql-query times
+                         {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt_tz) nil] "Asia/Ho_Chi_Minh"]}
+                          :fields      [[:expression "expr"]
+                                        [:field (mt/id :times :dt_tz) nil]]}))))
