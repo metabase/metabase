@@ -83,30 +83,6 @@ export function distribution(question, column) {
   }
 }
 
-export function toUnderlyingRecords(question) {
-  const query = question.query();
-  if (query instanceof StructuredQuery) {
-    return query
-      .clearAggregations()
-      .clearBreakouts()
-      .clearSort()
-      .clearLimit()
-      .clearFields()
-      .question()
-      .setDisplay("table");
-  }
-}
-
-export function drillUnderlyingRecords(question, dimensions) {
-  let query = question.query();
-  if (query instanceof StructuredQuery) {
-    for (const dimension of dimensions) {
-      query = drillFilter(query, dimension.value, dimension.column);
-    }
-    return toUnderlyingRecords(query.question());
-  }
-}
-
 // STRUCTURED QUERY UTILITIES
 
 const fieldRefWithTemporalUnit = (mbqlClause, unit) => {

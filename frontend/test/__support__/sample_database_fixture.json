@@ -57,6 +57,37 @@
         "how_is_this_calculated": null,
         "created_at": "2017-06-14T23:32:12.267Z",
         "points_of_interest": null
+      },
+      "2": {
+        "description": "Because we want to know the total I ugess",
+        "table_id": 1,
+        "definition": {
+          "filter": [">", 6, 20],
+          "aggregation": [["sum", ["field", 6, null]]],
+          "source-table": 1
+        },
+        "creator": {
+          "email": "sameer@metabase.com",
+          "first_name": "Sameer",
+          "last_login": "2017-06-14T23:23:59.582Z",
+          "is_qbnewb": true,
+          "is_superuser": true,
+          "id": 1,
+          "last_name": "Al-Sakran",
+          "date_joined": "2017-06-14T23:23:59.409Z",
+          "common_name": "Sameer Al-Sakran"
+        },
+        "database_id": 1,
+        "show_in_getting_started": false,
+        "name": "Total Order Value",
+        "archived": false,
+        "caveats": null,
+        "creator_id": 1,
+        "updated_at": "2017-06-14T23:32:12.266Z",
+        "id": 2,
+        "how_is_this_calculated": null,
+        "created_at": "2017-06-14T23:32:12.267Z",
+        "points_of_interest": null
       }
     },
     "segments": {
