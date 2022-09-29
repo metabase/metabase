@@ -220,7 +220,6 @@
       (is (= true
              (card-returned? :database db        card-2))))))
 
-
 (deftest authentication-test
   (is (= (get mw.util/response-unauthentic :body) (client/client :get 401 "card")))
   (is (= (get mw.util/response-unauthentic :body) (client/client :put 401 "card/13"))))
@@ -228,106 +227,6 @@
 (deftest model-id-requied-when-f-is-database-test
   (is (= {:errors {:model_id "model_id is a required parameter when filter mode is 'database'"}}
          (mt/user-http-request :crowberto :get 400 "card" :f :database))))
-
-(deftest filter-cards-by-table-test
-  (testing "Filter cards by table"
-    (mt/with-temp* [Database [db]
-                    Table    [table-1  {:db_id (u/the-id db)}]
-                    Table    [table-2  {:db_id (u/the-id db)}]
-                    Card     [card-1   {:table_id (u/the-id table-1)}]
-                    Card     [card-2   {:table_id (u/the-id table-2)}]]
-      (with-cards-in-readable-collection [card-1 card-2]
-        (is (= true
-               (card-returned? :table (u/the-id table-1) (u/the-id card-1))))
-        (is (= false
-               (card-returned? :table (u/the-id table-2) (u/the-id card-1))))
-        (is (= true
-               (card-returned? :table (u/the-id table-2) (u/the-id card-2))))))))
-
-;; Make sure `model_id` is required when `f` is :table
-(deftest model_id-requied-when-f-is-table
-  (is (= {:errors {:model_id "model_id is a required parameter when filter mode is 'table'"}}
-         (mt/user-http-request :crowberto :get 400 "card", :f :table))))
-
-(defn- do-with-card-views [card-or-id+username f]
-  (let [[f] (reduce
-             (fn [[f timestamp] [card-or-id username]]
-               [(fn []
-                  (let [card-id   (u/the-id card-or-id)
-                        card-name (db/select-one-field :name Card :id card-id)]
-                    (testing (format "\nCard %d %s viewed by %s on %s" card-id (pr-str card-name) username timestamp)
-                      (mt/with-temp ViewLog [_ {:model     "card"
-                                                :model_id  card-id
-                                                :user_id   (mt/user->id username)
-                                                :timestamp timestamp}]
-                        (f)))))
-                (t/plus timestamp (t/days 1))])
-             [f (t/zoned-date-time)]
-             card-or-id+username)]
-    (f)))
-
-(defmacro ^:private with-card-views [card-or-id+username & body]
-  `(do-with-card-views ~(mapv vec (partition 2 card-or-id+username)) (fn [] ~@body)))
-
-(deftest filter-by-recent-test
-  (testing "GET /api/card?f=recent"
-    (mt/with-temp* [Card [card-1 {:name "Card 1"}]
-                    Card [card-2 {:name "Card 2"}]
-                    Card [card-3 {:name "Card 3"}]
-                    Card [card-4 {:name "Card 4"}]]
-      ;; 3 was viewed most recently, followed by 4, then 1. Card 2 was viewed by a different user so shouldn't be
-      ;; returned
-      (with-card-views [card-1 :rasta
-                        card-2 :trashbird
-                        card-3 :rasta
-                        card-4 :rasta
-                        card-3 :rasta]
-        (with-cards-in-readable-collection [card-1 card-2 card-3 card-4]
-          (testing "\nShould return cards that were recently viewed by current user only"
-            (is (= ["Card 3"
-                    "Card 4"
-                    "Card 1"]
-                   (map :name (mt/user-http-request :rasta :get 200 "card", :f :recent))))))))))
-
-(deftest filter-by-popular-test
-  (testing "GET /api/card?f=popular"
-    (mt/with-temp* [Card [card-1 {:name "Card 1"}]
-                    Card [card-2 {:name "Card 2"}]
-                    Card [card-3 {:name "Card 3"}]]
-      ;; 3 entries for card 3, 2 for card 2, none for card 1,
-      (with-card-views [card-3 :rasta
-                        card-2 :trashbird
-                        card-2 :rasta
-                        card-3 :crowberto
-                        card-3 :rasta]
-        (with-cards-in-readable-collection [card-1 card-2 card-3]
-          (testing (str "`f=popular` should return cards sorted by number of ViewLog entries for all users; cards with "
-                        "no entries should be excluded")
-            (is (= ["Card 3"
-                    "Card 2"]
-                   (map :name (mt/user-http-request :rasta :get 200 "card", :f :popular))))))))))
-
-(deftest filter-by-archived-test
-  (testing "GET /api/card?f=archived"
-    (mt/with-temp* [Card [card-1 {:name "Card 1"}]
-                    Card [card-2 {:name "Card 2", :archived true}]
-                    Card [card-3 {:name "Card 3", :archived true}]]
-      (with-cards-in-readable-collection [card-1 card-2 card-3]
-        (is (= #{"Card 2" "Card 3"}
-               (set (map :name (mt/user-http-request :rasta :get 200 "card", :f :archived))))
-            "The set of Card returned with f=archived should be equal to the set of archived cards")))))
-
-(deftest filter-by-bookmarked-test
-  (testing "Filter by `bookmarked`"
-    (mt/with-temp* [Card         [card-1 {:name "Card 1"}]
-                    Card         [card-2 {:name "Card 2"}]
-                    Card         [card-3 {:name "Card 3"}]
-                    CardBookmark [_ {:card_id (u/the-id card-1), :user_id (mt/user->id :rasta)}]
-                    CardBookmark [_ {:card_id (u/the-id card-2), :user_id (mt/user->id :crowberto)}]]
-      (with-cards-in-readable-collection [card-1 card-2 card-3]
-        (is (= [{:name "Card 1"}]
-               (for [card (mt/user-http-request :rasta :get 200 "card", :f :bookmarked)]
-                 (select-keys card [:name]))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        CREATING A CARD (POST /api/card)                                        |

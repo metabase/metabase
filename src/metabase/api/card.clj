@@ -57,63 +57,10 @@
   [_]
   (db/select Card, :archived false, {:order-by [[:%lower.name :asc]]}))
 
-;; return Cards created by the current user
-(defmethod cards-for-filter-option* :mine
-  [_]
-  (db/select Card, :creator_id api/*current-user-id*, :archived false, {:order-by [[:%lower.name :asc]]}))
-
-;; return all Cards bookmarked by the current user.
-(defmethod cards-for-filter-option* :bookmarked
-  [_]
-  (let [cards (for [{{:keys [archived], :as card} :card} (hydrate (db/select [CardBookmark :card_id]
-                                                                    :user_id api/*current-user-id*)
-                                                                  :card)
-                    :when                                 (not archived)]
-                card)]
-    (sort-by :name cards)))
-
 ;; Return all Cards belonging to Database with `database-id`.
 (defmethod cards-for-filter-option* :database
   [_ database-id]
   (db/select Card, :database_id database-id, :archived false, {:order-by [[:%lower.name :asc]]}))
-
-;; Return all Cards belonging to `Table` with `table-id`.
-(defmethod cards-for-filter-option* :table
-  [_ table-id]
-  (db/select Card, :table_id table-id, :archived false, {:order-by [[:%lower.name :asc]]}))
-
-(s/defn ^:private cards-with-ids :- (s/maybe [CardInstance])
-  "Return unarchived Cards with `card-ids`.
-  Make sure cards are returned in the same order as `card-ids`; `[in card-ids]` won't preserve the order."
-  [card-ids :- [su/IntGreaterThanZero]]
-  (when (seq card-ids)
-    (let [card-id->card (m/index-by :id (db/select Card, :id [:in (set card-ids)], :archived false))]
-      (filter identity (map card-id->card card-ids)))))
-
-;; Return the 10 Cards most recently viewed by the current user, sorted by how recently they were viewed.
-(defmethod cards-for-filter-option* :recent
-  [_]
-  (cards-with-ids (map :model_id (db/select [ViewLog :model_id [:%max.timestamp :max]]
-                                   :model   "card"
-                                   :user_id api/*current-user-id*
-                                   {:group-by [:model_id]
-                                    :order-by [[:max :desc]]
-                                    :limit    10}))))
-
-;; All Cards, sorted by popularity (the total number of times they are viewed in `ViewLogs`). (yes, this isn't
-;; actually filtering anything, but for the sake of simplicitiy it is included amongst the filter options for the time
-;; being).
-(defmethod cards-for-filter-option* :popular
-  [_]
-  (cards-with-ids (map :model_id (db/select [ViewLog :model_id [:%count.* :count]]
-                                   :model "card"
-                                   {:group-by [:model_id]
-                                    :order-by [[:count :desc]]}))))
-
-;; Cards that have been archived.
-(defmethod cards-for-filter-option* :archived
-  [_]
-  (db/select Card, :archived true, {:order-by [[:%lower.name :asc]]}))
 
 (defn- cards-for-filter-option [filter-option model-id-or-nil]
   (-> (apply cards-for-filter-option* (or filter-option :all) (when model-id-or-nil [model-id-or-nil]))
@@ -133,12 +80,10 @@
   {f        (s/maybe CardFilterOption)
    model_id (s/maybe su/IntGreaterThanZero)}
   (let [f (keyword f)]
-    (when (contains? #{:database :table} f)
+    (when (= f :database)
       (api/checkp (integer? model_id) "model_id" (format "model_id is a required parameter when filter mode is '%s'"
                                                          (name f)))
-      (case f
-        :database (api/read-check Database model_id)
-        :table    (api/read-check Database (db/select-one-field :db_id Table, :id model_id))))
+      (api/read-check Database model_id))
     (let [cards (filter mi/can-read? (cards-for-filter-option f model_id))
           last-edit-info (:card (last-edit/fetch-last-edited-info {:card-ids (map :id cards)}))]
       (into []
