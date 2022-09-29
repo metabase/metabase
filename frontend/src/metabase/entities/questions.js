@@ -9,8 +9,6 @@ import {
   SOFT_RELOAD_CARD,
 } from "metabase/query_builder/actions";
 
-const listQuestions = GET("/api/questions");
-const listModelsForDatabase = GET("/api/database/:dbId/models");
 import Collections, {
   getCollectionType,
   normalizedCollection,
@@ -18,6 +16,9 @@ import Collections, {
 import { canonicalCollectionId } from "metabase/collections/utils";
 
 import forms from "./questions/forms";
+
+const listQuestions = GET("/api/card");
+const listModelsForDatabase = GET("/api/database/:dbId/models");
 
 const Questions = createEntity({
   name: "questions",
