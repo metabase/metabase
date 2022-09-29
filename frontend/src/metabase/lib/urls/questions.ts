@@ -53,14 +53,13 @@ export function question(
     query = "?" + query;
   }
 
+  const isModel = card?.dataset || card?.model === "dataset";
+  let path = isModel ? "model" : "question";
   if (!card || !card.id) {
-    return `/question${query}${hash}`;
+    return `/${path}${query}${hash}`;
   }
 
   const { card_id, id, name } = card;
-  const isModel = card?.dataset || card?.model === "dataset";
-  let path = isModel ? "model" : "question";
-
   /**
    * If the question has been added to the dashboard we're reading the dashCard's properties.
    * In that case `card_id` is the actual question's id, while `id` corresponds with the dashCard itself.
