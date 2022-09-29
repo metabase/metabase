@@ -35,7 +35,7 @@ export function infer(mbql, env) {
 
   switch (op) {
     case "case":
-      return infer(mbql[1][0], env);
+      return infer(mbql[1][0][1], env);
     case "coalesce":
     case "date-add":
     case "date-subtract":
