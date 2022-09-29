@@ -334,10 +334,15 @@
                                       [:field (mt/id :times :dt) nil]]}))))
 
 
-#_(mt/with-driver :postgres
+#_(mt/with-driver :oracle
       (mt/dataset times-mixed
         (mt/process-query
           (mt/mbql-query times
-                         {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt_tz) nil] "Asia/Ho_Chi_Minh"]}
+                         {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt) nil] "Asia/Ho_Chi_Minh"]}
                           :fields      [[:expression "expr"]
-                                        [:field (mt/id :times :dt_tz) nil]]}))))
+                                        [:field (mt/id :times :dt) nil]]}))))
+
+#_(mt/dataset times-mixed
+              (dev/query-jdbc-db :mysql (mt/mbql-query times {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt_tz) nil] "Asia/Ho_Chi_Minh"]}
+                                                              :fields      [[:expression "expr"]
+                                                                            [:field (mt/id :times :dt_tz) nil]]})))

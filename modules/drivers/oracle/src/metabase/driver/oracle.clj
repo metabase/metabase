@@ -19,6 +19,7 @@
             [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.models.secret :as secret]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs]]
@@ -30,6 +31,10 @@
            oracle.sql.TIMESTAMPTZ))
 
 (driver/register! :oracle, :parent #{:sql-jdbc ::sql.qp.empty-string-is-null/empty-string-is-null})
+
+(defmethod driver/database-supports? [:oracle :convert-timezone]
+  [_driver _feature _database]
+  true)
 
 (def ^:private database-type->base-type
   (sql-jdbc.sync/pattern-based-database-type->base-type
@@ -199,6 +204,24 @@
    (hx/->integer (hsql/call :to_char v (hx/literal :d)))
    (driver.common/start-of-week-offset driver)
    (partial hsql/call (u/qualified-name ::mod))))
+
+(defrecord AtTimeZone
+  ;; record type to support applying Presto's `AT TIME ZONE` operator to an expression
+  [expr zone]
+  hformat/ToSql
+  (to-sql [_]
+    (format "%s AT TIME ZONE %s"
+      (hformat/to-sql expr)
+      (hformat/to-sql (hx/literal zone)))))
+
+(defmethod sql.qp/->honeysql [:oracle :convert-timezone]
+  [driver [_ arg to from]]
+  (let [from (or from (qp.timezone/report-timezone-id-if-supported driver))]
+    (cond-> (sql.qp/->honeysql driver arg)
+      from
+      (->AtTimeZone from)
+      to
+      (->AtTimeZone to))))
 
 (def ^:private now (hsql/raw "SYSDATE"))
 

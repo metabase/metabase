@@ -12,6 +12,7 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx])
@@ -188,6 +189,24 @@
 (defmethod sql.qp/unix-timestamp->honeysql [:presto-common :seconds]
   [_ _ expr]
   (hsql/call :from_unixtime expr))
+
+(defrecord AtTimeZone
+  ;; record type to support applying Presto's `AT TIME ZONE` operator to an expression
+  [expr zone]
+  hformat/ToSql
+  (to-sql [_]
+    (format "%s AT TIME ZONE %s"
+      (hformat/to-sql expr)
+      (hformat/to-sql (hx/literal zone)))))
+
+(defmethod sql.qp/->honeysql [:presto-common :convert-timezone]
+  [driver [_ arg to from]]
+  (let [from (or from (qp.timezone/report-timezone-id-if-supported driver))]
+    (cond-> (sql.qp/->honeysql driver arg)
+      from
+      (->AtTimeZone from)
+      to
+      (->AtTimeZone to))))
 
 (defmethod driver.common/current-db-time-date-formatters :presto-common
   [_]

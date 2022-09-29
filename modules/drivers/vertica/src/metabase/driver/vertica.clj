@@ -13,6 +13,7 @@
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.query-processor.empty-string-is-null :as sql.qp.empty-string-is-null]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs]])
@@ -100,6 +101,24 @@
 (defmethod sql.qp/date [:vertica :day-of-week]
   [_ _ expr]
   (sql.qp/adjust-day-of-week :vertica (hsql/call :dayofweek_iso expr)))
+
+(defrecord AtTimeZone
+  ;; record type to support applying Presto's `AT TIME ZONE` operator to an expression
+  [expr zone]
+  hformat/ToSql
+  (to-sql [_]
+    (format "%s AT TIME ZONE %s"
+      (hformat/to-sql expr)
+      (hformat/to-sql (hx/literal zone)))))
+
+(defmethod sql.qp/->honeysql [:sqlserver :convert-timezone]
+  [driver [_ arg to from]]
+  (let [from (or from (qp.timezone/report-timezone-id-if-supported driver))]
+    (cond-> (sql.qp/->honeysql driver arg)
+      from
+      (->AtTimeZone from)
+      to
+      (->AtTimeZone to))))
 
 (defmethod sql.qp/->honeysql [:vertica :concat]
   [driver [_ & args]]

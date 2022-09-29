@@ -2,6 +2,7 @@
   "Driver for SQLServer databases. Uses the official Microsoft JDBC driver under the hood (pre-0.25.0, used jTDS)."
   (:require [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
+            [honeysql.format :as hformat]
             [honeysql.helpers :as hh]
             [java-time :as t]
             [metabase.config :as config]
@@ -211,6 +212,24 @@
 (defmethod sql.qp/date [:sqlserver :year-of-era]
   [_ _ expr]
   (date-part :year expr))
+
+(defrecord AtTimeZone
+  ;; record type to support applying Presto's `AT TIME ZONE` operator to an expression
+  [expr zone]
+  hformat/ToSql
+  (to-sql [_]
+    (format "%s AT TIME ZONE %s"
+      (hformat/to-sql expr)
+      (hformat/to-sql (hx/literal zone)))))
+
+(defmethod sql.qp/->honeysql [:sqlserver :convert-timezone]
+  [driver [_ arg to from]]
+  (let [from (or from (qp.timezone/report-timezone-id-if-supported driver))]
+    (cond-> (sql.qp/->honeysql driver arg)
+      from
+      (->AtTimeZone from)
+      to
+      (->AtTimeZone to))))
 
 (defmethod sql.qp/add-interval-honeysql-form :sqlserver
   [_ hsql-form amount unit]

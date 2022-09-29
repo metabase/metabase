@@ -410,6 +410,15 @@
     [_ _ expr]
     (with-temporal-type (hsql/call bigquery-fn expr) :timestamp)))
 
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :convert-timezone]
+  [driver [_ arg to from]]
+  (let [from (or from (qp.timezone/results-timezone-id))]
+    (cond->> (sql.qp/->honeysql driver arg)
+      from
+      (hsql/call :datetime from)
+      to
+      (hsql/call :datetime to))))
+
 (defmethod sql.qp/->float :bigquery-cloud-sdk
   [_ value]
   (hx/cast :float64 value))

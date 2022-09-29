@@ -127,7 +127,7 @@
                 1)
           3)))
 
-(defmethod sql.qp/->honeysql [:snowflake :convert-timezone]
+(defmethod sql.qp/->honeysql [:hive-like :convert-timezone]
   [driver [_ arg to from]]
   (let [from (or from (qp.timezone/results-timezone-id))]
     (hsql/call :convert_timezone from to (sql.qp/->honeysql driver arg))))
