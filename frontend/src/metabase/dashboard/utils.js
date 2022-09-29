@@ -1,5 +1,12 @@
 import _ from "underscore";
+import { t } from "ttag";
 import Utils from "metabase/lib/utils";
+import { isNative } from "metabase/lib/query";
+import {
+  isDateParameter,
+  isNumberParameter,
+  isStringParameter,
+} from "metabase/parameters/utils/parameter-type";
 
 export function syncParametersAndEmbeddingParams(before, after) {
   if (after.parameters && before.embedding_params) {
@@ -51,6 +58,32 @@ export function isVirtualDashCard(dashcard) {
   return _.isObject(dashcard.visualization_settings.virtual_card);
 }
 
+export function isNativeDashCard(dashcard) {
+  return isNative(dashcard.card?.dataset_query);
+}
+
+// For a virtual (text) dashcard without any parameters, returns a boolean indicating whether we should display the
+// info text about parameter mapping in the card itself or as a tooltip.
+export function showVirtualDashCardInfoText(dashcard, isMobile) {
+  if (isVirtualDashCard(dashcard)) {
+    return isMobile || dashcard.size_y > 2 || dashcard.size_x > 5;
+  } else {
+    return true;
+  }
+}
+
+export function getNativeDashCardEmptyMappingText(parameter) {
+  if (isDateParameter(parameter)) {
+    return t`Add a date variable to this question to connect it to a dashboard filter.`;
+  } else if (isNumberParameter(parameter)) {
+    return t`Add a number variable to this question to connect it to a dashboard filter.`;
+  } else if (isStringParameter(parameter)) {
+    return t`Add a string variable to this question to connect it to a dashboard filter.`;
+  } else {
+    return t`Add a variable to this question to connect it to a dashboard filter.`;
+  }
+}
+
 export function getAllDashboardCards(dashboard) {
   const results = [];
   if (dashboard) {
@@ -83,4 +116,9 @@ export async function fetchDataOrError(dataPromise) {
   } catch (error) {
     return { error };
   }
+}
+
+export function getDatasetQueryParams(datasetQuery = {}) {
+  const { type, query, native, parameters = [] } = datasetQuery;
+  return { type, query, native, parameters };
 }

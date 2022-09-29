@@ -3,7 +3,7 @@ import {
   popover,
   visitDashboard,
   visitIframe,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -81,8 +81,8 @@ describe.skip("issue 15860", () => {
                 card_id: q1,
                 row: 0,
                 col: 0,
-                sizeX: 8,
-                sizeY: 6,
+                size_x: 8,
+                size_y: 6,
                 series: [],
                 visualization_settings: {},
                 parameter_mappings: [
@@ -103,8 +103,8 @@ describe.skip("issue 15860", () => {
                 card_id: q2,
                 row: 0,
                 col: 8,
-                sizeX: 10,
-                sizeY: 6,
+                size_x: 10,
+                size_y: 6,
                 series: [],
                 visualization_settings: {},
                 parameter_mappings: [
@@ -141,7 +141,7 @@ describe.skip("issue 15860", () => {
 
   it("should work for locked linked filters connected to different cards with the same source table (metabase#15860)", () => {
     cy.icon("share").click();
-    cy.findByText("Embed this dashboard in an application").click();
+    cy.findByText("Embed in your application").click();
 
     setDefaultValueForLockedFilter("Q1 ID", 1);
     setDefaultValueForLockedFilter("Q2 ID", 3);

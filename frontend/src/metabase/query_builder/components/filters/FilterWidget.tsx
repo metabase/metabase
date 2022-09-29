@@ -2,12 +2,17 @@
 import React, { Component } from "react";
 
 import Popover from "metabase/components/Popover";
-import FilterPopover from "./FilterPopover";
 import FilterComponent from "metabase/query_builder/components/Filter";
 
-import cx from "classnames";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import FilterPopover from "./FilterPopover";
+import {
+  FilterField,
+  FilterOperator,
+  FilterWidgetRoot,
+  QueryOption,
+} from "./FilterWidget.styled";
 
 type PillProps = {
   field: string;
@@ -30,23 +35,21 @@ export const filterWidgetFilterRenderer = ({
         paddingLeft: 0,
       }}
     >
-      {field && (
-        <div className="Filter-section Filter-section-field QueryOption">
-          {field}
-        </div>
-      )}
+      {field && <FilterField>{field}</FilterField>}
       {field && operator ? <span>&nbsp;</span> : null}
       {operator && (
-        <div className="Filter-section Filter-section-operator">
-          <a className="QueryOption flex align-center">{operator}</a>
-        </div>
+        <FilterOperator>
+          <QueryOption as="a" className="QueryOption flex align-center">
+            {operator}
+          </QueryOption>
+        </FilterOperator>
       )}
     </div>
     {values.length > 0 && (
       <div className="flex align-center flex-wrap">
         {values.map((value, valueIndex) => (
           <div key={valueIndex} className="Filter-section Filter-section-value">
-            <span className="QueryOption">{value}</span>
+            <QueryOption className="QueryOption">{value}</QueryOption>
           </div>
         ))}
       </div>
@@ -128,12 +131,12 @@ export default class FilterWidget extends Component<Props, State> {
 
   render() {
     return (
-      <div className={cx("Query-filter", { selected: this.state.isOpen })}>
+      <FilterWidgetRoot isSelected={this.state.isOpen}>
         <div className="flex justify-center" onClick={this.open}>
           {this.renderFilter()}
           {this.renderPopover()}
         </div>
-      </div>
+      </FilterWidgetRoot>
     );
   }
 }

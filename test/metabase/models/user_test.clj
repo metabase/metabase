@@ -19,9 +19,11 @@
             [metabase.models.collection-test :as collection-test]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.models.user :as user]
             [metabase.test :as mt]
             [metabase.test.data.users :as test.users]
+            [metabase.test.integrations.ldap :as ldap.test]
             [metabase.util :as u]
             [metabase.util.password :as u.password]
             [toucan.db :as db]
@@ -180,7 +182,13 @@
         (mt/with-temp User [user {:is_superuser true, :is_active false}]
           (is (= {"crowberto@metabase.com" ["<New User> created a Metabase account"]}
                  (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
-                     (select-keys ["crowberto@metabase.com" (:email user)])))))))))
+                     (select-keys ["crowberto@metabase.com" (:email user)]))))))))
+
+  (testing "if sso enabled and password login is disabled, email should send a link to sso login"
+    (mt/with-temporary-setting-values [enable-password-login false]
+      (ldap.test/with-ldap-server
+        (invite-user-accept-and-check-inboxes! :invitor default-invitor , :accept-invite? false)
+        (is (seq (mt/regex-email-bodies #"/auth/login")))))))
 
 (deftest ldap-user-passwords-test
   (testing (str "LDAP users should not persist their passwords. Check that if somehow we get passed an LDAP user "
@@ -283,7 +291,7 @@
                                            (assoc user :group_ids '(user/add-group-ids <users>))))]
         (testing "for a single User"
           (is (= '(user/add-group-ids <users>)
-                 (-> (hydrate (User (mt/user->id :lucky)) :group_ids)
+                 (-> (hydrate (db/select-one User :id (mt/user->id :lucky)) :group_ids)
                      :group_ids))))
 
         (testing "for multiple Users"
@@ -322,14 +330,14 @@
                (user-group-names :lucky)))))
 
     (testing "should be able to remove a User from groups"
-      (with-groups [group-1 {:name "Group 1"} #{:lucky}
-                    group-2 {:name "Group 2"} #{:lucky}]
+      (with-groups [_group-1 {:name "Group 1"} #{:lucky}
+                    _group-2 {:name "Group 2"} #{:lucky}]
         (user/set-permissions-groups! (mt/user->id :lucky) #{(perms-group/all-users)})
         (is (= #{"All Users"}
                (user-group-names :lucky)))))
 
     (testing "should be able to add & remove groups at the same time! :wow:"
-      (with-groups [group-1 {:name "Group 1"} #{:lucky}
+      (with-groups [_group-1 {:name "Group 1"} #{:lucky}
                     group-2 {:name "Group 2"} #{}]
         (user/set-permissions-groups! (mt/user->id :lucky) #{(perms-group/all-users) group-2})
         (is (= #{"All Users" "Group 2"}
@@ -372,7 +380,7 @@
 
       (testing "Invalid REMOVE operation"
         ;; Attempt to remove someone from All Users + add to a valid group at the same time -- neither should persist
-        (mt/with-temp User [user]
+        (mt/with-temp User [_]
           (with-groups [group {:name "Group"} {}]
             (u/ignore-exceptions
               (user/set-permissions-groups! (test.users/fetch-user :lucky) #{group})))
@@ -397,9 +405,9 @@
                (db/select-one-field :reset_token User :id user-id)))))
 
     (testing "should clear out all existing Sessions"
-      (mt/with-temp* [User    [{user-id :id}]
-                      Session [_ {:id (str (java.util.UUID/randomUUID)), :user_id user-id}]
-                      Session [_ {:id (str (java.util.UUID/randomUUID)), :user_id user-id}]]
+      (mt/with-temp* [User [{user-id :id}]]
+        (dotimes [_ 2]
+          (db/insert! Session {:id (str (java.util.UUID/randomUUID)), :user_id user-id}))
         (letfn [(session-count [] (db/count Session :user_id user-id))]
           (is (= 2
                  (session-count)))
@@ -418,7 +426,7 @@
         (is (thrown-with-msg?
              Exception
              #"Assert failed: \(i18n/available-locale\? locale\)"
-             (mt/with-temp User [{user-id :id} {:locale "en_XX"}])))))
+             (mt/with-temp User [_ {:locale "en_XX"}])))))
 
     (testing "updating a User"
       (mt/with-temp User [{user-id :id} {:locale "en_US"}]
@@ -461,3 +469,10 @@
           (is (db/update! User user-id :is_active false)))
         (testing "subscription should no longer exist"
           (is (not (subscription-exists?))))))))
+
+(deftest identity-hash-test
+  (testing "User hashes are based on the email address"
+    (mt/with-temp User  [user  {:email "fred@flintston.es"}]
+      (is (= "e8d63472"
+             (serdes.hash/raw-hash ["fred@flintston.es"])
+             (serdes.hash/identity-hash user))))))

@@ -1,11 +1,29 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { connect } from "react-redux";
+import { withRouter } from "react-router";
 import _ from "underscore";
 
 import { getUserAttributes } from "metabase/selectors/user";
+
 import Questions from "metabase/entities/questions";
 import Dashboards from "metabase/entities/dashboards";
+
+function hasLinkedQuestionOrDashboard({ type, linkType } = {}) {
+  if (type === "link") {
+    return (
+      linkType === "question" || linkType === "dashboard" || linkType === "page"
+    );
+  }
+  return false;
+}
+
+function mapLinkedEntityToEntityQuery({ linkType, targetId }) {
+  return {
+    entity: linkType === "question" ? Questions : Dashboards,
+    entityId: targetId,
+  };
+}
 
 // This HOC give access to data referenced in viz settings.
 // We use it to fetch and select entities needed for dashboard drill actions (e.g. clicking through to a question)
@@ -18,76 +36,73 @@ const WithVizSettingsData = ComposedComponent => {
         settings => settings.click_behavior,
       ),
     ]
-      .filter(
-        ({ type, linkType } = {}) =>
-          type === "link" &&
-          (linkType === "question" || linkType === "dashboard"),
-      )
-      .map(({ linkType, targetId }) => ({
-        entity: linkType === "question" ? Questions : Dashboards,
-        entityId: targetId,
-      }));
+      .filter(hasLinkedQuestionOrDashboard)
+      .map(mapLinkedEntityToEntityQuery);
   }
-  return connect(
-    (state, props) => ({
-      getExtraDataForClick: clicked => {
-        const entitiesByTypeAndId = _.chain(getLinkTargets(clicked.settings))
-          .groupBy(target => target.entity.name)
-          .mapObject(targets =>
-            _.chain(targets)
-              .map(({ entity, entityId }) =>
-                entity.selectors.getObject(state, { entityId }),
-              )
-              .filter(object => object != null)
-              .indexBy(object => object.id)
-              .value(),
-          )
-          .value();
-        return {
-          ...entitiesByTypeAndId,
-          parameterValuesBySlug: props.parameterValuesBySlug,
-          dashboard: props.dashboard,
-          userAttributes: getUserAttributes(state, props),
-        };
-      },
-    }),
-    dispatch => ({ dispatch }),
-  )(
-    class WithVizSettingsData extends React.Component {
-      dashcardSettings(props) {
-        const [firstSeries] = props.rawSeries || [{}];
-        const { visualization_settings } = firstSeries.card || {};
-        return visualization_settings;
-      }
+  return withRouter(
+    connect(
+      (state, props) => ({
+        getExtraDataForClick: clicked => {
+          const entitiesByTypeAndId = _.chain(getLinkTargets(clicked.settings))
+            .groupBy(target => target.entity.name)
+            .mapObject(targets =>
+              _.chain(targets)
+                .map(({ entity, entityId }) =>
+                  entity.selectors.getObject(state, { entityId }),
+                )
+                .filter(object => object != null)
+                .indexBy(object => object.id)
+                .value(),
+            )
+            .value();
+          return {
+            ...entitiesByTypeAndId,
+            location: props.location,
+            routerParams: props.params,
+            parameterValuesBySlug: props.parameterValuesBySlug,
+            dashboard: props.dashboard,
+            dashcard: props.dashcard,
+            userAttributes: getUserAttributes(state, props),
+          };
+        },
+      }),
+      dispatch => ({ dispatch }),
+    )(
+      class WithVizSettingsData extends React.Component {
+        dashcardSettings(props) {
+          const [firstSeries] = props.rawSeries || [{}];
+          const { visualization_settings } = firstSeries.card || {};
+          return visualization_settings;
+        }
 
-      fetch() {
-        getLinkTargets(
-          this.dashcardSettings(this.props),
-        ).forEach(({ entity, entityId }) =>
-          this.props.dispatch(
-            entity.actions.fetch({ id: entityId }, { noEvent: true }),
-          ),
-        );
-      }
+        fetch() {
+          getLinkTargets(this.dashcardSettings(this.props)).forEach(
+            ({ entity, entityId }) =>
+              this.props.dispatch(
+                entity.actions.fetch({ id: entityId }, { noEvent: true }),
+              ),
+          );
+        }
 
-      componentDidMount() {
-        this.fetch();
-      }
-
-      componentDidUpdate(prevProps) {
-        if (
-          !_.isEqual(
-            this.dashcardSettings(this.props),
-            this.dashcardSettings(prevProps),
-          )
-        ) {
+        componentDidMount() {
           this.fetch();
         }
-      }
-      render() {
-        return <ComposedComponent {..._.omit(this.props, "dispatch")} />;
-      }
-    },
+
+        componentDidUpdate(prevProps) {
+          if (
+            !_.isEqual(
+              this.dashcardSettings(this.props),
+              this.dashcardSettings(prevProps),
+            )
+          ) {
+            this.fetch();
+          }
+        }
+        render() {
+          return <ComposedComponent {..._.omit(this.props, "dispatch")} />;
+        }
+      },
+    ),
   );
 };
 

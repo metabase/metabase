@@ -16,17 +16,22 @@
         ;; if a backend path is second, it is missed if we don't str/split
         (mapcat #(str/split % #" ") source-references)))
 
-(defn- plural->singular [{:keys [str-plural] :as message}]
-  (merge message
-         (when str-plural {:str (first str-plural)
-                           :id-plural nil
-                           :str-plural nil
-                           :plural? false})))
+(def ^:private apostrophe-regex
+  "Regex that matches incorrectly escaped apostrophe characters.
+  Matches on a single apostrophe surrounded by any letter, number, space, or diacritical character (chars with accents like é) and is case-insensitive"
+  #"(?<![^a-zA-Z0-9\s\u00C0-\u017F])'(?![^a-zA-Z0-9\s\u00C0-\u017F])")
 
-(defn- ->edn [{:keys [messages]}]
+(defn- fix-unescaped-apostrophes [message]
+  (let [escape-fn #(str/replace % apostrophe-regex "''")]
+    (if (:plural? message)
+      (update message :str-plural #(map escape-fn %))
+      (update message :str escape-fn))))
+
+(defn- messages->edn
+  [messages]
   (eduction
    (filter backend-message?)
-   (map plural->singular)
+   (map fix-unescaped-apostrophes)
    i18n/print-message-count-xform
    messages))
 
@@ -41,11 +46,24 @@
     (with-open [os (FileOutputStream. (io/file target-file))
                 w  (OutputStreamWriter. os StandardCharsets/UTF_8)]
       (.write w "{\n")
-      (doseq [{msg-id :id, msg-str :str} (->edn po-contents)]
+      (.write w ":headers\n")
+      (.write w (pr-str (:headers po-contents)))
+      (.write w "\n\n")
+      (.write w ":messages\n")
+      (.write w "{\n")
+      (doseq [{msg-id :id, msg-str :str, msg-str-plural :str-plural}
+              (messages->edn (:messages po-contents))
+              :let [msg-strs (or msg-str-plural [msg-str])]]
         (.write w (pr-str msg-id))
         (.write w "\n")
-        (.write w (pr-str msg-str))
+        (when msg-str-plural (.write w "["))
+        (doseq [msg (butlast msg-strs)]
+          (.write w (pr-str msg))
+          (.write w " "))
+        (.write w (pr-str (last msg-strs)))
+        (when msg-str-plural (.write w "]"))
         (.write w "\n\n"))
+      (.write w "}\n")
       (.write w "}\n"))))
 
 (defn create-artifact-for-locale! [locale]

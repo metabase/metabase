@@ -5,44 +5,64 @@ import { User } from "metabase-types/api";
 import {
   PLUGIN_ADMIN_ALLOWED_PATH_GETTERS,
   PLUGIN_ADMIN_NAV_ITEMS,
+  PLUGIN_ADMIN_TOOLS,
 } from "metabase/plugins";
 import { REFRESH_CURRENT_USER } from "metabase/redux/user";
 import { AdminPath, AdminPathKey } from "metabase-types/store";
 import { DISABLE_ADMIN_PATH, DISABLE_NOTICE } from "./actions";
 
-const getAdminPaths: () => AdminPath[] = () => [
-  {
-    name: t`Settings`,
-    path: "/admin/settings",
-    key: "settings",
-  },
-  {
-    name: t`Databases`,
-    path: "/admin/databases",
-    key: "databases",
-  },
-  {
-    name: t`Data Model`,
-    path: "/admin/datamodel",
-    key: "data-model",
-  },
-  {
-    name: t`People`,
-    path: "/admin/people",
-    key: "people",
-  },
-  {
-    name: t`Permissions`,
-    path: "/admin/permissions",
-    key: "permissions",
-  },
-  ...PLUGIN_ADMIN_NAV_ITEMS,
-  {
+const getAdminPaths: () => AdminPath[] = () => {
+  const items: AdminPath[] = [
+    {
+      name: t`Settings`,
+      path: "/admin/settings",
+      key: "settings",
+    },
+    {
+      name: t`Databases`,
+      path: "/admin/databases",
+      key: "databases",
+    },
+    {
+      name: t`Data Model`,
+      path: "/admin/datamodel",
+      key: "data-model",
+    },
+    {
+      name: t`People`,
+      path: "/admin/people",
+      key: "people",
+    },
+    {
+      name: t`Permissions`,
+      path: "/admin/permissions",
+      key: "permissions",
+    },
+  ];
+
+  const isModelPersistenceEnabled = Settings.get("persisted-models-enabled");
+  const hasLoadedSettings = typeof isModelPersistenceEnabled === "boolean";
+
+  if (
+    !hasLoadedSettings ||
+    isModelPersistenceEnabled ||
+    PLUGIN_ADMIN_TOOLS.EXTRA_ROUTES.length > 0
+  ) {
+    items.push({
+      name: t`Tools`,
+      path: "/admin/tools",
+      key: "tools",
+    });
+  }
+
+  items.push(...PLUGIN_ADMIN_NAV_ITEMS, {
     name: t`Troubleshooting`,
     path: "/admin/troubleshooting",
     key: "troubleshooting",
-  },
-];
+  });
+
+  return items;
+};
 
 const paths = handleActions(
   {

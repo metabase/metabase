@@ -2,13 +2,13 @@ import _ from "underscore";
 
 import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
+import getGAMetadata from "promise-loader?global!metabase/lib/ga-metadata"; // eslint-disable-line import/default
+
 import Question from "metabase-lib/lib/Question";
 import { FieldDimension } from "metabase-lib/lib/Dimension";
 
 // use different endpoints for embed previews
 const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
-
-import getGAMetadata from "promise-loader?global!metabase/lib/ga-metadata"; // eslint-disable-line import/default
 
 export const ActivityApi = {
   list: GET("/api/activity"),
@@ -116,7 +116,10 @@ export const CardApi = {
   create: POST("/api/card"),
   get: GET("/api/card/:cardId"),
   update: PUT("/api/card/:id"),
-  delete: DELETE("/api/card/:cardId"),
+  delete: DELETE("/api/card/:id"),
+  persist: POST("/api/card/:id/persist"),
+  unpersist: POST("/api/card/:id/unpersist"),
+  refreshModelCache: POST("/api/card/:id/refresh"),
   query: POST("/api/card/:cardId/query"),
   query_pivot: POST("/api/card/pivot/:cardId/query"),
   bookmark: {
@@ -175,6 +178,15 @@ export const CollectionsApi = {
   update: PUT("/api/collection/:id"),
   graph: GET("/api/collection/graph"),
   updateGraph: PUT("/api/collection/graph"),
+};
+
+export const DataAppsApi = {
+  list: GET("/api/app"),
+  create: POST("/api/app"),
+  update: PUT("/api/app/:id"),
+
+  scaffoldNewApp: POST("/api/app/scaffold"),
+  scaffoldNewPages: POST("/api/app/:id/scaffold"),
 };
 
 const PIVOT_PUBLIC_PREFIX = "/api/public/pivot/";
@@ -258,11 +270,17 @@ export const MetabaseApi = {
   db_fields: GET("/api/database/:dbId/fields"),
   db_idfields: GET("/api/database/:dbId/idfields"),
   db_autocomplete_suggestions: GET(
-    "/api/database/:dbId/autocomplete_suggestions?search=:prefix",
+    "/api/database/:dbId/autocomplete_suggestions?:matchStyle=:query",
+  ),
+  db_card_autocomplete_suggestions: GET(
+    "/api/database/:dbId/card_autocomplete_suggestions",
   ),
   db_sync_schema: POST("/api/database/:dbId/sync_schema"),
+  db_dismiss_sync_spinner: POST("/api/database/:dbId/dismiss_spinner"),
   db_rescan_values: POST("/api/database/:dbId/rescan_values"),
   db_discard_values: POST("/api/database/:dbId/discard_values"),
+  db_persist: POST("/api/database/:dbId/persist"),
+  db_unpersist: POST("/api/database/:dbId/unpersist"),
   db_get_db_ids_with_deprecated_drivers: GET("/db-ids-with-deprecated-drivers"),
   table_list: GET("/api/table"),
   // table_get:                   GET("/api/table/:tableId"),
@@ -422,6 +440,14 @@ export const PermissionsApi = {
   deleteGroup: DELETE("/api/permissions/group/:id"),
 };
 
+export const PersistedModelsApi = {
+  get: GET("/api/persist/:id"),
+  getForModel: GET("/api/persist/card/:id"),
+  enablePersistence: POST("/api/persist/enable"),
+  disablePersistence: POST("/api/persist/disable"),
+  setRefreshSchedule: POST("/api/persist/set-refresh-schedule"),
+};
+
 export const SetupApi = {
   create: POST("/api/setup"),
   validate_db: POST("/api/setup/validate"),
@@ -509,3 +535,14 @@ function setParamsEndpoints(prefix) {
     prefix + "/dashboard/:dashId/params/:paramId/search/:query",
   );
 }
+
+export const ActionsApi = {
+  create: POST("/api/action/row/create"),
+  update: POST("/api/action/row/update"),
+  delete: POST("/api/action/row/delete"),
+  bulkUpdate: POST("/api/action/bulk/update/:tableId"),
+  bulkDelete: POST("/api/action/bulk/delete/:tableId"),
+  execute: POST(
+    "/api/dashboard/:dashboardId/dashcard/:dashcardId/action/execute",
+  ),
+};

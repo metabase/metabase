@@ -44,32 +44,34 @@ const UserCollectionList = ({ collectionsById }) => (
         return (
           <div>
             <Grid>
-              {// map through all users that have logged in at least once
-              // which gives them a personal collection ID
-              list.map(
-                user =>
-                  user.personal_collection_id && (
-                    <ListGridItem key={user.personal_collection_id}>
-                      <Link
-                        to={Urls.collection(
-                          collectionsById[user.personal_collection_id],
-                        )}
-                      >
-                        <Card p={2} hoverable>
-                          <CardContent>
-                            <Icon
-                              name="person"
-                              mr={1}
-                              color={color("text-medium")}
-                              size={18}
-                            />
-                            <h3>{user.common_name}</h3>
-                          </CardContent>
-                        </Card>
-                      </Link>
-                    </ListGridItem>
-                  ),
-              )}
+              {
+                // map through all users that have logged in at least once
+                // which gives them a personal collection ID
+                list.map(
+                  user =>
+                    user.personal_collection_id && (
+                      <ListGridItem key={user.personal_collection_id}>
+                        <Link
+                          to={Urls.collection(
+                            collectionsById[user.personal_collection_id],
+                          )}
+                        >
+                          <Card p={2} hoverable>
+                            <CardContent>
+                              <Icon
+                                name="person"
+                                mr={1}
+                                color={color("text-medium")}
+                                size={18}
+                              />
+                              <h3>{user.common_name}</h3>
+                            </CardContent>
+                          </Card>
+                        </Link>
+                      </ListGridItem>
+                    ),
+                )
+              }
             </Grid>
           </div>
         );

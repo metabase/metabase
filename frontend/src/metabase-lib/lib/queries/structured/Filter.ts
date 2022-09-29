@@ -1,14 +1,13 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import MBQLClause from "./MBQLClause";
+import { t, ngettext, msgid } from "ttag";
+import _ from "underscore";
 import {
   Filter as FilterObject,
   FieldFilter,
   Field,
 } from "metabase-types/types/Query";
 import { FilterOperator } from "metabase-types/types/Metadata";
-import StructuredQuery from "../StructuredQuery";
-import Dimension from "../../Dimension";
 import {
   generateTimeFilterValuesDescriptions,
   getRelativeDatetimeField,
@@ -20,11 +19,20 @@ import {
   isCustom,
   isFieldFilter,
   hasFilterOptions,
+  getFilterOptions,
+  setFilterOptions,
 } from "metabase/lib/query/filter";
 import { isExpression } from "metabase/lib/expressions";
 import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
-import { t, ngettext, msgid } from "ttag";
-import _ from "underscore";
+import Dimension from "../../Dimension";
+import StructuredQuery from "../StructuredQuery";
+import MBQLClause from "./MBQLClause";
+
+export interface FilterDisplayNameOpts {
+  includeDimension?: boolean;
+  includeOperator?: boolean;
+}
+
 export default class Filter extends MBQLClause {
   /**
    * Replaces the filter in the parent query and returns the new StructuredQuery
@@ -55,16 +63,23 @@ export default class Filter extends MBQLClause {
   /**
    * Returns the display name for the filter
    */
-  displayName() {
+  displayName({
+    includeDimension = true,
+    includeOperator = true,
+  }: FilterDisplayNameOpts = {}) {
     if (this.isSegment()) {
       const segment = this.segment();
       return segment ? segment.displayName() : t`Unknown Segment`;
     } else if (this.isStandard()) {
       const dimension = this.dimension();
       const operator = this.operator();
-      const dimensionName = dimension && dimension.displayName();
+      const dimensionName =
+        dimension && includeDimension && dimension.displayName();
       const operatorName =
-        operator && !isStartingFrom(this) && operator.moreVerboseName;
+        operator &&
+        includeOperator &&
+        !isStartingFrom(this) &&
+        operator.moreVerboseName;
       const argumentNames = this.formattedArguments().join(" ");
       return `${dimensionName || ""} ${operatorName || ""} ${argumentNames}`;
     } else if (this.isCustom()) {
@@ -95,6 +110,9 @@ export default class Filter extends MBQLClause {
         return false;
       }
 
+      if (!this.operatorName()) {
+        return false;
+      }
       const operator = this.operator();
 
       if (operator) {
@@ -292,6 +310,14 @@ export default class Filter extends MBQLClause {
 
   arguments() {
     return hasFilterOptions(this) ? this.slice(2, -1) : this.slice(2);
+  }
+
+  options() {
+    return getFilterOptions(this);
+  }
+
+  setOptions(options: any) {
+    return this.set(setFilterOptions(this, options));
   }
 
   formattedArguments(maxDisplayValues?: number = 1) {

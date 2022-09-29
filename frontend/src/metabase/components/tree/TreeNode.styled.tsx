@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import colors, { lighten } from "metabase/lib/colors";
+import { color, lighten } from "metabase/lib/colors";
 import Icon, { IconProps } from "metabase/components/Icon";
 
 interface TreeNodeRootProps {
@@ -11,8 +11,8 @@ interface TreeNodeRootProps {
 export const TreeNodeRoot = styled.li<TreeNodeRootProps>`
   display: flex;
   align-items: center;
-  color: ${props => (props.isSelected ? colors["white"] : colors["brand"])};
-  background-color: ${props => (props.isSelected ? colors["brand"] : "unset")};
+  color: ${props => (props.isSelected ? color("white") : color("brand"))};
+  background-color: ${props => (props.isSelected ? color("brand") : "unset")};
   padding-left: ${props => props.depth + 0.5}rem;
   padding-right: 0.5rem;
   cursor: pointer;
@@ -20,7 +20,7 @@ export const TreeNodeRoot = styled.li<TreeNodeRootProps>`
 
   &:hover {
     background-color: ${props =>
-      props.isSelected ? colors["brand"] : lighten(colors["brand"], 0.6)};
+      props.isSelected ? color("brand") : lighten("brand", 0.6)};
   }
 `;
 

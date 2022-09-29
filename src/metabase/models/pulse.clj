@@ -26,6 +26,9 @@
             [metabase.models.pulse-card :refer [PulseCard]]
             [metabase.models.pulse-channel :as pulse-channel :refer [PulseChannel]]
             [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
+            [metabase.models.serialization.base :as serdes.base]
+            [metabase.models.serialization.hash :as serdes.hash]
+            [metabase.models.serialization.util :as serdes.util]
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru tru]]
             [metabase.util.schema :as su]
@@ -37,6 +40,8 @@
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (models/defmodel Pulse :pulse)
+
+(derive Pulse ::mi/read-policy.full-perms-for-perms-set)
 
 (defn- assert-valid-parameters [{:keys [parameters]}]
   (when (s/check (s/maybe [{:id su/NonBlankString, s/Keyword s/Any}]) parameters)
@@ -99,19 +104,19 @@
   [notification]
   (boolean (:dashboard_id notification)))
 
-(defn- perms-objects-set
-  "Permissions to read or write a *Pulse* or *Dashboard Subscription* are the same as those of its parent Collection.
-
-  Permissions to read or write an *Alert* are the same as those of its 'parent' *Card*. For all intents and purposes,
-  an Alert cannot be put into a Collection."
+;;; Permissions to read or write a *Pulse* or *Dashboard Subscription* are the same as those of its parent Collection.
+;;;
+;;; Permissions to read or write an *Alert* are the same as those of its 'parent' *Card*. For all intents and purposes,
+;;; an Alert cannot be put into a Collection.
+(defmethod mi/perms-objects-set Pulse
   [notification read-or-write]
   (if (is-alert? notification)
     (mi/perms-objects-set (alert->card notification) read-or-write)
     (perms/perms-objects-set-for-parent-collection notification read-or-write)))
 
-(defn- can-write?
-  "A user with read-only permissions for a dashboard should be able to create subscriptions, and update
-  subscriptions that they created, but not edit anyone else's subscriptions."
+;;; A user with read-only permissions for a dashboard should be able to create subscriptions, and update subscriptions
+;;; that they created, but not edit anyone else's subscriptions.
+(defmethod mi/can-write? Pulse
   [notification]
   (if (and (is-dashboard-subscription? notification)
            (mi/current-user-has-full-permissions? :read notification)
@@ -119,21 +124,19 @@
     (= api/*current-user-id* (:creator_id notification))
     (mi/current-user-has-full-permissions? :write notification)))
 
-(u/strict-extend (class Pulse)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Pulse)
   models/IModel
   (merge
    models/IModelDefaults
    {:hydration-keys (constantly [:pulse])
-    :properties     (constantly {:timestamped? true})
+    :properties     (constantly {:timestamped? true
+                                 :entity_id    true})
     :pre-insert     pre-insert
     :pre-update     pre-update
     :types          (constantly {:parameters :json})})
-  mi/IObjectPermissions
-  (merge
-   mi/IObjectPermissionsDefaults
-   {:can-read?         (partial mi/current-user-has-full-permissions? :read)
-    :can-write?        can-write?
-    :perms-objects-set perms-objects-set}))
+
+  serdes.hash/IdentityHashable
+  {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :collection)])})
 
 (def ^:private ^:dynamic *automatically-archive-when-last-channel-is-deleted*
   "Should we automatically archive a Pulse when its last `PulseChannel` is deleted? Normally we do, but this is disabled
@@ -217,29 +220,29 @@
 
 ;;; ---------------------------------------- Notification Fetching Helper Fns ----------------------------------------
 
-(s/defn hydrate-notification :- PulseInstance
+(s/defn hydrate-notification :- (mi/InstanceOf Pulse)
   "Hydrate Pulse or Alert with the Fields needed for sending it."
-  [notification :- PulseInstance]
+  [notification :- (mi/InstanceOf Pulse)]
   (-> notification
       (hydrate :creator :cards :dashboard [:channels :recipients])
       (m/dissoc-in [:details :emails])))
 
-(s/defn ^:private hydrate-notifications :- [PulseInstance]
+(s/defn ^:private hydrate-notifications :- [(mi/InstanceOf Pulse)]
   "Batched-hydrate multiple Pulses or Alerts."
-  [notifications :- [PulseInstance]]
+  [notifications :- [(mi/InstanceOf Pulse)]]
   (as-> notifications <>
     (hydrate <> :creator :cards [:channels :recipients])
     (map #(m/dissoc-in % [:details :emails]) <>)))
 
-(s/defn ^:private notification->pulse :- PulseInstance
+(s/defn ^:private notification->pulse :- (mi/InstanceOf Pulse)
   "Take a generic `Notification`, and put it in the standard Pulse format the frontend expects. This really just
   consists of removing associated `Alert` columns."
-  [notification :- PulseInstance]
+  [notification :- (mi/InstanceOf Pulse)]
   (dissoc notification :alert_condition :alert_above_goal :alert_first_only))
 
 ;; TODO - do we really need this function? Why can't we just use `db/select` and `hydrate` like we do for everything
 ;; else?
-(s/defn retrieve-pulse :- (s/maybe PulseInstance)
+(s/defn retrieve-pulse :- (s/maybe (mi/InstanceOf Pulse))
   "Fetch a single *Pulse*, and hydrate it with a set of 'standard' hydrations; remove Alert columns, since this is a
   *Pulse* and they will all be unset."
   [pulse-or-id]
@@ -247,22 +250,22 @@
           hydrate-notification
           notification->pulse))
 
-(s/defn retrieve-notification :- (s/maybe PulseInstance)
+(s/defn retrieve-notification :- (s/maybe (mi/InstanceOf Pulse))
   "Fetch an Alert or Pulse, and do the 'standard' hydrations, adding `:channels` with `:recipients`, `:creator`, and
   `:cards`."
   [notification-or-id & additional-conditions]
   (some-> (apply Pulse :id (u/the-id notification-or-id), additional-conditions)
           hydrate-notification))
 
-(s/defn ^:private notification->alert :- PulseInstance
+(s/defn ^:private notification->alert :- (mi/InstanceOf Pulse)
   "Take a generic `Notification` and put it in the standard `Alert` format the frontend expects. This really just
   consists of collapsing `:cards` into a `:card` key with whatever the first Card is."
-  [notification :- PulseInstance]
+  [notification :- (mi/InstanceOf Pulse)]
   (-> notification
       (assoc :card (first (:cards notification)))
       (dissoc :cards)))
 
-(s/defn retrieve-alert :- (s/maybe PulseInstance)
+(s/defn retrieve-alert :- (s/maybe (mi/InstanceOf Pulse))
   "Fetch a single Alert by its `id` value, do the standard hydrations, and put it in the standard `Alert` format."
   [alert-or-id]
   (some-> (db/select-one Pulse, :id (u/the-id alert-or-id), :alert_condition [:not= nil])
@@ -272,7 +275,7 @@
 (defn- query-as [model query]
   (db/do-post-select model (db/query query)))
 
-(s/defn retrieve-alerts :- [PulseInstance]
+(s/defn retrieve-alerts :- [(mi/InstanceOf Pulse)]
   "Fetch all Alerts."
   ([]
    (retrieve-alerts nil))
@@ -302,7 +305,7 @@
            :when (:card alert)]
        alert))))
 
-(s/defn retrieve-pulses :- [PulseInstance]
+(s/defn retrieve-pulses :- [(mi/InstanceOf Pulse)]
   "Fetch all `Pulses`."
   [{:keys [archived? dashboard-id user-id]
     :or   {archived? false}}]
@@ -556,3 +559,22 @@
   ;; fetch the fully updated pulse and return it (and fire off an event)
   (->> (retrieve-alert (u/the-id alert))
        (events/publish-event! :pulse-update)))
+
+;;; ------------------------------------------------- Serialization --------------------------------------------------
+
+(defmethod serdes.base/extract-one "Pulse"
+  [_model-name _opts pulse]
+  (cond-> (serdes.base/extract-one-basics "Pulse" pulse)
+    (:collection_id pulse) (update :collection_id serdes.util/export-fk 'Collection)
+    (:dashboard_id  pulse) (update :dashboard_id  serdes.util/export-fk 'Dashboard)
+    true                   (update :creator_id    serdes.util/export-user)))
+
+(defmethod serdes.base/load-xform "Pulse" [pulse]
+  (cond-> (serdes.base/load-xform-basics pulse)
+      true                   (update :creator_id    serdes.util/import-user)
+      (:collection_id pulse) (update :collection_id serdes.util/import-fk 'Collection)
+      (:dashboard_id  pulse) (update :dashboard_id  serdes.util/import-fk 'Dashboard)))
+
+(defmethod serdes.base/serdes-dependencies "Pulse" [{:keys [collection_id dashboard_id]}]
+  (filterv some? [(when collection_id [{:model "Collection" :id collection_id}])
+                  (when dashboard_id  [{:model "Dashboard"  :id dashboard_id}])]))

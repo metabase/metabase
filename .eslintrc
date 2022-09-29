@@ -11,6 +11,35 @@
     "curly": [1, "all"],
     "eqeqeq": [1, "smart"],
     "import/no-commonjs": 1,
+    "import/order": ["error", {
+      "pathGroups": [
+        {
+          "pattern": "react",
+          "group": "builtin",
+          "position": "before"
+        },
+        {
+          "pattern": "metabase/**",
+          "group": "internal"
+        },
+        {
+          "pattern": "metabase/**/components",
+          "group": "internal",
+          "position": "before"
+        },
+        {
+          "pattern": "__**",
+          "group": "internal",
+          "position": "before"
+        },
+        {
+          "pattern": "metabase-lib/**",
+          "group": "internal",
+          "position": "after"
+        }
+      ],
+      "groups": ["builtin", "external", "internal", "parent", "sibling", "index", "object"]
+    }],
     "no-console": 0,
     "react/no-is-mounted": 2,
     "react/prefer-es6-class": 2,
@@ -27,7 +56,7 @@
     "react/forbid-component-props": [2, { "forbid": ["w", "h"] }],
     "react-hooks/exhaustive-deps": [
       "warn",
-      { "additionalHooks": "(useSyncedQueryString|useAsyncFunction)" }
+      { "additionalHooks": "(useSyncedQueryString|useSafeAsyncFunction)" }
     ],
     "prefer-const": [1, { "destructuring": "all" }],
     "no-useless-escape": 0,
@@ -55,6 +84,7 @@
     "plugin:import/warnings"
   ],
   "settings": {
+    "import/internal-regex": "^metabase/|^metabase-lib/",
     "import/resolver": "webpack",
     "import/ignore": ["\\.css$"],
     "react": {

@@ -5,7 +5,8 @@
             [kixi.stats.math :as math]
             [medley.core :as m]
             [metabase.mbql.util :as mbql.u]
-            [metabase.models.field :as field]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.interface :as mi]
             [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
             [metabase.sync.util :as sync-util]
             [metabase.util :as u]
@@ -219,7 +220,7 @@
                      :col            (:name number-col)
                      :unit           unit))))))
       (trs "Error generating timeseries insight keyed by: {0}"
-           (sync-util/name-for-logging (field/map->FieldInstance datetime))))))
+           (sync-util/name-for-logging (mi/instance Field datetime))))))
 
 (defn insights
   "Based on the shape of returned data construct a transducer to statistically analyize data."

@@ -16,6 +16,7 @@
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.dimension :refer [Dimension]]
             [metabase.models.field :refer [Field]]
+            [metabase.models.interface :as mi]
             [metabase.models.params :as params]
             [metabase.query-processor :as qp]
             [metabase.query-processor.card :as qp.card]
@@ -41,7 +42,8 @@
 (defn- remove-card-non-public-columns
   "Remove everyting from public `card` that shouldn't be visible to the general public."
   [card]
-  (card/map->CardInstance
+  (mi/instance
+   Card
    (u/select-nested-keys card [:id :name :description :display :visualization_settings
                                [:dataset_query :type [:native :template-tags]]])))
 
@@ -49,11 +51,10 @@
   "Return a public Card matching key-value `conditions`, removing all columns that should not be visible to the general
    public. Throws a 404 if the Card doesn't exist."
   [& conditions]
-  (binding [params/*ignore-current-user-perms-and-return-all-field-values* true]
-    (-> (api/check-404 (apply db/select-one [Card :id :dataset_query :description :display :name :visualization_settings]
-                              :archived false, conditions))
-        remove-card-non-public-columns
-        (hydrate :param_values :param_fields))))
+  (-> (api/check-404 (apply db/select-one [Card :id :dataset_query :description :display :name :visualization_settings]
+                            :archived false, conditions))
+      remove-card-non-public-columns
+      (hydrate :param_fields)))
 
 (defn- card-with-uuid [uuid] (public-card :public_uuid uuid))
 
@@ -165,18 +166,17 @@
   "Return a public Dashboard matching key-value `conditions`, removing all columns that should not be visible to the
    general public. Throws a 404 if the Dashboard doesn't exist."
   [& conditions]
-  (binding [params/*ignore-current-user-perms-and-return-all-field-values* true]
-    (-> (api/check-404 (apply db/select-one [Dashboard :name :description :id :parameters], :archived false, conditions))
-        (hydrate [:ordered_cards :card :series] :param_values :param_fields)
-        api.dashboard/add-query-average-durations
-        (update :ordered_cards (fn [dashcards]
-                                 (for [dashcard dashcards]
-                                   (-> (select-keys dashcard [:id :card :card_id :dashboard_id :series :col :row :sizeX
-                                                              :sizeY :parameter_mappings :visualization_settings])
-                                       (update :card remove-card-non-public-columns)
-                                       (update :series (fn [series]
-                                                         (for [series series]
-                                                           (remove-card-non-public-columns series)))))))))))
+  (-> (api/check-404 (apply db/select-one [Dashboard :name :description :id :parameters], :archived false, conditions))
+      (hydrate [:ordered_cards :card :series] :param_fields)
+      api.dashboard/add-query-average-durations
+      (update :ordered_cards (fn [dashcards]
+                               (for [dashcard dashcards]
+                                 (-> (select-keys dashcard [:id :card :card_id :dashboard_id :series :col :row :size_x
+                                                            :size_y :parameter_mappings :visualization_settings])
+                                     (update :card remove-card-non-public-columns)
+                                     (update :series (fn [series]
+                                                       (for [series series]
+                                                         (remove-card-non-public-columns series))))))))))
 
 (defn- dashboard-with-uuid [uuid] (public-dashboard :public_uuid uuid))
 
@@ -196,15 +196,17 @@
   * `export-format` - `:api` (default format with metadata), `:json` (results only), `:csv`, or `:xslx`. Default: `:api`
   * `qp-runner`     - QP function to run the query with. Default [[qp/process-query-and-save-execution!]]
 
-  Throws a 404 immediately if the Card isn't part of the Dashboard. Returns a `StreamingResponse`."
+  Throws a 404 immediately if the Card isn't part of the Dashboard. Throws a 405 immediately if the Card has is_write
+  set to true, as those are meant to only be executed through the actions api. Returns a `StreamingResponse`."
   {:arglists '([& {:keys [dashboard-id card-id dashcard-id export-format parameters] :as options}])}
-  [& {:keys [export-format parameters qp-runner]
+  [& {:keys [export-format parameters qp-runner card-id]
       :or   {qp-runner     qp/process-query-and-save-execution!
              export-format :api}
       :as   options}]
+  (api/check-is-readonly {:is_write (db/select-one-field :is_write 'Card :id card-id)})
   (let [options (merge
                  {:context     :public-dashboard
-                  :constraints qp.constraints/default-query-constraints}
+                  :constraints (qp.constraints/default-query-constraints)}
                  options
                  {:parameters    (cond-> parameters
                                    (string? parameters) (json/parse-string keyword))
@@ -300,14 +302,14 @@
   "Check that `field-id` belongs to a Field that is used as a parameter in a Dashboard with `dashboard-id`, or throw a
   404 Exception."
   [field-id dashboard-id]
-  (let [param-field-ids (params/dashboard->param-field-ids (api/check-404 (Dashboard dashboard-id)))]
+  (let [param-field-ids (params/dashboard->param-field-ids (api/check-404 (db/select-one Dashboard :id dashboard-id)))]
     (api/check-404 (contains? param-field-ids field-id))))
 
 (defn card-and-field-id->values
   "Return the FieldValues for a Field with `field-id` that is referenced by Card with `card-id`."
   [card-id field-id]
   (check-field-is-referenced-by-card field-id card-id)
-  (api.field/field->values (Field field-id)))
+  (api.field/field->values (db/select-one Field :id field-id)))
 
 (api/defendpoint GET "/card/:uuid/field/:field-id/values"
   "Fetch FieldValues for a Field that is referenced by a public Card."
@@ -321,7 +323,7 @@
   in Dashboard with `dashboard-id`."
   [dashboard-id field-id]
   (check-field-is-referenced-by-dashboard field-id dashboard-id)
-  (api.field/field->values (Field field-id)))
+  (api.field/field->values (db/select-one Field :id field-id)))
 
 (api/defendpoint GET "/dashboard/:uuid/field/:field-id/values"
   "Fetch FieldValues for a Field that is referenced by a Card in a public Dashboard."
@@ -339,7 +341,7 @@
   [card-id field-id search-id value limit]
   (check-field-is-referenced-by-card field-id card-id)
   (check-search-field-is-allowed field-id search-id)
-  (api.field/search-values (Field field-id) (Field search-id) value limit))
+  (api.field/search-values (db/select-one Field :id field-id) (db/select-one Field :id search-id) value limit))
 
 (defn search-dashboard-fields
   "Wrapper for `metabase.api.field/search-values` for use with public/embedded Dashboards. See that functions
@@ -347,7 +349,7 @@
   [dashboard-id field-id search-id value limit]
   (check-field-is-referenced-by-dashboard field-id dashboard-id)
   (check-search-field-is-allowed field-id search-id)
-  (api.field/search-values (Field field-id) (Field search-id) value limit))
+  (api.field/search-values (db/select-one Field :id field-id) (db/select-one Field :id search-id) value limit))
 
 (api/defendpoint GET "/card/:uuid/field/:field-id/search/:search-field-id"
   "Search for values of a Field that is referenced by a public Card."
@@ -371,8 +373,8 @@
 ;;; --------------------------------------------------- Remappings ---------------------------------------------------
 
 (defn- field-remapped-values [field-id remapped-field-id, ^String value-str]
-  (let [field          (api/check-404 (Field field-id))
-        remapped-field (api/check-404 (Field remapped-field-id))]
+  (let [field          (api/check-404 (db/select-one Field :id field-id))
+        remapped-field (api/check-404 (db/select-one Field :id remapped-field-id))]
     (check-search-field-is-allowed field-id remapped-field-id)
     (api.field/remapped-value field remapped-field (api.field/parse-query-param-value-for-field field value-str))))
 

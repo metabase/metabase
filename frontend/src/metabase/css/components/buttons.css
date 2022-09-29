@@ -13,7 +13,7 @@
   cursor: pointer;
   text-decoration: none;
   font-weight: bold;
-  font-family: "Lato", sans-serif;
+  font-family: var(--default-font-family), sans-serif;
   border-radius: var(--default-button-border-radius);
 }
 
@@ -93,18 +93,6 @@
   background-color: white;
   color: var(--color-text-dark);
   border-color: var(--color-border);
-}
-
-.Button--purple {
-  color: white;
-  background-color: var(--color-accent7);
-  border: 1px solid var(--color-accent7);
-}
-
-.Button--purple:hover {
-  color: white;
-  background-color: color-mod(var(--color-accent7) alpha(-12%));
-  border-color: color-mod(var(--color-accent7) alpha(-12%));
 }
 
 .Button--borderless {

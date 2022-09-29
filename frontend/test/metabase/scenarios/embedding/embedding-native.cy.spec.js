@@ -4,7 +4,7 @@ import {
   filterWidget,
   visitEmbeddedPage,
   visitIframe,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { questionDetails } from "./embedding-native";
 
@@ -52,9 +52,7 @@ describe("scenarios > embedding > native questions", () => {
         });
 
       // Total is greater than or equal to 0
-      cy.findByPlaceholderText("Enter a number")
-        .type("0")
-        .blur();
+      cy.findByPlaceholderText("Enter a number").type("0").blur();
       cy.button("Add filter").click();
 
       publishChanges(({ request }) => {
@@ -77,19 +75,13 @@ describe("scenarios > embedding > native questions", () => {
       cy.contains("Twitter").should("not.exist");
 
       // Created At: Q2, 2018
-      filterWidget()
-        .contains("Created At")
-        .click();
+      filterWidget().contains("Created At").click();
       cy.findByTestId("select-button").click();
-      popover()
-        .contains("2018")
-        .click();
+      popover().contains("2018").click();
       cy.findByText("Q2").click();
 
       // State: is not KS
-      filterWidget()
-        .contains("State")
-        .click();
+      filterWidget().contains("State").click();
       cy.findByPlaceholderText("Search the list").type("KS");
       cy.findByTestId("KS-filter-value").click();
       cy.button("Add filter").click();
@@ -103,13 +95,13 @@ describe("scenarios > embedding > native questions", () => {
 
       // Let's try to remove one filter
       cy.findByText("Q2, 2018")
-        .siblings(".Icon-close")
-        .click();
+        .closest("fieldset")
+        .within(() => {
+          cy.icon("close").click();
+        });
 
       // Order ID is 926 - there should be only one result after this
-      filterWidget()
-        .contains("Order ID")
-        .click();
+      filterWidget().contains("Order ID").click();
       cy.findByPlaceholderText("Enter an ID").type("926");
       cy.button("Add filter").click();
 
@@ -191,10 +183,7 @@ describe("scenarios > embedding > native questions", () => {
         cy.findByDisplayValue("Organic");
 
         // Total's value should fall back to the default one (`0`) because we didn't set it explicitly
-        cy.get("legend")
-          .contains("Total")
-          .parent("fieldset")
-          .contains("0");
+        cy.get("legend").contains("Total").parent("fieldset").contains("0");
 
         cy.contains("Emilie Goyette");
         cy.contains("35.7");
@@ -204,10 +193,7 @@ describe("scenarios > embedding > native questions", () => {
           setFilters: "total=80",
         });
 
-        cy.get("legend")
-          .contains("Total")
-          .parent("fieldset")
-          .contains("80");
+        cy.get("legend").contains("Total").parent("fieldset").contains("80");
 
         cy.contains("35.7").should("not.exist");
       });
@@ -254,21 +240,17 @@ function setParameter(name, filter) {
   cy.findByText("Which parameters can users of this embed use?")
     .parent()
     .within(() => {
-      cy.findByText(name)
-        .siblings("a")
-        .click();
+      cy.findByText(name).siblings("a").click();
     });
 
-  popover()
-    .contains(filter)
-    .click();
+  popover().contains(filter).click();
 }
 
 function enableSharing() {
   cy.intercept("GET", "/api/session/properties").as("sessionProperties");
 
   cy.icon("share").click();
-  cy.findByText("Embed this question in an application").click();
+  cy.findByText("Embed in your application").click();
   cy.wait("@sessionProperties");
 }
 

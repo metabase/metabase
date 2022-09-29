@@ -4,11 +4,11 @@ import {
   withDatabase,
   adhocQuestionHash,
   summarize,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 const MONGO_DB_ID = 2;
 
-describe("issue 13097", () => {
+describe("issue 13097", { tags: "@external" }, () => {
   beforeEach(() => {
     restore("mongo-4");
     cy.signInAsAdmin();
@@ -34,9 +34,7 @@ describe("issue 13097", () => {
     cy.findByText("Number of distinct values of ...").click();
     cy.findByText("City").click();
 
-    cy.findAllByTestId("notebook-cell-item")
-      .find(".Icon-add")
-      .click();
+    cy.findAllByTestId("notebook-cell-item").find(".Icon-add").click();
 
     cy.findByText("Number of distinct values of ...").click();
     cy.findByText("State").click();

@@ -114,16 +114,10 @@
     (testing "\nEven if a query fails we still expect a 202 response from the API"
       ;; Error message's format can differ a bit depending on DB version and the comment we prepend to it, so check
       ;; that it exists and contains the substring "Syntax error in SQL statement"
-      (let [check-error-message (fn [output]
-                                  (update output :error (fn [error-message]
-                                                          (some->>
-                                                           error-message
-                                                           (re-find #"Syntax error in SQL statement")
-                                                           boolean))))
-            query               {:database (mt/id)
-                                 :type     "native"
-                                 :native   {:query "foobar"}}
-            result              (mt/user-http-request :rasta :post 202 "dataset" query)]
+      (let [query  {:database (mt/id)
+                    :type     "native"
+                    :native   {:query "foobar"}}
+            result (mt/user-http-request :rasta :post 202 "dataset" query)]
         (testing "\nAPI Response"
           (is (schema= {:data        (s/eq {:rows []
                                             :cols []})
@@ -215,7 +209,7 @@
   (testing "POST /api/dataset/:format"
     (testing "Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints (#9831)"
       ;; even if the query comes in with `add-default-userland-constraints` (as will be the case if the query gets saved
-      (with-redefs [qp.constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
+      (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
         (let [result (mt/user-http-request :rasta :post 200 "dataset/csv"
                                            :query (json/generate-string
                                                    {:database (mt/id)
@@ -251,7 +245,7 @@
 (deftest non--download--queries-should-still-get-the-default-constraints
   (testing (str "non-\"download\" queries should still get the default constraints "
                 "(this also is a sanitiy check to make sure the `with-redefs` in the test above actually works)")
-    (with-redefs [qp.constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
+    (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
       (let [{row-count :row_count, :as result}
             (mt/user-http-request :rasta :post 202 "dataset"
                                   {:database (mt/id)

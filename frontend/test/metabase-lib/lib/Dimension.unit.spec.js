@@ -1,4 +1,10 @@
 import _ from "underscore";
+import {
+  metadata,
+  ORDERS,
+  PRODUCTS,
+  SAMPLE_DATABASE,
+} from "__support__/sample_database_fixture";
 import Dimension, {
   FieldDimension,
   TemplateTagDimension,
@@ -7,14 +13,7 @@ import Field from "metabase-lib/lib/metadata/Field";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import Question from "metabase-lib/lib/Question";
-import { TemplateTagVariable } from "metabase-lib/lib/Variable";
-
-import {
-  metadata,
-  ORDERS,
-  PRODUCTS,
-  SAMPLE_DATABASE,
-} from "__support__/sample_database_fixture";
+import TemplateTagVariable from "metabase-lib/lib/variables/TemplateTagVariable";
 
 const nestedQuestionCard = {
   table_id: null,
@@ -59,29 +58,6 @@ const nestedQuestionCard = {
 };
 
 const PRODUCT_CATEGORY_FIELD_ID = 21;
-
-const ORDERS_USER_ID_FIELD = metadata.field(ORDERS.USER_ID.id).getPlainObject();
-
-const OVERWRITTEN_USER_ID_FIELD_METADATA = {
-  ...ORDERS_USER_ID_FIELD,
-  display_name: "Foo",
-  description: "Bar",
-  fk_target_field_id: 1,
-  semantic_type: "type/Price",
-  settings: {
-    show_mini_bar: true,
-  },
-};
-
-const ORDERS_DATASET = ORDERS.question()
-  .setDataset(true)
-  .setResultsMetadata({
-    columns: [OVERWRITTEN_USER_ID_FIELD_METADATA],
-  });
-
-// It isn't actually possible to overwrite metadata for non-models,
-// it's just needed to test it's only possible for models
-const ORDERS_WITH_OVERWRITTEN_METADATA = ORDERS_DATASET.setDataset(false);
 
 describe("Dimension", () => {
   describe("STATIC METHODS", () => {
@@ -322,11 +298,14 @@ describe("Dimension", () => {
           const emptyMetadata = {
             field: () => {},
             table: () => {},
+            card: () => {},
           };
 
           const question = ORDERS.question().setResultsMetadata({
             columns: [ORDERS.TOTAL],
           });
+          question.card().id = 1;
+
           const query = new StructuredQuery(question, {
             type: "query",
             database: SAMPLE_DATABASE.id,
@@ -344,32 +323,6 @@ describe("Dimension", () => {
 
           expect(field.id).toEqual(ORDERS.TOTAL.id);
           expect(field.base_type).toEqual("type/Float");
-        });
-
-        it("should merge model's field results metadata with field info", () => {
-          const dimension = Dimension.parseMBQL(
-            ["field", ORDERS.USER_ID.id, null],
-            metadata,
-            ORDERS_DATASET.query(),
-          );
-
-          const field = dimension.field();
-          const fieldInfo = _.omit(field.getPlainObject(), "metadata", "query");
-
-          expect(fieldInfo).toEqual(OVERWRITTEN_USER_ID_FIELD_METADATA);
-        });
-
-        it("should not merge regular question's field results metadata with field info", () => {
-          const dimension = Dimension.parseMBQL(
-            ["field", ORDERS.USER_ID.id, null],
-            metadata,
-            ORDERS_WITH_OVERWRITTEN_METADATA.query(),
-          );
-
-          const field = dimension.field();
-          const fieldInfo = _.omit(field.getPlainObject(), "metadata", "query");
-
-          expect(fieldInfo).toEqual(ORDERS_USER_ID_FIELD);
         });
       });
     });
@@ -902,7 +855,14 @@ describe("Dimension", () => {
             name: "boolean",
             display_name: "boolean",
             base_type: "type/Boolean",
-            semantic_type: null,
+            semantic_type: undefined,
+            id: [
+              "field",
+              "boolean",
+              {
+                "base-type": "type/Boolean",
+              },
+            ],
             field_ref: [
               "field",
               "boolean",
@@ -917,12 +877,31 @@ describe("Dimension", () => {
       describe("field", () => {
         it("should return the `field` from the card's result_metadata", () => {
           const field = dimension.field();
-          expect(field.id).toBeUndefined();
+          expect(field.id).toEqual([
+            "field",
+            "boolean",
+            { "base-type": "type/Boolean" },
+          ]);
           expect(field.name).toEqual("boolean");
           expect(field.isBoolean()).toBe(true);
           expect(field.metadata).toBeDefined();
           expect(field.query).toBeDefined();
         });
+      });
+    });
+  });
+
+  describe("Dimension with cached, trusted Field instance", () => {
+    describe("field", () => {
+      it("should return the cached Field instance", () => {
+        const fieldFromEndpoint = new Field({
+          ...PRODUCTS.CATEGORY.getPlainObject(),
+          _comesFromEndpoint: true,
+        });
+
+        const fieldDimension = fieldFromEndpoint.dimension();
+        expect(fieldDimension._fieldInstance).toBe(fieldFromEndpoint);
+        expect(fieldDimension.field()).toBe(fieldFromEndpoint);
       });
     });
   });

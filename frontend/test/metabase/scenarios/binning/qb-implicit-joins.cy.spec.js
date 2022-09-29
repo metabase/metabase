@@ -4,7 +4,7 @@ import {
   visualize,
   summarize,
   visitQuestion,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 /**
  * The list of issues this spec covers:
@@ -39,20 +39,16 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
       });
 
       // Make sure time series assertQueryBuilderState works as well
-      cy.findAllByTestId("select-button-content")
-        .contains("Year")
-        .click();
+      cy.findAllByTestId("select-button-content").contains("Year").click();
       cy.findByText("Month").click();
 
-      cy.get(".cellData")
-        .should("contain", "April, 1958")
-        .and("contain", "37");
+      cy.get(".cellData").should("contain", "April, 1958").and("contain", "37");
     });
 
     it("should work for number", () => {
       changeBinningForDimension({
         name: "Price",
-        fromBinning: "Auto binned",
+        fromBinning: "Auto bin",
         toBinning: "50 bins",
       });
 
@@ -65,10 +61,8 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
     it("should work for longitude", () => {
       changeBinningForDimension({
         name: "Longitude",
-        fromBinning: "Auto binned",
-        // Test is currently incorrect in that it displays wrong binning options (please see: https://github.com/metabase/metabase/issues/16674)
-        // Once #16674 gets fixed, update the following line to say: `bucketSize: "Bin every 20 degrees"`
-        toBinning: "20°",
+        fromBinning: "Auto bin",
+        toBinning: "Bin every 20 degrees",
       });
 
       assertQueryBuilderState({
@@ -105,14 +99,10 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
       });
 
       // Make sure time series assertQueryBuilderStateter works as well
-      cy.findAllByTestId("select-button-content")
-        .contains("Year")
-        .click();
+      cy.findAllByTestId("select-button-content").contains("Year").click();
       cy.findByText("Month").click();
 
-      cy.get(".cellData")
-        .should("contain", "April, 1958")
-        .and("contain", "37");
+      cy.get(".cellData").should("contain", "April, 1958").and("contain", "37");
     });
 
     it("should work for number", () => {
@@ -120,7 +110,7 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
 
       changeBinningForDimension({
         name: "Price",
-        fromBinning: "Auto binned",
+        fromBinning: "Auto bin",
         toBinning: "50 bins",
       });
 
@@ -137,10 +127,8 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
 
       changeBinningForDimension({
         name: "Longitude",
-        fromBinning: "Auto binned",
-        // Test is currently incorrect in that it displays wrong binning options (please see: https://github.com/metabase/metabase/issues/16674)
-        // Once #16674 gets fixed, update the following line to say: `bucketSize: "Bin every 20 degrees"`
-        toBinning: "20°",
+        fromBinning: "Auto bin",
+        toBinning: "Bin every 20 degrees",
       });
 
       assertQueryBuilderState({
@@ -164,7 +152,5 @@ function assertQueryBuilderState({ title, mode = null, values } = {}) {
   mode === "notebook" ? visualize() : waitAndAssertOnRequest("@dataset");
 
   cy.findByText(title);
-  cy.get(".cellData")
-    .should("contain", firstValue)
-    .and("contain", lastValue);
+  cy.get(".cellData").should("contain", firstValue).and("contain", lastValue);
 }

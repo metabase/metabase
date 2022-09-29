@@ -35,6 +35,11 @@
   width: 85%;
 }
 
+.Modal.Modal--fit {
+  width: auto;
+  max-height: 100%;
+}
+
 .Modal.Modal--tall {
   min-height: 85%;
 }

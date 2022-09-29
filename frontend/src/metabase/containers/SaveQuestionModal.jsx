@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import { CSSTransitionGroup } from "react-transition-group";
 import { t } from "ttag";
 
-import Form, { FormField, FormFooter } from "metabase/containers/Form";
+import Form, { FormField, FormFooter } from "metabase/containers/FormikForm";
 import ModalContent from "metabase/components/ModalContent";
 import Radio from "metabase/core/components/Radio";
 import * as Q_DEPRECATED from "metabase/lib/query";
@@ -25,8 +25,8 @@ export default class SaveQuestionModal extends Component {
     multiStep: PropTypes.bool,
   };
 
-  validateName = (name, context) => {
-    if (context.form.saveType.value !== "overwrite") {
+  validateName = (name, { values }) => {
+    if (values.saveType !== "overwrite") {
       // We don't care if the form is valid when overwrite mode is enabled,
       // as original question's data will be submitted instead of the form values
       return validate.required()(name);
@@ -75,14 +75,11 @@ export default class SaveQuestionModal extends Component {
   };
 
   render() {
-    const {
-      card,
-      originalCard,
-      initialCollectionId,
-      tableMetadata,
-    } = this.props;
+    const { card, originalCard, initialCollectionId, tableMetadata } =
+      this.props;
 
     const isStructured = Q_DEPRECATED.isStructured(card.dataset_query);
+    const isReadonly = originalCard != null && !originalCard.can_write;
 
     const initialValues = {
       name:
@@ -91,17 +88,24 @@ export default class SaveQuestionModal extends Component {
           : "",
       description: card.description || "",
       collection_id:
-        card.collection_id === undefined
+        card.collection_id === undefined || isReadonly
           ? initialCollectionId
           : card.collection_id,
-      saveType: originalCard && !originalCard.dataset ? "overwrite" : "create",
+      saveType:
+        originalCard && !originalCard.dataset && originalCard.can_write
+          ? "overwrite"
+          : "create",
     };
 
     const title = this.props.multiStep
       ? t`First, save your question`
       : t`Save question`;
 
-    const showSaveType = !card.id && !!originalCard && !originalCard.dataset;
+    const showSaveType =
+      !card.id &&
+      !!originalCard &&
+      !originalCard.dataset &&
+      originalCard.can_write;
 
     return (
       <ModalContent
@@ -174,8 +178,9 @@ const SaveTypeInput = ({ field, originalCard }) => (
     {...field}
     options={[
       {
-        name: t`Replace original question, "${originalCard &&
-          originalCard.name}"`,
+        name: t`Replace original question, "${
+          originalCard && originalCard.name
+        }"`,
         value: "overwrite",
       },
       { name: t`Save as new question`, value: "create" },

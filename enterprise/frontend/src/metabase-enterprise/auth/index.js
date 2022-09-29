@@ -1,22 +1,26 @@
 import React from "react";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import { t, jt } from "ttag";
 import { updateIn } from "icepick";
+import ExternalLink from "metabase/core/components/ExternalLink";
+import { LOGIN, LOGIN_GOOGLE } from "metabase/auth/actions";
 
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import MetabaseSettings from "metabase/lib/settings";
 import {
-  PLUGIN_AUTH_PROVIDERS,
-  PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS,
   PLUGIN_ADMIN_SETTINGS_UPDATES,
+  PLUGIN_AUTH_PROVIDERS,
+  PLUGIN_IS_PASSWORD_USER,
+  PLUGIN_REDUX_MIDDLEWARES,
 } from "metabase/plugins";
 import { UtilApi } from "metabase/services";
 
 import AuthenticationOption from "metabase/admin/settings/components/widgets/AuthenticationOption";
 import GroupMappingsWidget from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
 import SecretKeyWidget from "metabase/admin/settings/components/widgets/SecretKeyWidget";
+import SessionTimeoutSetting from "metabase-enterprise/auth/components/SessionTimeoutSetting";
 
 import SettingsGoogleForm from "metabase/admin/settings/components/SettingsGoogleForm";
+import { createSessionMiddleware } from "../auth/middleware/session-middleware";
 import SettingsSAMLForm from "./components/SettingsSAMLForm";
 import SettingsJWTForm from "./components/SettingsJWTForm";
 
@@ -63,13 +67,18 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
         !settings["saml-enabled"] &&
         !settings["jwt-enabled"],
     },
+    {
+      key: "session-timeout",
+      display_name: t`Session timeout`,
+      description: t`Time before inactive users are logged out.`,
+      widget: SessionTimeoutSetting,
+    },
   ]),
 );
 
 PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
   ...sections,
   "authentication/saml": {
-    sidebar: false,
     component: SettingsSAMLForm,
     settings: [
       {
@@ -78,7 +87,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
         description: jt`Use the settings below to configure your SSO via SAML. If you have any questions, check out our ${(
           <ExternalLink
             href={MetabaseSettings.docsUrl(
-              "enterprise-guide/authenticating-with-saml",
+              "people-and-groups/authenticating-with-saml",
             )}
           >
             {t`documentation`}
@@ -165,7 +174,6 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
     ],
   },
   "authentication/jwt": {
-    sidebar: false,
     component: SettingsJWTForm,
     settings: [
       {
@@ -250,17 +258,20 @@ PLUGIN_AUTH_PROVIDERS.push(providers => {
   if (MetabaseSettings.get("other-sso-configured?")) {
     providers = [SSO_PROVIDER, ...providers];
   }
-  if (!MetabaseSettings.get("enable-password-login")) {
+  if (
+    !MetabaseSettings.isPasswordLoginEnabled() &&
+    !MetabaseSettings.isLdapEnabled()
+  ) {
     providers = providers.filter(p => p.name !== "password");
   }
   return providers;
 });
 
-PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS.push(
+PLUGIN_IS_PASSWORD_USER.push(
   user =>
     !user.google_auth &&
     !user.ldap_auth &&
-    MetabaseSettings.get("enable-password-login"),
+    MetabaseSettings.isPasswordLoginEnabled(),
 );
 
 PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
@@ -290,7 +301,6 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
   ...sections,
   "authentication/google": {
     component: SettingsGoogleForm,
-    sidebar: false,
     settings: [
       {
         key: "google-auth-client-id",
@@ -309,3 +319,5 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
     ],
   },
 }));
+
+PLUGIN_REDUX_MIDDLEWARES.push(createSessionMiddleware([LOGIN, LOGIN_GOOGLE]));

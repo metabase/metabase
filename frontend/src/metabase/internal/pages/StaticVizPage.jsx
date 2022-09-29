@@ -7,31 +7,6 @@ import {
   STATIC_CHART_DEFAULT_OPTIONS,
 } from "metabase/static-viz/containers/StaticChart/constants";
 import StaticChart from "metabase/static-viz/containers/StaticChart";
-import { PageRoot, PageSection } from "./StaticVizPage.styled";
-import {
-  TIME_SERIES_LINE_CHART_DEFAULT_OPTIONS,
-  TIME_SERIES_LINE_CHART_TYPE,
-} from "../../static-viz/components/TimeSeriesLineChart/constants";
-import {
-  TIME_SERIES_AREA_CHART_DEFAULT_OPTIONS,
-  TIME_SERIES_AREA_CHART_TYPE,
-} from "../../static-viz/components/TimeSeriesAreaChart/constants";
-import {
-  TIME_SERIES_BAR_CHART_DEFAULT_OPTIONS,
-  TIME_SERIES_BAR_CHART_TYPE,
-} from "../../static-viz/components/TimeSeriesBarChart/constants";
-import {
-  CATEGORICAL_LINE_CHART_DEFAULT_OPTIONS,
-  CATEGORICAL_LINE_CHART_TYPE,
-} from "../../static-viz/components/CategoricalLineChart/constants";
-import {
-  CATEGORICAL_AREA_CHART_DEFAULT_OPTIONS,
-  CATEGORICAL_AREA_CHART_TYPE,
-} from "../../static-viz/components/CategoricalAreaChart/constants";
-import {
-  CATEGORICAL_BAR_CHART_DEFAULT_OPTIONS,
-  CATEGORICAL_BAR_CHART_TYPE,
-} from "../../static-viz/components/CategoricalBarChart/constants";
 import {
   CATEGORICAL_DONUT_CHART_DEFAULT_OPTIONS,
   CATEGORICAL_DONUT_CHART_TYPE,
@@ -45,12 +20,9 @@ import {
 } from "../../static-viz/components/ProgressBar/constants";
 import {
   TIME_SERIES_WATERFALL_CHART_DEFAULT_OPTIONS,
-  TIME_SERIES_WATERFALL_CHART_TYPE,
-} from "../../static-viz/components/TimeSeriesWaterfallChart/constants";
-import {
   CATEGORICAL_WATERFALL_CHART_DEFAULT_OPTIONS,
-  CATEGORICAL_WATERFALL_CHART_TYPE,
-} from "../../static-viz/components/CategoricalWaterfallChart/constants";
+  WATERFALL_CHART_TYPE,
+} from "../../static-viz/components/WaterfallChart/constants";
 import {
   FUNNEL_CHART_DEFAULT_OPTIONS,
   FUNNEL_CHART_TYPE,
@@ -65,6 +37,7 @@ import {
   LINE_AREA_BAR_DEFAULT_OPTIONS_6,
   LINE_AREA_BAR_DEFAULT_OPTIONS_7,
 } from "../../static-viz/components/LineAreaBarChart/constants";
+import { PageRoot, PageSection } from "./StaticVizPage.styled";
 
 function chartOptionsToStr(options) {
   if (typeof options === "object") {
@@ -75,9 +48,8 @@ function chartOptionsToStr(options) {
 
 export default function StaticVizPage() {
   const [staticChartType, setStaticChartType] = useState(null);
-  const [staticChartCustomOptions, setStaticChartCustomOptions] = useState(
-    null,
-  );
+  const [staticChartCustomOptions, setStaticChartCustomOptions] =
+    useState(null);
   const [staticChartError, setStaticChartError] = useState(null);
 
   function chartOptionsToObj(optionsStr) {
@@ -156,50 +128,6 @@ export default function StaticVizPage() {
             </div>
           )}
         </PageSection>
-
-        <PageSection>
-          <Subhead>Line chart with timeseries data</Subhead>
-          <StaticChart
-            type={TIME_SERIES_LINE_CHART_TYPE}
-            options={TIME_SERIES_LINE_CHART_DEFAULT_OPTIONS}
-          />
-        </PageSection>
-        <PageSection>
-          <Subhead>Area chart with timeseries data</Subhead>
-          <StaticChart
-            type={TIME_SERIES_AREA_CHART_TYPE}
-            options={TIME_SERIES_AREA_CHART_DEFAULT_OPTIONS}
-          />
-        </PageSection>
-        <PageSection>
-          <Subhead>Bar chart with timeseries data</Subhead>
-          <StaticChart
-            type={TIME_SERIES_BAR_CHART_TYPE}
-            options={TIME_SERIES_BAR_CHART_DEFAULT_OPTIONS}
-          />
-        </PageSection>
-
-        <PageSection>
-          <Subhead>Line chart with categorical data</Subhead>
-          <StaticChart
-            type={CATEGORICAL_LINE_CHART_TYPE}
-            options={CATEGORICAL_LINE_CHART_DEFAULT_OPTIONS}
-          />
-        </PageSection>
-        <PageSection>
-          <Subhead>Area chart with categorical data</Subhead>
-          <StaticChart
-            type={CATEGORICAL_AREA_CHART_TYPE}
-            options={CATEGORICAL_AREA_CHART_DEFAULT_OPTIONS}
-          />
-        </PageSection>
-        <PageSection>
-          <Subhead>Bar chart with categorical data</Subhead>
-          <StaticChart
-            type={CATEGORICAL_BAR_CHART_TYPE}
-            options={CATEGORICAL_BAR_CHART_DEFAULT_OPTIONS}
-          />
-        </PageSection>
         <PageSection>
           <Subhead>Donut chart with categorical data</Subhead>
           <StaticChart
@@ -229,14 +157,17 @@ export default function StaticVizPage() {
         <PageSection>
           <Subhead>Waterfall chart with timeseries data and no total</Subhead>
           <StaticChart
-            type={TIME_SERIES_WATERFALL_CHART_TYPE}
+            type={WATERFALL_CHART_TYPE}
             options={TIME_SERIES_WATERFALL_CHART_DEFAULT_OPTIONS}
           />
         </PageSection>
         <PageSection>
-          <Subhead>Waterfall chart with categorical data and total</Subhead>
+          <Subhead>
+            Waterfall chart with categorical data and total (rotated X-axis tick
+            labels)
+          </Subhead>
           <StaticChart
-            type={CATEGORICAL_WATERFALL_CHART_TYPE}
+            type={WATERFALL_CHART_TYPE}
             options={CATEGORICAL_WATERFALL_CHART_DEFAULT_OPTIONS}
           />
         </PageSection>

@@ -59,8 +59,12 @@
      [:field 2 {:temporal-unit :day}]
 
      [:field 2 {"binning" {"strategy" "default"}}]
-     [:field 2 {:binning {:strategy :default}}]}))
+     [:field 2 {:binning {:strategy :default}}]}
 
+    ":value clauses should keep snake_case keys in the type info arg"
+    ;; See https://github.com/metabase/metabase/issues/23354 for details
+    {[:value "some value" {:some_key "some key value"}]
+     [:value "some value" {:some_key "some key value"}]}))
 
 ;;; -------------------------------------------------- aggregation ---------------------------------------------------
 
@@ -419,7 +423,7 @@
     "Make sure token normalization works correctly on source queries"
     {{:database 4
       :type     :query
-      :query    {"source_query" {:native         "SELECT * FROM PRODUCTS WHERE CATEGORY = {{category}} LIMIT 10",
+      :query    {"source_query" {:native         "SELECT * FROM PRODUCTS WHERE CATEGORY = {{category}} LIMIT 10"
                                  "template_tags" {:category {:name         "category"
                                                              :display-name "Category"
                                                              :type         "text"
@@ -427,7 +431,7 @@
                                                              :default      "Widget"}}}}}
      {:database 4
       :type     :query
-      :query    {:source-query {:native        "SELECT * FROM PRODUCTS WHERE CATEGORY = {{category}} LIMIT 10",
+      :query    {:source-query {:native        "SELECT * FROM PRODUCTS WHERE CATEGORY = {{category}} LIMIT 10"
                                 :template-tags {"category" {:name         "category"
                                                             :display-name "Category"
                                                             :type         :text
@@ -437,7 +441,7 @@
      {:database 4
       :type     :query
       :query    {"source_query" {"source_table" 1, "aggregation" "rows"}}}
-     {:database 4,
+     {:database 4
       :type     :query
       :query    {:source-query {:source-table 1, :aggregation :rows}}}}))
 
@@ -558,10 +562,16 @@
 
    "expressions should handle datetime arithemtics"
    {{:query {:expressions {:prev_month ["+" ["field-id" 13] ["interval" -1 "month"]]}}}
-    {:query {:expressions {"prev_month" [:+ [:field-id 13] [:interval -1 :month]]}}},
+    {:query {:expressions {"prev_month" [:+ [:field-id 13] [:interval -1 :month]]}}}
 
     {:query {:expressions {:prev_month ["-" ["field-id" 13] ["interval" 1 "month"] ["interval" 1 "day"]]}}}
-    {:query {:expressions {"prev_month" [:- [:field-id 13] [:interval 1 :month] [:interval 1 :day]]}}}}
+    {:query {:expressions {"prev_month" [:- [:field-id 13] [:interval 1 :month] [:interval 1 :day]]}}}
+
+    {:query {:expressions {:date-add ["date-add" ["field" 1 nil] 1 "month"]}}}
+    {:query {:expressions {"date-add" [:date-add [:field 1 nil] 1 :month]}}}
+
+    {:query {:expressions {:date-subtract ["date-subtract" ["field" 1 nil] 1 "month"]}}}
+    {:query {:expressions {"date-subtract" [:date-subtract [:field 1 nil] 1 :month]}}}}
 
    "expressions handle namespaced keywords correctly"
    {{:query {"expressions" {:abc/def ["+" 1 2]}
@@ -854,7 +864,7 @@
       :query    {:filter [:and
                           [:segment "gaid:-11"]
                           [:time-interval [:field-id 6851] -365 :day {}]]}}
-     {:database 1,
+     {:database 1
       :type     :query
       :query    {:filter
                  [:and
@@ -943,7 +953,7 @@
                                                             :default      "Widget"}}}}}
      {:database 4
       :type     :query
-      :query    {:source-query {:native        "SELECT * FROM PRODUCTS WHERE CATEGORY = {{category}} LIMIT 10",
+      :query    {:source-query {:native        "SELECT * FROM PRODUCTS WHERE CATEGORY = {{category}} LIMIT 10"
                                 :template-tags {"category" {:name         "category"
                                                             :display-name "Category"
                                                             :type         :text
@@ -1122,7 +1132,7 @@
   (t/testing "make sure source queries get normalized properly!"
     (t/is (= {:database 4
               :type     :query
-              :query    {:source-query {:native        "SELECT * FROM PRODUCTS WHERE CATEGORY = {{category}} LIMIT 10",
+              :query    {:source-query {:native        "SELECT * FROM PRODUCTS WHERE CATEGORY = {{category}} LIMIT 10"
                                         :template-tags {"category" {:name         "category"
                                                                     :display-name "Category"
                                                                     :type         :text
@@ -1131,7 +1141,7 @@
              (mbql.normalize/normalize
               {:database 4
                :type     :query
-               :query    {"source_query" {:native         "SELECT * FROM PRODUCTS WHERE CATEGORY = {{category}} LIMIT 10",
+               :query    {"source_query" {:native         "SELECT * FROM PRODUCTS WHERE CATEGORY = {{category}} LIMIT 10"
                                           "template_tags" {:category {:name         "category"
                                                                       :display-name "Category"
                                                                       :type         "text"
@@ -1175,12 +1185,12 @@
              (mbql.normalize/normalize
               {:database 1
                :native {:template-tags {"name" {:id "1f56330b-3dcb-75a3-8f3d-5c2c2792b749"
-                                               :name "name"
-                                               :display-name "Name"
-                                               :type "dimension"
-                                               :dimension ["field" 14 nil]
-                                               :widget-type "string/="
-                                               :default ["Hudson Borer"]}}
+                                                :name "name"
+                                                :display-name "Name"
+                                                :type "dimension"
+                                                :dimension ["field" 14 nil]
+                                                :widget-type "string/="
+                                                :default ["Hudson Borer"]}}
                         :query "select * from PEOPLE where {{name}}"}
                :type "native"
                :parameters []})))))
@@ -1402,13 +1412,21 @@
           (t/is (= {:query bad-query}
                    (ex-data e))))
         (t/testing "\nParent exception(s) should be even more specific"
-          (let [cause #?(:clj (some-> ^Throwable e .getCause)
-                         :cljs (ex-cause e))]
+          (let [cause (ex-cause e)]
             (t/is (some? cause))
-            (t/is (= "Error normalizing form."
-                     #?(:clj (.getMessage cause)
-                        :cljs (ex-message cause))))
+            (t/is (re-find #"Error normalizing form:" (ex-message cause)))
             (t/is (= {:form       bad-query
                       :path       []
                       :special-fn nil}
                      (ex-data cause)))))))))
+
+(t/deftest ^:parallel remove-unsuitable-temporal-units-test
+  (t/testing "Ignore unsuitable temporal units (such as bucketing a Date by minute) rather than erroring (#16485)"
+    ;; this query is with legacy MBQL syntax. It's just copied directly from the original issue
+    (let [query {:query {:filter ["<"
+                                  ["datetime-field" ["field-literal" "date_seen" "type/Date"] "minute"]
+                                  "2021-05-01T12:30:00"]}}]
+      (t/is (= {:query {:filter [:<
+                                 [:field "date_seen" {:base-type :type/Date}]
+                                 "2021-05-01T12:30:00"]}}
+               (mbql.normalize/normalize query))))))

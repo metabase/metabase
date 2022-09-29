@@ -5,13 +5,17 @@ on:
 
 jobs:
   create-backport:
-    if: github.event.pull_request.merged == true && (contains(github.event.pull_request.labels.*.name, 'backport') || github.event.label.name == 'backport')
+    if: github.event.pull_request.merged == true && (contains(github.event.pull_request.labels.*.name, 'backport') && github.event.action == 'closed' || github.event.label.name == 'backport')
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-
+      - uses: tibdex/github-app-token@v1.6.0
+        id: generate-token
+        with:
+          app_id: ${{ secrets.METABASE_BOT_APP_ID }}
+          private_key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
       - uses: ./.github/actions/find-squashed-commit
         name: Find commit
         id: find_commit
@@ -24,9 +28,10 @@ jobs:
         id: get_latest_release_branch
 
       - id: create_backport_pull_request
+        name: Create backport pull request
         run: |
-          git config --global user.email "metabase-github-automation@metabase.com"
-          git config --global user.name "$GITHUB_ACTOR"
+          git config --global user.email "metabase-bot@metabase.com"
+          git config --global user.name "Metabase bot"
 
           BACKPORT_BRANCH="backport-$COMMIT"
 
@@ -44,18 +49,39 @@ jobs:
             exit 0
           fi
 
+          echo "::set-output name=has-conflicts::false"
+
           git checkout master
           git push -u origin ${BACKPORT_BRANCH}
 
-          hub pull-request -b "${TARGET_BRANCH}" -h "${BACKPORT_BRANCH}" -l "auto-backported" -a "${GITHUB_ACTOR}" -F- <<<"🤖 backported \"${ORIGINAL_TITLE}\"
+          BACKPORT_PR_URL=$(hub pull-request -b "${TARGET_BRANCH}" -h "${BACKPORT_BRANCH}" -l "auto-backported" -a "${GITHUB_ACTOR}" -F- <<<"🤖 backported \"${ORIGINAL_TITLE}\"
 
-          #${ORIGINAL_PULL_REQUEST_NUMBER}"
+          #${ORIGINAL_PULL_REQUEST_NUMBER}")
+
+          BACKPORT_PR_NUMBER=${BACKPORT_PR_URL##*/}
+
+          echo "::set-output name=backport_pr_number::$BACKPORT_PR_NUMBER"
         env:
           TARGET_BRANCH: ${{ steps.get_latest_release_branch.outputs.branch-name }}
           ORIGINAL_PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
           ORIGINAL_TITLE: ${{ github.event.pull_request.title }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
           COMMIT: ${{ steps.find_commit.outputs.commit }}
+
+      - name: Auto approve backport PR
+        if: ${{ steps.create_backport_pull_request.outputs.has-conflicts == 'false' }}
+        uses: juliangruber/approve-pull-request-action@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          number: ${{ steps.create_backport_pull_request.outputs.backport_pr_number }}
+
+      - name: Enable Pull Request Automerge
+        if: ${{ steps.create_backport_pull_request.outputs.has-conflicts == 'false' }}
+        uses: peter-evans/enable-pull-request-automerge@v2
+        with:
+          token: ${{ steps.generate-token.outputs.token }}
+          pull-request-number: ${{ steps.create_backport_pull_request.outputs.backport_pr_number }}
+          merge-method: squash
 
       - uses: ./.github/actions/notify-pull-request
         if: ${{ steps.create_backport_pull_request.outputs.has-conflicts == 'true' }}

@@ -137,10 +137,11 @@
                                        (into {})))
         (add-filters dashboard max-filters)))
   ([dashboard dimensions max-filters]
-   (let [fks (->> (db/select Field
-                    :fk_target_field_id [:not= nil]
-                    :table_id [:in (keep (comp :table_id :card) (:ordered_cards dashboard))])
-                  field/with-targets)]
+   (let [fks (when-let [table-ids (not-empty (set (keep (comp :table_id :card)
+                                                        (:ordered_cards dashboard))))]
+               (->> (db/select Field :fk_target_field_id [:not= nil]
+                               :table_id [:in table-ids])
+                    field/with-targets))]
      (->> dimensions
           remove-unqualified
           sort-by-interestingness
@@ -161,7 +162,6 @@
                                                :slug (:name candidate)}))
                  dashboard)))
            dashboard)))))
-
 
 (defn- flatten-filter-clause
   "Returns a sequence of filter subclauses making up `filter-clause` by flattening `:and` compound filters.

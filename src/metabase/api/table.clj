@@ -6,7 +6,6 @@
             [metabase.api.common :as api]
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
-            [metabase.events :as events]
             [metabase.models.card :refer [Card]]
             [metabase.models.field :refer [Field]]
             [metabase.models.field-values :as field-values :refer [FieldValues]]
@@ -42,27 +41,28 @@
 
 (api/defendpoint GET "/:id"
   "Get `Table` with ID."
-  [id]
-  (u/prog1 (-> (api/read-check Table id)
-               (hydrate :db :pk_field))
-           (events/publish-event! :table-read (assoc <> :actor_id api/*current-user-id*))))
+  [id include_editable_data_model]
+  (let [api-perm-check-fn (if (Boolean/parseBoolean include_editable_data_model)
+                            api/write-check
+                            api/read-check)]
+    (-> (api-perm-check-fn Table id)
+        (hydrate :db :pk_field))))
 
 (defn- update-table!*
   "Takes an existing table and the changes, updates in the database and optionally calls `table/update-field-positions!`
   if field positions have changed."
-  [{:keys [id] :as existing-table} {:keys [visibility_type] :as body}]
+  [{:keys [id] :as existing-table} body]
   (api/check-500
    (db/update! Table id
-               (assoc (u/select-keys-when body
-                        :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
-                        :present [:description :caveats :points_of_interest])
-                      :visibility_type visibility_type)))
-  (let [updated-table        (Table id)
+               (u/select-keys-when body
+                 :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
+                 :present [:description :caveats :points_of_interest :visibility_type])))
+  (let [updated-table        (db/select-one Table :id id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
     (if changed-field-order?
       (do
-        (table/update-field-positions! updated-table)
-        (hydrate updated-table [:fields [:target :has_field_values] :dimensions :has_field_values]))
+       (table/update-field-positions! updated-table)
+       (hydrate updated-table [:fields [:target :has_field_values] :dimensions :has_field_values]))
       updated-table)))
 
 (defn- sync-unhidden-tables
@@ -85,7 +85,7 @@
     (api/check-404 (= (count existing-tables) (count ids)))
     (run! api/write-check existing-tables)
     (let [updated-tables (db/transaction (mapv #(update-table!* % body) existing-tables))
-          newly-unhidden (when (nil? visibility_type)
+          newly-unhidden (when (and (contains? body :visibility_type) (nil? visibility_type))
                            (into [] (filter (comp some? :visibility_type)) existing-tables))]
       (sync-unhidden-tables newly-unhidden)
       updated-tables)))
@@ -269,10 +269,12 @@
                 field)))))
 
 (defn fetch-query-metadata
-  "Returns the query metadata used to power the Query Builder for the given `table`. `include-sensitive-fields?` and
-  `include-hidden-fields?` can be either booleans or boolean strings."
-  [table include-sensitive-fields? include-hidden-fields?]
-  (api/read-check table)
+  "Returns the query metadata used to power the Query Builder for the given `table`. `include-sensitive-fields?`,
+  `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings."
+  [table {:keys [include-sensitive-fields? include-hidden-fields? include-editable-data-model?]}]
+  (if (Boolean/parseBoolean include-editable-data-model?)
+    (api/write-check table)
+    (api/read-check table))
   (let [driver                    (driver.u/database->driver (:db_id table))
         include-sensitive-fields? (cond-> include-sensitive-fields? (string? include-sensitive-fields?) Boolean/parseBoolean)
         include-hidden-fields?    (cond-> include-hidden-fields? (string? include-hidden-fields?) Boolean/parseBoolean)]
@@ -294,19 +296,25 @@
   Passing `include_hidden_fields=true` will include any hidden `Fields` in the response. Defaults to `false`
   Passing `include_sensitive_fields=true` will include any sensitive `Fields` in the response. Defaults to `false`.
 
+  Passing `include_editable_data_model=true` will check that the current user has write permissions for the table's
+  data model, while `false` checks that they have data access perms for the table. Defaults to `false`.
+
   These options are provided for use in the Admin Edit Metadata page."
-  [id include_sensitive_fields include_hidden_fields]
+  [id include_sensitive_fields include_hidden_fields include_editable_data_model]
   {include_sensitive_fields (s/maybe su/BooleanString)
-   include_hidden_fields (s/maybe su/BooleanString)}
-  (fetch-query-metadata (Table id) include_sensitive_fields include_hidden_fields))
+   include_hidden_fields (s/maybe su/BooleanString)
+   include_editable_data_model (s/maybe su/BooleanString)}
+  (fetch-query-metadata (db/select-one Table :id id) {:include-sensitive-fields?    include_sensitive_fields
+                                    :include-hidden-fields?       include_hidden_fields
+                                    :include-editable-data-model? include_editable_data_model}))
 
 (defn- card-result-metadata->virtual-fields
   "Return a sequence of 'virtual' fields metadata for the 'virtual' table for a Card in the Saved Questions 'virtual'
    database."
   [card-id database-id metadata]
   (let [add-field-dimension-options #(assoc-field-dimension-options (driver.u/database->driver database-id) %)
-        underlying (u/key-by :id (when-let [ids (seq (keep :id metadata))]
-                                   (db/select Field :id [:in ids])))
+        underlying (m/index-by :id (when-let [ids (seq (keep :id metadata))]
+                                     (db/select Field :id [:in ids])))
         fields (for [{col-id :id :as col} metadata]
                  (-> col
                      (update :base_type keyword)
@@ -400,14 +408,14 @@
        :origin_id      (:id origin-field)
        :origin         (hydrate origin-field [:table :db])
        :destination_id (:fk_target_field_id origin-field)
-       :destination    (hydrate (Field (:fk_target_field_id origin-field)) :table)})))
+       :destination    (hydrate (db/select-one Field :id (:fk_target_field_id origin-field)) :table)})))
 
 
 (api/defendpoint POST "/:id/rescan_values"
   "Manually trigger an update for the FieldValues for the Fields belonging to this Table. Only applies to Fields that
    are eligible for FieldValues."
   [id]
-  (let [table (api/write-check (Table id))]
+  (let [table (api/write-check (db/select-one Table :id id))]
     ;; Override *current-user-permissions-set* so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
@@ -422,7 +430,7 @@
   "Discard the FieldValues belonging to the Fields in this Table. Only applies to fields that have FieldValues. If
    this Table's Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [id]
-  (api/write-check (Table id))
+  (api/write-check (db/select-one Table :id id))
   (when-let [field-ids (db/select-ids Field :table_id id)]
     (db/simple-delete! FieldValues :field_id [:in field-ids]))
   {:status :success})
@@ -430,12 +438,12 @@
 (api/defendpoint GET "/:id/related"
   "Return related entities."
   [id]
-  (-> id Table api/read-check related/related))
+  (-> (db/select-one Table :id id) api/read-check related/related))
 
 (api/defendpoint PUT "/:id/fields/order"
   "Reorder fields"
   [id :as {field_order :body}]
   {field_order [su/IntGreaterThanZero]}
-  (-> id Table api/write-check (table/custom-order-fields! field_order)))
+  (-> (db/select-one Table :id id) api/write-check (table/custom-order-fields! field_order)))
 
 (api/define-routes)

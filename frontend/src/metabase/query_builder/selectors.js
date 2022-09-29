@@ -11,14 +11,12 @@ import {
   extractRemappings,
   getVisualizationTransformed,
 } from "metabase/visualizations";
+import { MetabaseApi } from "metabase/services";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import { getValueAndFieldIdPopulatedParametersFromCard } from "metabase/parameters/utils/cards";
+import { getCardUiParameters } from "metabase/parameters/utils/cards";
 import { normalizeParameterValue } from "metabase/parameters/utils/parameter-values";
 import { isPK } from "metabase/lib/schema_metadata";
-import Utils from "metabase/lib/utils";
 
-import Question from "metabase-lib/lib/Question";
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
 
 import Databases from "metabase/entities/databases";
@@ -26,16 +24,20 @@ import Timelines from "metabase/entities/timelines";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { getAlerts } from "metabase/alert/selectors";
+import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { parseTimestamp } from "metabase/lib/time";
 import { getSortedTimelines } from "metabase/lib/timelines";
+import { getSetting } from "metabase/selectors/settings";
 import {
   getXValues,
   isTimeseries,
 } from "metabase/visualizations/lib/renderer_utils";
-import Mode from "metabase-lib/lib/Mode";
 import ObjectMode from "metabase/modes/components/modes/ObjectMode";
 
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
+import Mode from "metabase-lib/lib/Mode";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import Question from "metabase-lib/lib/Question";
 
 export const getUiControls = state => state.qb.uiControls;
 const getQueryStatus = state => state.qb.queryStatus;
@@ -57,7 +59,6 @@ const SIDEBARS = [
   "isShowingTimelineSidebar",
 
   "isShowingSummarySidebar",
-  "isShowingFilterSidebar",
 
   "isShowingDataReference",
   "isShowingTemplateTagsEditor",
@@ -68,7 +69,6 @@ export const getIsAnySidebarOpen = createSelector([getUiControls], uiControls =>
   SIDEBARS.some(sidebar => uiControls[sidebar]),
 );
 
-export const getIsEditing = state => getUiControls(state).isEditing;
 export const getIsRunning = state => getUiControls(state).isRunning;
 export const getIsLoadingComplete = state =>
   getQueryStatus(state) === "complete";
@@ -139,6 +139,10 @@ export const getPKColumnIndex = createSelector(
       return;
     }
     const { cols } = result.data;
+    const hasMultiplePks = cols.filter(isPK).length > 1;
+    if (hasMultiplePks) {
+      return -1;
+    }
     return cols.findIndex(isPK);
   },
 );
@@ -150,6 +154,9 @@ export const getPKRowIndexMap = createSelector(
       return {};
     }
     const { rows } = result.data;
+    if (PKColumnIndex < 0) {
+      return rows.map((_, index) => index);
+    }
     const map = {};
     rows.forEach((row, index) => {
       const PKValue = row[PKColumnIndex];
@@ -229,11 +236,7 @@ export const getDatabaseFields = createSelector(
 export const getParameters = createSelector(
   [getCard, getMetadata, getParameterValues],
   (card, metadata, parameterValues) =>
-    getValueAndFieldIdPopulatedParametersFromCard(
-      card,
-      metadata,
-      parameterValues,
-    ),
+    getCardUiParameters(card, metadata, parameterValues),
 );
 
 const getLastRunDatasetQuery = createSelector(
@@ -294,6 +297,12 @@ export const getOriginalQuestion = createSelector(
   (metadata, card) => metadata && card && new Question(card, metadata),
 );
 
+export const getLastRunQuestion = createSelector(
+  [getMetadata, getLastRunCard, getParameterValues],
+  (metadata, card, parameterValues) =>
+    card && metadata && new Question(card, metadata, parameterValues),
+);
+
 export const getQuestion = createSelector(
   [getMetadata, getCard, getParameterValues, getQueryBuilderMode],
   (metadata, card, parameterValues, queryBuilderMode) => {
@@ -302,7 +311,8 @@ export const getQuestion = createSelector(
     }
     const question = new Question(card, metadata, parameterValues);
 
-    if (queryBuilderMode === "dataset") {
+    const isEditingModel = queryBuilderMode === "dataset";
+    if (isEditingModel) {
       return question.lockDisplay();
     }
 
@@ -313,7 +323,7 @@ export const getQuestion = createSelector(
     // as it would be blocked by the backend as an ad-hoc query
     // see https://github.com/metabase/metabase/issues/20042
     const hasDataPermission = !!question.database();
-    return question.isDataset() && hasDataPermission
+    return question.isDataset() && hasDataPermission && !isEditingModel
       ? question.composeDataset()
       : question;
   },
@@ -330,7 +340,6 @@ export function normalizeQuery(query, tableMetadata) {
     return query;
   }
   if (query.query) {
-    // sort query.fields
     if (tableMetadata) {
       query = updateIn(query, ["query", "fields"], fields => {
         fields = fields
@@ -342,23 +351,6 @@ export function normalizeQuery(query, tableMetadata) {
           JSON.stringify(b).localeCompare(JSON.stringify(a)),
         );
       });
-    }
-
-    // sort query.joins[int].fields
-    if (query.query.joins) {
-      query = updateIn(query, ["query", "joins"], joins =>
-        joins.map(joinedTable => {
-          if (!joinedTable.fields || joinedTable.fields === "all") {
-            return joinedTable;
-          }
-
-          const joinedTableFields = [...joinedTable.fields];
-          joinedTableFields.sort((a, b) =>
-            JSON.stringify(b).localeCompare(JSON.stringify(a)),
-          );
-          return { ...joinedTable, fields: joinedTableFields };
-        }),
-      );
     }
     ["aggregation", "breakout", "filter", "joins", "order-by"].forEach(
       clauseList => {
@@ -376,12 +368,88 @@ export function normalizeQuery(query, tableMetadata) {
   return query;
 }
 
+function isQuestionEditable(question) {
+  return !question?.query().readOnly();
+}
+
+function areQueriesEqual(queryA, queryB, tableMetadata) {
+  const normalizedQueryA = normalizeQuery(queryA, tableMetadata);
+  const normalizedQueryB = normalizeQuery(queryB, tableMetadata);
+  return _.isEqual(normalizedQueryA, normalizedQueryB);
+}
+
+// Model questions may be composed via the `composeDataset` method.
+// A composed model question should be treated as equivalent to its original form.
+// We need to handle scenarios where both the `lastRunQuestion` and the `currentQuestion` are
+// in either form.
+function areModelsEquivalent({
+  originalQuestion,
+  lastRunQuestion,
+  currentQuestion,
+  tableMetadata,
+}) {
+  if (!lastRunQuestion || !currentQuestion || !originalQuestion?.isDataset()) {
+    return false;
+  }
+
+  const composedOriginal = originalQuestion.composeDataset();
+
+  const isLastRunComposed = areQueriesEqual(
+    lastRunQuestion.datasetQuery(),
+    composedOriginal.datasetQuery(),
+    tableMetadata,
+  );
+  const isCurrentComposed = areQueriesEqual(
+    currentQuestion.datasetQuery(),
+    composedOriginal.datasetQuery(),
+    tableMetadata,
+  );
+
+  const isLastRunEquivalentToCurrent =
+    isLastRunComposed &&
+    areQueriesEqual(
+      currentQuestion.datasetQuery(),
+      originalQuestion.datasetQuery(),
+      tableMetadata,
+    );
+
+  const isCurrentEquivalentToLastRun =
+    isCurrentComposed &&
+    areQueriesEqual(
+      lastRunQuestion.datasetQuery(),
+      originalQuestion.datasetQuery(),
+      tableMetadata,
+    );
+
+  return isLastRunEquivalentToCurrent || isCurrentEquivalentToLastRun;
+}
+
+function areQueriesEquivalent({
+  originalQuestion,
+  lastRunQuestion,
+  currentQuestion,
+  tableMetadata,
+}) {
+  return (
+    areQueriesEqual(
+      lastRunQuestion?.datasetQuery(),
+      currentQuestion?.datasetQuery(),
+      tableMetadata,
+    ) ||
+    areModelsEquivalent({
+      originalQuestion,
+      lastRunQuestion,
+      currentQuestion,
+      tableMetadata,
+    })
+  );
+}
+
 export const getIsResultDirty = createSelector(
   [
     getQuestion,
     getOriginalQuestion,
-    getLastRunDatasetQuery,
-    getNextRunDatasetQuery,
+    getLastRunQuestion,
     getLastRunParameterValues,
     getNextRunParameterValues,
     getTableMetadata,
@@ -389,40 +457,24 @@ export const getIsResultDirty = createSelector(
   (
     question,
     originalQuestion,
-    lastDatasetQuery,
-    nextDatasetQuery,
+    lastRunQuestion,
     lastParameters,
     nextParameters,
     tableMetadata,
   ) => {
-    // When viewing a model, its dataset_query is swapped with a clean query using the dataset as a source table
-    // (it's necessary for datasets to behave like tables opened in simple mode)
-    // We need to escape the isDirty check as it will always be true in this case,
-    // and the page will always be covered with a 'rerun' overlay.
-    // Once the dataset_query changes, the question will loose the "dataset" flag and it'll work normally
-    if (question && isAdHocModelQuestion(question, originalQuestion)) {
-      return false;
-    }
+    const haveParametersChanged = !_.isEqual(lastParameters, nextParameters);
 
-    const hasParametersChange = !Utils.equals(lastParameters, nextParameters);
-    if (hasParametersChange) {
-      return true;
-    }
-
-    if (question && question.query().readOnly()) {
-      return false;
-    }
-
-    lastDatasetQuery = normalizeQuery(lastDatasetQuery, tableMetadata);
-    nextDatasetQuery = normalizeQuery(nextDatasetQuery, tableMetadata);
-    return !Utils.equals(lastDatasetQuery, nextDatasetQuery);
+    return (
+      haveParametersChanged ||
+      (isQuestionEditable(question) &&
+        !areQueriesEquivalent({
+          originalQuestion,
+          lastRunQuestion,
+          currentQuestion: question,
+          tableMetadata,
+        }))
+    );
   },
-);
-
-export const getLastRunQuestion = createSelector(
-  [getMetadata, getLastRunCard, getParameterValues],
-  (metadata, card, parameterValues) =>
-    card && metadata && new Question(card, metadata, parameterValues),
 );
 
 export const getZoomedObjectId = state => state.qb.zoomedRowObjectId;
@@ -433,7 +485,7 @@ const getZoomedObjectRowIndex = createSelector(
     if (!PKRowIndexMap) {
       return;
     }
-    return PKRowIndexMap[objectId] || PKRowIndexMap[parseInt(objectId)];
+    return PKRowIndexMap[objectId] ?? PKRowIndexMap[parseInt(objectId)];
   },
 );
 
@@ -442,6 +494,9 @@ export const getPreviousRowPKValue = createSelector(
   (result, PKColumnIndex, rowIndex) => {
     if (!result) {
       return;
+    }
+    if (PKColumnIndex === -1) {
+      return rowIndex - 1;
     }
     const { rows } = result.data;
     return rows[rowIndex - 1][PKColumnIndex];
@@ -453,6 +508,9 @@ export const getNextRowPKValue = createSelector(
   (result, PKColumnIndex, rowIndex) => {
     if (!result) {
       return;
+    }
+    if (PKColumnIndex === -1) {
+      return rowIndex + 1;
     }
     const { rows } = result.data;
     return rows[rowIndex + 1][PKColumnIndex];
@@ -497,15 +555,8 @@ export const getMode = createSelector(
 );
 
 export const getIsObjectDetail = createSelector(
-  [getMode, getQueryResults, isZoomingRow],
-  (mode, results, isZoomingSingleRow) => {
-    if (isZoomingSingleRow) {
-      return true;
-    }
-    // It handles filtering by a manually set PK column that is not unique
-    const hasMultipleRows = results?.some(({ data }) => data?.rows.length > 1);
-    return mode?.name() === "object" && !hasMultipleRows;
-  },
+  [getMode, isZoomingRow],
+  (mode, isZoomingSingleRow) => isZoomingSingleRow || mode?.name() === "object",
 );
 
 export const getIsDirty = createSelector(
@@ -773,28 +824,6 @@ export const getSnippetCollectionId = createSelector(
   uiControls => uiControls && uiControls.snippetCollectionId,
 );
 
-/**
- * Returns whether the query can be "preview", i.e. native query editor is open and visualization is table
- * NOTE: completely disabled for now
- */
-export const getIsPreviewable = createSelector(
-  [getIsNativeEditorOpen, getQuestion, getIsNew, getIsDirty],
-  (isNativeEditorOpen, question, isNew, isDirty) =>
-    // isNativeEditorOpen &&
-    // question &&
-    // question.display() === "table" &&
-    // (isNew || isDirty),
-    false,
-);
-
-/**
- * Returns whether the query builder is in native query "preview" mode
- */
-export const getIsPreviewing = createSelector(
-  [getIsPreviewable, getUiControls],
-  (isPreviewable, uiControls) => isPreviewable && uiControls.isPreviewing,
-);
-
 export const getIsVisualized = createSelector(
   [getQuestion, getVisualizationSettings],
   (question, settings) =>
@@ -853,3 +882,55 @@ export const getTimeoutId = createSelector(
   [getLoadingControls],
   loadingControls => loadingControls.timeoutId,
 );
+
+export const getIsHeaderVisible = createSelector(
+  [getIsEmbedded, getEmbedOptions],
+  (isEmbedded, embedOptions) => !isEmbedded || embedOptions.header,
+);
+
+export const getIsActionListVisible = createSelector(
+  [getIsEmbedded, getEmbedOptions],
+  (isEmbedded, embedOptions) => !isEmbedded || embedOptions.action_buttons,
+);
+
+export const getIsAdditionalInfoVisible = createSelector(
+  [getIsEmbedded, getEmbedOptions],
+  (isEmbedded, embedOptions) => !isEmbedded || embedOptions.additional_info,
+);
+
+export const getCardAutocompleteResultsFn = state => {
+  return function autocompleteResults(query) {
+    const dbId = state.qb.card?.dataset_query?.database;
+    if (!dbId) {
+      return [];
+    }
+
+    const apiCall = MetabaseApi.db_card_autocomplete_suggestions({
+      dbId,
+      query,
+    });
+    return apiCall;
+  };
+};
+
+export const getAutocompleteResultsFn = state => {
+  const matchStyle = getSetting(state, "native-query-autocomplete-match-style");
+
+  if (matchStyle === "off") {
+    return null;
+  }
+
+  return function autocompleteResults(query) {
+    const dbId = state.qb.card?.dataset_query?.database;
+    if (!dbId) {
+      return [];
+    }
+
+    const apiCall = MetabaseApi.db_autocomplete_suggestions({
+      dbId,
+      query,
+      matchStyle,
+    });
+    return apiCall;
+  };
+};

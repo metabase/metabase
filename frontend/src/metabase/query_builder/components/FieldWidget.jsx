@@ -2,14 +2,12 @@
 import React from "react";
 import PropTypes from "prop-types";
 
-import FieldList from "./FieldList";
-import Clearable from "./Clearable";
-import Popover from "metabase/components/Popover";
-
-import * as FieldRef from "metabase/lib/query/field_ref";
-
 import cx from "classnames";
 import { t } from "ttag";
+import Popover from "metabase/components/Popover";
+import * as FieldRef from "metabase/lib/query/field_ref";
+import FieldList from "./FieldList";
+import Clearable from "./Clearable";
 
 export default class FieldWidget extends React.Component {
   constructor(props, context) {

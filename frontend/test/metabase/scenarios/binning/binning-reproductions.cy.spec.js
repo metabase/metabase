@@ -8,7 +8,7 @@ import {
   startNewQuestion,
   summarize,
   openOrdersTable,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -128,9 +128,7 @@ describe("binning related reproductions", () => {
       cy.findByText("18646").click();
     });
 
-    popover()
-      .findByText("Product ID")
-      .click();
+    popover().findByText("Product ID").click();
 
     popover().within(() => {
       cy.findByText("ID").click();
@@ -143,9 +141,7 @@ describe("binning related reproductions", () => {
     cy.findByText(/Question \d/).click();
 
     popover().within(() => {
-      cy.findByText("CREATED_AT")
-        .closest(".List-item")
-        .findByText("by month");
+      cy.findByText("CREATED_AT").closest(".List-item").findByText("by month");
 
       cy.findByText("CREATED_AT").click();
     });
@@ -192,6 +188,52 @@ describe("binning related reproductions", () => {
     cy.findByText("Hour of Day");
   });
 
+  it("shouldn't duplicate the breakout field (metabase#22382)", () => {
+    const questionDetails = {
+      name: "22382",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+      },
+    };
+
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
+    cy.createQuestion(questionDetails, { visitQuestion: true });
+
+    cy.findByText("Settings").click();
+
+    cy.findByTestId("sidebar-left").within(() => {
+      cy.findByTextEnsureVisible("Table options");
+      cy.findByText("Created At").siblings(".Icon-eye_filled").click();
+      cy.button("Done").click();
+    });
+
+    summarize();
+
+    cy.findByTestId("pinned-dimensions")
+      .should("contain", "Created At")
+      .find(".Icon-close")
+      .click();
+    cy.wait("@dataset");
+
+    cy.get(".Visualization").findByText("Count");
+
+    cy.findByTestId("sidebar-right")
+      .findAllByText("Created At")
+      .first()
+      .click();
+    cy.wait("@dataset");
+
+    cy.get(".Visualization").within(() => {
+      // ALl of these are implicit assertions and will fail if there's more than one string
+      cy.findByText("Count");
+      cy.findByText("Created At: Month");
+      cy.findByText("June, 2016");
+    });
+  });
+
   describe("binning should work on nested question based on question that has aggregation (metabase#16379)", () => {
     beforeEach(() => {
       cy.createQuestion(
@@ -212,7 +254,7 @@ describe("binning related reproductions", () => {
 
       changeBinningForDimension({
         name: "Average of Subtotal",
-        fromBinning: "Auto binned",
+        fromBinning: "Auto bin",
         toBinning: "10 bins",
       });
 
@@ -228,7 +270,7 @@ describe("binning related reproductions", () => {
 
       changeBinningForDimension({
         name: "Average of Subtotal",
-        fromBinning: "Auto binned",
+        fromBinning: "Auto bin",
         toBinning: "10 bins",
       });
 

@@ -3,11 +3,11 @@ import { updateIn } from "icepick";
 
 import {
   PLUGIN_ADMIN_SETTINGS_UPDATES,
-  PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS,
+  PLUGIN_IS_PASSWORD_USER,
 } from "metabase/plugins";
 
 import SettingsLdapForm from "metabase/admin/settings/components/SettingsLdapForm";
-import AuthenticationOption from "metabase/admin/settings/components/widgets/AuthenticationOption";
+import AuthenticationWidget from "metabase/admin/settings/components/widgets/AuthenticationWidget";
 import GroupMappingsWidget from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
 
 PLUGIN_ADMIN_SETTINGS_UPDATES.push(
@@ -15,17 +15,20 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(
     updateIn(sections, ["authentication", "settings"], settings => [
       ...settings,
       {
-        authName: t`LDAP`,
-        authDescription: t`Allows users within your LDAP directory to log in to Metabase with their LDAP credentials, and allows automatic mapping of LDAP groups to Metabase groups.`,
-        authType: "ldap",
-        authEnabled: settings => settings["ldap-enabled"],
-        widget: AuthenticationOption,
+        key: "ldap-enabled",
+        description: null,
+        widget: AuthenticationWidget,
+        getProps: (setting, settings) => ({
+          authType: "ldap",
+          authName: t`LDAP`,
+          authDescription: t`Allows users within your LDAP directory to log in to Metabase with their LDAP credentials, and allows automatic mapping of LDAP groups to Metabase groups.`,
+          authConfigured: settings["ldap-configured?"],
+        }),
       },
     ]),
   sections => ({
     ...sections,
     "authentication/ldap": {
-      sidebar: false,
       component: SettingsLdapForm,
       settings: [
         {
@@ -33,6 +36,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(
           display_name: t`LDAP Authentication`,
           description: null,
           type: "boolean",
+          getHidden: () => true,
         },
         {
           key: "ldap-host",
@@ -124,4 +128,4 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(
   }),
 );
 
-PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS.push(user => !user.ldap_auth);
+PLUGIN_IS_PASSWORD_USER.push(user => !user.ldap_auth);

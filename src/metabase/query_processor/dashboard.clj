@@ -97,7 +97,7 @@
                            :target (some (fn [{mapping-card-id :card_id, :keys [target]}]
                                             (when (= mapping-card-id card-id)
                                               target))
-                                          mappings)}]))
+                                         mappings)}]))
          (filter (fn [[_ {:keys [target]}]]
                    target)))
    dashboard-param-id->param))
@@ -156,11 +156,12 @@
   ;; make sure we can read this Dashboard. Card will get read-checked later on inside
   ;; [[qp.card/run-query-for-card-async]]
   (api/read-check Dashboard dashboard-id)
+  (api/check-is-readonly {:is_write (db/select-one-field :is_write 'Card :id card-id)})
   (check-card-is-in-dashboard card-id dashboard-id)
   (let [resolved-params (resolve-params-for-query dashboard-id card-id dashcard-id parameters)
         options         (merge
                          {:ignore_cache false
-                          :constraints  qp.constraints/default-query-constraints
+                          :constraints  (qp.constraints/default-query-constraints)
                           :context      :dashboard}
                          options
                          {:parameters   resolved-params

@@ -20,6 +20,21 @@ import { useOnUnmount } from "metabase/hooks/use-on-unmount";
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 import { getIsNavbarOpen, setErrorPage } from "metabase/redux/app";
 
+import { getDatabases, getMetadata } from "metabase/selectors/metadata";
+import {
+  getUserIsAdmin,
+  canManageSubscriptions,
+} from "metabase/selectors/user";
+
+import { getEmbedOptions } from "metabase/selectors/embed";
+
+import { parseHashOptions } from "metabase/lib/browser";
+import * as Urls from "metabase/lib/urls";
+
+import Dashboards from "metabase/entities/dashboards";
+
+import DataAppContext from "metabase/writeback/containers/DataAppContext";
+import * as dashboardActions from "../actions";
 import {
   getIsEditing,
   getIsSharing,
@@ -41,23 +56,25 @@ import {
   getDocumentTitle,
   getIsRunning,
   getIsLoadingComplete,
+  getIsHeaderVisible,
+  getIsAdditionalInfoVisible,
+  getActionParametersModalAction,
 } from "../selectors";
-import { getDatabases, getMetadata } from "metabase/selectors/metadata";
-import {
-  getUserIsAdmin,
-  canManageSubscriptions,
-} from "metabase/selectors/user";
 
-import * as dashboardActions from "../actions";
-import { parseHashOptions } from "metabase/lib/browser";
-import * as Urls from "metabase/lib/urls";
+import ActionParametersInputModal from "./ActionParametersInputModal";
 
-import Dashboards from "metabase/entities/dashboards";
+function getDashboardId({ dashboardId, location, params }) {
+  if (dashboardId) {
+    return dashboardId;
+  }
+  return Urls.isDataAppPagePath(location.pathname)
+    ? parseInt(params.pageId)
+    : Urls.extractEntityId(params.slug);
+}
 
 const mapStateToProps = (state, props) => {
   return {
-    dashboardId: props.dashboardId || Urls.extractEntityId(props.params.slug),
-
+    dashboardId: getDashboardId(props),
     canManageSubscriptions: canManageSubscriptions(state, props),
     isAdmin: getUserIsAdmin(state, props),
     isNavbarOpen: getIsNavbarOpen(state),
@@ -83,6 +100,10 @@ const mapStateToProps = (state, props) => {
     documentTitle: getDocumentTitle(state),
     isRunning: getIsRunning(state),
     isLoadingComplete: getIsLoadingComplete(state),
+    isHeaderVisible: getIsHeaderVisible(state),
+    isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
+    embedOptions: getEmbedOptions(state),
+    focusedActionWithMissingParameters: getActionParametersModalAction(state),
   };
 };
 
@@ -98,7 +119,12 @@ const mapDispatchToProps = {
 const DashboardApp = props => {
   const options = parseHashOptions(window.location.hash);
 
-  const { isRunning, isLoadingComplete, dashboard } = props;
+  const {
+    isRunning,
+    isLoadingComplete,
+    dashboard,
+    focusedActionWithMissingParameters,
+  } = props;
 
   const [editingOnLoad] = useState(options.edit);
   const [addCardOnLoad] = useState(options.add && parseInt(options.add));
@@ -106,7 +132,7 @@ const DashboardApp = props => {
   const [isShowingToaster, setIsShowingToaster] = useState(false);
 
   const onTimeout = useCallback(() => {
-    if (Notification.permission === "default") {
+    if ("Notification" in window && Notification.permission === "default") {
       setIsShowingToaster(true);
     }
   }, []);
@@ -123,7 +149,11 @@ const DashboardApp = props => {
   useEffect(() => {
     if (isLoadingComplete) {
       setIsShowingToaster(false);
-      if (Notification.permission === "granted" && document.hidden) {
+      if (
+        "Notification" in window &&
+        Notification.permission === "granted" &&
+        document.hidden
+      ) {
         showNotification(
           t`All Set! ${dashboard?.name} is ready.`,
           t`All questions loaded`,
@@ -142,22 +172,33 @@ const DashboardApp = props => {
   }, []);
 
   return (
-    <div className="shrink-below-content-size full-height">
-      <Dashboard
-        editingOnLoad={editingOnLoad}
-        addCardOnLoad={addCardOnLoad}
-        {...props}
-      />
-      {/* For rendering modal urls */}
-      {props.children}
-      <Toaster
-        message={t`Would you like to be notified when this dashboard is done loading?`}
-        isShown={isShowingToaster}
-        onDismiss={onDismissToast}
-        onConfirm={onConfirmToast}
-        fixed
-      />
-    </div>
+    <DataAppContext>
+      <div className="shrink-below-content-size full-height">
+        <Dashboard
+          editingOnLoad={editingOnLoad}
+          addCardOnLoad={addCardOnLoad}
+          {...props}
+        />
+        {/* For rendering modal urls */}
+        {props.children}
+        {dashboard?.is_app_page && focusedActionWithMissingParameters && (
+          <ActionParametersInputModal
+            action={focusedActionWithMissingParameters}
+          />
+        )}
+        <Toaster
+          message={
+            dashboard?.is_app_page
+              ? t`Would you like to be notified when this page is done loading?`
+              : t`Would you like to be notified when this dashboard is done loading?`
+          }
+          isShown={isShowingToaster}
+          onDismiss={onDismissToast}
+          onConfirm={onConfirmToast}
+          fixed
+        />
+      </div>
+    </DataAppContext>
   );
 };
 

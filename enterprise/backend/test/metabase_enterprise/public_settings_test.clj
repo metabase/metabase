@@ -10,7 +10,7 @@
   (tu/with-temporary-setting-values [jwt-enabled               true
                                      jwt-identity-provider-uri "example.com"
                                      jwt-shared-secret         "0123456789012345678901234567890123456789012345678901234567890123"
-                                     enable-password-login true]
-    (public-settings/enable-password-login false)
+                                     enable-password-login     true]
+    (public-settings/enable-password-login! false)
     (is (= false
            (public-settings/enable-password-login)))))

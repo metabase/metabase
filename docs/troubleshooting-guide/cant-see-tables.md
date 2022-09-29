@@ -1,13 +1,15 @@
+---
+title: I can't see my tables
+---
+
 # I can't see my tables
 
 You have connected Metabase to a database, but:
 
-- you don't see the tables in the [Data Model][data-model] section of the Admin Panel,
-- the tables don't appear in the [Data Browser][data-browser],
+- you don't see the tables in the [Data Model](../data-modeling/metadata-editing.md) section of the Admin Panel,
+- the tables don't appear in the [Data Browser](https://www.metabase.com/learn/getting-started/data-browser),
 - the tables don't show up as possible data sources when you create a query using the Notebook Editor, or
 - you can no longer see tables that you used to be able to see.
-
-If you can see the tables, but some of the rows or columns seem to be missing, please check out the [troubleshooting guide for sandboxing][sandboxing].
 
 ## Is your browser showing you a cached list of tables?
 
@@ -31,6 +33,14 @@ Exactly what settings you need will depend on your environment. To test that the
 
 If you can't connect to the database with another application, the problem is probably not with Metabase. Please check that the database server is running and that you have the correct host, port, username, password, and other settings.
 
+## What's the status of your database connection?
+
+**Root cause:** You've configured a database connection, but it's not working as expected.
+
+**Steps to take:**
+
+If your connection isn't working, go to [Troubleshooting database connections](./db-connection.md).
+
 ## Does the table exist?
 
 **Root cause:** The table you think you should be able to see does not exist (e.g., it has a different name than you expect).
@@ -49,23 +59,11 @@ Table "SOMEWHERE" not found
 
 If you see this message, use another application (e.g., `psql` for PostreSQL) to send the same query to the database. If it also produces a "table not found" message, check the database schema and the spelling of the table name.
 
-Be sure to log in using the same credentials that Metabase uses. A common source of problems is that the Metabase "user" does not have the same privileges as a member of IT staff or a developer, so tables that are visible to the latter using external applications are not visible to Metabase.
-
-## Can the Metabase account access the table?
-
-**Root cause:** The login ID that Metabase uses to query the database doesn't have privileges to view the table.
-
-**Steps to take:** Use the SQL Editor to write and run a simple query like the one shown immediately above:
-
-```
-select * from SOMEWHERE
-```
-
-where `SOMEWHERE` is the table you think you should be able to see. If Metabase produces an error message saying the table can't be found, run the same query using another application. Again, make sure to log in using the same credentails that Metabase uses, not your regular account.
+Be sure to log in to the database using the same credentials that Metabase uses. A common problem is that the account Metabase uses to connect to the database lacks the same privileges as a member of IT staff or a developer, so tables that are visible to the latter when they use external applications are invisible to Metabase. You may want to [check if Metabase has the correct permissions](./data-permissions.md#getting-a-permission-denied-error-message).
 
 ## Does the person who cannot see the table have permission to view it?
 
-**Root cause:** Metabase uses a group-based permission model: people belong to groups, and administrators can set permissions so that some groups cannot see all of the tables. (It also allows administrators to control which rows or columns specific people can see---issues with that are covered in the troubleshooting guide for [sandboxing][sandboxing].)
+**Root cause:** Metabase uses a group-based permission model: people belong to groups, and administrators can set permissions so that some groups cannot see all of the tables.
 
 **Steps to take:**
 
@@ -73,10 +71,7 @@ where `SOMEWHERE` is the table you think you should be able to see. If Metabase 
 2. Confirm that the tables are not visible.
 3. Log out, then log in using the administrator's credentials.
 
-If the administrator's account can see the tables but an individual person cannot:
-
-1. Go to Admin > Permissions and see if any groups have been denied access to the table.
-2. If any groups have been denied access, go to Admin > People and look at the "Groups" column for the person who can't see the expected tables. If they're in a group that doesn't have access to the table, you may need to move them to another group or change table permissions.
+If the administrator's account can see the tables but an individual person cannot, see [Troubleshooting permissions][troubleshooting-permissions].
 
 ## Is Metabase's metadata out of sync with the state of the database?
 
@@ -94,6 +89,15 @@ If the administrator's account can see the tables but an individual person canno
 2. Go to Admin > Troubleshooting > Logs and see if there are any error messages saying that the "sync" operation could not run (e.g., because the network or the database itself was temporarily down).
 3. If there are no suspicious error messages, log out of Metabase, close the browser tab, log back into Metabase in a new browser tab, and try to access your table again.
 
-[data-browser]: /learn/getting-started/data-browser.html
-[data-model]: ../administration-guide/03-metadata-editing.html
-[sandboxing]: ./sandboxing.html
+## Related problems
+
+- [My data sandboxes aren't working](./sandboxing.md).
+- [I can't view or edit a question or dashboard](./cant-view-or-edit.md).
+- [My visualizations are wrong](./visualization.md).
+
+## Are you still stuck?
+
+If you can’t solve your problem using the troubleshooting guides:
+
+- Search or ask the [Metabase community](https://discourse.metabase.com/).
+- Search for [known bugs or limitations](./known-issues.md).

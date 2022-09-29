@@ -5,22 +5,24 @@ import cx from "classnames";
 
 import { t } from "ttag";
 import _ from "underscore";
+import { connect } from "react-redux";
 import Icon from "metabase/components/Icon";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { getCrumbs } from "metabase/lib/collections";
 
 import { color } from "metabase/lib/colors";
-
-import { connect } from "react-redux";
 
 // NOTE: replacing these with Collections.ListLoader etc currently fails due to circular dependency
 import EntityListLoader, {
   entityListLoader,
 } from "metabase/entities/containers/EntityListLoader";
+import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
 
 import Collections from "metabase/entities/collections";
 import {
   ItemContent,
+  ExpandItemIcon,
   ItemPickerHeader,
   ItemPickerList,
   ItemRoot,
@@ -30,19 +32,7 @@ const getCollectionIconColor = () => color("text-light");
 
 const isRoot = collection => collection.id === "root" || collection.id == null;
 
-@entityListLoader({
-  entityType: (state, props) => {
-    return props.entity ? props.entity.name : "collections";
-  },
-  loadingAndErrorWrapper: false,
-})
-@connect((state, props) => ({
-  collectionsById: (
-    props.entity || Collections
-  ).selectors.getExpandedCollectionsById(state),
-  getCollectionIcon: (props.entity || Collections).objectSelectors.getIcon,
-}))
-export default class ItemPicker extends React.Component {
+class ItemPicker extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -61,27 +51,6 @@ export default class ItemPicker extends React.Component {
     showSearch: PropTypes.bool,
     showScroll: PropTypes.bool,
   };
-
-  // returns a list of "crumbs" starting with the "root" collection
-  getCrumbs(collection, collectionsById) {
-    if (collection && collection.path) {
-      return [
-        ...collection.path.map(id => [
-          collectionsById[id].name,
-          () => this.setState({ parentId: id }),
-        ]),
-        [collection.name],
-      ];
-    } else {
-      return [
-        [
-          collectionsById["root"].name,
-          () => this.setState({ parentId: collectionsById["root"].id }),
-        ],
-        ["Unknown"],
-      ];
-    }
-  }
 
   checkHasWritePermissionForItem(item, models) {
     const { collectionsById } = this.props;
@@ -126,7 +95,9 @@ export default class ItemPicker extends React.Component {
       this.props.models.filter(model => model !== "collection").length > 0;
 
     const collection = collectionsById[parentId];
-    const crumbs = this.getCrumbs(collection, collectionsById);
+    const crumbs = getCrumbs(collection, collectionsById, id =>
+      this.setState({ parentId: id }),
+    );
 
     let allCollections = (collection && collection.children) || [];
 
@@ -293,6 +264,24 @@ export default class ItemPicker extends React.Component {
   }
 }
 
+export default _.compose(
+  entityObjectLoader({
+    id: () => "root",
+    entityType: (state, props) => props.entity?.name ?? "collections",
+    loadingAndErrorWrapper: false,
+  }),
+  entityListLoader({
+    entityType: (state, props) => props.entity?.name ?? "collections",
+    loadingAndErrorWrapper: false,
+  }),
+  connect((state, props) => ({
+    collectionsById: (
+      props.entity || Collections
+    ).selectors.getExpandedCollectionsById(state),
+    getCollectionIcon: (props.entity || Collections).objectSelectors.getIcon,
+  })),
+)(ItemPicker);
+
 const Item = ({
   item,
   name,
@@ -316,25 +305,18 @@ const Item = ({
           ? () => onChangeParentId(item.id)
           : null
       }
-      className={cx("rounded", {
-        "bg-brand text-white": selected,
-        "bg-brand-hover text-white-hover cursor-pointer":
-          canSelect || hasChildren,
-      })}
+      canSelect={canSelect}
+      isSelected={selected}
+      hasChildren={hasChildren}
       data-testid="item-picker-item"
     >
       <ItemContent>
         <Icon size={22} {...iconProps} color={selected ? "white" : color} />
         <h4 className="mx1">{name}</h4>
         {hasChildren && (
-          <Icon
+          <ExpandItemIcon
             name="chevronright"
-            className={cx(
-              "p1 ml-auto circular text-light border-grey-2 bordered bg-white-hover cursor-pointer",
-              {
-                "bg-brand-hover": !canSelect,
-              },
-            )}
+            canSelect={canSelect}
             onClick={e => {
               e.stopPropagation();
               onChangeParentId(item.id);

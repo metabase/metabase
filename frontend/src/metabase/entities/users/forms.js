@@ -3,7 +3,10 @@ import _ from "underscore";
 import { t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
 import MetabaseUtils from "metabase/lib/utils";
-import { PLUGIN_ADMIN_USER_FORM_FIELDS } from "metabase/plugins";
+import {
+  PLUGIN_ADMIN_USER_FORM_FIELDS,
+  PLUGIN_IS_PASSWORD_USER,
+} from "metabase/plugins";
 import validate from "metabase/lib/validate";
 import FormGroupsWidget from "metabase/components/form/widgets/FormGroupsWidget";
 
@@ -13,20 +16,22 @@ const getNameFields = () => [
     title: t`First name`,
     placeholder: "Johnny",
     autoFocus: true,
-    validate: validate.required().maxLength(100),
+    validate: validate.maxLength(100),
+    normalize: firstName => firstName || null,
   },
   {
     name: "last_name",
     title: t`Last name`,
     placeholder: "Appleseed",
-    validate: validate.required().maxLength(100),
+    validate: validate.maxLength(100),
+    normalize: lastName => lastName || null,
   },
 ];
 
 const getEmailField = () => ({
   name: "email",
   title: t`Email`,
-  placeholder: "youlooknicetoday@email.com",
+  placeholder: "nicetoseeyou@email.com",
   validate: validate.required().email(),
 });
 
@@ -79,9 +84,18 @@ export default {
       ...PLUGIN_ADMIN_USER_FORM_FIELDS,
     ],
   },
-  user: {
-    fields: [...getNameFields(), getEmailField(), getLocaleField()],
-    disablePristineSubmit: true,
+  user: user => {
+    const isSsoUser = !PLUGIN_IS_PASSWORD_USER.every(predicate =>
+      predicate(user),
+    );
+    const fields = isSsoUser
+      ? [getLocaleField()]
+      : [...getNameFields(), getEmailField(), getLocaleField()];
+
+    return {
+      fields,
+      disablePristineSubmit: true,
+    };
   },
   setup: () => ({
     fields: [
@@ -102,7 +116,7 @@ export default {
       {
         name: "email",
         title: t`Email`,
-        placeholder: "youlooknicetoday@email.com",
+        placeholder: "nicetoseeyou@email.com",
         validate: email => {
           if (!email) {
             return t`required`;
@@ -116,7 +130,7 @@ export default {
     ],
   }),
   login: () => {
-    const ldap = MetabaseSettings.ldapEnabled();
+    const ldap = MetabaseSettings.isLdapEnabled();
     const cookies = MetabaseSettings.get("session-cookies");
 
     return {
@@ -125,7 +139,7 @@ export default {
           name: "username",
           type: ldap ? "input" : "email",
           title: ldap ? t`Username or email address` : t`Email address`,
-          placeholder: t`youlooknicetoday@email.com`,
+          placeholder: "nicetoseeyou@email.com",
           validate: ldap ? validate.required() : validate.required().email(),
           autoFocus: true,
         },
@@ -143,6 +157,7 @@ export default {
           initial: true,
           hidden: cookies,
           horizontal: true,
+          align: "left",
         },
       ],
     };
@@ -176,7 +191,7 @@ export default {
     fields: [
       {
         name: "email",
-        placeholder: "youlooknicetoday@email.com",
+        placeholder: "nicetoseeyou@email.com",
         autoFocus: true,
         validate: validate.required().email(),
       },

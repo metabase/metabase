@@ -1,5 +1,6 @@
-import Question from "metabase-lib/lib/Question";
-import Database from "metabase-lib/lib/metadata/Database";
+import MetabaseSettings from "metabase/lib/settings";
+
+import { ModelCacheState } from "metabase-types/api";
 import {
   TemplateTag,
   TemplateTagType,
@@ -7,12 +8,19 @@ import {
   SourceTableId,
 } from "metabase-types/types/Query";
 import { CardId } from "metabase-types/types/Card";
+
 import { createMockDatabase } from "metabase-types/api/mocks/database";
+import { getMockModelCacheInfo } from "metabase-types/api/mocks/models";
 import { ORDERS, metadata } from "__support__/sample_database_fixture";
+import Database from "metabase-lib/lib/metadata/Database";
+import Question from "metabase-lib/lib/Question";
+
 import {
   checkCanBeModel,
   isAdHocModelQuestion,
   isAdHocModelQuestionCard,
+  checkCanRefreshModelCache,
+  getModelCacheSchemaName,
 } from "./utils";
 
 type NativeQuestionFactoryOpts = {
@@ -247,6 +255,46 @@ describe("data model utils", () => {
       expect(
         isAdHocModelQuestionCard(question.card(), originalQuestion.card()),
       ).toBe(false);
+    });
+  });
+
+  describe("checkCanRefreshModelCache", () => {
+    const testCases: Record<ModelCacheState, boolean> = {
+      creating: false,
+      refreshing: false,
+      persisted: true,
+      error: true,
+      deletable: false,
+      off: false,
+    };
+    const states = Object.keys(testCases) as ModelCacheState[];
+
+    states.forEach(state => {
+      const canRefresh = testCases[state];
+      it(`returns '${canRefresh}' for '${state}' caching state`, () => {
+        const info = getMockModelCacheInfo({ state });
+        expect(checkCanRefreshModelCache(info)).toBe(canRefresh);
+      });
+    });
+  });
+
+  describe("getModelCacheSchemaName", () => {
+    const DB_ID = 9;
+
+    beforeEach(() => {
+      const defaultGet = MetabaseSettings.get;
+      jest.spyOn(MetabaseSettings, "get").mockImplementation(key => {
+        if (key === "site-uuid") {
+          return "143dd8ce-e116-4c7f-8d6d-32e99eaefbbc";
+        }
+        return defaultGet(key);
+      });
+    });
+
+    it("generates correct schema name", () => {
+      expect(getModelCacheSchemaName(DB_ID)).toBe(
+        `metabase_cache_1e483_${DB_ID}`,
+      );
     });
   });
 });

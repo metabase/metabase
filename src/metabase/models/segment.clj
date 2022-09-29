@@ -1,9 +1,13 @@
 (ns metabase.models.segment
   "A Segment is a saved MBQL 'macro', expanding to a `:filter` subclause. It is passed in as a `:filter` subclause but is
   replaced by the `expand-macros` middleware with the appropriate clauses."
-  (:require [medley.core :as m]
+  (:require [clojure.set :as set]
+            [medley.core :as m]
             [metabase.models.interface :as mi]
             [metabase.models.revision :as revision]
+            [metabase.models.serialization.base :as serdes.base]
+            [metabase.models.serialization.hash :as serdes.hash]
+            [metabase.models.serialization.util :as serdes.util]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
@@ -14,6 +18,11 @@
 
 (models/defmodel Segment :segment)
 
+(doto Segment
+  (derive ::mi/read-policy.full-perms-for-perms-set)
+  (derive ::mi/write-policy.superuser)
+  (derive ::mi/create-policy.superuser))
+
 (defn- pre-update [{:keys [creator_id id], :as updates}]
   (u/prog1 updates
     ;; throw an Exception if someone tries to update creator_id
@@ -21,28 +30,24 @@
       (when (not= creator_id (db/select-one-field :creator_id Segment :id id))
         (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Segment.")))))))
 
-(defn- perms-objects-set [segment read-or-write]
+(defmethod mi/perms-objects-set Segment
+  [segment read-or-write]
   (let [table (or (:table segment)
                   (db/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id segment))))]
     (mi/perms-objects-set table read-or-write)))
 
-(u/strict-extend (class Segment)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Segment)
   models/IModel
   (merge
    models/IModelDefaults
    {:types          (constantly {:definition :metric-segment-definition})
-    :properties     (constantly {:timestamped? true})
+    :properties     (constantly {:timestamped? true
+                                 :entity_id    true})
     :hydration-keys (constantly [:segment])
     :pre-update     pre-update})
-  mi/IObjectPermissions
-  (merge
-   mi/IObjectPermissionsDefaults
-   {:perms-objects-set perms-objects-set
-    :can-read?         (partial mi/current-user-has-full-permissions? :read)
-    ;; for the time being you need to be a superuser in order to create or update Segments because the UI for
-    ;; doing so is only exposed in the admin panel
-    :can-write?        mi/superuser?
-    :can-create?       mi/superuser?}))
+
+  serdes.hash/IdentityHashable
+  {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :table)])})
 
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
@@ -66,17 +71,41 @@
                                                                                 :after  (get-in segment2 [:definition])})))))
 
 
-(u/strict-extend (class Segment)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Segment)
   revision/IRevisioned
   (merge
    revision/IRevisionedDefaults
    {:serialize-instance serialize-segment
     :diff-map           diff-segments}))
 
+;;; ------------------------------------------------ Serialization ---------------------------------------------------
+
+(defmethod serdes.base/serdes-generate-path "Segment"
+  [_ segment]
+  [(assoc (serdes.base/infer-self-path "Segment" segment)
+          :label (:name segment))])
+
+(defmethod serdes.base/extract-one "Segment"
+  [_model-name _opts segment]
+  (-> (serdes.base/extract-one-basics "Segment" segment)
+      (update :table_id   serdes.util/export-table-fk)
+      (update :creator_id serdes.util/export-user)
+      (update :definition serdes.util/export-json-mbql)))
+
+(defmethod serdes.base/load-xform "Segment" [segment]
+  (-> segment
+      serdes.base/load-xform-basics
+      (update :table_id   serdes.util/import-table-fk)
+      (update :creator_id serdes.util/import-user)
+      (update :definition serdes.util/import-json-mbql)))
+
+(defmethod serdes.base/serdes-dependencies "Segment" [{:keys [definition table_id]}]
+  (into [] (set/union #{(serdes.util/table->path table_id)}
+                      (serdes.util/mbql-deps definition))))
 
 ;;; ------------------------------------------------------ Etc. ------------------------------------------------------
 
-(s/defn retrieve-segments :- [SegmentInstance]
+(s/defn retrieve-segments :- [(mi/InstanceOf Segment)]
   "Fetch all `Segments` for a given `Table`. Optional second argument allows filtering by active state by providing
    one of 3 keyword values: `:active`, `:deleted`, `:all`. Default filtering is for `:active`."
   ([table-id :- su/IntGreaterThanZero]

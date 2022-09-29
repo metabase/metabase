@@ -22,6 +22,11 @@ export const MarkdownRoot = styled(getComponent(ReactMarkdown))`
   a:hover {
     text-decoration: underline;
   }
+
+  img {
+    max-width: 100%;
+    height: auto;
+  }
 `;
 
 function getComponent<P>(component: (props: P) => ReactElement): FC<P> {

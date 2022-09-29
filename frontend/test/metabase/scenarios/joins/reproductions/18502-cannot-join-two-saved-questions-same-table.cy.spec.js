@@ -3,7 +3,9 @@ import {
   popover,
   visualize,
   startNewQuestion,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
+
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
@@ -19,7 +21,7 @@ describe("issue 18502", () => {
   });
 
   it("should be able to join two saved questions based on the same table (metabase#18502)", () => {
-    cy.intercept("/api/database/1/schema/PUBLIC").as("schema");
+    cy.intercept(`/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as("schema");
 
     cy.createQuestion(question1);
     cy.createQuestion(question2);

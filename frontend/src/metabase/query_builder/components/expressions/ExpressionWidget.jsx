@@ -4,11 +4,11 @@ import cx from "classnames";
 import { t } from "ttag";
 import _ from "underscore";
 
-import ExpressionEditorTextfield from "./ExpressionEditorTextfield";
 import { isExpression } from "metabase/lib/expressions";
 import MetabaseSettings from "metabase/lib/settings";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
+import ExpressionEditorTextfield from "./ExpressionEditorTextfield";
 
 // TODO: combine with ExpressionPopover
 export default class ExpressionWidget extends Component {
@@ -80,7 +80,9 @@ export default class ExpressionWidget extends Component {
               <ExternalLink
                 className="link"
                 target="_blank"
-                href={MetabaseSettings.docsUrl("users-guide/expressions")}
+                href={MetabaseSettings.docsUrl(
+                  "questions/query-builder/expressions",
+                )}
               >{t`Learn more`}</ExternalLink>
             </p>
           </div>

@@ -1,15 +1,17 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import MBQLClause from "./MBQLClause";
 import { t } from "ttag";
 import { TYPE } from "metabase/lib/types";
 import * as AGGREGATION from "metabase/lib/query/aggregation";
-import Dimension, { AggregationDimension } from "../../Dimension";
 import { Aggregation as AggregationObject } from "metabase-types/types/Query";
-import StructuredQuery from "../StructuredQuery";
 import { AggregationOperator } from "metabase-types/types/Metadata";
 import { MetricId } from "metabase-types/types/Metric";
 import { FieldId } from "metabase-types/types/Field";
+import Filter from "metabase-lib/lib/queries/structured/Filter";
+import Metric from "metabase-lib/lib/metadata/Metric";
+import StructuredQuery from "../StructuredQuery";
+import Dimension, { AggregationDimension } from "../../Dimension";
+import MBQLClause from "./MBQLClause";
 const INTEGER_AGGREGATIONS = new Set(["count", "cum-count", "distinct"]);
 export default class Aggregation extends MBQLClause {
   /**
@@ -39,9 +41,7 @@ export default class Aggregation extends MBQLClause {
   }
 
   canRemove() {
-    return this.remove()
-      .clean()
-      .isValid();
+    return this.remove().clean().isValid();
   }
 
   /**
@@ -208,8 +208,16 @@ export default class Aggregation extends MBQLClause {
    * Get the operator from a standard aggregation clause
    * Returns `null` if the clause isn't a "standard" metric
    */
-  operatorName(): string | null | undefined {
+  operatorName(): string | null {
     if (this.isStandard()) {
+      return this[0];
+    }
+
+    return null;
+  }
+
+  expressionName(): string | null {
+    if (this.isCustom()) {
       return this[0];
     }
   }
@@ -240,16 +248,20 @@ export default class Aggregation extends MBQLClause {
    * Get metricId from a metric aggregation clause
    * Returns `null` if the clause doesn't represent a metric
    */
-  metricId(): MetricId | null | undefined {
+  metricId(): MetricId | null {
     if (this.isMetric()) {
       return this[1];
     }
+
+    return null;
   }
 
-  metric() {
+  metric(): Metric | null {
     if (this.isMetric()) {
       return this.metadata().metric(this.metricId());
     }
+
+    return null;
   }
 
   // OPTIONS
@@ -268,12 +280,49 @@ export default class Aggregation extends MBQLClause {
   /**
    * Returns the aggregation without "aggregation-options" clause, if any
    */
-  aggregation() {
+  aggregation(): Aggregation {
     if (this.hasOptions()) {
       return new Aggregation(this[1], this._index, this._query);
     } else {
       return this;
     }
+  }
+
+  filters(): Filter[] {
+    if (this.isCustom()) {
+      const filter = this.customFilter();
+      return filter ? [filter] : [];
+    }
+
+    if (this.isMetric()) {
+      const filters = this.metricFilters();
+      return filters ?? [];
+    }
+
+    return [];
+  }
+
+  customFilter(): Filter | null {
+    if (this.isCustom()) {
+      switch (this.expressionName()) {
+        case "share":
+        case "count-where":
+          return new Filter(this[1], null, this.query());
+        case "sum-where":
+          return new Filter(this[2], null, this.query());
+      }
+    }
+
+    return null;
+  }
+
+  metricFilters(): Filter[] | null {
+    if (this.isMetric()) {
+      const metric = this.metric();
+      return metric?.filters().map(filter => filter.setQuery(this.query()));
+    }
+
+    return null;
   }
 
   // MISC

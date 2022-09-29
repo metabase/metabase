@@ -22,6 +22,10 @@
 
 (models/defmodel GroupTableAccessPolicy :group_table_access_policy)
 
+;;; only admins can work with GTAPs
+(derive GroupTableAccessPolicy ::mi/read-policy.superuser)
+(derive GroupTableAccessPolicy ::mi/write-policy.superuser)
+
 ;; This guard is to make sure this file doesn't get compiled twice when building the uberjar -- that will totally
 ;; screw things up because Toucan models use Potemkin `defrecord+` under the hood.
 (when *compile-files*
@@ -104,7 +108,7 @@
     (when-let [gtaps-using-this-card (not-empty (db/select [GroupTableAccessPolicy :id :table_id] :card_id card-id))]
       (let [original-result-metadata (db/select-one-field :result_metadata Card :id card-id)]
         (when-not (= original-result-metadata new-result-metadata)
-          (doseq [{gtap-id :id, table-id :table_id} gtaps-using-this-card]
+          (doseq [{table-id :table_id} gtaps-using-this-card]
             (try
               (check-columns-match-table table-id new-result-metadata)
               (catch clojure.lang.ExceptionInfo e
@@ -138,11 +142,4 @@
    models/IModelDefaults
    {:types      (constantly {:attribute_remappings ::attribute-remappings})
     :pre-insert pre-insert
-    :pre-update pre-update})
-
-  ;; only admins can work with GTAPs
-  mi/IObjectPermissions
-  (merge
-   mi/IObjectPermissionsDefaults
-   {:can-read?  mi/superuser?
-    :can-write? mi/superuser?}))
+    :pre-update pre-update}))

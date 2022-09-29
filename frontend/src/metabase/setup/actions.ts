@@ -22,6 +22,9 @@ export const setLocale = createThunkAction(
 export const SET_USER = "metabase/setup/SET_USER";
 export const setUser = createAction(SET_USER);
 
+export const SET_DATABASE_ENGINE = "metabase/setup/SET_DATABASE_ENGINE";
+export const setDatabaseEngine = createAction(SET_DATABASE_ENGINE);
+
 export const SET_DATABASE = "metabase/setup/SET_DATABASE";
 export const setDatabase = createAction(SET_DATABASE);
 

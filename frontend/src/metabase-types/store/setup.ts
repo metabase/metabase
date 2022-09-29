@@ -36,6 +36,7 @@ export interface SetupState {
   step: number;
   locale?: Locale;
   user?: UserInfo;
+  databaseEngine?: string;
   database?: DatabaseInfo;
   invite?: InviteInfo;
   isLocaleLoaded: boolean;

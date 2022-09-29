@@ -4,7 +4,7 @@ import {
   openEmailPage,
   sendSubscriptionsEmail,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { USERS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -15,21 +15,22 @@ const { admin } = USERS;
 
 const visualizationTypes = ["line", "area", "bar", "combo"];
 
-describe("static visualizations", () => {
+describe("static visualizations", { tags: "@external" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
     setupSMTP();
   });
 
-  visualizationTypes.map(type => {
-    it(`${type} chart`, () => {
-      const dashboardName = `${type} charts dashboard`;
+  visualizationTypes.map(visualizationType => {
+    it(`${visualizationType} chart`, () => {
+      const dashboardName = `${visualizationType} charts dashboard`;
       cy.createDashboardWithQuestions({
         dashboardName,
         questions: [
-          createOneMetricTwoDimensionsQuestion(type),
-          createOneDimensionTwoMetricsQuestion(type),
+          createOneDimensionOneMetricQuestion(visualizationType),
+          createOneMetricTwoDimensionsQuestion(visualizationType),
+          createOneDimensionTwoMetricsQuestion(visualizationType),
         ],
       }).then(({ dashboard }) => {
         visitDashboard(dashboard.id);
@@ -37,12 +38,30 @@ describe("static visualizations", () => {
         sendSubscriptionsEmail(`${admin.first_name} ${admin.last_name}`);
 
         openEmailPage(dashboardName).then(() => {
-          cy.percySnapshot();
+          cy.createPercySnapshot();
         });
       });
     });
   });
 });
+
+function createOneDimensionOneMetricQuestion(display) {
+  return {
+    name: `${display} one dimension one metric`,
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+    },
+    visualization_settings: {
+      "graph.dimensions": ["CREATED_AT"],
+      "graph.metrics": ["count"],
+      "graph.show_values": true,
+    },
+    display: display,
+    database: SAMPLE_DB_ID,
+  };
+}
 
 function createOneDimensionTwoMetricsQuestion(display) {
   return {
@@ -55,15 +74,16 @@ function createOneDimensionTwoMetricsQuestion(display) {
     visualization_settings: {
       "graph.dimensions": ["CREATED_AT"],
       "graph.metrics": ["count", "avg"],
+      "graph.show_values": true,
     },
     display: display,
     database: SAMPLE_DB_ID,
   };
 }
 
-function createOneMetricTwoDimensionsQuestion(display) {
+function createOneMetricTwoDimensionsQuestion(visualizationType) {
   return {
-    name: `${display} one metric two dimensions`,
+    name: `${visualizationType} one metric two dimensions`,
     query: {
       "source-table": ORDERS_ID,
       aggregation: [["count"]],
@@ -75,8 +95,9 @@ function createOneMetricTwoDimensionsQuestion(display) {
     visualization_settings: {
       "graph.dimensions": ["CREATED_AT", "CATEGORY"],
       "graph.metrics": ["count"],
+      "graph.show_values": true,
     },
-    display: display,
+    display: visualizationType,
     database: SAMPLE_DB_ID,
   };
 }

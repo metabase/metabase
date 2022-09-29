@@ -3,7 +3,7 @@ import {
   popover,
   selectDashboardFilter,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 function filterDashboard(suggests = true) {
   visitDashboard(1);
@@ -11,17 +11,17 @@ function filterDashboard(suggests = true) {
 
   // We should get a suggested response and be able to click it if we're an admin
   if (suggests) {
-    cy.contains("Text").type("Aero");
-    cy.contains("Aerodynamic").click();
+    cy.contains("Text").type("Main Street");
+    cy.contains("100 Main Street").click();
   } else {
-    cy.contains("Text").type("Aerodynamic Bronze Hat");
+    cy.contains("Text").type("100 Main Street");
     cy.wait("@search").should(xhr => {
       expect(xhr.status).to.equal(403);
     });
   }
   cy.contains("Add filter").click({ force: true });
-  cy.contains("Aerodynamic Bronze Hat");
-  cy.contains(/Rows \d-\d of 96/);
+  cy.contains("100 Main Street");
+  cy.contains(/Rows \d-\d+ of 23/);
 }
 
 describe("support > permissions (metabase#8472)", () => {
@@ -35,16 +35,12 @@ describe("support > permissions (metabase#8472)", () => {
     cy.icon("pencil").click();
 
     cy.icon("filter").click();
-    popover()
-      .contains("Text or Category")
-      .click();
+    popover().contains("Text or Category").click();
 
-    popover()
-      .contains("Dropdown")
-      .click();
+    popover().contains("Dropdown").click();
 
-    // Filter the first card by product category
-    selectDashboardFilter(cy.get(".DashCard").first(), "Title");
+    // Filter the first card by User Address
+    selectDashboardFilter(cy.get(".DashCard").first(), "Address");
 
     cy.contains("Done").click();
     cy.contains("Save").click();
@@ -57,10 +53,9 @@ describe("support > permissions (metabase#8472)", () => {
 
   it("should allow a nodata user to select the filter", () => {
     cy.server();
-    cy.route(
-      "GET",
-      "/api/dashboard/1/params/*/search/Aerodynamic Bronze Hat",
-    ).as("search");
+    cy.route("GET", "/api/dashboard/1/params/*/search/100 Main Street").as(
+      "search",
+    );
 
     cy.signIn("nodata");
     filterDashboard(false);

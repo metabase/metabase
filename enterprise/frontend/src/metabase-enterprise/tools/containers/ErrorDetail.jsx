@@ -2,18 +2,18 @@ import React from "react";
 
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
-import { getMetadata } from "metabase/selectors/metadata";
 
 import { t } from "ttag";
 import PropTypes from "prop-types";
 import { getIn } from "icepick";
+import { getMetadata } from "metabase/selectors/metadata";
 
 import { formatColumn, formatValue } from "metabase/lib/formatting";
 import { CardApi } from "metabase/services";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
-import Question from "metabase-lib/lib/Question";
 import { QuestionResultLoader } from "metabase/containers/QuestionResultLoader";
+import Question from "metabase-lib/lib/Question";
 import { columnNameToUrl } from "../../audit_app/lib/mode";
 
 function idxToUrl(resRow, resCols, nameToResCol, colName) {

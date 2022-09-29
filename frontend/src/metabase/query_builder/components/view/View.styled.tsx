@@ -21,6 +21,10 @@ export const QueryBuilderContentContainer = styled.div`
   display: flex;
   flex: 1 0 auto;
   position: relative;
+
+  ${breakpointMaxSmall} {
+    justify-content: end;
+  }
 `;
 
 export const QueryBuilderMain = styled.main<{ isSidebarOpen: boolean }>`
@@ -35,6 +39,7 @@ export const QueryBuilderMain = styled.main<{ isSidebarOpen: boolean }>`
       css`
         display: none !important;
       `};
+    position: relative;
   }
 `;
 

@@ -2,6 +2,7 @@
 
 /* ducks */
 import app from "metabase/redux/app";
+import embed from "metabase/redux/embed";
 import requests from "metabase/redux/requests";
 import settings from "metabase/redux/settings";
 import undo from "metabase/redux/undo";
@@ -14,6 +15,7 @@ import { currentUser } from "metabase/redux/user";
 export default {
   // global reducers
   app,
+  embed,
   currentUser,
   // "entities" framework needs control over "requests" state
   requests: enhanceRequestsReducer(requests),

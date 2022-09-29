@@ -2,10 +2,10 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 
-import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 import Tether from "tether";
 
 import cx from "classnames";
+import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 
 import "./Popover.css";
 
@@ -63,11 +63,10 @@ export default class Popover extends Component {
       PropTypes.func,
       PropTypes.array,
     ]),
-    dismissOnClickOutside: PropTypes.func,
-    dismissOnEscape: PropTypes.func,
     target: PropTypes.oneOfType([PropTypes.func, PropTypes.node]),
     targetEvent: PropTypes.object,
     role: PropTypes.string,
+    ignoreTrigger: PropTypes.bool,
   };
 
   static defaultProps = {
@@ -84,6 +83,7 @@ export default class Popover extends Component {
     autoWidth: false,
     noOnClickOutsideWrapper: false,
     containerClassName: "",
+    ignoreTrigger: false,
   };
 
   _getPopoverElement(isOpen) {
@@ -171,8 +171,7 @@ export default class Popover extends Component {
       return (
         <OnClickOutsideWrapper
           handleDismissal={this.handleDismissal}
-          dismissOnEscape={this.props.dismissOnEscape}
-          dismissOnClickOutside={this.props.dismissOnClickOutside}
+          ignoreElement={this.props.ignoreTrigger && this._getTargetElement()}
         >
           {content}
         </OnClickOutsideWrapper>
@@ -354,9 +353,11 @@ export default class Popover extends Component {
               (best, attachmentY) => ({
                 ...best,
                 attachmentY: attachmentY,
-                targetAttachmentY: (this.props.alignVerticalEdge
-                ? attachmentY === "bottom"
-                : attachmentY === "top")
+                targetAttachmentY: (
+                  this.props.alignVerticalEdge
+                    ? attachmentY === "bottom"
+                    : attachmentY === "top"
+                )
                   ? "bottom"
                   : "top",
                 offsetY: {

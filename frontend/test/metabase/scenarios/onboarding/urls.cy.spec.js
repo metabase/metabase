@@ -1,5 +1,14 @@
-import { restore, navigationSidebar, popover } from "__support__/e2e/cypress";
+import {
+  restore,
+  navigationSidebar,
+  popover,
+  getFullName,
+} from "__support__/e2e/helpers";
+import { USERS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
+
+const { admin, normal } = USERS;
 
 describe("URLs", () => {
   beforeEach(() => {
@@ -12,7 +21,10 @@ describe("URLs", () => {
       cy.visit("/browse");
       cy.findByTextEnsureVisible("Sample Database").click();
       cy.findByText("Sample Database");
-      cy.location("pathname").should("eq", "/browse/1-sample-database");
+      cy.location("pathname").should(
+        "eq",
+        `/browse/${SAMPLE_DB_ID}-sample-database`,
+      );
     });
 
     [
@@ -58,7 +70,7 @@ describe("URLs", () => {
       cy.findByText("Your personal collection").click();
       cy.location("pathname").should(
         "eq",
-        "/collection/1-bobby-tables-s-personal-collection",
+        `/collection/1-${getUsersPersonalCollectionSlug(admin)}`,
       );
     });
 
@@ -67,19 +79,17 @@ describe("URLs", () => {
       navigationSidebar().within(() => {
         cy.icon("ellipsis").click();
       });
-      popover()
-        .findByText("Other users' personal collections")
-        .click();
+      popover().findByText("Other users' personal collections").click();
       cy.findByText("All personal collections");
       cy.location("pathname").should("eq", "/collection/users");
     });
 
     it("should slugify users' personal collection URLs", () => {
       cy.visit("/collection/users");
-      cy.findByText("Robert Tableton").click();
+      cy.findByText(getFullName(normal)).click();
       cy.location("pathname").should(
         "eq",
-        "/collection/8-robert-tableton-s-personal-collection",
+        `/collection/8-${getUsersPersonalCollectionSlug(normal)}`,
       );
     });
 
@@ -90,17 +100,23 @@ describe("URLs", () => {
         "First collection",
       );
 
-      cy.visit("/collection/1-bobby-tables-s-personal-collection");
+      cy.visit(`/collection/1-${getUsersPersonalCollectionSlug(admin)}`);
       cy.findByTestId("collection-name-heading").should(
         "have.text",
-        "Bobby Tables's Personal Collection",
+        `${getFullName(admin)}'s Personal Collection`,
       );
 
-      cy.visit("/collection/8-robert-tableton-s-personal-collection");
+      cy.visit(`/collection/8-${getUsersPersonalCollectionSlug(normal)}`);
       cy.findByTestId("collection-name-heading").should(
         "have.text",
-        "Robert Tableton's Personal Collection",
+        `${getFullName(normal)}'s Personal Collection`,
       );
     });
   });
 });
+
+function getUsersPersonalCollectionSlug(user) {
+  const { first_name, last_name } = user;
+
+  return `${first_name.toLowerCase()}-${last_name.toLowerCase()}-s-personal-collection`;
+}

@@ -1,7 +1,7 @@
 import generatePassword from "password-generator";
 import { t } from "ttag";
-import MetabaseSettings from "metabase/lib/settings";
 import _ from "underscore";
+import MetabaseSettings from "metabase/lib/settings";
 
 const LAYOUT_PROPS = [
   "m",
@@ -24,7 +24,8 @@ const LAYOUT_PROPS = [
   "bordered",
 ];
 
-const EMAIL_REGEX = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+const EMAIL_REGEX =
+  /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 
 export function stripLayoutProps(props) {
   return _.omit(props, LAYOUT_PROPS);

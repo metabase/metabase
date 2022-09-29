@@ -8,7 +8,7 @@ import Form, {
   FormField,
   FormSubmit,
   FormMessage,
-} from "metabase/containers/Form";
+} from "metabase/containers/FormikForm";
 
 import { updateSettings } from "metabase/admin/settings/settings";
 import { settingToFormField } from "metabase/admin/settings/utils";
@@ -22,8 +22,7 @@ const settingsGoogleFormPropTypes = {
   updateSettings: PropTypes.func,
 };
 
-@connect(null, { updateSettings })
-export default class SettingsGoogleForm extends Component {
+class SettingsGoogleForm extends Component {
   render() {
     const { elements, settingValues, updateSettings } = this.props;
 
@@ -39,6 +38,7 @@ export default class SettingsGoogleForm extends Component {
         style={{ maxWidth: 520 }}
         initialValues={initialValues}
         onSubmit={updateSettings}
+        overwriteOnInitialValuesChange
       >
         <Breadcrumbs
           crumbs={[
@@ -55,7 +55,7 @@ export default class SettingsGoogleForm extends Component {
           {jt`To allow users to sign in with Google you'll need to give Metabase a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found ${(
             <ExternalLink
               href={MetabaseSettings.docsUrl(
-                "administration-guide/10-single-sign-on",
+                "people-and-groups/google-and-ldap",
                 "enabling-google-sign-in",
               )}
               target="_blank"
@@ -86,5 +86,7 @@ export default class SettingsGoogleForm extends Component {
     );
   }
 }
+
+export default connect(null, { updateSettings })(SettingsGoogleForm);
 
 SettingsGoogleForm.propTypes = settingsGoogleFormPropTypes;

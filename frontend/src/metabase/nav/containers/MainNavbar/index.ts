@@ -1,1 +1,1 @@
-export { default } from "./MainNavbarContainer";
+export { default } from "./MainNavbar";

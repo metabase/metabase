@@ -12,7 +12,7 @@ import Input from "metabase/core/components/Input";
 
 export type NumericInputAttributes = Omit<
   InputHTMLAttributes<HTMLDivElement>,
-  "value" | "onChange"
+  "value" | "size" | "onChange"
 >;
 
 export interface NumericInputProps extends NumericInputAttributes {

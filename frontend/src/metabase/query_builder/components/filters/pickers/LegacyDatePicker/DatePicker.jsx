@@ -3,16 +3,15 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
-import moment from "moment";
+import moment from "moment-timezone";
 import _ from "underscore";
 
-import SpecificDatePicker from "./SpecificDatePicker";
-import RelativeDatePicker, { DATE_PERIODS } from "./RelativeDatePicker";
+import Calendar from "metabase/components/Calendar";
+import { FieldDimension } from "metabase-lib/lib/Dimension";
 import DatePickerSelector from "../DatePicker/DatePickerSelector";
 import DateUnitSelector from "../DatePicker/DateUnitSelector";
-import Calendar from "metabase/components/Calendar";
-
-import { FieldDimension } from "metabase-lib/lib/Dimension";
+import SpecificDatePicker from "./SpecificDatePicker";
+import RelativeDatePicker, { DATE_PERIODS } from "./RelativeDatePicker";
 
 const singleDatePickerPropTypes = {
   className: PropTypes.string,
@@ -281,12 +280,12 @@ export default class DatePicker extends Component {
   };
 
   static propTypes = {
-    filter: PropTypes.array.isRequired,
+    dimension: PropTypes.array,
+    filter: PropTypes.array,
     onFilterChange: PropTypes.func.isRequired,
     className: PropTypes.string,
     hideEmptinessOperators: PropTypes.bool,
     hideTimeSelectors: PropTypes.bool,
-    isSidebar: PropTypes.bool,
     operators: PropTypes.array,
     disableOperatorSelection: PropTypes.bool,
   };
@@ -296,28 +295,36 @@ export default class DatePicker extends Component {
     if (!this.props.hideEmptinessOperators) {
       operators = operators.concat(EMPTINESS_OPERATORS);
     }
+    if (this.props.includeAllTime) {
+      operators = [ALL_TIME_OPERATOR, ...operators];
+    }
 
-    const operator = getOperator(this.props.filter, operators) || operators[0];
-    this.props.onFilterChange(operator.init(this.props.filter));
+    const { filter } = this.props;
+    const operator = getOperator(filter, operators) || operators[0];
+    this.adjustFilter(operator);
 
     this.setState({ operators });
   }
 
-  render() {
-    const {
-      className,
-      filter,
-      onFilterChange,
-      includeAllTime,
-      isSidebar,
-      disableOperatorSelection,
-    } = this.props;
-
-    let { operators } = this.state;
-
-    if (includeAllTime) {
-      operators = [ALL_TIME_OPERATOR, ...operators];
+  adjustFilter(operator, timeFilter = null) {
+    const { onFilterChange } = this.props;
+    const filter = timeFilter || this.props.filter;
+    if (onFilterChange) {
+      if (filter) {
+        onFilterChange(operator.init(filter));
+      } else {
+        // from All Time (null filter)
+        const { dimension } = this.props;
+        onFilterChange(operator.init(["time-interval", dimension?.mbql()]));
+      }
     }
+  }
+
+  render() {
+    const { className, filter, onFilterChange, disableOperatorSelection } =
+      this.props;
+
+    const { operators } = this.state;
 
     const operator = getOperator(this.props.filter, operators);
     const Widget = operator && operator.widget;
@@ -325,9 +332,8 @@ export default class DatePicker extends Component {
     return (
       <div
         // apply flex to align the operator selector and the "Widget" if necessary
-        className={cx(className, {
+        className={cx(className, "PopoverBody--marginBottom", {
           "flex align-center": Widget && Widget.horizontalLayout,
-          "PopoverBody--marginBottom": !isSidebar,
         })}
         style={{ minWidth: 300 }}
       >
@@ -339,7 +345,7 @@ export default class DatePicker extends Component {
             })}
             operator={operator && operator.name}
             operators={operators}
-            onOperatorChange={operator => onFilterChange(operator.init(filter))}
+            onOperatorChange={operator => this.adjustFilter(operator)}
           />
         )}
         {Widget && (
@@ -350,7 +356,7 @@ export default class DatePicker extends Component {
             hideHoursAndMinutes={this.props.hideTimeSelectors}
             onFilterChange={filter => {
               if (operator && operator.init) {
-                onFilterChange(operator.init(filter));
+                this.adjustFilter(operator, filter);
               } else {
                 onFilterChange(filter);
               }

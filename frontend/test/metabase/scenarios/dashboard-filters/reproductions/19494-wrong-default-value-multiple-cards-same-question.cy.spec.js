@@ -4,7 +4,7 @@ import {
   editDashboard,
   saveDashboard,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 const filter1 = {
   name: "Card 1 Filter",
@@ -76,8 +76,8 @@ function getCardProperties(cardObject) {
       card_id: 1,
       row: 0,
       col: 0,
-      sizeX: 9,
-      sizeY: 9,
+      size_x: 9,
+      size_y: 9,
       series: [],
       visualization_settings: {},
       parameter_mappings: [],
@@ -87,31 +87,21 @@ function getCardProperties(cardObject) {
 }
 
 function connectFilterToCard({ filterName, cardPosition }) {
-  cy.findByText(filterName)
-    .find(".Icon-gear")
-    .click();
+  cy.findByText(filterName).find(".Icon-gear").click();
 
-  cy.findAllByText("Select…")
-    .eq(cardPosition)
-    .click();
+  cy.findAllByText("Select…").eq(cardPosition).click();
 
-  popover()
-    .contains("Category")
-    .click();
+  popover().contains("Category").click();
 }
 
 function setDefaultFilter(value) {
   cy.findByText("No default").click();
 
-  popover()
-    .contains(value)
-    .click();
+  popover().contains(value).click();
 
   cy.button("Add filter").click();
 }
 
 function checkAppliedFilter(name, value) {
-  cy.findByText(name)
-    .closest("fieldset")
-    .contains(value);
+  cy.findByText(name).closest("fieldset").contains(value);
 }

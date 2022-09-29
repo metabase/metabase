@@ -19,7 +19,7 @@
   Note that this feature is Metabase© Enterprise Edition™ only and only enabled if we have a valid Enterprise Edition™
   token. [[metabase.query-processor.middleware.permissions/check-block-permissions]] invokes this function if it
   exists."
-  [{database-id :database, :as query}]
+  [{database-id :database}]
   (cond
     (not (premium-features/enable-advanced-permissions?))
     ::advanced-permissions-not-enabled

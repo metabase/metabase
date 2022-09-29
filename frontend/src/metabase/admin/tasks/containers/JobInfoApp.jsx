@@ -60,8 +60,7 @@ const renderJobsTable = jobs => {
   );
 };
 
-@connect(null, { fetchJobInfo })
-export default class JobInfoApp extends React.Component {
+class JobInfoApp extends React.Component {
   async componentDidMount() {
     try {
       const info = (await this.props.fetchJobInfo()).payload;
@@ -96,3 +95,5 @@ export default class JobInfoApp extends React.Component {
     );
   }
 }
+
+export default connect(null, { fetchJobInfo })(JobInfoApp);

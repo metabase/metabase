@@ -37,9 +37,7 @@
         (and query-string
              (re-matches #"^/app/dist/.*\.(js|css)$" uri))
         ;; any resource that is named as a cache-busting hex string (e.g. fonts, images)
-        (re-matches #"^/app/dist/[a-f0-9]{20}+.*$" uri)
-        ;; GeoJSON proxy requests should also be cached
-        (re-matches #"^/api/geojson/.*" uri))))
+        (re-matches #"^/app/dist/[a-f0-9]{20}+.*$" uri))))
 
 (defn https?
   "True if the original request made by the frontend client (i.e., browser) was made over HTTPS.

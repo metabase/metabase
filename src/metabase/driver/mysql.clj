@@ -4,24 +4,34 @@
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [clojure.walk :as walk]
             [honeysql.core :as hsql]
+            [honeysql.format :as hformat]
             [java-time :as t]
             [metabase.config :as config]
             [metabase.db.spec :as mdb.spec]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
+            [metabase.driver.mysql.ddl :as mysql.ddl]
             [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+            [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
+            [metabase.models.field :as field]
+            [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
+            [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [deferred-tru trs]])
   (:import [java.sql DatabaseMetaData ResultSet ResultSetMetaData Types]
-           [java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime]))
+           [java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime]
+           metabase.util.honeysql_extensions.Identifier))
+(comment
+  mysql.ddl/keep-me)
 
 (driver/register! :mysql, :parent :sql-jdbc)
 
@@ -30,9 +40,20 @@
 
 (defmethod driver/display-name :mysql [_] "MySQL")
 
+(defmethod driver/database-supports? [:mysql :nested-field-columns] [_ _ database]
+  (let [json-setting (get-in database [:details :json-unfolding])]
+    (if (nil? json-setting)
+      true
+      json-setting)))
+
+(defmethod driver/database-supports? [:mysql :persist-models] [_driver _feat _db] true)
+
+(defmethod driver/database-supports? [:mysql :persist-models-enabled]
+  [_driver _feat db]
+  (-> db :options :persist-models-enabled))
+
 (defmethod driver/supports? [:mysql :regex] [_ _] false)
 (defmethod driver/supports? [:mysql :percentile-aggregations] [_ _] false)
-
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -51,19 +72,19 @@
      (if (mariadb? metadata) min-supported-mariadb-version min-supported-mysql-version)))
 
 (defn- warn-on-unsupported-versions [driver details]
-  (let [jdbc-spec (sql-jdbc.conn/details->connection-spec-for-testing-connection driver details)]
+  (sql-jdbc.conn/with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
     (jdbc/with-db-metadata [metadata jdbc-spec]
       (when (unsupported-version? metadata)
         (log/warn
          (u/format-color 'red
-             (str
-              "\n\n********************************************************************************\n"
-              (trs "WARNING: Metabase only officially supports MySQL {0}/MariaDB {1} and above."
-                   min-supported-mysql-version
-                   min-supported-mariadb-version)
-              "\n"
-              (trs "All Metabase features may not work properly when using an unsupported version.")
-              "\n********************************************************************************\n")))))))
+                         (str
+                          "\n\n********************************************************************************\n"
+                          (trs "WARNING: Metabase only officially supports MySQL {0}/MariaDB {1} and above."
+                               min-supported-mysql-version
+                               min-supported-mariadb-version)
+                          "\n"
+                          (trs "All Metabase features may not work properly when using an unsupported version.")
+                          "\n********************************************************************************\n")))))))
 
 (defmethod driver/can-connect? :mysql
   [driver details]
@@ -95,6 +116,7 @@
     default-ssl-cert-details
     driver.common/ssh-tunnel-preferences
     driver.common/advanced-options-start
+    driver.common/json-unfolding
     (assoc driver.common/additional-options
            :placeholder  "tinyInt1isBit=false")
     driver.common/default-advanced-options]
@@ -117,18 +139,18 @@
   [_ message]
   (condp re-matches message
     #"^Communications link failure\s+The last packet sent successfully to the server was 0 milliseconds ago. The driver has not received any packets from the server.$"
-    (driver.common/connection-error-messages :cannot-connect-check-host-and-port)
+    :cannot-connect-check-host-and-port
 
     #"^Unknown database .*$"
-    (driver.common/connection-error-messages :database-name-incorrect)
+    :database-name-incorrect
 
     #"Access denied for user.*$"
-    (driver.common/connection-error-messages :username-or-password-incorrect)
+    :username-or-password-incorrect
 
     #"Must specify port after ':' in connection string"
-    (driver.common/connection-error-messages :invalid-hostname)
+    :invalid-hostname
 
-    #".*"                               ; default
+    ;; else
     message))
 
 (defmethod sql-jdbc.sync/db-default-timezone :mysql
@@ -168,6 +190,18 @@
   [_]
   :sunday)
 
+(def ^:const max-nested-field-columns
+  "Maximum number of nested field columns."
+  100)
+
+(defmethod sql-jdbc.sync/describe-nested-field-columns :mysql
+  [driver database table]
+  (let [spec   (sql-jdbc.conn/db->pooled-connection-spec database)
+        fields (sql-jdbc.describe-table/describe-nested-field-columns driver spec table)]
+    (if (> (count fields) max-nested-field-columns)
+      #{}
+      fields)))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
@@ -204,6 +238,49 @@
 (defmethod sql.qp/->honeysql [:mysql :length]
   [driver [_ arg]]
   (hsql/call :char_length (sql.qp/->honeysql driver arg)))
+
+(def ^:private database-type->mysql-cast-type-name
+  "MySQL supports the ordinary SQL standard database type names for actual type stuff but not for coercions, sometimes.
+  If it doesn't support the ordinary SQL standard type, then we coerce it to a different type that MySQL does support here"
+  {"integer"          "signed"
+   "text"             "char"
+   "double precision" "double"
+   "bigint"           "unsigned"})
+
+(defmethod sql.qp/json-query :mysql
+  [_ unwrapped-identifier stored-field]
+  (letfn [(handle-name [x] (str "\"" (if (number? x) (str x) (name x)) "\""))]
+    (let [field-type            (:database_type stored-field)
+          field-type            (get database-type->mysql-cast-type-name field-type field-type)
+          nfc-path              (:nfc_path stored-field)
+          parent-identifier     (field/nfc-field->parent-identifier unwrapped-identifier stored-field)
+          jsonpath-query        (format "$.%s" (str/join "." (map handle-name (rest nfc-path))))
+          json-extract+jsonpath (hsql/call :json_extract (hsql/raw (hformat/to-sql parent-identifier)) jsonpath-query)]
+      (case field-type
+        ;; If we see JSON datetimes we expect them to be in ISO8601. However, MySQL expects them as something different.
+        ;; We explicitly tell MySQL to go and accept ISO8601, because that is JSON datetimes, although there is no real standard for JSON, ISO8601 is the de facto standard.
+        "timestamp" (hsql/call :convert
+                               (hsql/call :str_to_date json-extract+jsonpath "\"%Y-%m-%dT%T.%fZ\"")
+                               (hsql/raw "DATETIME"))
+
+        "boolean" json-extract+jsonpath
+
+        (hsql/call :convert json-extract+jsonpath (hsql/raw (str/upper-case field-type)))))))
+
+(defmethod sql.qp/->honeysql [:mysql :field]
+  [driver [_ id-or-name opts :as clause]]
+  (let [stored-field (when (integer? id-or-name)
+                       (qp.store/field id-or-name))
+        parent-method (get-method sql.qp/->honeysql [:sql :field])
+        identifier    (parent-method driver clause)]
+    (if (field/json-field? stored-field)
+      (if (::sql.qp/forced-alias opts)
+        (keyword (::add/source-alias opts))
+        (walk/postwalk #(if (instance? Identifier %)
+                          (sql.qp/json-query :mysql % stored-field)
+                          %)
+                       identifier))
+      identifier)))
 
 ;; Since MySQL doesn't have date_trunc() we fake it by formatting a date to an appropriate string and then converting
 ;; back to a date. See http://dev.mysql.com/doc/refman/5.6/en/date-and-time-functions.html#function_date-format for an
@@ -303,9 +380,17 @@
     :TINYTEXT   :type/Text
     :VARBINARY  :type/*
     :VARCHAR    :type/Text
-    :YEAR       :type/Date}
+    :YEAR       :type/Date
+    :JSON       :type/SerializedJSON}
    ;; strip off " UNSIGNED" from end if present
    (keyword (str/replace (name database-type) #"\sUNSIGNED$" ""))))
+
+(defmethod sql-jdbc.sync/column->semantic-type :mysql
+  [_ database-type _]
+  ;; More types to be added when we start caring about them
+  (case database-type
+    "JSON"  :type/SerializedJSON
+    nil))
 
 (def ^:private default-connection-args
   "Map of args for the MySQL/MariaDB JDBC connection string."

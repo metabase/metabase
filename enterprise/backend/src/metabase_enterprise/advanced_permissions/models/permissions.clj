@@ -44,8 +44,7 @@
                [group-id db-id schema-name]
                [group-id db-id schema-name table-or-id])}
   [group-id & path-components]
-  (apply (partial revoke-permissions! :download :full group-id) path-components)
-  (apply (partial revoke-permissions! :download :limited group-id) path-components))
+  (apply (partial perms/revoke-download-perms! group-id) path-components))
 
 (defn- update-table-download-permissions!
   [group-id db-id schema table-id new-table-perms]
@@ -199,3 +198,12 @@
 
     :no
     (revoke-permissions! :details :yes group-id db-id)))
+
+(s/defn update-db-execute-permissions!
+  "Update the DB details permissions for a database."
+  [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero new-perms :- perms/ExecutePermissions]
+  (when-not (premium-features/enable-advanced-permissions?)
+    (throw (perms/ee-permissions-exception :execute)))
+  (revoke-permissions! :execute :all group-id db-id)
+  (when (= new-perms :all)
+    (grant-permissions! :execute :all group-id db-id)))

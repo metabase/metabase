@@ -1,3 +1,9 @@
+/**
+ * ⚠️
+ * @deprecated use existing types from, or add to metabase-types/api/*
+ */
+
+import { DatetimeUnit } from "metabase-types/api/query";
 import { TableId } from "./Table";
 import { FieldId, BaseType } from "./Field";
 import { SegmentId } from "./Segment";
@@ -27,27 +33,16 @@ export type RelativeDatetimeUnit =
   | "month"
   | "quarter"
   | "year";
-export type DatetimeUnit =
-  | "default"
-  | "minute"
-  | "minute-of-hour"
-  | "hour"
-  | "hour-of-day"
-  | "day"
-  | "day-of-week"
-  | "day-of-month"
-  | "day-of-year"
-  | "week"
-  | "week-of-year"
-  | "month"
-  | "month-of-year"
-  | "quarter"
-  | "quarter-of-year"
-  | "year";
 
 export type TemplateTagId = string;
 export type TemplateTagName = string;
-export type TemplateTagType = "card" | "text" | "number" | "date" | "dimension";
+export type TemplateTagType =
+  | "card"
+  | "text"
+  | "number"
+  | "date"
+  | "dimension"
+  | "snippet";
 
 export type TemplateTag = {
   id: TemplateTagId;
@@ -58,6 +53,13 @@ export type TemplateTag = {
   "widget-type"?: ParameterType;
   required?: boolean;
   default?: string;
+
+  // Card template specific
+  "card-id"?: number;
+
+  // Snippet specific
+  "snippet-id"?: number;
+  "snippet-name"?: string;
 };
 
 export type TemplateTags = { [key: TemplateTagName]: TemplateTag };

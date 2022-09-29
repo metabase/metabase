@@ -1,7 +1,7 @@
 /// code to "apply" chart tooltips. (How does one apply a tooltip?)
 
 import d3 from "d3";
-import moment from "moment";
+import moment from "moment-timezone";
 import { getIn } from "icepick";
 import _ from "underscore";
 
@@ -330,24 +330,24 @@ export function setupTooltips(
     });
   };
 
-  chart.on("renderlet.tooltips", function(chart) {
+  chart.on("renderlet.tooltips", function (chart) {
     // remove built-in tooltips
     chart.selectAll("title").remove();
 
     if (onHoverChange) {
       chart
         .selectAll(".bar, .dot, .area, .line, .bubble")
-        .on("mousemove", function(d) {
+        .on("mousemove", function (d) {
           const hovered = getClickHoverHelper(this, d);
           onHoverChange(hovered);
         })
-        .on("mouseleave", function() {
+        .on("mouseleave", function () {
           onHoverChange(null);
         });
     }
 
     if (onVisualizationClick) {
-      const onClick = function(d) {
+      const onClick = function (d) {
         const clicked = getClickHoverHelper(this, d);
         if (clicked) {
           onVisualizationClick(clicked);

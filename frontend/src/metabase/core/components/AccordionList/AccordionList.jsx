@@ -7,7 +7,6 @@ import _ from "underscore";
 import { getIn } from "icepick";
 
 import Icon from "metabase/components/Icon";
-import { memoize } from "metabase-lib/lib/utils";
 import { AccordionListCell } from "./AccordionListCell";
 import { AccordionListRoot } from "./AccordionList.styled";
 import { getNextCursor, getPrevCursor } from "./utils";
@@ -79,6 +78,7 @@ export default class AccordionList extends Component {
     renderItemExtra: PropTypes.func,
     renderItemWrapper: PropTypes.func,
     getItemClassName: PropTypes.func,
+    getItemStyles: PropTypes.func,
 
     alwaysTogglable: PropTypes.bool,
     alwaysExpanded: PropTypes.bool,
@@ -122,6 +122,7 @@ export default class AccordionList extends Component {
     renderItemExtra: item => null,
     renderItemIcon: item => item.icon && <Icon name={item.icon} size={18} />,
     getItemClassName: item => item.className,
+    getItemStyles: item => {},
     hasInitialFocus: true,
   };
 
@@ -375,7 +376,6 @@ export default class AccordionList extends Component {
     }
   };
 
-  @memoize
   getRowsCached = (
     searchFilter,
     searchable,

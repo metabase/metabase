@@ -9,11 +9,14 @@
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [medley.core :as m]
-            [metabase.api.common :as api :refer [*current-user-id*
-                                                 *current-user-permissions-set*]]
+            [metabase.api.common :as api :refer [*current-user-id* *current-user-permissions-set*]]
+            [metabase.db.connection :as mdb.connection]
             [metabase.models.collection.root :as collection.root]
             [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms :refer [Permissions]]
+            [metabase.models.serialization.base :as serdes.base]
+            [metabase.models.serialization.hash :as serdes.hash]
+            [metabase.models.serialization.util :as serdes.util]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
@@ -27,6 +30,7 @@
   (:import metabase.models.collection.root.RootCollection))
 
 (comment collection.root/keep-me)
+(comment mdb.connection/keep-me) ;; for [[memoize/ttl]]
 
 (p/import-vars [collection.root root-collection])
 
@@ -35,6 +39,10 @@
   254)
 
 (models/defmodel Collection :collection)
+
+(doto Collection
+  (derive ::mi/read-policy.full-perms-for-perms-set)
+  (derive ::mi/write-policy.full-perms-for-perms-set))
 
 (def AuthorityLevel
   "Schema for valid collection authority levels"
@@ -208,7 +216,7 @@
   top-level Collection."
   [collection :- CollectionWithLocationOrRoot]
   (if-let [new-parent-id (location-path->parent-id (:location collection))]
-    (Collection new-parent-id)
+    (db/select-one Collection :id new-parent-id)
     root-collection))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -338,14 +346,14 @@
 ;;; |                          Nested Collections: Ancestors, Childrens, Child Collections                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private ^:hydrate ancestors :- [CollectionInstance]
+(s/defn ^:private ^:hydrate ancestors :- [(mi/InstanceOf Collection)]
   "Fetch ancestors (parent, grandparent, etc.) of a `collection`. These are returned in order starting with the
   highest-level (e.g. most distant) ancestor."
   [{:keys [location]}]
   (when-let [ancestor-ids (seq (location-path->ids location))]
     (db/select [Collection :name :id] :id [:in ancestor-ids] {:order-by [:%lower.name]})))
 
-(s/defn effective-ancestors :- [(s/cond-pre RootCollection CollectionInstance)]
+(s/defn effective-ancestors :- [(s/cond-pre RootCollection (mi/InstanceOf Collection))]
   "Fetch the ancestors of a `collection`, filtering out any ones the current User isn't allowed to see. This is used
   in the UI to power the 'breadcrumb' path to the location of a given Collection. For example, suppose we have four
   Collections, nested like:
@@ -389,7 +397,7 @@
 
 (def ^:private Children
   (s/both
-   CollectionInstance
+   (mi/InstanceOf Collection)
    {:children #{(s/recursive #'Children)}
     s/Keyword s/Any}))
 
@@ -488,7 +496,7 @@
    :from   [[Collection :col]]
    :where  (apply effective-children-where-clause collection additional-honeysql-where-clauses)})
 
-(s/defn effective-children :- #{CollectionInstance}
+(s/defn effective-children :- #{(mi/InstanceOf Collection)}
   "Get the descendant Collections of `collection` that should be presented to the current User as direct children of
   this Collection. See documentation for [[metabase.models.collection/effective-children-query]] for more details."
   {:hydrate :effective_children}
@@ -750,7 +758,7 @@
   would immediately become invisible to all save admins, because no Group would have perms for it. This is obviously a
   bad experience -- we do not want a User to move a Collection that they have read/write perms for (by definition) to
   somewhere else and lose all access for it."
-  [collection :- CollectionInstance, new-location :- LocationPath]
+  [collection :- (mi/InstanceOf Collection) new-location :- LocationPath]
   (copy-collection-permissions! (parent {:location new-location}) (cons collection (descendants collection))))
 
 (s/defn ^:private revoke-perms-when-moving-into-personal-collection!
@@ -759,7 +767,7 @@
   need to be deleted, so other users cannot access this newly-Personal Collection.
 
   This needs to be done recursively for all descendants as well."
-  [collection :- CollectionInstance]
+  [collection :- (mi/InstanceOf Collection)]
   (db/execute! {:delete-from Permissions
                 :where       [:in :object (for [collection (cons collection (descendants collection))
                                                 path-fn    [perms/collection-read-path
@@ -803,7 +811,7 @@
     (apply = (map std-fn namespaces))))
 
 (defn- pre-update [{collection-name :name, id :id, color :color, :as collection-updates}]
-  (let [collection-before-updates (Collection id)]
+  (let [collection-before-updates (db/select-one Collection :id id)]
     ;; VARIOUS CHECKS BEFORE DOING ANYTHING:
     ;; (1) if this is a personal Collection, check that the 'propsed' changes are allowed
     (when (:personal_owner_id collection-before-updates)
@@ -857,8 +865,8 @@
 
 ;;; -------------------------------------------------- IModel Impl ---------------------------------------------------
 
-(defn perms-objects-set
-  "Return the required set of permissions to `read-or-write` `collection-or-id`."
+;;; Return the required set of permissions to `read-or-write` `collection-or-id`.
+(defmethod mi/perms-objects-set Collection
   [collection-or-id read-or-write]
   (let [collection (if (integer? collection-or-id)
                      (db/select-one [Collection :id :namespace] :id (collection-or-id))
@@ -875,22 +883,96 @@
           :read  (perms/collection-read-path collection-or-id)
           :write (perms/collection-readwrite-path collection-or-id))})))
 
-(u/strict-extend (class Collection)
+(defn- parent-identity-hash [coll]
+  (let [parent-id (-> coll
+                      (hydrate :parent_id)
+                      :parent_id)]
+   (if parent-id
+     (serdes.hash/identity-hash (db/select-one Collection :id parent-id))
+     "ROOT")))
+
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Collection)
   models/IModel
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:collection])
           :types          (constantly {:namespace       :keyword
                                        :authority_level :keyword})
+          :properties     (constantly {:entity_id true})
           :pre-insert     pre-insert
           :post-insert    post-insert
           :pre-update     pre-update
           :pre-delete     pre-delete})
-  mi/IObjectPermissions
-  (merge mi/IObjectPermissionsDefaults
-         {:can-read?         (partial mi/current-user-has-full-permissions? :read)
-          :can-write?        (partial mi/current-user-has-full-permissions? :write)
-          :perms-objects-set perms-objects-set}))
 
+  serdes.hash/IdentityHashable
+  {:identity-hash-fields (constantly [:name :namespace parent-identity-hash])})
+
+(defn- collection-query [maybe-user]
+  (serdes.base/raw-reducible-query
+    "Collection"
+    {:where [:and
+             [:= :archived false]
+             (if (nil? maybe-user)
+               [:is :personal_owner_id nil]
+               [:= :personal_owner_id maybe-user])]}))
+
+(defmethod serdes.base/extract-query "Collection" [_ {:keys [user]}]
+  (let [unowned (collection-query nil)]
+    (if user
+      (eduction cat [unowned (collection-query user)])
+      unowned)))
+
+(defmethod serdes.base/extract-one "Collection"
+  ;; Transform :location (which uses database IDs) into a portable :parent_id with the parent's entity ID.
+  ;; Also transform :personal_owner_id from a database ID to the email string, if it's defined.
+  ;; Use the :slug as the human-readable label.
+  [_model-name _opts coll]
+  (let [fetch-collection (fn [id]
+                           (db/select-one Collection :id id))
+        parent           (some-> coll
+                                 :id
+                                 fetch-collection
+                                 (hydrate :parent_id)
+                                 :parent_id
+                                 fetch-collection)
+        parent-id        (when parent
+                           (or (:entity_id parent) (serdes.hash/identity-hash parent)))
+        owner-email      (when (:personal_owner_id coll)
+                           (db/select-one-field :email 'User :id (:personal_owner_id coll)))]
+    (-> (serdes.base/extract-one-basics "Collection" coll)
+        (dissoc :location)
+        (assoc :parent_id parent-id :personal_owner_id owner-email)
+        (assoc-in [:serdes/meta 0 :label] (:slug coll)))))
+
+(defmethod serdes.base/load-xform "Collection" [{:keys [parent_id] :as contents}]
+  (let [loc        (if parent_id
+                     (let [{:keys [id location]} (serdes.base/lookup-by-id Collection parent_id)]
+                       (str location id "/"))
+                     "/")]
+    (-> contents
+        serdes.base/load-xform-basics
+        (dissoc :parent_id)
+        (assoc :location loc)
+        (update :personal_owner_id serdes.util/import-user))))
+
+(defmethod serdes.base/serdes-dependencies "Collection"
+  [{:keys [parent_id]}]
+  (if parent_id
+    [[{:model "Collection" :id parent_id}]]
+    []))
+
+(defmethod serdes.base/serdes-generate-path "Collection" [_ {:keys [slug] :as coll}]
+  [(cond-> (serdes.base/infer-self-path "Collection" coll)
+     slug  (assoc :label slug))])
+
+(defmethod serdes.base/serdes-descendants "Collection" [_model-name id]
+  (let [location    (db/select-one-field :location Collection :id id)
+        child-colls (set (for [child-id (db/select-ids Collection {:where [:like :location (str location id "/%")]})]
+                           ["Collection" child-id]))
+        dashboards  (set (for [dash-id (db/select-ids 'Dashboard :collection_id id)]
+                           ["Dashboard" dash-id]))
+        cards       (set (for [card-id (db/select-ids 'Card      :collection_id id)]
+                           ["Card" card-id]))]
+    (set/union child-colls dashboards cards)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Perms Checking Helper Fns                                            |
@@ -924,7 +1006,7 @@
 
     ;; `object-before-update` is the object as it currently exists in the application DB
     ;; `object-updates` is a map of updated values for the object
-    (check-allowed-to-change-collection (Card 100) http-request-body)"
+    (check-allowed-to-change-collection (db/select-one Card :id 100) http-request-body)"
   [object-before-update object-updates]
   ;; if collection_id is set to change...
   (when (api/column-will-change? :collection_id object-before-update object-updates)
@@ -945,18 +1027,24 @@
 
   Practically, use `user-or-site` = `:site` when insert or update the name in database,
   and `:user` when we need the name for displaying purposes"
-  [first-name last-name user-or-site]
+  [first-name last-name email user-or-site]
   {:pre [(#{:user :site} user-or-site)]}
   (if (= :user user-or-site)
-    (tru "{0} {1}''s Personal Collection" first-name last-name)
-    (trs "{0} {1}''s Personal Collection" first-name last-name)))
+    (cond
+      (and first-name last-name) (tru "{0} {1}''s Personal Collection" first-name last-name)
+      :else                      (tru "{0}''s Personal Collection" (or first-name last-name email)))
+    (cond
+      (and first-name last-name) (trs "{0} {1}''s Personal Collection" first-name last-name)
+      :else                      (trs "{0}''s Personal Collection" (or first-name last-name email)))))
 
 (s/defn user->personal-collection-name :- su/NonBlankString
   "Come up with a nice name for the Personal Collection for `user-or-id`."
   [user-or-id user-or-site]
-  (let [{first-name :first_name, last-name :last_name} (db/select-one ['User :first_name :last_name]
-                                                         :id (u/the-id user-or-id))]
-    (format-personal-collection-name first-name last-name user-or-site)))
+  (let [{first-name :first_name
+         last-name  :last_name
+         email      :email} (db/select-one ['User :first_name :last_name :email]
+                              :id (u/the-id user-or-id))]
+    (format-personal-collection-name first-name last-name email user-or-site)))
 
 (defn personal-collection-with-ui-details
   "For Personal collection, we make sure the collection's name and slug is translated to user's locale
@@ -969,14 +1057,14 @@
              :name collection-name
              :slug (u/slugify collection-name)))))
 
-(s/defn user->existing-personal-collection :- (s/maybe CollectionInstance)
+(s/defn user->existing-personal-collection :- (s/maybe (mi/InstanceOf Collection))
   "For a `user-or-id`, return their personal Collection, if it already exists.
   Use [[metabase.models.collection/user->personal-collection]] to fetch their personal Collection *and* create it if
   needed."
   [user-or-id]
   (db/select-one Collection :personal_owner_id (u/the-id user-or-id)))
 
-(s/defn user->personal-collection :- CollectionInstance
+(s/defn user->personal-collection :- (mi/InstanceOf Collection)
   "Return the Personal Collection for `user-or-id`, if it already exists; if not, create it and return it."
   [user-or-id]
   (or (user->existing-personal-collection user-or-id)
@@ -997,8 +1085,10 @@
   required to caclulate the Current User's permissions set, which is done for every API call; thus it is cached to
   save a DB call for *every* API call."
   (memoize/ttl
-   (s/fn user->personal-collection-id* :- su/IntGreaterThanZero
-     [user-id :- su/IntGreaterThanZero]
+   ^{::memoize/args-fn (fn [[user-id]]
+                         [(mdb.connection/unique-identifier) user-id])}
+   (fn user->personal-collection-id*
+     [user-id]
      (u/the-id (user->personal-collection user-id)))
    ;; cache the results for 60 minutes; TTL is here only to eventually clear out old entries/keep it from growing too
    ;; large

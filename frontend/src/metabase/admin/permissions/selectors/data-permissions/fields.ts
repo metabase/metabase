@@ -1,14 +1,9 @@
 import _ from "underscore";
 
-import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
 import {
   getFieldsPermission,
   getNativePermission,
 } from "metabase/admin/permissions/utils/graph";
-import {
-  NATIVE_PERMISSION_REQUIRES_DATA_ACCESS,
-  UNABLE_TO_CHANGE_ADMIN_PERMISSIONS,
-} from "../../constants/messages";
 import {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS,
@@ -16,14 +11,19 @@ import {
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
 } from "metabase/plugins";
+import { Group, GroupsPermissions } from "metabase-types/api";
+import Database from "metabase-lib/lib/metadata/Database";
 import {
   getPermissionWarning,
   getPermissionWarningModal,
   getControlledDatabaseWarningModal,
   getRevokingAccessToAllTablesWarningModal,
 } from "../confirmations";
-import { Group, GroupsPermissions } from "metabase-types/api";
-import Database from "metabase-lib/lib/metadata/Database";
+import {
+  NATIVE_PERMISSION_REQUIRES_DATA_ACCESS,
+  UNABLE_TO_CHANGE_ADMIN_PERMISSIONS,
+} from "../../constants/messages";
+import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
 import { TableEntityId } from "../../types";
 
 const buildAccessPermission = (
@@ -32,7 +32,7 @@ const buildAccessPermission = (
   isAdmin: boolean,
   permissions: GroupsPermissions,
   defaultGroup: Group,
-  database: Database | null,
+  database: Database,
 ) => {
   const value = getFieldsPermission(permissions, groupId, entityId, "data");
   const defaultGroupValue = getFieldsPermission(
@@ -115,7 +115,7 @@ export const buildFieldsPermissions = (
   isAdmin: boolean,
   permissions: GroupsPermissions,
   defaultGroup: Group,
-  database: Database | null,
+  database: Database,
 ) => {
   const accessPermission = buildAccessPermission(
     entityId,
@@ -142,6 +142,7 @@ export const buildFieldsPermissions = (
       isAdmin,
       permissions,
       accessPermission.value,
+      defaultGroup,
       "fields",
     ),
   ];

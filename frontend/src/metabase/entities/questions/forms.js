@@ -1,14 +1,23 @@
 import { t } from "ttag";
+
 import MetabaseSettings from "metabase/lib/settings";
+import validate from "metabase/lib/validate";
+
 import { PLUGIN_CACHING } from "metabase/plugins";
 
 const FORM_FIELDS = [
-  { name: "name", title: t`Name` },
+  { name: "name", title: t`Name`, validate: validate.required() },
   {
     name: "description",
     title: t`Description`,
     type: "text",
     placeholder: t`It's optional but oh, so helpful`,
+  },
+  {
+    name: "is_write",
+    title: t`Is Write`,
+    description: t`Write questions can be used for experimental actions.`,
+    type: "boolean",
   },
 ];
 

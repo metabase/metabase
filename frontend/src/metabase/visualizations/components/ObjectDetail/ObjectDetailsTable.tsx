@@ -5,18 +5,25 @@ import { t } from "ttag";
 import { DatasetData } from "metabase-types/types/Dataset";
 
 import ExpandableString from "metabase/query_builder/components/ExpandableString";
+import EmptyState from "metabase/components/EmptyState";
+
 import { isID } from "metabase/lib/schema_metadata";
 import { TYPE, isa } from "metabase/lib/types";
 import { formatValue, formatColumn } from "metabase/lib/formatting";
 
 import { OnVisualizationClickType } from "./types";
-import { ObjectDetailsTable } from "./ObjectDetail.styled";
+import {
+  ObjectDetailsTable,
+  GridContainer,
+  GridCell,
+} from "./ObjectDetail.styled";
 
 export interface DetailsTableCellProps {
   column: any;
   value: any;
   isColumnName: boolean;
   settings: any;
+  className?: string;
   onVisualizationClick: OnVisualizationClickType;
   visualizationIsClickable: (clicked: unknown) => boolean;
 }
@@ -26,6 +33,7 @@ export function DetailsTableCell({
   value,
   isColumnName,
   settings,
+  className = "",
   onVisualizationClick,
   visualizationIsClickable,
 }: DetailsTableCellProps): JSX.Element {
@@ -71,10 +79,13 @@ export function DetailsTableCell({
   return (
     <div>
       <span
-        className={cx({
-          "cursor-pointer": isClickable,
-          link: isClickable && isLink,
-        })}
+        className={cx(
+          {
+            "cursor-pointer": isClickable,
+            link: isClickable && isLink,
+          },
+          className,
+        )}
         onClick={
           isClickable
             ? e => {
@@ -91,7 +102,7 @@ export function DetailsTableCell({
 
 export interface DetailsTableProps {
   data: DatasetData;
-  zoomedRow: unknown[] | undefined;
+  zoomedRow: unknown[];
   settings: unknown;
   onVisualizationClick: OnVisualizationClickType;
   visualizationIsClickable: (clicked: any) => boolean;
@@ -104,38 +115,43 @@ export function DetailsTable({
   onVisualizationClick,
   visualizationIsClickable,
 }: DetailsTableProps): JSX.Element {
-  const { rows, cols } = data;
-  const row = zoomedRow || rows[0];
+  const { cols } = data;
+  const row = zoomedRow;
+
+  if (!row?.length) {
+    return <EmptyState message={t`No details found`} />;
+  }
 
   return (
     <ObjectDetailsTable>
-      {cols.map((column, columnIndex) => (
-        <div className="Grid Grid--1of2 mb2" key={columnIndex}>
-          <div className="Grid-cell">
-            <DetailsTableCell
-              column={column}
-              value={row[columnIndex]}
-              isColumnName
-              settings={settings}
-              onVisualizationClick={onVisualizationClick}
-              visualizationIsClickable={visualizationIsClickable}
-            />
-          </div>
-          <div
-            style={{ wordWrap: "break-word" }}
-            className="Grid-cell text-bold text-dark"
-          >
-            <DetailsTableCell
-              column={column}
-              value={row[columnIndex]}
-              isColumnName={false}
-              settings={settings}
-              onVisualizationClick={onVisualizationClick}
-              visualizationIsClickable={visualizationIsClickable}
-            />
-          </div>
-        </div>
-      ))}
+      <GridContainer cols={3}>
+        {cols.map((column, columnIndex) => (
+          <React.Fragment key={columnIndex}>
+            <GridCell>
+              <DetailsTableCell
+                column={column}
+                value={row[columnIndex] ?? t`Empty`}
+                isColumnName
+                settings={settings}
+                className="text-bold text-medium"
+                onVisualizationClick={onVisualizationClick}
+                visualizationIsClickable={visualizationIsClickable}
+              />
+            </GridCell>
+            <GridCell colSpan={2}>
+              <DetailsTableCell
+                column={column}
+                value={row[columnIndex]}
+                isColumnName={false}
+                settings={settings}
+                className="text-bold text-dark text-spaced text-wrap"
+                onVisualizationClick={onVisualizationClick}
+                visualizationIsClickable={visualizationIsClickable}
+              />
+            </GridCell>
+          </React.Fragment>
+        ))}
+      </GridContainer>
     </ObjectDetailsTable>
   );
 }

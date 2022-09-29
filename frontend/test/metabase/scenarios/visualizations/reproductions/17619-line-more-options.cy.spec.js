@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -32,7 +32,7 @@ describe("issue 17619", () => {
     cy.findByText("Line style");
     cy.findByText("Show dots on lines");
     cy.findByText("Replace missing values with");
-    cy.findByText("Which axis?");
+    cy.findByText("Y-axis position");
     cy.findByText("Show values for this series");
 
     cy.icon("chevronup");

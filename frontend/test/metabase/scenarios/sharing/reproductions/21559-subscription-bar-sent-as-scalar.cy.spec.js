@@ -4,7 +4,7 @@ import {
   editDashboard,
   saveDashboard,
   setupSMTP,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { USERS } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -31,7 +31,7 @@ const q2Details = {
   display: "scalar",
 };
 
-describe.skip("issue 21559", () => {
+describe.skip("issue 21559", { tags: "@external" }, () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/pulse/test").as("emailSent");
     restore();

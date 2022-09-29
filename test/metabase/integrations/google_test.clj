@@ -16,14 +16,14 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Invalid Google Sign-In Client ID: must end with \".apps.googleusercontent.com\""
-           (google/google-auth-client-id "invalid-client-id"))))
+           (google/google-auth-client-id! "invalid-client-id"))))
 
     (testing "Trailing whitespace in client ID is stripped upon save"
-      (google/google-auth-client-id "test-client-id.apps.googleusercontent.com     ")
+      (google/google-auth-client-id! "test-client-id.apps.googleusercontent.com     ")
       (is (= "test-client-id.apps.googleusercontent.com" (google/google-auth-client-id))))
 
     (testing "Saving an empty string will clear the client ID setting"
-      (google/google-auth-client-id "")
+      (google/google-auth-client-id! "")
       (is (= nil (google/google-auth-client-id))))))
 
 
@@ -32,9 +32,8 @@
 (deftest allow-autocreation-test
   (with-redefs [premium-features/enable-sso? (constantly false)]
     (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain "metabase.com"]
-      (are [allowed? email] (is (= allowed?
-                                   (#'google/autocreate-user-allowed-for-email? email))
-                                (format "Can we autocreate an account for email '%s'?" email))
+      (are [allowed? email] (= allowed?
+                               (#'google/autocreate-user-allowed-for-email? email))
         true  "cam@metabase.com"
         false "cam@expa.com"))))
 
@@ -43,7 +42,7 @@
     (with-redefs [premium-features/enable-sso? (constantly false)]
       (is (thrown?
            clojure.lang.ExceptionInfo
-           (google.i/google-auth-auto-create-accounts-domain "metabase.com, example.com"))))))
+           (google.i/google-auth-auto-create-accounts-domain! "metabase.com, example.com"))))))
 
 (deftest google-auth-create-new-user!-test
   (with-redefs [premium-features/enable-sso? (constantly false)]
@@ -126,7 +125,7 @@
 (deftest google-auth-fetch-or-create-user!-test
   (with-redefs [premium-features/enable-sso? (constantly false)]
     (testing "test that an existing user can log in with Google auth even if the auto-create accounts domain is different from"
-      (mt/with-temp User [user {:email "cam@sf-toucannery.com"}]
+      (mt/with-temp User [_ {:email "cam@sf-toucannery.com"}]
         (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain "metabase.com"]
           (testing "their account should return a UserInstance"
             (is (schema= metabase.models.user.UserInstance

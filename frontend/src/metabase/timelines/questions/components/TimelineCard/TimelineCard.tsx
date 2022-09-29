@@ -8,7 +8,7 @@ import React, {
 } from "react";
 import _ from "underscore";
 import { getTimelineName } from "metabase/lib/timelines";
-import Ellipsified from "metabase/components/Ellipsified";
+import Ellipsified from "metabase/core/components/Ellipsified";
 import { Timeline, TimelineEvent } from "metabase-types/api";
 import EventCard from "../EventCard";
 import {

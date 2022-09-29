@@ -48,7 +48,8 @@ export const Title = styled("h3")`
 
 export const ResultLink = styled(Link)`
   display: block;
-  background-color: transparent;
+  background-color: ${props =>
+    props.isSelected ? lighten("brand", 0.63) : "transparent"};
   min-height: ${props => (props.compact ? "36px" : "54px")};
   padding-top: ${space(1)};
   padding-bottom: ${space(1)};
@@ -60,7 +61,8 @@ export const ResultLink = styled(Link)`
     background-color: ${props => (props.acitve ? lighten("brand", 0.63) : "")};
 
     h3 {
-      color: ${props => (props.active ? color("brand") : "")};
+      color: ${props =>
+        props.active || props.isSelected ? color("brand") : ""};
     }
   }
 
@@ -85,8 +87,9 @@ export const ResultLink = styled(Link)`
   h3 {
     font-size: ${props => (props.compact ? "14px" : "16px")};
     line-height: 1.2em;
-    word-wrap: break-word;
+    overflow-wrap: anywhere;
     margin-bottom: 0;
+    color: ${props => (props.active && props.isSelected ? color("brand") : "")};
   }
 
   .Icon-info {

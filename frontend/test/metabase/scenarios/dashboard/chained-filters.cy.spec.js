@@ -3,7 +3,7 @@ import {
   popover,
   showDashboardCardActions,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PEOPLE, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -93,9 +93,7 @@ describe("scenarios > dashboard > chained filter", () => {
         cy.findByText("Anchorage");
         cy.findByText("Anacoco").should("not.exist");
 
-        cy.get("input")
-          .first()
-          .clear();
+        cy.get("input").first().clear();
       });
 
       cy.findByText("AK").click();
@@ -109,9 +107,7 @@ describe("scenarios > dashboard > chained filter", () => {
       // do it again to make sure it isn't cached incorrectly
       cy.findByText("Location 1").click();
       popover().within(() => {
-        cy.get("input")
-          .first()
-          .type("An");
+        cy.get("input").first().type("An");
         cy.findByText("Canton");
         cy.findByText("Anchorage").should("not.exist");
       });
@@ -125,9 +121,7 @@ describe("scenarios > dashboard > chained filter", () => {
       // do it again without a state filter to make sure it isn't cached incorrectly
       cy.findByText("Location 1").click();
       popover().within(() => {
-        cy.get("input")
-          .first()
-          .type("An");
+        cy.get("input").first().type("An");
         cy.findByText("Adrian");
         cy.findByText("Anchorage");
         cy.findByText("Canton");
@@ -174,8 +168,8 @@ describe("scenarios > dashboard > chained filter", () => {
                 card_id: QUESTION_ID,
                 row: 0,
                 col: 0,
-                sizeX: 8,
-                sizeY: 6,
+                size_x: 8,
+                size_y: 6,
                 parameter_mappings: [
                   {
                     parameter_id: "50c9eac6",
@@ -194,10 +188,7 @@ describe("scenarios > dashboard > chained filter", () => {
         cy.icon("click").click();
         cy.findByText(/Ean/i).click();
         cy.findByText("Update a dashboard filter").click();
-        cy.findByText("Available filters")
-          .parent()
-          .findByText(/ID/i)
-          .click();
+        cy.findByText("Available filters").parent().findByText(/ID/i).click();
         popover().within(() => {
           cy.findByText(/Ean/i);
         });

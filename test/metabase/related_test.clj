@@ -3,17 +3,18 @@
             [clojure.test :refer :all]
             [medley.core :as m]
             [metabase.models :refer [Card Collection Metric Segment]]
-            [metabase.related :as related :refer :all]
+            [metabase.related :as related]
             [metabase.sync :as sync]
             [metabase.test :as mt]
-            [metabase.test.data.one-off-dbs :as one-off-dbs]))
+            [metabase.test.data.one-off-dbs :as one-off-dbs]
+            [toucan.db :as db]))
 
 (deftest collect-context-bearing-forms-test
   (is (= #{[:field 1 nil] [:metric 1] [:field 2 nil] [:segment 1]}
          (#'related/collect-context-bearing-forms [[:> [:field 1 nil] 3]
-                                             ["and" [:= ["FIELD-ID" 2] 2]
-                                              ["segment" 1]]
-                                             [:metric 1]]))))
+                                                   ["and" [:= ["FIELD-ID" 2] 2]
+                                                    ["segment" 1]]
+                                                   [:metric 1]]))))
 
 
 (deftest similiarity-test
@@ -37,7 +38,7 @@
                                                      [1 1] 1.0}]
         (testing (format "Similarity between Card #%d and Card #%d" card-x card-y)
           (is (= expected-similarity
-                 (double (#'related/similarity (Card (get cards card-x)) (Card (get cards card-y)))))))))))
+                 (double (#'related/similarity (db/select-one Card :id (get cards card-x)) (db/select-one Card :id (get cards card-y)))))))))))
 
 (def ^:private ^:dynamic *world*)
 
@@ -59,18 +60,18 @@
                                                    {:table_id   $$venues
                                                     :definition {:source-table $$venues
                                                                  :filter       [:!= $name nil]}})]
-                  Card       [{card-id-a :id :as card-a}
+                  Card       [{card-id-a :id}
                               {:table_id      (mt/id :venues)
                                :dataset_query (mt/mbql-query venues
                                                 {:aggregation [[:sum $price]]
                                                  :breakout    [$category_id]})}]
-                  Card       [{card-id-b :id :as card-b}
+                  Card       [{card-id-b :id}
                               {:table_id      (mt/id :venues)
                                :collection_id collection-id
                                :dataset_query (mt/mbql-query venues
                                                 {:aggregation [[:sum $longitude]]
                                                  :breakout    [$category_id]})}]
-                  Card       [{card-id-c :id :as card-c}
+                  Card       [{card-id-c :id}
                               {:table_id      (mt/id :venues)
                                :dataset_query (mt/mbql-query venues
                                                 {:aggregation [[:sum $longitude]]
@@ -156,11 +157,11 @@
 
 (deftest sync-related-fields-test
   (one-off-dbs/with-blank-db
-    (exec! "CREATE TABLE blueberries_consumed (num SMALLINT NOT NULL, weight FLOAT)")
-    (one-off-dbs/insert-rows-and-sync! (range 50))
+    (exec! "CREATE TABLE blueberries_consumed (str TEXT NOT NULL, weight FLOAT)")
+    (one-off-dbs/insert-rows-and-sync! (one-off-dbs/range-str 50))
     (let [count-related-fields (fn []
                                  (->> (mt/user-http-request :crowberto :get 200
-                                                            (format "field/%s/related" (mt/id :blueberries_consumed :num)))
+                                                            (format "field/%s/related" (mt/id :blueberries_consumed :str)))
                                       :fields
                                       count))]
       (testing "before"

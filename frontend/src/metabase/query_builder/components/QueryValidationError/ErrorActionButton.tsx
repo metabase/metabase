@@ -2,13 +2,12 @@ import React from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
-import {
-  ValidationError,
+import { getUiControls } from "metabase/query_builder/selectors";
+import { toggleTemplateTagsEditor } from "metabase/query_builder/actions";
+import ValidationError, {
   VALIDATION_ERROR_TYPES,
   ErrorType,
 } from "metabase-lib/lib/ValidationError";
-import { getUiControls } from "metabase/query_builder/selectors";
-import { toggleTemplateTagsEditor } from "metabase/query_builder/actions";
 
 import { QueryValidationErrorProps } from "./QueryValidationError";
 import { QueryErrorActionButton } from "./QueryValidationError.styled";

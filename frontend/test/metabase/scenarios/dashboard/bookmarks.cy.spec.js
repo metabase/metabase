@@ -3,7 +3,7 @@ import {
   navigationSidebar,
   openNavigationSidebar,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 describe("scenarios > dashboard > bookmarks", () => {
   beforeEach(() => {
@@ -11,28 +11,33 @@ describe("scenarios > dashboard > bookmarks", () => {
     cy.signInAsAdmin();
   });
 
-  it("should add and then remove bookmark", () => {
+  it("should add, update bookmark name when dashboard name is updated, and then remove bookmark", () => {
     visitDashboard(1);
     openNavigationSidebar();
 
+    // Add bookmark
     cy.get("main header").within(() => {
-      cy.icon("ellipsis").click();
+      cy.icon("bookmark").click();
     });
-
-    cy.findByText("Bookmark").click();
 
     navigationSidebar().within(() => {
       cy.findByText("Orders in a dashboard");
     });
 
-    cy.get("main header").within(() => {
-      cy.icon("ellipsis").click();
-    });
-
-    cy.findByText("Remove from bookmarks").click();
+    // Rename bookmarked dashboard
+    cy.findByTestId("dashboard-name-heading").click().type(" 2").blur();
 
     navigationSidebar().within(() => {
-      cy.findByText("Orders in a dashboard").should("not.exist");
+      cy.findByText("Orders in a dashboard 2");
+    });
+
+    // Remove bookmark
+    cy.get("main header").within(() => {
+      cy.icon("bookmark").click();
+    });
+
+    navigationSidebar().within(() => {
+      cy.findByText("Orders in a dashboard 2").should("not.exist");
     });
   });
 });

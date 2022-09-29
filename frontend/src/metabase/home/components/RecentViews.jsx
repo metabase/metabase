@@ -3,12 +3,12 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
-import Ellipsified from "metabase/components/Ellipsified";
+import Ellipsified from "metabase/core/components/Ellipsified";
 import Link from "metabase/core/components/Link";
-import SidebarSection from "./SidebarSection";
 import * as Urls from "metabase/lib/urls";
 
 import { color } from "metabase/lib/colors";
+import SidebarSection from "./SidebarSection";
 
 export default class RecentViews extends Component {
   static propTypes = {

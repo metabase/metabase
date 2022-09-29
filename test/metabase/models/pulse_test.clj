@@ -7,6 +7,7 @@
             [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
             [metabase.models.pulse :as pulse]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.test :as mt]
             [metabase.test.mock.util :refer [pulse-channel-defaults]]
             [metabase.util :as u]
@@ -22,12 +23,14 @@
 (defn- remove-uneeded-pulse-keys [pulse]
   (-> pulse
       (dissoc :id :creator :created_at :updated_at)
+      (update :entity_id boolean)
       (update :cards (fn [cards]
                        (for [card cards]
                          (dissoc card :id))))
       (update :channels (fn [channels]
                           (for [channel channels]
                             (-> (dissoc channel :id :pulse_id :created_at :updated_at)
+                                (update :entity_id boolean)
                                 (m/dissoc-in [:details :emails])))))))
 ;; create a channel then select its details
 (defn- create-pulse-then-select!
@@ -54,11 +57,11 @@
 
 (deftest retrieve-pulse-test
   (testing "this should cover all the basic Pulse attributes"
-    (tt/with-temp* [Pulse        [{pulse-id :id}               {:name "Lodi Dodi"}]
-                    PulseChannel [{channel-id :id :as channel} {:pulse_id pulse-id
-                                                                :details  {:other  "stuff"
-                                                                           :emails ["foo@bar.com"]}}]
-                    Card         [{card-id :id}                {:name "Test Card"}]]
+    (tt/with-temp* [Pulse        [{pulse-id :id}   {:name "Lodi Dodi"}]
+                    PulseChannel [{channel-id :id} {:pulse_id pulse-id
+                                                    :details  {:other  "stuff"
+                                                               :emails ["foo@bar.com"]}}]
+                    Card         [{card-id :id}    {:name "Test Card"}]]
       (db/insert! PulseCard, :pulse_id pulse-id, :card_id card-id, :position 0)
       (db/insert! PulseChannelRecipient, :pulse_channel_id channel-id, :user_id (mt/user->id :rasta))
       (is (= (merge
@@ -66,6 +69,7 @@
               {:creator_id (mt/user->id :rasta)
                :creator    (user-details :rasta)
                :name       "Lodi Dodi"
+               :entity_id  true
                :cards      [{:name               "Test Card"
                              :description        nil
                              :collection_id      nil
@@ -84,10 +88,12 @@
                                                     (dissoc (user-details :rasta) :is_superuser :is_qbnewb)]})]})
              (-> (dissoc (pulse/retrieve-pulse pulse-id) :id :pulse_id :created_at :updated_at)
                  (update :creator  dissoc :date_joined :last_login)
+                 (update :entity_id boolean)
                  (update :cards    (fn [cards] (for [card cards]
                                                  (dissoc card :id))))
                  (update :channels (fn [channels] (for [channel channels]
                                                     (-> (dissoc channel :id :pulse_id :created_at :updated_at)
+                                                        (update :entity_id boolean)
                                                         (m/dissoc-in [:details :emails])))))
                  mt/derecordize))))))
 
@@ -128,9 +134,10 @@
                    :schedule_hour 4
                    :recipients    [{:email "foo@bar.com"}
                                    (dissoc (user-details :rasta) :is_superuser :is_qbnewb)]})
-           (-> (PulseChannel :pulse_id id)
+           (-> (db/select-one PulseChannel :pulse_id id)
                (hydrate :recipients)
                (dissoc :id :pulse_id :created_at :updated_at)
+               (update :entity_id boolean)
                (m/dissoc-in [:details :emails])
                mt/derecordize)))))
 
@@ -143,6 +150,7 @@
               pulse-defaults
               {:creator_id (mt/user->id :rasta)
                :name       "Booyah!"
+               :entity_id  true
                :channels   [(merge pulse-channel-defaults
                                    {:schedule_type :daily
                                     :schedule_hour 18
@@ -211,6 +219,7 @@
     (is (= (merge pulse-defaults
                   {:creator_id (mt/user->id :rasta)
                    :name       "We like to party"
+                   :entity_id  true
                    :cards      [{:name               "Bar Card"
                                  :description        nil
                                  :collection_id      nil
@@ -281,14 +290,14 @@
     (testing "automatically archive a Pulse when the last user unsubscribes"
       (testing "one subscriber"
         (do-with-objects
-         (fn [{:keys [archived? user-id pulse-id]}]
+         (fn [{:keys [archived? user-id]}]
            (testing "make the User inactive"
              (is (db/update! User user-id :is_active false)))
            (testing "Pulse should be archived"
              (is (archived?))))))
       (testing "multiple subscribers"
         (do-with-objects
-         (fn [{:keys [archived? user-id pulse-id pulse-channel-id]}]
+         (fn [{:keys [archived? user-id pulse-channel-id]}]
            ;; create a second user + subscription so we can verify that we don't archive the Pulse if a User unsubscribes
            ;; but there is still another subscription.
            (mt/with-temp* [User                  [{user-2-id :id}]
@@ -327,7 +336,7 @@
       (testing "still sent to email addresses\n"
         (testing "emails on the same channel as deleted User\n"
           (do-with-objects
-           (fn [{:keys [archived? user-id pulse-id pulse-channel-id]}]
+           (fn [{:keys [archived? user-id pulse-channel-id]}]
              (db/update! PulseChannel pulse-channel-id :details {:emails ["foo@bar.com"]})
              (testing "make the User inactive"
                (is (db/update! User user-id :is_active false)))
@@ -363,7 +372,7 @@
 
 (defmacro with-pulse-in-collection
   "Execute `body` with a temporary Pulse, in a Collection, containing a single Card."
-  {:style/indent 1}
+  {:style/indent :defn}
   [[db-binding collection-binding pulse-binding card-binding] & body]
   `(do-with-pulse-in-collection
     (fn [~(or db-binding '_) ~(or collection-binding '_) ~(or pulse-binding '_) ~(or card-binding '_)]
@@ -447,3 +456,11 @@
       (binding [api/*current-user-id* (:creator_id subscription)]
         (is (not (mi/can-read? subscription)))
         (is (not (mi/can-write? subscription)))))))
+
+(deftest identity-hash-test
+  (testing "Pulse hashes are composed of the name and the collection hash"
+    (mt/with-temp* [Collection  [coll  {:name "field-db" :location "/"}]
+                    Pulse       [pulse {:name "my pulse" :collection_id (:id coll)}]]
+      (is (= "6432d0a9"
+             (serdes.hash/raw-hash ["my pulse" (serdes.hash/identity-hash coll)])
+             (serdes.hash/identity-hash pulse))))))

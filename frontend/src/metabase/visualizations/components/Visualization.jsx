@@ -2,6 +2,10 @@
 import React from "react";
 import { connect } from "react-redux";
 
+import { t, jt } from "ttag";
+import { assoc } from "icepick";
+import _ from "underscore";
+import cx from "classnames";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
@@ -9,7 +13,6 @@ import ChartClickActions from "metabase/visualizations/components/ChartClickActi
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
-import { t, jt } from "ttag";
 import { duration, formatNumber } from "metabase/lib/formatting";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
@@ -20,6 +23,7 @@ import {
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 import { performDefaultAction } from "metabase/visualizations/lib/action";
+import { getFont } from "metabase/styled-components/selectors";
 
 import Utils from "metabase/lib/utils";
 import { datasetContainsNoResults } from "metabase/lib/dataset";
@@ -31,21 +35,17 @@ import {
 
 import NoResults from "assets/img/no_results.svg";
 
-import { assoc } from "icepick";
-import _ from "underscore";
-import cx from "classnames";
-
 export const ERROR_MESSAGE_GENERIC = t`There was a problem displaying this chart.`;
 export const ERROR_MESSAGE_PERMISSION = t`Sorry, you don't have permission to see this card.`;
 
 import Question from "metabase-lib/lib/Question";
 import Mode from "metabase-lib/lib/Mode";
-import { memoize } from "metabase-lib/lib/utils";
+import { memoizeClass } from "metabase-lib/lib/utils";
+import { VisualizationSlowSpinner } from "./Visualization.styled";
 
 // NOTE: pass `CardVisualization` so that we don't include header when providing size to child element
-@ExplicitSize({ selector: ".CardVisualization" })
-@connect()
-export default class Visualization extends React.PureComponent {
+
+class Visualization extends React.PureComponent {
   constructor(props) {
     super(props);
 
@@ -148,7 +148,7 @@ export default class Visualization extends React.PureComponent {
       : null;
     this.setState({
       hovered: null,
-      clicked: null,
+      //clicked: null,
       error: null,
       warnings: [],
       yAxisSplit: null,
@@ -157,6 +157,17 @@ export default class Visualization extends React.PureComponent {
       computedSettings: computedSettings,
     });
   }
+
+  isLoading = series => {
+    return !(
+      series &&
+      series.length > 0 &&
+      _.every(
+        series,
+        s => s.data || _.isObject(s.card.visualization_settings.virtual_card),
+      )
+    );
+  };
 
   handleHoverChange = hovered => {
     if (hovered) {
@@ -185,7 +196,6 @@ export default class Visualization extends React.PureComponent {
     }
   };
 
-  @memoize
   _getQuestionForCardCached(metadata, card) {
     if (!metadata || !card) {
       return;
@@ -203,6 +213,18 @@ export default class Visualization extends React.PureComponent {
       : question;
   }
 
+  getMode(maybeModeOrQueryMode, question) {
+    if (maybeModeOrQueryMode instanceof Mode) {
+      return maybeModeOrQueryMode;
+    }
+
+    if (question && maybeModeOrQueryMode) {
+      return new Mode(question, maybeModeOrQueryMode);
+    }
+
+    return question?.mode();
+  }
+
   getClickActions(clicked) {
     if (!clicked) {
       return [];
@@ -212,9 +234,7 @@ export default class Visualization extends React.PureComponent {
     const seriesIndex = clicked.seriesIndex || 0;
     const card = this.state.series[seriesIndex].card;
     const question = this._getQuestionForCardCached(metadata, card);
-    const mode = this.props.mode
-      ? question && new Mode(question, this.props.mode)
-      : question && question.mode();
+    const mode = this.getMode(this.props.mode, question);
 
     return mode
       ? mode.actionsForClick(
@@ -274,13 +294,13 @@ export default class Visualization extends React.PureComponent {
   };
 
   // Add the underlying card of current series to onChangeCardAndRun if available
-  handleOnChangeCardAndRun = ({ nextCard, seriesIndex }) => {
+  handleOnChangeCardAndRun = ({ nextCard, seriesIndex, objectId }) => {
     const { series, clicked } = this.state;
 
     const index = seriesIndex || (clicked && clicked.seriesIndex) || 0;
     const previousCard = series && series[index] && series[index].card;
 
-    this.props.onChangeCardAndRun({ nextCard, previousCard });
+    this.props.onChangeCardAndRun({ nextCard, previousCard, objectId });
   };
 
   onRender = ({ yAxisSplit, warnings = [] } = {}) => {
@@ -302,6 +322,7 @@ export default class Visualization extends React.PureComponent {
     const {
       actionButtons,
       className,
+      dashcard,
       showTitle,
       isDashboard,
       width,
@@ -309,9 +330,11 @@ export default class Visualization extends React.PureComponent {
       headerIcon,
       errorIcon,
       isSlow,
+      isMobile,
       expectedDuration,
       replacementContent,
       onOpenChartSettings,
+      onUpdateVisualizationSettings,
     } = this.props;
     const { visualization } = this.state;
     const small = width < 330;
@@ -327,16 +350,9 @@ export default class Visualization extends React.PureComponent {
     }
 
     let error = this.props.error || this.state.error;
-    const loading = !(
-      series &&
-      series.length > 0 &&
-      _.every(
-        series,
-        s => s.data || _.isObject(s.card.visualization_settings.virtual_card),
-      )
-    );
     let noResults = false;
     let isPlaceholder = false;
+    const loading = this.isLoading(series);
 
     // don't try to load settings unless data is loaded
     let settings = this.props.settings || {};
@@ -393,12 +409,10 @@ export default class Visualization extends React.PureComponent {
     const extra = (
       <span className="flex align-center">
         {isSlow && !loading && (
-          <LoadingSpinner
+          <VisualizationSlowSpinner
+            className="Visualization-slow-spinner"
             size={18}
-            className={cx(
-              "Visualization-slow-spinner",
-              isSlow === "usually-slow" ? "text-gold" : "text-slate",
-            )}
+            isUsuallySlow={isSlow === "usually-slow"}
           />
         )}
         {actionButtons}
@@ -440,7 +454,7 @@ export default class Visualization extends React.PureComponent {
       (showTitle &&
         hasHeaderContent &&
         (loading || error || noResults || isHeaderEnabled)) ||
-      replacementContent;
+      (replacementContent && (dashcard.size_y !== 1 || isMobile));
 
     return (
       <div
@@ -473,9 +487,9 @@ export default class Visualization extends React.PureComponent {
             }
           >
             <Tooltip tooltip={t`No results!`} isEnabled={small}>
-              <img src={NoResults} />
+              <img data-testid="no-results-image" src={NoResults} />
             </Tooltip>
-            {!small && <span className="h4 text-bold">No results!</span>}
+            {!small && <span className="h4 text-bold">{t`No results!`}</span>}
           </div>
         ) : error ? (
           <div
@@ -547,9 +561,24 @@ export default class Visualization extends React.PureComponent {
             clickActions={clickActions}
             onChangeCardAndRun={this.handleOnChangeCardAndRun}
             onClose={this.hideActions}
+            series={series}
+            onUpdateVisualizationSettings={onUpdateVisualizationSettings}
           />
         )}
       </div>
     );
   }
 }
+
+const mapStateToProps = state => ({
+  fontFamily: getFont(state),
+});
+
+export default _.compose(
+  ExplicitSize({
+    selector: ".CardVisualization",
+    refreshMode: props => (props.isVisible ? "throttle" : "debounce"),
+  }),
+  connect(mapStateToProps),
+  memoizeClass("_getQuestionForCardCached"),
+)(Visualization);

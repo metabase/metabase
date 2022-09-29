@@ -1,63 +1,103 @@
-import { restore } from "__support__/e2e/cypress";
+import {
+  restore,
+  setupLdap,
+  typeAndBlurUsingLabel,
+} from "__support__/e2e/helpers";
 
-// Space after "123 " is crucial for #13313
-const INVALID_PORTS = ["21.3", "asd", "123 "];
+describe(
+  "scenarios > admin > settings > SSO > LDAP",
+  { tags: "@external" },
+  () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
+      cy.intercept("PUT", "/api/setting/*").as("updateSetting");
+      cy.intercept("PUT", "/api/ldap/settings").as("updateLdapSettings");
+    });
 
-describe("scenarios > admin > settings > SSO > LDAP", () => {
-  beforeEach(() => {
-    restore();
-    cy.signInAsAdmin();
-    cy.visit("/admin/settings/authentication/ldap");
-  });
+    it("should setup ldap (metabase#16173)", () => {
+      cy.visit("/admin/settings/authentication/ldap");
 
-  /**
-   * IMPORTANT:
-   * These repros currently rely on the broken behavior. It is possible to save settings without authentication turned on.
-   * See: https://github.com/metabase/metabase/issues/16225
-   * It is possible related repros will have to be rewritten/adjusted once #16255 gets fixed!
-   */
+      enterLdapSettings();
+      cy.button("Save and enable").click();
+      cy.wait("@updateLdapSettings");
 
-  INVALID_PORTS.forEach(port => {
-    it("shouldn't be possible to save non-numeric port (#13313)", () => {
-      // The real endpoint is `/api/ldap/settings` but I had to use this ambiguous one for this repro because of #16173
-      // Although the endpoint was fixed, we want to always be able to test these issues separately and independently of each other.
-      cy.intercept("PUT", "/api/**").as("update");
+      cy.findByText("Changes saved!").should("exist");
+    });
 
-      cy.findByLabelText("LDAP Host").type("foobar");
-      cy.findByLabelText("LDAP Port").type(port);
+    it("should update ldap settings", () => {
+      setupLdap();
+      cy.visit("/admin/settings/authentication/ldap");
+
+      enterLdapPort("389");
       cy.button("Save changes").click();
-      cy.wait("@update").then(interception => {
-        expect(interception.response.statusCode).to.eq(500);
-        expect(interception.response.body.cause).to.include(port);
-      });
+      cy.wait("@updateLdapSettings");
+
+      cy.findAllByRole("link", { name: "Authentication" }).first().click();
+      cy.findByRole("switch", { name: "LDAP" }).should("be.checked");
     });
-  });
 
-  it("should use the correct endpoint (metabase#16173)", () => {
-    cy.intercept("PUT", "/api/ldap/settings").as("ldapUpdate");
-    cy.findByLabelText("LDAP Host").type("foobar");
-    cy.findByLabelText("LDAP Port").type("888");
-    cy.findByText(/Username or DN/i)
-      .closest("li")
-      .find("input")
-      .type("John");
-    cy.findByText("The password to bind with for the lookup user.")
-      .closest("li")
-      .find("input")
-      .type("Smith");
-    cy.button("Save changes").click();
-    cy.wait("@ldapUpdate").then(interception => {
-      expect(interception.response.statusCode).to.eq(200);
+    it("should toggle ldap via the authentication page", () => {
+      setupLdap();
+      cy.visit("/admin/settings/authentication");
+
+      cy.findByRole("switch", { name: "LDAP" }).click();
+      cy.wait("@updateSetting");
+
+      cy.findByRole("switch", { name: "LDAP" }).should("not.be.checked");
+      cy.findByText("Saved").should("exist");
     });
-    cy.button("Changes saved!");
-  });
 
-  it("should not reset previously populated fields when validation fails for just one of them (metabase#16226)", () => {
-    cy.findByLabelText("LDAP Host").type("foobar");
-    cy.findByLabelText("LDAP Port").type("baz");
-    cy.button("Save changes").click();
+    it("should not reset previously populated fields when validation fails for just one of them (metabase#16226)", () => {
+      cy.visit("/admin/settings/authentication/ldap");
 
-    cy.findByText('For input string: "baz"'); // The error message
-    cy.findByDisplayValue("foobar");
-  });
-});
+      enterLdapSettings();
+      enterLdapPort("0");
+      cy.button("Save and enable").click();
+      cy.wait("@updateLdapSettings");
+
+      cy.findAllByText("Wrong host or port").should("exist");
+      cy.findByDisplayValue("localhost").should("exist");
+    });
+
+    it("shouldn't be possible to save a non-numeric port (#13313)", () => {
+      cy.visit("/admin/settings/authentication/ldap");
+
+      enterLdapSettings();
+      enterLdapPort("asd");
+      cy.findByText("That's not a valid port number").should("exist");
+
+      enterLdapPort("21.3");
+      cy.button("Save and enable").click();
+      cy.wait("@updateLdapSettings");
+      cy.findByText('For input string: "21.3"').should("exist");
+
+      enterLdapPort("123 ");
+      cy.button("Save failed").click();
+      cy.wait("@updateLdapSettings");
+      cy.findByText('For input string: "123 "').should("exist");
+    });
+
+    it("should show the login form when ldap is enabled but password login isn't (metabase#25661)", () => {
+      setupLdap();
+      cy.request("PUT", "/api/setting/enable-password-login", { value: false });
+      cy.signOut();
+      cy.visit("/auth/login");
+
+      cy.findByText("Username or email address").should("be.visible");
+      cy.findByText("Password").should("be.visible");
+    });
+  },
+);
+
+const enterLdapPort = value => {
+  typeAndBlurUsingLabel("LDAP Port", value);
+};
+
+const enterLdapSettings = () => {
+  typeAndBlurUsingLabel("LDAP Host", "localhost");
+  typeAndBlurUsingLabel("LDAP Port", "389");
+  typeAndBlurUsingLabel("Username or DN", "cn=admin,dc=example,dc=org");
+  typeAndBlurUsingLabel("Password", "admin");
+  typeAndBlurUsingLabel("User search base", "dc=example,dc=org");
+};

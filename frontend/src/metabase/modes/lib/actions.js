@@ -1,4 +1,4 @@
-import moment from "moment";
+import moment from "moment-timezone";
 
 import {
   rangeForValue,
@@ -19,20 +19,14 @@ export { drillDownForDimensions } from "./drilldown";
 export function aggregate(question, aggregation) {
   const query = question.query();
   if (query instanceof StructuredQuery) {
-    return query
-      .aggregate(aggregation)
-      .question()
-      .setDefaultDisplay();
+    return query.aggregate(aggregation).question().setDefaultDisplay();
   }
 }
 
 export function breakout(question, breakout) {
   const query = question.query();
   if (query instanceof StructuredQuery) {
-    return query
-      .breakout(breakout)
-      .question()
-      .setDefaultDisplay();
+    return query.breakout(breakout).question().setDefaultDisplay();
   }
 }
 
@@ -89,30 +83,6 @@ export function distribution(question, column) {
   }
 }
 
-export function toUnderlyingRecords(question) {
-  const query = question.query();
-  if (query instanceof StructuredQuery) {
-    return query
-      .clearAggregations()
-      .clearBreakouts()
-      .clearSort()
-      .clearLimit()
-      .clearFields()
-      .question()
-      .setDisplay("table");
-  }
-}
-
-export function drillUnderlyingRecords(question, dimensions) {
-  let query = question.query();
-  if (query instanceof StructuredQuery) {
-    for (const dimension of dimensions) {
-      query = drillFilter(query, dimension.value, dimension.column);
-    }
-    return toUnderlyingRecords(query.question());
-  }
-}
-
 // STRUCTURED QUERY UTILITIES
 
 const fieldRefWithTemporalUnit = (mbqlClause, unit) => {
@@ -129,11 +99,18 @@ const fieldRefWithTemporalUnitForColumn = (column, unit) =>
 export function drillFilter(query, value, column) {
   let filter;
   if (isDate(column)) {
-    filter = [
-      "=",
-      fieldRefWithTemporalUnitForColumn(column, column.unit),
-      parseTimestamp(value, column.unit).format(),
-    ];
+    if (value == null) {
+      filter = [
+        "is-null",
+        fieldRefWithTemporalUnitForColumn(column, column.unit),
+      ];
+    } else {
+      filter = [
+        "=",
+        fieldRefWithTemporalUnitForColumn(column, column.unit),
+        parseTimestamp(value, column.unit).format(),
+      ];
+    }
   } else {
     const range = rangeForValue(value, column);
     if (range) {

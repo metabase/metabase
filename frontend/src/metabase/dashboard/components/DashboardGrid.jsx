@@ -2,6 +2,8 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
+import _ from "underscore";
+import cx from "classnames";
 import ExplicitSize from "metabase/components/ExplicitSize";
 
 import Modal from "metabase/components/Modal";
@@ -20,9 +22,8 @@ import {
   DEFAULT_CARD_SIZE,
   MIN_ROW_HEIGHT,
 } from "metabase/lib/dashboard_grid";
-
-import _ from "underscore";
-import cx from "classnames";
+import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
+import { DashboardCard } from "./DashboardGrid.styled";
 
 import GridLayout from "./grid/GridLayout";
 import { generateMobileLayout } from "./grid/utils";
@@ -30,8 +31,9 @@ import AddSeriesModal from "./AddSeriesModal/AddSeriesModal";
 import RemoveFromDashboardModal from "./RemoveFromDashboardModal";
 import DashCard from "./DashCard";
 
-@ExplicitSize()
-export default class DashboardGrid extends Component {
+class DashboardGrid extends Component {
+  static contextType = ContentViewportContext;
+
   constructor(props, context) {
     super(props, context);
 
@@ -41,6 +43,7 @@ export default class DashboardGrid extends Component {
       removeModalDashCard: null,
       addSeriesModalDashCard: null,
       isDragging: false,
+      isAnimationPaused: true,
     };
   }
 
@@ -48,6 +51,7 @@ export default class DashboardGrid extends Component {
     isEditing: PropTypes.oneOfType([PropTypes.bool, PropTypes.object])
       .isRequired,
     isEditingParameter: PropTypes.bool.isRequired,
+    isNightMode: PropTypes.bool,
     dashboard: PropTypes.object.isRequired,
     parameterValues: PropTypes.object.isRequired,
 
@@ -68,6 +72,19 @@ export default class DashboardGrid extends Component {
     isEditing: false,
     isEditingParameter: false,
   };
+
+  componentDidMount() {
+    // In order to skip the initial cards animation we must let the grid layout calculate
+    // the initial card positions. The timer is necessary to enable animation only
+    // after the grid layout has been calculated and applied to the DOM.
+    this._pauseAnimationTimer = setTimeout(() => {
+      this.setState({ isAnimationPaused: false });
+    }, 0);
+  }
+
+  componentWillUnmount() {
+    clearTimeout(this._pauseAnimationTimer);
+  }
 
   UNSAFE_componentWillReceiveProps(nextProps) {
     this.setState({
@@ -104,8 +121,8 @@ export default class DashboardGrid extends Component {
           attributes: {
             col: layoutItem.x,
             row: layoutItem.y,
-            sizeX: layoutItem.w,
-            sizeY: layoutItem.h,
+            size_x: layoutItem.w,
+            size_y: layoutItem.h,
           },
         });
       }
@@ -146,8 +163,8 @@ export default class DashboardGrid extends Component {
       i: String(dashcard.id),
       x: dashcard.col || 0,
       y: dashcard.row || 0,
-      w: dashcard.sizeX || initialSize.width,
-      h: dashcard.sizeY || initialSize.height,
+      w: dashcard.size_x || initialSize.width,
+      h: dashcard.size_y || initialSize.height,
       dashcard: dashcard,
       minW: minSize.width,
       minH: minSize.height,
@@ -173,7 +190,11 @@ export default class DashboardGrid extends Component {
   getRowHeight() {
     const { width } = this.props;
 
-    const hasScroll = window.innerWidth > document.documentElement.offsetWidth;
+    const contentViewportElement = this.context;
+    const hasScroll =
+      contentViewportElement?.clientHeight <
+      contentViewportElement?.scrollHeight;
+
     const aspectHeight = width / GRID_WIDTH / GRID_ASPECT_RATIO;
     const actualHeight = Math.max(aspectHeight, MIN_ROW_HEIGHT);
 
@@ -280,6 +301,7 @@ export default class DashboardGrid extends Component {
         isEditing={this.props.isEditing}
         isEditingParameter={this.props.isEditingParameter}
         isFullscreen={this.props.isFullscreen}
+        isNightMode={this.props.isNightMode}
         isMobile={isMobile}
         onRemove={this.onDashCardRemove.bind(this, dc)}
         onAddSeries={this.onDashCardAddSeries.bind(this, dc)}
@@ -305,11 +327,8 @@ export default class DashboardGrid extends Component {
   }
 
   get isEditingLayout() {
-    const {
-      isEditing,
-      isEditingParameter,
-      clickBehaviorSidebarDashcard,
-    } = this.props;
+    const { isEditing, isEditingParameter, clickBehaviorSidebarDashcard } =
+      this.props;
     return (
       isEditing && !isEditingParameter && clickBehaviorSidebarDashcard == null
     );
@@ -321,13 +340,17 @@ export default class DashboardGrid extends Component {
     gridItemWidth,
     totalNumGridCols,
   }) => (
-    <div key={String(dc.id)} className="DashCard">
+    <DashboardCard
+      key={String(dc.id)}
+      className="DashCard"
+      isAnimationDisabled={this.state.isAnimationPaused}
+    >
       {this.renderDashCard(dc, {
         isMobile: breakpoint === "mobile",
         gridItemWidth,
         totalNumGridCols,
       })}
-    </div>
+    </DashboardCard>
   );
 
   renderGrid() {
@@ -369,3 +392,5 @@ export default class DashboardGrid extends Component {
     );
   }
 }
+
+export default ExplicitSize()(DashboardGrid);

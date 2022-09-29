@@ -3,16 +3,11 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
+import _ from "underscore";
+import cx from "classnames";
 import { iconPropTypes } from "metabase/components/Icon";
 
-import CardRenderer from "./CardRenderer";
-import LegendLayout from "./legend/LegendLayout";
-
 import "./LineAreaBarChart.css";
-import {
-  LineAreaBarChartRoot,
-  ChartLegendCaption,
-} from "./LineAreaBarChart.styled";
 
 import {
   isNumeric,
@@ -30,9 +25,6 @@ import {
   MinRowsError,
   ChartSettingsError,
 } from "metabase/visualizations/lib/errors";
-
-import _ from "underscore";
-import cx from "classnames";
 
 const MUTE_STYLE = "opacity: 0.25;";
 for (let i = 0; i < MAX_SERIES; i++) {
@@ -74,7 +66,13 @@ for (let i = 0; i < MAX_SERIES; i++) {
   addCSSRule(`.LineAreaBarChart.mute-${i} svg:not(.stacked) .row`, MUTE_STYLE);
 }
 
-import { normal } from "metabase/lib/colors";
+import { getAccentColors } from "metabase/lib/colors/groups";
+import {
+  LineAreaBarChartRoot,
+  ChartLegendCaption,
+} from "./LineAreaBarChart.styled";
+import LegendLayout from "./legend/LegendLayout";
+import CardRenderer from "./CardRenderer";
 
 export default class LineAreaBarChart extends Component {
   static noHeader = true;
@@ -116,6 +114,14 @@ export default class LineAreaBarChart extends Component {
         { section: t`Data` },
         t`Choose fields`,
       );
+    }
+    const seriesOrder = (settings["graph.series_order"] || []).filter(
+      series => series.enabled,
+    );
+    if (dimensions.length > 1 && seriesOrder.length === 0) {
+      throw new ChartSettingsError(t`No breakouts are enabled`, {
+        section: t`Data`,
+      });
     }
   }
 
@@ -263,10 +269,9 @@ export default class LineAreaBarChart extends Component {
     return settings;
   }
 
-  getLegendSettings() {
+  getLegendSettings(series) {
     const {
       card,
-      series,
       settings,
       showTitle,
       actionButtons,
@@ -297,7 +302,7 @@ export default class LineAreaBarChart extends Component {
       : series.map(single => single.card.name);
     const colors = seriesSettings
       ? seriesSettings.map(s => s.color)
-      : Object.values(normal);
+      : Object.values(getAccentColors());
 
     return {
       title,
@@ -361,7 +366,15 @@ export default class LineAreaBarChart extends Component {
       onHoverChange,
       onAddSeries,
       onRemoveSeries,
+      settings,
     } = this.props;
+
+    const orderedSeries =
+      (settings["graph.dimensions"]?.length > 1 &&
+        settings["graph.series_order"]
+          ?.filter(orderedItem => orderedItem.enabled)
+          .map(orderedItem => series[orderedItem.originalIndex])) ||
+      series;
 
     const {
       title,
@@ -372,7 +385,7 @@ export default class LineAreaBarChart extends Component {
       hasLegend,
       hasBreakout,
       canSelectTitle,
-    } = this.getLegendSettings();
+    } = this.getLegendSettings(orderedSeries);
 
     return (
       <LineAreaBarChartRoot
@@ -407,7 +420,7 @@ export default class LineAreaBarChart extends Component {
         >
           <CardRenderer
             {...this.props}
-            series={series}
+            series={orderedSeries}
             settings={this.getSettings()}
             className="renderer flex-full"
             maxSeries={MAX_SERIES}

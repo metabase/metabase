@@ -1,6 +1,14 @@
-import { restore, visitQuestion, saveDashboard } from "__support__/e2e/cypress";
-
 import { onlyOn } from "@cypress/skip-test";
+import {
+  restore,
+  visitQuestion,
+  saveDashboard,
+  popover,
+  openNavigationSidebar,
+  navigationSidebar,
+  openQuestionActions,
+  questionInfoButton,
+} from "__support__/e2e/helpers";
 
 import { USERS } from "__support__/e2e/cypress_data";
 
@@ -25,53 +33,109 @@ describe("managing question from the question's details sidebar", () => {
 
               cy.signIn(user);
               visitQuestion(1);
-              cy.findByTestId("saved-question-header-button").click();
             });
 
             it("should be able to edit question details (metabase#11719-1)", () => {
-              // cy.skipOn(user === "nodata");
-              cy.findByTestId("edit-details-button").click();
-              cy.findByLabelText("Name")
+              cy.findByTestId("saved-question-header-title")
                 .click()
-                .type("1");
-              clickButton("Save");
+                .type("1")
+                .blur();
               assertOnRequest("updateQuestion");
               cy.findByText("Orders1");
             });
 
             it("should be able to edit a question's description", () => {
-              // cy.skipOn(user === "nodata");
+              questionInfoButton().click();
 
-              cy.findByRole("button", {
-                name: "Add a description",
-              }).click();
+              cy.findByPlaceholderText("Add description")
+                .type("foo", { delay: 0 })
+                .blur();
 
-              cy.findByLabelText("Description")
-                .click()
-                .type("foo", { delay: 0 });
-
-              clickButton("Save");
               assertOnRequest("updateQuestion");
 
               cy.findByText("foo");
-              cy.findByRole("button", { name: "Add a description" }).should(
-                "not.exist",
-              );
             });
 
-            it("should be able to move the question (metabase#11719-2)", () => {
-              // cy.skipOn(user === "nodata");
-              cy.findByTestId("move-button").click();
-              cy.findByText("My personal collection").click();
-              clickButton("Move");
-              assertOnRequest("updateQuestion");
-              cy.contains("37.65");
+            describe("move", () => {
+              it("should be able to move the question (metabase#11719-2)", () => {
+                openNavigationSidebar();
+                navigationSidebar().within(() => {
+                  // Highlight "Our analytics"
+                  cy.findByText("Our analytics")
+                    .parents("li")
+                    .should("have.attr", "aria-selected", "true");
+                  cy.findByText("Your personal collection")
+                    .parents("li")
+                    .should("have.attr", "aria-selected", "false");
+                });
+
+                openQuestionActions();
+                cy.findByTestId("move-button").click();
+                cy.findByText("My personal collection").click();
+                clickButton("Move");
+                assertOnRequest("updateQuestion");
+                cy.contains("37.65");
+
+                cy.contains(
+                  `Question moved to ${getPersonalCollectionName(USERS[user])}`,
+                );
+
+                navigationSidebar().within(() => {
+                  // Highlight "Your personal collection" after move
+                  cy.findByText("Our analytics")
+                    .parents("li")
+                    .should("have.attr", "aria-selected", "false");
+                  cy.findByText("Your personal collection")
+                    .parents("li")
+                    .should("have.attr", "aria-selected", "true");
+                });
+              });
+
+              it("should be able to move models", () => {
+                // TODO: Currently nodata users can't turn a question into a model
+                cy.skipOn(user === "nodata");
+
+                turnIntoModel();
+
+                openNavigationSidebar();
+                navigationSidebar().within(() => {
+                  // Highlight "Our analytics"
+                  cy.findByText("Our analytics")
+                    .parents("li")
+                    .should("have.attr", "aria-selected", "true");
+                  cy.findByText("Your personal collection")
+                    .parents("li")
+                    .should("have.attr", "aria-selected", "false");
+                });
+
+                openQuestionActions();
+                cy.findByTestId("move-button").click();
+                cy.findByText("My personal collection").click();
+                clickButton("Move");
+                assertOnRequest("updateQuestion");
+                cy.contains("37.65");
+
+                cy.contains(
+                  `Model moved to ${getPersonalCollectionName(USERS[user])}`,
+                );
+
+                navigationSidebar().within(() => {
+                  // Highlight "Your personal collection" after move
+                  cy.findByText("Our analytics")
+                    .parents("li")
+                    .should("have.attr", "aria-selected", "false");
+                  cy.findByText("Your personal collection")
+                    .parents("li")
+                    .should("have.attr", "aria-selected", "true");
+                });
+              });
             });
 
-            it("should be able to archive the question (metabase#11719-3, metabase#16512)", () => {
+            it("should be able to archive the question (metabase#11719-3, metabase#16512, metabase#20133)", () => {
               cy.intercept("GET", "/api/collection/root/items**").as(
                 "getItems",
               );
+              openQuestionActions();
               cy.findByTestId("archive-button").click();
               clickButton("Archive");
               assertOnRequest("updateQuestion");
@@ -79,9 +143,18 @@ describe("managing question from the question's details sidebar", () => {
               cy.wait("@getItems"); // unpinned items
               cy.location("pathname").should("eq", "/collection/root");
               cy.findByText("Orders").should("not.exist");
+
+              cy.findByPlaceholderText("Search…").click();
+              cy.findByText("Recently viewed");
+              cy.findByText("Nothing here");
+
+              // Check page for archived questions
+              cy.visit("/question/1");
+              cy.findByText("This question has been archived");
             });
 
             it("should be able to add question to dashboard", () => {
+              openQuestionActions();
               cy.findByTestId("add-to-dashboard-button").click();
 
               cy.get(".Modal")
@@ -102,19 +175,19 @@ describe("managing question from the question's details sidebar", () => {
             beforeEach(() => {
               cy.signIn(user);
               visitQuestion(1);
-
-              cy.findByTestId("saved-question-header-button").click();
             });
 
             it("should not be offered to add question to dashboard inside a collection they have `read` access to", () => {
+              openQuestionActions();
               cy.findByTestId("add-to-dashboard-button").click();
 
               cy.get(".Modal").within(() => {
                 cy.findByText("Orders in a dashboard").should("not.exist");
                 cy.icon("search").click();
-                cy.findByPlaceholderText(
-                  "Search",
-                ).type("Orders in a dashboard{Enter}", { delay: 0 });
+                cy.findByPlaceholderText("Search").type(
+                  "Orders in a dashboard{Enter}",
+                  { delay: 0 },
+                );
                 cy.findByText("Orders in a dashboard").should("not.exist");
               });
             });
@@ -122,6 +195,7 @@ describe("managing question from the question's details sidebar", () => {
             it("should offer personal collection as a save destination for a new dashboard", () => {
               const { first_name, last_name } = USERS[user];
               const personalCollection = `${first_name} ${last_name}'s Personal Collection`;
+              openQuestionActions();
               cy.findByTestId("add-to-dashboard-button").click();
 
               cy.get(".Modal").within(() => {
@@ -132,7 +206,7 @@ describe("managing question from the question's details sidebar", () => {
               });
               cy.url().should("match", /\/dashboard\/\d+-foo$/);
               saveDashboard();
-              cy.get(".QueryBuilder-section").findByText(personalCollection);
+              cy.get("header").findByText(personalCollection);
             });
 
             it("should not offer a user the ability to update or clone the question", () => {
@@ -141,9 +215,13 @@ describe("managing question from the question's details sidebar", () => {
                 "not.exist",
               );
 
-              cy.findByTestId("move-button").should("not.exist");
-              cy.findByTestId("clone-button").should("not.exist");
-              cy.findByTestId("archive-button").should("not.exist");
+              openQuestionActions();
+
+              popover().within(() => {
+                cy.findByTestId("move-button").should("not.exist");
+                cy.findByTestId("clone-button").should("not.exist");
+                cy.findByTestId("archive-button").should("not.exist");
+              });
 
               cy.findByText("Revert").should("not.exist");
             });
@@ -155,9 +233,7 @@ describe("managing question from the question's details sidebar", () => {
 });
 
 function clickButton(name) {
-  cy.button(name)
-    .should("not.be.disabled")
-    .click();
+  cy.button(name).should("not.be.disabled").click();
 }
 
 function assertOnRequest(xhr_alias) {
@@ -168,5 +244,16 @@ function assertOnRequest(xhr_alias) {
   cy.findByText("Sorry, you don’t have permission to see that.").should(
     "not.exist",
   );
-  cy.get(".Modal").should("not.exist");
+}
+
+function getPersonalCollectionName(user) {
+  const name = [user.first_name, user.last_name].join(" ");
+
+  return `${name}'s Personal Collection`;
+}
+
+function turnIntoModel() {
+  openQuestionActions();
+  cy.findByText("Turn into a model").click();
+  cy.findByText("Turn this into a model").click();
 }

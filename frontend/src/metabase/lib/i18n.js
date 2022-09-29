@@ -46,12 +46,6 @@ function updateMomentStartOfWeek() {
   if (startOfWeekDayNumber === -1) {
     return;
   }
-  console.log(
-    "Setting moment.js start of week for Locale",
-    moment.locale(),
-    "to",
-    startOfWeekDayName,
-  );
 
   moment.updateLocale(moment.locale(), {
     week: {
@@ -64,15 +58,20 @@ function updateMomentStartOfWeek() {
 // if the start of week Setting is updated, update the moment start of week
 MetabaseSettings.on("start-of-week", updateMomentStartOfWeek);
 
-export function setLocalization(translationsObject) {
+function setLanguage(translationsObject) {
   const locale = translationsObject.headers.language;
-
   addMsgIds(translationsObject);
 
-  // add and set locale with C-3PO
+  // add and set locale with ttag
   addLocale(locale, translationsObject);
   // eslint-disable-next-line react-hooks/rules-of-hooks
   useLocale(locale);
+}
+
+function setLocalization(translationsObject) {
+  const locale = translationsObject.headers.language;
+
+  setLanguage(translationsObject);
 
   updateMomentLocale(locale);
   updateMomentStartOfWeek(locale);
@@ -80,27 +79,25 @@ export function setLocalization(translationsObject) {
 
 function updateMomentLocale(locale) {
   const momentLocale = mapToMomentLocale(locale);
-  if (momentLocale !== "en") {
-    require("moment/locale/" + momentLocale);
+  try {
+    if (momentLocale !== "en") {
+      require("moment/locale/" + momentLocale);
+    }
+    moment.locale(momentLocale);
+  } catch (e) {
+    console.warn(`Could not set moment locale to ${momentLocale}`);
+    moment.locale("en");
   }
-
-  moment.locale(momentLocale);
 }
 
 function mapToMomentLocale(locale = "") {
   switch (locale) {
+    case "zh":
     case "zh-Hans":
       return "zh-cn";
     default:
       return locale.toLowerCase();
   }
-}
-
-// Format a fixed timestamp in local time to see if the current locale defaults
-// to using a 24 hour clock.
-export function isLocale24Hour() {
-  const formattedTime = moment("2000-01-01T13:00:00").format("LT");
-  return /^13:/.test(formattedTime);
 }
 
 // we delete msgid property since it's redundant, but have to add it back in to
@@ -114,7 +111,37 @@ function addMsgIds(translationsObject) {
   }
 }
 
-// set the initial localization
-if (window.MetabaseLocalization) {
-  setLocalization(window.MetabaseLocalization);
+// Runs `f` with the current language for ttag set to the instance (site) locale rather than the user locale, then
+// restores the user locale. This can be used for translating specific strings into the instance language; e.g. for
+// parameter values in dashboard text cards that should be translated the same for all users viewing the dashboard.
+export function withInstanceLanguage(f) {
+  if (window.MetabaseSiteLocalization) {
+    setLanguage(window.MetabaseSiteLocalization);
+  }
+  try {
+    return f();
+  } finally {
+    if (window.MetabaseUserLocalization) {
+      setLanguage(window.MetabaseUserLocalization);
+    }
+  }
+}
+
+export function siteLocale() {
+  if (window.MetabaseSiteLocalization) {
+    return window.MetabaseSiteLocalization.headers.language;
+  }
+}
+
+// register site locale with ttag, if needed later
+if (window.MetabaseSiteLocalization) {
+  const translationsObject = window.MetabaseSiteLocalization;
+  const locale = translationsObject.headers.language;
+  addMsgIds(translationsObject);
+  addLocale(locale, translationsObject);
+}
+
+// set the initial localization to user locale
+if (window.MetabaseUserLocalization) {
+  setLocalization(window.MetabaseUserLocalization);
 }

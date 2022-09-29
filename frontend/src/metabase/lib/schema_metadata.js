@@ -44,7 +44,7 @@ const TYPES = {
   [STRING]: {
     base: [TYPE.Text],
     effective: [TYPE.Text],
-    semantic: [TYPE.Text],
+    semantic: [TYPE.Text, TYPE.Category],
   },
   [STRING_LIKE]: {
     base: [TYPE.TextLike],
@@ -74,7 +74,7 @@ const TYPES = {
     exclude: [ENTITY, LOCATION, TEMPORAL],
   },
   [SCOPE]: {
-    include: [NUMBER, TEMPORAL, CATEGORY, ENTITY],
+    include: [NUMBER, TEMPORAL, CATEGORY, ENTITY, STRING],
     exclude: [LOCATION],
   },
   [CATEGORY]: {
@@ -137,9 +137,9 @@ export function getFieldType(field) {
     COORDINATE,
     FOREIGN_KEY,
     PRIMARY_KEY,
-    NUMBER,
     STRING,
     STRING_LIKE,
+    NUMBER,
     BOOLEAN,
   ]) {
     if (isFieldType(type, field)) {
@@ -230,6 +230,9 @@ export const isCurrency = field =>
 
 export const isDescription = field =>
   field && isa(field.semantic_type, TYPE.Description);
+
+export const isComment = field =>
+  field && isa(field.semantic_type, TYPE.Comment);
 
 export const isID = field => isFK(field) || isPK(field);
 
@@ -695,32 +698,27 @@ function populateFields(aggregationOperator, fields) {
   };
 }
 
-// TODO: unit test
+export function getSupportedAggregationOperators(table) {
+  return AGGREGATION_OPERATORS.filter(operator => {
+    if (!operator.requiredDriverFeature) {
+      return true;
+    }
+    return (
+      table.db && table.db.features.includes(operator.requiredDriverFeature)
+    );
+  });
+}
+
 export function getAggregationOperators(table) {
-  return AGGREGATION_OPERATORS.filter(
-    aggregationOperator =>
-      !(
-        aggregationOperator.requiredDriverFeature &&
-        table.db &&
-        !_.contains(
-          table.db.features,
-          aggregationOperator.requiredDriverFeature,
-        )
-      ),
-  ).map(aggregationOperator =>
-    populateFields(aggregationOperator, table.fields),
-  );
+  return getSupportedAggregationOperators(table)
+    .map(operator => populateFields(operator, table.fields))
+    .filter(
+      aggregation =>
+        !aggregation.requiresField ||
+        aggregation.fields.every(fields => fields.length > 0),
+    );
 }
 
-export function getAggregationOperatorsWithFields(table) {
-  return getAggregationOperators(table).filter(
-    aggregation =>
-      !aggregation.requiresField ||
-      aggregation.fields.every(fields => fields.length > 0),
-  );
-}
-
-// TODO: unit test
 export function getAggregationOperator(short) {
   return _.findWhere(AGGREGATION_OPERATORS, { short: short });
 }
@@ -738,7 +736,7 @@ export function addValidOperatorsToFields(table) {
   for (const field of table.fields) {
     field.filter_operators = getFilterOperators(field, table);
   }
-  table.aggregation_operators = getAggregationOperatorsWithFields(table);
+  table.aggregation_operators = getAggregationOperators(table);
   return table;
 }
 
@@ -762,10 +760,10 @@ export function foreignKeyCountsByOriginTable(fks) {
   }
 
   return fks
-    .map(function(fk) {
+    .map(function (fk) {
       return "origin" in fk ? fk.origin.table.id : null;
     })
-    .reduce(function(prev, curr, idx, array) {
+    .reduce(function (prev, curr, idx, array) {
       if (curr in prev) {
         prev[curr]++;
       } else {

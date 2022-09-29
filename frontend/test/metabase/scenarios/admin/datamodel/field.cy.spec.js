@@ -4,8 +4,8 @@ import {
   visitAlias,
   popover,
   startNewQuestion,
-} from "__support__/e2e/cypress";
-
+} from "__support__/e2e/helpers";
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -17,7 +17,7 @@ describe.skip("scenarios > admin > datamodel > field", () => {
 
     ["CREATED_AT", "PRODUCT_ID", "QUANTITY"].forEach(name => {
       cy.wrap(
-        `/admin/datamodel/database/1/table/${ORDERS_ID}/${ORDERS[name]}/general`,
+        `/admin/datamodel/database/${SAMPLE_DB_ID}/table/${ORDERS_ID}/${ORDERS[name]}/general`,
       ).as(`ORDERS_${name}_URL`);
     });
 
@@ -120,14 +120,10 @@ describe.skip("scenarios > admin > datamodel > field", () => {
 
       // change to custom mapping
       cy.findByText("Use original value").click();
-      popover()
-        .findByText("Custom mapping")
-        .click();
+      popover().findByText("Custom mapping").click();
 
       // update text for nulls from "null" to "nothin"
-      cy.get("input[value=null]")
-        .clear()
-        .type("nothin");
+      cy.get("input[value=null]").clear().type("nothin");
       cy.findByText("Save").click();
       cy.findByText("Saved!");
 

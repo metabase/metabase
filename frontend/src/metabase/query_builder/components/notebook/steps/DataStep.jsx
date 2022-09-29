@@ -54,10 +54,7 @@ function DataStep({ color, query, updateQuery }) {
           selectedDatabaseId={query.databaseId()}
           selectedTableId={query.tableId()}
           setSourceTableFn={tableId =>
-            query
-              .setTableId(tableId)
-              .setDefaultQuery()
-              .update(updateQuery)
+            updateQuery(query.setTableId(tableId).setDefaultQuery())
           }
           isInitiallyOpen={!query.tableId()}
           triggerElement={
@@ -83,12 +80,12 @@ const DataFieldsPicker = ({ query, updateQuery, ...props }) => {
   const fields = query.fields();
 
   const handleSelectNone = () => {
-    query
-      .setFields([
+    updateQuery(
+      query.setFields([
         dimensions[0].mbql(),
         ...expressionDimensions.map(d => d.mbql()),
-      ])
-      .update(updateQuery);
+      ]),
+    );
   };
 
   const handleToggleDimension = dimension => {
@@ -102,7 +99,7 @@ const DataFieldsPicker = ({ query, updateQuery, ...props }) => {
       })
       .map(d => d.mbql());
 
-    query.setFields(newFields).update(updateQuery);
+    updateQuery(query.setFields(newFields));
   };
 
   const hasOneColumnSelected = fields.filter(isLocalField).length === 1;
@@ -113,7 +110,7 @@ const DataFieldsPicker = ({ query, updateQuery, ...props }) => {
       dimensions={dimensions}
       selectedDimensions={selectedDimensions}
       isAll={!fields || fields.length === 0}
-      onSelectAll={() => query.clearFields().update(updateQuery)}
+      onSelectAll={() => updateQuery(query.clearFields())}
       onSelectNone={handleSelectNone}
       disableSelected={hasOneColumnSelected}
       onToggleDimension={handleToggleDimension}

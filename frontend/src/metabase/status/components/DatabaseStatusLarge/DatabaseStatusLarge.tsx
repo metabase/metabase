@@ -1,12 +1,14 @@
+import React from "react";
+import { t } from "ttag";
 import {
   isSyncAborted,
   isSyncCompleted,
   isSyncInProgress,
 } from "metabase/lib/syncing";
-import React from "react";
-import { t } from "ttag";
 import { Database } from "metabase-types/api";
+import Ellipsified from "metabase/core/components/Ellipsified";
 import Icon from "../../../components/Icon";
+import useStatusVisibility from "../../hooks/use-status-visibility";
 import {
   StatusCardRoot,
   StatusCardIcon,
@@ -21,8 +23,6 @@ import {
   StatusToggle,
   StatusBody,
 } from "./DatabaseStatusLarge.styled";
-import Ellipsified from "metabase/components/Ellipsified";
-import useStatusVisibility from "../../hooks/use-status-visibility";
 
 export interface DatabaseStatusLargeProps {
   databases: Database[];

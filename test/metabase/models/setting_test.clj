@@ -2,6 +2,7 @@
   (:require [clojure.test :refer :all]
             [environ.core :as env]
             [medley.core :as m]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.models.setting :as setting :refer [defsetting Setting]]
             [metabase.models.setting.cache :as setting.cache]
             [metabase.test :as mt]
@@ -42,7 +43,7 @@
   :visibility :internal
   :type :csv)
 
-(defsetting test-csv-setting-with-default
+(defsetting ^:private test-csv-setting-with-default
   "Test setting - this only shows up in dev (6)"
   :visibility :internal
   :type :csv
@@ -52,16 +53,30 @@
   "Test setting - this only shows up in dev (7)"
   :visibility :internal)
 
-(setting/defsetting toucan-name
+(defsetting toucan-name
   "Name for the Metabase Toucan mascot."
   :visibility :internal)
 
-(setting/defsetting test-setting-calculated-getter
+(defsetting test-setting-calculated-getter
   "Test setting - this only shows up in dev (8)"
   :type       :boolean
   :setter     :none
-  :getter     (fn []
-                true))
+  :getter     (constantly true))
+
+(def ^:private ^:dynamic *enabled?* false)
+
+(defsetting test-enabled-setting-no-default
+  "Setting to test the `:enabled?` property of settings. This only shows up in dev."
+  :visibility :internal
+  :type       :string
+  :enabled?   (fn [] *enabled?*))
+
+(defsetting test-enabled-setting-default
+  "Setting to test the `:enabled?` property of settings. This only shows up in dev."
+  :visibility :internal
+  :type       :string
+  :default    "setting-default"
+  :enabled?   (fn [] *enabled?*))
 
 ;; ## HELPER FUNCTIONS
 
@@ -73,7 +88,7 @@
 (defn setting-exists-in-db?
   "Returns a boolean indicating whether a setting has a value stored in the application DB."
   [setting-name]
-  (boolean (Setting :key (name setting-name))))
+  (boolean (db/select-one Setting :key (name setting-name))))
 
 (defn- test-assert-setting-has-tag [setting-var expected-tag]
   (let [{:keys [tag arglists]} (meta setting-var)]
@@ -85,24 +100,32 @@
           (is (= expected-tag
                  (:tag (meta arglist)))))))))
 
+(deftest preserve-metadata-test
+  (testing "defsetting should preserve metadata on the setting symbol in the getter/setter functions"
+    (doseq [varr [#'test-csv-setting-with-default #'test-csv-setting-with-default!]]
+      (testing (format "\nvar = %s" (pr-str varr))
+        (is (:private (meta varr)))))))
+
 (deftest string-tag-test
   (testing "String vars defined by `defsetting` should have correct `:tag` metadata\n"
-    (test-assert-setting-has-tag #'test-setting-1 'java.lang.String)))
+    (doseq [varr [#'test-setting-1 #'test-setting-1!]]
+      (testing (format "\nVar = %s" (pr-str varr))
+        (test-assert-setting-has-tag varr 'java.lang.String)))))
 
 (deftest defsetting-getter-fn-test
   (testing "Test defsetting getter fn. Should return the value from env var MB_TEST_ENV_SETTING"
-    (test-env-setting nil)
+    (test-env-setting! nil)
     (is (= "ABCDEFG"
            (test-env-setting))))
 
   (testing "Test getting a default value -- if you clear the value of a Setting it should revert to returning the default value"
-    (test-setting-2 nil)
+    (test-setting-2! nil)
     (is (= "[Default Value]"
            (test-setting-2)))))
 
 (deftest user-facing-value-test
   (testing "`user-facing-value` should return `nil` for a Setting that is using the default value"
-    (test-setting-2 nil)
+    (test-setting-2! nil)
     (is (= nil
            (setting/user-facing-value :test-setting-2))))
   (testing "`user-facing-value` should work correctly for calculated Settings (no underlying value)"
@@ -111,8 +134,14 @@
     (is (= true
            (setting/user-facing-value :test-setting-calculated-getter)))))
 
+(deftest do-not-define-setter-function-for-setter-none-test
+  (testing "Settings with `:setter` `:none` should not have a setter function defined"
+    (testing "Sanity check: getter should be defined"
+      (is (some? (resolve `test-setting-calculated-getter))))
+    (is (not (resolve `test-setting-calculated-getter!)))))
+
 (deftest defsetting-setter-fn-test
-  (test-setting-2 "FANCY NEW VALUE <3")
+  (test-setting-2! "FANCY NEW VALUE <3")
   (is (= "FANCY NEW VALUE <3"
          (test-setting-2)))
   (is (= "FANCY NEW VALUE <3"
@@ -159,12 +188,12 @@
 (deftest delete-test
   (testing "delete"
     (testing "w/o default value"
-      (test-setting-1 "COOL")
+      (test-setting-1! "COOL")
       (is (= "COOL"
              (test-setting-1)))
       (is (= true
              (setting-exists-in-db? :test-setting-1)))
-      (test-setting-1 nil)
+      (test-setting-1! nil)
       (is (= nil
              (test-setting-1)))
       (is (= nil
@@ -173,12 +202,12 @@
              (setting-exists-in-db? :test-setting-1))))
 
     (testing "w/ default value"
-      (test-setting-2 "COOL")
+      (test-setting-2! "COOL")
       (is (= "COOL"
              (test-setting-2)))
       (is (= true
              (setting-exists-in-db? :test-setting-2)))
-      (test-setting-2 nil)
+      (test-setting-2! nil)
       (is (= "[Default Value]"
              (test-setting-2))
           "default value should get returned if none is set")
@@ -237,8 +266,8 @@
 
 (deftest admin-writable-settings-test
   (testing `setting/admin-writable-settings
-    (test-setting-1 nil)
-    (test-setting-2 "TOUCANS")
+    (test-setting-1! nil)
+    (test-setting-2! "TOUCANS")
     (is (= {:key            :test-setting-2
             :value          "TOUCANS"
             :description    "Test setting - this only shows up in dev (2)"
@@ -251,8 +280,8 @@
                  (setting/admin-writable-settings))))
 
     (testing "with a custom getter"
-      (test-setting-1 nil)
-      (test-setting-2 "TOUCANS")
+      (test-setting-1! nil)
+      (test-setting-2! "TOUCANS")
       (is (= {:key            :test-setting-2
               :value          7
               :description    "Test setting - this only shows up in dev (2)"
@@ -266,8 +295,8 @@
 
     ;; TODO -- probably don't need both this test and the "TOUCANS" test above, we should combine them
     (testing "test settings"
-      (test-setting-1 nil)
-      (test-setting-2 "S2")
+      (test-setting-1! nil)
+      (test-setting-2! "S2")
       (is (= [{:key            :test-setting-1
                :value          nil
                :is_env_setting false
@@ -289,7 +318,7 @@
 
 (deftest validate-description-test
   (testing "Validate setting description with i18n string"
-    (mt/with-mock-i18n-bundles {"zz" {"Test setting - with i18n" "TEST SETTING - WITH I18N"}}
+    (mt/with-mock-i18n-bundles {"zz" {:messages {"Test setting - with i18n" "TEST SETTING - WITH I18N"}}}
       (letfn [(description []
                 (some (fn [{:keys [key description]}]
                         (when (= :test-i18n-setting key)
@@ -330,7 +359,7 @@
       (is (thrown-with-msg?
            Exception
            #"Invalid value for string: must be either \"true\" or \"false\" \(case-insensitive\)"
-           (test-boolean-setting "X"))))
+           (test-boolean-setting! "X"))))
 
     (testing "user-facing info should just return `nil` instead of failing entirely"
       (is (= {:value          nil
@@ -342,13 +371,13 @@
 (deftest set-boolean-setting-test
   (testing "should be able to set value with a string..."
     (is (= "false"
-           (test-boolean-setting "FALSE")))
+           (test-boolean-setting! "FALSE")))
     (is (= false
            (test-boolean-setting)))
 
     (testing "... or a boolean"
       (is (= "false"
-             (test-boolean-setting false)))
+             (test-boolean-setting! false)))
       (is (= false
              (test-boolean-setting))))))
 
@@ -357,7 +386,7 @@
 
 (deftest set-json-setting-test
   (is (= "{\"a\":100,\"b\":200}"
-         (test-json-setting {:a 100, :b 200})))
+         (test-json-setting! {:a 100, :b 200})))
   (is (= {:a 100, :b 200}
          (test-json-setting))))
 
@@ -378,7 +407,7 @@
             (fetch-csv-setting-value "A,B,\"C1,C2\",ddd")))))
 
 (defn- set-and-fetch-csv-setting-value! [v]
-  (test-csv-setting v)
+  (test-csv-setting! v)
   {:db-value     (db/select-one-field :value setting/Setting :key "test-csv-setting")
    :parsed-value (test-csv-setting)})
 
@@ -404,13 +433,13 @@
            (set-and-fetch-csv-setting-value! nil))))
 
   (testing "default values for CSV settings should work"
-    (test-csv-setting-with-default nil)
+    (test-csv-setting-with-default! nil)
     (is (= ["A" "B" "C"]
            (test-csv-setting-with-default)))))
 
 (deftest csv-setting-user-facing-value-test
   (testing "`user-facing-value` should be `nil` for CSV Settings with default values"
-    (test-csv-setting-with-default nil)
+    (test-csv-setting-with-default! nil)
     (is (= nil
            (setting/user-facing-value :test-csv-setting-with-default)))))
 
@@ -426,7 +455,7 @@
 (deftest encrypted-settings-test
   (testing "If encryption is *enabled*, make sure Settings get saved as encrypted!"
     (encryption-test/with-secret-key "ABCDEFGH12345678"
-      (toucan-name "Sad Can")
+      (toucan-name! "Sad Can")
       (is (u/base64-string? (actual-value-in-db :toucan-name)))
 
       (testing "make sure it can be decrypted as well..."
@@ -435,16 +464,15 @@
 
     (testing "But if encryption is not enabled, of course Settings shouldn't get saved as encrypted."
       (encryption-test/with-secret-key nil
-        (toucan-name "Sad Can")
+        (toucan-name! "Sad Can")
         (is (= "Sad Can"
-               (mt/suppress-output
-                 (actual-value-in-db :toucan-name))))))))
+               (actual-value-in-db :toucan-name)))))))
 
 (deftest previously-encrypted-settings-test
   (testing "Make sure settings that were encrypted don't cause `user-facing-info` to blow up if encyrption key changed"
     (mt/discard-setting-changes [test-json-setting]
       (encryption-test/with-secret-key "0B9cD6++AME+A7/oR7Y2xvPRHX3cHA2z7w+LbObd/9Y="
-        (test-json-setting {:abc 123})
+        (test-json-setting! {:abc 123})
         (is (not= "{\"abc\":123}"
                   (actual-value-in-db :test-json-setting))))
       (testing (str "If fetching the Setting fails (e.g. because key changed) `user-facing-info` should return `nil` "
@@ -470,7 +498,7 @@
   (test-assert-setting-has-tag #'test-timestamp-setting 'java.time.temporal.Temporal)
 
   (testing "make sure we can set & fetch the value and that it gets serialized/deserialized correctly"
-    (test-timestamp-setting #t "2018-07-11T09:32:00.000Z")
+    (test-timestamp-setting! #t "2018-07-11T09:32:00.000Z")
     (is (= #t "2018-07-11T09:32:00.000Z"
            (test-timestamp-setting)))))
 
@@ -495,12 +523,12 @@
 (deftest uncached-settings-test
   (encryption-test/with-secret-key nil
     (testing "make sure uncached setting still saves to the DB"
-      (uncached-setting "ABCDEF")
+      (uncached-setting! "ABCDEF")
       (is (= "ABCDEF"
              (actual-value-in-db "uncached-setting"))))
 
     (testing "make sure that fetching the Setting always fetches the latest value from the DB"
-      (uncached-setting "ABCDEF")
+      (uncached-setting! "ABCDEF")
       (db/update-where! Setting {:key "uncached-setting"}
                         :value "123456")
       (is (= "123456"
@@ -508,7 +536,7 @@
 
     (testing "make sure that updating the setting doesn't update the last-updated timestamp in the cache $$"
       (clear-settings-last-updated-value-in-db!)
-      (uncached-setting "abcdef")
+      (uncached-setting! "abcdef")
       (is (= nil
              (settings-last-updated-value-in-db))))))
 
@@ -521,13 +549,13 @@
 
 (deftest sensitive-settings-test
   (testing "`user-facing-value` should obfuscate sensitive settings"
-    (test-sensitive-setting "ABC123")
+    (test-sensitive-setting! "ABC123")
     (is (=  "**********23"
             (setting/user-facing-value "test-sensitive-setting"))))
 
   (testing "Attempting to set a sensitive setting to an obfuscated value should be ignored -- it was probably done accidentally"
-    (test-sensitive-setting "123456")
-    (test-sensitive-setting "**********56")
+    (test-sensitive-setting! "123456")
+    (test-sensitive-setting! "**********56")
     (is (= "123456"
            (test-sensitive-setting)))))
 
@@ -543,7 +571,7 @@
     ;; now set a value for the `toucan-name` setting the wrong way
     (db/insert! setting/Setting {:key "toucan-name", :value "Reggae"})
     ;; ok, now try to set the Setting the correct way
-    (toucan-name "Banana Beak")
+    (toucan-name! "Banana Beak")
     ;; ok, make sure the setting was set
     (is (= "Banana Beak"
            (toucan-name)))))
@@ -680,16 +708,19 @@
   :type       :integer) ; `:never` should be the default
 
 (deftest database-local-settings-test
-  (doseq [[database-local-type {:keys [setting-name setting-fn returns]}]
-          {:only    {:setting-name :test-database-local-only-setting
-                     :setting-fn   test-database-local-only-setting
-                     :returns      [:database-local]}
-           :allowed {:setting-name :test-database-local-allowed-setting
-                     :setting-fn   test-database-local-allowed-setting
-                     :returns      [:database-local :site-wide]}
-           :never   {:setting-name :test-database-local-never-setting
-                     :setting-fn   test-database-local-never-setting
-                     :returns      [:site-wide]}}]
+  (doseq [[database-local-type {:keys [setting-name setting-getter-fn setting-setter-fn returns]}]
+          {:only    {:setting-name      :test-database-local-only-setting
+                     :setting-getter-fn test-database-local-only-setting
+                     :setting-setter-fn test-database-local-only-setting!
+                     :returns           [:database-local]}
+           :allowed {:setting-name      :test-database-local-allowed-setting
+                     :setting-getter-fn test-database-local-allowed-setting
+                     :setting-setter-fn test-database-local-allowed-setting!
+                     :returns           [:database-local :site-wide]}
+           :never   {:setting-name      :test-database-local-never-setting
+                     :setting-getter-fn test-database-local-never-setting
+                     :setting-setter-fn test-database-local-never-setting!
+                     :returns           [:site-wide]}}]
     (testing (format "A Setting with :database-local = %s" database-local-type)
       (doseq [site-wide-value         [1 nil]
               database-local-value    [2 nil]
@@ -715,7 +746,7 @@
         ;; clear out Setting if it was already set for some reason (except for `:only` where this is explicitly
         ;; disallowed)
         (when-not (= database-local-type :only)
-          (setting-fn nil))
+          (setting-setter-fn nil))
         ;; now set the Site-wide value
         (testing (format "\nSite-wide value = %s\nDatabase-local value = %s"
                          (pr-str site-wide-value) (pr-str database-local-value))
@@ -732,7 +763,7 @@
                                                                 returns)]
                  (testing (format "\nShould return %s value %s" (pr-str expected-value-type) (pr-str expected-value))
                    (is (= expected-value
-                          (setting-fn)))))))))))))
+                          (setting-getter-fn)))))))))))))
 
 (defsetting ^:private test-boolean-database-local-setting
   "test Setting"
@@ -743,11 +774,11 @@
 (deftest boolean-database-local-settings-test
   (testing "Boolean Database-local Settings\n"
     (testing "Site-wide value is `true`"
-      (test-boolean-database-local-setting true)
+      (test-boolean-database-local-setting! true)
       (is (= true
              (test-boolean-database-local-setting))))
     (testing "Site-wide value is `false`"
-      (test-boolean-database-local-setting false)
+      (test-boolean-database-local-setting! false)
       (is (= false
              (test-boolean-database-local-setting)))
       (testing "Database-local value is `true`"
@@ -770,7 +801,7 @@
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Site-wide values are not allowed for Setting :test-database-local-only-setting"
-         (test-database-local-only-setting 2))))
+         (test-database-local-only-setting! 2))))
 
   (testing "Default values should be allowed for Database-local-only Settings"
     (is (= "DEFAULT"
@@ -807,11 +838,11 @@
 
 (deftest integer-setting-test
   (testing "Should be able to set integer setting with a string"
-    (test-integer-setting "100")
+    (test-integer-setting! "100")
     (is (= 100
            (test-integer-setting)))
     (testing "should be able to set to a negative number (thanks Howon for spotting this)"
-      (test-integer-setting "-2")
+      (test-integer-setting! "-2")
       (is (= -2
              (test-integer-setting))))))
 
@@ -841,32 +872,32 @@
 (deftest user-local-settings-test
   (testing "Reading and writing a user-local-only setting in the context of a user uses the user-local value"
     (mt/with-current-user (mt/user->id :rasta)
-      (test-user-local-only-setting "ABC")
+      (test-user-local-only-setting! "ABC")
       (is (= "ABC" (test-user-local-only-setting))))
     (mt/with-current-user (mt/user->id :crowberto)
-      (test-user-local-only-setting "DEF")
+      (test-user-local-only-setting! "DEF")
       (is (= "DEF" (test-user-local-only-setting))))
     (mt/with-current-user (mt/user->id :rasta)
       (is (= "ABC" (test-user-local-only-setting)))))
 
   (testing "A user-local-only setting cannot have a site-wide value"
-    (is (thrown-with-msg? Throwable #"Site-wide values are not allowed" (test-user-local-only-setting "ABC"))))
+    (is (thrown-with-msg? Throwable #"Site-wide values are not allowed" (test-user-local-only-setting! "ABC"))))
 
   (testing "Reading and writing a user-local-allowed setting in the context of a user uses the user-local value"
     ;; TODO: mt/with-temporary-setting-values only affects site-wide value, we should figure out whether it should also
     ;; affect user-local settings.
     (mt/with-temporary-setting-values [test-user-local-allowed-setting nil]
       (mt/with-current-user (mt/user->id :rasta)
-        (test-user-local-allowed-setting "ABC")
+        (test-user-local-allowed-setting! "ABC")
         (is (= "ABC" (test-user-local-allowed-setting))))
       (mt/with-current-user (mt/user->id :crowberto)
-        (test-user-local-allowed-setting "DEF")
+        (test-user-local-allowed-setting! "DEF")
         (is (= "DEF" (test-user-local-allowed-setting))))
       (mt/with-current-user (mt/user->id :rasta)
         (is (= "ABC" (test-user-local-allowed-setting))))
       ;; Calling the setter when not in the context of a user should set the site-wide value
       (is (nil? (test-user-local-allowed-setting)))
-      (test-user-local-allowed-setting "GHI")
+      (test-user-local-allowed-setting! "GHI")
       (mt/with-current-user (mt/user->id :crowberto)
         (is (= "DEF" (test-user-local-allowed-setting))))
       (mt/with-current-user (mt/user->id :rasta)
@@ -874,10 +905,10 @@
 
   (testing "Reading and writing a user-local-never setting in the context of a user uses the site-wide value"
     (mt/with-current-user (mt/user->id :rasta)
-      (test-user-local-never-setting "ABC")
+      (test-user-local-never-setting! "ABC")
       (is (= "ABC" (test-user-local-never-setting))))
     (mt/with-current-user (mt/user->id :crowberto)
-      (test-user-local-never-setting "DEF")
+      (test-user-local-never-setting! "DEF")
       (is (= "DEF" (test-user-local-never-setting))))
     (mt/with-current-user (mt/user->id :rasta)
       (is (= "DEF" (test-user-local-never-setting))))
@@ -891,3 +922,30 @@
            (deferred-tru "test Setting")
            :user-local     :allowed
            :database-local :allowed)))))
+
+(deftest identity-hash-test
+  (testing "Settings are hashed based on the key"
+    (mt/with-temporary-setting-values [test-setting-1 "123"
+                                       test-setting-2 "123"]
+      (is (= "5f7f150c"
+             (serdes.hash/raw-hash ["test-setting-1"])
+             (serdes.hash/identity-hash (db/select-one Setting :key "test-setting-1")))))))
+
+(deftest enabled?-test
+  (testing "Settings can be disabled"
+    (testing "With no default returns nil"
+      (is (nil? (test-enabled-setting-no-default)))
+      (testing "Updating the value succeeds but still get nil because no default"
+        (test-enabled-setting-default! "a value")
+        (is (nil? (test-enabled-setting-no-default)))))
+    (testing "Returns default value"
+      (is (= "setting-default" (test-enabled-setting-default)))
+      (testing "Updating the value succeeds but still get default"
+        (test-enabled-setting-default! "non-default-value")
+        (is (= "setting-default" (test-enabled-setting-default))))))
+  (testing "When enabled get the value"
+    (test-enabled-setting-default! "custom")
+    (test-enabled-setting-no-default! "custom")
+    (binding [*enabled?* true]
+      (is (= "custom" (test-enabled-setting-default)))
+      (is (= "custom" (test-enabled-setting-no-default))))))

@@ -4,9 +4,9 @@ import { connect } from "react-redux";
 import { createSelector } from "reselect";
 import _ from "underscore";
 
-import entityType from "./EntityType";
 import { createMemoizedSelector } from "metabase/lib/redux";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import entityType from "./EntityType";
 
 // props that shouldn't be passed to children in order to properly stack
 const CONSUMED_PROPS = [
@@ -29,30 +29,7 @@ const getMemoizedEntityQuery = createMemoizedSelector(
   entityQuery => entityQuery,
 );
 
-@entityType()
-@connect(
-  (
-    state,
-    { entityDef, entityId, entityQuery, selectorName = "getObject", ...props },
-  ) => {
-    if (typeof entityId === "function") {
-      entityId = entityId(state, props);
-    }
-    if (typeof entityQuery === "function") {
-      entityQuery = entityQuery(state, props);
-    }
-
-    return {
-      entityId,
-      entityQuery: getMemoizedEntityQuery(state, entityQuery),
-      object: entityDef.selectors[selectorName](state, { entityId }),
-      fetched: entityDef.selectors.getFetched(state, { entityId }),
-      loading: entityDef.selectors.getLoading(state, { entityId }),
-      error: entityDef.selectors.getError(state, { entityId }),
-    };
-  },
-)
-export default class EntityObjectLoader extends React.Component {
+class EntityObjectLoaderInner extends React.Component {
   static defaultProps = {
     loadingAndErrorWrapper: true,
     LoadingAndErrorWrapper: LoadingAndErrorWrapper,
@@ -97,19 +74,17 @@ export default class EntityObjectLoader extends React.Component {
     ) {
       nextProps.fetch(
         { id: nextProps.entityId, ...nextProps.entityQuery },
-        { reload: nextProps.reload, properties: nextProps.properties },
+        {
+          reload: nextProps.reload,
+          properties: nextProps.properties,
+          noEvent: !nextProps.dispatchApiErrorEvent,
+        },
       );
     }
   }
   renderChildren = () => {
-    let {
-      children,
-      entityDef,
-      entityAlias,
-      wrapped,
-      object,
-      ...props
-    } = this.props; // eslint-disable-line no-unused-vars
+    let { children, entityDef, entityAlias, wrapped, object, ...props } =
+      this.props; // eslint-disable-line no-unused-vars
 
     if (wrapped) {
       object = this._getWrappedObject(this.props);
@@ -162,11 +137,47 @@ export default class EntityObjectLoader extends React.Component {
   };
 }
 
-export const entityObjectLoader = eolProps =>
+const EntityObjectLoader = _.compose(
+  entityType(),
+  connect(
+    (
+      state,
+      {
+        entityDef,
+        entityId,
+        entityQuery,
+        selectorName = "getObject",
+        ...props
+      },
+    ) => {
+      if (typeof entityId === "function") {
+        entityId = entityId(state, props);
+      }
+      if (typeof entityQuery === "function") {
+        entityQuery = entityQuery(state, props);
+      }
+
+      return {
+        entityId,
+        entityQuery: getMemoizedEntityQuery(state, entityQuery),
+        object: entityDef.selectors[selectorName](state, { entityId }),
+        fetched: entityDef.selectors.getFetched(state, { entityId }),
+        loading: entityDef.selectors.getLoading(state, { entityId }),
+        error: entityDef.selectors.getError(state, { entityId }),
+      };
+    },
+  ),
+)(EntityObjectLoaderInner);
+
+export default EntityObjectLoader;
+
+export const entityObjectLoader =
+  eolProps =>
   // eslint-disable-line react/display-name
   ComposedComponent =>
-    // eslint-disable-next-line react/display-name
-    props => (
+  // eslint-disable-next-line react/display-name
+  props =>
+    (
       <EntityObjectLoader {...props} {...eolProps}>
         {childProps => (
           <ComposedComponent

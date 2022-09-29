@@ -1,6 +1,7 @@
 (ns metabase.api.common
   "Dynamic variables and utility functions/macros for writing API functions."
-  (:require [clojure.string :as str]
+  (:require [clojure.spec.alpha :as s]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [compojure.core :as compojure]
             [honeysql.types :as htypes]
@@ -12,7 +13,7 @@
             [metabase.util :as u]
             [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
             [metabase.util.schema :as su]
-            [schema.core :as s]
+            [schema.core :as schema]
             [toucan.db :as db]))
 
 (declare check-403 check-404)
@@ -228,32 +229,38 @@
 
 ;;; --------------------------------------- DEFENDPOINT AND RELATED FUNCTIONS ----------------------------------------
 
-(defn- parse-defendpoint-args [[method route & more]]
-  (let [fn-name                (route-fn-name method route)
-        route                  (add-route-param-regexes route)
-        [docstr [args & more]] (u/optional string? more)
-        [arg->schema body]     (u/optional (every-pred map? #(every? symbol? (keys %))) more)]
-    (when-not docstr
+(s/def ::defendpoint-args
+  (s/cat
+   :method      symbol?
+   :route       (some-fn string? sequential?)
+   :docstr      (s/? string?)
+   :args        vector?
+   :arg->schema (s/? (s/map-of symbol? any?))
+   :body        (s/* any?)))
+
+(defn- parse-defendpoint-args [args]
+  (let [parsed (s/conform ::defendpoint-args args)]
+    (when (= parsed ::s/invalid)
+      (throw (ex-info (str "Invalid defendpoint args: " (s/explain-str ::defendpoint-args args))
+                      (s/explain-data ::defendpoint-args args))))
+    (let [{:keys [method route docstr args arg->schema body]} parsed
+          fn-name                                             (route-fn-name method route)
+          route                                               (add-route-param-regexes route)
+          ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
+          ;; their API error messages
+          docstr                                              (route-dox method route docstr args (m/map-vals eval arg->schema) body)]
       ;; Don't i18n this, it's dev-facing only
-      (log/warn (u/format-color 'red "Warning: endpoint %s/%s does not have a docstring. Go add one."
-                  (ns-name *ns*) fn-name)))
-    {:method      method
-     :route       route
-     :fn-name     fn-name
-     ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
-     ;; their API error messages
-     :docstr      (route-dox method route docstr args (m/map-vals eval arg->schema) body)
-     :args        args
-     :arg->schema arg->schema
-     :body        body}))
+      (when-not docstr
+        (log/warn (u/format-color 'red "Warning: endpoint %s/%s does not have a docstring. Go add one."
+                                  (ns-name *ns*) fn-name)))
+      (assoc parsed :fn-name fn-name, :route route, :docstr docstr))))
 
 (defmacro defendpoint*
-  "Impl macro for `defendpoint`; don't use this directly."
+  "Impl macro for [[defendpoint]]; don't use this directly."
   [{:keys [method route fn-name docstr args body]}]
   {:pre [(or (string? route) (vector? route))]}
   `(def ~(vary-meta fn-name
                     assoc
-
                     :doc          docstr
                     :is-endpoint? true)
      (~(symbol "compojure.core" (name method)) ~route ~args
@@ -324,8 +331,10 @@
   {:style/indent 0}
   [& middleware]
   (let [api-route-fns (namespace->api-route-fns *ns*)
-        routes        `(compojure/routes ~@api-route-fns)]
+        routes        `(compojure/routes ~@api-route-fns)
+        docstring     (str "Routes for " *ns*)]
     `(def ~(vary-meta 'routes assoc :doc (api-routes-docstring *ns* api-route-fns middleware))
+       ~docstring
        ~(if (seq middleware)
           `(-> ~routes ~@middleware)
           routes))))
@@ -411,23 +420,30 @@
     (check (not (:archived object))
       [404 {:message (tru "The object has been archived."), :error_code "archived"}])))
 
+(defn check-is-readonly
+  "Check that the object has `:is_write` = false, or throw a `405`. Returns `object` as-is if check passes."
+  [object]
+  (u/prog1 object
+    (check (not (:is_write object))
+      [405 {:message (tru "Write queries are only executable via the Actions API."), :error_code "is_not_readonly"}])))
+
 (defn check-valid-page-params
   "Check on paginated stuff that, if the limit exists, the offset exists, and vice versa."
   [limit offset]
   (check (not (and limit (not offset))) [400 (tru "When including a limit, an offset must also be included.")])
   (check (not (and offset (not limit))) [400 (tru "When including an offset, a limit must also be included.")]))
 
-(s/defn column-will-change? :- s/Bool
+(schema/defn column-will-change? :- schema/Bool
   "Helper for PATCH-style operations to see if a column is set to change when `object-updates` (i.e., the input to the
   endpoint) is applied.
 
     ;; assuming we have a Collection 10, that is not currently archived...
-    (api/column-will-change? :archived (Collection 10) {:archived true}) ; -> true, because value will change
+    (api/column-will-change? :archived (db/select-one Collection :id 10) {:archived true}) ; -> true, because value will change
 
-    (api/column-will-change? :archived (Collection 10) {:archived false}) ; -> false, because value did not change
+    (api/column-will-change? :archived (db/select-one Collection :id 10) {:archived false}) ; -> false, because value did not change
 
-    (api/column-will-change? :archived (Collection 10) {}) ; -> false; value not specified in updates (request body)"
-  [k :- s/Keyword, object-before-updates :- su/Map, object-updates :- su/Map]
+    (api/column-will-change? :archived (db/select-one Collection :id 10) {}) ; -> false; value not specified in updates (request body)"
+  [k :- schema/Keyword, object-before-updates :- su/Map, object-updates :- su/Map]
   (boolean
    (and (contains? object-updates k)
         (not= (get object-before-updates k)
@@ -435,12 +451,12 @@
 
 ;;; ------------------------------------------ COLLECTION POSITION HELPER FNS ----------------------------------------
 
-(s/defn reconcile-position-for-collection!
+(schema/defn reconcile-position-for-collection!
   "Compare `old-position` and `new-position` to determine what needs to be updated based on the position change. Used
   for fixing card/dashboard/pulse changes that impact other instances in the collection"
-  [collection-id :- (s/maybe su/IntGreaterThanZero)
-   old-position :- (s/maybe su/IntGreaterThanZero)
-   new-position :- (s/maybe su/IntGreaterThanZero)]
+  [collection-id :- (schema/maybe su/IntGreaterThanZero)
+   old-position  :- (schema/maybe su/IntGreaterThanZero)
+   new-position  :- (schema/maybe su/IntGreaterThanZero)]
   (let [update-fn! (fn [plus-or-minus position-update-clause]
                      (doseq [model '[Card Dashboard Pulse]]
                        (db/update-where! model {:collection_id       collection-id
@@ -463,25 +479,25 @@
 
 (def ^:private ModelWithPosition
   "Intended to cover Cards/Dashboards/Pulses, it only asserts collection id and position, allowing extra keys"
-  {:collection_id       (s/maybe su/IntGreaterThanZero)
-   :collection_position (s/maybe su/IntGreaterThanZero)
-   s/Any                s/Any})
+  {:collection_id       (schema/maybe su/IntGreaterThanZero)
+   :collection_position (schema/maybe su/IntGreaterThanZero)
+   schema/Any           schema/Any})
 
 (def ^:private ModelWithOptionalPosition
   "Intended to cover Cards/Dashboards/Pulses updates. Collection id and position are optional, if they are not
   present, they didn't change. If they are present, they might have changed and we need to compare."
-  {(s/optional-key :collection_id)       (s/maybe su/IntGreaterThanZero)
-   (s/optional-key :collection_position) (s/maybe su/IntGreaterThanZero)
-   s/Any                                 s/Any})
+  {(schema/optional-key :collection_id)       (schema/maybe su/IntGreaterThanZero)
+   (schema/optional-key :collection_position) (schema/maybe su/IntGreaterThanZero)
+   schema/Any                                 schema/Any})
 
-(s/defn maybe-reconcile-collection-position!
+(schema/defn maybe-reconcile-collection-position!
   "Generic function for working on cards/dashboards/pulses. Checks the before and after changes to see if there is any
   impact to the collection position of that model instance. If so, executes updates to fix the collection position
   that goes with the change. The 2-arg version of this function is used for a new card/dashboard/pulse (i.e. not
   updating an existing instance, but creating a new one)."
   ([new-model-data :- ModelWithPosition]
    (maybe-reconcile-collection-position! nil new-model-data))
-  ([{old-collection-id :collection_id, old-position :collection_position, :as _before-update} :- (s/maybe ModelWithPosition)
+  ([{old-collection-id :collection_id, old-position :collection_position, :as _before-update} :- (schema/maybe ModelWithPosition)
     {new-collection-id :collection_id, new-position :collection_position, :as model-updates} :- ModelWithOptionalPosition]
    (let [updated-collection? (and (contains? model-updates :collection_id)
                                   (not= old-collection-id new-collection-id))

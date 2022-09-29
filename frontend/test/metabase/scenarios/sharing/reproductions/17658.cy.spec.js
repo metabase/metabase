@@ -1,6 +1,15 @@
-import { restore, setupSMTP, visitDashboard } from "__support__/e2e/cypress";
+import {
+  restore,
+  setupSMTP,
+  visitDashboard,
+  getFullName,
+} from "__support__/e2e/helpers";
 
-describe("issue 17658", () => {
+import { USERS } from "__support__/e2e/cypress_data";
+
+const { admin } = USERS;
+
+describe("issue 17658", { tags: "@external" }, () => {
   beforeEach(() => {
     cy.intercept("PUT", "/api/pulse/*").as("deletePulse");
     restore();
@@ -33,6 +42,8 @@ describe("issue 17658", () => {
 });
 
 function moveDashboardToCollection(collectionName) {
+  const { first_name, last_name, email } = admin;
+
   cy.request("GET", "/api/collection/tree?tree=true").then(
     ({ body: collections }) => {
       const { id } = collections.find(
@@ -66,10 +77,10 @@ function moveDashboardToCollection(collectionName) {
             recipients: [
               {
                 id: 1,
-                email: "admin@metabase.test",
-                first_name: "Bobby",
-                last_name: "Tables",
-                common_name: "Bobby Tables",
+                email,
+                first_name,
+                last_name,
+                common_name: getFullName(admin),
               },
             ],
             details: {},

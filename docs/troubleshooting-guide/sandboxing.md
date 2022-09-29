@@ -1,3 +1,7 @@
+---
+title: Troubleshooting sandbox access to rows and columns
+---
+
 # Troubleshooting sandbox access to rows and columns
 
 [Sandboxing data][sandboxing-your-data] gives some people access to only a subset of the data. (The term comes from the practice of putting children in a sandbox to play safely.) To implement sandboxing, Metabase runs a query that filters rows and/or selects a subset of columns from a table based on [the person's permissions][permissions]; the person's query then runs on the initial query's result (i.e., it runs on the sandboxed data).
@@ -7,7 +11,7 @@ These articles will help you understand how sandboxing works:
 - [Data Sandboxing: setting row-level permissions][row-permissions].
 - [Advanced data sandboxing: limiting access to columns][column-permissions].
 
-If you can't see tables at all, check out [I can't see my tables][cant-see-tables].
+If you have a different data access issue, see [related problems](#do-you-have-a-different-problem).
 
 ## People can't see **rows** in a table they _should_ be able to see
 
@@ -36,7 +40,7 @@ For the person in question, check to see which groups they belong to. Do any of 
 
 ### Is the question available via Signed Embedding or Public Sharing?
 
-**Root cause**: The question is public. [Public questions][public-sharing], even those that use [Signed Embedding][signed-embedding], can't be sandboxed. If someone doesn't have to log into Metabase to view the question, Metabase doesn't have user attributes or group information available for filtering the data, so all results will be shown.
+**Root cause**: The question is public. [Public questions][public-sharing], even those that use [Signed Embedding][signed-embedding], can't be sandboxed. If someone views the question without logging into Metabase, Metabase lacks user attributes or group information for filtering the data, so it will show all results.
 
 **Steps to take**:
 
@@ -120,7 +124,7 @@ Go to **Admin** > **Data model** and find the table. Check to make sure that the
 
 ### Is a field remapped to display info from a restricted table?
 
-**Root cause:** If a table which the person _does_ have sandboxed access has a field that uses remapping to display information from another table which the person does _not_ have sandboxed access to, they won't be able to see the table. For example, if you have remapped an ID field to display a product's name instead, but the person does not have access to the product table, they won't be able to see the column.
+**Root cause:** If a table which the person _does_ have sandboxed access has a field that uses remapping to display information from another table which the person lacks sandboxed access to, they won't be able to see the table. For example, if you have remapped an ID field to display a product's name instead, but the person lacks access to the product table, they won't be able to see the column.
 
 **Steps to take:**
 
@@ -154,18 +158,24 @@ Someone is supposed to be able to view some of the values in a table in their qu
 
 The administrator can [create a new group][groups] to capture precisely who's allowed access to what.
 
-[authenticating-with-saml]: ../enterprise-guide/authenticating-with-saml.html
-[locked-parameters]: /learn/embedding/embedding-charts-and-dashboards.html#hide-or-lock-parameters-to-restrict-what-data-is-shown
-[column-permissions]: /learn/permissions/data-sandboxing-column-permissions.html
-[data-model]: ../administration-guide/03-metadata-editing.html
-[data-permissions]: /learn/permissions/data-permissions.html
-[groups]: ../administration-guide/04-managing-users.html#groups
-[jwt-auth]: ../enterprise-guide/authenticating-with-jwt.html
-[permissions]: /learn/permissions/data-permissions.html
-[public-sharing]: ../administration-guide/12-public-links.html
-[row-permissions]: /learn/permissions/data-sandboxing-row-permissions.html
-[sandboxing-your-data]: ../enterprise-guide/data-sandboxes.html
-[signed-embedding]: /learn/embedding/embedding-charts-and-dashboards.html#enable-embedding-in-other-applications
-[cant-see-tables]: cant-see-tables.html
+## Do you have a different problem?
+
+- [I have a different permissions issue][troubleshooting-permissions].
+- [I can't see my tables][cant-see-tables].
+
+[authenticating-with-saml]: ../people-and-groups/authenticating-with-saml.md
+[cant-see-tables]: cant-see-tables.md
+[column-permissions]: https://www.metabase.com/learn/permissions/data-sandboxing-column-permissions
+[data-model]: ../data-modeling/metadata-editing.md
+[data-permissions]: https://www.metabase.com/learn/permissions/data-permissions
+[groups]: ../people-and-groups/managing.md#groups
+[jwt-auth]: ../people-and-groups/authenticating-with-jwt.md
+[locked-parameters]: https://www.metabase.com/learn/embedding/embedding-charts-and-dashboards.html#hide-or-lock-parameters-to-restrict-what-data-is-shown
+[permissions]: https://www.metabase.com/learn/permissions/data-permissions.html
+[public-sharing]: ../questions/sharing/public-links.md
+[row-permissions]: https://www.metabase.com/learn/permissions/data-sandboxing-row-permissions
+[sandboxing-your-data]: ../permissions/data-sandboxes.md
+[signed-embedding]: https://www.metabase.com/learn/embedding/embedding-charts-and-dashboards.html#enable-embedding-in-other-applications
 [sandbox-limitations]: ../enterprise-guide/data-sandboxes.html#current-limitations
-[unsupported-databases]: ../enterprise-guide/data-sandboxes.html#data-sandboxes-do-not-support-non-sql-databases
+[troubleshooting-permissions]: ./permissions.md
+[unsupported-databases]: ../permissions/data-sandboxes.md#data-sandboxes-do-not-support-non-sql-databases

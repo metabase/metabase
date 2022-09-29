@@ -3,35 +3,49 @@ import {
   popover,
   modal,
   describeEE,
-  describeOSS,
+  isOSS,
   assertPermissionTable,
   modifyPermission,
   selectSidebarItem,
   assertSidebarItems,
   isPermissionDisabled,
   visitQuestion,
-} from "__support__/e2e/cypress";
+  visitDashboard,
+} from "__support__/e2e/helpers";
+
+import { SAMPLE_DB_ID, USER_GROUPS } from "__support__/e2e/cypress_data";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+
+const { ORDERS_ID } = SAMPLE_DATABASE;
+
+const { ALL_USERS_GROUP, ADMIN_GROUP } = USER_GROUPS;
 
 const COLLECTION_ACCESS_PERMISSION_INDEX = 0;
 
 const DATA_ACCESS_PERMISSION_INDEX = 0;
 const NATIVE_QUERIES_PERMISSION_INDEX = 1;
 
-describeOSS("scenarios > admin > permissions", () => {
+describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
   beforeEach(() => {
+    cy.onlyOn(isOSS);
+
     restore();
     cy.signInAsAdmin();
   });
 
   it("shows hidden tables", () => {
-    cy.visit("/admin/datamodel/database/1");
-    cy.icon("eye_crossed_out")
-      .eq(0)
-      .click();
+    cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}`);
+    cy.icon("eye_crossed_out").eq(0).click();
 
-    cy.visit("admin/permissions/data/group/1/database/1");
+    cy.visit(
+      `admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}`,
+    );
 
     assertPermissionTable([
+      ["Accounts", "No self-service", "No"],
+      ["Analytic Events", "No self-service", "No"],
+      ["Feedback", "No self-service", "No"],
+      ["Invoices", "No self-service", "No"],
       ["Orders", "No self-service", "No"],
       ["People", "No self-service", "No"],
       ["Products", "No self-service", "No"],
@@ -41,13 +55,9 @@ describeOSS("scenarios > admin > permissions", () => {
 
   it("should display error on failed save", () => {
     // revoke some permissions
-    cy.visit("/admin/permissions/data/group/1");
-    cy.icon("eye")
-      .first()
-      .click();
-    cy.findAllByRole("option")
-      .contains("Unrestricted")
-      .click();
+    cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
+    cy.icon("eye").first().click();
+    cy.findAllByRole("option").contains("Unrestricted").click();
 
     // stub out the PUT and save
     cy.server();
@@ -84,9 +94,7 @@ describeOSS("scenarios > admin > permissions", () => {
       modal().should("not.exist");
 
       // Switching to data permissions page
-      cy.get("label")
-        .contains("Data")
-        .click();
+      cy.get("label").contains("Data").click();
 
       modal().within(() => {
         cy.findByText("Discard your unsaved changes?");
@@ -100,9 +108,7 @@ describeOSS("scenarios > admin > permissions", () => {
       cy.url().should("include", "/admin/permissions/collections/root");
 
       // Switching to data permissions page again
-      cy.get("label")
-        .contains("Data")
-        .click();
+      cy.get("label").contains("Data").click();
 
       modal().within(() => {
         cy.button("Discard changes").click();
@@ -216,17 +222,13 @@ describeOSS("scenarios > admin > permissions", () => {
       cy.findByText("You've made changes to permissions.");
 
       // Switching to databases focus should not show any warnings
-      cy.get("label")
-        .contains("Databases")
-        .click();
+      cy.get("label").contains("Databases").click();
 
       cy.url().should("include", "/admin/permissions/data/database");
       modal().should("not.exist");
 
       // Switching to collection permissions page
-      cy.get("label")
-        .contains("Collection")
-        .click();
+      cy.get("label").contains("Collection").click();
 
       modal().within(() => {
         cy.findByText("Discard your unsaved changes?");
@@ -240,9 +242,7 @@ describeOSS("scenarios > admin > permissions", () => {
       cy.url().should("include", "/admin/permissions/data/database");
 
       // Switching to collection permissions page again
-      cy.get("label")
-        .contains("Collection")
-        .click();
+      cy.get("label").contains("Collection").click();
 
       modal().within(() => {
         cy.button("Discard changes").click();
@@ -290,7 +290,10 @@ describeOSS("scenarios > admin > permissions", () => {
 
         selectSidebarItem("Administrators");
 
-        cy.url().should("include", "/admin/permissions/data/group/2");
+        cy.url().should(
+          "include",
+          `/admin/permissions/data/group/${ADMIN_GROUP}`,
+        );
 
         cy.findByText("Permissions for the Administrators group");
         cy.findByText("1 person");
@@ -301,6 +304,10 @@ describeOSS("scenarios > admin > permissions", () => {
         cy.findByTextEnsureVisible("Sample Database").click();
 
         assertPermissionTable([
+          ["Accounts", "Unrestricted", "Yes"],
+          ["Analytic Events", "Unrestricted", "Yes"],
+          ["Feedback", "Unrestricted", "Yes"],
+          ["Invoices", "Unrestricted", "Yes"],
           ["Orders", "Unrestricted", "Yes"],
           ["People", "Unrestricted", "Yes"],
           ["Products", "Unrestricted", "Yes"],
@@ -319,6 +326,10 @@ describeOSS("scenarios > admin > permissions", () => {
         cy.findByTextEnsureVisible("Sample Database").click();
 
         assertPermissionTable([
+          ["Accounts", "No self-service", "No"],
+          ["Analytic Events", "No self-service", "No"],
+          ["Feedback", "No self-service", "No"],
+          ["Invoices", "No self-service", "No"],
           ["Orders", "No self-service", "No"],
           ["People", "No self-service", "No"],
           ["Products", "No self-service", "No"],
@@ -337,6 +348,10 @@ describeOSS("scenarios > admin > permissions", () => {
         });
 
         assertPermissionTable([
+          ["Accounts", "No self-service", "No"],
+          ["Analytic Events", "No self-service", "No"],
+          ["Feedback", "No self-service", "No"],
+          ["Invoices", "No self-service", "No"],
           ["Orders", "Unrestricted", "No"],
           ["People", "No self-service", "No"],
           ["Products", "No self-service", "No"],
@@ -365,6 +380,10 @@ describeOSS("scenarios > admin > permissions", () => {
         cy.findByTextEnsureVisible("Sample Database").click();
 
         assertPermissionTable([
+          ["Accounts", "Unrestricted", "Yes"],
+          ["Analytic Events", "Unrestricted", "Yes"],
+          ["Feedback", "Unrestricted", "Yes"],
+          ["Invoices", "Unrestricted", "Yes"],
           ["Orders", "Unrestricted", "Yes"],
           ["People", "Unrestricted", "Yes"],
           ["Products", "Unrestricted", "Yes"],
@@ -376,7 +395,7 @@ describeOSS("scenarios > admin > permissions", () => {
         modal().within(() => {
           cy.findByText("Save permissions?");
           cy.contains(
-            "collection will be given access to 4 tables in Sample Database.",
+            "collection will be given access to 8 tables in Sample Database.",
           );
           cy.contains(
             "collection will now be able to write native queries for Sample Database.",
@@ -387,6 +406,10 @@ describeOSS("scenarios > admin > permissions", () => {
         cy.findByText("Save changes").should("not.exist");
 
         assertPermissionTable([
+          ["Accounts", "Unrestricted", "Yes"],
+          ["Analytic Events", "Unrestricted", "Yes"],
+          ["Feedback", "Unrestricted", "Yes"],
+          ["Invoices", "Unrestricted", "Yes"],
           ["Orders", "Unrestricted", "Yes"],
           ["People", "Unrestricted", "Yes"],
           ["Products", "Unrestricted", "Yes"],
@@ -399,9 +422,7 @@ describeOSS("scenarios > admin > permissions", () => {
       it("allows view and edit permissions", () => {
         cy.visit("/admin/permissions/");
 
-        cy.get("label")
-          .contains("Databases")
-          .click();
+        cy.get("label").contains("Databases").click();
 
         cy.findByText("Select a database to see group permissions");
 
@@ -448,9 +469,7 @@ describeOSS("scenarios > admin > permissions", () => {
         ]);
 
         // Navigate back
-        cy.get("a")
-          .contains("Sample Database")
-          .click();
+        cy.get("a").contains("Sample Database").click();
 
         assertPermissionTable([
           ["Administrators", "Unrestricted", "Yes"],
@@ -482,7 +501,7 @@ describeOSS("scenarios > admin > permissions", () => {
         modal().within(() => {
           cy.findByText("Save permissions?");
           cy.contains(
-            "readonly will be given access to 4 tables in Sample Database.",
+            "readonly will be given access to 8 tables in Sample Database.",
           );
           cy.contains(
             "readonly will now be able to write native queries for Sample Database.",
@@ -503,34 +522,6 @@ describeOSS("scenarios > admin > permissions", () => {
       });
     });
   });
-
-  // TODO: uncomment when starts returning an error
-  it.skip("block permission block access to questions that use blocked sources", () => {
-    cy.signInAsNormalUser();
-
-    visitQuestion(1);
-    cy.findAllByText("Orders");
-
-    cy.signInAsAdmin();
-
-    cy.visit("/admin/permissions/data/database/1");
-
-    ["All Users", "collection", "data", "nosql", "readonly"].forEach(group =>
-      modifyPermission(group, DATA_ACCESS_PERMISSION_INDEX, "Block"),
-    );
-
-    cy.findByText("Save changes").click();
-
-    modal().within(() => {
-      cy.button("Yes").click();
-    });
-
-    cy.signInAsNormalUser();
-
-    visitQuestion(1);
-
-    cy.findAllByText("Orders").should("not.exist");
-  });
 });
 
 describeEE("scenarios > admin > permissions", () => {
@@ -540,7 +531,9 @@ describeEE("scenarios > admin > permissions", () => {
   });
 
   it("allows editing sandboxed access in the database focused view", () => {
-    cy.visit("/admin/permissions/data/database/1/schema/PUBLIC/table/2");
+    cy.visit(
+      `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}`,
+    );
 
     modifyPermission("All Users", DATA_ACCESS_PERMISSION_INDEX, "Sandboxed");
 
@@ -551,7 +544,7 @@ describeEE("scenarios > admin > permissions", () => {
 
     cy.url().should(
       "include",
-      "/admin/permissions/data/database/1/schema/PUBLIC/table/2/segmented/group/1",
+      `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}/segmented/group/${ALL_USERS_GROUP}`,
     );
     cy.findByText("Grant sandboxed access to this table");
     cy.button("Save").should("be.disabled");
@@ -580,7 +573,7 @@ describeEE("scenarios > admin > permissions", () => {
 
     cy.url().should(
       "include",
-      "/admin/permissions/data/database/1/schema/PUBLIC/table/2/segmented/group/1",
+      `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}/segmented/group/${ALL_USERS_GROUP}`,
     );
     cy.findByText("Grant sandboxed access to this table");
 
@@ -600,7 +593,7 @@ describeEE("scenarios > admin > permissions", () => {
   });
 
   it("'block' data permission should not have editable 'native query editing' option (metabase#17738)", () => {
-    cy.visit("/admin/permissions/data/database/1");
+    cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
 
     cy.findByText("All Users")
       .closest("tr")
@@ -614,13 +607,43 @@ describeEE("scenarios > admin > permissions", () => {
         isPermissionDisabled(NATIVE_QUERIES_PERMISSION_INDEX, "No", true);
       });
 
-    popover()
-      .contains("Block")
-      .click();
+    popover().contains("Block").click();
 
     cy.get("@allUsersRow").within(() => {
       isPermissionDisabled(DATA_ACCESS_PERMISSION_INDEX, "Block", false);
       isPermissionDisabled(NATIVE_QUERIES_PERMISSION_INDEX, "No", true);
     });
+  });
+
+  it("Visualization and Settings query builder buttons are not visible for questions that use blocked data sources", () => {
+    cy.updatePermissionsGraph({
+      [ALL_USERS_GROUP]: {
+        [SAMPLE_DB_ID]: {
+          data: { schemas: "block" },
+        },
+      },
+    });
+
+    cy.signIn("nodata");
+    visitQuestion(1);
+
+    cy.findByText("There was a problem with your question");
+    cy.findByText("Settings").should("not.exist");
+    cy.findByText("Visualization").should("not.exist");
+  });
+
+  it("shows permission error for cards that use blocked data sources", () => {
+    cy.updatePermissionsGraph({
+      [ALL_USERS_GROUP]: {
+        [SAMPLE_DB_ID]: {
+          data: { schemas: "block" },
+        },
+      },
+    });
+
+    cy.signIn("nodata");
+    visitDashboard(1);
+
+    cy.findByText("Sorry, you don't have permission to see this card.");
   });
 });

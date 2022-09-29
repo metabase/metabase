@@ -6,7 +6,7 @@ import {
   sidebar,
   visitDashboard,
   clickSend,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { USERS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -14,7 +14,7 @@ import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 const { admin } = USERS;
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
-describeEE("issue 18669", () => {
+describeEE("issue 18669", { tags: "@external" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

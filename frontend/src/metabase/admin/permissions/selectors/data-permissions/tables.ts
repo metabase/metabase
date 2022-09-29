@@ -1,26 +1,27 @@
 import _ from "underscore";
 import { push } from "react-router-redux";
 
-import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
 import {
   getNativePermission,
   getTablesPermission,
 } from "metabase/admin/permissions/utils/graph";
 import {
-  NATIVE_PERMISSION_REQUIRES_DATA_ACCESS,
-  UNABLE_TO_CHANGE_ADMIN_PERMISSIONS,
-} from "../../constants/messages";
-import {
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
 } from "metabase/plugins";
+import { Group, GroupsPermissions } from "metabase-types/api";
+import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
+import {
+  NATIVE_PERMISSION_REQUIRES_DATA_ACCESS,
+  UNABLE_TO_CHANGE_ADMIN_PERMISSIONS,
+} from "../../constants/messages";
 import {
   getPermissionWarning,
   getPermissionWarningModal,
   getControlledDatabaseWarningModal,
 } from "../confirmations";
-import { Group, GroupsPermissions } from "metabase-types/api";
 import { SchemaEntityId } from "../../types";
+import { getGroupFocusPermissionsUrl } from "../../utils/urls";
 
 const buildAccessPermission = (
   entityId: SchemaEntityId,
@@ -66,10 +67,7 @@ const buildAccessPermission = (
     warning,
     confirmations,
     postActions: {
-      controlled: () =>
-        push(
-          `/admin/permissions/data/group/${groupId}/database/${entityId.databaseId}/schema/${entityId.schemaName}`,
-        ),
+      controlled: () => push(getGroupFocusPermissionsUrl(groupId, entityId)),
     },
     options: PLUGIN_ADVANCED_PERMISSIONS.addSchemaPermissionOptions(
       [
@@ -132,6 +130,7 @@ export const buildTablesPermissions = (
       isAdmin,
       permissions,
       accessPermission.value,
+      defaultGroup,
       "tables",
     ),
   ];

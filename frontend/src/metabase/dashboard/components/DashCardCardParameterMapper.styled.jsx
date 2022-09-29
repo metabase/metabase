@@ -5,12 +5,48 @@ import { space } from "metabase/styled-components/theme";
 import { color, lighten } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import Button from "metabase/core/components/Button";
+import ExternalLink from "metabase/core/components/ExternalLink";
 
 export const Container = styled.div`
   margin: ${space(1)} 0;
   display: flex;
   flex-direction: column;
   align-items: center;
+`;
+
+export const TextCardDefault = styled.div`
+  color: ${color("text-dark")};
+  margin: ${space(1)} 0;
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  line-height: 1.5rem;
+`;
+
+export const NativeCardDefault = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+`;
+
+export const NativeCardIcon = styled(Icon)`
+  color: ${color("text-medium")};
+  margin-bottom: 0.5rem;
+  width: 1.25rem;
+  height: 1.25rem;
+`;
+
+export const NativeCardText = styled.div`
+  color: ${color("text-dark")};
+  max-width: 15rem;
+  text-align: center;
+  line-height: 1.5rem;
+`;
+
+export const NativeCardLink = styled(ExternalLink)`
+  color: ${color("brand")};
+  font-weight: bold;
+  margin-top: 0.5rem;
 `;
 
 export const CardLabel = styled.div`

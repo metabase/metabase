@@ -4,14 +4,14 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
 
-import PulseCardPreview from "./PulseCardPreview";
-
 import QuestionSelect from "metabase/containers/QuestionSelect";
 
 // import Query from "metabase/lib/query";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import { color } from "metabase/lib/colors";
+import PulseCardPreview from "./PulseCardPreview";
+import { CardNotice } from "./PulseEditCards.styled";
 
 const SOFT_LIMIT = 10;
 const HARD_LIMIT = 25;
@@ -131,17 +131,10 @@ export default class PulseEditCards extends Component {
       return (
         <div className="absolute" style={{ width: 400, marginLeft: 420 }}>
           {notices.map((notice, index) => (
-            <div
-              key={index}
-              className={cx("border-left mt1 mb2 ml3 pl3", {
-                "text-gold border-gold": notice.type === "warning",
-                "border-brand": notice.type !== "warning",
-              })}
-              style={{ borderWidth: 3 }}
-            >
+            <CardNotice key={index} isWarning={notice.type === "warning"}>
               <h3 className="mb1">{notice.head}</h3>
               <div className="h4">{notice.body}</div>
-            </div>
+            </CardNotice>
           ))}
         </div>
       );

@@ -2,13 +2,11 @@
   (:require [cheshire.core :as json]
             [clojure.core.memoize :as memoize]
             [clojure.string :as str]
-            [clojure.tools.logging :as log]
             [java-time :as t]
             [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.plugins.classloader :as classloader]
+            [metabase.public-settings.premium-features :refer [defenterprise]]
             [metabase.search.config :as search-config]
             [metabase.util :as u]
-            [potemkin.types :as p.types]
             [schema.core :as s]))
 
 ;;; Utility functions
@@ -84,6 +82,8 @@
                  :text     (tokens->string text-tokens (not is-match))})))))
 
 (defn- text-score-with
+  "Scores a search result. Returns a map with the score and other info about the text match,
+   if there is one. If there is no match, the score is 0."
   [weighted-scorers query-tokens search-result]
   (let [total-weight (reduce + (map :weight weighted-scorers))
         scores       (for [column (search-config/searchable-columns-for-model (:model search-result))
@@ -98,14 +98,14 @@
                                                              0
                                                              (map :scorer weighted-scorers)))]
                            :when  (and matched-text
-                                       (> score 0))]
+                                       (pos? score))]
                        {:score               (/ score total-weight)
                         :match               matched-text
                         :match-context-thunk #(match-context query-tokens match-tokens)
-                        :column              column
-                        :result              search-result})]
-    (when (seq scores)
-      (apply max-key :score scores))))
+                        :column              column})]
+    (if (seq scores)
+      (apply max-key :score scores)
+      {:score 0})))
 
 (defn- consecutivity-scorer
   [query-tokens match-tokens]
@@ -171,31 +171,31 @@
                      (tokenize (normalize raw-search-string))
                      result)
     {:score  0
-     :match  ""
-     :result result}))
+     :match  ""}))
 
 (defn- pinned-score
   [{:keys [model collection_position]}]
   ;; We experimented with favoring lower collection positions, but it wasn't good
   ;; So instead, just give a bonus for items that are pinned at all
-  (when (#{"card" "dashboard" "pulse"} model)
-    (if ((fnil pos? 0) collection_position)
-      1
-      0)))
+  (if (and (#{"card" "dashboard" "pulse"} model)
+           ((fnil pos? 0) collection_position))
+    1
+    0))
 
 (defn- bookmarked-score
   [{:keys [model bookmark]}]
-  (when (#{"card" "collection" "dashboard"} model)
-    (if bookmark
-      1
-      0)))
+  (if (and (#{"card" "collection" "dashboard"} model)
+           bookmark)
+    1
+    0))
 
 (defn- dashboard-count-score
   [{:keys [model dashboardcard_count]}]
-  (when (= model "card")
+  (if (= model "card")
     (min (/ dashboardcard_count
             search-config/dashboard-count-ceiling)
-         1)))
+         1)
+    0))
 
 (defn- recency-score
   [{:keys [updated_at]}]
@@ -219,7 +219,7 @@
   "Massage the raw result from the DB and match data into something more useful for the client"
   [result {:keys [column match-context-thunk]} scores]
   (let [{:keys [name display_name
-                collection_id collection_name collection_authority_level]} result]
+                collection_id collection_name collection_authority_level collection_app_id]} result]
     (-> result
         (assoc
          :name           (if (or (= column :name)
@@ -231,15 +231,18 @@
                            (match-context-thunk))
          :collection     {:id              collection_id
                           :name            collection_name
-                          :authority_level collection_authority_level}
+                          :authority_level collection_authority_level
+                          :app_id          collection_app_id}
          :scores          scores)
         (update :dataset_query #(some-> % json/parse-string mbql.normalize/normalize))
         (dissoc
          :collection_id
          :collection_name
+         :collection_app_id
          :display_name))))
 
-(defn- weights-and-scores
+(defn weights-and-scores
+  "Default weights and scores for a given result."
   [result]
   [{:weight 2
     :score  (pinned-score result)
@@ -257,43 +260,34 @@
     :score  (model-score result)
     :name   "model"}])
 
-(p.types/defprotocol+ ResultScore
-  "Protocol to score a result in search beyond the text scoring."
-  (score-result [_ result]
-    "Score a result, returning a collection of maps with score and weight. Should not include the text scoring, done
-    separately. Should return a sequence of maps with
+(defenterprise score-result
+  "Score a result, returning a collection of maps with score and weight. Should not include the text scoring, done
+   separately. Should return a sequence of maps with
 
-     {:weight number,
-      :score  number,
-      :name   string}"))
-
-(def oss-score-impl
-  "Default open source scoring implementation."
-  (reify ResultScore
-    (score-result [_ result]
-      (weights-and-scores result))))
-
-(def score-impl
-  "Default scoring implementation, using ee if present, or oss otherwise"
-  (u/prog1 (or (u/ignore-exceptions
-                (classloader/require 'metabase-enterprise.search.scoring)
-                (some-> (resolve 'metabase-enterprise.search.scoring/ee-scoring)
-                        var-get))
-               oss-score-impl)
-           (log/debugf "Scoring implementation set to %s" <>)))
+    {:weight number,
+     :score  number,
+     :name   string}"
+   metabase-enterprise.search.scoring
+   [result]
+   (weights-and-scores result))
 
 (defn score-and-result
-  "Returns a map with the `:score` and `:result`—or nil. The score is a vector of comparable things in priority order."
+  "Returns a map with the `:score` and `:result`."
   ([raw-search-string result]
-   (score-and-result score-impl raw-search-string result))
-  ([scorer raw-search-string result]
-   (let [text-score (text-score-with-match raw-search-string result)
-         scores     (->> (conj (score-result scorer result)
-                               {:score (:score text-score), :weight 10 :name "text score"})
-                         (filter :score))]
-     {:score  (/ (reduce + (map (fn [{:keys [weight score]}] (* weight score)) scores))
-                 (reduce + (map :weight scores)))
-      :result (serialize result text-score scores)})))
+   (let [text-match (text-score-with-match raw-search-string result)
+         text-score {:score  (:score text-match)
+                     :weight 10
+                     :name   "text score"}
+         scores (conj (score-result result) text-score)]
+     ;; Searches with a blank search string mean "show me everything, ranked";
+     ;; see https://github.com/metabase/metabase/pull/15604 for archived search.
+     ;; If the search string is non-blank, results with no text match have a score of zero.
+     (if (or (str/blank? raw-search-string)
+             (pos? (:score text-match)))
+       {:score  (/ (reduce + (map (fn [{:keys [weight score]}] (* weight score)) scores))
+                   (reduce + (map :weight scores)))
+        :result (serialize result text-match scores)}
+       {:score 0}))))
 
 (defn top-results
   "Given a reducible collection (i.e., from `jdbc/reducible-query`) and a transforming function for it, applies the

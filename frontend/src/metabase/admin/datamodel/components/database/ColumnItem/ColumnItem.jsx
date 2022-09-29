@@ -4,6 +4,8 @@ import PropTypes from "prop-types";
 import { Link, withRouter } from "react-router";
 import { t } from "ttag";
 
+import _ from "underscore";
+import cx from "classnames";
 import Select, { Option } from "metabase/core/components/Select";
 import Button from "metabase/core/components/Button";
 import * as MetabaseCore from "metabase/lib/core";
@@ -13,15 +15,11 @@ import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings
 
 import { currency } from "cljs/metabase.shared.util.currency";
 
-import _ from "underscore";
-import cx from "classnames";
-
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import { ColumnItemInput } from "./ColumnItem.styled";
 import { getFieldRawName } from "../../../utils";
+import { ColumnItemInput } from "./ColumnItem.styled";
 
-@withRouter
-export default class Column extends Component {
+class Column extends Component {
   static propTypes = {
     field: PropTypes.object,
     idfields: PropTypes.array.isRequired,
@@ -110,6 +108,8 @@ export default class Column extends Component {
     );
   }
 }
+
+export default withRouter(Column);
 
 const getFkFieldPlaceholder = (field, idfields) => {
   const hasIdFields = idfields?.length > 0;
@@ -228,36 +228,38 @@ export class SemanticTypeAndTargetPicker extends Component {
           searchProp="name"
         />
         {showCurrencyTypeSelect && selectSeparator}
-        {// TODO - now that we have multiple "nested" options like choosing a
-        // FK table and a currency type we should make this more generic and
-        // handle a "secondary" input more elegantly
-        showCurrencyTypeSelect && (
-          <Select
-            className={cx(
-              "TableEditor-field-target inline-block",
-              selectSeparator ? "mt0" : "mt1",
-              className,
-            )}
-            value={
-              (field.settings && field.settings.currency) ||
-              getGlobalSettingsForColumn(field).currency ||
-              "USD"
-            }
-            onChange={this.handleChangeCurrency}
-            placeholder={t`Select a currency type`}
-            searchProp="name"
-            searchCaseSensitive={false}
-          >
-            {currency.map(([_, c]) => (
-              <Option name={c.name} value={c.code} key={c.code}>
-                <span className="flex full align-center">
-                  <span>{c.name}</span>
-                  <span className="text-bold text-light ml1">{c.symbol}</span>
-                </span>
-              </Option>
-            ))}
-          </Select>
-        )}
+        {
+          // TODO - now that we have multiple "nested" options like choosing a
+          // FK table and a currency type we should make this more generic and
+          // handle a "secondary" input more elegantly
+          showCurrencyTypeSelect && (
+            <Select
+              className={cx(
+                "TableEditor-field-target inline-block",
+                selectSeparator ? "mt0" : "mt1",
+                className,
+              )}
+              value={
+                (field.settings && field.settings.currency) ||
+                getGlobalSettingsForColumn(field).currency ||
+                "USD"
+              }
+              onChange={this.handleChangeCurrency}
+              placeholder={t`Select a currency type`}
+              searchProp="name"
+              searchCaseSensitive={false}
+            >
+              {currency.map(([_, c]) => (
+                <Option name={c.name} value={c.code} key={c.code}>
+                  <span className="flex full align-center">
+                    <span>{c.name}</span>
+                    <span className="text-bold text-light ml1">{c.symbol}</span>
+                  </span>
+                </Option>
+              ))}
+            </Select>
+          )
+        }
         {showFKTargetSelect && selectSeparator}
         {showFKTargetSelect && (
           <Select

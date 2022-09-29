@@ -1,9 +1,7 @@
-import { popover } from "__support__/e2e/cypress";
+import { popover } from "__support__/e2e/helpers";
 
 export function selectSidebarItem(item) {
-  cy.findAllByRole("menuitem")
-    .contains(item)
-    .click();
+  cy.findAllByRole("menuitem").contains(item).click();
 }
 
 export function assertSidebarItems(items) {
@@ -18,9 +16,7 @@ export function modifyPermission(
   value,
   shouldPropagate = null,
 ) {
-  getPermissionRowPermissions(item)
-    .eq(permissionIndex)
-    .click();
+  getPermissionRowPermissions(item).eq(permissionIndex).click();
 
   popover().within(() => {
     if (shouldPropagate !== null) {

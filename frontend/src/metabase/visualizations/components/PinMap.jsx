@@ -1,6 +1,10 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { t } from "ttag";
+import _ from "underscore";
+import cx from "classnames";
+import d3 from "d3";
+import L from "leaflet";
 import { hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
 import { LatitudeLongitudeError } from "metabase/visualizations/lib/errors";
 
@@ -8,12 +12,6 @@ import LeafletMarkerPinMap from "./LeafletMarkerPinMap";
 import LeafletTilePinMap from "./LeafletTilePinMap";
 import LeafletHeatMap from "./LeafletHeatMap";
 import LeafletGridHeatMap from "./LeafletGridHeatMap";
-
-import _ from "underscore";
-import cx from "classnames";
-import d3 from "d3";
-
-import L from "leaflet";
 
 const WORLD_BOUNDS = [
   [-90, -180],
@@ -130,9 +128,11 @@ export default class PinMap extends Component {
     ]);
 
     // only use points with numeric coordinates & metric
-    const points = allPoints.filter(
+    const validPoints = allPoints.map(
       ([lat, lng, metric]) => lat != null && lng != null && metric != null,
     );
+    const points = allPoints.filter((_, i) => validPoints[i]);
+    const updatedRows = rows.filter((_, i) => validPoints[i]);
 
     const warnings = [];
     const filteredRows = allPoints.length - points.length;
@@ -166,7 +166,7 @@ export default class PinMap extends Component {
       bounds._northEast.lat += binHeight;
     }
 
-    return { points, bounds, min, max, binWidth, binHeight };
+    return { rows: updatedRows, points, bounds, min, max, binWidth, binHeight };
   }
 
   render() {
@@ -176,7 +176,10 @@ export default class PinMap extends Component {
 
     const Map = MAP_COMPONENTS_BY_TYPE[settings["map.pin_type"]];
 
-    const { points, bounds, min, max, binHeight, binWidth } = this.state;
+    const { rows, points, bounds, min, max, binHeight, binWidth } = this.state;
+
+    const mapProps = { ...this.props };
+    mapProps.series[0].data.rows = rows;
 
     return (
       <div
@@ -188,7 +191,7 @@ export default class PinMap extends Component {
       >
         {Map ? (
           <Map
-            {...this.props}
+            {...mapProps}
             ref={map => (this._map = map)}
             className="absolute top left bottom right z1"
             onMapCenterChange={this.onMapCenterChange}

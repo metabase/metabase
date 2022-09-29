@@ -4,24 +4,25 @@ import { t, ngettext, msgid } from "ttag";
 
 import { isDate } from "metabase/lib/schema_metadata";
 import { parseTimestamp } from "metabase/lib/time";
-import { formatDateTimeForParameter } from "metabase/lib/formatting/date";
-import Question from "metabase-lib/lib/Question";
-import { TemplateTagVariable } from "metabase-lib/lib/Variable";
-import { TemplateTagDimension } from "metabase-lib/lib/Dimension";
 import { isa, TYPE } from "metabase/lib/types";
+import { formatDateTimeForParameter } from "metabase/lib/formatting/date";
 import {
   dimensionFilterForParameter,
   variableFilterForParameter,
 } from "metabase/parameters/utils/filters";
+import { isValidImplicitActionClickBehavior } from "metabase/writeback/utils";
+import Question from "metabase-lib/lib/Question";
+import TemplateTagVariable from "metabase-lib/lib/variables/TemplateTagVariable";
+import { TemplateTagDimension } from "metabase-lib/lib/Dimension";
 
 export function getDataFromClicked({
   extraData: { dashboard, parameterValuesBySlug, userAttributes } = {},
-  dimensions,
-  data,
+  dimensions = [],
+  data = [],
 }) {
   const column = [
-    ...(dimensions || []),
-    ...(data || []).map(d => ({
+    ...dimensions,
+    ...data.map(d => ({
       column: d.col,
       // When the data is changed to a display value for use in tooltips, we can set clickBehaviorValue to the raw value for filtering.
       value: d.clickBehaviorValue || d.value,
@@ -72,10 +73,39 @@ function notRelativeDateOrRange({ type }) {
   return type !== "date/range" && type !== "date/relative";
 }
 
-export function getTargetsWithSourceFilters({ isDash, object, metadata }) {
+export function getTargetsWithSourceFilters({
+  isDash,
+  isAction,
+  dashcard,
+  object,
+  metadata,
+}) {
+  if (isAction) {
+    return getTargetsForAction(object);
+  }
   return isDash
-    ? getTargetsForDashboard(object)
+    ? getTargetsForDashboard(object, dashcard)
     : getTargetsForQuestion(object, metadata);
+}
+
+function getTargetsForAction(action) {
+  const parameters = Object.values(action.parameters);
+  return parameters.map(parameter => {
+    const { id, name } = parameter;
+    return {
+      id,
+      name,
+      target: { type: "parameter", id },
+
+      // We probably don't want to allow everything
+      // and will need to add some filters eventually
+      sourceFilters: {
+        column: () => true,
+        parameter: () => true,
+        userAttribute: () => true,
+      },
+    };
+  });
 }
 
 function getTargetsForQuestion(question, metadata) {
@@ -128,7 +158,7 @@ function getTargetsForQuestion(question, metadata) {
     });
 }
 
-function getTargetsForDashboard(dashboard) {
+function getTargetsForDashboard(dashboard, dashcard) {
   return dashboard.parameters.map(parameter => {
     const { type, id, name } = parameter;
     const filter = baseTypeFilterForParameterType(type);
@@ -138,9 +168,14 @@ function getTargetsForDashboard(dashboard) {
       target: { type: "parameter", id },
       sourceFilters: {
         column: c => notRelativeDateOrRange(parameter) && filter(c.base_type),
-        parameter: sourceParam =>
-          parameter.type === sourceParam.type &&
-          parameter.id !== sourceParam.id,
+        parameter: sourceParam => {
+          // parameter IDs are generated client-side, so they might not be unique
+          // if dashboard is a clone, it will have identical parameter IDs to the original
+          const isSameParameter =
+            dashboard.id === dashcard.dashboard_id &&
+            parameter.id === sourceParam.id;
+          return parameter.type === sourceParam.type && !isSameParameter;
+        },
         userAttribute: () => !parameter.type.startsWith("date"),
       },
     };
@@ -151,7 +186,7 @@ function baseTypeFilterForParameterType(parameterType) {
   const [typePrefix] = parameterType.split("/");
   const allowedTypes = {
     date: [TYPE.Temporal],
-    id: [TYPE.Integer],
+    id: [TYPE.Integer, TYPE.UUID],
     category: [TYPE.Text, TYPE.Integer],
     location: [TYPE.Text],
   }[typePrefix];
@@ -213,12 +248,19 @@ export function clickBehaviorIsValid(clickBehavior) {
   if (type === "crossfilter") {
     return Object.keys(parameterMapping).length > 0;
   }
-  // if it's not a crossfilter, it's a link
+  if (type === "action") {
+    return isValidImplicitActionClickBehavior(clickBehavior);
+  }
+  // if it's not a crossfilter/action, it's a link
   if (linkType === "url") {
     return (linkTemplate || "").length > 0;
   }
-  // if we're linking to a question or dashboard we just need a targetId
-  if (linkType === "dashboard" || linkType === "question") {
+  // if we're linking to a Metabase entity we just need a targetId
+  if (
+    linkType === "dashboard" ||
+    linkType === "question" ||
+    linkType === "page"
+  ) {
     return targetId != null;
   }
   // we've picked "link" without picking a link type

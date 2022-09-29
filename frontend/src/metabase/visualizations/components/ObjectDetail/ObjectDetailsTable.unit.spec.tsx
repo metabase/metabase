@@ -63,7 +63,7 @@ describe("ObjectDetailsTable", () => {
       render(
         <DetailsTable
           data={objectDetailCard.data}
-          zoomedRow={undefined}
+          zoomedRow={objectDetailCard.data.rows[0]}
           onVisualizationClick={() => null}
           visualizationIsClickable={() => false}
           settings={{}}
@@ -78,7 +78,7 @@ describe("ObjectDetailsTable", () => {
       render(
         <DetailsTable
           data={invalidObjectDetailCard.data}
-          zoomedRow={undefined}
+          zoomedRow={invalidObjectDetailCard.data.rows[0]}
           onVisualizationClick={() => null}
           visualizationIsClickable={() => false}
           settings={{}}

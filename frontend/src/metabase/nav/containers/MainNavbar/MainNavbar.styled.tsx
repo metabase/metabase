@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
+import Button from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 
@@ -8,6 +9,7 @@ import { color, lighten } from "metabase/lib/colors";
 import {
   breakpointMaxSmall,
   breakpointMinSmall,
+  breakpointMinLarge,
   space,
 } from "metabase/styled-components/theme";
 import { SidebarLink } from "./SidebarItems";
@@ -29,18 +31,11 @@ export const Sidebar = styled.aside<{ isOpen: boolean }>`
   position: relative;
   flex-shrink: 0;
   align-items: center;
-  padding: 0.5rem 0;
-  background-color: ${color("nav")};
+  background-color: ${color("white")};
 
   overflow: auto;
   overflow-x: hidden;
   z-index: 4;
-
-  transition: width 0.2s;
-
-  @media (prefers-reduced-motion) {
-    transition: none;
-  }
 
   ${props => props.isOpen && openSidebarCSS};
 
@@ -61,7 +56,6 @@ export const NavRoot = styled.nav<{ isOpen: boolean }>`
 
   overflow-x: hidden;
   overflow-y: auto;
-  padding-bottom: 4rem;
 
   opacity: ${props => (props.isOpen ? 1 : 0)};
   transition: opacity 0.2s;
@@ -133,26 +127,8 @@ export const LoadingTitle = styled.h2`
   margin-top: ${space(1)};
 `;
 
-export const ProfileLinkContainer = styled.div<{ isOpen: boolean }>`
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  padding: ${space(0)};
-  width: ${props => (props.isOpen ? NAV_SIDEBAR_WIDTH : 0)};
-  border-top: 1px solid ${color("border")};
-  background-color: ${color("white")};
-  display: flex;
-  align-items: center;
-  margin-right: ${space(2)};
-  color: ${color("text-light")};
-`;
-
-export const HomePageLink = styled(SidebarLink)`
-  padding-left: 12px;
-`;
-
-export const BrowseLink = styled(SidebarLink)`
-  padding-left: 14px;
+export const PaddedSidebarLink = styled(SidebarLink)`
+  padding-left: ${space(2)};
 `;
 
 export const AddYourOwnDataLink = styled(SidebarLink)`
@@ -176,3 +152,52 @@ export const AddYourOwnDataLink = styled(SidebarLink)`
     }
   }
 `;
+
+export const ExitDataAppButton = styled(Button)`
+  margin-left: ${space(2)};
+`;
+
+export const DataAppActionsContainer = styled(SidebarSection)`
+  display: flex;
+  align-items: center;
+`;
+
+export const DataAppActionButton = styled(Button)`
+  padding: 0.6rem 1rem;
+
+  ${breakpointMinLarge} {
+    & {
+      padding: 0.85rem 1rem;
+    }
+  }
+`;
+
+DataAppActionButton.defaultProps = {
+  onlyIcon: true,
+};
+
+const ActionGroupCell = styled.div``;
+
+const _ActionGroup = styled.div`
+  display: flex;
+
+  ${ActionGroupCell} {
+    border: 1px solid ${color("border")};
+
+    &:not(:last-of-type) {
+      border-right-width: 0.5px;
+      border-top-left-radius: 8px;
+      border-bottom-left-radius: 8px;
+    }
+
+    &:not(:first-of-type) {
+      border-left-width: 0.5px;
+      border-top-right-radius: 8px;
+      border-bottom-right-radius: 8px;
+    }
+  }
+`;
+
+export const ActionGroup = Object.assign(_ActionGroup, {
+  Cell: ActionGroupCell,
+});

@@ -13,7 +13,8 @@
             [metabase.test :as mt]
             [metabase.timeseries-query-processor-test.util :as tqpt]
             [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]))
+            [metabase.util.date-2 :as u.date]
+            [toucan.db :as db]))
 
 (defn- str->absolute-dt [s]
   [:absolute-datetime (u.date/parse s "UTC") :default])
@@ -106,7 +107,7 @@
                             :granularity      :all
                             :dataSource       "checkins"
                             :dimension        "venue_price"
-                            :context          {:timeout 60000, :queryId "<Query ID>"}
+                            :context          {:queryId "<Query ID>"}
                             :postAggregations [{:type   :arithmetic
                                                 :name   "expression"
                                                 :fn     :*
@@ -135,7 +136,7 @@
                             :granularity  :all
                             :dataSource   "checkins"
                             :dimension    "venue_category_name"
-                            :context      {:timeout 60000, :queryId "<Query ID>"}
+                            :context      {:queryId "<Query ID>"}
                             :intervals    ["1900-01-01/2100-01-01"]
                             :metric       "__count_0"
                             :aggregations [{:type       :cardinality
@@ -159,7 +160,7 @@
                             :granularity  :all
                             :dataSource   "checkins"
                             :dimensions   ["venue_category_name", "user_name"]
-                            :context      {:timeout 60000, :queryId "<Query ID>"}
+                            :context      {:queryId "<Query ID>"}
                             :intervals    ["1900-01-01/2100-01-01"]
                             :aggregations [{:type       :cardinality
                                             :name       "__count_0"
@@ -186,7 +187,7 @@
                             :granularity  :all
                             :dataSource   "checkins"
                             :dimensions   ["venue_category_name", "user_name"]
-                            :context      {:timeout 60000, :queryId "<Query ID>"}
+                            :context      {:queryId "<Query ID>"}
                             :intervals    ["1900-01-01/2100-01-01"]
                             :aggregations [{:type       :cardinality
                                             :name       "__count_0"
@@ -214,7 +215,7 @@
                 :query       {:queryType        :timeseries
                               :granularity      :all
                               :dataSource       "checkins"
-                              :context          {:timeout 60000, :queryId "<Query ID>"}
+                              :context          {:queryId "<Query ID>"}
                               :intervals        ["1900-01-01/2100-01-01"]
                               :aggregations     [{:type       :cardinality
                                                   :name       "__distinct_0"
@@ -233,10 +234,10 @@
                 {:aggregation [[:+ 1 [:aggregation-options [:distinct $checkins.venue_name] {:name "__distinct_0"}]]]})))))))
 
 (defn- table-rows-sample []
-  (->> (metadata-queries/table-rows-sample (Table (mt/id :checkins))
-         [(Field (mt/id :checkins :id))
-          (Field (mt/id :checkins :venue_name))
-          (Field (mt/id :checkins :timestamp))]
+  (->> (metadata-queries/table-rows-sample (db/select-one Table :id (mt/id :checkins))
+         [(db/select-one Field :id (mt/id :checkins :id))
+          (db/select-one Field :id (mt/id :checkins :venue_name))
+          (db/select-one Field :id (mt/id :checkins :timestamp))]
          (constantly conj))
        (sort-by first)
        (take 5)))

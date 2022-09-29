@@ -2,11 +2,10 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
+import cx from "classnames";
 import Icon, { iconPropTypes } from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
-import Ellipsified from "metabase/components/Ellipsified";
-
-import cx from "classnames";
+import Ellipsified from "metabase/core/components/Ellipsified";
 
 import { IconContainer } from "./LegendItem.styled";
 
@@ -87,7 +86,7 @@ export default class LegendItem extends Component {
             <Ellipsified showTooltip={showTooltip}>{title}</Ellipsified>
             {description && (
               <div className="hover-child ml1 flex align-center text-medium">
-                <Tooltip tooltip={description} maxWidth={"22em"}>
+                <Tooltip tooltip={description} maxWidth="22em">
                   <Icon className={infoClassName} name="info" />
                 </Tooltip>
               </div>

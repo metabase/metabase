@@ -9,8 +9,8 @@ import {
   PEOPLE,
   metadata,
 } from "__support__/sample_database_fixture";
-import Question from "metabase-lib/lib/Question";
 import * as Urls from "metabase/lib/urls";
+import Question from "metabase-lib/lib/Question";
 import QuestionDataSource from "./QuestionDataSource";
 
 const BASE_GUI_QUESTION = {
@@ -366,10 +366,7 @@ describe("QuestionDataSource", () => {
           );
           expect(node.closest("a")).toHaveAttribute(
             "href",
-            question
-              .table()
-              .newQuestion()
-              .getUrl(),
+            question.table().newQuestion().getUrl(),
           );
         });
 
@@ -380,10 +377,7 @@ describe("QuestionDataSource", () => {
           );
           expect(node.closest("a")).toHaveAttribute(
             "href",
-            question
-              .table()
-              .newQuestion()
-              .getUrl(),
+            question.table().newQuestion().getUrl(),
           );
         });
       });
@@ -503,7 +497,10 @@ describe("QuestionDataSource", () => {
     });
   });
 
-  describe("Object Detail", () => {
+  describe.skip("Object Detail", () => {
+    // these tests do not apply to the new modal object detail view
+    // but will be useful when we implement the new version of full page
+    // object detail
     [
       GUI_TEST_CASE.SAVED_OBJECT_DETAIL,
       GUI_TEST_CASE.AD_HOC_OBJECT_DETAIL,

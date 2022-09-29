@@ -1,16 +1,20 @@
-import { popover } from "__support__/e2e/cypress";
+import { popover } from "__support__/e2e/helpers";
 
 /**
  * Clicks the "+" icon on the collection page and selects one of the menu options
  * @param {"question" | "dashboard" | "collection"} type
  */
 export function openNewCollectionItemFlowFor(type) {
-  cy.findByTestId("collection-menu").within(() => {
-    cy.icon("add").click();
-  });
-  popover()
-    .findByText(new RegExp(type, "i"))
-    .click();
+  cy.findByText("New").click();
+  popover().findByText(new RegExp(type, "i")).click();
+}
+
+export function getCollectionActions() {
+  return cy.findByTestId("collection-menu");
+}
+
+export function openCollectionMenu() {
+  getCollectionActions().within(() => cy.icon("ellipsis").click());
 }
 
 export function getSidebarSectionTitle(name) {
@@ -24,4 +28,14 @@ export function getCollectionIdFromSlug(slug, callback) {
 
     callback && callback(id);
   });
+}
+
+export function visitCollection(id) {
+  const alias = `getCollection${id}Items`;
+
+  cy.intercept("GET", `/api/collection/${id}/items?**`).as(alias);
+
+  cy.visit(`/collection/${id}`);
+
+  cy.wait([`@${alias}`, `@${alias}`]);
 }

@@ -2,6 +2,7 @@
  {"com.fasterxml.jackson.dataformat" {:resource "apache2_0.txt"}
   "com.google.auth"                  {:resource "apache2_0.txt"}
   "com.google.cloud"                 {:resource "apache2_0.txt"}
+  "com.google.cloud.sql"             {:resource "apache2_0.txt"}
   "com.google.code.gson"             {:resource "apache2_0.txt"}
   "com.google.guava"                 {:resource "apache2_0.txt"}
   "com.google.http-client"           {:resource "apache2_0.txt"}
@@ -19,7 +20,9 @@
  "amalloy"                    {"ring-gzip-middleware" {:resource "MIT.txt"}}
  "buddy"                      {"buddy-core" {:resource "apache2_0.txt"}}
  "colorize"                   {"colorize" {:resource "EPL.txt"}}
+ "com.github.jnr"             {"jffi$native" {:resource "apache2_0.txt"}}
  "com.google.api-client"      {"google-api-client" {:resource "apache2_0.txt"}}
+ "com.google.auto.value"      {"auto-value-annotations" {:resource "apache2_0.txt"}}
  "com.google.http-client"     {"google-http-client"          {:resource "apache2_0.txt"}
                                "google-http-client-jackson2" {:resource "apache2_0.txt"}}
  "com.google.oauth-client"    {"google-oauth-client" {:resource "apache2_0.txt"}}
@@ -43,6 +46,7 @@
  "net.jcip"                   {"jcip-annotations" {:resource "CC_2_5.txt"}}
  "net.redhogs.cronparser"     {"cron-parser-core" {:resource "MIT.txt"}}
  "net.shibboleth.utilities"   {"java-support" {:resource "apache2_0.txt"}}
+ "net.thisptr"                {"jackson-jq" {:resource "apache2_0.txt"}}
  "org.antlr"                  {"antlr-runtime"  {:resource "BSD.txt"}
                                "antlr4-runtime" {:resource "BSD.txt"}}
  "org.eclipse.jetty"          {"jetty-webapp" {:resource "EPL.txt"}}

@@ -21,16 +21,30 @@
   (deferred-tru "You'll need an administrator to create a Metabase account before you can use Google to log in."))
 
 (defsetting google-auth-client-id
-  (deferred-tru "Client ID for Google Sign-In. If this is set, Google Sign-In is considered to be enabled.")
+  (deferred-tru "Client ID for Google Sign-In.")
   :visibility :public
-  :setter (fn [client-id]
-            (if (seq client-id)
-              (let [trimmed-client-id (str/trim client-id)]
-                (when-not (str/ends-with? trimmed-client-id ".apps.googleusercontent.com")
-                  (throw (ex-info (tru "Invalid Google Sign-In Client ID: must end with \".apps.googleusercontent.com\"")
-                                  {:status-code 400})))
-                (setting/set-value-of-type! :string :google-auth-client-id trimmed-client-id))
-              (setting/set-value-of-type! :string :google-auth-client-id nil))))
+  :setter     (fn [client-id]
+                (if (seq client-id)
+                  (let [trimmed-client-id (str/trim client-id)]
+                    (when-not (str/ends-with? trimmed-client-id ".apps.googleusercontent.com")
+                      (throw (ex-info (tru "Invalid Google Sign-In Client ID: must end with \".apps.googleusercontent.com\"")
+                                      {:status-code 400})))
+                    (setting/set-value-of-type! :string :google-auth-client-id trimmed-client-id))
+                  (do
+                   (setting/set-value-of-type! :string :google-auth-client-id nil)
+                   (setting/set-value-of-type! :boolean :google-auth-enabled false)))))
+
+(defsetting google-auth-enabled
+  (deferred-tru "Is Google Sign-in currently enabled?")
+  :visibility :public
+  :type       :boolean
+  :setter     (fn [new-value]
+                (if-let [new-value (boolean new-value)]
+                  (if-not (google-auth-client-id)
+                    (throw (ex-info (tru "Google Sign-In is not configured. Please set the Client ID first.")
+                                    {:status-code 400}))
+                    (setting/set-value-of-type! :boolean :google-auth-enabled new-value))
+                  (setting/set-value-of-type! :boolean :google-auth-enabled new-value))))
 
 (define-multi-setting-impl google.i/google-auth-auto-create-accounts-domain :oss
   :getter (fn [] (setting/get-value-of-type :string :google-auth-auto-create-accounts-domain))
@@ -53,8 +67,9 @@
        (let [audience (:aud <>)
              audience (if (string? audience) [audience] audience)]
          (when-not (contains? (set audience) client-id)
-           (throw (ex-info (str (deferred-tru "Google Sign-In token appears to be incorrect. ")
-                                (deferred-tru "Double check that it matches in Google and Metabase."))
+           (throw (ex-info (tru
+                             (str "Google Sign-In token appears to be incorrect. "
+                                  "Double check that it matches in Google and Metabase."))
                            {:status-code 400}))))
        (when-not (= (:email_verified <>) "true")
          (throw (ex-info (tru "Email is not verified.") {:status-code 400})))))))

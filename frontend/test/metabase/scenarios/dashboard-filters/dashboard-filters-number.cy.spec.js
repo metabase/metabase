@@ -6,55 +6,75 @@ import {
   saveDashboard,
   setFilter,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
-import { DASHBOARD_NUMBER_FILTERS } from "./helpers/e2e-dashboard-filter-data-objects";
 import { addWidgetNumberFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
+import { DASHBOARD_NUMBER_FILTERS } from "./dashboard-filters-number";
 
-Object.entries(DASHBOARD_NUMBER_FILTERS).forEach(
-  ([filter, { value, representativeResult }]) => {
-    describe("scenarios > dashboard > filters > number", () => {
-      beforeEach(() => {
-        cy.intercept("GET", "/api/table/*/query_metadata").as("metadata");
+describe("scenarios > dashboard > filters > number", () => {
+  beforeEach(() => {
+    cy.intercept("GET", "/api/table/*/query_metadata").as("metadata");
 
-        restore();
-        cy.signInAsAdmin();
+    restore();
+    cy.signInAsAdmin();
 
-        visitDashboard(1);
+    visitDashboard(1);
 
-        editDashboard();
-        setFilter("Number", filter);
+    editDashboard();
+  });
 
-        cy.findByText("Select…").click();
-        popover()
-          .contains("Tax")
-          .click();
-      });
+  it(`should work when set through the filter widget`, () => {
+    Object.entries(DASHBOARD_NUMBER_FILTERS).forEach(([filter]) => {
+      cy.log(`Make sure we can connect ${filter} filter`);
+      setFilter("Number", filter);
 
-      it(`should work for "${filter}" when set through the filter widget`, () => {
-        saveDashboard();
-
-        filterWidget().click();
-        addWidgetNumberFilter(value);
-
-        cy.get(".Card").within(() => {
-          cy.findByText(representativeResult);
-        });
-      });
-
-      it(`should work for "${filter}" when set as the default filter`, () => {
-        cy.findByText("Default value")
-          .next()
-          .click();
-
-        addWidgetNumberFilter(value);
-
-        saveDashboard();
-
-        cy.get(".Card").within(() => {
-          cy.findByText(representativeResult);
-        });
-      });
+      cy.findByText("Select…").click();
+      popover().contains("Tax").click();
     });
-  },
-);
+
+    saveDashboard();
+
+    Object.entries(DASHBOARD_NUMBER_FILTERS).forEach(
+      ([filter, { value, representativeResult }], index) => {
+        filterWidget().eq(index).click();
+        addWidgetNumberFilter(value);
+
+        cy.log(`Make sure ${filter} filter returns correct result`);
+        cy.get(".Card").within(() => {
+          cy.findByText(representativeResult);
+        });
+
+        clearFilter(index);
+      },
+    );
+  });
+
+  it(`should work when set as the default filter`, () => {
+    setFilter("Number", "Equal to");
+    cy.findByText("Default value").next().click();
+
+    addWidgetNumberFilter("2.07");
+
+    saveDashboard();
+
+    cy.get(".Card").within(() => {
+      cy.findByText("37.65");
+    });
+
+    filterWidget().find(".Icon-close").click();
+
+    filterWidget().click();
+
+    addWidgetNumberFilter("5.27");
+
+    cy.get(".Card").within(() => {
+      cy.findByText("101.04");
+    });
+  });
+});
+
+function clearFilter(index = 0) {
+  console.log(cy.state());
+  filterWidget().eq(index).find(".Icon-close").click();
+  cy.wait("@dashcardQuery1");
+}

@@ -1,5 +1,4 @@
 import { getParameterType } from "./parameter-type";
-import Dimension from "metabase-lib/lib/Dimension";
 
 export function getValuePopulatedParameters(parameters, parameterValues) {
   return parameterValues
@@ -29,18 +28,31 @@ export function getParameterValueFromQueryParams(
 ) {
   queryParams = queryParams || {};
 
-  const fields = getFields(parameter, metadata);
   const maybeParameterValue = queryParams[parameter.slug || parameter.id];
 
-  if (hasParameterValue(maybeParameterValue)) {
-    const parsedValue = parseParameterValueForFields(
-      maybeParameterValue,
-      fields,
-    );
+  // skip parsing "" because it indicates a forcefully unset parameter
+  if (maybeParameterValue === "") {
+    return "";
+  } else if (hasParameterValue(maybeParameterValue)) {
+    const parsedValue = parseParameterValue(maybeParameterValue, parameter);
     return normalizeParameterValueForWidget(parsedValue, parameter);
   } else {
     return parameter.default;
   }
+}
+
+export function parseParameterValue(value, parameter) {
+  const { fields } = parameter;
+  if (Array.isArray(fields) && fields.length > 0) {
+    return parseParameterValueForFields(value, fields);
+  }
+
+  const type = getParameterType(parameter);
+  if (type === "number") {
+    return parseFloat(value);
+  }
+
+  return value;
 }
 
 function parseParameterValueForFields(value, fields) {
@@ -48,59 +60,25 @@ function parseParameterValueForFields(value, fields) {
     return value.map(v => parseParameterValueForFields(v, fields));
   }
 
-  // [].every is always true, so only check if there are some fields
-  if (fields.length > 0) {
-    // unix dates fields are numeric but query params shouldn't be parsed as numbers
-    if (fields.every(f => f.isNumeric() && !f.isDate())) {
-      return value === "" ? value : parseFloat(value);
-    }
+  // unix dates fields are numeric but query params shouldn't be parsed as numbers
+  if (fields.every(f => f.isNumeric() && !f.isDate())) {
+    return parseFloat(value);
+  }
 
-    if (fields.every(f => f.isBoolean())) {
-      return value === "true" ? true : value === "false" ? false : value;
-    }
+  if (fields.every(f => f.isBoolean())) {
+    return value === "true" ? true : value === "false" ? false : value;
   }
 
   return value;
 }
 
 function normalizeParameterValueForWidget(value, parameter) {
-  // ParameterValueWidget uses FieldValuesWidget if there's no available
-  // date widget and all targets are fields.
-  const willUseFieldValuesWidget =
-    parameter.hasOnlyFieldTargets && !/^date\//.test(parameter.type);
-
-  // If we'll use FieldValuesWidget, we should start with an array to match.
-  if (willUseFieldValuesWidget && !Array.isArray(value) && value !== "") {
-    value = [value];
+  const fieldType = getParameterType(parameter);
+  if (fieldType !== "date" && !Array.isArray(value)) {
+    return [value];
   }
 
   return value;
-}
-
-// field IDs can be either
-// ["field", <integer-id>, <options>] or
-// ["field", <string-name>, <options>]
-function getFields(parameter, metadata) {
-  if (parameter.fields) {
-    return parameter.fields;
-  }
-
-  const fieldIds =
-    parameter.field_ids || [parameter.field_id].filter(f => f != null);
-
-  return fieldIds
-    .map(id => {
-      const field = metadata.field(id);
-      if (field != null) {
-        return field;
-      }
-
-      const dimension = Dimension.parseMBQL(id, metadata);
-      if (dimension != null) {
-        return dimension.field();
-      }
-    })
-    .filter(field => field != null);
 }
 
 // on dashboards we treat a default parameter with a set value of "" (from a query parameter)
@@ -135,9 +113,10 @@ export function getParameterValuesByIdFromQueryParams(
     getParameterValueFromQueryParams(parameter, queryParams, metadata),
   ]);
 
-  const transformedPairs = forcefullyUnsetDefaultedParametersWithEmptyStringValue
-    ? removeAllEmptyStringParameters(parameterValuePairs)
-    : removeUndefaultedEmptyStringParameters(parameterValuePairs);
+  const transformedPairs =
+    forcefullyUnsetDefaultedParametersWithEmptyStringValue
+      ? removeAllEmptyStringParameters(parameterValuePairs)
+      : removeUndefaultedEmptyStringParameters(parameterValuePairs);
 
   const idValuePairs = transformedPairs.map(([parameter, value]) => [
     parameter.id,

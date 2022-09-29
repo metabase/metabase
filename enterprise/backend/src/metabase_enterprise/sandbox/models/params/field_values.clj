@@ -1,90 +1,102 @@
 (ns metabase-enterprise.sandbox.models.params.field-values
-  (:require [clojure.core.memoize :as memoize]
-            [metabase-enterprise.enhancements.ee-strategy-impl :as ee-strategy-impl]
-            [metabase-enterprise.sandbox.api.table :as table]
+  (:require [metabase-enterprise.sandbox.api.table :as table]
+            [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
+            [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions :as row-level-restrictions]
             [metabase.api.common :as api]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.models.field :as field :refer [Field]]
-            [metabase.models.field-values :as field-values :refer [FieldValues]]
+            [metabase.mbql.util :as mbql.u]
+            [metabase.models :refer [Field PermissionsGroupMembership]]
+            [metabase.models.field :as field]
+            [metabase.models.field-values :as field-values]
             [metabase.models.params.field-values :as params.field-values]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.util :as u]
-            [pretty.core :as pretty]
+            [metabase.public-settings.premium-features :refer [defenterprise]]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]))
 
 (comment api/keep-me)
-(comment mdb.connection/keep-me) ; used for [[memoize/ttl]]
 
-(def ^:private ^{:arglist '([last-updated field])} fetch-sandboxed-field-values*
-  (memoize/ttl
-   ;; use a custom key fn for memoization. The custom key includes current User ID and a hash of their permissions
-   ;; set, so we cache per-User (and so changes to that User's permissions will result in a cache miss), and Field ID
-   ;; instead of an entire Field object (so maps with slightly different keys are still considered equal)
-   ^{::memoize/args-fn (fn [[updated-at field]]
-                         [(mdb.connection/unique-identifier)
-                          api/*current-user-id*
-                          (hash @api/*current-user-permissions-set*)
-                          updated-at
-                          (u/the-id field)])}
-   (fn [_ field]
-     {:values   (field-values/distinct-values field)
-      :field_id (u/the-id field)})
-   ;; TODO -- shouldn't we return sandboxed human-readable values as well??
-   ;;
-   ;; Expire entries older than 30 days so we don't have entries for users and/or fields that
-   ;; no longer exists hanging around.
-   ;; (`clojure.core.cache/TTLCacheQ` (which `memoize` uses underneath) evicts all stale entries on
-   ;; every cache miss)
-   :ttl/threshold (* 1000 60 60 24 30)))
-
-(defn- fetch-sandboxed-field-values
-  [field]
-  (fetch-sandboxed-field-values*
-   (db/select-one-field :updated_at FieldValues :field_id (u/the-id field))
-   field))
-
-(defn- field-is-sandboxed?
+(defn field-is-sandboxed?
+  "Check if a field is sandboxed."
   [{:keys [table], :as field}]
   ;; slight optimization: for the `field-id->field-values` version we can batched hydrate `:table` to avoid having to
   ;; make a bunch of calls to fetch Table. For `get-or-create-field-values` we don't hydrate `:table` so we can fall
   ;; back to fetching it manually with `field/table`
   (table/only-segmented-perms? (or table (field/table field))))
 
-(defn- field-id->field-values-for-current-user [field-ids]
-  (let [fields                   (when (seq field-ids)
-                                   (hydrate (db/select Field :id [:in (set field-ids)]) :table))
-        {unsandboxed-fields false
-         sandboxed-fields   true} (group-by (comp boolean field-is-sandboxed?) fields)]
-    (merge
-     ;; use the normal OSS batched implementation for any Fields that aren't subject to sandboxing.
-     (when (seq unsandboxed-fields)
-       (params.field-values/field-id->field-values-for-current-user*
-        params.field-values/default-impl
-        (set (map u/the-id unsandboxed-fields))))
-     ;; for sandboxed fields, fetch the sandboxed values individually.
-     (into {} (for [{field-id :id, :as field} sandboxed-fields]
-                [field-id (fetch-sandboxed-field-values field)])))))
+(defn- table-id->gtap
+  "Find the GTAP for current user that apply to table `table-id`."
+  [table-id]
+  (let [group-ids (db/select-field :group_id PermissionsGroupMembership :user_id api/*current-user-id*)
+        gtaps     (db/select GroupTableAccessPolicy
+                             :group_id [:in group-ids]
+                             :table_id table-id)]
+    (when gtaps
+      (row-level-restrictions/assert-one-gtap-per-table gtaps)
+      ;; there shold be only one gtap per table and we only need one table here
+      ;; see docs in [[metabase.models.permissions]] for more info
+      (hydrate (first gtaps) :card))))
 
-(def ^:private impl
-  (reify
-    pretty/PrettyPrintable
-    (pretty [_]
-      `impl)
+(defn- field->gtap-attributes-for-current-user
+  "Returns the gtap attributes for current user that applied to `field`.
 
-    params.field-values/FieldValuesForCurrentUser
-    (get-or-create-field-values-for-current-user!* [_ field]
-      (if (field-is-sandboxed? field)
-        ;; if sandboxing is in effect we never actually "save" the FieldValues the way the OSS/non-sandboxed impl does.
-        (fetch-sandboxed-field-values field)
-        (params.field-values/get-or-create-field-values-for-current-user!* params.field-values/default-impl field)))
+  The gtap-attributes is a list with 2 elements:
+  1. card-id - for GTAP that use a saved question
+  2. a map:
+    if query is mbql query:
+      - with key is the user-attribute that applied to the table that `field` is in
+      - value is the user-attribute of current user corresponding to the key
+    for native query, this map will be the login-attributes of user
 
-    (field-id->field-values-for-current-user* [_ field-ids]
-      (field-id->field-values-for-current-user field-ids))))
+  For example we have an GTAP rules
+  {:card_id              1 ;; a mbql query
+   :attribute_remappings {\"State\" [:dimension [:field 3 nil]]}}
 
-(def ee-strategy-impl
-  "Enterprise version of the fetch FieldValues for current User logic. Uses our EE strategy pattern adapter: if EE
-  features *are* enabled, forwards method invocations to `impl`; if EE features *are not* enabled, forwards method
-  invocations to the default OSS impl."
-  (ee-strategy-impl/reify-ee-strategy-impl #'premium-features/enable-sandboxes? impl params.field-values/default-impl
-    params.field-values/FieldValuesForCurrentUser))
+  And users with login-attributes {\"State\" \"CA\"}
+
+  ;; (field-id->gtap-attributes-for-current-user (db/select-one Field :id 3))
+  ;; -> [1, {\"State\" \"CA\"}]"
+  [{:keys [table_id] :as _field}]
+  (when-let [gtap (table-id->gtap table_id)]
+    (let [login-attributes     (:login_attributes @api/*current-user*)
+          attribute_remappings (:attribute_remappings gtap)
+          field-ids            (db/select-field :id Field :table_id table_id)]
+      [(:card_id gtap)
+       (if (= :native (get-in gtap [:card :query_type]))
+         ;; For sandbox that uses native query, we can't narrow down to the exact attribute
+         ;; that affect the current table. So we just hash the whole login-attributes of users.
+         ;; This makes hashing a bit less efficient but it ensures that user get a new hash
+         ;; if they change login attributes
+         login-attributes
+         (into {} (for [[k v] attribute_remappings
+                        ;; get attribute that map to fields of the same table
+                        :when (contains? field-ids
+                                         (mbql.u/match-one v [:dimension [:field field-id _]] field-id))]
+                    {k (get login-attributes k)})))])))
+
+(defenterprise get-or-create-field-values-for-current-user!*
+  "Fetch cached FieldValues for a `field`, creating them if needed if the Field should have FieldValues. These
+  should be filtered as appropriate for the current User (currently this only applies to the EE impl)."
+  :feature :sandboxes
+  [field]
+  (if (field-is-sandboxed? field)
+    (params.field-values/get-or-create-advanced-field-values! :sandbox field)
+    (params.field-values/default-get-or-create-field-values-for-current-user! field)))
+
+(defenterprise hash-key-for-linked-filters
+  "Returns a hash-key for linked-filter FieldValues if the field is sandboxed, otherwise fallback to the OSS impl."
+  :feature :sandboxes
+  [field-id constraints]
+  (let [field (db/select-one Field :id field-id)]
+    (if (field-is-sandboxed? field)
+      (str (hash (concat [field-id
+                          constraints]
+                         (field->gtap-attributes-for-current-user field))))
+      (field-values/default-hash-key-for-linked-filters field-id constraints))))
+
+(defenterprise hash-key-for-sandbox
+  "Returns a hash-key for linked-filter FieldValues if the field is sandboxed, otherwise fallback to the OSS impl."
+  :feature :sandboxes
+  [field-id]
+  (let [field (db/select-one Field :id field-id)]
+    (when (field-is-sandboxed? field)
+      (str (hash (concat [field-id]
+                         (field->gtap-attributes-for-current-user field)))))))

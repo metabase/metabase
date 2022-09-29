@@ -25,7 +25,7 @@ const propTypes = {
   name: PropTypes.string,
   value: PropTypes.any,
   options: PropTypes.arrayOf(optionShape).isRequired,
-  variant: PropTypes.oneOf(["fill-text", "fill-background"]),
+  variant: PropTypes.oneOf(["fill-text", "fill-background", "fill-all"]),
   inactiveColor: PropTypes.string,
   onChange: PropTypes.func,
   fullWidth: PropTypes.bool,
@@ -39,18 +39,19 @@ export function SegmentedControl({
   options,
   onChange,
   fullWidth = false,
-  inactiveColor = "text-medium",
-  variant = "fill-text",
+  inactiveColor = "text-dark",
+  variant = "fill-background",
   ...props
 }) {
   const id = useMemo(() => _.uniqueId("radio-"), []);
   const name = nameFromProps || id;
+  const selectedOptionIndex = options.findIndex(
+    option => option.value === value,
+  );
   return (
     <SegmentedList {...props} fullWidth={fullWidth}>
       {options.map((option, index) => {
-        const isSelected = option.value === value;
-        const isFirst = index === 0;
-        const isLast = index === options.length - 1;
+        const isSelected = index === selectedOptionIndex;
         const id = `${name}-${option.value}`;
         const labelId = `${name}-${option.value}`;
         const iconOnly = !option.name;
@@ -59,8 +60,9 @@ export function SegmentedControl({
           <SegmentedItem
             key={option.value}
             isSelected={isSelected}
-            isFirst={isFirst}
-            isLast={isLast}
+            index={index}
+            total={options.length}
+            selectedOptionIndex={selectedOptionIndex}
             fullWidth={fullWidth}
             variant={variant}
             selectedColor={selectedColor}

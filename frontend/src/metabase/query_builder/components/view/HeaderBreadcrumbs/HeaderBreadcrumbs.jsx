@@ -61,3 +61,4 @@ export function HeadBreadcrumbs({
 }
 
 HeadBreadcrumbs.Badge = HeaderBadge;
+HeadBreadcrumbs.Divider = Divider;

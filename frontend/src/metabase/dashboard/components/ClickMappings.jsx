@@ -8,7 +8,6 @@ import { getIn, assocIn, dissocIn } from "icepick";
 import Icon from "metabase/components/Icon";
 import Select from "metabase/core/components/Select";
 
-import Question from "metabase-lib/lib/Question";
 import MetabaseSettings from "metabase/lib/settings";
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { getTargetsWithSourceFilters } from "metabase/lib/click-behavior";
@@ -17,37 +16,9 @@ import { GTAPApi } from "metabase/services";
 import { loadMetadataForQuery } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getParameters } from "metabase/dashboard/selectors";
+import Question from "metabase-lib/lib/Question";
 
-@loadQuestionMetadata((state, props) => (props.isDash ? null : props.object))
-@withUserAttributes
-@connect((state, props) => {
-  const { object, isDash, dashcard, clickBehavior } = props;
-  const metadata = getMetadata(state, props);
-  let parameters = getParameters(state, props);
-
-  if (props.excludeParametersSources) {
-    // Remove parameters as possible sources.
-    // We still include any that were already in use prior to this code change.
-    const parametersUsedAsSources = Object.values(
-      clickBehavior.parameterMapping || {},
-    )
-      .filter(mapping => getIn(mapping, ["source", "type"]) === "parameter")
-      .map(mapping => mapping.source.id);
-    parameters = parameters.filter(p => parametersUsedAsSources.includes(p.id));
-  }
-
-  const [setTargets, unsetTargets] = _.partition(
-    getTargetsWithSourceFilters({ isDash, object, metadata }),
-    ({ id }) =>
-      getIn(clickBehavior, ["parameterMapping", id, "source"]) != null,
-  );
-  const sourceOptions = {
-    column: dashcard.card.result_metadata.filter(isMappableColumn),
-    parameter: parameters,
-  };
-  return { setTargets, unsetTargets, sourceOptions };
-})
-class ClickMappings extends React.Component {
+class ClickMappingsInner extends React.Component {
   render() {
     const { setTargets, unsetTargets } = this.props;
     const sourceOptions = {
@@ -141,6 +112,48 @@ class ClickMappings extends React.Component {
     return "Unknown";
   }
 }
+
+const ClickMappings = _.compose(
+  loadQuestionMetadata((state, props) =>
+    props.isDash || props.isAction ? null : props.object,
+  ),
+  withUserAttributes,
+  connect((state, props) => {
+    const { object, isDash, dashcard, clickBehavior } = props;
+    const metadata = getMetadata(state, props);
+    let parameters = getParameters(state, props);
+
+    if (props.excludeParametersSources) {
+      // Remove parameters as possible sources.
+      // We still include any that were already in use prior to this code change.
+      const parametersUsedAsSources = Object.values(
+        clickBehavior.parameterMapping || {},
+      )
+        .filter(mapping => getIn(mapping, ["source", "type"]) === "parameter")
+        .map(mapping => mapping.source.id);
+      parameters = parameters.filter(p => {
+        return parametersUsedAsSources.includes(p.id);
+      });
+    }
+
+    const [setTargets, unsetTargets] = _.partition(
+      getTargetsWithSourceFilters({
+        isAction: props.isAction,
+        isDash,
+        dashcard,
+        object,
+        metadata,
+      }),
+      ({ id }) =>
+        getIn(clickBehavior, ["parameterMapping", id, "source"]) != null,
+    );
+    const sourceOptions = {
+      column: dashcard.card.result_metadata?.filter(isMappableColumn) || [],
+      parameter: parameters,
+    };
+    return { setTargets, unsetTargets, sourceOptions };
+  }),
+)(ClickMappingsInner);
 
 const getKeyForSource = o => (o.type == null ? null : `${o.type}-${o.id}`);
 const getSourceOption = {
@@ -258,13 +271,6 @@ function TargetWithSource({
 // TODO: Extract this to a more general HOC. It can probably also take care of withTableMetadataLoaded.
 function loadQuestionMetadata(getQuestion) {
   return ComposedComponent => {
-    @connect(
-      (state, props) => ({
-        metadata: getMetadata(state),
-        question: getQuestion && getQuestion(state, props),
-      }),
-      { loadMetadataForQuery },
-    )
     class MetadataLoader extends React.Component {
       componentDidMount() {
         if (this.props.question) {
@@ -293,7 +299,13 @@ function loadQuestionMetadata(getQuestion) {
       }
     }
 
-    return MetadataLoader;
+    return connect(
+      (state, props) => ({
+        metadata: getMetadata(state),
+        question: getQuestion && getQuestion(state, props),
+      }),
+      { loadMetadataForQuery },
+    )(MetadataLoader);
   };
 }
 

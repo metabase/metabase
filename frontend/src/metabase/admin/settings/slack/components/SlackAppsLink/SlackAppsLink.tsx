@@ -1,4 +1,5 @@
 import React from "react";
+import { t } from "ttag";
 import { LinkIcon, LinkRoot, LinkText } from "./SlackAppsLink.styled";
 
 export interface SlackAppsLinkProps {
@@ -15,7 +16,7 @@ const SlackAppsLink = ({ manifest }: SlackAppsLinkProps): JSX.Element => {
       className="Button Button--primary"
       href={`https://api.slack.com${link}`}
     >
-      <LinkText>{`Open Slack Apps`}</LinkText>
+      <LinkText>{t`Create Slack App`}</LinkText>
       <LinkIcon name="external" />
     </LinkRoot>
   );

@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
 import { TYPE, isa } from "metabase/lib/types";
-import _ from "underscore";
 
 const DENYLIST_TYPES = [
   TYPE.PK,
@@ -15,7 +14,7 @@ export default ({ question, clicked }) => {
     !clicked ||
     !clicked.column ||
     clicked.value !== undefined ||
-    _.any(DENYLIST_TYPES, t => isa(clicked.column.semantic_type, t)) ||
+    DENYLIST_TYPES.some(t => isa(clicked.column.semantic_type, t)) ||
     !question.query().isEditable()
   ) {
     return [];

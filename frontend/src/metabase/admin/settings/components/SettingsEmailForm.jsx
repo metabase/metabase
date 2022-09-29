@@ -6,8 +6,6 @@ import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import MarginHostingCTA from "metabase/admin/settings/components/widgets/MarginHostingCTA";
 
-import SettingsBatchForm from "./SettingsBatchForm";
-
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -16,6 +14,7 @@ import {
   updateEmailSettings,
   clearEmailSettings,
 } from "../settings";
+import SettingsBatchForm from "./SettingsBatchForm";
 import { EmailFormRoot } from "./SettingsEmailForm.styled";
 
 const SEND_TEST_BUTTON_STATES = {
@@ -24,8 +23,7 @@ const SEND_TEST_BUTTON_STATES = {
   success: t`Sent!`,
 };
 
-@connect(null, { sendTestEmail, updateEmailSettings, clearEmailSettings })
-export default class SettingsEmailForm extends Component {
+class SettingsEmailForm extends Component {
   state = {
     sendingEmail: "default",
   };
@@ -75,12 +73,14 @@ export default class SettingsEmailForm extends Component {
 
   render() {
     const { sendingEmail } = this.state;
-
+    const { elements } = this.props;
+    const visibleElements = elements.filter(setting => !setting.getHidden?.());
     return (
       <EmailFormRoot>
         <SettingsBatchForm
           ref={form => (this._form = form && form.getWrappedInstance())}
           {...this.props}
+          elements={visibleElements}
           updateSettings={this.props.updateEmailSettings}
           disable={sendingEmail !== "default"}
           renderExtraButtons={({ disabled, valid, pristine, submitting }) => (
@@ -112,3 +112,9 @@ export default class SettingsEmailForm extends Component {
     );
   }
 }
+
+export default connect(null, {
+  sendTestEmail,
+  updateEmailSettings,
+  clearEmailSettings,
+})(SettingsEmailForm);

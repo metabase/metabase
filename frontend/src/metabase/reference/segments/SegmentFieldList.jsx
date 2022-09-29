@@ -1,9 +1,10 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component } from "react";
+import React from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { reduxForm } from "redux-form";
+import { useFormik } from "formik";
 import { t } from "ttag";
+import cx from "classnames";
 import S from "metabase/components/List.css";
 import R from "metabase/reference/Reference.css";
 import F from "metabase/reference/components/Field.css";
@@ -16,24 +17,19 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import EditHeader from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
 
-import cx from "classnames";
-
-import {
-  getFieldsBySegment,
-  getForeignKeys,
-  getError,
-  getLoading,
-  getUser,
-  getIsEditing,
-  getSegment,
-} from "../selectors";
-
-import { fieldsToFormFields } from "../utils";
-
 import { getIconForField } from "metabase/lib/schema_metadata";
 
 import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";
+import {
+  getError,
+  getFieldsBySegment,
+  getForeignKeys,
+  getIsEditing,
+  getLoading,
+  getSegment,
+  getUser,
+} from "../selectors";
 
 const emptyStateData = {
   message: t`Fields in this table will appear here as they're added`,
@@ -50,143 +46,142 @@ const mapStateToProps = (state, props) => {
     loadingError: getError(state, props),
     user: getUser(state, props),
     isEditing: getIsEditing(state, props),
-    fields: fieldsToFormFields(data),
   };
 };
 
 const mapDispatchToProps = {
   ...metadataActions,
   ...actions,
+  onSubmit: actions.rUpdateFields,
 };
 
-const validate = (values, props) => {
-  return {};
+const propTypes = {
+  segment: PropTypes.object.isRequired,
+  style: PropTypes.object.isRequired,
+  entities: PropTypes.object.isRequired,
+  foreignKeys: PropTypes.object.isRequired,
+  isEditing: PropTypes.bool,
+  startEditing: PropTypes.func.isRequired,
+  endEditing: PropTypes.func.isRequired,
+  startLoading: PropTypes.func.isRequired,
+  endLoading: PropTypes.func.isRequired,
+  setError: PropTypes.func.isRequired,
+  updateField: PropTypes.func.isRequired,
+  user: PropTypes.object.isRequired,
+  loading: PropTypes.bool,
+  loadingError: PropTypes.object,
+  onSubmit: PropTypes.func,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-@reduxForm({
-  form: "fields",
-  validate,
-})
-export default class SegmentFieldList extends Component {
-  static propTypes = {
-    segment: PropTypes.object.isRequired,
-    style: PropTypes.object.isRequired,
-    entities: PropTypes.object.isRequired,
-    foreignKeys: PropTypes.object.isRequired,
-    isEditing: PropTypes.bool,
-    startEditing: PropTypes.func.isRequired,
-    endEditing: PropTypes.func.isRequired,
-    startLoading: PropTypes.func.isRequired,
-    endLoading: PropTypes.func.isRequired,
-    setError: PropTypes.func.isRequired,
-    updateField: PropTypes.func.isRequired,
-    handleSubmit: PropTypes.func.isRequired,
-    user: PropTypes.object.isRequired,
-    fields: PropTypes.object.isRequired,
-    loading: PropTypes.bool,
-    loadingError: PropTypes.object,
-    submitting: PropTypes.bool,
-    resetForm: PropTypes.func,
-  };
+const SegmentFieldList = props => {
+  const {
+    segment,
+    style,
+    entities,
+    foreignKeys,
+    loadingError,
+    loading,
+    user,
+    isEditing,
+    startEditing,
+    endEditing,
+    onSubmit,
+  } = props;
 
-  render() {
-    const {
-      segment,
-      style,
-      entities,
-      fields,
-      foreignKeys,
-      loadingError,
-      loading,
-      user,
-      isEditing,
-      startEditing,
-      endEditing,
-      resetForm,
-      handleSubmit,
-      submitting,
-    } = this.props;
+  const {
+    isSubmitting,
+    getFieldProps,
+    getFieldMeta,
+    handleSubmit,
+    handleReset,
+  } = useFormik({
+    initialValues: {},
+    onSubmit: fields =>
+      onSubmit(entities, fields, { ...props, resetForm: handleReset }),
+  });
 
-    return (
-      <form
-        style={style}
-        className="full"
-        onSubmit={handleSubmit(
-          async formFields =>
-            await actions.rUpdateFields(
-              this.props.entities,
-              formFields,
-              this.props,
-            ),
-        )}
-      >
-        {isEditing && (
-          <EditHeader
-            hasRevisionHistory={false}
-            reinitializeForm={resetForm}
-            endEditing={endEditing}
-            submitting={submitting}
-          />
-        )}
-        <EditableReferenceHeader
-          type="segment"
-          headerIcon="segment"
-          name={t`Fields in ${segment.name}`}
-          user={user}
-          isEditing={isEditing}
-          startEditing={startEditing}
+  const getFormField = name => ({
+    ...getFieldProps(name),
+    ...getFieldMeta(name),
+  });
+
+  const getNestedFormField = id => ({
+    display_name: getFormField(`${id}.display_name`),
+    semantic_type: getFormField(`${id}.semantic_type`),
+    fk_target_field_id: getFormField(`${id}.fk_target_field_id`),
+  });
+
+  return (
+    <form style={style} className="full" onSubmit={handleSubmit}>
+      {isEditing && (
+        <EditHeader
+          hasRevisionHistory={false}
+          reinitializeForm={handleReset}
+          endEditing={endEditing}
+          submitting={isSubmitting}
         />
-        <LoadingAndErrorWrapper
-          loading={!loadingError && loading}
-          error={loadingError}
-        >
-          {() =>
-            Object.keys(entities).length > 0 ? (
-              <div className="wrapper">
-                <div className="pl4 pb2 mb4 bg-white rounded bordered">
-                  <div className={S.item}>
-                    <div className={R.columnHeader}>
-                      <div className={cx(S.itemTitle, F.fieldNameTitle)}>
-                        {t`Field name`}
-                      </div>
-                      <div className={cx(S.itemTitle, F.fieldType)}>
-                        {t`Field type`}
-                      </div>
-                      <div className={cx(S.itemTitle, F.fieldDataType)}>
-                        {t`Data type`}
-                      </div>
+      )}
+      <EditableReferenceHeader
+        type="segment"
+        headerIcon="segment"
+        name={t`Fields in ${segment.name}`}
+        user={user}
+        isEditing={isEditing}
+        startEditing={startEditing}
+      />
+      <LoadingAndErrorWrapper
+        loading={!loadingError && loading}
+        error={loadingError}
+      >
+        {() =>
+          Object.keys(entities).length > 0 ? (
+            <div className="wrapper">
+              <div className="pl4 pb2 mb4 bg-white rounded bordered">
+                <div className={S.item}>
+                  <div className={R.columnHeader}>
+                    <div className={cx(S.itemTitle, F.fieldNameTitle)}>
+                      {t`Field name`}
+                    </div>
+                    <div className={cx(S.itemTitle, F.fieldType)}>
+                      {t`Field type`}
+                    </div>
+                    <div className={cx(S.itemTitle, F.fieldDataType)}>
+                      {t`Data type`}
                     </div>
                   </div>
-                  <List>
-                    {Object.values(entities).map(
-                      entity =>
-                        entity &&
-                        entity.id &&
-                        entity.name && (
-                          <li className="relative" key={entity.id}>
-                            <Field
-                              field={entity}
-                              foreignKeys={foreignKeys}
-                              url={`/reference/segments/${segment.id}/fields/${entity.id}`}
-                              icon={getIconForField(entity)}
-                              isEditing={isEditing}
-                              formField={fields[entity.id]}
-                            />
-                          </li>
-                        ),
-                    )}
-                  </List>
                 </div>
+                <List>
+                  {Object.values(entities).map(
+                    entity =>
+                      entity &&
+                      entity.id &&
+                      entity.name && (
+                        <li className="relative" key={entity.id}>
+                          <Field
+                            field={entity}
+                            foreignKeys={foreignKeys}
+                            url={`/reference/segments/${segment.id}/fields/${entity.id}`}
+                            icon={getIconForField(entity)}
+                            isEditing={isEditing}
+                            formField={getNestedFormField(entity.id)}
+                          />
+                        </li>
+                      ),
+                  )}
+                </List>
               </div>
-            ) : (
-              <div className={S.empty}>
-                <EmptyState {...emptyStateData} />
-              </div>
-            )
-          }
-        </LoadingAndErrorWrapper>
-      </form>
-    );
-  }
-}
+            </div>
+          ) : (
+            <div className={S.empty}>
+              <EmptyState {...emptyStateData} />
+            </div>
+          )
+        }
+      </LoadingAndErrorWrapper>
+    </form>
+  );
+};
+
+SegmentFieldList.propTypes = propTypes;
+
+export default connect(mapStateToProps, mapDispatchToProps)(SegmentFieldList);

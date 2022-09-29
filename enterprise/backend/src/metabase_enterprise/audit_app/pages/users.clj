@@ -59,7 +59,7 @@
 (defmethod audit.i/internal-query ::most-active
   [_]
   {:metadata [[:user_id {:display_name "User ID",          :base_type :type/Integer, :remapped_to   :name}]
-              [:name    {:display_name "Name",             :base_type :type/Name,    :remapped_from :user_id}]
+              [:name    {:display_name "Member",           :base_type :type/Name,    :remapped_from :user_id}]
               [:count   {:display_name "Query Executions", :base_type :type/Integer}]]
    :results  (common/reducible-query
               {:with      [[:qe_count {:select   [[:%count.* :count]
@@ -76,14 +76,15 @@
                :left-join [:qe_count [:= :qe_count.executor_id :u.id]]
                :order-by  [[:count :desc]
                            [:%lower.u.last_name :asc]
-                           [:%lower.u.first_name :asc]]
+                           [:%lower.u.first_name :asc]
+                           [:%lower.u.email :asc]]
                :limit     10})})
 
 ;; Query that returns the 10 Users with the most saved objects in descending order.
 (defmethod audit.i/internal-query ::most-saves
   [_]
   {:metadata [[:user_id   {:display_name "User ID",       :base_type :type/Integer, :remapped_to :user_name}]
-              [:user_name {:display_name "Name",          :base_type :type/Name,    :remapped_from :user_id}]
+              [:user_name {:display_name "Member",        :base_type :type/Name,    :remapped_from :user_id}]
               [:saves     {:display_name "Saved Objects", :base_type :type/Integer}]]
    :results  (common/reducible-query
               {:with      [[:card_saves       {:select   [:creator_id
@@ -110,14 +111,15 @@
                            :pulse_saves     [:= :u.id :pulse_saves.creator_id]]
                :order-by  [[:saves :desc]
                            [:u.last_name :asc]
-                           [:u.first_name :asc]]
+                           [:u.first_name :asc]
+                           [:u.email :asc]]
                :limit     10})})
 
 ;; Query that returns the total time spent executing queries, broken out by User, for the top 10 Users.
 (defmethod audit.i/internal-query ::query-execution-time-per-user
   [_]
   {:metadata [[:user_id           {:display_name "User ID",                   :base_type :type/Integer, :remapped_to   :name}]
-              [:name              {:display_name "Name",                      :base_type :type/Name,    :remapped_from :user_id}]
+              [:name              {:display_name "Member",                    :base_type :type/Name,    :remapped_from :user_id}]
               [:execution_time_ms {:display_name "Total Execution Time (ms)", :base_type :type/Decimal}]]
    :results  (common/reducible-query
               {:with      [[:exec_time {:select   [[:%sum.running_time :execution_time_ms]
@@ -136,7 +138,8 @@
                :left-join [:exec_time [:= :exec_time.executor_id :u.id]]
                :order-by  [[:execution_time_ms :desc]
                            [:%lower.u.last_name :asc]
-                           [:%lower.u.first_name :asc]]
+                           [:%lower.u.first_name :asc]
+                           [:%lower.u.email :asc]]
                :limit     10})})
 
 ;; A table of all the Users for this instance, and various statistics about them (see metadata below).
@@ -146,7 +149,7 @@
 
   ([_ query-string :- (s/maybe s/Str)]
    {:metadata [[:user_id          {:display_name "User ID",          :base_type :type/Integer, :remapped_to :name}]
-               [:name             {:display_name "Name",             :base_type :type/Name,    :remapped_from :user_id}]
+               [:name             {:display_name "Member",           :base_type :type/Name,    :remapped_from :user_id}]
                [:role             {:display_name "Role",             :base_type :type/Text}]
                [:groups           {:display_name "Groups",           :base_type :type/Text}]
                [:date_joined      {:display_name "Date Joined",      :base_type :type/DateTime}]

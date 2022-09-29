@@ -21,7 +21,8 @@
             [metabase.util.i18n :refer [deferred-tru]]
             [metabase.util.schema :as su]
             [ring.util.codec :as codec]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [toucan.db :as db]))
 
 (def ^:private Show
   (su/with-api-error-message (s/maybe (s/enum "all"))
@@ -56,7 +57,7 @@
 (api/defendpoint GET "/database/:id/candidates"
   "Return a list of candidates for automagic dashboards orderd by interestingness."
   [id]
-  (-> (Database id)
+  (-> (db/select-one Database :id id)
       api/read-check
       candidate-tables))
 
@@ -75,23 +76,50 @@
     (Integer/parseInt x)
     x))
 
-(def ^:private ->entity
-  {"table"     (comp api/read-check Table ensure-int)
-   "segment"   (comp api/read-check Segment ensure-int)
-   "question"  (comp api/read-check Card ensure-int)
-   "adhoc"     (comp adhoc-query-read-check query/adhoc-query decode-base64-json)
-   "metric"    (comp api/read-check Metric ensure-int)
-   "field"     (comp api/read-check Field ensure-int)
-   "transform" (fn [transform-name]
-                 (->> transform-name
-                      tf.materialize/get-collection
-                      Collection
-                      api/read-check)
-                 transform-name)})
+(defmulti ^:private ->entity
+  "Parse/decode/coerce string `s` an to an entity of `entity-type`. `s` is something like a unparsed integer row ID,
+  encoded query, or transform name."
+  {:arglists '([entity-type s])}
+  (fn [entity-type _s]
+    (keyword entity-type)))
+
+(defmethod ->entity :table
+  [_entity-type table-id-str]
+  ;; table-id can also be a source query reference like `card__1` so in that case we should pull the ID out and use the
+  ;; `:question` method instead
+  (if-let [[_ card-id-str] (when (string? table-id-str)
+                             (re-matches #"^card__(\d+$)" table-id-str))]
+    (->entity :question card-id-str)
+    (api/read-check (db/select-one Table :id (ensure-int table-id-str)))))
+
+(defmethod ->entity :segment
+  [_entity-type segment-id-str]
+  (api/read-check (db/select-one Segment :id (ensure-int segment-id-str))))
+
+(defmethod ->entity :question
+  [_entity-type card-id-str]
+  (api/read-check (db/select-one Card :id (ensure-int card-id-str))))
+
+(defmethod ->entity :adhoc
+  [_entity-type encoded-query]
+  (adhoc-query-read-check (query/adhoc-query (decode-base64-json encoded-query))))
+
+(defmethod ->entity :metric
+  [_entity-type metric-id-str]
+  (api/read-check (db/select-one Metric :id (ensure-int metric-id-str))))
+
+(defmethod ->entity :field
+  [_entity-type field-id-str]
+  (api/read-check (db/select-one Field :id (ensure-int field-id-str))))
+
+(defmethod ->entity :transform
+  [_entity-type transform-name]
+  (api/read-check (db/select-one Collection :id (tf.materialize/get-collection transform-name)))
+  transform-name)
 
 (def ^:private Entity
   (su/with-api-error-message
-      (apply s/enum (keys ->entity))
+      (apply s/enum (map name (keys (methods ->entity))))
     (deferred-tru "Invalid entity type")))
 
 (def ^:private ComparisonEntity
@@ -105,8 +133,9 @@
   {show   Show
    entity Entity}
   (if (= entity "transform")
-    (transform.dashboard/dashboard ((->entity entity) entity-id-or-query))
-    (-> entity-id-or-query ((->entity entity)) (automagic-analysis {:show (keyword show)}))))
+    (transform.dashboard/dashboard (->entity entity entity-id-or-query))
+    (-> (->entity entity entity-id-or-query)
+        (automagic-analysis {:show (keyword show)}))))
 
 (api/defendpoint GET "/:entity/:entity-id-or-query/rule/:prefix/:rule"
   "Return an automagic dashboard for entity `entity` with id `id` using rule `rule`."
@@ -115,8 +144,9 @@
    show   Show
    prefix Prefix
    rule   Rule}
-  (-> entity-id-or-query ((->entity entity)) (automagic-analysis {:show (keyword show)
-                                                                  :rule ["table" prefix rule]})))
+  (-> (->entity entity entity-id-or-query)
+      (automagic-analysis {:show (keyword show)
+                           :rule ["table" prefix rule]})))
 
 (api/defendpoint GET "/:entity/:entity-id-or-query/cell/:cell-query"
   "Return an automagic dashboard analyzing cell in  automagic dashboard for entity `entity`
@@ -126,8 +156,7 @@
   {entity     Entity
    show       Show
    cell-query Base64EncodedJSON}
-  (-> entity-id-or-query
-      ((->entity entity))
+  (-> (->entity entity entity-id-or-query)
       (automagic-analysis {:show       (keyword show)
                            :cell-query (decode-base64-json cell-query)})))
 
@@ -140,8 +169,7 @@
    prefix     Prefix
    rule       Rule
    cell-query Base64EncodedJSON}
-  (-> entity-id-or-query
-      ((->entity entity))
+  (-> (->entity entity entity-id-or-query)
       (automagic-analysis {:show       (keyword show)
                            :rule       ["table" prefix rule]
                            :cell-query (decode-base64-json cell-query)})))
@@ -153,8 +181,8 @@
   {show              Show
    entity            Entity
    comparison-entity ComparisonEntity}
-  (let [left      ((->entity entity) entity-id-or-query)
-        right     ((->entity comparison-entity) comparison-entity-id-or-query)
+  (let [left      (->entity entity entity-id-or-query)
+        right     (->entity comparison-entity comparison-entity-id-or-query)
         dashboard (automagic-analysis left {:show         (keyword show)
                                             :query-filter nil
                                             :comparison?  true})]
@@ -169,8 +197,8 @@
    prefix            Prefix
    rule              Rule
    comparison-entity ComparisonEntity}
-  (let [left      ((->entity entity) entity-id-or-query)
-        right     ((->entity comparison-entity) comparison-entity-id-or-query)
+  (let [left      (->entity entity entity-id-or-query)
+        right     (->entity comparison-entity comparison-entity-id-or-query)
         dashboard (automagic-analysis left {:show         (keyword show)
                                             :rule         ["table" prefix rule]
                                             :query-filter nil
@@ -186,8 +214,8 @@
    show              Show
    cell-query        Base64EncodedJSON
    comparison-entity ComparisonEntity}
-  (let [left      ((->entity entity) entity-id-or-query)
-        right     ((->entity comparison-entity) comparison-entity-id-or-query)
+  (let [left      (->entity entity entity-id-or-query)
+        right     (->entity comparison-entity comparison-entity-id-or-query)
         dashboard (automagic-analysis left {:show         (keyword show)
                                             :query-filter nil
                                             :comparison?  true})]
@@ -204,8 +232,8 @@
    rule              Rule
    cell-query        Base64EncodedJSON
    comparison-entity ComparisonEntity}
-  (let [left      ((->entity entity) entity-id-or-query)
-        right     ((->entity comparison-entity) comparison-entity-id-or-query)
+  (let [left      (->entity entity entity-id-or-query)
+        right     (->entity comparison-entity comparison-entity-id-or-query)
         dashboard (automagic-analysis left {:show         (keyword show)
                                             :rule         ["table" prefix rule]
                                             :query-filter nil})]

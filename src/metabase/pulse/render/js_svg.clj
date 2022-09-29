@@ -5,6 +5,7 @@
   `toJSMap` functions to turn Clojure's normal datastructures into js native structures."
   (:require [cheshire.core :as json]
             [clojure.string :as str]
+            [metabase.public-settings :as public-settings]
             [metabase.pulse.render.js-engine :as js])
   (:import [java.io ByteArrayInputStream ByteArrayOutputStream]
            java.nio.charset.StandardCharsets
@@ -100,22 +101,15 @@
 (defn- svg-string->bytes [s]
   (-> s parse-svg-string render-svg))
 
-(defn timelineseries-line
-  "Clojure entrypoint to render a timeseries line char. Rows should be tuples of [datetime numeric-value]. Labels is a
-  map of {:left \"left-label\" :botton \"bottom-label\"}. Returns a byte array of a png file."
-  [rows labels settings]
-  (let [svg-string (.asString (js/execute-fn-name @context "timeseries_line" rows
-                                                  (map (fn [[k v]] [(name k) v]) labels)
-                                                  (json/generate-string settings)))]
-    (svg-string->bytes svg-string)))
-
-(defn timelineseries-waterfall
-  "Clojure entrypoint to render a timeseries waterfall chart. Rows should be tuples of [datetime numeric-value]. Labels is
+(defn waterfall
+  "Clojure entrypoint to render a timeseries or categorical waterfall chart. Rows should be tuples of [datetime numeric-value]. Labels is
   a map of {:left \"left-label\" :botton \"bottom-label\". Returns a byte array of a png file."
-  [rows labels settings]
-  (let [svg-string (.asString (js/execute-fn-name @context "timeseries_waterfall" rows
+  [rows labels settings waterfall-type]
+  (let [svg-string (.asString (js/execute-fn-name @context "waterfall" rows
                                                   (map (fn [[k v]] [(name k) v]) labels)
-                                                  (json/generate-string settings)))]
+                                                  (json/generate-string settings)
+                                                  (name waterfall-type)
+                                                  (json/generate-string (public-settings/application-colors))))]
     (svg-string->bytes svg-string)))
 
 (defn funnel
@@ -123,24 +117,6 @@
   Returns a byte array of a png file."
   [data settings]
   (let [svg-string (.asString (js/execute-fn-name @context "funnel" (json/generate-string data)
-                                                  (json/generate-string settings)))]
-    (svg-string->bytes svg-string)))
-
-(defn timelineseries-bar
-  "Clojure entrypoint to render a timeseries bar chart. Rows should be tuples of [datetime numeric-value]. Labels is a
-  map of {:left \"left-label\" :botton \"bottom-label\"}. Returns a byte array of a png file."
-  [rows labels settings]
-  (let [svg-string (.asString (js/execute-fn-name @context "timeseries_bar" rows
-                                                  (map (fn [[k v]] [(name k) v]) labels)
-                                                  (json/generate-string settings)))]
-    (svg-string->bytes svg-string)))
-
-(defn timelineseries-area
-  "Clojure entrypoint to render a timeseries area chart. Rows should be tuples of [datetime numeric-value]. Labels is a
-  map of {:left \"left-label\" :botton \"bottom-label\"}. Returns a byte array of a png file."
-  [rows labels settings]
-  (let [svg-string (.asString (js/execute-fn-name @context "timeseries_area" rows
-                                                  (map (fn [[k v]] [(name k) v]) labels)
                                                   (json/generate-string settings)))]
     (svg-string->bytes svg-string)))
 
@@ -157,42 +133,6 @@
                                                   (json/generate-string series)
                                                   (json/generate-string settings)
                                                   (json/generate-string (:colors settings))))]
-    (svg-string->bytes svg-string)))
-
-(defn categorical-line
-  "Clojure entrypoint to render a categorical line chart. Rows should be tuples of [stringable numeric-value]. Labels is
-  a map of {:left \"left-label\" :botton \"bottom-label\". Returns a byte array of a png file."
-  [rows labels settings]
-  (let [svg-string (.asString (js/execute-fn-name @context "categorical_line" rows
-                                                  (map (fn [[k v]] [(name k) v]) labels)
-                                                  (json/generate-string settings)))]
-    (svg-string->bytes svg-string)))
-
-(defn categorical-waterfall
-  "Clojure entrypoint to render a categorical waterfall chart. Rows should be tuples of [stringable numeric-value]. Labels is
-  a map of {:left \"left-label\" :botton \"bottom-label\". Returns a byte array of a png file."
-  [rows labels settings]
-  (let [svg-string (.asString (js/execute-fn-name @context "categorical_waterfall" rows
-                                                  (map (fn [[k v]] [(name k) v]) labels)
-                                                  (json/generate-string settings)))]
-    (svg-string->bytes svg-string)))
-
-(defn categorical-bar
-  "Clojure entrypoint to render a categorical bar chart. Rows should be tuples of [stringable numeric-value]. Labels is
-  a map of {:left \"left-label\" :botton \"bottom-label\". Returns a byte array of a png file."
-  [rows labels settings]
-  (let [svg-string (.asString (js/execute-fn-name @context "categorical_bar" rows
-                                                  (map (fn [[k v]] [(name k) v]) labels)
-                                                  (json/generate-string settings)))]
-    (svg-string->bytes svg-string)))
-
-(defn categorical-area
-  "Clojure entrypoint to render a categorical area chart. Rows should be tuples of [stringable numeric-value]. Labels is a
-  map of {:left \"left-label\" :botton \"bottom-label\"}. Returns a byte array of a png file."
-  [rows labels settings]
-  (let [svg-string (.asString (js/execute-fn-name @context "categorical_area" rows
-                                                  (map (fn [[k v]] [(name k) v]) labels)
-                                                  (json/generate-string settings)))]
     (svg-string->bytes svg-string)))
 
 (defn categorical-donut

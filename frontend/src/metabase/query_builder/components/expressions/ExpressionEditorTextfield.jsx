@@ -6,6 +6,7 @@ import { t } from "ttag";
 import _ from "underscore";
 import AceEditor from "react-ace";
 
+import * as ace from "ace-builds/src-noconflict/ace";
 import { format } from "metabase/lib/expressions/format";
 import { suggest } from "metabase/lib/expressions/suggest";
 import { processSource } from "metabase/lib/expressions/process";
@@ -25,10 +26,6 @@ import {
 
 import ExpressionMode from "./ExpressionMode";
 
-import "./expressions.css";
-
-import * as ace from "ace-builds/src-noconflict/ace";
-
 ace.config.set("basePath", "/assets/ui/");
 
 const ErrorMessage = ({ error }) => {
@@ -43,8 +40,7 @@ const ErrorMessage = ({ error }) => {
   );
 };
 
-@ExplicitSize()
-export default class ExpressionEditorTextfield extends React.Component {
+class ExpressionEditorTextfield extends React.Component {
   constructor() {
     super();
     this.input = React.createRef();
@@ -462,3 +458,5 @@ export default class ExpressionEditorTextfield extends React.Component {
     );
   }
 }
+
+export default ExplicitSize()(ExpressionEditorTextfield);

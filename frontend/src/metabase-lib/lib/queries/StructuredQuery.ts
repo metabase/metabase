@@ -3,6 +3,9 @@
 /**
  * Represents a structured MBQL query.
  */
+import _ from "underscore";
+import { chain, updateIn } from "icepick";
+import { t } from "ttag";
 import * as Q from "metabase/lib/query/query";
 import { getUniqueExpressionName } from "metabase/lib/query/expression";
 import {
@@ -10,10 +13,6 @@ import {
   DISPLAY_QUOTES,
 } from "metabase/lib/expressions/format";
 import { isCompatibleAggregationOperatorForField } from "metabase/lib/schema_metadata";
-import _ from "underscore";
-import { chain, updateIn } from "icepick";
-import { t } from "ttag";
-import { memoize } from "metabase-lib/lib/utils";
 import {
   StructuredQuery as StructuredQueryObject,
   Aggregation,
@@ -28,6 +27,17 @@ import {
   StructuredDatasetQuery,
 } from "metabase-types/types/Card";
 import { AggregationOperator } from "metabase-types/types/Metadata";
+import { isSegment } from "metabase/lib/query/filter";
+import { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
+import { TableId } from "metabase-types/types/Table";
+import { Column } from "metabase-types/types/Dataset";
+import { TYPE } from "metabase/lib/types";
+import { fieldRefForColumn } from "metabase/lib/dataset";
+import {
+  isVirtualCardId,
+  getQuestionIdFromVirtualTableId,
+} from "metabase/lib/saved-questions";
+import { memoizeClass } from "metabase-lib/lib/utils";
 import Dimension, {
   FieldDimension,
   ExpressionDimension,
@@ -35,23 +45,22 @@ import Dimension, {
 } from "metabase-lib/lib/Dimension";
 import DimensionOptions from "metabase-lib/lib/DimensionOptions";
 import Segment from "../metadata/Segment";
-import { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
 import Database from "../metadata/Database";
 import Question from "../Question";
-import { TableId } from "metabase-types/types/Table";
-import { Column } from "metabase-types/types/Dataset";
+import Table from "../metadata/Table";
+import Field from "../metadata/Field";
 import AtomicQuery from "./AtomicQuery";
 import AggregationWrapper from "./structured/Aggregation";
 import BreakoutWrapper from "./structured/Breakout";
 import FilterWrapper from "./structured/Filter";
 import JoinWrapper from "./structured/Join";
 import OrderByWrapper from "./structured/OrderBy";
-import Table from "../metadata/Table";
-import Field from "../metadata/Field";
-import { TYPE } from "metabase/lib/types";
-import { fieldRefForColumn } from "metabase/lib/dataset";
+
+import { getStructuredQueryTable } from "./utils/structured-query-table";
+
 type DimensionFilter = (dimension: Dimension) => boolean;
 type FieldFilter = (filter: Field) => boolean;
+
 export const STRUCTURED_QUERY_TEMPLATE = {
   database: null,
   type: "query",
@@ -59,11 +68,36 @@ export const STRUCTURED_QUERY_TEMPLATE = {
     "source-table": null,
   },
 };
+
+export interface FilterSection {
+  name: string;
+  icon: string;
+  items: (DimensionOption | SegmentOption)[];
+}
+
+export interface DimensionOption {
+  dimension: Dimension;
+}
+
+// type guards for determining data types
+export const isSegmentOption = (content: any): content is SegmentOption =>
+  content?.filter && isSegment(content.filter);
+
+export const isDimensionOption = (content: any): content is DimensionOption =>
+  !!content?.dimension;
+
+export interface SegmentOption {
+  name: string;
+  filter: ["segment", number];
+  icon: string;
+  query: StructuredQuery;
+}
+
 /**
  * A wrapper around an MBQL (`query` type @type {DatasetQuery}) object
  */
 
-export default class StructuredQuery extends AtomicQuery {
+class StructuredQueryInner extends AtomicQuery {
   static isDatasetQueryType(datasetQuery: DatasetQuery) {
     return datasetQuery && datasetQuery.type === STRUCTURED_QUERY_TEMPLATE.type;
   }
@@ -215,6 +249,11 @@ export default class StructuredQuery extends AtomicQuery {
     return this.query()?.["source-table"];
   }
 
+  sourceTable(): Table | null | undefined {
+    const tableId = this.sourceTableId();
+    return tableId != null ? this._metadata.table(tableId) : null;
+  }
+
   /**
    * @returns a new query with the provided Table ID set.
    */
@@ -298,38 +337,8 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * @returns the table object, if a table is selected and loaded.
    */
-  @memoize
-  table(): Table {
-    const sourceQuery = this.sourceQuery();
-
-    if (sourceQuery) {
-      return new Table({
-        name: "",
-        display_name: "",
-        db: sourceQuery.database(),
-        fields: sourceQuery.columns().map(
-          column =>
-            new Field({
-              ...column,
-              // TODO FIXME -- Do NOT use field-literal unless you're referring to a native query
-              id: [
-                "field",
-                column.name,
-                {
-                  "base-type": column.base_type,
-                },
-              ],
-              source: "fields",
-              // HACK: need to thread the query through to this fake Field
-              query: this,
-            }),
-        ),
-        segments: [],
-        metrics: [],
-      });
-    }
-
-    return this.metadata().table(this.sourceTableId());
+  table(): Table | null {
+    return getStructuredQueryTable(this);
   }
 
   /**
@@ -756,21 +765,25 @@ export default class StructuredQuery extends AtomicQuery {
   }
 
   /**
-   * @param includedBreakout The breakout to include even if it's already used
+   * @param includedBreakout The breakout to include in the options even if it's already used. If true, include all options.
    * @param fieldFilter An option @type {Field} predicate to filter out options
    * @returns @type {DimensionOptions} that can be used as breakouts, excluding used breakouts, unless @param {breakout} is provided.
    */
   breakoutOptions(includedBreakout?: any, fieldFilter = () => true) {
-    // the set of field ids being used by other breakouts
-    const usedFields = new Set(
+    // the collection of field dimensions
+    const breakoutDimensions =
       includedBreakout === true
         ? []
         : this.breakouts()
             .filter(breakout => !_.isEqual(breakout, includedBreakout))
-            .map(breakout => breakout.field().id),
-    );
-    return this.fieldOptions(
-      field => fieldFilter(field) && !usedFields.has(field.id),
+            .map(breakout => breakout.dimension());
+
+    return this.dimensionOptions(
+      dimension =>
+        fieldFilter(dimension.field()) &&
+        !breakoutDimensions.some(breakoutDimension =>
+          breakoutDimension.isSameBaseDimension(dimension),
+        ),
     );
   }
 
@@ -822,7 +835,6 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * @returns An array of MBQL @type {Filter}s.
    */
-  @memoize
   filters(): FilterWrapper[] {
     return Q.getFilters(this.query()).map(
       (filter, index) => new FilterWrapper(filter, index, this),
@@ -832,7 +844,7 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * @returns An array of MBQL @type {Filter}s from the last two query stages
    */
-  topLevelFilters(stages = 2): Filter[] {
+  topLevelFilters(stages = 2): FilterWrapper[] {
     const queries = this.queries().slice(-stages);
     return [].concat(...queries.map(q => q.filters()));
   }
@@ -840,10 +852,11 @@ export default class StructuredQuery extends AtomicQuery {
   filterFieldOptionSections(
     filter?: (Filter | FilterWrapper) | null | undefined,
     { includeSegments = true } = {},
+    includeAppliedSegments = false,
   ) {
     const filterDimensionOptions = this.filterDimensionOptions();
     const filterSegmentOptions = includeSegments
-      ? this.filterSegmentOptions(filter)
+      ? this.filterSegmentOptions(filter, includeAppliedSegments)
       : [];
     return filterDimensionOptions.sections({
       extraItems: filterSegmentOptions.map(segment => ({
@@ -855,7 +868,11 @@ export default class StructuredQuery extends AtomicQuery {
     });
   }
 
-  topLevelFilterFieldOptionSections(filter = null, stages = 2) {
+  topLevelFilterFieldOptionSections(
+    filter = null,
+    stages = 2,
+    includeAppliedSegments = false,
+  ): FilterSection[] {
     const queries = this.queries().slice(-stages);
 
     // allow post-aggregation filtering
@@ -865,15 +882,20 @@ export default class StructuredQuery extends AtomicQuery {
 
     queries.reverse();
     const sections = [].concat(
-      ...queries.map(q => q.filterFieldOptionSections(filter)),
+      ...queries.map(q =>
+        q.filterFieldOptionSections(filter, undefined, includeAppliedSegments),
+      ),
     );
 
     // special logic to only show aggregation dimensions for post-aggregation dimensions
     if (queries.length > 1) {
-      // set the section title to `Metrics`
-      sections[0].name = t`Metrics`;
+      const summarySection = {
+        name: t`Summaries`,
+        icon: "sum",
+        items: [],
+      };
       // only include aggregation dimensions
-      sections[0].items = sections[0].items.filter(item => {
+      summarySection.items = sections[0].items.filter(item => {
         if (item.dimension) {
           const sourceDimension = queries[0].dimensionForSourceQuery(
             item.dimension,
@@ -886,6 +908,8 @@ export default class StructuredQuery extends AtomicQuery {
 
         return true;
       });
+      sections.shift();
+      sections.push(summarySection);
     }
 
     return sections;
@@ -901,7 +925,10 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * @returns @type {Segment}s that can be used as filters.
    */
-  filterSegmentOptions(filter?: Filter | FilterWrapper): Segment[] {
+  filterSegmentOptions(
+    filter?: Filter | FilterWrapper,
+    includeAppliedSegments = false,
+  ): Segment[] {
     if (filter && !(filter instanceof FilterWrapper)) {
       filter = new FilterWrapper(filter, null, this);
     }
@@ -910,7 +937,8 @@ export default class StructuredQuery extends AtomicQuery {
     return this.table().segments.filter(
       segment =>
         (currentSegmentId != null && currentSegmentId === segment.id) ||
-        (!segment.archived && !this.segments().includes(segment)),
+        (!segment.archived &&
+          (includeAppliedSegments || !this.segments().includes(segment))),
     );
   }
 
@@ -962,9 +990,15 @@ export default class StructuredQuery extends AtomicQuery {
     return this._updateQuery(Q.clearFilters, arguments);
   }
 
+  /**
+   * @returns {StructuredQuery} new query with all segment filters removed
+   */
+  clearSegments() {
+    return this._updateQuery(Q.clearSegments, arguments);
+  }
+
   // SORTS
   // TODO: standardize SORT vs ORDER_BY terminology
-  @memoize
   sorts(): OrderByWrapper[] {
     return Q.getOrderBys(this.query()).map(
       (sort, index) => new OrderByWrapper(sort, index, this),
@@ -1099,6 +1133,10 @@ export default class StructuredQuery extends AtomicQuery {
       query = query.removeField(index);
     }
 
+    if (!query.hasExpressions() && query.isRaw()) {
+      query = query.clearFields();
+    }
+
     return query;
   }
 
@@ -1113,6 +1151,10 @@ export default class StructuredQuery extends AtomicQuery {
       if (index >= 0) {
         query = query.removeField(index);
       }
+    }
+
+    if (this.isRaw() && this.sourceQuery()) {
+      query = query.clearFields();
     }
 
     return query;
@@ -1207,9 +1249,8 @@ export default class StructuredQuery extends AtomicQuery {
     const joins = this.joins();
 
     for (const join of joins) {
-      const joinedDimensionOptions = join.joinedDimensionOptions(
-        dimensionFilter,
-      );
+      const joinedDimensionOptions =
+        join.joinedDimensionOptions(dimensionFilter);
       dimensionOptions.count += joinedDimensionOptions.count;
       dimensionOptions.fks.push(joinedDimensionOptions);
     }
@@ -1217,12 +1258,10 @@ export default class StructuredQuery extends AtomicQuery {
     const table = this.table();
 
     if (table) {
-      const dimensionIsFKReference = dimension =>
-        dimension.field && dimension.field() && dimension.field().isFK();
+      const dimensionIsFKReference = dimension => dimension.field?.().isFK();
 
       const filteredNonFKDimensions = this.dimensions().filter(dimensionFilter);
 
-      // .filter(d => !dimensionIsFKReference(d));
       for (const dimension of filteredNonFKDimensions) {
         dimensionOptions.count++;
         dimensionOptions.dimensions.push(dimension);
@@ -1236,7 +1275,16 @@ export default class StructuredQuery extends AtomicQuery {
       for (const dimension of fkDimensions) {
         const field = dimension.field();
 
-        if (field && explicitJoins.has(this._keyForFK(field, field.target))) {
+        const queryHasExplicitJoin =
+          field && explicitJoins.has(this._keyForFK(field, field.target));
+        const isNestedCardTable = table?.isVirtualCard();
+        const tableHasExplicitJoin =
+          isNestedCardTable &&
+          table.fields.find(
+            tableField => tableField.id === field.fk_target_field_id,
+          );
+
+        if (queryHasExplicitJoin || tableHasExplicitJoin) {
           continue;
         }
 
@@ -1273,7 +1321,6 @@ export default class StructuredQuery extends AtomicQuery {
     return [...this.expressionDimensions(), ...this.tableDimensions()];
   }
 
-  @memoize
   tableDimensions(): Dimension[] {
     const table: Table = this.table();
     return table // HACK: ensure the dimensions are associated with this query
@@ -1283,7 +1330,6 @@ export default class StructuredQuery extends AtomicQuery {
       : [];
   }
 
-  @memoize
   expressionDimensions(): Dimension[] {
     return Object.entries(this.expressions()).map(
       ([expressionName, expression]) => {
@@ -1297,24 +1343,20 @@ export default class StructuredQuery extends AtomicQuery {
     );
   }
 
-  @memoize
   joinedDimensions(): Dimension[] {
     return [].concat(...this.joins().map(join => join.fieldsDimensions()));
   }
 
-  @memoize
   breakoutDimensions() {
     return this.breakouts().map(breakout => this.parseFieldReference(breakout));
   }
 
-  @memoize
   aggregationDimensions() {
     return this.aggregations().map(aggregation =>
       aggregation.aggregationDimension(),
     );
   }
 
-  @memoize
   fieldDimensions() {
     return this.fields().map((fieldClause, index) =>
       this.parseFieldReference(fieldClause),
@@ -1323,7 +1365,6 @@ export default class StructuredQuery extends AtomicQuery {
 
   // TODO: this replicates logic in the backend, we should have integration tests to ensure they match
   // NOTE: these will not have the correct columnName() if there are duplicates
-  @memoize
   columnDimensions() {
     if (this.hasAggregations() || this.hasBreakouts()) {
       const aggregations = this.aggregationDimensions();
@@ -1348,7 +1389,7 @@ export default class StructuredQuery extends AtomicQuery {
             f.parent_id == null
           );
         })
-        .sortBy(d => d.displayName().toLowerCase())
+        .sortBy(d => d.displayName()?.toLowerCase())
         .sortBy(d => {
           const type = d.field().semantic_type;
           return type === TYPE.PK ? 0 : type === TYPE.Name ? 1 : 2;
@@ -1361,7 +1402,6 @@ export default class StructuredQuery extends AtomicQuery {
   }
 
   // TODO: this replicates logic in the backend, we should have integration tests to ensure they match
-  @memoize
   columnNames() {
     // NOTE: dimension.columnName() doesn't include suffixes for duplicated column names so we need to do that here
     const nameCounts = new Map();
@@ -1400,20 +1440,8 @@ export default class StructuredQuery extends AtomicQuery {
   }
 
   // TODO: better name may be parseDimension?
-  parseFieldReference(fieldRef): Dimension | null | undefined {
-    return Dimension.parseMBQL(fieldRef, this._metadata, this);
-  }
-
-  dimensionForColumn(column) {
-    if (column) {
-      const fieldRef = this.fieldReferenceForColumn(column);
-
-      if (fieldRef) {
-        return this.parseFieldReference(fieldRef);
-      }
-    }
-
-    return null;
+  parseFieldReference(fieldRef, query = this): Dimension | null | undefined {
+    return Dimension.parseMBQL(fieldRef, this._metadata, query);
   }
 
   setDatasetQuery(datasetQuery: DatasetQuery): StructuredQuery {
@@ -1427,15 +1455,9 @@ export default class StructuredQuery extends AtomicQuery {
     }));
   }
 
-  canNest() {
-    const db = this.database();
-    return db && db.hasFeature("nested-queries");
-  }
-
   /**
    * The (wrapped) source query, if any
    */
-  @memoize
   sourceQuery(): StructuredQuery | null | undefined {
     const sourceQuery = this.query()?.["source-query"];
 
@@ -1453,16 +1475,13 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * Returns the "first" of the nested queries, or this query it not nested
    */
-  @memoize
   rootQuery(): StructuredQuery {
-    const sourceQuery = this.sourceQuery();
-    return sourceQuery ? sourceQuery.rootQuery() : this;
+    return this;
   }
 
   /**
    * Returns the "last" nested query that is already summarized, or `null` if none are
    * */
-  @memoize
   lastSummarizedQuery(): StructuredQuery | null | undefined {
     if (this.hasAggregations() || !this.canNest()) {
       return this;
@@ -1476,7 +1495,6 @@ export default class StructuredQuery extends AtomicQuery {
    * Returns the "last" nested query that is already summarized, or the query itself.
    * Used in "view mode" to effectively ignore post-aggregation filter stages
    */
-  @memoize
   topLevelQuery(): StructuredQuery {
     if (!this.canNest()) {
       return this;
@@ -1504,11 +1522,27 @@ export default class StructuredQuery extends AtomicQuery {
     return null;
   }
 
+  dimensionForColumn(column: Column) {
+    if (column) {
+      const fieldRef = this.fieldReferenceForColumn(column);
+
+      if (fieldRef) {
+        const dimension = this.queries()
+          .flatMap(q => q.dimensions())
+          .find(d => d.isEqual(fieldRef));
+
+        return this.parseFieldReference(fieldRef, dimension?.query());
+      }
+    }
+
+    return null;
+  }
+
   /**
    * Returns the corresponding {Column} in the "top-level" {StructuredQuery}
    */
   topLevelColumn(column: Column): Column | null | undefined {
-    const dimension = this.dimensionForColumn(column);
+    const dimension = this.topLevelDimensionForColumn(column);
 
     if (dimension) {
       const topDimension = this.topLevelDimension(dimension);
@@ -1519,6 +1553,16 @@ export default class StructuredQuery extends AtomicQuery {
     }
 
     return null;
+  }
+
+  topLevelDimensionForColumn(column) {
+    if (column) {
+      const fieldRef = this.fieldReferenceForColumn(column);
+
+      if (fieldRef) {
+        return this.parseFieldReference(fieldRef);
+      }
+    }
   }
 
   /**
@@ -1546,6 +1590,12 @@ export default class StructuredQuery extends AtomicQuery {
    * returns the original Table object at the beginning of the nested queries
    */
   rootTable(): Table {
+    const question = this.question();
+    const questionTableId = question?.tableId();
+    if (questionTableId != null) {
+      return this.metadata().table(questionTableId);
+    }
+
     return this.rootQuery().table();
   }
 
@@ -1617,6 +1667,13 @@ export default class StructuredQuery extends AtomicQuery {
         id: tableId,
         foreignTables,
       });
+
+      if (isVirtualCardId(tableId)) {
+        addDependency({
+          type: "question",
+          id: getQuestionIdFromVirtualTableId(tableId),
+        });
+      }
     }
 
     // any explicitly joined tables
@@ -1654,6 +1711,26 @@ export default class StructuredQuery extends AtomicQuery {
   }
 } // subclass of StructuredQuery that's returned by query.sourceQuery() to allow manipulation of source-query
 
+class StructuredQuery extends memoizeClass<StructuredQueryInner>(
+  "table",
+  "filters",
+  "sorts",
+  "tableDimensions",
+  "expressionDimensions",
+  "joinedDimensions",
+  "breakoutDimensions",
+  "aggregationDimensions",
+  "fieldDimensions",
+  "columnDimensions",
+  "columnNames",
+  "sourceQuery",
+  "rootQuery",
+  "lastSummarizedQuery",
+  "topLevelQuery",
+)(StructuredQueryInner) {}
+
+export default StructuredQuery;
+
 class NestedStructuredQuery extends StructuredQuery {
   _parent: StructuredQuery;
 
@@ -1668,6 +1745,10 @@ class NestedStructuredQuery extends StructuredQuery {
       datasetQuery,
       this._parent,
     );
+  }
+
+  rootQuery(): StructuredQuery {
+    return this.parentQuery().rootQuery();
   }
 
   parentQuery() {

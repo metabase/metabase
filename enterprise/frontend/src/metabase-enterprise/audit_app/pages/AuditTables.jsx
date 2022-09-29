@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import { t } from "ttag";
 
 import AuditContent from "../components/AuditContent";
 import AuditDashboard from "../containers/AuditDashboard";
@@ -22,14 +23,14 @@ const AuditTablesOverviewTab = () => (
 
 const AuditTablesAllTab = () => (
   <AuditTableWithSearch
-    placeholder={`Table name`}
+    placeholder={t`Table name`}
     table={TablesCards.table()}
   />
 );
 
 AuditTables.tabs = [
-  { path: "overview", title: "Overview", component: AuditTablesOverviewTab },
-  { path: "all", title: "All tables", component: AuditTablesAllTab },
+  { path: "overview", title: t`Overview`, component: AuditTablesOverviewTab },
+  { path: "all", title: t`All tables`, component: AuditTablesAllTab },
 ];
 
 export default AuditTables;

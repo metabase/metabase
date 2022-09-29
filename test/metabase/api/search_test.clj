@@ -6,12 +6,13 @@
             [metabase.api.search :as api.search]
             [metabase.models
              :refer
-             [Card CardBookmark Collection Dashboard DashboardBookmark DashboardCard
+             [App Card CardBookmark Collection Dashboard DashboardBookmark DashboardCard
               Database Metric PermissionsGroup PermissionsGroupMembership Pulse PulseCard
               Segment Table]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.search.config :as search-config]
+            [metabase.search.scoring :as scoring]
             [metabase.test :as mt]
             [metabase.util :as u]
             [schema.core :as s]
@@ -21,9 +22,10 @@
   {:id                         true
    :description                nil
    :archived                   false
-   :collection                 {:id false :name nil :authority_level nil}
+   :collection                 {:id false :name nil :authority_level nil :app_id false}
    :collection_authority_level nil
    :collection_position        nil
+   :app_id                     false
    :moderated_status           nil
    :context                    nil
    :dashboardcard_count        nil
@@ -48,20 +50,18 @@
 
 (defn- sorted-results [results]
   (->> results
-       (sort-by (juxt (comp (var-get #'metabase.search.scoring/model->sort-position) :model)))
+       (sort-by (juxt (comp (var-get #'scoring/model->sort-position) :model)))
        reverse))
 
 (defn- make-result
   [name & kvs]
-  (merge
-   default-search-row
-   {:name name}
-   (apply array-map kvs)))
+  (apply assoc default-search-row :name name kvs))
 
 (def ^:private test-collection (make-result "collection test collection"
                                             :bookmark false
                                             :model "collection"
-                                            :collection {:id true, :name true :authority_level nil}
+                                            :collection {:id true, :name true :authority_level nil
+                                                         :app_id false}
                                             :updated_at false))
 
 (defn- default-search-results []
@@ -94,7 +94,7 @@
 
 (defn- default-results-with-collection []
   (on-search-types #{"dashboard" "pulse" "card" "dataset"}
-                   #(assoc % :collection {:id true, :name true :authority_level nil})
+                   #(assoc % :collection {:id true, :name true :authority_level nil :app_id false})
                    (default-search-results)))
 
 (defn- do-with-search-items [search-string in-root-collection? f]
@@ -266,7 +266,7 @@
   (testing "It sorts by dashboard count"
     (mt/with-temp* [Card          [{card-id-3 :id} {:name "dashboard-count 3"}]
                     Card          [{card-id-5 :id} {:name "dashboard-count 5"}]
-                    Card          [{card-id-0 :id} {:name "dashboard-count 0"}]
+                    Card          [_               {:name "dashboard-count 0"}]
                     Dashboard     [{dashboard-id :id}]
                     DashboardCard [_               {:card_id card-id-3, :dashboard_id dashboard-id}]
                     DashboardCard [_               {:card_id card-id-3, :dashboard_id dashboard-id}]
@@ -348,7 +348,7 @@
   (testing "User should only see results in the collection they have access to"
     (mt/with-non-admin-groups-no-root-collection-perms
       (with-search-items-in-collection {coll-1 :collection} "test"
-        (with-search-items-in-collection {coll-2 :collection} "test2"
+        (with-search-items-in-collection _ "test2"
           (mt/with-temp* [PermissionsGroup           [group]
                           PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]]
             (perms/grant-collection-read-permissions! group (u/the-id coll-1))
@@ -379,7 +379,20 @@
                                  :name     "test segment"}]]
       (perms/revoke-data-perms! (perms-group/all-users) db-id)
       (is (= []
-             (search-request-data :rasta :q "test"))))))
+             (search-request-data :rasta :q "test")))))
+
+  (testing "Databases for which the user does not have access to should not show up in results"
+    (mt/with-temp* [Database [db-1 {:name "db-1"}]
+                    Database [_db-2 {:name "db-2"}]]
+      (is (= #{"db-2" "db-1"}
+             (->> (search-request-data-with sorted-results :rasta :q "db")
+                  (map :name)
+                  set)))
+      (perms/revoke-data-perms! (perms-group/all-users) (:id db-1))
+      (is (= #{"db-2"}
+             (->> (search-request-data-with sorted-results :rasta :q "db")
+                  (map :name)
+                  set))))))
 
 (deftest bookmarks-test
   (testing "Bookmarks are per user, so other user's bookmarks don't cause search results to be altered"
@@ -488,31 +501,31 @@
 
 (deftest table-test
   (testing "You should see Tables in the search results!\n"
-    (mt/with-temp Table [table {:name "Round Table"}]
+    (mt/with-temp Table [_ {:name "Round Table"}]
       (do-test-users [user [:crowberto :rasta]]
         (is (= [(default-table-search-row "Round Table")]
                (search-request-data user :q "Round Table"))))))
   (testing "You should not see hidden tables"
-    (mt/with-temp* [Table [normal {:name "Foo Visible"}]
-                    Table [hidden {:name "Foo Hidden", :visibility_type "hidden"}]]
+    (mt/with-temp* [Table [_normal {:name "Foo Visible"}]
+                    Table [_hidden {:name "Foo Hidden", :visibility_type "hidden"}]]
       (do-test-users [user [:crowberto :rasta]]
         (is (= [(default-table-search-row "Foo Visible")]
                (search-request-data user :q "Foo"))))))
   (testing "You should be able to search by their display name"
     (let [lancelot "Lancelot's Favorite Furniture"]
-      (mt/with-temp Table [table {:name "Round Table" :display_name lancelot}]
+      (mt/with-temp Table [_ {:name "Round Table" :display_name lancelot}]
         (do-test-users [user [:crowberto :rasta]]
           (is (= [(assoc (default-table-search-row "Round Table") :name lancelot)]
                  (search-request-data user :q "Lancelot")))))))
   (testing "When searching with ?archived=true, normal Tables should not show up in the results"
     (let [table-name (mt/random-name)]
-      (mt/with-temp Table [table {:name table-name}]
+      (mt/with-temp Table [_ {:name table-name}]
         (do-test-users [user [:crowberto :rasta]]
           (is (= []
                  (search-request-data user :q table-name :archived true)))))))
   (testing "*archived* tables should not appear in search results"
     (let [table-name (mt/random-name)]
-      (mt/with-temp Table [table {:name table-name, :active false}]
+      (mt/with-temp Table [_ {:name table-name, :active false}]
         (do-test-users [user [:crowberto :rasta]]
           (is (= []
                  (search-request-data user :q table-name)))))))
@@ -550,8 +563,8 @@
 
 (deftest collection-namespaces-test
   (testing "Search should only return Collections in the 'default' namespace"
-    (mt/with-temp* [Collection [c1 {:name "Normal Collection"}]
-                    Collection [c2 {:name "Coin Collection", :namespace "currency"}]]
+    (mt/with-temp* [Collection [_c1 {:name "Normal Collection"}]
+                    Collection [_c2 {:name "Coin Collection", :namespace "currency"}]]
       (is (= ["Normal Collection"]
              (->> (search-request-data :crowberto :q "Collection")
                   (filter #(and (= (:model %) "collection")
@@ -571,9 +584,9 @@
                         s/Keyword s/Any}
                        (search-for-pulses pulse))))
         (mt/with-temp* [Card      [card-1]
-                        PulseCard [pc-1 {:pulse_id (:id pulse), :card_id (:id card-1)}]
+                        PulseCard [_ {:pulse_id (:id pulse), :card_id (:id card-1)}]
                         Card      [card-2]
-                        PulseCard [pc-2 {:pulse_id (:id pulse), :card_id (:id card-2)}]]
+                        PulseCard [_ {:pulse_id (:id pulse), :card_id (:id card-2)}]]
           (testing "Create some Pulse Cards: should still be able to search for it it"
             (is (schema= {:name     (s/eq "Electro-Magnetic Pulse")
                           s/Keyword s/Any}
@@ -583,3 +596,72 @@
               (db/update! Pulse (:id pulse) :dashboard_id (:id dashboard))
               (is (= nil
                      (search-for-pulses pulse))))))))))
+
+(deftest card-dataset-query-test
+  (testing "Search results should match a native query's dataset_query column, but not an MBQL query's one."
+    ;; https://github.com/metabase/metabase/issues/24132
+    (let [native-card {:name          "Another SQL query"
+                       :query_type    "native"
+                       :dataset_query (mt/native-query {:query "SELECT COUNT(1) AS aggregation FROM venues"})}]
+      (mt/with-temp* [Card [_mbql-card   {:name          "Venues Count"
+                                          :query_type    "query"
+                                          :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+                      Card [_native-card native-card]
+                      Card [_dataset     (assoc native-card :name "Dataset" :dataset true)]]
+        (is (= ["Another SQL query" "Dataset"]
+               (->> (search-request-data :rasta :q "aggregation")
+                    (map :name))))))))
+
+(deftest app-test
+  (testing "App collections should come with app_id set"
+    (with-search-items-in-collection {:keys [collection]} "test"
+      (mt/with-temp App [_app {:collection_id (:id collection)}]
+        (is (= (mapv
+                (fn [result]
+                  (cond-> result
+                    (not (#{"metric" "segment"} (:model result))) (assoc-in [:collection :app_id] true)
+                    (= (:model result) "collection")              (assoc :model "app" :app_id true)))
+                (default-results-with-collection))
+               (search-request-data :rasta :q "test"))))))
+  (testing "App collections should filterable as \"app\""
+    (mt/with-temp* [Collection [collection {:name "App collection to find"}]
+                    App [_ {:collection_id (:id collection)}]
+                    Collection [_ {:name "Another collection to find"}]]
+      (is (partial= [(assoc (select-keys collection [:name])
+                            :model "app")]
+             (search-request-data :rasta :q "find" :models "app"))))))
+
+(deftest page-test
+  (testing "Search results should pages with model \"page\""
+    (mt/with-temp* [Dashboard [_ {:name "Not a page but contains important text!"}]
+                    Dashboard [page {:name        "Page"
+                                     :description "Contains important text!"
+                                     :is_app_page true}]]
+      (is (partial= [(assoc (select-keys page [:name :description])
+                            :model "page")]
+                    (search-request-data :rasta :q "important text" :models "page"))))))
+
+(deftest collection-app-id-test
+  (testing "app_id and id of containing collection should not be confused (#25213)"
+    (mt/with-temp* [Collection [{coll-id :id}]
+                      ;; The ignored elements are there to make sure the IDs
+                      ;; coll-id and app-id are different.
+                    Collection [{ignored-collection-id :id}]
+                    App [_ignored-app {:collection_id ignored-collection-id}]
+                    App [{app-id :id} {:collection_id coll-id}]
+                    Dashboard [_ {:name          "Not a page but contains important text!"
+                                  :collection_id coll-id}]
+                    Dashboard [_ {:name          "Page"
+                                  :description   "Contains important text!"
+                                  :collection_id coll-id
+                                  :is_app_page   true}]
+                    Card [_ {:name          "Query looking for important text"
+                             :query_type    "native"
+                             :dataset_query (mt/native-query {:query "SELECT 0 FROM venues"})
+                             :collection_id coll-id}]
+                    Pulse [_ {:name         "Pulse about important text"
+                              :collection_id coll-id}]]
+      (is (not= app-id coll-id) "app-id and coll-id should be different. Fix the test!")
+      (is (partial= (repeat 4 {:collection {:app_id app-id
+                                            :id coll-id}})
+                    (:data (make-search-request :rasta [:q "important text"])))))))

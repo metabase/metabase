@@ -14,6 +14,8 @@
             [metabase.api.public-test :as public-test]
             [metabase.http-client :as client]
             [metabase.models :refer [Card Dashboard DashboardCard DashboardCardSeries]]
+            [metabase.models.interface :as mi]
+            [metabase.models.params.chain-filter-test :as chain-filer-test]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.query-processor-test :as qp.test]
@@ -61,8 +63,8 @@
     (fn [~binding]
       ~@body)))
 
-(defn do-with-temp-dashcard [{:keys [dash card dashcard]} f]
-  (with-temp-card [card card]
+(defn do-with-temp-dashcard [{:keys [dash card dashcard card-fn]} f]
+  (with-temp-card [card (if (ifn? card-fn) (card-fn card) card)]
     (mt/with-temp* [Dashboard     [dashboard (merge
                                               (when-not (:parameters dash)
                                                 {:parameters [{:id      "_VENUE_ID_"
@@ -138,11 +140,10 @@
    :visualization_settings {}
    :dataset_query          {:type "query"}
    :parameters             []
-   :param_values           nil
    :param_fields           nil})
 
 (def successful-dashboard-info
-  {:description nil, :parameters [], :ordered_cards [], :param_values nil, :param_fields nil})
+  {:description nil, :parameters [], :ordered_cards [], :param_fields nil})
 
 (def ^:private yesterday (time/minus (time/now) (time/days 1)))
 
@@ -273,7 +274,7 @@
   (testing (str "Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints -- even if "
                 "the query comes in with `add-default-userland-constraints` (as will be the case if the query gets "
                 "saved from one that had it -- see #9831 and #10399)")
-    (with-redefs [qp.constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
+    (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
       (with-embedding-enabled-and-new-secret-key
         (with-temp-card [card {:enable_embedding true
                                :dataset_query    (assoc (mt/mbql-query venues)
@@ -308,7 +309,7 @@
 (deftest card-disabled-params-test
   (with-embedding-enabled-and-new-secret-key
     (with-temp-card [card {:enable_embedding true, :embedding_params {:venue_id "disabled"}}]
-      (do-response-formats [response-format request-options]
+      (do-response-formats [response-format _request-options]
         (testing (str "check that if embedding is enabled globally and for the object requests fail if they pass a "
                       "`:disabled` parameter")
           (is (= "You're not allowed to specify a value for :venue_id."
@@ -420,6 +421,23 @@
         (is (= [{:id "_d", :slug "d", :name "d", :type "date"}]
                (:parameters (client/client :get 200 (dashboard-url dash {:params {:c 100}})))))))))
 
+(deftest locked-params-are-substituted-into-text-cards
+  (testing "check that locked params are substituted into text cards with mapped variables on the backend"
+    (with-embedding-enabled-and-new-secret-key
+      (mt/with-temp* [Dashboard     [dash {:enable_embedding true
+                                           :parameters       [{:id "_a" :slug "a", :name "a", :type :string/=}]}]
+                      DashboardCard [_ {:dashboard_id           (:id dash)
+                                        :parameter_mappings     [{:parameter_id "_a",
+                                                                  :target       [:text-tag "foo"]}]
+                                        :visualization_settings {:virtual_card {:display "text"}
+                                                                 :text         "Text card with variable: {{foo}}"}}]]
+        (is (= "Text card with variable: bar"
+               (-> (client/client :get 200 (dashboard-url dash {:params {:a "bar"}}))
+                   :ordered_cards
+                   first
+                   :visualization_settings
+                   :text)))))))
+
 
 ;;; ---------------------- GET /api/embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id -----------------------
 
@@ -437,7 +455,7 @@
 (deftest downloading-csv-json-xlsx-results-from-the-dashcard-endpoint-shouldn-t-be-subject-to-the-default-query-constraints
   (testing (str "Downloading CSV/JSON/XLSX results from the dashcard endpoint shouldn't be subject to the default "
                 "query constraints (#10399)")
-    (with-redefs [qp.constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
+    (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
       (with-embedding-enabled-and-new-secret-key
         (with-temp-dashcard [dashcard {:dash {:enable_embedding true}
                                        :card {:dataset_query (assoc (mt/mbql-query venues)
@@ -549,9 +567,9 @@
                                                        :type     :query
                                                        :query    {:source-table (mt/id :venues)}}}]
         (with-temp-dashcard [dashcard {:dash {:enable_embedding true}}]
-          (mt/with-temp DashboardCardSeries [series {:dashboardcard_id (u/the-id dashcard)
-                                                     :card_id          (u/the-id series-card)
-                                                     :position         0}]
+          (mt/with-temp DashboardCardSeries [_ {:dashboardcard_id (u/the-id dashcard)
+                                                :card_id          (u/the-id series-card)
+                                                :position         0}]
             (is (= "completed"
                    (:status (client/client :get 202 (str (dashcard-url (assoc dashcard :card_id (u/the-id series-card))))))))))))))
 
@@ -560,9 +578,9 @@
 (defn- field-values-url [card-or-dashboard field-or-id]
   (str
    "embed/"
-   (condp instance? card-or-dashboard
-     (class Card)      (str "card/"      (card-token card-or-dashboard))
-     (class Dashboard) (str "dashboard/" (dash-token card-or-dashboard)))
+   (condp mi/instance-of? card-or-dashboard
+     Card      (str "card/"      (card-token card-or-dashboard))
+     Dashboard (str "dashboard/" (dash-token card-or-dashboard)))
    "/field/"
    (u/the-id field-or-id)
    "/values"))
@@ -582,12 +600,13 @@
 
 ;; should be able to fetch values for a Field referenced by a public Card
 (deftest should-be-able-to-fetch-values-for-a-field-referenced-by-a-public-card
-  (is (= {:values   [["20th Century Cafe"]
-                     ["25°"]
-                     ["33 Taps"]
-                     ["800 Degrees Neapolitan Pizzeria"]
-                     ["BCD Tofu House"]]
-          :field_id (mt/id :venues :name)}
+  (is (= {:values          [["20th Century Cafe"]
+                            ["25°"]
+                            ["33 Taps"]
+                            ["800 Degrees Neapolitan Pizzeria"]
+                            ["BCD Tofu House"]]
+          :field_id        (mt/id :venues :name)
+          :has_more_values false}
          (with-embedding-enabled-and-temp-card-referencing :venues :name [card]
            (-> (client/client :get 200 (field-values-url card (mt/id :venues :name)))
                (update :values (partial take 5)))))))
@@ -635,12 +654,13 @@
 
 ;; should be able to use it when everything is g2g
 (deftest should-be-able-to-use-it-when-everything-is-g2g
-  (is (= {:values   [["20th Century Cafe"]
-                     ["25°"]
-                     ["33 Taps"]
-                     ["800 Degrees Neapolitan Pizzeria"]
-                     ["BCD Tofu House"]]
-          :field_id (mt/id :venues :name)}
+  (is (= {:values          [["20th Century Cafe"]
+                            ["25°"]
+                            ["33 Taps"]
+                            ["800 Degrees Neapolitan Pizzeria"]
+                            ["BCD Tofu House"]]
+          :field_id        (mt/id :venues :name)
+          :has_more_values false}
          (with-embedding-enabled-and-temp-dashcard-referencing :venues :name [dashboard]
            (-> (client/client :get 200 (field-values-url dashboard (mt/id :venues :name)))
                (update :values (partial take 5)))))))
@@ -671,9 +691,9 @@
 
 (defn- field-search-url [card-or-dashboard field-or-id search-field-or-id]
   (str "embed/"
-       (condp instance? card-or-dashboard
-         (class Card)      (str "card/"      (card-token card-or-dashboard))
-         (class Dashboard) (str "dashboard/" (dash-token card-or-dashboard)))
+       (condp mi/instance-of? card-or-dashboard
+         Card      (str "card/"      (card-token card-or-dashboard))
+         Dashboard (str "dashboard/" (dash-token card-or-dashboard)))
        "/field/" (u/the-id field-or-id)
        "/search/" (u/the-id search-field-or-id)))
 
@@ -714,9 +734,9 @@
 
 (defn- field-remapping-url [card-or-dashboard field-or-id remapped-field-or-id]
   (str "embed/"
-       (condp instance? card-or-dashboard
-         (class Card)      (str "card/"      (card-token card-or-dashboard))
-         (class Dashboard) (str "dashboard/" (dash-token card-or-dashboard)))
+       (condp mi/instance-of? card-or-dashboard
+         Card      (str "card/"      (card-token card-or-dashboard))
+         Dashboard (str "dashboard/" (dash-token card-or-dashboard)))
        "/field/" (u/the-id field-or-id)
        "/remapping/" (u/the-id remapped-field-or-id)))
 
@@ -796,7 +816,7 @@
                (client/client :get 400 (search-url))))))))
 
 (deftest chain-filter-random-params-test
-  (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
+  (with-chain-filter-fixtures [{:keys [values-url search-url]}]
     (testing "Requests should fail if parameter is not explicitly enabled"
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
         (is (= "Cannot search for values: \"category_id\" is not an enabled parameter."
@@ -806,31 +826,37 @@
                (client/client :get 400 (search-url))))))))
 
 (deftest chain-filter-enabled-params-test
-  (with-chain-filter-fixtures [{:keys [dashboard param-keys values-url search-url]}]
+  (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
     (db/update! Dashboard (:id dashboard)
       :embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"})
     (testing "Should work if the param we're fetching values for is enabled"
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
-        (is (= [2 3 4 5 6]
-               (take 5 (client/client :get 200 (values-url))))))
+        (is (= {:values          [2 3 4 5 6]
+                :has_more_values false}
+               (chain-filer-test/take-n-values 5 (client/client :get 200 (values-url))))))
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
-        (is (= ["Fast Food" "Food Truck" "Seafood"]
-               (take 3 (client/client :get 200 (search-url)))))))
+        (is (= {:values          ["Fast Food" "Food Truck" "Seafood"]
+                :has_more_values false}
+               (chain-filer-test/take-n-values 3 (client/client :get 200 (search-url)))))))
 
     (testing "If an ENABLED constraint param is present in the JWT, that's ok"
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
-        (is (= [40 67]
+        (is (= {:values          [40 67]
+                :has_more_values false}
                (client/client :get 200 (values-url {"price" 4})))))
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
-        (is (= []
+        (is (= {:values          []
+                :has_more_values false}
                (client/client :get 200 (search-url {"price" 4}))))))
 
     (testing "If an ENABLED param is present in query params but *not* the JWT, that's ok"
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
-        (is (= [40 67]
+        (is (= {:values          [40 67]
+                :has_more_values false}
                (client/client :get 200 (str (values-url) "?_PRICE_=4")))))
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
-        (is (= []
+        (is (= {:values          []
+                :has_more_values false}
                (client/client :get 200 (str (search-url) "?_PRICE_=4"))))))
 
     (testing "If ENABLED param is present in both JWT and the URL, the request should fail"
@@ -844,19 +870,21 @@
   (testing "Should not fail if request is authenticated but current user does not have data permissions"
     (mt/with-temp-copy-of-db
       (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
-      (with-chain-filter-fixtures [{:keys [dashboard param-keys values-url search-url]}]
+      (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
         (db/update! Dashboard (:id dashboard)
           :embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"})
         (testing "Should work if the param we're fetching values for is enabled"
           (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
-            (is (= [2 3 4 5 6]
-                   (take 5 (mt/user-http-request :rasta :get 200 (values-url))))))
+            (is (= {:values          [2 3 4 5 6]
+                    :has_more_values false}
+                   (chain-filer-test/take-n-values 5 (mt/user-http-request :rasta :get 200 (values-url))))))
           (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
-            (is (= ["Fast Food" "Food Truck" "Seafood"]
-                   (take 3 (mt/user-http-request :rasta :get 200 (search-url)))))))))))
+            (is (= {:values          ["Fast Food" "Food Truck" "Seafood"]
+                    :has_more_values false}
+                   (chain-filer-test/take-n-values 3 (mt/user-http-request :rasta :get 200 (search-url)))))))))))
 
 (deftest chain-filter-locked-params-test
-  (with-chain-filter-fixtures [{:keys [dashboard param-keys values-url search-url]}]
+  (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
     (testing "Requests should fail if searched param is locked"
       (db/update! Dashboard (:id dashboard)
         :embedding_params {"category_id" "locked", "category_name" "locked"})
@@ -877,10 +905,12 @@
 
       (testing "if `:locked` param is supplied, request should succeed"
         (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
-          (is (= [40 67]
+          (is (= {:values          [40 67]
+                  :has_more_values false}
                  (client/client :get 200 (values-url {"price" 4})))))
         (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
-          (is (= []
+          (is (= {:values          []
+                  :has_more_values false}
                  (client/client :get 200 (search-url {"price" 4}))))))
 
       (testing "if `:locked` parameter is present in URL params, request should fail"
@@ -891,7 +921,7 @@
                    (client/client :get 400 (str url "?_PRICE_=4"))))))))))
 
 (deftest chain-filter-disabled-params-test
-  (with-chain-filter-fixtures [{:keys [dashboard param-keys values-url search-url]}]
+  (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
     (testing "Requests should fail if searched param is disabled"
       (db/update! Dashboard (:id dashboard)
         :embedding_params {"category_id" "disabled", "category_name" "disabled"})
@@ -1122,19 +1152,19 @@
                    (mt/rows (client/client :get 202 (str (card-query-url card "") "?NAME=Hudson%20Borer")))
                    (mt/rows (client/client :get 202 (str (card-query-url card "") "?NAME=Hudson%20Borer&NAME=x"))))))
           (testing "Dashcard"
-            (mt/with-temp* [Dashboard [{dashboard-id :id, :as dashboard} {:enable_embedding true
-                                                                          :embedding_params {:name "enabled"}
-                                                                          :parameters       [{:name      "Name"
-                                                                                              :slug      "name"
-                                                                                              :id        "_name_"
-                                                                                              :type      :string/=
-                                                                                              :sectionId "string"}]}]
+            (mt/with-temp* [Dashboard [{dashboard-id :id} {:enable_embedding true
+                                                           :embedding_params {:name "enabled"}
+                                                           :parameters       [{:name      "Name"
+                                                                               :slug      "name"
+                                                                               :id        "_name_"
+                                                                               :type      "string/="
+                                                                               :sectionId "string"}]}]
 
-                            DashboardCard [{dashcard-id :id, :as dashcard} {:card_id            card-id
-                                                                            :dashboard_id       dashboard-id
-                                                                            :parameter_mappings [{:parameter_id "_name_"
-                                                                                                  :card_id      card-id
-                                                                                                  :target       [:dimension [:template-tag "NAME"]]}]}]]
+                            DashboardCard [dashcard {:card_id            card-id
+                                                     :dashboard_id       dashboard-id
+                                                     :parameter_mappings [{:parameter_id "_name_"
+                                                                           :card_id      card-id
+                                                                           :target       [:dimension [:template-tag "NAME"]]}]}]]
               (is (= [[1]]
                      (mt/rows (client/client :get 202 (str (dashcard-url dashcard) "?name=Hudson%20Borer")))
                      (mt/rows (client/client :get 202 (str (dashcard-url dashcard) "?name=Hudson%20Borer&name=x"))))))))))))

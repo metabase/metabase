@@ -1,8 +1,12 @@
-import { ForeignKey } from "../api/foreignKey";
+import { ForeignKey } from "./foreign-key";
 import { Database } from "./database";
 import { Field } from "./field";
 
-export type VisibilityType =
+export type ConcreteTableId = number;
+export type VirtualTableId = string; // e.g. "card__17" where 17 is a card id
+export type TableId = ConcreteTableId | VirtualTableId;
+
+export type TableVisibilityType =
   | null
   | "details-only"
   | "hidden"
@@ -13,7 +17,7 @@ export type VisibilityType =
   | "cruft";
 
 export interface Table {
-  id: number;
+  id: TableId;
   db_id: number;
   db?: Database;
   name: string;
@@ -22,6 +26,6 @@ export interface Table {
   schema: string;
   fks?: ForeignKey[];
   schema_name?: string;
-  visibility_type: VisibilityType;
+  visibility_type: TableVisibilityType;
   fields?: Field[];
 }

@@ -1,5 +1,5 @@
 import _ from "underscore";
-import { restore, describeEE, visitQuestion } from "__support__/e2e/cypress";
+import { restore, describeEE, visitQuestion } from "__support__/e2e/helpers";
 
 describeEE("audit > auditing > questions", () => {
   beforeEach(() => {
@@ -68,13 +68,9 @@ describeEE("audit > auditing > questions", () => {
 
       cy.visit("/admin/audit/questions/all");
 
-      cy.get("th")
-        .eq(runtimeIndex)
-        .should("contain", "Total Runtime (ms)");
+      cy.get("th").eq(runtimeIndex).should("contain", "Total Runtime (ms)");
 
-      cy.get("td")
-        .eq(runtimeIndex)
-        .should("not.contain", "Link");
+      cy.get("td").eq(runtimeIndex).should("not.contain", "Link");
     });
   });
 });

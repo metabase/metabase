@@ -3,8 +3,12 @@ import {
   modal,
   describeEE,
   modifyPermission,
-} from "__support__/e2e/cypress";
+  getFullName,
+} from "__support__/e2e/helpers";
+
+import { USERS } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
 const SETTINGS_INDEX = 0;
@@ -12,6 +16,7 @@ const MONITORING_INDEX = 1;
 const SUBSCRIPTIONS_INDEX = 2;
 
 const NORMAL_USER_ID = 2;
+const { admin } = USERS;
 
 describeEE("scenarios > admin > permissions > application", () => {
   beforeEach(() => {
@@ -117,7 +122,7 @@ describeEE("scenarios > admin > permissions > application", () => {
         cy.findByText("Audit").click();
         cy.url().should("include", "/admin/audit/members/overview");
         cy.findByText("All members").click();
-        cy.findByText("Bobby Tables");
+        cy.findByText(getFullName(admin));
 
         // Troubleshooting smoke test
         cy.findByText("Troubleshooting").click();
@@ -176,10 +181,7 @@ describeEE("scenarios > admin > permissions > application", () => {
         cy.findByText("Updates").should("not.exist");
 
         // General smoke test
-        cy.get("#setting-site-name")
-          .clear()
-          .type("new name")
-          .blur();
+        cy.get("#setting-site-name").clear().type("new name").blur();
 
         cy.findByText("Saved");
       });

@@ -1,13 +1,29 @@
 (ns metabase.driver.util-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.java.io :as io]
+            [clojure.string :as str]
+            [clojure.test :refer :all]
             [metabase.driver.util :as driver.u]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures])
   (:import java.nio.charset.StandardCharsets
-           java.util.Base64))
+           java.util.Base64
+           javax.net.ssl.SSLSocketFactory))
 
 (use-fixtures :once (fixtures/initialize :plugins :test-drivers))
+
+(deftest generate-identity-store-test
+  (testing "proper key and cert files are read"
+    (let [key-string (-> "ssl/mongo/metabase.key" io/resource slurp)
+          key-passw "passw"
+          cert-string (-> "ssl/mongo/metabase.crt" io/resource slurp)
+          key-store (driver.u/generate-identity-store key-string key-passw cert-string)
+          [alias & alien-aliases] (-> key-store .aliases enumeration-seq)]
+      (is (string? alias))
+      (is (str/ends-with? alias "cn=localhost,ou=metabase,o=metabase inc.,l=san francisco,st=ca,c=us"))
+      (is (empty? alien-aliases))
+      (is (some? (.getCertificate key-store alias)))
+      (is (some? (.getKey key-store alias (char-array key-passw)))))))
 
 ;; if the CA certificate (ca.pem) used in this test is regenerated,
 ;; you'll need to update this DN
@@ -19,20 +35,20 @@
 (def ^:private test-server-dn
   "cn=server.local,ou=www,o=someone,l=seattle,st=washington,c=us")
 
-(deftest test-generate-keystore-with-cert
+(deftest generate-trust-store-test
   (testing "a proper CA file is read"
     (let [cert-string (slurp "./test_resources/ssl/ca.pem")
-          keystore (driver.u/generate-keystore-with-cert cert-string)]
+          keystore (driver.u/generate-trust-store cert-string)]
       (is (true? (.containsAlias keystore test-ca-dn)))))
 
   (testing "bad cert provided"
     (is (thrown? java.security.cert.CertificateException
-                 (driver.u/generate-keystore-with-cert "fooobar"))))
+                 (driver.u/generate-trust-store "fooobar"))))
 
   (testing "multiple certs are read"
     (let [cert-string (str (slurp "./test_resources/ssl/ca.pem")
                            (slurp "./test_resources/ssl/server.pem"))
-          keystore (driver.u/generate-keystore-with-cert cert-string)]
+          keystore (driver.u/generate-trust-store cert-string)]
       (is (true? (.containsAlias keystore test-server-dn)))
       (is (true? (.containsAlias keystore test-ca-dn)))))
 
@@ -42,7 +58,26 @@
     ;; so the best we can do is make sure it doesn't throw anything on
     ;; execution
     (is (instance? javax.net.ssl.SSLSocketFactory
-                   (driver.u/socket-factory-for-cert (slurp "./test_resources/ssl/ca.pem"))))))
+                   (driver.u/ssl-socket-factory :trust-cert (slurp "./test_resources/ssl/ca.pem"))))))
+
+(deftest ssl-socket-factory-test
+  (testing "can create socket factory from identity and trust info"
+    (is (instance? SSLSocketFactory
+                   (driver.u/ssl-socket-factory
+                    :private-key (-> "ssl/mongo/metabase.key" io/resource slurp)
+                    :password "passw"
+                    :own-cert (-> "ssl/mongo/metabase.crt" io/resource slurp)
+                    :trust-cert (-> "ssl/mongo/metaca.crt" io/resource slurp)))))
+  (testing "can create socket factory from just trust info"
+    (is (instance? SSLSocketFactory
+                   (driver.u/ssl-socket-factory
+                    :trust-cert (-> "ssl/mongo/metaca.crt" io/resource slurp)))))
+  (testing "can create socket factory from just identity info"
+    (is (instance? SSLSocketFactory
+                   (driver.u/ssl-socket-factory
+                    :private-key (-> "ssl/mongo/metabase.key" io/resource slurp)
+                    :password "passw"
+                    :own-cert (-> "ssl/mongo/metabase.crt" io/resource slurp))))))
 
 (deftest connection-props-server->client-test
   (testing "connection-props-server->client works as expected for secret types"

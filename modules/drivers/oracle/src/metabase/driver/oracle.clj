@@ -68,7 +68,7 @@
   [_ column-type]
   (database-type->base-type column-type))
 
-(defn- non-ssl-spec [details spec host port sid service-name]
+(defn- non-ssl-spec [_details spec host port sid service-name]
   (assoc spec :subname (str "@" host
                             ":" port
                             (when sid
@@ -157,18 +157,25 @@
       ;; trunc() returns a date -- see https://docs.oracle.com/cd/E11882_01/server.112/e10729/ch4datetime.htm#NLSPG253
       (hx/with-database-type-info "date")))
 
-(defmethod sql.qp/date [:oracle :minute]         [_ _ v] (trunc :mi v))
+(defmethod sql.qp/date [:oracle :second-of-minute] [_ _ v] (->> v
+                                                                hx/->timestamp
+                                                                (hsql/call :extract :second)
+                                                                (hsql/call :floor)
+                                                                hx/->integer))
+
+(defmethod sql.qp/date [:oracle :minute]           [_ _ v] (trunc :mi v))
 ;; you can only extract minute + hour from TIMESTAMPs, even though DATEs still have them (WTF), so cast first
-(defmethod sql.qp/date [:oracle :minute-of-hour] [_ _ v] (hsql/call :extract :minute (hx/->timestamp v)))
-(defmethod sql.qp/date [:oracle :hour]           [_ _ v] (trunc :hh v))
-(defmethod sql.qp/date [:oracle :hour-of-day]    [_ _ v] (hsql/call :extract :hour (hx/->timestamp v)))
-(defmethod sql.qp/date [:oracle :day]            [_ _ v] (trunc :dd v))
-(defmethod sql.qp/date [:oracle :day-of-month]   [_ _ v] (hsql/call :extract :day v))
+(defmethod sql.qp/date [:oracle :minute-of-hour]   [_ _ v] (hsql/call :extract :minute (hx/->timestamp v)))
+(defmethod sql.qp/date [:oracle :hour]             [_ _ v] (trunc :hh v))
+(defmethod sql.qp/date [:oracle :hour-of-day]      [_ _ v] (hsql/call :extract :hour (hx/->timestamp v)))
+(defmethod sql.qp/date [:oracle :day]              [_ _ v] (trunc :dd v))
+(defmethod sql.qp/date [:oracle :day-of-month]     [_ _ v] (hsql/call :extract :day v))
 ;; [SIC] The format template for truncating to start of week is 'day' in Oracle #WTF
-(defmethod sql.qp/date [:oracle :month]          [_ _ v] (trunc :month v))
-(defmethod sql.qp/date [:oracle :month-of-year]  [_ _ v] (hsql/call :extract :month v))
-(defmethod sql.qp/date [:oracle :quarter]        [_ _ v] (trunc :q v))
-(defmethod sql.qp/date [:oracle :year]           [_ _ v] (trunc :year v))
+(defmethod sql.qp/date [:oracle :month]            [_ _ v] (trunc :month v))
+(defmethod sql.qp/date [:oracle :month-of-year]    [_ _ v] (hsql/call :extract :month v))
+(defmethod sql.qp/date [:oracle :quarter]          [_ _ v] (trunc :q v))
+(defmethod sql.qp/date [:oracle :year]             [_ _ v] (trunc :year v))
+(defmethod sql.qp/date [:oracle :year-of-era]      [_ _ v] (hsql/call :extract :year v))
 
 (defmethod sql.qp/date [:oracle :week]
   [driver _ v]
@@ -461,7 +468,7 @@
     (.getString rs i)))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:oracle OracleTypes/TIMESTAMPTZ]
-  [driver ^ResultSet rs _ ^Integer i]
+  [_driver ^ResultSet rs _ ^Integer i]
   ;; Oracle `TIMESTAMPTZ` types can have either a zone offset *or* a zone ID; you could fetch either `OffsetDateTime`
   ;; or `ZonedDateTime` using `.getObject`, but fetching the wrong type will result in an Exception, meaning we have
   ;; try both and wrap the first in a try-catch. As far as I know there's now way to tell whether the value has a zone

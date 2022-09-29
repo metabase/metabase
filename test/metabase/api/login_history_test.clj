@@ -20,7 +20,7 @@
   (testing "GET /api/login-history/current"
     (let [session-id (str (java.util.UUID/randomUUID))]
       (mt/with-temp* [User         [user]
-                      Session      [session {:id session-id, :user_id (u/the-id user)}]
+                      Session      [_ {:id session-id, :user_id (u/the-id user)}]
                       LoginHistory [_ {:timestamp          #t "2021-03-18T19:52:41.808482Z"
                                        :user_id            (u/the-id user)
                                        :device_id          "e9b49ec7-bc64-4a83-9b1a-ecd3ae26ba9d"

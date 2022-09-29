@@ -39,21 +39,20 @@
              (not (follow-up-email-sent)))
     ;; grab the oldest admins email address (likely the user who created this MB instance), that's who we'll send to
     ;; TODO - Does it make to send to this user instead of `(public-settings/admin-email)`?
-    (when-let [admin (User :is_superuser true, :is_active true, {:order-by [:date_joined]})]
+    (when-let [admin (db/select-one User :is_superuser true, :is_active true, {:order-by [:date_joined]})]
       (try
         (messages/send-follow-up-email! (:email admin) "follow-up")
         (catch Throwable e
           (log/error "Problem sending follow-up email:" e))
         (finally
-          (follow-up-email-sent true))))))
+          (follow-up-email-sent! true))))))
 
 (defn- instance-creation-timestamp
   "The date this Metabase instance was created. We use the `:date_joined` of the first `User` to determine this."
   ^java.time.temporal.Temporal []
   (db/select-one-field :date_joined User, {:order-by [[:date_joined :asc]]}))
 
-;; this sends out a general 2 week email follow up email
-(jobs/defjob FollowUpEmail [_]
+(jobs/defjob ^{:doc "Sends out a general 2 week email follow up email"} FollowUpEmail [_]
   ;; if we've already sent the follow-up email then we are done
   (when-not (follow-up-email-sent)
     ;; figure out when we consider the instance created
@@ -125,10 +124,13 @@
         (catch Throwable e
           (log/error e (trs "Problem sending abandonment email")))
         (finally
-          (abandonment-email-sent true))))))
+          (abandonment-email-sent! true))))))
 
-;; this sends out an email any time after 30 days if the instance has stopped being used for 14 days
-(jobs/defjob AbandonmentEmail [_]
+
+(jobs/defjob
+  ^{:doc "Sends out an email any time after 30 days if the instance has stopped being used for 14 days"}
+  AbandonmentEmail
+  [_]
   ;; if we've already sent the abandonment email then we are done
   (when-not (abandonment-email-sent)
     ;; we need access to email AND the instance must be opted into anonymous tracking

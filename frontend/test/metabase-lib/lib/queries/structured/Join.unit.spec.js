@@ -300,6 +300,28 @@ describe("Join", () => {
         "source-table": PRODUCTS.id,
       });
     });
+
+    it("preserves operator when changes a dimension", () => {
+      let join = getJoin({
+        query: getOrdersJoinQuery({
+          condition: [">=", null, PRODUCTS_ID_JOIN_FIELD_REF],
+        }),
+      });
+
+      join = join.setParentDimension({
+        dimension: ORDERS_PRODUCT_ID_FIELD_REF,
+      });
+
+      expect(join).toEqual({
+        alias: "Products",
+        condition: [
+          ">=",
+          ORDERS_PRODUCT_ID_FIELD_REF,
+          PRODUCTS_ID_JOIN_FIELD_REF,
+        ],
+        "source-table": PRODUCTS.id,
+      });
+    });
   });
 
   describe("setJoinDimension", () => {
@@ -455,6 +477,28 @@ describe("Join", () => {
         "source-table": PRODUCTS.id,
       });
     });
+
+    it("preserves operator when changes a dimension", () => {
+      let join = getJoin({
+        query: getOrdersJoinQuery({
+          condition: [">=", PRODUCTS_ID_JOIN_FIELD_REF, null],
+        }),
+      });
+
+      join = join.setJoinDimension({
+        dimension: ORDERS_PRODUCT_ID_FIELD_REF,
+      });
+
+      expect(join).toEqual({
+        alias: "Products",
+        condition: [
+          ">=",
+          PRODUCTS_ID_JOIN_FIELD_REF,
+          ORDERS_PRODUCT_ID_FIELD_REF,
+        ],
+        "source-table": PRODUCTS.id,
+      });
+    });
   });
 
   describe("getConditions", () => {
@@ -481,6 +525,55 @@ describe("Join", () => {
       expect(join.getConditions()).toEqual([
         ORDERS_PRODUCT_JOIN_CONDITION,
         ORDERS_PRODUCT_JOIN_CONDITION_BY_CREATED_AT,
+      ]);
+    });
+  });
+
+  describe("setOperator", () => {
+    it("changes the operator without fields selected", () => {
+      let join = getJoin({
+        query: getOrdersJoinQuery({}),
+      });
+
+      join = join.setOperator(0, "!=");
+
+      expect(join.getConditions()).toEqual([["!=", null, null]]);
+    });
+
+    it("changes the operator of a single condition join", () => {
+      let join = getJoin({
+        query: getOrdersJoinQuery({
+          condition: ORDERS_PRODUCT_JOIN_CONDITION,
+        }),
+      });
+
+      join = join.setOperator(0, "!=");
+
+      expect(join.getConditions()).toEqual([
+        [
+          "!=",
+          ORDERS_PRODUCT_JOIN_CONDITION[1],
+          ORDERS_PRODUCT_JOIN_CONDITION[2],
+        ],
+      ]);
+    });
+
+    it("changes the operator of a multiple conditions join", () => {
+      let join = getJoin({
+        query: getOrdersJoinQuery({
+          condition: ORDERS_PRODUCT_MULTI_FIELD_JOIN_CONDITION,
+        }),
+      });
+
+      join = join.setOperator(1, "!=");
+
+      expect(join.getConditions()).toEqual([
+        ORDERS_PRODUCT_JOIN_CONDITION,
+        [
+          "!=",
+          ORDERS_PRODUCT_JOIN_CONDITION_BY_CREATED_AT[1],
+          ORDERS_PRODUCT_JOIN_CONDITION_BY_CREATED_AT[2],
+        ],
       ]);
     });
   });

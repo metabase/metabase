@@ -12,8 +12,11 @@
             [metabase.driver.sync :as driver.s]
             [metabase.driver.util :as driver.u]
             [metabase.models :refer [Database]]
-            [metabase.util.honeysql-extensions :as hx])
+            [metabase.models.interface :as mi]
+            [metabase.util.honeysql-extensions :as hx]
+            [toucan.db :as db])
   (:import [java.sql Connection DatabaseMetaData ResultSet]))
+
 
 (defmethod sql-jdbc.sync.interface/excluded-schemas :sql-jdbc [_] nil)
 
@@ -29,6 +32,8 @@
 (defmethod sql-jdbc.sync.interface/filtered-syncable-schemas :sql-jdbc
   [driver _ metadata schema-inclusion-patterns schema-exclusion-patterns]
   (eduction (remove (set (sql-jdbc.sync.interface/excluded-schemas driver)))
+            ;; remove the persisted_model schemas
+            (remove (fn [schema] (re-find #"^metabase_cache.*" schema)))
             (filter (partial driver.s/include-schema? schema-inclusion-patterns schema-exclusion-patterns))
             (all-schemas metadata)))
 
@@ -129,11 +134,11 @@
    (db-tables driver (.getMetaData conn) nil db-name-or-nil)))
 
 (defn- db-or-id-or-spec->database [db-or-id-or-spec]
-  (cond (instance? (class Database) db-or-id-or-spec)
+  (cond (mi/instance-of? Database db-or-id-or-spec)
         db-or-id-or-spec
 
         (int? db-or-id-or-spec)
-        (Database db-or-id-or-spec)
+        (db/select-one Database :id db-or-id-or-spec)
 
         :else
         nil))

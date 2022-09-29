@@ -1,6 +1,10 @@
 import { t } from "ttag";
+import { SlackSettings } from "metabase-types/api";
+import { FormObject } from "metabase-types/forms";
 
-export const getSlackForm = (readOnly?: boolean) => ({
+export const getSlackForm = (
+  readOnly?: boolean,
+): FormObject<SlackSettings> => ({
   fields: [
     {
       name: "slack-app-token",
@@ -13,7 +17,7 @@ export const getSlackForm = (readOnly?: boolean) => ({
     {
       name: "slack-files-channel",
       type: "input",
-      title: t`Slack channel name`,
+      title: t`Public channel to store image files`,
       placeholder: "metabase_files",
       readOnly,
       validate: (value: string) => !value && t`required`,

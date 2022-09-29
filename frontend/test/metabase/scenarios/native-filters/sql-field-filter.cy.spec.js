@@ -3,12 +3,11 @@ import {
   openNativeEditor,
   filterWidget,
   popover,
-} from "__support__/e2e/cypress";
-
-import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
-import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
+import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
 
@@ -82,9 +81,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
     });
 
     it("should be runnable with the None filter being ignored (metabase#20643)", () => {
-      cy.get(".RunButton")
-        .first()
-        .click();
+      cy.get(".RunButton").first().click();
 
       cy.wait("@dataset");
       cy.findByText("Hudson Borer");
@@ -142,9 +139,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
         cy.button("Add filter").click();
       });
 
-      cy.findByTestId("qb-header")
-        .find(".Icon-play")
-        .click();
+      cy.findByTestId("qb-header").find(".Icon-play").click();
       cy.findByText("Showing 51 rows");
 
       cy.findByText("Open Editor").click();
@@ -159,7 +154,5 @@ describe("scenarios > filters > sql filters > field filter", () => {
 });
 
 function clearFilterValue() {
-  filterWidget()
-    .find(".Icon-close")
-    .click();
+  filterWidget().find(".Icon-close").click();
 }

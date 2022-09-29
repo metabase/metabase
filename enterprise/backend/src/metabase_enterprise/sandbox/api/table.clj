@@ -16,13 +16,13 @@
             [toucan.db :as db]
             [toucan.models :as models]))
 
-(s/defn ^:private find-gtap-question :- (s/maybe (type Card))
+(s/defn ^:private find-gtap-question :- (s/maybe (mi/InstanceOf Card))
   "Find the associated GTAP question (if there is one) for the given `table-or-table-id` and
   `user-or-user-id`. Returns nil if no question was found."
   [table-or-table-id user-or-user-id]
   (some->> (db/query {:select [:c.id :c.dataset_query]
                       :from [[GroupTableAccessPolicy :gtap]]
-                      :join [[PermissionsGroupMembership :pgm] [:= :gtap.group_id :pgm.group_id ]
+                      :join [[PermissionsGroupMembership :pgm] [:= :gtap.group_id :pgm.group_id]
                              [Card :c] [:= :c.id :gtap.card_id]]
                       :where [:and
                               [:= :gtap.table_id (u/the-id table-or-table-id)]
@@ -33,7 +33,7 @@
 (s/defn only-segmented-perms? :- s/Bool
   "Returns true if the user has only segemented and not full table permissions. If the user has full table permissions
   we wouldn't want to apply this segment filtering."
-  [table :- (type Table)]
+  [table :- (mi/InstanceOf Table)]
   (and
    (not (perms/set-has-full-permissions? @api/*current-user-permissions-set*
           (perms/table-query-path table)))
@@ -58,18 +58,20 @@
   excluded from what is show in the query builder. When the user has full permissions (or no permissions) this route
   doesn't add/change anything from the OSS version. See the docs on the OSS version of the endpoint for more
   information."
-  [id include_sensitive_fields include_hidden_fields]
-  {include_sensitive_fields (s/maybe su/BooleanString)
-   include_hidden_fields    (s/maybe su/BooleanString)}
-  (let [table            (api/check-404 (Table id))
+  [id include_sensitive_fields include_hidden_fields include_editable_data_model]
+  {include_sensitive_fields    (s/maybe su/BooleanString)
+   include_hidden_fields       (s/maybe su/BooleanString)
+   include_editable_data_model (s/maybe su/BooleanString)}
+  (let [table            (api/check-404 (db/select-one Table :id id))
         segmented-perms? (only-segmented-perms? table)
         thunk            (fn []
                            (maybe-filter-fields
                             table
                             (api.table/fetch-query-metadata
                              table
-                             include_sensitive_fields
-                             include_hidden_fields)))]
+                             {:include-sensitive-fields?    include_sensitive_fields
+                              :include-hidden-fields?       include_hidden_fields
+                              :include-editable-data-model? include_editable_data_model})))]
     ;; if the user has segmented perms, temporarily upgrade their perms to read perms for the Table so they can see
     ;; the metadata
     (if segmented-perms?

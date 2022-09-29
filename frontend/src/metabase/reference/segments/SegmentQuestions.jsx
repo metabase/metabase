@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import moment from "moment";
+import moment from "moment-timezone";
 import { t } from "ttag";
 import visualizations from "metabase/visualizations";
 import * as Urls from "metabase/lib/urls";
@@ -15,6 +15,7 @@ import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
+import * as metadataActions from "metabase/redux/metadata";
 import ReferenceHeader from "../components/ReferenceHeader";
 
 import { getQuestionUrl } from "../utils";
@@ -26,8 +27,6 @@ import {
   getTableBySegment,
   getSegment,
 } from "../selectors";
-
-import * as metadataActions from "metabase/redux/metadata";
 
 const emptyStateData = (table, segment) => {
   return {
@@ -53,8 +52,7 @@ const mapDispatchToProps = {
   ...metadataActions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-export default class SegmentQuestions extends Component {
+class SegmentQuestions extends Component {
   static propTypes = {
     table: PropTypes.object.isRequired,
     segment: PropTypes.object.isRequired,
@@ -116,3 +114,5 @@ export default class SegmentQuestions extends Component {
     );
   }
 }
+
+export default connect(mapStateToProps, mapDispatchToProps)(SegmentQuestions);

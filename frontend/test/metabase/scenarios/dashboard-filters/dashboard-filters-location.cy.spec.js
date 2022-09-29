@@ -6,53 +6,64 @@ import {
   saveDashboard,
   setFilter,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
-import { DASHBOARD_LOCATION_FILTERS } from "./helpers/e2e-dashboard-filter-data-objects";
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
+import { DASHBOARD_LOCATION_FILTERS } from "./dashboard-filters-location";
 
-Object.entries(DASHBOARD_LOCATION_FILTERS).forEach(
-  ([filter, { value, representativeResult }]) => {
-    describe("scenarios > dashboard > filters > location", () => {
-      beforeEach(() => {
-        restore();
-        cy.signInAsAdmin();
+describe("scenarios > dashboard > filters > location", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
 
-        visitDashboard(1);
+    visitDashboard(1);
 
-        editDashboard();
-        setFilter("Location", filter);
+    editDashboard();
+  });
 
-        cy.findByText("Select…").click();
-        popover()
-          .contains("City")
-          .click();
-      });
+  it(`should work when set through the filter widget`, () => {
+    Object.entries(DASHBOARD_LOCATION_FILTERS).forEach(([filter]) => {
+      cy.log(`Make sure we can connect ${filter} filter`);
+      setFilter("Location", filter);
 
-      it(`should work for "${filter}" when set through the filter widget`, () => {
-        saveDashboard();
-
-        filterWidget().click();
-        addWidgetStringFilter(value);
-
-        cy.get(".Card").within(() => {
-          cy.contains(representativeResult);
-        });
-      });
-
-      it(`should work for "${filter}" when set as the default filter`, () => {
-        cy.findByText("Default value")
-          .next()
-          .click();
-
-        addWidgetStringFilter(value);
-
-        saveDashboard();
-
-        cy.get(".Card").within(() => {
-          cy.contains(representativeResult);
-        });
-      });
+      cy.findByText("Select…").click();
+      popover().contains("City").click();
     });
-  },
-);
+    saveDashboard();
+
+    Object.entries(DASHBOARD_LOCATION_FILTERS).forEach(
+      ([filter, { value, representativeResult }], index) => {
+        filterWidget().eq(index).click();
+        addWidgetStringFilter(value);
+
+        cy.log(`Make sure ${filter} filter returns correct result`);
+        cy.get(".Card").within(() => {
+          cy.contains(representativeResult);
+        });
+
+        clearFilter(index);
+      },
+    );
+  });
+
+  it(`should work when set as the default filter`, () => {
+    setFilter("Location", "Dropdown");
+    cy.findByText("Select…").click();
+    popover().contains("City").click();
+
+    cy.findByText("Default value").next().click();
+
+    addWidgetStringFilter("Abbeville");
+
+    saveDashboard();
+
+    cy.get(".Card").within(() => {
+      cy.contains("1510");
+    });
+  });
+});
+
+function clearFilter(index = 0) {
+  filterWidget().eq(index).find(".Icon-close").click();
+  cy.wait("@dashcardQuery1");
+}

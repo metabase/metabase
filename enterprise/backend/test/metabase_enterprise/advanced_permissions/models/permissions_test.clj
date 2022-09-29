@@ -83,7 +83,13 @@
                                                                                             id-4 :full}}})
             (is (= {:schemas {"PUBLIC" {id-1 :full id-2 :full id-3 :full id-4 :full}}
                     :native :full}
-                   (download-perms-by-group-id group-id))))))
+                   (download-perms-by-group-id group-id)))))
+
+        (testing "Download perms are revoked when block perms are set"
+          (ee-perms/update-db-download-permissions! group-id (mt/id) {:schemas :full :native :full})
+          (is (= {:schemas :full :native :full} (download-perms-by-group-id group-id)))
+          (@#'perms/update-db-data-access-permissions! group-id (mt/id) {:schemas :block})
+          (is (= nil (download-perms-by-group-id group-id)))))
 
       (premium-features-test/with-premium-features #{}
         (testing "Download permissions cannot be modified without the :advanced-permissions feature flag"
@@ -226,3 +232,52 @@
                clojure.lang.ExceptionInfo
                #"The details permissions functionality is only enabled if you have a premium token with the advanced-permissions feature."
                (ee-perms/update-db-details-permissions! group-id (mt/id) :yes))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          DB execute permissions                                                |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- execute-perms-by-group-id [group-id]
+  (get-in (perms/execution-perms-graph) [:groups group-id (mt/id)]))
+
+(deftest update-db-execute-permissions-test
+  (mt/with-model-cleanup [Permissions]
+    (mt/with-temp PermissionsGroup [{group-id :id}]
+      (premium-features-test/with-premium-features #{:advanced-permissions}
+        (testing "Execute perms for a DB can be set and revoked"
+          (ee-perms/update-db-execute-permissions! group-id (mt/id) :all)
+          (is (= :all (execute-perms-by-group-id group-id)))
+
+          (ee-perms/update-db-execute-permissions! group-id (mt/id) :none)
+          (is (nil? (execute-perms-by-group-id group-id)))))
+
+      (premium-features-test/with-premium-features #{}
+        (testing "Execute permissions cannot be modified without the :advanced-permissions feature flag"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"The execute permissions functionality is only enabled if you have a premium token with the advanced-permissions feature."
+               (ee-perms/update-db-execute-permissions! group-id (mt/id) :all))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                    Graph                                                       |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest get-graph-should-unescape-slashes-test
+  (testing "If a schema name contains slash, getting graph should unescape it"
+    (doseq [[perm-type perm-value] [[:data-model :all] [:download :full]]]
+      (testing (pr-str perm-type)
+        (testing "slash"
+          (mt/with-temp PermissionsGroup [group]
+            (#'ee-perms/grant-permissions! perm-type perm-value (:id group) (mt/id) "schema/with_slash")
+            (is (= "schema/with_slash"
+                   (-> (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) perm-type :schemas])
+                       keys
+                       first)))))
+
+        (testing "backslash"
+          (mt/with-temp PermissionsGroup [group]
+            (#'ee-perms/grant-permissions! perm-type perm-value (:id group) (mt/id) "schema\\with_backslash")
+            (is (= "schema\\with_backslash"
+                   (-> (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) perm-type :schemas])
+                       keys
+                       first)))))))))

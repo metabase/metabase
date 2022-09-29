@@ -3,6 +3,7 @@
             [clojure.string :as str]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [java-time :as t]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.public-settings :as public-settings]
             [metabase.query-processor.streaming.common :as common]
             [metabase.query-processor.streaming.interface :as qp.si]
@@ -156,55 +157,80 @@
   (let [separator (::mb.viz/date-separator format-settings "/")]
     (str/replace format-string "/" separator)))
 
-(defn- add-time-format
-  [format-settings format-string]
+(defn- time-format
+  [format-settings]
   (let [base-time-format (condp = (::mb.viz/time-enabled format-settings "minutes")
-                           "minutes"
-                           "h:mm"
+                               "minutes"
+                               "h:mm"
 
-                           "seconds"
-                           "h:mm:ss"
+                               "seconds"
+                               "h:mm:ss"
 
-                           "milliseconds"
-                           "h:mm:ss.000"
+                               "milliseconds"
+                               "h:mm:ss.000"
 
-                           ;; {::mb.viz/time-enabled nil} indicates that time is explicitly disabled, rather than
-                           ;; defaulting to "minutes"
-                           nil
-                           nil)
-        time-format      (when base-time-format
-                           (condp = (::mb.viz/time-style format-settings "h:mm A")
-                             "HH:mm"
-                             (str "h" base-time-format)
+                               ;; {::mb.viz/time-enabled nil} indicates that time is explicitly disabled, rather than
+                               ;; defaulting to "minutes"
+                               nil
+                               nil)]
+    (when base-time-format
+      (condp = (::mb.viz/time-style format-settings "h:mm A")
+        "HH:mm"
+        (str "h" base-time-format)
 
-                             ;; Deprecated time style which should be already converted to HH:mm when viz settings are
-                             ;; normalized, but we'll handle it here too just in case. (#18112)
-                             "k:mm"
-                             (str "h" base-time-format)
+        ;; Deprecated time style which should be already converted to HH:mm when viz settings are
+        ;; normalized, but we'll handle it here too just in case. (#18112)
+        "k:mm"
+        (str "h" base-time-format)
 
-                             "h:mm A"
-                             (str base-time-format " am/pm")
+        "h:mm A"
+        (str base-time-format " am/pm")
 
-                             "h A"
-                             "h am/pm"))]
-    (if time-format
+        "h A"
+        "h am/pm"))))
+
+(defn- add-time-format
+  "Adds the appropriate time setting to a date format string if necessary, producing a datetime format string."
+  [format-settings unit format-string]
+  (if (or (not unit) (mbql.s/time-bucketing-units unit))
+    (if-let [time-format (time-format format-settings)]
       (str format-string ", " time-format)
-      format-string)))
+      format-string)
+    format-string))
+
+(defn- month-style
+  "For a given date format, returns the format to use in exports if :unit is :month"
+  [date-format]
+  (case date-format
+    "m/d/yyyy" "m/yyyy"
+    "yyyy/m/d" "yyyy/m"
+    ;; Default for all other styles
+    "mmmm, yyyy"))
+
+(defn- date-format
+  [format-settings unit]
+  (let [base-style (str/lower-case (::mb.viz/date-style format-settings "mmmm d, yyyy"))
+        unit-style (case unit
+                     :month (month-style base-style)
+                     :year "yyyy"
+                     base-style)]
+    (->> unit-style
+         (abbreviate-date-names format-settings)
+         (replace-date-separators format-settings))))
 
 (defn- datetime-format-string
-  [format-settings]
-  (let [merged-settings (merge-global-settings format-settings :type/Temporal)
-        date-style      (::mb.viz/date-style merged-settings "mmmm d, yyyy")]
-    (->> date-style
-         str/lower-case
-         (abbreviate-date-names merged-settings)
-         (replace-date-separators merged-settings)
-         (add-time-format merged-settings))))
+  ([format-settings]
+   (datetime-format-string format-settings nil))
+
+  ([format-settings unit]
+   (let [merged-settings (merge-global-settings format-settings :type/Temporal)]
+     (->> (date-format merged-settings unit)
+          (add-time-format merged-settings unit)))))
 
 (defn- format-settings->format-strings
   "Returns a vector of format strings for a datetime column or number column, corresponding
   to the provided format settings."
-  [format-settings {semantic-type :semantic_type, effective-type :effective_type, :as _col}]
+  [format-settings {semantic-type :semantic_type, effective-type :effective_type, unit :unit}]
   (u/one-or-many
    (cond
      ;; Primary key or foreign key
@@ -214,7 +240,7 @@
      (and (or (some #(contains? datetime-setting-keys %) (keys format-settings))
               (isa? semantic-type :type/Temporal))
           (isa? effective-type :type/Temporal))
-     (datetime-format-string format-settings)
+     (datetime-format-string format-settings unit)
 
      (or (some #(contains? number-setting-keys %) (keys format-settings))
          (isa? semantic-type :type/Currency))
@@ -281,8 +307,8 @@
   to format strings."
   (memoize
    (fn [^Workbook workbook cols col-settings]
-     (let [data-format   (. workbook createDataFormat)
-           col-styles    (column-style-delays workbook data-format col-settings cols)]
+     (let [data-format (. workbook createDataFormat)
+           col-styles  (column-style-delays workbook data-format col-settings cols)]
        (into col-styles
              (for [[name-keyword format-string] (seq (default-format-strings))]
                {name-keyword (format-string-delay workbook data-format format-string)}))))))
@@ -412,7 +438,9 @@
   "Generates the column titles that should be used in the export, taking into account viz settings."
   [ordered-cols col-settings]
   (for [col ordered-cols]
-    (let [id-or-name       (or (:id col) (:name col))
+    (let [id-or-name       (or (and (:remapped_from col) (:fk_field_id col))
+                               (:id col)
+                               (:name col))
           format-settings  (or (get col-settings {::mb.viz/field-id id-or-name})
                                (get col-settings {::mb.viz/column-name id-or-name}))
           is-currency?     (or (isa? (:semantic_type col) :type/Currency)

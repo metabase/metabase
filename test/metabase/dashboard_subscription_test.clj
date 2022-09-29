@@ -4,7 +4,7 @@
             [metabase.models.pulse :as pulse]
             metabase.pulse
             [metabase.pulse.render.body :as body]
-            [metabase.pulse.test-util :refer :all]
+            [metabase.pulse.test-util :as pulse.test-util]
             [metabase.test :as mt]
             [metabase.util :as u]
             [schema.core :as s]))
@@ -37,7 +37,7 @@
                                                 :channel_type "slack"
                                                 :details      {:channel "#general"}})]]
     (if (= channel :email)
-      (mt/with-temp PulseChannelRecipient [_ {:user_id          (rasta-id)
+      (mt/with-temp PulseChannelRecipient [_ {:user_id          (pulse.test-util/rasta-id)
                                               :pulse_channel_id pc-id}]
         (f pulse))
       (f pulse))))
@@ -75,7 +75,7 @@
       (mt/with-temp* [Dashboard     [{dashboard-id :id} (->> dashboard
                                                              (merge {:name "Aviary KPIs"
                                                                      :description "How are the birds doing today?"}))]
-                      Card          [{card-id :id} (merge {:name card-name
+                      Card          [{card-id :id} (merge {:name pulse.test-util/card-name
                                                            :display (or display :line)} card)]]
         (with-dashboard-sub-for-card [{pulse-id :id}
                                       {:card       card-id
@@ -97,25 +97,25 @@
                                 :pulse-id pulse-id} thunk*)
                       (thunk*)))]
             (case channel-type
-              :email (email-test-setup (thunk))
-              :slack (slack-test-setup (thunk)))))))))
+              :email (pulse.test-util/email-test-setup (thunk))
+              :slack (pulse.test-util/slack-test-setup (thunk)))))))))
 
 (defn- tests
-  "Convenience for writing multiple tests using `do-test`. `common` is a map of shared properties as passed to `do-test`
-  that is deeply merged with the individual maps for each test. Other args are alternating `testing` context messages
-  and properties as passed to `do-test`:
+  "Convenience for writing multiple tests using [[do-test]]. `common` is a map of shared properties as passed
+  to [[do-test]] that is deeply merged with the individual maps for each test. Other args are alternating `testing`
+  context messages and properties as passed to [[do-test]]:
 
     (tests
      ;; shared properties used for both tests
      {:card {:dataset_query (mt/mbql-query)}}
 
      \"Test 1\"
-     {:assert {:email (fn [_ _] (is ...))}}
+     {:assert {:email (fn [_object-ids _response] (is ...))}}
 
      \"Test 2\"
      ;; override just the :display property of the Card
      {:card   {:display \"table\"}
-      :assert {:email (fn [_ _] (is ...))}})"
+      :assert {:email (fn [_object-ids _response] (is ...))}})"
   {:style/indent 1}
   [common & {:as message->m}]
   (doseq [[message m] message->m]
@@ -125,7 +125,7 @@
 (defn- rasta-pulse-email [& [email]]
   (mt/email-to :rasta (merge {:subject "Aviary KPIs",
                               :body  [{"Aviary KPIs" true}
-                                      png-attachment]}
+                                      pulse.test-util/png-attachment]}
                              email)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -137,8 +137,8 @@
     (mt/with-temp* [Card          [{card-id-1 :id}]
                     Card          [{card-id-2 :id}]
                     Dashboard     [{dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}]
-                    DashboardCard [dashcard-1 {:dashboard_id dashboard-id :card_id card-id-1}]
-                    DashboardCard [dashcard-2 {:dashboard_id dashboard-id :card_id card-id-2}]
+                    DashboardCard [_ {:dashboard_id dashboard-id :card_id card-id-1}]
+                    DashboardCard [_ {:dashboard_id dashboard-id :card_id card-id-2}]
                     User [{user-id :id}]]
       (let [result (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard)]
         (is (= (count result) 2))
@@ -151,30 +151,30 @@
                     Card          [{card-id-2 :id}]
                     Card          [{card-id-3 :id}]
                     Dashboard     [{dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}]
-                    DashboardCard [dashcard-1 {:dashboard_id dashboard-id :card_id card-id-1 :row 1 :col 0}]
-                    DashboardCard [dashcard-2 {:dashboard_id dashboard-id :card_id card-id-2 :row 0 :col 1}]
-                    DashboardCard [dashcard-3 {:dashboard_id dashboard-id :card_id card-id-3 :row 0 :col 0}]
+                    DashboardCard [_ {:dashboard_id dashboard-id :card_id card-id-1 :row 1 :col 0}]
+                    DashboardCard [_ {:dashboard_id dashboard-id :card_id card-id-2 :row 0 :col 1}]
+                    DashboardCard [_ {:dashboard_id dashboard-id :card_id card-id-3 :row 0 :col 0}]
                     User [{user-id :id}]]
       (let [result (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard)]
         (is (= [card-id-3 card-id-2 card-id-1]
                (map #(-> % :card :id) result))))))
   (testing "virtual (text) cards are returned as a viz settings map"
-    (mt/with-temp* [Card          [{card-id-1 :id}]
-                    Card          [{card-id-2 :id}]
+    (mt/with-temp* [Card          [_]
+                    Card          [_]
                     Dashboard     [{dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}]
-                    DashboardCard [dashcard-1 {:dashboard_id dashboard-id
-                                               :visualization_settings {:virtual_card {}, :text "test"}}]
+                    DashboardCard [_ {:dashboard_id dashboard-id
+                                      :visualization_settings {:virtual_card {}, :text "test"}}]
                     User [{user-id :id}]]
       (is (= [{:virtual_card {}, :text "test"}] (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard))))))
 
 (deftest basic-table-test
   (tests {:pulse {:skip_if_empty false} :display :table}
     "9 results, so no attachment aside from dashboard icon"
-    {:card (checkins-query-card {:aggregation nil, :limit 9})
+    {:card (pulse.test-util/checkins-query-card {:aggregation nil, :limit 9})
 
      :fixture
      (fn [_ thunk]
-       (with-redefs [body/attached-results-text (wrap-function @#'body/attached-results-text)]
+       (with-redefs [body/attached-results-text (pulse.test-util/wrap-function @#'body/attached-results-text)]
          (mt/with-temporary-setting-values [site-name "Metabase Test"]
            (thunk))))
 
@@ -199,7 +199,7 @@
                          ;; Links to subscription management page in account settings
                          "\\\"https://metabase.com/testmb/account/notifications\\\"" true
                          "Manage your subscriptions" true}
-                        png-attachment]})
+                        pulse.test-util/png-attachment]})
                (mt/summarize-multipart-email
                 #"Aviary KPIs"
                 #"How are the birds doing today?"
@@ -220,31 +220,31 @@
                     :attachments
                     [{:blocks [{:type "header", :text {:type "plain_text", :text "Aviary KPIs", :emoji true}}
                                {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
-                     {:title           card-name
+                     {:title           pulse.test-util/card-name
                       :rendered-info   {:attachments false
                                         :content     true}
                       :title_link      (str "https://metabase.com/testmb/question/" card-id)
                       :attachment-name "image.png"
                       :channel-id      "FOO"
-                      :fallback        card-name}
+                      :fallback        pulse.test-util/card-name}
                      {:blocks [{:type "divider"}
                                {:type "context"
                                 :elements [{:type "mrkdwn"
                                             :text (str "<https://metabase.com/testmb/dashboard/"
                                                        dashboard-id
                                                        "|*Sent from Metabase Test*>")}]}]}]}
-                   (thunk->boolean pulse-results))))
+                   (pulse.test-util/thunk->boolean pulse-results))))
           (testing "attached-results-text should be invoked exactly once"
             (is (= 1
-                   (count (input @#'body/attached-results-text)))))
+                   (count (pulse.test-util/input @#'body/attached-results-text)))))
           (testing "attached-results-text should return nil since it's a slack message"
             (is (= [nil]
-                   (output @#'body/attached-results-text))))))}}))
+                   (pulse.test-util/output @#'body/attached-results-text))))))}}))
 
 (deftest virtual-card-test
   (tests {:pulse {:skip_if_empty false}, :dashcard {:row 0, :col 0}}
     "Dashboard subscription that includes a virtual (markdown) card"
-    {:card (checkins-query-card {})
+    {:card (pulse.test-util/checkins-query-card {})
 
      :fixture
      (fn [{dashboard-id :dashboard-id} thunk]
@@ -261,7 +261,7 @@
          (testing "Markdown cards are included in email subscriptions"
            (is (= (rasta-pulse-email {:body [{"Aviary KPIs" true
                                               "header"      true}
-                                             png-attachment]})
+                                             pulse.test-util/png-attachment]})
                   (mt/summarize-multipart-email #"Aviary KPIs"
                                                 #"header")))))
 
@@ -273,12 +273,12 @@
                    :attachments
                    [{:blocks [{:type "header", :text {:type "plain_text", :text "Aviary KPIs", :emoji true}}
                               {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
-                    {:title           card-name
+                    {:title           pulse.test-util/card-name
                      :rendered-info   {:attachments false, :content true, :render/text true},
                      :title_link      (str "https://metabase.com/testmb/question/" card-id)
                      :attachment-name "image.png"
                      :channel-id      "FOO"
-                     :fallback        card-name}
+                     :fallback        pulse.test-util/card-name}
                     {:blocks [{:type "section" :text {:type "mrkdwn" :text "*header*"}}]}
                     {:blocks [{:type "divider"}
                               {:type "context"
@@ -286,13 +286,13 @@
                                            :text (str "<https://metabase.com/testmb/dashboard/"
                                                       dashboard-id
                                                       "|*Sent from Metabase Test*>")}]}]}]}
-                  (thunk->boolean pulse-results)))))}}))
+                  (pulse.test-util/thunk->boolean pulse-results)))))}}))
 
 (deftest dashboard-filter-test
   (tests {:pulse     {:skip_if_empty false}
-          :dashboard test-dashboard}
+          :dashboard pulse.test-util/test-dashboard}
     "Dashboard subscription that includes a dashboard filters"
-    {:card (checkins-query-card {})
+    {:card (pulse.test-util/checkins-query-card {})
 
      :fixture
      (fn [_ thunk]
@@ -304,10 +304,10 @@
        (fn [_ _]
          (testing "Markdown cards are included in email subscriptions"
            (is (= (rasta-pulse-email {:body [{"Aviary KPIs" true
-                                              "<a class=\\\"title\\\" href=\\\"https://metabase.com/testmb/dashboard/\\d+\\?state=CA&amp;state=NY&amp;quarter_and_year=Q1-2021\\\"" true}
-                                             png-attachment]})
+                                              "<a class=\\\"title\\\" href=\\\"https://metabase.com/testmb/dashboard/\\d+\\?state=CA&amp;state=NY&amp;state=NJ&amp;quarter_and_year=Q1-2021\\\"" true}
+                                             pulse.test-util/png-attachment]})
                   (mt/summarize-multipart-email #"Aviary KPIs"
-                                                #"<a class=\"title\" href=\"https://metabase.com/testmb/dashboard/\d+\?state=CA&amp;state=NY&amp;quarter_and_year=Q1-2021\"")))))
+                                                #"<a class=\"title\" href=\"https://metabase.com/testmb/dashboard/\d+\?state=CA&amp;state=NY&amp;state=NJ&amp;quarter_and_year=Q1-2021\"")))))
 
       :slack
       (fn [{:keys [card-id dashboard-id]} [pulse-results]]
@@ -317,27 +317,27 @@
                   :attachments
                   [{:blocks [{:type "header", :text {:type "plain_text", :text "Aviary KPIs", :emoji true}}
                              {:type "section",
-                              :fields [{:type "mrkdwn", :text "*State*\nCA, NY"}
-                                       {:type "mrkdwn", :text "*Quarter and Year*\nQ1-2021"}]}
+                              :fields [{:type "mrkdwn", :text "*State*\nCA, NY and NJ"}
+                                       {:type "mrkdwn", :text "*Quarter and Year*\nQ1, 2021"}]}
                              {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
-                   {:title           card-name
+                   {:title           pulse.test-util/card-name
                     :rendered-info   {:attachments false, :content true, :render/text true},
                     :title_link      (str "https://metabase.com/testmb/question/" card-id)
                     :attachment-name "image.png"
                     :channel-id      "FOO"
-                    :fallback        card-name}
+                    :fallback        pulse.test-util/card-name}
                    {:blocks [{:type "divider"}
                              {:type "context"
                               :elements [{:type "mrkdwn"
                                           :text (str "<https://metabase.com/testmb/dashboard/"
                                                      dashboard-id
-                                                     "?state=CA&state=NY&quarter_and_year=Q1-2021|*Sent from Metabase Test*>")}]}]}]}
-                 (thunk->boolean pulse-results)))))}}))
+                                                     "?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021|*Sent from Metabase Test*>")}]}]}]}
+                 (pulse.test-util/thunk->boolean pulse-results)))))}}))
 
 (deftest mrkdwn-length-limit-test
   (tests {:pulse {:skip_if_empty false}, :dashcard {:row 0, :col 0}}
     "Dashboard subscription that includes a Markdown card that exceeds Slack's length limit when converted to mrkdwn"
-    {:card (checkins-query-card {})
+    {:card (pulse.test-util/checkins-query-card {})
 
      :fixture
      (fn [{dashboard-id :dashboard-id} thunk]
@@ -350,19 +350,19 @@
 
      :assert
      {:slack
-      (fn [{:keys [card-id]} [pulse-results]]
+      (fn [_object-ids [pulse-results]]
         (is (= {:blocks [{:type "section" :text {:type "mrkdwn" :text "abcdefghi…"}}]}
-               (nth (:attachments (thunk->boolean pulse-results)) 2))))}}))
+               (nth (:attachments (pulse.test-util/thunk->boolean pulse-results)) 2))))}}))
 
 (deftest archived-dashboard-test
   (tests {:dashboard {:archived true}}
     "Dashboard subscriptions are not sent if dashboard is archived"
-    {:card (checkins-query-card {})
+    {:card (pulse.test-util/checkins-query-card {})
 
      :assert
      {:slack
       (fn [_ [pulse-results]]
-        (is (= {:attachments []} (thunk->boolean pulse-results))))
+        (is (= {:attachments []} (pulse.test-util/thunk->boolean pulse-results))))
 
       :email
       (fn [_ _]
@@ -375,12 +375,12 @@
                                                                   :parameters [{:name    "Category"
                                                                                 :slug    "category"
                                                                                 :id      "_MBQL_CATEGORY_"
-                                                                                :type    :category
+                                                                                :type    "category"
                                                                                 :default ["Doohickey"]}
                                                                                {:name    "SQL Category"
                                                                                 :slug    "sql_category"
                                                                                 :id      "_SQL_CATEGORY_"
-                                                                                :type    :category
+                                                                                :type    "category"
                                                                                 :default ["Gizmo"]}]}]
         (testing "MBQL query"
           (mt/with-temp* [Card [{mbql-card-id :id} {:name          "Orders"
@@ -424,3 +424,18 @@
               (is (= [[1  "Rustic Paper Wallet"   "Gizmo"]
                       [10 "Mediocre Wooden Table" "Gizmo"]]
                      (mt/rows results))))))))))
+
+(deftest substitute-parameters-in-virtual-cards
+  (testing "Parameters in virtual (text) cards should have parameter values substituted appropriately"
+    (mt/with-temp* [Dashboard [{dashboard-id :id :as dashboard} {:name "Params in Text Card Test"
+                                                                 :parameters [{:name    "Category"
+                                                                               :slug    "category"
+                                                                               :id      "TEST_ID"
+                                                                               :type    "category"
+                                                                               :default ["Doohickey" "Gizmo"]}]}]
+                    DashboardCard [_ {:parameter_mappings [{:parameter_id "TEST_ID"
+                                                            :target       [:text-tag "foo"]}]
+                                      :dashboard_id       dashboard-id
+                                      :visualization_settings {:text "{{foo}}"}}]]
+      (is (= [{:text "Doohickey and Gizmo"}]
+             (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))))))

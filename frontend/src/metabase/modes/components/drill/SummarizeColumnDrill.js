@@ -1,10 +1,15 @@
 /* eslint-disable react/prop-types */
+import { t } from "ttag";
+import _ from "underscore";
 import { fieldRefForColumn } from "metabase/lib/dataset";
+
+import { TYPE, isa } from "metabase/lib/types";
 import {
   getAggregationOperator,
   isCompatibleAggregationOperatorForField,
 } from "metabase/lib/schema_metadata";
-import { t } from "ttag";
+
+const INVALID_TYPES = [TYPE.Structured];
 
 const AGGREGATIONS = {
   sum: {
@@ -20,13 +25,17 @@ const AGGREGATIONS = {
   distinct: {
     section: "sum",
     buttonType: "token",
-    title: t`Distincts`,
+    title: t`Distinct values`,
   },
 };
 
 export default ({ question, clicked = {} }) => {
   const { column, value } = clicked;
-  if (!column || value !== undefined) {
+  if (
+    !column ||
+    value !== undefined ||
+    _.any(INVALID_TYPES, type => isa(clicked.column.base_type, type))
+  ) {
     return [];
   }
 

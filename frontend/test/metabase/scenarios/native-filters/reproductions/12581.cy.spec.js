@@ -1,4 +1,4 @@
-import { restore, modal, filterWidget } from "__support__/e2e/cypress";
+import { restore, modal, filterWidget } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS } = SAMPLE_DATABASE;
@@ -27,6 +27,8 @@ const nativeQuery = {
 
 describe("issue 12581", () => {
   beforeEach(() => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
     restore();
     cy.signInAsAdmin();
 
@@ -44,9 +46,7 @@ describe("issue 12581", () => {
       .as("editor")
       .click()
       .type("{selectall}{backspace}", { delay: 50 });
-    cy.get("@editor")
-      .click()
-      .type("{selectall}{backspace}SELECT * FROM ORDERS");
+    cy.get("@editor").click().type("{selectall}{backspace}SELECT 1");
 
     cy.findByText("Save").click();
     modal().within(() => {
@@ -54,15 +54,23 @@ describe("issue 12581", () => {
     });
 
     cy.reload();
+    cy.wait("@cardQuery");
 
     cy.findByTestId("revision-history-button").click();
-    cy.findByText(/Revert/i).click(); // Revert to the first revision
+    // Make sure sidebar opened and the history loaded
+    cy.findByText("You created this");
+
+    cy.findByTestId("question-revert-button").click(); // Revert to the first revision
+    cy.wait("@dataset");
+
+    cy.findByText("You reverted to an earlier revision");
     cy.findByText(/Open Editor/i).click();
 
     cy.log("Reported failing on v0.35.3");
-    cy.get("@editor")
-      .should("be.visible")
-      .contains(ORIGINAL_QUERY);
+    cy.get("@editor").should("be.visible").and("contain", ORIGINAL_QUERY);
+
+    cy.findByText("37.65");
+
     // Filter dropdown field
     filterWidget().contains("Filter");
   });

@@ -1,85 +1,89 @@
-/* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
 
+import moment, { Moment } from "moment-timezone";
 import { getDateStyleFromSettings } from "metabase/lib/time";
 import Calendar, { SelectAll } from "metabase/components/Calendar";
-import InputBlurChange from "metabase/components/InputBlurChange";
-import Icon from "metabase/components/Icon";
 import ExpandingContent from "metabase/components/ExpandingContent";
+import { getTimeComponent, setTimeComponent } from "metabase/lib/query_time";
 import HoursMinutesInput from "./HoursMinutesInput";
 
-import moment from "moment";
-import { getTimeComponent, setTimeComponent } from "metabase/lib/query_time";
+import {
+  CalendarIcon,
+  DateInput,
+  DateInputContainer,
+} from "./SpecificDatePicker.styled";
 
-type Props = {
+interface SpecificDatePickerProps {
   className?: string;
-  isSidebar?: boolean;
-  calendar?: boolean;
-  selectAll?: SelectAll;
-
-  hideTimeSelectors?: boolean;
   value: string;
+  primaryColor?: string;
+  selectAll?: SelectAll;
+  isActive?: boolean;
+  hasCalendar?: boolean;
+  hideTimeSelectors?: boolean;
+  autoFocus?: boolean;
+  onFocus?: () => void;
   onChange: (startValue: string | null, endValue?: string) => void;
   onClear?: () => void;
-};
+}
 
-const SpecificDatePicker: React.FC<Props> = props => {
-  const onChange = (
-    date?: string | moment.Moment,
-    hours?: number | null,
-    minutes?: number | null,
-  ) => {
-    props.onChange(setTimeComponent(date, hours, minutes));
-  };
-
-  const {
-    value,
-    calendar,
-    hideTimeSelectors,
-    onClear,
-    className,
-    selectAll,
-  } = props;
+const SpecificDatePicker = ({
+  className,
+  value,
+  primaryColor,
+  selectAll,
+  isActive,
+  hasCalendar,
+  hideTimeSelectors,
+  autoFocus,
+  onFocus,
+  onChange,
+  onClear,
+}: SpecificDatePickerProps) => {
   const [showCalendar, setShowCalendar] = React.useState(true);
-
   const { hours, minutes, date } = getTimeComponent(value);
 
   const showTimeSelectors =
     !hideTimeSelectors &&
     typeof hours === "number" &&
     typeof minutes === "number";
+
+  const handleChange = (
+    date?: string | Moment,
+    hours?: number | null,
+    minutes?: number | null,
+  ) => {
+    onChange(setTimeComponent(date, hours, minutes));
+  };
   const dateFormat = getDateStyleFromSettings() || "MM/DD/YYYY";
 
   return (
-    <div className={className}>
-      <div className="mb2 full bordered rounded flex align-center">
-        <InputBlurChange
+    <div className={className} data-testid="specific-date-picker">
+      <DateInputContainer isActive={isActive}>
+        <DateInput
           placeholder={moment().format(dateFormat)}
-          className="borderless full p1 h3"
-          style={{
-            outline: "none",
-          }}
           value={date ? date.format(dateFormat) : ""}
+          autoFocus={autoFocus}
+          onFocus={onFocus}
           onBlurChange={({ target: { value } }: any) => {
             const date = moment(value, dateFormat);
             if (date.isValid()) {
-              onChange(date, hours, minutes);
+              handleChange(date, hours, minutes);
             } else {
-              onChange();
+              handleChange();
             }
           }}
         />
 
-        {calendar && (
-          <Icon
-            className="mr1 text-purple-hover cursor-pointer"
+        {hasCalendar && (
+          <CalendarIcon
             name="calendar"
             onClick={() => setShowCalendar(!showCalendar)}
             tooltip={showCalendar ? t`Hide calendar` : t`Show calendar`}
           />
         )}
-      </div>
+      </DateInputContainer>
 
       {showTimeSelectors && (
         <div>
@@ -87,22 +91,25 @@ const SpecificDatePicker: React.FC<Props> = props => {
             onClear={onClear}
             hours={hours}
             minutes={minutes}
-            onChangeHours={(hours: number) => onChange(date, hours, minutes)}
+            onChangeHours={(hours: number) =>
+              handleChange(date, hours, minutes)
+            }
             onChangeMinutes={(minutes: number) =>
-              onChange(date, hours, minutes)
+              handleChange(date, hours, minutes)
             }
           />
         </div>
       )}
 
-      {calendar && (
+      {hasCalendar && (
         <ExpandingContent isOpen={showCalendar}>
           <Calendar
             selected={date}
             initial={date || moment()}
-            onChange={value => onChange(value, hours, minutes)}
+            onChange={value => handleChange(value, hours, minutes)}
             isRangePicker={false}
             selectAll={selectAll}
+            primaryColor={primaryColor}
           />
         </ExpandingContent>
       )}

@@ -4,7 +4,7 @@ import {
   visitQuestionAdhoc,
   popover,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -51,9 +51,7 @@ describe.skip("issue 19744", () => {
     cy.findByText("Time").click();
     cy.findByText("All Options").click();
 
-    cy.get(".DashCard")
-      .contains("Select…")
-      .click();
+    cy.get(".DashCard").contains("Select…").click();
     popover().contains("Created At");
   });
 });
@@ -64,9 +62,7 @@ function saveQuestion(name) {
   cy.findByText("Save").click();
   cy.findByLabelText("Name").type(name);
 
-  cy.get(".Modal")
-    .button("Save")
-    .click();
+  cy.get(".Modal").button("Save").click();
 
   cy.findByText("Not now").click();
 
@@ -80,8 +76,8 @@ function addQuestionToDashboardAndVisit() {
     cy.get("@questionId").then(cardId => {
       cy.request("POST", `/api/dashboard/${id}/cards`, {
         cardId,
-        sizeX: 16,
-        sizeY: 10,
+        size_x: 16,
+        size_y: 10,
       });
     });
 

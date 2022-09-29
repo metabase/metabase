@@ -33,7 +33,7 @@ describe("DriverWarning", () => {
       source: {
         type: "partner",
         contact: {
-          name: "Parners Incorporated",
+          name: "Partners Incorporated",
           address: "https://example.com/contact",
         },
       },
@@ -49,7 +49,7 @@ describe("DriverWarning", () => {
       source: {
         type: "partner",
         contact: {
-          name: "Parners Incorporated Two",
+          name: "Partners Incorporated Two",
         },
       },
     }),
@@ -58,7 +58,7 @@ describe("DriverWarning", () => {
       source: {
         type: "partner",
         contact: {
-          name: "Parners Incorporated Three",
+          name: "Partners Incorporated Three",
           address: "contactus@example.com",
         },
       },
@@ -146,6 +146,6 @@ describe("DriverWarning", () => {
     );
     expect(container.querySelector("a")).toBeNull();
     screen.getByText(/partner-developed driver/);
-    screen.getByText(/Parners Incorporated Two/);
+    screen.getByText(/Partners Incorporated Two/);
   });
 });

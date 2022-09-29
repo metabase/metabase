@@ -5,8 +5,8 @@ import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
 import Expandable from "metabase/components/Expandable";
-import { TableInfo } from "./TablePane.styled";
 import Table from "metabase/entities/tables";
+import { TableInfo } from "./TablePane.styled";
 
 const mapStateToProps = (state, ownProps) => ({
   tableId: ownProps.table.id,
@@ -18,8 +18,7 @@ const mapDispatchToProps = {
   fetchMetadata: Table.actions.fetchMetadata,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-export default class TablePane extends React.Component {
+class TablePane extends React.Component {
   state = {
     error: null,
   };
@@ -87,6 +86,8 @@ export default class TablePane extends React.Component {
     }
   }
 }
+
+export default connect(mapStateToProps, mapDispatchToProps)(TablePane);
 
 const ExpandableItemList = Expandable(
   ({ name, type, show, items, isExpanded, onExpand }) => (

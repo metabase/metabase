@@ -6,11 +6,16 @@ import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import withTableMetadataLoaded from "metabase/admin/datamodel/hoc/withTableMetadataLoaded";
 import Radio from "metabase/core/components/Radio";
+import { isSyncCompleted } from "metabase/lib/syncing";
 import { DatabaseEntity, TableEntity } from "metabase-types/entities";
+import { TableVisibilityType } from "metabase-types/api";
 import { State } from "metabase-types/store";
 
+import { Field } from "metabase-types/api/field";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import ColumnsList from "../ColumnsList";
 import MetadataSchema from "../MetadataSchema";
+import TableSyncWarning from "../TableSyncWarning";
 import {
   TableDescription,
   TableDescriptionInput,
@@ -18,8 +23,6 @@ import {
   TableNameInput,
   VisibilityType,
 } from "./MetadataTable.styled";
-import { Field } from "metabase-types/api/field";
-import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 
 const getDescriptionPlaceholder = () => t`No table description yet`;
 
@@ -57,11 +60,19 @@ const MetadataTable = ({
     }
   };
 
-  const handleDescriptionChange: ChangeEventHandler<HTMLInputElement> = event => {
+  const handleDescriptionChange: ChangeEventHandler<
+    HTMLInputElement
+  > = event => {
     handlePropertyUpdate("description", event.target.value);
   };
 
+  const handleVisibilityTypeChange = (visibilityType: TableVisibilityType) => {
+    handlePropertyUpdate("visibility_type", visibilityType);
+  };
+
   const isHidden = !!table.visibility_type;
+  const isSynced = isSyncCompleted(table);
+  const hasFields = table.fields && table.fields.length > 0;
 
   if (!table) {
     return null;
@@ -152,6 +163,9 @@ const MetadataTable = ({
             />
           )}
         </div>
+      )}
+      {!isSynced && isHidden && !hasFields && (
+        <TableSyncWarning onVisibilityTypeChange={handleVisibilityTypeChange} />
       )}
     </div>
   );

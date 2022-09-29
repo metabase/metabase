@@ -177,10 +177,7 @@ function onRenderVoronoiHover(chart, { hasDrills }) {
     return;
   }
 
-  const originRect = chart
-    .svg()
-    .node()
-    .getBoundingClientRect();
+  const originRect = chart.svg().node().getBoundingClientRect();
   const vertices = dots.map(e => {
     const { top, left, width, height } = e.getBoundingClientRect();
     const px = left + width / 2 - originRect.left;
@@ -246,7 +243,7 @@ function onRenderCleanupGoalAndTrend(chart, onGoalHover, isSplitAxis) {
   chart.selectAll(".goal .dot, .trend .dot").remove();
 
   // move to end of the parent node so it's on top
-  chart.selectAll(".goal, .trend").each(function() {
+  chart.selectAll(".goal, .trend").each(function () {
     this.parentNode.appendChild(this);
   });
 
@@ -282,10 +279,10 @@ function onRenderCleanupGoalAndTrend(chart, onGoalHover, isSplitAxis) {
         "font-weight": "bold",
         fill: color("text-medium"),
       })
-      .on("mouseenter", function() {
+      .on("mouseenter", function () {
         onGoalHover(this);
       })
-      .on("mouseleave", function() {
+      .on("mouseleave", function () {
         onGoalHover(null);
       });
   }
@@ -350,7 +347,7 @@ function getXAxisRotation(chart) {
 function onRenderRotateAxis(chart) {
   const degrees = getXAxisRotation(chart);
   if (degrees !== 0) {
-    chart.selectAll("g.x text").attr("transform", function() {
+    chart.selectAll("g.x text").attr("transform", function () {
       const { width, height } = this.getBBox();
       return (
         // translate left half the width so the right edge is at the tick
@@ -383,7 +380,7 @@ function onRenderSetZeroGridLineClassName(chart) {
   chart
     .select(".grid-line.horizontal")
     .selectAll("line")
-    .filter(function() {
+    .filter(function () {
       return d3.select(this).attr("y1") === yZero;
     })
     .attr("class", "zero");
@@ -505,10 +502,7 @@ function computeMinHorizontalMargins(chart) {
   const min = { left: 0, right: 0 };
   const ticks = chart.selectAll(".axis.x .tick text")[0];
   if (ticks.length > 0) {
-    const chartRect = chart
-      .select("svg")
-      .node()
-      .getBoundingClientRect();
+    const chartRect = chart.select("svg").node().getBoundingClientRect();
     min.left =
       chart.margins().left -
       (ticks[0].getBoundingClientRect().left - chartRect.left);
@@ -522,7 +516,7 @@ function computeMinHorizontalMargins(chart) {
 function computeXAxisLabelMaxSize(chart) {
   let maxWidth = 0;
   let maxHeight = 0;
-  chart.selectAll("g.x text").each(function() {
+  chart.selectAll("g.x text").each(function () {
     // jsdom doesn't support getBBox https://github.com/jsdom/jsdom/issues/918
     if (!this.getBBox) {
       return;

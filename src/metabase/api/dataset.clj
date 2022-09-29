@@ -10,6 +10,7 @@
             [metabase.mbql.schema :as mbql.s]
             [metabase.models.card :refer [Card]]
             [metabase.models.database :as database :refer [Database]]
+            [metabase.models.persisted-info :as persisted-info]
             [metabase.models.query :as query]
             [metabase.models.table :refer [Table]]
             [metabase.query-processor :as qp]
@@ -53,7 +54,7 @@
   ;; store table id trivially iff we get a query with simple source-table
   (let [table-id (get-in query [:query :source-table])]
     (when (int? table-id)
-      (events/publish-event! :table-read (assoc (Table table-id) :actor_id api/*current-user-id*))))
+      (events/publish-event! :table-read (assoc (db/select-one Table :id table-id) :actor_id api/*current-user-id*))))
   ;; add sensible constraints for results limits on our query
   (let [source-card-id (query->source-card-id query)
         source-card    (when source-card-id
@@ -68,7 +69,7 @@
         (qp-runner query info context)))))
 
 (api/defendpoint ^:streaming POST "/"
-  "Execute a query and retrieve the results in the usual format."
+  "Execute a query and retrieve the results in the usual format. The query will not use the cache."
   [:as {{:keys [database] :as query} :body}]
   {database (s/maybe s/Int)}
   (run-query-async (update-in query [:middleware :js-int-to-string?] (fnil identity true))))
@@ -143,14 +144,15 @@
   {:average (or
              (some (comp query/average-execution-time-ms qp.util/query-hash)
                    [query
-                    (assoc query :constraints qp.constraints/default-query-constraints)])
+                    (assoc query :constraints (qp.constraints/default-query-constraints))])
              0)})
 
 (api/defendpoint POST "/native"
   "Fetch a native version of an MBQL query."
   [:as {query :body}]
-  (qp.perms/check-current-user-has-adhoc-native-query-perms query)
-  (qp/compile-and-splice-parameters query))
+  (binding [persisted-info/*allow-persisted-substitution* false]
+    (qp.perms/check-current-user-has-adhoc-native-query-perms query)
+    (qp/compile-and-splice-parameters query)))
 
 (api/defendpoint ^:streaming POST "/pivot"
   "Generate a pivoted dataset for an ad-hoc query"

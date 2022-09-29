@@ -1,10 +1,4 @@
-import {
-  restore,
-  popover,
-  modal,
-  startNewQuestion,
-  getCollectionIdFromSlug,
-} from "__support__/e2e/cypress";
+import { restore, popover, modal } from "__support__/e2e/helpers";
 
 describe("metabase > scenarios > navbar > new menu", () => {
   beforeEach(() => {
@@ -46,47 +40,9 @@ describe("metabase > scenarios > navbar > new menu", () => {
       cy.findByText("Create").click();
     });
 
-    cy.get("h1").should("have.text", "Test collection");
-  });
-
-  it("should suggest questions saved in collections with colon in their name (metabase#14287)", () => {
-    cy.request("POST", "/api/collection", {
-      name: "foo:bar",
-      color: "#509EE3",
-      parent_id: null,
-    }).then(({ body: { id: COLLECTION_ID } }) => {
-      // Move question #1 ("Orders") to newly created collection
-      cy.request("PUT", "/api/card/1", {
-        collection_id: COLLECTION_ID,
-      });
-      // Sanity check: make sure Orders is indeed inside new collection
-      cy.visit(`/collection/${COLLECTION_ID}`);
-      cy.findByText("Orders");
-    });
-
-    startNewQuestion();
-    popover().within(() => {
-      cy.findByText("Saved Questions").click();
-      // Note: collection name's first letter is capitalized
-      cy.findByText(/foo:bar/i).click();
-      cy.findByText("Orders");
-    });
-  });
-
-  it("'Saved Questions' prompt should respect nested collections structure (metabase#14178)", () => {
-    getCollectionIdFromSlug("second_collection", id => {
-      // Move first question in a DB snapshot ("Orders") to a "Second collection"
-      cy.request("PUT", "/api/card/1", {
-        collection_id: id,
-      });
-    });
-
-    startNewQuestion();
-
-    popover().within(() => {
-      cy.findByText("Saved Questions").click();
-      cy.findByText("First collection");
-      cy.findByText("Second collection").should("not.exist");
-    });
+    cy.findByTestId("collection-name-heading").should(
+      "have.text",
+      "Test collection",
+    );
   });
 });

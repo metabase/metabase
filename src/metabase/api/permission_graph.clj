@@ -5,7 +5,8 @@
   then postwalk to actually perform the conversion."
   (:require [clojure.spec.alpha :as s]
             [clojure.spec.gen.alpha :as gen]
-            [clojure.walk :as walk]))
+            [clojure.walk :as walk]
+            [metabase.util :as u]))
 
 (defmulti ^:private convert
   "convert values from the naively converted json to what we REALLY WANT"
@@ -19,15 +20,27 @@
   [[_ s]]
   (keyword s))
 
+;; Convert a keyword to string without excluding the namespace.
+;; e.g: :schema/name => "schema/name".
+;; Primarily used for schema-name since schema are allowed to have "/"
+;; and calling (name s) returning a substring after "/".
 (defmethod convert :kw->str
   [[_ s]]
-  (name s))
+  (u/qualified-name s))
 
 (defmethod convert :nil->none
   [[_ _]]
   :none)
 
 (defmethod convert :identity
+  [[_ x]]
+  x)
+
+(defmethod convert :global-execute
+  [[_ x]]
+  x)
+
+(defmethod convert :db-exeute
   [[_ x]]
   x)
 
@@ -79,10 +92,12 @@
 ;; language used on the frontend.
 (s/def ::details (s/or :str->kw #{"yes" "no"}))
 
-(s/def ::db-perms (s/keys :opt-un [::data ::download ::data-model ::details]))
+(s/def ::db-perms (s/keys :opt-un [::data ::download ::data-model ::details ::execute]))
 
-(s/def ::db-graph (s/map-of ::id ::db-perms
-                            :conform-keys true))
+(s/def ::db-graph
+  (s/map-of ::id
+            ::db-perms
+            :conform-keys true))
 
 (s/def :metabase.api.permission-graph.data/groups
   (s/map-of ::id ::db-graph
@@ -107,6 +122,23 @@
 
 (s/def ::collection-permissions-graph
   (s/keys :req-un [:metabase.api.permission-graph.collection/groups]))
+
+;;; --------------------------------------------- Execution Permissions ----------------------------------------------
+
+(s/def ::execute (s/or :str->kw #{"all" "none"}))
+
+(s/def ::execute-graph
+  (s/or :global-execute ::execute
+        :db-exeute      (s/map-of ::id ::execute
+                                  :conform-keys true)))
+
+(s/def :metabase.api.permission-graph.execution/groups
+  (s/map-of ::id
+            ::execute-graph
+            :conform-keys true))
+
+(s/def ::execution-permissions-graph
+  (s/keys :req-un [:metabase.api.permission-graph.execution/groups]))
 
 (defn converted-json->graph
   "The permissions graph is received as JSON. That JSON is naively converted. This performs a further conversion to

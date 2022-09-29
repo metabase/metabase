@@ -9,6 +9,7 @@ import {
   SortingIcon,
   SortingControlContainer,
   TBody,
+  LastEditedByCol,
 } from "./BaseItemsTable.styled";
 
 const sortingOptsShape = PropTypes.shape({
@@ -127,7 +128,7 @@ function BaseItemsTable({
       <colgroup>
         <col style={{ width: "70px" }} />
         <col />
-        <col style={{ width: "140px" }} />
+        <LastEditedByCol />
         <col style={{ width: "140px" }} />
         <col style={{ width: "100px" }} />
       </colgroup>

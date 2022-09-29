@@ -1,26 +1,26 @@
 import _ from "underscore";
 
-import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
 import {
   getNativePermission,
   getSchemasPermission,
   isRestrictivePermission,
 } from "metabase/admin/permissions/utils/graph";
 import {
-  NATIVE_PERMISSION_REQUIRES_DATA_ACCESS,
-  UNABLE_TO_CHANGE_ADMIN_PERMISSIONS,
-} from "../../constants/messages";
-import {
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
 } from "metabase/plugins";
+import { Group, GroupsPermissions } from "metabase-types/api";
+import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
+import {
+  NATIVE_PERMISSION_REQUIRES_DATA_ACCESS,
+  UNABLE_TO_CHANGE_ADMIN_PERMISSIONS,
+} from "../../constants/messages";
 import {
   getPermissionWarning,
   getPermissionWarningModal,
   getRawQueryWarningModal,
 } from "../confirmations";
 import { limitDatabasePermission } from "../../permissions";
-import { Group, GroupsPermissions } from "metabase-types/api";
 import { DatabaseEntityId } from "../../types";
 
 const buildAccessPermission = (
@@ -176,6 +176,7 @@ export const buildSchemasPermissions = (
       isAdmin,
       permissions,
       accessPermission.value,
+      defaultGroup,
       "schemas",
     ),
   ];

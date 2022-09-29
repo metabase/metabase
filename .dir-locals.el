@@ -33,6 +33,7 @@
   ;;
   ;; `put-clojure-indent' is a safe-local-eval-function, so use a bunch of calls to that
   ;; instead of one call to `define-clojure-indent'
+  (eval . (put-clojure-indent 'api/let-404 1))
   (eval . (put-clojure-indent 'c/step 1))
   (eval . (put-clojure-indent 'db/insert-many! 1))
   (eval . (put-clojure-indent 'db/update! 2))
@@ -51,23 +52,25 @@
   (eval . (put-clojure-indent 'mt/test-driver 1))
   (eval . (put-clojure-indent 'prop/for-all 1))
   (eval . (put-clojure-indent 'qp.streaming/streaming-response 1))
+  (eval . (put-clojure-indent 'u/prog1 1))
   (eval . (put-clojure-indent 'u/select-keys-when 1))
   (eval . (put-clojure-indent 'u/strict-extend 1))
+  (eval . (put-clojure-indent 'with-meta '(:defn)))
   ;; these ones have to be done with `define-clojure-indent' for now because of upstream bug
   ;; https://github.com/clojure-emacs/clojure-mode/issues/600 once that's resolved we should use `put-clojure-indent'
   ;; instead. Please don't add new entries unless they don't work with `put-clojure-indent'
   (eval . (define-clojure-indent
-            (l/matcha '(1 (:defn)))
-            (l/matche '(1 (:defn)))
-            (p.types/def-abstract-type '(1 (:defn)))
-            (p.types/defprotocol+ '(1 (:defn)))
-            (p.types/defrecord+ '(2 nil nil (:defn)))
-            (p.types/deftype+ '(2 nil nil (:defn)))
-            (p/def-map-type '(2 nil nil (:defn)))
-            (p/defprotocol+ '(1 (:defn)))
-            (p/defrecord+ '(2 nil nil (:defn)))
-            (p/deftype+ '(2 nil nil (:defn)))
-            (tools.macro/macrolet '(1 ((:defn)) :form))))
+           (l/matcha '(1 (:defn)))
+           (l/matche '(1 (:defn)))
+           (p.types/def-abstract-type '(1 (:defn)))
+           (p.types/defprotocol+ '(1 (:defn)))
+           (p.types/defrecord+ '(2 nil nil (:defn)))
+           (p.types/deftype+ '(2 nil nil (:defn)))
+           (p/def-map-type '(2 nil nil (:defn)))
+           (p/defprotocol+ '(1 (:defn)))
+           (p/defrecord+ '(2 nil nil (:defn)))
+           (p/deftype+ '(2 nil nil (:defn)))
+           (tools.macro/macrolet '(1 ((:defn)) :form))))
   (cider-clojure-cli-aliases . "dev:drivers:drivers-dev:ee:ee-dev:user")
   (clojure-indent-style . always-align)
   (cljr-favor-prefix-notation . nil)

@@ -2,7 +2,7 @@ import {
   restore,
   openNativeEditor,
   runNativeQuery,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 const nativeQuery = "select (random() * random() * random()), pg_sleep(2)";
 
@@ -10,58 +10,62 @@ const nativeQuery = "select (random() * random() * random()), pg_sleep(2)";
  * Disabled and quarantined until we fix the caching issues, and especially:
  * https://github.com/metabase/metabase/issues/13262
  */
-describe.skip("scenarios > admin > settings > cache", () => {
-  beforeEach(() => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-
-    restore("postgres-12");
-    cy.signInAsAdmin();
-  });
-
-  describe("issue 18458", () => {
+describe.skip(
+  "scenarios > admin > settings > cache",
+  { tags: "@external" },
+  () => {
     beforeEach(() => {
-      cy.visit("/admin/settings/caching");
+      cy.intercept("POST", "/api/dataset").as("dataset");
+      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
-      enableCaching();
-
-      setCachingValue("Minimum Query Duration", "1");
-      setCachingValue("Cache Time-To-Live (TTL) multiplier", "2");
-
-      cy.findByText("Saved");
-
-      // Run the query and save the question
-      openNativeEditor({ databaseName: "QA Postgres12" }).type(nativeQuery);
-      runNativeQuery();
-
-      getCellText().then(res => {
-        cy.wrap(res).as("tempResult");
-      });
-
-      saveQuestion("18458");
+      restore("postgres-12");
+      cy.signInAsAdmin();
     });
 
-    it("should respect previously set cache duration (metabase#18458)", () => {
-      refreshUntilCached();
+    describe("issue 18458", () => {
+      beforeEach(() => {
+        cy.visit("/admin/settings/caching");
 
-      cy.get("@cachedResult").then(cachedValue => {
-        /**
-         * 5s is longer than what we set the cache to last:
-         * Approx 2s for an Average Runtime x multiplier of 2.
-         *
-         * The cache should expire after 4s and we should see a new random result.
-         */
-        cy.wait(5000);
+        enableCaching();
 
-        refresh();
+        setCachingValue("Minimum Query Duration", "1");
+        setCachingValue("Cache Time-To-Live (TTL) multiplier", "2");
 
-        getCellText().then(newValue => {
-          expect(newValue).to.not.eq(cachedValue);
+        cy.findByText("Saved");
+
+        // Run the query and save the question
+        openNativeEditor({ databaseName: "QA Postgres12" }).type(nativeQuery);
+        runNativeQuery();
+
+        getCellText().then(res => {
+          cy.wrap(res).as("tempResult");
+        });
+
+        saveQuestion("18458");
+      });
+
+      it("should respect previously set cache duration (metabase#18458)", () => {
+        refreshUntilCached();
+
+        cy.get("@cachedResult").then(cachedValue => {
+          /**
+           * 5s is longer than what we set the cache to last:
+           * Approx 2s for an Average Runtime x multiplier of 2.
+           *
+           * The cache should expire after 4s and we should see a new random result.
+           */
+          cy.wait(5000);
+
+          refresh();
+
+          getCellText().then(newValue => {
+            expect(newValue).to.not.eq(cachedValue);
+          });
         });
       });
     });
-  });
-});
+  },
+);
 
 function enableCaching() {
   cy.findByText("Disabled")
@@ -74,11 +78,7 @@ function enableCaching() {
 }
 
 function setCachingValue(field, value) {
-  cy.findByText(field)
-    .closest("li")
-    .find("input")
-    .type(value)
-    .blur();
+  cy.findByText(field).closest("li").find("input").type(value).blur();
 }
 
 function saveQuestion(name) {
@@ -88,9 +88,7 @@ function saveQuestion(name) {
 
   cy.findByLabelText("Name").type(name);
 
-  cy.get(".Modal")
-    .button("Save")
-    .click();
+  cy.get(".Modal").button("Save").click();
 
   cy.findByText("Not now").click();
 
@@ -98,16 +96,11 @@ function saveQuestion(name) {
 }
 
 function getCellText() {
-  return cy
-    .get(".cellData")
-    .eq(-1)
-    .invoke("text");
+  return cy.get(".cellData").eq(-1).invoke("text");
 }
 
 function refresh() {
-  cy.icon("refresh")
-    .first()
-    .click();
+  cy.icon("refresh").first().click();
   cy.wait("@cardQuery");
 }
 

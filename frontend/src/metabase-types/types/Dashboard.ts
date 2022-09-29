@@ -1,4 +1,10 @@
-import { Card, CardId, VisualizationSettings } from "./Card";
+/**
+ * ⚠️
+ * @deprecated use existing types from, or add to metabase-types/api/*
+ */
+
+import { VisualizationSettings } from "metabase-types/api/card";
+import { CardId, SavedCard } from "./Card";
 import { Parameter, ParameterMapping } from "./Parameter";
 
 export type DashboardId = number;
@@ -33,14 +39,14 @@ export type DashboardWithCards = {
 
 export type DashCardId = number;
 
-export type DashCard = {
+export type DashCard<CardType = SavedCard> = {
   id: DashCardId;
 
   card_id: CardId;
   dashboard_id: DashboardId;
 
-  card: Card;
-  series: Array<Card>;
+  card: CardType;
+  series: Array<CardType>;
 
   // incomplete
   parameter_mappings: Array<ParameterMapping>;
@@ -48,6 +54,10 @@ export type DashCard = {
 
   col: number;
   row: number;
-  sizeY: number;
-  sizeX: number;
+  size_y: number;
+  size_x: number;
+
+  isAdded?: boolean;
+  isDirty?: boolean;
+  justAdded?: boolean;
 };

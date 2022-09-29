@@ -6,14 +6,12 @@ import { t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
 
+import SidebarContent from "metabase/query_builder/components/SidebarContent";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import TagEditorParam from "./TagEditorParam";
 import CardTagEditor from "./CardTagEditor";
 import TagEditorHelp from "./TagEditorHelp";
-import SidebarContent from "metabase/query_builder/components/SidebarContent";
-
-import * as MetabaseAnalytics from "metabase/lib/analytics";
-
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
 export default class TagEditorSidebar extends React.Component {
   state = {
@@ -50,6 +48,7 @@ export default class TagEditorSidebar extends React.Component {
       setParameterValue,
       onClose,
     } = this.props;
+
     // The tag editor sidebar excludes snippets since they have a separate sidebar.
     const tags = query.templateTagsWithoutSnippets();
     const database = query.database();

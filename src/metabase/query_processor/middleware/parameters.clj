@@ -62,7 +62,7 @@
        (expand-all outer-query expanded)))))
 
 (defn- move-top-level-params-to-inner-query
-  "Move any top-level parameters to the same level (i.e., 'inner query') as the query the affect."
+  "Move any top-level parameters to the same level (i.e., 'inner query') as the query they affect."
   [{:keys [parameters], query-type :type, :as outer-query}]
   {:pre [(#{:query :native} query-type)]}
   (cond-> (set/rename-keys outer-query {:parameters :user-parameters})
@@ -95,7 +95,7 @@
 (defn- hoist-database-for-snippet-tags
   "Assocs the `:database` ID from `query` in all snippet template tags."
   [query]
-  (u/update-in-when query [:native :template-tags] (partial assoc-db-in-snippet-tag (:database query))))
+  (u/update-in-if-exists query [:native :template-tags] (partial assoc-db-in-snippet-tag (:database query))))
 
 (defn substitute-parameters
   "Substitute Dashboard or Card-supplied parameters in a query, replacing the param placeholers with appropriate values

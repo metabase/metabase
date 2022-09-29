@@ -1,36 +1,36 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useState } from "react";
+import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 import { t } from "ttag";
 import { getIn } from "icepick";
-import AuthButton from "../AuthButton";
-import { AuthError, AuthErrorContainer } from "./GoogleButton.styled";
-
-export type AttachCallback = (
-  element: HTMLElement,
-  onLogin: (token: string) => void,
-  onError: (error: string) => void,
-) => void;
+import * as Urls from "metabase/lib/urls";
+import { AuthError, AuthErrorContainer, TextLink } from "./GoogleButton.styled";
 
 export interface GoogleButtonProps {
-  isCard?: boolean;
+  clientId: string | null;
+  locale: string;
   redirectUrl?: string;
-  onAttach: AttachCallback;
+  isCard?: boolean;
   onLogin: (token: string, redirectUrl?: string) => void;
 }
 
+interface CredentialResponse {
+  credential?: string;
+}
+
 const GoogleButton = ({
-  isCard,
+  clientId,
+  locale,
   redirectUrl,
-  onAttach,
+  isCard,
   onLogin,
 }: GoogleButtonProps) => {
-  const ref = useRef<HTMLDivElement>(null);
   const [errors, setErrors] = useState<string[]>([]);
 
   const handleLogin = useCallback(
-    async (token: string) => {
+    async ({ credential = "" }: CredentialResponse) => {
       try {
         setErrors([]);
-        await onLogin(token, redirectUrl);
+        await onLogin(credential, redirectUrl);
       } catch (error) {
         setErrors(getErrors(error));
       }
@@ -38,19 +38,30 @@ const GoogleButton = ({
     [onLogin, redirectUrl],
   );
 
-  const handleError = useCallback((error: string) => {
-    setErrors([error]);
+  const handleError = useCallback(() => {
+    setErrors([
+      t`There was an issue signing in with Google. Please contact an administrator.`,
+    ]);
   }, []);
 
-  useEffect(() => {
-    ref.current && onAttach(ref.current, handleLogin, handleError);
-  }, [onAttach, handleLogin, handleError]);
-
   return (
-    <div ref={ref}>
-      <AuthButton icon="google" isCard={isCard}>
-        {t`Sign in with Google`}
-      </AuthButton>
+    <div>
+      {isCard && clientId ? (
+        <GoogleOAuthProvider clientId={clientId}>
+          <GoogleLogin
+            useOneTap
+            onSuccess={handleLogin}
+            onError={handleError}
+            locale={locale}
+            width="366"
+          />
+        </GoogleOAuthProvider>
+      ) : (
+        <TextLink to={Urls.login(redirectUrl)}>
+          {t`Sign in with Google`}
+        </TextLink>
+      )}
+
       {errors.length > 0 && (
         <AuthErrorContainer>
           {errors.map((error, index) => (

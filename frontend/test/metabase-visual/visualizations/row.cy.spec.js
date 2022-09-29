@@ -1,4 +1,8 @@
-import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
+import {
+  restore,
+  visitQuestionAdhoc,
+  ensureDcChartVisibility,
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -33,6 +37,7 @@ describe("visual tests > visualizations > row", () => {
       },
     });
 
-    cy.percySnapshot();
+    ensureDcChartVisibility();
+    cy.createPercySnapshot();
   });
 });

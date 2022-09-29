@@ -14,7 +14,6 @@ import { useConfirmation } from "metabase/hooks/use-confirmation";
 import { usePrevious } from "metabase/hooks/use-previous";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 
-import PeopleListRow from "./PeopleListRow";
 import { USER_STATUS } from "../constants";
 import {
   loadMemberships,
@@ -22,12 +21,13 @@ import {
   deleteMembership,
   updateMembership,
 } from "../people";
-import { getGroupsWithoutMetabot, getMembershipsByUser } from "../selectors";
+import { getMembershipsByUser } from "../selectors";
+import PeopleListRow from "./PeopleListRow";
 
 const mapStateToProps = state => ({
   currentUser: getUser(state),
   isAdmin: getUserIsAdmin(state),
-  groups: getGroupsWithoutMetabot(state),
+  groups: Group.selectors.getList(state),
   membershipsByUser: getMembershipsByUser(state),
 });
 

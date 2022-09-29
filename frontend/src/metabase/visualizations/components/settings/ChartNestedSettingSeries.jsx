@@ -1,11 +1,12 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
-import ColorPicker from "metabase/components/ColorPicker";
+import { getAccentColors } from "metabase/lib/colors/groups";
+import ColorSelector from "metabase/core/components/ColorSelector";
 import { SegmentedControl } from "metabase/components/SegmentedControl";
-import Icon from "metabase/components/Icon";
 import IconWrapper from "metabase/components/IconWrapper";
 import InputBlurChange from "metabase/components/InputBlurChange";
+import { OptionsIcon } from "./ChartNestedSettingSeries.styled";
 
 // various props injected by chartSettingNestedSettings HOC
 export default class ChartNestedSettingSeries extends React.Component {
@@ -39,9 +40,9 @@ export default class ChartNestedSettingSeries extends React.Component {
                 className="px4 pt2 mt2 border-top align-self-stretch"
               >
                 <div className="flex align-center">
-                  <ColorPicker
+                  <ColorSelector
                     value={settings.color}
-                    triggerSize={21}
+                    colors={getAccentColors()}
                     onChange={value =>
                       onChangeObjectSettings(single, { color: value })
                     }
@@ -73,8 +74,7 @@ export default class ChartNestedSettingSeries extends React.Component {
                   ) : null}
                   {objects.length > 1 ? (
                     <IconWrapper className="ml1 p1">
-                      <Icon
-                        className="text-medium cursor-pointer text-brand-hover"
+                      <OptionsIcon
                         name={isSelected(single) ? "chevronup" : "chevrondown"}
                         tooltip={
                           isSelected(single) ? "Hide options" : "More options"

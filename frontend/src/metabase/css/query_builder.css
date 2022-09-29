@@ -1,6 +1,5 @@
 :root {
   --selection-color: var(--color-text-light);
-  --filter-color: var(--color-accent7);
 }
 
 #react_qb_viz {
@@ -20,30 +19,6 @@
   display: flex;
   align-items: center;
 }
-
-.QueryHeader-section {
-  padding-right: 1em;
-  margin-right: 1em;
-  border-right: 1px solid color-mod(var(--filter-color) alpha(-80%));
-}
-
-.QueryHeader-section:last-child {
-  border-right: none;
-}
-
-/*
-.Icon-download,
-.Icon-addToDash {
-    fill: var(--color-text-medium);
-    transition: fill .3s linear;
-}
-
-.Icon-download:hover,
-.Icon-addToDash:hover {
-    fill: var(--color-brand);
-    transition: fill .3s linear;
-}
-*/
 
 /* a section of the graphical query itself */
 .Query-section {
@@ -77,17 +52,6 @@
   display: flex;
   overflow-y: hidden;
   white-space: nowrap;
-}
-
-.Query-filter {
-  display: flex;
-  flex-shrink: 0;
-  border: 2px solid transparent;
-  border-radius: var(--default-border-radius);
-}
-
-.Query-filter.selected {
-  border-color: var(--filter-color);
 }
 
 .Filter-section {
@@ -379,14 +343,6 @@
   padding-right: 10px;
 }
 
-.QueryOption {
-  font-weight: 700;
-}
-
-.QueryOption:hover {
-  cursor: pointer;
-}
-
 /* @transitions */
 
 .AddToDashSuccess {
@@ -402,58 +358,9 @@
 
 /* FILTER BY SECTION */
 
-.Filter-section-field,
-.Filter-section-operator {
-  color: var(--filter-color);
-}
-
-.Filter-section-field .QueryOption {
-  color: var(--filter-color);
-}
-.Filter-section-operator .QueryOption {
-  color: var(--filter-color);
-}
-.Filter-section-value .QueryOption {
-  color: white;
-  background-color: var(--filter-color);
-  border: 1px solid var(--filter-color);
-  border-radius: 6px;
-  padding: 0.5em;
-  padding-top: 0.3em;
-  padding-bottom: 0.3em;
-  margin-bottom: 0.2em;
-}
-
-.Filter-section-value {
-  padding-right: 0.5em;
-  padding-bottom: 0.25em;
-}
-
 .Filter-section-sort-field.selected .QueryOption,
 .Filter-section-sort-direction.selected .QueryOption {
   color: inherit;
-}
-
-.FilterPopover .ColumnarSelector-row--selected,
-.FilterPopover .PopoverHeader-item.selected {
-  color: var(--filter-color) !important;
-}
-.FilterPopover .ColumnarSelector-row:hover {
-  background-color: var(--filter-color) !important;
-}
-
-/* VIEW SECTION */
-
-.View-section-aggregation,
-.View-section-aggregation-target,
-.View-section-breakout {
-  color: var(--color-accent1);
-}
-
-.View-section-aggregation.selected .QueryOption,
-.View-section-aggregation-target.selected .QueryOption,
-.View-section-breakout.selected .QueryOption {
-  color: var(--color-accent1);
 }
 
 /* SORT/LIMIT SECTION */
@@ -592,23 +499,6 @@
   min-width: 25em;
 }
 
-.List-item--segment .Icon,
-.List-item--segment .List-item-title {
-  color: var(--filter-color);
-}
-
-.List-item--customfield .Icon,
-.List-item--customfield .List-item-title {
-  color: var(--color-brand);
-}
-
-.FieldList-grouping-trigger {
-  display: flex;
-  visibility: hidden;
-  border-left: 2px solid color-mod(var(--filter-color) alpha(-90%));
-  color: color-mod(var(--color-text-white) alpha(-50%));
-}
-
 .List-item:not(.List-item--disabled):hover .FieldList-grouping-trigger,
 .List-item--selected .FieldList-grouping-trigger {
   visibility: visible;
@@ -634,19 +524,6 @@
   content: "?";
   font-size: 13px;
   font-weight: bold;
-}
-
-.FilterRemove-field {
-  border-radius: 99px;
-  opacity: 0;
-  width: 20px;
-  height: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: var(--filter-color);
-  border: 1px solid var(--filter-color);
-  transition: opacity 0.3s ease-out;
 }
 
 .FilterInput:hover .FilterRemove-field {

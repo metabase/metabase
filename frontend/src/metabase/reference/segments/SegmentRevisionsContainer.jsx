@@ -3,7 +3,6 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
-import SegmentSidebar from "./SegmentSidebar";
 import SidebarLayout from "metabase/components/SidebarLayout";
 import SegmentRevisions from "metabase/reference/segments/SegmentRevisions";
 
@@ -17,6 +16,7 @@ import {
   getDatabaseId,
   getIsEditing,
 } from "../selectors";
+import SegmentSidebar from "./SegmentSidebar";
 
 const mapStateToProps = (state, props) => ({
   user: getUser(state, props),
@@ -31,8 +31,7 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-export default class SegmentRevisionsContainer extends Component {
+class SegmentRevisionsContainer extends Component {
   static propTypes = {
     params: PropTypes.object.isRequired,
     location: PropTypes.object.isRequired,
@@ -76,3 +75,8 @@ export default class SegmentRevisionsContainer extends Component {
     );
   }
 }
+
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(SegmentRevisionsContainer);

@@ -1,3 +1,7 @@
+---
+title: Development environment
+---
+
 # Development environment
 
 The Metabase application has two basic components:
@@ -78,7 +82,7 @@ We exclude ESLint loader in dev mode for seven times quicker initial builds by d
 $ USE_ESLINT=true yarn build-hot
 ```
 
-By default, these build processes rely on a memory cache. The build process with ESBuild loader enabled uses a large amount of memory and may take a considerable amount of time to start (1 - 2 minutes or more). FE developers (or anyone else who frequently restarts FE builds) are encouraged to use webpack's filesystem cache option for much better start-up performance:
+By default, these build processes rely on a memory cache. The build process with ESLint loader enabled uses a large amount of memory and may take a considerable amount of time to start (1 - 2 minutes or more). FE developers (or anyone else who frequently restarts FE builds) are encouraged to use webpack's filesystem cache option for much better start-up performance:
 
 ```sh
 $ FS_CACHE=true yarn build-hot
@@ -214,7 +218,7 @@ clojure -X:dev:ee:ee-dev:drivers:drivers-dev:eastwood
 clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:namespace-checker
 
 # Run clj-kondo
-clj-kondo --parallel --lint src shared/src enterprise/backend/src --config lint-config.edn
+clj-kondo --parallel --lint src shared/src enterprise/backend/src --config .clj-kondo/config.edn
 ```
 
 ## Continuous integration

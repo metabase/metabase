@@ -3,9 +3,10 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
+import ControlledPopoverWithTrigger from "metabase/components/PopoverWithTrigger/ControlledPopoverWithTrigger";
 import Clearable from "./Clearable";
 import AggregationPopover from "./AggregationPopover";
-import TippyPopover from "metabase/components/Popover/TippyPopover";
+import { AggregationLabel } from "./AggregationWidget.styled";
 
 // NOTE: lots of duplication between AggregationWidget and BreakoutWidget
 
@@ -56,19 +57,27 @@ export default class AggregationWidget extends React.Component {
             : null
         }
       >
-        <span className={className}>
+        <AggregationLabel className={className}>
           {isRows(aggregation) ? t`Raw data` : aggregation.displayName()}
-        </span>
+        </AggregationLabel>
       </Clearable>
     ) : (
       children
     );
-    const popover = (
-      <TippyPopover
+
+    if (!trigger) {
+      return null;
+    }
+
+    return (
+      <ControlledPopoverWithTrigger
+        disableContentSandbox
         placement="bottom-start"
         visible={this.state.isOpen}
         onClose={this.handleClose}
-        content={
+        onOpen={this.handleOpen}
+        triggerContent={trigger}
+        popoverContent={
           <AggregationPopover
             query={query}
             aggregation={aggregation}
@@ -77,15 +86,9 @@ export default class AggregationWidget extends React.Component {
           />
         }
       >
-        <div>{trigger}</div>
-      </TippyPopover>
+        {trigger}
+      </ControlledPopoverWithTrigger>
     );
-
-    if (trigger) {
-      return <div onClick={this.handleOpen}>{popover}</div>;
-    } else {
-      return null;
-    }
   }
 }
 

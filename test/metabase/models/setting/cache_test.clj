@@ -46,7 +46,7 @@
 (deftest update-settings-last-updated-test
   (testing "When I update a Setting, does it set/update `settings-last-updated`?"
     (setting-test/clear-settings-last-updated-value-in-db!)
-    (setting-test/toucan-name "Bird Can")
+    (setting-test/toucan-name! "Bird Can")
     (is (string? (setting-test/settings-last-updated-value-in-db)))
 
     (testing "...and is the value updated in the cache as well?"
@@ -57,7 +57,7 @@
         ;; MySQL only has the resolution of one second on the timestamps here so we should wait that long to make sure
         ;; the second-value actually ends up being greater than the first
         (Thread/sleep (if (= (mdb/db-type) :mysql) 1200 50))
-        (setting-test/toucan-name "Bird Can")
+        (setting-test/toucan-name! "Bird Can")
         (let [second-value (setting-test/settings-last-updated-value-in-db)]
           ;; first & second values should be different, and first value should be "less than" the second value
           (is (not= first-value second-value))
@@ -70,13 +70,13 @@
 
   (testing "But if I set a setting, it should cause the cache to be populated, and be up-to-date"
     (clear-cache!)
-    (setting-test/toucan-name "Reggae Toucan")
+    (setting-test/toucan-name! "Reggae Toucan")
     (is (= false
            (#'setting.cache/cache-out-of-date?))))
 
   (testing "If another instance updates a Setting, `cache-out-of-date?` should return `true` based on DB comparisons..."
     (clear-cache!)
-    (setting-test/toucan-name "Reggae Toucan")
+    (setting-test/toucan-name! "Reggae Toucan")
     (simulate-another-instance-updating-setting! :toucan-name "Bird Can")
     (is (= true
            (#'setting.cache/cache-out-of-date?)))))
@@ -86,7 +86,7 @@
                 "updated right away even if another instance updates a value...")
     (reset-last-update-check!)
     (clear-cache!)
-    (setting-test/toucan-name "Sam")
+    (setting-test/toucan-name! "Sam")
     ;; should restore cache, and put in {"setting-test/toucan-name" "Sam"}
     (is (= "Sam"
            (setting-test/toucan-name)))
@@ -101,7 +101,7 @@
 ;; be invalidated, so we will manually flush the memoization cache to simulate it happening)
 (deftest sync-test-1
   (clear-cache!)
-  (setting-test/toucan-name "Reggae Toucan")
+  (setting-test/toucan-name! "Reggae Toucan")
   (simulate-another-instance-updating-setting! :toucan-name "Bird Can")
   (is (= "Bird Can"
          (db/select-one-field :value Setting :key "toucan-name")))
@@ -126,18 +126,18 @@
   (let [external-cache (constantly (atom nil))]
     (clear-cache!)
     (reset-last-update-check!)
-    (setting-test/test-setting-1 "Starfish")
+    (setting-test/test-setting-1! "Starfish")
     ;; 1. User writes
     (with-redefs [setting.cache/cache* external-cache]
-      (setting-test/toucan-name "Batman Toucan"))
-    (setting-test/test-setting-1 "Batman")
+      (setting-test/toucan-name! "Batman Toucan"))
+    (setting-test/test-setting-1! "Batman")
     (is (= "Batman Toucan"
            (setting-test/toucan-name)))))
 
 (deftest sync-test-3
   (mt/discard-setting-changes [site-locale]
     (clear-cache!)
-    (public-settings/site-locale "en")
+    (public-settings/site-locale! "en")
     (simulate-another-instance-updating-setting! :site-locale "fr")
     (reset-last-update-check!)
     (is (= "fr"

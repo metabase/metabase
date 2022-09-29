@@ -13,6 +13,7 @@ import EmptyState from "metabase/components/EmptyState";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
+import * as metadataActions from "metabase/redux/metadata";
 import ReferenceHeader from "../components/ReferenceHeader";
 
 import {
@@ -22,8 +23,6 @@ import {
   getError,
   getLoading,
 } from "../selectors";
-
-import * as metadataActions from "metabase/redux/metadata";
 
 const emptyStateData = {
   message: t`Tables in this database will appear here as they're added`,
@@ -84,8 +83,7 @@ export const separateTablesBySchema = (
         : createListItem(table, index);
     });
 
-@connect(mapStateToProps, mapDispatchToProps)
-export default class TableList extends Component {
+class TableList extends Component {
   static propTypes = {
     style: PropTypes.object.isRequired,
     entities: PropTypes.object.isRequired,
@@ -146,3 +144,5 @@ export default class TableList extends Component {
     );
   }
 }
+
+export default connect(mapStateToProps, mapDispatchToProps)(TableList);

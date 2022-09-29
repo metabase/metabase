@@ -59,7 +59,7 @@
    start    (s/maybe su/TemporalString)
    end      (s/maybe su/TemporalString)}
   (let [archived? (Boolean/parseBoolean archived)
-        timeline  (api/read-check (Timeline id))]
+        timeline  (api/read-check (db/select-one Timeline :id id))]
     (cond-> (hydrate timeline :creator [:collection :can_write])
       ;; `collection_id` `nil` means we need to assoc 'root' collection
       ;; because hydrate `:collection` needs a proper `:id` to work.
@@ -90,7 +90,7 @@
         :non-nil #{:name}))
     (when (and (some? archived) (not= current-archived archived))
       (db/update-where! TimelineEvent {:timeline_id id} :archived archived))
-    (hydrate (Timeline id) :creator [:collection :can_write])))
+    (hydrate (db/select-one Timeline :id id) :creator [:collection :can_write])))
 
 (api/defendpoint DELETE "/:id"
   "Delete a [[Timeline]]. Will cascade delete its events as well."

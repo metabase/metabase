@@ -1,18 +1,19 @@
 (ns metabase.models.user
-  (:require [cemerick.friend.credentials :as creds]
-            [clojure.data :as data]
+  (:require [clojure.data :as data]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.models.collection :as collection]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.permissions-group-membership :as perms-group-membership :refer [PermissionsGroupMembership]]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.models.session :refer [Session]]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings :as public-settings]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
             [metabase.util.i18n :as i18n :refer [deferred-tru trs]]
+            [metabase.util.password :as u.password]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
@@ -42,12 +43,12 @@
      defaults
      user
      {:password_salt salt
-      :password      (creds/hash-bcrypt (str salt password))}
+      :password      (u.password/hash-bcrypt (str salt password))}
      ;; lower-case the email before saving
      {:email (u/lower-case-en email)}
      ;; if there's a reset token encrypt that as well
      (when reset_token
-       {:reset_token (creds/hash-bcrypt reset_token)})
+       {:reset_token (u.password/hash-bcrypt reset_token)})
      ;; normalize the locale
      (when locale
        {:locale (i18n/normalized-locale-string locale)}))))
@@ -97,15 +98,18 @@
     (db/delete! 'PulseChannelRecipient :user_id id))
   ;; If we're setting the reset_token then encrypt it before it goes into the DB
   (cond-> user
-    reset-token (update :reset_token creds/hash-bcrypt)
+    reset-token (update :reset_token u.password/hash-bcrypt)
     locale      (update :locale i18n/normalized-locale-string)
     email       (update :email u/lower-case-en)))
 
 (defn add-common-name
-  "Add a `:common_name` key to `user` by combining their first and last names."
-  [{:keys [first_name last_name], :as user}]
-  (cond-> user
-    (or first_name last_name) (assoc :common_name (str first_name " " last_name))))
+  "Add a `:common_name` key to `user` by combining their first and last names, or using their email if names are `nil`."
+  [{:keys [first_name last_name email], :as user}]
+  (let [common-name (if (or first_name last_name)
+                      (str/trim (str first_name " " last_name))
+                      email)]
+    (cond-> user
+      common-name (assoc :common_name common-name))))
 
 (defn- post-select [user]
   (add-common-name user))
@@ -117,7 +121,7 @@
 (def admin-or-self-visible-columns
   "Sequence of columns that we can/should return for admins fetching a list of all Users, or for the current user
   fetching themselves. Needed to power the admin page."
-  (into default-user-columns [:google_auth :ldap_auth :is_active :updated_at :login_attributes :locale]))
+  (into default-user-columns [:google_auth :ldap_auth :sso_source :is_active :updated_at :login_attributes :locale]))
 
 (def non-admin-or-self-visible-columns
   "Sequence of columns that we will allow non-admin Users to see when fetching a list of Users. Why can non-admins see
@@ -129,7 +133,7 @@
   "Sequence of columns Group Managers can see when fetching a list of Users.."
   (into non-admin-or-self-visible-columns [:is_superuser :last_login]))
 
-(u/strict-extend (class User)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class User)
   models/IModel
   (merge models/IModelDefaults
          {:default-fields (constantly default-user-columns)
@@ -140,7 +144,9 @@
           :pre-update     pre-update
           :post-select    post-select
           :types          (constantly {:login_attributes :json-no-keywordization
-                                       :settings         :encrypted-json})}))
+                                       :settings         :encrypted-json})})
+  serdes.hash/IdentityHashable
+  {:identity-hash-fields (constantly [:email])})
 
 (defn group-ids
   "Fetch set of IDs of PermissionsGroup a User belongs to."
@@ -237,9 +243,13 @@
 (declare form-password-reset-url set-password-reset-token!)
 
 (defn- send-welcome-email! [new-user invitor sent-from-setup?]
-  (let [reset-token (set-password-reset-token! (u/the-id new-user))
-        ;; the new user join url is just a password reset with an indicator that this is a first time user
-        join-url    (str (form-password-reset-url reset-token) "#new")]
+  (let [reset-token               (set-password-reset-token! (u/the-id new-user))
+        should-link-to-login-page (and (public-settings/sso-enabled?)
+                                       (not (public-settings/enable-password-login)))
+        join-url                  (if should-link-to-login-page
+                                    (str (public-settings/site-url) "/auth/login")
+                                    ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
+                                    (str (form-password-reset-url reset-token) "#new"))]
     (classloader/require 'metabase.email.messages)
     ((resolve 'metabase.email.messages/send-new-user-email!) new-user invitor join-url sent-from-setup?)))
 
@@ -251,8 +261,8 @@
 
 (def NewUser
   "Required/optionals parameters needed to create a new user (for any backend)"
-  {:first_name                        su/NonBlankString
-   :last_name                         su/NonBlankString
+  {(s/optional-key :first_name)       (s/maybe su/NonBlankString)
+   (s/optional-key :last_name)        (s/maybe su/NonBlankString)
    :email                             su/Email
    (s/optional-key :password)         (s/maybe su/NonBlankString)
    (s/optional-key :login_attributes) (s/maybe LoginAttributes)
@@ -260,15 +270,21 @@
    (s/optional-key :ldap_auth)        s/Bool})
 
 (def ^:private Invitor
-  "Map with info about the admin admin creating the user, used in the new user notification code"
+  "Map with info about the admin creating the user, used in the new user notification code"
   {:email      su/Email
-   :first_name su/NonBlankString
+   :first_name (s/maybe su/NonBlankString)
    s/Any       s/Any})
 
 (s/defn ^:private insert-new-user!
   "Creates a new user, defaulting the password when not provided"
   [new-user :- NewUser]
   (db/insert! User (update new-user :password #(or % (str (UUID/randomUUID))))))
+
+(defn serdes-synthesize-user!
+  "Creates a new user with a default password, when deserializing eg. a `:creator_id` field whose email address doesn't
+  match any existing user."
+  [new-user]
+  (insert-new-user! new-user))
 
 (s/defn create-and-invite-user!
   "Convenience function for inviting a new `User` and sending out the welcome email."
@@ -300,7 +316,7 @@
   "Updates the stored password for a specified `User` by hashing the password with a random salt."
   [user-id password]
   (let [salt     (str (UUID/randomUUID))
-        password (creds/hash-bcrypt (str salt password))]
+        password (u.password/hash-bcrypt (str salt password))]
     ;; when changing/resetting the password, kill any existing sessions
     (db/simple-delete! Session :user_id user-id)
     ;; NOTE: any password change expires the password reset token
@@ -342,4 +358,4 @@
        ;; do things like automatically set the `is_superuser` flag for a User
        (doseq [group-id to-add]
          (db/insert! PermissionsGroupMembership {:user_id user-id, :group_id group-id}))))
-      true))
+    true))

@@ -1,13 +1,9 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { t } from "ttag";
-import ChoroplethMap, {
-  getColorplethColorScale,
-} from "../components/ChoroplethMap";
-import PinMap from "../components/PinMap";
-import LeafletGridHeatMap from "../components/LeafletGridHeatMap";
-
+import _ from "underscore";
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
+
 import {
   isNumeric,
   isLatitude,
@@ -27,13 +23,15 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import MetabaseSettings from "metabase/lib/settings";
 
-import _ from "underscore";
-
 const PIN_MAP_TYPES = new Set(["pin", "heat", "grid"]);
 
-import { desaturated } from "metabase/lib/colors";
-
-import ColorRangePicker from "metabase/components/ColorRangePicker";
+import { getAccentColors } from "metabase/lib/colors/groups";
+import ColorRangeSelector from "metabase/core/components/ColorRangeSelector";
+import LeafletGridHeatMap from "../components/LeafletGridHeatMap";
+import PinMap from "../components/PinMap";
+import ChoroplethMap, {
+  getColorplethColorScale,
+} from "../components/ChoroplethMap";
 
 export default class Map extends Component {
   static uiName = t`Map`;
@@ -256,15 +254,18 @@ export default class Map extends Component {
     }),
     "map.colors": {
       title: t`Color`,
-      widget: ColorRangePicker,
+      widget: ColorRangeSelector,
       props: {
-        ranges: Object.values(desaturated).map(color =>
-          getColorplethColorScale(color),
+        colors: getAccentColors(),
+        colorMapping: Object.fromEntries(
+          getAccentColors().map(color => [
+            color,
+            getColorplethColorScale(color),
+          ]),
         ),
-        quantile: true,
-        columns: 1,
+        isQuantile: true,
       },
-      default: getColorplethColorScale(Object.values(desaturated)[0]),
+      default: getColorplethColorScale(getAccentColors()[0]),
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
     },
     "map.zoom": {},

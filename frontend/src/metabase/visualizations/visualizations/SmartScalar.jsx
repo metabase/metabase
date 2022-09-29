@@ -97,8 +97,8 @@ export default class Smart extends React.Component {
       rawSeries,
       gridSize,
       width,
-      height,
       totalNumGridCols,
+      fontFamily,
     } = this.props;
 
     const metricIndex = cols.findIndex(col => !isDate(col));
@@ -124,9 +124,7 @@ export default class Smart extends React.Component {
     const isSwapped = settings["scalar.switch_positive_negative"];
 
     // if the number is negative but thats been identified as a good thing (e.g. decreased latency somehow?)
-    const changeColor = (isSwapped
-    ? !isNegative
-    : isNegative)
+    const changeColor = (isSwapped ? !isNegative : isNegative)
       ? color("error")
       : color("success");
 
@@ -135,7 +133,9 @@ export default class Smart extends React.Component {
         {formatNumber(Math.abs(lastChange), { number_style: "percent" })}
       </span>
     );
-    const separator = <PreviousValueSeparator>•</PreviousValueSeparator>;
+    const separator = (
+      <PreviousValueSeparator gridSize={gridSize}>•</PreviousValueSeparator>
+    );
     const granularityDisplay = (
       <span style={{ marginLeft: 5 }}>{jt`last ${granularity}`}</span>
     );
@@ -173,12 +173,10 @@ export default class Smart extends React.Component {
           ref={scalar => (this._scalar = scalar)}
         >
           <ScalarValue
-            isDashboard={isDashboard}
             gridSize={gridSize}
-            minGridSize={Smart.minSize}
             width={width}
-            height={height}
             totalNumGridCols={totalNumGridCols}
+            fontFamily={fontFamily}
             value={formatValue(insight["last-value"], settings.column(column))}
           />
         </span>
@@ -201,7 +199,7 @@ export default class Smart extends React.Component {
           ) : lastChange === 0 ? (
             t`No change from last ${granularity}`
           ) : (
-            <PreviousValueContainer>
+            <PreviousValueContainer gridSize={gridSize}>
               <Variation color={changeColor}>
                 <Icon
                   size={13}

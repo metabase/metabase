@@ -1,4 +1,4 @@
-import moment from "moment";
+import moment from "moment-timezone";
 
 import {
   getDatas,
@@ -73,6 +73,12 @@ describe("getXValues", () => {
     ];
     const settings = {};
     expect(getXValues({ settings, series })).toEqual(["d", "c", "b", "a"]);
+  });
+  it("should return empty array when data has no rows and columns", () => {
+    const series = [{ data: { rows: [], cols: [] } }];
+    series._raw = [{ data: { rows: [], cols: [] } }];
+
+    expect(getXValues({ settings: {}, series })).toEqual([]);
   });
   it("should use the correct column as the dimension for raw series", () => {
     const series = [

@@ -126,7 +126,8 @@
   (try
     (f)
     (finally
-      (u/ignore-exceptions (db/update-where! User {} :login_attributes nil)))))
+      (u/ignore-exceptions (do (db/update-where! User {} :login_attributes nil)
+                               (db/update-where! User {:email "rasta@metabase.com"} :first_name "Rasta" :last_name "Toucan" :sso_source nil))))))
 
 (defmacro ^:private with-saml-default-setup [& body]
   `(with-valid-premium-features-token
@@ -231,11 +232,20 @@
 (defn- new-user-saml-test-response []
   (saml-response-from-file "test_resources/saml-test-response-new-user.xml"))
 
+(defn- new-user-no-names-saml-test-response []
+  (saml-response-from-file "test_resources/saml-test-response-new-user-no-names.xml"))
+
 (defn- new-user-with-single-group-saml-test-response []
   (saml-response-from-file "test_resources/saml-test-response-new-user-with-single-group.xml"))
 
 (defn- new-user-with-groups-saml-test-response []
   (saml-response-from-file "test_resources/saml-test-response-new-user-with-groups.xml"))
+
+(defn- whitespace-response []
+  (str (saml-response-from-file "test_resources/saml-test-response.xml") "\n\n"))
+
+(defn- new-user-with-groups-in-separate-attribute-nodes-saml-test-response []
+  (saml-response-from-file "test_resources/saml-test-response-new-user-with-groups-in-separate-attribute-nodes.xml"))
 
 (defn- saml-post-request-options [saml-response relay-state]
   {:request-options {:content-type     :x-www-form-urlencoded
@@ -254,7 +264,7 @@
         (select-keys attribute-keys))))
 
 (deftest validate-request-id-test
-  (testing "Sample response shoudl fail because _1 isn't a request ID that we issued."
+  (testing "Sample response should fail because _1 isn't a request ID that we issued."
     (with-saml-default-setup
       (do-with-some-validators-disabled
         (fn []
@@ -339,11 +349,23 @@
 ;; Part of accepting the POST is validating the response and the relay state so we can redirect the user to their
 ;; original destination
 (deftest login-test
-  (with-saml-default-setup
-    (do-with-some-validators-disabled
-      (fn []
-        (testing "After a successful login with the identity provider, the SAML provider will POST to the `/auth/sso` route."
+  (testing "After a successful login with the identity provider, the SAML provider will POST to the `/auth/sso` route."
+    (with-saml-default-setup
+      (do-with-some-validators-disabled
+        (fn []
           (let [req-options (saml-post-request-options (saml-test-response)
+                                                       (saml/str->base64 default-redirect-uri))
+                response    (client-full-response :post 302 "/auth/sso" req-options)]
+            (is (successful-login? response))
+            (is (= default-redirect-uri
+                   (get-in response [:headers "Location"])))
+            (is (= (some-saml-attributes "rasta")
+                   (saml-login-attributes "rasta@metabase.com"))))))))
+  (testing "Still works with whitespace in the SAML post response (#23451)"
+    (with-saml-default-setup
+      (do-with-some-validators-disabled
+        (fn []
+          (let [req-options (saml-post-request-options (whitespace-response)
                                                        (saml/str->base64 default-redirect-uri))
                 response    (client-full-response :post 302 "/auth/sso" req-options)]
             (is (successful-login? response))
@@ -358,7 +380,8 @@
     (doseq [relay-state ["something-random_#!@__^^"
                          ""
                          "   "
-                         "/"]]
+                         "/"
+                         "https://badsite.com"]]
       (testing (format "\nRelayState = %s" (pr-str relay-state))
         (with-saml-default-setup
           (do-with-some-validators-disabled
@@ -369,7 +392,17 @@
                 (is (= (public-settings/site-url)
                        (get-in response [:headers "Location"])))
                 (is (= (some-saml-attributes "rasta")
-                       (saml-login-attributes "rasta@metabase.com")))))))))))
+                       (saml-login-attributes "rasta@metabase.com"))))))))))
+  (testing "if the RelayState leads us to the wrong host, avoid the open redirect (boat#160)"
+    (let [redirect-url "https://badsite.com"]
+      (with-saml-default-setup
+        (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+          (do-with-some-validators-disabled
+            (fn []
+              (let [get-response (client :get 400 "/auth/sso"
+                                   {:request-options {:redirect-strategy :none}}
+                                   :redirect redirect-url)]
+                (is (= "SSO is trying to do an open redirect to an untrusted site" get-response))))))))))
 
 (deftest login-create-account-test
   (testing "A new account will be created for a SAML user we haven't seen before"
@@ -394,6 +427,44 @@
               (testing "attributes"
                 (is (= (some-saml-attributes "newuser")
                        (saml-login-attributes "newuser@metabase.com")))))
+            (finally
+              (db/delete! User :%lower.email "newuser@metabase.com"))))))))
+
+(deftest login-update-account-test
+  (testing "A new 'Unknown' name account will be created for a SAML user with no configured first or last name"
+    (do-with-some-validators-disabled
+      (fn []
+        (with-saml-default-setup
+          (try
+            (is (not (db/exists? User :%lower.email "newuser@metabase.com")))
+            ;; login with a user with no givenname or surname attributes
+            (let [req-options (saml-post-request-options (new-user-no-names-saml-test-response)
+                                                         (saml/str->base64 default-redirect-uri))]
+              (is (successful-login? (client-full-response :post 302 "/auth/sso" req-options)))
+              (is (= [{:email        "newuser@metabase.com"
+                       :first_name   nil
+                       :is_qbnewb    true
+                       :is_superuser false
+                       :id           true
+                       :last_name    nil
+                       :date_joined  true
+                       :common_name  "newuser@metabase.com"}]
+                     (->> (mt/boolean-ids-and-timestamps (db/select User :email "newuser@metabase.com"))
+                          (map #(dissoc % :last_login))))))
+            ;; login with the same user, but now givenname and surname attributes exist
+            (let [req-options (saml-post-request-options (new-user-saml-test-response)
+                                                         (saml/str->base64 default-redirect-uri))]
+              (is (successful-login? (client-full-response :post 302 "/auth/sso" req-options)))
+              (is (= [{:email        "newuser@metabase.com"
+                       :first_name   "New"
+                       :is_qbnewb    true
+                       :is_superuser false
+                       :id           true
+                       :last_name    "User"
+                       :date_joined  true
+                       :common_name  "New User"}]
+                     (->> (mt/boolean-ids-and-timestamps (db/select User :email "newuser@metabase.com"))
+                          (map #(dissoc % :last_login))))))
             (finally
               (db/delete! User :%lower.email "newuser@metabase.com"))))))))
 
@@ -425,28 +496,52 @@
 
 (deftest login-should-sync-multiple-group-membership
   (testing "saml group sync works when there are multiple groups, which gets interpreted as a list of strings"
-    (with-saml-default-setup
-      (do-with-some-validators-disabled
-        (fn []
-          (mt/with-temp* [PermissionsGroup [group-1 {:name (str ::group-1)}]
-                          PermissionsGroup [group-2 {:name (str ::group-2)}]]
-            (mt/with-temporary-setting-values [saml-group-sync      true
-                                               saml-group-mappings  {"group_1" [(u/the-id group-1)]
-                                                                     "group_2" [(u/the-id group-2)]}
-                                               saml-attribute-group "GroupMembership"]
-              (try
-                (testing "user doesn't exist until SAML request"
-                  (is (not (db/select-one-id User :%lower.email "newuser@metabase.com"))))
-                (let [req-options (saml-post-request-options (new-user-with-groups-saml-test-response)
-                                                             (saml/str->base64 default-redirect-uri))
-                      response    (client-full-response :post 302 "/auth/sso" req-options)]
-                  (is (successful-login? response))
-                  (is (= #{"All Users"
-                           ":metabase-enterprise.sso.integrations.saml-test/group-1"
-                           ":metabase-enterprise.sso.integrations.saml-test/group-2"}
-                         (group-memberships (db/select-one-id User :email "newuser@metabase.com")))))
-                (finally
-                  (db/delete! User :%lower.email "newuser@metabase.com"))))))))))
+    (testing "when only one Attribute node exists"
+      (with-saml-default-setup
+        (do-with-some-validators-disabled
+          (fn []
+            (mt/with-temp* [PermissionsGroup [group-1 {:name (str ::group-1)}]
+                            PermissionsGroup [group-2 {:name (str ::group-2)}]]
+              (mt/with-temporary-setting-values [saml-group-sync      true
+                                                 saml-group-mappings  {"group_1" [(u/the-id group-1)]
+                                                                       "group_2" [(u/the-id group-2)]}
+                                                 saml-attribute-group "GroupMembership"]
+                (try
+                  (testing "user doesn't exist until SAML request"
+                    (is (not (db/select-one-id User :%lower.email "newuser@metabase.com"))))
+                  (let [req-options (saml-post-request-options (new-user-with-groups-saml-test-response)
+                                                               (saml/str->base64 default-redirect-uri))
+                        response    (client-full-response :post 302 "/auth/sso" req-options)]
+                    (is (successful-login? response))
+                    (is (= #{"All Users"
+                             ":metabase-enterprise.sso.integrations.saml-test/group-1"
+                             ":metabase-enterprise.sso.integrations.saml-test/group-2"}
+                           (group-memberships (db/select-one-id User :email "newuser@metabase.com")))))
+                  (finally
+                    (db/delete! User :%lower.email "newuser@metabase.com")))))))))
+    (testing "when several Attribute nodes exist (issue #20744)"
+      (with-saml-default-setup
+        (do-with-some-validators-disabled
+          (fn []
+            (mt/with-temp* [PermissionsGroup [group-1 {:name (str ::group-1)}]
+                            PermissionsGroup [group-2 {:name (str ::group-2)}]]
+              (mt/with-temporary-setting-values [saml-group-sync      true
+                                                 saml-group-mappings  {"group_1" [(u/the-id group-1)]
+                                                                       "group_2" [(u/the-id group-2)]}
+                                                 saml-attribute-group "GroupMembership"]
+                (try
+                  (testing "user doesn't exist until SAML request"
+                    (is (not (db/select-one-id User :%lower.email "newuser@metabase.com"))))
+                  (let [req-options (saml-post-request-options (new-user-with-groups-in-separate-attribute-nodes-saml-test-response)
+                                                               (saml/str->base64 default-redirect-uri))
+                        response    (client-full-response :post 302 "/auth/sso" req-options)]
+                    (is (successful-login? response))
+                    (is (= #{"All Users"
+                             ":metabase-enterprise.sso.integrations.saml-test/group-1"
+                             ":metabase-enterprise.sso.integrations.saml-test/group-2"}
+                           (group-memberships (db/select-one-id User :email "newuser@metabase.com")))))
+                  (finally
+                    (db/delete! User :%lower.email "newuser@metabase.com")))))))))))
 
 (deftest relay-state-e2e-test
   (testing "Redirect URL (RelayState) should work correctly end-to-end (#13666)"

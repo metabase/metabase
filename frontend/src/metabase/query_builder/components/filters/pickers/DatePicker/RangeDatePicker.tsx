@@ -1,79 +1,107 @@
-/* eslint-disable react/prop-types */
-import React from "react";
-
+import React, { useCallback, useState } from "react";
+import moment, { Moment } from "moment-timezone";
+import { setTimeComponent } from "metabase/lib/query_time";
 import Calendar from "metabase/components/Calendar";
-
-import moment from "moment";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
-import { TimeContainer } from "./RangeDatePicker.styled";
-import {
-  hasTimeComponent,
-  setTimeComponent,
-  TIME_SELECTOR_DEFAULT_HOUR,
-  TIME_SELECTOR_DEFAULT_MINUTE,
-} from "metabase/lib/query_time";
 import SingleDatePicker, { SingleDatePickerProps } from "./SingleDatePicker";
 import SpecificDatePicker from "./SpecificDatePicker";
+import { DateContainer, DateDivider } from "./RangeDatePicker.styled";
 
-type BetweenPickerProps = {
-  isSidebar?: boolean;
+export interface BetweenPickerProps {
   className?: string;
-  filter: Filter;
-  onFilterChange: (filter: any[]) => void;
-
+  filter: Filter | any[];
+  primaryColor?: string;
   hideTimeSelectors?: boolean;
-};
+  onFilterChange: (filter: any[]) => void;
+}
 
 export const BetweenPicker = ({
   className,
-  isSidebar,
   filter: [op, field, startValue, endValue],
-  onFilterChange,
+  primaryColor,
   hideTimeSelectors,
+  onFilterChange,
 }: BetweenPickerProps) => {
-  let endDatetime = endValue;
-  if (hasTimeComponent(startValue) && !hasTimeComponent(endValue)) {
-    endDatetime = setTimeComponent(
-      endValue,
-      TIME_SELECTOR_DEFAULT_HOUR,
-      TIME_SELECTOR_DEFAULT_MINUTE,
-    );
-  }
+  const [isStartDateActive, setIsStartDateActive] = useState(true);
+
+  const handleStartDateFocus = useCallback(() => {
+    setIsStartDateActive(true);
+  }, []);
+
+  const handleEndDateFocus = useCallback(() => {
+    setIsStartDateActive(false);
+  }, []);
+
+  const handleDateClick = useCallback(
+    (newValue: string, newDate: Moment) => {
+      if (isStartDateActive) {
+        onFilterChange([op, field, newValue, null]);
+      } else if (newDate.isBefore(startValue)) {
+        onFilterChange([op, field, newValue, startValue]);
+      } else {
+        onFilterChange([op, field, startValue, newValue]);
+      }
+      setIsStartDateActive(isActive => !isActive);
+    },
+    [op, field, startValue, isStartDateActive, onFilterChange],
+  );
+
+  const handleStartDateChange = useCallback(
+    (newValue: string | null) => {
+      onFilterChange([op, field, newValue, endValue]);
+      setIsStartDateActive(isActive => !isActive);
+    },
+    [op, field, endValue, onFilterChange],
+  );
+
+  const handleEndDateChange = useCallback(
+    (newValue: string | null) => {
+      onFilterChange([op, field, startValue, newValue]);
+      setIsStartDateActive(isActive => !isActive);
+    },
+    [op, field, startValue, onFilterChange],
+  );
+
+  const handleEndDateClear = useCallback(() => {
+    onFilterChange([
+      op,
+      field,
+      setTimeComponent(startValue),
+      setTimeComponent(endValue),
+    ]);
+  }, [op, field, startValue, endValue, onFilterChange]);
+
   return (
-    <div className={className}>
-      <TimeContainer isSidebar={isSidebar}>
-        <div>
-          <SpecificDatePicker
-            value={startValue}
-            hideTimeSelectors={hideTimeSelectors}
-            onChange={value => onFilterChange([op, field, value, endValue])}
-          />
-        </div>
-        <div>
-          <SpecificDatePicker
-            value={endValue}
-            hideTimeSelectors={hideTimeSelectors}
-            onClear={() =>
-              onFilterChange([
-                op,
-                field,
-                setTimeComponent(startValue),
-                setTimeComponent(endValue),
-              ])
-            }
-            onChange={value => onFilterChange([op, field, startValue, value])}
-          />
-        </div>
-      </TimeContainer>
+    <div className={className} data-testid="between-date-picker">
+      <DateContainer>
+        <SpecificDatePicker
+          value={startValue}
+          primaryColor={primaryColor}
+          isActive={isStartDateActive}
+          hideTimeSelectors={hideTimeSelectors}
+          autoFocus
+          onFocus={handleStartDateFocus}
+          onChange={handleStartDateChange}
+        />
+        <DateDivider>–</DateDivider>
+        <SpecificDatePicker
+          value={endValue}
+          primaryColor={primaryColor}
+          isActive={!isStartDateActive}
+          hideTimeSelectors={hideTimeSelectors}
+          onFocus={handleEndDateFocus}
+          onChange={handleEndDateChange}
+          onClear={handleEndDateClear}
+        />
+      </DateContainer>
       <div className="Calendar--noContext">
         <Calendar
           isRangePicker
-          initial={startValue}
+          primaryColor={primaryColor}
+          initial={endValue}
           selected={startValue && moment(startValue)}
           selectedEnd={endValue && moment(endValue)}
-          onChange={(startValue, endValue) =>
-            onFilterChange([op, field, startValue, endValue])
-          }
+          onChangeDate={handleDateClick}
         />
       </div>
     </div>

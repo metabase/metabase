@@ -8,10 +8,9 @@ import { t } from "ttag";
 import { color } from "metabase/lib/colors";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import * as Urls from "metabase/lib/urls";
 import ActivityItem from "./ActivityItem";
 import ActivityStory from "./ActivityStory";
-
-import * as Urls from "metabase/lib/urls";
 
 export default class Activity extends Component {
   constructor(props, context) {
@@ -82,7 +81,7 @@ export default class Activity extends Component {
     if (user && currentUser && user.id === currentUser.id) {
       return t`You`;
     } else if (user) {
-      return user.first_name;
+      return user.common_name;
     } else {
       return t`Metabase`;
     }

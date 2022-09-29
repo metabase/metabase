@@ -3,7 +3,6 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
-import FieldSidebar from "./FieldSidebar";
 import SidebarLayout from "metabase/components/SidebarLayout";
 import FieldDetail from "metabase/reference/databases/FieldDetail";
 
@@ -18,6 +17,7 @@ import {
   getDatabaseId,
   getIsEditing,
 } from "../selectors";
+import FieldSidebar from "./FieldSidebar";
 
 const mapStateToProps = (state, props) => ({
   database: getDatabase(state, props),
@@ -33,8 +33,7 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-export default class FieldDetailContainer extends Component {
+class FieldDetailContainer extends Component {
   static propTypes = {
     params: PropTypes.object.isRequired,
     location: PropTypes.object.isRequired,
@@ -81,3 +80,8 @@ export default class FieldDetailContainer extends Component {
     );
   }
 }
+
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(FieldDetailContainer);

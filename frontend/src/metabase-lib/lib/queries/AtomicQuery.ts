@@ -1,8 +1,8 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
+import { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
 import Query from "metabase-lib/lib/queries/Query";
 import Table from "metabase-lib/lib/metadata/Table";
-import { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
 import Database from "metabase-lib/lib/metadata/Database";
 /**
  * A query type for queries that are attached to a specific database table
@@ -27,5 +27,13 @@ export default class AtomicQuery extends Query {
 
   engine(): DatabaseEngine | null | undefined {
     return null;
+  }
+
+  sourceTable(): Table | null | undefined {
+    return null;
+  }
+
+  canNest() {
+    return this.database()?.hasFeature("nested-queries");
   }
 }

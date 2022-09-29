@@ -1,5 +1,8 @@
 import { createSelector } from "reselect";
 
+import _ from "underscore";
+import { isVirtualCardId } from "metabase/lib/saved-questions/saved-questions";
+import { getFieldValues, getRemappings } from "metabase/lib/query/field";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Database from "metabase-lib/lib/metadata/Database";
 import Schema from "metabase-lib/lib/metadata/Schema";
@@ -7,10 +10,7 @@ import Table from "metabase-lib/lib/metadata/Table";
 import Field from "metabase-lib/lib/metadata/Field";
 import Metric from "metabase-lib/lib/metadata/Metric";
 import Segment from "metabase-lib/lib/metadata/Segment";
-import { isVirtualCardId } from "metabase/lib/saved-questions/saved-questions";
-
-import _ from "underscore";
-import { getFieldValues, getRemappings } from "metabase/lib/query/field";
+import Question from "metabase-lib/lib/Question";
 
 // fully nomalized, raw "entities"
 export const getNormalizedDatabases = state => state.entities.databases;
@@ -41,6 +41,7 @@ export const getNormalizedFields = createSelector(
 );
 export const getNormalizedMetrics = state => state.entities.metrics;
 export const getNormalizedSegments = state => state.entities.segments;
+export const getNormalizedQuestions = state => state.entities.questions;
 
 // TODO: these should be denomalized but non-cylical, and only to the same "depth" previous "tableMetadata" was, e.x.
 //
@@ -66,18 +67,43 @@ export const getShallowFields = getNormalizedFields;
 export const getShallowMetrics = getNormalizedMetrics;
 export const getShallowSegments = getNormalizedSegments;
 
-export const instantiateDatabase = obj => new Database(obj);
-export const instantiateSchema = obj => new Schema(obj);
-export const instantiateTable = obj => new Table(obj);
+export const instantiateDatabase = (obj, metadata) => {
+  const instance = new Database(obj);
+  instance.metadata = metadata;
+  return instance;
+};
+export const instantiateSchema = (obj, metadata) => {
+  const instance = new Schema(obj);
+  instance.metadata = metadata;
+  return instance;
+};
+export const instantiateTable = (obj, metadata) => {
+  const instance = new Table(obj);
+  instance.metadata = metadata;
+  return instance;
+};
 // We need a way to distinguish field objects that come from the server
 // vs. those that are created client-side to handle lossy transformations between
 // Field instances and FieldDimension instances.
 // There are scenarios where we are failing to convert FieldDimensions back into Fields,
 // and as a safeguard we instantiate a new Field that is missing most of its properties.
-export const instantiateField = obj =>
-  new Field({ ...obj, _comesFromEndpoint: true });
-export const instantiateSegment = obj => new Segment(obj);
-export const instantiateMetric = obj => new Metric(obj);
+export const instantiateField = (obj, metadata) => {
+  const instance = new Field({ ...obj, _comesFromEndpoint: true });
+  instance.metadata = metadata;
+  return instance;
+};
+export const instantiateSegment = (obj, metadata) => {
+  const instance = new Segment(obj);
+  instance.metadata = metadata;
+  return instance;
+};
+export const instantiateMetric = (obj, metadata) => {
+  const instance = new Metric(obj);
+  instance.metadata = metadata;
+  return instance;
+};
+export const instantiateQuestion = (obj, metadata) =>
+  new Question(obj, metadata);
 
 // fully connected graph of all databases, tables, fields, segments, and metrics
 // TODO: do this lazily using ES6 Proxies
@@ -89,15 +115,17 @@ export const getMetadata = createSelector(
     getNormalizedFields,
     getNormalizedSegments,
     getNormalizedMetrics,
+    getNormalizedQuestions,
   ],
-  (databases, schemas, tables, fields, segments, metrics) => {
+  (databases, schemas, tables, fields, segments, metrics, questions) => {
     const meta = new Metadata();
     meta.databases = copyObjects(meta, databases, instantiateDatabase);
     meta.schemas = copyObjects(meta, schemas, instantiateSchema);
     meta.tables = copyObjects(meta, tables, instantiateTable);
-    meta.fields = copyObjects(meta, fields, instantiateField);
+    meta.fields = copyObjects(meta, fields, instantiateField, "uniqueId");
     meta.segments = copyObjects(meta, segments, instantiateSegment);
     meta.metrics = copyObjects(meta, metrics, instantiateMetric);
+    meta.questions = copyObjects(meta, questions, instantiateQuestion);
 
     // database
     hydrate(meta.databases, "tables", database => {
@@ -123,22 +151,15 @@ export const getMetadata = createSelector(
     hydrate(meta.tables, "db", t => meta.database(t.db_id || t.db));
     hydrate(meta.tables, "schema", t => meta.schema(t.schema));
 
-    // NOTE: special handling for schemas
-    // This is pretty hacky
-    // hydrateList(meta.databases, "schemas", meta.schemas);
-    hydrate(meta.databases, "schemas", database =>
-      database.schemas
-        ? // use the database schemas if they exist
-          database.schemas.map(s => meta.schema(s))
-        : database.tables.length > 0
-        ? // if the database has tables, use their schemas
-          _.uniq(database.tables.map(t => t.schema))
-        : // otherwise use any loaded schemas that match the database id
-          Object.values(meta.schemas).filter(
-            s => s.database && s.database.id === database.id,
-          ),
-    );
-    // hydrateList(meta.schemas, "tables", meta.tables);
+    hydrate(meta.databases, "schemas", database => {
+      if (database.schemas) {
+        return database.schemas.map(s => meta.schema(s));
+      }
+      return Object.values(meta.schemas).filter(
+        s => s.database && s.database.id === database.id,
+      );
+    });
+
     hydrate(meta.schemas, "tables", schema =>
       schema.tables
         ? // use the schema tables if they exist
@@ -198,14 +219,18 @@ export const getSegments = createSelector(
 // UTILS:
 
 // clone each object in the provided mapping of objects
-export function copyObjects(metadata, objects, instantiate) {
+export function copyObjects(
+  metadata,
+  objects,
+  instantiate,
+  identifierProp = "id",
+) {
   const copies = {};
   for (const object of Object.values(objects)) {
-    if (object && object.id != null) {
-      copies[object.id] = instantiate(object);
-      copies[object.id].metadata = metadata;
+    if (object?.[identifierProp] != null) {
+      copies[object[identifierProp]] = instantiate(object, metadata);
     } else {
-      console.warn("Missing id:", object);
+      console.warn(`Missing ${identifierProp}:`, object);
     }
   }
   return copies;

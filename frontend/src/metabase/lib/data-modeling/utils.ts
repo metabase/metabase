@@ -1,14 +1,17 @@
-import Question from "metabase-lib/lib/Question";
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import Database from "metabase-lib/lib/metadata/Database";
 import { isStructured } from "metabase/lib/query";
 import { getQuestionVirtualTableId } from "metabase/lib/saved-questions";
+import MetabaseSettings from "metabase/lib/settings";
+
+import { ModelCacheRefreshStatus } from "metabase-types/api";
 import { TemplateTag } from "metabase-types/types/Query";
 import {
   Card as CardObject,
   CardId,
   StructuredDatasetQuery,
 } from "metabase-types/types/Card";
+import Database from "metabase-lib/lib/metadata/Database";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import Question from "metabase-lib/lib/Question";
 
 export function isSupportedTemplateTagForModel(tag: TemplateTag) {
   return ["card", "snippet"].includes(tag.type);
@@ -16,6 +19,10 @@ export function isSupportedTemplateTagForModel(tag: TemplateTag) {
 
 export function checkDatabaseSupportsModels(database?: Database | null) {
   return database && database.hasFeature("nested-queries");
+}
+
+export function checkDatabaseCanPersistDatasets(database?: Database | null) {
+  return database && database.supportsPersistence() && database.isPersisted();
 }
 
 export function checkCanBeModel(question: Question) {
@@ -61,4 +68,25 @@ export function isAdHocModelQuestion(
     return false;
   }
   return isAdHocModelQuestionCard(question.card(), originalQuestion.card());
+}
+
+export function checkCanRefreshModelCache(
+  refreshInfo: ModelCacheRefreshStatus,
+) {
+  if (refreshInfo.card_archived === true) {
+    return false;
+  }
+
+  if (refreshInfo.card_dataset === false) {
+    return false;
+  }
+
+  return refreshInfo.state === "persisted" || refreshInfo.state === "error";
+}
+
+export function getModelCacheSchemaName(databaseId: number) {
+  const siteUUID = MetabaseSettings.get("site-uuid") as string;
+  const uuidParts = siteUUID.split("-");
+  const firstLetters = uuidParts.map(part => part.charAt(0)).join("");
+  return `metabase_cache_${firstLetters}_${databaseId}`;
 }

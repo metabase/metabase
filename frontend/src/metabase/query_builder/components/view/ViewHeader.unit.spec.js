@@ -1,18 +1,14 @@
 import React from "react";
 import xhrMock from "xhr-mock";
-import {
-  fireEvent,
-  renderWithProviders,
-  screen,
-  waitFor,
-} from "__support__/ui";
+import userEvent from "@testing-library/user-event";
+import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import {
   SAMPLE_DATABASE,
   ORDERS,
   metadata,
 } from "__support__/sample_database_fixture";
-import Question from "metabase-lib/lib/Question";
 import MetabaseSettings from "metabase/lib/settings";
+import Question from "metabase-lib/lib/Question";
 import { ViewTitleHeader } from "./ViewHeader";
 
 const BASE_GUI_QUESTION = {
@@ -59,6 +55,7 @@ const SAVED_QUESTION = {
   name: "Q1",
   description: null,
   collection_id: null,
+  can_write: true,
 };
 
 function getQuestion(card) {
@@ -94,27 +91,35 @@ function mockSettings({ enableNestedQueries = true } = {}) {
   });
 }
 
-function setup({ question, isRunnable = true, settings, ...props } = {}) {
+function setup({
+  question,
+  settings,
+  isRunnable = true,
+  isActionListVisible = true,
+  isAdditionalInfoVisible = true,
+  ...props
+} = {}) {
   mockSettings(settings);
 
   const callbacks = {
     runQuestionQuery: jest.fn(),
     setQueryBuilderMode: jest.fn(),
-    onOpenQuestionDetails: jest.fn(),
-    onCloseQuestionDetails: jest.fn(),
     onOpenModal: jest.fn(),
     onAddFilter: jest.fn(),
     onCloseFilter: jest.fn(),
     onEditSummary: jest.fn(),
     onCloseSummary: jest.fn(),
+    onSave: jest.fn(),
   };
 
   renderWithProviders(
     <ViewTitleHeader
       {...callbacks}
       {...props}
-      isRunnable={isRunnable}
       question={question}
+      isRunnable={isRunnable}
+      isActionListVisible={isActionListVisible}
+      isAdditionalInfoVisible={isAdditionalInfoVisible}
     />,
     {
       withRouter: true,
@@ -220,6 +225,9 @@ describe("ViewHeader", () => {
 
           setup({ question });
           expect(screen.queryByText("Filter")).not.toBeInTheDocument();
+          expect(
+            screen.queryByLabelText("Show more filters"),
+          ).not.toBeInTheDocument();
           expect(screen.queryByText("Summarize")).not.toBeInTheDocument();
           expect(
             screen.queryByLabelText("notebook icon"),
@@ -247,12 +255,12 @@ describe("ViewHeader", () => {
         });
 
         it("offers to filter query results", () => {
-          const { onAddFilter } = setup({
+          const { onOpenModal } = setup({
             question,
             queryBuilderMode: "view",
           });
           fireEvent.click(screen.getByText("Filter"));
-          expect(onAddFilter).toHaveBeenCalled();
+          expect(onOpenModal).toHaveBeenCalled();
         });
 
         it("offers to summarize query results", () => {
@@ -349,16 +357,21 @@ describe("ViewHeader", () => {
           xhrMock.teardown();
         });
 
-        it("displays collection where a question is saved to", async () => {
-          setup({ question });
-          await waitFor(() => screen.queryByText("Our analytics"));
-          expect(screen.queryByText("Our analytics")).toBeInTheDocument();
+        it("calls save function on title update", () => {
+          const { onSave } = setup({ question });
+          const title = screen.getByTestId("saved-question-header-title");
+          userEvent.clear(title);
+          userEvent.type(title, "New Title{enter}");
+          expect(title).toHaveValue("New Title");
+          title.blur();
+          expect(onSave).toHaveBeenCalled();
         });
 
-        it("opens details sidebar on question name click", () => {
-          const { onOpenQuestionDetails } = setup({ question });
-          fireEvent.click(screen.getByText(question.displayName()));
-          expect(onOpenQuestionDetails).toHaveBeenCalled();
+        it("shows bookmark and action buttons", () => {
+          setup({ question });
+          expect(
+            screen.queryByTestId("qb-header-info-button"),
+          ).toBeInTheDocument();
         });
       });
     });
@@ -367,22 +380,19 @@ describe("ViewHeader", () => {
 
 describe("ViewHeader | Ad-hoc GUI question", () => {
   it("does not open details sidebar on table name click", () => {
-    const { question, onOpenQuestionDetails } = setupAdHoc();
+    const { question, onOpenModal } = setupAdHoc();
     const tableName = question.table().displayName();
 
     fireEvent.click(screen.getByText(tableName));
 
-    expect(onOpenQuestionDetails).not.toHaveBeenCalled();
+    expect(onOpenModal).not.toHaveBeenCalled();
   });
 
-  it("displays original question name if a question is started from one", () => {
-    const originalQuestion = getSavedGUIQuestion();
-    setupAdHoc({ originalQuestion });
-
-    expect(screen.queryByText("Started from")).toBeInTheDocument();
+  it("does not render bookmark and action buttons", () => {
+    setupAdHoc();
     expect(
-      screen.queryByText(originalQuestion.displayName()),
-    ).toBeInTheDocument();
+      screen.queryByTestId("qb-header-info-button"),
+    ).not.toBeInTheDocument();
   });
 
   describe("filters", () => {
@@ -504,16 +514,6 @@ describe("View Header | Not saved native question", () => {
     setupNative();
     expect(screen.queryByText("Explore results")).not.toBeInTheDocument();
   });
-
-  it("displays original question name if a question is started from one", () => {
-    const originalQuestion = getSavedNativeQuestion();
-    setupNative({ originalQuestion });
-
-    expect(screen.queryByText("Started from")).toBeInTheDocument();
-    expect(
-      screen.queryByText(originalQuestion.displayName()),
-    ).toBeInTheDocument();
-  });
 });
 
 describe("View Header | Saved native question", () => {
@@ -539,5 +539,12 @@ describe("View Header | Saved native question", () => {
   it("doesn't offer to explore results if nested queries are disabled", () => {
     setupSavedNative({ settings: { enableNestedQueries: false } });
     expect(screen.queryByText("Explore results")).not.toBeInTheDocument();
+  });
+});
+
+describe("View Header | Read only permissions", () => {
+  it("should disable the input field for the question title", () => {
+    setup({ question: getSavedGUIQuestion({ can_write: false }) });
+    expect(screen.queryByTestId("saved-question-header-title")).toBeDisabled();
   });
 });

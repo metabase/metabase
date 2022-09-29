@@ -1,16 +1,12 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import { t } from "ttag";
+import _ from "underscore";
 
-import AuditContent from "../components/AuditContent";
-import AuditCustomView from "../containers/AuditCustomView";
-
-import OpenInMetabase from "../components/OpenInMetabase";
-
+import { connect } from "react-redux";
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
-import GuiQueryEditor from "metabase/query_builder/components/GuiQueryEditor";
-import Question from "metabase-lib/lib/Question";
 
-import * as QueryDetailCards from "../lib/cards/query_detail";
+import GuiQueryEditor from "metabase/query_builder/components/GuiQueryEditor";
 
 import { serializeCardForUrl } from "metabase/lib/card";
 
@@ -22,7 +18,7 @@ const AuditQueryDetail = ({ params: { queryHash } }) => (
       }
       const datasetQuery = result.data.rows[0][0];
       if (!datasetQuery) {
-        return <div>Query Not Recorded, sorry</div>;
+        return <div>{t`Query Not Recorded, sorry`}</div>;
       }
 
       return (
@@ -55,20 +51,21 @@ const AuditQueryDetail = ({ params: { queryHash } }) => (
   </AuditCustomView>
 );
 
-import { connect } from "react-redux";
 import { getMetadata } from "metabase/selectors/metadata";
-
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import { loadMetadataForCard } from "metabase/query_builder/actions";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import Question from "metabase-lib/lib/Question";
+import * as QueryDetailCards from "../lib/cards/query_detail";
+import OpenInMetabase from "../components/OpenInMetabase";
+import AuditCustomView from "../containers/AuditCustomView";
+import AuditContent from "../components/AuditContent";
 
 const mapStateToProps = state => ({ metadata: getMetadata(state) });
 const mapDispatchToProps = { loadMetadataForCard };
 
-@connect(mapStateToProps, mapDispatchToProps)
-@ExplicitSize()
-class QueryBuilderReadOnly extends React.Component {
+class QueryBuilderReadOnlyInner extends React.Component {
   state = {
     isNativeEditorOpen: false,
   };
@@ -114,5 +111,10 @@ class QueryBuilderReadOnly extends React.Component {
     }
   }
 }
+
+const QueryBuilderReadOnly = _.compose(
+  connect(mapStateToProps, mapDispatchToProps),
+  ExplicitSize(),
+)(QueryBuilderReadOnlyInner);
 
 export default AuditQueryDetail;

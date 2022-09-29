@@ -16,28 +16,30 @@
             [metabase.query-processor :as qp]
             [metabase.sync :as sync]
             [metabase.test :as mt]
+            [metabase.test.data.presto-jdbc :as data.presto-jdbc]
             [metabase.test.fixtures :as fixtures]
             [metabase.test.util :as tu]
-            [toucan.db :as db]))
+            [toucan.db :as db])
+  (:import java.io.File))
 
 (use-fixtures :once (fixtures/initialize :db))
 
 (deftest describe-database-test
   (mt/test-driver :presto-jdbc
-    (is (= {:tables #{{:name "categories" :schema "default"}
-                      {:name "venues" :schema "default"}
-                      {:name "checkins" :schema "default"}
-                      {:name "users" :schema "default"}}}
+    (is (= {:tables #{{:name "test_data_categories" :schema "default"}
+                      {:name "test_data_venues" :schema "default"}
+                      {:name "test_data_checkins" :schema "default"}
+                      {:name "test_data_users" :schema "default"}}}
            (-> (driver/describe-database :presto-jdbc (mt/db))
-               (update :tables (comp set (partial filter (comp #{"categories"
-                                                                 "venues"
-                                                                 "checkins"
-                                                                 "users"}
+               (update :tables (comp set (partial filter (comp #{"test_data_categories"
+                                                                 "test_data_venues"
+                                                                 "test_data_checkins"
+                                                                 "test_data_users"}
                                                                :name)))))))))
 
 (deftest describe-table-test
   (mt/test-driver :presto-jdbc
-    (is (= {:name   "venues"
+    (is (= {:name   "test_data_venues"
             :schema "default"
             :fields #{{:name          "name",
                        ;; for HTTP based Presto driver, this is coming back as varchar(255)
@@ -74,9 +76,9 @@
             [3 "The Apple Pan"]
             [4 "Wurstküche"]
             [5 "Brite Spot Family Restaurant"]]
-           (->> (metadata-queries/table-rows-sample (Table (mt/id :venues))
-                  [(Field (mt/id :venues :id))
-                   (Field (mt/id :venues :name))]
+           (->> (metadata-queries/table-rows-sample (db/select-one Table :id (mt/id :venues))
+                  [(db/select-one Field :id (mt/id :venues :id))
+                   (db/select-one Field :id (mt/id :venues :name))]
                   (constantly conj))
                 (sort-by first)
                 (take 5))))))
@@ -133,8 +135,8 @@
                    :filter      [:= $name "wow"]})]
       (testing "The native query returned in query results should use user-friendly splicing"
         (is (= (str "SELECT count(*) AS \"count\" "
-                    "FROM \"default\".\"venues\" "
-                    "WHERE \"default\".\"venues\".\"name\" = 'wow'")
+                    "FROM \"default\".\"test_data_venues\" "
+                    "WHERE \"default\".\"test_data_venues\".\"name\" = 'wow'")
                (:query (qp/compile-and-splice-parameters query))
                (-> (qp/process-query query) :data :native_form :query)))))))
 
@@ -164,9 +166,20 @@
              (-> (sql.qp/unix-timestamp->honeysql :presto-jdbc :microseconds (hsql/raw 1623963256123456))
                (hformat/format)))))))
 
+(defn- clone-db-details
+  "Clones the details of the current DB ensuring fresh copies for the secrets
+  (keystore and truststore)."
+  []
+  (-> (:details (mt/db))
+      (dissoc :ssl-keystore-id :ssl-keystore-password-id
+              :ssl-truststore-id :ssl-truststore-password-id)
+      (merge (select-keys (data.presto-jdbc/dbdef->connection-details (:name (mt/db)))
+                          [:ssl-keystore-path :ssl-keystore-password-value
+                           :ssl-truststore-path :ssl-truststore-password-value]))))
+
 (defn- execute-ddl! [ddl-statements]
   (mt/with-driver :presto-jdbc
-    (let [jdbc-spec (sql-jdbc.conn/connection-details->spec :presto-jdbc (:details (mt/db)))]
+    (let [jdbc-spec (sql-jdbc.conn/connection-details->spec :presto-jdbc (clone-db-details))]
       (with-open [conn (jdbc/get-connection jdbc-spec)]
         (doseq [ddl-stmt ddl-statements]
           (with-open [stmt (.prepareStatement conn ddl-stmt)]
@@ -177,7 +190,7 @@
     (testing "When a specific schema is designated, only that one is synced"
       (let [s           "specific_schema"
             t           "specific_table"
-            db-details  (:details (mt/db))
+            db-details  (clone-db-details)
             with-schema (assoc db-details :schema s)]
         (execute-ddl! [(format "DROP TABLE IF EXISTS %s.%s" s t)
                        (format "DROP SCHEMA IF EXISTS %s" s)
@@ -217,3 +230,37 @@
                   "&KerberosRemoteServiceName=HTTP&KerberosKeytabPath=/path/to/client.keytab"
                   "&KerberosConfigPath=/path/to/krb5.conf")
              (:subname jdbc-spec))))))
+
+(defn- create-dummy-keystore
+  "Creates and empty file for simulating a JKS."
+  ^File [prefix]
+  (doto (File/createTempFile prefix ".jks")
+    .deleteOnExit))
+
+(deftest ssl-store-properties-test
+  (testing "SSL keystore and truststore properties are added as URL parameters"
+    (let [keystore   (create-dummy-keystore "keystore")
+          truststore (create-dummy-keystore "truststore")
+          details    {:host                          "presto-server"
+                      :port                          7778
+                      :catalog                       "my-catalog"
+                      :additional-options            "additional-options"
+                      :ssl                           true
+                      :ssl-use-keystore              true
+                      :ssl-keystore-path             (.getPath keystore)
+                      :ssl-keystore-password-value   "keystorepass"
+                      :ssl-use-truststore            true
+                      :ssl-truststore-path           (.getPath truststore)
+                      :ssl-truststore-password-value "truststorepass"}]
+      (try
+        (is (= (format (str "//presto-server:7778/my-catalog?additional-options"
+                            "&SSLKeyStorePath=%s"
+                            "&SSLKeyStorePassword=keystorepass"
+                            "&SSLTrustStorePath=%s"
+                            "&SSLTrustStorePassword=truststorepass")
+                       (.getCanonicalPath keystore)
+                       (.getCanonicalPath truststore))
+               (:subname (sql-jdbc.conn/connection-details->spec :presto-jdbc details))))
+        (finally
+          (.delete truststore)
+          (.delete keystore))))))

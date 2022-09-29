@@ -1,6 +1,7 @@
 (ns metabase.api.setup
   (:require [clojure.tools.logging :as log]
             [compojure.core :refer [GET POST]]
+            [java-time :as t]
             [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
             [metabase.api.common.validation :as validation]
@@ -67,7 +68,7 @@
                         :id      session-id
                         :user_id user-id)
                       ;; HACK -- Toucan doesn't seem to work correctly with models with string IDs
-                      (models/post-insert (Session (str session-id))))]
+                      (models/post-insert (db/select-one Session :id (str session-id))))]
       ;; return user ID, session ID, and the Session object itself
       {:session-id session-id, :user-id user-id, :session session})))
 
@@ -96,18 +97,18 @@
 
 (defn- setup-set-settings! [_request {:keys [email site-name site-locale allow-tracking?]}]
   ;; set a couple preferences
-  (public-settings/site-name site-name)
-  (public-settings/admin-email email)
+  (public-settings/site-name! site-name)
+  (public-settings/admin-email! email)
   (when site-locale
-    (public-settings/site-locale site-locale))
+    (public-settings/site-locale! site-locale))
   ;; default to `true` if allow_tracking isn't specified. The setting will set itself correctly whether a boolean or
   ;; boolean string is specified
-  (public-settings/anon-tracking-enabled (or (nil? allow-tracking?)
-                                             allow-tracking?)))
+  (public-settings/anon-tracking-enabled! (or (nil? allow-tracking?)
+                                              allow-tracking?)))
 
 (api/defendpoint POST "/"
   "Special endpoint for creating the first user during setup. This endpoint both creates the user AND logs them in and
-  returns a session ID. This endpoint also can also be used to add a database, create and invite a second admin, and/or
+  returns a session ID. This endpoint can also be used to add a database, create and invite a second admin, and/or
   set specific settings from the setup flow."
   [:as {{:keys                                          [token]
          {:keys [name engine details
@@ -121,8 +122,8 @@
   {token              SetupToken
    site_name          su/NonBlankString
    site_locale        (s/maybe su/ValidLocale)
-   first_name         su/NonBlankString
-   last_name          su/NonBlankString
+   first_name         (s/maybe su/NonBlankString)
+   last_name          (s/maybe su/NonBlankString)
    email              su/Email
    invited_first_name (s/maybe su/NonBlankString)
    invited_last_name  (s/maybe su/NonBlankString)
@@ -165,23 +166,21 @@
                                             user-id
                                             {:database engine, :database-id (u/the-id database), :source :setup}))
       ;; return response with session ID and set the cookie as well
-      (mw.session/set-session-cookie request {:id session-id} session))))
+      (mw.session/set-session-cookies request {:id session-id} session (t/zoned-date-time (t/zone-id "GMT"))))))
 
 (api/defendpoint POST "/validate"
   "Validate that we can connect to a database given a set of details."
   [:as {{{:keys [engine details]} :details, token :token} :body}]
   {token  SetupToken
    engine DBEngineString}
-  (let [engine           (keyword engine)
-        invalid-response (fn [field m] {:status 400, :body (if (#{:dbname :port :host} field)
-                                                             {:errors {field m}}
-                                                             {:message m})})
-        error-or-nil     (api.database/test-database-connection engine details :invalid-response-handler invalid-response)]
+  (let [engine       (keyword engine)
+        error-or-nil (api.database/test-database-connection engine details)]
     (when error-or-nil
       (snowplow/track-event! ::snowplow/database-connection-failed
                              nil
                              {:database engine, :source :setup})
-      error-or-nil)))
+      {:status 400
+       :body   error-or-nil})))
 
 
 ;;; Admin Checklist

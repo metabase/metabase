@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore } from "__support__/e2e/helpers";
 
 const PG_DB_ID = 2;
 
@@ -41,7 +41,7 @@ const correctValues = [
   },
 ];
 
-describe("issue 15876", () => {
+describe("issue 15876", { tags: "@external" }, () => {
   beforeEach(() => {
     restore("postgres-12");
     cy.signInAsAdmin();

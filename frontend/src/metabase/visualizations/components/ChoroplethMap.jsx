@@ -1,6 +1,10 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { t } from "ttag";
+import d3 from "d3";
+import ss from "simple-statistics";
+import _ from "underscore";
+import Color from "color";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import { isMetric, isString } from "metabase/lib/schema_metadata";
@@ -9,19 +13,13 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import { formatValue } from "metabase/lib/formatting";
 
-import ChartWithLegend from "./ChartWithLegend";
-import LegacyChoropleth from "./LegacyChoropleth";
-import LeafletChoropleth from "./LeafletChoropleth";
-
 import {
   computeMinimalBounds,
   getCanonicalRowKey,
 } from "metabase/visualizations/lib/mapping";
-
-import d3 from "d3";
-import ss from "simple-statistics";
-import _ from "underscore";
-import Color from "color";
+import ChartWithLegend from "./ChartWithLegend";
+import LegacyChoropleth from "./LegacyChoropleth";
+import LeafletChoropleth from "./LeafletChoropleth";
 
 // TODO COLOR
 const HEAT_MAP_COLORS = ["#C4E4FF", "#81C5FF", "#51AEFF", "#1E96FF", "#0061B5"];
@@ -31,13 +29,9 @@ export function getColorplethColorScale(
   color,
   { lightness = 92, darken = 0.2, darkenLast = 0.3, saturate = 0.1 } = {},
 ) {
-  const lightColor = Color(color)
-    .lightness(lightness)
-    .saturate(saturate);
+  const lightColor = Color(color).lightness(lightness).saturate(saturate);
 
-  const darkColor = Color(color)
-    .darken(darken)
-    .saturate(saturate);
+  const darkColor = Color(color).darken(darken).saturate(saturate);
 
   const scale = d3.scale
     .linear()

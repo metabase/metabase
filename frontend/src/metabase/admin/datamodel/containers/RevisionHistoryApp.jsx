@@ -2,9 +2,9 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 
-import RevisionHistory from "../components/revisions/RevisionHistory";
 import Metrics from "metabase/entities/metrics";
 import Segments from "metabase/entities/segments";
+import RevisionHistory from "../components/revisions/RevisionHistory";
 
 import { getRevisions, getCurrentUser } from "../selectors";
 import { fetchRevisions } from "../datamodel";
@@ -18,8 +18,7 @@ const mapStateToProps = (state, props) => ({
 
 const mapDispatchToProps = { fetchRevisions };
 
-@connect(mapStateToProps, mapDispatchToProps)
-export default class RevisionHistoryApp extends Component {
+class RevisionHistoryApp extends Component {
   componentDidMount() {
     const { id, objectType } = this.props;
     this.props.fetchRevisions({ entity: objectType, id });
@@ -34,18 +33,26 @@ export default class RevisionHistoryApp extends Component {
   }
 }
 
-@Metrics.load({ id: (state, { id }) => id })
-class MetricRevisionHistory extends Component {
+export default connect(mapStateToProps, mapDispatchToProps)(RevisionHistoryApp);
+
+class MetricRevisionHistoryInner extends Component {
   render() {
     const { metric, ...props } = this.props;
     return <RevisionHistory object={metric} {...props} />;
   }
 }
 
-@Segments.load({ id: (state, { id }) => id })
-class SegmentRevisionHistory extends Component {
+const MetricRevisionHistory = Metrics.load({ id: (state, { id }) => id })(
+  MetricRevisionHistoryInner,
+);
+
+class SegmentRevisionHistoryInner extends Component {
   render() {
     const { segment, ...props } = this.props;
     return <RevisionHistory object={segment} {...props} />;
   }
 }
+
+const SegmentRevisionHistory = Segments.load({ id: (state, { id }) => id })(
+  SegmentRevisionHistoryInner,
+);

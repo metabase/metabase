@@ -14,16 +14,18 @@ import Questions from "metabase/entities/questions";
 import * as Urls from "metabase/lib/urls";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import MetabaseSettings from "metabase/lib/settings";
+import { replaceCardTagNameById } from "metabase-lib/lib/queries/NativeQuery";
 
-@Questions.load({
-  id: (state, { tag }) => tag["card-id"],
-  loadingAndErrorWrapper: false,
-})
-export default class CardTagEditor extends Component {
+class CardTagEditor extends Component {
   handleQuestionSelection = id => {
     const { question, query, setDatasetQuery } = this.props;
+    const selectedQuestion = query.metadata().question(id);
     setDatasetQuery(
-      query.replaceCardId(question ? question.id : "", id).datasetQuery(),
+      replaceCardTagNameById(
+        query,
+        question ? question.id : "",
+        `#${selectedQuestion.slug()}`,
+      ).datasetQuery(),
     );
     this._popover && this._popover.close();
   };
@@ -130,6 +132,12 @@ export default class CardTagEditor extends Component {
     );
   }
 }
+
+export default Questions.load({
+  id: (state, { tag }) => tag["card-id"],
+  loadingAndErrorWrapper: false,
+  dispatchApiErrorEvent: false,
+})(CardTagEditor);
 
 // This formats a timestamp as a date using any custom formatting options.
 function formatDate(value) {

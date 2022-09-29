@@ -1,3 +1,7 @@
+---
+title: Database driver basics
+---
+
 # Database driver basics
 
 A Metabase driver:
@@ -57,7 +61,7 @@ The `deps.edn` file specifies the driver's dependencies.
 
 Your driver's [manifest](plugins.md#plugin-manifests) includes details about your driver.
 
-### `src/metabase/driver/sqlite.cljl`
+### `src/metabase/driver/sqlite.clj`
 
 This is the core file for your driver. We'll talk more about it in [Implementing multimethods](multimethods.md).
 
@@ -65,4 +69,4 @@ This is the core file for your driver. We'll talk more about it in [Implementing
 
 We'll learn more about [plugin manifests](plugins.md).
 
-[env-var]: ../../operations-guide/environment-variables.html
+[env-var]: ../../configuring-metabase/environment-variables.md

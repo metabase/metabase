@@ -1,14 +1,15 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import { t } from "ttag";
 
 import cx from "classnames";
 import _ from "underscore";
 
+import { Motion, spring } from "react-motion";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 
 import Icon from "metabase/components/Icon";
 import Button from "metabase/core/components/Button";
-import { Motion, spring } from "react-motion";
 
 import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -62,7 +63,7 @@ class NotebookStepPreview extends React.Component {
     return (
       <PreviewRoot>
         <PreviewHeader>
-          <span className="text-bold">{`Preview`}</span>
+          <span className="text-bold">{t`Preview`}</span>
           <PreviewIconContainer>
             <Icon
               name="close"
@@ -73,7 +74,7 @@ class NotebookStepPreview extends React.Component {
         </PreviewHeader>
         {isDirty ? (
           <PreviewButtonContainer className="bordered shadowed rounded bg-white p4">
-            <Button onClick={this.refresh}>Refresh</Button>
+            <Button onClick={this.refresh}>{t`Refresh`}</Button>
           </PreviewButtonContainer>
         ) : (
           <QuestionResultLoader question={question}>

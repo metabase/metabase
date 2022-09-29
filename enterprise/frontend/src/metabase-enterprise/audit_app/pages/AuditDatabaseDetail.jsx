@@ -1,10 +1,9 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
+import EntityName from "metabase/entities/containers/EntityName";
 import AuditContent from "../components/AuditContent";
 import AuditTable from "../containers/AuditTable";
-
-import EntityName from "metabase/entities/containers/EntityName";
 
 import * as DatabaseDetailCards from "../lib/cards/database_detail";
 
@@ -17,7 +16,7 @@ const AuditDatabaseDetail = ({ params, ...props }) => {
         <EntityName
           entityType="databases"
           entityId={databaseId}
-          property={"name"}
+          property="name"
         />
       }
       tabs={AuditDatabaseDetail.tabs}

@@ -46,7 +46,7 @@
                       (u/pprint-to-str results))
            (throw e)))))
 
-(def ^:private ^Integer absolute-max-distinct-values-limit
+(def ^Integer absolute-max-distinct-values-limit
   "The absolute maximum number of results to return for a `field-distinct-values` query. Normally Fields with 100 or
   less values (at the time of this writing) get marked as `auto-list` Fields, meaning we save all their distinct
   values in a FieldValues object, which powers a list widget in the FE when using the Field for filtering in the QB.
@@ -64,7 +64,7 @@
   * Not being too low, which would definitely result in GitHub issues along the lines of 'My 500-distinct-value Field
     that I marked as List is not showing all values in the List Widget'
   * Not being too high, which would result in Metabase running out of memory dealing with too many values"
-  (int 5000))
+  (int 1000))
 
 (s/defn field-distinct-values
   "Return the distinct values of `field`.
@@ -74,7 +74,7 @@
 
   ([field max-results :- su/IntGreaterThanZero]
    (mapv first (field-query field {:breakout [[:field (u/the-id field) nil]]
-                                   :limit    max-results}))))
+                                   :limit    (min max-results absolute-max-distinct-values-limit)}))))
 
 (defn field-distinct-count
   "Return the distinct count of `field`."

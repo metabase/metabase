@@ -9,9 +9,11 @@ import { shouldForwardNonTransientProp } from "metabase/lib/styling/emotion";
 
 const propTypes = {
   to: PropTypes.oneOfType([PropTypes.string, PropTypes.bool]),
+  activeColor: PropTypes.string,
+  inactiveColor: PropTypes.string,
 };
 
-function RawMaybeLink({ to, ...props }) {
+function RawMaybeLink({ to, activeColor, inactiveColor, ...props }) {
   return to ? <Link to={to} {...props} /> : <span {...props} />;
 }
 
@@ -28,6 +30,7 @@ export const MaybeLink = styled(RawMaybeLink)`
   font-size: 0.875em;
   font-weight: bold;
   color: ${props => color(props.inactiveColor)};
+  min-width: ${props => (props.isSingleLine ? 0 : "")};
 
   :hover {
     ${props => (props.to || props.onClick) && hoverStyle(props)}
@@ -38,4 +41,10 @@ export const BadgeIcon = styled(Icon, {
   shouldForwardProp: shouldForwardNonTransientProp,
 })`
   margin-right: ${props => (props.$hasMargin ? "5px" : 0)};
+`;
+
+export const BadgeText = styled.span`
+  overflow: ${props => (props.isSingleLine ? "hidden" : "")};
+  text-overflow: ${props => (props.isSingleLine ? "ellipsis" : "")};
+  white-space: ${props => (props.isSingleLine ? "nowrap" : "")};
 `;

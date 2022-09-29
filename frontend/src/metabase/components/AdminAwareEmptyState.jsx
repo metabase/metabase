@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import { connect } from "react-redux";
 import EmptyState from "metabase/components/EmptyState";
 import { getUser } from "metabase/selectors/user";
-import { connect } from "react-redux";
 
 /*
  * AdminAwareEmptyState is a component that can
@@ -13,8 +13,7 @@ const mapStateToProps = (state, props) => ({
   user: getUser(state, props),
 });
 
-@connect(mapStateToProps, null)
-class AdminAwareEmptyState extends Component {
+class AdminAwareEmptyStateInner extends Component {
   render() {
     const {
       user,
@@ -48,5 +47,10 @@ class AdminAwareEmptyState extends Component {
     );
   }
 }
+
+const AdminAwareEmptyState = connect(
+  mapStateToProps,
+  null,
+)(AdminAwareEmptyStateInner);
 
 export default AdminAwareEmptyState;

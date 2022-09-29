@@ -1,4 +1,4 @@
-import { restore, popover, visualize } from "__support__/e2e/cypress";
+import { restore, popover, visualize } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
@@ -34,9 +34,7 @@ describe("issue 18814", () => {
     cy.findByText("Count of rows").click();
 
     cy.findByText("Pick a column to group by").click();
-    popover()
-      .contains(ccName)
-      .click();
+    popover().contains(ccName).click();
 
     visualize();
 

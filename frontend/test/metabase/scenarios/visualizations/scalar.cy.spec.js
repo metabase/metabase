@@ -2,7 +2,7 @@ import {
   restore,
   visitQuestionAdhoc,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -49,8 +49,8 @@ describe("scenarios > visualizations > scalar", () => {
                   card_id: questionId,
                   row: 0,
                   col: 0,
-                  sizeX: 4,
-                  sizeY: 4,
+                  size_x: 4,
+                  size_y: 4,
                   parameter_mappings: [],
                 },
               ],

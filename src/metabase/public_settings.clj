@@ -10,6 +10,7 @@
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
+            [metabase.util.fonts :as u.fonts]
             [metabase.util.i18n :as i18n :refer [available-locales-with-names deferred-tru trs tru]]
             [metabase.util.password :as u.password]
             [toucan.db :as db])
@@ -18,12 +19,12 @@
 ;; These modules register settings but are otherwise unused. They still must be imported.
 (comment metabase.public-settings.premium-features/keep-me)
 
-(defn- google-auth-configured? []
-  (boolean (setting/get :google-auth-client-id)))
+(defn- google-auth-enabled? []
+  (boolean (setting/get :google-auth-enabled)))
 
-(defn- ldap-configured? []
-  (classloader/require 'metabase.integrations.ldap)
-  ((resolve 'metabase.integrations.ldap/ldap-configured?)))
+(defn- ldap-enabled? []
+  (classloader/require 'metabase.api.ldap)
+  ((resolve 'metabase.api.ldap/ldap-enabled)))
 
 (defn- ee-sso-configured? []
   (u/ignore-exceptions
@@ -31,11 +32,11 @@
   (when-let [varr (resolve 'metabase-enterprise.sso.integrations.sso-settings/other-sso-configured?)]
     (varr)))
 
-(defn- sso-configured?
-  "Any SSO provider is configured"
+(defn sso-enabled?
+  "Any SSO provider is configured and enabled"
   []
-  (or (google-auth-configured?)
-      (ldap-configured?)
+  (or (google-auth-enabled?)
+      (ldap-enabled?)
       (ee-sso-configured?)))
 
 (defsetting check-for-updates
@@ -53,6 +54,12 @@
   :visibility :public
   :type       :timestamp
   :default    nil)
+
+(defsetting startup-time-millis
+  (deferred-tru "The startup time in milliseconds")
+  :visibility :public
+  :type       :double
+  :default    0.0)
 
 (defsetting site-name
   (deferred-tru "The name used for this instance of Metabase.")
@@ -78,7 +85,7 @@
   ;; Don't i18n this docstring because it's not user-facing! :)
   "Unique identifier used for this instance of Metabase. This is set once and only once the first time it is fetched via
   its magic getter. Nice!"
-  :visibility :internal
+  :visibility :authenticated
   :setter     :none
   ;; magic getter will either fetch value from DB, or if no value exists, set the value to a random UUID.
   :type       ::uuid-nonce)
@@ -106,14 +113,14 @@
       (throw (ex-info (tru "Invalid site URL: {0}" (pr-str s)) {:url (pr-str s)})))
     s))
 
-(declare redirect-all-requests-to-https)
+(declare redirect-all-requests-to-https!)
 
 ;; This value is *guaranteed* to never have a trailing slash :D
 ;; It will also prepend `http://` to the URL if there's no protocol when it comes in
 (defsetting site-url
-  (str (deferred-tru "This URL is used for things like creating links in emails, auth redirects,")
-       " "
-       (deferred-tru "and in some embedding scenarios, so changing it could break functionality or get you locked out of this instance."))
+  (deferred-tru
+   (str "This URL is used for things like creating links in emails, auth redirects, and in some embedding scenarios, "
+        "so changing it could break functionality or get you locked out of this instance."))
   :visibility :public
   :getter (fn []
             (try
@@ -125,13 +132,13 @@
                   https?    (some-> new-value (str/starts-with?  "https:"))]
               ;; if the site URL isn't HTTPS then disable force HTTPS redirects if set
               (when-not https?
-                (redirect-all-requests-to-https false))
+                (redirect-all-requests-to-https! false))
               (setting/set-value-of-type! :string :site-url new-value))))
 
 (defsetting site-locale
-  (str (deferred-tru "The default language for all users across the Metabase UI, system emails, pulses, and alerts.")
-       " "
-       (deferred-tru "Users can individually override this default language from their own account settings."))
+  (deferred-tru
+    (str "The default language for all users across the Metabase UI, system emails, pulses, and alerts. "
+         "Users can individually override this default language from their own account settings."))
   :default    "en"
   :visibility :public
   :setter     (fn [new-value]
@@ -168,7 +175,7 @@
   :visibility :public)
 
 (defsetting landing-page
-  (deferred-tru "Default page to show the user")
+  (deferred-tru "Default page to show people when they log in.")
   :visibility :public
   :type       :string
   :default    "")
@@ -199,6 +206,18 @@
   (deferred-tru "Enabling caching will save the results of queries that take a long time to run.")
   :type    :boolean
   :default false)
+
+(defsetting persisted-models-enabled
+  (deferred-tru "Allow persisting models into the source database.")
+  :type       :boolean
+  :default    false
+  :visibility :authenticated)
+
+(defsetting persisted-model-refresh-cron-schedule
+  (deferred-tru "cron syntax string to schedule refreshing persisted models.")
+  :type       :string
+  :default    "0 0 0/6 * * ? *"
+  :visibility :admin)
 
 (def ^:private ^:const global-max-caching-kb
   "Although depending on the database, we can support much larger cached values (1GB for PG, 2GB for H2 and 4GB for
@@ -239,11 +258,18 @@
   :default 60.0)
 
 (defsetting query-caching-ttl-ratio
-  (str (deferred-tru "To determine how long each saved question''s cached result should stick around, we take the query''s average execution time and multiply that by whatever you input here.")
-       " "
-       (deferred-tru "So if a query takes on average 2 minutes to run, and you input 10 for your multiplier, its cache entry will persist for 20 minutes."))
+  (deferred-tru
+   (str "To determine how long each saved question''s cached result should stick around, we take the query''s average "
+        "execution time and multiply that by whatever you input here. So if a query takes on average 2 minutes to run, "
+        "and you input 10 for your multiplier, its cache entry will persist for 20 minutes."))
   :type    :integer
   :default 10)
+
+(defsetting notification-link-base-url
+  (deferred-tru "By default \"Site Url\" is used in notification links, but can be overridden.")
+  :visibility :internal
+  :type       :string
+  :enabled?   premium-features/hide-embed-branding?)
 
 (defsetting deprecation-notice-version
   (deferred-tru "Metabase version for which a notice about usage of deprecated features has been shown.")
@@ -253,35 +279,80 @@
   (deferred-tru "This will replace the word \"Metabase\" wherever it appears.")
   :visibility :public
   :type       :string
+  :enabled?   premium-features/enable-whitelabeling?
   :default    "Metabase")
 
+(defsetting loading-message
+  (deferred-tru "Message to show while a query is running.")
+  :visibility :public
+  :enabled?   premium-features/enable-whitelabeling?
+  :type       :keyword
+  :default    :doing-science)
+
 (defsetting application-colors
-  (deferred-tru "These are the primary colors used in charts and throughout Metabase. You might need to refresh your browser to see your changes take effect.")
+  (deferred-tru
+   (str "These are the primary colors used in charts and throughout Metabase. "
+        "You might need to refresh your browser to see your changes take effect."))
   :visibility :public
   :type       :json
+  :enabled?   premium-features/enable-whitelabeling?
   :default    {})
+
+(defsetting application-font
+  (deferred-tru "This will replace “Lato” as the font family.")
+  :visibility :public
+  :type       :string
+  :default    "Lato"
+  :enabled?   premium-features/enable-whitelabeling?
+  :setter (fn [new-value]
+              (when new-value
+                (when-not (u.fonts/available-font? new-value)
+                  (throw (ex-info (tru "Invalid font {0}" (pr-str new-value)) {:status-code 400}))))
+              (setting/set-value-of-type! :string :application-font new-value)))
+
+(defsetting application-font-files
+  (deferred-tru "Tell us where to find the file for each font weight. You don’t need to include all of them, but it’ll look better if you do.")
+  :visibility :public
+  :type       :json
+  :enabled?   premium-features/enable-whitelabeling?)
 
 (defn application-color
   "The primary color, a.k.a. brand color"
   []
-  (or (:brand (setting/get-value-of-type :json :application-colors)) "#509EE3"))
+  (or (:brand (application-colors)) "#509EE3"))
 
 (defn secondary-chart-color
   "The first 'Additional chart color'"
   []
-  (or (:accent3 (setting/get-value-of-type :json :application-colors)) "#EF8C8C"))
+  (or (:accent3 (application-colors)) "#EF8C8C"))
 
 (defsetting application-logo-url
   (deferred-tru "For best results, use an SVG file with a transparent background.")
   :visibility :public
   :type       :string
+  :enabled?   premium-features/enable-whitelabeling?
   :default    "app/assets/img/logo.svg")
 
 (defsetting application-favicon-url
   (deferred-tru "The url or image that you want to use as the favicon.")
   :visibility :public
   :type       :string
+  :enabled?   premium-features/enable-whitelabeling?
   :default    "app/assets/img/favicon.ico")
+
+(defsetting show-metabot
+  (deferred-tru "Enables Metabot character on the home page")
+  :visibility :public
+  :type       :boolean
+  :enabled?   premium-features/enable-whitelabeling?
+  :default    true)
+
+(defsetting show-lighthouse-illustration
+  (deferred-tru "Display the lighthouse illustration on the home and login pages.")
+  :visibility :public
+  :type       :boolean
+  :enabled?   premium-features/enable-whitelabeling?
+  :default    true)
 
 (defsetting enable-password-login
   (deferred-tru "Allow logging in by email and password.")
@@ -293,17 +364,21 @@
                 ;; otherwise this always returns true.
                 (let [v (setting/get-value-of-type :boolean :enable-password-login)]
                   (if (and (some? v)
-                           (sso-configured?))
+                           (sso-enabled?))
                     v
                     true))))
 
 (defsetting breakout-bins-num
-  (deferred-tru "When using the default binning strategy and a number of bins is not provided, this number will be used as the default.")
+  (deferred-tru
+    (str "When using the default binning strategy and a number of bins is not provided, "
+         "this number will be used as the default."))
   :type :integer
   :default 8)
 
 (defsetting breakout-bin-width
-  (deferred-tru "When using the default binning strategy for a field of type Coordinate (such as Latitude and Longitude), this number will be used as the default bin width (in degrees).")
+  (deferred-tru
+   (str "When using the default binning strategy for a field of type Coordinate (such as Latitude and Longitude), "
+        "this number will be used as the default bin width (in degrees)."))
   :type :double
   :default 10.0)
 
@@ -320,19 +395,25 @@
   :visibility :authenticated)
 
 (defsetting show-homepage-data
-  (deferred-tru "Whether or not to display data on the homepage. Admins might turn this off in order to direct users to better content than raw data")
+  (deferred-tru
+   (str "Whether or not to display data on the homepage. "
+        "Admins might turn this off in order to direct users to better content than raw data"))
   :type       :boolean
   :default    true
   :visibility :authenticated)
 
 (defsetting show-homepage-xrays
-  (deferred-tru "Whether or not to display x-ray suggestions on the homepage. They will also be hidden if any dashboards are pinned. Admins might hide this to direct users to better content than raw data")
+  (deferred-tru
+    (str "Whether or not to display x-ray suggestions on the homepage. They will also be hidden if any dashboards are "
+         "pinned. Admins might hide this to direct users to better content than raw data"))
   :type       :boolean
   :default    true
   :visibility :authenticated)
 
 (defsetting show-homepage-pin-message
-  (deferred-tru "Whether or not to display a message about pinning dashboards. It will also be hidden if any dashboards are pinned. Admins might hide this to direct users to better content than raw data")
+  (deferred-tru
+   (str "Whether or not to display a message about pinning dashboards. It will also be hidden if any dashboards are "
+        "pinned. Admins might hide this to direct users to better content than raw data"))
   :type       :boolean
   :default    true
   :visibility :authenticated)
@@ -351,6 +432,12 @@
            (not (enable-public-sharing)))
     (assoc object :public_uuid nil)
     object))
+
+(defsetting available-fonts
+  "Available fonts"
+  :visibility :public
+  :setter     :none
+  :getter     u.fonts/available-fonts)
 
 (defsetting available-locales
   "Available i18n locales"
@@ -417,12 +504,10 @@
                 (setting/set-value-of-type! :boolean :redirect-all-requests-to-https new-value)))
 
 (defsetting start-of-week
-  (str
-    (deferred-tru "This will affect things like grouping by week or filtering in GUI queries.")
-    " "
-    (deferred-tru "It won''t affect most SQL queries,")
-    " "
-    (deferred-tru " although it is used to set the WEEK_START session variable in Snowflake."))
+  (deferred-tru
+    (str "This will affect things like grouping by week or filtering in GUI queries. "
+         "It won''t affect most SQL queries, "
+         "although it is used to set the WEEK_START session variable in Snowflake."))
   :visibility :public
   :type       :keyword
   :default    :sunday)
@@ -461,9 +546,9 @@
                   (fetch-cloud-gateway-ips-fn))))
 
 (defsetting show-database-syncing-modal
-  (str (deferred-tru "Whether an introductory modal should be shown after the next database connection is added.")
-       " "
-       (deferred-tru "Defaults to false if any non-default database has already finished syncing for this instance."))
+  (deferred-tru
+    (str "Whether an introductory modal should be shown after the next database connection is added. "
+         "Defaults to false if any non-default database has already finished syncing for this instance."))
   :visibility :admin
   :type       :boolean
   :getter     (fn []

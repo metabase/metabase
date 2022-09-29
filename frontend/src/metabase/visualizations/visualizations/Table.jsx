@@ -1,9 +1,10 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
-import TableInteractive from "../components/TableInteractive.jsx";
-import TableSimple from "../components/TableSimple";
 import { t } from "ttag";
+import _ from "underscore";
+import cx from "classnames";
+import { getIn } from "icepick";
 import * as DataGrid from "metabase/lib/data_grid";
 import { findColumnIndexForColumnSetting } from "metabase/lib/dataset";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
@@ -29,10 +30,8 @@ import ChartSettingsTableFormatting, {
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
-import _ from "underscore";
-import cx from "classnames";
-
-import { getIn } from "icepick";
+import TableSimple from "../components/TableSimple";
+import TableInteractive from "../components/TableInteractive/TableInteractive.jsx";
 
 export default class Table extends Component {
   static uiName = t`Table`;
@@ -84,8 +83,9 @@ export default class Table extends Component {
     ...columnSettings({ hidden: true }),
     "table.pivot": {
       section: t`Columns`,
-      title: t`Pivot the table`,
+      title: t`Pivot table`,
       widget: "toggle",
+      inline: true,
       getHidden: ([{ card, data }]) => data && data.cols.length !== 3,
       getDefault: ([{ card, data }]) =>
         data &&
@@ -163,7 +163,7 @@ export default class Table extends Component {
     //   { fieldRef: ["field", 2, {"source-field": 1}], enabled: true }
     "table.columns": {
       section: t`Columns`,
-      title: t`Visible columns`,
+      title: t`Columns`,
       widget: ChartSettingOrderedColumns,
       getHidden: (series, vizSettings) => vizSettings["table.pivot"],
       isValid: ([{ card, data }]) =>
@@ -173,9 +173,7 @@ export default class Table extends Component {
         // otherwise it will be overwritten by `getDefault` below
         card.visualization_settings["table.columns"].length !== 0 &&
         _.all(
-          card.visualization_settings["table.columns"].filter(
-            columnSetting => columnSetting.enabled,
-          ),
+          card.visualization_settings["table.columns"],
           columnSetting =>
             findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
         ),
@@ -198,7 +196,7 @@ export default class Table extends Component {
       }),
     },
     "table.column_widths": {},
-    "table.column_formatting": {
+    [DataGrid.COLUMN_FORMATTING_SETTING]: {
       section: t`Conditional Formatting`,
       widget: ChartSettingsTableFormatting,
       default: [],
@@ -226,9 +224,14 @@ export default class Table extends Component {
         ],
         settings,
       ) {
-        return makeCellBackgroundGetter(rows, cols, settings);
+        return makeCellBackgroundGetter(
+          rows,
+          cols,
+          settings[DataGrid.COLUMN_FORMATTING_SETTING] ?? [],
+          settings["table.pivot"],
+        );
       },
-      readDependencies: ["table.column_formatting", "table.pivot"],
+      readDependencies: [DataGrid.COLUMN_FORMATTING_SETTING, "table.pivot"],
     },
   };
 
@@ -289,6 +292,9 @@ export default class Table extends Component {
       getHidden: (_, settings) =>
         settings["view_as"] !== "link" && settings["view_as"] !== "email_link",
       readDependencies: ["view_as"],
+      props: {
+        placeholder: t`Link to {{bird_id}}`,
+      },
     };
 
     settings["link_url"] = {
@@ -298,6 +304,9 @@ export default class Table extends Component {
       default: null,
       getHidden: (_, settings) => settings["view_as"] !== "link",
       readDependencies: ["view_as"],
+      props: {
+        placeholder: t`http://toucan.example/{{bird_id}}`,
+      },
     };
 
     return settings;
@@ -353,7 +362,10 @@ export default class Table extends Component {
       const { cols, rows } = data;
       const columnSettings = settings["table.columns"];
       const columnIndexes = columnSettings
-        .filter(columnSetting => columnSetting.enabled)
+        .filter(
+          columnSetting =>
+            columnSetting.enabled || this.props.isShowingDetailsOnlyColumns,
+        )
         .map(columnSetting =>
           findColumnIndexForColumnSetting(cols, columnSetting),
         )
@@ -393,8 +405,7 @@ export default class Table extends Component {
     const [{ card }] = series;
     const sort = getIn(card, ["dataset_query", "query", "order-by"]) || null;
     const isPivoted = Table.isPivoted(series, settings);
-    const columnSettings = settings["table.columns"] || [];
-    const areAllColumnsHidden = !columnSettings.some(f => f.enabled);
+    const areAllColumnsHidden = data.cols.length === 0;
     const TableComponent = isDashboard ? TableSimple : TableInteractive;
 
     if (!data) {

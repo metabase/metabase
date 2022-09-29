@@ -2,20 +2,18 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import PropTypes from "prop-types";
 
+import _ from "underscore";
+import { t, jt } from "ttag";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseUtils from "metabase/lib/utils";
-import SettingsSetting from "./SettingsSetting";
-import { updateSlackSettings } from "../settings";
 
 import Button from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import { updateSlackSettings } from "../settings";
+import SettingsSetting from "./SettingsSetting";
 
-import _ from "underscore";
-import { t, jt } from "ttag";
-
-@connect(null, { updateSettings: updateSlackSettings })
-export default class SettingsSlackForm extends Component {
+class SettingsSlackForm extends Component {
   constructor(props, context) {
     super(props, context);
 
@@ -71,7 +69,7 @@ export default class SettingsSlackForm extends Component {
   setFormData() {
     // this gives us an opportunity to load up our formData with any existing values for elements
     const formData = {};
-    this.props.elements.forEach(function(element) {
+    this.props.elements.forEach(function (element) {
       formData[element.key] =
         element.value == null ? element.defaultValue : element.value;
     });
@@ -86,14 +84,14 @@ export default class SettingsSlackForm extends Component {
     let valid = true;
     const validationErrors = {};
 
-    elements.forEach(function(element) {
+    elements.forEach(function (element) {
       // test for required elements
       if (element.required && MetabaseUtils.isEmpty(formData[element.key])) {
         valid = false;
       }
 
       if (element.validations) {
-        element.validations.forEach(function(validation) {
+        element.validations.forEach(function (validation) {
           validationErrors[element.key] = this.validateElement(
             validation,
             formData[element.key],
@@ -183,13 +181,8 @@ export default class SettingsSlackForm extends Component {
 
   render() {
     const { elements } = this.props;
-    const {
-      formData,
-      formErrors,
-      submitting,
-      valid,
-      validationErrors,
-    } = this.state;
+    const { formData, formErrors, submitting, valid, validationErrors } =
+      this.state;
 
     const settings = elements.map((element, index) => {
       // merge together data from a couple places to provide a complete view of the Element state
@@ -287,3 +280,7 @@ export default class SettingsSlackForm extends Component {
     );
   }
 }
+
+export default connect(null, { updateSettings: updateSlackSettings })(
+  SettingsSlackForm,
+);

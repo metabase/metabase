@@ -5,12 +5,10 @@
  */
 /* eslint-disable react/prop-types */
 import React from "react";
-import { Link } from "react-router";
 import { connect } from "react-redux";
 
 import _ from "underscore";
 import { t } from "ttag";
-import { humanizeCoercionStrategy } from "./humanizeCoercionStrategy";
 
 // COMPONENTS
 
@@ -23,25 +21,16 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import AdminLayout from "metabase/components/AdminLayout";
 import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
-import Section, { SectionHeader } from "../components/Section";
-import SelectSeparator from "../components/SelectSeparator";
 
 import { is_coerceable, coercions_for_type } from "cljs/metabase.types";
 import { isFK } from "metabase/lib/types";
 
-import {
-  FieldVisibilityPicker,
-  SemanticTypeAndTargetPicker,
-} from "../components/database/ColumnItem";
-import FieldRemapping from "../components/FieldRemapping";
-import UpdateCachedFieldValues from "../components/UpdateCachedFieldValues";
 import ColumnSettings from "metabase/visualizations/components/ColumnSettings";
 
 // SELECTORS
 import { getMetadata } from "metabase/selectors/metadata";
 
 // ACTIONS
-import { rescanFieldValues, discardFieldValues } from "../field";
 
 // LIB
 import { has_field_values_options } from "metabase/lib/core";
@@ -51,6 +40,17 @@ import { isCurrency } from "metabase/lib/schema_metadata";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import Fields from "metabase/entities/fields";
+import { rescanFieldValues, discardFieldValues } from "../field";
+import UpdateCachedFieldValues from "../components/UpdateCachedFieldValues";
+import FieldRemapping from "../components/FieldRemapping";
+import {
+  FieldVisibilityPicker,
+  SemanticTypeAndTargetPicker,
+} from "../components/database/ColumnItem";
+import SelectSeparator from "../components/SelectSeparator";
+import Section, { SectionHeader } from "../components/Section";
+import { humanizeCoercionStrategy } from "./humanizeCoercionStrategy";
+import { BackButtonLink, FieldNameInput } from "./FieldApp.styled";
 
 const mapStateToProps = (state, props) => {
   const databaseId = parseInt(props.params.databaseId);
@@ -81,8 +81,7 @@ const mapDispatchToProps = {
   discardFieldValues,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-export default class FieldApp extends React.Component {
+class FieldApp extends React.Component {
   state = {
     tab: "general",
   };
@@ -123,11 +122,13 @@ export default class FieldApp extends React.Component {
     ]);
   }
 
-  linkWithSaveStatus = saveMethod => async (...args) => {
-    this.saveStatusRef.current && this.saveStatusRef.current.setSaving();
-    await saveMethod(...args);
-    this.saveStatusRef.current && this.saveStatusRef.current.setSaved();
-  };
+  linkWithSaveStatus =
+    saveMethod =>
+    async (...args) => {
+      this.saveStatusRef.current && this.saveStatusRef.current.setSaving();
+      await saveMethod(...args);
+      this.saveStatusRef.current && this.saveStatusRef.current.setSaved();
+    };
 
   onUpdateFieldProperties = this.linkWithSaveStatus(async fieldProps => {
     const { field } = this.props;
@@ -247,6 +248,8 @@ export default class FieldApp extends React.Component {
     );
   }
 }
+
+export default connect(mapStateToProps, mapDispatchToProps)(FieldApp);
 
 const FieldGeneralPane = ({
   field,
@@ -392,24 +395,15 @@ const FieldSettingsPane = ({ field, onUpdateFieldSettings }) => (
 // TODO: Should this invoke goBack() instead?
 // not sure if it's possible to do that neatly with Link component
 export const BackButton = ({ databaseId, tableId }) => (
-  <Link
+  <BackButtonLink
     to={`/admin/datamodel/database/${databaseId}/table/${tableId}`}
-    className="circle text-white p2 flex align-center justify-center bg-dark bg-brand-hover"
   >
     <Icon name="arrow_left" />
-  </Link>
+  </BackButtonLink>
 );
 
 export class FieldHeader extends React.Component {
-  onNameChange = e => {
-    this.updateNameDebounced(e.target.value);
-  };
-  onDescriptionChange = e => {
-    this.updateDescriptionDebounced(e.target.value);
-  };
-
-  // Separate update methods because of throttling the input
-  updateNameDebounced = _.debounce(async name => {
+  onNameChange = async e => {
     const { field, updateFieldProperties, updateFieldDimension } = this.props;
 
     // Update the dimension name if it exists
@@ -420,35 +414,35 @@ export class FieldHeader extends React.Component {
         {
           type: field.dimensions.type,
           human_readable_field_id: field.dimensions.human_readable_field_id,
-          name,
+          name: e.target.value,
         },
       );
     }
 
     // todo: how to treat empty / too long strings? see how this is done in Column
-    updateFieldProperties({ display_name: name });
-  }, 300);
+    updateFieldProperties({ display_name: e.target.value });
+  };
 
-  updateDescriptionDebounced = _.debounce(description => {
+  onDescriptionChange = e => {
     const { updateFieldProperties } = this.props;
-    updateFieldProperties({ description });
-  }, 300);
+    updateFieldProperties({ description: e.target.value });
+  };
 
   render() {
     return (
       <div>
-        <InputBlurChange
+        <FieldNameInput
           name="display_name"
-          className="h2 AdminInput bordered rounded border-dark block mb1"
+          className="h2 AdminInput"
           value={this.props.field.display_name}
-          onChange={this.onNameChange}
+          onBlurChange={this.onNameChange}
           placeholder={this.props.field.name}
         />
         <InputBlurChange
           name="description"
           className="text AdminInput bordered input text-measure block full"
           value={this.props.field.description}
-          onChange={this.onDescriptionChange}
+          onBlurChange={this.onDescriptionChange}
           placeholder={t`No description for this field yet`}
         />
       </div>

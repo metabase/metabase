@@ -137,9 +137,13 @@
    card             pulse/CardRef
    channels         (su/non-empty [su/Map])}
   (validation/check-has-application-permission :subscription false)
-  ;; do various perms checks as needed. Perms for an Alert == perms for its Card. So to create an Alert you need write
-  ;; perms for its Card
-  (api/write-check Card (u/the-id card))
+  ;; To create an Alert you need read perms for its Card
+  (api/read-check Card (u/the-id card))
+  ;; don't allow creation of Alerts for `is_write` writeback QueryAction cards. Those are intended only for Actions
+  ;; and aren't ran for results so they don't make sense as Alerts.
+  (when (db/select-one-field :is_write Card :id (u/the-id card))
+    (throw (ex-info (tru "You cannot create an Alert for an is_write Card.")
+                    {:status-code 400})))
   ;; ok, now create the Alert
   (let [alert-card (-> card (maybe-include-csv alert_condition) pulse/card->ref)
         new-alert  (api/check-500
@@ -184,7 +188,7 @@
             (tru "Invalid Alert: Alert does not have a Card associated with it"))
     ;; check permissions as needed.
     ;; Check permissions to update existing Card
-    (api/write-check Card (u/the-id (:card alert-before-update)))
+    (api/read-check Card (u/the-id (:card alert-before-update)))
     ;; if trying to change the card, check perms for that as well
     (when card
       (api/write-check Card (u/the-id card)))

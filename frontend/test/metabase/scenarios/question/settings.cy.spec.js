@@ -6,7 +6,7 @@ import {
   visitQuestionAdhoc,
   popover,
   sidebar,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -30,9 +30,7 @@ describe("scenarios > question > settings", () => {
       cy.contains("Settings").click();
 
       // wait for settings sidebar to open
-      cy.findByTestId("sidebar-left")
-        .invoke("width")
-        .should("be.gt", 350);
+      cy.findByTestId("sidebar-left").invoke("width").should("be.gt", 350);
 
       cy.findByTestId("sidebar-content").as("tableOptions");
 
@@ -40,7 +38,7 @@ describe("scenarios > question > settings", () => {
       cy.get("@tableOptions")
         .contains("Total")
         .scrollIntoView()
-        .nextAll(".Icon-close")
+        .nextAll(".Icon-eye_filled")
         .click();
 
       // Add people.category
@@ -67,12 +65,10 @@ describe("scenarios > question > settings", () => {
       cy.get(".Visualization .TableInteractive").as("table");
       cy.get("@table").contains("Product → Category");
       cy.get("@table").contains("Product → Ean");
-      cy.get("@table")
-        .contains("Total")
-        .should("not.exist");
+      cy.get("@table").contains("Total").should("not.exist");
     });
 
-    it("should preserve correct order of columns after column removal or addition via sidebar (metabase#13455)", () => {
+    it.skip("should preserve correct order of columns after column removal via sidebar (metabase#13455)", () => {
       cy.viewport(2000, 1200);
       // Orders join Products
       visitQuestionAdhoc({
@@ -120,8 +116,8 @@ describe("scenarios > question > settings", () => {
       // Remove "Total"
       getSidebarColumns()
         .contains("Total")
-        .closest(".cursor-grab")
-        .find(".Icon-close")
+        .closest("[data-testid^=draggable-item]")
+        .find(".Icon-eye_filled")
         .click();
 
       reloadResults();
@@ -137,9 +133,7 @@ describe("scenarios > question > settings", () => {
       // https://github.com/metabase/metabase/pull/21338#pullrequestreview-928807257
 
       // Add "Address"
-      cy.findByText("Address")
-        .siblings(".Icon-add")
-        .click();
+      cy.findByText("Address").siblings(".Icon-add").click();
 
       // The result automatically load when adding new fields but two requests are fired.
       // Please see: https://github.com/metabase/metabase/pull/21338#discussion_r842816687
@@ -160,29 +154,12 @@ describe("scenarios > question > settings", () => {
        * Helper functions related to THIS test only
        */
 
-      function getSidebarColumns() {
-        return cy
-          .findByText("Click and drag to change their order")
-          .scrollIntoView()
-          .should("be.visible")
-          .parent()
-          .find(".cursor-grab");
-      }
-
       function reloadResults() {
-        cy.icon("play")
-          .last()
-          .click();
-
-        // Prevent performing actions while the query is being executed.
-        // Which caused some race condition and failed the test.
-        cy.wait("@dataset");
+        cy.icon("play").last().click();
       }
 
       function findColumnAtIndex(column_name, index) {
-        return getSidebarColumns()
-          .eq(index)
-          .contains(column_name);
+        return getSidebarColumns().eq(index).contains(column_name);
       }
     });
 
@@ -197,17 +174,13 @@ describe("scenarios > question > settings", () => {
 
       cy.findByText("Settings").click(); // open settings sidebar
       cy.findByText("Table options"); // confirm it's open
-      cy.get(".TableInteractive")
-        .findByText("Subtotal")
-        .click(); // open subtotal column header actions
+      cy.get(".TableInteractive").findByText("Subtotal").click(); // open subtotal column header actions
       popover().within(() => cy.icon("gear").click()); // open subtotal column settings
 
-      cy.findByText("Table options").should("not.exist"); // no longer displaying the top level settings
+      //cy.findByText("Table options").should("not.exist"); // no longer displaying the top level settings
       cy.findByText("Separator style"); // shows subtotal column settings
 
-      cy.get(".TableInteractive")
-        .findByText("Created At")
-        .click(); // open created_at column header actions
+      cy.get(".TableInteractive").findByText("Created At").click(); // open created_at column header actions
       popover().within(() => cy.icon("gear").click()); // open created_at column settings
       cy.findByText("Date style"); // shows created_at column settings
     });
@@ -239,6 +212,28 @@ describe("scenarios > question > settings", () => {
 
       sidebar().findByText(newColumnTitle);
     });
+
+    it("should respect symbol settings for all currencies", () => {
+      openOrdersTable();
+      cy.contains("Settings").click();
+
+      getSidebarColumns()
+        .eq("4")
+        .within(() => {
+          cy.icon("ellipsis").click();
+        });
+
+      cy.findByText("Normal").click();
+      cy.findByText("Currency").click();
+
+      cy.findByText("US Dollar").click();
+      cy.findByText("Bitcoin").click();
+
+      cy.findByText("In every table cell").click();
+
+      cy.findByText("₿ 2.07");
+      cy.findByText("₿ 6.10");
+    });
   });
 
   describe("resetting state", () => {
@@ -247,9 +242,7 @@ describe("scenarios > question > settings", () => {
       openOrdersTable();
 
       cy.contains("Save").click();
-      cy.get(".ModalContent")
-        .contains("button", "Save")
-        .click();
+      cy.get(".ModalContent").contains("button", "Save").click();
       cy.contains("Yes please!").click();
       cy.contains("Orders in a dashboard").click();
       cy.findByText("Cancel").click();
@@ -267,3 +260,12 @@ describe("scenarios > question > settings", () => {
     });
   });
 });
+
+function getSidebarColumns() {
+  return cy
+    .findByText("Columns", { selector: "label" })
+    .scrollIntoView()
+    .should("be.visible")
+    .parent()
+    .find("[data-testid^=draggable-item]");
+}

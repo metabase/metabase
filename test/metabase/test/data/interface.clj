@@ -12,6 +12,7 @@
             [medley.core :as m]
             [metabase.db :as mdb]
             [metabase.driver :as driver]
+            [metabase.driver.ddl.interface :as ddl.i]
             [metabase.models.database :refer [Database]]
             [metabase.models.field :as field :refer [Field]]
             [metabase.models.table :refer [Table]]
@@ -46,6 +47,11 @@
                                         {:native su/NonBlankString}
                                         :else
                                         su/FieldType)
+   ;; this was added pretty recently (in the 44 cycle) so it might not be supported everywhere. It should work for
+   ;; drivers using `:sql/test-extensions` and [[metabase.test.data.sql/field-definition-sql]] but you might need to add
+   ;; support for it elsewhere if you want to use it. It only really matters for testing things that modify test
+   ;; datasets e.g. [[metabase.actions.test-util/with-actions-test-data]]
+   (s/optional-key :not-null?)         (s/maybe s/Bool)
    (s/optional-key :semantic-type)     (s/maybe su/FieldSemanticOrRelationType)
    (s/optional-key :effective-type)    (s/maybe su/FieldType)
    (s/optional-key :coercion-strategy) (s/maybe su/CoercionStrategy)
@@ -229,24 +235,36 @@
   actual instance, *not* the definition) of the Metabase object to return (e.g., a pass a `Table` to a
   `FieldDefintion`). For a `DatabaseDefinition`, pass the driver keyword."
   {:arglists '([db-or-table-or-field-def context])}
-  (fn [db-or-table-or-field-def context] (class db-or-table-or-field-def)))
+  (fn [db-or-table-or-field-def _context] (class db-or-table-or-field-def)))
 
 (defmethod metabase-instance FieldDefinition
   [this table]
-  (Field :table_id (:id table), :%lower.name (str/lower-case (:field-name this))))
+  (db/select-one Field
+                 :table_id    (u/the-id table)
+                 :%lower.name (str/lower-case (:field-name this))
+                 {:order-by [[:id :asc]]}))
 
 (defmethod metabase-instance TableDefinition
   [this database]
   ;; Look first for an exact table-name match; otherwise allow DB-qualified table names for drivers that need them
   ;; like Oracle
-  (or (Table :db_id (:id database), :%lower.name (str/lower-case (:table-name this)))
-      (Table :db_id (:id database), :%lower.name (db-qualified-table-name (:name database) (:table-name this)))))
+  (letfn [(table-with-name [table-name]
+            (db/select-one Table
+                           :db_id       (:id database)
+                           :%lower.name table-name
+                           {:order-by [[:id :asc]]}))]
+    (or (table-with-name (str/lower-case (:table-name this)))
+        (table-with-name (db-qualified-table-name (:name database) (:table-name this))))))
 
-(defmethod metabase-instance DatabaseDefinition [{:keys [database-name]} driver-kw]
+(defmethod metabase-instance DatabaseDefinition
+  [{:keys [database-name]} driver]
   (assert (string? database-name))
-  (assert (keyword? driver-kw))
+  (assert (keyword? driver))
   (mdb/setup-db!)
-  (Database :name database-name, :engine (name driver-kw)))
+  (db/select-one Database
+                 :name    database-name
+                 :engine (u/qualified-name driver)
+                 {:order-by [[:id :asc]]}))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -305,17 +323,7 @@
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-
-(defmulti format-name
-  "Transform a lowercase string Table or Field name in a way appropriate for this dataset (e.g., `h2` would want to
-  upcase these names; `mongo` would want to use `\"_id\"` in place of `\"id\"`. This method should return a string.
-  Defaults to an identity implementation."
-  {:arglists '([driver table-or-field-name])}
-  dispatch-on-driver-with-test-extensions
-  :hierarchy #'driver/hierarchy)
-
-(defmethod format-name ::test-extensions [_ table-or-field-name] table-or-field-name)
-
+(defmethod ddl.i/format-name ::test-extensions [_ table-or-field-name] table-or-field-name)
 
 (defmulti has-questionable-timezone-support?
   "Does this driver have \"questionable\" timezone support? (i.e., does it group things by UTC instead of the
@@ -367,7 +375,7 @@
     :source        :aggregation
     :field_ref     [:aggregation 0]})
 
-  ([driver aggregation-type {field-id :id, table-id :table_id}]
+  ([_driver aggregation-type {field-id :id, table-id :table_id}]
    {:pre [(some? table-id)]}
    (first (qp/query->expected-cols {:database (db/select-one-field :db_id Table :id table-id)
                                     :type     :query
@@ -409,9 +417,9 @@
 ;; TODO - not sure everything below belongs in this namespace
 
 (s/defn ^:private dataset-field-definition :- ValidFieldDefinition
-  [field-definition-map :- DatasetFieldDefinition]
   "Parse a Field definition (from a `defdatset` form or EDN file) and return a FieldDefinition instance for
   comsumption by various test-data-loading methods."
+  [field-definition-map :- DatasetFieldDefinition]
   ;; if definition uses a coercion strategy they need to provide the effective-type
   (map->FieldDefinition field-definition-map))
 
@@ -473,7 +481,7 @@
 (p.types/deftype+ ^:private EDNDatasetDefinition [dataset-name def]
   pretty/PrettyPrintable
   (pretty [_]
-    (list 'edn-dataset-definition dataset-name)))
+    (list `edn-dataset-definition dataset-name)))
 
 (defmethod get-dataset-definition EDNDatasetDefinition
   [^EDNDatasetDefinition this]
@@ -505,13 +513,12 @@
 (p.types/deftype+ ^:private TransformedDatasetDefinition [new-name wrapped-definition def]
   pretty/PrettyPrintable
   (pretty [_]
-    (list 'transformed-dataset-definition new-name (pretty/pretty wrapped-definition))))
+    (list `transformed-dataset-definition new-name (pretty/pretty wrapped-definition))))
 
 (s/defn transformed-dataset-definition
   "Create a dataset definition that is a transformation of an some other one, seqentially applying `transform-fns` to
   it. The results of `transform-fns` are cached."
-  {:style/indent 2}
-  [new-name :- su/NonBlankString, wrapped-definition & transform-fns :- [(s/pred fn?)]]
+  [new-name :- su/NonBlankString wrapped-definition & transform-fns :- [(s/pred fn?)]]
   (let [transform-fn (apply comp (reverse transform-fns))
         get-def      (delay
                       (transform-fn

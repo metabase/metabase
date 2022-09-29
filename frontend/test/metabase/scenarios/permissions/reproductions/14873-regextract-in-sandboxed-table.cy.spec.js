@@ -3,14 +3,14 @@ import {
   withDatabase,
   describeEE,
   visitQuestion,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 import { USER_GROUPS } from "__support__/e2e/cypress_data";
 
 const PG_DB_ID = 2;
 
 const { ALL_USERS_GROUP, DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 
-describeEE("postgres > user > query", () => {
+describeEE("postgres > user > query", { tags: "@external" }, () => {
   beforeEach(() => {
     restore("postgres-12");
     cy.signInAsAdmin();

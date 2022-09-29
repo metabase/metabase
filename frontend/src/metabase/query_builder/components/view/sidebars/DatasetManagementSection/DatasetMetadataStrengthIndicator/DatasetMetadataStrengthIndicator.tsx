@@ -1,14 +1,13 @@
 import React from "react";
 import { t } from "ttag";
 
-import Question from "metabase-lib/lib/Question";
-
 import ProgressBar from "metabase/components/ProgressBar";
 import Tooltip from "metabase/components/Tooltip";
 
 import { color } from "metabase/lib/colors";
 import { getDatasetMetadataCompletenessPercentage } from "metabase/lib/data-modeling/metadata";
 import { useHover } from "metabase/hooks/use-hover";
+import Question from "metabase-lib/lib/Question";
 
 import {
   Root,
@@ -22,7 +21,7 @@ function getIndicationColor(percentage: number, isHovered: boolean): string {
     return color("danger");
   }
   if (!isHovered) {
-    return color("bg-medium");
+    return color("text-medium");
   }
   return percentage >= 0.9 ? color("success") : color("warning");
 }
@@ -75,17 +74,15 @@ function DatasetMetadataStrengthIndicator({ dataset, ...props }: Props) {
         delay={TOOLTIP_DELAY}
         placement="bottom"
       >
-        <PercentageLabel color={indicationColor}>
+        <PercentageLabel
+          color={indicationColor}
+          data-testid="tooltip-component-wrapper"
+        >
           {formatPercentage(percentage)}
         </PercentageLabel>
-        <ProgressBar
-          percentage={percentage}
-          color={indicationColor}
-          height="8px"
-        />
       </Tooltip>
     </Root>
   );
 }
 
-export default DatasetMetadataStrengthIndicator;
+export default Object.assign(DatasetMetadataStrengthIndicator, { Root });

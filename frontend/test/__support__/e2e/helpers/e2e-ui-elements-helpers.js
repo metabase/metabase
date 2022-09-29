@@ -14,6 +14,14 @@ export function sidebar() {
   return cy.get("main aside");
 }
 
+export function appbar() {
+  return cy.findByTestId("app-bar");
+}
+
+export function rightSidebar() {
+  return cy.findAllByTestId("sidebar-right");
+}
+
 export function navigationSidebar() {
   return cy.get("#root aside").first();
 }
@@ -23,15 +31,11 @@ export function appBar() {
 }
 
 export function openNavigationSidebar() {
-  appBar()
-    .findByTestId("sidebar-toggle-button")
-    .click();
+  appBar().findByTestId("sidebar-toggle").click();
 }
 
 export function closeNavigationSidebar() {
-  appBar()
-    .findByTestId("sidebar-toggle-button")
-    .click();
+  appBar().findByTestId("sidebar-toggle").click();
 }
 
 export function browse() {
@@ -61,3 +65,33 @@ export function browse() {
 export function filterWidget() {
   return cy.get("fieldset");
 }
+
+export const openQuestionActions = () => {
+  cy.findByTestId("qb-header-action-panel").within(() => {
+    cy.icon("ellipsis").click();
+  });
+};
+
+export const closeQuestionActions = () => {
+  cy.findByTestId("qb-header").click();
+};
+
+export const questionInfoButton = () => {
+  return cy.findByTestId("qb-header-info-button");
+};
+
+export const undo = () => {
+  cy.findByTestId("toast-undo").findByText("Undo").click();
+};
+
+export const getDraggableElements = () => {
+  return cy.findAllByTestId(/draggable-item/);
+};
+
+export const moveColumnDown = (column, distance) => {
+  column
+    .trigger("mousedown", 0, 0, { force: true })
+    .trigger("mousemove", 5, 5, { force: true })
+    .trigger("mousemove", 0, distance * 50, { force: true })
+    .trigger("mouseup", 0, distance * 50, { force: true });
+};

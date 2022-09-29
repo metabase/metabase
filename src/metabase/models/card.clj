@@ -4,15 +4,17 @@
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
             [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.mbql.util :as mbql.u]
+            [metabase.models.action :as action]
             [metabase.models.collection :as collection]
-            [metabase.models.dependency :as dependency]
             [metabase.models.field-values :as field-values]
             [metabase.models.interface :as mi]
             [metabase.models.params :as params]
             [metabase.models.permissions :as perms]
             [metabase.models.query :as query]
             [metabase.models.revision :as revision]
+            [metabase.models.serialization.base :as serdes.base]
+            [metabase.models.serialization.hash :as serdes.hash]
+            [metabase.models.serialization.util :as serdes.util]
             [metabase.moderation :as moderation]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings :as public-settings]
@@ -24,6 +26,9 @@
             [toucan.models :as models]))
 
 (models/defmodel Card :report_card)
+
+;;; You can read/write a Card if you can read/write its parent Collection
+(derive Card ::perms/use-parent-collection-perms)
 
 
 ;;; -------------------------------------------------- Hydration --------------------------------------------------
@@ -61,27 +66,6 @@
 
 ;; There's more hydration in the shared metabase.moderation namespace, but it needs to be required:
 (comment moderation/keep-me)
-
-;;; -------------------------------------------------- Dependencies --------------------------------------------------
-
-(defn- extract-ids
-  "Get all the Segment or Metric IDs referenced by a query."
-  [segment-or-metric query]
-  (set
-   (case segment-or-metric
-     :segment (mbql.u/match query [:segment id] id)
-     :metric  (mbql.u/match query [:metric  id] id))))
-
-(defn card-dependencies
-  "Calculate any dependent objects for a given `card`."
-  ([_ _ card]
-   (card-dependencies card))
-  ([{{query-type :type, inner-query :query} :dataset_query}]
-   (when (= :query query-type)
-     {:Metric  (extract-ids :metric inner-query)
-      :Segment (extract-ids :segment inner-query)})))
-
-
 
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
@@ -206,15 +190,43 @@
                                  (format "%d %s.%s" field-id (pr-str table-name) (pr-str field-name))
                                  (describe-database field-db-id)
                                  (describe-database query-db-id)))
-                          {:status-code 400})))))))
+                          {:status-code           400
+                           :query-database        query-db-id
+                           :field-filter-database field-db-id})))))))
+
+(defn- create-actions-when-is-writable! [{is-write? :is_write card-id :id}]
+  (when is-write?
+    (when-not (db/select-one action/QueryAction :card_id card-id)
+      (action/insert! {:card_id card-id :type :query}))))
+
+(defn- delete-actions-when-not-writable! [{is-write? :is_write card-id :id}]
+  (when (not is-write?)
+    (db/delete! action/QueryAction :card_id card-id)))
+
+(defn- assert-valid-model
+  "Check that the card is a valid model if being saved as one. Throw an exception if not."
+  [{:keys [dataset dataset_query]}]
+  (when dataset
+    (let [template-tag-types (->> (vals (get-in dataset_query [:native :template-tags]))
+                                  (map (comp keyword :type)))]
+      (when (some (complement #{:card :snippet}) template-tag-types)
+        (throw (ex-info (tru "A model made from a native SQL question cannot have a variable or field filter.")
+                        {:status-code 400}))))))
 
 ;; TODO -- consider whether we should validate the Card query when you save/update it??
 (defn- pre-insert [card]
-  (u/prog1 card
-    ;; make sure this Card doesn't have circular source query references
-    (check-for-circular-source-query-references card)
-    (check-field-filter-fields-are-from-correct-database card)
-    (collection/check-collection-namespace Card (:collection_id card))))
+  (let [defaults {:parameters         []
+                  :parameter_mappings []}
+        card     (merge defaults card)]
+   (u/prog1 card
+     ;; make sure this Card doesn't have circular source query references
+     (check-for-circular-source-query-references card)
+     (check-field-filter-fields-are-from-correct-database card)
+     ;; TODO: add a check to see if all id in :parameter_mappings are in :parameters
+     (assert-valid-model card)
+     (params/assert-valid-parameters card)
+     (params/assert-valid-parameter-mappings card)
+     (collection/check-collection-namespace Card (:collection_id card)))))
 
 (defn- post-insert [card]
   ;; if this Card has any native template tag parameters we need to update FieldValues for any Fields that are
@@ -222,7 +234,8 @@
   (u/prog1 card
     (when-let [field-ids (seq (params/card->template-tag-field-ids card))]
       (log/info "Card references Fields in params:" field-ids)
-      (field-values/update-field-values-for-on-demand-dbs! field-ids))))
+      (field-values/update-field-values-for-on-demand-dbs! field-ids))
+    (create-actions-when-is-writable! card)))
 
 (defonce
   ^{:doc "Atom containing a function used to check additional sandboxing constraints for Metabase Enterprise Edition.
@@ -231,44 +244,56 @@
   For the OSS edition, there is no implementation for this function -- it is a no-op. For Metabase Enterprise Edition,
   the implementation of this function is
   [[metabase-enterprise.sandbox.models.group-table-access-policy/update-card-check-gtaps]] and is installed by that
-  namespace."} pre-update-check-sandbox-constraints
+  namespace."}
+  pre-update-check-sandbox-constraints
   (atom identity))
 
 (defn- pre-update [{archived? :archived, id :id, :as changes}]
   ;; TODO - don't we need to be doing the same permissions check we do in `pre-insert` if the query gets changed? Or
   ;; does that happen in the `PUT` endpoint?
   (u/prog1 changes
-    ;; if the Card is archived, then remove it from any Dashboards
-    (when archived?
-      (db/delete! 'DashboardCard :card_id id))
-    ;; if the template tag params for this Card have changed in any way we need to update the FieldValues for
-    ;; On-Demand DB Fields
-    (when (get-in changes [:dataset_query :native])
-      (let [old-param-field-ids (params/card->template-tag-field-ids (db/select-one [Card :dataset_query] :id id))
-            new-param-field-ids (params/card->template-tag-field-ids changes)]
-        (when (and (seq new-param-field-ids)
-                   (not= old-param-field-ids new-param-field-ids))
-          (let [newly-added-param-field-ids (set/difference new-param-field-ids old-param-field-ids)]
-            (log/info "Referenced Fields in Card params have changed. Was:" old-param-field-ids
-                      "Is Now:" new-param-field-ids
-                      "Newly Added:" newly-added-param-field-ids)
-            ;; Now update the FieldValues for the Fields referenced by this Card.
-            (field-values/update-field-values-for-on-demand-dbs! newly-added-param-field-ids)))))
-    ;; make sure this Card doesn't have circular source query references if we're updating the query
-    (when (:dataset_query changes)
-      (check-for-circular-source-query-references changes))
-    ;; Make sure any native query template tags match the DB in the query.
-    (check-field-filter-fields-are-from-correct-database changes)
-    ;; Make sure the Collection is in the default Collection namespace (e.g. as opposed to the Snippets Collection namespace)
-    (collection/check-collection-namespace Card (:collection_id changes))
-    ;; additional checks (Enterprise Edition only)
-    (@pre-update-check-sandbox-constraints changes)))
+    (let [;; Fetch old card data if necessary, and share the data between multiple checks.
+          old-card-info (when (or (:dataset changes)
+                                  (get-in changes [:dataset_query :native]))
+                          (db/select-one [Card :dataset_query :dataset] :id id))]
+      ;; if the Card is archived, then remove it from any Dashboards
+      (when archived?
+        (db/delete! 'DashboardCard :card_id id))
+      ;; if the template tag params for this Card have changed in any way we need to update the FieldValues for
+      ;; On-Demand DB Fields
+      (when (get-in changes [:dataset_query :native])
+        (let [old-param-field-ids (params/card->template-tag-field-ids old-card-info)
+              new-param-field-ids (params/card->template-tag-field-ids changes)]
+          (when (and (seq new-param-field-ids)
+                     (not= old-param-field-ids new-param-field-ids))
+            (let [newly-added-param-field-ids (set/difference new-param-field-ids old-param-field-ids)]
+              (log/info "Referenced Fields in Card params have changed. Was:" old-param-field-ids
+                        "Is Now:" new-param-field-ids
+                        "Newly Added:" newly-added-param-field-ids)
+              ;; Now update the FieldValues for the Fields referenced by this Card.
+              (field-values/update-field-values-for-on-demand-dbs! newly-added-param-field-ids)))))
+      ;; make sure this Card doesn't have circular source query references if we're updating the query
+      (when (:dataset_query changes)
+        (check-for-circular-source-query-references changes))
+      ;; Make sure any native query template tags match the DB in the query.
+      (check-field-filter-fields-are-from-correct-database changes)
+      ;; Make sure the Collection is in the default Collection namespace (e.g. as opposed to the Snippets Collection namespace)
+      (collection/check-collection-namespace Card (:collection_id changes))
+      (params/assert-valid-parameters changes)
+      (params/assert-valid-parameter-mappings changes)
+      ;; additional checks (Enterprise Edition only)
+      (@pre-update-check-sandbox-constraints changes)
+      ;; create Action and QueryAction when is_write is set true
+      (create-actions-when-is-writable! changes)
+      ;; delete Action and QueryAction when is_write is set false
+      (delete-actions-when-not-writable! changes)
+      (assert-valid-model (merge old-card-info changes)))))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (defn- pre-delete [{:keys [id]}]
+  (db/delete! 'QueryAction :card_id id)
   (db/delete! 'ModerationReview :moderated_item_type "card", :moderated_item_id id)
-  (db/delete! 'Revision :model "Card", :model_id id)
-  (db/delete! 'Dependency :model "Card", :model_id id))
+  (db/delete! 'Revision :model "Card", :model_id id))
 
 (defn- result-metadata-out
   "Transform the Card result metadata as it comes out of the DB. Convert columns to keywords where appropriate."
@@ -280,7 +305,7 @@
   :in mi/json-in
   :out result-metadata-out)
 
-(u/strict-extend (class Card)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Card)
   models/IModel
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:card])
@@ -289,8 +314,11 @@
                                        :embedding_params       :json
                                        :query_type             :keyword
                                        :result_metadata        ::result-metadata
-                                       :visualization_settings :visualization-settings})
-          :properties     (constantly {:timestamped? true})
+                                       :visualization_settings :visualization-settings
+                                       :parameters             :parameters-list
+                                       :parameter_mappings     :parameters-list})
+          :properties     (constantly {:timestamped? true
+                                       :entity_id    true})
           ;; Make sure we normalize the query before calling `pre-update` or `pre-insert` because some of the
           ;; functions those fns call assume normalized queries
           :pre-update     (comp populate-query-fields pre-update populate-result-metadata maybe-normalize-query)
@@ -299,13 +327,67 @@
           :pre-delete     pre-delete
           :post-select    public-settings/remove-public-uuid-if-public-sharing-is-disabled})
 
-  ;; You can read/write a Card if you can read/write its parent Collection
-  mi/IObjectPermissions
-  perms/IObjectPermissionsForParentCollection
-
   revision/IRevisioned
   (assoc revision/IRevisionedDefaults
          :serialize-instance serialize-instance)
 
-  dependency/IDependent
-  {:dependencies card-dependencies})
+  serdes.hash/IdentityHashable
+  {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :collection)])})
+
+;;; ------------------------------------------------- Serialization --------------------------------------------------
+(defmethod serdes.base/extract-query "Card" [_ {:keys [user]}]
+  (serdes.base/raw-reducible-query
+    "Card"
+    {:select     [:card.*]
+     :from       [[:report_card :card]]
+     :left-join  [[:collection :coll] [:= :coll.id :card.collection_id]]
+     :where      (if user
+                   [:or [:= :coll.personal_owner_id user] [:is :coll.personal_owner_id nil]]
+                   [:is :coll.personal_owner_id nil])}))
+
+(defmethod serdes.base/extract-one "Card"
+  [_model-name _opts card]
+  ;; Cards have :table_id, :database_id, :collection_id, :creator_id that need conversion.
+  ;; :table_id and :database_id are extracted as just :table_id [database_name schema table_name].
+  ;; :collection_id is extracted as its entity_id or identity-hash.
+  ;; :creator_id as the user's email.
+  (-> (serdes.base/extract-one-basics "Card" card)
+      (update :database_id            serdes.util/export-fk-keyed 'Database :name)
+      (update :table_id               serdes.util/export-table-fk)
+      (update :collection_id          serdes.util/export-fk 'Collection)
+      (update :creator_id             serdes.util/export-user)
+      (update :dataset_query          serdes.util/export-json-mbql)
+      (update :parameter_mappings     serdes.util/export-parameter-mappings)
+      (update :visualization_settings serdes.util/export-visualization-settings)
+      (dissoc :result_metadata))) ; Not portable, and can be rebuilt on the other side.
+
+(defmethod serdes.base/load-xform "Card"
+  [card]
+  (-> card
+      serdes.base/load-xform-basics
+      (update :database_id            serdes.util/import-fk-keyed 'Database :name)
+      (update :table_id               serdes.util/import-table-fk)
+      (update :creator_id             serdes.util/import-user)
+      (update :collection_id          serdes.util/import-fk 'Collection)
+      (update :dataset_query          serdes.util/import-json-mbql)
+      (update :parameter_mappings     serdes.util/import-parameter-mappings)
+      (update :visualization_settings serdes.util/import-visualization-settings)))
+
+(defmethod serdes.base/serdes-dependencies "Card"
+  [{:keys [collection_id database_id dataset_query parameter_mappings table_id visualization_settings]}]
+  (->> (map serdes.util/mbql-deps parameter_mappings)
+       (reduce set/union)
+       (set/union #{[{:model "Database" :id database_id}]})
+       ; table_id and collection_id are nullable.
+       (set/union (when table_id #{(serdes.util/table->path table_id)}))
+       (set/union (when collection_id #{[{:model "Collection" :id collection_id}]}))
+       (set/union (serdes.util/mbql-deps dataset_query))
+       (set/union (serdes.util/visualization-settings-deps visualization_settings))
+       vec))
+
+(defmethod serdes.base/serdes-descendants "Card" [_model-name id]
+  (let [card (db/select-one Card :id id)
+        source-table (some-> card :dataset_query :query :source-table)]
+    (when (and (string? source-table)
+               (.startsWith ^String source-table "card__"))
+      #{["Card" (Integer/parseInt (.substring ^String source-table 6))]})))

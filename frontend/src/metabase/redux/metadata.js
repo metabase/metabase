@@ -1,7 +1,6 @@
-import { createThunkAction, fetchData } from "metabase/lib/redux";
-
 import { getIn } from "icepick";
 import _ from "underscore";
+import { createThunkAction, fetchData } from "metabase/lib/redux";
 
 import { getMetadata } from "metabase/selectors/metadata";
 
@@ -46,7 +45,8 @@ export const fetchRealDatabases = (reload = false) => {
   return Databases.actions.fetchList({ include: "tables" }, { reload });
 };
 
-export const FETCH_DATABASE_METADATA = Databases.actions.fetchDatabaseMetadata.toString();
+export const FETCH_DATABASE_METADATA =
+  Databases.actions.fetchDatabaseMetadata.toString();
 export const fetchDatabaseMetadata = (dbId, reload = false) => {
   deprecated("metabase/redux/metadata fetchDatabaseMetadata");
   return Databases.actions.fetchDatabaseMetadata({ id: dbId }, { reload });
@@ -133,13 +133,15 @@ export const updateField = field => {
   return Fields.actions.update(slimField);
 };
 
-export const DELETE_FIELD_DIMENSION = Fields.actions.deleteFieldDimension.toString();
+export const DELETE_FIELD_DIMENSION =
+  Fields.actions.deleteFieldDimension.toString();
 export const deleteFieldDimension = fieldId => {
   deprecated("metabase/redux/metadata deleteFieldDimension");
   return Fields.actions.deleteFieldDimension({ id: fieldId });
 };
 
-export const UPDATE_FIELD_DIMENSION = Fields.actions.updateFieldDimension.toString();
+export const UPDATE_FIELD_DIMENSION =
+  Fields.actions.updateFieldDimension.toString();
 export const updateFieldDimension = (fieldId, dimension) => {
   deprecated("metabase/redux/metadata updateFieldDimension");
   return Fields.actions.updateFieldDimension({ id: fieldId }, dimension);
@@ -306,29 +308,35 @@ export const fetchRealDatabasesWithMetadata = createThunkAction(
   },
 );
 
-export const loadMetadataForQuery = query => loadMetadataForQueries([query]);
+export const loadMetadataForQuery = (query, extraDependencies) =>
+  loadMetadataForQueries([query], extraDependencies);
 
-export const loadMetadataForQueries = queries => dispatch =>
-  Promise.all(
-    _.chain(queries)
+export const loadMetadataForQueries =
+  (queries, extraDependencies, options) => dispatch => {
+    const dependencies = _.chain(queries)
       .map(q => q.dependentMetadata())
+      .push(...(extraDependencies ?? []))
       .flatten()
       .uniq(false, dep => dep.type + dep.id)
       .map(({ type, id, foreignTables }) => {
         if (type === "table") {
-          return (foreignTables
-            ? Tables.actions.fetchMetadataAndForeignTables
-            : Tables.actions.fetchMetadata)({ id });
+          return (
+            foreignTables
+              ? Tables.actions.fetchMetadataAndForeignTables
+              : Tables.actions.fetchMetadata
+          )({ id }, options);
         } else if (type === "field") {
-          return Fields.actions.fetch({ id });
+          return Fields.actions.fetch({ id }, options);
         } else if (type === "schema") {
-          return Schemas.actions.fetchList({ dbId: id });
+          return Schemas.actions.fetchList({ dbId: id }, options);
         } else {
           console.warn(`loadMetadataForQueries: type ${type} not implemented`);
         }
       })
-      // unrecognized types would result in undefined, so we filter that out
-      .filter(action => action !== undefined)
-      .map(dispatch)
-      .value(),
-  ).catch(e => console.error("Failed loading metadata for query", e));
+      .filter(Boolean)
+      .value();
+
+    return Promise.all(dependencies.map(dispatch)).catch(e =>
+      console.error("Failed loading metadata for query", e),
+    );
+  };

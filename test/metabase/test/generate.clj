@@ -2,9 +2,11 @@
   (:require [clojure.spec.alpha :as s]
             [clojure.test.check.generators :as gen]
             [java-time :as t]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models :refer [Activity Card Collection Dashboard DashboardCard DashboardCardSeries Database
                                      Dimension Field Metric NativeQuerySnippet PermissionsGroup
-                                     PermissionsGroupMembership Pulse PulseCard PulseChannel Table User]]
+                                     PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient
+                                     Segment Table Timeline TimelineEvent User]]
             [reifyhealth.specmonstah.core :as rs]
             [reifyhealth.specmonstah.spec-gen :as rsg]
             [talltale.core :as tt]
@@ -80,9 +82,11 @@
             (rand-nth reserved-words)
             (cond-> (random-desc)
               (coin-toss 0.1)
-              (str (rand-nth "áîëç£¢™🍒"))
+              (str (rand-nth "áîëç£¢™"))
               (coin-toss 0.01)
-              (str (subs (tt/lorem-ipsum) 1 200))
+              (str "🍒") ; This one can't be merged with the above, `rand-nth` treats it as two (broken) characters.
+              (coin-toss 0.01)
+              (str (subs (tt/lorem-ipsum) 1 120))
               (coin-toss 0.01)
               (-> first str))))
         (gen/return nil)))))
@@ -113,14 +117,18 @@
 
 ;; * native-query-snippet
 (s/def ::content ::not-empty-string)
-(s/def ::parameters #{[{:id "a"}]})
+
+(s/def :parameter/id   ::not-empty-string)
+(s/def :parameter/type ::base_type)
+(s/def ::parameter  (s/keys :req-un [:parameter/id :parameter/type]))
+(s/def ::parameters (s/coll-of ::parameter))
 
 ;; * pulse
 (s/def ::row pos-int?)
 (s/def ::col pos-int?)
 (s/def ::col pos-int?)
-(s/def ::sizeX pos-int?)
-(s/def ::sizeY pos-int?)
+(s/def ::size_x pos-int?)
+(s/def ::size_y pos-int?)
 (s/def ::parameter_mappings #{[{}]})
 
 (s/def ::core-user (s/keys :req-un [::id ::first_name ::last_name ::email ::password]))
@@ -136,11 +144,12 @@
 (s/def ::field (s/keys :req-un [::id ::name ::base_type ::database_type ::position ::description]))
 
 (s/def ::metric (s/keys :req-un [::id ::name ::definition ::description]))
+(s/def ::segment (s/keys :req-un [::id ::name ::definition ::description]))
 (s/def ::table  (s/keys :req-un [::id ::active ::name ::description]))
 (s/def ::native-query-snippet (s/keys :req-un [::id ::name ::description ::content]))
 (s/def ::dashboard (s/keys :req-un [::id ::name ::description ::parameters]))
 
-(s/def ::dashboard-card (s/keys :req-un [::id ::sizeX ::sizeY ::row ::col ::parameter_mappings ::visualization_settings ]))
+(s/def ::dashboard-card (s/keys :req-un [::id ::size_x ::size_y ::row ::col ::parameter_mappings ::visualization_settings ]))
 (s/def ::pulse-card (s/keys :req-un [::id ::position]))
 
 
@@ -148,6 +157,13 @@
 (s/def ::schedule_type ::not-empty-string)
 
 (s/def ::pulse-channel (s/keys :req-un [::id ::channel_type ::details ::schedule_type]))
+(s/def ::pulse-channel-recipient (s/keys :req-un [::id]))
+
+(s/def ::icon           (s/and ::name #(< (count %) 100)))
+(s/def ::time_matters   boolean?)
+(s/def ::timezone       (set (java.time.ZoneId/getAvailableZoneIds)))
+(s/def ::timeline       (s/keys :req-un [::id ::name ::description ::icon]))
+(s/def ::timeline-event (s/keys :req-un [::id ::name ::description ::icon ::timestamp ::timezone ::time_matters]))
 
 ;; (gen/generate (s/gen ::collection))
 
@@ -184,8 +200,10 @@
    :card                         {:prefix    :c
                                   :spec      ::card
                                   :insert!   {:model Card}
-                                  :relations {:creator_id  [:core-user :id]
-                                              :database_id [:database :id]}}
+                                  :relations {:creator_id    [:core-user :id]
+                                              :database_id   [:database :id]
+                                              :table_id      [:table :id]
+                                              :collection_id [:collection :id]}}
    :dashboard                    {:prefix    :d
                                   :spec      ::dashboard
                                   :insert!   {:model Dashboard}
@@ -201,12 +219,13 @@
                                   :insert! {:model DashboardCardSeries}}
    :dimension                    {:prefix  :dim
                                   :spec    ::dimension
-                                  :insert! {:model Dimension}}
+                                  :insert! {:model Dimension}
+                                  :relations {:field_id                [:field :id]
+                                              :human_readable_field_id [:field :id]}}
    :field                        {:prefix      :field
                                   :spec        ::field
                                   :insert!     {:model Field}
-                                  :relations   {:table_id [:table :id]}
-                                  :constraints {:table_id #{:uniq}}}
+                                  :relations   {:table_id [:table :id]}}
    :metric                       {:prefix    :metric
                                   :spec      ::metric
                                   :insert!   {:model Metric}
@@ -225,14 +244,33 @@
                                   :spec      ::pulse-card
                                   :insert!   {:model PulseCard}
                                   :relations {:pulse_id [:pulse :id]
-                                              :card_id  [:card :id]}}
+                                              :card_id  [:card :id]
+                                              :dashboard_card_id [:dashboard-card :id]}}
    :pulse-channel                {:prefix    :pulse-channel
                                   :spec      ::pulse-channel
                                   :insert!   {:model PulseChannel}
                                   :relations {:pulse_id [:pulse :id]}}
-
+   :pulse-channel-recipient      {:prefix    :pcr
+                                  :spec      ::pulse-channel-recipient
+                                  :insert!   {:model PulseChannelRecipient}
+                                  :relations {:pulse_channel_id [:pulse-channel :id]
+                                              :user_id          [:core-user     :id]}}
+   :timeline                     {:prefix    :timeline
+                                  :spec      ::timeline
+                                  :insert!   {:model Timeline}
+                                  :relations {:collection_id [:collection :id]
+                                              :creator_id    [:core-user  :id]}}
+   :timeline-event               {:prefix    :tl-event
+                                  :spec      ::timeline-event
+                                  :insert!   {:model TimelineEvent}
+                                  :relations {:timeline_id [:timeline  :id]
+                                              :creator_id  [:core-user :id]}}
+   :segment                      {:prefix    :seg
+                                  :spec      ::segment
+                                  :insert!   {:model Segment}
+                                  :relations {:creator_id [:core-user :id]
+                                              :table_id   [:table :id]}}
    ;; :revision {}
-   ;; :segment {}
    ;; :task-history {}
    })
 
@@ -241,24 +279,55 @@
   [query]
   (rsg/ent-db-spec-gen {:schema schema} query))
 
+(def ^:private unique-name (mbql.u/unique-name-generator))
+
+(defn- unique-email [email]
+  (let [at (.indexOf email "@")]
+    (str (unique-name (subs email 0 at))
+         (subs email at))))
+
 (def ^:private field-positions (atom {:table-fields {}}))
 (defn- adjust
   "Some fields have to be semantically correct, or db correct. fields have position, and they do have to be unique.
   in the table-field-position, for now it's just incrementing forever, without scoping by table_id (which would be
   cool)."
-  [sm-db {:keys [schema-opts attrs ent-type visit-val] :as visit-opts}]
+  [_sm-db {:keys [ent-type visit-val] :as _visit-opts}]
   (cond-> visit-val
     ;; Fields have a unique position per table. Keep a counter of the number of fields per table and update it, giving
     ;; the new value to the current field. Defaults to 1.
-    (= :field ent-type)
+    (= ent-type :field)
     (assoc :position
            (-> (swap! field-positions update-in [:table-fields (:table_id visit-val)] (fnil inc 0))
                (get-in [:table-fields (:table_id visit-val)])))
 
+    ;; Users' emails need to be unique. This enforces it, and appends junk to before the @ if needed.
+    (= ent-type :core_user)
+    (update :email unique-email)
+
+    ;; Database names need to be unique. This enforces it, and appends junk to names if needed.
+    (= ent-type :database)
+    (update :name unique-name)
+
+    ;; Table names need to be unique within their database. This enforces it, and appends junk to names if needed.
+    (= ent-type :table)
+    (update :name unique-name)
+
+    ;; Field names need to be unique within their table. This enforces it, and appends junk to names if needed.
+    (= ent-type :field)
+    (update :name unique-name)
+
+    ;; Native Query Snippet names need to be unique. This enforces it, and appends junk to names if needed.
+    (= ent-type :native-query-snippet)
+    (update :name unique-name)
+
+    ;; [Field ID, Dimension name] pairs need to be unique. This enforces it, and appends junk to names if needed.
+    (= ent-type :dimension)
+    (update :name unique-name)
+
     (and (:description visit-val) (coin-toss 0.2))
     (dissoc :description)))
 
-(defn- remove-ids [_ {:keys [visit-val] :as visit-opts}]
+(defn- remove-ids [_ {:keys [visit-val] :as _visit-opts}]
   (dissoc visit-val :id))
 
 (defn insert!

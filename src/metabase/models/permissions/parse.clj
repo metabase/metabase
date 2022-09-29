@@ -5,6 +5,7 @@
   - Convert parse tree to path, e.g. ['3' :all] or ['3' :schemas :all]
   - Convert set of paths to a map, the permission graph"
   (:require [clojure.core.match :refer [match]]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
             [instaparse.core :as insta]
@@ -12,12 +13,13 @@
 
 (def ^:private grammar
   "Describes permission strings like /db/3/ or /collection/root/read/"
-  "permission = ( all | db | block | download | data-model | details | collection )
+  "permission = ( all | execute | db | block | download | data-model | details | collection )
   all         = <'/'>
-  db          = <'/db/'> #'\\d+' <'/'> ( native | schemas )?
+  db          = <'/db/'> #'\\d+' <'/'> ( native | execute | schemas )?
+  execute     = <'/execute/'> ( <'db/'> #'\\d+' <'/'> )?
   native      = <'native/'>
   schemas     = <'schema/'> schema?
-  schema      = #'[^/]*' <'/'> table?
+  schema      = schema-name <'/'> table?
   table       = <'table/'> #'\\d+' <'/'> (table-perm <'/'>)?
   table-perm  = ('read'|'query'|'query/segmented')
 
@@ -28,15 +30,17 @@
   dl-db       = <'/db/'> #'\\d+' <'/'> ( dl-native | dl-schemas )?
   dl-native   = <'native/'>
   dl-schemas  = <'schema/'> dl-schema?
-  dl-schema   = #'[^/]*' <'/'> dl-table?
+  dl-schema   = schema-name <'/'> dl-table?
   dl-table    = <'table/'> #'\\d+' <'/'>
 
   data-model  = <'/data-model'> dm-db
   dm-db       = <'/db/'> #'\\d+' <'/'> dm-schema?
-  dm-schema   = <'schema/'> #'[^/]*' <'/'> dm-table?
+  dm-schema   = <'schema/'> schema-name <'/'> dm-table?
   dm-table    = <'table/'> #'\\d+' <'/'>
 
   details  = <'/details'> <'/db/'> #'\\d+' <'/'>
+
+  schema-name = #'(\\\\/|[^/])*' (* schema name can have \\/ but not /*)
 
   collection  = <'/collection/'> #'[^/]*' <'/'> ('read' <'/'>)?")
 
@@ -47,6 +51,16 @@
 (defn- collection-id
   [id]
   (if (= id "root") :root (Long/parseUnsignedLong id)))
+
+(defn- unescape-path-component
+  "Unescape slashes for things that has been escaped before storing in DB (e.g: DB schema name).
+  To find things that were being escaped: check references of [[metabase.models.permissions/escape-path-component]].
+
+    (unescape-path-component \"a\\/b\" => \"a/b\")."
+  [s]
+  (some-> s
+          (str/replace "\\/" "/")     ; \/ -> /
+          (str/replace "\\\\" "\\"))) ; \\ -> \
 
 (defn- append-to-all
   "If `path-or-paths` is a single path, append `x` to the end of it. If it's a vector of paths, append `x` to each path."
@@ -59,6 +73,7 @@
   [tree]
   (match tree
     [:permission t]                (path1 t)
+    [:schema-name schema-name]     (unescape-path-component schema-name)
     [:all]                         [:all] ; admin permissions
     [:db db-id]                    (let [db-id (Long/parseUnsignedLong db-id)]
                                      [[:db db-id :data :native :write]
@@ -67,8 +82,8 @@
                                      (into [:db db-id] (path1 db-node)))
     [:schemas]                     [:data :schemas :all]
     [:schemas schema]              (into [:data :schemas] (path1 schema))
-    [:schema schema-name]          [schema-name :all]
-    [:schema schema-name table]    (into [schema-name] (path1 table))
+    [:schema schema-name]          [(path1 schema-name) :all]
+    [:schema schema-name table]    (into [(path1 schema-name)] (path1 table))
     [:table table-id]              [(Long/parseUnsignedLong table-id) :all]
     [:table table-id table-perm]   (into [(Long/parseUnsignedLong table-id)] (path1 table-perm))
     [:table-perm perm]              (case perm
@@ -89,8 +104,8 @@
                                      (into [:db db-id] (path1 db-node)))
     [:dl-schemas]                  [:download :schemas]
     [:dl-schemas schema]           (into [:download :schemas] (path1 schema))
-    [:dl-schema schema-name]       [schema-name]
-    [:dl-schema schema-name table] (into [schema-name] (path1 table))
+    [:dl-schema schema-name]       [(path1 schema-name)]
+    [:dl-schema schema-name table] (into [(path1 schema-name)] (path1 table))
     [:dl-table table-id]           [(Long/parseUnsignedLong table-id)]
     [:dl-native]                   [:download :native]
     ;; collection perms
@@ -104,14 +119,17 @@
   (match tree
     (_ :guard insta/failure?)      (log/error (trs "Error parsing permissions tree {0}" (pr-str tree)))
     [:permission t]                (path2 t)
+    [:execute]                     [:execute :all]
+    [:execute db-id]               [:execute (Long/parseUnsignedLong db-id) :all]
+    [:schema-name schema-name]     (unescape-path-component schema-name)
     ;; data model perms
     [:data-model db-node]          (path2 db-node)
     [:dm-db db-id]                 (let [db-id (Long/parseUnsignedLong db-id)]
                                      [:db db-id :data-model :schemas :all])
     [:dm-db db-id db-node]         (let [db-id (Long/parseUnsignedLong db-id)]
                                      (into [:db db-id :data-model :schemas] (path2 db-node)))
-    [:dm-schema schema-name]       [schema-name :all]
-    [:dm-schema schema-name table] (into [schema-name] (path2 table))
+    [:dm-schema schema-name]       [(path2 schema-name) :all]
+    [:dm-schema schema-name table] (into [(path2 schema-name)] (path2 table))
     [:dm-table table-id]           [(Long/parseUnsignedLong table-id) :all]
     ;; DB details perms
     [:details db-id]            (let [db-id (Long/parseUnsignedLong db-id)]

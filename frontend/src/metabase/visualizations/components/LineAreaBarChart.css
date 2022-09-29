@@ -17,7 +17,7 @@
 
 .LineAreaBarChart .dc-chart .axis text {
   font-size: 12px;
-  font-family: "Lato", sans-serif;
+  font-family: var(--default-font-family), sans-serif;
   font-weight: 900;
 }
 
@@ -228,17 +228,8 @@
   stroke-dasharray: 5, 5;
 }
 
-text.value-label-outline,
 text.value-label {
   pointer-events: none;
-}
-
-text.value-label-outline {
-  font-weight: 800;
-  font-size: 12px;
-  letter-spacing: 0.5px;
-  stroke-width: 3px;
-  stroke: var(--color-text-white);
 }
 
 text.value-label {
@@ -246,11 +237,17 @@ text.value-label {
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.5px;
+  stroke: var(--color-text-white);
+  stroke-width: 3px;
+  paint-order: stroke;
 }
 
 text.value-label-white {
   fill: var(--color-text-white);
   font-weight: 800;
+  stroke: var(--color-text-dark);
+  stroke-width: 3px;
+  paint-order: stroke;
 }
 
 /* timeline events */

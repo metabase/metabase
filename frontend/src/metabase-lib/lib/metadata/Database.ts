@@ -1,9 +1,9 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
+import { generateSchemaId } from "metabase/lib/schema";
+import { createLookupByProperty, memoizeClass } from "metabase-lib/lib/utils";
 import Question from "../Question";
 import Base from "./Base";
-import { generateSchemaId } from "metabase/lib/schema";
-import { memoize, createLookupByProperty } from "metabase-lib/lib/utils";
 import Table from "./Table";
 import Schema from "./Schema";
 import Metadata from "./Metadata";
@@ -17,13 +17,16 @@ import Metadata from "./Metadata";
  * Backed by types/Database data structure which matches the backend API contract
  */
 
-export default class Database extends Base {
+class DatabaseInner extends Base {
   id: number;
   name: string;
   description: string;
   tables: Table[];
   schemas: Schema[];
   metadata: Metadata;
+
+  // Only appears in  GET /api/database/:id
+  "can-manage"?: boolean;
 
   // TODO Atte Keinänen 6/11/17: List all fields here (currently only in types/Database)
   displayName() {
@@ -56,7 +59,6 @@ export default class Database extends Base {
   }
 
   // TABLES
-  @memoize
   tablesLookup() {
     return createLookupByProperty(this.tables, "id");
   }
@@ -96,15 +98,25 @@ export default class Database extends Base {
     return this.hasFeature("expressions") && this.hasFeature("left-join");
   }
 
+  supportsExpressions() {
+    return this.hasFeature("expressions");
+  }
+
   canWrite() {
     return this.native_permissions === "write";
   }
 
+  isPersisted() {
+    return this.hasFeature("persist-models-enabled");
+  }
+
+  supportsPersistence() {
+    return this.hasFeature("persist-models");
+  }
+
   // QUESTIONS
   newQuestion() {
-    return this.question()
-      .setDefaultQuery()
-      .setDefaultDisplay();
+    return this.question().setDefaultQuery().setDefaultDisplay();
   }
 
   question(
@@ -176,3 +188,7 @@ export default class Database extends Base {
     this.auto_run_queries = auto_run_queries;
   }
 }
+
+export default class Database extends memoizeClass<DatabaseInner>(
+  "tablesLookup",
+)(DatabaseInner) {}

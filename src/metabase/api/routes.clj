@@ -1,8 +1,10 @@
 (ns metabase.api.routes
   (:require [compojure.core :refer [context defroutes]]
             [compojure.route :as route]
+            [metabase.api.action :as api.action]
             [metabase.api.activity :as api.activity]
             [metabase.api.alert :as api.alert]
+            [metabase.api.app :as api.app]
             [metabase.api.automagic-dashboards :as api.magic]
             [metabase.api.bookmark :as api.bookmark]
             [metabase.api.card :as api.card]
@@ -12,14 +14,17 @@
             [metabase.api.dataset :as api.dataset]
             [metabase.api.email :as api.email]
             [metabase.api.embed :as api.embed]
+            [metabase.api.emitter :as api.emitter]
             [metabase.api.field :as api.field]
             [metabase.api.geojson :as api.geojson]
+            [metabase.api.google :as api.google]
             [metabase.api.ldap :as api.ldap]
             [metabase.api.login-history :as api.login-history]
             [metabase.api.metric :as api.metric]
             [metabase.api.native-query-snippet :as api.native-query-snippet]
             [metabase.api.notify :as api.notify]
             [metabase.api.permissions :as api.permissions]
+            [metabase.api.persist :as api.persist]
             [metabase.api.premium-features :as api.premium-features]
             [metabase.api.preview-embed :as api.preview-embed]
             [metabase.api.public :as api.public]
@@ -60,8 +65,10 @@
 
 (defroutes ^{:doc "Ring routes for API endpoints."} routes
   ee-routes
+  (context "/action"              [] (+auth api.action/routes))
   (context "/activity"             [] (+auth api.activity/routes))
   (context "/alert"                [] (+auth api.alert/routes))
+  (context "/app"                  [] (+auth api.app/routes))
   (context "/automagic-dashboards" [] (+auth api.magic/routes))
   (context "/card"                 [] (+auth api.card/routes))
   (context "/bookmark"             [] (+auth api.bookmark/routes))
@@ -71,8 +78,10 @@
   (context "/dataset"              [] (+auth api.dataset/routes))
   (context "/email"                [] (+auth api.email/routes))
   (context "/embed"                [] (+message-only-exceptions api.embed/routes))
+  (context "/emitter"              [] (+auth api.emitter/routes))
   (context "/field"                [] (+auth api.field/routes))
   (context "/geojson"              [] api.geojson/routes)
+  (context "/google"               [] (+auth api.google/routes))
   (context "/ldap"                 [] (+auth api.ldap/routes))
   (context "/login-history"        [] (+auth api.login-history/routes))
   (context "/premium-features"     [] (+auth api.premium-features/routes))
@@ -80,6 +89,7 @@
   (context "/native-query-snippet" [] (+auth api.native-query-snippet/routes))
   (context "/notify"               [] (+apikey api.notify/routes))
   (context "/permissions"          [] (+auth api.permissions/routes))
+  (context "/persist"              [] (+auth api.persist/routes))
   (context "/preview_embed"        [] (+auth api.preview-embed/routes))
   (context "/public"               [] (+generic-exceptions api.public/routes))
   (context "/pulse"                [] (+auth api.pulse/routes))

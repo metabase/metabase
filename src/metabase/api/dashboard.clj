@@ -5,6 +5,7 @@
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
             [medley.core :as m]
+            [metabase.actions.execution :as actions.execution]
             [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
             [metabase.api.common.validation :as validation]
@@ -67,13 +68,14 @@
 
 (api/defendpoint POST "/"
   "Create a new Dashboard."
-  [:as {{:keys [name description parameters cache_ttl collection_id collection_position], :as _dashboard} :body}]
+  [:as {{:keys [name description parameters cache_ttl collection_id collection_position is_app_page], :as _dashboard} :body}]
   {name                su/NonBlankString
-   parameters          [su/Map]
+   parameters          (s/maybe [su/Parameter])
    description         (s/maybe s/Str)
    cache_ttl           (s/maybe su/IntGreaterThanZero)
    collection_id       (s/maybe su/IntGreaterThanZero)
-   collection_position (s/maybe su/IntGreaterThanZero)}
+   collection_position (s/maybe su/IntGreaterThanZero)
+   is_app_page         (s/maybe s/Bool)}
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
   (collection/check-write-perms-for-collection collection_id)
   (let [dashboard-data {:name                name
@@ -82,7 +84,8 @@
                         :creator_id          api/*current-user-id*
                         :cache_ttl           cache_ttl
                         :collection_id       collection_id
-                        :collection_position collection_position}
+                        :collection_position collection_position
+                        :is_app_page         (boolean is_app_page)}
         dash           (db/transaction
                         ;; Adding a new dashboard at `collection_position` could cause other dashboards in this collection to change
                         ;; position, check that and fix up if needed
@@ -147,7 +150,7 @@
   [{:keys [dataset_query]}]
   (u/ignore-exceptions
     [(qp.util/query-hash dataset_query)
-     (qp.util/query-hash (assoc dataset_query :constraints qp.constraints/default-query-constraints))]))
+     (qp.util/query-hash (assoc dataset_query :constraints (qp.constraints/default-query-constraints)))]))
 
 (defn- dashcard->query-hashes
   "Return a sequence of all the query hashes for this `dashcard`, including the top-level Card and any Series."
@@ -200,12 +203,13 @@
 (defn- get-dashboard
   "Get Dashboard with ID."
   [id]
-  (-> (Dashboard id)
+  (-> (db/select-one Dashboard :id id)
       api/check-404
       ;; i'm a bit worried that this is an n+1 situation here. The cards can be batch hydrated i think because they
       ;; have a hydration key and an id. moderation_reviews currently aren't batch hydrated but i'm worried they
       ;; cannot be in this situation
-      (hydrate [:ordered_cards [:card [:moderation_reviews :moderator_details]] :series] :collection_authority_level :can_write :param_fields :param_values)
+      (hydrate [:ordered_cards [:card [:moderation_reviews :moderator_details]] :series :dashcard/action] :collection_authority_level :can_write :param_fields)
+      (cond-> api/*is-superuser?* (hydrate [:emitters [:action :card]]))
       api/read-check
       api/check-not-archived
       hide-unreadable-cards
@@ -227,7 +231,8 @@
                         :parameters          (or (:parameters existing-dashboard) [])
                         :creator_id          api/*current-user-id*
                         :collection_id       collection_id
-                        :collection_position collection_position}
+                        :collection_position collection_position
+                        :is_app_page         (:is_app_page existing-dashboard)}
         dashboard      (db/transaction
                          ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
                          ;; collection to change position, check that and fix up if needed
@@ -266,7 +271,7 @@
   permissions for the Cards belonging to this Dashboard), but to change the value of `enable_embedding` you must be a
   superuser."
   [id :as {{:keys [description name parameters caveats points_of_interest show_in_getting_started enable_embedding
-                   embedding_params position archived collection_id collection_position cache_ttl]
+                   embedding_params position archived collection_id collection_position cache_ttl is_app_page]
             :as dash-updates} :body}]
   {name                    (s/maybe su/NonBlankString)
    description             (s/maybe s/Str)
@@ -275,12 +280,13 @@
    show_in_getting_started (s/maybe s/Bool)
    enable_embedding        (s/maybe s/Bool)
    embedding_params        (s/maybe su/EmbeddingParams)
-   parameters              (s/maybe [su/Map])
+   parameters              (s/maybe [su/Parameter])
    position                (s/maybe su/IntGreaterThanZero)
    archived                (s/maybe s/Bool)
    collection_id           (s/maybe su/IntGreaterThanZero)
    collection_position     (s/maybe su/IntGreaterThanZero)
-   cache_ttl               (s/maybe su/IntGreaterThanZero)}
+   cache_ttl               (s/maybe su/IntGreaterThanZero)
+   is_app_page             (s/maybe s/Bool)}
   (let [dash-before-update (api/write-check Dashboard id)]
     ;; Do various permissions checks as needed
     (collection/check-allowed-to-change-collection dash-before-update dash-updates)
@@ -298,9 +304,9 @@
          (u/select-keys-when dash-updates
            :present #{:description :position :collection_id :collection_position :cache_ttl}
            :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
-                      :embedding_params :archived})))))
+                      :embedding_params :archived :is_app_page})))))
   ;; now publish an event and return the updated Dashboard
-  (let [dashboard (Dashboard id)]
+  (let [dashboard (db/select-one Dashboard :id id)]
     (events/publish-event! :dashboard-update (assoc dashboard :actor_id api/*current-user-id*))
     (assoc dashboard :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))
 
@@ -324,45 +330,48 @@
 (s/defn ^:private check-parameter-mapping-permissions
   "Starting in 0.41.0, you must have *data* permissions in order to add or modify a DashboardCard parameter mapping."
   {:added "0.41.0"}
-  [parameter-mappings :- [{:target   s/Any
-                           :card-id  su/IntGreaterThanZero
-                           s/Keyword s/Any}]]
+  [parameter-mappings :- [dashboard-card/ParamMapping]]
   (when (seq parameter-mappings)
     ;; calculate a set of all Field IDs referenced by parameter mappings; then from those Field IDs calculate a set of
     ;; all Table IDs to which those Fields belong. This is done in a batched fashion so we can avoid N+1 query issues
     ;; if there happen to be a lot of parameters
-    (let [card-ids              (into #{} (map :card-id) parameter-mappings)
-          card-id->query        (db/select-id->field :dataset_query Card :id [:in card-ids])
-          field-ids             (set (for [{:keys [target card-id]} parameter-mappings
-                                           :let                     [query    (or (card-id->query card-id)
-                                                                                  (throw (ex-info (tru "Card {0} does not exist or does not have a valid query."
-                                                                                                       card-id)
-                                                                                                  {:status-code 404
-                                                                                                   :card-id     card-id})))
-                                                                     field-id (param-target->field-id target query)]
-                                           :when                    field-id]
-                                       field-id))
-          table-ids             (when (seq field-ids)
-                                  (db/select-field :table_id Field :id [:in field-ids]))
-          table-id->database-id (when (seq table-ids)
-                                  (db/select-id->field :db_id Table :id [:in table-ids]))]
-      (doseq [table-id table-ids
-              :let     [database-id (table-id->database-id table-id)]]
-        ;; check whether we'd actually be able to query this Table (do we have ad-hoc data perms for it?)
-        (when-not (query-perms/can-query-table? database-id table-id)
-          (throw (ex-info (tru "You must have data permissions to add a parameter referencing the Table {0}."
-                               (pr-str (db/select-one-field :name Table :id table-id)))
-                          {:status-code        403
-                           :database-id        database-id
-                           :table-id           table-id
-                           :actual-permissions @api/*current-user-permissions-set*})))))))
+    (let [card-ids              (into #{}
+                                      (comp (map :card-id)
+                                            (remove nil?))
+                                      parameter-mappings)]
+      (when (seq card-ids)
+        (let [card-id->query        (db/select-id->field :dataset_query Card :id [:in card-ids])
+              field-ids             (set (for [{:keys [target card-id]} parameter-mappings
+                                               :when                    card-id
+                                               :let                     [query    (or (card-id->query card-id)
+                                                                                      (throw (ex-info (tru "Card {0} does not exist or does not have a valid query."
+                                                                                                           card-id)
+                                                                                                      {:status-code 404
+                                                                                                       :card-id     card-id})))
+                                                                         field-id (param-target->field-id target query)]
+                                               :when                    field-id]
+                                           field-id))
+              table-ids             (when (seq field-ids)
+                                      (db/select-field :table_id Field :id [:in field-ids]))
+              table-id->database-id (when (seq table-ids)
+                                      (db/select-id->field :db_id Table :id [:in table-ids]))]
+          (doseq [table-id table-ids
+                  :let     [database-id (table-id->database-id table-id)]]
+            ;; check whether we'd actually be able to query this Table (do we have ad-hoc data perms for it?)
+            (when-not (query-perms/can-query-table? database-id table-id)
+              (throw (ex-info (tru "You must have data permissions to add a parameter referencing the Table {0}."
+                                   (pr-str (db/select-one-field :name Table :id table-id)))
+                              {:status-code        403
+                               :database-id        database-id
+                               :table-id           table-id
+                               :actual-permissions @api/*current-user-permissions-set*})))))))))
 
 ;; TODO - param should be `card_id`, not `cardId` (fix here + on frontend at the same time)
 (api/defendpoint POST "/:id/cards"
   "Add a `Card` to a Dashboard."
   [id :as {{:keys [cardId parameter_mappings], :as dashboard-card} :body}]
   {cardId             (s/maybe su/IntGreaterThanZero)
-   parameter_mappings [su/Map]}
+   parameter_mappings (s/maybe [dashboard-card/ParamMapping])}
   (api/check-not-archived (api/write-check Dashboard id))
   (when cardId
     (api/check-not-archived (api/read-check Card cardId)))
@@ -397,24 +406,24 @@
                                                existing-mappings (get dashcard-id->existing-mappings dashcard-id)]
                                            (contains? existing-mappings (select-keys mapping [:target :parameter_id]))))
         new-mappings                   (for [{mappings :parameter_mappings, dashcard-id :id} dashcards
-                                             mapping                                         mappings
-                                             :when                                           (not (existing-mapping? dashcard-id mapping))]
+                                             mapping mappings
+                                             :when (not (existing-mapping? dashcard-id mapping))]
                                          (assoc mapping :dashcard-id dashcard-id))
         ;; need to add the appropriate `:card-id` for all the new mappings we're going to check.
         dashcard-id->card-id           (when (seq new-mappings)
                                          (db/select-id->field :card_id DashboardCard
                                            :dashboard_id dashboard-id
                                            :id           [:in (set (map :dashcard-id new-mappings))]))
-        new-mappings (for [{:keys [dashcard-id], :as mapping} new-mappings]
-                       (assoc mapping :card-id (get dashcard-id->card-id dashcard-id)))]
+        new-mappings                   (for [{:keys [dashcard-id], :as mapping} new-mappings]
+                                         (assoc mapping :card-id (get dashcard-id->card-id dashcard-id)))]
     (check-parameter-mapping-permissions new-mappings)))
 
 (def ^:private UpdatedDashboardCard
   (su/with-api-error-message
     {:id                                  (su/with-api-error-message su/IntGreaterThanOrEqualToZero
                                             "value must be a DashboardCard ID.")
-     (s/optional-key :sizeX)              (s/maybe su/IntGreaterThanZero)
-     (s/optional-key :sizeY)              (s/maybe su/IntGreaterThanZero)
+     (s/optional-key :size_x)             (s/maybe su/IntGreaterThanZero)
+     (s/optional-key :size_y)             (s/maybe su/IntGreaterThanZero)
      (s/optional-key :row)                (s/maybe su/IntGreaterThanOrEqualToZero)
      (s/optional-key :col)                (s/maybe su/IntGreaterThanOrEqualToZero)
      (s/optional-key :parameter_mappings) (s/maybe [{:parameter_id su/NonBlankString
@@ -429,8 +438,8 @@
   "Update `Cards` on a Dashboard. Request body should have the form:
 
     {:cards [{:id                 ... ; DashboardCard ID
-              :sizeX              ...
-              :sizeY              ...
+              :size_x             ...
+              :size_y             ...
               :row                ...
               :col                ...
               :parameter_mappings ...
@@ -450,7 +459,7 @@
   [id dashcardId]
   {dashcardId su/IntStringGreaterThanZero}
   (api/check-not-archived (api/write-check Dashboard id))
-  (when-let [dashboard-card (DashboardCard (Integer/parseInt dashcardId))]
+  (when-let [dashboard-card (db/select-one DashboardCard :id (Integer/parseInt dashcardId))]
     (api/check-500 (dashboard-card/delete-dashboard-card! dashboard-card api/*current-user-id*))
     api/generic-204-no-content))
 
@@ -517,7 +526,7 @@
 (api/defendpoint GET "/:id/related"
   "Return related entities."
   [id]
-  (-> id Dashboard api/read-check related/related))
+  (-> (db/select-one Dashboard :id id) api/read-check related/related))
 
 ;;; ---------------------------------------------- Transient dashboards ----------------------------------------------
 
@@ -557,7 +566,7 @@
 (defn- param-key->field-ids
   "Get Field ID(s) associated with a parameter in a Dashboard.
 
-    (param-key->field-ids (Dashboard 62) \"ee876336\")
+    (param-key->field-ids (db/select-one Dashboard :id 62) \"ee876336\")
     ;; -> #{276}"
   [dashboard param-key]
   {:pre [(string? param-key)]}
@@ -575,11 +584,13 @@
 
     ;; show me categories
     (chain-filter 62 \"ee876336\" {})
-    ;; -> (\"African\" \"American\" \"Artisan\" ...)
+    ;; -> {:values          (\"African\" \"American\" \"Artisan\" ...)
+           :has_more_values false}
 
     ;; show me categories that have expensive restaurants
     (chain-filter 62 \"ee876336\" {\"6f10a41f\" 4})
-    ;; -> (\"Japanese\" \"Steakhouse\")"
+    ;; -> {:values          (\"Japanese\" \"Steakhouse\")
+           :has_more_values false}"
   ([dashboard param-key constraint-param-key->value]
    (chain-filter dashboard param-key constraint-param-key->value nil))
 
@@ -590,27 +601,32 @@
    (let [dashboard (hydrate dashboard :resolved-params)]
      (when-not (get (:resolved-params dashboard) param-key)
        (throw (ex-info (tru "Dashboard does not have a parameter with the ID {0}" (pr-str param-key))
-                       {:resolved-params (keys (:resolved-params dashboard))})))
+                       {:resolved-params (keys (:resolved-params dashboard))
+                        :status-code     400})))
      (let [constraints (chain-filter-constraints dashboard constraint-param-key->value)
            field-ids   (param-key->field-ids dashboard param-key)]
-       (when (empty? field-ids)
-         (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
-                         {:param (get (:resolved-params dashboard) param-key)})))
+      (when (empty? field-ids)
+        (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
+                        {:param       (get (:resolved-params dashboard) param-key)
+                         :status-code 400})))
        ;; TODO - we should combine these all into a single UNION ALL query against the data warehouse instead of doing a
        ;; separate query for each Field (for parameters that are mapped to more than one Field)
-       (try
-         (let [results (distinct (mapcat (if (seq query)
-                                           #(chain-filter/chain-filter-search % constraints query :limit result-limit)
-                                           #(chain-filter/chain-filter % constraints :limit result-limit))
-                                         field-ids))]
-           ;; results can come back as [v ...] *or* as [[orig remapped] ...]. Sort by remapped value if that's the case
-           (if (sequential? (first results))
-             (sort-by second results)
-             (sort results)))
-         (catch clojure.lang.ExceptionInfo e
-           (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
-             (api/throw-403 e)
-             (throw e))))))))
+      (try
+        (let [results (map (if (seq query)
+                               #(chain-filter/chain-filter-search % constraints query :limit result-limit)
+                               #(chain-filter/chain-filter % constraints :limit result-limit))
+                           field-ids)
+              values (distinct (mapcat :values results))
+              has_more_values (boolean (some true? (map :has_more_values results)))]
+          ;; results can come back as [v ...] *or* as [[orig remapped] ...]. Sort by remapped value if that's the case
+          {:values          (if (sequential? (first values))
+                              (sort-by second values)
+                              (sort values))
+           :has_more_values has_more_values})
+        (catch clojure.lang.ExceptionInfo e
+          (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
+            (api/throw-403 e)
+            (throw e))))))))
 
 (api/defendpoint GET "/:id/params/:param-key/values"
   "Fetch possible values of the parameter whose ID is `:param-key`. Optionally restrict these values by passing query
@@ -673,15 +689,34 @@
       (into {} (for [field-id filtered-field-ids]
                  [field-id (sort (chain-filter/filterable-field-ids field-id filtering-field-ids))])))))
 
-
-;;; ---------------------------------- Running the query associated with a Dashcard ----------------------------------
-
 (def ParameterWithID
   "Schema for a parameter map with an string `:id`."
   (su/with-api-error-message
     {:id       su/NonBlankString
      s/Keyword s/Any}
     "value must be a parameter map with an 'id' key"))
+
+
+(def ParameterWithTarget
+  "Schema for a parameter map with an mbql `:target`."
+  (su/with-api-error-message
+    {:target   [s/Any]
+     s/Keyword s/Any}
+    "value must be a parameter map with a 'target' key"))
+
+;;; ---------------------------------- Executing the action associated with a Dashcard -------------------------------
+
+(api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/action/execute"
+  "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
+
+   `parameters` should be the mapped dashboard parameters with values.
+   `extra_parameters` should be the extra, user entered parameter values."
+  [dashboard-id dashcard-id :as {{:keys [parameters extra_parameters], :as _body} :body}]
+  {parameters (s/maybe [ParameterWithID])
+   extra_parameters (s/maybe [ParameterWithTarget])}
+  (actions.execution/execute-dashcard! dashboard-id dashcard-id parameters extra_parameters))
+
+;;; ---------------------------------- Running the query associated with a Dashcard ----------------------------------
 
 (api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it."

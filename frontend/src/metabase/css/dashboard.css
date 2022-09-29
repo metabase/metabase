@@ -23,6 +23,7 @@
 /* Fullscreen mode */
 .Dashboard.Dashboard--fullscreen {
   min-height: 100vh;
+  height: auto;
 }
 
 .Dashboard.Dashboard--fullscreen .Header-button {
@@ -58,11 +59,7 @@
 
 .Dashboard.Dashboard--night .DashCard .Card svg text {
   fill: color-mod(var(--color-text-white) alpha(-14%)) !important;
-}
-
-.Dashboard.Dashboard--night .DashCard .Card {
-  background-color: var(--night-mode-card);
-  border-color: var(--night-mode-card);
+  stroke: none !important;
 }
 
 .Dashboard.Dashboard--night .enable-dots-onhover .dc-tooltip circle.dot:hover,
@@ -110,12 +107,6 @@
   left: 0;
   bottom: 0;
   right: 0;
-  background-color: white;
-  border: 1px solid var(--color-border);
-}
-
-.DashCard .Card.Card--slow {
-  border-color: var(--color-accent4);
 }
 
 .Dash--editing .DashCard .Card {
@@ -156,7 +147,6 @@
 }
 
 .DashCard .Card {
-  border: none;
   border-radius: 8px;
   box-shadow: 0px 1px 3px var(--color-shadow);
 }
@@ -295,26 +285,11 @@
   nav {
     display: none;
   }
-  .DashCard .Card {
-    box-shadow: none;
-    border-color: var(--color-border);
-  }
   /* improve label contrast */
   .dc-chart .axis .tick text,
   .dc-chart .x-axis-label,
   .dc-chart .y-axis-label {
     fill: var(--color-text-dark);
-  }
-}
-
-@media print and (orientation: portrait) {
-  html {
-    width: 8.5in;
-  }
-}
-@media print and (orientation: landscape) {
-  html {
-    width: 11in;
   }
 }
 
@@ -337,12 +312,7 @@
   background-color: color-mod(var(--color-bg-white) alpha(-86%));
 }
 
-.Dashboard--night text.value-label-outline {
-  stroke: var(--night-mode-card);
-}
-
 .Dashboard text.value-label,
-.Dashboard text.value-label-outline,
 .Dashboard text.value-label-white,
 .Dashboard .LineAreaBarChart .dc-chart .axis text {
   font-size: 12px;

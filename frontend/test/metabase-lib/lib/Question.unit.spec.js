@@ -8,10 +8,11 @@ import {
   createMetadata,
 } from "__support__/sample_database_fixture";
 
+import { deserializeCardFromUrl } from "metabase/lib/card";
+import { TYPE as SEMANTIC_TYPE } from "cljs/metabase.types";
 import Question from "metabase-lib/lib/Question";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import { deserializeCardFromUrl } from "metabase/lib/card";
 
 const card = {
   display: "table",
@@ -51,6 +52,36 @@ const orders_count_card = {
     query: {
       "source-table": ORDERS.id,
       aggregation: [["count"]],
+    },
+  },
+};
+
+const orders_count_where_card = {
+  id: 2,
+  name: "# orders data",
+  display: "table",
+  visualization_settings: {},
+  dataset_query: {
+    type: "query",
+    database: SAMPLE_DATABASE.id,
+    query: {
+      "source-table": ORDERS.id,
+      aggregation: [["count-where", [">", ORDERS.TOTAL.id, 50]]],
+    },
+  },
+};
+
+const orders_metric_filter_card = {
+  id: 2,
+  name: "# orders data",
+  display: "table",
+  visualization_settings: {},
+  dataset_query: {
+    type: "query",
+    database: SAMPLE_DATABASE.id,
+    query: {
+      "source-table": ORDERS.id,
+      aggregation: [["metric", 2]],
     },
   },
 };
@@ -530,26 +561,62 @@ describe("Question", () => {
     });
 
     describe("drillUnderlyingRecords(...)", () => {
-      const ordersCountQuestion = new Question(
-        orders_count_by_id_card,
-        metadata,
-      );
-
-      // ???
-      it("applies a filter to a given filterspec", () => {
+      it("applies a filter to a given query", () => {
+        const question = new Question(orders_count_by_id_card, metadata);
         const dimensions = [{ value: 1, column: ORDERS.ID.column() }];
 
-        const drilledQuestion = ordersCountQuestion.drillUnderlyingRecords(
-          dimensions,
-        );
-        expect(drilledQuestion.canRun()).toBe(true);
+        const newQuestion = question.drillUnderlyingRecords(dimensions);
 
-        expect(drilledQuestion._card.dataset_query).toEqual({
+        expect(newQuestion._card.dataset_query).toEqual({
           type: "query",
           database: SAMPLE_DATABASE.id,
           query: {
             "source-table": ORDERS.id,
             filter: ["=", ["field", ORDERS.ID.id, null], 1],
+          },
+        });
+      });
+
+      it("applies a filter from an aggregation to a given query", () => {
+        const question = new Question(orders_count_where_card, metadata);
+        const dimensions = [{ value: 1, column: ORDERS.ID.column() }];
+        const column = { field_ref: ["aggregation", 0] };
+
+        const newQuestion = question.drillUnderlyingRecords(dimensions, column);
+
+        expect(newQuestion.canRun()).toBe(true);
+        expect(newQuestion._card.dataset_query).toEqual({
+          type: "query",
+          database: SAMPLE_DATABASE.id,
+          query: {
+            "source-table": ORDERS.id,
+            filter: [
+              "and",
+              ["=", ["field", ORDERS.ID.id, null], 1],
+              [">", ORDERS.TOTAL.id, 50],
+            ],
+          },
+        });
+      });
+
+      it("applies a filter from a metric to a given query", () => {
+        const question = new Question(orders_metric_filter_card, metadata);
+        const dimensions = [{ value: 1, column: ORDERS.ID.column() }];
+        const column = { field_ref: ["aggregation", 0] };
+
+        const newQuestion = question.drillUnderlyingRecords(dimensions, column);
+
+        expect(newQuestion.canRun()).toBe(true);
+        expect(newQuestion._card.dataset_query).toEqual({
+          type: "query",
+          database: SAMPLE_DATABASE.id,
+          query: {
+            "source-table": ORDERS.id,
+            filter: [
+              "and",
+              ["=", ["field", ORDERS.ID.id, null], 1],
+              [">", ORDERS.TOTAL.id, 20],
+            ],
           },
         });
       });
@@ -574,7 +641,8 @@ describe("Question", () => {
         });
       });
       it("returns underlying records correctly for a broken out query", () => {
-        const underlyingRecordsQuestion = ordersCountQuestion.toUnderlyingRecords();
+        const underlyingRecordsQuestion =
+          ordersCountQuestion.toUnderlyingRecords();
 
         expect(underlyingRecordsQuestion.canRun()).toBe(true);
         // if I actually call the .query() method below, this blows up garbage collection =/
@@ -915,7 +983,7 @@ describe("Question", () => {
   });
 
   describe("Question.prototype.getResultMetadata", () => {
-    it("shoud return the `result_metadata` property off the underlying card", () => {
+    it("should return the `result_metadata` property off the underlying card", () => {
       const question = new Question(
         { ...card, result_metadata: [1, 2, 3] },
         metadata,
@@ -929,6 +997,34 @@ describe("Question", () => {
         metadata,
       );
       expect(question.getResultMetadata()).toEqual([]);
+    });
+  });
+
+  describe("Question.prototype.dependentMetadata", () => {
+    it("should return model FK field targets", () => {
+      const question = new Question(
+        {
+          ...card,
+          result_metadata: [
+            { semantic_type: SEMANTIC_TYPE.FK, fk_target_field_id: 5 },
+          ],
+        },
+        metadata,
+      );
+
+      expect(question.dependentMetadata()).toEqual([{ type: "field", id: 5 }]);
+    });
+
+    it("should return skip with with FK target field which are not FKs semantically", () => {
+      const question = new Question(
+        {
+          ...card,
+          result_metadata: [{ fk_target_field_id: 5 }],
+        },
+        metadata,
+      );
+
+      expect(question.dependentMetadata()).toEqual([]);
     });
   });
 
@@ -961,9 +1057,8 @@ describe("Question", () => {
     it("should set a `_parameterValues` property on the question", () => {
       const parameterValues = { foo: "bar" };
       const question = new Question(card, metadata);
-      const questionWithParameterValues = question.setParameterValues(
-        parameterValues,
-      );
+      const questionWithParameterValues =
+        question.setParameterValues(parameterValues);
 
       expect(question).not.toBe(questionWithParameterValues);
       expect(questionWithParameterValues._parameterValues).toEqual(
@@ -973,15 +1068,6 @@ describe("Question", () => {
   });
 
   describe("Question.prototype.parameters", () => {
-    const fakeMetadata = {
-      fields: {
-        1: { id: 1 },
-      },
-      field(id) {
-        return this.fields[id];
-      },
-    };
-
     it("should return an empty array if no parameters are set on the structured question", () => {
       const question = new Question(card, metadata);
       expect(question.parameters()).toEqual([]);
@@ -1001,7 +1087,7 @@ describe("Question", () => {
                 id: "bbb",
                 type: "dimension",
                 "widget-type": "category",
-                dimension: ["field", 1, null],
+                dimension: ["field", PRODUCTS.CATEGORY.id, null],
               },
               bar: {
                 name: "bar",
@@ -1014,20 +1100,16 @@ describe("Question", () => {
         },
       };
 
-      const question = new Question(
-        nativeQuestionWithTemplateTags,
-        fakeMetadata,
-      );
+      const question = new Question(nativeQuestionWithTemplateTags, metadata);
       expect(question.parameters()).toEqual([
         {
           default: undefined,
-          field_id: 1,
           fields: [
-            {
-              id: 1,
-            },
+            expect.objectContaining({
+              id: PRODUCTS.CATEGORY.id,
+            }),
           ],
-          hasOnlyFieldTargets: true,
+          hasVariableTemplateTagTarget: false,
           id: "bbb",
           name: "Foo",
           slug: "foo",
@@ -1036,9 +1118,7 @@ describe("Question", () => {
         },
         {
           default: undefined,
-          field_id: undefined,
-          fields: [],
-          hasOnlyFieldTargets: false,
+          hasVariableTemplateTagTarget: true,
           id: "aaa",
           name: "Bar",
           slug: "bar",
@@ -1049,13 +1129,13 @@ describe("Question", () => {
     });
 
     it("should return a question's parameters + metadata and the parameter's value if present", () => {
-      const question = new Question(card, fakeMetadata)
+      const question = new Question(card, metadata)
         .setParameters([
           {
             type: "category",
             name: "foo",
             id: "foo_id",
-            target: ["dimension", ["field", 1, null]],
+            target: ["dimension", ["field", PRODUCTS.CATEGORY.id, null]],
           },
           {
             type: "category",
@@ -1073,28 +1153,29 @@ describe("Question", () => {
           type: "category",
           name: "foo",
           id: "foo_id",
-          target: ["dimension", ["field", 1, null]],
+          target: ["dimension", ["field", PRODUCTS.CATEGORY.id, null]],
           value: "abc",
-          fields: [{ id: 1 }],
-          field_id: 1,
-          hasOnlyFieldTargets: true,
+          fields: [
+            expect.objectContaining({
+              id: PRODUCTS.CATEGORY.id,
+            }),
+          ],
+          hasVariableTemplateTagTarget: false,
         },
         {
           type: "category",
           name: "bar",
           id: "bar_id",
-          fields: [],
-          field_id: undefined,
-          hasOnlyFieldTargets: false,
+          hasVariableTemplateTagTarget: true,
         },
       ]);
     });
   });
 
-  describe("Question.prototype.convertParametersToFilters", () => {
+  describe("Question.prototype.convertParametersToMbql", () => {
     it("should do nothing to a native question", () => {
       const question = new Question(native_orders_count_card, metadata);
-      expect(question.convertParametersToFilters()).toBe(question);
+      expect(question.convertParametersToMbql()).toBe(question);
     });
 
     it("should convert a question with parameters into a new question with filters", () => {
@@ -1119,7 +1200,7 @@ describe("Question", () => {
           foo_id: "abc",
         });
 
-      const questionWithFilters = question.convertParametersToFilters();
+      const questionWithFilters = question.convertParametersToMbql();
 
       expect(questionWithFilters.card().dataset_query.query.filter).toEqual([
         "starts-with",
@@ -1194,7 +1275,7 @@ describe("Question", () => {
       });
 
       it("should return question URL with string MBQL filter added", () => {
-        const url = question.getUrlWithParameters(parameters, { "1": "bar" });
+        const url = question.getUrlWithParameters(parameters, { 1: "bar" });
 
         const deserializedCard = {
           ...assocIn(
@@ -1213,7 +1294,7 @@ describe("Question", () => {
       });
 
       it("should return question URL with number MBQL filter added", () => {
-        const url = question.getUrlWithParameters(parameters, { "5": 123 });
+        const url = question.getUrlWithParameters(parameters, { 5: 123 });
 
         expect(parseUrl(url)).toEqual({
           pathname: "/question",
@@ -1231,7 +1312,7 @@ describe("Question", () => {
 
       it("should return question URL with date MBQL filter added", () => {
         const url = question.getUrlWithParameters(parameters, {
-          "3": "2017-05",
+          3: "2017-05",
         });
 
         expect(parseUrl(url)).toEqual({
@@ -1247,6 +1328,21 @@ describe("Question", () => {
           },
         });
       });
+
+      it("should include objectId in a URL", () => {
+        const OBJECT_ID = "5";
+        const url = question.getUrlWithParameters(
+          parameters,
+          { 1: "bar" },
+          { objectId: OBJECT_ID },
+        );
+
+        expect(parseUrl(url)).toEqual({
+          pathname: "/question",
+          query: { objectId: OBJECT_ID },
+          card: expect.any(Object),
+        });
+      });
     });
 
     describe("with structured question & no permissions", () => {
@@ -1256,7 +1352,7 @@ describe("Question", () => {
       });
 
       it("should return a card with attached parameters and parameter values as query params", () => {
-        const url = question.getUrlWithParameters(parameters, { "1": "bar" });
+        const url = question.getUrlWithParameters(parameters, { 1: "bar" });
 
         const deserializedCard = {
           ...card,
@@ -1272,6 +1368,16 @@ describe("Question", () => {
           },
           card: deserializedCard,
         });
+      });
+
+      it("should not include objectId in a URL", () => {
+        const url = question.getUrlWithParameters(
+          parameters,
+          { 1: "bar" },
+          { objectId: 5 },
+        );
+
+        expect(parseUrl(url).query.objectId).toBeUndefined();
       });
     });
 
@@ -1327,7 +1433,7 @@ describe("Question", () => {
 
       it("should return question URL with query string parameter when there is a value for a parameter mapped to the question's variable", () => {
         const url = question.getUrlWithParameters(parametersForNativeQ, {
-          "1": "bar",
+          1: "bar",
         });
 
         expect(parseUrl(url)).toEqual({
@@ -1340,7 +1446,7 @@ describe("Question", () => {
       it("should return question URL with query string parameter when there is a value for a parameter mapped to the question's field filter", () => {
         const question = new Question(cardWithFieldFilter, metadata);
         const url = question.getUrlWithParameters(parametersForNativeQ, {
-          "5": "111",
+          5: "111",
         });
 
         expect(parseUrl(url)).toEqual({
@@ -1348,6 +1454,13 @@ describe("Question", () => {
           query: { bar: "111" },
           card: null,
         });
+      });
+
+      it("should not include objectId in a URL", () => {
+        const url = question.getUrlWithParameters(parametersForNativeQ, {
+          1: "bar",
+        });
+        expect(parseUrl(url).query.objectId).toBeUndefined();
       });
     });
   });

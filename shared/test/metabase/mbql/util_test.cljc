@@ -362,6 +362,15 @@
     (t/is (= [:not [:contains [:field 1 nil] "ABC" {:case-sensitive false}]]
              (mbql.u/desugar-filter-clause [:does-not-contain [:field 1 nil] "ABC" {:case-sensitive false}])))))
 
+(t/deftest ^:parallel desugar-temporal-extract-test
+  (t/testing "desugaring :get-year, :get-month, etc"
+    (doseq [[op unit] mbql.u/temporal-extract-ops->unit]
+      (t/is (= [:temporal-extract [:field 1 nil] unit]
+               (mbql.u/desugar-temporal-extract [op [:field 1 nil]])))
+
+      (t/is (= [:+ [:temporal-extract [:field 1 nil] unit] 1]
+               (mbql.u/desugar-temporal-extract [:+ [op [:field 1 nil]] 1]))))))
+
 (t/deftest ^:parallel negate-simple-filter-clause-test
   (t/testing :=
     (t/is (= [:!= [:field 1 nil] 10]
@@ -564,12 +573,12 @@
 
 
     (t/testing "ok, can we do the same thing as the tests above but make those names *unique* at the same time?"
-      (t/is (= [[:aggregation-options [:sum [:field 1 nil]]   {:name "sum"}  ]
+      (t/is (= [[:aggregation-options [:sum [:field 1 nil]]   {:name "sum"}]
                 [:aggregation-options [:count [:field 1 nil]] {:name "count"}]
                 [:aggregation-options [:sum [:field 1 nil]]   {:name "sum_2"}]
-                [:aggregation-options [:avg [:field 1 nil]]   {:name "avg"}  ]
+                [:aggregation-options [:avg [:field 1 nil]]   {:name "avg"}]
                 [:aggregation-options [:sum [:field 1 nil]]   {:name "sum_3"}]
-                [:aggregation-options [:min [:field 1 nil]]   {:name "min"}  ]]
+                [:aggregation-options [:min [:field 1 nil]]   {:name "min"}]]
                (mbql.u/pre-alias-and-uniquify-aggregations simple-ag->name
                  [[:sum [:field 1 nil]]
                   [:count [:field 1 nil]]
@@ -701,7 +710,7 @@
            "if nothing is set return `nil`"
            {{:database 1
              :type     :query
-             :query    {:source-table 1}} nil}} ]
+             :query    {:source-table 1}} nil}}]
     (t/testing group
       (doseq [[query expected] query->expected]
         (t/testing (pr-str (list 'query->max-rows-limit query))
@@ -792,3 +801,13 @@
     [:aggregation 0]                              [:aggregation 0]
     [:aggregation 0 {::namespaced true}]          [:aggregation 0]
     [:aggregation 0 {::namespaced true, :a 1}]    [:aggregation 0 {:a 1}]))
+
+(t/deftest with-temporal-unit-test
+  (t/is (= [:field 1 {:temporal-unit :day}]
+           (mbql.u/with-temporal-unit [:field 1 nil] :day)))
+  (t/is (= [:field "t" {:base-type :type/Date, :temporal-unit :day}]
+           (mbql.u/with-temporal-unit [:field "t" {:base-type :type/Date}] :day)))
+  (t/testing "Ignore invalid temporal units if `:base-type` is specified (#16485)"
+    ;; `:minute` doesn't make sense for a DATE
+    (t/is (= [:field "t" {:base-type :type/Date}]
+             (mbql.u/with-temporal-unit [:field "t" {:base-type :type/Date}] :minute)))))

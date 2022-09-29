@@ -41,6 +41,7 @@
             [metabase.query-processor.middleware.optimize-temporal-filters :as optimize-temporal-filters]
             [metabase.query-processor.middleware.parameters :as parameters]
             [metabase.query-processor.middleware.permissions :as qp.perms]
+            [metabase.query-processor.middleware.persistence :as qp.persistence]
             [metabase.query-processor.middleware.pre-alias-aggregations :as qp.pre-alias-aggregations]
             [metabase.query-processor.middleware.prevent-infinite-recursive-preprocesses :as prevent-infinite-recursive-preprocesses]
             [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
@@ -92,6 +93,7 @@
    #'qp.add-source-metadata/add-source-metadata-for-source-queries
    #'upgrade-field-literals/upgrade-field-literals
    (resolve 'ee.sandbox.rows/apply-sandboxing)
+   #'qp.persistence/substitute-persisted-query
    #'qp.add-implicit-clauses/add-implicit-clauses
    #'qp.add-dimension-projections/add-remapped-columns
    #'qp.resolve-fields/resolve-fields
@@ -103,6 +105,7 @@
    #'resolve-joined-fields/resolve-joined-fields
    #'fix-bad-refs/fix-bad-references
    #'escape-join-aliases/escape-join-aliases
+   ;; yes, this is called a second time, because we need to handle any joins that got added
    (resolve 'ee.sandbox.rows/apply-sandboxing)
    #'qp.cumulative-aggregations/rewrite-cumulative-aggregations
    #'qp.pre-alias-aggregations/pre-alias-aggregations
@@ -176,7 +179,7 @@
    rff
    post-processing-middleware))
 
-(def ^:private around-middleware
+(def around-middleware
   "Middleware that goes AROUND *all* the other middleware (even for pre-processing only or compilation only). Has the
   form
 
@@ -198,7 +201,9 @@
 ;; query -> results      = around + pre-process + compile + execute + post-process = default-middleware
 
 (def default-middleware
-  "The default set of middleware applied to queries ran via [[process-query]]."
+  "The default set of middleware applied to queries ran via [[process-query]].
+  NOTE: if you add any new middleware groups, you may need to modify [[dev.debug-qp/default-debug-middleware]] as well,
+  so that [[dev.debug-qp/process-query-debug]] still works as expected."
   (letfn [(combined-pre-process [qp]
             (fn combined-pre-process* [query rff context]
               (qp (preprocess* query) rff context)))

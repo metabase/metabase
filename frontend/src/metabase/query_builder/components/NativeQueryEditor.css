@@ -1,66 +1,10 @@
-.NativeQueryEditor .ace_editor {
-  height: 100%;
-  background-color: var(--color-bg-light);
-  color: var(--color-text-dark);
-}
-.NativeQueryEditor .ace_editor .ace_keyword {
-  color: var(--color-saturated-purple);
-}
-.NativeQueryEditor .ace_editor .ace_function,
-.NativeQueryEditor .ace_editor .ace_variable {
-  color: var(--color-saturated-blue);
-}
-.NativeQueryEditor .ace_editor .ace_constant,
-.NativeQueryEditor .ace_editor .ace_type {
-  color: var(--color-saturated-red);
-}
-.NativeQueryEditor .ace_editor .ace_string {
-  color: var(--color-saturated-green);
-}
-.NativeQueryEditor .ace_editor .ace_templateTag {
-  color: var(--color-brand);
-}
-
-.NativeQueryEditor .react-resizable {
-  position: relative;
-}
-
-.NativeQueryEditor .react-resizable-handle {
-  position: absolute;
-  width: 100%;
-  height: 10px;
-  bottom: -5px;
-  cursor: ns-resize;
-}
-
-.NativeQueryEditor .ace_editor.read-only .ace_cursor {
-  display: none;
-}
-
-.NativeQueryEditor .ace_editor .ace_gutter-cell {
-  padding-top: 2px;
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--color-text-light);
-  padding-left: 0;
-  padding-right: 7px;
-  display: block;
-  text-align: center;
-}
-
-.NativeQueryEditor .ace_editor .ace_gutter {
-  background-color: var(--color-bg-light);
-}
-
-/* ace UI element styling */
-
-/* overall dropdown */
 .ace_editor.ace_autocomplete {
   border: none;
   box-shadow: 0 2px 3px 2px rgba(0, 0, 0, 0.08);
   border-radius: 4px;
   background-color: white;
   color: #4c5773;
+  width: 400px;
 }
 
 .ace_editor.ace_autocomplete .ace_marker-layer .ace_active-line,

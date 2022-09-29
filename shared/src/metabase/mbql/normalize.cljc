@@ -149,9 +149,27 @@
   [[_ amount unit]]
   [:interval amount (maybe-normalize-token unit)])
 
+(defmethod normalize-mbql-clause-tokens :date-add
+  [[_ field amount unit]]
+  [:date-add (normalize-tokens field :ignore-path) amount (maybe-normalize-token unit)])
+
+(defmethod normalize-mbql-clause-tokens :date-subtract
+  [[_ field amount unit]]
+  [:date-subtract (normalize-tokens field :ignore-path) amount (maybe-normalize-token unit)])
+
+(defmethod normalize-mbql-clause-tokens :temporal-extract
+  [[_ field unit]]
+  [:temporal-extract (normalize-tokens field :ignore-path) (maybe-normalize-token unit)])
+
+(defmethod normalize-mbql-clause-tokens :value
+  ;; The args of a `value` clause shouldn't be normalized.
+  ;; See https://github.com/metabase/metabase/issues/23354 for details
+  [[_ value info]]
+  [:value value info])
+
 (defmethod normalize-mbql-clause-tokens :default
-  ;; MBQL clauses by default get just the clause name normalized (e.g. `[\"COUNT\" ...]` becomes `[:count ...]`) and the
-  ;; args are left as-is.
+  ;; MBQL clauses by default are recursively normalized.
+  ;; This includes the clause name (e.g. `[\"COUNT\" ...]` becomes `[:count ...]`) and args.
   [[clause-name & args]]
   (into [(maybe-normalize-token clause-name)] (map #(normalize-tokens % :ignore-path)) args))
 
@@ -251,8 +269,11 @@
                  (assoc :name tag-name))])))
    template-tags))
 
-(defn- normalize-query-parameter [{:keys [type target], :as param}]
+(defn normalize-query-parameter
+  "Normalize a parameter in the query `:parameters` list."
+  [{:keys [type target id], :as param}]
   (cond-> param
+    id     (update :id mbql.u/qualified-name)
     ;; some things that get ran thru here, like dashcard param targets, do not have :type
     type   (update :type maybe-normalize-token)
     target (update :target #(normalize-tokens % :ignore-path))))
@@ -365,7 +386,7 @@
         :else
         x)
       (catch #?(:clj Throwable :cljs js/Error) e
-        (throw (ex-info (i18n/tru "Error normalizing form.")
+        (throw (ex-info (i18n/tru "Error normalizing form: {0}" (ex-message e))
                         {:form x, :path path, :special-fn special-fn}
                         e))))))
 
@@ -589,7 +610,7 @@
          (canonicalize-mbql-clause x)
          (catch #?(:clj Throwable :cljs js/Error) e
            (log/error (i18n/tru "Invalid clause:") x)
-           (throw (ex-info (i18n/tru "Invalid MBQL clause")
+           (throw (ex-info (i18n/tru "Invalid MBQL clause: {0}" (ex-message e))
                            {:clause x}
                            e))))))
    mbql-query))

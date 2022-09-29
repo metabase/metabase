@@ -151,13 +151,17 @@
             x
             ks)))
 
-(defmigration ^{:author "dpsutton" :added "0.38.1"} migrate-click-through
+(defmigration
+  ^{:author "dpsutton"
+    :added  "0.38.1"
+    :doc    "Migration of old 'custom drill-through' to new 'click behavior'; see #15014"}
+  migrate-click-through
   (transduce (comp (map (parse-to-json :card_visualization :dashcard_visualization))
                    (map fix-click-through)
                    (filter :visualization_settings))
              (completing
-              (fn [_ {:keys [id visualization_settings]}]
-                (db/update! DashboardCard id :visualization_settings visualization_settings)))
+               (fn [_ {:keys [id visualization_settings]}]
+                 (db/update! DashboardCard id :visualization_settings visualization_settings)))
              nil
              ;; flamber wrote a manual postgres migration that this faithfully recreates: see
              ;; https://github.com/metabase/metabase/issues/15014
@@ -198,14 +202,18 @@
                        (into {})
                        json/generate-string)))))
 
-(defmigration ^{:author "qnkhuat" :added "0.43.0"} migrate-remove-admin-from-group-mapping-if-needed
-  ;;  In the past we have a setting to disable group sync for admin group when using SSO or LDAP, but it's broken and haven't really worked (see #13820)
-  ;;  In #20991 we remove this option entirely and make sync for admin group just like a regular group.
-  ;;  But on upgrade, to make sure we don't unexpectedly begin adding or removing admin users:
-  ;;  - for LDAP, if the `ldap-sync-admin-group` toggle is disabled, we remove all mapping for the admin group
-  ;;  - for SAML, JWT, we remove all mapping for admin group, because they were previously never being synced
-  ;; if `ldap-sync-admin-group` has never been written, getting raw-setting will return a `nil`, and nil could also be interpreted as disabled.
-  ;; so checking (not= x "true") is safer than (= x "false")
+(defmigration
+  ^{:author "qnkhuat"
+    :added  "0.43.0"
+    :doc    "In the past we have a setting to disable group sync for admin group when using SSO or LDAP, but it's broken
+            and haven't really worked (see #13820).
+            In #20991 we remove this option entirely and make sync for admin group just like a regular group.
+            But on upgrade, to make sure we don't unexpectedly begin adding or removing admin users:
+              - for LDAP, if the `ldap-sync-admin-group` toggle is disabled, we remove all mapping for the admin group
+              - for SAML, JWT, we remove all mapping for admin group, because they were previously never being synced
+            if `ldap-sync-admin-group` has never been written, getting raw-setting will return a `nil`, and nil could
+            also be interpreted as disabled. so checking `(not= x \"true\")` is safer than `(= x \"false\")`."}
+  migrate-remove-admin-from-group-mapping-if-needed
   (when (not= (raw-setting :ldap-sync-admin-group) "true")
     (remove-admin-group-from-mappings-by-setting-key! :ldap-group-mappings))
   ;; sso are enterprise feature but we still run this even in OSS in case a customer

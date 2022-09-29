@@ -40,6 +40,6 @@ export const BackButton = styled.button`
   text-align: left;
 
   &:hover {
-    color: ${color("accent7")};
+    color: ${color("filter")};
   }
 `;

@@ -2,7 +2,9 @@
 // @ts-nocheck
 import _ from "underscore";
 import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
+/* eslint-disable import/order */
 // NOTE: the order of these matters due to circular dependency issues
+import slugg from "slugg";
 import StructuredQuery, {
   STRUCTURED_QUERY_TEMPLATE,
 } from "metabase-lib/lib/queries/StructuredQuery";
@@ -10,7 +12,7 @@ import NativeQuery, {
   NATIVE_QUERY_TEMPLATE,
 } from "metabase-lib/lib/queries/NativeQuery";
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
-import InternalQuery from "./queries/InternalQuery";
+import InternalQuery from "metabase-lib/lib/queries/InternalQuery";
 import Query from "metabase-lib/lib/queries/Query";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Database from "metabase-lib/lib/metadata/Database";
@@ -22,7 +24,10 @@ import {
 } from "metabase-lib/lib/Dimension";
 import Mode from "metabase-lib/lib/Mode";
 import { isStandard } from "metabase/lib/query/filter";
-import { memoize, sortObject } from "metabase-lib/lib/utils";
+import { isFK } from "metabase/lib/schema_metadata";
+import { memoizeClass, sortObject } from "metabase-lib/lib/utils";
+/* eslint-enable import/order */
+
 // TODO: remove these dependencies
 import * as Urls from "metabase/lib/urls";
 import {
@@ -32,10 +37,10 @@ import {
 } from "metabase/lib/dataset";
 import { isTransientId } from "metabase/meta/Card";
 import {
-  getValueAndFieldIdPopulatedParametersFromCard,
+  getCardUiParameters,
   remapParameterValuesToTemplateTags,
 } from "metabase/parameters/utils/cards";
-import { parameterToMBQLFilter } from "metabase/parameters/utils/mbql";
+import { fieldFilterParameterToMBQLFilter } from "metabase/parameters/utils/mbql";
 import {
   normalizeParameterValue,
   getParameterValuesBySlug,
@@ -44,10 +49,9 @@ import {
   aggregate,
   breakout,
   distribution,
-  drillUnderlyingRecords,
+  drillFilter,
   filter,
   pivot,
-  toUnderlyingRecords,
 } from "metabase/modes/lib/actions";
 import {
   DashboardApi,
@@ -60,27 +64,30 @@ import {
   Parameter as ParameterObject,
   ParameterValues,
 } from "metabase-types/types/Parameter";
-import {
-  Card as CardObject,
-  DatasetQuery,
-  VisualizationSettings,
-} from "metabase-types/types/Card";
-import { Dataset, Value } from "metabase-types/types/Dataset";
+import { Card as CardObject, DatasetQuery } from "metabase-types/types/Card";
+import { VisualizationSettings } from "metabase-types/api/card";
+import { Column, Dataset, Value } from "metabase-types/types/Dataset";
 import { TableId } from "metabase-types/types/Table";
 import { DatabaseId } from "metabase-types/types/Database";
-import { ClickObject } from "metabase-types/types/Visualization";
+import {
+  ClickObject,
+  DimensionValue,
+} from "metabase-types/types/Visualization";
+import { DependentMetadataItem } from "metabase-types/types/Query";
+import { utf8_to_b64url } from "metabase/lib/encoding";
+import { CollectionId } from "metabase-types/api";
+
+import { getQuestionVirtualTableId } from "metabase/lib/saved-questions/saved-questions";
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
   ALERT_TYPE_ROWS,
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/lib/Alert";
-import { utf8_to_b64url } from "metabase/lib/encoding";
-
-type QuestionUpdateFn = (q: Question) => Promise<void> | null | undefined;
 
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
   tableId?: TableId;
+  collectionId?: CollectionId;
   metadata?: Metadata;
   parameterValues?: ParameterValues;
   type?: "query" | "native";
@@ -94,7 +101,7 @@ export type QuestionCreatorOpts = {
  * This is a wrapper around a question/card object, which may contain one or more Query objects
  */
 
-export default class Question {
+class QuestionInner {
   /**
    * The plain object presentation of this question, equal to the format that Metabase REST API understands.
    * It is called `card` for both historical reasons and to make a clear distinction to this class.
@@ -114,18 +121,12 @@ export default class Question {
   _parameterValues: ParameterValues;
 
   /**
-   * Bound update function, if any
-   */
-  _update: QuestionUpdateFn | null | undefined;
-
-  /**
    * Question constructor
    */
   constructor(
     card: CardObject,
     metadata?: Metadata,
     parameterValues?: ParameterValues,
-    update?: QuestionUpdateFn | null | undefined,
   ) {
     this._card = card;
     this._metadata =
@@ -136,55 +137,13 @@ export default class Question {
         fields: {},
         metrics: {},
         segments: {},
+        questions: {},
       });
     this._parameterValues = parameterValues || {};
-    this._update = update;
   }
 
   clone() {
-    return new Question(
-      this._card,
-      this._metadata,
-      this._parameterValues,
-      this._update,
-    );
-  }
-
-  /**
-   * TODO Atte Keinänen 6/13/17: Discussed with Tom that we could use the default Question constructor instead,
-   * but it would require changing the constructor signature so that `card` is an optional parameter and has a default value
-   */
-  static create({
-    databaseId,
-    tableId,
-    collectionId,
-    metadata,
-    parameterValues,
-    type = "query",
-    name,
-    display = "table",
-    visualization_settings = {},
-    dataset_query = type === "native"
-      ? NATIVE_QUERY_TEMPLATE
-      : STRUCTURED_QUERY_TEMPLATE,
-  }: QuestionCreatorOpts = {}) {
-    let card: CardObject = {
-      name,
-      collection_id: collectionId,
-      display,
-      visualization_settings,
-      dataset_query,
-    };
-
-    if (tableId != null) {
-      card = assocIn(card, ["dataset_query", "query", "source-table"], tableId);
-    }
-
-    if (databaseId != null) {
-      card = assocIn(card, ["dataset_query", "database"], databaseId);
-    }
-
-    return new Question(card, metadata, parameterValues);
+    return new Question(this._card, this._metadata, this._parameterValues);
   }
 
   metadata(): Metadata {
@@ -198,27 +157,6 @@ export default class Question {
   setCard(card: CardObject): Question {
     const q = this.clone();
     q._card = card;
-    return q;
-  }
-
-  /**
-   * calls the passed in update function (useful for chaining) or bound update function with the question
-   * NOTE: this passes Question instead of card, unlike how Query passes dataset_query
-   */
-  update(update?: QuestionUpdateFn, ...args: any[]) {
-    // TODO: if update returns a new card, create a new Question based on that and return it
-    if (update) {
-      update(this, ...args);
-    } else if (this._update) {
-      this._update(this, ...args);
-    } else {
-      throw new Error("Question update function not provided or bound");
-    }
-  }
-
-  bindUpdate(update: QuestionUpdateFn) {
-    const q = this.clone();
-    q._update = update;
     return q;
   }
 
@@ -254,7 +192,6 @@ export default class Question {
    *
    * This is just a wrapper object, the data is stored in `this._card.dataset_query` in a format specific to the query type.
    */
-  @memoize
   query(): AtomicQuery {
     const datasetQuery = this._card.dataset_query;
 
@@ -321,12 +258,46 @@ export default class Question {
     return this.setCard(assoc(this.card(), "display", display));
   }
 
+  cacheTTL(): number | null {
+    return this._card?.cache_ttl;
+  }
+
+  setCacheTTL(cache) {
+    return this.setCard(assoc(this.card(), "cache_ttl", cache));
+  }
+
+  /**
+   * returns whether this question is a model
+   * @returns boolean
+   */
   isDataset() {
     return this._card && this._card.dataset;
   }
 
+  isPersisted() {
+    return this._card && this._card.persisted;
+  }
+
+  isAction() {
+    return this._card && this._card.is_write;
+  }
+
+  setPersisted(isPersisted) {
+    return this.setCard(assoc(this.card(), "persisted", isPersisted));
+  }
+
   setDataset(dataset) {
     return this.setCard(assoc(this.card(), "dataset", dataset));
+  }
+
+  setPinned(pinned: boolean) {
+    return this.setCard(
+      assoc(this.card(), "collection_position", pinned ? 1 : null),
+    );
+  }
+
+  setIsAction(isAction) {
+    return this.setCard(assoc(this.card(), "is_write", isAction));
   }
 
   // locking the display prevents auto-selection
@@ -458,9 +429,7 @@ export default class Question {
   }
 
   setDefaultQuery() {
-    return this.query()
-      .setDefaultQuery()
-      .question();
+    return this.query().setDefaultQuery().question();
   }
 
   settings(): VisualizationSettings {
@@ -569,12 +538,41 @@ export default class Question {
     return pivot(this, breakouts, dimensions) || this;
   }
 
-  drillUnderlyingRecords(dimensions): Question {
-    return drillUnderlyingRecords(this, dimensions) || this;
+  drillUnderlyingRecords(values: DimensionValue[], column?: Column): Question {
+    let query = this.query();
+    if (!(query instanceof StructuredQuery)) {
+      return this;
+    }
+
+    query = values.reduce(
+      (query, { value, column }) => drillFilter(query, value, column),
+      query,
+    );
+
+    const dimension = column && query.parseFieldReference(column.field_ref);
+    if (dimension instanceof AggregationDimension) {
+      const aggregation = dimension.aggregation();
+      const filters = aggregation ? aggregation.filters() : [];
+      query = filters.reduce((query, filter) => query.filter(filter), query);
+    }
+
+    return query.question().toUnderlyingRecords();
   }
 
   toUnderlyingRecords(): Question {
-    return toUnderlyingRecords(this) || this;
+    const query = this.query();
+    if (!(query instanceof StructuredQuery)) {
+      return this;
+    }
+
+    return query
+      .clearAggregations()
+      .clearBreakouts()
+      .clearSort()
+      .clearLimit()
+      .clearFields()
+      .question()
+      .setDisplay("table");
   }
 
   toUnderlyingData(): Question {
@@ -593,7 +591,7 @@ export default class Question {
           type: "query",
           database: this.databaseId(),
           query: {
-            "source-table": "card__" + this.id(),
+            "source-table": getQuestionVirtualTableId(this.card()),
           },
         },
       };
@@ -610,7 +608,7 @@ export default class Question {
       type: "query",
       database: this.databaseId(),
       query: {
-        "source-table": "card__" + this.id(),
+        "source-table": getQuestionVirtualTableId(this.card()),
       },
     });
   }
@@ -619,6 +617,15 @@ export default class Question {
     const query = this.query();
 
     if (!(query instanceof StructuredQuery)) {
+      if (this.isDataset()) {
+        const drillQuery = Question.create({
+          type: "query",
+          databaseId: this.databaseId(),
+          tableId: field.table_id,
+          metadata: this.metadata(),
+        }).query();
+        return drillQuery.addFilter(["=", field.reference(), value]).question();
+      }
       return;
     }
 
@@ -670,8 +677,9 @@ export default class Question {
       query.columnNames(),
     );
 
+    const graphMetrics = this.setting("graph.metrics");
     if (
-      this.setting("graph.metrics") &&
+      graphMetrics &&
       addedColumnNames.length > 0 &&
       removedColumnNames.length === 0
     ) {
@@ -682,22 +690,22 @@ export default class Question {
 
       if (addedMetricColumnNames.length > 0) {
         return this.updateSettings({
-          "graph.metrics": [
-            ...this.setting("graph.metrics"),
-            ...addedMetricColumnNames,
-          ],
+          "graph.metrics": [...graphMetrics, ...addedMetricColumnNames],
         });
       }
     }
 
+    const tableColumns = this.setting("table.columns");
     if (
-      this.setting("table.columns") &&
+      tableColumns &&
       addedColumnNames.length > 0 &&
       removedColumnNames.length === 0
     ) {
       return this.updateSettings({
         "table.columns": [
-          ...this.setting("table.columns"),
+          ...tableColumns.filter(
+            column => !addedColumnNames.includes(column.name),
+          ),
           ...addedColumnNames.map(name => {
             const dimension = query.columnDimensionWithName(name);
             return {
@@ -808,7 +816,6 @@ export default class Question {
     }
   }
 
-  @memoize
   mode(): Mode | null | undefined {
     return Mode.forQuestion(this);
   }
@@ -842,7 +849,11 @@ export default class Question {
     return this._card && this._card.name;
   }
 
-  setDisplayName(name: string) {
+  slug(): string | null | undefined {
+    return this._card?.name && `${this._card.id}-${slugg(this._card.name)}`;
+  }
+
+  setDisplayName(name: string | null | undefined) {
     return this.setCard(assoc(this.card(), "name", name));
   }
 
@@ -850,7 +861,7 @@ export default class Question {
     return this._card && this._card.collection_id;
   }
 
-  setCollectionId(collectionId: number) {
+  setCollectionId(collectionId: number | null | undefined) {
     return this.setCard(assoc(this.card(), "collection_id", collectionId));
   }
 
@@ -878,12 +889,20 @@ export default class Question {
     return this.setCard(card);
   }
 
-  description(): string | null | undefined {
+  description(): string | null {
     return this._card && this._card.description;
+  }
+
+  setDescription(description) {
+    return this.setCard(assoc(this.card(), "description", description));
   }
 
   lastEditInfo() {
     return this._card && this._card["last-edit-info"];
+  }
+
+  lastQueryStart() {
+    return this._card?.last_query_start;
   }
 
   isSaved(): boolean {
@@ -1011,6 +1030,31 @@ export default class Question {
 
   getResultMetadata() {
     return this.card().result_metadata ?? [];
+  }
+
+  dependentMetadata(): DependentMetadataItem[] {
+    const dependencies = [];
+
+    // we frequently treat dataset/model questions like they are already nested
+    // so we need to fetch the virtual card table representation of the Question
+    // so that we can properly access the table's fields in various scenarios
+    if (this.isDataset()) {
+      dependencies.push({
+        type: "table",
+        id: getQuestionVirtualTableId(this.card()),
+      });
+    }
+
+    this.getResultMetadata().forEach(field => {
+      if (isFK(field) && field.fk_target_field_id) {
+        dependencies.push({
+          type: "field",
+          id: field.fk_target_field_id,
+        });
+      }
+    });
+
+    return dependencies;
   }
 
   /**
@@ -1162,7 +1206,7 @@ export default class Question {
 
   // TODO: Fix incorrect Flow signature
   parameters(): ParameterObject[] {
-    return getValueAndFieldIdPopulatedParametersFromCard(
+    return getCardUiParameters(
       this.card(),
       this.metadata(),
       this._parameterValues,
@@ -1245,50 +1289,58 @@ export default class Question {
     return utf8_to_b64url(JSON.stringify(sortObject(cardCopy)));
   }
 
-  convertParametersToFilters() {
+  convertParametersToMbql() {
     if (!this.isStructured()) {
       return this;
     }
 
-    const [query, isAltered] = this.parameters().reduce(
-      ([query, isAltered], parameter) => {
-        const filter = parameterToMBQLFilter(parameter, this.metadata());
-        return filter ? [query.filter(filter), true] : [query, isAltered];
-      },
-      [this.query(), false],
-    );
+    const mbqlFilters = this.parameters()
+      .map(parameter => {
+        return fieldFilterParameterToMBQLFilter(parameter, this.metadata());
+      })
+      .filter(mbqlFilter => mbqlFilter != null);
+
+    const query = mbqlFilters.reduce((query, mbqlFilter) => {
+      return query.filter(mbqlFilter);
+    }, this.query());
+
+    const hasQueryBeenAltered = mbqlFilters.length > 0;
 
     const question = query
       .question()
       .setParameters(undefined)
       .setParameterValues(undefined);
 
-    return isAltered ? question.markDirty() : question;
+    return hasQueryBeenAltered ? question.markDirty() : question;
   }
 
-  getUrlWithParameters(parameters, parameterValues) {
+  getUrlWithParameters(parameters, parameterValues, { objectId, clean } = {}) {
     const includeDisplayIsLocked = true;
 
     if (this.isStructured()) {
       const questionWithParameters = this.setParameters(parameters);
 
-      if (this.query().isEditable()) {
+      if (!this.query().readOnly()) {
         return questionWithParameters
           .setParameterValues(parameterValues)
-          .convertParametersToFilters()
+          .convertParametersToMbql()
           .getUrl({
+            clean,
             originalQuestion: this,
             includeDisplayIsLocked,
+            query: { objectId },
           });
       } else {
         const query = getParameterValuesBySlug(parameters, parameterValues);
         return questionWithParameters.markDirty().getUrl({
+          clean,
           query,
           includeDisplayIsLocked,
         });
       }
     } else {
       return this.getUrl({
+        clean,
         query: remapParameterValuesToTemplateTags(
           this.query().templateTags(),
           parameters,
@@ -1301,5 +1353,51 @@ export default class Question {
 
   getModerationReviews() {
     return getIn(this, ["_card", "moderation_reviews"]) || [];
+  }
+}
+
+export default class Question extends memoizeClass<QuestionInner>(
+  "query",
+  "mode",
+)(QuestionInner) {
+  /**
+   * TODO Atte Keinänen 6/13/17: Discussed with Tom that we could use the default Question constructor instead,
+   * but it would require changing the constructor signature so that `card` is an optional parameter and has a default value
+   */
+  static create({
+    databaseId,
+    tableId,
+    collectionId,
+    metadata,
+    parameterValues,
+    type = "query",
+    name,
+    display = "table",
+    visualization_settings = {},
+    dataset_query = type === "native"
+      ? NATIVE_QUERY_TEMPLATE
+      : STRUCTURED_QUERY_TEMPLATE,
+  }: QuestionCreatorOpts = {}) {
+    let card: CardObject = {
+      name,
+      collection_id: collectionId,
+      display,
+      visualization_settings,
+      dataset_query,
+    };
+
+    if (type === "native") {
+      card = assocIn(card, ["parameters"], []);
+    }
+
+    if (tableId != null) {
+      card = assocIn(card, ["dataset_query", "query", "source-table"], tableId);
+    }
+
+    if (databaseId != null) {
+      card = assocIn(card, ["dataset_query", "database"], databaseId);
+    }
+
+    return new Question(card, metadata, parameterValues);
   }
 }

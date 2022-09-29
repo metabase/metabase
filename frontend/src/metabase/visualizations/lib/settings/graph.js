@@ -1,10 +1,11 @@
+import { t } from "ttag";
+import _ from "underscore";
 import {
   isDimension,
   isMetric,
   isNumeric,
   isAny,
 } from "metabase/lib/schema_metadata";
-import { t } from "ttag";
 import {
   columnsAreValid,
   getFriendlyName,
@@ -12,15 +13,19 @@ import {
   preserveExistingColumnsOrder,
 } from "metabase/visualizations/lib/utils";
 
-import { seriesSetting } from "metabase/visualizations/lib/settings/series";
+import {
+  seriesSetting,
+  keyForSingleSeries,
+} from "metabase/visualizations/lib/settings/series";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 
-import _ from "underscore";
 import { getMaxMetricsSupported } from "metabase/visualizations";
+
+import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
 
 // NOTE: currently we don't consider any date extracts to be histgrams
 const HISTOGRAM_DATE_EXTRACTS = new Set([
@@ -91,6 +96,10 @@ export const GRAPH_DATA_SETTINGS = {
     section: t`Data`,
     title: t`X-axis`,
     widget: "fields",
+    getMarginBottom: (series, vizSettings) =>
+      vizSettings["graph.dimensions"]?.length === 2 && series.length <= 20
+        ? "0.5rem"
+        : "1rem",
     isValid: (series, vizSettings) =>
       series.some(
         ({ card, data }) =>
@@ -122,7 +131,7 @@ export const GRAPH_DATA_SETTINGS = {
           options.length > value.length &&
           value.length < 2 &&
           vizSettings["graph.metrics"].length < 2
-            ? t`Add a series breakout...`
+            ? t`Add series breakout`
             : null,
         columns: data.cols,
         showColumnSetting: true,
@@ -132,6 +141,41 @@ export const GRAPH_DATA_SETTINGS = {
     writeDependencies: ["graph.metrics"],
     dashboard: false,
     useRawSeries: true,
+  },
+  "graph.series_order": {
+    section: t`Data`,
+    widget: ChartSettingOrderedSimple,
+    marginBottom: "1rem",
+    isValid: (series, settings) => {
+      const seriesOrder = settings["graph.series_order"];
+
+      if (!seriesOrder || !_.isArray(seriesOrder)) {
+        return false;
+      }
+
+      return seriesOrder.length === series.length;
+    },
+    getDefault: series => {
+      const keys = series.map(s => keyForSingleSeries(s));
+      return keys.map((key, index) => ({
+        name: key,
+        originalIndex: index,
+        enabled: true,
+      }));
+    },
+    getProps: (series, settings) => {
+      const seriesSettings = settings["series_settings"] || {};
+      const keys = series.map(s => keyForSingleSeries(s));
+      return {
+        items: keys.map((key, index) => ({
+          name: seriesSettings[key]?.title || key,
+          originalIndex: index,
+        })),
+      };
+    },
+    getHidden: (series, settings) => {
+      return settings["graph.dimensions"]?.length < 2 || series.length > 20;
+    },
   },
   "graph.metrics": {
     section: t`Data`,
@@ -154,24 +198,25 @@ export const GRAPH_DATA_SETTINGS = {
     getDefault: (series, vizSettings) => getDefaultColumns(series).metrics,
     persistDefault: true,
     getProps: ([{ card, data }], vizSettings) => {
-      const value = vizSettings["graph.dimensions"];
       const options = data.cols
         .filter(vizSettings["graph._metric_filter"])
         .map(getOptionFromColumn);
 
+      const addedMetrics = vizSettings["graph.metrics"];
       const hasBreakout = vizSettings["graph.dimensions"].length > 1;
-      const addedMetricsCount = vizSettings["graph.metrics"].length;
+      const addedMetricsCount = addedMetrics.length;
       const maxMetricsSupportedCount = getMaxMetricsSupported(card.display);
 
-      const hasMetricsToAdd = options.length > value.length;
+      const hasMetricsToAdd = options.length > addedMetricsCount;
       const canAddAnother =
         addedMetricsCount < maxMetricsSupportedCount &&
         hasMetricsToAdd &&
-        !hasBreakout;
+        !hasBreakout &&
+        addedMetrics.every(metric => metric != null);
 
       return {
         options,
-        addAnother: canAddAnother ? t`Add another series...` : null,
+        addAnother: canAddAnother ? t`Add another series` : null,
         columns: data.cols,
         showColumnSetting: true,
       };
@@ -241,10 +286,10 @@ export const STACKABLE_SETTINGS = {
     isValid: (series, settings) => {
       if (settings["stackable.stack_type"] != null) {
         const displays = series.map(single => settings.series(single).display);
-        const hasStackable = _.any(displays, display =>
+        const stackableDisplays = displays.filter(display =>
           STACKABLE_DISPLAY_TYPES.has(display),
         );
-        return hasStackable;
+        return stackableDisplays.length > 1;
       }
       return true;
     },
@@ -256,7 +301,10 @@ export const STACKABLE_SETTINGS = {
         : null,
     getHidden: (series, settings) => {
       const displays = series.map(single => settings.series(single).display);
-      return !_.any(displays, display => STACKABLE_DISPLAY_TYPES.has(display));
+      const stackableDisplays = displays.filter(display =>
+        STACKABLE_DISPLAY_TYPES.has(display),
+      );
+      return stackableDisplays.length <= 1;
     },
     readDependencies: ["graph.metrics", "series"],
   },
@@ -294,6 +342,8 @@ export const GRAPH_GOAL_SETTINGS = {
     title: t`Goal line`,
     widget: "toggle",
     default: false,
+    inline: true,
+    marginBottom: "1rem",
   },
   "graph.goal_value": {
     section: t`Display`,
@@ -321,6 +371,8 @@ export const GRAPH_GOAL_SETTINGS = {
       return !insights || insights.length === 0;
     },
     useRawSeries: true,
+    inline: true,
+    marginBottom: "1rem",
   },
 };
 
@@ -332,17 +384,19 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
     getHidden: (series, vizSettings) =>
       vizSettings["stackable.stack_type"] === "normalized",
     default: false,
+    inline: true,
+    marginBottom: "1rem",
   },
   "graph.label_value_frequency": {
     section: t`Display`,
     title: t`Values to show`,
-    widget: "radio",
+    widget: "segmentedControl",
     getHidden: (series, vizSettings) =>
       vizSettings["graph.show_values"] !== true ||
       vizSettings["stackable.stack_type"] === "normalized",
     props: {
       options: [
-        { name: t`As many as can fit nicely`, value: "fit" },
+        { name: t`Some`, value: "fit" },
         { name: t`All`, value: "all" },
       ],
     },
@@ -351,8 +405,8 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
   },
   "graph.label_value_formatting": {
     section: t`Display`,
-    title: t`Value formatting`,
-    widget: "radio",
+    title: t`Auto formatting`,
+    widget: "segmentedControl",
     getHidden: (series, vizSettings) =>
       vizSettings["graph.show_values"] !== true ||
       vizSettings["stackable.stack_type"] === "normalized",

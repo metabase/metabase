@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import React, { useCallback } from "react";
 
 import { t } from "ttag";
 import cx from "classnames";
@@ -10,32 +10,22 @@ import Icon from "metabase/components/Icon";
 
 import ButtonBar from "metabase/components/ButtonBar";
 
-import ViewButton from "./ViewButton";
-
-import QuestionAlertWidget from "./QuestionAlertWidget";
-import QuestionTimelineWidget from "./QuestionTimelineWidget";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 import QuestionEmbedWidget, {
   QuestionEmbedWidgetTrigger,
 } from "metabase/query_builder/containers/QuestionEmbedWidget";
-
-import {
-  QuestionFilterWidget,
-  MobileQuestionFilterWidget,
-} from "./QuestionFilters";
-import {
-  QuestionSummarizeWidget,
-  MobileQuestionSummarizeWidget,
-} from "./QuestionSummaries";
-
-import QuestionRowCount from "./QuestionRowCount";
-import QuestionLastUpdated from "./QuestionLastUpdated";
-import { ViewFooterRoot } from "./ViewFooter.styled";
-
 import {
   getVisualizationRaw,
   getIconForVisualizationType,
 } from "metabase/visualizations";
+import ViewButton from "./ViewButton";
+
+import QuestionAlertWidget from "./QuestionAlertWidget";
+import QuestionTimelineWidget from "./QuestionTimelineWidget";
+
+import QuestionRowCount from "./QuestionRowCount";
+import QuestionLastUpdated from "./QuestionLastUpdated";
+import { ViewFooterRoot } from "./ViewFooter.styled";
 
 const ViewFooter = ({
   question,
@@ -55,24 +45,28 @@ const ViewFooter = ({
   visualizationSettings,
   isAdmin,
   canManageSubscriptions,
-  isPreviewing,
   isResultDirty,
   isVisualized,
   isTimeseries,
-  queryBuilderMode,
-  isShowingFilterSidebar,
-  onAddFilter,
-  onCloseFilter,
-  isShowingSummarySidebar,
-  onEditSummary,
-  onCloseSummary,
   isShowingTimelineSidebar,
   onOpenTimelines,
   onCloseTimelines,
+  updateQuestion,
 }) => {
+  const onQueryChange = useCallback(
+    query => {
+      const newQuestion = query.question();
+      updateQuestion(newQuestion, { run: true });
+    },
+    [updateQuestion],
+  );
+
   if (!result) {
     return null;
   }
+
+  const hasDataPermission = question.query().isEditable();
+  const hideChartSettings = result.error && !hasDataPermission;
 
   return (
     <ViewFooterRoot
@@ -82,49 +76,30 @@ const ViewFooter = ({
       <ButtonBar
         className="flex-full"
         left={[
-          QuestionFilterWidget.shouldRender({ question, queryBuilderMode }) && (
-            <MobileQuestionFilterWidget
-              className="sm-hide"
-              mr={1}
-              p={2}
-              isShowingFilterSidebar={isShowingFilterSidebar}
-              onAddFilter={onAddFilter}
-              onCloseFilter={onCloseFilter}
+          !hideChartSettings && (
+            <VizTypeButton
+              key="viz-type"
+              question={question}
+              result={result}
+              active={isShowingChartTypeSidebar}
+              onClick={
+                isShowingChartTypeSidebar ? onCloseChartType : onOpenChartType
+              }
             />
           ),
-          QuestionSummarizeWidget.shouldRender({
-            question,
-            queryBuilderMode,
-          }) && (
-            <MobileQuestionSummarizeWidget
-              className="sm-hide"
-              mr={1}
-              p={2}
-              isShowingSummarySidebar={isShowingSummarySidebar}
-              onEditSummary={onEditSummary}
-              onCloseSummary={onCloseSummary}
+          !hideChartSettings && (
+            <VizSettingsButton
+              key="viz-settings"
+              ml={1}
+              mr={[3, 0]}
+              active={isShowingChartSettingsSidebar}
+              onClick={
+                isShowingChartSettingsSidebar
+                  ? onCloseChartSettings
+                  : onOpenChartSettings
+              }
             />
           ),
-          <VizTypeButton
-            key="viz-type"
-            question={question}
-            result={result}
-            active={isShowingChartTypeSidebar}
-            onClick={
-              isShowingChartTypeSidebar ? onCloseChartType : onOpenChartType
-            }
-          />,
-          <VizSettingsButton
-            key="viz-settings"
-            ml={1}
-            mr={[3, 0]}
-            active={isShowingChartSettingsSidebar}
-            onClick={
-              isShowingChartSettingsSidebar
-                ? onCloseChartSettings
-                : onOpenChartSettings
-            }
-          />,
         ]}
         center={
           isVisualized && (
@@ -140,16 +115,20 @@ const ViewFooter = ({
           )
         }
         right={[
-          QuestionRowCount.shouldRender({ question, result, isObjectDetail }) &&
-            !isPreviewing && (
-              <QuestionRowCount
-                key="row_count"
-                className="mx1"
-                question={question}
-                isResultDirty={isResultDirty}
-                result={result}
-              />
-            ),
+          QuestionRowCount.shouldRender({
+            question,
+            result,
+            isObjectDetail,
+          }) && (
+            <QuestionRowCount
+              key="row_count"
+              className="mx1"
+              question={question}
+              isResultDirty={isResultDirty}
+              result={result}
+              onQueryChange={onQueryChange}
+            />
+          ),
           QuestionLastUpdated.shouldRender({ result }) && (
             <QuestionLastUpdated
               key="last-updated"

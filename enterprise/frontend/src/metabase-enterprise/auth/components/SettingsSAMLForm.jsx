@@ -12,7 +12,7 @@ import Form, {
   FormSubmit,
   FormMessage,
   FormSection,
-} from "metabase/containers/Form";
+} from "metabase/containers/FormikForm";
 
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import CopyWidget from "metabase/components/CopyWidget";
@@ -22,8 +22,7 @@ import GroupMappingsWidget from "metabase/admin/settings/components/widgets/Grou
 import MetabaseSettings from "metabase/lib/settings";
 import { SAMLFormSection } from "./SettingsSAMLForm.styled";
 
-@connect(null, { updateSettings })
-export default class SettingsSAMLForm extends Component {
+class SettingsSAMLForm extends Component {
   render() {
     const { elements, settingValues, updateSettings } = this.props;
     // TODO: move these to an outer component so we don't have to do it in every form page
@@ -50,6 +49,7 @@ export default class SettingsSAMLForm extends Component {
         className="mx2"
         style={{ maxWidth: 520 }}
         initialValues={initialValues}
+        overwriteOnInitialValuesChange
         onSubmit={updateSettings}
       >
         <Breadcrumbs
@@ -71,7 +71,7 @@ export default class SettingsSAMLForm extends Component {
           <h3 className="mb0">{t`Configure your identity provider (IdP)`}</h3>
           <p className="mb4 mt1 text-medium">{t`Your identity provider will need the following info about Metabase.`}</p>
 
-          <div className="Form-field" s>
+          <div className="Form-field">
             <div className="Form-label">{t`URL the IdP should redirect back to`}</div>
             <div className="pb1">{t`This is called the Single Sign On URL in Okta, the Application Callback URL in Auth0,
                                   and the ACS (Consumer) URL in OneLogin. `}</div>
@@ -185,3 +185,5 @@ export default class SettingsSAMLForm extends Component {
     );
   }
 }
+
+export default connect(null, { updateSettings })(SettingsSAMLForm);

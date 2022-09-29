@@ -177,7 +177,8 @@
   z-index: 1;
 }
 
-.PopoverBody--withBackground .PopoverFooterWhenIsNotEqualOps {
+.PopoverBody--withBackground .PopoverFooterWhenIsNotEqualOps,
+.popover .PopoverFooterWhenIsNotEqualOps {
   bottom: 0;
   padding-bottom: 12px;
   padding-top: 10px;

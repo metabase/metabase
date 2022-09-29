@@ -1,4 +1,4 @@
-import { browse, restore } from "__support__/e2e/cypress";
+import { browse, restore } from "__support__/e2e/helpers";
 import { USERS } from "__support__/e2e/cypress_data";
 
 const sizes = [
@@ -37,9 +37,7 @@ describe("scenarios > auth > signin", () => {
 
   it("should greet users after successful login", () => {
     cy.visit("/auth/login");
-    cy.findByLabelText("Email address")
-      .should("be.focused")
-      .type(admin.email);
+    cy.findByLabelText("Email address").should("be.focused").type(admin.email);
     cy.findByLabelText("Password").type(admin.password);
     cy.findByText("Sign in").click();
     cy.contains(/[a-z ]+, Bob/i);
@@ -51,6 +49,16 @@ describe("scenarios > auth > signin", () => {
     cy.findByLabelText("Password").type(admin.password);
     cy.findByText("Sign in").click();
     cy.contains(/[a-z ]+, Bob/i);
+  });
+
+  it("should allow toggling of Remember Me", () => {
+    cy.visit("/auth/login");
+
+    // default initial state
+    cy.findByRole("checkbox").should("be.checked");
+
+    cy.findByLabelText("Remember me").click();
+    cy.findByRole("checkbox").should("not.be.checked");
   });
 
   it("should redirect to a unsaved question after login", () => {
@@ -79,7 +87,7 @@ describe("scenarios > auth > signin", () => {
 
   sizes.forEach(size => {
     it(`should redirect from /auth/forgot_password back to /auth/login (viewport: ${size}) (metabase#12658)`, () => {
-      if (Cypress._.isArray(size)) {
+      if (Array.isArray(size)) {
         cy.viewport(size[0], size[1]);
       } else {
         cy.viewport(size);

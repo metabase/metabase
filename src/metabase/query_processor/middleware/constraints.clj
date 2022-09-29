@@ -19,8 +19,9 @@
   "General maximum number of rows to return from an API query."
   10000)
 
-(def default-query-constraints
+(defn default-query-constraints
   "Default map of constraints that we apply on dataset queries executed by the api."
+  []
   {:max-results           max-results
    :max-results-bare-rows (or (max-results-bare-rows) default-max-results-bare-rows)})
 
@@ -35,7 +36,7 @@
     (assoc constraints :max-results-bare-rows max-results)))
 
 (defn- merge-default-constraints [constraints]
-  (merge default-query-constraints constraints))
+  (merge (default-query-constraints) constraints))
 
 (defn- add-default-userland-constraints*
   "Add default values of `:max-results` and `:max-results-bare-rows` to `:constraints` map `m`."

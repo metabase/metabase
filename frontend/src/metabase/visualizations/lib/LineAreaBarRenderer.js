@@ -7,6 +7,12 @@ import { assocIn, updateIn } from "icepick";
 import { t } from "ttag";
 import { lighten } from "metabase/lib/colors";
 
+import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
+import { isStructured } from "metabase/meta/Card";
+import {
+  updateDateTimeFilter,
+  updateNumericFilter,
+} from "metabase/modes/lib/actions";
 import Question from "metabase-lib/lib/Question";
 
 import {
@@ -29,8 +35,6 @@ import { getTrendDataPointsFromInsight } from "./trends";
 
 import fillMissingValuesInDatas from "./fill_data";
 import { NULL_DIMENSION_WARNING, unaggregatedDataWarning } from "./warnings";
-
-import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
 
 import {
   forceSortedGroupsOfGroups,
@@ -58,13 +62,6 @@ import {
 } from "./renderer_utils";
 
 import lineAndBarOnRender from "./LineAreaBarPostRender";
-
-import { isStructured } from "metabase/meta/Card";
-
-import {
-  updateDateTimeFilter,
-  updateNumericFilter,
-} from "metabase/modes/lib/actions";
 
 import { lineAddons } from "./graph/addons";
 import { initBrush } from "./graph/brush";
@@ -126,13 +123,11 @@ function getXAxisProps(props, datas, warn) {
 ///------------------------------------------------------------ DIMENSIONS & GROUPS ------------------------------------------------------------///
 
 function getDimensionsAndGroupsForScatterChart(datas) {
-  const dataset = crossfilter();
-  datas.map(data => dataset.add(data));
-
+  const dataset = crossfilter(datas);
   const dimension = dataset.dimension(row => row);
   const groups = datas.map(data => {
     const dim = crossfilter(data).dimension(row => row);
-    return [dim.group().reduceSum(d => d[2] || 1)];
+    return [dim.group().reduceSum(d => d[1] ?? 1)];
   });
 
   return { dimension, groups };
@@ -446,20 +441,29 @@ function applyChartLineBarSettings(
   }
 }
 
-// TODO - give this a good name when I figure out what it does
-function doScatterChartStuff(chart, datas, index, { yExtent, yExtents }) {
+const BUBBLE_SIZE_INDEX = 2;
+
+const getBubbleSizeMaxDomain = datas => {
+  const seriesData = datas.flat();
+  const sizeValues = seriesData.map(data => data[BUBBLE_SIZE_INDEX]);
+  return d3.max(sizeValues);
+};
+
+function configureScatterChart(chart, datas, index) {
   chart.keyAccessor(d => d.key[0]).valueAccessor(d => d.key[1]);
 
   if (chart.radiusValueAccessor) {
-    const isBubble = datas[index][0].length > 2;
-    if (isBubble) {
+    const hasBubbleRadiusValues = datas[index][0].length > BUBBLE_SIZE_INDEX;
+    const bubbleSizeMaxDomain = getBubbleSizeMaxDomain(datas);
+
+    if (hasBubbleRadiusValues) {
       const BUBBLE_SCALE_FACTOR_MAX = 64;
       chart
-        .radiusValueAccessor(d => d.value)
+        .radiusValueAccessor(d => d.key[2])
         .r(
           d3.scale
             .sqrt()
-            .domain([0, yExtent[1] * BUBBLE_SCALE_FACTOR_MAX])
+            .domain([0, bubbleSizeMaxDomain * BUBBLE_SCALE_FACTOR_MAX])
             .range([0, 1]),
         );
     } else {
@@ -494,7 +498,7 @@ function setChartColor({ series, settings, chartType }, chart, groups, index) {
   }
 
   if (chartType === "waterfall") {
-    chart.on("pretransition", function(chart) {
+    chart.on("pretransition", function (chart) {
       chart
         .selectAll("g.stack._0 rect.bar")
         .style("fill", "transparent")
@@ -551,7 +555,7 @@ function getCharts(
         .svg()
         // shift bar/line and dots
         .selectAll(".stack, .dc-tooltip")
-        .each(function() {
+        .each(function () {
           this.setAttribute("transform", `translate(${spacing / 2}, 0)`);
         });
     });
@@ -578,7 +582,7 @@ function getCharts(
       .useRightYAxis(yAxisSplit.length > 1 && yAxisSplit[1].includes(index));
 
     if (chartType === "scatter") {
-      doScatterChartStuff(chart, datas, index, yAxisProps);
+      configureScatterChart(chart, datas, index, yAxisProps);
     }
 
     if (chart.defined) {
@@ -640,7 +644,7 @@ function addGoalChartAndGetOnGoalHover(
     .lineChart(parent)
     .dimension(goalDimension)
     .group(goalGroup)
-    .on("renderlet", function(chart) {
+    .on("renderlet", function (chart) {
       // remove "sub" class so the goal is not used in voronoi computation
       chart
         .select(".sub._" + goalIndex)
@@ -713,7 +717,7 @@ function addTrendlineChart(
       .lineChart(parent)
       .dimension(trendDimension)
       .group(trendGroup)
-      .on("renderlet", function(chart) {
+      .on("renderlet", function (chart) {
         // remove "sub" class so the trend is not used in voronoi computation
         chart
           .select(".sub._" + trendIndex)
@@ -749,7 +753,7 @@ function applyYAxisSettings(parent, { yLeftSplit, yRightSplit }) {
 
 // TODO - better name
 function doGroupedBarStuff(parent) {
-  parent.on("renderlet.grouped-bar", function(chart) {
+  parent.on("renderlet.grouped-bar", function (chart) {
     // HACK: dc.js doesn't support grouped bar charts so we need to manually resize/reposition them
     // https://github.com/dc-js/dc.js/issues/558
     const barCharts = chart
@@ -780,7 +784,7 @@ function doGroupedBarStuff(parent) {
 
 // TODO - better name
 function doHistogramBarStuff(parent) {
-  parent.on("renderlet.histogram-bar", function(chart) {
+  parent.on("renderlet.histogram-bar", function (chart) {
     // manually size bars to fill space, minus 1 pixel padding
     const barCharts = chart
       .selectAll(".sub rect:first-child")[0]
@@ -851,11 +855,8 @@ export default function lineAreaBar(element, props) {
     xAxisProps.xValues = datas.map(data => data[0][0]);
   } // TODO - what is this for?
 
-  const {
-    dimension,
-    groups,
-    yExtents,
-  } = getDimensionsAndGroupsAndUpdateSeriesDisplayNames(props, datas, warn);
+  const { dimension, groups, yExtents } =
+    getDimensionsAndGroupsAndUpdateSeriesDisplayNames(props, datas, warn);
 
   const yAxisProps = getYAxisProps(props, yExtents, datas);
 

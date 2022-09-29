@@ -1,3 +1,7 @@
+---
+title: My dashboard filters don't work
+---
+
 # My dashboard filters don't work
 
 You've tried to add a [filter widget][filter-widget-gloss] to your dashboard, but:
@@ -7,6 +11,8 @@ You've tried to add a [filter widget][filter-widget-gloss] to your dashboard, bu
 - the filter removes all of the rows from the table no matter what value you set it to.
 
 If you've created a [linked filter][linked-filter-gloss], please see [this troubleshooting guide][troubleshoot-linked-filters] instead.
+
+If you're using a [SQL variable][sql-variable-gloss] with the variable type "field filter", go to [Troubleshooting SQL variables][troubleshoot-sql-variables].
 
 ## Is the dashboard filter actually connected to your question?
 
@@ -24,7 +30,8 @@ If you've created a [linked filter][linked-filter-gloss], please see [this troub
 
 **Steps to take**:
 
-1. Check that your SQL query contains at least [one variable][sql-variable] for the filter to insert the value. These can be plain variables, or [Field Filters][field-filter], with names enclosed in double curly braces `{% raw %}{{variable_name}}{% endraw %}`, typically in a `WHERE` clause.
+1. Check that your SQL query contains at least [one variable][sql-variable-gloss] for the filter to insert the value. These can be plain variables, or [Field Filters][field-filter], with names enclosed in double curly braces `{% raw %}{{variable_name}}{% endraw %}`, typically in a `WHERE` clause.
+2. If these steps don’t fix your error, go to [Troubleshooting SQL variables][troubleshoot-sql-variables].
 
 If you built your question in the Query Builder, Metabase knows which columns you're using, and which columns you can connect to different types of filters. So you can add a dashboard filter and refer to columns in the question's results without creating variables explicitly.
 
@@ -56,9 +63,10 @@ If a filter that used to work no longer seems to, or seems to eliminate all of t
 2. Compare the names of the fields used in the question with the actual names of the fields in the database.
 3. Modify the question to match the current database schema.
 
-[field-filter]: /learn/sql-questions/field-filters.html
-[filter-widget-gloss]: /glossary/filter_widget
-[linked-filter-gloss]: /glossary/linked_filter
-[sql-variable]: /learn/sql-questions/sql-variables.html
-[sync-scan]: ./sync-fingerprint-scan.html
-[troubleshoot-linked-filters]: ./linked-filters.html
+[field-filter]: https://www.metabase.com/learn/sql-questions/field-filters
+[filter-widget-gloss]: https://www.metabase.com/glossary/filter_widget
+[linked-filter-gloss]: https://www.metabase.com/glossary/linked_filter
+[sql-variable-gloss]: https://www.metabase.com/glossary/variable#example-variable-in-metabase
+[sync-scan]: ./sync-fingerprint-scan.md
+[troubleshoot-linked-filters]: ./linked-filters.md
+[troubleshoot-sql-variables]: ./sql.md#my-sql-variables-arent-working

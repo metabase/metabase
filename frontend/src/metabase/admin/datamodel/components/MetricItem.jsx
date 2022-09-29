@@ -2,9 +2,8 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import Icon from "metabase/components/Icon";
-import ObjectActionSelect from "./ObjectActionSelect";
-
 import { formatQueryDescription } from "metabase/lib/query/description";
+import ObjectActionSelect from "./ObjectActionSelect";
 
 export default class MetricItem extends Component {
   static propTypes = {

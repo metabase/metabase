@@ -319,7 +319,7 @@ export const adjustBooleans = tree =>
             const [op, _id, opts] = operand;
             const isBooleanField =
               op === "field" && opts?.["base-type"] === "type/Boolean";
-            if (isBooleanField || op === "segment") {
+            if (isBooleanField) {
               return withAST([["=", operand, true], value], operand);
             }
             return [operand, value];
@@ -349,7 +349,10 @@ export const adjustBooleans = tree =>
     return node;
   });
 
-const pipe = (...fns) => x => fns.reduce((v, f) => f(v), x);
+const pipe =
+  (...fns) =>
+  x =>
+    fns.reduce((v, f) => f(v), x);
 
 export const parse = pipe(
   recursiveParse,

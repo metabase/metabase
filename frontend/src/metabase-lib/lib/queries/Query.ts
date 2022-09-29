@@ -5,16 +5,14 @@ import { DependentMetadataItem } from "metabase-types/types/Query";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Question from "metabase-lib/lib/Question";
 import Dimension from "metabase-lib/lib/Dimension";
-import Variable from "metabase-lib/lib/Variable";
-import { memoize } from "metabase-lib/lib/utils";
+import Variable from "metabase-lib/lib/variables/Variable";
+import { memoizeClass } from "metabase-lib/lib/utils";
 import DimensionOptions from "metabase-lib/lib/DimensionOptions";
 
-type QueryUpdateFn = (datasetQuery: DatasetQuery) => void;
 /**
  * An abstract class for all query types (StructuredQuery & NativeQuery)
  */
-
-export default class Query {
+class QueryInner {
   _metadata: Metadata;
 
   /**
@@ -34,7 +32,6 @@ export default class Query {
    * Returns a question updated with the current dataset query.
    * Can only be applied to query that is a direct child of the question.
    */
-  @memoize
   question(): Question {
     return this._originalQuestion.setQuery(this);
   }
@@ -67,7 +64,7 @@ export default class Query {
     return this._datasetQuery;
   }
 
-  setDatasetQuery(datasetQuery: DatasetQuery): Query {
+  setDatasetQuery(datasetQuery: DatasetQuery): QueryInner {
     return this;
   }
 
@@ -117,18 +114,11 @@ export default class Query {
     return [];
   }
 
-  setDefaultQuery(): Query {
+  setDefaultQuery(): QueryInner {
     return this;
   }
-
-  /**
-   * Helper for updating with functions that expect a DatasetQuery object, or proxy to parent question
-   */
-  update(update?: QueryUpdateFn, ...args: any[]) {
-    if (update) {
-      return update(this.datasetQuery(), ...args);
-    } else {
-      return this.question().update(undefined, ...args);
-    }
-  }
 }
+
+export default class Query extends memoizeClass<QueryInner>("question")(
+  QueryInner,
+) {}

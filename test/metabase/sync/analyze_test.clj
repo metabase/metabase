@@ -1,7 +1,9 @@
 (ns metabase.sync.analyze-test
   (:require [clojure.test :refer :all]
+            [metabase.analytics.snowplow-test :as snowplow-test]
             [metabase.models.database :refer [Database]]
             [metabase.models.field :as field :refer [Field]]
+            [metabase.models.interface :as mi]
             [metabase.models.table :refer [Table]]
             [metabase.sync.analyze :as analyze]
             [metabase.sync.analyze.classifiers.category :as classifiers.category]
@@ -30,7 +32,7 @@
       ;; the type of the value that comes back may differ a bit between different application DBs
       (let [analysis-date (db/select-one-field :last_analyzed Field :table_id (data/id :venues))]
         ;; ok, NOW run the analysis process
-        (analyze/analyze-table! (Table (data/id :venues)))
+        (analyze/analyze-table! (db/select-one Table :id (data/id :venues)))
         ;; check and make sure all the Fields don't have semantic types and their last_analyzed date didn't change
         ;; PK is ok because it gets marked as part of metadata sync
         (is (= (zipmap ["CATEGORY_ID" "ID" "LATITUDE" "LONGITUDE" "NAME" "PRICE"]
@@ -96,10 +98,10 @@
     (sync-survives-crash? classifiers.name/infer-entity-type)))
 
 (defn- classified-semantic-type [values]
-  (let [field (field/map->FieldInstance {:base_type :type/Text})]
+  (let [field (mi/instance Field {:base_type :type/Text})]
     (:semantic_type (classifiers.text-fingerprint/infer-semantic-type
-                    field
-                    (transduce identity (fingerprinters/fingerprinter field) values)))))
+                     field
+                     (transduce identity (fingerprinters/fingerprinter field) values)))))
 
 (deftest classify-json-test
   (doseq [[group values->expected] {"When all the values are valid JSON dicts they're valid JSON"
@@ -183,7 +185,7 @@
 (defn- analyze-table! [table]
   ;; we're calling `analyze-db!` instead of `analyze-table!` because the latter doesn't care if you try to sync a
   ;; hidden table and will allow that. TODO - Does that behavior make sense?
-  (analyze/analyze-db! (Database (:db_id table))))
+  (analyze/analyze-db! (db/select-one Database :id (:db_id table))))
 
 (deftest dont-analyze-hidden-tables-test
   (testing "expect all the kinds of hidden tables to stay un-analyzed through transitions and repeated syncing"
@@ -221,7 +223,7 @@
 (deftest analyze-db!-return-value-test
   (testing "Returns values"
     (mt/with-temp* [Table [table (fake-table)]
-                    Field [field (fake-field table)]]
+                    Field [_     (fake-field table)]]
       (let [results (analyze-table! table)]
         (testing "has the steps performed"
           (is (= ["fingerprint-fields" "classify-fields" "classify-tables"]
@@ -243,7 +245,7 @@
   (testing "re-hiding a table should not cause it to be analyzed"
     ;; create an initially hidden table
     (mt/with-temp* [Table [table (fake-table :visibility_type "hidden")]
-                    Field [field (fake-field table)]]
+                    Field [_     (fake-field table)]]
       ;; switch the table to visible (triggering a sync) and get the last sync time
       (let [last-sync-time (do (set-table-visibility-type-via-api! table nil)
                                (latest-sync-time table))]
@@ -252,3 +254,24 @@
         (is (= last-sync-time
                (latest-sync-time table))
             "sync time shouldn't change")))))
+
+(deftest analyze-should-send-a-snowplow-event-test
+  (testing "the recorded event should include db-id and db-engine"
+    (snowplow-test/with-fake-snowplow-collector
+      (mt/with-temp* [Table [table  (fake-table)]
+                      Field [_field (fake-field table)]]
+        (analyze-table! table)
+        (is (= {:data {"task_id"    true
+                       "event"      "new_task_history"
+                       "started_at" true
+                       "ended_at"   true
+                       "duration"   true
+                       "db_engine"  (name (db/select-one-field :engine Database :id (mt/id)))
+                       "db_id"      true
+                       "task_name"  "classify-tables"}
+                :user-id nil}
+               (-> (snowplow-test/pop-event-data-and-user-id!)
+                   last
+                   mt/boolean-ids-and-timestamps
+                   (update :data dissoc "task_details")
+                   (update-in [:data "duration"] some?))))))))

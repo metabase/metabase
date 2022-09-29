@@ -1,51 +1,36 @@
-import { color, alpha } from "metabase/lib/colors";
 import styled from "@emotion/styled";
+import { alpha, color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 import Button from "metabase/core/components/Button";
+import BaseNumericInput from "metabase/components/NumericInput";
+import BaseDateUnitSelector from "./DateUnitSelector";
 
-type ButtonProps = {
+type BaseProps = {
   primaryColor?: string;
-  selected?: boolean;
 };
 
-const defaultColor = color("brand");
-
-export const CurrentButton = styled(Button)<ButtonProps>`
-  border: none;
-  border-radius: 99px;
-
-  background-color: ${({ selected, primaryColor = defaultColor }) =>
-    selected ? primaryColor : alpha(primaryColor, 0.1)};
-  color: ${({ selected, primaryColor = defaultColor }) =>
-    selected ? "white" : primaryColor};
-
-  padding-top: ${space(1)};
-  padding-bottom: ${space(1)};
-
-  &:hover {
-    color: white;
-    background-color: ${props => props.primaryColor || color("brand")};
+export const DateUnitSelector = styled(BaseDateUnitSelector)<BaseProps>`
+  button:focus {
+    border-color: ${({ primaryColor = color("brand") }) => primaryColor};
   }
 `;
 
-export const CurrentContainer = styled.div<{ first?: boolean }>`
-  display: flex;
-  flex-wrap: no-wrap;
-  grid-gap: ${space(2)};
-  margin-bottom: ${({ first }) => (first ? space(2) : "")};
-`;
-
-export const CurrentPopover = styled.div`
-  color: ${color("white")};
-  background-color: ${color("black")};
-  padding: ${space(1)} ${space(2)};
+export const NumericInput = styled(BaseNumericInput)<BaseProps>`
+  &:focus {
+    border-color: ${({ primaryColor = color("brand") }) => primaryColor};
+  }
 `;
 
 export const OptionsContainer = styled.div`
   background-color: ${color("white")};
   padding: ${space(2)} ${space(1)};
 `;
+
+type ButtonProps = {
+  primaryColor?: string;
+  selected?: boolean;
+};
 
 type OptionButtonProps = ButtonProps & {
   reverseIconDirection?: boolean;
@@ -60,11 +45,11 @@ export const OptionButton = styled(Button)<OptionButtonProps>`
       reverseIconDirection ? "rotate(180deg)" : ""};
   }
 
-  color: ${({ selected, primaryColor = defaultColor }) =>
+  color: ${({ selected, primaryColor = color("brand") }) =>
     selected ? primaryColor : color("text-dark")};
 
   &:hover {
-    color: ${({ primaryColor = defaultColor }) => primaryColor};
+    color: ${({ primaryColor = color("brand") }) => primaryColor};
     background: none;
   }
 `;
@@ -74,7 +59,7 @@ export const MoreButton = styled(Button)<ButtonProps>`
   color: ${color("text-medium")};
 
   &:hover {
-    color: ${({ primaryColor = defaultColor }) => primaryColor};
+    color: ${({ primaryColor = color("brand") }) => primaryColor};
   }
 `;
 

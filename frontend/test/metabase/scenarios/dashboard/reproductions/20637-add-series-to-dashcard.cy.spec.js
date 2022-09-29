@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore } from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -80,8 +80,8 @@ function createQuestionsAndDashboard() {
                 card_id,
                 row: 0,
                 col: 0,
-                sizeX: 12,
-                sizeY: 10,
+                size_x: 12,
+                size_y: 10,
               },
             ],
           });

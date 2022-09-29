@@ -20,4 +20,5 @@
      (compojure/context "/user" [] (+auth user/routes)))))
   ;; when sandboxing is enabled we *replace* GET /api/table/:id/query_metadata with a special EE version. If
   ;; sandboxing is not enabled, this passes thru to the OSS implementation of the endpoint.
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (compojure/context "/table" [] (ee.api.common/+when-premium-feature :sandboxes (+auth table/routes))))

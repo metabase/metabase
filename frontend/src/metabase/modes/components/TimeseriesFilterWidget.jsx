@@ -1,6 +1,8 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { t } from "ttag";
+import cx from "classnames";
+import _ from "underscore";
 import DatePicker from "metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import SelectButton from "metabase/core/components/SelectButton";
@@ -10,14 +12,12 @@ import * as Query from "metabase/lib/query/query";
 import * as Filter from "metabase/lib/query/filter";
 import * as Card from "metabase/meta/Card";
 
-import { FieldDimension } from "metabase-lib/lib/Dimension";
 import { generateTimeFilterValuesDescriptions } from "metabase/lib/query_time";
-
-import cx from "classnames";
-import _ from "underscore";
+import { FieldDimension } from "metabase-lib/lib/Dimension";
 
 export default class TimeseriesFilterWidget extends Component {
   state = {
+    dimension: null,
     filter: null,
     filterIndex: -1,
     currentFilter: null,
@@ -34,40 +34,39 @@ export default class TimeseriesFilterWidget extends Component {
       const filters = query.filters();
 
       const dimensions = breakouts.map(b => b.dimension());
-      const dimension = dimensions[0];
+      const firstDimension = dimensions[0];
 
-      const timeseriesDimension =
-        dimension instanceof FieldDimension
-          ? dimension.withoutTemporalBucketing()
-          : dimension;
+      const dimension =
+        firstDimension instanceof FieldDimension
+          ? firstDimension.withoutTemporalBucketing()
+          : firstDimension;
 
       const filterIndex = _.findIndex(
         filters,
         filter =>
           Filter.isFieldFilter(filter) &&
-          _.isEqual(filter[1], timeseriesDimension.mbql()),
+          _.isEqual(filter[1], dimension.mbql()),
       );
 
       let filter, currentFilter;
       if (filterIndex >= 0) {
         filter = currentFilter = filters[filterIndex];
       } else {
-        filter = ["time-interval", timeseriesDimension.mbql(), -30, "day"];
+        filter = null; // All time
       }
 
-      this.setState({ filter, filterIndex, currentFilter });
+      this.setState({ dimension, filter, filterIndex, currentFilter });
     }
   }
 
   render() {
     const { className, card, setDatasetQuery } = this.props;
-    const { filter, filterIndex, currentFilter } = this.state;
+    const { dimension, filter, filterIndex, currentFilter } = this.state;
     let currentDescription;
 
     if (currentFilter) {
-      currentDescription = generateTimeFilterValuesDescriptions(
-        currentFilter,
-      ).join(" - ");
+      currentDescription =
+        generateTimeFilterValuesDescriptions(currentFilter).join(" - ");
       if (currentFilter[0] === ">") {
         currentDescription = t`After ${currentDescription}`;
       } else if (currentFilter[0] === "<") {
@@ -94,7 +93,8 @@ export default class TimeseriesFilterWidget extends Component {
       >
         <DatePicker
           className="m2"
-          filter={this.state.filter}
+          dimension={dimension}
+          filter={filter}
           onFilterChange={newFilter => {
             this.setState({ filter: newFilter });
           }}

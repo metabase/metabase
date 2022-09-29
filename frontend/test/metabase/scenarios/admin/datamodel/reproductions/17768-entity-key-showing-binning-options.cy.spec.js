@@ -3,7 +3,8 @@ import {
   openReviewsTable,
   popover,
   summarize,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { REVIEWS } = SAMPLE_DATABASE;
@@ -19,7 +20,7 @@ describe("issue 17768", () => {
     });
 
     // Sync "Sample Database" schema
-    cy.request("POST", `/api/database/1/sync_schema`);
+    cy.request("POST", `/api/database/${SAMPLE_DB_ID}/sync_schema`);
 
     waitForSyncToFinish();
 

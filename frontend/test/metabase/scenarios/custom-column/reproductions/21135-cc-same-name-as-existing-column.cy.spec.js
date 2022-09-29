@@ -1,4 +1,5 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore } from "__support__/e2e/helpers";
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
@@ -23,9 +24,7 @@ describe("issue 21135", () => {
   });
 
   it("should handle cc with the same name as the table column (metabase#21135)", () => {
-    cy.findAllByTestId("notebook-cell-item")
-      .contains("Price")
-      .click();
+    cy.findAllByTestId("notebook-cell-item").contains("Price").click();
     cy.button("Update").click();
 
     previewCustomColumnNotebookStep();
@@ -44,7 +43,9 @@ describe("issue 21135", () => {
 });
 
 function switchToNotebookView() {
-  cy.intercept("GET", "/api/database/1/schema/PUBLIC").as("publicSchema");
+  cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as(
+    "publicSchema",
+  );
 
   cy.icon("notebook").click();
   cy.wait("@publicSchema");
@@ -53,9 +54,7 @@ function switchToNotebookView() {
 function previewCustomColumnNotebookStep() {
   cy.intercept("POST", "/api/dataset").as("dataset");
 
-  cy.findByTestId("step-expression-0-0")
-    .find(".Icon-play")
-    .click();
+  cy.findByTestId("step-expression-0-0").find(".Icon-play").click();
 
   cy.wait("@dataset");
 }

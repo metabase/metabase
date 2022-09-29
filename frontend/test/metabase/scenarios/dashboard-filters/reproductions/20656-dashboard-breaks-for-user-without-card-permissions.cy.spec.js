@@ -1,4 +1,9 @@
-import { restore, filterWidget, visitDashboard } from "__support__/e2e/cypress";
+import {
+  restore,
+  filterWidget,
+  visitDashboard,
+  editDashboard,
+} from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -17,7 +22,7 @@ describe("issue 20656", () => {
     cy.signInAsAdmin();
   });
 
-  it("should allow a user to visit a dashboard even without a permission to see the dashboard card (metabase#20656)", () => {
+  it("should allow a user to visit a dashboard even without a permission to see the dashboard card (metabase#20656, metabase#24536)", () => {
     cy.createQuestionAndDashboard({
       questionDetails: {
         query: { "source-table": PRODUCTS_ID, limit: 2 },
@@ -34,8 +39,8 @@ describe("issue 20656", () => {
             card_id,
             row: 0,
             col: 0,
-            sizeX: 18,
-            sizeY: 10,
+            size_x: 18,
+            size_y: 10,
             parameter_mappings: [
               {
                 parameter_id: filter.id,
@@ -54,7 +59,19 @@ describe("issue 20656", () => {
 
     // Make sure the filter widget is there
     filterWidget();
-
     cy.findByText("Sorry, you don't have permission to see this card.");
+
+    // Trying to edit the filter should not show mapping fields and shouldn't break frontend (metabase#24536)
+    editDashboard();
+
+    cy.findByTestId("edit-dashboard-parameters-widget-container")
+      .find(".Icon-gear")
+      .click();
+
+    cy.findByText("Column to filter on")
+      .parent()
+      .within(() => {
+        cy.icon("key");
+      });
   });
 });

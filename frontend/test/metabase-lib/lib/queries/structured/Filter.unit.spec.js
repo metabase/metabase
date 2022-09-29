@@ -1,6 +1,5 @@
-import Filter from "metabase-lib/lib/queries/structured/Filter";
-
 import { ORDERS, PEOPLE } from "__support__/sample_database_fixture";
+import Filter from "metabase-lib/lib/queries/structured/Filter";
 
 const query = ORDERS.query();
 
@@ -31,6 +30,11 @@ describe("Filter", () => {
           false,
         );
       });
+      it("should return false with a null operator", () => {
+        expect(
+          filter([null, ["field", ORDERS.TOTAL.id, null], 42]).isValid(),
+        ).toBe(false);
+      });
       it("should return true for a filter with an expression for the field", () => {
         expect(
           filter(["=", ["/", ["field", 12341234, null], 43], 42]).isValid(),
@@ -57,9 +61,9 @@ describe("Filter", () => {
       ).toEqual(["=", ["field", ORDERS.TOTAL.id, null], 42]);
     });
     it("should set the dimension for new filter clause", () => {
-      expect(
-        filter([]).setDimension(["field", ORDERS.TOTAL.id, null]),
-      ).toEqual([null, ["field", ORDERS.TOTAL.id, null]]);
+      expect(filter([]).setDimension(["field", ORDERS.TOTAL.id, null])).toEqual(
+        [null, ["field", ORDERS.TOTAL.id, null]],
+      );
     });
     it("should set the dimension and default operator for empty filter clauses", () => {
       expect(

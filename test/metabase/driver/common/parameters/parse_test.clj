@@ -76,7 +76,11 @@
 
            "JSON queries that contain non-param fragments like '}}'"
            {"{x: {y: \"{{param}}\"}}"         ["{x: {y: \"" (param "param") "\"}}"]
-            "{$match: {{{date}}, field: 1}}}" ["{$match: {" (param "date") ", field: 1}}}"]}}]
+            "{$match: {{{date}}, field: 1}}}" ["{$match: {" (param "date") ", field: 1}}}"]}
+
+           "Queries that contain non-param fragments like '}}'"
+           {"select ']]' from t [[where x = {{foo}}]]" ["select ']]' from t " (optional "where x = " (param "foo"))]
+            "select '}}' from t [[where x = {{foo}}]]" ["select '}}' from t " (optional "where x = " (param "foo"))]}}]
     (testing group
       (doseq [[s expected] s->expected]
         (is (= expected
@@ -87,7 +91,9 @@
     (doseq [invalid ["select * from foo [[where bar = {{baz}} "
                      "select * from foo [[where bar = {{baz]]"
                      "select * from foo {{bar}} {{baz"
-                     "select * from foo [[clause 1 {{bar}}]] [[clause 2"]]
+                     "select * from foo [[clause 1 {{bar}}]] [[clause 2"
+                     "select * from foo where bar = {{baz]]"
+                     "select * from foo [[where bar = {{baz}}}}"]]
       (is (thrown? clojure.lang.ExceptionInfo
                    (params.parse/parse invalid))
           (format "Parsing %s should throw an exception" (pr-str invalid))))))

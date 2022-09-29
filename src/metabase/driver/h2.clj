@@ -7,6 +7,7 @@
             [metabase.db.spec :as mdb.spec]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
+            [metabase.driver.h2.actions :as h2.actions]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -19,7 +20,13 @@
             [metabase.util.i18n :refer [deferred-tru tru]]
             [metabase.util.ssh :as ssh])
   (:import [java.sql Clob ResultSet ResultSetMetaData]
-           java.time.OffsetTime))
+           java.time.OffsetTime
+           org.h2.command.Parser
+           org.h2.engine.Session
+           org.h2.engine.SessionRemote))
+
+;; method impls live in this namespace
+(comment h2.actions/keep-me)
 
 (driver/register! :h2, :parent :sql-jdbc)
 
@@ -29,8 +36,12 @@
 
 (doseq [[feature supported?] {:full-join               false
                               :regex                   false
-                              :percentile-aggregations false}]
-  (defmethod driver/supports? [:h2 feature] [_ _] supported?))
+                              :percentile-aggregations false
+                              :actions                 true
+                              :actions/custom          true}]
+  (defmethod driver/database-supports? [:h2 feature]
+    [_driver _feature _database]
+    supported?))
 
 (defmethod driver/connection-properties :h2
   [_]
@@ -49,7 +60,6 @@
 (defmethod driver/db-start-of-week :h2
   [_]
   :monday)
-
 
 ;; TODO - it would be better not to put all the options in the connection string in the first place?
 (defn- connection-string->file+options
@@ -84,9 +94,66 @@
            (ex-info (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")
              {:type qp.error-type/db})))))))
 
+(defn- make-h2-parser [h2-db-id]
+  (with-open [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! :h2 h2-db-id))]
+    (let [inner-field (doto
+                          (.getDeclaredField (class conn) "inner")
+                        (.setAccessible true))
+          h2-jdbc-conn (.get inner-field conn)
+          session-field (doto
+                            (.getDeclaredField (class h2-jdbc-conn) "session")
+                          (.setAccessible true))
+          session (.get session-field h2-jdbc-conn)]
+      (cond
+        (instance? Session session)
+        (Parser. session)
+
+        ;; a SessionRemote cannot be used to make a parser
+        (instance? SessionRemote session)
+        ::client-side-session
+
+        :else
+        (throw (ex-info "Unknown session type" {:session session}))))))
+
+(defn- parse
+  ([h2-db-id s]
+   (let [h2-parser (make-h2-parser h2-db-id)]
+     (when-not (= ::client-side-session h2-parser)
+       (let [parse-method (doto (.getDeclaredMethod (class h2-parser)
+                                                    "parse"
+                                                    (into-array Class [java.lang.String]))
+                            (.setAccessible true))
+             parse-index-field (doto (.getDeclaredField (class h2-parser) "parseIndex")
+                                 (.setAccessible true))]
+         ;; parser moves parseIndex, so get-offset will be the index in the string that was parsed "up to"
+         (parse s
+                (fn parser [s]
+                  (try (.invoke parse-method h2-parser (object-array [s]))
+                       ;; need to chew through error scenarios because of a query like:
+                       ;;
+                       ;; vulnerability; abc;
+                       ;;
+                       ;; which would cause this parser to break w/o the error handling here, but this way we
+                       ;; still return the org.h2.command.ddl.* classes.
+                       (catch Throwable _ ::parse-fail)))
+                (fn get-offset [] (.get parse-index-field h2-parser)))))))
+  ([s parser get-offset] (vec (concat
+                               [(parser s)];; this call to parser parses up to the end of the first sql statement
+                               (let [more (apply str (drop (get-offset) s))] ;; more is the unparsed part of s
+                                 (when-not (str/blank? more)
+                                   (parse more parser get-offset)))))))
+
+(defn- check-disallow-ddl-commands [{:keys [database] :as query}]
+  (when query
+    (let [operations (parse database (-> query :native :query))
+          op-classes (map class operations)]
+      (when (some #(re-find #"org.h2.command.ddl." (str %)) op-classes)
+        (throw (ex-info "DDL commands are not allowed to be used with h2." {:classes op-classes}))))))
+
 (defmethod driver/execute-reducible-query :h2
   [driver query chans respond]
   (check-native-query-not-using-default-user query)
+  (check-disallow-ddl-commands query)
   ((get-method driver/execute-reducible-query :sql-jdbc) driver query chans respond))
 
 (defmethod sql.qp/add-interval-honeysql-form :h2
@@ -108,15 +175,14 @@
   [_ message]
   (condp re-matches message
     #"^A file path that is implicitly relative to the current working directory is not allowed in the database URL .*$"
-    (driver.common/connection-error-messages :cannot-connect-check-host-and-port)
+    :implicitly-relative-db-file-path
 
     #"^Database .* not found .*$"
-    (driver.common/connection-error-messages :cannot-connect-check-host-and-port)
+    :db-file-not-found
 
     #"^Wrong user name or password .*$"
-    (driver.common/connection-error-messages :username-or-password-incorrect)
+    :username-or-password-incorrect
 
-    #".*"                               ; default
     message))
 
 (def ^:private date-format-str "yyyy-MM-dd HH:mm:ss.SSS zzz")
@@ -300,8 +366,14 @@
   [connection-string]
   {:pre [(string? connection-string)]}
   (let [[file options] (connection-string->file+options connection-string)]
-    (file+options->connection-string file (merge options {"IFEXISTS"         "TRUE"
-                                                          "ACCESS_MODE_DATA" "r"}))))
+    (file+options->connection-string file (merge
+                                           (->> options
+                                                ;; Remove INIT=... from options for security reasons (Metaboat #165)
+                                                ;; http://h2database.com/html/features.html#execute_sql_on_connection
+                                                (remove (fn [[k _]] (= (str/lower-case k) "init")))
+                                                (into {}))
+                                           {"IFEXISTS"         "TRUE"
+                                            "ACCESS_MODE_DATA" "r"}))))
 
 (defmethod sql-jdbc.conn/connection-details->spec :h2
   [_ details]

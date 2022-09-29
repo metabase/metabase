@@ -10,12 +10,12 @@ import { t } from "ttag";
 import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { formatValue } from "metabase/lib/formatting";
 
+import { hasEventAxis } from "metabase/visualizations/lib/timelines";
 import { computeTimeseriesTicksInterval } from "./timeseries";
 import timeseriesScale from "./timeseriesScale";
 import { isMultipleOf } from "./numeric";
 import { getFriendlyName } from "./utils";
 import { isHistogram } from "./renderer_utils";
-import { hasEventAxis } from "metabase/visualizations/lib/timelines";
 
 // label offset (doesn't increase padding)
 const X_LABEL_PADDING = 10;
@@ -116,9 +116,10 @@ export function applyChartTimeseriesXAxis(
       chart.settings["graph.x_axis.gridLine_enabled"],
     );
 
-    if (dimensionColumn.unit == null) {
+    if (dimensionColumn.unit == null && dataInterval.interval !== "ms") {
       dimensionColumn = { ...dimensionColumn, unit: dataInterval.interval };
     }
+
     const waterfallTotalX =
       firstSeries.card.display === "waterfall" &&
       chart.settings["waterfall.show_total"]
@@ -129,9 +130,8 @@ export function applyChartTimeseriesXAxis(
     // TODO: are there any other cases where we should do this?
     let tickFormatUnit = dimensionColumn.unit;
     tickFormat = timestamp => {
-      const { column, ...columnSettings } = chart.settings.column(
-        dimensionColumn,
-      );
+      const { column, ...columnSettings } =
+        chart.settings.column(dimensionColumn);
       return waterfallTotalX && waterfallTotalX.isSame(timestamp)
         ? t`Total`
         : formatValue(timestamp, {

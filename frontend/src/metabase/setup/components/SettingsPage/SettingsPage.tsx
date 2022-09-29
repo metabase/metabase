@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import LogoIcon from "metabase/components/LogoIcon";
-import { PageHeader, PageBody } from "./SettingsPage.styled";
+import MigrationHelp from "metabase/setup/containers/CloudMigrationHelp";
 import LanguageStep from "../../containers/LanguageStep";
 import UserStep from "../../containers/UserStep";
 import DatabaseStep from "../../containers/DatabaseStep";
@@ -8,6 +8,7 @@ import DatabaseHelp from "../../containers/DatabaseHelp";
 import PreferencesStep from "../../containers/PreferencesStep";
 import CompletedStep from "../../containers/CompletedStep";
 import SetupHelp from "../SetupHelp";
+import { PageHeader, PageBody } from "./SettingsPage.styled";
 
 export interface SettingsPageProps {
   step: number;
@@ -35,6 +36,7 @@ const SettingsPage = ({
         <DatabaseHelp {...props} />
         <PreferencesStep {...props} />
         <CompletedStep {...props} />
+        <MigrationHelp {...props} />
         <SetupHelp {...props} />
       </PageBody>
     </div>

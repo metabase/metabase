@@ -7,6 +7,7 @@
             [metabase.automagic-dashboards.filters :as filters]
             [metabase.models.card :as card]
             [metabase.models.collection :as collection]
+            [metabase.public-settings :as public-settings]
             [metabase.query-processor.util :as qp.util]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]))
@@ -43,9 +44,20 @@
         :location "/")
       (create-collection! "Automatically Generated Dashboards" "#509EE3" nil nil)))
 
-(def colors
-  "Colors used for coloring charts and collections."
-  ["#509EE3" "#9CC177" "#A989C5" "#EF8C8C" "#f9d45c" "#F1B556" "#A6E7F3" "#7172AD"])
+(defn colors
+  "A vector of colors used for coloring charts and collections. Uses [[public-settings/application-colors]] for user choices."
+  []
+  (let [order [:brand :accent1 :accent2 :accent3 :accent4 :accent5 :accent6 :accent7]
+        colors-map (merge {:brand   "#509EE3"
+                           :accent1 "#88BF4D"
+                           :accent2 "#A989C5"
+                           :accent3 "#EF8C8C"
+                           :accent4 "#F9D45C"
+                           :accent5 "#F2A86F"
+                           :accent6 "#98D9D9"
+                           :accent7 "#7172AD"}
+                          (public-settings/application-colors))]
+    (into [] (map colors-map) order)))
 
 (defn- ensure-distinct-colors
   [candidates]
@@ -55,14 +67,14 @@
         (fn [acc color count]
           (if (= count 1)
             (conj acc color)
-            (concat acc [color (first (drop-while (conj (set acc) color) colors))])))
+            (concat acc [color (first (drop-while (conj (set acc) color) (colors)))])))
         [])))
 
 (defn map-to-colors
   "Map given objects to distinct colors."
   [objs]
   (->> objs
-       (map (comp colors #(mod % (count colors)) hash))
+       (map (comp (colors) #(mod % (count (colors))) hash))
        ensure-distinct-colors))
 
 (defn- colorize
@@ -123,8 +135,8 @@
                  card/populate-query-fields)]
     (update dashboard :ordered_cards conj {:col                    y
                                            :row                    x
-                                           :sizeX                  width
-                                           :sizeY                  height
+                                           :size_x                 width
+                                           :size_y                 height
                                            :card                   card
                                            :card_id                (:id card)
                                            :visualization_settings {}
@@ -144,8 +156,8 @@
                                     visualization-settings)
            :col                    y
            :row                    x
-           :sizeX                  width
-           :sizeY                  height
+           :size_x                 width
+           :size_y                 height
            :card                   nil
            :id                     (gensym)}))
 
@@ -312,7 +324,7 @@
    (let [[paramters parameter-mappings] (merge-filters [target dashboard])
          offset                         (->> target
                                              :ordered_cards
-                                             (map #(+ (:row %) (:sizeY %)))
+                                             (map #(+ (:row %) (:size_y %)))
                                              (apply max -1) ; -1 so it neturalizes +1 for spacing
                                                             ; if the target dashboard is empty.
                                              inc)

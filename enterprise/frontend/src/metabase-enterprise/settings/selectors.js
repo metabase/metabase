@@ -1,27 +1,25 @@
-import { createSelector } from "reselect";
+import { LOADING_MESSAGE_BY_SETTING } from "../whitelabel/lib/loading-message";
 
 const DEFAULT_LOGO_URL = "app/assets/img/logo.svg";
 
-export const getLogoUrl = state =>
-  state.settings.values["application-logo-url"] ||
-  state.settings.values.application_logo_url ||
-  DEFAULT_LOGO_URL;
+const hasCustomColors = settingValues => {
+  const applicationColors =
+    settingValues["application-colors"] || settingValues.application_colors;
+  return Object.keys(applicationColors || {}).length > 0;
+};
 
-const getApplicationColors = state =>
-  state.settings.values["application-colors"] ||
-  state.settings.values.application_colors;
+const getCustomLogoUrl = settingValues => {
+  return (
+    settingValues["application-logo-url"] ||
+    settingValues.application_logo_url ||
+    DEFAULT_LOGO_URL
+  );
+};
 
-export const getHasCustomColors = createSelector(
-  [getApplicationColors],
-  applicationColors => Object.keys(applicationColors || {}).length > 0,
-);
+export const getLogoUrl = state => getCustomLogoUrl(state.settings.values);
 
-export const getHasCustomLogo = createSelector(
-  [getLogoUrl],
-  logoUrl => logoUrl !== DEFAULT_LOGO_URL,
-);
+export const getHasCustomColors = state =>
+  hasCustomColors(state.settings.values);
 
-export const getHasCustomBranding = createSelector(
-  [getHasCustomLogo, getHasCustomColors],
-  (hasCustomLogo, hasCustomColors) => hasCustomLogo || hasCustomColors,
-);
+export const getLoadingMessage = state =>
+  LOADING_MESSAGE_BY_SETTING[state.settings.values["loading-message"]];

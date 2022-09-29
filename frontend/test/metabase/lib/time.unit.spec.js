@@ -1,13 +1,14 @@
+import moment from "moment-timezone";
 import {
+  getRelativeTimeAbbreviated,
+  hoursToSeconds,
+  isValidTimeInterval,
+  msToHours,
+  msToMinutes,
+  msToSeconds,
   parseTime,
   parseTimestamp,
-  getRelativeTimeAbbreviated,
-  msToSeconds,
-  msToMinutes,
-  msToHours,
-  hoursToSeconds,
 } from "metabase/lib/time";
-import moment from "moment";
 
 describe("time", () => {
   describe("parseTimestamp", () => {
@@ -21,6 +22,7 @@ describe("time", () => {
       ["2015-01-01T00:00:00.000+00:00", 0, NY15_UTC],
       ["2015-01-01T00:00:00.000+0000", 0, NY15_UTC],
       ["2015-01-01T00:00:00Z", 0, NY15_UTC],
+      [2015, 0, NY15_UTC],
 
       ["2015-01-01T00:00:00.000+09:00", 540, NY15_TOKYO],
       ["2015-01-01T00:00:00.000+0900", 540, NY15_TOKYO],
@@ -84,29 +86,17 @@ describe("time", () => {
   describe("getRelativeTimeAbbreviated", () => {
     it("should show 'just now' for timestamps from the immediate past", () => {
       expect(
-        getRelativeTimeAbbreviated(
-          moment()
-            .subtract(30, "s")
-            .toString(),
-        ),
+        getRelativeTimeAbbreviated(moment().subtract(30, "s").toString()),
       ).toEqual("just now");
     });
 
     it("should show a shortened string for times 1 minute+", () => {
       expect(
-        getRelativeTimeAbbreviated(
-          moment()
-            .subtract(61, "s")
-            .toString(),
-        ),
+        getRelativeTimeAbbreviated(moment().subtract(61, "s").toString()),
       ).toEqual("1 m");
 
       expect(
-        getRelativeTimeAbbreviated(
-          moment()
-            .subtract(5, "d")
-            .toString(),
-        ),
+        getRelativeTimeAbbreviated(moment().subtract(5, "d").toString()),
       ).toEqual("5 d");
     });
   });
@@ -160,6 +150,20 @@ describe("time", () => {
       it(`returns ${expected} for ${value}`, () => {
         expect(hoursToSeconds(value)).toBe(expected);
       });
+    });
+  });
+
+  describe("isValidTimeInterval", () => {
+    it(`is not valid for 0 time span`, () => {
+      expect(isValidTimeInterval(0, "days")).toBeFalsy();
+    });
+
+    it(`is valid for small time spans`, () => {
+      expect(isValidTimeInterval(10, "days")).toBeTruthy();
+    });
+
+    it(`is not valid for large time spans`, () => {
+      expect(isValidTimeInterval(1000000000, "years")).toBeFalsy();
     });
   });
 });

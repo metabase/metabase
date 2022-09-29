@@ -37,8 +37,13 @@ export type DownloadTablePermission =
 
 export type DatabasePermissions = {
   data: DatabaseAccessPermissions;
+  "data-model": DataModelPermissions;
   download: DownloadAccessPermission;
   details: DetailsPermissions;
+};
+
+export type DataModelPermissions = {
+  schemas: SchemasPermissions;
 };
 
 export type DatabaseAccessPermissions = {

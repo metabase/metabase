@@ -7,85 +7,87 @@ import {
   setFilter,
   visitQuestion,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
-import { DASHBOARD_SQL_NUMBER_FILTERS } from "./helpers/e2e-dashboard-filter-sql-data-objects";
 import { addWidgetNumberFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
+import {
+  DASHBOARD_SQL_NUMBER_FILTERS,
+  questionDetails,
+} from "./dashboard-filters-sql-number";
 
-import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+describe("scenarios > dashboard > filters > SQL > text/category", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
 
-const { PRODUCTS } = SAMPLE_DATABASE;
+    cy.createNativeQuestionAndDashboard({ questionDetails }).then(
+      ({ body: { card_id, dashboard_id } }) => {
+        visitQuestion(card_id);
 
-Object.entries(DASHBOARD_SQL_NUMBER_FILTERS).forEach(
-  ([filter, { value, representativeResult, sqlFilter }]) => {
-    describe("scenarios > dashboard > filters > SQL > text/category", () => {
-      beforeEach(() => {
-        restore();
-        cy.signInAsAdmin();
-
-        const questionDetails = getQuestionDetails(sqlFilter);
-
-        cy.createNativeQuestionAndDashboard({ questionDetails }).then(
-          ({ body: { card_id, dashboard_id } }) => {
-            visitQuestion(card_id);
-
-            visitDashboard(dashboard_id);
-          },
-        );
-
-        editDashboard();
-        setFilter("Number", filter);
-
-        cy.findByText("Select…").click();
-        popover()
-          .contains("Filter")
-          .click();
-      });
-
-      it(`should work for "${filter}" when set through the filter widget`, () => {
-        saveDashboard();
-
-        filterWidget().click();
-        addWidgetNumberFilter(value);
-
-        cy.get(".Card").within(() => {
-          cy.contains(representativeResult);
-        });
-      });
-
-      it(`should work for "${filter}" when set as the default filter`, () => {
-        cy.findByText("Default value")
-          .next()
-          .click();
-
-        addWidgetNumberFilter(value);
-
-        saveDashboard();
-
-        cy.get(".Card").within(() => {
-          cy.contains(representativeResult);
-        });
-      });
-    });
-  },
-);
-
-function getQuestionDetails(filter) {
-  return {
-    name: "SQL with number filter",
-    native: {
-      query:
-        "select PRODUCTS.TITLE, PRODUCTS.RATING from PRODUCTS where {{filter}} limit 10",
-      "template-tags": {
-        filter: {
-          id: "1c46dd00-3f32-9328-f663-71f98c5d7953",
-          name: "filter",
-          "display-name": "Filter",
-          type: "dimension",
-          dimension: ["field", PRODUCTS.RATING, null],
-          "widget-type": filter,
-        },
+        visitDashboard(dashboard_id);
       },
-    },
-  };
+    );
+
+    editDashboard();
+  });
+
+  it(`should work when set through the filter widget`, () => {
+    Object.entries(DASHBOARD_SQL_NUMBER_FILTERS).forEach(([filter]) => {
+      cy.log(`Make sure we can connect ${filter} filter`);
+
+      setFilter("Number", filter);
+
+      cy.findByText("Select…").click();
+      popover().contains(filter).click();
+    });
+
+    saveDashboard();
+
+    Object.entries(DASHBOARD_SQL_NUMBER_FILTERS).forEach(
+      ([filter, { value, representativeResult }], index) => {
+        filterWidget().eq(index).click();
+        addWidgetNumberFilter(value);
+
+        cy.log(`Make sure ${filter} filter returns correct result`);
+        cy.get(".Card").within(() => {
+          cy.contains(representativeResult);
+        });
+
+        clearFilter(index);
+      },
+    );
+  });
+
+  it(`should work when set as the default filter`, () => {
+    setFilter("Number", "Equal to");
+    cy.findByText("Default value").next().click();
+
+    addWidgetNumberFilter("3.8");
+
+    cy.findByText("Select…").click();
+    popover().contains("Equal to").click();
+
+    saveDashboard();
+
+    cy.get(".Card").within(() => {
+      cy.contains("Small Marble Hat");
+      cy.contains("Rustic Paper Wallet").should("not.exist");
+    });
+
+    filterWidget().find(".Icon-close").click();
+
+    filterWidget().click();
+
+    addWidgetNumberFilter("4.6");
+
+    cy.get(".Card").within(() => {
+      cy.findByText("Ergonomic Linen Toucan");
+      cy.contains("Small Marble Hat").should("not.exist");
+    });
+  });
+});
+
+function clearFilter(index) {
+  filterWidget().eq(index).find(".Icon-close").click();
+  cy.wait("@dashcardQuery2");
 }

@@ -2,6 +2,7 @@ import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
 import { color } from "metabase/lib/colors";
+import { breakpointMaxSmall } from "metabase/styled-components/theme";
 
 export const ViewSidebarAside = styled.aside`
   overflow-x: hidden;
@@ -18,6 +19,10 @@ export const ViewSidebarAside = styled.aside`
       : css`
           border-left: ${isOpen ? `1px solid ${color("border")}` : "none"};
           right: 0;
+
+          ${breakpointMaxSmall} {
+            margin-left: auto;
+          }
         `}
 
   ${({ isOpen, widthProp: width }) =>

@@ -42,8 +42,8 @@
   '("https://www.googleapis.com/auth/bigquery"
     "https://www.googleapis.com/auth/drive"))
 
-(defn- ^BigQuery database->client
-  [database]
+(defn- database->client
+  ^BigQuery [database]
   (let [creds   (bigquery.common/database-details->service-account-credential (:details database))
         bq-bldr (doto (BigQueryOptions/newBuilder)
                   (.setCredentials (.createScoped creds bigquery-scopes)))]
@@ -53,27 +53,34 @@
 ;;; |                                                      Sync                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- ^Iterable list-tables
+(defn- list-tables
   "Fetch all tables (new pages are loaded automatically by the API)."
-  (^Iterable [{{:keys [project-id dataset-filters-type dataset-filters-patterns]} :details, :as database}]
-    (list-tables (database->client database)
-                 (or project-id (bigquery.common/database-details->credential-project-id (:details database)))
-                 dataset-filters-type
-                 dataset-filters-patterns))
-
-  (^Iterable [^BigQuery client ^String project-id ^String filter-type ^String filter-patterns]
-    (let [datasets (.listDatasets client project-id (u/varargs BigQuery$DatasetListOption))
-          inclusion-patterns (when (= "inclusion" filter-type) filter-patterns)
-          exclusion-patterns (when (= "exclusion" filter-type) filter-patterns)]
-      (apply concat (for [^Dataset dataset (.iterateAll datasets)
-                          :let [^DatasetId dataset-id (.. dataset getDatasetId)]
-                          :when (driver.s/include-schema? inclusion-patterns
-                                                          exclusion-patterns
-                                                          (.getDataset dataset-id))]
-                      (-> (.listTables client dataset-id (u/varargs BigQuery$TableListOption))
-                          .iterateAll
-                          .iterator
-                          iterator-seq))))))
+  (^Iterable [database]
+   (list-tables database false))
+  (^Iterable [{{:keys [project-id dataset-filters-type dataset-filters-patterns]} :details, :as database} validate-dataset?]
+   (list-tables (database->client database)
+                (or project-id (bigquery.common/database-details->credential-project-id (:details database)))
+                dataset-filters-type
+                dataset-filters-patterns
+                (boolean validate-dataset?)))
+  (^Iterable [^BigQuery client ^String project-id ^String filter-type ^String filter-patterns ^Boolean validate-dataset?]
+   (let [datasets (.listDatasets client project-id (u/varargs BigQuery$DatasetListOption))
+         inclusion-patterns (when (= "inclusion" filter-type) filter-patterns)
+         exclusion-patterns (when (= "exclusion" filter-type) filter-patterns)
+         dataset-iter (for [^Dataset dataset (.iterateAll datasets)
+                            :let [^DatasetId dataset-id (.. dataset getDatasetId)]
+                            :when (driver.s/include-schema? inclusion-patterns
+                                                            exclusion-patterns
+                                                            (.getDataset dataset-id))]
+                        dataset-id)]
+     (when (and (not= filter-type "all") validate-dataset? (zero? (count dataset-iter)))
+       (throw (ex-info (tru "Looks like we cannot find any matching datasets.")
+                       {::driver/can-connect-message? true})))
+     (apply concat (for [^DatasetId dataset-id dataset-iter]
+                     (-> (.listTables client dataset-id (u/varargs BigQuery$TableListOption))
+                         .iterateAll
+                         .iterator
+                         iterator-seq))))))
 
 (defmethod driver/describe-database :bigquery-cloud-sdk
   [_ database]
@@ -86,15 +93,17 @@
 (defmethod driver/can-connect? :bigquery-cloud-sdk
   [_ details-map]
   ;; check whether we can connect by seeing whether listing tables succeeds
-  (try (some? (list-tables {:details details-map}))
+  (try (some? (list-tables {:details details-map} ::validate-dataset))
        (catch Exception e
+         (when (::driver/can-connect-message? (ex-data e))
+           (throw e))
          (log/errorf e (trs "Exception caught in :bigquery-cloud-sdk can-connect?"))
          false)))
 
 (def ^:private empty-table-options
   (u/varargs BigQuery$TableOption))
 
-(s/defn get-table :- Table
+(s/defn ^:private get-table :- Table
   ([{{:keys [project-id]} :details, :as database} dataset-id table-id]
    (get-table (database->client database) project-id dataset-id table-id))
 
@@ -165,8 +174,8 @@
            {:type qp.error-type/invalid-query, :sql sql, :parameters parameters}
            e)))
 
-(defn- ^TableResult execute-bigquery
-  [^BigQuery client ^String sql parameters cancel-chan cancel-requested?]
+(defn- execute-bigquery
+  ^TableResult [^BigQuery client ^String sql parameters cancel-chan cancel-requested?]
   {:pre [client (not (str/blank? sql))]}
   (try
     (let [request (doto (QueryJobConfiguration/newBuilder sql)
@@ -183,7 +192,7 @@
           ;; check out com.google.cloud.bigquery.QueryRequestInfo.isFastQuerySupported for full details
           res-fut (future (.query client (.build request) (u/varargs BigQuery$JobOption)))]
       (when cancel-chan
-        (future ; this needs to run in a separate thread, because the <!! operation blocks forever
+        (future                       ; this needs to run in a separate thread, because the <!! operation blocks forever
           (when (a/<!! cancel-chan)
             (log/debugf "Received a message on the cancel channel; attempting to stop the BigQuery query execution")
             (reset! cancel-requested? true) ; signal the page iteration fn to stop
@@ -193,20 +202,20 @@
               ;; unfortunately, with this particular overload of .query, we have no access to (nor the ability to control)
               ;; the jobId, so we have no way to use the BigQuery client to cancel any job that might be running
               (future-cancel res-fut)
-              (if (future-done? res-fut) ; canceled received after it was finished; may as well return it
+              (when (future-done? res-fut) ; canceled received after it was finished; may as well return it
                 @res-fut)))))
       @res-fut)
     (catch BigQueryException e
       (if (.isRetryable e)
         (throw (ex-info (tru "BigQueryException executing query")
-                 {:retryable? (.isRetryable e), :sql sql, :parameters parameters}
-                 e))
+                        {:retryable? (.isRetryable e), :sql sql, :parameters parameters}
+                        e))
         (throw-invalid-query e sql parameters)))
     (catch Throwable e
       (throw-invalid-query e sql parameters))))
 
-(defn- ^TableResult execute-bigquery-on-db
-  [database sql parameters cancel-chan cancel-requested?]
+(defn- execute-bigquery-on-db
+  ^TableResult [database sql parameters cancel-chan cancel-requested?]
   (execute-bigquery
     (database->client database)
     sql
@@ -231,7 +240,7 @@
   `metabase.driver/execute-reducible-query`, and has the signature
 
     (respond results-metadata rows)"
-  [database respond ^TableResult resp cancel-requested?]
+  [_database respond ^TableResult resp cancel-requested?]
   (let [^Schema schema
         (.getSchema resp)
 
@@ -360,6 +369,6 @@
                      " before sync and queries will work again")
                 (u/the-id database)))
   (if-let [dataset-id (get details :dataset-id)]
-    (if-not (str/blank? dataset-id)
+    (when-not (str/blank? dataset-id)
       (convert-dataset-id-to-filters! database dataset-id))
     database))

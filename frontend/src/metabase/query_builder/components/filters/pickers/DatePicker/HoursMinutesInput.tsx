@@ -1,11 +1,11 @@
 import React from "react";
 
+import moment from "moment-timezone";
 import { has24HourModeSetting } from "metabase/lib/time";
 import NumericInput from "metabase/components/NumericInput";
 import Icon from "metabase/components/Icon";
 
-import cx from "classnames";
-import moment from "moment";
+import { AmPmLabel } from "./HoursMinutesInput.styled";
 
 type Props = {
   hours: number;
@@ -56,28 +56,18 @@ const HoursMinutesInput = ({
     />
     {!is24HourMode && (
       <div className="flex align-center pl1">
-        <span
-          className={cx("text-purple-hover mr1", {
-            "text-purple text-heavy": hours < 12,
-            "cursor-pointer": hours >= 12,
-          })}
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-          // @ts-ignore
-          onClick={hours >= 12 ? () => onChangeHours(hours - 12) : null}
+        <AmPmLabel
+          isSelected={hours < 12}
+          onClick={hours >= 12 ? () => onChangeHours(hours - 12) : undefined}
         >
           {moment.localeData().meridiem(0, 0, false)}
-        </span>
-        <span
-          className={cx("text-purple-hover mr1", {
-            "text-purple text-heavy": hours >= 12,
-            "cursor-pointer": hours < 12,
-          })}
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-          // @ts-ignore
-          onClick={hours < 12 ? () => onChangeHours(hours + 12) : null}
+        </AmPmLabel>
+        <AmPmLabel
+          isSelected={hours >= 12}
+          onClick={hours < 12 ? () => onChangeHours(hours + 12) : undefined}
         >
           {moment.localeData().meridiem(12, 0, false)}
-        </span>
+        </AmPmLabel>
       </div>
     )}
     {onClear && (

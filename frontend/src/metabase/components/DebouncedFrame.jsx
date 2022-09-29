@@ -13,8 +13,8 @@ const DEBOUNCE_PERIOD = 300;
  * Useful for rendering components that maybe take a long time to render but you still wnat to allow their container to be resized fluidly
  * We also fade the component out and block mouse events while it's transitioning
  */
-@ExplicitSize()
-export default class DebouncedFrame extends React.Component {
+
+class DebouncedFrame extends React.Component {
   // NOTE: don't keep `_transition` in component state because we don't want to trigger a rerender when we update it
   // Instead manually modify the style in _updateTransitionStyle
   // There's probably a better way to block renders of children though
@@ -104,3 +104,5 @@ export default class DebouncedFrame extends React.Component {
     );
   }
 }
+
+export default ExplicitSize()(DebouncedFrame);

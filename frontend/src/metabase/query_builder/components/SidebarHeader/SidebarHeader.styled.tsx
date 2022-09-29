@@ -12,15 +12,15 @@ export const HeaderIcon = styled(Icon)`
   margin-right: 0.5rem;
 `;
 
-const backButtonStyle = css`
+const backButtonStyle = () => css`
   cursor: pointer;
   &:hover {
     color: ${color("brand")};
   }
 `;
 
-const defaultBackButtonStyle = css`
-  ${backButtonStyle}
+const defaultBackButtonStyle = () => css`
+  ${backButtonStyle()}
   color: ${color("text-medium")};
   font-size: 0.83em;
   text-transform: uppercase;
@@ -39,8 +39,8 @@ function getHeaderTitleContainerVariantStyle(
     return;
   }
   return variant === "default-back-button"
-    ? defaultBackButtonStyle
-    : backButtonStyle;
+    ? defaultBackButtonStyle()
+    : backButtonStyle();
 }
 
 export const HeaderTitleContainer = styled.span<{
@@ -65,6 +65,6 @@ export const CloseButton = styled.a`
   margin-left: auto;
 
   &:hover {
-    color: ${color("brand")};
+    color: ${() => color("brand")};
   }
 `;

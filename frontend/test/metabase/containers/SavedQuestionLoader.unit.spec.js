@@ -1,13 +1,12 @@
 import React from "react";
 import { render } from "@testing-library/react";
 
-import Question from "metabase-lib/lib/Question";
 import { delay } from "metabase/lib/promise";
-import { CardApi } from "metabase/services";
 
 // import the un-connected component so we can test its internal logic sans
 // redux
 import { SavedQuestionLoader } from "metabase/containers/SavedQuestionLoader";
+import Question from "metabase-lib/lib/Question";
 
 describe("SavedQuestionLoader", () => {
   let loadQuestionSpy, loadMetadataSpy, mockChild;
@@ -25,12 +24,13 @@ describe("SavedQuestionLoader", () => {
   it("should load a question given a questionId", async () => {
     const questionId = 1;
     const q = Question.create({ databaseId: 1, tableId: 2 });
-    jest.spyOn(CardApi, "get").mockReturnValue(q.card());
+    const mockFetchQuestion = jest.fn().mockResolvedValue(q.card());
 
     render(
       <SavedQuestionLoader
         questionId={questionId}
         loadMetadataForCard={loadMetadataSpy}
+        fetchQuestion={mockFetchQuestion}
       >
         {mockChild}
       </SavedQuestionLoader>,

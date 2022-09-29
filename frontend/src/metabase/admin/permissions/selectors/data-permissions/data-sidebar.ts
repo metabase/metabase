@@ -4,18 +4,18 @@ import _ from "underscore";
 
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 
+import { State } from "metabase-types/store";
+import { ITreeNodeItem } from "metabase/components/tree/types";
+import Database from "metabase-lib/lib/metadata/Database";
+import Metadata from "metabase-lib/lib/metadata/Metadata";
+import { EntityId, RawDataRouteParams } from "../../types";
 import {
   getTableEntityId,
   getSchemaEntityId,
   getDatabaseEntityId,
 } from "../../utils/data-entity-id";
-import { State } from "metabase-types/store";
-import Metadata from "metabase-lib/lib/metadata/Metadata";
-import { getIsLoadingDatabaseTables } from "./permission-editor";
-import Database from "metabase-lib/lib/metadata/Database";
-import { EntityId, RawDataRouteParams } from "../../types";
-import { ITreeNodeItem } from "metabase/components/tree/types";
 import { getDatabase } from "../../utils/metadata";
+import { getIsLoadingDatabaseTables } from "./permission-editor";
 
 const getRouteParams = (
   _state: State,

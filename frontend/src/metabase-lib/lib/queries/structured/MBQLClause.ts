@@ -21,7 +21,7 @@ export default class MBQLArrayClause extends Array {
   // so we need to reconcile things in the MBQLArrayClause[Symbol.species] constructor function
   // See https://stackoverflow.com/questions/54522949
   static get [Symbol.species]() {
-    return Object.assign(function(...items) {
+    return Object.assign(function (...items) {
       return new MBQLArrayClause(new Array(...items), this._index, this._query);
     }, MBQLArrayClause);
   }
@@ -47,13 +47,6 @@ export default class MBQLArrayClause extends Array {
 
   index() {
     return this._index;
-  }
-
-  /**
-   * replaces the previous clause with this one and propagates an update, recursively
-   */
-  update(...args: any) {
-    return this.replace(this).update(undefined, ...args);
   }
 
   parent() {
@@ -108,13 +101,6 @@ export class MBQLObjectClause {
 
   index() {
     return this._index;
-  }
-
-  /**
-   * replaces the previous clause with this one and propagates an update, recursively
-   */
-  update(...args: any) {
-    return this.replace(this).update(undefined, ...args);
   }
 
   parent() {

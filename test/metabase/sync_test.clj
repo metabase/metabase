@@ -139,7 +139,7 @@
     :display_name       "Studio"
     :database_type      "VARCHAR"
     :base_type          :type/Text
-    :effective_type          :type/Text
+    :effective_type     :type/Text
     :fk_target_field_id true
     :semantic_type      :type/FK
     :database_position  2
@@ -155,7 +155,8 @@
     :effective_type    :type/Text
     :semantic_type     :type/Title
     :database_position 1
-    :position          1}))
+    :position          1
+    :has_field_values  :auto-list}))
 
 (defn- field:studio-name []
   (merge
@@ -167,7 +168,8 @@
     :effective_type    :type/Text
     :semantic_type     :type/Name
     :database_position 1
-    :position          1}))
+    :position          1
+    :has_field_values  :auto-list}))
 
 ;; `studio.studio`? huh?
 (defn- field:studio-studio []
@@ -184,7 +186,6 @@
 
 (deftest sync-database-test
   (mt/with-temp Database [db {:engine ::sync-test}]
-    (sync/sync-database! db)
     (sync/sync-database! db)
     (let [[movie studio] (mapv table-details (db/select Table :db_id (u/the-id db) {:order-by [:name]}))]
       (testing "`movie` Table"
@@ -220,10 +221,12 @@
              :name         "movie"
              :display_name "Movie"
              :fields       [(field:movie-id)
-                            (assoc (field:movie-studio) :fk_target_field_id false :semantic_type nil)
+                            (assoc (field:movie-studio)
+                                   :fk_target_field_id false
+                                   :semantic_type nil
+                                   :has_field_values :auto-list)
                             (field:movie-title)]})
-           (table-details (Table (:id table)))))))
-
+           (table-details (db/select-one Table :id (:id table)))))))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !!                                                                                                               !!

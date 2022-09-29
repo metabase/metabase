@@ -3,6 +3,7 @@ import {
   SET_LOCALE,
   SET_STEP,
   SET_USER,
+  SET_DATABASE_ENGINE,
   SET_DATABASE,
   SET_TRACKING,
   SET_INVITE,
@@ -27,6 +28,13 @@ export const locale = handleActions(
 export const user = handleActions(
   {
     [SET_USER]: { next: (state, { payload }) => payload },
+  },
+  null,
+);
+
+export const databaseEngine = handleActions(
+  {
+    [SET_DATABASE_ENGINE]: { next: (state, { payload }) => payload },
   },
   null,
 );
@@ -65,6 +73,7 @@ export default {
   locale,
   user,
   database,
+  databaseEngine,
   invite,
   isLocaleLoaded,
   isTrackingAllowed,

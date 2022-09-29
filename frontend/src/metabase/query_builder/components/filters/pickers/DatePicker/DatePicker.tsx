@@ -2,11 +2,9 @@
 import React from "react";
 import { t } from "ttag";
 import cx from "classnames";
-import moment from "moment";
+import moment from "moment-timezone";
 import _ from "underscore";
 
-import { FieldDimension } from "metabase-lib/lib/Dimension";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
 import {
   updateRelativeDatetimeFilter,
   isRelativeDatetime,
@@ -16,12 +14,16 @@ import {
   getTimeComponent,
   setTimeComponent,
 } from "metabase/lib/query_time";
+import Dimension from "metabase-lib/lib/Dimension";
+import Filter from "metabase-lib/lib/queries/structured/Filter";
 
 import DatePickerFooter from "./DatePickerFooter";
 import DatePickerHeader from "./DatePickerHeader";
 import ExcludeDatePicker from "./ExcludeDatePicker";
 import DatePickerShortcuts from "./DatePickerShortcuts";
-import { CurrentPicker, NextPicker, PastPicker } from "./RelativeDatePicker";
+import { DateShortcutOptions } from "./DatePickerShortcutOptions";
+import CurrentPicker from "./CurrentPicker";
+import { NextPicker, PastPicker } from "./RelativeDatePicker";
 import { AfterPicker, BeforePicker, BetweenPicker } from "./RangeDatePicker";
 import SingleDatePicker from "./SingleDatePicker";
 
@@ -52,12 +54,10 @@ const hasTime = (value: unknown) =>
  * Returns MBQL :field clause with temporal bucketing applied.
  * @deprecated -- just use FieldDimension to do this stuff.
  */
-function getDateTimeField(filter: any, bucketing?: string | null) {
+function getDateTimeDimension(filter: any, bucketing?: string | null) {
   let dimension = filter?.dimension?.();
   if (!dimension) {
-    dimension = FieldDimension.parseMBQLOrWarn(
-      getRelativeDatetimeField(filter),
-    );
+    dimension = Dimension.parseMBQL(getRelativeDatetimeField(filter));
   }
   if (dimension) {
     if (bucketing) {
@@ -69,20 +69,11 @@ function getDateTimeField(filter: any, bucketing?: string | null) {
   return null;
 }
 
-export function getDateTimeFieldTarget(field: any[]) {
-  const dimension = FieldDimension.parseMBQLOrWarn(field);
-  if (dimension && dimension.temporalUnit()) {
-    return dimension.withoutTemporalBucketing().mbql() as any;
-  } else {
-    return field;
-  }
-}
-
 // add temporal-unit to fields if any of them have a time component
-function getDateTimeFieldAndValues(filter: Filter, count: number) {
-  let values = filter.slice(2, 2 + count).map(value => value && getDate(value));
+function getDateTimeDimensionAndValues(filter: Filter) {
+  let values = filter.slice(2).map(value => value && getDate(value));
   const bucketing = _.any(values, hasTime) ? "minute" : null;
-  const field = getDateTimeField(filter, bucketing);
+  const dimension = getDateTimeDimension(filter, bucketing);
   const { hours, minutes } = getTimeComponent(values[0]);
   if (
     typeof hours === "number" &&
@@ -99,7 +90,51 @@ function getDateTimeFieldAndValues(filter: Filter, count: number) {
       ];
     }
   }
-  return [field, ...values.filter(value => value !== undefined)];
+  return [dimension, ...values.filter(value => value !== undefined)];
+}
+
+function getOnFilterDimensionAndValues(filter: Filter) {
+  const [op] = filter;
+  const [dimension, ...values] = getDateTimeDimensionAndValues(filter);
+
+  if (op === "between") {
+    return [dimension, values[1]];
+  } else {
+    return [dimension, values[0]];
+  }
+}
+
+function getBeforeFilterDimensionAndValues(filter: Filter) {
+  const [op] = filter;
+  const [dimension, ...values] = getDateTimeDimensionAndValues(filter);
+
+  if (op === "between") {
+    return [dimension, values[1]];
+  } else {
+    return [dimension, values[0]];
+  }
+}
+
+function getAfterFilterDimensionAndValues(filter: Filter) {
+  const [field, ...values] = getDateTimeDimensionAndValues(filter);
+  return [field, values[0]];
+}
+
+function getBetweenFilterDimensionAndValues(filter: Filter) {
+  const [op] = filter;
+  const [dimension, ...values] = getDateTimeDimensionAndValues(filter);
+
+  if (op === "=" || op === "<") {
+    const beforeDate = moment(values[0]).subtract(30, "day");
+    const beforeValue = beforeDate.format("YYYY-MM-DD");
+    return [dimension, beforeValue, values[0]];
+  } else if (op === ">") {
+    const afterDate = moment(values[0]).add(30, "day");
+    const afterValue = afterDate.format("YYYY-MM-DD");
+    return [dimension, values[0], afterValue];
+  } else {
+    return [dimension, ...values];
+  }
 }
 
 export type DatePickerGroup = "relative" | "specific";
@@ -122,7 +157,7 @@ export const DATE_OPERATORS: DateOperator[] = [
     init: filter =>
       updateRelativeDatetimeFilter(filter, false) || [
         "time-interval",
-        getDateTimeField(filter),
+        getDateTimeDimension(filter),
         -getIntervals(filter),
         getUnit(filter),
         getOptions(filter),
@@ -142,7 +177,7 @@ export const DATE_OPERATORS: DateOperator[] = [
   {
     name: "current",
     displayName: t`Current`,
-    init: filter => ["time-interval", getDateTimeField(filter), "current"],
+    init: filter => ["time-interval", getDateTimeDimension(filter), "current"],
     test: ([op, field, value]) =>
       op === "time-interval" && (value === "current" || value === null),
     group: "relative",
@@ -154,7 +189,7 @@ export const DATE_OPERATORS: DateOperator[] = [
     init: filter =>
       updateRelativeDatetimeFilter(filter, true) || [
         "time-interval",
-        getDateTimeField(filter),
+        getDateTimeDimension(filter),
         getIntervals(filter),
         getUnit(filter),
         getOptions(filter),
@@ -174,10 +209,7 @@ export const DATE_OPERATORS: DateOperator[] = [
   {
     name: "between",
     displayName: t`Between`,
-    init: filter => {
-      const [field, ...values] = getDateTimeFieldAndValues(filter, 2);
-      return ["between", field, ...values];
-    },
+    init: filter => ["between", ...getBetweenFilterDimensionAndValues(filter)],
     test: ([op, _field, left, right]) =>
       op === "between" &&
       !isRelativeDatetime(left) &&
@@ -188,7 +220,7 @@ export const DATE_OPERATORS: DateOperator[] = [
   {
     name: "before",
     displayName: t`Before`,
-    init: filter => ["<", ...getDateTimeFieldAndValues(filter, 1)],
+    init: filter => ["<", ...getBeforeFilterDimensionAndValues(filter)],
     test: ([op]) => op === "<",
     group: "specific",
     widget: BeforePicker,
@@ -196,7 +228,7 @@ export const DATE_OPERATORS: DateOperator[] = [
   {
     name: "on",
     displayName: t`On`,
-    init: filter => ["=", ...getDateTimeFieldAndValues(filter, 1)],
+    init: filter => ["=", ...getOnFilterDimensionAndValues(filter)],
     test: ([op]) => op === "=",
     group: "specific",
     widget: SingleDatePicker,
@@ -204,7 +236,7 @@ export const DATE_OPERATORS: DateOperator[] = [
   {
     name: "after",
     displayName: t`After`,
-    init: filter => [">", ...getDateTimeFieldAndValues(filter, 1)],
+    init: filter => [">", ...getAfterFilterDimensionAndValues(filter)],
     test: ([op]) => op === ">",
     group: "specific",
     widget: AfterPicker,
@@ -225,15 +257,17 @@ export function getOperator(filter: Filter, operators = DATE_OPERATORS) {
 }
 
 type Props = {
-  isSidebar?: boolean;
   className?: string;
 
   filter: Filter;
+  dateShortcutOptions?: DateShortcutOptions;
   operators?: DateOperator[];
 
   hideTimeSelectors?: boolean;
   hideEmptinessOperators?: boolean;
   disableOperatorSelection?: boolean;
+  disableChangingDimension?: boolean;
+  supportsExpressions?: boolean;
 
   primaryColor?: string;
   minWidth?: number | null;
@@ -248,9 +282,11 @@ const DatePicker: React.FC<Props> = props => {
   const {
     className,
     filter,
+    dateShortcutOptions,
     onFilterChange,
-    isSidebar,
     disableOperatorSelection,
+    disableChangingDimension,
+    supportsExpressions,
     primaryColor,
     onCommit,
     children,
@@ -265,8 +301,9 @@ const DatePicker: React.FC<Props> = props => {
   const Widget = operator && operator.widget;
 
   const enableBackButton =
-    (!showShortcuts && !disableOperatorSelection) ||
-    (showShortcuts && props.onBack);
+    !disableChangingDimension &&
+    ((!showShortcuts && !disableOperatorSelection) ||
+      (showShortcuts && props.onBack));
   const onBack = () => {
     if (!operator || showShortcuts) {
       props.onBack?.();
@@ -276,11 +313,12 @@ const DatePicker: React.FC<Props> = props => {
   };
 
   return (
-    <div className={cx(className)}>
+    <div className={cx(className)} data-testid="date-picker">
       {!operator || showShortcuts ? (
         <DatePickerShortcuts
-          className={"p2"}
+          className="p2"
           primaryColor={primaryColor}
+          dateShortcutOptions={dateShortcutOptions}
           onFilterChange={filter => {
             setShowShortcuts(false);
             onFilterChange(filter);
@@ -296,6 +334,7 @@ const DatePicker: React.FC<Props> = props => {
               filter={filter}
               onBack={onBack}
               operators={operators}
+              primaryColor={primaryColor}
               onFilterChange={onFilterChange}
             />
           ) : null}
@@ -306,6 +345,7 @@ const DatePicker: React.FC<Props> = props => {
               filter={filter}
               onCommit={onCommit}
               primaryColor={primaryColor}
+              supportsExpressions={supportsExpressions}
               onFilterChange={(filter: Filter) => {
                 if (!isStartingFrom(filter) && operator && operator.init) {
                   onFilterChange(operator.init(filter));
@@ -316,7 +356,6 @@ const DatePicker: React.FC<Props> = props => {
             />
           )}
           <DatePickerFooter
-            isSidebar={isSidebar}
             filter={filter}
             primaryColor={primaryColor}
             onFilterChange={onFilterChange}

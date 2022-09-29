@@ -8009,12 +8009,17 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - and:
             - dbms:
-                type: postgresql,mysql,mariadb
+                type: postgresql
+      # This has maybe never succeeded in creating the index because (at least with the current DB versions)
+      # the syntax was wrong on all requested databases (postgresql, mysql and mariadb). Since this change is
+      # not critical it's OK to ignore it.
+      validCheckSum: 8:9da2f706a7cd42b5101601e0106fa929
       changes:
         - createIndex:
             columns:
              - column:
                  name: lower(email)
+                 computed: true
                  type: varchar(254)
             tableName: core_user
             indexName: idx_lower_email
@@ -8062,6 +8067,7 @@ databaseChangeLog:
       comment: Added 0.37.0 # for H2 convert column to VARCHAR_IGNORECASE
       failOnError: false
       preConditions:
+         - onFail: MARK_RAN
          - or:
              - dbms:
                    type: h2
@@ -11510,6 +11516,1315 @@ databaseChangeLog:
             tableName: revision
             columnName: timestamp
             newDataType: ${timestamp_type}
+
+  - changeSet:
+      id: v44.00-000
+      author: dpsutton
+      comment: Added 0.44.0 - Persisted Info for models
+      changes:
+        - createTable:
+            tableName: persisted_info
+            remarks: Table holding information about persisted models
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: database_id
+                  type: int
+                  remarks: 'ID of the database associated to the persisted card'
+                  constraints:
+                    nullable: false
+                    referencedTableName: metabase_database
+                    referencedColumnNames: id
+                    foreignKeyName: fk_persisted_info_database_id
+                    deleteCascade: true
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: 'ID of the Card model persisted'
+                  constraints:
+                    nullable: false
+                    unique: true
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_persisted_info_card_id
+                    deleteCascade: true
+              - column:
+                  remarks: Slug of the card which will form the persisted table name
+                  name: question_slug
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Name of the table persisted
+                  name: table_name
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: JSON object that captures the state of the table when we persisted
+                  name: definition
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: Hash of the query persisted
+                  name: query_hash
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: Indicating whether the persisted table is active and can be swapped
+                  name: active
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Persisted table state (creating, persisted, refreshing, deleted)
+                  name: state
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the most recent refresh was started
+                  name: refresh_begin
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the most recent refresh ended
+                  name: refresh_end
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: The timestamp of when the most recent state changed
+                  name: state_change_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: Error message from persisting if applicable
+                  name: error
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: The timestamp of when the model was first persisted
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: creator_id
+                  type: int
+                  remarks: The person who persisted a model
+                  constraints:
+                    nullable: false
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_persisted_info_ref_creator_id
+                    deferrable: false
+                    initiallyDeferred: false
+  - changeSet:
+      id: v44.00-001
+      author: snoe
+      comment: Added 0.44.0 - Remove not null constraint from persisted_info.creator_id
+      changes:
+        - dropNotNullConstraint:
+            tableName: persisted_info
+            columnName: creator_id
+            columnDataType: int
+
+  # v44.00-002 through -011 add entity_id columns to several internal entities.
+  # These are fixed-width string fields populated with a random 21-character
+  # NanoID value, and used by the serialization system to de-duplicate entities
+  # in a portable way. See the serialization design doc in the design repo.
+  - changeSet:
+      id: v44.00-002
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: metric
+  - changeSet:
+      id: v44.00-003
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: segment
+  - changeSet:
+      id: v44.00-004
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: collection
+  - changeSet:
+      id: v44.00-005
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: report_dashboard
+  - changeSet:
+      id: v44.00-006
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: dimension
+  - changeSet:
+      id: v44.00-007
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: pulse
+  - changeSet:
+      id: v44.00-008
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: report_card
+  - changeSet:
+      id: v44.00-009
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: native_query_snippet
+  - changeSet:
+      id: v44.00-010
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: timeline
+  - changeSet:
+      id: v44.00-011
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: report_dashboardcard
+
+# Migrations v44.00-012 thru v44.00-022 have been moved to v45.00-001 thru v45.00-011
+
+  - changeSet:
+      id: v44.00-023
+      author: qnkhuat
+      comment: Added 0.44.0 - Add parameters to report_card
+      validCheckSum: ANY
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: parameters
+                  type: ${text.type}
+                  remarks: List of parameter associated to a card
+                  constraints:
+                    nullable: true
+  - changeSet:
+      id: v44.00-025
+      author: qnkhuat
+      comment: Added 0.44.0 - Add parameter_mappings to report_card
+      validCheckSum: ANY
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: parameter_mappings
+                  type: ${text.type}
+                  remarks: List of parameter associated to a card
+                  constraints:
+                    nullable: true
+  - changeSet:
+      id: v44.00-027
+      author: adam-james
+      comment: Added 0.44.0. Drop NOT NULL constraint for core_user.first_name
+      changes:
+        - dropNotNullConstraint:
+            tableName: core_user
+            columnName: first_name
+            columnDataType: varchar(254)
+  - changeSet:
+      id: v44.00-028
+      author: adam-james
+      comment: Added 0.44.0. Drop NOT NULL constraint for core_user.last_name
+      changes:
+        - dropNotNullConstraint:
+            tableName: core_user
+            columnName: last_name
+            columnDataType: varchar(254)
+  - changeSet:
+      id: v44.00-029
+      author: qnkhuat
+      comment: Added 0.44.0 - Add has_more_values to metabase_fieldvalues
+      changes:
+        - addColumn:
+            tableName: metabase_fieldvalues
+            columns:
+              - column:
+                  name: has_more_values
+                  type: boolean
+                  remarks: true if the stored values list is a subset of all possible values
+                  defaultValueBoolean: false
+
+  - changeSet:
+      id: v44.00-030
+      author: snoe
+      comment: Added 0.44.0 - Add database_required to metabase_field
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_required
+                  type: boolean
+                  remarks: Indicates this field is required by the database for new records. Usually not null and without a default.
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
+# Migrations v44.00-031 and v44.00-032 were moved to v45.00-012 and v45.00-013 respectively
+
+  - changeSet:
+      id: v44.00-033
+      author: qnkhuat
+      comment: >-
+        Added 0.43.0. Grant the 'All Users' Permissions Group readwrite perms for the Root Snippets Collection.
+      preConditions:
+        - onFail: MARK_RAN
+          # HACK: only run this on new instances (#21940)
+        - sqlCheck:
+            expectedResult: 0
+            sql: >-
+              SELECT count(*) AS user_count FROM core_user
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions (group_id, object)
+              SELECT
+                all_users_group.id AS group_id,
+                '/collection/namespace/snippets/root/' AS object
+              FROM (
+                SELECT id
+                FROM permissions_group
+                WHERE name = 'All Users'
+              ) all_users_group
+              LEFT JOIN permissions p
+                      ON all_users_group.id = p.group_id
+                    AND p.object = '/collection/namespace/snippets/root/'
+              WHERE p.object IS NULL;
+
+  - changeSet:
+      id: v44.00-035
+      author: qnkhuat
+      comment: Added 0.44.0. Add type to fieldvalues
+      validCheckSum: ANY
+      changes:
+        - addColumn:
+            tableName: metabase_fieldvalues
+            columns:
+              - column:
+                  name: type
+                  type: varchar(32)
+                  defaultValue: 'full'
+                  remarks: Type of FieldValues
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: v44.00-037
+      author: qnkhuat
+      comment: Added 0.44.0. Add type to fieldvalues
+      changes:
+        - addColumn:
+            tableName: metabase_fieldvalues
+            columns:
+              - column:
+                  name: hash_key
+                  type: ${text.type}
+                  remarks: Hash key for a cached fieldvalues
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v44.00-038
+      author: metamben
+      comment: Added 0.44.0 - Add collection_preview to report_card
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: collection_preview
+                  type: boolean
+                  remarks: Indicating whether the card should be visualized in the collection preview
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v44.00-039
+      author: qnkhuat
+      comment: Added 0.44.0 - Add template_tags to native_query_snippet
+      changes:
+        - addColumn:
+            tableName: native_query_snippet
+            columns:
+              - column:
+                  name: template_tags
+                  type: ${text.type}
+                  remarks: Template tags for a snippet
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v44.00-041
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to PulseCard, PulseChannel
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: pulse_card
+
+  - changeSet:
+      id: v44.00-042
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to PulseCard, PulseChannel
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: pulse_channel
+
+  - changeSet:
+      id: v44.00-044
+      author: qnkhuat
+      comment: Added 0.44.0 - drop native_query_snippet.template_tags added in v44.00-039
+      changes:
+        - dropColumn:
+            tableName: native_query_snippet
+            columnName: template_tags
+
+##
+## Metabase 45
+##
+
+  - changeSet:
+      id: v45.00-001
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      # This migration was previously numbered v44.00-012 but ultimately was not shipped with 44.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM databasechangelog WHERE id = 'v44.00-012';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = 'v44.00-012';
+      changes:
+        - createTable:
+            tableName: action
+            remarks: An action is something you can do, such as run a readwrite query
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the action was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the action was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Type of action
+                  name: type
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v45.00-002
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      # This migration was previously numbered v44.00-013 but ultimately was not shipped with 44.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM databasechangelog WHERE id = 'v44.00-013';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = 'v44.00-013';
+      changes:
+        - createTable:
+            tableName: query_action
+            remarks: A readwrite query type of action
+            columns:
+              - column:
+                  name: action_id
+                  type: int
+                  remarks: The related action
+                  constraints:
+                    nullable: false
+                    referencedTableName: action
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_action_ref_action_id
+                    deleteCascade: true
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: The related card
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_action_ref_card_id
+                    deleteCascade: true
+
+  - changeSet:
+      id: v45.00-003
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      # This migration was previously numbered v44.00-014 but ultimately was not shipped with 44.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM databasechangelog WHERE id = 'v44.00-014';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = 'v44.00-014';
+      changes:
+        - addPrimaryKey:
+            tableName: query_action
+            columnNames: action_id, card_id
+            constraintName: pk_query_action
+
+  - changeSet:
+      id: v45.00-004
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      # This migration was previously numbered v44.00-015 but ultimately was not shipped with 44.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM databasechangelog WHERE id = 'v44.00-015';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = 'v44.00-015';
+      changes:
+        - createTable:
+            tableName: emitter
+            remarks: An Emitter reperents the fact an Action can act upon the given object
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the emitter was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the emitter was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: JSON for vis settings and other things frontend related
+                  name: options
+                  type: ${text.type}
+              - column:
+                  remarks: JSON that has a mapping of columns to parameters in the query
+                  name: parameter_mappings
+                  type: ${text.type}
+
+  - changeSet:
+      id: v45.00-005
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      # This migration was previously numbered v44.00-016 but ultimately was not shipped with 44.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM databasechangelog WHERE id = 'v44.00-016';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = 'v44.00-016';
+      changes:
+        - createTable:
+            tableName: emitter_action
+            remarks: Join table for emitter and actions
+            columns:
+              - column:
+                  name: emitter_id
+                  type: int
+                  remarks: The related emitter
+                  constraints:
+                    nullable: false
+                    referencedTableName: emitter
+                    referencedColumnNames: id
+                    foreignKeyName: fk_emitter_action_ref_emitter_id
+                    deleteCascade: true
+              - column:
+                  name: action_id
+                  type: int
+                  remarks: The related action
+                  constraints:
+                    nullable: false
+                    referencedTableName: action
+                    referencedColumnNames: id
+                    foreignKeyName: fk_emitter_action_ref_action_id
+                    deleteCascade: true
+
+  - changeSet:
+      id: v45.00-006
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      # This migration was previously numbered v44.00-017 but ultimately was not shipped with 44.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM databasechangelog WHERE id = 'v44.00-017';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = 'v44.00-017';
+      changes:
+        - addPrimaryKey:
+            tableName: emitter_action
+            columnNames: emitter_id, action_id
+            constraintName: pk_emitter_action
+
+  - changeSet:
+      id: v45.00-007
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      # This migration was previously numbered v44.00-018 but ultimately was not shipped with 44.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM databasechangelog WHERE id = 'v44.00-018';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = 'v44.00-018';
+      changes:
+        - createTable:
+            tableName: dashboard_emitter
+            remarks: Emitter for this dashboard
+            columns:
+              - column:
+                  name: emitter_id
+                  type: int
+                  remarks: The related emitter
+                  constraints:
+                    nullable: false
+                    referencedTableName: emitter
+                    referencedColumnNames: id
+                    foreignKeyName: fk_dashboard_emitter_ref_emitter_id
+                    deleteCascade: true
+              - column:
+                  name: dashboard_id
+                  type: int
+                  remarks: The related dashboard
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_dashboard
+                    referencedColumnNames: id
+                    foreignKeyName: fk_dashboard_emitter_ref_dashboard_id
+                    deleteCascade: true
+
+  - changeSet:
+      id: v45.00-008
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      # This migration was previously numbered v44.00-019 but ultimately was not shipped with 44.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM databasechangelog WHERE id = 'v44.00-019';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = 'v44.00-019';
+      changes:
+        - addPrimaryKey:
+            tableName: dashboard_emitter
+            columnNames: dashboard_id, emitter_id
+            constraintName: pk_dashboard_emitter
+
+  - changeSet:
+      id: v45.00-009
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      # This migration was previously numbered v44.00-020 but ultimately was not shipped with 44.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM databasechangelog WHERE id = 'v44.00-020';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = 'v44.00-020';
+      changes:
+        - createTable:
+            tableName: card_emitter
+            remarks: Emitter for this card
+            columns:
+              - column:
+                  name: emitter_id
+                  type: int
+                  remarks: The related emitter
+                  constraints:
+                    nullable: false
+                    referencedTableName: emitter
+                    referencedColumnNames: id
+                    foreignKeyName: fk_card_emitter_ref_emitter_id
+                    deleteCascade: true
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: The related card
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_card_emitter_ref_card_id
+                    deleteCascade: true
+  - changeSet:
+      id: v45.00-010
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      # This migration was previously numbered v44.00-021 but ultimately was not shipped with 44.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM databasechangelog WHERE id = 'v44.00-021';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = 'v44.00-021';
+      changes:
+        - addPrimaryKey:
+            tableName: card_emitter
+            columnNames: card_id, emitter_id
+            constraintName: pk_card_emitter
+
+  - changeSet:
+      id: v45.00-011
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      # This migration was previously numbered v44.00-022 but ultimately was not shipped with 44.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM databasechangelog WHERE id = 'v44.00-022';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = 'v44.00-022';
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: is_write
+                  type: boolean
+                  defaultValueBoolean: false
+                  remarks: Indicates that this query will perform writes to a db
+                  constraints:
+                    nullable: false
+            tableName: report_card
+
+  - changeSet:
+      id: v45.00-012
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      # This migration was previously numbered v44.00-031 but ultimately was not shipped with 44.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM databasechangelog WHERE id = 'v44.00-031';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = 'v44.00-031';
+      changes:
+        - createTable:
+            tableName: http_action
+            remarks: An http api call type of action
+            columns:
+              - column:
+                  name: action_id
+                  type: int
+                  remarks: The related action
+                  constraints:
+                    nullable: false
+                    referencedTableName: action
+                    referencedColumnNames: id
+                    foreignKeyName: fk_http_action_ref_action_id
+                    deleteCascade: true
+              - column:
+                  name: name
+                  type: varchar(254)
+                  remarks: The name of this action
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: ${text.type}
+                  remarks: An optional description for this action
+              - column:
+                  name: template
+                  type: ${text.type}
+                  remarks: A template that defines method,url,body,headers required to make an api call
+                  constraints:
+                    nullable: false
+              - column:
+                  name: response_handle
+                  type: ${text.type}
+                  remarks: A program to take an api response and transform to an appropriate response for emitters
+              - column:
+                  name: error_handle
+                  type: ${text.type}
+                  remarks: A program to take an api response to determine if an error occurred
+
+  - changeSet:
+      id: v45.00-013
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      # This migration was previously numbered v44.00-032 but ultimately was not shipped with 44.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM databasechangelog WHERE id = 'v44.00-032';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = 'v44.00-032';
+      changes:
+        - addPrimaryKey:
+            tableName: http_action
+            columnNames: action_id
+            constraintName: pk_http_action
+
+  - changeSet:
+      id: v45.00-014
+      author: snoe
+      comment: Added 0.45.0 - writeback add action_id to emitter
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: action_id
+                  type: int
+                  remarks: The related action
+            tableName: emitter
+
+  # FK constraint is added separately because deleteCascade doesn't work in addColumn -- see #14321
+  - changeSet:
+      id: v45.00-015
+      author: snoe
+      comment: Added 0.45.0 - writeback add fk for action_id to emitter
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: emitter
+            baseColumnNames: action_id
+            referencedTableName: action
+            referencedColumnNames: id
+            constraintName: fk_emitter_ref_action_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v45.00-016
+      author: snoe
+      comment: Added 0.45.0 - writeback Move foreign keys from emitter_action and dashboard_emitter
+      changes:
+        - sql:
+              sql: >-
+                update emitter set
+                action_id = (select action_id from emitter_action where emitter_id = id);
+
+  - changeSet:
+      id: v45.00-017
+      author: snoe
+      comment: Added 0.45.0 - writeback remove any emitters that were orphaned to be safe.
+      changes:
+        - sql:
+              sql: delete from emitter where action_id is null;
+
+  - changeSet:
+      id: v45.00-018
+      author: snoe
+      comment: Added 0.45.0 - writeback Make emitter action_id not nullable
+      changes:
+        - addNotNullConstraint:
+            columnDataType: int
+            tableName: emitter
+            columnName: action_id
+
+  - changeSet:
+      id: v45.00-019
+      author: snoe
+      comment: Added 0.45.0 - writeback drop emitter_action
+      changes:
+        - dropTable:
+            tableName: emitter_action
+
+  - changeSet:
+      id: v45.00-022
+      author: snoe
+      comment: Added 0.45.0 - add app container
+      changes:
+        - createTable:
+            tableName: app
+            remarks: Defines top level concerns for App
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity.
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: The associated collection
+                  constraints:
+                    nullable: false
+                    referencedTableName: collection
+                    referencedColumnNames: id
+                    foreignKeyName: fk_app_ref_collection_id
+                    deleteCascade: true
+                    unique: true
+              - column:
+                  name: dashboard_id
+                  type: int
+                  remarks: The homepage of the app
+              - column:
+                  remarks: JSON for the navigation items of the app
+                  name: nav_items
+                  type: ${text.type}
+              - column:
+                  remarks: JSON for frontend related additions, such as styling
+                  name: options
+                  type: ${text.type}
+              - column:
+                  remarks: The timestamp of when the app was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the app was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v45.00-023
+      author: snoe
+      comment: Added 0.45.0 - add app container
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: app
+            baseColumnNames: dashboard_id
+            referencedTableName: report_dashboard
+            referencedColumnNames: id
+            constraintName: fk_app_ref_dashboard_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v45.00-025
+      author: metamben
+      comment: Added 0.45.0 - mark app pages
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: is_app_page
+                  type: boolean
+                  defaultValueBoolean: false
+                  remarks: Indicates that this dashboard serves as a page of an app
+                  constraints:
+                    nullable: false
+            tableName: report_dashboard
+
+  - changeSet:
+      id: v45.00-026
+      author: snoe
+      comment: Added 0.45.0 - apps add action_id to report_dashboardcard
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: action_id
+                  type: int
+                  remarks: The related action
+            tableName: report_dashboardcard
+
+  # FK constraint is added separately because deleteCascade doesn't work in addColumn -- see #14321
+  - changeSet:
+      id: v45.00-027
+      author: snoe
+      comment: Added 0.45.0 - apps add fk for action_id to report_dashboardcard
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_dashboardcard
+            baseColumnNames: action_id
+            referencedTableName: action
+            referencedColumnNames: id
+            constraintName: fk_report_dashboardcard_ref_action_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v45.00-028
+      author: camsaul
+      comment: Added 0.45.0 -- rename DashboardCard sizeX to size_x. See https://github.com/metabase/metabase/issues/16344
+      changes:
+        - renameColumn:
+            tableName: report_dashboardcard
+            columnDataType: int
+            oldColumnName: sizeX
+            newColumnName: size_x
+
+  - changeSet:
+      id: v45.00-029
+      author: camsaul
+      comment: Added 0.45.0 -- rename DashboardCard size_y to size_y. See https://github.com/metabase/metabase/issues/16344
+      changes:
+        - renameColumn:
+            tableName: report_dashboardcard
+            columnDataType: int
+            oldColumnName: sizeY
+            newColumnName: size_y
+
+  - changeSet:
+      id: v45.00-030
+      author: camsaul
+      comment: Added 0.45.0 -- add default value to DashboardCard size_x -- this was previously done by Toucan
+      changes:
+        - addDefaultValue:
+            tableName: report_dashboardcard
+            columnName: size_x
+            defaultValue: 2
+
+  - changeSet:
+      id: v45.00-031
+      author: camsaul
+      comment: Added 0.45.0 -- add default value to DashboardCard size_y -- this was previously done by Toucan
+      changes:
+        - addDefaultValue:
+            tableName: report_dashboardcard
+            columnName: size_y
+            defaultValue: 2
+
+  - changeSet:
+      id: v45.00-032
+      author: camsaul
+      comment: Added 0.45.0 -- add default value for DashboardCard created_at (Postgres/H2)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: postgresql,h2
+      changes:
+        - addDefaultValue:
+            tableName: report_dashboardcard
+            columnName: created_at
+            columnDataType: ${timestamp_type}
+            defaultValueComputed: current_timestamp
+
+    # addDefaultValue with defaultValueComputed doesn't work for MySQL/MariaDB so we have to do this the hard way.
+  - changeSet:
+      id: v45.00-033
+      author: camsaul
+      comment: Added 0.45.0 -- add default value for DashboardCard created_at (MySQL/MariaDB)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+      changes:
+        - sql:
+            sql: >-
+              ALTER TABLE report_dashboardcard
+              CHANGE created_at
+              created_at timestamp(6) NOT NULL DEFAULT current_timestamp(6);
+
+  - changeSet:
+      id: v45.00-034
+      author: camsaul
+      comment: Added 0.45.0 -- add default value for DashboardCard updated_at (Postgres/H2)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: postgresql,h2
+      changes:
+        - addDefaultValue:
+            tableName: report_dashboardcard
+            columnName: updated_at
+            columnDataType: ${timestamp_type}
+            defaultValueComputed: current_timestamp
+
+  - changeSet:
+      id: v45.00-035
+      author: camsaul
+      comment: Added 0.45.0 -- add default value for DashboardCard updated_at (MySQL/MariaDB)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+      changes:
+        - sql:
+            sql: >-
+              ALTER TABLE report_dashboardcard
+              CHANGE updated_at
+              updated_at timestamp(6) NOT NULL DEFAULT current_timestamp(6);
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

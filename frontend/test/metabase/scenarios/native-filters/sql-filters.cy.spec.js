@@ -3,7 +3,7 @@ import {
   openNativeEditor,
   filterWidget,
   popover,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 
@@ -138,17 +138,12 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
       cy.get(".Icon-close").click();
     });
 
+    cy.icon("contract").click();
+
     // resize window to mobile form factor
     cy.viewport(480, 800);
 
-    cy.get("fieldset")
-      .findByText("Testingparamvisbility77")
-      .should("be.visible");
-
-    // collapse editor
-    cy.get(".Icon-contract")
-      .first()
-      .click();
+    cy.findByText("1 active filter").click();
 
     cy.get("fieldset")
       .findByText("Testingparamvisbility77")

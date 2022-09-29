@@ -6,6 +6,7 @@
             [metabase.driver.util :as driver.u]
             [metabase.models :refer [Database Field FieldValues Table]]
             [metabase.sync :as sync]
+            [metabase.sync.concurrent :as sync.concurrent]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.timeseries-query-processor-test.util :as tqpt]
@@ -31,7 +32,7 @@
   (testing "GET /api/field/:id"
     (is (= (-> (merge
                 (mt/object-defaults Field)
-                (db/select-one [Field :created_at :updated_at :last_analyzed :fingerprint :fingerprint_version :database_position]
+                (db/select-one [Field :created_at :updated_at :last_analyzed :fingerprint :fingerprint_version :database_position :database_required]
                   :id (mt/id :users :name))
                 {:table_id         (mt/id :users)
                  :table            (merge
@@ -60,6 +61,7 @@
                  :base_type        "type/Text"
                  :effective_type   "type/Text"
                  :has_field_values "list"
+                 :database_required false
                  :dimensions       []
                  :name_field       nil})
                (m/dissoc-in [:table :db :updated_at] [:table :db :created_at] [:table :db :timezone] [:table :db :settings]))
@@ -91,7 +93,7 @@
   (testing "PUT /api/field/:id"
     (testing "test that we can do basic field update work, including unsetting some fields such as semantic-type"
       (mt/with-temp Field [{field-id :id} {:name "Field Test"}]
-        (let [original-val (simple-field-details (Field field-id))]
+        (let [original-val (simple-field-details (db/select-one Field :id field-id))]
           (testing "orignal value"
             (is (= {:name               "Field Test"
                     :display_name       "Field Test"
@@ -108,7 +110,7 @@
                                                                                   :semantic_type   :type/Name
                                                                                   :visibility_type :sensitive
                                                                                   :nfc_path        ["bob" "dobbs"]})
-          (let [updated-val (simple-field-details (Field field-id))]
+          (let [updated-val (simple-field-details (db/select-one Field :id field-id))]
             (testing "updated value"
               (is (= {:name               "Field Test"
                       :display_name       "yay"
@@ -130,7 +132,7 @@
                       :visibility_type    :sensitive
                       :fk_target_field_id nil
                       :nfc_path           nil}
-                     (simple-field-details (Field field-id)))))))))
+                     (simple-field-details (db/select-one Field :id field-id)))))))))
     (testing "updating coercion strategies"
       (mt/with-temp Field [{field-id :id} {:name "Field Test"}]
         (testing "When valid, updates coercion strategy and effective type"
@@ -151,20 +153,20 @@
                                         ;; unix is an integer->Temporal conversion
                                         {:coercion_strategy :Coercion/UNIXMicroSeconds->DateTime}))))))
       (testing "Refingerprints field when updated"
-        (with-redefs [metabase.sync.concurrent/submit-task (fn [task] (task))]
+        (with-redefs [sync.concurrent/submit-task (fn [task] (task))]
           (mt/dataset integer-coerceable
-            (sync/sync-database! (Database (mt/id)))
+            (sync/sync-database! (db/select-one Database :id (mt/id)))
             (let [field-id      (mt/id :t :f)
                   set-strategy! (fn [strategy]
                                   (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id)
                                                         {:coercion_strategy strategy}))]
               ;; ensure that there is no coercion strategy from previous tests
               (set-strategy! nil)
-              (let [field (Field field-id)]
+              (let [field (db/select-one Field :id field-id)]
                 (is (= :type/Integer (:effective_type field)))
                 (is (contains? (get-in field [:fingerprint :type]) :type/Number)))
               (set-strategy! :Coercion/UNIXSeconds->DateTime)
-              (let [field (Field field-id)]
+              (let [field (db/select-one Field :id field-id)]
                 (is (= :type/Instant (:effective_type field)))
                 (is (contains? (get-in field [:fingerprint :type]) :type/DateTime))))))))
 
@@ -199,7 +201,7 @@
 (defn- field->field-values
   "Fetch the `FieldValues` object that corresponds to a given `Field`."
   [table-kw field-kw]
-  (FieldValues :field_id (mt/id table-kw field-kw)))
+  (db/select-one FieldValues :field_id (mt/id table-kw field-kw)))
 
 (defn- field-values-id [table-key field-key]
   (:id (field->field-values table-key field-key)))
@@ -213,15 +215,15 @@
           (db/update! FieldValues id :human_readable_values nil))
         (db/update! Field (mt/id :venues :price) :has_field_values "list")
         ;; now update the values via the API
-        (is (= {:values [[1] [2] [3] [4]], :field_id (mt/id :venues :price)}
+        (is (= {:values [[1] [2] [3] [4]], :field_id (mt/id :venues :price), :has_more_values false}
                (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :price)))))))
 
     (testing "Should return nothing for a field whose `has_field_values` is not `list`"
-      (is (= {:values [], :field_id (mt/id :venues :id)}
+      (is (= {:values [], :field_id (mt/id :venues :id), :has_more_values false}
              (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :id))))))
 
     (testing "Sensitive fields do not have field values and should return empty"
-      (is (= {:values [], :field_id (mt/id :users :password)}
+      (is (= {:values [], :field_id (mt/id :users :password), :has_more_values false}
              (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :users :password))))))
 
     (testing "External remapping"
@@ -238,10 +240,10 @@
 (deftest update-field-values-no-human-readable-values-test
   (testing "POST /api/field/:id/values"
     (testing "Human readable values are optional"
-      (mt/with-temp* [Field       [{field-id :id}       list-field]
-                      FieldValues [{field-value-id :id} {:values (range 5 10), :field_id field-id}]]
+      (mt/with-temp* [Field       [{field-id :id} list-field]
+                      FieldValues [_              {:values (range 5 10), :field_id field-id}]]
         (testing "fetch initial values"
-          (is (= {:values [[5] [6] [7] [8] [9]], :field_id true}
+          (is (= {:values [[5] [6] [7] [8] [9]], :field_id true, :has_more_values false}
                  (mt/boolean-ids-and-timestamps
                   (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id))))))
         (testing "update values"
@@ -250,7 +252,7 @@
                   (mt/user-http-request :crowberto :post 200 (format "field/%d/values" field-id)
                    {:values (map vector (range 1 5))})))))
         (testing "fetch updated values"
-          (is (= {:values [[1] [2] [3] [4]], :field_id true}
+          (is (= {:values [[1] [2] [3] [4]], :field_id true, :has_more_values false}
                  (mt/boolean-ids-and-timestamps
                   (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id))))))))))
 
@@ -258,18 +260,18 @@
   (testing "POST /api/field/:id/values"
     (testing "Existing field values can be updated (with their human readable values)"
       (mt/with-temp* [Field [{field-id :id} list-field]
-                      FieldValues [{field-value-id :id} {:values (conj (range 1 5) nil), :field_id field-id}]]
+                      FieldValues [_ {:values (conj (range 1 5) nil), :field_id field-id}]]
         (testing "fetch initial values"
-          (is (= {:values [[nil] [1] [2] [3] [4]], :field_id true}
+          (is (= {:values [[nil] [1] [2] [3] [4]], :field_id true, :has_more_values false}
                  (mt/boolean-ids-and-timestamps
                   (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id))))))
         (testing "update values"
           (is (= {:status "success"}
                  (mt/boolean-ids-and-timestamps
                   (mt/user-http-request :crowberto :post 200 (format "field/%d/values" field-id)
-                   {:values [[nil "no $"] [1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]]})))))
+                   {:values [[nil "no $"] [1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :has_more_values false})))))
         (testing "fetch updated values"
-          (is (= {:values [[nil "no $"] [1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true}
+          (is (= {:values [[nil "no $"] [1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true, :has_more_values false}
                  (mt/boolean-ids-and-timestamps
                   (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id))))))))))
 
@@ -280,7 +282,7 @@
       ;; exist; we can ignore that
       (mt/suppress-output
        (mt/with-temp Field [{field-id :id} list-field]
-         (is (= {:values [], :field_id true}
+         (is (= {:values [], :field_id true, :has_more_values false}
                 (mt/boolean-ids-and-timestamps
                  (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id)))))
 
@@ -288,10 +290,10 @@
                 (mt/user-http-request :crowberto :post 200 (format "field/%d/values" field-id)
                  {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]]})))
 
-         (is (= {:values [1 2 3 4], :human_readable_values ["$" "$$" "$$$" "$$$$"]}
-                (into {} (db/select-one [FieldValues :values :human_readable_values] :field_id field-id))))
+         (is (= {:values [1 2 3 4], :human_readable_values ["$" "$$" "$$$" "$$$$"], :has_more_values false}
+                (into {} (db/select-one [FieldValues :values :human_readable_values, :has_more_values] :field_id field-id))))
 
-         (is (= {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true}
+         (is (= {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true, :has_more_values false}
                 (mt/boolean-ids-and-timestamps
                  (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id))))))))))
 
@@ -299,39 +301,39 @@
   (testing "POST /api/field/:id/values"
     (mt/with-temp Field [{field-id :id} list-field]
       (testing "should be able to unset FieldValues"
-        (mt/with-temp FieldValues [{field-value-id :id} {:values (range 1 5), :field_id field-id}]
+        (mt/with-temp FieldValues [_ {:values (range 1 5), :field_id field-id}]
           (testing "before updating values"
-            (is (= {:values [[1] [2] [3] [4]], :field_id true}
+            (is (= {:values [[1] [2] [3] [4]], :field_id true, :has_more_values false}
                    (mt/boolean-ids-and-timestamps (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id))))))
           (testing "API response"
             (is (= {:status "success"}
                    (mt/user-http-request :crowberto :post 200 (format "field/%d/values" field-id) {:values [], :field_id true}))))
           (testing "after updating values"
-            (is (= {:values [], :field_id true}
+            (is (= {:values [], :field_id true, :has_more_values false}
                    (mt/boolean-ids-and-timestamps (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id))))))[]))
 
       (testing "should be able to unset just the human-readable values"
-        (mt/with-temp FieldValues [{field-value-id :id} {:values                (range 1 5)
-                                                         :field_id              field-id
-                                                         :human_readable_values ["$" "$$" "$$$" "$$$$"]}]
+        (mt/with-temp FieldValues [_ {:values                (range 1 5)
+                                      :field_id              field-id
+                                      :human_readable_values ["$" "$$" "$$$" "$$$$"]}]
           (testing "before updating values"
-            (is (= {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true}
+            (is (= {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true, :has_more_values false}
                    (mt/boolean-ids-and-timestamps (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id))))))
           (testing "API response"
             (is (= {:status "success"}
                    (mt/user-http-request :crowberto :post 200 (format "field/%d/values" field-id) {:values [[1] [2] [3] [4]]}))))
           (testing "after updating values"
-            (is (= {:values [[1] [2] [3] [4]], :field_id true}
+            (is (= {:values [[1] [2] [3] [4]], :field_id true, :has_more_values false}
                    (mt/boolean-ids-and-timestamps (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id)))))))))
 
     (testing "attempting to updated values should throw when human readable values are present but not for every value"
       (mt/with-temp Field [{field-id :id} {:name "Field Test", :base_type :type/Integer, :has_field_values "list"}]
         (is (= "If remapped values are specified, they must be specified for all field values"
                (mt/user-http-request :crowberto :post 400 (format "field/%d/values" field-id)
-                {:values [[1 "$"] [2 "$$"] [3] [4]]})))))))
+                                     {:values [[1 "$"] [2 "$$"] [3] [4]]})))))))
 
 (defn- dimension-for-field [field-id]
-  (-> (Field :id field-id)
+  (-> (db/select-one Field :id field-id)
       (hydrate :dimensions)
       :dimensions))
 
@@ -350,6 +352,7 @@
       (create-dimension-via-API! field-id {:name "some dimension name", :type "internal"})
       (let [new-dim (dimension-for-field field-id)]
         (is (= {:id                      true
+                :entity_id               true
                 :created_at              true
                 :updated_at              true
                 :type                    :internal
@@ -361,6 +364,7 @@
           (create-dimension-via-API! field-id {:name "different dimension name", :type "internal"})
           (let [updated-dim (dimension-for-field field-id)]
             (is (= {:id                      true
+                    :entity_id               true
                     :created_at              true
                     :updated_at              true
                     :type                    :internal
@@ -388,6 +392,7 @@
         {:name "some dimension name", :type "external" :human_readable_field_id field-id-2})
       (testing "after creation"
         (is (= {:id                      true
+                :entity_id               true
                 :created_at              true
                 :updated_at              true
                 :type                    :external
@@ -418,6 +423,7 @@
         (create-dimension-via-API! field-id {:name "some dimension name", :type "internal"})
         (testing "before deletion"
           (is (= {:id                      true
+                  :entity_id               true
                   :created_at              true
                   :updated_at              true
                   :type                    :internal
@@ -447,6 +453,7 @@
           {:name "fk-remove-dimension", :type "external" :human_readable_field_id field-id-2})
         (testing "before update"
           (is (= {:id                      true
+                  :entity_id               true
                   :created_at              true
                   :updated_at              true
                   :type                    :external
@@ -469,6 +476,7 @@
         (create-dimension-via-API! field-id-1
           {:name "fk-remove-dimension", :type "external" :human_readable_field_id field-id-2})
         (let [expected {:id                      true
+                        :entity_id               true
                         :created_at              true
                         :updated_at              true
                         :type                    :external
@@ -499,7 +507,7 @@
                 :semantic_type      :type/FK
                 :fk_target_field_id true
                 :nfc_path           nil}
-               (mt/boolean-ids-and-timestamps (simple-field-details (Field field-id-2))))))
+               (mt/boolean-ids-and-timestamps (simple-field-details (db/select-one Field :id field-id-2))))))
       (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-2) {:semantic_type nil})
       (testing "after change"
         (is (= {:name               "Field Test 2"
@@ -509,7 +517,7 @@
                 :semantic_type      nil
                 :fk_target_field_id false
                 :nfc_path           nil}
-               (mt/boolean-ids-and-timestamps (simple-field-details (Field field-id-2)))))))))
+               (mt/boolean-ids-and-timestamps (simple-field-details (db/select-one Field :id field-id-2)))))))))
 
 (deftest update-fk-target-field-id-test-2
   (testing "Checking update of the fk_target_field_id"
@@ -518,7 +526,7 @@
                     Field [{field-id-3 :id} {:name               "Field Test 3"
                                              :semantic_type      :type/FK
                                              :fk_target_field_id field-id-1}]]
-      (let [before-change (simple-field-details (Field field-id-3))]
+      (let [before-change (simple-field-details (db/select-one Field :id field-id-3))]
         (testing "before change"
           (is (= {:name               "Field Test 3"
                   :display_name       "Field Test 3"
@@ -530,7 +538,7 @@
                  (mt/boolean-ids-and-timestamps before-change))))
         (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-3) {:fk_target_field_id field-id-2})
         (testing "after change"
-          (let [after-change (simple-field-details (Field field-id-3))]
+          (let [after-change (simple-field-details (db/select-one Field :id field-id-3))]
             (is (= {:name               "Field Test 3"
                     :display_name       "Field Test 3"
                     :description        nil
@@ -555,7 +563,7 @@
                 :semantic_type      nil
                 :fk_target_field_id false
                 :nfc_path           nil}
-               (mt/boolean-ids-and-timestamps (simple-field-details (Field field-id-2))))))
+               (mt/boolean-ids-and-timestamps (simple-field-details (db/select-one Field :id field-id-2))))))
       (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-2) {:semantic_type      :type/FK
                                                                                 :fk_target_field_id field-id-1})
       (testing "after change"
@@ -566,7 +574,7 @@
                 :semantic_type      :type/FK
                 :fk_target_field_id true
                 :nfc_path           nil}
-               (mt/boolean-ids-and-timestamps (simple-field-details (Field field-id-2)))))))))
+               (mt/boolean-ids-and-timestamps (simple-field-details (db/select-one Field :id field-id-2)))))))))
 
 (deftest fk-target-field-id-shouldnt-change-test
   (testing "PUT /api/field/:id"
@@ -583,7 +591,7 @@
                   :semantic_type      :type/FK
                   :fk_target_field_id true
                   :nfc_path           nil}
-                 (mt/boolean-ids-and-timestamps (simple-field-details (Field field-id-2))))))
+                 (mt/boolean-ids-and-timestamps (simple-field-details (db/select-one Field :id field-id-2))))))
         (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-2) {:description "foo"})
         (testing "after change"
           (is (= {:name               "Field Test 2"
@@ -593,7 +601,7 @@
                   :semantic_type      :type/FK
                   :fk_target_field_id true
                   :nfc_path           nil}
-                 (mt/boolean-ids-and-timestamps (simple-field-details (Field field-id-2))))))))))
+                 (mt/boolean-ids-and-timestamps (simple-field-details (db/select-one Field :id field-id-2))))))))))
 
 (deftest update-field-type-dimension-test
   (testing "PUT /api/field/:id"
@@ -603,6 +611,7 @@
         (create-dimension-via-API! field-id {:name "some dimension name", :type "internal"})
         (testing "before API request"
           (is (= {:id                      true
+                  :entity_id               true
                   :created_at              true
                   :updated_at              true
                   :type                    :internal
@@ -620,6 +629,7 @@
                                            :base_type "type/Integer"}]
         (create-dimension-via-API! field-id {:name "some dimension name", :type "internal"})
         (let [expected {:id                      true
+                        :entity_id               true
                         :created_at              true
                         :updated_at              true
                         :type                    :internal
@@ -648,8 +658,8 @@
       (is (= [[1 "Red Medicine"]
               [10 "Fred 62"]]
              (mt/format-rows-by [int str]
-               (api.field/search-values (Field (mt/id :venues :id))
-                                        (Field (mt/id :venues :name))
+               (api.field/search-values (db/select-one Field :id (mt/id :venues :id))
+                                        (db/select-one Field :id (mt/id :venues :name))
                                         "Red"
                                         nil)))))
     (tqpt/test-timeseries-drivers
@@ -662,16 +672,16 @@
               ["648" "Fred 62"]
               ["72" "Red Medicine"]
               ["977" "Fred 62"]]
-             (api.field/search-values (Field (mt/id :checkins :id))
-                                      (Field (mt/id :checkins :venue_name))
+             (api.field/search-values (db/select-one Field :id (mt/id :checkins :id))
+                                      (db/select-one Field :id (mt/id :checkins :venue_name))
                                       "Red"
                                       nil)))))
   (testing "make sure limit works"
     (mt/test-drivers (mt/normal-drivers)
       (is (= [[1 "Red Medicine"]]
              (mt/format-rows-by [int str]
-                                (api.field/search-values (Field (mt/id :venues :id))
-                                                         (Field (mt/id :venues :name))
+                                (api.field/search-values (db/select-one Field :id (mt/id :venues :id))
+                                                         (db/select-one Field :id (mt/id :venues :name))
                                                          "Red"
                                                          1)))))))
 
@@ -679,14 +689,14 @@
   (testing "make sure it also works if you use the same Field twice"
     (mt/test-drivers (mt/normal-drivers)
       (is (= [["Fred 62" "Fred 62"] ["Red Medicine" "Red Medicine"]]
-             (api.field/search-values (Field (mt/id :venues :name))
-                                      (Field (mt/id :venues :name))
+             (api.field/search-values (db/select-one Field :id (mt/id :venues :name))
+                                      (db/select-one Field :id (mt/id :venues :name))
                                       "Red"
                                       nil))))
     (tqpt/test-timeseries-drivers
       (is (= [["Fred 62" "Fred 62"] ["Red Medicine" "Red Medicine"]]
-             (api.field/search-values (Field (mt/id :checkins :venue_name))
-                                      (Field (mt/id :checkins :venue_name))
+             (api.field/search-values (db/select-one Field :id (mt/id :checkins :venue_name))
+                                      (db/select-one Field :id (mt/id :checkins :venue_name))
                                       "Red"
                                       nil))))))
 

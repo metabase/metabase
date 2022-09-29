@@ -1,4 +1,9 @@
-import { ORDERS } from "__support__/sample_database_fixture";
+import {
+  ORDERS,
+  PRODUCTS,
+  PEOPLE,
+  metadata,
+} from "__support__/sample_database_fixture";
 
 describe("StructuredQuery nesting", () => {
   describe("nest", () => {
@@ -99,9 +104,7 @@ describe("StructuredQuery nesting", () => {
       });
     });
     it("should return last summarized stage if any is summarized", () => {
-      const q = ORDERS.query()
-        .aggregate(["count"])
-        .nest();
+      const q = ORDERS.query().aggregate(["count"]).nest();
       expect(q.topLevelQuery().query()).toEqual({
         "source-table": ORDERS.id,
         aggregation: [["count"]],
@@ -130,6 +133,79 @@ describe("StructuredQuery nesting", () => {
         ]),
       );
       expect(d.mbql()).toEqual(["field", ORDERS.TOTAL.id, null]);
+    });
+  });
+
+  describe("model question", () => {
+    let dataset;
+    let virtualCardTable;
+    beforeEach(() => {
+      const question = ORDERS.question();
+      dataset = question
+        .setCard({ ...question.card(), id: 123 })
+        .setDataset(true);
+
+      // create a virtual table for the card
+      // that contains fields from both Orders and Products tables
+      // to imitate an explicit join of Products to Orders
+      virtualCardTable = ORDERS.clone();
+      virtualCardTable.id = `card__123`;
+      virtualCardTable.fields = virtualCardTable.fields
+        .map(f =>
+          f.clone({
+            table_id: `card__123`,
+            uniqueId: `card__123:${f.id}`,
+          }),
+        )
+        .concat(
+          PRODUCTS.fields.map(f => {
+            const field = f.clone({
+              table_id: `card__123`,
+              uniqueId: `card__123:${f.id}`,
+            });
+
+            return field;
+          }),
+        );
+
+      // add instances to the `metadata` instance
+      metadata.questions[dataset.id()] = dataset;
+      metadata.tables[virtualCardTable.id] = virtualCardTable;
+      virtualCardTable.fields.forEach(f => {
+        metadata.fields[f.uniqueId] = f;
+      });
+    });
+
+    it("should not include implicit join dimensions when the underyling question has an explicit join", () => {
+      const nestedDatasetQuery = dataset.composeDataset().query();
+      expect(
+        // get a list of all dimension options for the nested query
+        nestedDatasetQuery
+          .dimensionOptions()
+          .all()
+          .map(d => d.field().getPlainObject()),
+      ).toEqual([
+        // Order fields
+        ...ORDERS.fields.map(f =>
+          f
+            .clone({
+              table_id: `card__123`,
+              uniqueId: `card__123:${f.id}`,
+            })
+            .getPlainObject(),
+        ),
+        // Product fields from the explicit join
+        ...PRODUCTS.fields.map(f =>
+          f
+            .clone({
+              table_id: `card__123`,
+              uniqueId: `card__123:${f.id}`,
+            })
+            .getPlainObject(),
+        ),
+        // People fields from the implicit join
+        ...PEOPLE.fields.map(f => f.getPlainObject()),
+      ]);
     });
   });
 });

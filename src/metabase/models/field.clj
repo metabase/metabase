@@ -3,17 +3,23 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [medley.core :as m]
+            [metabase.db.connection :as mdb.connection]
             [metabase.models.dimension :refer [Dimension]]
             [metabase.models.field-values :as field-values :refer [FieldValues]]
             [metabase.models.humanization :as humanization]
             [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
+            [metabase.models.serialization.base :as serdes.base]
+            [metabase.models.serialization.hash :as serdes.hash]
+            [metabase.models.serialization.util :as serdes.util]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs tru]]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]
             [toucan.models :as models]))
+
+(comment mdb.connection/keep-me) ;; for [[memoize/ttl]]
 
 ;;; ------------------------------------------------- Type Mappings --------------------------------------------------
 
@@ -60,6 +66,10 @@
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (models/defmodel Field :metabase_field)
+
+(doto Field
+  (derive ::mi/read-policy.partial-perms-for-perms-set)
+  (derive ::mi/write-policy.full-perms-for-perms-set))
 
 (defn- hierarchy-keyword-in [column-name & {:keys [ancestor-types]}]
   (fn [k]
@@ -135,16 +145,17 @@
   see), would require only a few megs of RAM, and again only if every single Table was looked up in a span of 5
   seconds."
   (memoize/ttl
+   ^{::memoize/args-fn (fn [[table-id read-or-write]]
+                         [(mdb.connection/unique-identifier) table-id read-or-write])}
    (fn [table-id read-or-write]
      (let [{schema :schema, db-id :db_id} (db/select-one ['Table :schema :db_id] :id table-id)]
        (perms-objects-set* db-id schema table-id read-or-write)))
    :ttl/threshold 5000))
 
-(defn- perms-objects-set
-  "Calculate set of permissions required to access a Field. For the time being permissions to access a Field are the
-   same as permissions to access its parent Table, and there are not separate permissions for reading/writing."
+;;; Calculate set of permissions required to access a Field. For the time being permissions to access a Field are the
+;;; same as permissions to access its parent Table.
+(defmethod mi/perms-objects-set Field
   [{table-id :table_id, {db-id :db_id, schema :schema} :table} read-or-write]
-  {:arglists '([field read-or-write])}
   (if db-id
     ;; if Field already has a hydrated `:table`, then just use that to generate perms set (no DB calls required)
     (perms-objects-set* db-id schema table-id read-or-write)
@@ -168,7 +179,7 @@
   :out (comp update-semantic-numeric-values mi/json-out-with-keywordization))
 
 
-(u/strict-extend (class Field)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Field)
   models/IModel
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:destination :field :origin :human_readable_field])
@@ -184,11 +195,8 @@
           :properties     (constantly {:timestamped? true})
           :pre-insert     pre-insert})
 
-  mi/IObjectPermissions
-  (merge mi/IObjectPermissionsDefaults
-         {:perms-objects-set perms-objects-set
-          :can-read?         (partial mi/current-user-has-partial-permissions? :read)
-          :can-write?        (partial mi/current-user-has-full-permissions? :write)}))
+  serdes.hash/IdentityHashable
+  {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :table)])})
 
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
@@ -198,7 +206,7 @@
   [{:keys [semantic_type fk_target_field_id]}]
   (when (and (isa? semantic_type :type/FK)
              fk_target_field_id)
-    (Field fk_target_field_id)))
+    (db/select-one Field :id fk_target_field_id)))
 
 (defn values
   "Return the `FieldValues` associated with this `field`."
@@ -210,11 +218,14 @@
   instance. This only returns a single instance for each Field! Duplicates are discarded!
 
     (select-field-id->instance [(Field 1) (Field 2)] FieldValues)
-    ;; -> {1 #FieldValues{...}, 2 #FieldValues{...}}"
-  [fields model]
+    ;; -> {1 #FieldValues{...}, 2 #FieldValues{...}}
+
+  (select-field-id->instance [(Field 1) (Field 2)] FieldValues :type :full)
+    -> returns Fieldvalues of type :full for fields: [(Field 1) (Field 2)] "
+  [fields model & conditions]
   (let [field-ids (set (map :id fields))]
-    (u/key-by :field_id (when (seq field-ids)
-                          (db/select model :field_id [:in field-ids])))))
+    (m/index-by :field_id (when (seq field-ids)
+                            (apply db/select model :field_id [:in field-ids] conditions)))))
 
 (defn nfc-field->parent-identifier
   "Take a nested field column field corresponding to something like an inner key within a JSON column,
@@ -239,7 +250,11 @@
   "Efficiently hydrate the `FieldValues` for a collection of `fields`."
   {:batched-hydrate :values}
   [fields]
-  (let [id->field-values (select-field-id->instance fields FieldValues)]
+  ;; In 44 we added a new concept of Advanced FieldValues, so FieldValues are no longer have an one-to-one relationship
+  ;; with Field. See the doc in [[metabase.models.field-values]] for more.
+  ;; Adding an explicity filter by :type =:full for FieldValues here bc I believe this hydration does not concern
+  ;; the new Advanced FieldValues.
+  (let [id->field-values (select-field-id->instance fields FieldValues :type :full)]
     (for [field fields]
       (assoc field :values (get id->field-values (:id field) [])))))
 
@@ -248,7 +263,8 @@
   {:batched-hydrate :normal_values}
   [fields]
   (let [id->field-values (select-field-id->instance (filter field-values/field-should-have-field-values? fields)
-                                                    [FieldValues :id :human_readable_values :values :field_id])]
+                                                    [FieldValues :id :human_readable_values :values :field_id]
+                                                    :type :full)]
     (for [field fields]
       (assoc field :values (get id->field-values (:id field) [])))))
 
@@ -314,8 +330,8 @@
                                     :when (and (isa? (:semantic_type field) :type/FK)
                                                (:fk_target_field_id field))]
                                 (:fk_target_field_id field)))
-        id->target-field (u/key-by :id (when (seq target-field-ids)
-                                         (readable-fields-only (db/select Field :id [:in target-field-ids]))))]
+        id->target-field (m/index-by :id (when (seq target-field-ids)
+                                           (readable-fields-only (db/select Field :id [:in target-field-ids]))))]
     (for [field fields
           :let  [target-id (:fk_target_field_id field)]]
       (assoc field :target (id->target-field target-id)))))
@@ -324,7 +340,7 @@
 (defn qualified-name-components
   "Return the pieces that represent a path to `field`, of the form `[table-name parent-fields-name* field-name]`."
   [{field-name :name, table-id :table_id, parent-id :parent_id}]
-  (conj (vec (if-let [parent (Field parent-id)]
+  (conj (vec (if-let [parent (db/select-one Field :id parent-id)]
                (qualified-name-components parent)
                (let [{table-name :name, schema :schema} (db/select-one ['Table :name :schema], :id table-id)]
                  (conj (when schema
@@ -344,7 +360,7 @@
 
 (def ^{:arglists '([field-id])} field-id->table-id
   "Return the ID of the Table this Field belongs to."
-  (memoize
+  (mdb.connection/memoize-for-application-db
    (fn [field-id]
      {:pre [(integer? field-id)]}
      (db/select-one-field :table_id Field, :id field-id))))
@@ -361,3 +377,43 @@
   {:arglists '([field])}
   [{:keys [table_id]}]
   (db/select-one 'Table, :id table_id))
+
+;;; ------------------------------------------------- Serialization -------------------------------------------------
+
+;; In order to retrieve the dependencies for a field its table_id needs to be serialized as [database schema table],
+;; a trio of strings with schema maybe nil.
+(defmethod serdes.base/serdes-generate-path "Field" [_ {table_id :table_id field :name}]
+  (let [table (when (number? table_id)
+                   (db/select-one 'Table :id table_id))
+        db    (when table
+                (db/select-one-field :name 'Database :id (:db_id table)))
+        [db schema table] (if (number? table_id)
+                            [db (:schema table) (:name table)]
+                            ;; If table_id is not a number, it's already been exported as a [db schema table] triple.
+                            table_id)]
+    (filterv some? [{:model "Database" :id db}
+                    (when schema {:model "Schema" :id schema})
+                    {:model "Table"    :id table}
+                    {:model "Field"    :id field}])))
+
+(defmethod serdes.base/serdes-entity-id "Field" [_ {:keys [name]}]
+  name)
+
+(defmethod serdes.base/serdes-dependencies "Field" [field]
+  ;; Take the path, but drop the Field section to get the parent Table's path instead.
+  [(pop (serdes.base/serdes-path field))])
+
+(defmethod serdes.base/extract-one "Field"
+  [_model-name _opts field]
+  (-> (serdes.base/extract-one-basics "Field" field)
+      (update :table_id serdes.util/export-table-fk)))
+
+(defmethod serdes.base/load-xform "Field"
+  [field]
+  (-> (serdes.base/load-xform-basics field)
+      (update :table_id serdes.util/import-table-fk)))
+
+(defmethod serdes.base/load-find-local "Field"
+  [path]
+  (let [table-id (serdes.base/load-find-local (pop path))]
+    (db/select-one-field :id Field :name (-> path last :id) :table_id table-id)))

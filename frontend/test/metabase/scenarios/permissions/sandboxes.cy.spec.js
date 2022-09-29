@@ -14,7 +14,7 @@ import {
   visitQuestion,
   visitDashboard,
   startNewQuestion,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { USER_GROUPS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
@@ -42,9 +42,7 @@ describeEE("formatting > sandboxes", () => {
     });
 
     it("should add key attributes to an existing user", () => {
-      cy.icon("ellipsis")
-        .last()
-        .click();
+      cy.icon("ellipsis").last().click();
       cy.findByText("Edit user").click();
       cy.findByText("Add an attribute").click();
       cy.findByPlaceholderText("Key").type("User ID");
@@ -56,7 +54,7 @@ describeEE("formatting > sandboxes", () => {
       cy.findByText("Invite someone").click();
       cy.findByPlaceholderText("Johnny").type("John");
       cy.findByPlaceholderText("Appleseed").type("Smith");
-      cy.findByPlaceholderText("youlooknicetoday@email.com").type(
+      cy.findByPlaceholderText("nicetoseeyou@email.com").type(
         "john@smith.test",
       );
       cy.findByText("Add an attribute").click();
@@ -219,13 +217,9 @@ describeEE("formatting > sandboxes", () => {
           .contains(/Orders?/)
           .click();
 
-        cy.get(".List-section-header")
-          .contains("User")
-          .click();
+        cy.get(".List-section-header").contains("User").click();
 
-        cy.get(".List-item")
-          .contains("ID")
-          .click();
+        cy.get(".List-item").contains("ID").click();
       });
 
       visualize();
@@ -339,9 +333,7 @@ describeEE("formatting > sandboxes", () => {
         // Drill-through
         cy.get(".Visualization").within(() => {
           // Click on the first bar in a graph (Category: "Doohickey")
-          cy.get(".bar")
-            .eq(0)
-            .click({ force: true });
+          cy.get(".bar").eq(0).click({ force: true });
         });
         cy.findByText("View these Orders").click();
 
@@ -415,9 +407,7 @@ describeEE("formatting > sandboxes", () => {
       // Drill-through
       cy.get(".Visualization").within(() => {
         // Click on the first bar in a graph (Category: "Doohickey")
-        cy.get(".bar")
-          .eq(0)
-          .click({ force: true });
+        cy.get(".bar").eq(0).click({ force: true });
       });
       cy.findByText("View these Orders").click();
 
@@ -486,9 +476,7 @@ describeEE("formatting > sandboxes", () => {
           callback: xhr => expect(xhr.response.body.error).not.to.exist,
         });
 
-        cy.get(".cellData")
-          .contains("Awesome Concrete Shoes")
-          .click();
+        cy.get(".cellData").contains("Awesome Concrete Shoes").click();
         cy.findByText(/View details/i).click();
 
         cy.log(
@@ -588,9 +576,7 @@ describeEE("formatting > sandboxes", () => {
           cy.log(
             "It should show remapped Display Values instead of Product ID",
           );
-          cy.get(".cellData")
-            .contains("Awesome Concrete Shoes")
-            .click();
+          cy.get(".cellData").contains("Awesome Concrete Shoes").click();
           cy.findByText(/View details/i).click();
 
           cy.log(
@@ -715,9 +701,7 @@ describeEE("formatting > sandboxes", () => {
         // Drill-through
         cy.get(".Visualization").within(() => {
           // Click on the second bar in a graph (Category: "Widget")
-          cy.get(".bar")
-            .eq(1)
-            .click({ force: true });
+          cy.get(".bar").eq(1).click({ force: true });
         });
         cy.findByText("View these Orders").click();
 
@@ -743,7 +727,9 @@ describeEE("formatting > sandboxes", () => {
         native: { query: "SELECT CAST(ID AS VARCHAR) AS ID FROM ORDERS;" },
       });
 
-      cy.visit("/admin/permissions/data/database/1/schema/PUBLIC/table/2");
+      cy.visit(
+        `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}`,
+      );
       cy.wait("@tablePermissions");
       cy.icon("eye")
         .eq(1) // No better way of doing this, undfortunately (see table above)
@@ -810,16 +796,11 @@ describeEE("formatting > sandboxes", () => {
         .should("be.visible")
         .within(() => {
           // Remove the "Subtotal" column from within sidebar
-          cy.findByText("Subtotal")
-            .parent()
-            .find(".Icon-close")
-            .click();
+          cy.findByText("Subtotal").parent().find(".Icon-eye_filled").click();
         });
       cy.button("Done").click();
       // Rerun the query
-      cy.icon("play")
-        .last()
-        .click();
+      cy.icon("play").last().click();
 
       cy.wait("@dataset").then(xhr => {
         expect(xhr.response.body.error).not.to.exist;
@@ -960,7 +941,7 @@ describeEE("formatting > sandboxes", () => {
       cy.contains("37.65");
     });
 
-    it.skip("unsaved/dirty query should work on linked table column with multiple dimensions and remapping (metabase#15106)", () => {
+    it("unsaved/dirty query should work on linked table column with multiple dimensions and remapping (metabase#15106)", () => {
       cy.server();
       cy.route("POST", "/api/dataset").as("dataset");
 
@@ -1016,32 +997,36 @@ describeEE("formatting > sandboxes", () => {
       // Add positive assertion once this issue is fixed
     });
 
-    it("sandboxed user should receive sandboxed dashboard subscription", () => {
-      cy.intercept("POST", "/api/pulse/test").as("emailSent");
+    it(
+      "sandboxed user should receive sandboxed dashboard subscription",
+      { tags: "@external" },
+      () => {
+        cy.intercept("POST", "/api/pulse/test").as("emailSent");
 
-      setupSMTP();
+        setupSMTP();
 
-      cy.sandboxTable({
-        table_id: ORDERS_ID,
-        attribute_remappings: {
-          attr_uid: ["dimension", ["field", ORDERS.USER_ID, null]],
-        },
-      });
+        cy.sandboxTable({
+          table_id: ORDERS_ID,
+          attribute_remappings: {
+            attr_uid: ["dimension", ["field", ORDERS.USER_ID, null]],
+          },
+        });
 
-      cy.signInAsSandboxedUser();
-      visitDashboard(1);
-      cy.icon("subscription").click();
-      cy.findByText("Email it").click();
-      cy.findByPlaceholderText("Enter user names or email addresses").click();
-      cy.findByText("User 1").click();
-      cy.findByText("Send email now").click();
-      cy.wait("@emailSent");
-      cy.request("GET", "http://localhost:80/email").then(({ body }) => {
-        expect(body[0].html).to.include("Orders in a dashboard");
-        expect(body[0].html).to.include("37.65");
-        expect(body[0].html).not.to.include("148.23"); // Order for user with ID 3
-      });
-    });
+        cy.signInAsSandboxedUser();
+        visitDashboard(1);
+        cy.icon("subscription").click();
+        cy.findByText("Email it").click();
+        cy.findByPlaceholderText("Enter user names or email addresses").click();
+        cy.findByText("User 1").click();
+        cy.findByText("Send email now").click();
+        cy.wait("@emailSent");
+        cy.request("GET", "http://localhost:80/email").then(({ body }) => {
+          expect(body[0].html).to.include("Orders in a dashboard");
+          expect(body[0].html).to.include("37.65");
+          expect(body[0].html).not.to.include("148.23"); // Order for user with ID 3
+        });
+      },
+    );
   });
 });
 

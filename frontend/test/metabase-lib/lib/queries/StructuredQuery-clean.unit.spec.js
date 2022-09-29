@@ -67,9 +67,7 @@ describe("StructuredQuery", () => {
       });
 
       it.skip("should remove join referencing invalid source-table", () => {
-        const q = ORDERS.query()
-          .setTableId(12345)
-          .join([getJoin()]);
+        const q = ORDERS.query().setTableId(12345).join([getJoin()]);
         expect(q.query()).toEqual({ "source-table": 12345, join: [getJoin()] });
         expect(q.clean().query()).toEqual({ "source-table": 12345 });
       });
@@ -287,10 +285,7 @@ describe("StructuredQuery", () => {
   describe("cleanNesting", () => {
     it("should not modify empty queries with no source-query", () => {
       expect(
-        SAMPLE_DATABASE.question()
-          .query()
-          .cleanNesting()
-          .datasetQuery(),
+        SAMPLE_DATABASE.question().query().cleanNesting().datasetQuery(),
       ).toEqual({
         type: "query",
         database: SAMPLE_DATABASE.id,

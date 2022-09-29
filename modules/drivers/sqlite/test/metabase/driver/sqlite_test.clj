@@ -144,8 +144,9 @@
                         :fields #{{:name "created_at"
                                    :database-type "TIMESTAMP"
                                    :base-type :type/DateTime
-                                   :database-position 0}}}
-                       (driver/describe-table driver db (Table (mt/id :timestamp_table)))))))))))))
+                                   :database-position 0
+                                   :database-required false}}}
+                       (driver/describe-table driver db (db/select-one Table :id (mt/id :timestamp_table)))))))))))))
 
 (deftest select-query-datetime
   (mt/test-driver :sqlite
@@ -174,39 +175,39 @@
         ;;         some upper layer will handle it.
         (mt/with-db db
           (testing "select datetime stored as unix epoch"
-            (is (= [["2021-08-25T04:18:24Z"                 ; TIMESTAMP
-                     "2021-08-25T00:00:00Z"                 ; DATE
-                     "2021-08-25T04:18:24Z"]]               ; DATETIME
+            (is (= [["2021-08-25T04:18:24Z"   ; TIMESTAMP
+                     "2021-08-25T00:00:00Z"   ; DATE
+                     "2021-08-25T04:18:24Z"]] ; DATETIME
                    (qp.test/rows
-                     (mt/run-mbql-query :datetime_table
-                                        {:fields [$col_timestamp $col_date $col_datetime]
-                                         :filter [:= $test_case "epoch"]})))))
+                    (mt/run-mbql-query datetime_table
+                                       {:fields [$col_timestamp $col_date $col_datetime]
+                                        :filter [:= $test_case "epoch"]})))))
           (testing "select datetime stored as string with milliseconds"
-            (is (= [["2021-08-25 04:18:24.111"              ; TIMESTAMP (raw string)
-                     "2021-08-25T04:18:24.111Z"]]           ; DATETIME
+            (is (= [["2021-08-25 04:18:24.111"    ; TIMESTAMP (raw string)
+                     "2021-08-25T04:18:24.111Z"]] ; DATETIME
                    (qp.test/rows
-                     (mt/run-mbql-query :datetime_table
-                                        {:fields [$col_timestamp $col_datetime]
-                                         :filter [:= $test_case "iso8601-ms"]})))))
+                    (mt/run-mbql-query datetime_table
+                                       {:fields [$col_timestamp $col_datetime]
+                                        :filter [:= $test_case "iso8601-ms"]})))))
           (testing "select datetime stored as string without milliseconds"
-            (is (= [["2021-08-25 04:18:24"                  ; TIMESTAMP (raw string)
-                     "2021-08-25T04:18:24Z"]]               ; DATETIME
+            (is (= [["2021-08-25 04:18:24"    ; TIMESTAMP (raw string)
+                     "2021-08-25T04:18:24Z"]] ; DATETIME
                    (qp.test/rows
-                     (mt/run-mbql-query :datetime_table
-                                        {:fields [$col_timestamp $col_datetime]
-                                         :filter [:= $test_case "iso8601-no-ms"]})))))
+                    (mt/run-mbql-query datetime_table
+                                       {:fields [$col_timestamp $col_datetime]
+                                        :filter [:= $test_case "iso8601-no-ms"]})))))
           (testing "select date stored as string without time"
-            (is (= [["2021-08-25T00:00:00Z"]]               ; DATE
+            (is (= [["2021-08-25T00:00:00Z"]] ; DATE
                    (qp.test/rows
-                     (mt/run-mbql-query :datetime_table
-                                        {:fields [$col_date]
-                                         :filter [:= $test_case "iso8601-no-time"]})))))
+                    (mt/run-mbql-query datetime_table
+                                       {:fields [$col_date]
+                                        :filter [:= $test_case "iso8601-no-time"]})))))
           (testing "select NULL"
             (is (= [[nil nil nil]]
                    (qp.test/rows
-                     (mt/run-mbql-query :datetime_table
-                                        {:fields [$col_timestamp $col_date $col_datetime]
-                                         :filter [:= $test_case "null"]}))))))))))
+                    (mt/run-mbql-query datetime_table
+                                       {:fields [$col_timestamp $col_date $col_datetime]
+                                        :filter [:= $test_case "null"]}))))))))))
 
 (deftest duplicate-identifiers-test
   (testing "Make sure duplicate identifiers (even with different cases) get unique aliases"

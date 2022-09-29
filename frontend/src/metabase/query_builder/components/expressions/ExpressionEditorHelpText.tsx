@@ -1,31 +1,24 @@
 import React from "react";
 import { t } from "ttag";
 
-import MetabaseSettings from "metabase/lib/settings";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
+import { getHelpDocsUrl } from "metabase/lib/expressions/helper-text-strings";
+import { HelpText } from "metabase/lib/expressions/types";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Icon from "metabase/components/Icon";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
-type Arg = {
-  name: string;
-  description: string;
-};
-
-type HelpText = {
-  args: Arg[];
-  description: string;
-  example: string;
-  structure: string;
-};
-
-interface HelpTextProps {
+interface ExpressionEditorHelpTextProps {
   helpText: HelpText;
   width: number;
   target: Element;
 }
 
-const HelpText = ({ helpText, width, target }: HelpTextProps) => {
+const ExpressionEditorHelpText = ({
+  helpText,
+  width,
+  target,
+}: ExpressionEditorHelpTextProps) => {
   if (!helpText) {
     return null;
   }
@@ -42,7 +35,7 @@ const HelpText = ({ helpText, width, target }: HelpTextProps) => {
           <div onMouseDown={e => e.preventDefault()}>
             <p
               className="p2 m0 text-monospace text-bold"
-              style={{ background: colors["bg-yellow"] }}
+              style={{ background: color("bg-yellow") }}
             >
               {helpText.structure}
             </p>
@@ -60,7 +53,7 @@ const HelpText = ({ helpText, width, target }: HelpTextProps) => {
               <ExternalLink
                 className="link text-bold block my1"
                 target="_blank"
-                href={MetabaseSettings.docsUrl("users-guide/expressions")}
+                href={getHelpDocsUrl(helpText)}
               >
                 <Icon name="reference" size={12} className="mr1" />
                 {t`Learn more`}
@@ -69,8 +62,8 @@ const HelpText = ({ helpText, width, target }: HelpTextProps) => {
           </div>
         </>
       }
-    ></TippyPopover>
+    />
   );
 };
 
-export default HelpText;
+export default ExpressionEditorHelpText;

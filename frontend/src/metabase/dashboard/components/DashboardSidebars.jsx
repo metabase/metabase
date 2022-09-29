@@ -4,12 +4,12 @@ import _ from "underscore";
 
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
-import ClickBehaviorSidebar from "./ClickBehaviorSidebar";
 import ParameterSidebar from "metabase/parameters/components/ParameterSidebar";
 import SharingSidebar from "metabase/sharing/components/SharingSidebar";
-import { AddCardSidebar } from "./add-card-sidebar/AddCardSidebar";
-
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import ClickBehaviorSidebar from "./ClickBehaviorSidebar";
+import DashboardInfoSidebar from "./DashboardInfoSidebar";
+import { AddCardSidebar } from "./add-card-sidebar/AddCardSidebar";
 
 DashboardSidebars.propTypes = {
   dashboard: PropTypes.object,
@@ -40,6 +40,8 @@ DashboardSidebars.propTypes = {
     props: PropTypes.object,
   }).isRequired,
   closeSidebar: PropTypes.func.isRequired,
+  setDashboardAttribute: PropTypes.func,
+  saveDashboardAndCards: PropTypes.func,
 };
 
 export function DashboardSidebars({
@@ -68,6 +70,8 @@ export function DashboardSidebars({
   params,
   sidebar,
   closeSidebar,
+  setDashboardAttribute,
+  saveDashboardAndCards,
 }) {
   const handleAddCard = useCallback(
     cardId => {
@@ -142,6 +146,14 @@ export function DashboardSidebars({
           dashboard={dashboard}
           params={params}
           onCancel={onCancel}
+        />
+      );
+    case SIDEBAR_NAME.info:
+      return (
+        <DashboardInfoSidebar
+          dashboard={dashboard}
+          saveDashboardAndCards={saveDashboardAndCards}
+          setDashboardAttribute={setDashboardAttribute}
         />
       );
     default:

@@ -5,9 +5,12 @@ import {
   openOrdersTable,
   summarize,
   visitQuestion,
-  startNewQuestion,
-  visualize,
-} from "__support__/e2e/cypress";
+  openQuestionActions,
+  questionInfoButton,
+  rightSidebar,
+  appbar,
+  getCollectionIdFromSlug,
+} from "__support__/e2e/helpers";
 
 describe("scenarios > question > saved", () => {
   beforeEach(() => {
@@ -21,9 +24,7 @@ describe("scenarios > question > saved", () => {
     summarize({ mode: "notebook" });
     cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();
-    popover()
-      .findByText("Total")
-      .click();
+    popover().findByText("Total").click();
     // Save the question
     cy.findByText("Save").click();
     modal().within(() => {
@@ -104,13 +105,23 @@ describe("scenarios > question > saved", () => {
     visitQuestion(1);
     cy.wait("@query");
 
-    cy.findByTestId("saved-question-header-button").click();
-    cy.icon("segment").click();
+    openQuestionActions();
+    popover().within(() => {
+      cy.icon("segment").click();
+    });
 
     modal().within(() => {
       cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
       cy.findByText("Duplicate").click();
       cy.wait("@cardCreate");
+    });
+
+    modal().within(() => {
+      cy.findByText("Not now").click();
+    });
+
+    cy.findByTestId("qb-header-left-side").within(() => {
+      cy.findByDisplayValue("Orders - Duplicate");
     });
   });
 
@@ -118,51 +129,97 @@ describe("scenarios > question > saved", () => {
     cy.intercept("PUT", "/api/card/**").as("updateQuestion");
 
     visitQuestion(1);
-    cy.findByTestId("saved-question-header-button").click();
-    cy.findByText("History").click();
+    questionInfoButton().click();
 
-    cy.findByTestId("edit-details-button").click();
-    cy.findByLabelText("Description")
-      .click()
-      .type("This is a question");
+    rightSidebar().within(() => {
+      cy.findByText("History");
 
-    cy.button("Save").click();
-    cy.wait("@updateQuestion");
+      cy.findByPlaceholderText("Add description")
+        .type("This is a question")
+        .blur();
 
-    cy.findByText(/added a description/i);
+      cy.wait("@updateQuestion");
 
-    cy.findByRole("button", { name: "Revert" }).click();
+      cy.findByText(/added a description/i);
 
-    cy.findByText(/This is a question/i).should("not.exist");
-  });
-
-  it("should be able to use integer filter on a nested query based on a saved native question (metabase#15808)", () => {
-    cy.createNativeQuestion({
-      name: "15808",
-      native: { query: "select * from products" },
+      cy.findByTestId("question-revert-button").click();
     });
-    startNewQuestion();
-    cy.findByText("Saved Questions").click();
-    cy.findByText("15808").click();
-    visualize();
-    cy.findAllByText("Filter")
-      .first()
-      .click();
-    cy.findByTestId("sidebar-right")
-      .findByText(/Rating/i)
-      .click();
-    cy.findByTestId("select-button").findByText("Equal to");
-    cy.findByPlaceholderText("Enter a number").type("4");
-    cy.button("Add filter")
-      .should("not.be.disabled")
-      .click();
-    cy.findByText("Synergistic Granite Chair");
-    cy.findByText("Rustic Paper Wallet").should("not.exist");
+
+    cy.findByText(/reverted to an earlier revision/i);
+    cy.findByText(/This is a question/i).should("not.exist");
   });
 
   it("should show table name in header with a table info popover on hover", () => {
     visitQuestion(1);
     cy.findByTestId("question-table-badges").trigger("mouseenter");
     cy.findByText("9 columns");
+  });
+
+  it("should show collection breadcrumbs for a saved question in the root collection", () => {
+    visitQuestion(1);
+    appbar().within(() => cy.findByText("Our analytics").click());
+
+    cy.findByText("Orders").should("be.visible");
+  });
+
+  it("should show collection breadcrumbs for a saved question in a non-root collection", () => {
+    getCollectionIdFromSlug("second_collection", collection_id => {
+      cy.request("PUT", "/api/card/1", { collection_id });
+    });
+
+    visitQuestion(1);
+    appbar().within(() => cy.findByText("Second collection").click());
+
+    cy.findByText("Orders").should("be.visible");
+  });
+
+  it("should show the question lineage when a saved question is changed", () => {
+    visitQuestion(1);
+
+    summarize();
+    rightSidebar().within(() => {
+      cy.findByText("Quantity").click();
+      cy.button("Done").click();
+    });
+
+    appbar().within(() => {
+      cy.findByText("Started from").should("be.visible");
+      cy.findByText("Orders").click();
+      cy.findByText("Started from").should("not.exist");
+    });
+  });
+
+  it("'read-only' user should be able to resize column width (metabase#9772)", () => {
+    cy.signIn("readonly");
+    visitQuestion(1);
+
+    cy.findByText("Tax")
+      .closest(".TableInteractive-headerCellData")
+      .as("headerCell")
+      .then($cell => {
+        const originalWidth = $cell[0].getBoundingClientRect().width;
+
+        // Retries the assertion a few times to ensure it waits for DOM changes
+        // More context: https://github.com/metabase/metabase/pull/21823#discussion_r855302036
+        function assertColumnResized(attempt = 0) {
+          cy.get("@headerCell").then($newCell => {
+            const newWidth = $newCell[0].getBoundingClientRect().width;
+            if (newWidth === originalWidth && attempt < 3) {
+              cy.wait(100);
+              assertColumnResized(++attempt);
+            } else {
+              expect(newWidth).to.be.gt(originalWidth);
+            }
+          });
+        }
+
+        cy.wrap($cell)
+          .find(".react-draggable")
+          .trigger("mousedown", 0, 0, { force: true })
+          .trigger("mousemove", 100, 0, { force: true })
+          .trigger("mouseup", 100, 0, { force: true });
+
+        assertColumnResized();
+      });
   });
 });

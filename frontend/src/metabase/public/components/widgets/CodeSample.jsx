@@ -1,12 +1,11 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
+import _ from "underscore";
 import Select, { Option } from "metabase/core/components/Select";
 import CopyButton from "metabase/components/CopyButton";
 
 import AceEditor from "metabase/components/TextEditor";
-
-import _ from "underscore";
 
 export default class CodeSample extends Component {
   constructor(props) {
@@ -32,7 +31,7 @@ export default class CodeSample extends Component {
   }
 
   render() {
-    const { className, title, options } = this.props;
+    const { className, title, options, dataTestId } = this.props;
     const { name } = this.state;
     const selected = _.findWhere(options, { name });
     const source = selected && selected.source();
@@ -46,6 +45,9 @@ export default class CodeSample extends Component {
                 className="AdminSelect--borderless ml-auto pt1 pb1"
                 value={name}
                 onChange={e => this.handleChange(e.target.value)}
+                buttonProps={{
+                  dataTestId,
+                }}
               >
                 {options.map(option => (
                   <Option key={option.name} value={option.name}>

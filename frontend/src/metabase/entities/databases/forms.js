@@ -5,12 +5,12 @@ import MetabaseSettings from "metabase/lib/settings";
 import { getElevatedEngines } from "metabase/lib/engine";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { PLUGIN_CACHING } from "metabase/plugins";
-import getFieldsForBigQuery from "./big-query-fields";
 
-import getFieldsForMongo from "./mongo-fields";
 import MetadataSyncScheduleWidget from "metabase/admin/databases/components/widgets/MetadataSyncScheduleWidget";
 import CacheFieldValuesScheduleWidget from "metabase/admin/databases/components/widgets/CacheFieldValuesScheduleWidget";
 import EngineWidget from "metabase/admin/databases/components/widgets/EngineWidget";
+import getFieldsForMongo from "./mongo-fields";
+import getFieldsForBigQuery from "./big-query-fields";
 
 const DATABASE_DETAIL_OVERRIDES = {
   "tunnel-enabled": () => ({
@@ -141,11 +141,7 @@ function shouldShowEngineProvidedField(field, details) {
 
 function getSshDescription() {
   const link = (
-    <ExternalLink
-      href={MetabaseSettings.docsUrl(
-        "administration-guide/ssh-tunnel-for-database-connections",
-      )}
-    >
+    <ExternalLink href={MetabaseSettings.docsUrl("databases/ssh-tunnel")}>
       {t`Learn more`}
     </ExternalLink>
   );
@@ -347,7 +343,7 @@ const forms = {
         { name: "is_full_sync", type: "hidden" },
         { name: "is_on_demand", type: "hidden" },
       ].filter(Boolean),
-    normalize: function(database) {
+    normalize: function (database) {
       if (!database.details["let-user-control-scheduling"]) {
         // TODO Atte Keinänen 8/15/17: Implement engine-specific scheduling defaults
         return {
@@ -369,15 +365,6 @@ forms.setup = {
       type: field.name === "engine" ? EngineWidget : field.type,
       title: field.name === "engine" ? null : field.title,
       hidden: field.hidden || ADVANCED_FIELDS.has(field.name),
-    })),
-};
-
-forms.connection = {
-  ...forms.details,
-  fields: (...args) =>
-    forms.details.fields(...args).map(field => ({
-      ...field,
-      hidden: field.hidden,
     })),
 };
 

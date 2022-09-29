@@ -1,4 +1,5 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, describeEE, isOSS } from "__support__/e2e/helpers";
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 describe("scenarios > admin > databases > list", () => {
   beforeEach(() => {
@@ -6,21 +7,59 @@ describe("scenarios > admin > databases > list", () => {
     cy.signInAsAdmin();
   });
 
-  it.skip("should not display error messages upon a failed `GET` (metabase#20471)", () => {
-    const errorMessage = "Lorem ipsum dolor sit amet, consectetur adip";
+  describe("OSS", { tags: "@OSS" }, () => {
+    it("should not display error messages upon a failed `GET` (metabase#20471)", () => {
+      cy.onlyOn(isOSS);
 
-    cy.intercept("GET", "/api/database", req => {
-      req.reply({
-        statusCode: 500,
-        body: { message: errorMessage },
-      });
-    }).as("failedGet");
+      const errorMessage = "Lorem ipsum dolor sit amet, consectetur adip";
 
-    cy.visit("/admin/databases");
+      cy.intercept(
+        {
+          method: "GET",
+          pathname: "/api/database",
+        },
+        req => {
+          req.reply({
+            statusCode: 500,
+            body: { message: errorMessage },
+          });
+        },
+      ).as("failedGet");
 
-    cy.wait("@failedGet");
-    // Not sure how exactly is this going the be fixed, but we should't show the full error message on the page in any case
-    cy.findByText(errorMessage).should("not.exist");
+      cy.visit("/admin/databases");
+
+      cy.wait("@failedGet");
+      // Not sure how exactly is this going the be fixed, but we should't show the full error message on the page in any case
+      cy.findByText(errorMessage).should("not.be.visible");
+    });
+  });
+
+  describeEE("EE", () => {
+    it("should not display error messages upon a failed `GET` (metabase#20471)", () => {
+      const errorMessage = "Lorem ipsum dolor sit amet, consectetur adip";
+
+      cy.intercept(
+        {
+          method: "GET",
+          pathname: "/api/database",
+          query: {
+            exclude_uneditable_details: "true",
+          },
+        },
+        req => {
+          req.reply({
+            statusCode: 500,
+            body: { message: errorMessage },
+          });
+        },
+      ).as("failedGet");
+
+      cy.visit("/admin/databases");
+
+      cy.wait("@failedGet");
+      // Not sure how exactly is this going the be fixed, but we should't show the full error message on the page in any case
+      cy.findByText(errorMessage).should("not.be.visible");
+    });
   });
 
   it("should let you see databases in list view", () => {
@@ -50,13 +89,13 @@ describe("scenarios > admin > databases > list", () => {
   it("should let you access edit page a database", () => {
     cy.visit("/admin/databases");
     cy.contains("Sample Database").click();
-    cy.url().should("match", /\/admin\/databases\/1$/);
+    cy.location("pathname").should("eq", `/admin/databases/${SAMPLE_DB_ID}`);
   });
 
   it("should let you bring back the sample database", () => {
     cy.intercept("POST", "/api/database/sample_database").as("sample_database");
 
-    cy.request("DELETE", "/api/database/1").as("delete");
+    cy.request("DELETE", `/api/database/${SAMPLE_DB_ID}`).as("delete");
     cy.visit("/admin/databases");
     cy.contains("Bring the sample database back").click();
     cy.wait("@sample_database");

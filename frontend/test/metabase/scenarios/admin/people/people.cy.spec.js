@@ -5,15 +5,27 @@ import {
   popover,
   setupSMTP,
   describeEE,
-} from "__support__/e2e/cypress";
+  getFullName,
+} from "__support__/e2e/helpers";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { normal, admin } = USERS;
-const { DATA_GROUP } = USER_GROUPS;
+const { normal, admin, nocollection } = USERS;
+const { ALL_USERS_GROUP, DATA_GROUP } = USER_GROUPS;
 const TOTAL_USERS = Object.entries(USERS).length;
 const TOTAL_GROUPS = Object.entries(USER_GROUPS).length;
 const { ORDERS_ID } = SAMPLE_DATABASE;
+
+const TEST_USER = {
+  first_name: "Testy",
+  last_name: "McTestface",
+  email: `testy${Math.round(Math.random() * 100000)}@metabase.test`,
+  password: "12341234",
+};
+
+const adminUserName = getFullName(admin);
+const noCollectionUserName = getFullName(nocollection);
+const normalUserName = getFullName(normal);
 
 describe("scenarios > admin > people", () => {
   beforeEach(() => {
@@ -21,50 +33,66 @@ describe("scenarios > admin > people", () => {
     cy.signInAsAdmin();
   });
 
-  const TEST_USER = {
-    first_name: "Testy",
-    last_name: "McTestface",
-    email: `testy${Math.round(Math.random() * 100000)}@metabase.test`,
-    password: "12341234",
-  };
-
   describe("user management", () => {
-    it("should render (metabase-enterprise#210)", () => {
+    it("should be possible to switch beteween 'People' and 'Groups' tabs and to add/remove users to groups (metabase-enterprise#210, metabase#12693, metabase#21521)", () => {
       cy.visit("/admin/people");
 
       assertTableRowsCount(TOTAL_USERS);
-
       cy.findByText(`${TOTAL_USERS} people found`);
 
       // A small sidebar selector
       cy.get(".AdminList-items").within(() => {
         cy.findByText("People").should("have.class", "selected");
-        cy.findByText("Groups").click();
-      });
-
-      cy.log("Switch to 'Groups' and make sure it renders properly");
-      cy.get(".PageTitle").contains("Groups");
-
-      assertTableRowsCount(TOTAL_GROUPS);
-
-      cy.get(".AdminList-items").within(() => {
+        cy.log("Switch to 'Groups' and make sure it renders properly");
+        cy.findByText("Groups").as("groupsTab").click();
         cy.findByText("Groups").should("have.class", "selected");
       });
 
+      cy.get(".PageTitle").contains("Groups");
+      assertTableRowsCount(TOTAL_GROUPS);
+
       cy.log(
-        "**Dig into one of the user groups and make sure its members are listed**",
+        "Dig into one of the user groups and make sure its members are listed",
       );
       cy.findByText("All Users").click();
       cy.get(".PageTitle").contains("All Users");
 
       // The same list as for "People"
       assertTableRowsCount(TOTAL_USERS);
-    });
+      cy.findByText(`${TOTAL_USERS} members`);
 
-    it("should load the members when navigating to the group directly", () => {
+      // We cannot add new users to the "All users" group directly
+      cy.button("Add members").should("not.exist");
+
+      // Navigate to the collection group using the UI
+      const GROUP = "collection";
+
+      cy.get("@groupsTab").click();
+      cy.findByText(GROUP).closest("tr").contains("3");
+      cy.findByText(GROUP).click();
+
+      cy.findByText("3 members");
+
+      cy.button("Add members").click();
+      cy.focused().type(admin.first_name);
+      cy.findByText(adminUserName).click();
+      cy.button("Add").click();
+
+      cy.findByText("4 members");
+
+      removeUserFromGroup(adminUserName);
+      cy.findByText("3 members");
+
+      // should load the members when navigating to the group directly
       cy.visit(`/admin/people/groups/${DATA_GROUP}`);
-      cy.findByText("No Collection Tableton");
-      cy.findByText("Robert Tableton");
+      cy.findByText("2 members");
+
+      removeUserFromGroup(noCollectionUserName);
+      cy.findByText("1 member");
+
+      removeUserFromGroup(normalUserName);
+      cy.findByText("0 members");
+      cy.findByText("A group is only as good as its members.");
     });
 
     it("should allow admin to create new users", () => {
@@ -76,7 +104,6 @@ describe("scenarios > admin > people", () => {
       // first modal
       cy.findByLabelText("First name").type(first_name);
       cy.findByLabelText("Last name").type(last_name);
-      // bit of a hack since there are multiple "Email" nodes
       cy.findByLabelText("Email").type(email);
       clickButton("Create");
 
@@ -86,6 +113,22 @@ describe("scenarios > admin > people", () => {
       cy.findByText("Done").click();
 
       cy.findByText(FULL_NAME);
+    });
+
+    it("should allow admin to create new users without first name or last name (metabase#22754)", () => {
+      const { email } = TEST_USER;
+      cy.visit("/admin/people");
+      clickButton("Invite someone");
+
+      cy.findByLabelText("Email").type(email);
+      clickButton("Create");
+
+      // second modal
+      cy.findByText(`${email} has been added`);
+      cy.findByText("Show").click();
+      cy.findByText("Done").click();
+
+      cy.findByText(email);
     });
 
     it("should disallow admin to create new users with case mutation of existing user", () => {
@@ -110,11 +153,8 @@ describe("scenarios > admin > people", () => {
     });
 
     it("should disallow admin to deactivate themselves", () => {
-      const { first_name, last_name } = admin;
-      const FULL_NAME = `${first_name} ${last_name}`;
-
       cy.visit("/admin/people");
-      showUserOptions(FULL_NAME);
+      showUserOptions(adminUserName);
       popover().within(() => {
         cy.findByText("Edit user");
         cy.findByText("Reset password");
@@ -126,9 +166,8 @@ describe("scenarios > admin > people", () => {
       // Turn a random existing user into an admin
       cy.request("PUT", "/api/user/2", {
         is_superuser: true,
-      }).then(({ body }) => {
-        const { first_name, last_name } = body;
-        const FULL_NAME = `${first_name} ${last_name}`;
+      }).then(({ body: user }) => {
+        const FULL_NAME = getFullName(user);
 
         cy.visit("/admin/people");
         showUserOptions(FULL_NAME);
@@ -147,53 +186,46 @@ describe("scenarios > admin > people", () => {
     });
 
     it("should edit existing user details", () => {
-      const { first_name, last_name } = normal;
-      const FULL_NAME = `${first_name} ${last_name}`;
       const NEW_NAME = "John";
-      const NEW_FULL_NAME = `${NEW_NAME} ${last_name}`;
+      const NEW_FULL_NAME = `${NEW_NAME} ${normal.last_name}`;
 
       cy.visit("/admin/people");
-      showUserOptions(FULL_NAME);
+      showUserOptions(normalUserName);
       cy.findByText("Edit user").click();
-      cy.findByDisplayValue(first_name)
-        .click()
-        .clear()
-        .type(NEW_NAME);
+      cy.findByDisplayValue(normal.first_name).click().clear().type(NEW_NAME);
 
       clickButton("Update");
       cy.findByText(NEW_FULL_NAME);
     });
 
     it("should reset user password without SMTP set up", () => {
-      const { first_name, last_name } = normal;
-      const FULL_NAME = `${first_name} ${last_name}`;
-
       cy.visit("/admin/people");
-      showUserOptions(FULL_NAME);
+      showUserOptions(normalUserName);
       cy.findByText("Reset password").click();
-      cy.findByText(`Reset ${FULL_NAME}'s password?`);
+      cy.findByText(`Reset ${normalUserName}'s password?`);
       clickButton("Reset password");
-      cy.findByText(`${first_name}'s password has been reset`);
+      cy.findByText(`${normalUserName}'s password has been reset`);
       cy.findByText(/^temporary password$/i);
       clickButton("Done");
     });
 
-    it("should reset user password with SMTP set up", () => {
-      const { first_name, last_name } = normal;
-      const FULL_NAME = `${first_name} ${last_name}`;
+    it(
+      "should reset user password with SMTP set up",
+      { tags: "@external" },
+      () => {
+        setupSMTP();
 
-      setupSMTP();
-
-      cy.visit("/admin/people");
-      showUserOptions(FULL_NAME);
-      cy.findByText("Reset password").click();
-      cy.findByText(`Reset ${FULL_NAME}'s password?`);
-      clickButton("Reset password");
-      cy.findByText(`${first_name}'s password has been reset`).should(
-        "not.exist",
-      );
-      cy.findByText(/^temporary password$/i).should("not.exist");
-    });
+        cy.visit("/admin/people");
+        showUserOptions(normalUserName);
+        cy.findByText("Reset password").click();
+        cy.findByText(`Reset ${normalUserName}'s password?`);
+        clickButton("Reset password");
+        cy.findByText(`${normalUserName}'s password has been reset`).should(
+          "not.exist",
+        );
+        cy.findByText(/^temporary password$/i).should("not.exist");
+      },
+    );
 
     it("should allow to search people", () => {
       cy.visit("/admin/people");
@@ -217,6 +249,79 @@ describe("scenarios > admin > people", () => {
       cy.visit("/admin/people/groups");
       cy.get("main").scrollTo("bottom");
       cy.findByText("readonly");
+    });
+
+    describe("email configured", { tags: "@external" }, () => {
+      beforeEach(() => {
+        // Setup email server, since we show different modal message when email isn't configured
+        setupSMTP();
+
+        // Setup Google authentication
+        cy.request("PUT", "/api/setting", {
+          "google-auth-client-id": "fake-id.apps.googleusercontent.com",
+          "google-auth-auto-create-accounts-domain": "metabase.com",
+          "google-auth-enabled": true,
+        });
+      });
+
+      it("invite member when SSO is not configured", () => {
+        const { first_name, last_name, email } = TEST_USER;
+        const FULL_NAME = `${first_name} ${last_name}`;
+        cy.visit("/admin/people");
+
+        clickButton("Invite someone");
+
+        // first modal
+        cy.findByLabelText("First name").type(first_name);
+        cy.findByLabelText("Last name").type(last_name);
+        cy.findByLabelText("Email").type(email);
+        clickButton("Create");
+
+        // second modal
+        cy.findByText(`${FULL_NAME} has been added`);
+        cy.contains(
+          `We’ve sent an invite to ${email} with instructions to set their password.`,
+        );
+        cy.findByText("Done").click();
+
+        cy.findByText(FULL_NAME);
+      });
+
+      it("invite member when SSO is configured metabase#23630", () => {
+        // Setup Google authentication
+        cy.request("PUT", "/api/setting", {
+          "enable-password-login": false,
+        });
+
+        const { first_name, last_name, email } = TEST_USER;
+        const FULL_NAME = `${first_name} ${last_name}`;
+        cy.visit("/admin/people");
+
+        clickButton("Invite someone");
+
+        // first modal
+        cy.findByLabelText("First name").type(first_name);
+        cy.findByLabelText("Last name").type(last_name);
+        cy.findByLabelText("Email").type(email);
+        clickButton("Create");
+
+        // second modal
+        cy.findByText(`${FULL_NAME} has been added`);
+        cy.contains(
+          `We’ve sent an invite to ${email} with instructions to log in. If this user is unable to authenticate then you can reset their password.`,
+        );
+        cy.url().then(url => {
+          const URL_REGEX = /\/admin\/people\/(?<userId>\d+)\/success/;
+          const { userId } = URL_REGEX.exec(url).groups;
+          assertLinkMatchesUrl(
+            "reset their password.",
+            `/admin/people/${userId}/reset`,
+          );
+        });
+        cy.findByText("Done").click();
+
+        cy.findByText(FULL_NAME);
+      });
     });
 
     describe("pagination", () => {
@@ -251,15 +356,17 @@ describe("scenarios > admin > people", () => {
         cy.findByTestId("previous-page-btn").should("be.disabled");
 
         cy.findByTestId("next-page-btn").click();
-
         waitForUserRequests();
+        cy.findByText("Loading...").should("not.exist");
 
         // Page 2
-        cy.findByText(`${PAGE_SIZE + 1} - ${NEW_TOTAL_USERS}`);
+        cy.findByTextEnsureVisible(`${PAGE_SIZE + 1} - ${NEW_TOTAL_USERS}`);
         assertTableRowsCount(NEW_TOTAL_USERS % PAGE_SIZE);
         cy.findByTestId("next-page-btn").should("be.disabled");
 
         cy.findByTestId("previous-page-btn").click();
+        cy.wait("@users");
+        cy.findByText("Loading...").should("not.exist");
 
         // Page 1
         cy.findByText(`1 - ${PAGE_SIZE}`);
@@ -268,7 +375,7 @@ describe("scenarios > admin > people", () => {
 
       it("should allow paginating group members forward and backward", () => {
         const PAGE_SIZE = 25;
-        cy.visit("admin/people/groups/1");
+        cy.visit(`admin/people/groups/${ALL_USERS_GROUP}`);
 
         // Total
         cy.findByText(`${NEW_TOTAL_USERS} members`);
@@ -279,13 +386,17 @@ describe("scenarios > admin > people", () => {
         cy.findByTestId("previous-page-btn").should("be.disabled");
 
         cy.findByTestId("next-page-btn").click();
+        waitForUserRequests();
+        cy.findByText("Loading...").should("not.exist");
 
         // Page 2
-        cy.findByText(`${PAGE_SIZE + 1} - ${NEW_TOTAL_USERS}`);
+        cy.findByTextEnsureVisible(`${PAGE_SIZE + 1} - ${NEW_TOTAL_USERS}`);
         assertTableRowsCount(NEW_TOTAL_USERS % PAGE_SIZE);
         cy.findByTestId("next-page-btn").should("be.disabled");
 
         cy.findByTestId("previous-page-btn").click();
+        cy.wait("@users");
+        cy.findByText("Loading...").should("not.exist");
 
         // Page 1
         cy.findByText(`1 - ${PAGE_SIZE}`);
@@ -299,6 +410,9 @@ describeEE("scenarios > admin > people", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+  });
+
+  it("should unsubscribe a user from all subscriptions and alerts", () => {
     cy.getCurrentUser().then(({ body: { id: user_id } }) => {
       cy.createQuestionAndDashboard({
         questionDetails: getQuestionDetails(),
@@ -307,25 +421,20 @@ describeEE("scenarios > admin > people", () => {
         cy.createPulse(getPulseDetails({ card_id, dashboard_id }));
       });
     });
-  });
-
-  it("should unsubscribe a user from all subscriptions and alerts", () => {
-    const { first_name, last_name } = admin;
-    const fullName = `${first_name} ${last_name}`;
 
     cy.visit("/account/notifications");
     cy.findByText("Question");
     cy.findByText("Dashboard");
 
     cy.visit("/admin/people");
-    showUserOptions(fullName);
+    showUserOptions(adminUserName);
 
     popover().within(() => {
       cy.findByText("Unsubscribe from all subscriptions / alerts").click();
     });
 
     modal().within(() => {
-      cy.findAllByText(fullName, { exact: false });
+      cy.findAllByText(adminUserName, { exact: false });
       cy.findByText("Unsubscribe").click();
       cy.findByText("Unsubscribe").should("not.exist");
     });
@@ -346,9 +455,7 @@ function showUserOptions(full_name) {
 }
 
 function clickButton(button_name) {
-  cy.button(button_name)
-    .should("not.be.disabled")
-    .click();
+  cy.button(button_name).should("not.be.disabled").click();
 }
 
 function assertTableRowsCount(length) {
@@ -425,4 +532,14 @@ function getPulseDetails({ card_id, dashboard_id }) {
       },
     ],
   };
+}
+
+function assertLinkMatchesUrl(text, url) {
+  cy.findByRole("link", { name: text })
+    .should("have.attr", "href")
+    .and("eq", url);
+}
+
+function removeUserFromGroup(fullName) {
+  cy.findByText(fullName).closest("tr").find(".Icon-close").click();
 }

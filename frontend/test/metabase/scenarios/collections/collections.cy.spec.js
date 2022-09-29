@@ -1,3 +1,4 @@
+import { assocIn } from "icepick";
 import {
   restore,
   modal,
@@ -7,9 +8,11 @@ import {
   getCollectionIdFromSlug,
   openNavigationSidebar,
   closeNavigationSidebar,
-} from "__support__/e2e/cypress";
-import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
+  openCollectionMenu,
+  visitCollection,
+} from "__support__/e2e/helpers";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
+import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 
 const { nocollection } = USERS;
 const { DATA_GROUP } = USER_GROUPS;
@@ -135,6 +138,61 @@ describe("scenarios > collection defaults", () => {
     });
   });
 
+  describe("render last edited by when names are null", () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
+    });
+
+    it("should render short value without tooltip", () => {
+      cy.intercept(
+        "GET",
+        "/api/collection/root/items?models=dashboard**",
+        req => {
+          req.on("response", res => {
+            res.send(
+              assocIn(res.body, ["data", 0, "last-edit-info"], {
+                id: 1,
+                last_name: null,
+                first_name: null,
+                email: "admin@metabase.test",
+                timestamp: "2022-07-05T07:31:09.054-07:00",
+              }),
+            );
+          });
+        },
+      );
+      visitRootCollection();
+      cy.findByText("admin@metabase.test").trigger("mouseenter");
+      cy.findByRole("tooltip").should("not.exist");
+    });
+
+    it("should render long value with tooltip", () => {
+      cy.intercept(
+        "GET",
+        "/api/collection/root/items?models=dashboard**",
+        req => {
+          req.on("response", res => {
+            res.send(
+              assocIn(res.body, ["data", 0, "last-edit-info"], {
+                id: 1,
+                last_name: null,
+                first_name: null,
+                email: "averyverylongemail@veryverylongdomain.com",
+                timestamp: "2022-07-05T07:31:09.054-07:00",
+              }),
+            );
+          });
+        },
+      );
+      visitRootCollection();
+      cy.findByText("averyverylongemail@veryverylongdomain.com").trigger(
+        "mouseenter",
+      );
+      cy.findByRole("tooltip").should("exist");
+    });
+  });
+
   describe("Collection related issues reproductions", () => {
     beforeEach(() => {
       restore();
@@ -150,9 +208,7 @@ describe("scenarios > collection defaults", () => {
 
       cy.findByText("Orders").as("dragSubject");
 
-      navigationSidebar()
-        .findByText("Our analytics")
-        .as("dropTarget");
+      navigationSidebar().findByText("Our analytics").as("dropTarget");
 
       dragAndDrop("dragSubject", "dropTarget");
 
@@ -203,34 +259,28 @@ describe("scenarios > collection defaults", () => {
         cy.signIn("nocollection");
       });
 
-      it("should not render collections in items list if user doesn't have collection access (metabase#16555)", () => {
-        cy.visit("/collection/root");
-        // Since this user doesn't have access rights to the root collection, it should render empty
-        cy.findByTestId("collection-empty-state");
-      });
-
-      it("should see a child collection in a sidebar even with revoked access to its parent (metabase#14114)", () => {
+      it("should see a child collection in a sidebar even with revoked access to its parents (metabase#14114, metabase#16555, metabase#20716)", () => {
         cy.visit("/");
 
         navigationSidebar().within(() => {
-          cy.findByText("Our analytics").click();
-        });
-
-        navigationSidebar().within(() => {
-          cy.findByText("Our analytics");
-          cy.findByText("Child");
+          cy.findByText("Our analytics").should("not.exist");
           cy.findByText("Parent").should("not.exist");
+          cy.findByText("Child");
           cy.findByText("Your personal collection");
         });
+
+        // Even if user tries to navigate directly to the root collection, we have to make sure its content is not shown
+        cy.visit("/collection/root");
+        cy.findByText("You don't have permissions to do that.");
       });
 
-      it.skip("should be able to choose a child collection when saving a question (metabase#14052)", () => {
+      it("should be able to choose a child collection when saving a question (metabase#14052)", () => {
         openOrdersTable();
         cy.findByText("Save").click();
         // Click to choose which collection should this question be saved to
         cy.findByText(revokedUsersPersonalCollectionName).click();
         popover().within(() => {
-          cy.findByText(/Our analytics/i);
+          cy.findByText(/Collections/i);
           cy.findByText(/My personal collection/i);
           cy.findByText("Parent").should("not.exist");
           cy.log("Reported failing from v0.34.3");
@@ -356,9 +406,7 @@ describe("scenarios > collection defaults", () => {
           cy.visit("/collection/root");
           selectItemUsingCheckbox("Orders");
 
-          cy.findByTestId("bulk-action-bar")
-            .button("Archive")
-            .click();
+          cy.findByTestId("bulk-action-bar").button("Archive").click();
 
           cy.findByText("Orders").should("not.exist");
           cy.findByTestId("bulk-action-bar").should("not.be.visible");
@@ -370,9 +418,7 @@ describe("scenarios > collection defaults", () => {
           cy.visit("/collection/root");
           selectItemUsingCheckbox("Orders");
 
-          cy.findByTestId("bulk-action-bar")
-            .button("Move")
-            .click();
+          cy.findByTestId("bulk-action-bar").button("Move").click();
 
           modal().within(() => {
             cy.findByText("First collection").click();
@@ -383,9 +429,7 @@ describe("scenarios > collection defaults", () => {
           cy.findByTestId("bulk-action-bar").should("not.be.visible");
 
           // Check that items were actually moved
-          navigationSidebar()
-            .findByText("First collection")
-            .click();
+          navigationSidebar().findByText("First collection").click();
           cy.findByText("Orders");
         });
       });
@@ -400,6 +444,22 @@ describe("scenarios > collection defaults", () => {
       // There is already a collection named "First collection" in the default snapshot
       navigationSidebar().within(() => {
         cy.findByText("First collection");
+      });
+    });
+
+    it("should create new collections within the current collection", () => {
+      getCollectionIdFromSlug("third_collection", collection_id => {
+        visitCollection(collection_id);
+        cy.findByText("New").click();
+
+        popover().within(() => {
+          cy.findByText("Collection").click();
+        });
+
+        modal().within(() => {
+          cy.findByText("Collection it's saved in").should("be.visible");
+          cy.findByText("Third collection").should("be.visible");
+        });
       });
     });
   });
@@ -429,16 +489,6 @@ function visitRootCollection() {
   cy.visit("/collection/root");
 
   cy.wait(["@fetchRootCollectionItems", "@fetchRootCollectionItems"]);
-}
-
-function visitCollection(id) {
-  const alias = `getCollection${id}Items`;
-
-  cy.intercept("GET", `/api/collection/${id}/items?**`).as(alias);
-
-  cy.visit(`/collection/${id}`);
-
-  cy.wait([`@${alias}`, `@${alias}`]);
 }
 
 function ensureCollectionHasNoChildren(collection) {
@@ -471,24 +521,14 @@ function ensureCollectionIsExpanded(collection, { children = [] } = {}) {
 }
 
 function moveOpenedCollectionTo(newParent) {
-  cy.icon("pencil").click();
-  cy.findByTextEnsureVisible("Edit this collection").click();
+  openCollectionMenu();
+  popover().within(() => cy.findByText("Move").click());
 
-  // Open the select dropdown menu
-  modal()
-    .findByTestId("select-button")
-    .click();
+  cy.findAllByTestId("item-picker-item").contains(newParent).click();
 
-  cy.findAllByTestId("item-picker-item")
-    .contains(newParent)
-    .click();
-
-  // Make sure the correct value is selected
-  cy.findAllByTestId("select-button-content").contains(newParent);
-
-  cy.button("Update").click();
+  cy.button("Move").click();
   // Make sure modal closed
-  cy.button("Update").should("not.exist");
+  cy.button("Move").should("not.exist");
 }
 
 function dragAndDrop(subjectAlias, targetAlias) {

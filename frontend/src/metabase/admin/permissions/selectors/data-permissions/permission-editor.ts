@@ -8,6 +8,10 @@ import Groups from "metabase/entities/groups";
 import Tables from "metabase/entities/tables";
 
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
+import { Group, GroupsPermissions } from "metabase-types/api";
+import { State } from "metabase-types/store";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import Schema from "metabase-lib/lib/metadata/Schema";
 import {
   getTableEntityId,
   getSchemaEntityId,
@@ -15,6 +19,7 @@ import {
   getPermissionSubject,
 } from "../../utils/data-entity-id";
 
+import { DataRouteParams, RawGroupRouteParams } from "../../types";
 import { buildFieldsPermissions } from "./fields";
 import { buildTablesPermissions } from "./tables";
 import { buildSchemasPermissions } from "./schemas";
@@ -22,11 +27,6 @@ import {
   getDatabasesEditorBreadcrumbs,
   getGroupsDataEditorBreadcrumbs,
 } from "./breadcrumbs";
-import { Group, GroupsPermissions } from "metabase-types/api";
-import Schema from "metabase-lib/lib/metadata/Schema";
-import { DataRouteParams, RawGroupRouteParams } from "../../types";
-import { State } from "metabase-types/store";
-import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { getOrderedGroups } from "./groups";
 
 export const getIsLoadingDatabaseTables = (
@@ -159,10 +159,12 @@ export const getDatabasesPermissionEditor = createSelector(
 
     let entities: any = [];
 
-    if (schemaName != null || hasSingleSchema) {
+    const database = metadata?.database(databaseId);
+
+    if (database && (schemaName != null || hasSingleSchema)) {
       const schema: Schema = hasSingleSchema
-        ? metadata?.database(databaseId)?.getSchemas()[0]
-        : metadata?.database(databaseId)?.schema(schemaName);
+        ? database.getSchemas()[0]
+        : (database.schema(schemaName) as Schema);
 
       entities = schema
         .getTables()
@@ -179,7 +181,7 @@ export const getDatabasesPermissionEditor = createSelector(
               isAdmin,
               permissions,
               defaultGroup,
-              metadata.database(databaseId),
+              database,
             ),
           };
         });
@@ -253,8 +255,9 @@ export const getGroupsDataPermissionEditor = createSelector(
   getOrderedGroups,
   (metadata, params, permissions, groups: Group[][]) => {
     const { databaseId, schemaName, tableId } = params;
+    const database = metadata?.database(databaseId);
 
-    if (!permissions || databaseId == null) {
+    if (!permissions || databaseId == null || !database) {
       return null;
     }
 
@@ -289,7 +292,7 @@ export const getGroupsDataPermissionEditor = createSelector(
           isAdmin,
           permissions,
           defaultGroup,
-          metadata.database(databaseId),
+          database,
         );
       } else if (schemaName != null) {
         groupPermissions = buildTablesPermissions(

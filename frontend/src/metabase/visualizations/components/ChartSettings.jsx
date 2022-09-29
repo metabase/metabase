@@ -4,13 +4,11 @@ import cx from "classnames";
 import { assocIn } from "icepick";
 import _ from "underscore";
 import { t } from "ttag";
-import Warnings from "metabase/query_builder/components/Warnings";
 
 import Button from "metabase/core/components/Button";
 import Radio from "metabase/core/components/Radio";
 
 import Visualization from "metabase/visualizations/components/Visualization";
-import ChartSettingsWidget from "./ChartSettingsWidget";
 
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
@@ -22,14 +20,40 @@ import {
   updateSettings,
   getClickBehaviorSettings,
 } from "metabase/visualizations/lib/settings";
+import ChartSettingsWidget from "./ChartSettingsWidget";
+import ChartSettingsWidgetPopover from "./ChartSettingsWidgetPopover";
+import { SectionContainer, SectionWarnings } from "./ChartSettings.styled";
 
 // section names are localized
 const DEFAULT_TAB_PRIORITY = [t`Display`];
 
+const getPopoverWidget = (widgets, currentWidget, extraWidgetProps) => {
+  const widget =
+    currentWidget && widgets.find(widget => widget.id === currentWidget.id);
+
+  if (widget) {
+    return (
+      <ChartSettingsWidget
+        key={widget.id}
+        {...widget}
+        props={{
+          ...widget.props,
+          ...currentWidget.props,
+        }}
+        hidden={false}
+        {...extraWidgetProps}
+      />
+    );
+  }
+
+  return undefined;
+};
+
 const withTransientSettingState = ComposedComponent =>
   class extends React.Component {
-    static displayName = `withTransientSettingState[${ComposedComponent.displayName ||
-      ComposedComponent.name}]`;
+    static displayName = `withTransientSettingState[${
+      ComposedComponent.displayName || ComposedComponent.name
+    }]`;
 
     constructor(props) {
       super(props);
@@ -82,13 +106,14 @@ class ChartSettings extends Component {
   };
 
   // allows a widget to temporarily replace itself with a different widget
-  handleShowWidget = widget => {
+  handleShowWidget = (widget, ref) => {
+    this.setState({ popoverRef: ref });
     this.setState({ currentWidget: widget });
   };
 
   // go back to previously selected section
   handleEndShowWidget = () => {
-    this.setState({ currentWidget: null });
+    this.setState({ currentWidget: null, popoverRef: null });
   };
 
   handleResetSettings = () => {
@@ -160,8 +185,9 @@ class ChartSettings extends Component {
       children,
       setSidebarPropsOverride,
       dashboard,
+      isDashboard,
     } = this.props;
-    const { currentWidget } = this.state;
+    const { currentWidget, popoverRef } = this.state;
 
     const settings = this._getSettings();
     const widgets = this._getWidgets();
@@ -209,21 +235,7 @@ class ChartSettings extends Component {
         : _.find(DEFAULT_TAB_PRIORITY, name => name in sections) ||
           sectionNames[0];
 
-    let visibleWidgets;
-    let widget = currentWidget && widgetsById[currentWidget.id];
-    if (widget) {
-      widget = {
-        ...widget,
-        hidden: false,
-        props: {
-          ...(widget.props || {}),
-          ...(currentWidget.props || {}),
-        },
-      };
-      visibleWidgets = [widget];
-    } else {
-      visibleWidgets = sections[currentSection] || [];
-    }
+    const visibleWidgets = sections[currentSection] || [];
 
     // This checks whether the current section contains a column settings widget
     // at the top level. If it does, we avoid hiding the section tabs and
@@ -242,20 +254,22 @@ class ChartSettings extends Component {
     };
 
     const sectionPicker = (
-      <Radio
-        value={currentSection}
-        onChange={this.handleShowSection}
-        options={sectionNames}
-        optionNameFn={v => v}
-        optionValueFn={v => v}
-        optionKeyFn={v => v}
-        variant="bubble"
-      />
+      <SectionContainer>
+        <Radio
+          value={currentSection}
+          onChange={this.handleShowSection}
+          options={sectionNames}
+          optionNameFn={v => v}
+          optionValueFn={v => v}
+          optionKeyFn={v => v}
+          variant="bubble"
+        />
+      </SectionContainer>
     );
 
     const widgetList = visibleWidgets.map(widget => (
       <ChartSettingsWidget
-        key={`${widget.id}`}
+        key={widget.id}
         {...widget}
         {...extraWidgetProps}
         setSidebarPropsOverride={setSidebarPropsOverride}
@@ -294,24 +308,30 @@ class ChartSettings extends Component {
     return (
       <div className={cx(className, "flex flex-column")}>
         {showSectionPicker && (
-          <div className="flex flex-no-shrink pl4 pt2 pb1">{sectionPicker}</div>
+          <div
+            className={cx("flex flex-no-shrink pl4 pb1", {
+              pt3: isDashboard,
+            })}
+          >
+            {sectionPicker}
+          </div>
         )}
         {noPreview ? (
-          <div className="full-height relative scroll-y scroll-show py4">
+          <div className="full-height relative scroll-y scroll-show pt2 pb4">
             {widgetList}
           </div>
         ) : (
           <div className="Grid flex-full">
             <div
               className="Grid-cell Cell--1of3 scroll-y scroll-show border-right py4"
-              data-testid={"chartsettings-sidebar"}
+              data-testid="chartsettings-sidebar"
             >
               {widgetList}
             </div>
             <div className="Grid-cell flex flex-column pt2">
               <div className="mx4 flex flex-column">
-                <Warnings
-                  className="mx2 align-self-end text-gold"
+                <SectionWarnings
+                  className="mx2 align-self-end"
                   warnings={this.state.warnings}
                   size={20}
                 />
@@ -338,6 +358,11 @@ class ChartSettings extends Component {
             </div>
           </div>
         )}
+        <ChartSettingsWidgetPopover
+          anchor={popoverRef}
+          widget={getPopoverWidget(widgets, currentWidget, extraWidgetProps)}
+          handleEndShowWidget={this.handleEndShowWidget}
+        />
       </div>
     );
   }

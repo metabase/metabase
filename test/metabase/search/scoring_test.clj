@@ -53,10 +53,10 @@
              (score ["rasta"]
                     (result-row "Rasta")))))
     (testing "misses"
-      (is (nil?
+      (is (zero?
            (score ["rasta"]
                   (result-row "just a straight-up imposter"))))
-      (is (nil?
+      (is (zero?
            (score ["rasta" "the" "toucan"]
                   (result-row "")))))))
 
@@ -83,10 +83,10 @@
              (score ["rasta" "the" "toucan"]
                     (result-row "Rasta may be my favorite of the toucans")))))
     (testing "misses"
-      (is (nil?
+      (is (zero?
            (score ["rasta"]
                   (result-row "just a straight-up imposter"))))
-      (is (nil?
+      (is (zero?
            (score ["rasta" "the" "toucan"]
                   (result-row "")))))))
 
@@ -101,16 +101,16 @@
              (score ["rasta" "the" "toucan"]
                     (result-row "Rasta the Toucan")))))
     (testing "misses"
-      (is (nil?
+      (is (zero?
            (score ["rasta"]
                   (result-row "just a straight-up imposter"))))
-      (is (nil?
+      (is (zero?
            (score ["rasta" "the" "toucan"]
                   (result-row "")))))))
 
 (deftest exact-match-scorer-test
   (let [score (scorer->score #'scoring/exact-match-scorer)]
-    (is (nil?
+    (is (zero?
          (score ["rasta" "the" "toucan"]
                 (result-row "Crowberto el tucan"))))
     (is (= 1/3
@@ -282,11 +282,11 @@
 
 (deftest score-and-result-test
   (testing "If all scores are 0, does not divide by zero"
-    (let [scorer (reify scoring/ResultScore
-                   (score-result [_ search-result]
-                     [{:weight 100 :score 0 :name "Some score type"}
-                      {:weight 100 :score 0 :name "Some other score type"}]))]
-      (is (= 0 (:score (scoring/score-and-result scorer "" {:name "racing yo" :model "card"})))))))
+    (with-redefs [scoring/score-result
+                  (fn [_]
+                    [{:weight 100 :score 0 :name "Some score type"}
+                     {:weight 100 :score 0 :name "Some other score type"}])]
+      (is (= 0 (:score (scoring/score-and-result "" {:name "racing yo" :model "card"})))))))
 
 (deftest serialize-test
   (testing "It normalizes dataset queries from strings"

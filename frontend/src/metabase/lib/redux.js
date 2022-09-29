@@ -1,7 +1,11 @@
-import moment from "moment";
+import moment from "moment-timezone";
 import _ from "underscore";
 import { getIn } from "icepick";
+import { normalize } from "normalizr";
+import { compose } from "redux";
+import { createSelectorCreator } from "reselect";
 
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   setRequestLoading,
   setRequestLoaded,
@@ -12,10 +16,6 @@ import {
 // convienence
 export { combineReducers, compose } from "redux";
 export { handleActions, createAction } from "redux-actions";
-
-import { compose } from "redux";
-import { createSelectorCreator } from "reselect";
-import memoize from "lodash.memoize";
 
 // similar to createAction but accepts a (redux-thunk style) thunk and dispatches based on whether
 // the promise returned from the thunk resolves or rejects, similar to redux-promise
@@ -184,7 +184,7 @@ export const formDomOnlyProps = ({
 }) => domProps;
 
 export const createMemoizedSelector = createSelectorCreator(
-  memoize,
+  _.memoize,
   (...args) => JSON.stringify(args),
 );
 
@@ -229,27 +229,27 @@ export function withRequestState(getRequestStatePath, getQueryKey) {
   return thunkCreator =>
     // thunk creator:
     (...args) =>
-      // thunk:
-      async (dispatch, getState) => {
-        const statePath = getRequestStatePath(...args);
-        const queryKey = getQueryKey && getQueryKey(...args);
-        try {
-          dispatch(setRequestLoading(statePath, queryKey));
+    // thunk:
+    async (dispatch, getState) => {
+      const statePath = getRequestStatePath(...args);
+      const queryKey = getQueryKey && getQueryKey(...args);
+      try {
+        dispatch(setRequestLoading(statePath, queryKey));
 
-          const result = await thunkCreator(...args)(dispatch, getState);
+        const result = await thunkCreator(...args)(dispatch, getState);
 
-          // Dispatch `setRequestLoaded` after clearing the call stack because
-          // we want to the actual data to be updated before we notify
-          // components that fetching the data is completed
-          setTimeout(() => dispatch(setRequestLoaded(statePath, queryKey)));
+        // Dispatch `setRequestLoaded` after clearing the call stack because
+        // we want to the actual data to be updated before we notify
+        // components that fetching the data is completed
+        setTimeout(() => dispatch(setRequestLoaded(statePath, queryKey)));
 
-          return result;
-        } catch (error) {
-          console.error(`Request ${statePath.join(",")} failed:`, error);
-          dispatch(setRequestError(statePath, queryKey, error));
-          throw error;
-        }
-      };
+        return result;
+      } catch (error) {
+        console.error(`Request ${statePath.join(",")} failed:`, error);
+        dispatch(setRequestError(statePath, queryKey, error));
+        throw error;
+      }
+    };
 }
 
 /**
@@ -277,72 +277,75 @@ function withCachedData(
   return thunkCreator =>
     // thunk creator:
     (...args) =>
-      // thunk:
-      (dispatch, getState) => {
-        const options = args[args.length - 1] || {};
-        const { reload, properties } = options;
+    // thunk:
+    (dispatch, getState) => {
+      const options = args[args.length - 1] || {};
+      const { useCachedForbiddenError, reload, properties } = options;
 
-        const existingStatePath = getExistingStatePath(...args);
-        const requestStatePath = ["requests", ...getRequestStatePath(...args)];
-        const newQueryKey = getQueryKey && getQueryKey(...args);
-        const existingData = getIn(getState(), existingStatePath);
-        const { loading, loaded, queryKey } =
-          getIn(getState(), requestStatePath) || {};
+      const existingStatePath = getExistingStatePath(...args);
+      const requestStatePath = ["requests", ...getRequestStatePath(...args)];
+      const newQueryKey = getQueryKey && getQueryKey(...args);
+      const existingData = getIn(getState(), existingStatePath);
+      const { loading, loaded, queryKey, error } =
+        getIn(getState(), requestStatePath) || {};
 
-        const hasRequestedProperties =
-          properties &&
-          existingData &&
-          _.all(properties, p => existingData[p] !== undefined);
+      // Avoid requesting data with permanently forbidded access
+      if (useCachedForbiddenError && error?.status === 403) {
+        throw error;
+      }
 
-        // return existing data if
-        if (
-          // we don't want to reload
-          // the check is a workaround for EntityListLoader passing reload function to children
-          reload !== true &&
-          // reload if the query used to load an entity has changed even if it's already loaded
-          newQueryKey === queryKey &&
-          // and we have a an non-error request state or have a list of properties that all exist on the object
-          (loading || loaded || hasRequestedProperties)
-        ) {
-          // TODO: if requestState is LOADING can we wait for the other reques
-          // to complete and return that result instead?
-          return existingData;
-        } else {
-          return thunkCreator(...args)(dispatch, getState);
-        }
-      };
+      const hasRequestedProperties =
+        properties &&
+        existingData &&
+        _.all(properties, p => existingData[p] !== undefined);
+
+      // return existing data if
+      if (
+        // we don't want to reload
+        // the check is a workaround for EntityListLoader passing reload function to children
+        reload !== true &&
+        // reload if the query used to load an entity has changed even if it's already loaded
+        newQueryKey === queryKey &&
+        // and we have a an non-error request state or have a list of properties that all exist on the object
+        (loading || loaded || hasRequestedProperties)
+      ) {
+        // TODO: if requestState is LOADING can we wait for the other reques
+        // to complete and return that result instead?
+        return existingData;
+      } else {
+        return thunkCreator(...args)(dispatch, getState);
+      }
+    };
 }
-
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 export function withAnalytics(categoryOrFn, actionOrFn, labelOrFn, valueOrFn) {
   // thunk decorator:
   return thunkCreator =>
     // thunk creator:
     (...args) =>
-      // thunk:
-      (dispatch, getState) => {
-        function get(valueOrFn, extra = {}) {
-          if (typeof valueOrFn === "function") {
-            return valueOrFn(args, { ...extra }, getState);
-          }
+    // thunk:
+    (dispatch, getState) => {
+      function get(valueOrFn, extra = {}) {
+        if (typeof valueOrFn === "function") {
+          return valueOrFn(args, { ...extra }, getState);
         }
-        try {
-          const category = get(categoryOrFn);
-          const action = get(actionOrFn, { category });
-          const label = get(labelOrFn, { category, action });
-          const value = get(valueOrFn, { category, action, label });
-          MetabaseAnalytics.trackStructEvent(category, action, label, value);
-        } catch (error) {
-          console.warn("withAnalytics threw an error:", error);
-        }
-        return thunkCreator(...args)(dispatch, getState);
-      };
+      }
+      try {
+        const category = get(categoryOrFn);
+        const action = get(actionOrFn, { category });
+        const label = get(labelOrFn, { category, action });
+        const value = get(valueOrFn, { category, action, label });
+        MetabaseAnalytics.trackStructEvent(category, action, label, value);
+      } catch (error) {
+        console.warn("withAnalytics threw an error:", error);
+      }
+      return thunkCreator(...args)(dispatch, getState);
+    };
 }
 
-import { normalize } from "normalizr";
-
 export function withNormalize(schema) {
-  return thunkCreator => (...args) => async (dispatch, getState) =>
-    normalize(await thunkCreator(...args)(dispatch, getState), schema);
+  return thunkCreator =>
+    (...args) =>
+    async (dispatch, getState) =>
+      normalize(await thunkCreator(...args)(dispatch, getState), schema);
 }

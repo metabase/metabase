@@ -1,10 +1,11 @@
 (ns metabase.api.session
   "/api/session endpoints"
-  (:require [cemerick.friend.credentials :as creds]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST]]
+            [java-time :as t]
             [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
+            [metabase.api.ldap :as api.ldap]
             [metabase.config :as config]
             [metabase.email.messages :as messages]
             [metabase.events :as events]
@@ -54,7 +55,7 @@
                         :id      (str session-uuid)
                         :user_id (u/the-id user))
                       ;; HACK !!! For some reason `db/insert` doesn't seem to be working correctly for Session.
-                      (models/post-insert (Session (str session-uuid))))]
+                      (models/post-insert (db/select-one Session :id (str session-uuid))))]
     (assert (map? session))
     (events/publish-event! :user-login
       {:user_id (u/the-id user), :session_id (str session-uuid), :first_login (nil? (:last_login user))})
@@ -92,7 +93,7 @@
   "If LDAP is enabled and a matching user exists return a new Session for them, or `nil` if they couldn't be
   authenticated."
   [username password device-info :- request.u/DeviceInfo]
-  (when (ldap/ldap-configured?)
+  (when (api.ldap/ldap-enabled)
     (try
       (when-let [user-info (ldap/find-user username)]
         (when-not (ldap/verify-password user-info password)
@@ -165,18 +166,18 @@
   [:as {{:keys [username password]} :body, :as request}]
   {username su/NonBlankString
    password su/NonBlankString}
-  (let [ip-address (request.u/ip-address request)
-        do-login   (fn []
-                     (let [{session-uuid :id, :as session} (login username password (request.u/device-info request))
-                           response                        {:id (str session-uuid)}]
-                       (mw.session/set-session-cookie request response session)))]
+  (let [ip-address   (request.u/ip-address request)
+        request-time (t/zoned-date-time (t/zone-id "GMT"))
+        do-login     (fn []
+                       (let [{session-uuid :id, :as session} (login username password (request.u/device-info request))
+                             response                        {:id (str session-uuid)}]
+                         (mw.session/set-session-cookies request response session request-time)))]
     (if throttling-disabled?
       (do-login)
       (http-401-on-error
        (throttle/with-throttling [(login-throttlers :ip-address) ip-address
                                   (login-throttlers :username)   username]
            (do-login))))))
-
 
 (api/defendpoint DELETE "/"
   "Logout."
@@ -231,7 +232,7 @@
                                                                    :id user-id, :is_active true)]
         ;; Make sure the plaintext token matches up with the hashed one for this user
         (when (u/ignore-exceptions
-                (creds/bcrypt-verify token reset_token))
+                (u.password/bcrypt-verify token reset_token))
           ;; check that the reset was triggered within the last 48 HOURS, after that the token is considered expired
           (let [token-age (- (System/currentTimeMillis) reset_triggered)]
             (when (< token-age reset-token-ttl-ms)
@@ -247,12 +248,12 @@
         ;; if this is the first time the user has logged in it means that they're just accepted their Metabase invite.
         ;; Send all the active admins an email :D
         (when-not (:last_login user)
-          (messages/send-user-joined-admin-notification-email! (User user-id)))
+          (messages/send-user-joined-admin-notification-email! (db/select-one User :id user-id)))
         ;; after a successful password update go ahead and offer the client a new session that they can use
         (let [{session-uuid :id, :as session} (create-session! :password user (request.u/device-info request))
               response                        {:success    true
                                                :session_id (str session-uuid)}]
-          (mw.session/set-session-cookie request response session)))
+          (mw.session/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT")))))
       (api/throw-invalid-param-exception :password (tru "Invalid reset token"))))
 
 (api/defendpoint GET "/password_reset_token_valid"
@@ -287,7 +288,10 @@
              response {:id (str session-uuid)}
              user (db/select-one [User :id :is_active], :email (:email user))]
          (if (and user (:is_active user))
-           (mw.session/set-session-cookie request response session)
+           (mw.session/set-session-cookies request
+                                           response
+                                           session
+                                           (t/zoned-date-time (t/zone-id "GMT")))
            (throw (ex-info (str disabled-account-message)
                            {:status-code 401
                             :errors      {:account disabled-account-snippet}}))))))))

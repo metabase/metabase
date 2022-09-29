@@ -93,11 +93,14 @@ interface CreateAppSectionProps {
 
 const CreateAppSection = ({ manifest }: CreateAppSectionProps): JSX.Element => {
   return (
-    <SetupSection title={t`1. Create your Slack App`}>
+    <SetupSection
+      title={t`1. Click the button below and create your Slack App`}
+    >
       <SectionMessage>
-        {t`Click the button below to begin creating your Slack App using the Metabase configuration.`}{" "}
-        {jt`Once created, click “${(
-          <strong key="install">{t`Install to workspace`}</strong>
+        {jt`First, ${(
+          <strong key="click-button">{t`click the button below to create your Slack App`}</strong>
+        )} using the Metabase configuration. Once created, click “${(
+          <strong key="install-app">{t`Install to workspace`}</strong>
         )}” to authorize it.`}
       </SectionMessage>
       <SlackAppsLink manifest={manifest} />

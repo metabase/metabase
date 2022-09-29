@@ -6,11 +6,10 @@ import {
   editDashboard,
   visualize,
   visitDashboard,
-} from "__support__/e2e/cypress";
-
-import { setAdHocFilter } from "../../native-filters/helpers/e2e-date-filter-helpers";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+import { setAdHocFilter } from "../../native-filters/helpers/e2e-date-filter-helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -140,11 +139,10 @@ describe("issue 17514", () => {
       cy.findByText("Products").click();
 
       visualize();
-      cy.findByTextEnsureVisible("Subtotal");
 
       // Cypress cannot click elements that are blocked by an overlay so this will immediately fail if the issue is not fixed
-      cy.findByText("110.93").click();
-      cy.findByText("Filter by this value");
+      cy.findByTextEnsureVisible("Subtotal").click();
+      cy.findByText("Filter by this column");
     });
   });
 });
@@ -156,9 +154,7 @@ function openVisualizationOptions() {
 
 function hideColumn(columnName) {
   cy.findByTestId("chartsettings-sidebar").within(() => {
-    cy.findByText(columnName)
-      .siblings(".Icon-close")
-      .click();
+    cy.findByText(columnName).siblings(".Icon-eye_filled").click();
   });
 }
 
@@ -184,7 +180,7 @@ function moveColumnToTop(column) {
   cy.findByTestId("sidebar-left").within(() => {
     cy.findByText(column)
       .should("be.visible")
-      .closest(".cursor-grab")
+      .closest("[data-testid^=draggable-item]")
       .trigger("mousedown", 0, 0, { force: true })
       .trigger("mousemove", 5, 5, { force: true })
       .trigger("mousemove", 0, -600, { force: true })

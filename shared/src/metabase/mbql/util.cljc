@@ -4,10 +4,13 @@
   #?@
   (:clj
    [(:require [clojure.string :as str]
+              [clojure.tools.logging :as log]
               [metabase.mbql.schema :as mbql.s]
               [metabase.mbql.schema.helpers :as schema.helpers]
               [metabase.mbql.util.match :as mbql.match]
+              [metabase.models.dispatch :as models.dispatch]
               [metabase.shared.util.i18n :as i18n]
+              metabase.util.i18n
               [potemkin :as p]
               [schema.core :as s])]
    :cljs
@@ -247,6 +250,27 @@
                              [:relative-datetime :current]
                              [:relative-datetime 0 temporal-unit])))))
 
+(def temporal-extract-ops->unit
+  "Mapping from the sugar syntax to extract datetime to the unit."
+  {:get-year        :year
+   :get-quarter     :quarter
+   :get-month       :month
+   :get-day         :day
+   :get-day-of-week :day-of-week
+   :get-hour        :hour
+   :get-minute      :minute
+   :get-second      :second})
+
+(def ^:private temporal-extract-ops
+  (set (keys temporal-extract-ops->unit)))
+
+(defn desugar-temporal-extract
+  "Replace datetime extractions clauses like `[:get-year field]` with `[:temporal-extract field :year]`."
+  [m]
+  (mbql.match/replace m
+    [(op :guard temporal-extract-ops) field]
+    [:temporal-extract field (temporal-extract-ops->unit op)]))
+
 (s/defn desugar-filter-clause :- mbql.s/Filter
   "Rewrite various 'syntatic sugar' filter clauses like `:time-interval` and `:inside` as simpler, logically
   equivalent clauses. This can be used to simplify the number of filter clauses that need to be supported by anything
@@ -261,7 +285,8 @@
       desugar-is-null-and-not-null
       desugar-is-empty-and-not-empty
       desugar-inside
-      simplify-compound-filter))
+      simplify-compound-filter
+      desugar-temporal-extract))
 
 (defmulti ^:private negate* first)
 
@@ -342,9 +367,15 @@
   "Dispatch function perfect for use with multimethods that dispatch off elements of an MBQL query. If `x` is an MBQL
   clause, dispatches off the clause name; otherwise dispatches off `x`'s class."
   ([x]
-   (if (mbql-clause? x)
-     (first x)
-     (type x)))
+   #?(:clj
+      (if (mbql-clause? x)
+        (first x)
+        (or (metabase.models.dispatch/model x)
+            (type x)))
+      :cljs
+      (if (mbql-clause? x)
+        (first x)
+        (type x))))
   ([x _]
    (dispatch-by-clause-name-or-class x)))
 
@@ -661,10 +692,18 @@
 
 (defn with-temporal-unit
   "Set the `:temporal-unit` of a `:field` clause to `unit`."
-  [clause unit]
+  [[_ _ {:keys [base-type]} :as clause] unit]
   ;; it doesn't make sense to call this on an `:expression` or `:aggregation`.
   (assert (is-clause? :field clause))
-  (assoc-field-options clause :temporal-unit unit))
+  (if (or (not base-type)
+          (mbql.s/valid-temporal-unit-for-base-type? base-type unit))
+    (assoc-field-options clause :temporal-unit unit)
+    #_{:clj-kondo/ignore [:redundant-do]} ; The linter detects that this is redundant in CLJS and warns for it.
+    (do
+      #?(:clj
+         (log/warn (metabase.util.i18n/trs "{0} is not a valid temporal unit for {1}; not adding to clause {2}"
+                                           unit base-type (pr-str clause))))
+      clause)))
 
 (defn remove-namespaced-options
   "Update a `:field`, `:expression` reference, or `:aggregation` reference clause by removing all namespaced keys in the

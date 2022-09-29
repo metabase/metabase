@@ -1,7 +1,6 @@
 import {
   enterCustomColumnDetails,
   getNotebookStep,
-  modal,
   openOrdersTable,
   openProductsTable,
   popover,
@@ -10,13 +9,15 @@ import {
   visualize,
   summarize,
   filter,
+  filterField,
   startNewQuestion,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
+  SAMPLE_DATABASE;
 
 describe("scenarios > question > notebook", () => {
   beforeEach(() => {
@@ -28,9 +29,7 @@ describe("scenarios > question > notebook", () => {
     openOrdersTable();
     // save question initially
     cy.findByText("Save").click();
-    cy.get(".ModalBody")
-      .contains("Save")
-      .click();
+    cy.get(".ModalBody").contains("Save").click();
     cy.findByText("Not now").click();
     // enter "notebook" and visualize without changing anything
     cy.icon("notebook").click();
@@ -145,9 +144,7 @@ describe("scenarios > question > notebook", () => {
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
 
-    cy.get("@formula")
-      .clear()
-      .type("[Price] > 1 AND [Price] < 5{enter}");
+    cy.get("@formula").clear().type("[Price] > 1 AND [Price] < 5{enter}");
 
     cy.contains(/^Price is less than 5/i);
   });
@@ -181,9 +178,7 @@ describe("scenarios > question > notebook", () => {
     cy.findByTestId("filters-visibility-control").click();
     cy.findByText("Product ID is 2").click();
 
-    popover()
-      .find("input")
-      .type("3{enter}");
+    popover().find("input").type("3{enter}");
     cy.findByText("Product ID is 2 selections");
 
     // Still loading
@@ -227,9 +222,7 @@ describe("scenarios > question > notebook", () => {
 
     it("popover should not render outside of viewport regardless of the screen resolution (metabase#15502-1)", () => {
       // Initial filter popover usually renders correctly within the viewport
-      cy.findByText("Add filters to narrow your answer")
-        .as("filter")
-        .click();
+      cy.findByText("Add filters to narrow your answer").as("filter").click();
       popover().isRenderedWithinViewport();
       // Click anywhere outside this popover to close it because the issue with rendering happens when popover opens for the second time
       cy.icon("gear").click();
@@ -239,58 +232,12 @@ describe("scenarios > question > notebook", () => {
 
     it("popover should not cover the button that invoked it (metabase#15502-2)", () => {
       // Initial summarize/metric popover usually renders initially without blocking the button
-      cy.findByText("Pick the metric you want to see")
-        .as("metric")
-        .click();
+      cy.findByText("Pick the metric you want to see").as("metric").click();
       // Click outside to close this popover
       cy.icon("gear").click();
       // Popover invoked again blocks the button making it impossible to click the button for the third time
       cy.get("@metric").click();
       cy.get("@metric").click();
-    });
-  });
-
-  describe("nested", () => {
-    it("should create a nested question with post-aggregation filter", () => {
-      openProductsTable({ mode: "notebook" });
-
-      summarize({ mode: "notebook" });
-      popover().within(() => {
-        cy.findByText("Count of rows").click();
-      });
-
-      cy.findByText("Pick a column to group by").click();
-      popover().within(() => {
-        cy.findByText("Category").click();
-      });
-
-      cy.findByText("Filter").click();
-      popover().within(() => {
-        cy.findByText("Category").click();
-        cy.findByText("Gadget").click();
-        cy.findByText("Add filter").click();
-      });
-
-      visualize();
-
-      cy.findByText("Gadget").should("exist");
-      cy.findByText("Gizmo").should("not.exist");
-
-      cy.findByText("Save").click();
-
-      modal().within(() => {
-        cy.findByLabelText("Name").type("post aggregation");
-        cy.findByText("Save").click();
-      });
-
-      cy.findByText("Not now").click();
-
-      cy.icon("notebook").click();
-
-      cy.reload();
-
-      cy.findByText("Category").should("exist");
-      cy.findByText("Category is Gadget").should("exist");
     });
   });
 
@@ -310,9 +257,7 @@ describe("scenarios > question > notebook", () => {
         .click()
         .type("Example", { delay: 100 });
 
-      cy.button("Done")
-        .should("not.be.disabled")
-        .click();
+      cy.button("Done").should("not.be.disabled").click();
 
       visualize();
 
@@ -329,9 +274,7 @@ describe("scenarios > question > notebook", () => {
 
       cy.contains(/^redundant input/i).should("not.exist");
 
-      cy.button("Done")
-        .should("not.be.disabled")
-        .click();
+      cy.button("Done").should("not.be.disabled").click();
 
       visualize();
 
@@ -359,9 +302,7 @@ describe("scenarios > question > notebook", () => {
         cy.contains(/^expected closing parenthesis/i).should("not.exist");
         cy.contains(/^redundant input/i).should("not.exist");
 
-        cy.button("Done")
-          .should("not.be.disabled")
-          .click();
+        cy.button("Done").should("not.be.disabled").click();
 
         visualize();
 
@@ -383,15 +324,54 @@ describe("scenarios > question > notebook", () => {
       cy.findByText("Select none").click();
       cy.findByLabelText("ID").should("be.disabled");
       cy.findByText("Tax").click();
-      cy.findByLabelText("ID")
-        .should("be.enabled")
-        .click();
+      cy.findByLabelText("ID").should("be.enabled").click();
     });
 
     visualize();
 
     cy.findByText("Tax");
     cy.findByText("ID").should("not.exist");
+  });
+
+  it("should treat max/min on a name as a string filter (metabase#21973)", () => {
+    const questionDetails = {
+      name: "21973",
+      query: {
+        "source-table": PEOPLE_ID,
+        aggregation: [["max", ["field", PEOPLE.NAME, null]]],
+        breakout: [["field", PEOPLE.SOURCE, null]],
+      },
+      display: "table",
+    };
+
+    cy.createQuestion(questionDetails, { visitQuestion: true });
+
+    filter();
+    cy.findByText("Summaries").click();
+
+    filterField("Max of Name", {
+      operator: "Starts with",
+    });
+  });
+
+  it("should treat max/min on a category as a string filter (metabase#22154)", () => {
+    const questionDetails = {
+      name: "22154",
+      query: {
+        "source-table": PRODUCTS_ID,
+        aggregation: [["min", ["field", PRODUCTS.VENDOR, null]]],
+        breakout: [["field", PRODUCTS.CATEGORY, null]],
+      },
+      display: "table",
+    };
+
+    cy.createQuestion(questionDetails, { visitQuestion: true });
+
+    filter();
+    cy.findByText("Summaries").click();
+    filterField("Min of Vendor", {
+      operator: "ends with",
+    });
   });
 
   // flaky test
@@ -432,8 +412,6 @@ describe("scenarios > question > notebook", () => {
 function addSimpleCustomColumn(name) {
   enterCustomColumnDetails({ formula: "C" });
   cy.findByText("ategory").click();
-  cy.findByPlaceholderText("Something nice and descriptive")
-    .click()
-    .type(name);
+  cy.findByPlaceholderText("Something nice and descriptive").click().type(name);
   cy.button("Done").click();
 }

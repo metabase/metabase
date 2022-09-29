@@ -1,7 +1,7 @@
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
+import { PLUGIN_IS_PASSWORD_USER } from "metabase/plugins";
 import AccountHeader from "./AccountHeader";
-import { PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS } from "metabase/plugins";
 
 const getUser = () => ({
   id: 1,
@@ -12,19 +12,17 @@ const getUser = () => ({
 });
 
 describe("AccountHeader", () => {
-  const ORIGINAL_SHOW_CHANGE_PASSWORD_CONDITIONS = [
-    ...PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS,
-  ];
+  const ORIGINAL_PLUGIN_IS_PASSWORD_USER = [...PLUGIN_IS_PASSWORD_USER];
 
   beforeEach(() => {
-    PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS.splice(0);
+    PLUGIN_IS_PASSWORD_USER.splice(0);
   });
 
   afterEach(() => {
-    PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS.splice(
+    PLUGIN_IS_PASSWORD_USER.splice(
       0,
-      PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS.length,
-      ...ORIGINAL_SHOW_CHANGE_PASSWORD_CONDITIONS,
+      PLUGIN_IS_PASSWORD_USER.length,
+      ...ORIGINAL_PLUGIN_IS_PASSWORD_USER,
     );
   });
 
@@ -41,7 +39,7 @@ describe("AccountHeader", () => {
 
   it("should show the password tab if it is enabled by a plugin", () => {
     const user = getUser();
-    PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS.push(user => user.google_auth);
+    PLUGIN_IS_PASSWORD_USER.push(user => user.google_auth);
 
     render(<AccountHeader user={user} />);
 
@@ -50,7 +48,7 @@ describe("AccountHeader", () => {
 
   it("should hide the password tab if it is disabled by a plugin", () => {
     const user = getUser();
-    PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS.push(user => !user.google_auth);
+    PLUGIN_IS_PASSWORD_USER.push(user => !user.google_auth);
 
     render(<AccountHeader user={user} />);
 

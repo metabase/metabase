@@ -2,10 +2,10 @@
 import React, { Component } from "react";
 import cx from "classnames";
 
-import NumericInput from "metabase/components/NumericInput";
+import { assoc } from "icepick";
 import DateUnitSelector from "../DatePicker/DateUnitSelector";
 
-import { assoc } from "icepick";
+import { IntervalInput } from "./RelativeDatePicker.styled";
 
 export const DATE_PERIODS = ["day", "week", "month", "quarter", "year"];
 
@@ -29,8 +29,8 @@ export default class RelativeDatePicker extends Component {
     const unit = filter[3];
     return (
       <div className={cx(className, "flex align-center")}>
-        <NumericInput
-          className="mr2 input border-purple text-right"
+        <IntervalInput
+          className="mr2 input text-right"
           style={{
             width: 65,
             // needed to match Select's AdminSelect classes :-/

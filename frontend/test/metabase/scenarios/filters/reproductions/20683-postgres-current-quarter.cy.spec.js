@@ -1,15 +1,13 @@
-import { restore, visualize } from "__support__/e2e/cypress";
+import { restore, visualize } from "__support__/e2e/helpers";
 
-describe("issue 20683", () => {
+describe("issue 20683", { tags: "@external" }, () => {
   beforeEach(() => {
     restore("postgres-12");
     cy.signInAsAdmin();
 
     cy.visit("/");
     cy.findByText("New").click();
-    cy.findByText("Question")
-      .should("be.visible")
-      .click();
+    cy.findByText("Question").should("be.visible").click();
 
     cy.findByText("QA Postgres12").click();
     cy.findByText("Orders").click();

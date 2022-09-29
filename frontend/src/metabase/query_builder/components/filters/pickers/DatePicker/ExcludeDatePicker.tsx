@@ -1,8 +1,13 @@
 import React from "react";
 import { t } from "ttag";
-import moment from "moment";
+import moment from "moment-timezone";
 import _ from "underscore";
 
+import { Field } from "metabase-types/types/Field";
+import { color } from "metabase/lib/colors";
+import { EXCLUDE_OPTIONS } from "metabase/lib/query_time";
+import Filter from "metabase-lib/lib/queries/structured/Filter";
+import { FieldDimension } from "metabase-lib/lib/Dimension";
 import {
   ExcludeCheckBox,
   ExcludeColumn,
@@ -11,12 +16,6 @@ import {
   OptionButton,
   Separator,
 } from "./ExcludeDatePicker.styled";
-
-import { FieldDimension } from "metabase-lib/lib/Dimension";
-import { Field } from "metabase-types/types/Field";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
-import { color } from "metabase/lib/colors";
-import { EXCLUDE_OPTIONS } from "metabase/lib/query_time";
 
 function getDateTimeField(field: Field, bucketing?: string) {
   const dimension =
@@ -112,10 +111,11 @@ export default function ExcludeDatePicker({
 
   if (!temporalUnit || operator === "is-null" || operator === "not-null") {
     return (
-      <div className={className}>
+      <div className={className} data-testid="exclude-date-picker">
         {EXCLUDE_OPERATORS.map(({ displayName, init }) => (
           <OptionButton
             key={displayName}
+            primaryColor={primaryColor}
             onClick={() => {
               onFilterChange(init(filter));
             }}
@@ -127,19 +127,19 @@ export default function ExcludeDatePicker({
           <>
             <Separator />
             <OptionButton
-              selected={operator === "is-null"}
+              selected={operator === "not-null"}
               primaryColor={primaryColor}
               onClick={() => {
-                onCommit(["is-null", getDateTimeField(filter[1])]);
+                onCommit(["not-null", getDateTimeField(filter[1])]);
               }}
             >
               {t`Is empty`}
             </OptionButton>
             <OptionButton
-              selected={operator === "not-null"}
+              selected={operator === "is-null"}
               primaryColor={primaryColor}
               onClick={() => {
-                onCommit(["not-null", getDateTimeField(filter[1])]);
+                onCommit(["is-null", getDateTimeField(filter[1])]);
               }}
             >
               {t`Is not empty`}
@@ -161,6 +161,7 @@ export default function ExcludeDatePicker({
     <div className={className}>
       <ExcludeCheckBox
         label={<ExcludeLabel>{selectAllLabel}</ExcludeLabel>}
+        checkedColor={primaryColor}
         checked={allSelected}
         onChange={() =>
           update(allSelected ? options.flat().map(({ value }) => value) : [])

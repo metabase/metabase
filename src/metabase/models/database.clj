@@ -4,11 +4,15 @@
             [medley.core :as m]
             [metabase.db.util :as mdb.u]
             [metabase.driver :as driver]
+            [metabase.driver.impl :as driver.impl]
             [metabase.driver.util :as driver.u]
             [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.secret :as secret :refer [Secret]]
+            [metabase.models.serialization.base :as serdes.base]
+            [metabase.models.serialization.hash :as serdes.hash]
+            [metabase.models.serialization.util :as serdes.util]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
@@ -18,6 +22,10 @@
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (models/defmodel Database :metabase_database)
+
+(doto Database
+  (derive ::mi/read-policy.partial-perms-for-perms-set)
+  (derive ::mi/write-policy.full-perms-for-perms-set))
 
 (defn- schedule-tasks!
   "(Re)schedule sync operation tasks for `database`. (Existing scheduled tasks will be deleted first.)"
@@ -52,13 +60,12 @@
 
 (defn- post-select [{driver :engine, :as database}]
   (cond-> database
-    (driver/initialized? driver)
     ;; TODO - this is only really needed for API responses. This should be a `hydrate` thing instead!
-    (as-> db* ; database from outer cond->
-        (assoc db* :features (driver.u/features driver database))
-        (if (:details db*)
-          (driver/normalize-db-details driver db*)
-          db*))))
+    (driver.impl/registered? driver)
+    (assoc :features (driver.u/features driver database))
+
+    (and (driver.impl/registered? driver) (:details database))
+    (->> (driver/normalize-db-details driver))))
 
 (defn- delete-orphaned-secrets!
   "Delete Secret instances from the app DB, that will become orphaned when `database` is deleted. For now, this will
@@ -182,15 +189,13 @@
       handle-secrets-changes
       (assoc :initial_sync_status "incomplete")))
 
-(defn- perms-objects-set [{db-id :id} read-or-write]
+(defmethod mi/perms-objects-set Database
+  [{db-id :id} read-or-write]
   #{(case read-or-write
-      ;; We should let a user read a DB if they have write perms for the DB details *or* self-service data access.
-      ;; Since a user can have one or the other, we use `mi/has-any-permissions?` to check both read and write permission
-      ;; sets in the `can-read?` implementation.
-      :read (perms/data-perms-path db-id)
+      :read  (perms/data-perms-path db-id)
       :write (perms/db-details-write-perms-path db-id))})
 
-(u/strict-extend (class Database)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Database)
   models/IModel
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:database :db])
@@ -207,13 +212,9 @@
           :pre-insert     pre-insert
           :pre-update     pre-update
           :pre-delete     pre-delete})
-  mi/IObjectPermissions
-  (merge mi/IObjectPermissionsDefaults
-         {:perms-objects-set perms-objects-set
-          :can-read?         (mi/has-any-permissions?
-                              (partial mi/current-user-has-partial-permissions? :read)
-                              (partial mi/current-user-has-full-permissions? :write))
-          :can-write?        (partial mi/current-user-has-full-permissions? :write)}))
+
+  serdes.hash/IdentityHashable
+  {:identity-hash-fields (constantly [:name :engine])})
 
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
@@ -267,6 +268,7 @@
 ;; Users with write perms can see the `details` but remove anything resembling a password. No one gets to see this in
 ;; an API response!
 (add-encoder
+ #_{:clj-kondo/ignore [:unresolved-symbol]}
  DatabaseInstance
  (fn [db json-generator]
    (encode-map
@@ -278,3 +280,29 @@
                              details
                              (sensitive-fields-for-db db)))))
     json-generator)))
+
+;;; ------------------------------------------------ Serialization ----------------------------------------------------
+
+(defmethod serdes.base/extract-one "Database"
+  [_model-name {secrets :database/secrets :or {secrets :exclude}} entity]
+  ;; TODO Support alternative encryption of secret database details.
+  ;; There's one optional foreign key: creator_id. Resolve it as an email.
+  (cond-> (serdes.base/extract-one-basics "Database" entity)
+    true                 (update :creator_id serdes.util/export-user)
+    (= :exclude secrets) (dissoc :details)))
+
+(defmethod serdes.base/serdes-entity-id "Database"
+  [_ {:keys [name]}]
+  name)
+
+(defmethod serdes.base/serdes-generate-path "Database"
+  [_ {:keys [name]}]
+  [{:model "Database" :id name}])
+
+(defmethod serdes.base/load-find-local "Database"
+  [[{:keys [id]}]]
+  (db/select-one-field :id Database :name id))
+
+(defmethod serdes.base/load-xform "Database" [entity]
+  (-> (serdes.base/load-xform-basics entity)
+    (update :creator_id serdes.util/import-user)))

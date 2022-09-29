@@ -1,10 +1,11 @@
 /* eslint-disable react/prop-types */
 import React, { useMemo } from "react";
 import { t } from "ttag";
-import moment from "moment";
+import moment from "moment-timezone";
 import _ from "underscore";
 
 import { color } from "metabase/lib/colors";
+import { getFullName } from "metabase/lib/user";
 import * as Urls from "metabase/lib/urls";
 
 import EntityMenu from "metabase/components/EntityMenu";
@@ -47,7 +48,7 @@ const PeopleListRow = ({
             user={user}
           />
         </span>{" "}
-        <span className="ml2 text-bold">{user.common_name}</span>
+        <span className="ml2 text-bold">{getName(user)}</span>
       </td>
       <td>
         {user.google_auth ? (
@@ -126,5 +127,20 @@ const PeopleListRow = ({
     </tr>
   );
 };
+
+/**
+ *
+ * @param {import("metabase-types/api").User} user
+ * @returns {string}
+ */
+function getName(user) {
+  const name = getFullName(user);
+
+  if (!name) {
+    return "-";
+  }
+
+  return name;
+}
 
 export default PeopleListRow;

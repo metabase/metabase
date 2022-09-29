@@ -16,8 +16,25 @@
 ;;; CONFIG
 
 (defsetting email-from-address
-  (deferred-tru "Email address you want to use as the sender of Metabase.")
+  (deferred-tru "The email address you want to use for the sender of emails.")
   :default "notifications@metabase.com")
+
+(defsetting email-from-name
+  (deferred-tru "The name you want to use for the sender of emails."))
+
+(def ^:private ReplyToAddresses
+  (s/maybe [su/Email]))
+
+(def ^:private ^{:arglists '([reply-to-addresses])} validate-reply-to-addresses
+  (s/validator ReplyToAddresses))
+
+(defsetting email-reply-to
+  (deferred-tru "The email address you want the replies to go to, if different from the from address.")
+  :type :json
+  :setter (fn [new-value]
+            (->> new-value
+                 validate-reply-to-addresses
+                 (setting/set-value-of-type! :json :email-reply-to))))
 
 (defsetting email-smtp-host
   (deferred-tru "The address of the SMTP server that handles your emails."))
@@ -92,17 +109,22 @@
   {:style/indent 0}
   [{:keys [subject recipients message-type message]} :- EmailMessage]
   (when-not (email-smtp-host)
-    (throw (Exception. (tru "SMTP host is not set."))))
+    (throw (ex-info (tru "SMTP host is not set.") {:cause :smtp-host-not-set})))
   ;; Now send the email
   (send-email! (smtp-settings)
-    {:from    (email-from-address)
-     :to      recipients
-     :subject subject
-     :body    (case message-type
-                :attachments message
-                :text        message
-                :html        [{:type    "text/html; charset=utf-8"
-                               :content message}])}))
+               (merge
+                {:from    (if-let [from-name (email-from-name)]
+                            (str from-name " <" (email-from-address) ">")
+                            (email-from-address))
+                 :to      recipients
+                 :subject subject
+                 :body    (case message-type
+                            :attachments message
+                            :text        message
+                            :html        [{:type    "text/html; charset=utf-8"
+                                           :content message}])}
+                (when-let [reply-to (email-reply-to)]
+                  {:reply-to reply-to}))))
 
 (def ^:private SMTPStatus
   "Schema for the response returned by various functions in [[metabase.email]]. Response will be a map with the key
@@ -130,13 +152,15 @@
       {::error e})))
 
 (def ^:private SMTPSettings
-  {:host                      su/NonBlankString
-   :port                      su/IntGreaterThanZero
-   ;; TODO -- not sure which of these other ones are actually required or not, and which are optional.
-   (s/optional-key :user)     (s/maybe s/Str)
-   (s/optional-key :security) (s/maybe (s/enum :tls :ssl :none :starttls))
-   (s/optional-key :pass)     (s/maybe s/Str)
-   (s/optional-key :sender)   (s/maybe s/Str)})
+  {:host                         su/NonBlankString
+   :port                         su/IntGreaterThanZero
+     ;; TODO -- not sure which of these other ones are actually required or not, and which are optional.
+   (s/optional-key :user)        (s/maybe s/Str)
+   (s/optional-key :security)    (s/maybe (s/enum :tls :ssl :none :starttls))
+   (s/optional-key :pass)        (s/maybe s/Str)
+   (s/optional-key :sender)      (s/maybe s/Str)
+   (s/optional-key :sender-name) (s/maybe s/Str)
+   (s/optional-key :reply-to)    (s/maybe [s/Str])})
 
 (s/defn ^:private test-smtp-settings :- SMTPStatus
   "Tests an SMTP configuration by attempting to connect and authenticate if an authenticated method is passed

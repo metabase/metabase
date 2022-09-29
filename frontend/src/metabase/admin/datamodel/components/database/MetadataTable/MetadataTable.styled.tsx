@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 import { color } from "metabase/lib/colors";
 import InputBlurChange from "metabase/components/InputBlurChange";
-import { css } from "@emotion/react";
 
 interface VisibilityTypeProps {
   isSelected: boolean;
@@ -10,6 +10,7 @@ interface VisibilityTypeProps {
 export const VisibilityType = styled.span<VisibilityTypeProps>`
   margin: 0 0.5rem;
   font-weight: bold;
+  cursor: pointer;
 
   color: ${props => (props.isSelected ? color("brand") : color("text-dark"))};
 

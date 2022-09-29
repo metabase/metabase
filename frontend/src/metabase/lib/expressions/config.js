@@ -17,16 +17,6 @@ export const EDITOR_QUOTES = {
   identifierAlwaysQuoted: true,
 };
 
-// export const EDITOR_QUOTES = {
-//   characters: {
-//     "'": "literal",
-//     '"': "identifier",
-//   },
-//   literalQuoteDefault: "'",
-//   identifierQuoteDefault: '"',
-//   identifierAlwaysQuoted: false,
-// };
-
 export const EDITOR_FK_SYMBOLS = {
   // specifies which symbols can be used to delimit foreign/joined fields
   symbols: [".", " → "],
@@ -226,11 +216,21 @@ export const MBQL_CLAUSES = {
     type: "boolean",
     args: ["expression", "expression", "expression"],
   },
+  interval: {
+    displayName: "timeSpan",
+    type: "number",
+    args: ["number", "string"],
+  },
   "time-interval": {
     displayName: `interval`,
     type: "boolean",
     args: ["expression", "number", "string"],
     hasOptions: true,
+  },
+  "relative-datetime": {
+    displayName: "relativeDateTime",
+    type: "expression",
+    args: ["number", "string"],
   },
   "is-null": {
     displayName: `isnull`,
@@ -321,6 +321,56 @@ export const MBQL_CLAUSES = {
     type: "boolean",
     args: ["expression", "expression"],
   },
+  "get-year": {
+    displayName: `year`,
+    type: "number",
+    args: ["expression"],
+  },
+  "get-quarter": {
+    displayName: `quarter`,
+    type: "number",
+    args: ["expression"],
+  },
+  "get-month": {
+    displayName: `month`,
+    type: "number",
+    args: ["expression"],
+  },
+  "get-day": {
+    displayName: `day`,
+    type: "number",
+    args: ["expression"],
+  },
+  "get-day-of-week": {
+    displayName: `weekday`,
+    type: "number",
+    args: ["expression"],
+  },
+  "get-hour": {
+    displayName: `hour`,
+    type: "number",
+    args: ["expression"],
+  },
+  "get-minute": {
+    displayName: `minute`,
+    type: "number",
+    args: ["expression"],
+  },
+  "get-second": {
+    displayName: `second`,
+    type: "number",
+    args: ["expression"],
+  },
+  "date-add": {
+    displayName: `dateAdd`,
+    type: "expression",
+    args: ["expression", "number", "string"],
+  },
+  "date-subtract": {
+    displayName: `dateSubtract`,
+    type: "expression",
+    args: ["expression", "number", "string"],
+  },
 };
 
 for (const [name, clause] of Object.entries(MBQL_CLAUSES)) {
@@ -392,6 +442,17 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "power",
   "log",
   "exp",
+  // date/time
+  "get-year",
+  "get-quarter",
+  "get-month",
+  "get-day",
+  "get-day-of-week",
+  "get-hour",
+  "get-minute",
+  "get-second",
+  "date-add",
+  "date-subtract",
   // boolean
   "contains",
   "ends-with",

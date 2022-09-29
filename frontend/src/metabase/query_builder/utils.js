@@ -1,27 +1,6 @@
 import querystring from "querystring";
-import { isSupportedTemplateTagForModel } from "metabase/lib/data-modeling/utils";
 import * as Urls from "metabase/lib/urls";
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-
-// Query Builder Mode
-
-export function getQueryBuilderModeFromLocation(location) {
-  const { pathname } = location;
-  if (pathname.endsWith("/notebook")) {
-    return {
-      mode: "notebook",
-    };
-  }
-  if (pathname.endsWith("/query") || pathname.endsWith("/metadata")) {
-    return {
-      mode: "dataset",
-      datasetEditorTab: pathname.endsWith("/query") ? "query" : "metadata",
-    };
-  }
-  return {
-    mode: "view",
-  };
-}
+import { serializeCardForUrl } from "metabase/lib/card";
 
 export function getPathNameFromQueryBuilderMode({
   pathname,
@@ -45,14 +24,9 @@ export function getCurrentQueryParams() {
   return querystring.parse(search);
 }
 
-export function getURLForCardState(
-  { card, serializedCard },
-  dirty,
-  query = {},
-  objectId,
-) {
+export function getURLForCardState({ card }, dirty, query = {}, objectId) {
   const options = {
-    hash: serializedCard && dirty ? serializedCard : "",
+    hash: card && dirty ? serializeCardForUrl(card) : "",
     query,
   };
   const isAdHocQuestion = !card.id;
@@ -64,36 +38,4 @@ export function getURLForCardState(
     }
   }
   return Urls.question(card, options);
-}
-
-function getTemplateTagWithoutSnippetsCount(question) {
-  const query = question.query();
-  return query instanceof NativeQuery
-    ? query.templateTagsWithoutSnippets()
-    : [];
-}
-
-export function getNextTemplateTagVisibilityState({
-  oldQuestion,
-  newQuestion,
-  isTemplateTagEditorVisible,
-  queryBuilderMode,
-}) {
-  const previousTags = getTemplateTagWithoutSnippetsCount(oldQuestion);
-  const nextTags = getTemplateTagWithoutSnippetsCount(newQuestion);
-
-  if (nextTags.length > previousTags.length) {
-    if (queryBuilderMode !== "dataset") {
-      return "visible";
-    }
-    return nextTags.every(isSupportedTemplateTagForModel)
-      ? "visible"
-      : "hidden";
-  }
-
-  if (nextTags.length === 0 && isTemplateTagEditorVisible) {
-    return "hidden";
-  }
-
-  return "deferToCurrentState";
 }

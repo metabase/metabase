@@ -1,8 +1,12 @@
-import { restore, openNativeEditor } from "__support__/e2e/cypress";
+import { restore, openNativeEditor } from "__support__/e2e/helpers";
 
 describe("issue 20625", () => {
   beforeEach(() => {
     restore();
+    cy.signInAsAdmin();
+    cy.request("PUT", "/api/setting/native-query-autocomplete-match-style", {
+      value: "prefix",
+    });
     cy.signInAsNormalUser();
     cy.intercept("GET", "/api/database/*/autocomplete_suggestions**").as(
       "autocomplete",

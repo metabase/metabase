@@ -5,7 +5,7 @@ import {
   editDashboard,
   saveDashboard,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 import { setQuarterAndYear } from "../../native-filters/helpers/e2e-date-filter-helpers";
@@ -40,7 +40,7 @@ describe.skip("issue 17775", () => {
       ({ body: dashboardCard }) => {
         const { dashboard_id } = dashboardCard;
 
-        const updatedSize = { sizeX: 16, sizeY: 8 };
+        const updatedSize = { size_x: 16, size_y: 8 };
 
         cy.editDashboardCard(dashboardCard, updatedSize);
 
@@ -51,9 +51,7 @@ describe.skip("issue 17775", () => {
     editDashboard();
 
     // Make sure filter can be connected to the custom column using UI, rather than using API.
-    cy.get("main header")
-      .find(".Icon-gear")
-      .click();
+    cy.get("main header").find(".Icon-gear").click();
 
     cy.findByText("Column to filter on")
       .parent()

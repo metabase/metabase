@@ -6,10 +6,8 @@
             [metabase.api.session :as api.session]
             [metabase.driver.h2 :as h2]
             [metabase.http-client :as client]
-            [metabase.models :refer [LoginHistory]]
-            [metabase.models.session :refer [Session]]
+            [metabase.models :refer [LoginHistory PermissionsGroup PermissionsGroupMembership Session User]]
             [metabase.models.setting :as setting]
-            [metabase.models.user :refer [User]]
             [metabase.public-settings :as public-settings]
             [metabase.server.middleware.session :as mw.session]
             [metabase.test :as mt]
@@ -170,7 +168,7 @@
                                               {"x-forwarded-for" "10.1.2.3"})
               status-code (:status response)]
           (assert (= status-code 401) (str "Unexpected response status code:" status-code))))
-      (dotimes [n 50]
+      (dotimes [n 40]
         (let [response    (send-login-request (format "round2-user-%d" n)) ; no x-forwarded-for
               status-code (:status response)]
           (assert (= status-code 401) (str "Unexpected response status code:" status-code))))
@@ -199,7 +197,7 @@
         (mt/user-http-request :rasta :delete 204 "session")
         ;; check whether it's still there -- should be GONE
         (is (= nil
-               (Session session-id)))
+               (db/select-one Session :id session-id)))
         (testing "LoginHistory item should still exist, but session_id should be set to nil (active = false)"
           (is (schema= {:id                 (s/eq login-history-id)
                         :timestamp          java.time.OffsetDateTime
@@ -209,7 +207,7 @@
                         :ip_address         su/NonBlankString
                         :active             (s/eq false)
                         s/Keyword           s/Any}
-                       (LoginHistory login-history-id))))))))
+                       (db/select-one LoginHistory :id login-history-id))))))))
 
 (deftest forgot-password-test
   (testing "POST /api/session/forgot_password"
@@ -251,14 +249,14 @@
 
 (deftest forgot-password-throttling-test
   (testing "Test that email based throttling kicks in after the login failure threshold (10) has been reached"
-    (letfn [(send-password-reset [& [expected-status & more]]
+    (letfn [(send-password-reset! [& [expected-status & _more]]
               (mt/client :post (or expected-status 204) "session/forgot_password" {:email "not-found@metabase.com"}))]
       (with-redefs [api.session/forgot-password-throttlers (cleaned-throttlers #'api.session/forgot-password-throttlers
                                                                                [:email :ip-address])]
-        (dotimes [n 10]
-          (send-password-reset))
+        (dotimes [_ 10]
+          (send-password-reset!))
         (let [error (fn []
-                      (-> (send-password-reset 400)
+                      (-> (send-password-reset! 400)
                           :errors
                           :email))]
           (is (= "Too many attempts! You must wait 15 seconds before trying again."
@@ -364,7 +362,7 @@
 (deftest properties-i18n-test
   (testing "GET /session/properties"
     (testing "Setting the X-Metabase-Locale header should result give you properties in that locale"
-      (mt/with-mock-i18n-bundles {"es" {"Connection String" "Cadena de conexión !"}}
+      (mt/with-mock-i18n-bundles {"es" {:messages {"Connection String" "Cadena de conexión !"}}}
         (is (= "Cadena de conexión !"
                (-> (mt/client :get 200 "session/properties" {:request-options {:headers {"X-Metabase-Locale" "es"}}})
                    :engines :h2 :details-fields first :display-name)))))))
@@ -376,23 +374,25 @@
   (testing "POST /google_auth"
     (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"]
       (testing "Google auth works with an active account"
-        (mt/with-temp User [user {:email "test@metabase.com" :is_active true}]
-          (with-redefs [http/post (fn [url] {:status 200
-                                             :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
-                                                          "\"email_verified\":\"true\","
-                                                          "\"first_name\":\"test\","
-                                                          "\"last_name\":\"user\","
-                                                          "\"email\":\"test@metabase.com\"}")})]
+        (mt/with-temp User [_ {:email "test@metabase.com" :is_active true}]
+          (with-redefs [http/post (constantly
+                                   {:status 200
+                                    :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
+                                                 "\"email_verified\":\"true\","
+                                                 "\"first_name\":\"test\","
+                                                 "\"last_name\":\"user\","
+                                                 "\"email\":\"test@metabase.com\"}")})]
             (is (schema= SessionResponse
                          (mt/client :post 200 "session/google_auth" {:token "foo"}))))))
       (testing "Google auth throws exception for a disabled account"
-        (mt/with-temp User [user {:email "test@metabase.com" :is_active false}]
-          (with-redefs [http/post (fn [url] {:status 200
-                                             :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
-                                                          "\"email_verified\":\"true\","
-                                                          "\"first_name\":\"test\","
-                                                          "\"last_name\":\"user\","
-                                                          "\"email\":\"test@metabase.com\"}")})]
+        (mt/with-temp User [_ {:email "test@metabase.com" :is_active false}]
+          (with-redefs [http/post (constantly
+                                   {:status 200
+                                    :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
+                                                 "\"email_verified\":\"true\","
+                                                 "\"first_name\":\"test\","
+                                                 "\"last_name\":\"user\","
+                                                 "\"email\":\"test@metabase.com\"}")})]
             (is (= {:errors {:account "Your account is disabled."}}
                    (mt/client :post 401 "session/google_auth" {:token "foo"})))))))))
 
@@ -401,15 +401,11 @@
 (deftest ldap-login-test
   (ldap.test/with-ldap-server
     (testing "Test that we can login with LDAP"
-      (let [user-id (mt/user->id :rasta)]
-        (try
-          ;; TODO -- it's not so nice to go around permanently deleting stuff like Sessions like this in tests. We
-          ;; should just create a temp User instead for this test
-          (db/simple-delete! Session :user_id user-id)
-          (is (schema= SessionResponse
-                       (mt/client :post 200 "session" (mt/user->credentials :rasta))))
-          (finally
-            (db/update! User user-id :login_attributes nil)))))
+      (mt/with-temp User [_ {:email    "ngoc@metabase.com"
+                             :password "securedpassword"}]
+        (is (schema= SessionResponse
+                     (mt/client :post 200 "session" {:username "ngoc@metabase.com"
+                                                     :password "securedpassword"})))))
 
     (testing "Test that login will fallback to local for users not in LDAP"
       (mt/with-temporary-setting-values [enable-password-login true]
@@ -426,24 +422,20 @@
              (mt/client :post 401 "session" (mt/user->credentials :lucky)))))
 
     (testing "Test that a deactivated user cannot login with LDAP"
-      (let [user-id (mt/user->id :rasta)]
-        (try
-          (db/update! User user-id :is_active false)
-          (is (= {:errors {:_error "Your account is disabled."}}
-                 (mt/client :post 401 "session" (mt/user->credentials :rasta))))
-          (finally
-            (db/update! User user-id :is_active true)))))
+      (mt/with-temp User [_ {:email    "ngoc@metabase.com"
+                             :password "securedpassword"
+                             :is_active false}]
+        (is (= {:errors {:_error "Your account is disabled."}}
+               (mt/client :post 401 "session" {:username "ngoc@metabase.com"
+                                               :password "securedpassword"})))))
 
     (testing "Test that login will fallback to local for broken LDAP settings"
       (mt/with-temporary-setting-values [ldap-user-base "cn=wrong,cn=com"]
-        ;; delete all other sessions for the bird first, otherwise test doesn't seem to work (TODO - why?)
-        (let [user-id (mt/user->id :rasta)]
-          (try
-            (db/simple-delete! Session :user_id user-id)
+        (mt/with-temp User [_ {:email    "ngoc@metabase.com"
+                               :password "securedpassword"}]
             (is (schema= SessionResponse
-                         (mt/client :post 200 "session" (mt/user->credentials :rasta))))
-            (finally
-              (db/update! User user-id :login_attributes nil))))))
+                         (mt/client :post 200 "session" {:username "ngoc@metabase.com"
+                                                         :password "securedpassword"}))))))
 
     (testing "Test that we can login with LDAP with new user"
       (try
@@ -462,7 +454,16 @@
              SessionResponse
              (mt/client :post 200 "session" {:username "John.Smith@metabase.com", :password "strongpassword"})))
         (finally
-          (db/delete! User :email "John.Smith@metabase.com"))))))
+          (db/delete! User :email "John.Smith@metabase.com"))))
+
+    (testing "test that group sync works even if ldap doesn't return uid (#22014)"
+      (mt/with-temp PermissionsGroup [group {:name "Accounting"}]
+        (mt/with-temporary-raw-setting-values
+          [ldap-group-mappings (json/generate-string {"cn=Accounting,ou=Groups,dc=metabase,dc=com" [(:id group)]})]
+          (is (schema= SessionResponse
+                       (mt/client :post 200 "session" {:username "fred.taylor@metabase.com", :password "pa$$word"})))
+          (let [user-id (db/select-one-id User :email "fred.taylor@metabase.com")]
+            (is (= true (db/exists? PermissionsGroupMembership :group_id (:id group) (:user_id user-id))))))))))
 
 (deftest no-password-no-login-test
   (testing "A user with no password should not be able to do password-based login"

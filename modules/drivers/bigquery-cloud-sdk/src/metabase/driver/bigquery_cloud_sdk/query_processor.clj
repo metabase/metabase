@@ -173,7 +173,7 @@
     "TIME"      :time
     nil))
 
-(defmethod temporal-type (class Field)
+(defmethod temporal-type Field
   [{base-type :base_type, effective-type :effective_type, database-type :database_type}]
   (or (database-type->temporal-type database-type)
       (base-type->temporal-type (or effective-type base-type))))
@@ -233,8 +233,8 @@
   (throw (ex-info (tru "Cannot convert a {0} to a {1}" from to)
            {:type qp.error-type/invalid-query})))
 
-(defmethod ->temporal-type [:date LocalTime]           [_ t] (throw-unsupported-conversion "time" "date"))
-(defmethod ->temporal-type [:date OffsetTime]          [_ t] (throw-unsupported-conversion "time" "date"))
+(defmethod ->temporal-type [:date LocalTime]           [_ _t] (throw-unsupported-conversion "time" "date"))
+(defmethod ->temporal-type [:date OffsetTime]          [_ _t] (throw-unsupported-conversion "time" "date"))
 (defmethod ->temporal-type [:date LocalDate]           [_ t] t)
 (defmethod ->temporal-type [:date LocalDateTime]       [_ t] (t/local-date t))
 (defmethod ->temporal-type [:date OffsetDateTime]      [_ t] (t/local-date t))
@@ -242,21 +242,21 @@
 
 (defmethod ->temporal-type [:time LocalTime]           [_ t] t)
 (defmethod ->temporal-type [:time OffsetTime]          [_ t] (t/local-time t))
-(defmethod ->temporal-type [:time LocalDate]           [_ t] (throw-unsupported-conversion "date" "time"))
+(defmethod ->temporal-type [:time LocalDate]           [_ _t] (throw-unsupported-conversion "date" "time"))
 (defmethod ->temporal-type [:time LocalDateTime]       [_ t] (t/local-time t))
 (defmethod ->temporal-type [:time OffsetDateTime]      [_ t] (t/local-time t))
 (defmethod ->temporal-type [:time ZonedDateTime]       [_ t] (t/local-time t))
 
-(defmethod ->temporal-type [:datetime LocalTime]       [_ t] (throw-unsupported-conversion "time" "datetime"))
-(defmethod ->temporal-type [:datetime OffsetTime]      [_ t] (throw-unsupported-conversion "time" "datetime"))
+(defmethod ->temporal-type [:datetime LocalTime]       [_ _t] (throw-unsupported-conversion "time" "datetime"))
+(defmethod ->temporal-type [:datetime OffsetTime]      [_ _t] (throw-unsupported-conversion "time" "datetime"))
 (defmethod ->temporal-type [:datetime LocalDate]       [_ t] (t/local-date-time t (t/local-time 0)))
 (defmethod ->temporal-type [:datetime LocalDateTime]   [_ t] t)
 (defmethod ->temporal-type [:datetime OffsetDateTime]  [_ t] (t/local-date-time t))
 (defmethod ->temporal-type [:datetime ZonedDateTime]   [_ t] (t/local-date-time t))
 
 ;; Not sure whether we should be converting local dates/datetimes to ones with UTC timezone or with the report timezone?
-(defmethod ->temporal-type [:timestamp LocalTime]      [_ t] (throw-unsupported-conversion "time" "timestamp"))
-(defmethod ->temporal-type [:timestamp OffsetTime]     [_ t] (throw-unsupported-conversion "time" "timestamp"))
+(defmethod ->temporal-type [:timestamp LocalTime]      [_ _t] (throw-unsupported-conversion "time" "timestamp"))
+(defmethod ->temporal-type [:timestamp OffsetTime]     [_ _t] (throw-unsupported-conversion "time" "timestamp"))
 (defmethod ->temporal-type [:timestamp LocalDate]      [_ t] (t/zoned-date-time t (t/local-time 0) (t/zone-id "UTC")))
 (defmethod ->temporal-type [:timestamp LocalDateTime]  [_ t] (t/zoned-date-time t (t/zone-id "UTC")))
 (defmethod ->temporal-type [:timestamp OffsetDateTime] [_ t] t)
@@ -371,18 +371,20 @@
     ;; for datetimes or anything without a known temporal type, cast to timestamp and go from there
     (recur unit (->temporal-type :timestamp expr))))
 
-(defmethod sql.qp/date [:bigquery-cloud-sdk :minute]          [_ _ expr] (trunc   :minute    expr))
-(defmethod sql.qp/date [:bigquery-cloud-sdk :minute-of-hour]  [_ _ expr] (extract :minute    expr))
-(defmethod sql.qp/date [:bigquery-cloud-sdk :hour]            [_ _ expr] (trunc   :hour      expr))
-(defmethod sql.qp/date [:bigquery-cloud-sdk :hour-of-day]     [_ _ expr] (extract :hour      expr))
-(defmethod sql.qp/date [:bigquery-cloud-sdk :day]             [_ _ expr] (trunc   :day       expr))
-(defmethod sql.qp/date [:bigquery-cloud-sdk :day-of-month]    [_ _ expr] (extract :day       expr))
-(defmethod sql.qp/date [:bigquery-cloud-sdk :day-of-year]     [_ _ expr] (extract :dayofyear expr))
-(defmethod sql.qp/date [:bigquery-cloud-sdk :month]           [_ _ expr] (trunc   :month     expr))
-(defmethod sql.qp/date [:bigquery-cloud-sdk :month-of-year]   [_ _ expr] (extract :month     expr))
-(defmethod sql.qp/date [:bigquery-cloud-sdk :quarter]         [_ _ expr] (trunc   :quarter   expr))
-(defmethod sql.qp/date [:bigquery-cloud-sdk :quarter-of-year] [_ _ expr] (extract :quarter   expr))
-(defmethod sql.qp/date [:bigquery-cloud-sdk :year]            [_ _ expr] (trunc   :year      expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :second-of-minute] [_ _ expr] (extract :second    expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :minute]           [_ _ expr] (trunc   :minute    expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :minute-of-hour]   [_ _ expr] (extract :minute    expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :hour]             [_ _ expr] (trunc   :hour      expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :hour-of-day]      [_ _ expr] (extract :hour      expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :day]              [_ _ expr] (trunc   :day       expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :day-of-month]     [_ _ expr] (extract :day       expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :day-of-year]      [_ _ expr] (extract :dayofyear expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :month]            [_ _ expr] (trunc   :month     expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :month-of-year]    [_ _ expr] (extract :month     expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :quarter]          [_ _ expr] (trunc   :quarter   expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :quarter-of-year]  [_ _ expr] (extract :quarter   expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :year]             [_ _ expr] (trunc   :year      expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :year-of-era]      [_ _ expr] (extract :year      expr))
 
 ;; BigQuery mod is a function like mod(x, y) rather than an operator like x mod y
 (defmethod hformat/fn-handler (u/qualified-name ::mod)
@@ -604,9 +606,10 @@
 (doseq [filter-type [:between := :!= :> :>= :< :<=]]
   (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk filter-type]
     [driver clause]
-    ((get-method sql.qp/->honeysql [:sql filter-type])
-     driver
-     (reconcile-temporal-types clause))))
+    (reconcile-temporal-types
+     ((get-method sql.qp/->honeysql [:sql filter-type])
+      driver
+      (reconcile-temporal-types clause)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -616,48 +619,49 @@
 (defn- interval [amount unit]
   (hsql/raw (format "INTERVAL %d %s" (int amount) (name unit))))
 
-(defn- assert-addable-unit [t-type unit]
-  (when-not (contains? (temporal-type->supported-units t-type) unit)
-    ;; trying to add an `hour` to a `date` or a `year` to a `time` is something we shouldn't be allowing in the UI in
-    ;; the first place
-    (throw (ex-info (tru "Invalid query: you cannot add a {0} to a {1} column."
-                         (name unit) (name t-type))
-             {:type qp.error-type/invalid-query}))))
-
 ;; We can coerce the HoneySQL form this wraps to whatever we want and generate the appropriate SQL.
 ;; Thus for something like filtering against a relative datetime
 ;;
 ;; [:time-interval <datetime field> -1 :day]
 ;;
 ;;
+(def ^:private temporal-type->arithmetic-function
+  {:timestamp :timestamp_add
+   :datetime  :datetime_add
+   :date      :date_add
+   :time      :time_add})
+
 (defrecord AddIntervalForm [hsql-form amount unit]
   hformat/ToSql
   (to-sql [_]
-    (loop [hsql-form hsql-form]
-      (let [t      (temporal-type hsql-form)
-            add-fn (case t
-                     :timestamp :timestamp_add
-                     :datetime  :datetime_add
-                     :date      :date_add
-                     :time      :time_add
-                     nil)]
-        (if-not add-fn
-          (recur (->temporal-type :datetime hsql-form))
-          (do
-            (assert-addable-unit t unit)
-            (hformat/to-sql (hsql/call add-fn hsql-form (interval amount unit)))))))))
+    (let [t      (temporal-type hsql-form)
+          add-fn (temporal-type->arithmetic-function t)]
+      (hformat/to-sql (hsql/call add-fn hsql-form (interval amount unit))))))
+
+(defn- add-interval-form [hsql-form amount unit]
+  (let [t         (temporal-type hsql-form)
+        add-fn    (temporal-type->arithmetic-function t)
+        hsql-form (if (or (not add-fn)
+                          (and (not (contains? (temporal-type->supported-units t) unit))
+                               (contains? (temporal-type->supported-units :datetime) unit)))
+                    (->temporal-type :datetime hsql-form)
+                    hsql-form)]
+    (AddIntervalForm. hsql-form amount unit)))
 
 (defmethod temporal-type AddIntervalForm
   [add-interval]
   (temporal-type (:hsql-form add-interval)))
 
 (defmethod ->temporal-type [:temporal-type AddIntervalForm]
-  [target-type add-interval-form]
-  (let [current-type (temporal-type (:hsql-form add-interval-form))]
+  [target-type form]
+  (let [current-type (temporal-type (:hsql-form form))]
     (when (#{[:date :time] [:time :date]} [current-type target-type])
       (throw (ex-info (tru "It doesn''t make sense to convert between DATEs and TIMEs!")
-               {:type qp.error-type/invalid-query}))))
-  (map->AddIntervalForm (update add-interval-form :hsql-form (partial ->temporal-type target-type))))
+                      {:type qp.error-type/invalid-query}))))
+  (let [new-form (add-interval-form (->temporal-type target-type (:hsql-form form)) (:amount form) (:unit form))]
+    (if (= (temporal-type new-form) target-type)
+      new-form
+      (hx/cast target-type form))))
 
 (defmethod sql.qp/add-interval-honeysql-form :bigquery-cloud-sdk
   [_ hsql-form amount unit]
@@ -667,7 +671,7 @@
                     (and (= (temporal-type hsql-form) :timestamp)
                          (not (contains? (temporal-type->supported-units :timestamp) unit)))
                     (hx/cast :datetime))]
-    (AddIntervalForm. hsql-form amount unit)))
+    (add-interval-form hsql-form amount unit)))
 
 (defmethod driver/mbql->native :bigquery-cloud-sdk
   [driver outer-query]
@@ -720,3 +724,15 @@
                                                                (if (instance? java.time.temporal.Temporal arg)
                                                                  (->temporal-type field-temporal-type arg)
                                                                  arg)))))))
+
+(defmethod sql.qp/cast-temporal-string [:bigquery-cloud-sdk :Coercion/ISO8601->DateTime]
+  [_driver _semantic_type expr]
+  (hx/->datetime expr))
+
+(defmethod sql.qp/cast-temporal-string [:bigquery-cloud-sdk :Coercion/ISO8601->Date]
+  [_driver _semantic_type expr]
+  (hx/->date expr))
+
+(defmethod sql.qp/cast-temporal-string [:bigquery-cloud-sdk :Coercion/ISO8601->Time]
+  [_driver _semantic_type expr]
+  (hx/->time expr))

@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
@@ -49,11 +49,7 @@ describe.skip("issue 13961", () => {
     // Remove default filter (category)
     cy.get("fieldset .Icon-close").click();
 
-    cy.icon("play")
-      .first()
-      .should("be.visible")
-      .as("rerunQuestion")
-      .click();
+    cy.icon("play").first().should("be.visible").as("rerunQuestion").click();
     cy.wait("@cardQuery");
 
     cy.url().should("not.include", "?category=Doohickey");

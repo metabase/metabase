@@ -1,10 +1,15 @@
 (ns metabase.integrations.ldap.interface
   "There are separate EE and OSS versions of the LDAP integration; this namespace defines a common protocol both
   implementations conform to."
-  (:require [metabase.util.schema :as su]
-            [potemkin :as p]
+  (:require [metabase.plugins.classloader :as classloader]
+            [metabase.util :as u]
+            [metabase.util.schema :as su]
             [schema.core :as s])
   (:import com.unboundid.ldap.sdk.DN))
+
+;; Load the EE namespace up front so that the extra Settings it defines are available immediately.
+;; Otherwise, this would only happen the first time one of the functions defined using `defenterprise` is called.
+(u/ignore-exceptions (classloader/require ['metabase-enterprise.enhancements.integrations.ldap]))
 
 (def UserInfo
   "Schema for LDAP User info as returned by `user-info` and used as input to `fetch-or-create-user!`."
@@ -28,13 +33,3 @@
    :group-base           (s/maybe su/NonBlankString)
    :group-mappings       (s/maybe {DN [su/IntGreaterThanZero]})
    s/Keyword             s/Any})
-
-(p/defprotocol+ LDAPIntegration
-  "Protocol for LDAP integration implementations."
-  (find-user [this ^com.unboundid.ldap.sdk.LDAPConnectionPool ldap-connection username ldap-settings]
-    "Find LDAP user with `username`. If a corresponding LDAP user is found, result should be in the format specified
-  by the `UserInfo` schema above. `ldap-settings` match the `LDAPSettings` schema above.")
-
-  (fetch-or-create-user! [this user-info ldap-settings]
-    "Using the `user-info` (from `find-user`) get the corresponding Metabase user, creating it if necessary.
-    `ldap-settings` match the `LDAPSettings` schema above."))

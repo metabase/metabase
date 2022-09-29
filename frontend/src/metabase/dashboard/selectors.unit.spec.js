@@ -1,3 +1,4 @@
+import { chain } from "icepick";
 import {
   getParameters,
   getSidebar,
@@ -7,9 +8,8 @@ import {
   getIsEditingParameter,
   getClickBehaviorSidebarDashcard,
 } from "metabase/dashboard/selectors";
-import { SIDEBAR_NAME } from "./constants";
 import Field from "metabase-lib/lib/metadata/Field";
-import { chain } from "icepick";
+import { SIDEBAR_NAME } from "./constants";
 
 const STATE = {
   dashboard: {
@@ -22,7 +22,19 @@ const STATE = {
     },
     dashcards: {
       0: {
-        card: { id: 0, dataset_query: { type: "query", query: {} } },
+        card: {
+          id: 0,
+          dataset_query: {
+            type: "native",
+            query: {
+              "template-tags": {
+                foo: {
+                  type: "text",
+                },
+              },
+            },
+          },
+        },
         parameter_mappings: [],
       },
       1: {
@@ -42,6 +54,7 @@ const STATE = {
     },
     metrics: {},
     segments: {},
+    questions: {},
   },
 };
 
@@ -50,61 +63,74 @@ describe("dashboard/selectors", () => {
     it("should work with no parameters", () => {
       expect(getParameters(STATE)).toEqual([]);
     });
-    it("should not include field id with no mappings", () => {
+
+    it("should return a parameter", () => {
       const state = chain(STATE)
-        .assocIn(["dashboard", "dashboards", 0, "parameters", 0], { id: 1 })
+        .assocIn(["dashboard", "dashboards", 0, "parameters", 0], {
+          id: 1,
+          type: "foo",
+        })
         .value();
       expect(getParameters(state)).toEqual([
         {
           id: 1,
-          fields: [],
-          field_ids: [],
-          field_id: null,
-          hasOnlyFieldTargets: true,
+          type: "foo",
         },
       ]);
     });
-    it("should not include field id with one mapping, no field id", () => {
+
+    it("should return a FieldFilterUiParameter mapped to a variable template tag", () => {
       const state = chain(STATE)
-        .assocIn(["dashboard", "dashboards", 0, "parameters", 0], { id: 1 })
+        .assocIn(["dashboard", "dashboards", 0, "parameters", 0], {
+          id: 1,
+          type: "string/=",
+        })
         .assocIn(["dashboard", "dashcards", 0, "parameter_mappings", 0], {
           card_id: 0,
           parameter_id: 1,
           target: ["variable", ["template-tag", "foo"]],
         })
         .value();
+
       expect(getParameters(state)).toEqual([
         {
           id: 1,
+          type: "string/=",
+          hasVariableTemplateTagTarget: true,
           fields: [],
-          field_ids: [],
-          field_id: null,
-          hasOnlyFieldTargets: false,
         },
       ]);
     });
-    it("should include field id with one mappings, with field id", () => {
+
+    it("should return a FieldFilterUiParameter mapped to a field", () => {
       const state = chain(STATE)
-        .assocIn(["dashboard", "dashboards", 0, "parameters", 0], { id: 1 })
+        .assocIn(["dashboard", "dashboards", 0, "parameters", 0], {
+          id: 1,
+          type: "string/=",
+        })
         .assocIn(["dashboard", "dashcards", 0, "parameter_mappings", 0], {
           card_id: 0,
           parameter_id: 1,
           target: ["dimension", ["field", 1, null]],
         })
         .value();
+
       expect(getParameters(state)).toEqual([
         {
           id: 1,
+          type: "string/=",
+          hasVariableTemplateTagTarget: false,
           fields: [expect.any(Field)],
-          field_ids: [1],
-          field_id: 1,
-          hasOnlyFieldTargets: true,
         },
       ]);
     });
-    it("should include field id with two mappings, with same field id", () => {
+
+    it("should return a FieldFilterUiParameter with two mappings to the same field", () => {
       const state = chain(STATE)
-        .assocIn(["dashboard", "dashboards", 0, "parameters", 0], { id: 1 })
+        .assocIn(["dashboard", "dashboards", 0, "parameters", 0], {
+          id: 1,
+          type: "string/=",
+        })
         .assocIn(["dashboard", "dashcards", 0, "parameter_mappings", 0], {
           card_id: 0,
           parameter_id: 1,
@@ -116,19 +142,23 @@ describe("dashboard/selectors", () => {
           target: ["dimension", ["field", 1, null]],
         })
         .value();
+
       expect(getParameters(state)).toEqual([
         {
           id: 1,
+          type: "string/=",
           fields: [expect.any(Field)],
-          field_ids: [1],
-          field_id: 1,
-          hasOnlyFieldTargets: true,
+          hasVariableTemplateTagTarget: false,
         },
       ]);
     });
-    it("should include field id with two mappings, one with field id, one without", () => {
+
+    it("should return a FieldFilterUiParameter that has mappings to a field and a template tag variable", () => {
       const state = chain(STATE)
-        .assocIn(["dashboard", "dashboards", 0, "parameters", 0], { id: 1 })
+        .assocIn(["dashboard", "dashboards", 0, "parameters", 0], {
+          id: 1,
+          type: "string/=",
+        })
         .assocIn(["dashboard", "dashcards", 0, "parameter_mappings", 0], {
           card_id: 0,
           parameter_id: 1,
@@ -140,19 +170,23 @@ describe("dashboard/selectors", () => {
           target: ["variable", ["template-tag", "foo"]],
         })
         .value();
+
       expect(getParameters(state)).toEqual([
         {
           id: 1,
+          type: "string/=",
           fields: [expect.any(Field)],
-          field_ids: [1],
-          field_id: 1,
-          hasOnlyFieldTargets: false,
+          hasVariableTemplateTagTarget: true,
         },
       ]);
     });
-    it("should include all field ids with two mappings, with different field ids", () => {
+
+    it("should return a FieldFilterUiParameter with two mappings to two different fields", () => {
       const state = chain(STATE)
-        .assocIn(["dashboard", "dashboards", 0, "parameters", 0], { id: 1 })
+        .assocIn(["dashboard", "dashboards", 0, "parameters", 0], {
+          id: 1,
+          type: "string/=",
+        })
         .assocIn(["dashboard", "dashcards", 0, "parameter_mappings", 0], {
           card_id: 0,
           parameter_id: 1,
@@ -164,13 +198,13 @@ describe("dashboard/selectors", () => {
           target: ["dimension", ["field", 2, null]],
         })
         .value();
+
       expect(getParameters(state)).toEqual([
         {
           id: 1,
+          type: "string/=",
           fields: [expect.any(Field), expect.any(Field)],
-          field_ids: [1, 2],
-          field_id: null,
-          hasOnlyFieldTargets: true,
+          hasVariableTemplateTagTarget: false,
         },
       ]);
     });

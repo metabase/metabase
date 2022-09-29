@@ -27,6 +27,7 @@
             [metabase.driver.common.parameters.operators :as params.ops]
             [metabase.models.card :refer [Card]]
             [metabase.models.dashboard :refer [Dashboard]]
+            [metabase.pulse.parameters :as params]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.constraints :as qp.constraints]
             [metabase.query-processor.pivot :as qp.pivot]
@@ -129,6 +130,29 @@
   [dashboard-or-card token-params]
   (update dashboard-or-card :parameters remove-params-in-set (set (keys token-params))))
 
+(defn- substitute-token-parameters-in-text
+  "For any dashboard parameters with slugs matching keys provided in `token-params`, substitute their values from the
+  token into any Markdown dashboard cards with linked variables. This needs to be done on the backend because we don't
+  make these parameters visible at all to the frontend."
+  [dashboard token-params]
+  (let [params             (:parameters dashboard)
+        ordered-cards      (:ordered_cards dashboard)
+        params-with-values (reduce
+                            (fn [acc param]
+                             (if-let [value (get token-params (keyword (:slug param)))]
+                                (conj acc (assoc param :value value))
+                                acc))
+                            []
+                            params)]
+    (assoc dashboard
+           :ordered_cards
+           (map
+            (fn [card]
+              (if (-> card :visualization_settings :virtual_card)
+                (params/process-virtual-dashcard card params-with-values)
+                card))
+            ordered-cards))))
+
 (defn- template-tag-parameters
   "Transforms native query's `template-tags` into `parameters`."
   [card]
@@ -137,10 +161,10 @@
         :when                         (and tag-type
                                            (or widget-type (not= tag-type :dimension)))]
     {:id      (:id tag)
-     :type    (or widget-type (cond (= tag-type :date)                                                  :date/single
+     :type    (or widget-type (cond (= tag-type :date)   :date/single
                                     (= tag-type :string) :string/=
                                     (= tag-type :number) :number/=
-                                    :else                                                               :category))
+                                    :else                :category))
      :target  (if (= tag-type :dimension)
                 [:dimension [:template-tag (:name tag)]]
                 [:variable  [:template-tag (:name tag)]])
@@ -183,7 +207,7 @@
 (s/defn ^:private resolve-dashboard-parameters :- [api.dashboard/ParameterWithID]
   "Given a `dashboard-id` and parameters map in the format `slug->value`, return a sequence of parameters with `:id`s
   that can be passed to various functions in the `metabase.api.dashboard` namespace such as
-  `metabase.api.dashboard/run-query-for-dashcard-async`."
+  [[metabase.api.dashboard/run-query-for-dashcard-async]]."
   [dashboard-id :- su/IntGreaterThanZero
    slug->value  :- {s/Any s/Any}]
   (let [parameters (db/select-one-field :parameters Dashboard :id dashboard-id)
@@ -250,6 +274,7 @@
   (let [dashboard-id (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
         token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
     (-> (apply api.public/public-dashboard :id dashboard-id, constraints)
+        (substitute-token-parameters-in-text token-params)
         (remove-token-parameters token-params)
         (remove-locked-and-disabled-params (or embedding-params
                                                (db/select-one-field :embedding_params Dashboard, :id dashboard-id))))))
@@ -259,7 +284,7 @@
   {:style/indent 0}
   [& {:keys [dashboard-id dashcard-id card-id export-format embedding-params token-params
              query-params constraints qp-runner]
-      :or   {constraints qp.constraints/default-query-constraints
+      :or   {constraints (qp.constraints/default-query-constraints)
              qp-runner   qp/process-query-and-save-execution!}}]
   {:pre [(integer? dashboard-id) (integer? dashcard-id) (integer? card-id) (u/maybe? map? embedding-params)
          (map? token-params) (map? query-params)]}
@@ -316,7 +341,7 @@
   "Run the query belonging to Card identified by `unsigned-token`. Checks that embedding is enabled both globally and
   for this Card. Returns core.async channel to fetch the results."
   [unsigned-token export-format query-params & {:keys [constraints qp-runner]
-                                                :or   {constraints qp.constraints/default-query-constraints
+                                                :or   {constraints (qp.constraints/default-query-constraints)
                                                        qp-runner   qp/process-query-and-save-execution!}
                                                 :as   options}]
   (let [card-id (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
@@ -383,7 +408,7 @@
   {:style/indent 1}
   [token dashcard-id card-id export-format query-params
    & {:keys [constraints qp-runner]
-      :or   {constraints qp.constraints/default-query-constraints
+      :or   {constraints (qp.constraints/default-query-constraints)
              qp-runner   qp/process-query-and-save-execution!}}]
   (let [unsigned-token (embed/unsign token)
         dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
@@ -538,7 +563,7 @@
       (let [merged-id-params (chain-filter-merged-params id->slug slug->id embedding-params slug-token-params id-query-params)]
         (try
           (binding [api/*current-user-permissions-set* (atom #{"/"})]
-            (api.dashboard/chain-filter (Dashboard dashboard-id) searched-param-id merged-id-params prefix))
+            (api.dashboard/chain-filter (db/select-one Dashboard :id dashboard-id) searched-param-id merged-id-params prefix))
           (catch Throwable e
             (throw (ex-info (.getMessage e)
                             {:merged-id-params merged-id-params}

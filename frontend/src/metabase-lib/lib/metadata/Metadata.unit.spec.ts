@@ -5,10 +5,10 @@ import Base from "./Base";
 import Database from "./Database";
 import Table from "./Table";
 import Schema from "./Schema";
-import Field from "./Field";
 import Segment from "./Segment";
 import Metric from "./Metric";
-import Question from "../Question";
+import { createMockConcreteField } from "./mocks";
+
 describe("Metadata", () => {
   describe("instantiation", () => {
     it("should create an instance of Metadata", () => {
@@ -139,26 +139,13 @@ describe("Metadata", () => {
       expect(metadata.segmentsList()).toEqual([segmentA, segmentB]);
     });
   });
-  describe("question", () => {
-    it("should return a new question using the metadata instance", () => {
-      const card = {
-        name: "Question",
-        id: 1,
-      };
-      const metadata = new Metadata();
-      const question = metadata.question(card);
-      expect(question).toBeInstanceOf(Question);
-      expect(question.card()).toBe(card);
-      expect(question.metadata()).toBe(metadata);
-    });
-  });
+
   [
     ["segment", obj => new Segment(obj)],
     ["metric", obj => new Metric(obj)],
     ["database", obj => new Database(obj)],
     ["schema", obj => new Schema(obj)],
     ["table", obj => new Table(obj)],
-    ["field", obj => new Field(obj)],
   ].forEach(([fnName, instantiate]) => {
     describe(fnName, () => {
       let instanceA;
@@ -190,6 +177,75 @@ describe("Metadata", () => {
       });
       it("should return null when the id is nil", () => {
         expect(metadata[fnName]()).toBeNull();
+      });
+    });
+  });
+
+  describe("`field`", () => {
+    it("should return null when given a nil fieldId arg", () => {
+      const metadata = new Metadata({
+        fields: {},
+      });
+      expect(metadata.field()).toBeNull();
+      expect(metadata.field(null)).toBeNull();
+    });
+
+    describe("when given a fieldId and no tableId", () => {
+      it("should return null when there is no matching field", () => {
+        const metadata = new Metadata({
+          fields: {},
+        });
+        expect(metadata.field(1)).toBeNull();
+      });
+
+      it("should return the matching Field instance", () => {
+        const field = createMockConcreteField({ apiOpts: { id: 1 } });
+        const uniqueId = field.getUniqueId();
+        const metadata = new Metadata({
+          fields: {
+            [uniqueId]: field,
+          },
+        });
+
+        expect(metadata.field(1)).toBe(field);
+      });
+    });
+
+    describe("when given a fieldId and a concrete tableId", () => {
+      it("should ignore the tableId arg because these fields are stored using the field's id", () => {
+        const field = createMockConcreteField({
+          apiOpts: { id: 1, table_id: 1 },
+        });
+        const uniqueId = field.getUniqueId();
+        const metadata = new Metadata({
+          fields: {
+            [uniqueId]: field,
+          },
+        });
+
+        expect(metadata.field(1, 1)).toBe(field);
+        // to prove the point that the `tableId` is ignore in this scenario
+        expect(metadata.field(1, 2)).toBe(field);
+        expect(metadata.field(1)).toBe(field);
+      });
+    });
+
+    describe("when given a fieldId and a virtual card tableId", () => {
+      it("should return the matching Field instance, stored using the field's `uniqueId`", () => {
+        const field = createMockConcreteField({
+          apiOpts: { id: 1, table_id: "card__123" },
+        });
+        const uniqueId = field.getUniqueId();
+        const metadata = new Metadata({
+          fields: {
+            [uniqueId]: field,
+          },
+        });
+
+        expect(metadata.field(1, "card__123")).toBe(field);
+        expect(metadata.field("card__123:1")).toBe(field);
+
+        expect(metadata.field(1)).not.toBe(field);
       });
     });
   });

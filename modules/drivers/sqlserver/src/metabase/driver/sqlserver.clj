@@ -18,9 +18,8 @@
             [metabase.query-processor.interface :as qp.i]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs]])
-  (:import [java.sql Connection ResultSet Time Types]
-           [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
-           java.util.Date))
+  (:import [java.sql Connection ResultSet Time]
+           [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
 
 (driver/register! :sqlserver, :parent :sql-jdbc)
 
@@ -129,6 +128,10 @@
   [_ _ expr]
   expr)
 
+(defmethod sql.qp/date [:sqlserver :second-of-minute]
+  [_ _ expr]
+  (date-part :second expr))
+
 (defmethod sql.qp/date [:sqlserver :minute]
   [_ _ expr]
   (hx/maybe-cast :smalldatetime expr))
@@ -203,6 +206,10 @@
   (if (::optimized-bucketing? *field-options*)
     (hx/year expr)
     (hsql/call :DateFromParts (hx/year expr) 1 1)))
+
+(defmethod sql.qp/date [:sqlserver :year-of-era]
+  [_ _ expr]
+  (date-part :year expr))
 
 (defmethod sql.qp/add-interval-honeysql-form :sqlserver
   [_ hsql-form amount unit]
@@ -294,7 +301,7 @@
     breakout-clauses)))
 
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :breakout]
-  [driver _ honeysql-form {breakout-fields :breakout, fields-fields :fields :as query}]
+  [driver _ honeysql-form {breakout-fields :breakout, fields-fields :fields :as _query}]
   ;; this is basically the same implementation as the default one in the `sql.qp` namespace, the only difference is
   ;; that we optimize the fields in the GROUP BY clause using `optimize-breakout-clauses`.
   (let [optimized      (optimize-breakout-clauses breakout-fields)
@@ -325,7 +332,7 @@
     subclauses)))
 
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :order-by]
-  [driver _ honeysql-form {:keys [limit], :as query}]
+  [driver _ honeysql-form query]
   ;; similar to the way we optimize GROUP BY above, optimize temporal bucketing in the ORDER BY if possible, because
   ;; year(), month(), and day() can make use of indexes while DateFromParts() cannot.
   (let [query         (update query :order-by optimize-order-by-subclauses)

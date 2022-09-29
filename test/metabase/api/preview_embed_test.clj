@@ -159,7 +159,13 @@
                                  (mt/rows
                                   (mt/user-http-request :crowberto :get 202 (card-query-url card))))]
                     (is (= expected-row-count limited))
-                    (is (not= expected-row-count orders-row-count))))))))))))
+                    (is (not= expected-row-count orders-row-count))))
+                (testing "with writeable card"
+                  (embed-test/with-temp-card [writable-card {:is_write true
+                                                             :dataset_query sample-db-orders-question}]
+                    (is (= "Write queries are only executable via the Actions API."
+                           (:message
+                            (mt/user-http-request :crowberto :get 405 (card-query-url writable-card)))))))))))))))
 
 ;;; ------------------------------------ GET /api/preview_embed/dashboard/:token -------------------------------------
 
@@ -231,7 +237,13 @@
 
         (testing "check that if embedding is enabled globally requests fail if they are signed with the wrong key"
           (is (= "Message seems corrupt or manipulated."
-                 (mt/user-http-request :crowberto :get 400 (embed-test/with-new-secret-key (dashcard-url dashcard))))))))))
+                 (mt/user-http-request :crowberto :get 400 (embed-test/with-new-secret-key (dashcard-url dashcard))))))))
+    (testing "with writable card"
+      (embed-test/with-embedding-enabled-and-new-secret-key
+        (embed-test/with-temp-dashcard [dashcard {:card-fn (fn [card] (assoc card :is_write true))}]
+          (testing "It should be possible to run a Card successfully if you jump through the right hoops..."
+            (= "Write queries are only executable via the Actions API."
+               (:message (mt/user-http-request :crowberto :get 405 (dashcard-url dashcard))))))))))
 
 (deftest dashcard-locked-params-test
   (testing "/api/preview_embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
@@ -307,10 +319,12 @@
       (embed-test/with-temp-dashcard [dashcard {:dash {:enable_embedding true
                                                        :parameters       [{:id   "_SECOND_DATE_SEEN_"
                                                                            :slug "2nd_date_seen"
-                                                                           :name "Second Date Seen"}
+                                                                           :name "Second Date Seen"
+                                                                           :type "date"}
                                                                           {:id   "_NUM_BIRDS_"
                                                                            :slug "num_birds"
-                                                                           :name "Number of Birds"}]}}]
+                                                                           :name "Number of Birds"
+                                                                           :type "number"}]}}]
         (is (schema= {:status   (s/eq "completed")
                       s/Keyword s/Any}
                      (mt/user-http-request :crowberto :get 202 (str (dashcard-url dashcard
@@ -405,7 +419,13 @@
           (is (= "Message seems corrupt or manipulated."
                  (embed-test/with-embedding-enabled-and-new-secret-key
                    (embed-test/with-temp-card [card (api.pivots/pivot-card)]
-                     (mt/user-http-request :crowberto :get 400 (embed-test/with-new-secret-key (pivot-card-query-url card))))))))))))
+                     (mt/user-http-request :crowberto :get 400 (embed-test/with-new-secret-key (pivot-card-query-url card))))))))
+
+        (testing "should fail with writable card"
+          (embed-test/with-embedding-enabled-and-new-secret-key
+            (embed-test/with-temp-card [writable-card (assoc (api.pivots/pivot-card) :is_write true)]
+              (is (= "Write queries are only executable via the Actions API."
+                     (:message (mt/user-http-request :crowberto :get 405 (pivot-card-query-url writable-card))))))))))))
 
 (defn- pivot-dashcard-url {:style/indent 1} [dashcard & [additional-token-params]]
   (str "preview_embed/pivot/dashboard/"
@@ -465,19 +485,20 @@
                      (mt/rows (mt/user-http-request :crowberto :get 202 (str url "?NAME=Hudson%20Borer")))
                      (mt/rows (mt/user-http-request :crowberto :get 202 (str url "?NAME=Hudson%20Borer&NAME=x")))))))
           (testing "Dashcard"
-            (mt/with-temp* [Dashboard [{dashboard-id :id, :as dashboard} {:enable_embedding true
-                                                                          :embedding_params {:name "enabled"}
-                                                                          :parameters       [{:name      "Name"
-                                                                                              :slug      "name"
-                                                                                              :id        "_name_"
-                                                                                              :type      :string/=
-                                                                                              :sectionId "string"}]}]
+            (mt/with-temp* [Dashboard [{dashboard-id :id} {:enable_embedding true
+                                                           :embedding_params {:name "enabled"}
+                                                           :parameters       [{:name      "Name"
+                                                                               :slug      "name"
+                                                                               :id        "_name_"
+                                                                               :type      "string/="
+                                                                               :sectionId "string"}]}]
 
-                            DashboardCard [{dashcard-id :id, :as dashcard} {:card_id            card-id
-                                                                            :dashboard_id       dashboard-id
-                                                                            :parameter_mappings [{:parameter_id "_name_"
-                                                                                                  :card_id      card-id
-                                                                                                  :target       [:dimension [:template-tag "NAME"]]}]}]]
+                            DashboardCard [dashcard {:card_id            card-id
+                                                     :dashboard_id       dashboard-id
+                                                     :parameter_mappings [{:parameter_id "_name_"
+                                                                           :card_id      card-id
+                                                                           :type         "string/="
+                                                                           :target       [:dimension [:template-tag "NAME"]]}]}]]
               (let [url (dashcard-url dashcard {:_embedding_params {:name "enabled"}})]
                 (is (= [[1]]
                        (mt/rows (mt/user-http-request :crowberto :get 202 (str url "?name=Hudson%20Borer")))

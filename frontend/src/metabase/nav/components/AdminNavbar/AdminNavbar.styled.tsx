@@ -67,8 +67,8 @@ export const AdminExitLink = styled(Link)`
 
   &:hover {
     color: ${color("white")};
-    background-color: ${darken(color("accent7"))};
-    border-color: ${darken(color("accent7"))};
+    background-color: ${darken(color("filter"))};
+    border-color: ${darken(color("filter"))};
   }
 `;
 

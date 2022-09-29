@@ -26,6 +26,7 @@ export interface CheckBoxLabelProps {
 
 export interface CheckBoxProps
   extends Omit<HTMLAttributes<HTMLElement>, "onChange" | "onFocus" | "onBlur"> {
+  name?: string;
   label?: ReactNode;
   labelEllipsis?: boolean;
   checked?: boolean;

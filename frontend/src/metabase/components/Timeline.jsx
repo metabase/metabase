@@ -1,7 +1,11 @@
 import React, { useMemo } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
+import { t } from "ttag";
 import { getRelativeTime } from "metabase/lib/time";
+
+import Button from "metabase/core/components/Button";
+import Tooltip from "metabase/components/Tooltip";
 
 import {
   TimelineContainer,
@@ -27,15 +31,15 @@ Timeline.propTypes = {
     }),
   ),
   renderFooter: PropTypes.func,
+  revertFn: PropTypes.func,
   "data-testid": PropTypes.string,
 };
-
-export default Timeline;
 
 function Timeline({
   className,
   items = [],
   renderFooter,
+  revertFn,
   "data-testid": dataTestId,
 }) {
   const iconSize = 16;
@@ -66,6 +70,8 @@ function Timeline({
           description,
           timestamp,
           formattedTimestamp,
+          isRevertable,
+          revision,
         } = item;
         const key = item.key == null ? index : item.key;
         const isNotLastEvent = index !== sortedFormattedItems.length - 1;
@@ -80,7 +86,20 @@ function Timeline({
             {isNotLastEvent && <Border borderShift={halfIconSize} />}
             <ItemIcon {...iconProps} size={iconSize} />
             <ItemBody>
-              <ItemHeader>{title}</ItemHeader>
+              <ItemHeader>
+                {title}
+                {isRevertable && revertFn && (
+                  <Tooltip tooltip={t`Revert to this version`}>
+                    <Button
+                      icon="revert"
+                      onlyIcon
+                      borderless
+                      onClick={() => revertFn(revision)}
+                      data-testid="question-revert-button"
+                    />
+                  </Tooltip>
+                )}
+              </ItemHeader>
               <Timestamp datetime={timestamp}>{formattedTimestamp}</Timestamp>
               <div>{description}</div>
               {_.isFunction(renderFooter) && (
@@ -93,3 +112,9 @@ function Timeline({
     </TimelineContainer>
   );
 }
+
+export default Object.assign(Timeline, {
+  ItemBody,
+  ItemHeader,
+  ItemIcon,
+});

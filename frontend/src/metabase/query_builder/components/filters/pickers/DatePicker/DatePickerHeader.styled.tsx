@@ -1,5 +1,5 @@
-import { color } from "metabase/lib/colors";
 import styled from "@emotion/styled";
+import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 import Button from "metabase/core/components/Button";
@@ -23,18 +23,16 @@ export const TabButton = styled(Button)<TabButtonProps>`
   padding-right: 0;
   margin-left: ${space(2)};
   margin-right: ${space(2)};
-  border-bottom: ${props =>
-    props.selected
-      ? `2px solid ${props.primaryColor || color("brand")}`
-      : "2px solid transparent"};
+  border-bottom: ${({ primaryColor = color("brand"), selected }) =>
+    selected ? `2px solid ${primaryColor}` : "2px solid transparent"};
 
-  color: ${props =>
-    props.selected
-      ? `${props.primaryColor || color("brand")}`
-      : color("text-medium")};
+  color: ${({ primaryColor = color("brand"), selected }) =>
+    selected ? primaryColor : color("text-medium")};
 
   &:hover {
     background: none;
+    color: ${({ primaryColor = color("brand") }) => primaryColor};
+    border-color: ${({ primaryColor = color("brand") }) => primaryColor};
   }
 `;
 
@@ -45,6 +43,6 @@ export const BackButton = styled(TabButton)`
   color: ${color("text-medium")};
 
   &:hover {
-    color: ${props => props.primaryColor || color("brand")};
+    color: ${({ primaryColor }) => primaryColor};
   }
 `;

@@ -1,11 +1,11 @@
-import { restore, popover, visitAlias } from "__support__/e2e/cypress";
+import { restore, popover, visitAlias } from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 
-const SAMPLE_DB_URL = "/admin/datamodel/database/1";
+const SAMPLE_DB_URL = `/admin/datamodel/database/${SAMPLE_DB_ID}`;
 
 // [quarantine] flaky
 describe.skip("scenarios > admin > datamodel > editor", () => {
@@ -86,19 +86,12 @@ describe.skip("scenarios > admin > datamodel > editor", () => {
   });
 
   function field(name) {
-    return cy
-      .get(`input[value="${name}"]`)
-      .parent()
-      .parent();
+    return cy.get(`input[value="${name}"]`).parent().parent();
   }
 
   function testSelect(alias, initialOption, desiredOption) {
-    cy.get(alias)
-      .contains(initialOption)
-      .click({ force: true });
-    popover()
-      .contains(desiredOption)
-      .click({ force: true });
+    cy.get(alias).contains(initialOption).click({ force: true });
+    popover().contains(desiredOption).click({ force: true });
     cy.get(alias).contains(desiredOption);
 
     cy.wait("@fieldUpdate");
@@ -122,7 +115,10 @@ describe.skip("scenarios > admin > datamodel > editor", () => {
 
     // click over to products and back so we refresh the columns
     cy.contains("Products").click();
-    cy.url().should("include", "/admin/datamodel/database/1/table/1");
+    cy.url().should(
+      "include",
+      `/admin/datamodel/database/${SAMPLE_DB_ID}/table/${PRODUCTS_ID}`,
+    );
     cy.contains("Orders").click();
 
     // created at should still be there
@@ -151,16 +147,12 @@ describe.skip("scenarios > admin > datamodel > editor", () => {
     cy.icon("sort_arrows").click();
 
     // switch to alphabetical ordering
-    popover()
-      .contains("Alphabetical")
-      .click({ force: true });
+    popover().contains("Alphabetical").click({ force: true });
 
     cy.wait("@tableUpdate");
 
     // move product_id to the top
-    cy.get(".Grabber")
-      .eq(3)
-      .trigger("mousedown", 0, 0);
+    cy.get(".Grabber").eq(3).trigger("mousedown", 0, 0);
     cy.get("#ColumnsList")
       .trigger("mousemove", 10, 10)
       .trigger("mouseup", 10, 10);
