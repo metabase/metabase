@@ -115,7 +115,7 @@ function getInterceptDetails(question, mode, autorun) {
     return [`/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`, "publicSchema"];
   }
 
-  // Ad-hoc native queries are not autorun.
+  // Ad-hoc native queries are not autorun by default.
   // Therefore, there is no `dataset` to wait for.
   // We need to make sure data for the native query builder has loaded before we can proceed.
   if (type === "native" && !autorun) {
