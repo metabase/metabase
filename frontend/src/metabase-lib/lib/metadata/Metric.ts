@@ -1,5 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
+import Filter from "metabase-lib/lib/queries/structured/Filter";
 import Base from "./Base";
 /**
  * @typedef { import("./metadata").Aggregation } Aggregation
@@ -28,13 +29,16 @@ export default class Metric extends Base {
       : null;
   }
 
+  /** Underlying filter clauses for this metric */
+  filters(): Filter[] {
+    const query = this.definitionQuery();
+    return query ? query.filters() : [];
+  }
+
   /** Underlying aggregation clause for this metric */
   aggregation() {
     const query = this.definitionQuery();
-
-    if (query) {
-      return query.aggregations()[0];
-    }
+    return query?.aggregations()[0];
   }
 
   /** Column name when this metric is used in a query */
