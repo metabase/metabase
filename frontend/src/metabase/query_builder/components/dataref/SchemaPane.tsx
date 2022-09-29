@@ -9,7 +9,7 @@ interface Props {
   schema: Schema;
 }
 
-function SchemaPaneInner({ schema, show }: Props) {
+const SchemaPaneInner = ({ schema, show }: Props) => {
   const tables = schema.tables.sort((a, b) => a.name.localeCompare(b.name));
   return (
     <div>
@@ -33,7 +33,7 @@ function SchemaPaneInner({ schema, show }: Props) {
       </ul>
     </div>
   );
-}
+};
 
 const SchemaPane = Schemas.load({
   id: (_state: State, { schema }: Props) => schema.id,
