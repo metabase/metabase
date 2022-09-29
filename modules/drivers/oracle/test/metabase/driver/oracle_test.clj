@@ -177,7 +177,7 @@
 
 (deftest timezone-id-test
   (mt/test-driver :oracle
-    (is (= "UTC"
+    (is (= nil
            (driver/db-default-timezone :oracle (mt/db))))))
 
 (deftest insert-rows-ddl-test

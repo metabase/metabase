@@ -18,7 +18,7 @@
 
 (deftest timezone-id-test
   (mt/test-driver :sqlite
-    (is (= "UTC"
+    (is (= nil
            (driver/db-default-timezone :sqlite (mt/db))))))
 
 (deftest filter-by-date-test

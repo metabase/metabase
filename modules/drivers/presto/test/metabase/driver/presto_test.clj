@@ -176,7 +176,7 @@
 
 (deftest db-default-timezone-test
   (mt/test-driver :presto
-    (is (= "UTC"
+    (is (= nil
            (driver/db-default-timezone :presto-jdbc (mt/db))))))
 
 (deftest query-cancelation-test
