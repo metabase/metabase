@@ -28,7 +28,7 @@ interface ModelPaneProps {
   question: Question;
 }
 
-const mapStateToProps = (state: State, props: any) => ({
+const mapStateToProps = (state: State, props: ModelPaneProps) => ({
   question: getQuestionFromCard(state, props.model),
 });
 
