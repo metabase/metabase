@@ -7,7 +7,7 @@ import { formatNumber } from "metabase/static-viz/lib/numbers";
 import { measureText } from "metabase/static-viz/lib/text";
 import OutlinedText from "../Text/OutlinedText";
 
-type GaugeSegmentDatum = [number, number, string];
+type GaugeSegmentDatum = [number, number, string, string];
 type Position = [x: number, y: number];
 
 interface GaugeSegment {
@@ -51,7 +51,7 @@ const BASE_FONT_SIZE = GAUGE_THICKNESS * 0.8;
 export default function Gauge({ card, data }: GaugeProps) {
   const settings = card.visualization_settings;
   const gaugeSegmentData: GaugeSegmentData = settings["gauge.segments"].map(
-    segment => [segment.min, segment.max, segment.color],
+    segment => [segment.min, segment.max, segment.color, segment.label],
   );
   const centerX = WIDTH / 2;
   const centerY = GAUGE_RADIUS + VERTICAL_MARGIN;
@@ -124,11 +124,7 @@ export default function Gauge({ card, data }: GaugeProps) {
         function calculateLabelTextAnchor(angle: number): TextAnchor {
           const THRESHOLD_ANGLE_DEGREE = toRadian(30);
           const normalizedMinAngle = normalizeAngle(angle);
-          console.log({
-            start: 1.5 * Math.PI,
-            startMiddle: normalizeAngle(toRadian(-THRESHOLD_ANGLE_DEGREE)),
-            endMiddle: normalizeAngle(toRadian(THRESHOLD_ANGLE_DEGREE)),
-          });
+
           if (
             isBetweenAngle(
               normalizedMinAngle,
@@ -176,6 +172,69 @@ export default function Gauge({ card, data }: GaugeProps) {
               />
             )}
           </>
+        );
+      })}
+      {gaugeSegmentData.map((gaugeSegmentDatum, index) => {
+        const gaugeSegmentLabel = gaugeSegmentDatum[3];
+        if (!gaugeSegmentLabel) {
+          return null;
+        }
+        const fontSize = BASE_FONT_SIZE * 0.3;
+        const angle =
+          startAngle +
+          calculateValueAngle(
+            (gaugeSegmentDatum[1] + gaugeSegmentDatum[0]) / 2,
+            minValue,
+            maxValue,
+          );
+        const position: Position = calculatePosition(angle);
+
+        function calculatePosition(angle: number) {
+          return movePosition(
+            [centerX, centerY],
+            getCirclePositionInSvgCoordinate(
+              gaugeOuterRadius + fontSize,
+              angle,
+            ),
+          );
+        }
+
+        function calculateLabelTextAnchor(angle: number): TextAnchor {
+          const THRESHOLD_ANGLE_DEGREE = toRadian(30);
+          const normalizedMinAngle = normalizeAngle(angle);
+
+          if (
+            isBetweenAngle(
+              normalizedMinAngle,
+              1.5 * Math.PI,
+              normalizeAngle(toRadian(-THRESHOLD_ANGLE_DEGREE)),
+            )
+          ) {
+            return "end";
+          }
+
+          if (
+            isBetweenAngle(
+              normalizedMinAngle,
+              normalizeAngle(toRadian(-THRESHOLD_ANGLE_DEGREE)),
+              normalizeAngle(toRadian(THRESHOLD_ANGLE_DEGREE)),
+            )
+          ) {
+            return "middle";
+          }
+
+          return "start";
+        }
+        return (
+          <GaugeLabel
+            key={index}
+            // TODO: Fix hard-coded color
+            fill="#4c5773"
+            fontSize={fontSize}
+            position={position}
+            label={gaugeSegmentLabel}
+            textAnchor={calculateLabelTextAnchor(angle)}
+          />
         );
       })}
       <GaugeLabel
@@ -298,7 +357,7 @@ function GaugeNeedle({ position, valueAngle }: GaugeNeedleProps) {
         center={position}
         radius={GAUGE_NEEDLE_RADIUS}
         // TODO: Fix hard-coded color
-        color="#D9D9D9"
+        color="#949AAB"
       />
     </g>
   );
