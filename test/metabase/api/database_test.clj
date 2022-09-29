@@ -1364,7 +1364,7 @@
             (is (= {:database-enable-actions false}
                    (settings)))))))))
 
-(deftest filter-cards-by-database-models-test
+(deftest models-by-database-test
   (testing "GET /api/database/:id/models"
     (mt/with-temp* [Database [db]
                     Card     [card-1 {:dataset true  :archived false :database_id (mt/id)}]
