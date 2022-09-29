@@ -6,7 +6,6 @@
             [clojure.tools.macro :as tools.macro]
             [clojurewerkz.quartzite.scheduler :as qs]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
-            [java-time :as t]
             [medley.core :as m]
             [metabase.api.card :as api.card]
             [metabase.api.pivots :as api.pivots]
@@ -14,7 +13,6 @@
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.http-client :as client]
             [metabase.models :refer [Card
-                                     CardBookmark
                                      CardEmitter
                                      Collection
                                      Dashboard
@@ -29,8 +27,7 @@
                                      QueryAction
                                      Table
                                      Timeline
-                                     TimelineEvent
-                                     ViewLog]]
+                                     TimelineEvent]]
             [metabase.models.moderation-review :as moderation-review]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
