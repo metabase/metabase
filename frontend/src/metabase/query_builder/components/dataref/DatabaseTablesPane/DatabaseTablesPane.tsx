@@ -1,10 +1,12 @@
 import React, { useMemo } from "react";
 import { ngettext, msgid } from "ttag";
 import _ from "underscore";
-import PropTypes from "prop-types";
 
 import Tables from "metabase/entities/tables";
 import Questions from "metabase/entities/questions";
+import type { Card } from "metabase-types/api";
+import type { State } from "metabase-types/store";
+import Database from "metabase-lib/lib/metadata/Database";
 import {
   NodeListItemLink,
   NodeListItemName,
@@ -16,7 +18,17 @@ import {
 } from "../NodeList.styled";
 import { ModelId } from "./DatabaseTablesPane.styled";
 
-const DatabaseTablesPane = ({ database, show, models }) => {
+interface DatabaseTablesPaneProps {
+  show: (type: string, item: unknown) => void;
+  database: Database;
+  models: Card[];
+}
+
+const DatabaseTablesPane = ({
+  database,
+  show,
+  models,
+}: DatabaseTablesPaneProps) => {
   const tables = useMemo(
     () => database.tables.sort((a, b) => a.name.localeCompare(b.name)),
     [database.tables],
@@ -77,21 +89,15 @@ const DatabaseTablesPane = ({ database, show, models }) => {
   ) : null;
 };
 
-DatabaseTablesPane.propTypes = {
-  show: PropTypes.func.isRequired,
-  database: PropTypes.object.isRequired,
-  models: PropTypes.arrayOf(PropTypes.object),
-};
-
 export default _.compose(
   Tables.loadList({
-    query: (_state, props) => ({
+    query: (_state: State, props: DatabaseTablesPaneProps) => ({
       dbId: props.database?.id,
     }),
     loadingAndErrorWrapper: false,
   }),
   Questions.loadList({
-    query: (_state, props) => ({
+    query: (_state: State, props: DatabaseTablesPaneProps) => ({
       model: true,
       dbId: props.database?.id, // TODO: why could this be undefined?
     }),
