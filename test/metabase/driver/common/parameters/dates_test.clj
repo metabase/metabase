@@ -215,7 +215,7 @@
 
 (deftest relative-dates-with-starting-from-zero-must-match
   (testing "relative dates need to behave the same way, offset or not."
-    (t/with-clock (t/mock-clock #t "2016-06-07T12:13:55Z")
+    (mt/with-clock #t "2016-06-07T12:13:55Z"
       (testing "'past1months-from-0months' should be the same as: 'past1months'"
         (is (= {:start "2016-05-01", :end "2016-05-31"}
                (params.dates/date-string->range "past1months")
