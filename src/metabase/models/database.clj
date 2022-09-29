@@ -303,6 +303,9 @@
   [[{:keys [id]}]]
   (db/select-one-field :id Database :name id))
 
-(defmethod serdes.base/load-xform "Database" [entity]
-  (-> (serdes.base/load-xform-basics entity)
-    (update :creator_id serdes.util/import-user)))
+(defmethod serdes.base/load-xform "Database"
+  [database]
+  (-> (cond-> database
+        (not (:details database)) (assoc :details "{}"))
+      serdes.base/load-xform-basics
+      (update :creator_id serdes.util/import-user)))
