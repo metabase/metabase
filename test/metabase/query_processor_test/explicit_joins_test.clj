@@ -375,12 +375,10 @@
 (deftest get-all-columns-without-metadata-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "NEW! Can we still get all of our columns, even if we *DON'T* specify the metadata?"
-      (mt/with-temp Card [{card-id               :id
-                           {source-query :query} :dataset_query
-                           source-metadata       :result_metadata} (qp.test-util/card-with-source-metadata-for-query
-                                                                    (mt/mbql-query venues
-                                                                      {:aggregation [[:count]]
-                                                                       :breakout    [$category_id]}))]
+      (mt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query
+                                         (mt/mbql-query venues
+                                           {:aggregation [[:count]]
+                                            :breakout    [$category_id]}))]
         (is (= {:rows    [[1 3 46 3] [2 9 40 9] [4 7 5 7]]
                 :columns [(mt/format-name "venue_id") "count" (mt/format-name "category_id") "count_2"]}
                (mt/rows+column-names
@@ -462,8 +460,8 @@
 (deftest sql-question-source-query-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (testing "we should be able to use a SQL question as a source query in a Join"
-      (mt/with-temp Card [{card-id :id, :as card} (qp.test-util/card-with-source-metadata-for-query
-                                                   (mt/native-query (qp/compile (mt/mbql-query venues))))]
+      (mt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query
+                                         (mt/native-query (qp/compile (mt/mbql-query venues))))]
         (is (= [[1 "2014-04-07T00:00:00Z" 5 12 12 "The Misfit Restaurant + Bar" 2 34.0154 -118.497 2]
                 [2 "2014-09-18T00:00:00Z" 1 31 31 "Bludso's BBQ"                5 33.8894 -118.207 2]]
                (mt/formatted-rows [int identity int int int identity int 4.0 4.0 int]

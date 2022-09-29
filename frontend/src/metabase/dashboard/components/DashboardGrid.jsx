@@ -2,6 +2,8 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
+import _ from "underscore";
+import cx from "classnames";
 import ExplicitSize from "metabase/components/ExplicitSize";
 
 import Modal from "metabase/components/Modal";
@@ -21,9 +23,7 @@ import {
   MIN_ROW_HEIGHT,
 } from "metabase/lib/dashboard_grid";
 import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
-
-import _ from "underscore";
-import cx from "classnames";
+import { DashboardCard } from "./DashboardGrid.styled";
 
 import GridLayout from "./grid/GridLayout";
 import { generateMobileLayout } from "./grid/utils";
@@ -43,6 +43,7 @@ class DashboardGrid extends Component {
       removeModalDashCard: null,
       addSeriesModalDashCard: null,
       isDragging: false,
+      isAnimationPaused: true,
     };
   }
 
@@ -71,6 +72,19 @@ class DashboardGrid extends Component {
     isEditing: false,
     isEditingParameter: false,
   };
+
+  componentDidMount() {
+    // In order to skip the initial cards animation we must let the grid layout calculate
+    // the initial card positions. The timer is necessary to enable animation only
+    // after the grid layout has been calculated and applied to the DOM.
+    this._pauseAnimationTimer = setTimeout(() => {
+      this.setState({ isAnimationPaused: false });
+    }, 0);
+  }
+
+  componentWillUnmount() {
+    clearTimeout(this._pauseAnimationTimer);
+  }
 
   UNSAFE_componentWillReceiveProps(nextProps) {
     this.setState({
@@ -107,8 +121,8 @@ class DashboardGrid extends Component {
           attributes: {
             col: layoutItem.x,
             row: layoutItem.y,
-            sizeX: layoutItem.w,
-            sizeY: layoutItem.h,
+            size_x: layoutItem.w,
+            size_y: layoutItem.h,
           },
         });
       }
@@ -149,8 +163,8 @@ class DashboardGrid extends Component {
       i: String(dashcard.id),
       x: dashcard.col || 0,
       y: dashcard.row || 0,
-      w: dashcard.sizeX || initialSize.width,
-      h: dashcard.sizeY || initialSize.height,
+      w: dashcard.size_x || initialSize.width,
+      h: dashcard.size_y || initialSize.height,
       dashcard: dashcard,
       minW: minSize.width,
       minH: minSize.height,
@@ -326,13 +340,17 @@ class DashboardGrid extends Component {
     gridItemWidth,
     totalNumGridCols,
   }) => (
-    <div key={String(dc.id)} className="DashCard">
+    <DashboardCard
+      key={String(dc.id)}
+      className="DashCard"
+      isAnimationDisabled={this.state.isAnimationPaused}
+    >
       {this.renderDashCard(dc, {
         isMobile: breakpoint === "mobile",
         gridItemWidth,
         totalNumGridCols,
       })}
-    </div>
+    </DashboardCard>
   );
 
   renderGrid() {

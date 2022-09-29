@@ -1,16 +1,12 @@
 ---
 title: "Native query snippet"
-summary: "Native query snippet (/api/native-query-snippet) endpoints."
+summary: |
+  Native query snippet (/api/native-query-snippet) endpoints.
 ---
 
 # Native query snippet
 
 Native query snippet (/api/native-query-snippet) endpoints.
-
-  - [GET /api/native-query-snippet/](#get-apinative-query-snippet)
-  - [GET /api/native-query-snippet/:id](#get-apinative-query-snippetid)
-  - [POST /api/native-query-snippet/](#post-apinative-query-snippet)
-  - [PUT /api/native-query-snippet/:id](#put-apinative-query-snippetid)
 
 ## `GET /api/native-query-snippet/`
 

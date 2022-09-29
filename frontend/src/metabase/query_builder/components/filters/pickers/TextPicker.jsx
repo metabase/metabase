@@ -1,10 +1,9 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import AutosizeTextarea from "react-textarea-autosize";
 import { t } from "ttag";
-import cx from "classnames";
 import _ from "underscore";
+import { TextPickerArea, TextPickerInput } from "./TextPicker.styled";
 
 export default class TextPicker extends Component {
   static propTypes = {
@@ -73,10 +72,8 @@ export default class TextPicker extends Component {
             </span>
           )}
           {!isSingleLine && (
-            <AutosizeTextarea
-              className={cx("input block full border-purple", {
-                "border-error": hasInvalidValues,
-              })}
+            <TextPickerArea
+              className="input block full"
               type="text"
               value={this.state.fieldString}
               onChange={e => this.setValue(e.target.value)}
@@ -85,14 +82,13 @@ export default class TextPicker extends Component {
               autoFocus={autoFocus}
               style={{ resize: "none" }}
               maxRows={8}
+              hasInvalidValues={hasInvalidValues}
             />
           )}
 
           {isSingleLine && (
-            <input
-              className={cx("input block full border-purple", {
-                "border-error": hasInvalidValues,
-              })}
+            <TextPickerInput
+              className="input block full"
               style={{
                 paddingLeft: this.props.prefix
                   ? `${this.props.prefix.length}.2rem`
@@ -104,6 +100,7 @@ export default class TextPicker extends Component {
               onKeyPress={commitOnEnter}
               placeholder={this.props.placeholder}
               autoFocus={autoFocus}
+              hasInvalidValues={hasInvalidValues}
             />
           )}
         </div>

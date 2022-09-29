@@ -16,7 +16,7 @@ import {
 const FIXED_LAYOUT = [
   ["line", "bar", "combo", "area", "row", "waterfall"],
   ["scatter", "pie", "funnel", "smartscalar", "progress", "gauge"],
-  ["scalar", "table", "pivot", "map"],
+  ["scalar", "table", "pivot", "map", "list", "object"],
 ];
 const FIXED_TYPES = new Set(_.flatten(FIXED_LAYOUT));
 
@@ -25,6 +25,7 @@ const ChartTypeSidebar = ({
   result,
   onOpenChartSettings,
   onCloseChartType,
+  updateQuestion,
   isShowingChartTypeSidebar,
   setUIControls,
   ...props
@@ -64,13 +65,14 @@ const ChartTypeSidebar = ({
                     visualization.isSensible(result.data, props.query)
                   }
                   onClick={() => {
-                    question
+                    const newQuestion = question
                       .setDisplay(type)
-                      .lockDisplay(true) // prevent viz auto-selection
-                      .update(null, {
-                        reload: false,
-                        shouldUpdateUrl: question.query().isEditable(),
-                      });
+                      .lockDisplay(true); // prevent viz auto-selection
+
+                    updateQuestion(newQuestion, {
+                      reload: false,
+                      shouldUpdateUrl: question.query().isEditable(),
+                    });
                     onOpenChartSettings({ section: t`Data` });
                     setUIControls({ isShowingRawTable: false });
                   }}
@@ -94,7 +96,6 @@ const ChartTypeOption = ({
     <OptionIconContainer
       isSelected={isSelected}
       onClick={onClick}
-      className="cursor-pointer bg-brand-hover text-brand text-white-hover"
       data-testid={`${visualization.uiName}-button`}
       data-is-sensible={isSensible}
     >

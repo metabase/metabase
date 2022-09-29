@@ -7,6 +7,7 @@
   functions `sync-nested-field-instances!` and `sync-nested-fields-of-one-field!`. All other functions in this
   namespace should ignore nested fields entirely; the will be invoked with those Fields as appropriate."
   (:require [clojure.tools.logging :as log]
+            [medley.core :as m]
             [metabase.models.field :as field :refer [Field]]
             [metabase.models.humanization :as humanization]
             [metabase.sync.interface :as i]
@@ -39,7 +40,7 @@
   [table :- i/TableInstance, new-field-metadatas :- [i/TableMetadataField], parent-id :- common/ParentID]
   (when (seq new-field-metadatas)
     (db/insert-many! Field
-      (for [{:keys [database-type base-type effective-type coercion-strategy
+      (for [{:keys [database-type database-required base-type effective-type coercion-strategy
                     field-comment database-position nfc-path visibility-type], field-name :name :as field} new-field-metadatas]
         (do
          (when (and effective-type
@@ -67,6 +68,7 @@
           :description       field-comment
           :position          database-position
           :database_position database-position
+          :database_required (or database-required false)
           :visibility_type   (or visibility-type :normal)})))))
 
 (s/defn ^:private create-or-reactivate-fields! :- (s/maybe [i/FieldInstance])
@@ -106,7 +108,7 @@
    db-metadata  :- #{i/TableMetadataField}
    our-metadata :- #{common/TableMetadataFieldWithID}
    parent-id    :- common/ParentID]
-  (let [known-fields (u/key-by common/canonical-name our-metadata)
+  (let [known-fields (m/index-by common/canonical-name our-metadata)
         our-metadata (atom our-metadata)]
     {:num-updates
      ;; Field sync logic below is broken out into chunks of 1000 fields for huge star schemas or other situations
@@ -182,8 +184,8 @@
   [table        :- i/TableInstance
    db-metadata  :- #{i/TableMetadataField}
    our-metadata :- #{common/TableMetadataFieldWithID}]
-  (let [name->field-metadata (u/key-by common/canonical-name db-metadata)
-        name->metabase-field (u/key-by common/canonical-name our-metadata)
+  (let [name->field-metadata (m/index-by common/canonical-name db-metadata)
+        name->metabase-field (m/index-by common/canonical-name our-metadata)
         all-field-names      (set (concat (keys name->field-metadata)
                                           (keys name->metabase-field)))]
     (sync-util/sum-for [field-name all-field-names

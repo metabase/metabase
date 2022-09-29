@@ -13,6 +13,7 @@
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
             [metabase.driver.ddl.interface :as ddl.i]
+            [metabase.driver.postgres.actions :as postgres.actions]
             [metabase.driver.postgres.ddl :as postgres.ddl]
             [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -37,6 +38,8 @@
            metabase.util.honeysql_extensions.Identifier))
 
 (comment
+  ;; method impls live in these namespaces.
+  postgres.actions/keep-me
   postgres.ddl/keep-me)
 
 (driver/register! :postgres, :parent :sql-jdbc)
@@ -60,6 +63,12 @@
 (defmethod driver/database-supports? [:postgres :persist-models-enabled]
   [_driver _feat db]
   (-> db :options :persist-models-enabled))
+
+(doseq [feature [:actions :actions/custom]]
+  (defmethod driver/database-supports? [:postgres feature]
+    [driver _feat _db]
+    ;; only supported for Postgres for right now. Not supported for child drivers like Redshift or whatever.
+    (= driver :postgres)))
 
 (defn- ->timestamp [honeysql-form]
   (hx/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "date"} honeysql-form))
@@ -154,7 +163,7 @@
      :secret-kind  :pem-cert
      :visible-if   {"ssl-use-client-auth" true}}
     {:name         "ssl-key"
-     :display-name (trs "SSL Client Key (PKCS-8/DER or PKCS-12)")
+     :display-name (trs "SSL Client Key (PKCS-8/DER)")
      :type         :secret
      ;; since this can be either PKCS-8 or PKCS-12, we can't model it as a :keystore
      :secret-kind  :binary-blob
@@ -187,9 +196,9 @@
         (comp (mapcat get-typenames)
               (map keyword))
         (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
-                       [(str "SELECT nspname, typname "
-                             "FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace "
-                             "WHERE t.oid IN (SELECT DISTINCT enumtypid FROM pg_enum e)")])))
+                    [(str "SELECT nspname, typname "
+                          "FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace "
+                          "WHERE t.oid IN (SELECT DISTINCT enumtypid FROM pg_enum e)")])))
 
 (def ^:private ^:dynamic *enum-types* nil)
 
@@ -236,19 +245,21 @@
 
 (def ^:private extract-integer (comp hx/->integer extract))
 
-(defmethod sql.qp/date [:postgres :default]         [_ _ expr] expr)
-(defmethod sql.qp/date [:postgres :minute]          [_ _ expr] (date-trunc :minute expr))
-(defmethod sql.qp/date [:postgres :minute-of-hour]  [_ _ expr] (extract-integer :minute expr))
-(defmethod sql.qp/date [:postgres :hour]            [_ _ expr] (date-trunc :hour expr))
-(defmethod sql.qp/date [:postgres :hour-of-day]     [_ _ expr] (extract-integer :hour expr))
-(defmethod sql.qp/date [:postgres :day]             [_ _ expr] (hx/->date expr))
-(defmethod sql.qp/date [:postgres :day-of-month]    [_ _ expr] (extract-integer :day expr))
-(defmethod sql.qp/date [:postgres :day-of-year]     [_ _ expr] (extract-integer :doy expr))
-(defmethod sql.qp/date [:postgres :month]           [_ _ expr] (date-trunc :month expr))
-(defmethod sql.qp/date [:postgres :month-of-year]   [_ _ expr] (extract-integer :month expr))
-(defmethod sql.qp/date [:postgres :quarter]         [_ _ expr] (date-trunc :quarter expr))
-(defmethod sql.qp/date [:postgres :quarter-of-year] [_ _ expr] (extract-integer :quarter expr))
-(defmethod sql.qp/date [:postgres :year]            [_ _ expr] (date-trunc :year expr))
+(defmethod sql.qp/date [:postgres :default]          [_ _ expr] expr)
+(defmethod sql.qp/date [:postgres :second-of-minute] [_ _ expr] (extract-integer :second expr))
+(defmethod sql.qp/date [:postgres :minute]           [_ _ expr] (date-trunc :minute expr))
+(defmethod sql.qp/date [:postgres :minute-of-hour]   [_ _ expr] (extract-integer :minute expr))
+(defmethod sql.qp/date [:postgres :hour]             [_ _ expr] (date-trunc :hour expr))
+(defmethod sql.qp/date [:postgres :hour-of-day]      [_ _ expr] (extract-integer :hour expr))
+(defmethod sql.qp/date [:postgres :day]              [_ _ expr] (hx/->date expr))
+(defmethod sql.qp/date [:postgres :day-of-month]     [_ _ expr] (extract-integer :day expr))
+(defmethod sql.qp/date [:postgres :day-of-year]      [_ _ expr] (extract-integer :doy expr))
+(defmethod sql.qp/date [:postgres :month]            [_ _ expr] (date-trunc :month expr))
+(defmethod sql.qp/date [:postgres :month-of-year]    [_ _ expr] (extract-integer :month expr))
+(defmethod sql.qp/date [:postgres :quarter]          [_ _ expr] (date-trunc :quarter expr))
+(defmethod sql.qp/date [:postgres :quarter-of-year]  [_ _ expr] (extract-integer :quarter expr))
+(defmethod sql.qp/date [:postgres :year]             [_ _ expr] (date-trunc :year expr))
+(defmethod sql.qp/date [:postgres :year-of-era]      [_ _ expr] (extract-integer :year expr))
 
 (defmethod sql.qp/date [:postgres :day-of-week]
   [_ driver expr]
@@ -349,7 +360,7 @@
 ;; Postgres is not happy with JSON fields which are in group-bys or order-bys
 ;; being described twice instead of using the alias.
 ;; Therefore, force the alias, but only for JSON fields to avoid ambiguity.
-;; The alias names in JSON fields are unique wrt nfc path"
+;; The alias names in JSON fields are unique wrt nfc path
 (defmethod sql.qp/apply-top-level-clause
   [:postgres :breakout]
   [driver clause honeysql-form {breakout-fields :breakout, _fields-fields :fields :as query}]
@@ -360,7 +371,7 @@
         qualified        (parent-method query)
         unqualified      (parent-method (update query
                                                 :breakout
-                                                sql.qp/rewrite-fields-to-force-using-column-aliases))]
+                                                #(sql.qp/rewrite-fields-to-force-using-column-aliases % {:is-breakout true})))]
     (if (some field/json-field? stored-fields)
       (merge qualified
              (select-keys unqualified #{:group-by}))
@@ -500,9 +511,16 @@
     "inet"  :type/IPAddress
     nil))
 
+(defn- pkcs-12-key-value?
+  "If a value was uploaded for the SSL key, return whether it's using the PKCS-12 format."
+  [ssl-key-value]
+  (when ssl-key-value
+    (= (second (re-find secret/uploaded-base-64-prefix-pattern ssl-key-value))
+       "x-pkcs12")))
+
 (defn- ssl-params
   "Builds the params to include in the JDBC connection spec for an SSL connection."
-  [db-details]
+  [{:keys [ssl-key-value] :as db-details}]
   (let [ssl-root-cert   (when (contains? #{"verify-ca" "verify-full"} (:ssl-mode db-details))
                           (secret/db-details-prop->secret-map db-details "ssl-root-cert"))
         ssl-client-key  (when (:ssl-use-client-auth db-details)
@@ -522,13 +540,14 @@
       (assoc :sslrootcert (secret/value->file! ssl-root-cert :postgres))
 
       (has-value? ssl-client-key)
-      (assoc :sslkey (secret/value->file! ssl-client-key :postgres))
+      (assoc :sslkey (secret/value->file! ssl-client-key :postgres (when (pkcs-12-key-value? ssl-key-value) ".p12")))
 
       (has-value? ssl-client-cert)
       (assoc :sslcert (secret/value->file! ssl-client-cert :postgres))
 
-      (has-value? ssl-key-pw)
-      (assoc :sslpassword (secret/value->string ssl-key-pw))
+      ;; Pass an empty string as password if none is provided; otherwise the driver will prompt for one
+      true
+      (assoc :sslpassword (or (secret/value->string ssl-key-pw) ""))
 
       true
       (as-> params ;; from outer cond->

@@ -2,6 +2,7 @@
 import React, { Component } from "react";
 import { withRouter } from "react-router";
 
+import cx from "classnames";
 import { IFRAMED, initializeIframeResizer } from "metabase/lib/dom";
 import { parseHashOptions } from "metabase/lib/browser";
 
@@ -11,8 +12,6 @@ import { getValuePopulatedParameters } from "metabase/parameters/utils/parameter
 import TitleAndDescription from "metabase/components/TitleAndDescription";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import LogoBadge from "./LogoBadge";
-
-import cx from "classnames";
 
 import "./EmbedFrame.css";
 

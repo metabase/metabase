@@ -1,7 +1,7 @@
-import Utils from "metabase/lib/utils";
 import { handleActions } from "redux-actions";
 import { assoc, dissoc, merge } from "icepick";
 import _ from "underscore";
+import Utils from "metabase/lib/utils";
 
 import {
   RESET_QB,
@@ -44,8 +44,6 @@ import {
   RESET_ROW_ZOOM,
   onEditSummary,
   onCloseSummary,
-  onAddFilter,
-  onCloseFilter,
   onOpenChartSettings,
   onCloseChartSettings,
   onOpenChartType,
@@ -68,17 +66,14 @@ const DEFAULT_UI_CONTROLS = {
   isShowingDataReference: false,
   isShowingTemplateTagsEditor: false,
   isShowingNewbModal: false,
-  isEditing: false,
   isRunning: false,
   isQueryComplete: false,
   isShowingSummarySidebar: false,
-  isShowingFilterSidebar: false,
   isShowingChartTypeSidebar: false,
   isShowingChartSettingsSidebar: false,
   isShowingQuestionInfoSidebar: false,
   isShowingTimelineSidebar: false,
   initialChartSetting: null,
-  isPreviewing: true, // sql preview mode
   isShowingRawTable: false, // table/viz toggle
   queryBuilderMode: false, // "view" | "notebook" | "dataset"
   previousQueryBuilderMode: false,
@@ -96,7 +91,6 @@ const DEFAULT_QUERY_STATUS = "idle";
 
 const UI_CONTROLS_SIDEBAR_DEFAULTS = {
   isShowingSummarySidebar: false,
-  isShowingFilterSidebar: false,
   isShowingChartSettingsSidebar: false,
   isShowingChartTypeSidebar: false,
   isShowingTimelineSidebar: false,
@@ -201,13 +195,6 @@ export const uiControls = handleActions(
       next: (state, { payload }) => ({ ...state, isShowingNewbModal: false }),
     },
 
-    [API_UPDATE_QUESTION]: {
-      next: (state, { payload }) => ({ ...state, isEditing: false }),
-    },
-    [RELOAD_CARD]: {
-      next: (state, { payload }) => ({ ...state, isEditing: false }),
-    },
-
     [RUN_QUERY]: state => ({
       ...state,
       isRunning: true,
@@ -240,15 +227,6 @@ export const uiControls = handleActions(
       isShowingSummarySidebar: true,
     }),
     [onCloseSummary]: state => ({
-      ...state,
-      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-    }),
-    [onAddFilter]: state => ({
-      ...state,
-      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-      isShowingFilterSidebar: true,
-    }),
-    [onCloseFilter]: state => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
     }),
@@ -360,10 +338,12 @@ export const card = handleActions(
     [UPDATE_QUESTION]: (state, { payload: { card } }) => card,
 
     [QUERY_COMPLETED]: {
-      next: (state, { payload: { card } }) => ({
+      next: (state, { payload: { card, modelMetadata } }) => ({
         ...state,
         display: card.display,
-        result_metadata: card.result_metadata,
+        result_metadata: modelMetadata
+          ? modelMetadata.columns
+          : card.result_metadata,
         visualization_settings: card.visualization_settings,
       }),
     },
@@ -433,39 +413,45 @@ export const lastRunCard = handleActions(
     [RESET_QB]: { next: (state, { payload }) => null },
     [QUERY_COMPLETED]: { next: (state, { payload }) => payload.card },
     [QUERY_ERRORED]: { next: (state, { payload }) => null },
-    [CANCEL_DATASET_CHANGES]: { next: () => null },
   },
   null,
 );
+
+function mergeMetadatWithQueryResults(queryResults, metadata) {
+  const [result] = queryResults;
+  const { columns } = metadata;
+  return [
+    {
+      ...result,
+      data: {
+        ...result.data,
+        cols: columns,
+        results_metadata: metadata,
+      },
+    },
+  ];
+}
 
 // The results of a query execution.  optionally an error if the query fails to complete successfully.
 export const queryResults = handleActions(
   {
     [RESET_QB]: { next: (state, { payload }) => null },
     [QUERY_COMPLETED]: {
-      next: (state, { payload }) => payload.queryResults,
+      next: (state, { payload: { queryResults, modelMetadata } }) => {
+        return modelMetadata
+          ? mergeMetadatWithQueryResults(queryResults, modelMetadata)
+          : queryResults;
+      },
     },
     [QUERY_ERRORED]: {
       next: (state, { payload }) => (payload ? [payload] : state),
     },
     [SET_RESULTS_METADATA]: {
       next: (state, { payload: results_metadata }) => {
-        const [result] = state;
-        const { columns } = results_metadata;
-        return [
-          {
-            ...result,
-            data: {
-              ...result.data,
-              cols: columns,
-              results_metadata,
-            },
-          },
-        ];
+        return mergeMetadatWithQueryResults(state, results_metadata);
       },
     },
     [CLEAR_QUERY_RESULT]: { next: (state, { payload }) => null },
-    [CANCEL_DATASET_CHANGES]: { next: () => null },
   },
   null,
 );

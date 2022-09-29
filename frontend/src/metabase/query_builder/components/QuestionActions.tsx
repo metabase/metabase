@@ -20,13 +20,13 @@ import {
   checkDatabaseCanPersistDatasets,
 } from "metabase/lib/data-modeling/utils";
 
+import BookmarkToggle from "metabase/core/components/BookmarkToggle";
 import Question from "metabase-lib/lib/Question";
 
 import {
   QuestionActionsDivider,
   StrengthIndicator,
 } from "./QuestionActions.styled";
-import BookmarkToggle from "metabase/core/components/BookmarkToggle";
 import { ViewHeaderIconButtonContainer } from "./view/ViewHeader.styled";
 
 const HEADER_ICON_SIZE = 16;
@@ -57,6 +57,8 @@ interface Props {
     opt: { datasetEditorTab: string },
   ) => void;
   turnDatasetIntoQuestion: () => void;
+  turnQuestionIntoAction: () => void;
+  turnActionIntoQuestion: () => void;
   onInfoClick: () => void;
   onModelPersistenceChange: () => void;
   isModerator: boolean;
@@ -71,6 +73,8 @@ const QuestionActions = ({
   question,
   setQueryBuilderMode,
   turnDatasetIntoQuestion,
+  turnQuestionIntoAction,
+  turnActionIntoQuestion,
   onInfoClick,
   onModelPersistenceChange,
   isModerator,
@@ -82,9 +86,11 @@ const QuestionActions = ({
     ? color("brand")
     : undefined;
 
+  const isAction = question.isAction();
   const isDataset = question.isDataset();
   const canWrite = question.canWrite();
   const isSaved = question.isSaved();
+  const isNative = question.isNative();
 
   const canPersistDataset =
     PLUGIN_MODEL_PERSISTENCE.isModelLevelPersistenceEnabled() &&
@@ -163,7 +169,7 @@ const QuestionActions = ({
       action: () => onOpenModal(MODAL_TYPES.MOVE),
       testId: MOVE_TESTID,
     });
-    if (!isDataset) {
+    if (!isDataset && !isAction) {
       extraButtons.push({
         title: t`Turn into a model`,
         icon: "model",
@@ -178,12 +184,27 @@ const QuestionActions = ({
         action: turnDatasetIntoQuestion,
       });
     }
+    if (isSaved && isNative && !isDataset) {
+      extraButtons.push({
+        title: isAction
+          ? t`Turn back to saved question`
+          : t`Turn into an action`,
+        icon: "bolt",
+        action: isAction ? turnActionIntoQuestion : turnQuestionIntoAction,
+      });
+    }
+  }
+
+  if (!question.query().readOnly()) {
     extraButtons.push({
       title: t`Duplicate`,
       icon: "segment",
       action: () => onOpenModal(MODAL_TYPES.CLONE),
       testId: CLONE_TESTID,
     });
+  }
+
+  if (canWrite) {
     extraButtons.push({
       title: t`Archive`,
       icon: "view_archive",

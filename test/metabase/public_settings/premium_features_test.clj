@@ -1,5 +1,6 @@
 (ns metabase.public-settings.premium-features-test
   (:require [cheshire.core :as json]
+            [clj-http.client :as http]
             [clj-http.fake :as http-fake]
             [clojure.test :refer :all]
             [metabase.config :as config]
@@ -66,17 +67,17 @@
         (let [result (token-status-response random-fake-token {:status 500})]
           (is (false? (:valid result)))))
       (testing "On other errors"
-        (binding [clj-http.client/request (fn [& args]
-                                            ;; note originally the code caught clojure.lang.ExceptionInfo so don't
-                                            ;; throw an ex-info here
-                                            (throw (Exception. "network issues")))]
+        (binding [http/request (fn [& _]
+                                 ;; note originally the code caught clojure.lang.ExceptionInfo so don't
+                                 ;; throw an ex-info here
+                                 (throw (Exception. "network issues")))]
           (is (= {:valid         false
                   :status        "Unable to validate token"
                   :error-details "network issues"}
                  (premium-features/fetch-token-status (apply str (repeat 64 "b")))))))
       (testing "Only attempt the token once"
         (let [call-count (atom 0)]
-          (binding [clj-http.client/request (fn [& args]
+          (binding [clj-http.client/request (fn [& _]
                                               (swap! call-count inc)
                                               (throw (Exception. "no internet")))]
             (mt/with-temporary-raw-setting-values [:premium-embedding-token (random-token)]
@@ -133,9 +134,6 @@
   metabase-enterprise.util-test
   [username]
   (format "Hi %s, you're not extra special :(" (name username)))
-
-(def ^:private missing-feature-error-msg
-  #"The special-greeting-or-error function requires a valid premium token with the special-greeting feature")
 
 (deftest defenterprise-test
   (when-not config/ee-available?
@@ -235,3 +233,13 @@
     (testing "EE schema is not validated if OSS fallback is called"
       (is (= "Hi rasta, the return value was valid"
              (greeting-with-invalid-ee-return-schema :rasta))))))
+
+(deftest token-status-setting-test
+  (testing "If a `premium-embedding-token` has been set, the `token-status` setting should return the response
+            from the store.metabase.com endpoint for that token."
+    (mt/with-temporary-raw-setting-values [premium-embedding-token (random-token)]
+      (is (= {:valid false, :status "Token does not exist."}
+             (premium-features/token-status)))))
+  (testing "If premium-embedding-token is nil, the token-status setting should also be nil."
+    (mt/with-temporary-setting-values [premium-embedding-token nil]
+      (is (nil? (premium-features/token-status))))))

@@ -2,19 +2,15 @@ import React from "react";
 import _ from "underscore";
 import { t } from "ttag";
 
-import { BookmarksType, Collection } from "metabase-types/api";
+import { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 
-import Metadata from "metabase-lib/lib/metadata/Metadata";
 import PinnedItemCard from "metabase/collections/components/PinnedItemCard";
 import PinnedQuestionCard from "metabase/collections/components/PinnedQuestionCard";
 import PinnedItemSortDropTarget from "metabase/collections/components/PinnedItemSortDropTarget";
-import {
-  Item,
-  isRootCollection,
-  isPreviewShown,
-} from "metabase/collections/utils";
+import { isPreviewShown, isRootCollection } from "metabase/collections/utils";
 import PinDropZone from "metabase/collections/components/PinDropZone";
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
+import Metadata from "metabase-lib/lib/metadata/Metadata";
 
 import {
   Container,
@@ -24,14 +20,14 @@ import {
 } from "./PinnedItemOverview.styled";
 
 type Props = {
-  bookmarks?: BookmarksType;
+  bookmarks?: Bookmark[];
   createBookmark: (id: string, collection: string) => void;
   deleteBookmark: (id: string, collection: string) => void;
-  items: Item[];
+  items: CollectionItem[];
   collection: Collection;
   metadata: Metadata;
-  onCopy: (items: Item[]) => void;
-  onMove: (items: Item[]) => void;
+  onCopy: (items: CollectionItem[]) => void;
+  onMove: (items: CollectionItem[]) => void;
 };
 
 function PinnedItemOverview({

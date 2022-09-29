@@ -1,16 +1,12 @@
 ---
 title: "Setting"
-summary: "/api/setting endpoints."
+summary: |
+  /api/setting endpoints.
 ---
 
 # Setting
 
 /api/setting endpoints.
-
-  - [GET /api/setting/](#get-apisetting)
-  - [GET /api/setting/:key](#get-apisettingkey)
-  - [PUT /api/setting/](#put-apisetting)
-  - [PUT /api/setting/:key](#put-apisettingkey)
 
 ## `GET /api/setting/`
 

@@ -109,7 +109,7 @@
 
 (defn state?
   "Is `s` a state string?"
-  ^Boolean [^String s]
+  ^Boolean [s]
   (boolean
     (when (string? s)
       (contains? #{"alabama" "alaska" "arizona" "arkansas" "california" "colorado" "connecticut" "delaware"
@@ -178,6 +178,7 @@
       (.isReachable host-addr host-up-timeout))
     (catch Throwable _ false)))
 
+;; TODO -- maybe renaming this to `adoto` or `doto<>` or something would be a little clearer.
 (defmacro prog1
   "Execute `first-form`, then any other expressions in `body`, presumably for side-effects; return the result of
   `first-form`.
@@ -373,7 +374,7 @@
   Since this has better compile-time error-checking, prefer `strict-extend` to regular `extend` in all situations, and
   to `extend-protocol`/ `extend-type` going forward."
   ;; TODO - maybe implement strict-extend-protocol and strict-extend-type ?
-  {:style/indent 1}
+  {:style/indent :defn}
   [atype protocol method-map & more]
   (check-protocol-impl-method-map protocol method-map)
   (extend atype protocol method-map)
@@ -381,7 +382,7 @@
     (apply strict-extend atype more)))
 
 (defn remove-diacritical-marks
-  "Return a version of S with diacritical marks removed."
+  "Return a version of `s` with diacritical marks removed."
   ^String [^String s]
   (when (seq s)
     (str/replace
@@ -479,17 +480,6 @@
   [num-retries & body]
   `(do-with-auto-retries ~num-retries
      (fn [] ~@body)))
-
-(defn key-by
-  "Convert a sequential `coll` to a map of `(f item)` -> `item`.
-  This is similar to `group-by`, but the resultant map's values are single items from `coll` rather than sequences of
-  items. (Because only a single item is kept for each value of `f`, items producing duplicate values will be
-  discarded).
-
-     (key-by :id [{:id 1, :name :a} {:id 2, :name :b}]) -> {1 {:id 1, :name :a}, 2 {:id 2, :name :b}}"
-  {:style/indent 1}
-  [f coll]
-  (into {} (map (juxt f identity)) coll))
 
 (defn id
   "If passed an integer ID, returns it. If passed a map containing an `:id` key, returns the value if it is an integer.
@@ -909,9 +899,9 @@
 
 (defn ip-address?
   "Whether string `s` is a valid IP (v4 or v6) address."
-  [^String s]
+  [s]
   (and (string? s)
-       (.isValid (org.apache.commons.validator.routines.InetAddressValidator/getInstance) s)))
+       (.isValid (org.apache.commons.validator.routines.InetAddressValidator/getInstance) ^String s)))
 
 (defn sorted-take
   "A reducing function that maintains a queue of the largest items as determined by `kompare`. The queue is bounded

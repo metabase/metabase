@@ -16,13 +16,12 @@
 
 (models/defmodel NativeQuerySnippet :native_query_snippet)
 
-(defmethod collection/allowed-namespaces (class NativeQuerySnippet)
+(defmethod collection/allowed-namespaces #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class NativeQuerySnippet)
   [_]
   #{:snippets})
 
 (defn- pre-insert [snippet]
-  (u/prog1 (merge {:template_tags {}}
-                  snippet)
+  (u/prog1 snippet
     (collection/check-collection-namespace NativeQuerySnippet (:collection_id snippet))))
 
 (defn- pre-update [{:keys [creator_id id], :as updates}]
@@ -33,26 +32,33 @@
         (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a NativeQuerySnippet.")))))
     (collection/check-collection-namespace NativeQuerySnippet (:collection_id updates))))
 
-(u/strict-extend (class NativeQuerySnippet)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class NativeQuerySnippet)
   models/IModel
   (merge
    models/IModelDefaults
    {:properties (constantly {:timestamped? true
                              :entity_id    true})
-    :types      (constantly {:template_tags :template-tags})
     :pre-insert pre-insert
     :pre-update pre-update})
 
-  mi/IObjectPermissions
-  (merge
-   mi/IObjectPermissionsDefaults
-   {:can-read?   snippet.perms/can-read?
-    :can-write?  snippet.perms/can-write?
-    :can-create? snippet.perms/can-create?
-    :can-update? snippet.perms/can-update?})
-
   serdes.hash/IdentityHashable
   {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :collection)])})
+
+(defmethod mi/can-read? NativeQuerySnippet
+  [& args]
+  (apply snippet.perms/can-read? args))
+
+(defmethod mi/can-write? NativeQuerySnippet
+  [& args]
+  (apply snippet.perms/can-write? args))
+
+(defmethod mi/can-create? NativeQuerySnippet
+  [& args]
+  (apply snippet.perms/can-create? args))
+
+(defmethod mi/can-update? NativeQuerySnippet
+  [& args]
+  (apply snippet.perms/can-update? args))
 
 
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
@@ -60,11 +66,11 @@
 (def NativeQuerySnippetName
   "Schema checking that snippet names do not include \"}\" or start with spaces."
   (su/with-api-error-message
-   (s/pred (every-pred
-            string?
-            (complement #(boolean (re-find #"^\s+" %)))
-            (complement #(boolean (re-find #"}" %)))))
-   (deferred-tru "snippet names cannot include '}' or start with spaces")))
+    (s/pred (every-pred
+             string?
+             (complement #(boolean (re-find #"^\s+" %)))
+             (complement #(boolean (re-find #"}" %)))))
+    (deferred-tru "snippet names cannot include '}' or start with spaces")))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
@@ -88,13 +94,13 @@
 (defmethod serdes.base/extract-one "NativeQuerySnippet"
   [_model-name _opts snippet]
   (-> (serdes.base/extract-one-basics "NativeQuerySnippet" snippet)
-      (update :creator_id serdes.util/export-fk-keyed 'User :email)
+      (update :creator_id serdes.util/export-user)
       (update :collection_id #(when % (serdes.util/export-fk % 'Collection)))))
 
 (defmethod serdes.base/load-xform "NativeQuerySnippet" [snippet]
   (-> snippet
       serdes.base/load-xform-basics
-      (update :creator_id serdes.util/import-fk-keyed 'User :email)
+      (update :creator_id serdes.util/import-user)
       (update :collection_id #(when % (serdes.util/import-fk % 'Collection)))))
 
 (defmethod serdes.base/serdes-dependencies "NativeQuerySnippet"

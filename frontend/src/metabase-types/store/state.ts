@@ -23,3 +23,9 @@ export interface State {
 export type Dispatch<T = unknown> = (action: T) => void;
 
 export type GetState = () => State;
+
+export type ReduxAction<Type = string, Payload = any> = {
+  type: Type;
+  payload: Payload;
+  error?: string;
+};

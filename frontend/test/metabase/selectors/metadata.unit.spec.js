@@ -1,18 +1,9 @@
-import Metadata from "metabase-lib/lib/metadata/Metadata";
-import Database from "metabase-lib/lib/metadata/Database";
-import Schema from "metabase-lib/lib/metadata/Schema";
-import Table from "metabase-lib/lib/metadata/Table";
-import Field from "metabase-lib/lib/metadata/Field";
-import Metric from "metabase-lib/lib/metadata/Metric";
-import Segment from "metabase-lib/lib/metadata/Segment";
-
 import {
   metadata, // connected graph,
   state, // the original non connected metadata objects,
   SAMPLE_DATABASE,
   ORDERS,
 } from "__support__/sample_database_fixture";
-
 import {
   copyObjects,
   instantiateDatabase,
@@ -21,7 +12,16 @@ import {
   instantiateField,
   instantiateSegment,
   instantiateMetric,
+  instantiateQuestion,
 } from "metabase/selectors/metadata";
+import Metadata from "metabase-lib/lib/metadata/Metadata";
+import Database from "metabase-lib/lib/metadata/Database";
+import Schema from "metabase-lib/lib/metadata/Schema";
+import Table from "metabase-lib/lib/metadata/Table";
+import Field from "metabase-lib/lib/metadata/Field";
+import Metric from "metabase-lib/lib/metadata/Metric";
+import Segment from "metabase-lib/lib/metadata/Segment";
+import Question from "metabase-lib/lib/Question";
 
 const NUM_TABLES = Object.keys(state.entities.tables).length;
 const NUM_DBS = Object.keys(state.entities.databases).length;
@@ -145,5 +145,14 @@ describe("instantiateMetric", () => {
     const instance = instantiateMetric({ abc: 123 });
     expect(instance).toBeInstanceOf(Metric);
     expect(instance).toHaveProperty("abc", 123);
+  });
+});
+
+describe("instantiateQuestion", () => {
+  it("should return an instance of Question", () => {
+    const instance = instantiateQuestion({ id: 123 }, metadata);
+    expect(instance).toBeInstanceOf(Question);
+    expect(instance.card()).toHaveProperty("id", 123);
+    expect(instance.metadata()).toBe(metadata);
   });
 });

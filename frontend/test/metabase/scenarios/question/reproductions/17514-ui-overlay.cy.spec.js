@@ -8,9 +8,8 @@ import {
   visitDashboard,
 } from "__support__/e2e/helpers";
 
-import { setAdHocFilter } from "../../native-filters/helpers/e2e-date-filter-helpers";
-
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+import { setAdHocFilter } from "../../native-filters/helpers/e2e-date-filter-helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -155,7 +154,7 @@ function openVisualizationOptions() {
 
 function hideColumn(columnName) {
   cy.findByTestId("chartsettings-sidebar").within(() => {
-    cy.findByText(columnName).siblings(".Icon-close").click();
+    cy.findByText(columnName).siblings(".Icon-eye_filled").click();
   });
 }
 
@@ -181,7 +180,7 @@ function moveColumnToTop(column) {
   cy.findByTestId("sidebar-left").within(() => {
     cy.findByText(column)
       .should("be.visible")
-      .closest(".cursor-grab")
+      .closest("[data-testid^=draggable-item]")
       .trigger("mousedown", 0, 0, { force: true })
       .trigger("mousemove", 5, 5, { force: true })
       .trigger("mousemove", 0, -600, { force: true })

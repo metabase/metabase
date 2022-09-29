@@ -8,6 +8,17 @@ export interface Card extends UnsavedCard {
   can_write: boolean;
   cache_ttl: number | null;
   last_query_start: string | null;
+  archived: boolean;
+
+  creator?: {
+    id: number;
+    common_name: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    last_login: string;
+    date_joined: string;
+  };
 }
 
 export interface UnsavedCard {

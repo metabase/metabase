@@ -1,5 +1,6 @@
 import React, { useCallback } from "react";
 import PropTypes from "prop-types";
+
 import User from "metabase/entities/users";
 
 const propTypes = {
@@ -8,15 +9,22 @@ const propTypes = {
 
 const UserProfileForm = ({ user }) => {
   const handleSaved = useCallback(
-    ({ locale }) => {
-      if (locale !== user.locale) {
+    values => {
+      if (user.locale !== values.locale) {
         window.location.reload();
       }
     },
-    [user],
+    [user?.locale],
   );
 
-  return <User.Form user={user} form={User.forms.user} onSaved={handleSaved} />;
+  return (
+    <User.Form
+      user={user}
+      form={User.forms.user(user)}
+      onSaved={handleSaved}
+      overwriteOnInitialValuesChange
+    />
+  );
 };
 
 UserProfileForm.propTypes = propTypes;

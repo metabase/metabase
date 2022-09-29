@@ -3,7 +3,7 @@
             [metabase-enterprise.advanced-permissions.models.permissions.application-permissions :as g-perms]
             [metabase.models :refer [ApplicationPermissionsRevision PermissionsGroup]]
             [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as group]
+            [metabase.models.permissions-group :as perms-group]
             [metabase.test :as mt]
             [toucan.db :as db]))
 
@@ -16,11 +16,11 @@
     (testing "group should be in graph if one of application permission is enabled"
       (let [graph (g-perms/graph)]
         (is (= 0 (:revision graph)))
-        (is (partial= {(:id (group/admin))
+        (is (partial= {(:id (perms-group/admin))
                        {:monitoring   :yes
                         :setting      :yes
                         :subscription :yes}
-                       (:id (group/all-users))
+                       (:id (perms-group/all-users))
                        {:monitoring   :no
                         :setting      :no
                         :subscription :yes}}
@@ -32,7 +32,7 @@
 
 ;;; ------------------------------------------------- Update Graph --------------------------------------------------
 
-(defmacro with-new-group-and-current-graph
+(defmacro ^:private with-new-group-and-current-graph
   "Create a new group-id and bind it with the `current-graph`."
   [group-id-binding current-graph-binding & body]
   `(mt/with-temp* [PermissionsGroup [{group-id# :id}]]
@@ -59,22 +59,22 @@
         (is (= (inc (:revision current-graph)) (:revision updated-graph))))))
 
   (testing "We can do a no-op and revision won't changes"
-    (with-new-group-and-current-graph group-id current-graph
+    (with-new-group-and-current-graph _group-id current-graph
       (g-perms/update-graph! current-graph)
       (let [updated-graph (g-perms/graph)]
         (is (= (:groups updated-graph) (:groups updated-graph)))
         (is (= (:revision current-graph) (:revision updated-graph))))))
 
   (testing "Failed when try to update permission for admin group"
-    (with-new-group-and-current-graph group-id current-graph
-      (let [new-graph (assoc-in current-graph [:groups (:id (group/admin)) :subscription] :no)]
+    (with-new-group-and-current-graph _group-id current-graph
+      (let [new-graph (assoc-in current-graph [:groups (:id (perms-group/admin)) :subscription] :no)]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"You cannot create or revoke permissions for the 'Admin' group."
              (g-perms/update-graph! new-graph))))))
 
   (testing "Failed when revision is mismatched"
-    (with-new-group-and-current-graph group-id current-graph
+    (with-new-group-and-current-graph _group-id current-graph
       (let [new-graph (assoc current-graph :revision (inc (:revision current-graph)))]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
@@ -82,7 +82,7 @@
              (g-perms/update-graph! new-graph))))))
 
   (testing "Able to grant for a group that was not in the old graph"
-    (with-new-group-and-current-graph group-id current-graph
+    (with-new-group-and-current-graph group-id _current-graph
       ;; subscription is granted for new group by default, so revoke it
       (perms/revoke-application-permissions! group-id :subscription)
       ;; making sure the `group-id` is not in the current-graph

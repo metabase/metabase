@@ -1,15 +1,14 @@
 ---
 title: "Sandbox table"
-summary: "API endpoints for Sandbox table."
+summary: |
+  API endpoints for Sandbox table.
 ---
 
 # Sandbox table
 
 API endpoints for Sandbox table.
 
-  - [GET /api/ee/sandbox/table/:id/query_metadata](#get-apieesandboxtableidquery_metadata)
-
-## `GET /api/ee/sandbox/table/:id/query_metadata`
+## `GET /api/table/:id/query_metadata`
 
 This endpoint essentially acts as a wrapper for the OSS version of this route. When a user has segmented permissions
   that only gives them access to a subset of columns for a given table, those inaccessable columns should also be

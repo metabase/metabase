@@ -1,10 +1,13 @@
-import { alpha, color } from "metabase/lib/colors";
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
+import { alpha, color } from "metabase/lib/colors";
 
 type CalendarDayProps = {
   primaryColor?: string;
-  isSelected?: boolean;
   isInRange?: boolean;
+  isSelected?: boolean;
+  isSelectedStart?: boolean;
+  isSelectedEnd?: boolean;
 };
 
 export const CalendarDay = styled.div<CalendarDayProps>`
@@ -27,4 +30,12 @@ export const CalendarDay = styled.div<CalendarDayProps>`
     background-color: ${({ primaryColor = color("brand") }) => primaryColor};
     color: white;
   }
+
+  ${({ primaryColor, isSelectedStart, isSelectedEnd }) =>
+    (isSelectedStart || isSelectedEnd) &&
+    css`
+      color: ${color("white")} !important;
+      background-color: ${primaryColor};
+      z-index: 1;
+    `}
 `;

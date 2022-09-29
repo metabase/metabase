@@ -4,6 +4,7 @@ import { connect } from "react-redux";
 import _ from "underscore";
 import { t } from "ttag";
 
+import MetabaseSettings from "metabase/lib/settings";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
@@ -12,6 +13,8 @@ import { isVariableTarget } from "metabase/parameters/utils/targets";
 import { isDateParameter } from "metabase/parameters/utils/parameter-type";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
+  getNativeDashCardEmptyMappingText,
+  isNativeDashCard,
   isVirtualDashCard,
   showVirtualDashCardInfoText,
 } from "metabase/dashboard/utils";
@@ -34,6 +37,10 @@ import {
   ChevrondownIcon,
   KeyIcon,
   Warning,
+  NativeCardDefault,
+  NativeCardIcon,
+  NativeCardText,
+  NativeCardLink,
 } from "./DashCardCardParameterMapper.styled";
 
 function formatSelected({ name, sectionName }) {
@@ -94,36 +101,41 @@ function DashCardCardParameterMapper({
   );
 
   const isVirtual = isVirtualDashCard(dashcard);
+  const isNative = isNativeDashCard(dashcard);
 
   const hasPermissionsToMap = useMemo(() => {
     if (isVirtual) {
       return true;
-    } else {
-      const question = new Question(card, metadata);
-      return question.query().isEditable();
     }
+
+    if (!card.dataset_query) {
+      return false;
+    }
+
+    const question = new Question(card, metadata);
+    return question.query().isEditable();
   }, [card, metadata, isVirtual]);
 
   const { buttonVariant, buttonTooltip, buttonText, buttonIcon } =
     useMemo(() => {
       if (!hasPermissionsToMap) {
         return {
-          variant: "unauthed",
-          tooltip: t`You don’t have permission to see this question’s columns.`,
-          text: null,
+          buttonVariant: "unauthed",
+          buttonTooltip: t`You don’t have permission to see this question’s columns.`,
+          buttonText: null,
           buttonIcon: <KeyIcon />,
         };
       } else if (isDisabled && !isVirtual) {
         return {
-          variant: "disabled",
-          tooltip: t`This card doesn't have any fields or parameters that can be mapped to this parameter type.`,
+          buttonVariant: "disabled",
+          buttonTooltip: t`This card doesn't have any fields or parameters that can be mapped to this parameter type.`,
           buttonText: t`No valid fields`,
           buttonIcon: null,
         };
       } else if (selectedMappingOption) {
         return {
-          variant: "mapped",
-          tooltip: null,
+          buttonVariant: "mapped",
+          buttonTooltip: null,
           buttonText: formatSelected(selectedMappingOption),
           buttonIcon: (
             <CloseIconButton
@@ -136,8 +148,8 @@ function DashCardCardParameterMapper({
         };
       } else {
         return {
-          variant: "default",
-          tooltip: null,
+          buttonVariant: "default",
+          buttonTooltip: null,
           buttonText: t`Select…`,
           buttonIcon: <ChevrondownIcon />,
         };
@@ -151,14 +163,14 @@ function DashCardCardParameterMapper({
     ]);
 
   const headerContent = useMemo(() => {
-    if (!isVirtual) {
+    if (!isVirtual && !(isNative && isDisabled)) {
       return t`Column to filter on`;
-    } else if (dashcard.sizeY !== 1 || isMobile) {
+    } else if (dashcard.size_y !== 1 || isMobile) {
       return t`Variable to map to`;
     } else {
       return null;
     }
-  }, [dashcard, isVirtual, isMobile]);
+  }, [dashcard, isVirtual, isNative, isDisabled, isMobile]);
 
   const mappingInfoText = t`You can connect widgets to {{variables}} in text cards.`;
 
@@ -181,6 +193,18 @@ function DashCardCardParameterMapper({
             />
           </TextCardDefault>
         )
+      ) : isNative && isDisabled ? (
+        <NativeCardDefault>
+          <NativeCardIcon name="info" />
+          <NativeCardText>
+            {getNativeDashCardEmptyMappingText(editingParameter)}
+          </NativeCardText>
+          <NativeCardLink
+            href={MetabaseSettings.docsUrl(
+              "questions/native-editor/sql-parameters",
+            )}
+          >{t`Learn how`}</NativeCardLink>
+        </NativeCardDefault>
       ) : (
         <>
           {headerContent && <Header>{headerContent}</Header>}

@@ -1,15 +1,12 @@
 ---
 title: "Email"
-summary: "/api/email endpoints."
+summary: |
+  /api/email endpoints.
 ---
 
 # Email
 
 /api/email endpoints.
-
-  - [DELETE /api/email/](#delete-apiemail)
-  - [POST /api/email/test](#post-apiemailtest)
-  - [PUT /api/email/](#put-apiemail)
 
 ## `DELETE /api/email/`
 

@@ -19,14 +19,14 @@ describe("scenarios > embedding > full app", () => {
 
     it("should show the top nav by a param", () => {
       visitUrl({ url: "/", qs: { top_nav: true } });
-      cy.findAllByTestId("main-logo").should("be.visible");
+      cy.findByTestId("main-logo").should("be.visible");
       cy.button(/New/).should("not.exist");
       cy.findByPlaceholderText("Search").should("not.exist");
     });
 
     it("should hide the side nav by a param", () => {
       visitUrl({ url: "/", qs: { top_nav: true, side_nav: false } });
-      cy.findAllByTestId("main-logo").should("be.visible");
+      cy.findByTestId("main-logo").should("be.visible");
       cy.findByText("Our analytics").should("not.exist");
     });
 
@@ -42,11 +42,11 @@ describe("scenarios > embedding > full app", () => {
 
     it("should preserve params when navigating", () => {
       visitUrl({ url: "/", qs: { top_nav: true } });
-      cy.findAllByTestId("main-logo").should("be.visible");
+      cy.findByTestId("main-logo").should("be.visible");
 
       cy.findByText("Our analytics").click();
       cy.findByText("Orders in a dashboard").should("be.visible");
-      cy.findAllByTestId("main-logo").should("be.visible");
+      cy.findByTestId("main-logo").should("be.visible");
     });
   });
 
@@ -111,6 +111,21 @@ describe("scenarios > embedding > full app", () => {
       cy.findByText(/Edited/).should("not.exist");
       cy.findByText("Our analytics").should("not.exist");
     });
+
+    it("should preserve embedding options with click behavior (metabase#24756)", () => {
+      addLinkClickBehavior({
+        dashboardId: 1,
+        linkTemplate: "/question/1",
+      });
+      visitDashboardUrl({
+        url: "/dashboard/1",
+        qs: { top_nav: true },
+      });
+
+      cy.findAllByRole("cell").first().click();
+      cy.wait("@getCardQuery");
+      cy.findByTestId("main-logo").should("be.visible");
+    });
   });
 
   describe("x-ray dashboards", () => {
@@ -158,4 +173,21 @@ const visitDashboardUrl = url => {
 const visitXrayDashboardUrl = url => {
   visitUrl(url);
   cy.wait("@getXrayDashboard");
+};
+
+const addLinkClickBehavior = ({ dashboardId, linkTemplate }) => {
+  cy.request("GET", `/api/dashboard/${dashboardId}`).then(({ body }) => {
+    cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
+      cards: body.ordered_cards.map(card => ({
+        ...card,
+        visualization_settings: {
+          click_behavior: {
+            type: "link",
+            linkType: "url",
+            linkTemplate,
+          },
+        },
+      })),
+    });
+  });
 };

@@ -1,5 +1,6 @@
+import { tag_names } from "cljs/metabase.shared.parameters.parameters";
+import { isActionCard } from "metabase/writeback/utils";
 import Question from "metabase-lib/lib/Question";
-
 import { ExpressionDimension } from "metabase-lib/lib/Dimension";
 
 import {
@@ -7,10 +8,6 @@ import {
   getTagOperatorFilterForParameter,
   variableFilterForParameter,
 } from "./filters";
-
-import { isVirtualDashCard } from "metabase/dashboard/utils";
-
-import { tag_names } from "cljs/metabase.shared.parameters.parameters";
 
 function buildStructuredQuerySectionOptions(section) {
   return section.items.map(({ dimension }) => ({
@@ -58,16 +55,36 @@ export function getParameterMappingOptions(
   card,
   dashcard = null,
 ) {
-  if (dashcard && isVirtualDashCard(dashcard)) {
+  if (dashcard && card.display === "text") {
     const tagNames = tag_names(dashcard.visualization_settings.text || "");
     return tagNames ? tagNames.map(buildTextTagOption) : [];
+  }
+
+  if (isActionCard(card)) {
+    // Action parameters are mapped via click behavior UI for now
+    return [];
+  }
+
+  if (!card.dataset_query) {
+    return [];
   }
 
   const question = new Question(card, metadata);
   const query = question.query();
   const options = [];
-
-  if (question.isStructured()) {
+  if (question.isDataset()) {
+    // treat the dataset/model question like it is already composed so that we can apply
+    // dataset/model-specific metadata to the underlying dimension options
+    const composedDatasetQuery = question.composeDataset().query();
+    options.push(
+      ...composedDatasetQuery
+        .dimensionOptions(
+          parameter ? dimensionFilterForParameter(parameter) : undefined,
+        )
+        .sections()
+        .flatMap(section => buildStructuredQuerySectionOptions(section)),
+    );
+  } else if (question.isStructured()) {
     options.push(
       ...query
         .dimensionOptions(

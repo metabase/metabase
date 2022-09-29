@@ -9,7 +9,14 @@
    "Database"
    "Dimension"
    "Field"
+   "FieldValues"
    "Metric"
    "NativeQuerySnippet"
+   "Pulse"
+   "PulseCard"
+   "PulseChannel"
+   "Segment"
    "Setting"
-   "Table"])
+   "Table"
+   "Timeline"
+   "TimelineEvent"])

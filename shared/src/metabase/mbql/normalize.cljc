@@ -149,6 +149,18 @@
   [[_ amount unit]]
   [:interval amount (maybe-normalize-token unit)])
 
+(defmethod normalize-mbql-clause-tokens :date-add
+  [[_ field amount unit]]
+  [:date-add (normalize-tokens field :ignore-path) amount (maybe-normalize-token unit)])
+
+(defmethod normalize-mbql-clause-tokens :date-subtract
+  [[_ field amount unit]]
+  [:date-subtract (normalize-tokens field :ignore-path) amount (maybe-normalize-token unit)])
+
+(defmethod normalize-mbql-clause-tokens :temporal-extract
+  [[_ field unit]]
+  [:temporal-extract (normalize-tokens field :ignore-path) (maybe-normalize-token unit)])
+
 (defmethod normalize-mbql-clause-tokens :value
   ;; The args of a `value` clause shouldn't be normalized.
   ;; See https://github.com/metabase/metabase/issues/23354 for details
@@ -244,7 +256,7 @@
            (not (:widget-type tag-def)))
       (assoc :widget-type :category))))
 
-(defn normalize-template-tags
+(defn- normalize-template-tags
   "Normalize native-query template tags. Like `expressions` we want to preserve the original name rather than normalize
   it."
   [template-tags]
@@ -257,8 +269,11 @@
                  (assoc :name tag-name))])))
    template-tags))
 
-(defn- normalize-query-parameter [{:keys [type target], :as param}]
+(defn normalize-query-parameter
+  "Normalize a parameter in the query `:parameters` list."
+  [{:keys [type target id], :as param}]
   (cond-> param
+    id     (update :id mbql.u/qualified-name)
     ;; some things that get ran thru here, like dashcard param targets, do not have :type
     type   (update :type maybe-normalize-token)
     target (update :target #(normalize-tokens % :ignore-path))))

@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
-import ModalContent from "metabase/components/ModalContent";
 import { t } from "ttag";
+import ModalContent from "metabase/components/ModalContent";
 
 import Button from "metabase/core/components/Button";
 
@@ -10,7 +10,7 @@ const nop = () => {};
 
 const ConfirmContent = ({
   title,
-  content,
+  content = null,
   message = t`Are you sure you want to do this?`,
   onClose = nop,
   onAction = nop,

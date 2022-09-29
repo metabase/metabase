@@ -2,11 +2,10 @@
 import React from "react";
 import { connect } from "react-redux";
 
-// things that will eventually load the quetsion
-import { CardApi } from "metabase/services";
 import { loadMetadataForCard } from "metabase/query_builder/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 
+import Questions from "metabase/entities/questions";
 import Question from "metabase-lib/lib/Question";
 
 // type annotations
@@ -91,7 +90,7 @@ export class SavedQuestionLoader extends React.Component {
     try {
       this.setState({ loading: true, error: null });
       // get the saved question via the card API
-      const card = await CardApi.get({ cardId: questionId });
+      const card = await this.props.fetchQuestion(questionId);
 
       // pass the retrieved card to load any necessary metadata
       // (tables, source db, segments, etc) into
@@ -129,8 +128,14 @@ function mapStateToProps(state) {
   };
 }
 
-const mapDispatchToProps = {
-  loadMetadataForCard,
+const mapDispatchToProps = dispatch => {
+  return {
+    loadMetadataForCard: card => dispatch(loadMetadataForCard(card)),
+    fetchQuestion: async id => {
+      const action = await dispatch(Questions.actions.fetch({ id }));
+      return Questions.HACK_getObjectFromAction(action);
+    },
+  };
 };
 
 export default connect(

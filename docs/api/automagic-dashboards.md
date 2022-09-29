@@ -1,21 +1,12 @@
 ---
 title: "Automagic dashboards"
-summary: "API endpoints for Automagic dashboards."
+summary: |
+  API endpoints for Automagic dashboards.
 ---
 
 # Automagic dashboards
 
 API endpoints for Automagic dashboards.
-
-  - [GET /api/automagic-dashboards/:entity/:entity-id-or-query](#get-apiautomagic-dashboardsentityentity-id-or-query)
-  - [GET /api/automagic-dashboards/:entity/:entity-id-or-query/cell/:cell-query](#get-apiautomagic-dashboardsentityentity-id-or-querycellcell-query)
-  - [GET /api/automagic-dashboards/:entity/:entity-id-or-query/cell/:cell-query/compare/:comparison-entity/:comparison-entity-id-or-query](#get-apiautomagic-dashboardsentityentity-id-or-querycellcell-querycomparecomparison-entitycomparison-entity-id-or-query)
-  - [GET /api/automagic-dashboards/:entity/:entity-id-or-query/cell/:cell-query/rule/:prefix/:rule](#get-apiautomagic-dashboardsentityentity-id-or-querycellcell-queryruleprefixrule)
-  - [GET /api/automagic-dashboards/:entity/:entity-id-or-query/cell/:cell-query/rule/:prefix/:rule/compare/:comparison-entity/:comparison-entity-id-or-query](#get-apiautomagic-dashboardsentityentity-id-or-querycellcell-queryruleprefixrulecomparecomparison-entitycomparison-entity-id-or-query)
-  - [GET /api/automagic-dashboards/:entity/:entity-id-or-query/compare/:comparison-entity/:comparison-entity-id-or-query](#get-apiautomagic-dashboardsentityentity-id-or-querycomparecomparison-entitycomparison-entity-id-or-query)
-  - [GET /api/automagic-dashboards/:entity/:entity-id-or-query/rule/:prefix/:rule](#get-apiautomagic-dashboardsentityentity-id-or-queryruleprefixrule)
-  - [GET /api/automagic-dashboards/:entity/:entity-id-or-query/rule/:prefix/:rule/compare/:comparison-entity/:comparison-entity-id-or-query](#get-apiautomagic-dashboardsentityentity-id-or-queryruleprefixrulecomparecomparison-entitycomparison-entity-id-or-query)
-  - [GET /api/automagic-dashboards/database/:id/candidates](#get-apiautomagic-dashboardsdatabaseidcandidates)
 
 ## `GET /api/automagic-dashboards/:entity/:entity-id-or-query`
 

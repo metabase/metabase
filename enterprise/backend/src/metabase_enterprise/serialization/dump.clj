@@ -7,7 +7,6 @@
             [metabase.config :as config]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.database :refer [Database]]
-            [metabase.models.dependency :refer [Dependency]]
             [metabase.models.dimension :refer [Dimension]]
             [metabase.models.field :refer [Field]]
             [metabase.models.metric :refer [Metric]]
@@ -18,6 +17,7 @@
             [metabase.models.user :refer [User]]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :as i18n :refer [trs]]
+            [toucan.db :as db]
             [yaml.core :as yaml]
             [yaml.writer :as y.writer])
   (:import java.time.temporal.Temporal))
@@ -57,11 +57,6 @@
              {:serialization-version serialize/serialization-protocol-version
               :metabase-version      config/mb-version-info}))
 
-(defn dump-dependencies
-  "Combine all dependencies into a vector and dump it into YAML at `path`."
-  [path]
-  (spit-yaml (str path "/dependencies.yaml") (map serialize/serialize (Dependency))))
-
 (defn dump-settings
   "Combine all settings into a map and dump it into YAML at `path`."
   [path]
@@ -74,8 +69,8 @@
   "Combine all dimensions into a vector and dump it into YAML at in the directory for the
    corresponding schema starting at `path`."
   [path]
-  (doseq [[table-id dimensions] (group-by (comp :table_id Field :field_id) (Dimension))
-          :let [table (Table table-id)]]
+  (doseq [[table-id dimensions] (group-by (comp :table_id Field :field_id) (db/select Dimension))
+          :let [table (db/select-one Table :id table-id)]]
     (spit-yaml (if (:schema table)
                  (format "%s%s/schemas/%s/dimensions.yaml"
                          path

@@ -4,9 +4,9 @@ import { connect } from "react-redux";
 import { createSelector } from "reselect";
 import _ from "underscore";
 
-import entityType from "./EntityType";
 import { createMemoizedSelector } from "metabase/lib/redux";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import entityType from "./EntityType";
 
 // props that shouldn't be passed to children in order to properly stack
 const CONSUMED_PROPS = [
@@ -74,7 +74,11 @@ class EntityObjectLoaderInner extends React.Component {
     ) {
       nextProps.fetch(
         { id: nextProps.entityId, ...nextProps.entityQuery },
-        { reload: nextProps.reload, properties: nextProps.properties },
+        {
+          reload: nextProps.reload,
+          properties: nextProps.properties,
+          noEvent: !nextProps.dispatchApiErrorEvent,
+        },
       );
     }
   }

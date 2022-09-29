@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 
 import { t } from "ttag";
 import cx from "classnames";
+import { DimensionListItem } from "./TimeGroupingPopover.styled";
 
 const timeGroupingPopoverPropTypes = {
   title: PropTypes.string,
@@ -31,7 +32,7 @@ export default class TimeGroupingPopover extends Component {
           {subDimensions.map((subDimension, index) => {
             const isSelected = subDimension.isEqual(dimension);
             return (
-              <li
+              <DimensionListItem
                 aria-selected={isSelected}
                 key={index}
                 className={cx("List-item", {
@@ -44,7 +45,7 @@ export default class TimeGroupingPopover extends Component {
                 >
                   {subDimension.subDisplayName()}
                 </a>
-              </li>
+              </DimensionListItem>
             );
           })}
         </ul>

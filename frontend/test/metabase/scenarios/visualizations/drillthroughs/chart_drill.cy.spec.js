@@ -147,8 +147,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
                     card_id: Q1_ID,
                     row: 0,
                     col: 0,
-                    sizeX: 16,
-                    sizeY: 12,
+                    size_x: 16,
+                    size_y: 12,
                     series: [
                       {
                         id: Q2_ID,
@@ -229,8 +229,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
                     card_id: Q1_ID,
                     row: 0,
                     col: 0,
-                    sizeX: 16,
-                    sizeY: 12,
+                    size_x: 16,
+                    size_y: 12,
                     series: [
                       {
                         id: Q2_ID,
@@ -567,8 +567,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
                 card_id: QUESTION_ID,
                 row: 0,
                 col: 0,
-                sizeX: 16,
-                sizeY: 10,
+                size_x: 16,
+                size_y: 10,
                 series: [],
                 visualization_settings: {
                   click_behavior: {

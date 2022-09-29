@@ -10,6 +10,7 @@
             eftest.report.progress
             eftest.runner
             [environ.core :as env]
+            [humane-are.core :as humane-are]
             [metabase.config :as config]
             [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
             [metabase.test-runner.init :as test-runner.init]
@@ -24,6 +25,8 @@
 
 ;; initialize Humane Test Output if it's not already initialized.
 (humane-test-output/activate!)
+;;; Same for https://github.com/camsaul/humane-are
+(humane-are/install!)
 
 ;; Load redefinitions of stuff like `tt/with-temp` and `with-redefs` that throw an Exception when they are used inside
 ;; parallel tests.

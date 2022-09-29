@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { t } from "ttag";
-import Form from "metabase/containers/Form";
+import Form from "metabase/containers/FormikForm";
 import { SlackSettings } from "metabase-types/api";
 import { getSlackForm } from "../../forms";
 import { FormProps } from "./types";
@@ -20,7 +20,7 @@ const SlackSetupForm = ({ onSubmit }: SlackSetupFormProps): JSX.Element => {
           <FormField name="slack-app-token" />
           <FormMessage>
             {t`Finally, open Slack, create a public channel and enter its name below.`}{" "}
-            {t`We'll upload charts and tables here before sending out dashboard subscriptions.`}
+            {t`This channel shouldn't really be used by anyone — we'll upload charts and tables here before sending out dashboard subscriptions (it's a Slack requirement).`}
           </FormMessage>
           <FormField name="slack-files-channel" />
           <FormFooter submitTitle={t`Save changes`} />

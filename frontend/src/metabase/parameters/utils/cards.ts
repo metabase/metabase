@@ -1,7 +1,5 @@
 import _ from "underscore";
 
-import Question from "metabase-lib/lib/Question";
-
 import {
   getParameterTargetField,
   getTemplateTagFromTarget,
@@ -14,9 +12,10 @@ import { ParameterWithTarget, UiParameter } from "metabase/parameters/types";
 import { Parameter, ParameterTarget } from "metabase-types/types/Parameter";
 import { Card } from "metabase-types/types/Card";
 import { TemplateTag } from "metabase-types/types/Query";
+import Question from "metabase-lib/lib/Question";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 
-function getTemplateTagType(tag: TemplateTag) {
+export function getTemplateTagType(tag: TemplateTag) {
   const { type } = tag;
   if (type === "date") {
     return "date/single";
@@ -30,16 +29,19 @@ function getTemplateTagType(tag: TemplateTag) {
   }
 }
 
-export function getTemplateTagParameter(tag: TemplateTag): ParameterWithTarget {
-  const target: ParameterTarget =
-    tag.type === "dimension"
-      ? ["dimension", ["template-tag", tag.name]]
-      : ["variable", ["template-tag", tag.name]];
+export function getTemplateTagParameterTarget(
+  tag: TemplateTag,
+): ParameterTarget {
+  return tag.type === "dimension"
+    ? ["dimension", ["template-tag", tag.name]]
+    : ["variable", ["template-tag", tag.name]];
+}
 
+export function getTemplateTagParameter(tag: TemplateTag): ParameterWithTarget {
   return {
     id: tag.id,
     type: tag["widget-type"] || getTemplateTagType(tag),
-    target,
+    target: getTemplateTagParameterTarget(tag),
     name: tag["display-name"],
     slug: tag.name,
     default: tag.default,
@@ -141,7 +143,7 @@ export function remapParameterValuesToTemplateTags(
     const { target } = dashboardParameter;
     const tag = getTemplateTagFromTarget(target);
 
-    if (templateTagParametersByName[tag]) {
+    if (tag != null && templateTagParametersByName[tag]) {
       const templateTagParameter = templateTagParametersByName[tag];
       const parameterValue =
         parameterValuesByDashboardParameterId[dashboardParameter.id];

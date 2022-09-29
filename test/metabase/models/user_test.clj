@@ -188,7 +188,7 @@
     (mt/with-temporary-setting-values [enable-password-login false]
       (ldap.test/with-ldap-server
         (invite-user-accept-and-check-inboxes! :invitor default-invitor , :accept-invite? false)
-        (is (not (empty? (mt/regex-email-bodies #"/auth/login"))))))))
+        (is (seq (mt/regex-email-bodies #"/auth/login")))))))
 
 (deftest ldap-user-passwords-test
   (testing (str "LDAP users should not persist their passwords. Check that if somehow we get passed an LDAP user "
@@ -291,7 +291,7 @@
                                            (assoc user :group_ids '(user/add-group-ids <users>))))]
         (testing "for a single User"
           (is (= '(user/add-group-ids <users>)
-                 (-> (hydrate (User (mt/user->id :lucky)) :group_ids)
+                 (-> (hydrate (db/select-one User :id (mt/user->id :lucky)) :group_ids)
                      :group_ids))))
 
         (testing "for multiple Users"
@@ -330,14 +330,14 @@
                (user-group-names :lucky)))))
 
     (testing "should be able to remove a User from groups"
-      (with-groups [group-1 {:name "Group 1"} #{:lucky}
-                    group-2 {:name "Group 2"} #{:lucky}]
+      (with-groups [_group-1 {:name "Group 1"} #{:lucky}
+                    _group-2 {:name "Group 2"} #{:lucky}]
         (user/set-permissions-groups! (mt/user->id :lucky) #{(perms-group/all-users)})
         (is (= #{"All Users"}
                (user-group-names :lucky)))))
 
     (testing "should be able to add & remove groups at the same time! :wow:"
-      (with-groups [group-1 {:name "Group 1"} #{:lucky}
+      (with-groups [_group-1 {:name "Group 1"} #{:lucky}
                     group-2 {:name "Group 2"} #{}]
         (user/set-permissions-groups! (mt/user->id :lucky) #{(perms-group/all-users) group-2})
         (is (= #{"All Users" "Group 2"}
@@ -380,7 +380,7 @@
 
       (testing "Invalid REMOVE operation"
         ;; Attempt to remove someone from All Users + add to a valid group at the same time -- neither should persist
-        (mt/with-temp User [user]
+        (mt/with-temp User [_]
           (with-groups [group {:name "Group"} {}]
             (u/ignore-exceptions
               (user/set-permissions-groups! (test.users/fetch-user :lucky) #{group})))
@@ -405,9 +405,9 @@
                (db/select-one-field :reset_token User :id user-id)))))
 
     (testing "should clear out all existing Sessions"
-      (mt/with-temp* [User    [{user-id :id}]
-                      Session [_ {:id (str (java.util.UUID/randomUUID)), :user_id user-id}]
-                      Session [_ {:id (str (java.util.UUID/randomUUID)), :user_id user-id}]]
+      (mt/with-temp* [User [{user-id :id}]]
+        (dotimes [_ 2]
+          (db/insert! Session {:id (str (java.util.UUID/randomUUID)), :user_id user-id}))
         (letfn [(session-count [] (db/count Session :user_id user-id))]
           (is (= 2
                  (session-count)))
@@ -426,7 +426,7 @@
         (is (thrown-with-msg?
              Exception
              #"Assert failed: \(i18n/available-locale\? locale\)"
-             (mt/with-temp User [{user-id :id} {:locale "en_XX"}])))))
+             (mt/with-temp User [_ {:locale "en_XX"}])))))
 
     (testing "updating a User"
       (mt/with-temp User [{user-id :id} {:locale "en_US"}]

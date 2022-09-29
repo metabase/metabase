@@ -2,6 +2,7 @@ import _ from "underscore";
 import { updateIn } from "icepick";
 
 import { normalizeParameterValue } from "metabase/parameters/utils/parameter-values";
+import { deriveFieldOperatorFromParameter } from "metabase/parameters/utils/operators";
 
 import * as Q_DEPRECATED from "metabase/lib/query"; // legacy
 import Utils from "metabase/lib/utils";
@@ -50,16 +51,14 @@ export function cardQueryIsEquivalent(cardA, cardB) {
   );
 }
 
-export function cardIsEquivalent(
-  cardA,
-  cardB,
-  { checkParameters = false } = {},
-) {
+export function cardParametersAreEquivalent(cardA, cardB) {
+  return _.isEqual(cardA.parameters || [], cardB.parameters || []);
+}
+
+export function cardIsEquivalent(cardA, cardB) {
   return (
     cardQueryIsEquivalent(cardA, cardB) &&
-    cardVisualizationIsEquivalent(cardA, cardB) &&
-    (!checkParameters ||
-      _.isEqual(cardA.parameters || [], cardB.parameters || []))
+    cardVisualizationIsEquivalent(cardA, cardB)
   );
 }
 
@@ -116,12 +115,16 @@ export function applyParameters(
     );
 
     const type = parameter.type;
+    const options =
+      deriveFieldOperatorFromParameter(parameter)?.optionsDefaults;
+
     if (mapping) {
       // mapped target, e.x. on a dashboard
       datasetQuery.parameters.push({
         type,
         value: normalizeParameterValue(type, value),
         target: mapping.target,
+        options,
         id: parameter.id,
       });
     } else if (parameter.target) {
@@ -130,6 +133,7 @@ export function applyParameters(
         type,
         value: normalizeParameterValue(type, value),
         target: parameter.target,
+        options,
         id: parameter.id,
       });
     }

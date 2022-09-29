@@ -1,13 +1,12 @@
 ---
 title: "Notify"
-summary: "/api/notify/* endpoints which receive inbound etl server notifications."
+summary: |
+  /api/notify/* endpoints which receive inbound etl server notifications.
 ---
 
 # Notify
 
 /api/notify/* endpoints which receive inbound etl server notifications.
-
-  - [POST /api/notify/db/:id](#post-apinotifydbid)
 
 ## `POST /api/notify/db/:id`
 

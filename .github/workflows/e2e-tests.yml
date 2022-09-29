@@ -51,7 +51,7 @@ jobs:
       MB_EDITION: ${{ matrix.edition }}
       DISPLAY: ""
       QA_DB_ENABLED: true
-      ENTERPRISE_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
+      MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
       MB_SNOWPLOW_AVAILABLE: true
       MB_SNOWPLOW_URL: "http://localhost:9090"  # Snowplow micro
     strategy:
@@ -89,6 +89,13 @@ jobs:
         ports:
           - "80:80"
           - "25:25"
+        credentials:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      openldap:
+        image: osixia/openldap:1.5.0
+        ports:
+          - "389:389"
         credentials:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -171,7 +178,7 @@ jobs:
     name: percy-tests-sanity-check-${{ matrix.edition }}
     env:
       MB_EDITION: ${{ matrix.edition }}
-      ENTERPRISE_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
+      MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
     strategy:
       matrix:
         java-version: [11]

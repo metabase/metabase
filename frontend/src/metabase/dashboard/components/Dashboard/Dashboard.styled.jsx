@@ -104,11 +104,11 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)`
       border-top: 1px solid ${color("border")};
     `}
 
-  ${({ isSticky }) =>
+  ${({ isSticky, topNav }) =>
     isSticky &&
     css`
       position: fixed;
-      top: ${APP_BAR_HEIGHT};
+      top: ${IFRAMED && !topNav ? "0" : APP_BAR_HEIGHT};
       left: 0;
       border-bottom: 1px solid ${color("border")};
     `}

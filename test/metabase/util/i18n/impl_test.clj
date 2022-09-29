@@ -74,13 +74,15 @@
 (deftest ^:parallel graceful-fallback-test
   (testing "If a resource bundle doesn't exist, we should gracefully fall back to English"
     (is (= "Translate me 100"
-           (i18n.impl/translate "zz" "Translate me {0}" 100)))))
+           (i18n.impl/translate "zz" "Translate me {0}" [100])))))
 
 (deftest translate-test
-  (mt/with-mock-i18n-bundles {"es"      {"Your database has been added!"  "¡Tu base de datos ha sido añadida!"
+  (mt/with-mock-i18n-bundles  {"es"    {:messages
+                                        {"Your database has been added!"  "¡Tu base de datos ha sido añadida!"
                                          "I''m good thanks"               "Está bien, gracias"
-                                         "must be {0} characters or less" "deben tener {0} caracteres o menos"}
-                              "es_MX" {"I''m good thanks" "Está muy bien, gracias"}}
+                                         "must be {0} characters or less" "deben tener {0} caracteres o menos"}}
+                               "es_MX" {:messages
+                                        {"I''m good thanks" "Está muy bien, gracias"}}}
     (testing "Should be able to translate stuff"
       (is (= "¡Tu base de datos ha sido añadida!"
              (i18n.impl/translate "es" "Your database has been added!"))))
@@ -100,14 +102,14 @@
 
     (testing "format strings with arguments"
       (is (= "deben tener 140 caracteres o menos"
-             (i18n.impl/translate "es" "must be {0} characters or less" 140))))))
+             (i18n.impl/translate "es" "must be {0} characters or less" [140]))))))
 
 (deftest translate-error-handling-test
   (mt/with-mock-i18n-bundles {"ba-DD" {"Bad translation {0}" "BaD TrAnSlAtIoN {a}"}}
     (testing "Should fall back to original format string if translated one is busted"
       (is (= "Bad translation 100"
-             (i18n.impl/translate "ba-DD" "Bad translation {0}" 100))))
+             (i18n.impl/translate "ba-DD" "Bad translation {0}" [100]))))
 
     (testing "if the original format string is busted, should just return format-string as-is (better than nothing)"
       (is (= "Bad original {a}"
-             (i18n.impl/translate "ba-DD" "Bad original {a}" 100))))))
+             (i18n.impl/translate "ba-DD" "Bad original {a}" [100]))))))

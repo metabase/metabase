@@ -1,19 +1,12 @@
 ---
 title: "Session"
-summary: "/api/session endpoints."
+summary: |
+  /api/session endpoints.
 ---
 
 # Session
 
 /api/session endpoints.
-
-  - [DELETE /api/session/](#delete-apisession)
-  - [GET /api/session/password_reset_token_valid](#get-apisessionpassword_reset_token_valid)
-  - [GET /api/session/properties](#get-apisessionproperties)
-  - [POST /api/session/](#post-apisession)
-  - [POST /api/session/forgot_password](#post-apisessionforgot_password)
-  - [POST /api/session/google_auth](#post-apisessiongoogle_auth)
-  - [POST /api/session/reset_password](#post-apisessionreset_password)
 
 ## `DELETE /api/session/`
 

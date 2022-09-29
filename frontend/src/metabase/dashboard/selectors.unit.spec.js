@@ -1,3 +1,4 @@
+import { chain } from "icepick";
 import {
   getParameters,
   getSidebar,
@@ -7,9 +8,8 @@ import {
   getIsEditingParameter,
   getClickBehaviorSidebarDashcard,
 } from "metabase/dashboard/selectors";
-import { SIDEBAR_NAME } from "./constants";
 import Field from "metabase-lib/lib/metadata/Field";
-import { chain } from "icepick";
+import { SIDEBAR_NAME } from "./constants";
 
 const STATE = {
   dashboard: {
@@ -54,6 +54,7 @@ const STATE = {
     },
     metrics: {},
     segments: {},
+    questions: {},
   },
 };
 

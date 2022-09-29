@@ -1,10 +1,10 @@
 import React from "react";
-import DrawerSection from "./DrawerSection";
 
-import moment from "moment";
+import moment from "moment-timezone";
 import styled from "@emotion/styled";
 import Timeline from "metabase/components/Timeline";
 import { color } from "metabase/lib/colors";
+import DrawerSection from "./DrawerSection";
 
 export const component = DrawerSection;
 export const category = "layout";

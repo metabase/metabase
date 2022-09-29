@@ -36,19 +36,24 @@
 
 (models/defmodel Table :metabase_table)
 
+(doto Table
+  (derive ::mi/read-policy.full-perms-for-perms-set)
+  (derive ::mi/write-policy.full-perms-for-perms-set))
+
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
 (defn- pre-insert [table]
   (let [defaults {:display_name        (humanization/name->human-readable-name (:name table))
-                  :field_order         (driver/default-field-order (-> table :db_id Database :engine))
+                  :field_order         (driver/default-field-order (db/select-one-field :engine Database :id (:db_id table)))
                   :initial_sync_status "incomplete"}]
     (merge defaults table)))
 
 (defn- pre-delete [{:keys [db_id schema id]}]
   (db/delete! Permissions :object [:like (str (perms/data-perms-path db_id schema id) "%")]))
 
-(defn- perms-objects-set [{db-id :db_id, schema :schema, table-id :id, :as table} read-or-write]
+(defmethod mi/perms-objects-set Table
+  [{db-id :db_id, schema :schema, table-id :id, :as table} read-or-write]
   ;; To read (e.g., fetch metadata) a Table you must have either self-service data permissions for the Table, or write
   ;; permissions for the Table (detailed below). `can-read?` checks the former, while `can-write?` checks the latter;
   ;; the permission-checking function to call when reading a Table depends on the context of the request. When reading
@@ -63,7 +68,7 @@
       :read  (perms/table-read-path table)
       :write (perms/data-model-write-perms-path db-id schema table-id))})
 
-(u/strict-extend (class Table)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Table)
   models/IModel
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:table])
@@ -73,11 +78,6 @@
           :properties     (constantly {:timestamped? true})
           :pre-insert     pre-insert
           :pre-delete     pre-delete})
-  mi/IObjectPermissions
-  (merge mi/IObjectPermissionsDefaults
-         {:can-read?         (partial mi/current-user-has-full-permissions? :read)
-          :can-write?        (partial mi/current-user-has-full-permissions? :write)
-          :perms-objects-set perms-objects-set})
 
   serdes.hash/IdentityHashable
   {:identity-hash-fields (constantly [:schema :name (serdes.hash/hydrated-hash :db)])})
@@ -222,7 +222,7 @@
 (defn database
   "Return the `Database` associated with this `Table`."
   [table]
-  (Database (:db_id table)))
+  (db/select-one Database :id (:db_id table)))
 
 (def ^{:arglists '([table-id])} table-id->database-id
   "Retrieve the `Database` ID for the given table-id."

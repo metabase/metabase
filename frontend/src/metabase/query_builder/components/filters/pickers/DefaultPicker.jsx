@@ -4,10 +4,6 @@ import PropTypes from "prop-types";
 import cx from "classnames";
 import { t } from "ttag";
 
-import NumberPicker from "./NumberPicker";
-import SelectPicker from "./SelectPicker";
-import TextPicker from "./TextPicker";
-
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 
 import {
@@ -19,6 +15,9 @@ import {
 import { getCurrencySymbol } from "metabase/lib/formatting";
 
 import { keyForColumn } from "metabase/lib/dataset";
+import TextPicker from "./TextPicker";
+import SelectPicker from "./SelectPicker";
+import NumberPicker from "./NumberPicker";
 
 import {
   BetweenLayoutContainer,
@@ -28,12 +27,11 @@ import {
 } from "./DefaultPicker.styled";
 
 const defaultPickerPropTypes = {
-  filter: PropTypes.object,
+  filter: PropTypes.array,
   setValue: PropTypes.func,
   setValues: PropTypes.func,
   onCommit: PropTypes.func,
   className: PropTypes.string,
-  isSidebar: PropTypes.bool,
   minWidth: PropTypes.number,
   maxWidth: PropTypes.number,
   checkedColor: PropTypes.string,
@@ -52,7 +50,6 @@ export default function DefaultPicker({
   className,
   minWidth,
   maxWidth,
-  isSidebar,
   checkedColor,
 }) {
   const operator = filter.operator();
@@ -178,7 +175,7 @@ export default function DefaultPicker({
 
   return (
     <DefaultPickerContainer
-      limitHeight={!isSidebar}
+      limitHeight
       className={cx(className, "PopoverBody--marginBottom")}
     >
       {layout}

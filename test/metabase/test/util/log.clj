@@ -12,12 +12,6 @@
            [org.apache.logging.log4j.core Appender LifeCycle LogEvent Logger LoggerContext]
            [org.apache.logging.log4j.core.config Configuration LoggerConfig]))
 
-;; make sure [[clojure.tools.logging]] is using the Log4j2 factory, otherwise the swaps we attempt to do here don't seem
-;; to work.
-(when-not (= (log.impl/name log/*logger-factory*) "org.apache.logging.log4j")
-  (alter-var-root #'log/*logger-factory* (constantly (log.impl/log4j2-factory)))
-  (log/infof "Setting clojure.tools.logging factory to %s" `log.impl/log4j2-factory))
-
 (def ^:private ^:deprecated logger->original-level
   (delay
     (let [loggers (.getLoggers ^LoggerContext (LogManager/getContext false))]
@@ -107,7 +101,6 @@
 (defn- effective-ns-logger
   "Get the logger that will be used for the namespace named by `a-namespace`."
   ^LoggerConfig [a-namespace]
-  (assert (= (log.impl/name log/*logger-factory*) "org.apache.logging.log4j"))
   (let [^Logger logger (log.impl/get-logger log/*logger-factory* (logger-name a-namespace))]
     (.get logger)))
 
@@ -282,7 +275,6 @@
          (fn [logs#]
            ~@body
            (logs#)))))))
-
 
 
 ;;;; tests

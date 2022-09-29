@@ -3,6 +3,7 @@
   (:require [clojure.test :refer :all]
             [metabase.api.dashboard-test :as api.dashboard-test]
             [metabase.models :refer [DashboardCard FieldValues]]
+            [metabase.models.params.chain-filter-test :as chain-filter-test]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.test :as mt]
@@ -17,11 +18,13 @@
         (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard]}]
           (testing "GET /api/dashboard/:id/params/:param-key/values"
             (api.dashboard-test/let-url [url (api.dashboard-test/chain-filter-values-url dashboard "_CATEGORY_NAME_")]
-              (is (= ["African" "American"]
-                     (take 2 (mt/user-http-request :rasta :get 200 url))))))
+              (is (= {:values          ["African" "American"]
+                      :has_more_values false}
+                     (chain-filter-test/take-n-values 2 (mt/user-http-request :rasta :get 200 url))))))
           (testing "GET /api/dashboard/:id/params/:param-key/search/:query"
             (api.dashboard-test/let-url [url (api.dashboard-test/chain-filter-search-url dashboard "_CATEGORY_NAME_" "a")]
-              (is (= ["African" "American"]
+              (is (= {:values          ["African" "American"]
+                      :has_more_values false}
                      (mt/user-http-request :rasta :get 200 url))))))))))
 
 (deftest add-card-parameter-mapping-permissions-test
@@ -29,7 +32,7 @@
     (testing "Should check current user's data permissions for the `parameter_mapping`"
       (mt/with-gtaps {:gtaps {:venues {}}}
         (api.dashboard-test/do-with-add-card-parameter-mapping-permissions-fixtures
-         (fn [{:keys [card-id dashboard-id mappings add-card! dashcards]}]
+         (fn [{:keys [card-id mappings add-card! dashcards]}]
            (testing "Should be able to add a card with `parameter_mapping` with only sandboxed perms"
              (perms/grant-permissions! (perms-group/all-users) (perms/table-segmented-query-path (mt/id :venues)))
              (is (schema= {:card_id            (s/eq card-id)
@@ -51,7 +54,7 @@
     (testing "Should check current user's data permissions for the `parameter_mapping`"
       (mt/with-gtaps {:gtaps {:venues {}}}
         (api.dashboard-test/do-with-update-cards-parameter-mapping-permissions-fixtures
-         (fn [{:keys [dashboard-id card-id original-mappings update-mappings! update-size! new-dashcard-info new-mappings]}]
+         (fn [{:keys [dashboard-id card-id update-mappings! new-mappings]}]
            (testing "Should be able to update `:parameter_mappings` *with* only sandboxed perms"
              (perms/grant-permissions! (perms-group/all-users) (perms/table-segmented-query-path (mt/id :venues)))
              (is (= {:status "ok"}

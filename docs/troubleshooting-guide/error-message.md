@@ -4,10 +4,6 @@ title: Troubleshooting error messages
 
 # Troubleshooting error messages
 
-- [API error messages][api-error-message]
-- [SQL error messages][sql-error-message]
-- [Metabase error messages][metabase-error-message]
-
 ## [API error messages][discourse-search-api-error]
 
 - Appear in red text when you load a dashboard or run a question.
@@ -32,15 +28,16 @@ title: Troubleshooting error messages
 
 ### Common Metabase error messages
 
-- [Your question took too long](./timeout.html).
+- [Your question took too long](./timeout.md).
+- [Still waiting...](./my-dashboard-is-slow.md).
 
 [api-error-message]: #api-error-messages
-[debugging-sql-syntax]: /learn/debugging-sql/sql-syntax.html
+[debugging-sql-syntax]: https://www.metabase.com/learn/debugging-sql/sql-syntax.html
 [discourse-search-api-error]: https://discourse.metabase.com/search?q=api%20error%20message
 [discourse-search-metabase-error]: https://discourse.metabase.com/search?q=metabase%20error%20message
 [metabase-error-message]: #metabase-error-messages
-[sql-editor]: /glossary/native_query_editor.html
-[sql-error-function-does-not-exist]: /learn/debugging-sql/sql-syntax.html#sql-function-does-not-exist
+[sql-editor]: https://www.metabase.com/glossary/native_query_editor.html
+[sql-error-function-does-not-exist]: https://www.metabase.com/learn/debugging-sql/sql-syntax.html#sql-function-does-not-exist
 [sql-error-message]: #sql-error-messages
-[sql-error-not-found]: /learn/debugging-sql/sql-syntax.html#column-or-table-name-is-not-found-or-not-recognized
-[permission-denied]: ./data-permissions#getting-a-permission-denied-error-message
+[sql-error-not-found]: https://www.metabase.com/learn/debugging-sql/sql-syntax.html#column-or-table-name-is-not-found-or-not-recognized
+[permission-denied]: ./data-permissions.md#getting-a-permission-denied-error-message

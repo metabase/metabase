@@ -2,20 +2,23 @@
   (:require [clj-kondo.hooks-api :as api]))
 
 (defn- with-temp-inner [body bindings]
-  (let [pairs       (partition 2 bindings)
-        db-refs     (map first pairs)
-        let-stream  (for [[_ binding+opts] pairs
-                          part             (:children binding+opts)]
-                      part)]
-    (api/vector-node [(api/vector-node db-refs)
-                      (api/list-node (list* (api/token-node `let)
-                                            (api/vector-node let-stream)
-                                            body))])))
+  (let [binding-infos (for [[model {[binding value] :children}] (partition 2 bindings)]
+                        {:model   model
+                         :binding binding
+                         :value   (or value
+                                      (api/token-node 'nil))})]
+    (-> (api/vector-node
+         [(api/vector-node (map :model binding-infos))
+          (-> (api/list-node (list* (api/token-node `let)
+                                    (api/vector-node (mapcat (juxt :binding :value) binding-infos))
+                                    body))
+              (with-meta (meta body)))])
+        (with-meta (meta body)))))
 
 (defn with-temp [{:keys [node]}]
   (let [[_ db-ref binding+opts & body] (:children node)]
     {:node (with-temp-inner body [db-ref binding+opts])}))
 
 (defn with-temp* [{:keys [node]}]
-  (let [[_ bindings & body]  (:children node)]
+  (let [[_ bindings & body] (:children node)]
     {:node (with-temp-inner body (:children bindings))}))

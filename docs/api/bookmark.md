@@ -1,10 +1,11 @@
 ---
 title: "Bookmark"
-summary: "Handle creating bookmarks for the user. Bookmarks are in three tables and should be thought of as a tuple of (model,
-  model-id) rather than a row in a table with an id. The DELETE takes the model and id because DELETE's do not
-  necessarily support request bodies. The POST is therefore shaped in this same manner. Since there are three
-  underlying tables the id on the actual bookmark itself is not unique among 'bookmarks' and is not a good
-  identifier for using in the API."
+summary: |
+  Handle creating bookmarks for the user. Bookmarks are in three tables and should be thought of as a tuple of (model,
+    model-id) rather than a row in a table with an id. The DELETE takes the model and id because DELETE's do not
+    necessarily support request bodies. The POST is therefore shaped in this same manner. Since there are three
+    underlying tables the id on the actual bookmark itself is not unique among 'bookmarks' and is not a good
+    identifier for using in the API.
 ---
 
 # Bookmark
@@ -12,13 +13,8 @@ summary: "Handle creating bookmarks for the user. Bookmarks are in three tables 
 Handle creating bookmarks for the user. Bookmarks are in three tables and should be thought of as a tuple of (model,
   model-id) rather than a row in a table with an id. The DELETE takes the model and id because DELETE's do not
   necessarily support request bodies. The POST is therefore shaped in this same manner. Since there are three
-  underlying tables the id on the actual bookmark itself is not unique among 'bookmarks' and is not a good
+  underlying tables the id on the actual bookmark itself is not unique among "bookmarks" and is not a good
   identifier for using in the API.
-
-  - [DELETE /api/bookmark/:model/:id](#delete-apibookmarkmodelid)
-  - [GET /api/bookmark/](#get-apibookmark)
-  - [POST /api/bookmark/:model/:id](#post-apibookmarkmodelid)
-  - [PUT /api/bookmark/ordering](#put-apibookmarkordering)
 
 ## `DELETE /api/bookmark/:model/:id`
 
@@ -50,7 +46,10 @@ Sets the order of bookmarks for user.
 
 ### PARAMS:
 
-*  **`orderings`** value must be an array.
+*  **`orderings`** value must be an array. Each value must be a map with schema: (
+  item_id : value must be an integer greater than zero.
+  type : value must be one of: `card`, `collection`, `dashboard`.
+)
 
 ---
 

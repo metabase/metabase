@@ -41,7 +41,10 @@
 (defmethod driver/display-name :mysql [_] "MySQL")
 
 (defmethod driver/database-supports? [:mysql :nested-field-columns] [_ _ database]
-  (or (get-in database [:details :json-unfolding]) true))
+  (let [json-setting (get-in database [:details :json-unfolding])]
+    (if (nil? json-setting)
+      true
+      json-setting)))
 
 (defmethod driver/database-supports? [:mysql :persist-models] [_driver _feat _db] true)
 
@@ -69,19 +72,19 @@
      (if (mariadb? metadata) min-supported-mariadb-version min-supported-mysql-version)))
 
 (defn- warn-on-unsupported-versions [driver details]
-  (let [jdbc-spec (sql-jdbc.conn/details->connection-spec-for-testing-connection driver details)]
+  (sql-jdbc.conn/with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
     (jdbc/with-db-metadata [metadata jdbc-spec]
       (when (unsupported-version? metadata)
         (log/warn
          (u/format-color 'red
-             (str
-              "\n\n********************************************************************************\n"
-              (trs "WARNING: Metabase only officially supports MySQL {0}/MariaDB {1} and above."
-                   min-supported-mysql-version
-                   min-supported-mariadb-version)
-              "\n"
-              (trs "All Metabase features may not work properly when using an unsupported version.")
-              "\n********************************************************************************\n")))))))
+                         (str
+                          "\n\n********************************************************************************\n"
+                          (trs "WARNING: Metabase only officially supports MySQL {0}/MariaDB {1} and above."
+                               min-supported-mysql-version
+                               min-supported-mariadb-version)
+                          "\n"
+                          (trs "All Metabase features may not work properly when using an unsupported version.")
+                          "\n********************************************************************************\n")))))))
 
 (defmethod driver/can-connect? :mysql
   [driver details]
@@ -236,17 +239,33 @@
   [driver [_ arg]]
   (hsql/call :char_length (sql.qp/->honeysql driver arg)))
 
+(def ^:private database-type->mysql-cast-type-name
+  "MySQL supports the ordinary SQL standard database type names for actual type stuff but not for coercions, sometimes.
+  If it doesn't support the ordinary SQL standard type, then we coerce it to a different type that MySQL does support here"
+  {"integer"          "signed"
+   "text"             "char"
+   "double precision" "double"
+   "bigint"           "unsigned"})
+
 (defmethod sql.qp/json-query :mysql
   [_ unwrapped-identifier stored-field]
   (letfn [(handle-name [x] (str "\"" (if (number? x) (str x) (name x)) "\""))]
-    (let [nfc-path             (:nfc_path stored-field)
-          parent-identifier    (field/nfc-field->parent-identifier unwrapped-identifier stored-field)
-          jsonpath-query       (format "$.%s" (str/join "." (map handle-name (rest nfc-path))))]
-      (reify
-        hformat/ToSql
-        (to-sql [_]
-          (hformat/to-params-default jsonpath-query "nfc_path")
-          (format "JSON_EXTRACT(%s, ?)" (hformat/to-sql parent-identifier)))))))
+    (let [field-type            (:database_type stored-field)
+          field-type            (get database-type->mysql-cast-type-name field-type field-type)
+          nfc-path              (:nfc_path stored-field)
+          parent-identifier     (field/nfc-field->parent-identifier unwrapped-identifier stored-field)
+          jsonpath-query        (format "$.%s" (str/join "." (map handle-name (rest nfc-path))))
+          json-extract+jsonpath (hsql/call :json_extract (hsql/raw (hformat/to-sql parent-identifier)) jsonpath-query)]
+      (case field-type
+        ;; If we see JSON datetimes we expect them to be in ISO8601. However, MySQL expects them as something different.
+        ;; We explicitly tell MySQL to go and accept ISO8601, because that is JSON datetimes, although there is no real standard for JSON, ISO8601 is the de facto standard.
+        "timestamp" (hsql/call :convert
+                               (hsql/call :str_to_date json-extract+jsonpath "\"%Y-%m-%dT%T.%fZ\"")
+                               (hsql/raw "DATETIME"))
+
+        "boolean" json-extract+jsonpath
+
+        (hsql/call :convert json-extract+jsonpath (hsql/raw (str/upper-case field-type)))))))
 
 (defmethod sql.qp/->honeysql [:mysql :field]
   [driver [_ id-or-name opts :as clause]]
@@ -361,7 +380,8 @@
     :TINYTEXT   :type/Text
     :VARBINARY  :type/*
     :VARCHAR    :type/Text
-    :YEAR       :type/Date}
+    :YEAR       :type/Date
+    :JSON       :type/SerializedJSON}
    ;; strip off " UNSIGNED" from end if present
    (keyword (str/replace (name database-type) #"\sUNSIGNED$" ""))))
 

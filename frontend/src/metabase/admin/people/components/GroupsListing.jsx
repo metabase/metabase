@@ -5,6 +5,7 @@ import { Link } from "react-router";
 import _ from "underscore";
 import cx from "classnames";
 
+import { t } from "ttag";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
 import {
@@ -14,7 +15,6 @@ import {
 } from "metabase/lib/groups";
 import { KEYCODE_ENTER } from "metabase/lib/keyboard";
 
-import { t } from "ttag";
 import Icon from "metabase/components/Icon";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import ModalContent from "metabase/components/ModalContent";
@@ -27,6 +27,7 @@ import AdminContentTable from "metabase/components/AdminContentTable";
 import AdminPaneLayout from "metabase/components/AdminPaneLayout";
 
 import { AddRow } from "./AddRow";
+import { DeleteModalTrigger, EditGroupButton } from "./GroupsListing.styled";
 
 // ------------------------------------------------------------ Add Group ------------------------------------------------------------
 
@@ -87,15 +88,11 @@ function ActionsPopover({ group, onEditGroupClicked, onDeleteGroupClicked }) {
       triggerElement={<Icon className="text-light" name="ellipsis" />}
     >
       <ul className="UserActionsSelect py1">
-        <li
-          className="py1 px2 bg-brand-hover text-white-hover cursor-pointer"
-          onClick={onEditGroupClicked.bind(null, group)}
-        >
+        <EditGroupButton onClick={onEditGroupClicked.bind(null, group)}>
           {t`Edit Name`}
-        </li>
+        </EditGroupButton>
         <ModalWithTrigger
-          as="li"
-          triggerClasses="py1 px2 bg-brand-hover text-white-hover cursor-pointer text-error"
+          as={DeleteModalTrigger}
           triggerElement={t`Remove Group`}
         >
           <DeleteGroupModal group={group} onConfirm={onDeleteGroupClicked} />

@@ -1,7 +1,6 @@
 (ns metabase.test.data.users
   "Code related to creating / managing fake `Users` for testing purposes."
-  (:require [cemerick.friend.credentials :as creds]
-            [clojure.test :as t]
+  (:require [clojure.test :as t]
             [medley.core :as m]
             [metabase.db.connection :as mdb.connection]
             [metabase.http-client :as client]
@@ -11,6 +10,7 @@
             [metabase.server.middleware.session :as mw.session]
             [metabase.test.initialize :as initialize]
             [metabase.util :as u]
+            [metabase.util.password :as u.password]
             [schema.core :as s]
             [toucan.db :as db]
             [toucan.util.test :as tt])
@@ -65,9 +65,9 @@
              active    true}}]
   {:pre [(string? email) (string? first) (string? last) (string? password) (m/boolean? superuser) (m/boolean? active)]}
   (initialize/initialize-if-needed! :db)
-  (or (User :email email)
+  (or (db/select-one User :email email)
       (locking create-user-lock
-        (or (User :email email)
+        (or (db/select-one User :email email)
             (db/insert! User
               :email        email
               :first_name   first
@@ -197,7 +197,7 @@
         (throw (ex-info "User does not exist" {:user user})))
       (try
         (db/execute! {:update User
-                      :set    {:password      (creds/hash-bcrypt user-email)
+                      :set    {:password      (u.password/hash-bcrypt user-email)
                                :password_salt ""}
                       :where  [:= :id user-id]})
         (apply client/client {:username user-email, :password user-email} args)

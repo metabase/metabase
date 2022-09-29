@@ -1,13 +1,12 @@
 ---
 title: "Transform"
-summary: "API endpoints for Transform."
+summary: |
+  API endpoints for Transform.
 ---
 
 # Transform
 
 API endpoints for Transform.
-
-  - [GET /api/transform/:db-id/:schema/:transform-name](#get-apitransformdb-idschematransform-name)
 
 ## `GET /api/transform/:db-id/:schema/:transform-name`
 

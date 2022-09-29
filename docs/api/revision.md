@@ -1,14 +1,12 @@
 ---
 title: "Revision"
-summary: "API endpoints for Revision."
+summary: |
+  API endpoints for Revision.
 ---
 
 # Revision
 
 API endpoints for Revision.
-
-  - [GET /api/revision/](#get-apirevision)
-  - [POST /api/revision/revert](#post-apirevisionrevert)
 
 ## `GET /api/revision/`
 

@@ -1,13 +1,12 @@
 ---
 title: "Login history"
-summary: "API endpoints for Login history."
+summary: |
+  API endpoints for Login history.
 ---
 
 # Login history
 
 API endpoints for Login history.
-
-  - [GET /api/login-history/current](#get-apilogin-historycurrent)
 
 ## `GET /api/login-history/current`
 

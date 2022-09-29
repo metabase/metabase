@@ -13,6 +13,10 @@ function getLinesForHeight(height: number) {
 
 const FRACTION_OF_TOTAL_VIEW_HEIGHT = 0.4;
 
+// the query editor needs a fixed pixel height for now
+// until we extract the resizable component
+const FULL_HEIGHT = 500;
+
 // This determines the max height that the editor *automatically* takes.
 // - On load, long queries will be capped at this length
 // - When loading an empty query, this is the height
@@ -22,18 +26,31 @@ export function getMaxAutoSizeLines(viewHeight: number) {
   return Math.ceil(getLinesForHeight(pixelHeight));
 }
 
-type GetVisibleLinesCountParams = { query?: NativeQuery; viewHeight: number };
+type GetVisibleLinesCountParams = {
+  query?: NativeQuery;
+  viewHeight: number | "full";
+};
 
 function getVisibleLinesCount({
   query,
   viewHeight,
-}: GetVisibleLinesCountParams) {
+}: {
+  query?: NativeQuery;
+  viewHeight: number;
+}) {
   const maxAutoSizeLines = getMaxAutoSizeLines(viewHeight);
   const queryLineCount = query?.lineCount() || maxAutoSizeLines;
   return Math.max(Math.min(queryLineCount, maxAutoSizeLines), MIN_HEIGHT_LINES);
 }
 
-export function calcInitialEditorHeight(params: GetVisibleLinesCountParams) {
-  const lines = getVisibleLinesCount(params);
+export function calcInitialEditorHeight({
+  query,
+  viewHeight,
+}: GetVisibleLinesCountParams) {
+  if (viewHeight === "full") {
+    // override for action editor
+    return FULL_HEIGHT;
+  }
+  const lines = getVisibleLinesCount({ query, viewHeight });
   return getEditorLineHeight(lines);
 }

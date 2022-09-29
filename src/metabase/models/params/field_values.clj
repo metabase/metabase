@@ -27,7 +27,7 @@
 
 (defn- postprocess-field-values
   "Format a FieldValues to use by params functions.
-  ;; (postprocess-field-values (FieldValues 1) (Field 1))
+  ;; (postprocess-field-values (db/select-one FieldValues :id 1) (Field 1))
   ;; => {:values          [1 2 3 4]
          :field_id        1
          :has_more_values boolean}"
@@ -49,12 +49,16 @@
     :linked-filter
     (do
       (classloader/require 'metabase.models.params.chain-filter)
-      {:values          (->> ((resolve 'metabase.models.params.chain-filter/unremapped-chain-filter)
-                              (:id field) constraints {})
-                             (field-values/take-by-length field-values/*total-max-length*))
-       ;; TODO: refactor [unremapped-chain-filter] to returns has_more_values
-       ;; currently default to `true` to makes sure chain-filter-search do a MBQL search
-       :has_more_values true})
+      (let [{:keys [values has_more_values]} ((resolve 'metabase.models.params.chain-filter/unremapped-chain-filter)
+                                              (:id field) constraints {})
+            ;; we have a hard limit for how many values we want to store in FieldValues,
+            ;; let's make sure we respect that limit here.
+            ;; For a more detailed docs on this limt check out [[field-values/distinct-values]]
+            limited-values                   (field-values/take-by-length field-values/*total-max-length* values)]
+       {:values          limited-values
+        :has_more_values (or (> (count values)
+                                (count limited-values))
+                             has_more_values)}))
 
     :sandbox
     (field-values/distinct-values field)))
@@ -97,7 +101,7 @@
 
   ([fv-type field constraints]
    (let [hash-key (hash-key-for-advanced-field-values fv-type (:id field) constraints)
-         fv       (or (FieldValues :field_id (:id field)
+         fv       (or (db/select-one FieldValues :field_id (:id field)
                                    :type fv-type
                                    :hash_key hash-key)
                       (create-advanced-field-values! fv-type field hash-key constraints))]

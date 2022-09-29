@@ -1,8 +1,11 @@
 import styled from "@emotion/styled";
-import { space } from "metabase/styled-components/theme";
 
-export const TimeContainer = styled.div<{ isSidebar?: boolean }>`
+export const DateContainer = styled.div`
   display: flex;
-  grid-gap: ${space(2)};
-  flex-wrap: ${({ isSidebar }) => (isSidebar ? "wrap" : "no-wrap")};
+  grid-gap: 0.25rem;
+  flex-wrap: nowrap;
+`;
+
+export const DateDivider = styled.div`
+  margin-top: 0.65rem;
 `;

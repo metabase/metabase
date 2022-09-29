@@ -10,16 +10,23 @@ const GRADIENT_ALPHA = 0.75;
 
 // for simplicity wheb typing assume all values are numbers, since you can only pick numeric columns
 
-export function makeCellBackgroundGetter(rows, cols, settings) {
-  const formats = settings["table.column_formatting"] || [];
-  const pivot = settings["table.pivot"];
+export function makeCellBackgroundGetter(
+  rows,
+  cols,
+  formattingSettings,
+  isPivoted,
+) {
   let formatters = {};
   let rowFormatters = [];
   const colIndexes = getColumnIndexesByName(cols);
   try {
-    const columnExtents = computeColumnExtents(formats, rows, colIndexes);
-    formatters = compileFormatters(formats, columnExtents);
-    rowFormatters = compileRowFormatters(formats, columnExtents);
+    const columnExtents = computeColumnExtents(
+      formattingSettings,
+      rows,
+      colIndexes,
+    );
+    formatters = compileFormatters(formattingSettings, columnExtents);
+    rowFormatters = compileRowFormatters(formattingSettings, columnExtents);
   } catch (e) {
     console.error("Unexpected error compiling column formatters: ", e);
   }
@@ -38,7 +45,7 @@ export function makeCellBackgroundGetter(rows, cols, settings) {
         }
       }
       // don't highlight row for pivoted tables
-      if (!pivot) {
+      if (!isPivoted) {
         for (let i = 0; i < rowFormatters.length; i++) {
           const rowFormatter = rowFormatters[i];
           const color = rowFormatter(rows[rowIndex], colIndexes);

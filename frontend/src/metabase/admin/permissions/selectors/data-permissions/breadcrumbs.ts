@@ -1,6 +1,8 @@
-import Metadata from "metabase-lib/lib/metadata/Metadata";
-import { Group } from "metabase-types/api";
 import _ from "underscore";
+import { Group } from "metabase-types/api";
+import type Metadata from "metabase-lib/lib/metadata/Metadata";
+import type Schema from "metabase-lib/lib/metadata/Schema";
+import type Table from "metabase-lib/lib/metadata/Table";
 
 import {
   getSchemaEntityId,
@@ -46,7 +48,7 @@ export const getDatabasesEditorBreadcrumbs = (
     return [groupItem, databaseItem];
   }
 
-  const schema = database.schema(schemaName);
+  const schema = database.schema(schemaName) as Schema;
   const schemaItem = {
     id: schema.name,
     text: schema.name,
@@ -79,7 +81,7 @@ export const getGroupsDataEditorBreadcrumbs = (
     return [databaseItem];
   }
 
-  const schema = database.schema(schemaName);
+  const schema = database.schema(schemaName) as Schema;
   const schemaItem = {
     id: schema.id,
     text: schema.name,
@@ -92,7 +94,7 @@ export const getGroupsDataEditorBreadcrumbs = (
     return [databaseItem, hasMultipleSchemas && schemaItem].filter(Boolean);
   }
 
-  const table = metadata.table(tableId);
+  const table = metadata.table(tableId) as Table;
 
   const tableItem = {
     id: table.id,

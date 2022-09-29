@@ -2,9 +2,12 @@
   (:require [clojure.set :as set]
             [clojure.test :refer :all]
             [java-time :as t]
+            [metabase.driver :as driver]
             [metabase.driver.mongo.query-processor :as mongo.qp]
             [metabase.models :refer [Field Table]]
             [metabase.query-processor :as qp]
+            [metabase.query-processor-test.date-time-zone-functions-test :as qp.datetime-test]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.test :as mt]
             [metabase.util :as u]
             [schema.core :as s]
@@ -87,16 +90,22 @@
                         :query       [{"$match"
                                        {:$expr
                                         {"$eq"
-                                         [{:$let {:vars {:parts {:$dateToParts {:date "$datetime"}}}
-                                                  :in   {:$dateFromParts {:year "$$parts.year", :month "$$parts.month"}}}}
+                                         [{:$let {:vars {:parts {:$dateToParts {:date "$datetime"
+                                                                                :timezone (qp.timezone/results-timezone-id :mongo mt/db)}}}
+                                                  :in   {:$dateFromParts {:year "$$parts.year", :month "$$parts.month"
+                                                                                :timezone (qp.timezone/results-timezone-id :mongo mt/db)}}}}
                                           {:$dateFromString {:dateString "2021-01-01T00:00Z"}}]}}}
-                                      {"$group" {"_id"   {"datetime~~~month" {:$let {:vars {:parts {:$dateToParts {:date "$datetime"}}}
-                                                                                     :in   {:$dateFromParts {:year  "$$parts.year"
-                                                                                                             :month "$$parts.month"}}}},
-                                                          "datetime~~~day"   {:$let {:vars {:parts {:$dateToParts {:date "$datetime"}}}
+                                      {"$group" {"_id"   {"datetime~~~month" {:$let {:vars {:parts {:$dateToParts {:date "$datetime"
+                                                                                                                   :timezone (qp.timezone/results-timezone-id :mongo mt/db)}}}
                                                                                      :in   {:$dateFromParts {:year  "$$parts.year"
                                                                                                              :month "$$parts.month"
-                                                                                                             :day   "$$parts.day"}}}}}
+                                                                                                             :timezone (qp.timezone/results-timezone-id :mongo mt/db)}}}},
+                                                          "datetime~~~day"   {:$let {:vars {:parts {:$dateToParts {:date "$datetime"
+                                                                                                                   :timezone (qp.timezone/results-timezone-id :mongo mt/db)}}}
+                                                                                     :in   {:$dateFromParts {:year  "$$parts.year"
+                                                                                                             :month "$$parts.month"
+                                                                                                             :day   "$$parts.day"
+                                                                                                             :timezone (qp.timezone/results-timezone-id :mongo mt/db)}}}}}
                                                  "count" {"$sum" 1}}}
                                       {"$sort" {"_id" 1}}
                                       {"$project" {"_id"              false
@@ -110,6 +119,33 @@
                   (is (schema= {:status   (s/eq :completed)
                                 s/Keyword s/Any}
                                (qp/process-query (mt/native-query query)))))))))))))
+
+(deftest grouping-with-timezone-test
+  (mt/test-driver :mongo
+    (testing "Result timezone is respected when grouping by hour (#11149)"
+      (mt/dataset attempted-murders
+        (testing "Querying in UTC works"
+          (mt/with-system-timezone-id "UTC"
+            (is (= [["2019-11-20T20:00:00Z" 1]
+                    ["2019-11-19T00:00:00Z" 1]
+                    ["2019-11-18T20:00:00Z" 1]
+                    ["2019-11-17T14:00:00Z" 1]]
+                   (mt/rows (mt/run-mbql-query attempts
+                              {:aggregation [[:count]]
+                               :breakout [[:field %datetime {:temporal-unit :hour}]]
+                               :order-by [[:desc [:field %datetime {:temporal-unit :hour}]]]
+                               :limit 4}))))))
+        (testing "Querying in Kathmandu works"
+          (mt/with-system-timezone-id "Asia/Kathmandu"
+            (is (= [["2019-11-21T01:00:00+05:45" 1]
+                    ["2019-11-19T06:00:00+05:45" 1]
+                    ["2019-11-19T02:00:00+05:45" 1]
+                    ["2019-11-17T19:00:00+05:45" 1]]
+                   (mt/rows (mt/run-mbql-query attempts
+                              {:aggregation [[:count]]
+                               :breakout [[:field %datetime {:temporal-unit :hour}]]
+                               :order-by [[:desc [:field %datetime {:temporal-unit :hour}]]]
+                               :limit 4}))))))))))
 
 (deftest nested-columns-test
   (mt/test-driver :mongo
@@ -141,7 +177,7 @@
                     {:aggregation [[:count]]
                      :breakout    [$tips.source.username]}))))
           (testing "Parent fields are removed from projections when child fields are included (#19135)"
-            (let [table       (Table :db_id (mt/id))
+            (let [table       (db/select-one Table :db_id (mt/id))
                   fields      (db/select Field :table_id (u/the-id table))
                   projections (-> (mongo.qp/mbql->native
                                     (mt/mbql-query tips {:fields (mapv (fn [f]
@@ -262,8 +298,10 @@
                    {"_id"
                     {"date~~~day"
                      {:$let
-                      {:vars {:parts {:$dateToParts {:date "$date"}}},
-                       :in   {:$dateFromParts {:year "$$parts.year", :month "$$parts.month", :day "$$parts.day"}}}}}}}
+                      {:vars {:parts {:$dateToParts {:date "$date"
+                                                     :timezone (qp.timezone/results-timezone-id :mongo mt/db)}}},
+                       :in   {:$dateFromParts {:year "$$parts.year", :month "$$parts.month", :day "$$parts.day"
+                                               :timezone (qp.timezone/results-timezone-id :mongo mt/db)}}}}}}}
                   {"$sort" {"_id" 1}}
                   {"$project" {"_id" false, "date~~~day" "$_id.date~~~day"}}
                   {"$sort" {"date~~~day" 1}}
@@ -310,3 +348,52 @@
                                                        [:interval 1 :year]
                                                        [:field "date-field"]]
                                                       [:absolute-datetime (t/local-date "2008-05-31")]]))))))
+
+(deftest date-math-tests
+  (mt/test-driver :mongo
+    (mt/dataset qp.datetime-test/times-mixed
+      ;; date arithmetic doesn't supports until mongo 5+
+      (when (driver/database-supports? :mongo :date-arithmetics (mt/db))
+        (testing "date arithmetic with datetime columns"
+          (let [[col-type field-id] [:datetime (mt/id :times :dt)]]
+            (doseq [op               [:date-add :date-subtract]
+                    unit             [:year :quarter :month :day :hour :minute :second :millisecond]
+                    {:keys [expected query]}
+                    [{:expected [(qp.datetime-test/date-math op #t "2004-03-19 09:19:09" 2 unit col-type)
+                                 (qp.datetime-test/date-math op #t "2008-06-20 10:20:10" 2 unit col-type)
+                                 (qp.datetime-test/date-math op #t "2012-11-21 11:21:11" 2 unit col-type)
+                                 (qp.datetime-test/date-math op #t "2012-11-21 11:21:11" 2 unit col-type)]
+                      :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
+                                 :fields      [[:expression "expr"]]}}
+                     {:expected (into [] (frequencies
+                                          [(qp.datetime-test/date-math op #t "2004-03-19 09:19:09" 2 unit col-type)
+                                           (qp.datetime-test/date-math op #t "2008-06-20 10:20:10" 2 unit col-type)
+                                           (qp.datetime-test/date-math op #t "2012-11-21 11:21:11" 2 unit col-type)
+                                           (qp.datetime-test/date-math op #t "2012-11-21 11:21:11" 2 unit col-type)]))
+                      :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
+                                 :aggregation [[:count]]
+                                 :breakout    [[:expression "expr"]]}}]]
+              (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
+                (is (= (set expected) (set (qp.datetime-test/test-date-math query))))))))
+
+        (testing "date arithmetic with date columns"
+          (let [[col-type field-id] [:date (mt/id :times :d)]]
+            (doseq [op               [:date-add :date-subtract]
+                    unit             [:year :quarter :month :day]
+                    {:keys [expected query]}
+                    [{:expected [(qp.datetime-test/date-math op #t "2004-03-19 00:00:00" 2 unit col-type)
+                                 (qp.datetime-test/date-math op #t "2008-06-20 00:00:00" 2 unit col-type)
+                                 (qp.datetime-test/date-math op #t "2012-11-21 00:00:00" 2 unit col-type)
+                                 (qp.datetime-test/date-math op #t "2012-11-21 00:00:00" 2 unit col-type)]
+                       :query   {:expressions {"expr" [op [:field field-id nil] 2 unit]}
+                                 :fields      [[:expression "expr"]]}}
+                     {:expected (into [] (frequencies
+                                           [(qp.datetime-test/date-math op #t "2004-03-19 00:00:00" 2 unit col-type)
+                                            (qp.datetime-test/date-math op #t "2008-06-20 00:00:00" 2 unit col-type)
+                                            (qp.datetime-test/date-math op #t "2012-11-21 00:00:00" 2 unit col-type)
+                                            (qp.datetime-test/date-math op #t "2012-11-21 00:00:00" 2 unit col-type)]))
+                      :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
+                                 :aggregation [[:count]]
+                                 :breakout    [[:expression "expr"]]}}]]
+              (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
+                (is (= (set expected) (set (qp.datetime-test/test-date-math query))))))))))))

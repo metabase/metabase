@@ -1,7 +1,6 @@
 import {
   enterCustomColumnDetails,
   getNotebookStep,
-  modal,
   openOrdersTable,
   openProductsTable,
   popover,
@@ -239,50 +238,6 @@ describe("scenarios > question > notebook", () => {
       // Popover invoked again blocks the button making it impossible to click the button for the third time
       cy.get("@metric").click();
       cy.get("@metric").click();
-    });
-  });
-
-  describe("nested", () => {
-    it("should create a nested question with post-aggregation filter", () => {
-      openProductsTable({ mode: "notebook" });
-
-      summarize({ mode: "notebook" });
-      popover().within(() => {
-        cy.findByText("Count of rows").click();
-      });
-
-      cy.findByText("Pick a column to group by").click();
-      popover().within(() => {
-        cy.findByText("Category").click();
-      });
-
-      cy.findByText("Filter").click();
-      popover().within(() => {
-        cy.findByText("Category").click();
-        cy.findByText("Gadget").click();
-        cy.findByText("Add filter").click();
-      });
-
-      visualize();
-
-      cy.findByText("Gadget").should("exist");
-      cy.findByText("Gizmo").should("not.exist");
-
-      cy.findByText("Save").click();
-
-      modal().within(() => {
-        cy.findByLabelText("Name").type("post aggregation");
-        cy.findByText("Save").click();
-      });
-
-      cy.findByText("Not now").click();
-
-      cy.icon("notebook").click();
-
-      cy.reload();
-
-      cy.findByText("Category").should("exist");
-      cy.findByText("Category is Gadget").should("exist");
     });
   });
 

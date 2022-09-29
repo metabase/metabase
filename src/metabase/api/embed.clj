@@ -27,6 +27,7 @@
             [metabase.driver.common.parameters.operators :as params.ops]
             [metabase.models.card :refer [Card]]
             [metabase.models.dashboard :refer [Dashboard]]
+            [metabase.pulse.parameters :as params]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.constraints :as qp.constraints]
             [metabase.query-processor.pivot :as qp.pivot]
@@ -129,6 +130,29 @@
   [dashboard-or-card token-params]
   (update dashboard-or-card :parameters remove-params-in-set (set (keys token-params))))
 
+(defn- substitute-token-parameters-in-text
+  "For any dashboard parameters with slugs matching keys provided in `token-params`, substitute their values from the
+  token into any Markdown dashboard cards with linked variables. This needs to be done on the backend because we don't
+  make these parameters visible at all to the frontend."
+  [dashboard token-params]
+  (let [params             (:parameters dashboard)
+        ordered-cards      (:ordered_cards dashboard)
+        params-with-values (reduce
+                            (fn [acc param]
+                             (if-let [value (get token-params (keyword (:slug param)))]
+                                (conj acc (assoc param :value value))
+                                acc))
+                            []
+                            params)]
+    (assoc dashboard
+           :ordered_cards
+           (map
+            (fn [card]
+              (if (-> card :visualization_settings :virtual_card)
+                (params/process-virtual-dashcard card params-with-values)
+                card))
+            ordered-cards))))
+
 (defn- template-tag-parameters
   "Transforms native query's `template-tags` into `parameters`."
   [card]
@@ -183,7 +207,7 @@
 (s/defn ^:private resolve-dashboard-parameters :- [api.dashboard/ParameterWithID]
   "Given a `dashboard-id` and parameters map in the format `slug->value`, return a sequence of parameters with `:id`s
   that can be passed to various functions in the `metabase.api.dashboard` namespace such as
-  `metabase.api.dashboard/run-query-for-dashcard-async`."
+  [[metabase.api.dashboard/run-query-for-dashcard-async]]."
   [dashboard-id :- su/IntGreaterThanZero
    slug->value  :- {s/Any s/Any}]
   (let [parameters (db/select-one-field :parameters Dashboard :id dashboard-id)
@@ -250,6 +274,7 @@
   (let [dashboard-id (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
         token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
     (-> (apply api.public/public-dashboard :id dashboard-id, constraints)
+        (substitute-token-parameters-in-text token-params)
         (remove-token-parameters token-params)
         (remove-locked-and-disabled-params (or embedding-params
                                                (db/select-one-field :embedding_params Dashboard, :id dashboard-id))))))
@@ -538,7 +563,7 @@
       (let [merged-id-params (chain-filter-merged-params id->slug slug->id embedding-params slug-token-params id-query-params)]
         (try
           (binding [api/*current-user-permissions-set* (atom #{"/"})]
-            (api.dashboard/chain-filter (Dashboard dashboard-id) searched-param-id merged-id-params prefix))
+            (api.dashboard/chain-filter (db/select-one Dashboard :id dashboard-id) searched-param-id merged-id-params prefix))
           (catch Throwable e
             (throw (ex-info (.getMessage e)
                             {:merged-id-params merged-id-params}

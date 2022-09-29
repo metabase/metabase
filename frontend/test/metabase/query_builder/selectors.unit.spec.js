@@ -1,4 +1,3 @@
-import Question from "metabase-lib/lib/Question";
 import {
   getQuestion,
   getIsResultDirty,
@@ -7,6 +6,7 @@ import {
   getQuestionDetailsTimelineDrawerState,
 } from "metabase/query_builder/selectors";
 import { state as sampleState } from "__support__/sample_database_fixture";
+import Question from "metabase-lib/lib/Question";
 
 function getBaseState({ uiControls = {}, ...state } = {}) {
   return {
@@ -111,7 +111,7 @@ describe("getQuestion", () => {
 });
 
 describe("getIsResultDirty", () => {
-  describe("structure query", () => {
+  describe("structured query", () => {
     function getCard(query) {
       return getBaseCard({ dataset_query: { type: "query", query } });
     }
@@ -299,7 +299,7 @@ describe("getIsResultDirty", () => {
         originalCard: dataset,
         lastRunCard: getDataset({ "source-table": 2 }),
       });
-      expect(getIsResultDirty(state)).toBe(false);
+      expect(getIsResultDirty(state)).toBe(true);
     });
 
     it("should not be dirty if model simple mode is active", () => {
@@ -328,6 +328,16 @@ describe("getIsResultDirty", () => {
         lastRunCard: dataset,
       });
       expect(getIsResultDirty(state)).toBe(true);
+    });
+
+    it("should not be dirty when the last run question is the composed model and the current question is equivalent to the original", () => {
+      const adHocDatasetCard = getDataset({ "source-table": "card__1" });
+      const state = getState({
+        card: dataset,
+        originalCard: dataset,
+        lastRunCard: adHocDatasetCard,
+      });
+      expect(getIsResultDirty(state)).toBe(false);
     });
   });
 });

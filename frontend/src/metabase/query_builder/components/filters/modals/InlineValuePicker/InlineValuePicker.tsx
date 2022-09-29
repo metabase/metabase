@@ -1,16 +1,18 @@
 import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import Field from "metabase-lib/lib/metadata/Field";
 
 import {
-  ArgumentSelector,
   ValuesPickerContainer,
   BetweenContainer,
   NumberInput,
   NumberSeparator,
 } from "./InlineValuePicker.styled";
+
+import { getFieldWidth } from "./utils";
 
 interface InlineValuePickerProps {
   filter: Filter;
@@ -39,18 +41,17 @@ export function InlineValuePicker({
     "not-empty",
   ].includes(filter.operatorName());
 
+  const containerWidth = getFieldWidth(field, filter);
+
   return (
-    <>
-      <ValuesPickerContainer data-testid="value-picker">
-        {!hideArgumentSelector && (
-          <ValuesInput
-            filter={filter}
-            field={field}
-            onChange={changeArguments}
-          />
-        )}
-      </ValuesPickerContainer>
-    </>
+    <ValuesPickerContainer
+      data-testid="value-picker"
+      fieldWidth={containerWidth}
+    >
+      {!hideArgumentSelector && (
+        <ValuesInput filter={filter} field={field} onChange={changeArguments} />
+      )}
+    </ValuesPickerContainer>
   );
 }
 
@@ -73,7 +74,7 @@ function ValuesInput({
 
   if (!isBetween) {
     return (
-      <ArgumentSelector
+      <FieldValuesWidget
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore: this component doesn't have types or propTypes
         value={filterArguments}

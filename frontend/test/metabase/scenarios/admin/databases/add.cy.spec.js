@@ -171,6 +171,7 @@ describe("scenarios > admin > databases > add", () => {
 
     const databaseName = "Another H2";
 
+    cy.intercept("POST", "/api/database").as("createDatabase");
     cy.visit("/admin/databases/create");
 
     chooseDatabase("H2");
@@ -186,6 +187,7 @@ describe("scenarios > admin > databases > add", () => {
     isSyncOptionSelected("Never, I'll do this manually if I need to");
 
     cy.button("Save").click();
+    cy.wait("@createDatabase");
 
     cy.findByText("We're taking a look at your database!");
     cy.findByLabelText("close icon").click();
@@ -374,7 +376,7 @@ describe("scenarios > admin > databases > add", () => {
       sslMode = "SSL Mode",
       useClientCert = "Authenticate client certificate?",
       clientPemCert = "SSL Client Certificate (PEM)",
-      clientPkcsCert = "SSL Client Key (PKCS-8/DER or PKCS-12)",
+      clientPkcsCert = "SSL Client Key (PKCS-8/DER)",
       sslRootCert = "SSL Root Certificate (PEM)";
 
     cy.visit("/admin/databases/create");

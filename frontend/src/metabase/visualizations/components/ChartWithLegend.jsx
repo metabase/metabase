@@ -1,13 +1,11 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import cx from "classnames";
+import ExplicitSize from "metabase/components/ExplicitSize";
 import styles from "./ChartWithLegend.css";
 
 import LegendVertical from "./LegendVertical";
 import LegendHorizontal from "./LegendHorizontal";
-
-import ExplicitSize from "metabase/components/ExplicitSize";
-
-import cx from "classnames";
 
 const GRID_ASPECT_RATIO = 4 / 3;
 const PADDING = 14;
@@ -82,7 +80,7 @@ class ChartWithLegend extends Component {
       type = "vertical";
       LegendComponent = LegendHorizontal;
       legendTitles = legendTitles.map(title =>
-        Array.isArray(title) ? title[0] : title,
+        Array.isArray(title) ? title.join(" – ") : title,
       );
       const desiredHeight = width * (1 / aspectRatio);
       if (desiredHeight > height * (3 / 4)) {

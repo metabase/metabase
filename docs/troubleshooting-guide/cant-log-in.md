@@ -63,7 +63,7 @@ What do you use to log in?
 
 ## Further reading
 
-- [SSO documentation][sso-docs]
+- [People and groups][people-and-groups]
 - [SAML documentation][saml-docs]
 - [LDAP documentation][ldap-docs]
 - [Checking a person's auth method][how-to-find-auth-method-for-an-account]
@@ -75,22 +75,22 @@ If you can’t solve your problem using the troubleshooting guides:
 - Search or ask the [Metabase community][discourse].
 - Search for [known bugs or limitations][known-issues].
 
-[cloud-docs]: /cloud/docs/
-[config-settings]: ../administration-guide/08-configuration-settings.html
+[cloud-docs]: https://www.metabase.com/cloud/docs/
+[config-settings]: ../configuring-metabase/settings.md
 [discourse]: https://discourse.metabase.com/
-[help-premium]: https://www.metabase.com/help-premium/
-[how-to-delete-an-account]: ../administration-guide/04-managing-users.html#deleting-an-account
-[how-to-find-auth-method-for-an-account]: ../administration-guide/04-managing-users.html#checking-someones-auth-method
-[how-to-reactivate-account]: ../administration-guide/04-managing-users.html#reactivating-an-account
-[how-to-reset-admin-password]: ../administration-guide/04-managing-users.html#resetting-the-admin-password
-[how-to-reset-password]: ../administration-guide/04-managing-users.html#resetting-someones-password
-[known-issues]: ./known-issues.html
-[ldap-docs]: ../administration-guide/10-single-sign-on.html#enabling-ldap-authentication
-[pricing]: https://www.metabase.com/pricing/
+[help-premium]: https://www.metabase.com/help-premium
+[how-to-delete-an-account]: ../people-and-groups/managing.md#deleting-an-account
+[how-to-find-auth-method-for-an-account]: ../people-and-groups/managing.md#checking-someones-auth-method
+[how-to-reactivate-account]: ../people-and-groups/managing.md#reactivating-an-account
+[how-to-reset-admin-password]: ../people-and-groups/managing.md#resetting-the-admin-password
+[how-to-reset-password]: ../people-and-groups/managing.md#resetting-someones-password
+[known-issues]: ./known-issues.md
+[ldap-docs]: ../people-and-groups/google-and-ldap.md#enabling-ldap-authentication
+[people-and-groups]: ../people-and-groups/start.md
+[pricing]: https://www.metabase.com/pricing
 [reset-store-password]: https://store.metabase.com/forgot-password
-[saml-docs]: ../enterprise-guide/authenticating-with-saml.html
-[sandboxing]: ./sandboxing.html
-[sso-docs]: ../administration-guide/sso.html
-[sso-gloss]: /glossary/sso.html
-[troubleshooting-ldap]: ./ldap.html
-[troubleshooting-saml]: ./saml.html
+[saml-docs]: ../people-and-groups/authenticating-with-saml.md
+[sandboxing]: ./sandboxing.md
+[sso-gloss]: https://www.metabase.com/glossary/sso
+[troubleshooting-ldap]: ./ldap.md
+[troubleshooting-saml]: ./saml.md

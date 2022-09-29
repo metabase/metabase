@@ -3,16 +3,15 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
-import moment from "moment";
+import moment from "moment-timezone";
 import _ from "underscore";
 
-import SpecificDatePicker from "./SpecificDatePicker";
-import RelativeDatePicker, { DATE_PERIODS } from "./RelativeDatePicker";
+import Calendar from "metabase/components/Calendar";
+import { FieldDimension } from "metabase-lib/lib/Dimension";
 import DatePickerSelector from "../DatePicker/DatePickerSelector";
 import DateUnitSelector from "../DatePicker/DateUnitSelector";
-import Calendar from "metabase/components/Calendar";
-
-import { FieldDimension } from "metabase-lib/lib/Dimension";
+import SpecificDatePicker from "./SpecificDatePicker";
+import RelativeDatePicker, { DATE_PERIODS } from "./RelativeDatePicker";
 
 const singleDatePickerPropTypes = {
   className: PropTypes.string,
@@ -287,7 +286,6 @@ export default class DatePicker extends Component {
     className: PropTypes.string,
     hideEmptinessOperators: PropTypes.bool,
     hideTimeSelectors: PropTypes.bool,
-    isSidebar: PropTypes.bool,
     operators: PropTypes.array,
     disableOperatorSelection: PropTypes.bool,
   };
@@ -323,13 +321,8 @@ export default class DatePicker extends Component {
   }
 
   render() {
-    const {
-      className,
-      filter,
-      onFilterChange,
-      isSidebar,
-      disableOperatorSelection,
-    } = this.props;
+    const { className, filter, onFilterChange, disableOperatorSelection } =
+      this.props;
 
     const { operators } = this.state;
 
@@ -339,9 +332,8 @@ export default class DatePicker extends Component {
     return (
       <div
         // apply flex to align the operator selector and the "Widget" if necessary
-        className={cx(className, {
+        className={cx(className, "PopoverBody--marginBottom", {
           "flex align-center": Widget && Widget.horizontalLayout,
-          "PopoverBody--marginBottom": !isSidebar,
         })}
         style={{ minWidth: 300 }}
       >

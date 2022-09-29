@@ -7,18 +7,21 @@ import { connect } from "react-redux";
 import _ from "underscore";
 import { t, ngettext, msgid } from "ttag";
 
-import Card from "metabase/components/Card";
 import Icon from "metabase/components/Icon";
 import Label from "metabase/components/type/Label";
 import Subhead from "metabase/components/type/Subhead";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 import Tooltip from "metabase/components/Tooltip";
 
-import { formatHourAMPM, formatDay, formatFrame } from "metabase/lib/time";
+import {
+  formatDateTimeWithUnit,
+  formatTimeWithUnit,
+} from "metabase/lib/formatting";
+import { formatFrame } from "metabase/lib/time";
 import { getActivePulseParameters } from "metabase/lib/pulse";
 
 import { getParameters } from "metabase/dashboard/selectors";
-import { SidebarActions } from "./PulsesListSidebar.styled";
+import { PulseCard, SidebarActions } from "./PulsesListSidebar.styled";
 
 const mapStateToProps = (state, props) => {
   return {
@@ -65,13 +68,10 @@ function _PulsesListSidebar({
           const canEdit = canEditPulse(pulse, formInput);
 
           return (
-            <Card
+            <PulseCard
               key={pulse.id}
               flat
-              className={cx("mb3", {
-                "cursor-pointer": canEdit,
-                "bg-brand-hover": canEdit,
-              })}
+              canEdit={canEdit}
               onClick={() =>
                 canEdit && editPulse(pulse, pulse.channels[0].channel_type)
               }
@@ -98,7 +98,7 @@ function _PulsesListSidebar({
                 </div>
                 <PulseDetails pulse={pulse} parameters={parameters} />
               </div>
-            </Card>
+            </PulseCard>
           );
         })}
       </div>
@@ -243,21 +243,23 @@ function friendlySchedule(channel) {
       scheduleString += t`hourly`;
       break;
     case "daily": {
-      const ampm = formatHourAMPM(schedule_hour);
-      scheduleString += t`daily at ${ampm}`;
+      const hour = formatTimeWithUnit(schedule_hour, "hour-of-day");
+      scheduleString += t`daily at ${hour}`;
       break;
     }
     case "weekly": {
-      const ampm = formatHourAMPM(schedule_hour);
-      const day = formatDay(schedule_day);
-      scheduleString += t`${day} at ${ampm}`;
+      const hour = formatTimeWithUnit(schedule_hour, "hour-of-day");
+      const day = formatDateTimeWithUnit(schedule_day, "day-of-week");
+      scheduleString += t`${day} at ${hour}`;
       break;
     }
     case "monthly": {
-      const ampm = formatHourAMPM(schedule_hour);
-      const day = schedule_day ? formatDay(schedule_day) : "calendar day";
+      const hour = formatTimeWithUnit(schedule_hour, "hour-of-day");
+      const day = schedule_day
+        ? formatDateTimeWithUnit(schedule_day, "day-of-week")
+        : "calendar day";
       const frame = formatFrame(schedule_frame);
-      scheduleString += t`monthly on the ${frame} ${day} at ${ampm}`;
+      scheduleString += t`monthly on the ${frame} ${day} at ${hour}`;
       break;
     }
     default:

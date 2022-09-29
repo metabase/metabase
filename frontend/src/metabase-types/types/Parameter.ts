@@ -1,3 +1,8 @@
+/**
+ * ⚠️
+ * @deprecated use existing types from, or add to metabase-types/api/*
+ */
+
 import { CardId } from "./Card";
 import { LocalFieldReference, ForeignFieldReference } from "./Query";
 
@@ -13,7 +18,7 @@ export type ParameterDimensionTarget = [
   DimensionTarget | VariableTarget,
 ];
 
-export type ParameterValueOrArray = string | Array<any>;
+export type ParameterValueOrArray = string | number | Array<any>;
 
 export type ParameterTarget =
   | ParameterVariableTarget
@@ -40,6 +45,7 @@ export interface Parameter {
   sectionId?: string;
   default?: any;
   filteringParameters?: ParameterId[];
+  value?: any;
 }
 
 export type ParameterQueryObject = {

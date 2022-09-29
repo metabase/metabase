@@ -4,6 +4,9 @@ import {
   popover,
   enterCustomColumnDetails,
   filter,
+  openOrdersTable,
+  visualize,
+  getNotebookStep,
 } from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -32,6 +35,28 @@ describe("scenarios > question > custom column > data type", () => {
 
     cy.findByPlaceholderText("Enter a number").should("not.exist");
     cy.findByPlaceholderText("Enter some text");
+  });
+
+  it("should understand date functions", () => {
+    openOrdersTable({ mode: "notebook" });
+
+    addCustomColumns([
+      { name: "Year", formula: "year([Created At])" },
+      { name: "Quarter", formula: "quarter([Created At])" },
+      { name: "Month", formula: "month([Created At])" },
+      { name: "Day", formula: "day([Created At])" },
+      { name: "Weekday", formula: "weekday([Created At])" },
+      { name: "Hour", formula: "hour([Created At])" },
+      { name: "Minute", formula: "minute([Created At])" },
+      { name: "Second", formula: "second([Created At])" },
+      { name: "Date Add", formula: 'dateAdd([Created At], 1, "month")' },
+      {
+        name: "Date Subtract",
+        formula: 'dateSubtract([Created At], 1, "month")',
+      },
+    ]);
+
+    visualize();
   });
 
   it("should relay the type of a date field", () => {
@@ -88,6 +113,19 @@ describe("scenarios > question > custom column > data type", () => {
     cy.findByText("days");
   });
 });
+
+function addCustomColumns(columns) {
+  cy.wrap(columns).each((column, index) => {
+    if (index) {
+      getNotebookStep("expression").within(() => cy.icon("add").click());
+    } else {
+      cy.findByText("Custom column").click();
+    }
+
+    enterCustomColumnDetails(column);
+    cy.button("Done").click();
+  });
+}
 
 function openCustomColumnInTable(table) {
   openTable({ table, mode: "notebook" });
