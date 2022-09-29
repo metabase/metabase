@@ -1,4 +1,3 @@
-import _ from "underscore";
 import { t } from "ttag";
 import { createAction } from "redux-actions";
 

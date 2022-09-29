@@ -1,4 +1,3 @@
-import _ from "underscore";
 import * as Q_DEPRECATED from "metabase/lib/query";
 import Utils from "metabase/lib/utils";
 
