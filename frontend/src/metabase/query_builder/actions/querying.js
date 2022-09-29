@@ -206,7 +206,8 @@ export const queryCompleted = (question, queryResults) => {
     const card = question.card();
 
     const isEditingModel = getQueryBuilderMode(getState()) === "dataset";
-    const modelMetadata = isEditingModel
+    const isEditingSavedModel = isEditingModel && !!originalQuestion;
+    const modelMetadata = isEditingSavedModel
       ? preserveModelMetadata(queryResults, originalQuestion)
       : undefined;
 
