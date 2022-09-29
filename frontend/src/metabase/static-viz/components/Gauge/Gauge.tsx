@@ -71,9 +71,9 @@ export default function Gauge({ card, data, getColor }: GaugeProps) {
   const valueAngle =
     startAngle + calculateValueAngle(value, minValue, maxValue);
 
-  const valuePosition = movePosition(
-    [centerX, centerY],
-    getCirclePositionInSvgCoordinate(gaugeInnerRadius, valueAngle),
+  const valuePosition = getCirclePositionInSvgCoordinate(
+    gaugeInnerRadius,
+    valueAngle,
   );
   const displayValue = formatNumber(value);
   const dynamicValueFontSize = calculateValueFontSize(
@@ -84,12 +84,9 @@ export default function Gauge({ card, data, getColor }: GaugeProps) {
   function calculatePosition(fontSize: number, angle: number) {
     const labelMargin = fontSize / 2;
     const distanceToMiddleLabelAnchor = fontSize / 2;
-    return movePosition(
-      [centerX, centerY],
-      getCirclePositionInSvgCoordinate(
-        gaugeOuterRadius + labelMargin + distanceToMiddleLabelAnchor,
-        angle,
-      ),
+    return getCirclePositionInSvgCoordinate(
+      gaugeOuterRadius + labelMargin + distanceToMiddleLabelAnchor,
+      angle,
     );
   }
   const outlineColor = getColor("white");
@@ -106,143 +103,137 @@ export default function Gauge({ card, data, getColor }: GaugeProps) {
           startAngle={startAngle}
           endAngle={endAngle}
         />
-      </Group>
-      <GaugeNeedle
-        color={getColor("text-medium")}
-        outlineColor={outlineColor}
-        position={valuePosition}
-        valueAngle={valueAngle}
-      />
-      {/* TODO: Make both segment min/max and labels a component. */}
-      {/* TODO: Fix segment min/max and labels overflow */}
-      {gaugeSegmentData.map((gaugeSegmentDatum, index) => {
-        const fontSize = BASE_FONT_SIZE * 0.3;
-        const isFirstSegment = index === 0;
-        const isLastSegment = index === gaugeSegmentData.length - 1;
-        const minAngle =
-          startAngle +
-          calculateValueAngle(gaugeSegmentDatum[0], minValue, maxValue);
-        const minPosition: Position = isFirstSegment
-          ? movePosition(
-              [centerX, centerY],
-              [-(gaugeInnerRadius + gaugeOuterRadius) / 2, fontSize],
-            )
-          : calculatePosition(fontSize, minAngle);
-        const maxPosition: Position | undefined = isLastSegment
-          ? movePosition(
-              [centerX, centerY],
-              [(gaugeInnerRadius + gaugeOuterRadius) / 2, fontSize],
-            )
-          : undefined;
+        <GaugeNeedle
+          color={getColor("text-medium")}
+          outlineColor={outlineColor}
+          position={valuePosition}
+          valueAngle={valueAngle}
+        />
+        {/* TODO: Make both segment min/max and labels a component. */}
+        {/* TODO: Fix segment min/max and labels overflow */}
+        {gaugeSegmentData.map((gaugeSegmentDatum, index) => {
+          const fontSize = BASE_FONT_SIZE * 0.3;
+          const isFirstSegment = index === 0;
+          const isLastSegment = index === gaugeSegmentData.length - 1;
+          const minAngle =
+            startAngle +
+            calculateValueAngle(gaugeSegmentDatum[0], minValue, maxValue);
+          const minPosition: Position = isFirstSegment
+            ? [-(gaugeInnerRadius + gaugeOuterRadius) / 2, fontSize]
+            : calculatePosition(fontSize, minAngle);
+          const maxPosition: Position | undefined = isLastSegment
+            ? [(gaugeInnerRadius + gaugeOuterRadius) / 2, fontSize]
+            : undefined;
 
-        function calculateLabelTextAnchor(angle: number): TextAnchor {
-          const normalizedMinAngle = normalizeAngle(angle);
+          function calculateLabelTextAnchor(angle: number): TextAnchor {
+            const normalizedMinAngle = normalizeAngle(angle);
 
-          if (
-            isBetweenAngle(
-              normalizedMinAngle,
-              1.5 * Math.PI,
-              normalizeAngle(toRadian(-THRESHOLD_ANGLE_DEGREE)),
-            )
-          ) {
-            return "end";
+            if (
+              isBetweenAngle(
+                normalizedMinAngle,
+                1.5 * Math.PI,
+                normalizeAngle(toRadian(-THRESHOLD_ANGLE_DEGREE)),
+              )
+            ) {
+              return "end";
+            }
+
+            if (
+              isBetweenAngle(
+                normalizedMinAngle,
+                normalizeAngle(toRadian(-THRESHOLD_ANGLE_DEGREE)),
+                normalizeAngle(toRadian(THRESHOLD_ANGLE_DEGREE)),
+              )
+            ) {
+              return "middle";
+            }
+
+            return "start";
           }
-
-          if (
-            isBetweenAngle(
-              normalizedMinAngle,
-              normalizeAngle(toRadian(-THRESHOLD_ANGLE_DEGREE)),
-              normalizeAngle(toRadian(THRESHOLD_ANGLE_DEGREE)),
-            )
-          ) {
-            return "middle";
-          }
-
-          return "start";
-        }
-        return (
-          <Fragment key={index}>
-            {minPosition && (
-              <GaugeLabel
-                fill={getColor("text-medium")}
-                stroke={outlineColor}
-                fontSize={fontSize}
-                position={minPosition}
-                label={formatNumber(gaugeSegmentDatum[0])}
-                textAnchor={calculateLabelTextAnchor(minAngle)}
-              />
-            )}
-            {maxPosition && (
-              <GaugeLabel
-                fill={getColor("text-medium")}
-                stroke={outlineColor}
-                fontSize={fontSize}
-                position={maxPosition}
-                label={formatNumber(gaugeSegmentDatum[1])}
-              />
-            )}
-          </Fragment>
-        );
-      })}
-      {gaugeSegmentData.map((gaugeSegmentDatum, index) => {
-        const gaugeSegmentLabel = gaugeSegmentDatum[3];
-        if (!gaugeSegmentLabel) {
-          return null;
-        }
-        const fontSize = BASE_FONT_SIZE * 0.3;
-        const angle =
-          startAngle +
-          calculateValueAngle(
-            (gaugeSegmentDatum[1] + gaugeSegmentDatum[0]) / 2,
-            minValue,
-            maxValue,
+          return (
+            <Fragment key={index}>
+              {minPosition && (
+                <GaugeLabel
+                  fill={getColor("text-medium")}
+                  stroke={outlineColor}
+                  fontSize={fontSize}
+                  position={minPosition}
+                  label={formatNumber(gaugeSegmentDatum[0])}
+                  textAnchor={calculateLabelTextAnchor(minAngle)}
+                />
+              )}
+              {maxPosition && (
+                <GaugeLabel
+                  fill={getColor("text-medium")}
+                  stroke={outlineColor}
+                  fontSize={fontSize}
+                  position={maxPosition}
+                  label={formatNumber(gaugeSegmentDatum[1])}
+                />
+              )}
+            </Fragment>
           );
-        const position: Position = calculatePosition(fontSize, angle);
-
-        function calculateLabelTextAnchor(angle: number): TextAnchor {
-          const normalizedMinAngle = normalizeAngle(angle);
-
-          if (
-            isBetweenAngle(
-              normalizedMinAngle,
-              1.5 * Math.PI,
-              normalizeAngle(toRadian(-THRESHOLD_ANGLE_DEGREE)),
-            )
-          ) {
-            return "end";
+        })}
+        {gaugeSegmentData.map((gaugeSegmentDatum, index) => {
+          const gaugeSegmentLabel = gaugeSegmentDatum[3];
+          if (!gaugeSegmentLabel) {
+            return null;
           }
+          const fontSize = BASE_FONT_SIZE * 0.3;
+          const angle =
+            startAngle +
+            calculateValueAngle(
+              (gaugeSegmentDatum[1] + gaugeSegmentDatum[0]) / 2,
+              minValue,
+              maxValue,
+            );
+          const position: Position = calculatePosition(fontSize, angle);
 
-          if (
-            isBetweenAngle(
-              normalizedMinAngle,
-              normalizeAngle(toRadian(-THRESHOLD_ANGLE_DEGREE)),
-              normalizeAngle(toRadian(THRESHOLD_ANGLE_DEGREE)),
-            )
-          ) {
-            return "middle";
+          function calculateLabelTextAnchor(angle: number): TextAnchor {
+            const normalizedMinAngle = normalizeAngle(angle);
+
+            if (
+              isBetweenAngle(
+                normalizedMinAngle,
+                1.5 * Math.PI,
+                normalizeAngle(toRadian(-THRESHOLD_ANGLE_DEGREE)),
+              )
+            ) {
+              return "end";
+            }
+
+            if (
+              isBetweenAngle(
+                normalizedMinAngle,
+                normalizeAngle(toRadian(-THRESHOLD_ANGLE_DEGREE)),
+                normalizeAngle(toRadian(THRESHOLD_ANGLE_DEGREE)),
+              )
+            ) {
+              return "middle";
+            }
+
+            return "start";
           }
-
-          return "start";
-        }
-        return (
-          <GaugeLabel
-            key={index}
-            fill={getColor("text-dark")}
-            stroke={outlineColor}
-            fontSize={fontSize}
-            position={position}
-            label={gaugeSegmentLabel}
-            textAnchor={calculateLabelTextAnchor(angle)}
-          />
-        );
-      })}
-      <GaugeLabel
-        fill={getColor("text-dark")}
-        stroke={outlineColor}
-        fontSize={dynamicValueFontSize}
-        position={[centerX, centerY - gaugeInnerRadius / 3]}
-        label={displayValue}
-      />
+          return (
+            <GaugeLabel
+              key={index}
+              fill={getColor("text-dark")}
+              stroke={outlineColor}
+              fontSize={fontSize}
+              position={position}
+              label={gaugeSegmentLabel}
+              textAnchor={calculateLabelTextAnchor(angle)}
+            />
+          );
+        })}
+        <GaugeLabel
+          fill={getColor("text-dark")}
+          stroke={outlineColor}
+          fontSize={dynamicValueFontSize}
+          position={[centerX, centerY - gaugeInnerRadius / 3]}
+          label={displayValue}
+        />
+      </Group>
     </svg>
   );
 }
