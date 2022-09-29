@@ -47,6 +47,8 @@ const GAUGE_RADIUS = WIDTH / 2 - HORIZONTAL_MARGIN;
 const HEIGHT = GAUGE_RADIUS + 2 * VERTICAL_MARGIN;
 const GAUGE_THICKNESS = 70;
 const BASE_FONT_SIZE = GAUGE_THICKNESS * 0.8;
+// TODO: Make this dynamic and calculated from font size,
+const THRESHOLD_ANGLE_DEGREE = toRadian(30);
 
 export default function Gauge({ card, data }: GaugeProps) {
   const settings = card.visualization_settings;
@@ -76,6 +78,18 @@ export default function Gauge({ card, data }: GaugeProps) {
     gaugeInnerRadius,
   );
 
+  function calculatePosition(fontSize: number, angle: number) {
+    const labelMargin = fontSize / 2;
+    const distanceToMiddleLabelAnchor = fontSize / 2;
+    return movePosition(
+      [centerX, centerY],
+      getCirclePositionInSvgCoordinate(
+        gaugeOuterRadius + labelMargin + distanceToMiddleLabelAnchor,
+        angle,
+      ),
+    );
+  }
+
   return (
     <svg width={WIDTH} height={HEIGHT}>
       <Group top={centerY} left={centerX}>
@@ -103,7 +117,7 @@ export default function Gauge({ card, data }: GaugeProps) {
               [centerX, centerY],
               [-(gaugeInnerRadius + gaugeOuterRadius) / 2, fontSize],
             )
-          : calculatePosition(minAngle);
+          : calculatePosition(fontSize, minAngle);
         const maxPosition: Position | undefined = isLastSegment
           ? movePosition(
               [centerX, centerY],
@@ -111,18 +125,7 @@ export default function Gauge({ card, data }: GaugeProps) {
             )
           : undefined;
 
-        function calculatePosition(angle: number) {
-          return movePosition(
-            [centerX, centerY],
-            getCirclePositionInSvgCoordinate(
-              gaugeOuterRadius + fontSize,
-              angle,
-            ),
-          );
-        }
-
         function calculateLabelTextAnchor(angle: number): TextAnchor {
-          const THRESHOLD_ANGLE_DEGREE = toRadian(30);
           const normalizedMinAngle = normalizeAngle(angle);
 
           if (
@@ -187,20 +190,9 @@ export default function Gauge({ card, data }: GaugeProps) {
             minValue,
             maxValue,
           );
-        const position: Position = calculatePosition(angle);
-
-        function calculatePosition(angle: number) {
-          return movePosition(
-            [centerX, centerY],
-            getCirclePositionInSvgCoordinate(
-              gaugeOuterRadius + fontSize,
-              angle,
-            ),
-          );
-        }
+        const position: Position = calculatePosition(fontSize, angle);
 
         function calculateLabelTextAnchor(angle: number): TextAnchor {
-          const THRESHOLD_ANGLE_DEGREE = toRadian(30);
           const normalizedMinAngle = normalizeAngle(angle);
 
           if (
@@ -341,7 +333,9 @@ interface GaugeNeedleProps {
 const GAUGE_NEEDLE_RADIUS = GAUGE_THICKNESS / 6;
 const GAUGE_OUTLINE_RADIUS = GAUGE_NEEDLE_RADIUS * 1.6;
 function GaugeNeedle({ position, valueAngle }: GaugeNeedleProps) {
-  const translationYOffset = GAUGE_NEEDLE_RADIUS * Math.tan(toRadian(30));
+  const HALF_EQUILATERAL_TRIANGLE_ANGLE = 60 / 2;
+  const translationYOffset =
+    GAUGE_NEEDLE_RADIUS * Math.tan(toRadian(HALF_EQUILATERAL_TRIANGLE_ANGLE));
   return (
     <g
       transform={`translate(0 ${-translationYOffset})
