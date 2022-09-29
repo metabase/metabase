@@ -14,6 +14,7 @@ export default function ColumnFilterDrill({ question, clicked }) {
     !query.isEditable() ||
     !clicked ||
     !clicked.column ||
+    !clicked.dimension ||
     INVALID_TYPES.some(type => isa(clicked.column.base_type, type)) ||
     clicked.column.field_ref == null ||
     clicked.value !== undefined
