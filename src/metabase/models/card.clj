@@ -70,11 +70,10 @@
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
-(defn serialize-instance
-  "Serialize a `Card` for use in a `Revision`."
+(defmethod revision/serialize-instance Card
   ([instance]
-   (serialize-instance nil nil instance))
-  ([_ _ instance]
+   (revision/serialize-instance Card nil instance))
+  ([_model _id instance]
    (cond-> (dissoc instance :created_at :updated_at)
      ;; datasets should preserve edits to metadata
      (not (:dataset instance))
@@ -327,23 +326,19 @@
           :pre-delete     pre-delete
           :post-select    public-settings/remove-public-uuid-if-public-sharing-is-disabled})
 
-  revision/IRevisioned
-  (assoc revision/IRevisionedDefaults
-         :serialize-instance serialize-instance)
-
   serdes.hash/IdentityHashable
   {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :collection)])})
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 (defmethod serdes.base/extract-query "Card" [_ {:keys [user]}]
   (serdes.base/raw-reducible-query
-    "Card"
-    {:select     [:card.*]
-     :from       [[:report_card :card]]
-     :left-join  [[:collection :coll] [:= :coll.id :card.collection_id]]
-     :where      (if user
-                   [:or [:= :coll.personal_owner_id user] [:is :coll.personal_owner_id nil]]
-                   [:is :coll.personal_owner_id nil])}))
+   "Card"
+   {:select     [:card.*]
+    :from       [[:report_card :card]]
+    :left-join  [[:collection :coll] [:= :coll.id :card.collection_id]]
+    :where      (if user
+                  [:or [:= :coll.personal_owner_id user] [:is :coll.personal_owner_id nil]]
+                  [:is :coll.personal_owner_id nil])}))
 
 (defmethod serdes.base/extract-one "Card"
   [_model-name _opts card]
