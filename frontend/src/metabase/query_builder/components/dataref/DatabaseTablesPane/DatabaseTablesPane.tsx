@@ -92,14 +92,14 @@ const DatabaseTablesPane = ({
 export default _.compose(
   Tables.loadList({
     query: (_state: State, props: DatabaseTablesPaneProps) => ({
-      dbId: props.database?.id,
+      dbId: props.database.id,
     }),
     loadingAndErrorWrapper: false,
   }),
   Questions.loadList({
     query: (_state: State, props: DatabaseTablesPaneProps) => ({
       model: true,
-      dbId: props.database?.id, // TODO: why could this be undefined?
+      dbId: props.database.id,
     }),
     loadingAndErrorWrapper: false,
     listName: "models",
