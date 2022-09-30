@@ -268,7 +268,7 @@
 
                       Dashboard     [{dashboard-id :id} {:name "Test Dashboard"}]
                       Card          [{card-id :id
-                                      :as     card}         {:name "Dashboard Test Card"}]
+                                      :as     card}     {:name "Dashboard Test Card"}]
                       DashboardCard [dashcard           {:dashboard_id       dashboard-id
                                                          :card_id            card-id
                                                          :parameter_mappings [{:card_id      1

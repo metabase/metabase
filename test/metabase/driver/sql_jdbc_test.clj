@@ -8,7 +8,6 @@
             [metabase.models.table :as table :refer [Table]]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
-            [metabase.test.util.log :as tu.log]
             [toucan.db :as db]))
 
 (deftest describe-database-test
@@ -112,8 +111,7 @@
                             :tunnel-port    21212
                             :tunnel-user    "example"
                             :user           "postgres"}]
-               (tu.log/suppress-output
-                (driver.u/can-connect-with-details? :postgres details :throw-exceptions)))
+               (driver.u/can-connect-with-details? :postgres details :throw-exceptions))
              (catch Throwable e
                (loop [^Throwable e e]
                  (or (when (instance? java.net.ConnectException e)

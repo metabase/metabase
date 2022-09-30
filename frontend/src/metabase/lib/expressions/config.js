@@ -363,12 +363,12 @@ export const MBQL_CLAUSES = {
   },
   "date-add": {
     displayName: `dateAdd`,
-    type: "number",
+    type: "expression",
     args: ["expression", "number", "string"],
   },
   "date-subtract": {
     displayName: `dateSubtract`,
-    type: "number",
+    type: "expression",
     args: ["expression", "number", "string"],
   },
 };

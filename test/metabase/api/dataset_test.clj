@@ -264,9 +264,8 @@
       (is (schema= {:status   (s/eq "failed")
                     :error    (s/eq "You do not have permissions to run this query.")
                     s/Keyword s/Any}
-                   (mt/suppress-output
-                     (mt/user-http-request :rasta :post "dataset"
-                                           (mt/mbql-query venues {:limit 1}))))))))
+                   (mt/user-http-request :rasta :post "dataset"
+                                         (mt/mbql-query venues {:limit 1})))))))
 
 (deftest compile-test
   (testing "POST /api/dataset/native"
@@ -291,17 +290,16 @@
                                         :filter [:= $date "2015-11-13"]})))))
 
       (testing "\nshould require that the user have ad-hoc native perms for the DB"
-        (mt/suppress-output
-          (mt/with-temp-copy-of-db
-            ;; Give All Users permissions to see the `venues` Table, but not ad-hoc native perms
-            (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-            (perms/grant-permissions! (perms-group/all-users) (mt/id) "PUBLIC" (mt/id :venues))
-            (is (schema= {:permissions-error? (s/eq true)
-                          :message            (s/eq "You do not have permissions to run this query.")
-                          s/Any               s/Any}
-                         (mt/user-http-request :rasta :post "dataset/native"
-                                               (mt/mbql-query venues
-                                                 {:fields [$id $name]}))))))))))
+        (mt/with-temp-copy-of-db
+          ;; Give All Users permissions to see the `venues` Table, but not ad-hoc native perms
+          (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
+          (perms/grant-permissions! (perms-group/all-users) (mt/id) "PUBLIC" (mt/id :venues))
+          (is (schema= {:permissions-error? (s/eq true)
+                        :message            (s/eq "You do not have permissions to run this query.")
+                        s/Any               s/Any}
+                       (mt/user-http-request :rasta :post "dataset/native"
+                                             (mt/mbql-query venues
+                                               {:fields [$id $name]})))))))))
 
 (deftest report-timezone-test
   (mt/test-driver :postgres

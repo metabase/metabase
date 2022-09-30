@@ -1,4 +1,3 @@
-import _ from "underscore";
 import querystring from "querystring";
 import { LocationDescriptorObject } from "history";
 
