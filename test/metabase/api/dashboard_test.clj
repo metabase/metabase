@@ -1956,36 +1956,27 @@
                 (is (str/starts-with? (:message (mt/user-http-request :crowberto :post 500 execute-path
                                                                       {:parameters [{:id "my_id" :type :number/= :value "BAD"}]}))
                                       "Problem building request:"))))))))))
-(defn- format-field-name
-  "Format `field-name` appropriately for the current driver (e.g. uppercase it if we're testing against H2)."
-  [field-name]
-  (keyword (mt/format-name (name field-name))))
 
-#_
 (deftest dashcard-implicit-action-execution-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (actions.test-util/with-actions-test-data-and-actions-enabled
       (testing "Executing dashcard with action"
         (mt/with-temp* [Card [{card-id :id} {:dataset true :dataset_query (mt/mbql-query categories)}]
-                        ModelAction [_ {:slug "custom" :card_id card-id}]
+                        ModelAction [_ {:slug "implicit" :card_id card-id :requires_pk true}]
                         Dashboard [{dashboard-id :id}]
                         DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
                                                           :card_id card-id
-                                                          :parameter_mappings [{:parameter_id (format-field-name :id)
-                                                                                :target [:template-tag "id"]} ]}]]
-          (let [execute-path (format "dashboard/%s/dashcard/%s/execute/custom"
+                                                          :visualization_settings {:action_slug "implicit"}
+                                                          :parameter_mappings [{:parameter_id "dashboard-id"
+                                                                                :target_id "id"}]}]]
+          (let [execute-path (format "dashboard/%s/dashcard/%s/execute/implicit"
                                      dashboard-id
                                      dashcard-id)]
             (testing "Should be able to execute an emitter"
-              (is (= {:the_parameter 1}
+              (is (= {:rows-updated [1]}
                      (mt/user-http-request :crowberto :post 200 execute-path
-                                           {:parameters [{:id (format-field-name :id)
-                                                          :type :number/=
-                                                          :value 1}]
-                                            :extra_parameters [{:id (format-field-name :name)
-                                                                :type :text
-                                                                :target ["NAME"]
-                                                                :value "Birds"}]}))))))))))
+                                           {:parameters [{:id "dashboard-id" :value 1}]
+                                            :extra_parameters [{:id "name" :target ["x"] :value "Birds"}]}))))))))))
 
 (deftest dashcard-action-execution-auth-test
   (mt/with-temp-copy-of-db

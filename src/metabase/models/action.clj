@@ -2,10 +2,12 @@
   (:require [cheshire.core :as json]
             [medley.core :as m]
             [metabase.models.interface :as mi]
+            [metabase.models.query :as query]
             [metabase.models.serialization.hash :as serdes.hash]
             [metabase.util :as u]
             [metabase.util.encryption :as encryption]
             [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]
             [toucan.models :as models]))
 
 (models/defmodel QueryAction :query_action)
@@ -164,6 +166,26 @@
       (m/assoc-some card :action_id (get card-id->action-id (:id card))))
     cards))
 
+(defn- implicit-action-parameters
+  [cards]
+  (let [card-id-by-table-id (into {}
+                                  (for [card cards
+                                        :let [{:keys [table-id]} (query/query->database-and-table-ids (:dataset_query card))]
+                                        :when table-id]
+                                    [table-id (:id card)]))
+        tables (hydrate (db/select 'Table :id [:in (keys card-id-by-table-id)]) :fields)]
+    (into {}
+          (for [table tables
+                :let [parameters (->> table
+                                      :fields
+                                      (map (fn [field]
+                                             {:id (u/slugify (:name field))
+                                              :target [:dimension [:field (:id field) nil]]
+                                              :type (:base_type field)})))]
+                ;; Skip tables for have conflicting slugified columns i.e. table has "name" and "NAME" columns.
+                :when (not (keys (m/filter-vals #(not= % 1) (frequencies (map :id parameters)))))]
+            [(get card-id-by-table-id (:id table)) parameters]))))
+
 (defn dashcard-action
   "Hydrates action from DashboardCard"
   {:batched-hydrate :dashcard/action}
@@ -180,14 +202,24 @@
                                                model-actions)
         actions-by-id (when-let [action-ids (not-empty (concat (keep :action_id dashcards)
                                                                (keep :action_id (vals model-action-by-model-slug))))]
-                        (m/index-by :id (select-actions :id [:in action-ids])))]
+                        (m/index-by :id (select-actions :id [:in action-ids])))
+        implicit-card-ids (set (map :card_id (remove :action_id model-actions)))
+        implicit-cards (set
+                         (filter
+                           #(contains? implicit-card-ids (:id %))
+                           (map :card dashcards)))
+        parameters-by-model-id (implicit-action-parameters implicit-cards)]
     (for [dashcard dashcards]
       (if-let [model-slug (get model-slug-by-dashcard-id (:id dashcard))]
         (let [model-action (get model-action-by-model-slug model-slug)
               action (get actions-by-id (or (:action_id dashcard) (:action_id model-action)))
-              hydration-value (not-empty (m/deep-merge model-action (select-keys action [:visualization_settings
-                                                                                         :parameters
-                                                                                         :parameter_mappings
-                                                                                         :name])))]
+              implicit-action (when-let [parameters (get parameters-by-model-id (:card_id model-action))]
+                                {:parameters parameters})
+              hydration-value (not-empty (m/deep-merge model-action
+                                                       implicit-action
+                                                       (select-keys action [:visualization_settings
+                                                                            :parameters
+                                                                            :parameter_mappings
+                                                                            :name])))]
           (m/assoc-some dashcard :action hydration-value))
         dashcard))))

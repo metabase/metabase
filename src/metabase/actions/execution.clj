@@ -44,15 +44,17 @@
   [parameters parameter-mappings]
   (let [mappings-by-id (m/index-by :parameter_id parameter-mappings)]
     (mapv (fn [{param-id :id :as parameter}]
-            (let [target (or (get-in mappings-by-id [param-id :target])
-                             (throw (ex-info (tru "No parameter mapping found for parameter {0}. Found: {1}"
-                                                  (pr-str param-id)
-                                                  (pr-str (set (map :parameter_id parameter-mappings))))
-                                             {:status-code 400
-                                              :type        qp.error-type/invalid-parameter
-                                              :parameters  parameters
-                                              :mappings    parameter-mappings})))]
-              (assoc parameter :target target)))
+            (if-let [target-id (get-in mappings-by-id [param-id :target_id])]
+              (assoc parameter :id target-id)
+              (let [target (or (get-in mappings-by-id [param-id :target])
+                               (throw (ex-info (tru "No parameter mapping found for parameter {0}. Found: {1}"
+                                                    (pr-str param-id)
+                                                    (pr-str (set (map :parameter_id parameter-mappings))))
+                                               {:status-code 400
+                                                :type        qp.error-type/invalid-parameter
+                                                :parameters  parameters
+                                                :mappings    parameter-mappings})))]
+                (assoc parameter :target target))))
           parameters)))
 
 (defn- execute-query-action!
@@ -121,16 +123,26 @@
 (defn- execute-implicit-action
   [{:keys [card_id slug requires_pk] :as _model-action} parameters]
   (let [{database-id :db_id table-id :id :as table} (implicit-action-table card_id)
-        {pk-fields true} (group-by #(isa? (:semantic-type %) :type/PK) (:fields table))
-        _ (api/check (<= (count pk-fields) 1) 400 (i18n/tru "Cannot execute implicit action on a table with multiple primary keys."))
+        {pk-fields true} (group-by #(isa? (:semantic_type %) :type/PK) (:fields table))
+        _ (api/check (empty? (keys (m/filter-vals #(not= % 1) (frequencies (map :name (:fields table))))))
+                     400
+                     (i18n/tru "Cannot execute implicit action on a table with ambiguous column names."))
+        _ (api/check (= (count pk-fields) 1)
+                     400
+                     (i18n/tru "Cannot execute implicit action on a table without a primary key."))
+        slug->field-name (into {} (map (juxt (comp u/slugify :name) :name) (:fields table)))
         pk-field (first pk-fields)
-        simple-parameters (dissoc (into {} (map (juxt :id :value)) parameters) (:name pk-field))
+        simple-parameters (->> parameters
+                               (map (juxt (comp keyword slug->field-name :id) :value))
+                               (into {}))
+        pk-field-name (keyword (:name pk-field))
+        row-parameters (dissoc simple-parameters pk-field-name)
         query (cond-> {:database database-id,
                        :type :query,
                        :query {:source-table table-id}}
                 requires_pk
                 (assoc-in [:query :filter]
-                          [:= [:field (:id pk-field) nil] (get simple-parameters (:name pk-field))]))
+                          [:= [:field (:id pk-field) nil] (get simple-parameters pk-field-name)]))
         implicit-action (cond
                           (= slug "delete")
                           :row/delete
@@ -142,10 +154,10 @@
                           :row/create)
         arg-map (cond-> query
                   (= implicit-action :row/create)
-                  (assoc :create-row simple-parameters)
+                  (assoc :create-row row-parameters)
 
                   (= implicit-action :row/update)
-                  (assoc :update-row simple-parameters))]
+                  (assoc :update-row row-parameters))]
     (actions/perform-action! implicit-action arg-map)))
 
 (defn execute-dashcard!
