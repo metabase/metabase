@@ -19,7 +19,7 @@ Use this expression to create custom columns with shorter, more readable labels 
 | `regexextract(text, regular_expression)`                      | `regexextract("Oh dear! Oh dear! I shall be too late!", "Oh dear(.*)Oh dear")`|
 | Gets a specific part of your text using a regular expression. | "!"                                                                            |
 
-## Cleaning text
+## Searching and cleaning text
 
 Let's say that you have web data with a lot of different URLs, and you want to map each URL to a shorter, more readable campaign name.
 
@@ -37,7 +37,7 @@ regexextract([URL], "^[^?#]+\?utm_campaign=(.*)")
 
 Here, the regex pattern [`^[^?#]+\?`](https://www.oreilly.com/library/view/regular-expressions-cookbook/9780596802837/ch07s13.html) searches up until the first question mark in the URL string. You can replace `utm_campaign=` with whatever query parameter you like. At the end of the regex pattern, `(.*)` picks up on all the characters that appear after the query parameter `utm_campaign=`.
 
-Now, you can use **Campaign Name** in places where you need clean labels, such as [filter dropdown menus](../dashboards/filters.md#choosing-between-a-dropdown-or-autocomplete-for-your-filter), [charts](../questions/sharing/visualizing-results), and [embedding parameters](../embedding/signed-embedding-parameters).
+Now, you can use **Campaign Name** in places where you need clean labels, such as [filter dropdown menus](../../../dashboards/filters.md#choosing-between-a-dropdown-or-autocomplete-for-your-filter), [charts](../../sharing/visualizing-results.md), and [embedding parameters](../../../embedding/signed-embedding-parameters.md).
 
 ## Accepted data types
 
@@ -71,7 +71,7 @@ This section covers functions and formulas that work the same way as the Metabas
 
 Use [substring](../expressions/substring.md) when you want to search text that has a consistent format (the same number of characters, and the same relative order of those characters). 
 
-For example, you wouldn't be able to use `substring` to get the query parameter from our [URL sample data](#cleaning-text), because the URL paths and the parameter names both have variable lengths. 
+For example, you wouldn't be able to use `substring` to get the query parameter from our [URL sample data](#searching-and-cleaning-text), because the URL paths and the parameter names both have variable lengths. 
 
 But if you wanted to pull out everything after `https://www.` and before `.com`, you could do that with either:
 
@@ -89,7 +89,7 @@ regexextract([URL], "^(?:https?:\/\/)?(?:[^@\/\n]+@)?(?:www\.)?([^:\/.\n]+)")
 
 When you run a question using the [notebook editor](https://www.metabase.com/glossary/notebook_editor), Metabase will convert your graphical query settings (filters, summaries, etc.) into a query, and run that query against your database to get your results.
 
-If our [sample data](#cleaning-text) is stored in a SQL database:
+If our [sample data](#searching-and-cleaning-text) is stored in a SQL database:
 
 ```sql
 SELECT
@@ -106,7 +106,7 @@ regexextract([URL], "^[^?#]+\?utm_campaign=(.*)")
 
 ### Spreadsheets
 
-If our [sample data](#cleaning-text) is in a spreadsheet where "URL" is in column A, the spreadsheet function
+If our [sample data](#searching-and-cleaning-text) is in a spreadsheet where "URL" is in column A, the spreadsheet function
 
 ```
 regexextract(A2, "^[^?#]+\?utm_campaign=(.*)")
@@ -120,7 +120,7 @@ regexextract([URL], "^[^?#]+\?utm_campaign=(.*)")
 
 ### Python
 
-Assuming the [sample data](#getting-a-regexextract-from-the-left) is in a dataframe column called `df`,
+Assuming the [sample data](#searching-and-cleaning-text) is in a dataframe column called `df`,
 
 ```
 df['Campaign Name'] = df['URL'].str.extract(r'(^[^?#]+\?utm_campaign=(.*))')
