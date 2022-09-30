@@ -392,7 +392,11 @@ export function createEntity(def) {
     [getEntities, getEntityId],
     (entities, entityId) => denormalize(entityId, entity.schema, entities),
   )((state, { entityId } = {}) =>
-    typeof entityId === "object" ? JSON.stringify(entityId) : entityId,
+    typeof entityId === "object"
+      ? JSON.stringify(entityId)
+      : entityId
+      ? entityId
+      : "",
   ); // must stringify objects
 
   // LIST SELECTORS
@@ -428,9 +432,9 @@ export function createEntity(def) {
       entityIds
         .map(entityId => entity.selectors.getObject({ entities }, { entityId }))
         .filter(e => e != null), // deleted entities might remain in lists,
-  )((state, { entityQuery } = {}) => {
-    return entityQuery ? JSON.stringify(entityQuery) : "";
-  });
+  )((state, { entityQuery } = {}) =>
+    entityQuery ? JSON.stringify(entityQuery) : "",
+  );
 
   // REQUEST STATE SELECTORS
 
