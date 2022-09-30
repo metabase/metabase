@@ -1884,24 +1884,21 @@
               (testing "Dashcard parameter"
                 (is (partial= {:rows-affected 1}
                               (mt/user-http-request :crowberto :post 200 execute-path
-                                                    {:parameters [{:id "my_id" :type "id" :value 1}]})))
+                                                    {:parameters {"id" 1}})))
                 (is (= [1 "Shop"]
                        (mt/first-row
                          (mt/run-mbql-query categories {:filter [:= $id 1]})))))
               (testing "Extra target parameter"
                 (is (partial= {:rows-affected 1}
                               (mt/user-http-request :crowberto :post 200 execute-path
-                                                    {:parameters [{:id "my_id" :type "id" :value 1}]
-                                                     :extra_parameters [{:target [:variable [:template-tag "name"]]
-                                                                         :type "text"
-                                                                         :value "Bird"}]})))
+                                                    {:parameters {"id" 1 "name" "Bird"}})))
                 (is (= [1 "Bird Shop"]
                        (mt/first-row
                          (mt/run-mbql-query categories {:filter [:= $id 1]})))))
               (testing "Should affect 0 rows if id is out of range"
                 (is (= {:rows-affected 0}
                        (mt/user-http-request :crowberto :post 200 execute-path
-                                             {:parameters [{:id "my_id" :type  :number/= :value Integer/MAX_VALUE}]}))))
+                                             {:parameters {"id" Integer/MAX_VALUE}}))))
               (testing "Should 404 if bad dashcard-id"
                 (is (= "Not found."
                        (mt/user-http-request :crowberto :post 404 (format "dashboard/%d/dashcard/%s/execute/custom"
@@ -1911,12 +1908,12 @@
               (testing "Missing parameter should fail gracefully"
                 (is (partial= {:message "Error executing Action: Error building query parameter map: Error determining value for parameter \"id\": You'll need to pick a value for 'ID' before this query can run."}
                               (mt/user-http-request :crowberto :post 500 execute-path
-                                                    {:parameters []}))))
+                                                    {:parameters {}}))))
               (testing "Sending an invalid number should fail gracefully"
 
                 (is (partial= {:message "Error executing Action: Error building query parameter map: Error determining value for parameter \"id\": Unparseable number: \"BAD\""}
                               (mt/user-http-request :crowberto :post 500 execute-path
-                                                    {:parameters [{:id "my_id" :type :number/= :value "BAD"}]})))))))))))
+                                                    {:parameters {"id" "BAD"}})))))))))))
 
 (deftest dashcard-http-action-execution-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
@@ -1938,23 +1935,22 @@
               (testing "Should be able to execute an emitter"
                 (is (= {:the_parameter 1}
                        (mt/user-http-request :crowberto :post 200 execute-path
-                                             {:parameters [{:id "my_id" :type :number/= :value 1}]}))))
+                                             {:parameters {"id" 1}}))))
               (testing "Should handle errors"
                 (is (= {:remote-status 400}
                        (mt/user-http-request :crowberto :post 400 execute-path
-                                             {:parameters [{:id "my_id" :type :number/= :value 1}
-                                                           {:id "my_fail" :type :text :value "true"}]}))))
+                                             {:parameters {"id" 1 "fail" "true"}}))))
               (testing "Extra parameter should fail gracefully"
-                (is (partial= {:message "No parameter mapping found for parameter \"extra\". Found: #{\"my_id\" \"my_fail\"}"}
+                (is (partial= {:message "No destination parameter found for id \"extra\". Found: #{\"id\" \"fail\"}"}
                               (mt/user-http-request :crowberto :post 400 execute-path
-                                                    {:parameters [{:id "extra" :type :number/= :value 1}]}))))
+                                                    {:parameters {"extra" 1}}))))
               (testing "Missing parameter should fail gracefully"
                 (is (partial= {:message "Problem building request: Cannot call the service: missing required parameters: #{\"id\"}"}
                               (mt/user-http-request :crowberto :post 500 execute-path
-                                                    {:parameters []}))))
+                                                    {:parameters {}}))))
               (testing "Sending an invalid number should fail gracefully"
                 (is (str/starts-with? (:message (mt/user-http-request :crowberto :post 500 execute-path
-                                                                      {:parameters [{:id "my_id" :type :number/= :value "BAD"}]}))
+                                                                      {:parameters {"id" "BAD"}}))
                                       "Problem building request:"))))))))))
 
 (deftest dashcard-implicit-action-execution-test
@@ -1975,8 +1971,19 @@
             (testing "Should be able to execute an emitter"
               (is (= {:rows-updated [1]}
                      (mt/user-http-request :crowberto :post 200 execute-path
-                                           {:parameters [{:id "dashboard-id" :value 1}]
-                                            :extra_parameters [{:id "name" :target ["x"] :value "Birds"}]}))))))))))
+                                           {:parameters {"id" 1 "name" "Birds"}}))))
+            (testing "Extra parameter should fail gracefully"
+              (is (partial= {:message "No destination parameter found for #{\"extra\"}. Found: #{\"id\" \"name\"}"}
+                            (mt/user-http-request :crowberto :post 400 execute-path
+                                                  {:parameters {"extra" 1}}))))
+            (testing "Missing pk parameter should fail gracefully"
+              (is (partial= "Missing primary key parameter: \"id\""
+                            (mt/user-http-request :crowberto :post 400 execute-path
+                                                  {:parameters {"name" "Birds"}}))))
+            (testing "Missing other parameters should fail gracefully"
+              (is (partial= "Implicit parameters were not provided."
+                            (mt/user-http-request :crowberto :post 400 execute-path
+                                                  {:parameters {"id" 1}}))))))))))
 
 (deftest dashcard-action-execution-auth-test
   (mt/with-temp-copy-of-db
@@ -1996,18 +2003,18 @@
               (testing "Without actions enabled"
                 (is (= "Actions are not enabled."
                        (mt/user-http-request :crowberto :post 400 execute-path
-                                             {:parameters [{:id "my_id" :type :number/= :value 1}]}))))
+                                             {:parameters {"id" 1}}))))
               (testing "Without execute rights on the DB"
                 (actions.test-util/with-actions-enabled
                   (is (= "You don't have permissions to do that."
                          (mt/user-http-request :rasta :post 403 execute-path
-                                               {:parameters [{:id "my_id" :type :number/= :value 1}]})))))
+                                               {:parameters {"id" 1}})))))
               (testing "With execute rights on the DB"
                 (perms/update-global-execution-permission! (:id (perms-group/all-users)) :all)
                 (try
                   (actions.test-util/with-actions-enabled
                     (is (= {:rows-affected 1}
                            (mt/user-http-request :rasta :post 200 execute-path
-                                                 {:parameters [{:id "my_id" :type :number/= :value 1}]}))))
+                                                 {:parameters {"id" 1}}))))
                   (finally
                     (perms/update-global-execution-permission! (:id (perms-group/all-users)) :none)))))))))))

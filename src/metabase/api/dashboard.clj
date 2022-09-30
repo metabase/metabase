@@ -697,13 +697,6 @@
     "value must be a parameter map with an 'id' key"))
 
 
-(def ParameterWithTarget
-  "Schema for a parameter map with an mbql `:target`."
-  (su/with-api-error-message
-    {:target   [s/Any]
-     s/Keyword s/Any}
-    "value must be a parameter map with a 'target' key"))
-
 ;;; ---------------------------------- Executing the action associated with a Dashcard -------------------------------
 (api/defendpoint GET "/:dashboard-id/dashcard/:dashcard-id/execute/:slug"
   "Fetches the parameters needed for execution for the given dashcard and slug action."
@@ -716,23 +709,11 @@
 
    `parameters` should be the mapped dashboard parameters with values.
    `extra_parameters` should be the extra, user entered parameter values."
-  [dashboard-id dashcard-id slug :as {{:keys [parameters extra_parameters], :as _body} :body}]
-  {parameters (s/maybe [ParameterWithID])
-   slug su/NonBlankString
-   extra_parameters (s/maybe [ParameterWithTarget])}
-  (actions.execution/execute-dashcard! dashboard-id dashcard-id slug parameters extra_parameters))
-
-(api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/execute"
-  "Deprecated - until front end catches up.
-
-   Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
-
-   `parameters` should be the mapped dashboard parameters with values.
-   `extra_parameters` should be the extra, user entered parameter values."
-  [dashboard-id dashcard-id :as {{:keys [parameters extra_parameters], :as _body} :body}]
-  {parameters (s/maybe [ParameterWithID])
-   extra_parameters (s/maybe [ParameterWithTarget])}
-  (actions.execution/execute-dashcard! dashboard-id dashcard-id nil parameters extra_parameters))
+  [dashboard-id dashcard-id slug :as {{:keys [parameters], :as _body} :body}]
+  {parameters (s/maybe {s/Keyword s/Any})
+   slug su/NonBlankString}
+  ;; Undo middleware string->keyword coercion
+  (actions.execution/execute-dashcard! dashboard-id dashcard-id slug (update-keys parameters name)))
 
 ;;; ---------------------------------- Running the query associated with a Dashcard ----------------------------------
 
