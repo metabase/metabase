@@ -2,6 +2,7 @@ import {
   restore,
   withDatabase,
   adhocQuestionHash,
+  runNativeQuery,
 } from "__support__/e2e/helpers";
 
 const PG_DB_ID = 2;
@@ -28,6 +29,7 @@ describe("issue 11727", () => {
       cy.visit(`/question#` + adhocQuestionHash(questionDetails));
       cy.wait("@getDatabases");
 
+      runNativeQuery({ wait: false });
       cy.findByText("Doing science...").should("be.visible");
       cy.get("body").type("{cmd}{enter}");
       cy.findByText("Here's where your results will appear").should(

@@ -1,4 +1,5 @@
 import { SAMPLE_DB_ID, SAMPLE_DB_TABLES } from "__support__/e2e/cypress_data";
+import { runNativeQuery } from "__support__/e2e/helpers/e2e-misc-helpers";
 
 const {
   STATIC_ORDERS_ID,
@@ -41,18 +42,21 @@ export function startNewQuestion() {
  * @param {object} question
  * @param {{callback: function, mode: (undefined|"notebook")}} config
  */
-export function visitQuestionAdhoc(question, { callback, mode } = {}) {
+export function visitQuestionAdhoc(
+  question,
+  { callback, mode, autorun = true } = {},
+) {
   const questionMode = mode === "notebook" ? "/notebook" : "";
 
-  const [url, alias] = getInterceptDetails(question, mode);
+  const [url, alias] = getInterceptDetails(question, mode, autorun);
 
   cy.intercept(url).as(alias);
 
   cy.visit(`/question${questionMode}#` + adhocQuestionHash(question));
 
-  cy.wait("@" + alias).then(xhr => {
-    callback && callback(xhr);
-  });
+  runQueryIfNeeded(question, autorun);
+
+  cy.wait("@" + alias).then(xhr => callback && callback(xhr));
 }
 
 /**
@@ -98,7 +102,12 @@ export function openReviewsTable({ mode, limit, callback } = {}) {
   return openTable({ table: STATIC_REVIEWS_ID, mode, limit, callback });
 }
 
-function getInterceptDetails(question, mode) {
+function getInterceptDetails(question, mode, autorun) {
+  const {
+    display,
+    dataset_query: { type },
+  } = question;
+
   // When visiting notebook mode directly, we don't render any results to the page.
   // Therefore, there is no `dataset` to wait for.
   // But we need to make sure the schema for our database is loaded before we can proceed.
@@ -106,10 +115,12 @@ function getInterceptDetails(question, mode) {
     return [`/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`, "publicSchema"];
   }
 
-  const {
-    display,
-    dataset_query: { type },
-  } = question;
+  // Ad-hoc native queries are not autorun by default.
+  // Therefore, there is no `dataset` to wait for.
+  // We need to make sure data for the native query builder has loaded before we can proceed.
+  if (type === "native" && !autorun) {
+    return ["/api/native-query-snippet", "snippets"];
+  }
 
   // native queries should use the normal dataset endpoint even when set to pivot
   const isPivotEndpoint = display === "pivot" && type === "query";
@@ -118,4 +129,14 @@ function getInterceptDetails(question, mode) {
   const alias = isPivotEndpoint ? "pivotDataset" : "dataset";
 
   return [url, alias];
+}
+
+function runQueryIfNeeded(question, autorun) {
+  const {
+    dataset_query: { type },
+  } = question;
+
+  if (type === "native" && autorun) {
+    runNativeQuery({ wait: false });
+  }
 }
