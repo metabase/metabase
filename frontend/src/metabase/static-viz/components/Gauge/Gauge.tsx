@@ -9,7 +9,6 @@ import { measureText } from "metabase/static-viz/lib/text";
 import type { ColorGetter } from "metabase/static-viz/lib/colors";
 import OutlinedText from "../Text/OutlinedText";
 
-type GaugeSegmentDatum = [number, number, string, string];
 type Position = [x: number, y: number];
 
 interface GaugeSegment {
@@ -18,7 +17,7 @@ interface GaugeSegment {
   color: string;
   label: string;
 }
-type GaugeSegmentData = GaugeSegmentDatum[];
+
 interface GaugeVisualizationSettings {
   "gauge.segments": GaugeSegment[];
 }
@@ -55,9 +54,7 @@ const THRESHOLD_ANGLE_DEGREE = toRadian(30);
 
 export default function Gauge({ card, data, getColor }: GaugeProps) {
   const settings = card.visualization_settings;
-  const gaugeSegmentData: GaugeSegmentData = settings["gauge.segments"].map(
-    segment => [segment.min, segment.max, segment.color, segment.label],
-  );
+  const gaugeSegmentData = settings["gauge.segments"];
   const centerX = WIDTH / 2;
   const centerY = GAUGE_RADIUS + VERTICAL_MARGIN;
   const gaugeOuterRadius = WIDTH / 2 - HORIZONTAL_MARGIN;
@@ -65,8 +62,8 @@ export default function Gauge({ card, data, getColor }: GaugeProps) {
   const startAngle = Math.PI + toRadian((360 - ARC_DEGREE) / 2);
   const endAngle = startAngle + toRadian(ARC_DEGREE);
 
-  const minValue = gaugeSegmentData[0][0];
-  const maxValue = gaugeSegmentData[gaugeSegmentData.length - 1][1];
+  const minValue = gaugeSegmentData[0].min;
+  const maxValue = gaugeSegmentData[gaugeSegmentData.length - 1].max;
   const value = data.rows[0][0];
   const valueAngle =
     startAngle + calculateValueAngle(value, minValue, maxValue);
@@ -117,7 +114,7 @@ export default function Gauge({ card, data, getColor }: GaugeProps) {
           const isLastSegment = index === gaugeSegmentData.length - 1;
           const minAngle =
             startAngle +
-            calculateValueAngle(gaugeSegmentDatum[0], minValue, maxValue);
+            calculateValueAngle(gaugeSegmentDatum.min, minValue, maxValue);
           const minPosition: Position = isFirstSegment
             ? [-(gaugeInnerRadius + gaugeOuterRadius) / 2, fontSize]
             : calculatePosition(fontSize, minAngle);
@@ -158,7 +155,7 @@ export default function Gauge({ card, data, getColor }: GaugeProps) {
                   stroke={outlineColor}
                   fontSize={fontSize}
                   position={minPosition}
-                  label={formatNumber(gaugeSegmentDatum[0])}
+                  label={formatNumber(gaugeSegmentDatum.min)}
                   textAnchor={calculateLabelTextAnchor(minAngle)}
                 />
               )}
@@ -168,14 +165,14 @@ export default function Gauge({ card, data, getColor }: GaugeProps) {
                   stroke={outlineColor}
                   fontSize={fontSize}
                   position={maxPosition}
-                  label={formatNumber(gaugeSegmentDatum[1])}
+                  label={formatNumber(gaugeSegmentDatum.max)}
                 />
               )}
             </Fragment>
           );
         })}
         {gaugeSegmentData.map((gaugeSegmentDatum, index) => {
-          const gaugeSegmentLabel = gaugeSegmentDatum[3];
+          const gaugeSegmentLabel = gaugeSegmentDatum.label;
           if (!gaugeSegmentLabel) {
             return null;
           }
@@ -183,7 +180,7 @@ export default function Gauge({ card, data, getColor }: GaugeProps) {
           const angle =
             startAngle +
             calculateValueAngle(
-              (gaugeSegmentDatum[1] + gaugeSegmentDatum[0]) / 2,
+              (gaugeSegmentDatum.max + gaugeSegmentDatum.min) / 2,
               minValue,
               maxValue,
             );
@@ -303,19 +300,16 @@ function calculateValueFontSize(
   return dynamicValueFontSize;
 }
 
-function gaugeAccessor(datum: GaugeSegmentDatum) {
-  return datum[1] - datum[0];
+function gaugeAccessor(datum: GaugeSegment) {
+  return datum.max - datum.min;
 }
 
-function gaugeSorter(
-  thisGaugeData: GaugeSegmentDatum,
-  thatGaugeData: GaugeSegmentDatum,
-) {
-  return thisGaugeData[0] - thatGaugeData[0];
+function gaugeSorter(thisGaugeData: GaugeSegment, thatGaugeData: GaugeSegment) {
+  return thisGaugeData.min - thatGaugeData.min;
 }
 
-function colorGetter(pieArcDatum: PieArcDatum<GaugeSegmentDatum>) {
-  return pieArcDatum.data[2];
+function colorGetter(pieArcDatum: PieArcDatum<GaugeSegment>) {
+  return pieArcDatum.data.color;
 }
 
 function toRadian(degree: number) {
