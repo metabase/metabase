@@ -172,17 +172,17 @@
 
 (def ^:dynamic *get-db*
   "Implementation of `db` function that should return the current working test database when called, always with no
-  arguments. By default, this is `get-or-create-test-data-db!` for the current driver/`*driver*`, which does exactly
-  what it suggests."
+  arguments. By default, this is [[get-or-create-test-data-db!]] for the current [[metabase.driver/*driver*]], which
+  does exactly what it suggests."
   get-or-create-test-data-db!)
 
 (defn do-with-db
-  "Internal impl of `data/with-db`."
-  [db f]
+  "Internal impl of [[metabase.test.data/with-db]]."
+  [db thunk]
   (assert (and (map? db) (integer? (:id db)))
           (format "Not a valid database: %s" (pr-str db)))
   (binding [*get-db* (constantly db)]
-    (f)))
+    (thunk)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -190,7 +190,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn the-table-id
-  "Internal impl of `(data/id table)."
+  "Internal impl of [[metabase.test.data/id]] for `(data/id table)`."
   [db-id table-name]
   {:pre [(integer? db-id) ((some-fn keyword? string?) table-name)]}
   (let [table-name        (name table-name)
@@ -299,16 +299,16 @@
   false)
 
 (defn do-with-temp-copy-of-db
-  "Internal impl of [[metabase.test/with-temp-copy-of-db]]. Run `f` with a temporary Database that copies the details
+  "Internal impl of [[metabase.test/with-temp-copy-of-db]]. Run `thunk` with a temporary Database that copies the details
   from the standard test database, and syncs it."
-  [f]
+  [thunk]
   (let [{old-db-id :id, :as old-db} (*get-db*)
         original-db                 (select-keys old-db [:details :engine :name])
         {new-db-id :id, :as new-db} (db/insert! Database original-db)]
     (try
       (copy-db-tables-and-fields! old-db-id new-db-id)
       (binding [*db-is-temp-copy?* true]
-        (do-with-db new-db f))
+        (do-with-db new-db thunk))
       (finally
         (db/delete! Database :id new-db-id)))))
 

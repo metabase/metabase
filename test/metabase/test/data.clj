@@ -235,11 +235,11 @@
                                           (not (get &env dataset)))
                                    `(data.impl/resolve-dataset-definition '~(ns-name *ns*) '~dataset)
                                    dataset)
-                                (fn [] ~@body))))
+                                (^:once fn* [] ~@body))))
 
 (defmacro with-temp-copy-of-db
-  "Run `body` with the current DB (i.e., the one that powers `data/db` and `data/id`) bound to a temporary copy of the
+  "Run `body` with the current DB (i.e., the one that powers [[db]] and [[id]]) bound to a temporary copy of the
   current DB. Tables and Fields are copied as well."
   {:style/indent 0}
   [& body]
-  `(data.impl/do-with-temp-copy-of-db (fn [] ~@body)))
+  `(data.impl/do-with-temp-copy-of-db (^:once fn* [] ~@body)))

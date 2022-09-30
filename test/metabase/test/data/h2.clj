@@ -25,18 +25,18 @@
   like. So delete any 'stale' in-mem DBs from the application DB when someone calls `get-or-create-database!` as
   needed."
   [database-name]
-  (when-not (contains? @h2-test-dbs-created-by-this-instance database-name)
-    (locking h2-test-dbs-created-by-this-instance
-      (when-not (contains? @h2-test-dbs-created-by-this-instance database-name)
-        (mdb/setup-db!)                 ; if not already setup
-        (db/delete! Database :engine "h2", :name database-name)
-        (swap! h2-test-dbs-created-by-this-instance conj database-name)))))
+  (mdb/setup-db!)                              ; if not already setup
+  (println "<DESTROY" database-name ">")       ; NOCOMMIT
+  (db/delete! Database :engine "h2", :name database-name)
+  (swap! h2-test-dbs-created-by-this-instance conj database-name))
 
 (defmethod data.impl/get-or-create-database! :h2
   [driver dbdef]
   (let [{:keys [database-name], :as dbdef} (tx/get-dataset-definition dbdef)]
-    (destroy-test-database-if-created-by-another-instance! database-name)
-    ((get-method data.impl/get-or-create-database! :sql-jdbc) driver dbdef)))
+    (locking h2-test-dbs-created-by-this-instance
+      (when-not (contains? @h2-test-dbs-created-by-this-instance database-name)
+        (destroy-test-database-if-created-by-another-instance! database-name))
+      ((get-method data.impl/get-or-create-database! :sql-jdbc) driver dbdef))))
 
 (doseq [[base-type database-type] {:type/BigInteger     "BIGINT"
                                    :type/Boolean        "BOOL"
@@ -93,6 +93,7 @@
 
 (defmethod ddl/drop-db-ddl-statements :h2
   [_driver _dbdef & _options]
+  (println "<SHUTDOWN>" (:database-name _dbdef)) ; NOCOMMIT
   ["SHUTDOWN;"])
 
 (defmethod tx/id-field-type :h2 [_] :type/BigInteger)
@@ -108,7 +109,7 @@
       {:base_type :type/BigInteger}))))
 
 (defmethod execute/execute-sql! :h2
-  [driver _ dbdef sql]
+  [driver _context dbdef sql]
   ;; we always want to use 'server' context when execute-sql! is called (never
   ;; try connect as GUEST, since we're not giving them priviledges to create
   ;; tables / etc)
