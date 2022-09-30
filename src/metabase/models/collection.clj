@@ -443,7 +443,7 @@
         ;; key
         :children)))
 
-(s/defn ^:private descendant-ids :- (s/maybe #{su/IntGreaterThanZero})
+(s/defn descendant-ids :- (s/maybe #{su/IntGreaterThanZero})
   "Return a set of IDs of all descendant Collections of a `collection`."
   [collection :- CollectionWithLocationAndIDOrRoot]
   (db/select-ids Collection :location [:like (str (children-location collection) \%)]))

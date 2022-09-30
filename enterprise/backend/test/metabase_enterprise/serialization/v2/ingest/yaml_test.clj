@@ -64,3 +64,35 @@
       (testing "fetching the file without the label also works"
         (is (= exp
                (ingest/ingest-one ingestable [{:model "Collection" :id "entity-id"}])))))))
+
+(deftest file-name-escaping-test
+  (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+    (io/make-parents dump-dir "Database" "fake")
+    (spit (io/file dump-dir "Database" "my data__SLASH__speculations.yaml")
+          (yaml/generate-string {:some "made up" :data "here"}))
+
+    (let [ingestable (ingest.yaml/ingest-yaml dump-dir)
+          exp {:some "made up"
+               :data "here"
+               :serdes/meta [{:model "Database" :id "my data/speculations"}]}]
+      (testing "the returned set of files has the escaping undone"
+        (is (= #{[{:model "Database" :id "my data/speculations"}]}
+               (into #{} (ingest/ingest-list ingestable)))))
+
+      (testing "fetching the file works"
+        (is (= exp
+               (ingest/ingest-one ingestable [{:model "Database" :id "my data/speculations"}])))))))
+
+(deftest keyword-reconstruction-test
+  (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+    (io/make-parents dump-dir "Card" "fake")
+    (spit (io/file dump-dir "Card" "some-card.yaml")
+          (yaml/generate-string {:visualization_settings
+                                 {:column_settings {"[\"name\",\"sum\"]" {:number_style "currency"}}}}))
+
+    (let [ingestable (ingest.yaml/ingest-yaml dump-dir)
+          exp {:visualization_settings {:column_settings {"[\"name\",\"sum\"]" {:number_style "currency"}}}
+               :serdes/meta [{:model "Card" :id "some-card"}]}]
+      (testing "the file as read in correctly reconstructs keywords only where legal"
+        (is (= exp
+               (ingest/ingest-one ingestable [{:model "Card" :id "some-card"}])))))))

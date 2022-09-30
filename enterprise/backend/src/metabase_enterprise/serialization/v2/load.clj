@@ -14,6 +14,62 @@
     ctx
     (reduce load-one ctx deps)))
 
+(defonce last-loaded (atom nil))
+
+(comment
+  (-> (metabase-enterprise.serialization.v2.ingest.yaml/ingest-yaml  "/tmp/stats-export")
+      (serdes.ingest/ingest-one [{:model "Card", :id "cd346b9c"}])
+      #_:parameter_mappings
+      (serdes.base/load-xform)
+      #_(metabase.models.serialization.util/mbql-deps)
+      #_(serdes.base/serdes-dependencies))
+
+  (-> (deref last-loaded)
+      #_serdes.base/serdes-dependencies
+      serdes.base/load-xform
+      #_:dataset_query
+      #_(metabase.models.serialization.util/mbql-deps))
+  (toucan.db/select-one 'Card :name "Canceled Hosting Customers")
+
+
+  (def the-entity (->> {:where [:= :name "Canceled Hosting Customers"]}
+                       (serdes.base/raw-reducible-query "Card")
+                       (into [])
+                       first))
+
+  (require '[clojure.test :refer :all])
+  (let [col-settings {"[\"ref\",[\"field\",\"count\",{\"base-type\":\"type/BigInteger\"}]]" {:column_title "Number of Invoices"}}]
+    (is (= col-settings
+           (-> col-settings
+               (#'metabase-enterprise.serialization.v2.storage.yaml/generate-yaml)
+               (yaml.core/parse-string :keywords false)
+               (#'metabase-enterprise.serialization.v2.ingest.yaml/keywords)
+               ))))
+
+  (namespace (keyword "{[\"ref\",\"type/BigInteger\"]: 7"))
+  (->> (yaml.core/parse-string
+         "column_settings:\n  '[\"ref\",[\"field-literal\",\"count\",\"type/BigInteger\"]]':\n    column_title: Number of Invoices\n"
+         #_"'[\"ref\",[\"]': bar\nxyz: 7"
+         :keywords false)
+       )
+
+  (metabase.models.serialization.util/export-visualization-settings
+    {:column_settings {"[\"ref\",[\"field\",\"count\",{\"base-type\":\"type/BigInteger\"}]]"
+                       {:column_title "Number of Invoices"}}})
+
+  (let [vis  (:visualization_settings the-entity)]
+    (is (= vis
+           (->> vis
+                metabase.models.serialization.util/export-visualization-settings
+                metabase.models.serialization.util/import-visualization-settings))))
+
+  (def extracted (serdes.base/extract-one "Metric" {} the-entity))
+  (->> (serdes.ingest/ingest-one (metabase-enterprise.serialization.v2.ingest.yaml/ingest-yaml "/tmp/stats-export")
+                                 [{:model "Card" :id "azfAA6RlSkoqj09lIZrrX"}])
+       (serdes.base/serdes-dependencies)
+       )
+  )
+
 (defn- load-one
   "Loads a single entity, specified by its `:serdes/meta` abstract path, into the appdb, doing some bookkeeping to avoid
   cycles.
@@ -30,6 +86,7 @@
     (expanding path) (throw (ex-info (format "Circular dependency on %s" (pr-str path)) {:path path}))
     (seen path) ctx ; Already been done, just skip it.
     :else (let [ingested (serdes.ingest/ingest-one ingestion path)
+                _ (reset! last-loaded ingested)
                 deps     (serdes.base/serdes-dependencies ingested)
                 ctx      (-> ctx
                              (update :expanding conj path)
