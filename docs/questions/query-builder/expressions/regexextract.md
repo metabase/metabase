@@ -4,9 +4,9 @@ title: Regexextract
 
 # Regexextract
 
-`regexextract` uses [regular expression (regex)](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions) to get a specific part of your text.
+`regexextract` uses [regular expressions (regex)](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions) to get a specific part of your text.
 
-`regexextract` is ideal for text that has little to no structure, like URLs or freeform survey responses. If you're working with strings with predictable formats like SKU numbers, IDs, or other types of codes, check out the simpler [substring](../expressions/substring.md) expression instead.
+`regexextract` is ideal for text that has little to no structure, like URLs or freeform survey responses. If you're working with strings in predictable formats like SKU numbers, IDs, or other types of codes, check out the simpler [substring](../expressions/substring.md) expression instead.
 
 Use `regexextract` to create custom columns with shorter, more readable labels for things like:
 
@@ -35,7 +35,7 @@ You can create a custom column **Campaign Name** with the expression:
 regexextract([URL], "^[^?#]+\?utm_campaign=(.*)")
 ```
 
-Here, the regex pattern [`^[^?#]+\?`](https://www.oreilly.com/library/view/regular-expressions-cookbook/9780596802837/ch07s13.html) matches all valid URL strings. You can replace `utm_campaign=` with whatever query parameter you like. At the end of the regex pattern, the [capturing group](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions/Groups_and_Backreferences) `(.*)` gets all of the characters that appear after the query parameter `utm_campaign=`.
+Here, the regex pattern [`^[^?#]+\?` matches all valid URL strings](https://www.oreilly.com/library/view/regular-expressions-cookbook/9780596802837/ch07s13.html). You can replace `utm_campaign=` with whatever query parameter you like. At the end of the regex pattern, the [capturing group](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions/Groups_and_Backreferences) `(.*)` gets all of the characters that appear after the query parameter `utm_campaign=`.
 
 Now, you can use **Campaign Name** in places where you need clean labels, such as [filter dropdown menus](../../../dashboards/filters.md#choosing-between-a-dropdown-or-autocomplete-for-your-filter), [charts](../../sharing/visualizing-results.md), and [embedding parameters](../../../embedding/signed-embedding-parameters.md).
 
