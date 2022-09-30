@@ -10,7 +10,6 @@
             [colorize.core :as colorize]
             [environ.core :as env]
             [java-time :as t]
-            [metabase.driver :as driver]
             [metabase.models :refer [Card Collection Dashboard DashboardCardSeries Database Dimension Field FieldValues
                                      LoginHistory Metric NativeQuerySnippet Permissions PermissionsGroup PermissionsGroupMembership
                                      PersistedInfo Pulse PulseCard PulseChannel Revision Segment Setting
@@ -526,57 +525,10 @@
   `(do-with-temp-vals-in-db ~model ~object-or-id ~column->temp-value (fn [] ~@body)))
 
 (defn is-uuid-string?
-  "Is string S a valid UUID string?"
+  "Is string `s` a valid UUID string?"
   ^Boolean [^String s]
   (boolean (when (string? s)
              (re-matches #"^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$" s))))
-
-(defn- update-in-if-present
-  "If the path `KS` is found in `M`, call update-in with the original
-  arguments to this function, otherwise, return `M`"
-  [m ks f & args]
-  (if (= ::not-found (get-in m ks ::not-found))
-    m
-    (apply update-in m ks f args)))
-
-(defn- ^:deprecated round-fingerprint-fields [fprint-type-map decimal-places fields]
-  (reduce (fn [fprint field]
-            (update-in-if-present fprint [field] (fn [num]
-                                                   (if (integer? num)
-                                                     num
-                                                     (u/round-to-decimals decimal-places num)))))
-          fprint-type-map fields))
-
-(defn ^:deprecated round-fingerprint
-  "Rounds the numerical fields of a fingerprint to 2 decimal places
-
-  DEPRECATED -- this should no longer be needed; use `metabase.query-processor-test/col` to get the actual real-life
-  fingerprint of the column instead."
-  [field]
-  (-> field
-      (update-in-if-present [:fingerprint :type :type/Number] round-fingerprint-fields 2 [:min :max :avg :sd])
-      ;; quartal estimation is order dependent and the ordering is not stable across different DB engines, hence more
-      ;; aggressive trimming
-      (update-in-if-present [:fingerprint :type :type/Number] round-fingerprint-fields 0 [:q1 :q3])
-      (update-in-if-present [:fingerprint :type :type/Text]
-                            round-fingerprint-fields 2
-                            [:percent-json :percent-url :percent-email :average-length])))
-
-(defn ^:deprecated round-fingerprint-cols
-  "Round fingerprints to a few digits, so it can be included directly in 'expected' parts of tests.
-
-  DEPRECATED -- this should no longer be needed; use `qp.tt/col` to get the actual real-life fingerprint of the
-  column instead."
-  ([query-results]
-   (if (map? query-results)
-     (let [maybe-data-cols (if (contains? query-results :data)
-                             [:data :cols]
-                             [:cols])]
-       (round-fingerprint-cols maybe-data-cols query-results))
-     (map round-fingerprint query-results)))
-
-  ([k query-results]
-   (update-in query-results k #(map round-fingerprint %))))
 
 (defn postwalk-pred
   "Transform `form` by applying `f` to each node where `pred` returns true"
@@ -588,7 +540,7 @@
                  form))
 
 (defn round-all-decimals
-  "Uses `walk/postwalk` to crawl `data`, looking for any double values, will round any it finds"
+  "Uses [[postwalk-pred]] to crawl `data`, looking for any double values, will round any it finds"
   [decimal-place data]
   (postwalk-pred (some-fn double? decimal?)
                  #(u/round-to-decimals decimal-place %)
@@ -667,25 +619,6 @@
                                 (when (instance? CronTrigger trigger)
                                   {:cron-schedule (.getCronExpression ^CronTrigger trigger)
                                    :data          (into {} (.getJobDataMap trigger))}))))}))))))
-
-(defn ^:deprecated db-timezone-id
-  "Return the timezone id from the test database. Must be called with `*driver*` bound,such as via `driver/with-driver`.
-  DEPRECATED — just call `metabase.driver/db-default-timezone` instead directly."
-  []
-  (assert driver/*driver*)
-  (let [db (data/db)]
-    ;; clear the connection pool for SQL JDBC drivers. It's possible that a previous test ran and set the session's
-    ;; timezone to something, then returned the session to the pool. Sometimes that connection's session can remain
-    ;; intact and subsequent queries will continue in that timezone. That causes problems for tests that we can
-    ;; determine the database's timezone.
-    (driver/notify-database-updated driver/*driver* db)
-    (data/dataset test-data
-      (or
-       (driver/db-default-timezone driver/*driver* db)
-       (-> (driver/current-db-time driver/*driver* db)
-           .getChronology
-           .getZone
-           .getID)))))
 
 (defmulti with-model-cleanup-additional-conditions
   "Additional conditions that should be used to restrict which instances automatically get deleted by

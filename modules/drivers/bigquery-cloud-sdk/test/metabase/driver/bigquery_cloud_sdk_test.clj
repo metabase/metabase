@@ -148,10 +148,10 @@
       (is (= [[nil] [0.0] [0.0] [10.0] [8.0] [5.0] [5.0] [nil] [0.0] [0.0]]
              (calculate-bird-scarcity [:* 1 $count]))))))
 
-(deftest db-timezone-id-test
+(deftest db-default-timezone-test
   (mt/test-driver :bigquery-cloud-sdk
     (is (= "UTC"
-           (tu/db-timezone-id)))))
+           (driver/db-default-timezone :bigquery-cloud-sdk (mt/db))))))
 
 (defn- do-with-temp-obj [name-fmt-str create-args-fn drop-args-fn f]
   (driver/with-driver :bigquery-cloud-sdk
