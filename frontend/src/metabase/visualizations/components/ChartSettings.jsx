@@ -19,7 +19,11 @@ import {
 import {
   updateSettings,
   getClickBehaviorSettings,
+  getComputedSettings,
+  getSettingsWidgets,
 } from "metabase/visualizations/lib/settings";
+
+import { getSettingDefintionsForColumn } from "metabase/visualizations/lib/settings/column";
 import ChartSettingsWidget from "./ChartSettingsWidget";
 import ChartSettingsWidgetPopover from "./ChartSettingsWidgetPopover";
 import { SectionContainer, SectionWarnings } from "./ChartSettings.styled";
@@ -176,6 +180,20 @@ class ChartSettings extends Component {
     return transformedSeries;
   }
 
+  columnHasSettings(col) {
+    const { series } = this.props;
+    const settings = this._getSettings();
+    const settingsDefs = getSettingDefintionsForColumn(series, col);
+    const computedSettings = getComputedSettings(settingsDefs, col, settings);
+
+    return getSettingsWidgets(
+      settingsDefs,
+      settings,
+      computedSettings,
+      col,
+    ).some(w => !w.hidden);
+  }
+
   render() {
     const {
       className,
@@ -251,6 +269,7 @@ class ChartSettings extends Component {
       onShowWidget: this.handleShowWidget,
       onEndShowWidget: this.handleEndShowWidget,
       currentSectionHasColumnSettings,
+      columnHasSettings: col => this.columnHasSettings(col),
     };
 
     const sectionPicker = (
