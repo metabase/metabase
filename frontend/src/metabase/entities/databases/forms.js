@@ -1,5 +1,5 @@
 import React from "react";
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
 import { getElevatedEngines } from "metabase/lib/engine";
@@ -77,6 +77,9 @@ const DATABASE_DETAIL_OVERRIDES = {
     placeholder: t`Paste the contents of the server's SSL certificate chain here`,
     type: "text",
   }),
+  "ssl-key-options": engine => ({
+    description: getSslKeyOptionsDescription(engine),
+  }),
   "schedules.metadata_sync": () => ({
     name: "schedules.metadata_sync",
     type: MetadataSyncScheduleWidget,
@@ -147,6 +150,25 @@ function getSshDescription() {
   );
 
   return jt`If a direct connection to your database isn't possible, you may want to use an SSH tunnel. ${link}.`;
+}
+
+function getSslKeyOptionsDescription(engine) {
+  if (engine !== "postgres") {
+    return null;
+  }
+
+  const link = (
+    <ExternalLink
+      href={MetabaseSettings.docsUrl(
+        "databases/connections/postgresql",
+        "authenticate-client-certificate",
+      )}
+    >
+      {t`Learn more`}
+    </ExternalLink>
+  );
+
+  return jt`If you have a PEM SSL client key, you can convert that key to the PKCS-8/DER format using OpenSSL. ${link}.`;
 }
 
 const AUTH_URL_PREFIXES = {
