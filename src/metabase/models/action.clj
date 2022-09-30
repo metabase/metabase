@@ -204,7 +204,8 @@
                          (->> known-models
                               (filter #(contains? implicit-card-ids (:id %)))
                               distinct)
-                         (db/select 'Card :id [:in implicit-card-ids]))
+                         (when (seq implicit-card-ids)
+                           (db/select 'Card :id [:in implicit-card-ids])))
         parameters-by-model-id (when (seq implicit-cards)
                                  (implicit-action-parameters implicit-cards))]
     (for [model-action model-actions
@@ -234,7 +235,7 @@
                                        not-empty)
         actions (when model-slug-by-dashcard-id
                   (merged-model-action (map :card dashcards) [:card_id :slug] [:in (vals model-slug-by-dashcard-id)]))
-        action-by-model-slug (m/index-by (juxt :card_id :slug) actions)]
+        action-by-model-slug (m/index-by (juxt :model_id :slug) actions)]
     (for [dashcard dashcards]
       (if-let [model-slug (get model-slug-by-dashcard-id (:id dashcard))]
         (m/assoc-some dashcard :action (get action-by-model-slug model-slug))
