@@ -4,6 +4,7 @@ import type {
   FieldType,
   InputType,
   ParameterType,
+  ModelAction,
 } from "metabase-types/api";
 
 import { getDefaultFieldSettings } from "metabase/writeback/components/ActionCreator/FormCreator";
@@ -108,3 +109,9 @@ export const setTemplateTagTypesFromFieldSettings = (
 
   return question;
 };
+
+export const mapModelActionsToActions = (modelAction: ModelAction) => ({
+  ...modelAction,
+  model_action_id: modelAction.id,
+  id: modelAction.action_id,
+});
