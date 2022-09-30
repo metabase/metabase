@@ -7,7 +7,7 @@
   (is (= [{:id "1" :v "a"}
           {:id "2" :v "b"}
           {:id "3" :v "yes"}]
-         (with-redefs [premium-features/enable-enhancements? (constantly true)]
+         (with-redefs [#_{:clj-kondo/ignore [:deprecated-var]} premium-features/enable-enhancements? (constantly true)]
            (pulse/the-parameters
             {:parameters [{:id "1" :v "a"} {:id "2" :v "b"}]}
             {:parameters [{:id "1" :v "no, since it's trumped by the pulse"} {:id "3" :v "yes"}]})))))

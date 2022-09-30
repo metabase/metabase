@@ -1,7 +1,6 @@
 import React from "react";
 import { t } from "ttag";
 import PropTypes from "prop-types";
-import _ from "underscore";
 
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import Schemas from "metabase/entities/schemas";

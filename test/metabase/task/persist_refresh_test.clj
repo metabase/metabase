@@ -3,6 +3,8 @@
             [clojurewerkz.quartzite.conversion :as qc]
             [java-time :as t]
             [medley.core :as m]
+            [metabase.driver :as driver]
+            [metabase.driver.ddl.interface :as ddl.i]
             [metabase.models :refer [Card Database PersistedInfo TaskHistory]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.interface :as qp.i]
@@ -218,3 +220,12 @@
                                     :query    {:aggregation [[:count]]
                                                :source-table (str "card__" (:id model))}}]
                   (is (= [[num-rows-query]] (mt/rows (qp/process-query query-on-top)))))))))))))
+
+(deftest can-persist-test
+  (testing "Can each database that allows for persistence actually persist"
+    (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
+      (testing (str driver/*driver* " can persist")
+        (mt/dataset test-data
+          (let [[success? error] (ddl.i/check-can-persist (mt/db))]
+            (is success? (str "Not able to persist on " driver/*driver*))
+            (is (= :persist.check/valid error))))))))

@@ -107,7 +107,23 @@ const snapshotsConfig = {
   specPattern: "frontend/test/snapshot-creators/**/*.cy.snap.js",
 };
 
+const crossVersionSourceConfig = {
+  ...defaultConfig,
+  baseUrl: "http://localhost:3000",
+  specPattern:
+    "frontend/test/metabase/scenarios/cross-version/source/**/*.cy.spec.js",
+};
+
+const crossVersionTargetConfig = {
+  ...defaultConfig,
+  baseUrl: "http://localhost:3001",
+  specPattern:
+    "frontend/test/metabase/scenarios/cross-version/target/**/*.cy.spec.js",
+};
+
 module.exports = {
   mainConfig,
   snapshotsConfig,
+  crossVersionSourceConfig,
+  crossVersionTargetConfig,
 };

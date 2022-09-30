@@ -114,7 +114,7 @@
           (is (= 1
                  (:updated-fingerprints (#'fingerprint/fingerprint-table! table fields)))))))))
 
-(deftest db-timezone-id-test
+(deftest db-default-timezone-test
   (mt/test-driver :mysql
     (let [timezone (fn [result-row]
                      (let [db (mt/db)]

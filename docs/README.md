@@ -174,6 +174,10 @@ Metabase's reference documentation.
 
 - [Troubleshooting guides](./troubleshooting-guide/index.md)
 
+### Developer guide
+
+- [Developer guide](./developers-guide/start.md)
+
 ## Getting help
 
 ### Troubleshooting

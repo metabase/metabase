@@ -1,5 +1,5 @@
 import React from "react";
-import _ from "underscore";
+
 import { action } from "@storybook/addon-actions";
 import { ComponentStory } from "@storybook/react";
 import PinnedItemCard from "./PinnedItemCard";

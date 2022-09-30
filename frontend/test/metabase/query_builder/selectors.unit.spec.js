@@ -299,7 +299,7 @@ describe("getIsResultDirty", () => {
         originalCard: dataset,
         lastRunCard: getDataset({ "source-table": 2 }),
       });
-      expect(getIsResultDirty(state)).toBe(false);
+      expect(getIsResultDirty(state)).toBe(true);
     });
 
     it("should not be dirty if model simple mode is active", () => {

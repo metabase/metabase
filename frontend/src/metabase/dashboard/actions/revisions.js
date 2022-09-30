@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import { createThunkAction } from "metabase/lib/redux";
 
 import { fetchDashboard, fetchDashboardCardData } from "./data-fetching";

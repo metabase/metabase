@@ -4,7 +4,6 @@
             [medley.core :as m]
             [metabase.query-processor :as qp]
             [metabase.test.data :as data]
-            [metabase.test.util.log :as tu.log]
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
@@ -64,16 +63,15 @@
 
 (deftest malformed-sql-response-test
   (testing "Check that we get proper error responses for malformed SQL"
-    (tu.log/suppress-output
-      (is (schema= {:status     (s/eq :failed)
-                    :class      (s/eq org.h2.jdbc.JdbcSQLException)
-                    :error      #"^Column \"ZID\" not found"
-                    :stacktrace [su/NonBlankString]
-                    :json_query {:native   {:query (s/eq "SELECT ZID FROM CHECKINS LIMIT 2")}
-                                 :type     (s/eq :native)
-                                 s/Keyword s/Any}
-                    s/Keyword   s/Any}
-                   (qp/process-userland-query
-                    {:native   {:query "SELECT ZID FROM CHECKINS LIMIT 2"}
-                     :type     :native
-                     :database (data/id)}))))))
+    (is (schema= {:status     (s/eq :failed)
+                  :class      (s/eq org.h2.jdbc.JdbcSQLException)
+                  :error      #"^Column \"ZID\" not found"
+                  :stacktrace [su/NonBlankString]
+                  :json_query {:native   {:query (s/eq "SELECT ZID FROM CHECKINS LIMIT 2")}
+                               :type     (s/eq :native)
+                               s/Keyword s/Any}
+                  s/Keyword   s/Any}
+                 (qp/process-userland-query
+                  {:native   {:query "SELECT ZID FROM CHECKINS LIMIT 2"}
+                   :type     :native
+                   :database (data/id)})))))
