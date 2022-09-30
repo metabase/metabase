@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import Icon from "metabase/components/Icon";
 import Schemas from "metabase/entities/schemas";
 import { State } from "metabase-types/store";
@@ -10,7 +10,10 @@ interface Props {
 }
 
 const SchemaPaneInner = ({ schema, show }: Props) => {
-  const tables = schema.tables.sort((a, b) => a.name.localeCompare(b.name));
+  const tables = useMemo(
+    () => schema.tables.sort((a, b) => a.name.localeCompare(b.name)),
+    [schema.tables],
+  );
   return (
     <div>
       <div className="ml1 my2 flex align-center justify-between border-bottom pb1">
