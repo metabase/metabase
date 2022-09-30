@@ -102,7 +102,7 @@ substring([Mission ID], 9, 3)
 
 When you run a question using the [notebook editor](https://www.metabase.com/glossary/notebook_editor), Metabase will convert your graphical query settings (filters, summaries, etc.) into a query, and run that query against your database to get your results.
 
-If our [sample data](#getting-a-substring-from-the-left) is stored in a SQL database:
+If our [sample data](#getting-a-substring-from-the-left) is stored in a PostgreSQL database:
 
 ```sql
 SELECT

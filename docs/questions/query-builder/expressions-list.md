@@ -372,7 +372,7 @@ Example: `regexextract([Address], "[0-9]+")`.
 
 Databases that don't support `regexextract`: H2, SQL Server, SQLite.
 
-Related: [contains](#contains), [substring](#substring)
+Related: [contains](#contains), [substring](#substring).
 
 ### replace
 

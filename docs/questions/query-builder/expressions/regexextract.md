@@ -53,6 +53,8 @@ Now, you can use **Campaign Name** in places where you need clean labels, such a
 
 Regex can be a dark art. You have been warned.
 
+`regexextract` is not supported on: H2, SQL Server, SQLite.
+
 ## Related functions
 
 This section covers functions and formulas that work the same way as the Metabase `regexextract` expression, with notes on how to choose the best option for your use case.
@@ -76,7 +78,7 @@ For example, you wouldn't be able to use `substring` to get the query parameter 
 But if you wanted to pull out everything after `https://www.` and before `.com`, you could do that with either:
 
 ```
-substring([URL], 12, 8)
+substring([URL], 13, 8)
 ```
 
 or
@@ -89,7 +91,7 @@ regexextract([URL], "^(?:https?:\/\/)?(?:[^@\/\n]+@)?(?:www\.)?([^:\/.\n]+)")
 
 When you run a question using the [notebook editor](https://www.metabase.com/glossary/notebook_editor), Metabase will convert your graphical query settings (filters, summaries, etc.) into a query, and run that query against your database to get your results.
 
-If our [sample data](#searching-and-cleaning-text) is stored in a SQL database:
+If our [sample data](#searching-and-cleaning-text) is stored in a PostgreSQL database:
 
 ```sql
 SELECT
