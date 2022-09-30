@@ -125,7 +125,7 @@ regexextract([URL], "^[^?#]+\?utm_campaign=(.*)")
 Assuming the [sample data](#searching-and-cleaning-text) is in a dataframe column called `df`,
 
 ```
-df['Campaign Name'] = df['URL'].str.extract(r'(^[^?#]+\?utm_campaign=(.*))')
+df['Campaign Name'] = df['URL'].str.extract(r'^[^?#]+\?utm_campaign=(.*)')
 ```
 
 does the same thing as the Metabase `regexextract` expression:
