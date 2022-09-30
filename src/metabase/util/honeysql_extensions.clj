@@ -208,11 +208,17 @@
 
 (defn is-of-type?
   "Is `honeysql-form` a typed form with `database-type`?
+  The `database-type` can be a string or a regex.
 
-    (is-of-type? expr \"datetime\") ; -> true"
+  (is-of-type? expr \"datetime\")  ; -> true
+
+  (is-of-type? expr #\"datetime\") ; -> true"
   [honeysql-form database-type]
-  (= (some-> honeysql-form type-info type-info->db-type str/lower-case)
-     (some-> database-type name str/lower-case)))
+  (if-let [db-type (some-> honeysql-form type-info type-info->db-type str/lower-case)]
+    (if (string? database-type)
+      (= db-type (some-> database-type name str/lower-case))
+      (some? (re-find database-type db-type)))
+    false))
 
 (s/defn with-database-type-info
   "Convenience for adding only database type information to a `honeysql-form`. Wraps `honeysql-form` and returns a

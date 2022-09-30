@@ -65,6 +65,8 @@
     ;; Spatial types -- see http://docs.oracle.com/cd/B28359_01/server.111/b28286/sql_elements001.htm#i107588
     [#"^SDO_"       :type/*]
     [#"STRUCT"      :type/*]
+    ;; TODO this regex seems to suggest there is a group?
+    [#"TIMESTAMP(\(\d\))? WITH TIME ZONE" :type/DateTimeWithTZ]
     [#"TIMESTAMP"   :type/DateTime]
     [#"URI"         :type/Text]
     [#"XML"         :type/*]]))
@@ -216,10 +218,13 @@
 
 (defmethod sql.qp/->honeysql [:oracle :convert-timezone]
   [driver [_ arg to from]]
-  (let [from (or from (qp.timezone/report-timezone-id-if-supported driver))]
+  (let [from    (or from (qp.timezone/results-timezone-id))
+        form    (sql.qp/->honeysql driver arg)
+        from-tz (partial hsql/call :from_tz)]
     (cond-> (sql.qp/->honeysql driver arg)
-      from
-      (->AtTimeZone from)
+      (and (not (hx/is-of-type? form #"timestamp(\(\d\))? with time zone"))
+           from)
+      (from-tz from)
       to
       (->AtTimeZone to))))
 

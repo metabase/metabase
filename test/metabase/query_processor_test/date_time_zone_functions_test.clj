@@ -33,8 +33,6 @@
               :base-type  :type/Integer}
              {:field-name "dt"
               :base-type  :type/DateTime}
-             #_{:field-name "dt_tz"
-                :base-type  :type/DateTimeWithZoneOffset}
              {:field-name "d"
               :base-type  :type/Date}
              {:field-name        "as_dt"
@@ -52,7 +50,6 @@
                                #t "2012-11-21 11:21:11-00:00[Asia/Ho_Chi_Minh]"])]
       [(inc idx)
        (t/local-date-time t)                                  ;; dt
-       #_(t/offset-date-time t)                                 ;; dt_tz
        (t/local-date t)                                       ;; d
        (t/format "yyyy-MM-dd HH:mm:ss" (t/local-date-time t)) ;; as_dt
        (t/format "yyyy-MM-dd" (t/local-date t))])]])          ;; as_d
@@ -272,6 +269,38 @@
 ;;; |                                           Convert Timezone tests                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(mt/defdataset timezones-1
+  [["times" [{:field-name "index"
+              :base-type  :type/Integer}
+             {:field-name "dt"
+              :base-type  :type/DateTime}
+             {:field-name "dt_ltz"
+              :base-type  :type/DateTimeWithLocalTZ}
+             {:field-name "dt_tz"
+              :base-type  :type/DateTimeWithTZ}
+             {:field-name "d"
+              :base-type  :type/Date}
+             {:field-name        "as_dt"
+              :base-type         :type/Text
+              :effective-type    :type/DateTime
+              :coercion-strategy :Coercion/ISO8601->DateTime}
+             {:field-name        "as_d"
+              :base-type         :type/Text
+              :effective-type    :type/Date
+              :coercion-strategy :Coercion/ISO8601->Date}]
+    (for [[idx t]
+          (map-indexed vector [#t "2004-03-19 09:19:09-00:00[Asia/Ho_Chi_Minh]"
+                               #t "2008-06-20 10:20:10-00:00[Asia/Ho_Chi_Minh]"
+                               #t "2012-11-21 11:21:11-00:00[Asia/Ho_Chi_Minh]"
+                               #t "2012-11-21 11:21:11-00:00[Asia/Ho_Chi_Minh]"])]
+      [(inc idx)
+       (t/local-date-time t)                                  ;; dt
+       (t/with-zone-same-instant t "Asia/Ho_Chi_Minh")        ;; dt_ltz
+       (t/with-zone-same-instant t "Asia/Ho_Chi_Minh")        ;; dt_tz
+       (t/local-date t)                                       ;; d
+       (t/format "yyyy-MM-dd HH:mm:ss" (t/local-date-time t)) ;; as_dt
+       (t/format "yyyy-MM-dd" (t/local-date t))])]])          ;; as_d
+
 (defmacro ^:private with-report-timezeone
   [tz & body]
   `(mt/with-temporary-setting-values [:report-timezone ~tz]
@@ -305,33 +334,54 @@
           zone-id])))
 
 (deftest convert-timezone-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
-    (mt/dataset times-mixed
-      (is (= "2004-03-19T16:19:09+07:00"
-             (test-date-convert {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt) nil ] (offset->zone "+07:00")]}
-                                 :fields      [[:expression "expr"]]})))
+  ;(mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
+  (mt/test-drivers #{:sqlserver}
+    (mt/dataset timezones-1
+      #_(testing "timestamp with out timezone"
+          (is (= "2004-03-19T16:19:09+07:00"
+                 (test-date-convert {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt) nil ] (offset->zone "+07:00")]}
+                                     :fields      [[:expression "expr"]]})))
 
-      (with-report-timezeone "America/New_York"
+          (testing "report timezone shouldn't affect the result"
+            (with-report-timezeone "America/New_York"
+              (is (= "2004-03-19T16:19:09+07:00"
+                     (test-date-convert {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt) nil]
+                                                               (offset->zone "+07:00")
+                                                               (offset->zone "+00:00")]}
+                                         :fields      [[:expression "expr"]]})))
+
+              (is (= "2004-03-19T21:19:09+07:00"
+                     (test-date-convert {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt) nil]
+                                                               (offset->zone "+07:00")]}
+                                         :fields      [[:expression "expr"]]}))))))
+
+      (testing "timestamp with timezone"
         (is (= "2004-03-19T16:19:09+07:00"
-               (test-date-convert {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt) nil]
-                                                         (offset->zone "+07:00")
-                                                         (offset->zone "+00:00")]}
+               (test-date-convert {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt) nil ] (offset->zone "+07:00")]}
                                    :fields      [[:expression "expr"]]})))
 
-        (is (= "2004-03-19T21:19:09+07:00"
-               (test-date-convert {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt) nil]
-                                                         (offset->zone "+07:00")]}
-                                   :fields      [[:expression "expr"]]})))))))
+        (testing "report timezone shouldn't affect the result"
+          (with-report-timezeone "America/New_York"
+            (is (= "2004-03-19T11:19:09+09:00"
+                   (test-date-convert {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt_tz) nil]
+                                                             (offset->zone "+09:00")]}
+                                       :fields      [[:expression "expr"]]})))))))))
+
+
+#_(dev/query-jdbc-db
+    [:oracle 'times-mixed]
+    ["select (\"CAM_147\".\"times_mixed_times\".\"dt\" AT TIME ZONE 'Asia/Saigon') AT TIME ZONE 'Asia/Saigon'
+   from \"CAM_147\".\"times_mixed_times\""])
 
 
 
-#_(mt/with-driver :oracle
-    (mt/dataset times-mixed
-      (mt/process-query
+#_(mt/with-driver :sqlserver
+    (mt/dataset timezones-1
+     (mt/process-query
         (mt/mbql-query times
-                       {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt) nil ] (offset->zone "+07:00") (offset->zone "+09:00")]}
-                        :fields      [[:expression "expr"]
-                                      [:field (mt/id :times :dt) nil]]}))))
+                       {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt) nil ] (offset->zone "+07:00")]}
+                        :fields      [[:expression "expr"]]}))))
+
 
 
 #_(mt/with-driver :mysql

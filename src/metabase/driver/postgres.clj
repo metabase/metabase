@@ -279,14 +279,24 @@
   (and (str/starts-with? database-type "\"")
        (str/ends-with? database-type "\"")))
 
+;; TODO we should be able to figure a the base type of a form during translation
+;; that ways we don't have to deal with cases where we have to know "timestamp(6) with time zone" is a thing
+;; and if we can do that, we dont' have to convert timezone twice for tz-aware columns
 (defmethod sql.qp/->honeysql [:postgres :convert-timezone]
   [driver [_ arg to from]]
-  (let [from (or from (qp.timezone/results-timezone-id))]
-    (cond->> (sql.qp/->honeysql driver arg)
-      from
-      (hsql/call :timezone from)
-      to
-      (hsql/call :timezone to))))
+  (let [form         (sql.qp/->honeysql driver arg)
+        timestamptz? (hx/is-of-type? form "timestamptz")]
+    ;; TODO we probably want to has a method to check if a column is tz-aware and it should dispatches by drivers
+    (when (and timestamptz?
+               from)
+      (throw (ex-info "timestamptz columns shoudln't have a base timezone" {:to   to
+                                                                            :from from})))
+    (let [from (or from (qp.timezone/results-timezone-id))]
+      (cond->> (sql.qp/->honeysql driver arg)
+        (and (not timestamptz?) from)
+        (hsql/call :timezone from)
+        to
+        (hsql/call :timezone to)))))
 
 (defmethod sql.qp/->honeysql [:postgres :value]
   [driver value]
@@ -469,9 +479,9 @@
    :smallserial   :type/Integer
    :text          :type/Text
    :time          :type/Time
-   :timetz        :type/TimeWithLocalTZ
+   :timetz        :type/TimeWithTZ
    :timestamp     :type/DateTime
-   :timestamptz   :type/DateTimeWithLocalTZ
+   :timestamptz   :type/DateTimeWithTZ
    :tsquery       :type/*
    :tsvector      :type/*
    :txid_snapshot :type/*
@@ -484,7 +494,9 @@
    (keyword "double precision")           :type/Float
    (keyword "time with time zone")        :type/Time
    (keyword "time without time zone")     :type/Time
-   (keyword "timestamp with timezone")    :type/DateTime
+   ;; TODO postgres also supports `timestamp(p) with time zone` where p is the precision
+   ;; maybe we should switch this to use `sql-jdbc.sync/pattern-based-database-type->base-type`
+   (keyword "timestamp with timezone")    :type/DateTimeWithTZ
    (keyword "timestamp without timezone") :type/DateTime})
 
 (doseq [[base-type db-type] {:type/BigInteger          "BIGINT"

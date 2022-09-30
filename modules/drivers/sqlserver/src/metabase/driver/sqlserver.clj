@@ -213,24 +213,6 @@
   [_ _ expr]
   (date-part :year expr))
 
-(defrecord AtTimeZone
-  ;; record type to support applying Presto's `AT TIME ZONE` operator to an expression
-  [expr zone]
-  hformat/ToSql
-  (to-sql [_]
-    (format "%s AT TIME ZONE %s"
-      (hformat/to-sql expr)
-      (hformat/to-sql (hx/literal zone)))))
-
-(defmethod sql.qp/->honeysql [:sqlserver :convert-timezone]
-  [driver [_ arg to from]]
-  (let [from (or from (qp.timezone/report-timezone-id-if-supported driver))]
-    (cond-> (sql.qp/->honeysql driver arg)
-      from
-      (->AtTimeZone from)
-      to
-      (->AtTimeZone to))))
-
 (defmethod sql.qp/add-interval-honeysql-form :sqlserver
   [_ hsql-form amount unit]
   (date-add unit amount hsql-form))
@@ -246,12 +228,27 @@
   [zone-id]
   (/ (.getTotalSeconds (.getOffset (t/offset-date-time (t/zone-id zone-id)))) 60))
 
+(defrecord AtTimeZone
+  ;; record type to support applying Presto's `AT TIME ZONE` operator to an expression
+  [expr zone]
+  hformat/ToSql
+  (to-sql [_]
+    (format "%s AT TIME ZONE %d"
+      (hformat/to-sql expr)
+      (hformat/to-sql (hx/literal zone)))))
+
 (defmethod sql.qp/->honeysql [:sqlserver :convert-timezone]
   [driver [_ arg to from]]
-  (let [from (or from (qp.timezone/results-timezone-id))]
-   (as-> (sql.qp/->honeysql driver arg) form
-     (hsql/call :todatetimeoffset form (get-offset-of-zoneid from))
-     (hsql/call :todatetimeoffset form (get-offset-of-zoneid to)))))
+  (let [from (or from (qp.timezone/results-timezone-id))
+        switch-off-set (partial hsql/call :switchoffset)]
+   (cond-> (sql.qp/->honeysql driver arg)
+     from
+     (switch-off-set (get-offset-of-zoneid from))
+     to
+     (->AtTimeZone (get-offset-of-zoneid to)))))
+
+;;#_(hsql/call :switchoffset form (get-offset-of-zoneid from))
+;;#_(hsql/call :todatetimeoffset form to)
 
 (defmethod sql.qp/cast-temporal-string [:sqlserver :Coercion/ISO8601->DateTime]
   [_driver _semantic_type expr]
