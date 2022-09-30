@@ -25,7 +25,7 @@ function SidebarDataAppLink({
   hovered: isHovered,
   isSelected,
 }: Props & DroppableProps) {
-  const url = Urls.dataApp(dataApp, { mode: "preview" });
+  const url = Urls.dataApp(dataApp, { mode: "app-url" });
   return (
     <DataAppLink
       url={url}
