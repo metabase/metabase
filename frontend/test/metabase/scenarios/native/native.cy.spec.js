@@ -3,6 +3,7 @@ import {
   popover,
   modal,
   openNativeEditor,
+  visitQuestionAdhoc,
 } from "__support__/e2e/cypress";
 
 describe("scenarios > question > native", () => {
@@ -186,5 +187,23 @@ describe("scenarios > question > native", () => {
         .should("have.attr", "href")
         .and("eq", `/question/${questionId}-test-question`);
     });
+  });
+
+  it("should not autorun ad-hoc native queries by default", () => {
+    visitQuestionAdhoc(
+      {
+        display: "scalar",
+        dataset_query: {
+          type: "native",
+          native: {
+            query: "SELECT 1",
+          },
+          database: 1,
+        },
+      },
+      { autorun: false },
+    );
+
+    cy.findByText("Here's where your results will appear").should("be.visible");
   });
 });
