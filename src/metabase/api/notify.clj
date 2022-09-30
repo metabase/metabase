@@ -32,9 +32,9 @@
                           (thunk)))]
     (api/let-404 [database (db/select-one Database :id id)]
       (cond
-        table_id   (when-let [table (db/select-one Table :db_id id, :id (int table_id))]
+        table_id   (api/let-404 [table (db/select-one Table :db_id id, :id (int table_id))]
                      (execute! #(table-sync-fn table)))
-        table_name (when-let [table (db/select-one Table :db_id id, :name table_name)]
+        table_name (api/let-404 [table (db/select-one Table :db_id id, :name table_name)]
                      (execute! #(table-sync-fn table)))
         :else      (execute! #(db-sync-fn database)))))
   {:success true})
