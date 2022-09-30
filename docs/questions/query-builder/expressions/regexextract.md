@@ -4,20 +4,20 @@ title: Regexextract
 
 # Regexextract
 
-`regexextract` uses [regular expressions (regex)](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions) to get a specific part of your text.
+`regexextract` uses [regular expression (regex)](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions) to get a specific part of your text.
 
-`regexextract` is ideal for text that has little to no structure, like URLs or freeform survey responses. If you're working with SKU numbers, IDs, or other types of codes, check out the simpler [substring](../expressions/substring.md) expression instead.
+`regexextract` is ideal for text that has little to no structure, like URLs or freeform survey responses. If you're working with strings with predictable formats like SKU numbers, IDs, or other types of codes, check out the simpler [substring](../expressions/substring.md) expression instead.
 
-Use this expression to create custom columns with shorter, more readable labels for things like:
+Use `regexextract` to create custom columns with shorter, more readable labels for things like:
 
 - filter dropdown menus, 
 - chart labels, or
 - embedding parameters.
 
-| Syntax                                                        | Example                                                                        |
-|---------------------------------------------------------------|--------------------------------------------------------------------------------|
-| `regexextract(text, regular_expression)`                      | `regexextract("Oh dear! Oh dear! I shall be too late!", "Oh dear(.*)Oh dear")`|
-| Gets a specific part of your text using a regular expression. | "!"                                                                            |
+| Syntax                                                        | Example                                 |
+|---------------------------------------------------------------|-----------------------------------------|
+| `regexextract(text, regular_expression)`                      | `regexextract("regexextract", "ex(.*)")`|
+| Gets a specific part of your text using a regular expression. | "extract"                               |
 
 ## Searching and cleaning text
 
@@ -35,7 +35,7 @@ You can create a custom column **Campaign Name** with the expression:
 regexextract([URL], "^[^?#]+\?utm_campaign=(.*)")
 ```
 
-Here, the regex pattern [`^[^?#]+\?`](https://www.oreilly.com/library/view/regular-expressions-cookbook/9780596802837/ch07s13.html) searches up until the first question mark in the URL string. You can replace `utm_campaign=` with whatever query parameter you like. At the end of the regex pattern, `(.*)` picks up on all the characters that appear after the query parameter `utm_campaign=`.
+Here, the regex pattern [`^[^?#]+\?`](https://www.oreilly.com/library/view/regular-expressions-cookbook/9780596802837/ch07s13.html) matches all valid URL strings. You can replace `utm_campaign=` with whatever query parameter you like. At the end of the regex pattern, the [capturing group](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions/Groups_and_Backreferences) `(.*)` gets all of the characters that appear after the query parameter `utm_campaign=`.
 
 Now, you can use **Campaign Name** in places where you need clean labels, such as [filter dropdown menus](../../../dashboards/filters.md#choosing-between-a-dropdown-or-autocomplete-for-your-filter), [charts](../../sharing/visualizing-results.md), and [embedding parameters](../../../embedding/signed-embedding-parameters.md).
 
@@ -53,7 +53,7 @@ Now, you can use **Campaign Name** in places where you need clean labels, such a
 
 Regex can be a dark art. You have been warned.
 
-`regexextract` is not supported on: H2, SQL Server, SQLite.
+`regexextract` is not supported on H2 (including the Metabase Sample Database), SQL Server, and SQLite.
 
 ## Related functions
 
@@ -73,7 +73,7 @@ This section covers functions and formulas that work the same way as the Metabas
 
 Use [substring](../expressions/substring.md) when you want to search text that has a consistent format (the same number of characters, and the same relative order of those characters). 
 
-For example, you wouldn't be able to use `substring` to get the query parameter from our [URL sample data](#searching-and-cleaning-text), because the URL paths and the parameter names both have variable lengths. 
+For example, you wouldn't be able to use `substring` to get the query parameter from the [URL sample data](#searching-and-cleaning-text), because the URL paths and the parameter names both have variable lengths. 
 
 But if you wanted to pull out everything after `https://www.` and before `.com`, you could do that with either:
 
@@ -96,7 +96,7 @@ If our [sample data](#searching-and-cleaning-text) is stored in a PostgreSQL dat
 ```sql
 SELECT
     url,
-    substring(url FROM '^[^?#]+\?utm_campaign=(.*)') AS campaign_name
+    SUBSTRING(url, '^[^?#]+\?utm_campaign=(.*)') AS campaign_name
 FROM follow_the_white_rabbit
 ```
 
