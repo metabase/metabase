@@ -4,6 +4,7 @@
             [metabase.actions.test-util :as actions.test-util]
             [metabase.api.action :as api.action]
             [metabase.driver :as driver]
+            [metabase.models :refer [Card ModelAction]]
             [metabase.models.action :refer [Action]]
             [metabase.models.database :refer [Database]]
             [metabase.models.table :refer [Table]]
@@ -33,17 +34,28 @@
   (testing "GET /api/action"
     (actions.test-util/with-actions-enabled
       (actions.test-util/with-action [{:keys [action-id]} {}]
-        (let [response (mt/user-http-request :crowberto :get 200 "action")]
-          (is (schema= [{:id       su/IntGreaterThanZero
-                         s/Keyword s/Any}]
-                       response))
-          (let [action (some (fn [action]
-                               (when (= (:id action) action-id)
-                                 action))
-                             response)]
-            (testing "Should return Card dataset_query deserialized (#23201)"
-              (is (schema= ExpectedGetCardActionAPIResponse
-                           action)))))))))
+        (mt/with-temp* [Card [{card-id :id} {:dataset true :dataset_query (mt/mbql-query categories)}]
+                        ModelAction [_ {:card_id card-id :slug "custom" :action_id action-id}]
+                        ModelAction [_ {:card_id card-id :slug "insert"}]
+                        ModelAction [_ {:card_id card-id :slug "update" :requires_pk true}]
+                        ModelAction [_ {:card_id card-id :slug "delete" :requires_pk true}]]
+          (let [response (mt/user-http-request :crowberto :get 200 (str "action?model-id=" card-id))]
+            (is (partial= [{:slug "custom"
+                            :action_id action-id
+                            :parameters [{:id "id"} {:id "name"}]
+                            :card {:is_write true}
+                            :name "Query Example"}
+                           {:slug "insert" :action_id nil :parameters [{:id "name"}]}
+                           {:slug "update" :action_id nil :parameters [{:id "id"} {:id "name"}]}
+                           {:slug "delete" :action_id nil :parameters [{:id "id"}]}]
+                          response))
+            (let [action (some (fn [action]
+                                 (when (= (:id action) action-id)
+                                   action))
+                               response)]
+              (testing "Should return Card dataset_query deserialized (#23201)"
+                (is (schema= ExpectedGetCardActionAPIResponse
+                             action))))))))))
 
 (deftest get-action-test
   (testing "GET /api/action/:id"

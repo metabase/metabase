@@ -169,10 +169,7 @@
   (let [dashcard (api/check-404 (db/select-one DashboardCard
                                                :id dashcard-id
                                                :dashboard_id dashboard-id))
-        ;; TODO action_id on dashcard is deprecated
-        model-action (if (:action_id dashcard)
-                       nil
-                       (api/check-404 (db/select-one ModelAction :card_id (:card_id dashcard) :slug slug)))
+        model-action (api/check-404 (db/select-one ModelAction :card_id (:card_id dashcard) :slug slug))
         _ (log/tracef "Mapping parameters\n\n%s\nwith mappings\n\n%s"
                       (u/pprint-to-str unmapped-parameters)
                       (u/pprint-to-str (:parameter_mappings dashcard)))
@@ -181,7 +178,7 @@
                             (:parameter_mappings dashcard))
         parameters (into (mbql.normalize/normalize-fragment [:parameters] extra-parameters)
                          mapped-parameters)]
-    (if-let [action-id (or (:action_id model-action) (:action_id dashcard))]
+    (if-let [action-id (:action_id model-action)]
       (execute-custom-action action-id parameters)
       (execute-implicit-action model-action parameters))))
 
