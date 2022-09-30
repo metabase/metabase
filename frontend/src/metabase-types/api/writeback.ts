@@ -78,3 +78,15 @@ export interface ActionFormSubmitResult {
 export type OnSubmitActionForm = (
   parameters: ArbitraryParameterForActionExecution[],
 ) => Promise<ActionFormSubmitResult>;
+
+export interface ModelAction {
+  id: number;
+  action_id?: number; // empty for implicit actions
+  name?: string; // empty for implicit actions
+  card_id: number; // the card id of the model
+  entity_id: string;
+  requires_pk: boolean;
+  slug: string;
+  parameter_mappings?: ParameterMappings;
+  visualization_settings?: ActionFormSettings;
+}

@@ -25,21 +25,3 @@ export const CardListItem = styled(Link)`
     background-color: ${color("brand-light")};
   }
 `;
-
-export const EmptyStateContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-
-  margin-top: 3rem;
-`;
-
-export const EmptyStateTitle = styled.span`
-  display: block;
-  color: ${color("text-medium")};
-  font-size: 1rem;
-  line-height: 1.5rem;
-  margin-bottom: 1rem;
-  text-align: center;
-`;
