@@ -145,6 +145,12 @@
 (def ^:private temporal-units-regex #"(millisecond|second|minute|hour|day|week|month|quarter|year)")
 (def ^:private relative-suffix-regex (re-pattern (format "(|~|-from-([0-9]+)%ss)" temporal-units-regex)))
 
+(defn- include-current?
+  "Adding a tilde (~) at the end of a past<n><unit>s filter means we should include the current time-unit (e.g. year, day,
+  week, or month)."
+  [relative-suffix]
+  (= "~" relative-suffix))
+
 (def ^:private relative-date-string-decoders
   [{:parser #(= % "today")
     :range  (fn [_ dt]
@@ -176,7 +182,7 @@
                                 unit-1 (t/minus ((get-in operations-by-date-unit [unit-1 :to-period]) int-value-1)))
                     dt-resolution (maybe-reduce-resolution unit dt-offset)]
                 (unit-range (t/minus dt-resolution (to-period int-value))
-                            (t/minus dt-resolution (to-period (if (= "~" relative-suffix) 0 1))))))
+                            (t/minus dt-resolution (to-period (if (include-current? relative-suffix) 0 1))))))
 
     :filter (fn [{:keys [unit int-value relative-suffix unit-1 int-value-1]} field-clause]
               (if unit-1
@@ -184,7 +190,7 @@
                  [:+ field-clause [:interval int-value-1 (keyword unit-1)]]
                  [:relative-datetime (- int-value) (keyword unit)]
                  [:relative-datetime 0 (keyword unit)]]
-                [:time-interval field-clause (- int-value) (keyword unit) {:include-current (= "~" relative-suffix)}]))}
+                [:time-interval field-clause (- int-value) (keyword unit) {:include-current (include-current? relative-suffix)}]))}
 
    {:parser (regex->parser (re-pattern (str #"next([0-9]+)" temporal-units-regex #"s" relative-suffix-regex))
                            [:int-value :unit :relative-suffix :int-value-1 :unit-1])
@@ -192,7 +198,7 @@
               (let [dt-offset (cond-> dt
                                 unit-1 (t/plus ((get-in operations-by-date-unit [unit-1 :to-period]) int-value-1)))
                     dt-resolution (maybe-reduce-resolution unit dt-offset)]
-                (unit-range (t/plus dt-resolution (to-period (if (= "~" relative-suffix) 0 1)))
+                (unit-range (t/plus dt-resolution (to-period (if (include-current? relative-suffix) 0 1)))
                             (t/plus dt-resolution (to-period int-value)))))
     :filter (fn [{:keys [unit int-value relative-suffix unit-1 int-value-1]} field-clause]
               (if unit-1
@@ -200,7 +206,7 @@
                  [:+ field-clause [:interval (- int-value-1) (keyword unit-1)]]
                  [:relative-datetime 0 (keyword unit)]
                  [:relative-datetime int-value (keyword unit)]]
-                [:time-interval field-clause int-value (keyword unit) {:include-current (= "~" relative-suffix)}]))}
+                [:time-interval field-clause int-value (keyword unit) {:include-current (include-current? relative-suffix)}]))}
 
    {:parser (regex->parser (re-pattern (str #"last" temporal-units-regex))
                            [:unit])

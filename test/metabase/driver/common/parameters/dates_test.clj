@@ -78,7 +78,7 @@
             [:relative-datetime 7 :hour]]
            (params.dates/date-string->filter "next7hours-from-13months" [:field "field" {:base-type :type/DateTime}]))))
   (testing "exclusions"
-    (t/with-clock (t/mock-clock #t "2016-06-07T12:13:55Z")
+    (mt/with-clock #t "2016-06-07T12:13:55Z"
       (testing "hours"
         (is (= [:!=
                 [:field "field" {:base-type :type/DateTime, :temporal-unit :hour-of-day}]
@@ -128,7 +128,7 @@
                (params.dates/date-string->filter "exclude-minutes-15-30" [:field "field" {:base-type :type/DateTime}])))))))
 
 (deftest date-string->range-test
-  (t/with-clock (t/mock-clock #t "2016-06-07T12:13:55Z")
+  (mt/with-clock #t "2016-06-07T12:13:55Z"
     (doseq [[group s->expected]
             {"absolute datetimes"         {"Q1-2016"               {:start "2016-01-01", :end "2016-03-31"}
                                            "2016-02"               {:start "2016-02-01", :end "2016-02-29"}
@@ -239,7 +239,6 @@
 
 (tc/quick-check 1000
   (prop/for-all [[tr tr+from-zero] time-range-generator]
-    (tap> [tr tr+from-zero])
     (= (params.dates/date-string->range tr)
        (params.dates/date-string->range tr+from-zero))))
 
