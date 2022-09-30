@@ -1,13 +1,14 @@
 (ns metabase.driver.vertica-test
   (:require [clojure.test :refer :all]
+            [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.query-processor :as qp]
-            [metabase.test :as mt]
-            [metabase.test.util :as tu]))
+            [metabase.test :as mt]))
 
 (deftest db-timezone-test
   (mt/test-driver :vertica
-    (is (= "UTC" (tu/db-timezone-id)))))
+    (is (= nil
+           (driver/db-default-timezone :vertica (mt/db))))))
 
 (deftest additional-connection-string-options-test
   (mt/test-driver :vertica

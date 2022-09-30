@@ -631,12 +631,26 @@
 (defmulti db-default-timezone
   "Return the *system* timezone ID name of this database, i.e. the timezone that local dates/times/datetimes are
   considered to be in by default. Ideally, this method should return a timezone ID like `America/Los_Angeles`, but an
-  offset formatted like `-08:00` is acceptable in cases where the actual ID cannot be provided."
+  offset formatted like `-08:00` is acceptable in cases where the actual ID cannot be provided.
+
+  This is currently used only when syncing the
+  Database (see [[metabase.sync.sync-metadata.sync-timezone/sync-timezone!]]) -- the result of this method is stored
+  in the `timezone` column of Database.
+
+  *In theory* this method should probably not return `nil`, since every Database presumably assumes some timezone for
+  LocalDate(Time)s types, but *in practice* implementations of this method return `nil` for some drivers. For example
+  the default implementation for `:sql-jdbc` returns `nil` unless the driver in question
+  implements [[metabase.driver.sql-jdbc.sync/db-default-timezone]]; the `:h2` driver does not for example. Why is
+  this? Who knows, but it's something you should keep in mind.
+
+  TODO FIXME (cam) -- I think we need to fix this for drivers that return `nil`."
   {:added "0.34.0", :arglists '(^java.lang.String [driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmethod db-default-timezone ::driver [_ _] nil)
+(defmethod db-default-timezone ::driver
+  [_driver _database]
+  nil)
 
 ;; TIMEZONE FIXME — remove this method entirely
 (defmulti current-db-time
@@ -644,7 +658,7 @@
   `metabase.driver.common/current-db-time` to implement this. This should return a Joda-Time `DateTime`.
 
   deprecated — the only thing this method is ultimately used for is to determine the db's system timezone.
-  `db-default-timezone` has been introduced as an intended replacement for this method; implement it instead. this
+  [[db-default-timezone]] has been introduced as an intended replacement for this method; implement it instead. this
   method will be removed in a future release."
   {:deprecated "0.34.0", :arglists '(^org.joda.time.DateTime [driver database])}
   dispatch-on-initialized-driver

@@ -1,6 +1,5 @@
 import React, { useCallback, useRef } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { isVirtualCardId } from "metabase/lib/saved-questions";
 import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";

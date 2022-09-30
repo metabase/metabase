@@ -243,6 +243,7 @@
         (let [expected-status (response-format->status-code response-format)]
           (testing "it should be possible to run a Card successfully if you jump through the right hoops..."
             (with-temp-card [card {:enable_embedding true}]
+              #_{:clj-kondo/ignore [:deprecated-var]}
               (test-query-results
                response-format
                (client/client :get expected-status (card-query-url card response-format)
@@ -295,6 +296,7 @@
                  (client/client :get 400 (card-query-url card response-format)))))
 
         (testing "if `:locked` param is present, request should succeed"
+          #_{:clj-kondo/ignore [:deprecated-var]}
           (test-query-results
            response-format
            (client/client :get (response-format->status-code response-format)
@@ -328,6 +330,7 @@
                  (client/client :get 400 (str (card-query-url card response-format {:params {:venue_id 100}}) "?venue_id=200")))))
 
         (testing "If an `:enabled` param is present in the JWT, that's ok"
+          #_{:clj-kondo/ignore [:deprecated-var]}
           (test-query-results
            response-format
            (client/client :get (response-format->status-code response-format)
@@ -335,6 +338,7 @@
                           {:request-options request-options})))
 
         (testing "If an `:enabled` param is present in URL params but *not* the JWT, that's ok"
+          #_{:clj-kondo/ignore [:deprecated-var]}
           (test-query-results
            response-format
            (client/client :get (response-format->status-code response-format)
@@ -450,6 +454,7 @@
   (testing "it should be possible to run a Card successfully if you jump through the right hoops..."
     (with-embedding-enabled-and-new-secret-key
       (with-temp-dashcard [dashcard {:dash {:enable_embedding true}}]
+        #_{:clj-kondo/ignore [:deprecated-var]}
         (test-query-results (client/client :get 202 (dashcard-url dashcard)))))))
 
 (deftest downloading-csv-json-xlsx-results-from-the-dashcard-endpoint-shouldn-t-be-subject-to-the-default-query-constraints

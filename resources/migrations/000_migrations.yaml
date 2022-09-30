@@ -12825,6 +12825,100 @@ databaseChangeLog:
               CHANGE updated_at
               updated_at timestamp(6) NOT NULL DEFAULT current_timestamp(6);
 
+  # The next 4 values add default values for Database `created_at` and `updated_at`; previously this was handled by
+  # Toucan but it's more convenient to do this at the application database level instead -- it facilitates stuff like
+  # schema migration tests that don't use Toucan, or other manual scripting
+  - changeSet:
+      id: v45.00-038
+      author: camsaul
+      comment: Added 0.45.0 -- add default value for Database created_at (Postgres/H2)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: postgresql,h2
+      changes:
+        - addDefaultValue:
+            tableName: metabase_database
+            columnName: created_at
+            columnDataType: ${timestamp_type}
+            defaultValueComputed: current_timestamp
+
+    # addDefaultValue with defaultValueComputed doesn't work for MySQL/MariaDB so we have to do this the hard way.
+  - changeSet:
+      id: v45.00-039
+      author: camsaul
+      comment: Added 0.45.0 -- add default value for Database created_at (MySQL/MariaDB)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+      changes:
+        - sql:
+            sql: >-
+              ALTER TABLE metabase_database
+              CHANGE created_at
+              created_at timestamp(6) NOT NULL DEFAULT current_timestamp(6);
+
+  - changeSet:
+      id: v45.00-040
+      author: camsaul
+      comment: Added 0.45.0 -- add default value for Database updated_at (Postgres/H2)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: postgresql,h2
+      changes:
+        - addDefaultValue:
+            tableName: metabase_database
+            columnName: updated_at
+            columnDataType: ${timestamp_type}
+            defaultValueComputed: current_timestamp
+
+  - changeSet:
+      id: v45.00-041
+      author: camsaul
+      comment: Added 0.45.0 -- add default value for Database updated_at (MySQL/MariaDB)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+      changes:
+        - sql:
+            sql: >-
+              ALTER TABLE metabase_database
+              CHANGE updated_at
+              updated_at timestamp(6) NOT NULL DEFAULT current_timestamp(6);
+
+  # It was probably an oversight, but while we validated Database `details` in the API layer it was not a required/NOT
+  # NULL column in the application Database itself. No problem; let's add it now that we've noticed it.
+  #
+  # MySQL (at least 5.7) won't let us have nice things:
+  #
+  # https://dev.mysql.com/doc/refman/5.7/en/data-type-defaults.html
+  #
+  # The BLOB, TEXT, GEOMETRY, and JSON data types cannot be assigned a default value.
+  #
+  # Because of this restriction we will just have to update existing NULL values in SQL and then add a NOT NULL
+  # restriction separately; we can use Toucan `pre-insert` to set defaults values when saving things.
+  - changeSet:
+      id: v45.00-042
+      author: camsaul
+      comment: Added 0.45.0 -- add default value for Database with NULL details
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_database SET details = '{}' WHERE details IS NULL;
+
+  - changeSet:
+      id: v45.00-043
+      author: camsaul
+      comment: Added 0.45.0 -- make Database details NOT NULL
+      changes:
+        - addNotNullConstraint:
+            columnDataType: ${text.type}
+            tableName: metabase_database
+            columnName: details
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
