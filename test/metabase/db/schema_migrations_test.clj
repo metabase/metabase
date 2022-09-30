@@ -18,6 +18,7 @@
    [metabase.models :refer [Card Collection Dashboard Database Field Permissions PermissionsGroup Pulse Setting Table User]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
    [metabase.util :as u]
@@ -668,3 +669,14 @@
                                                            :group_id (all-users-group-id)}]})
                               (migrate!)
                               (is (= ["All Users"] (get-perms))))))))
+
+(deftest make-database-details-not-null-test
+  (testing "Migrations v45.00-042 and v45.00-043: set default value of '{}' for Database rows with NULL details"
+    (impl/test-migrations ["v45.00-042" "v45.00-043"] [migrate!]
+      (let [database-id (db/simple-insert! Database (-> (dissoc (mt/with-temp-defaults Database) :details)
+                                                        (assoc :engine "h2")))]
+        (is (partial= {:details nil}
+                      (db/select-one Database :id database-id)))
+        (migrate!)
+        (is (partial= {:details {}}
+                      (db/select-one Database :id database-id)))))))

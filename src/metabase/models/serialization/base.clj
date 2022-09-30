@@ -332,6 +332,7 @@
 
   Keyed on the model name for this entity.
   Default implementation returns an empty vector, so only models that have dependencies need to implement this."
+  {:arglists '([ingested])}
   ingested-model)
 
 (defmethod serdes-dependencies :default [_]
@@ -346,6 +347,7 @@
 
   By default, this just calls [[load-xform-basics]].
   If you override this, call [[load-xform-basics]] as well."
+  {:arglists '([ingested])}
   ingested-model)
 
 (defn load-xform-basics
@@ -370,6 +372,7 @@
   Keyed on the model name (the first argument), because the second argument doesn't have its `:serdes/meta` anymore.
 
   Returns the primary key of the updated entity."
+  {:arglists '([model-name ingested local])}
   (fn [model _ _] model))
 
 (defmethod load-update! :default [model-name ingested local]
@@ -394,6 +397,7 @@
   Keyed on the model name (the first argument), because the second argument doesn't have its `:serdes/meta` anymore.
 
   Returns the primary key of the newly inserted entity."
+  {:arglists '([model ingested])}
   (fn [model _] model))
 
 (defmethod load-insert! :default [model ingested]
