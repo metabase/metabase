@@ -66,7 +66,7 @@ substring([Mission ID], (1 + length([Mission ID]) - 3), 3)
 
 ## Limitations
 
-`substring` extracts text by counting characters from left to right. If you need to extract text based on some more complicated logic, try [`regexextract`](../expressions-list.md#regexextract).
+`substring` extracts text by counting a fixed number of characters. If you need to extract text based on some more complicated logic, try [`regexextract`](../expressions-list.md#regexextract).
 
 And if you only need to clean up extra whitespace around your text, you can use the [`trim`](../expressions-list.md#trim), [`lefttrim`](../expressions-list.md#lefttrim), or [`righttrim`](../expressions-list.md#righttrim) expressions instead.
 
@@ -74,15 +74,35 @@ And if you only need to clean up extra whitespace around your text, you can use 
 
 This section covers functions and formulas that work the same way as the Metabase `substring` expression, with notes on how to choose the best option for your use case.
 
+**[Metabase expressions](../expressions-list.md)**
+
+- [regexextract](#regexextract)
+
+**Other tools**
+
 - [SQL](#sql)
 - [Spreadsheets](#spreadsheets)
 - [Python](#python)
+
+### Regexextract
+
+Use [regexextract](./regexextract.md) if you need to extract text based on more specific rules. For example, you could get the agent ID with a regex pattern that finds the last occurrence of "00" (and everything after it):
+
+```
+regexextract([Mission ID], ".+(00.+)$")
+```
+
+should return the same result as
+
+```
+substring([Mission ID], 9, 3)
+```
 
 ### SQL
 
 When you run a question using the [notebook editor](https://www.metabase.com/glossary/notebook_editor), Metabase will convert your graphical query settings (filters, summaries, etc.) into a query, and run that query against your database to get your results.
 
-If our [sample data](#getting-a-substring-from-the-left) is stored in a SQL database:
+If our [sample data](#getting-a-substring-from-the-left) is stored in a PostgreSQL database:
 
 ```sql
 SELECT
