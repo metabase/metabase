@@ -11,7 +11,7 @@
             [metabase.test :as mt]
             [metabase.test.data.interface :as tx]))
 
-(deftest explict-join-with-default-options-test
+(deftest ^:parallel explict-join-with-default-options-test
   (testing "Can we specify an *explicit* JOIN using the default options?"
     (let [query (mt/mbql-query venues
                   {:joins [{:source-table $$categories
@@ -39,7 +39,7 @@
                    :alias        "f"}]
        :order-by [[:asc $name]]})))
 
-(deftest left-outer-join-test
+(deftest ^:parallel left-outer-join-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Can we supply a custom alias? Can we do a left outer join ??"
       (is (= [["Big Red"          "Bayview Brood"]
@@ -64,7 +64,7 @@
                (qp/process-query
                 (query-with-strategy :left-join))))))))
 
-(deftest right-outer-join-test
+(deftest ^:parallel right-outer-join-test
   (mt/test-drivers (mt/normal-drivers-with-feature :right-join)
     (testing "Can we do a right outer join?"
       ;; the [nil "Fillmore Flock"] row will either come first or last depending on the driver; the rest of the rows will
@@ -89,7 +89,7 @@
                  (qp/process-query
                   (query-with-strategy :right-join)))))))))
 
-(deftest inner-join-test
+(deftest ^:parallel inner-join-test
   (mt/test-drivers (mt/normal-drivers-with-feature :inner-join)
     (testing "Can we do an inner join?"
       (is (= [["Big Red"        "Bayview Brood"]
@@ -108,7 +108,7 @@
                (qp/process-query
                 (query-with-strategy :inner-join))))))))
 
-(deftest full-join-test
+(deftest ^:parallel full-join-test
   (mt/test-drivers (mt/normal-drivers-with-feature :full-join)
     (testing "Can we do a full join?"
       (let [rows [["Big Red"          "Bayview Brood"]
@@ -137,7 +137,7 @@
                  (qp/process-query
                   (query-with-strategy :full-join)))))))))
 
-(deftest automatically-include-all-fields-test
+(deftest ^:parallel automatically-include-all-fields-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Can we automatically include `:all` Fields?"
       (is (= {:columns (mapv mt/format-name ["id" "name" "flock_id" "id_2" "name_2"])
@@ -169,7 +169,7 @@
                                   :fields       :all}]
                       :order-by [[:asc [:field-id $name]]]})))))))))
 
-(deftest include-no-fields-test
+(deftest ^:parallel include-no-fields-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Can we include no Fields (with `:none`)"
       (is (= {:columns (mapv mt/format-name ["id" "name" "flock_id"])
@@ -201,7 +201,7 @@
                                   :fields       :none}]
                       :order-by [[:asc [:field-id $name]]]})))))))))
 
-(deftest specific-fields-test
+(deftest ^:parallel specific-fields-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Can we include a list of specific Fields?"
       (let [{:keys [columns rows]} (mt/format-rows-by [#(some-> % int) str identity]
@@ -236,7 +236,7 @@
                 [1  "Russell Crow"    "Mission Street Murder"]]
                rows))))))
 
-(deftest all-fields-datetime-field-test
+(deftest ^:parallel all-fields-datetime-field-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing (str "Do Joins with `:fields``:all` work if the joined table includes Fields that come back wrapped in"
                   " `:datetime-field` forms?")
@@ -258,7 +258,7 @@
                 [3 "Kaneonuskatew Eiran" "2014-11-06T16:15:00Z" 3 "2014-09-15T00:00:00Z" 8 56]]
                rows))))))
 
-(deftest select-*-source-query-test
+(deftest ^:parallel select-*-source-query-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "We should be able to run a query that for whatever reason ends up with a `SELECT *` for the source query"
       (let [{:keys [rows columns]} (mt/format-rows-by [int int]
@@ -277,7 +277,7 @@
         (is (= [[1 5] [2 1] [3 8]]
                rows))))))
 
-(deftest join-against-nested-mbql-query-test
+(deftest ^:parallel join-against-nested-mbql-query-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Can we join against a source nested MBQL query?"
       (is (= [[29 "20th Century Cafe" 12  37.775 -122.423 2]
@@ -293,7 +293,7 @@
                     :order-by     [[:asc $name]]
                     :limit        3}))))))))
 
-(deftest join-against-card-source-query-test
+(deftest ^:parallel join-against-card-source-query-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Can we join against a `card__id` source query and use `:fields` `:all`?"
       (is (= {:rows
@@ -314,7 +314,7 @@
                       :order-by [[:asc $name]]
                       :limit    3})))))))))
 
-(deftest join-on-field-literal-test
+(deftest ^:parallel join-on-field-literal-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Can we join on a Field literal for a source query?"
       ;; Also: if you join against an *explicit* source query, do all columns for both queries come back? (Only applies
@@ -342,7 +342,7 @@
                       :order-by     [[:asc $venue_id]]
                       :limit        3})))))))))
 
-(deftest aggregate-join-results-test
+(deftest ^:parallel aggregate-join-results-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Can we aggregate on the results of a JOIN?"
       (mt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query
@@ -372,7 +372,7 @@
                      (mt/rows+column-names
                       (qp/process-query query)))))))))))
 
-(deftest get-all-columns-without-metadata-test
+(deftest ^:parallel get-all-columns-without-metadata-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "NEW! Can we still get all of our columns, even if we *DON'T* specify the metadata?"
       (mt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query
@@ -397,7 +397,7 @@
                       :order-by     [[:asc $venue_id]]
                       :limit        3})))))))))
 
-(deftest joined-field-in-time-interval-test
+(deftest ^:parallel joined-field-in-time-interval-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Should be able to use a joined field in a `:time-interval` clause"
       (is (= {:rows    []
@@ -412,7 +412,7 @@
                   :order-by [[:asc &c.checkins.id]]
                   :limit    10})))))))
 
-(deftest deduplicate-column-names-test
+(deftest ^:parallel deduplicate-column-names-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing (str "Do we gracefully handle situtations where joins would produce multiple columns with the same name? "
                   "(Multiple columns named `id` in the example below)")
@@ -457,7 +457,7 @@
                  1 "Red Medicine" 4 10.065 -165.374 3]]
                rows))))))
 
-(deftest sql-question-source-query-test
+(deftest ^:parallel sql-question-source-query-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (testing "we should be able to use a SQL question as a source query in a Join"
       (mt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query
@@ -473,7 +473,7 @@
                     :order-by [[:asc $id]]
                     :limit    2}))))))))
 
-(deftest joined-date-filter-test
+(deftest ^:parallel joined-date-filter-test
   ;; TIMEZONE FIXME — The excluded drivers below don't have TIME types, so the `attempted-murders` dataset doesn't
   ;; currently work. We should use the closest equivalent types (e.g. `DATETIME` or `TIMESTAMP` so we can still load
   ;; the dataset and run tests using this dataset such as these, which doesn't even use the TIME type.
@@ -493,7 +493,7 @@
                              :fields       [&attempts_joined.datetime_tz]
                              :source-table $$attempts}]}))))))))
 
-(deftest expressions-referencing-joined-aggregation-expressions-test
+(deftest ^:parallel expressions-referencing-joined-aggregation-expressions-test
   (testing (mt/normal-drivers-with-feature :nested-queries :left-join :expressions)
     (testing "Should be able to use expressions against columns that come from aggregation expressions in joins"
       (is (= [[1 "Red Medicine"          4  10.065 -165.374 3 1.5  4 3 2 1]
@@ -519,7 +519,7 @@
                                  :fields       :all}]
                   :limit       3})))))))
 
-(deftest join-source-queries-with-joins-test
+(deftest ^:parallel join-source-queries-with-joins-test
   (testing "Should be able to join against source queries that themselves contain joins (#12928)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join :foreign-keys)
       (mt/dataset sample-dataset
@@ -583,7 +583,7 @@
                      (mt/formatted-rows [int int 2.0 int int]
                        (qp/process-query query)))))))))))
 
-(deftest join-against-saved-question-with-sort-test
+(deftest ^:parallel join-against-saved-question-with-sort-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (testing "Should be able to join against a Saved Question that is sorted (#13744)"
       (mt/dataset sample-dataset
@@ -611,7 +611,7 @@
                    (mt/formatted-rows [int str str str str 2.0 1.0 str str int]
                      (qp/process-query query))))))))))
 
-(deftest join-with-space-in-alias-test
+(deftest ^:parallel join-with-space-in-alias-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (testing "Some drivers don't allow Table alises with spaces in them. Make sure joins still work."
       (mt/dataset sample-dataset
@@ -631,7 +631,7 @@
                      (mt/formatted-rows [int int]
                        (qp/process-query query)))))))))))
 
-(deftest joining-nested-queries-with-same-aggregation-test
+(deftest ^:parallel joining-nested-queries-with-same-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (testing (str "Should be able to join two nested queries with the same aggregation on a Field in their respective "
                   "source queries (#18512)")
@@ -665,7 +665,7 @@
                    (mt/formatted-rows [str int str int]
                      (qp/process-query query))))))))))
 
-(deftest join-against-same-table-as-source-query-source-table-test
+(deftest ^:parallel join-against-same-table-as-source-query-source-table-test
   (testing "Joining against the same table as the source table of the source query should work (#18502)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
       (mt/dataset sample-dataset
@@ -688,7 +688,7 @@
                    (mt/formatted-rows [str int str int]
                      (qp/process-query query))))))))))
 
-(deftest join-against-multiple-saved-questions-with-same-column-test
+(deftest ^:parallel join-against-multiple-saved-questions-with-same-column-test
   (testing "Should be able to join multiple against saved questions on the same column (#15863, #20362)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
       (mt/dataset sample-dataset
@@ -729,7 +729,7 @@
                           ["Widget"    54 "Widget"    3109.31 "Widget"    3.15]]
                          (mt/formatted-rows [str int str 2.0 str 2.0] results))))))))))))
 
-(deftest use-correct-source-alias-for-fields-from-joins-test
+(deftest ^:parallel use-correct-source-alias-for-fields-from-joins-test
   (testing "Make sure we use the correct escaped alias for a Fields coming from joins (#20413)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
       (mt/dataset sample-dataset
@@ -776,7 +776,7 @@
                                          int str str str str 2.0 2.0 str]
                        results))))))))))
 
-(deftest double-quotes-in-join-alias-test
+(deftest ^:parallel double-quotes-in-join-alias-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Make sure our we handle (escape) double quotes in join aliases. Make sure we prevent SQL injection (#20307)"
       (let [expected-rows (mt/rows
@@ -816,7 +816,7 @@
   (str/join (for [i (range length)]
               (nth charset (mod i (count charset))))))
 
-(deftest very-long-join-name-test
+(deftest ^:parallel very-long-join-name-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Drivers should work correctly even if joins have REALLLLLLY long names (#15978)"
       (doseq [[charset-name charset] charsets
@@ -847,7 +847,7 @@
                      (mt/formatted-rows [int str str str]
                        (qp/process-query query)))))))))))
 
-(deftest join-against-implicit-join-test
+(deftest ^:parallel join-against-implicit-join-test
   (testing "Should be able to explicitly join against an implicit join (#20519)"
     (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions :basic-aggregations)
       (mt/with-bigquery-fks #{:bigquery-cloud-sdk}

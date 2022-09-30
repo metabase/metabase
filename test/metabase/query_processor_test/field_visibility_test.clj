@@ -35,7 +35,7 @@
 
 ;;; ----------------------------------------------- :sensitive fields ------------------------------------------------
 
-(deftest sensitive-fields-test
+(deftest ^:parallel sensitive-fields-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "Make sure :sensitive information fields are never returned by the QP"
       (is (= {:cols (qp.test/expected-cols :users [:id :name :last_login])

@@ -373,7 +373,8 @@
     toucan.models                                                   models}}
 
   :metabase/disallow-invoking-model         {:level :warning}
-  :metabase/disallow-class-or-type-on-model {:level :warning}}
+  :metabase/disallow-class-or-type-on-model {:level :warning}
+  :metabase/disallow-form-in-parallel-tests {:level :error}}
 
  :lint-as
  {clojure.core.logic/defne                                                             clj-kondo.lint-as/def-catch-all
@@ -434,6 +435,7 @@
  {:analyze-call
   {clojure.core/class                                                                                                        hooks.metabase.models.disallow-type-or-class/hook
    clojure.core/type                                                                                                         hooks.metabase.models.disallow-type-or-class/hook
+   clojure.test/deftest                                                                                                      hooks.clojure.test/deftest
    metabase-enterprise.advanced-permissions.models.permissions.application-permissions-test/with-new-group-and-current-graph hooks.common/with-two-top-level-bindings
    metabase-enterprise.audit-app.pages-test/with-temp-objects                                                                hooks.common/with-one-binding
    metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan.util.test/with-temp*

@@ -75,7 +75,7 @@
                                     :aggregation [[:count]]
                                     :breakout    [[:expression "expr"]]})}])
 
-(deftest extraction-function-tests
+(deftest ^:parallel extraction-function-tests
   (mt/dataset times-mixed
     ;; need to have seperate tests for mongo because it doesn't have supports for casting yet
     (mt/test-drivers (disj (mt/normal-drivers-with-feature :temporal-extract) :mongo)
@@ -115,7 +115,7 @@
              (is (= (set (expected-fn op)) (set (test-temporal-extract (query-fn op field-id))))))))))))
 
 
-(deftest temporal-extraction-with-filter-expresion-tests
+(deftest ^:parallel temporal-extraction-with-filter-expresion-tests
   (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
     (mt/dataset times-mixed
       (doseq [{:keys [title expected query]}
@@ -194,7 +194,7 @@
          (mt/formatted-rows [normalize-timestamp-str])
          (map first))))
 
-(deftest date-math-tests
+(deftest ^:parallel date-math-tests
   (mt/dataset times-mixed
     ;; mongo doesn't supports coercion yet so we exclude it here, Tests for it are in [[metabase.driver.mongo.query-processor-test]]
     (mt/test-drivers (disj (mt/normal-drivers-with-feature :date-arithmetics) :mongo)
@@ -236,7 +236,7 @@
           (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
             (is (= (set expected) (set (test-date-math query))))))))))
 
-(deftest date-math-with-extract-test
+(deftest ^:parallel date-math-with-extract-test
   (mt/test-drivers (mt/normal-drivers-with-feature :date-arithmetics)
     (mt/dataset times-mixed
       (doseq [{:keys [title expected query]}

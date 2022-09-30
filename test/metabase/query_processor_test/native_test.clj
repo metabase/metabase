@@ -4,7 +4,7 @@
             [metabase.query-processor-test :as qp.test]
             [metabase.test :as mt]))
 
-(deftest native-test
+(deftest ^:parallel native-test
   (is (= {:rows
           [["Plato Yeshua"]
            ["Felipinho Asklepios"]

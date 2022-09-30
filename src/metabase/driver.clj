@@ -6,33 +6,16 @@
   SQL-based drivers can use the `:sql` driver as a parent, and JDBC-based SQL drivers can use `:sql-jdbc`. Both of
   these drivers define additional multimethods that child drivers should implement; see [[metabase.driver.sql]] and
   [[metabase.driver.sql-jdbc]] for more details."
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [java-time :as t]
-            [metabase.driver.impl :as driver.impl]
-            [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.util.i18n :refer [deferred-tru trs tru]]
-            [metabase.util.schema :as su]
-            [potemkin :as p]
-            [schema.core :as s]
-            [toucan.db :as db]))
-
-(declare notify-database-updated)
-
-(defn- notify-all-databases-updated
-  "Send notification that all Databases should immediately release cached resources (i.e., connection pools).
-
-  Currently only used below by [[report-timezone]] setter (i.e., only used when report timezone changes). Reusing
-  pooled connections with the old session timezone can have weird effects, especially if report timezone is changed to
-  `nil` (meaning subsequent queries will not attempt to change the session timezone) or something considered invalid
-  by a given Database (meaning subsequent queries will fail to change the session timezone)."
-  []
-  (doseq [{driver :engine, id :id, :as database} (db/select 'Database)]
-    (try
-      (notify-database-updated driver database)
-      (catch Throwable e
-        (log/error e (trs "Failed to notify {0} Database {1} updated" driver id))))))
+  (:require
+   [clojure.string :as str]
+   [java-time :as t]
+   [metabase.driver.impl :as driver.impl]
+   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.schema :as su]
+   [potemkin :as p]
+   [schema.core :as s]))
 
 (defn- short-timezone-name [timezone-id]
   (let [^java.time.ZoneId zone (if (seq timezone-id)
@@ -44,11 +27,7 @@
      (java.util.Locale/getDefault))))
 
 (defsetting report-timezone
-  (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone.")
-  :setter
-  (fn [new-value]
-    (setting/set-value-of-type! :string :report-timezone new-value)
-    (notify-all-databases-updated)))
+  (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone."))
 
 (defsetting report-timezone-short
   "Current report timezone abbreviation"
@@ -600,7 +579,8 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmethod notify-database-updated ::driver [_ _]
+(defmethod notify-database-updated ::driver
+  [_driver _database]
   nil) ; no-op
 
 (defmulti sync-in-context

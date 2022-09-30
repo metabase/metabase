@@ -39,7 +39,7 @@
                       "LIMIT 1048575"))
    :params (s/eq nil)})
 
-(deftest process-userland-query-test
+(deftest ^:parallel process-userland-query-test
   (testing "running a bad query via `process-query` should return stacktrace, query, preprocessed query, and native query"
     (is (schema= {:status       (s/eq :failed)
                   :class        Class
@@ -52,7 +52,7 @@
                   s/Keyword     s/Any}
                  (qp/process-userland-query (bad-query))))))
 
-(deftest process-query-and-save-execution-test
+(deftest ^:parallel process-query-and-save-execution-test
   (testing "running via `process-query-and-save-execution!` should return similar info and a bunch of other nonsense too"
     (is (schema= {:database_id  (s/eq (mt/id))
                   :started_at   java.time.ZonedDateTime

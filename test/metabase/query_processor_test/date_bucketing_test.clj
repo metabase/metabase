@@ -51,7 +51,7 @@
     (get timezone x)
     x))
 
-(deftest sanity-check-test
+(deftest ^:parallel sanity-check-test
   ;; TIMEZONE FIXME — currently broken for Snowflake. UNIX timestamps are interpreted as being in the report timezone
   ;; rather than UTC.
   (mt/test-drivers (disj (mt/normal-drivers) :snowflake :redshift)
@@ -291,7 +291,7 @@
              (mt/with-system-timezone-id (timezone :pacific)
                (sad-toucan-incidents-with-bucketing :default :eastern)))))))
 
-(deftest group-by-minute-test
+(deftest ^:parallel group-by-minute-test
   (testing "This dataset doesn't have multiple events in a minute, the results are the same as the default grouping"
     (mt/test-drivers (mt/normal-drivers)
       (is (= (cond
@@ -308,7 +308,7 @@
                (sad-toucan-result (default-timezone-parse-fn :utc) (format-in-timezone-fn :utc)))
              (sad-toucan-incidents-with-bucketing :minute :pacific))))))
 
-(deftest group-by-minute-of-hour-test
+(deftest ^:parallel group-by-minute-of-hour-test
   (testing "Grouping by minute of hour is not affected by timezones"
     (mt/test-drivers (mt/normal-drivers)
       (is (= [[0 5]
@@ -348,7 +348,7 @@
 
 ;; For this test, the results are the same for each database, but the formatting of the time for that given count is
 ;; different depending on whether the database supports a report timezone and what timezone that database is in
-(deftest group-by-hour-test
+(deftest ^:parallel group-by-hour-test
   (mt/test-drivers (mt/normal-drivers)
     (is (= (cond
              (= :sqlite driver/*driver*)
@@ -367,7 +367,7 @@
 ;; The counts are affected by timezone as the times are shifted back by 7 hours. These count changes can be validated
 ;; by matching the first three results of the pacific results to the last three of the UTC results (i.e. pacific is 7
 ;; hours back of UTC at that time)
-(deftest group-by-hour-of-day-test
+(deftest ^:parallel group-by-hour-of-day-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "results in pacific timezone"
       (is (= (if (and (not (qp.test/tz-shifted-driver-bug? driver/*driver*))
@@ -398,7 +398,7 @@
 ;; events to we gain and lose. Although this test is technically covered by the other grouping by day tests, it's
 ;; useful for debugging to answer why row counts change when the timezone shifts by removing timezones and the related
 ;; database settings
-(deftest new-events-after-timezone-shift-test
+(deftest ^:parallel new-events-after-timezone-shift-test
   (driver/with-driver :h2
     (doseq [[timezone-id expected-net-gains] {:pacific [2 -1 5 -5 2 0 -2 1 -1 1]
                                               :eastern [1 -1 3 -3 3 -2 -1 0 1 1]}]
@@ -547,7 +547,7 @@
              (mt/with-system-timezone-id (timezone :pacific)
                (sad-toucan-incidents-with-bucketing :day :pacific)))))))
 
-(deftest group-by-day-of-week-test
+(deftest ^:parallel group-by-day-of-week-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "\nPacific timezone"
       (is (= (if (and (not (qp.test/tz-shifted-driver-bug? driver/*driver*))
@@ -559,7 +559,7 @@
       (is (= [[1 28] [2 38] [3 29] [4 27] [5 24] [6 30] [7 24]]
              (sad-toucan-incidents-with-bucketing :day-of-week :utc))))))
 
-(deftest group-by-day-of-month-test
+(deftest ^:parallel group-by-day-of-month-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "\nPacific timezone"
       (is (= (if (and (not (qp.test/tz-shifted-driver-bug? driver/*driver*))
@@ -571,7 +571,7 @@
       (is (= [[1 6] [2 10] [3 4] [4 9] [5  9] [6 8] [7 8] [8  9] [9 7] [10  9]]
              (sad-toucan-incidents-with-bucketing :day-of-month :utc))))))
 
-(deftest group-by-day-of-year-test
+(deftest ^:parallel group-by-day-of-year-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "\nPacific timezone"
       (is (= (if (and (not (qp.test/tz-shifted-driver-bug? driver/*driver*))
@@ -587,7 +587,7 @@
 ;; find how those counts would change if time was in pacific time. The results of this test are also in the UTC test
 ;; above and pacific test below, but this is still useful for debugging as it doesn't involve changing timezones or
 ;; database settings
-(deftest new-weekly-events-after-tz-shift-test
+(deftest ^:parallel new-weekly-events-after-tz-shift-test
   (driver/with-driver :h2
     (doseq [[timezone-id start-date->expected-net-gain] {:pacific {"2015-05-31" 3
                                                                    "2015-06-07" 0
@@ -719,14 +719,14 @@
              (mt/with-system-timezone-id (timezone :pacific)
                (sad-toucan-incidents-with-bucketing :week :pacific)))))))
 
-(deftest group-by-week-of-year-test
+(deftest ^:parallel group-by-week-of-year-test
   (mt/test-drivers (mt/normal-drivers)
     (is (= [[22 46] [23 47] [24 40] [25 60] [26 7]]
            (sad-toucan-incidents-with-bucketing :week-of-year :utc)))))
 
 ;; All of the sad toucan events in the test data fit in June. The results are the same on all databases and the only
 ;; difference is how the beginning of hte month is represented, since we always return times with our dates
-(deftest group-by-month-test
+(deftest ^:parallel group-by-month-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "\nPacific timezone"
       (is (= [[(cond
@@ -754,12 +754,12 @@
                  200]]
                (sad-toucan-incidents-with-bucketing :month :eastern)))))))
 
-(deftest group-by-month-of-year-test
+(deftest ^:parallel group-by-month-of-year-test
   (mt/test-drivers (mt/normal-drivers)
     (is (= [[6 200]]
            (sad-toucan-incidents-with-bucketing :month-of-year :pacific)))))
 
-(deftest group-by-quarter-test
+(deftest ^:parallel group-by-quarter-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "\nPacific timezone"
       (is (= [[(cond (= :sqlite driver/*driver*)
@@ -784,7 +784,7 @@
                200]]
              (sad-toucan-incidents-with-bucketing :quarter :eastern))))))
 
-(deftest group-by-quarter-of-year-test
+(deftest ^:parallel group-by-quarter-of-year-test
   (mt/test-drivers (mt/normal-drivers)
     (is (= [[2 200]]
            (sad-toucan-incidents-with-bucketing :quarter-of-year :pacific)))
@@ -798,7 +798,7 @@
                {:aggregation [[:count]]
                 :breakout    [!quarter-of-year.date]}))))))
 
-(deftest group-by-year-test
+(deftest ^:parallel group-by-year-test
   (mt/test-drivers (mt/normal-drivers)
     (is (= [[(cond
                (= :sqlite driver/*driver*)
@@ -892,6 +892,10 @@
 
 (def ^:private ^:dynamic *recreate-db-if-stale?* true)
 
+(defn- dataset-is-stale? [dataset]
+  (and (checkins-db-is-old? (* (.intervalSeconds dataset) 5))
+       *recreate-db-if-stale?*))
+
 (defn- count-of-grouping [^TimestampDatasetDef dataset field-grouping & relative-datetime-args]
   (mt/dataset dataset
     ;; DB has values in the range of now() - (interval-seconds * 15) and now() + (interval-seconds * 15). So if it
@@ -899,18 +903,21 @@
     ;; the tests pass.
     ;;
     ;; TODO - perhaps this should be rolled into `mt/dataset` itself -- it seems like a useful feature?
-    (if (and (checkins-db-is-old? (* (.intervalSeconds dataset) 5)) *recreate-db-if-stale?*)
-      (binding [*recreate-db-if-stale?* false]
-        (printf "DB for %s is stale! Deleteing and running test again\n" dataset)
-        (db/delete! Database :id (mt/id))
-        (apply count-of-grouping dataset field-grouping relative-datetime-args))
-      (let [results (mt/run-mbql-query checkins
-                      {:aggregation [[:count]]
-                       :filter      [:=
-                                     [:field %timestamp {:temporal-unit field-grouping}]
-                                     (cons :relative-datetime relative-datetime-args)]})]
-        (or (some-> results mt/first-row first int)
-            results)))))
+    (when (dataset-is-stale? dataset)
+      (locking *recreate-db-if-stale?*
+        (when (dataset-is-stale? dataset)
+          (binding [*recreate-db-if-stale?* false]
+            (printf "DB for %s is stale! Deleteing and running test again\n" dataset)
+            ;; database is stale; delete and then recreate.
+            (db/delete! Database :id (mt/id))))))
+    ;; now run the tests.
+    (let [results (mt/run-mbql-query checkins
+                    {:aggregation [[:count]]
+                     :filter      [:=
+                                   [:field %timestamp {:temporal-unit field-grouping}]
+                                   (cons :relative-datetime relative-datetime-args)]})]
+      (or (some-> results mt/first-row first int)
+          results))))
 
 ;; HACK - Don't run these tests against Snowflake/etc. because the databases need to be loaded every time the tests
 ;;        are ran and loading data into these DBs is mind-bogglingly slow.
@@ -918,7 +925,7 @@
 ;; Don't run the minute tests against Oracle because the Oracle tests are kind of slow and case CI to fail randomly
 ;; when it takes so long to load the data that the times are no longer current (these tests pass locally if your
 ;; machine isn't as slow as the CircleCI ones)
-(deftest count-of-grouping-test
+(deftest ^:parallel count-of-grouping-test
   (mt/test-drivers (mt/normal-drivers-except #{:snowflake})
     (testing "4 checkins per minute dataset"
       (testing "group by minute"
@@ -944,7 +951,7 @@
                (count-of-grouping checkins:1-per-day :week :current))
             "filter by week = [:relative-datetime :current]")))))
 
-(deftest time-interval-test
+(deftest ^:parallel time-interval-test
   (mt/test-drivers (mt/normal-drivers-except #{:snowflake})
     (testing "Syntactic sugar (`:time-interval` clause)"
       (mt/dataset checkins:1-per-day
@@ -976,7 +983,7 @@
                (throw (ex-info "Query failed!" results)))
      :unit (-> results :data :cols first :unit)}))
 
-(deftest date-bucketing-when-you-test
+(deftest ^:parallel date-bucketing-when-you-test
   (mt/test-drivers (mt/normal-drivers-except #{:snowflake})
     (is (= {:rows 1, :unit :day}
            (date-bucketing-unit-when-you :breakout-by "day", :filter-by "day")))
@@ -1004,7 +1011,7 @@
 ;;
 ;; We should get count = 1 for the current day, as opposed to count = 0 if we weren't auto-bucketing
 ;; (e.g. 2018-11-19T00:00 != 2018-11-19T12:37 or whatever time the checkin is at)
-(deftest default-bucketing-test
+(deftest ^:parallel default-bucketing-test
   (mt/test-drivers (mt/normal-drivers-except #{:snowflake})
     (mt/dataset checkins:1-per-day
       (is (= [[1]]
@@ -1080,7 +1087,7 @@
                     filter-value
                     expected-count)))))))))
 
-(deftest legacy-default-datetime-bucketing-test
+(deftest ^:parallel legacy-default-datetime-bucketing-test
   (testing (str ":type/Date or :type/DateTime fields that don't have `:temporal-unit` clauses should get default `:day` "
                 "bucketing for legacy reasons. See #9014")
     (is (= (str "SELECT count(*) AS \"count\" "
@@ -1096,7 +1103,7 @@
                {:aggregation [[:count]]
                 :filter      [:= $date [:relative-datetime :current]]})))))))
 
-(deftest compile-time-interval-test
+(deftest ^:parallel compile-time-interval-test
   (testing "Make sure time-intervals work the way they're supposed to."
     (testing "[:time-interval $date -4 :month] should give us something like Oct 01 2020 - Feb 01 2021 if today is Feb 17 2021"
       (is (= (str "SELECT CHECKINS.DATE AS DATE "
@@ -1181,7 +1188,7 @@
               (is (= expected-rows
                      (mt/formatted-rows [int int] (qp/process-query query)))))))))))
 
-(deftest filter-by-current-quarter-test
+(deftest ^:parallel filter-by-current-quarter-test
   ;; Oracle doesn't work on March 31st because March 31st + 3 months = June 31st, which doesn't exist. See #10072
   (mt/test-drivers (disj (mt/normal-drivers) :oracle)
     (testing "Should be able to filter by current quarter (#20683)"
@@ -1198,7 +1205,7 @@
                (mt/formatted-rows [int] (qp/process-query query)))))))))
 
 ;; TODO -- is this really date BUCKETING? Does this BELONG HERE?!
-(deftest june-31st-test
+(deftest ^:parallel june-31st-test
   (testing "What happens when you try to add 3 months to March 31st? It should still work (#10072, #21968, #21969)"
     ;; only testing the SQL drivers for now since I'm not 100% sure how to mock this for everyone else. Maybe one day
     ;; when we support expressions like `+` for temporal types we can do an `:absolute-datetime` plus

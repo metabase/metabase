@@ -6,7 +6,7 @@
             [metabase.models.segment :refer [Segment]]
             [metabase.test :as mt]))
 
-(deftest basic-test
+(deftest ^:parallel basic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (is (= [[0.94]]
            (mt/formatted-rows [2.0]
@@ -40,7 +40,7 @@
                  {:aggregation [[:share [:< $price 4]]]
                   :filter      [:> $price Long/MAX_VALUE]})))))))
 
-(deftest segments-metrics-test
+(deftest ^:parallel segments-metrics-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (testing "Share containing a Segment"
       (mt/with-temp Segment [{segment-id :id} {:table_id   (mt/id :venues)
@@ -60,7 +60,7 @@
                  (mt/run-mbql-query venues
                    {:aggregation [[:metric metric-id]]}))))))))
 
-(deftest expressions-test
+(deftest ^:parallel expressions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations :expressions)
     (testing "Share containing an expression"
       (is (= [[2 0.0]

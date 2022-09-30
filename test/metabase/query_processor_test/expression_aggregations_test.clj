@@ -7,7 +7,7 @@
             [metabase.test :as mt]
             [metabase.util :as u]))
 
-(deftest sum-test
+(deftest ^:parallel sum-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
     (testing "sum, *"
       (is (= [[1 1211]
@@ -19,7 +19,7 @@
                  {:aggregation [[:sum [:* $id $price]]]
                   :breakout    [$price]})))))))
 
-(deftest min-test
+(deftest ^:parallel min-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
     (testing "min, +"
       (is (= [[1 10]
@@ -31,7 +31,7 @@
                  {:aggregation [[:min [:+ $id $price]]]
                   :breakout    [$price]})))))))
 
-(deftest max-test
+(deftest ^:parallel max-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
     (testing "max, /"
       (is (= [[1 94]
@@ -43,7 +43,7 @@
                  {:aggregation [[:max [:/ $id $price]]]
                   :breakout    [$price]})))))))
 
-(deftest avg-test
+(deftest ^:parallel avg-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
     (testing "avg, -"
       (is (= (if (= driver/*driver* :h2)
@@ -60,7 +60,7 @@
                  {:aggregation [[:avg [:* $id $price]]]
                   :breakout    [$price]})))))))
 
-(deftest post-aggregation-math-test
+(deftest ^:parallel post-aggregation-math-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
     (testing "post-aggregation math"
       (testing "w/ 2 args: count + sum"
@@ -110,7 +110,7 @@
                    {:aggregation [[:+ [:count $id] [:avg $id]]]
                     :breakout    [$price]}))))))))
 
-(deftest nested-post-aggregation-mat-test
+(deftest ^:parallel nested-post-aggregation-mat-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
     (testing "nested post-aggregation math: count + (count * sum)"
       (is (= [[1  506]
@@ -124,7 +124,7 @@
                                  [:* [:count $id] [:sum $price]]]]
                   :breakout    [$price]})))))))
 
-(deftest math-inside-aggregations-test
+(deftest ^:parallel math-inside-aggregations-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
     (testing "post aggregation math + math inside aggregations: max(venue_price) + min(venue_price - id)"
       (is (= [[1 -92]
@@ -136,7 +136,7 @@
                  {:aggregation [[:+ [:max $price] [:min [:- $price $id]]]]
                   :breakout    [$price]})))))))
 
-(deftest aggregation-without-field-test
+(deftest ^:parallel aggregation-without-field-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
     (testing "aggregation w/o field"
       (is (= [[1 23]
@@ -148,7 +148,7 @@
                  {:aggregation [[:+ 1 [:count]]]
                   :breakout    [$price]})))))))
 
-(deftest sort-by-unnamed-aggregate-expression-test
+(deftest ^:parallel sort-by-unnamed-aggregate-expression-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
     (testing "Sorting by an un-named aggregate expression"
       (is (= [[1 2] [2 2] [12 2] [4 4] [7 4] [10 4] [11 4] [8 8]]
@@ -158,7 +158,7 @@
                   :breakout    [[:datetime-field $last_login :month-of-year]]
                   :order-by    [[:asc [:aggregation 0]]]})))))))
 
-(deftest math-inside-the-aggregation-test
+(deftest ^:parallel math-inside-the-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
     (testing "aggregation with math inside the aggregation :scream_cat:"
       (is (= [[1  44]
@@ -170,7 +170,7 @@
                  {:aggregation [[:sum [:+ $price 1]]]
                   :breakout    [$price]})))))))
 
-(deftest named-expression-aggregation-test
+(deftest ^:parallel named-expression-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
     (testing "check that we can name an expression aggregation w/ aggregation at top-level"
       (is (= {:rows    [[1  44]
@@ -198,7 +198,7 @@
                    {:aggregation [[:aggregation-options [:- [:sum $price] 41] {:name "sum_41"}]]
                     :breakout    [$price]}))))))))
 
-(deftest metrics-test
+(deftest ^:parallel metrics-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
     (testing "check that we can handle Metrics inside expression aggregation clauses"
       (mt/with-temp Metric [metric {:table_id   (mt/id :venues)
@@ -243,7 +243,7 @@
                      {:aggregation [[:aggregation-options [:metric (u/the-id metric)] {:name "auto_generated_name"}]]
                       :breakout    [[:field-id $price]]})))))))))
 
-(deftest named-aggregations-metadata-test
+(deftest ^:parallel named-aggregations-metadata-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
     (testing "check that named aggregations come back with the correct column metadata (#4002)"
       (is (= (assoc (qp.test/aggregate-col :count)
@@ -256,7 +256,7 @@
                  mt/cols
                  first))))))
 
-(deftest cumulative-count-test
+(deftest ^:parallel cumulative-count-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
     (testing "check that we can use cumlative count in expression aggregations"
       (is (= [[1000]]
@@ -265,7 +265,7 @@
                  (mt/run-mbql-query venues
                    {:aggregation [["*" ["cum_count"] 10]]}))))))))
 
-(deftest named-expressions-inside-expression-aggregations-test
+(deftest ^:parallel named-expressions-inside-expression-aggregations-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
     (testing "can we use named expressions inside expression aggregations?"
       (is (= [[406]]
@@ -274,7 +274,7 @@
                  {:aggregation [[:sum [:expression "double-price"]]]
                   :expressions {"double-price" [:* $price 2]}})))))))
 
-(deftest order-by-named-aggregation-test
+(deftest ^:parallel order-by-named-aggregation-test
   (testing "Ordering by a named aggregation whose alias has uppercase letters works (#18211)"
     (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
       (mt/dataset sample-dataset
@@ -288,7 +288,7 @@
                    :breakout    [$category]
                    :order-by    [[:asc [:aggregation 0]]]}))))))))
 
-#_(deftest multiple-cumulative-sums-test
+#_(deftest ^:parallel multiple-cumulative-sums-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
     (testing "The results of divide or multiply two CumulativeSum should be correct (#15118)"
       (mt/dataset sample-dataset

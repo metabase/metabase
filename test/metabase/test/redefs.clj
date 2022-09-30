@@ -14,11 +14,6 @@
   ((resolve 'metabase.test.initialize/initialize-if-needed!) :db)
   ;; so with-temp-defaults are loaded
   (classloader/require 'metabase.test.util)
-  ;; disallow with-temp inside parallel tests.
-  ;;
-  ;; TODO -- there's not really a reason that we can't use with-temp in parallel tests -- it depends on the test -- so
-  ;; once we're a little more comfortable with the current parallel stuff we should remove this restriction.
-  (test-runner.parallel/assert-test-is-not-parallel "with-temp")
   ;; catch any Exceptions thrown when creating the object and rethrow them with some extra context to make them a
   ;; little easier to debug.
   (let [attributes-with-defaults (merge (tt/with-temp-defaults model)

@@ -16,7 +16,7 @@
 (def ^:private skip-time-test-drivers
   #{:oracle :mongo :redshift :sparksql})
 
-(deftest basic-test
+(deftest ^:parallel basic-test
   (mt/test-drivers (mt/normal-drivers-except skip-time-test-drivers)
     (doseq [[message [start end]] {"Basic between query on a time field"
                                    ["08:00:00" "09:00:00"]
@@ -32,7 +32,7 @@
                   [4 "Simcha Yan"   "08:30:00Z"]])
                (time-query :between start end)))))))
 
-(deftest greater-than-test
+(deftest ^:parallel greater-than-test
   (mt/test-drivers (mt/normal-drivers-except skip-time-test-drivers)
     (is (= (if (= :sqlite driver/*driver*)
              [[3 "Kaneonuskatew Eiran" "16:15:00"]
@@ -44,7 +44,7 @@
               [10 "Frans Hevel" "19:30:00Z"]])
            (time-query :> "16:00:00Z")))))
 
-(deftest equals-test
+(deftest ^:parallel equals-test
   (mt/test-drivers (mt/normal-drivers-except skip-time-test-drivers)
     (is (= (if (= :sqlite driver/*driver*)
              [[3 "Kaneonuskatew Eiran" "16:15:00"]]

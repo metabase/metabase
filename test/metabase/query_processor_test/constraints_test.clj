@@ -12,7 +12,7 @@
 (defn- native-query []
   (qp/compile (mbql-query)))
 
-(deftest max-results-test
+(deftest ^:parallel max-results-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "Do `:max-results` constraints affect the number of rows returned by native queries?"
       (is (= [["Red Medicine"]
@@ -42,7 +42,7 @@
                  :constraints {:max-results 5}}
                 {:context :question})))))))
 
-(deftest override-limit-test
+(deftest ^:parallel override-limit-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "constraints should override MBQL `:limit` if lower"
       (is (= [["Red Medicine"]

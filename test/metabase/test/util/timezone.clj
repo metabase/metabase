@@ -18,8 +18,7 @@
         ;; only if the app DB is already set up, we need to make sure plugins are loaded and kill any connection pools that
         ;; might exist
         (when (initialize/initialized? :db)
-          (initialize/initialize-if-needed! :plugins)
-          (#'driver/notify-all-databases-updated))
+          (initialize/initialize-if-needed! :plugins))
         (try
           (TimeZone/setDefault new-timezone)
           (System/setProperty "user.timezone" timezone-id)

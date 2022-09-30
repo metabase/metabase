@@ -330,11 +330,11 @@
 
 (defn do-with-dataset
   "Impl for [[metabase.test/dataset]] macro."
-  [dataset-definition f]
+  [dataset-definition thunk]
   (let [dbdef             (tx/get-dataset-definition dataset-definition)
         get-db-for-driver (mdb.connection/memoize-for-application-db
                            (fn [driver]
-                            (binding [db/*disable-db-logging* true]
+                             (binding [db/*disable-db-logging* true]
                                (let [db (get-or-create-database! driver dbdef)]
                                  (assert db)
                                  (assert (db/exists? Database :id (u/the-id db)))
@@ -342,4 +342,4 @@
     (binding [*get-db* (fn []
                          (locking do-with-dataset
                            (get-db-for-driver (tx/driver))))]
-      (f))))
+      (thunk))))

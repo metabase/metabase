@@ -12,7 +12,7 @@
             [metabase.test :as mt]
             [metabase.util :as u]))
 
-(deftest basic-test
+(deftest ^:parallel basic-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "single column"
       (testing "with breakout"
@@ -162,7 +162,7 @@
                                     [:> $latitude 20]]
                       :breakout    [[:field %latitude {:binning {:strategy :default}}]]})))))))))
 
-(deftest binning-info-test
+(deftest ^:parallel binning-info-test
   (mt/test-drivers (mt/normal-drivers-with-feature :binning)
     (testing "Validate binning info is returned with the binning-strategy"
       (testing "binning-strategy = default"
@@ -255,12 +255,11 @@
                    (qp/process-query
                     (nested-venues-query card)))))))))))
 
-(deftest field-in-breakout-and-fields-test
+(deftest ^:parallel field-in-breakout-and-fields-test
   (mt/test-drivers (mt/normal-drivers)
     (testing (str "if we include a Field in both breakout and fields, does the query still work? (Normalization should "
                   "be taking care of this) (#8760)")
-      (is (= :completed
-             (:status
-              (mt/run-mbql-query venues
-                {:breakout [$price]
-                 :fields   [$price]})))))))
+      (is (partial= {:status :completed}
+                    (mt/run-mbql-query venues
+                      {:breakout [$price]
+                       :fields   [$price]}))))))

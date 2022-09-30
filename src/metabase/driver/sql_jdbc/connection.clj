@@ -165,14 +165,20 @@
   (swap! database-id->jdbc-spec-hash assoc database-id (jdbc-spec-hash database))
   nil)
 
-(defn invalidate-pool-for-db!
+(defn- invalidate-pool-for-db!
   "Invalidates the connection pool for the given database by closing it and removing it from the cache."
   [database]
+  ;; HACK Make sure we're not wiping connection pools inside parallel tests. That's going to cause problems since other
+  ;; DBs will potentially have their connections destroyed in the middle of using them. I realize mixing test code in
+  ;; prod code like this is a code smell but I can't think of anywhere better to put it
+  (when (get @database-id->connection-pool (u/the-id database))
+    (when-let [assert-not-parallel (requiring-resolve 'metabase.test-runner.parallel/assert-test-is-not-parallel)]
+      (assert-not-parallel "connection pool invalidation")))
   (set-pool! (u/the-id database) nil nil))
 
 (defn notify-database-updated
   "Default implementation of [[driver/notify-database-updated]] for JDBC SQL drivers. We are being informed that a
-  `database` has been updated, so lets shut down the connection pool (if it exists) under the assumption that the
+  `database` has been deleted, so lets shut down the connection pool (if it exists) under the assumption that the
   connection details have changed."
   [database]
   (invalidate-pool-for-db! database))
@@ -187,6 +193,33 @@
                                           db-id)))
   nil)
 
+(defn- db->pooled-connection-spec* [db log-invalidation?]
+  (when-let [details (get @database-id->connection-pool (u/the-id db))]
+    (cond
+      ;; details hash changed from what is cached; invalid
+      (let [curr-hash (get @database-id->jdbc-spec-hash (u/the-id db))
+            new-hash  (jdbc-spec-hash db)]
+        (when (and (some? curr-hash) (not= curr-hash new-hash))
+          ;; the hash didn't match, but it's possible that a stale instance of `DatabaseInstance`
+          ;; was passed in (ex: from a long-running sync operation); fetch the latest one from
+          ;; our app DB, and see if it STILL doesn't match
+          (not= curr-hash (-> (db/select-one [Database :id :engine :details] :id (u/the-id db))
+                              jdbc-spec-hash))))
+      (if log-invalidation?
+        (log-jdbc-spec-hash-change-msg! (u/the-id db))
+        nil)
+
+      (nil? (:tunnel-session details))  ; no tunnel in use; valid
+      details
+
+      (ssh/ssh-tunnel-open? details)    ; tunnel in use, and open; valid
+      details
+
+      :else                             ; tunnel in use, and not open; invalid
+      (if log-invalidation?
+        (log-ssh-tunnel-reconnect-msg! (u/the-id db))
+        nil))))
+
 (defn db->pooled-connection-spec
   "Return a JDBC connection spec that includes a cp30 `ComboPooledDataSource`. These connection pools are cached so we
   don't create multiple ones for the same DB."
@@ -197,41 +230,15 @@
     (let [database-id (u/the-id db-or-id-or-spec)
           ;; we need the Database instance no matter what (in order to compare details hash with cached value)
           db          (or (when (mi/instance-of? Database db-or-id-or-spec)
-                            db-or-id-or-spec) ; passed in
-                          (db/select-one [Database :id :engine :details] :id database-id)     ; look up by ID
+                            db-or-id-or-spec)                                             ; passed in
+                          (db/select-one [Database :id :engine :details] :id database-id) ; look up by ID
                           (throw (ex-info (tru "Database {0} does not exist." database-id)
-                                   {:status-code 404
-                                    :type        qp.error-type/invalid-query
-                                    :database-id database-id})))
-          get-fn      (fn [db-id log-invalidation?]
-                        (when-let [details (get @database-id->connection-pool db-id)]
-                          (cond
-                            ;; details hash changed from what is cached; invalid
-                            (let [curr-hash (get @database-id->jdbc-spec-hash db-id)
-                                  new-hash  (jdbc-spec-hash db)]
-                              (when (and (some? curr-hash) (not= curr-hash new-hash))
-                                ;; the hash didn't match, but it's possible that a stale instance of `DatabaseInstance`
-                                ;; was passed in (ex: from a long-running sync operation); fetch the latest one from
-                                ;; our app DB, and see if it STILL doesn't match
-                                (not= curr-hash (-> (db/select-one [Database :id :engine :details] :id database-id)
-                                                    jdbc-spec-hash))))
-                            (if log-invalidation?
-                              (log-jdbc-spec-hash-change-msg! db-id)
-                              nil)
-
-                            (nil? (:tunnel-session details)) ; no tunnel in use; valid
-                            details
-
-                            (ssh/ssh-tunnel-open? details) ; tunnel in use, and open; valid
-                            details
-
-                            :else ; tunnel in use, and not open; invalid
-                            (if log-invalidation?
-                              (log-ssh-tunnel-reconnect-msg! db-id)
-                              nil))))]
+                                          {:status-code 404
+                                           :type        qp.error-type/invalid-query
+                                           :database-id database-id})))]
       (or
        ;; we have an existing pool for this database, so use it
-       (get-fn database-id true)
+       (db->pooled-connection-spec* db true)
        ;; Even tho `set-pool!` will properly shut down old pools if two threads call this method at the same time, we
        ;; don't want to end up with a bunch of simultaneous threads creating pools only to have them destroyed the
        ;; very next instant. This will cause their queries to fail. Thus we should do the usual locking here and make
@@ -239,7 +246,7 @@
        (locking database-id->connection-pool
          (or
           ;; check if another thread created the pool while we were waiting to acquire the lock
-          (get-fn database-id false)
+          (db->pooled-connection-spec* db false)
           ;; create a new pool and add it to our cache, then return it
           (u/prog1 (create-pool! db)
             (set-pool! database-id <> db))))))

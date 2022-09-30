@@ -399,8 +399,10 @@
   If `raw-setting?` is `true`, this works like [[with-temp*]] against the `Setting` table, but it ensures no exception
   is thrown if the `setting-k` already exists.
 
-  Prefer the macro [[with-temporary-setting-values]] or [[with-temporary-raw-setting-values]] over using this function directly."
+  Prefer the macro [[with-temporary-setting-values]] or [[with-temporary-raw-setting-values]] over using this function
+  directly."
   [setting-k value thunk & {:keys [raw-setting?]}]
+  (test-runner.parallel/assert-test-is-not-parallel "with-temporary-setting-values")
   ;; plugins have to be initialized because changing `report-timezone` will call driver methods
   (initialize/initialize-if-needed! :db :plugins)
   (let [setting-k     (name setting-k)
@@ -449,7 +451,6 @@
   To temporarily override the value of *read-only* env vars, use [[with-temp-env-var-value]]."
   [[setting-k value & more :as bindings] & body]
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
-  (test-runner.parallel/assert-test-is-not-parallel "with-temporary-setting-vales")
   (if (empty? bindings)
     `(do ~@body)
     `(do-with-temporary-setting-value ~(keyword setting-k) ~value
@@ -916,6 +917,7 @@
   `(call-with-locale ~locale-tag (fn [] ~@body)))
 
 (defn do-with-column-remappings [orig->remapped thunk]
+  (test-runner.parallel/assert-test-is-not-parallel "with-column-remappings")
   (transduce
    identity
    (fn

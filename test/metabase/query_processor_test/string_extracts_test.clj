@@ -17,60 +17,60 @@
        mt/rows
        ffirst))
 
-(deftest test-length
+(deftest ^:parallel test-length
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (is (= 3 (int (test-string-extract [:length "foo"]))))))
 
-(deftest test-trim
+(deftest ^:parallel test-trim
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (is (= "foo" (test-string-extract [:trim " foo "])))))
 
-(deftest test-ltrim
+(deftest ^:parallel test-ltrim
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (is (= "foo " (test-string-extract [:ltrim " foo "])))))
 
-(deftest test-rtrim
+(deftest ^:parallel test-rtrim
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (is (= " foo" (test-string-extract [:rtrim " foo "])))))
 
-(deftest test-upper
+(deftest ^:parallel test-upper
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (is (= "RED MEDICINE" (test-string-extract [:upper [:field-id (data/id :venues :name)]])))))
 
-(deftest test-lower
+(deftest ^:parallel test-lower
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (is (= "red medicine" (test-string-extract [:lower [:field-id (data/id :venues :name)]])))))
 
-(deftest test-substring
+(deftest ^:parallel test-substring
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (is (= "Red" (test-string-extract [:substring [:field-id (data/id :venues :name)] 1 3])))
     (is (= "ed Medicine" (test-string-extract [:substring [:field-id (data/id :venues :name)] 2])))
     (is (= "Red Medicin" (test-string-extract [:substring [:field-id (data/id :venues :name)]
                                                1 [:- [:length [:field-id (data/id :venues :name)]] 1]])))))
 
-(deftest test-replace
+(deftest ^:parallel test-replace
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (is (= "Red Baloon" (test-string-extract [:replace [:field-id (data/id :venues :name)] "Medicine" "Baloon"])))))
 
-(deftest test-coalesce
+(deftest ^:parallel test-coalesce
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (is (= "a" (test-string-extract [:coalesce "a" "b"])))))
 
-(deftest test-concat
+(deftest ^:parallel test-concat
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (is (= "foobar" (test-string-extract [:concat "foo" "bar"])))
     (testing "Does concat work with >2 args"
       (is (= "foobar" (test-string-extract [:concat "f" "o" "o" "b" "a" "r"]))))))
 
-(deftest test-regex-match-first
+(deftest ^:parallel test-regex-match-first
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex)
     (is (= "Red" (test-string-extract [:regex-match-first [:field-id (data/id :venues :name)] "(.ed+)"])))))
 
-(deftest test-nesting
+(deftest ^:parallel test-nesting
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (is (= "MED" (test-string-extract [:upper [:substring [:trim [:substring [:field-id (data/id :venues :name)] 4]] 1 3]])))))
 
-(deftest test-breakout
+(deftest ^:parallel test-breakout
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (is (= ["20th Century Cafefoo" 1]
            (->> {:expressions  {"test" [:concat [:field-id (data/id :venues :name)] "foo"]}
@@ -81,21 +81,21 @@
                 (mt/formatted-rows [identity int])
                 first)))))
 
-(deftest replace-escaping-test
+(deftest ^:parallel replace-escaping-test
   (mt/test-drivers
     (mt/normal-drivers-with-feature :expressions)
     (is (= "Larry's The Prime Rib" (test-string-extract
                                     [:replace [:field-id (data/id :venues :name)] "Lawry's" "Larry's"]
                                     [:= [:field-id (data/id :venues :name)] "Lawry's The Prime Rib"])))))
 
-(deftest regex-match-first-escaping-test
+(deftest ^:parallel regex-match-first-escaping-test
   (mt/test-drivers
     (mt/normal-drivers-with-feature :expressions :regex)
     (is (= "Taylor's" (test-string-extract
                        [:regex-match-first [:field-id (data/id :venues :name)] "^Taylor's"]
                        [:= [:field-id (data/id :venues :name)] "Taylor's Prime Steak House"])))))
 
-(deftest regex-extract-in-explict-join-test
+(deftest ^:parallel regex-extract-in-explict-join-test
   (testing "Should be able to use regex extra in an explict join (#17790)"
     (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex :left-join)
       (mt/dataset sample-dataset

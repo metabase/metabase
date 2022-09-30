@@ -36,7 +36,7 @@
   [driver dbdef]
   (let [{:keys [database-name], :as dbdef} (tx/get-dataset-definition dbdef)]
     (destroy-test-database-if-created-by-another-instance! database-name)
-    ((get-method data.impl/get-or-create-database! :default) driver dbdef)))
+    ((get-method data.impl/get-or-create-database! :sql-jdbc) driver dbdef)))
 
 (doseq [[base-type database-type] {:type/BigInteger     "BIGINT"
                                    :type/Boolean        "BOOL"
