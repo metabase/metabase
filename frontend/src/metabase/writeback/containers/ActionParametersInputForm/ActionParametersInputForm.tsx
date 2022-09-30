@@ -1,34 +1,30 @@
 import React, { useCallback, useMemo } from "react";
-import { connect } from "react-redux";
 
-import Form from "metabase/containers/Form";
+import Form from "metabase/containers/FormikForm";
 import {
   getFormFieldForParameter,
   getSubmitButtonLabel,
 } from "metabase/writeback/components/ActionCreator/FormCreator";
 
 import type {
-  ArbitraryParameterForActionExecution,
   WritebackParameter,
-  WritebackAction,
+  WritebackQueryAction,
+  OnSubmitActionForm,
 } from "metabase-types/api";
-
-import type { Dispatch, ReduxAction } from "metabase-types/store";
+import type { FormFieldDefinition } from "metabase-types/forms";
 
 import { formatParametersBeforeSubmit, setDefaultValues } from "./utils";
 
 interface Props {
   missingParameters: WritebackParameter[];
-  action: WritebackAction;
-  onSubmit: (parameters: ArbitraryParameterForActionExecution[]) => ReduxAction;
-  onSubmitSuccess: () => void;
-  dispatch: Dispatch;
+  action: WritebackQueryAction;
+  onSubmit: OnSubmitActionForm;
+  onSubmitSuccess?: () => void;
 }
 
 function ActionParametersInputForm({
   missingParameters,
   action,
-  dispatch,
   onSubmit,
   onSubmitSuccess,
 }: Props) {
@@ -37,33 +33,55 @@ function ActionParametersInputForm({
     [action],
   );
 
+  const formParams = useMemo(
+    () => missingParameters ?? Object.values(action.parameters) ?? [],
+    [missingParameters, action],
+  );
+
   const form = useMemo(() => {
     return {
-      fields: missingParameters.map(param =>
+      fields: formParams?.map(param =>
         getFormFieldForParameter(param, fieldSettings[param.id]),
       ),
     };
-  }, [missingParameters, fieldSettings]);
+  }, [formParams, fieldSettings]);
 
   const handleSubmit = useCallback(
-    params => {
+    async (params, actions) => {
+      actions.setSubmitting(true);
       const paramsWithDefaultValues = setDefaultValues(params, fieldSettings);
 
       const formattedParams = formatParametersBeforeSubmit(
         paramsWithDefaultValues,
-        missingParameters,
+        formParams,
       );
-      dispatch(onSubmit(formattedParams));
-      onSubmitSuccess();
+      const { success, error } = await onSubmit(formattedParams);
+      if (success) {
+        actions.setErrors({});
+        onSubmitSuccess?.();
+        actions.resetForm();
+      } else {
+        throw new Error(error);
+      }
     },
-    [missingParameters, onSubmit, onSubmitSuccess, dispatch, fieldSettings],
+    [onSubmit, onSubmitSuccess, fieldSettings, formParams],
+  );
+
+  const initialValues = useMemo(
+    () => Object.fromEntries(form.fields.map(field => [field.name, ""])),
+    [form],
   );
 
   const submitButtonLabel = getSubmitButtonLabel(action);
 
   return (
-    <Form form={form} onSubmit={handleSubmit} submitTitle={submitButtonLabel} />
+    <Form
+      form={form}
+      initialValues={initialValues}
+      onSubmit={handleSubmit}
+      submitTitle={submitButtonLabel}
+    />
   );
 }
 
-export default connect()(ActionParametersInputForm);
+export default ActionParametersInputForm;

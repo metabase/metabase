@@ -48,7 +48,7 @@ Current partner drivers:
 
 Partner drivers are available to Cloud customers out-of-the-box.
 
-If you have interest in becoming a partner, please fill the [partner form](https://www.metabase.com/partners/join/) and we will get in touch.
+If you have interest in becoming a partner, please fill the [partner form](https://www.metabase.com/partners/join) and we will get in touch.
 
 ## Community drivers
 

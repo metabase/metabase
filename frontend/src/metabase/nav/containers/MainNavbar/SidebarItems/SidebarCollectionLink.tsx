@@ -1,5 +1,4 @@
 import React, { useEffect, useCallback, useRef, KeyboardEvent } from "react";
-import _ from "underscore";
 
 import { Collection } from "metabase-types/api";
 

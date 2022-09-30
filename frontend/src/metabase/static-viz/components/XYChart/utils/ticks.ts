@@ -25,7 +25,7 @@ import type {
   ChartSettings,
 } from "metabase/static-viz/components/XYChart/types";
 
-export const getRotatedXTickHeight = (tickWidth: number) => {
+const getRotatedXTickHeight = (tickWidth: number) => {
   return tickWidth;
 };
 

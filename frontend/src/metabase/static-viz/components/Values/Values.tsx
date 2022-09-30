@@ -6,7 +6,7 @@ import { scaleBand } from "@visx/scale";
 import type { TextProps } from "@visx/text";
 import type { AnyScaleBand, PositionScale } from "@visx/shape/lib/types";
 import OutlinedText from "metabase/static-viz/components/Text/OutlinedText";
-import { getValueStep, getY } from "../utils";
+import { getValueStep, getY, setY } from "../XYChart/utils";
 
 import type {
   HydratedSeries,
@@ -14,7 +14,7 @@ import type {
   StackedDatum,
   VisualizationType,
   XScale,
-} from "../types";
+} from "../XYChart/types";
 
 type XYAccessor<
   T extends SeriesDatum | StackedDatum = SeriesDatum | StackedDatum,
@@ -23,8 +23,11 @@ type XYAccessor<
   flipped?: boolean,
 ) => number;
 
+type Settings = Record<string, any>;
+
 const VALUES_MARGIN = 6;
-const VALUES_STROKE_MARGIN = 3;
+// From testing 1px is equal 3px of the stroke width, I'm not totally sure why.
+const VALUES_STROKE_MARGIN = 1;
 const FLIPPED_VALUES_MARGIN = VALUES_MARGIN + 8;
 
 interface ValuesProps {
@@ -37,10 +40,12 @@ interface ValuesProps {
   innerWidth: number;
   areStacked: boolean;
   xAxisYPos: number;
+  settings?: Settings;
 }
 
 interface Value {
   datum: SeriesDatum | StackedDatum;
+  datumForLabel: SeriesDatum | StackedDatum;
   flipped?: boolean;
   hidden?: boolean;
 }
@@ -61,6 +66,7 @@ export default function Values({
   innerWidth,
   areStacked,
   xAxisYPos,
+  settings,
 }: ValuesProps) {
   const containBars = Boolean(xScale.bandwidth);
   const barSeriesIndexMap = new WeakMap();
@@ -82,10 +88,10 @@ export default function Values({
     const singleSeriesValues =
       series.type === "bar"
         ? fixSmallBarChartValues(
-            getValues(series, areStacked),
+            getValues(series, areStacked, settings),
             innerBarScale?.domain().length ?? 0,
           )
-        : getValues(series, areStacked);
+        : getValues(series, areStacked, settings);
 
     return singleSeriesValues.map(value => {
       return {
@@ -160,20 +166,18 @@ export default function Values({
             ["line", "area"] as VisualizationType[]
           ).includes(value.series.type);
           return (
-            <>
+            <React.Fragment key={index}>
               <OutlinedText
-                key={index}
                 x={xAccessor(value.datum)}
                 y={yAccessor(value.datum)}
                 textAnchor="middle"
                 verticalAnchor="end"
                 {...valueProps}
               >
-                {formatter(getY(value.datum), compact)}
+                {formatter(getY(value.datumForLabel), compact)}
               </OutlinedText>
               {shouldRenderDataPoint && (
                 <circle
-                  key={index}
                   r={3}
                   fill="white"
                   stroke={value.series.color}
@@ -182,7 +186,7 @@ export default function Values({
                   cy={dataYAccessor(value.datum)}
                 />
               )}
-            </>
+            </React.Fragment>
           );
         });
       })}
@@ -218,10 +222,14 @@ export default function Values({
   }
 }
 
-function getValues(series: HydratedSeries, areStacked: boolean): Value[] {
+function getValues(
+  series: HydratedSeries,
+  areStacked: boolean,
+  settings?: Settings,
+): Value[] {
   const data = getData(series, areStacked);
 
-  return transformDataToValues(series.type, data);
+  return transformDataToValues(series.type, data, settings);
 }
 
 function getData(series: HydratedSeries, areStacked: boolean) {
@@ -257,13 +265,16 @@ function getXAccessor(
   xScale: XScale,
   barXOffset: number,
 ): XYAccessor {
-  if (type === "bar") {
-    return datum => (xScale.barAccessor as XYAccessor)(datum) + barXOffset;
+  switch (type) {
+    case "bar":
+      return datum => (xScale.barAccessor as XYAccessor)(datum) + barXOffset;
+    case "line":
+    case "area":
+    case "waterfall":
+      return xScale.lineAccessor as XYAccessor;
+    default:
+      exhaustiveCheck(type);
   }
-  if (type === "line" || type === "area") {
-    return xScale.lineAccessor as XYAccessor;
-  }
-  exhaustiveCheck(type);
 }
 
 function exhaustiveCheck(param: never): never {
@@ -273,37 +284,52 @@ function exhaustiveCheck(param: never): never {
 function transformDataToValues(
   type: VisualizationType,
   data: (SeriesDatum | StackedDatum)[],
+  settings?: Settings,
 ): Value[] {
-  if (type === "line") {
-    return data.map((datum, index) => {
-      // Use the similar logic as presented in https://github.com/metabase/metabase/blob/3f4ca9c70bd263a7579613971ea8d7c47b1f776e/frontend/src/metabase/visualizations/lib/chart_values.js#L130
-      const previousValue = data[index - 1];
-      const nextValue = data[index + 1];
-      const showLabelBelow =
-        // first point or prior is greater than y
-        (index === 0 || getY(previousValue) > getY(datum)) &&
-        // last point point or next is greater than y
-        (index >= data.length - 1 || getY(nextValue) > getY(datum));
+  switch (type) {
+    case "line":
+      return data.map((datum, index) => {
+        // Use the similar logic as presented in https://github.com/metabase/metabase/blob/3f4ca9c70bd263a7579613971ea8d7c47b1f776e/frontend/src/metabase/visualizations/lib/chart_values.js#L130
+        const previousValue = data[index - 1];
+        const nextValue = data[index + 1];
+        const showLabelBelow =
+          // first point or prior is greater than y
+          (index === 0 || getY(previousValue) > getY(datum)) &&
+          // last point point or next is greater than y
+          (index >= data.length - 1 || getY(nextValue) > getY(datum));
 
-      return {
-        datum,
-        flipped: showLabelBelow,
-      };
-    });
+        return {
+          datum,
+          datumForLabel: datum,
+          flipped: showLabelBelow,
+        };
+      });
+    case "bar":
+      return data.map(datum => {
+        const isNegative = getY(datum) < 0;
+        return { datum, datumForLabel: datum, flipped: isNegative };
+      });
+    case "area":
+      return data.map(datum => {
+        return {
+          datum,
+          datumForLabel: datum,
+        };
+      });
+    case "waterfall": {
+      let total = 0;
+      return data.map((datum, index) => {
+        total = total + getY(datum);
+        const isShowingTotal = settings?.showTotal && index === data.length - 1;
+        return {
+          datum: !isShowingTotal ? setY(datum, total) : datum,
+          datumForLabel: datum,
+        };
+      });
+    }
+    default:
+      exhaustiveCheck(type);
   }
-
-  if (type === "bar") {
-    return data.map(datum => {
-      const isNegative = getY(datum) < 0;
-      return { datum, flipped: isNegative };
-    });
-  }
-
-  return data.map(datum => {
-    return {
-      datum,
-    };
-  });
 }
 
 interface Position {

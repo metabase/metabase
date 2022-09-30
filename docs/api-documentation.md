@@ -4,7 +4,7 @@ title: "Metabase API documentation"
 
 # Metabase API documentation
 
-_These reference files were generated from source comments by running:
+_These reference files were generated from source comments by running:_
 
 ```
 clojure -M:ee:run api-documentation
@@ -21,7 +21,7 @@ Check out an introduction to the [Metabase API](https://www.metabase.com/learn/a
 
 ## API endpoints
 
-_* indicates endpoints used for features available on [paid plans](https://www.metabase.com/pricing/)._
+_* indicates endpoints used for features available on [paid plans](https://www.metabase.com/pricing)._
 
 
 - [Action](api/action.md)
@@ -43,6 +43,7 @@ _* indicates endpoints used for features available on [paid plans](https://www.m
 - [Emitter](api/emitter.md)
 - [Field](api/field.md)
 - [GeoJSON](api/geojson.md)
+- [Google](api/google.md)
 - [LDAP](api/ldap.md)
 - [Login history](api/login-history.md)
 - [Metric](api/metric.md)

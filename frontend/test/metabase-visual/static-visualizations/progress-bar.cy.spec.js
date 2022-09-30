@@ -10,7 +10,7 @@ import { USERS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 const { admin } = USERS;
 
-describe("static visualizations", () => {
+describe("static visualizations", { tags: "@external" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

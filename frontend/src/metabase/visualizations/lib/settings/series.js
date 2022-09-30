@@ -109,7 +109,7 @@ export function seriesSetting({
       readDependencies: ["display"],
     },
     axis: {
-      title: t`Which axis?`,
+      title: t`Y-axis position`,
       widget: "segmentedControl",
       default: null,
       props: {

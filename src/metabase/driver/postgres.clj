@@ -163,7 +163,7 @@
      :secret-kind  :pem-cert
      :visible-if   {"ssl-use-client-auth" true}}
     {:name         "ssl-key"
-     :display-name (trs "SSL Client Key (PKCS-8/DER or PKCS-12)")
+     :display-name (trs "SSL Client Key (PKCS-8/DER)")
      :type         :secret
      ;; since this can be either PKCS-8 or PKCS-12, we can't model it as a :keystore
      :secret-kind  :binary-blob
@@ -245,19 +245,21 @@
 
 (def ^:private extract-integer (comp hx/->integer extract))
 
-(defmethod sql.qp/date [:postgres :default]         [_ _ expr] expr)
-(defmethod sql.qp/date [:postgres :minute]          [_ _ expr] (date-trunc :minute expr))
-(defmethod sql.qp/date [:postgres :minute-of-hour]  [_ _ expr] (extract-integer :minute expr))
-(defmethod sql.qp/date [:postgres :hour]            [_ _ expr] (date-trunc :hour expr))
-(defmethod sql.qp/date [:postgres :hour-of-day]     [_ _ expr] (extract-integer :hour expr))
-(defmethod sql.qp/date [:postgres :day]             [_ _ expr] (hx/->date expr))
-(defmethod sql.qp/date [:postgres :day-of-month]    [_ _ expr] (extract-integer :day expr))
-(defmethod sql.qp/date [:postgres :day-of-year]     [_ _ expr] (extract-integer :doy expr))
-(defmethod sql.qp/date [:postgres :month]           [_ _ expr] (date-trunc :month expr))
-(defmethod sql.qp/date [:postgres :month-of-year]   [_ _ expr] (extract-integer :month expr))
-(defmethod sql.qp/date [:postgres :quarter]         [_ _ expr] (date-trunc :quarter expr))
-(defmethod sql.qp/date [:postgres :quarter-of-year] [_ _ expr] (extract-integer :quarter expr))
-(defmethod sql.qp/date [:postgres :year]            [_ _ expr] (date-trunc :year expr))
+(defmethod sql.qp/date [:postgres :default]          [_ _ expr] expr)
+(defmethod sql.qp/date [:postgres :second-of-minute] [_ _ expr] (extract-integer :second expr))
+(defmethod sql.qp/date [:postgres :minute]           [_ _ expr] (date-trunc :minute expr))
+(defmethod sql.qp/date [:postgres :minute-of-hour]   [_ _ expr] (extract-integer :minute expr))
+(defmethod sql.qp/date [:postgres :hour]             [_ _ expr] (date-trunc :hour expr))
+(defmethod sql.qp/date [:postgres :hour-of-day]      [_ _ expr] (extract-integer :hour expr))
+(defmethod sql.qp/date [:postgres :day]              [_ _ expr] (hx/->date expr))
+(defmethod sql.qp/date [:postgres :day-of-month]     [_ _ expr] (extract-integer :day expr))
+(defmethod sql.qp/date [:postgres :day-of-year]      [_ _ expr] (extract-integer :doy expr))
+(defmethod sql.qp/date [:postgres :month]            [_ _ expr] (date-trunc :month expr))
+(defmethod sql.qp/date [:postgres :month-of-year]    [_ _ expr] (extract-integer :month expr))
+(defmethod sql.qp/date [:postgres :quarter]          [_ _ expr] (date-trunc :quarter expr))
+(defmethod sql.qp/date [:postgres :quarter-of-year]  [_ _ expr] (extract-integer :quarter expr))
+(defmethod sql.qp/date [:postgres :year]             [_ _ expr] (date-trunc :year expr))
+(defmethod sql.qp/date [:postgres :year-of-era]      [_ _ expr] (extract-integer :year expr))
 
 (defmethod sql.qp/date [:postgres :day-of-week]
   [_ driver expr]

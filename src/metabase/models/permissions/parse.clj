@@ -13,10 +13,10 @@
 
 (def ^:private grammar
   "Describes permission strings like /db/3/ or /collection/root/read/"
-  "permission = ( all | <'/'> execute | db | block | download | data-model | details | collection )
+  "permission = ( all | execute | db | block | download | data-model | details | collection )
   all         = <'/'>
   db          = <'/db/'> #'\\d+' <'/'> ( native | execute | schemas )?
-  execute     = <'execute/'>
+  execute     = <'/execute/'> ( <'db/'> #'\\d+' <'/'> )?
   native      = <'native/'>
   schemas     = <'schema/'> schema?
   schema      = schema-name <'/'> table?
@@ -90,7 +90,6 @@
                                       "read"            [:read :all]
                                       "query"           [:query :all]
                                       "query/segmented" [:query :segmented])
-    [:execute]                     [:execute :all]
     [:native]                      [:data :native :write]
     ;; block perms. Parse something like /block/db/1/ to {:db {1 {:schemas :block}}}
     [:block db-id]                 [:db (Long/parseUnsignedLong db-id) :data :schemas :block]
@@ -120,6 +119,8 @@
   (match tree
     (_ :guard insta/failure?)      (log/error (trs "Error parsing permissions tree {0}" (pr-str tree)))
     [:permission t]                (path2 t)
+    [:execute]                     [:execute :all]
+    [:execute db-id]               [:execute (Long/parseUnsignedLong db-id) :all]
     [:schema-name schema-name]     (unescape-path-component schema-name)
     ;; data model perms
     [:data-model db-node]          (path2 db-node)

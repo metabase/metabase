@@ -128,6 +128,10 @@
   [_ _ expr]
   expr)
 
+(defmethod sql.qp/date [:sqlserver :second-of-minute]
+  [_ _ expr]
+  (date-part :second expr))
+
 (defmethod sql.qp/date [:sqlserver :minute]
   [_ _ expr]
   (hx/maybe-cast :smalldatetime expr))
@@ -202,6 +206,10 @@
   (if (::optimized-bucketing? *field-options*)
     (hx/year expr)
     (hsql/call :DateFromParts (hx/year expr) 1 1)))
+
+(defmethod sql.qp/date [:sqlserver :year-of-era]
+  [_ _ expr]
+  (date-part :year expr))
 
 (defmethod sql.qp/add-interval-honeysql-form :sqlserver
   [_ hsql-form amount unit]
