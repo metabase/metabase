@@ -330,6 +330,9 @@ export const getQuestion = createSelector(
   },
 );
 
+// This jsdoc keeps the TS typechecker happy.
+// Otherwise TS thinks this `getQuestionFromCard` requires two args.
+/** @type {function(unknown, unknown): Question} */
 export const getQuestionFromCard = createCachedSelector(
   [getMetadata, (_state, card) => card],
   (metadata, card) => new Question(card, metadata),
