@@ -3,7 +3,6 @@
             [clojure.test.check :as tc]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
-            [java-time :as t]
             [metabase.driver.common.parameters.dates :as params.dates]
             [metabase.test :as mt]
             [metabase.util.date-2 :as u.date]))
