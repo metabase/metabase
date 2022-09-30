@@ -104,12 +104,14 @@ export function newQuestion({
   objectId,
   ...options
 }: NewQuestionUrlBuilderParams = {}) {
-  const url = Question.create(options).getUrl({
+  const question = Question.create(options);
+  const url = question.getUrl({
     creationType,
     query: objectId ? { objectId } : undefined,
   });
   if (mode) {
-    return url.replace(/^\/question/, `/question\/${mode}`);
+    const entity = question.isDataset() ? "model" : "question";
+    return url.replace(/^\/(question|model)/, `/${entity}\/${mode}`);
   } else {
     return url;
   }
