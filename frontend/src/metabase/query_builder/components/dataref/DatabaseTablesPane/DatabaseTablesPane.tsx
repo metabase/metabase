@@ -33,26 +33,26 @@ const DatabaseTablesPane = ({
     () => database.tables.sort((a, b) => a.name.localeCompare(b.name)),
     [database.tables],
   );
-  models = useMemo(
+  const sortedModels = useMemo(
     () => models?.sort((a, b) => a.name.localeCompare(b.name)),
     [models],
   );
-  return models ? (
+  return sortedModels ? (
     <NodeListContainer>
-      {models?.length ? (
+      {sortedModels?.length ? (
         <>
           <NodeListTitle>
             <NodeListIcon name="model" />
             <NodeListTitleText>
               {ngettext(
-                msgid`${models.length} model`,
-                `${models.length} models`,
-                models.length,
+                msgid`${sortedModels.length} model`,
+                `${sortedModels.length} models`,
+                sortedModels.length,
               )}
             </NodeListTitleText>
           </NodeListTitle>
           <ul>
-            {models.map(model => (
+            {sortedModels.map(model => (
               <li key={model.id}>
                 <NodeListItemLink onClick={() => show("model", model)}>
                   <NodeListItemIcon name="model" />
