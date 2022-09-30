@@ -306,7 +306,7 @@ async function handleQBInit(
   });
 
   if (uiControls.queryBuilderMode !== "notebook") {
-    if (question.canRun()) {
+    if (question.canRun() && (question.isSaved() || question.isStructured())) {
       // Timeout to allow Parameters widget to set parameterValues
       setTimeout(
         () => dispatch(runQuestionQuery({ shouldUpdateUrl: false })),
