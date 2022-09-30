@@ -59,7 +59,7 @@ To reset a password for someone, just click the three dots icon next to their ac
 
 ### Resetting the admin password
 
-If you're using Metabase Cloud, [contact support](https://www.metabase.com/help-premium/) to reset your admin password.
+If you're using Metabase Cloud, [contact support](https://www.metabase.com/help-premium) to reset your admin password.
 
 If you're a Metabase admin and have access to the server console, you can get Metabase to send you a password reset token:
 

@@ -132,7 +132,7 @@
                                          nil)
             _              (assert c3p0-collector "Did not find c3p0 collector")
             measurements   (.collect ^Collector c3p0-collector)
-            _              (is (pos? (doto (count measurements) tap>))
+            _              (is (pos? (count measurements))
                                "No measurements taken")]
         (is (= (count (:connection-pools (troubleshooting/connection-pool-info)))
                (count (.samples ^GaugeMetricFamily (first measurements))))

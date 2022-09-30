@@ -46,7 +46,6 @@ describe("issue 22517", () => {
     cy.findByText("Foo");
 
     cy.findByText("Save changes").click();
-    cy.wait(["@cardQuery", "@cardQuery"]);
 
     cy.findByText("Foo");
   });

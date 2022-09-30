@@ -3,7 +3,6 @@ import React from "react";
 import { useToggle } from "metabase/hooks/use-toggle";
 
 import type {
-  Dashboard,
   ImplicitActionType,
   ImplicitActionClickBehavior,
 } from "metabase-types/api";
@@ -15,9 +14,10 @@ import ImplicitDeleteModal from "./ImplicitDeleteModal";
 
 import ActionButtonView from "./ActionButtonView";
 
-interface ImplicitActionButtonProps extends VisualizationProps {
-  dashboard: Dashboard;
-}
+type ImplicitActionButtonProps = {
+  isSettings: VisualizationProps["isSettings"];
+  settings: VisualizationProps["settings"];
+};
 
 function FallbackActionComponent({ children }: { children: React.ReactNode }) {
   return children;

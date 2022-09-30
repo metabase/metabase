@@ -62,8 +62,8 @@
 (def ^:private test-unicode-str "Cam 𝌆 Saul 💩")
 
 (defn- insert-row! []
-  (jdbc/execute! db/*db-connection* [(str "INSERT INTO metabase_database (engine, name, created_at, updated_at) "
-                                          "VALUES ('mysql', ?, current_timestamp, current_timestamp)")
+  (jdbc/execute! db/*db-connection* [(str "INSERT INTO metabase_database (engine, name, created_at, updated_at, details) "
+                                          "VALUES ('mysql', ?, current_timestamp, current_timestamp, '{}')")
                                      test-unicode-str]))
 
 ;; The basic idea behind this test is:

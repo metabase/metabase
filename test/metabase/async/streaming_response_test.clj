@@ -66,8 +66,7 @@
                   (when-let [chan @start-execution-chan]
                     (a/>!! chan ::started))
                   (Thread/sleep sleep)
-                  (mt/suppress-output
-                    (respond {:cols [{:name "Sleep", :base_type :type/Integer}]} [[sleep]]))
+                  (respond {:cols [{:name "Sleep", :base_type :type/Integer}]} [[sleep]])
                   (catch InterruptedException e
                     (reset! canceled? true)
                     (throw e))))]
@@ -85,7 +84,7 @@
     (with-test-driver-db
       (is (= [[10]]
              (mt/rows
-               ((mt/user->client :lucky)
+               (mt/user-http-request :lucky
                 :post 202 "dataset"
                 {:database (mt/id)
                  :type     "native"

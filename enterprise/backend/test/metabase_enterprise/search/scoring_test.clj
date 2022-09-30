@@ -5,7 +5,7 @@
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.search.scoring :as scoring]))
 
-(deftest verified-score-test
+(deftest ^:parallel verified-score-test
   (let [score #'ee-scoring/verified-score
         item  (fn [id status] {:moderated_status status
                                :id               id
@@ -20,13 +20,13 @@
 (defn- ee-score
   [search-string]
   (fn [item]
-    (with-redefs [premium-features/enable-enhancements? (constantly true)]
+    (with-redefs [#_{:clj-kondo/ignore [:deprecated-var]} premium-features/enable-enhancements? (constantly true)]
       (-> (scoring/score-and-result search-string item) :score))))
 
 (defn- oss-score
   [search-string]
   (fn [item]
-    (with-redefs [premium-features/enable-enhancements? (constantly true)]
+    (with-redefs [#_{:clj-kondo/ignore [:deprecated-var]} premium-features/enable-enhancements? (constantly true)]
       (-> (scoring/score-and-result search-string item) :score))))
 
 (deftest official-collection-tests

@@ -5,7 +5,7 @@ import {
   startNewQuestion,
 } from "__support__/e2e/helpers";
 
-describe("issue 17963", () => {
+describe("issue 17963", { tags: "@external" }, () => {
   beforeEach(() => {
     restore("mongo-4");
     cy.signInAsAdmin();
