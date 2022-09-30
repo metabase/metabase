@@ -74,9 +74,29 @@ And if you only need to clean up extra whitespace around your text, you can use 
 
 This section covers functions and formulas that work the same way as the Metabase `substring` expression, with notes on how to choose the best option for your use case.
 
+**[Metabase expressions](../expressions-list.md)**
+
+- [regexextract](#regexextract)
+
+**Other tools**
+
 - [SQL](#sql)
 - [Spreadsheets](#spreadsheets)
 - [Python](#python)
+
+### Regexextract
+
+Use [regexextract](./regexextract.md) if you need to extract text based on more specific rules. For example, you could get the agent ID with a regex pattern that finds the last occurrence of "00" (and everything after it):
+
+```
+regexextract([Mission ID], ".+(00.+)$")
+```
+
+should return the same result as
+
+```
+substring([Mission ID], 9, 3)
+```
 
 ### SQL
 
