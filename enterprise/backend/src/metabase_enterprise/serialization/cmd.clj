@@ -42,7 +42,7 @@
     (deferred-trs "invalid context seed value")))
 
 (s/defn v1-load
-  "Load serialized metabase instance as created by `dump` command from directory `path`."
+  "Load serialized metabase instance as created by [[dump]] command from directory `path`."
   [path context :- Context]
   (plugins/load-plugins!)
   (mdb/setup-db!)
@@ -176,10 +176,16 @@
   (log/info (trs "END DUMP to {0} via user {1}" path user)))
 
 (defn- v2-extract [opts]
-  (if (:collections opts)
-    (v2.extract/extract-subtrees (assoc opts :targets (for [c (str/split (:collections opts) #",")]
-                                                        ["Collection" (Integer/parseInt c)])))
-    (v2.extract/extract-metabase opts)))
+  ;; if opts has `collections` (a comma-separated string) then convert those to a list of `:targets`
+  (let [opts (cond-> opts
+               (:collections opts)
+               (assoc :targets (for [c (str/split (:collections opts) #",")]
+                                 ["Collection" (Integer/parseInt c)])))]
+    ;; if we have `:targets` (either because we created them from `:collections`, or because they were specified
+    ;; elsewhere) use [[v2.extract/extract-subtrees]]
+    (if (:targets opts)
+      (v2.extract/extract-subtrees opts)
+      (v2.extract/extract-metabase opts))))
 
 (defn- v2-dump [path opts]
   (-> (v2-extract opts)
@@ -190,7 +196,9 @@
   [path {:keys [state user v2]
          :or {state :active}
          :as opts}]
-  (mdb/setup-db!) (db/select 'User)
+  (log/tracef "Dumping to %s with options %s" (pr-str path) (pr-str opts))
+  (mdb/setup-db!)
+  (db/select User) ;; TODO -- why???
   (if v2
     (v2-dump path opts)
     (v1-dump path state user opts)))

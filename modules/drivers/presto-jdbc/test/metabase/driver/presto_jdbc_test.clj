@@ -18,7 +18,6 @@
             [metabase.test :as mt]
             [metabase.test.data.presto-jdbc :as data.presto-jdbc]
             [metabase.test.fixtures :as fixtures]
-            [metabase.test.util :as tu]
             [toucan.db :as db])
   (:import java.io.File))
 
@@ -103,8 +102,8 @@
 
 (deftest db-default-timezone-test
   (mt/test-driver :presto-jdbc
-    (is (= "UTC"
-           (tu/db-timezone-id)))))
+    (is (= nil
+           (driver/db-default-timezone :presto-jdbc (mt/db))))))
 
 (deftest template-tag-timezone-test
   (mt/test-driver :presto-jdbc

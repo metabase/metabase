@@ -1,5 +1,4 @@
 import { createAction } from "redux-actions";
-import _ from "underscore";
 import { merge } from "icepick";
 import { t } from "ttag";
 

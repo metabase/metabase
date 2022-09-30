@@ -2,10 +2,12 @@
   "Extraction is the first step in serializing a Metabase appdb so it can be eg. written to disk.
 
   See the detailed descriptions of the (de)serialization processes in [[metabase.models.serialization.base]]."
-  (:require [clojure.set :as set]
-            [medley.core :as m]
-            [metabase-enterprise.serialization.v2.models :as serdes.models]
-            [metabase.models.serialization.base :as serdes.base]))
+  (:require
+   [clojure.set :as set]
+   [clojure.tools.logging :as log]
+   [medley.core :as m]
+   [metabase-enterprise.serialization.v2.models :as serdes.models]
+   [metabase.models.serialization.base :as serdes.base]))
 
 (defn extract-metabase
   "Extracts the appdb into a reducible stream of serializable maps, with `:serdes/meta` keys.
@@ -16,6 +18,7 @@
   Takes an options map which is passed on to [[serdes.base/extract-all]] for each model. The options are documented
   there."
   [opts]
+  (log/tracef "Extracting Metabase with options: %s" (pr-str opts))
   (let [model-pred (if (:data-model-only opts)
                      #{"Database" "Dimension" "Field" "FieldValues" "Metric" "Segment" "Table"}
                      (constantly true))]
@@ -43,10 +46,11 @@
   complete transitive closure of all descendants is found. This produces a set of `[\"ModelName\" id]` pairs, which
   entities are then extracted the same way as [[extract-metabase]]."
   [{:keys [targets] :as opts}]
+  (log/tracef "Extracting subtrees with options: %s" (pr-str opts))
   (let [closure  (descendants-closure targets)
         by-model (->> closure
-                     (group-by first)
-                     (m/map-vals #(set (map second %))))]
+                      (group-by first)
+                      (m/map-vals #(set (map second %))))]
     (eduction cat (for [[model ids] by-model]
                     (eduction (map #(serdes.base/extract-one model opts %))
                               (serdes.base/raw-reducible-query model {:where [:in :id ids]}))))))

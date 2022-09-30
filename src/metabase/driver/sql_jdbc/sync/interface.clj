@@ -91,9 +91,9 @@
   :hierarchy #'driver/hierarchy)
 
 (defmulti db-default-timezone
-  "JDBC-specific version of of `metabase.driver/db-default-timezone` that takes a `clojure.java.jdbc` connection spec
-  rather than a set of DB details. If an implementation of this method is provided, it will be used automatically in
-  the default `:sql-jdbc` implementation of `metabase.driver/db-default-timezone`.
+  "JDBC-specific version of of [[metabase.driver/db-default-timezone]] that takes a [[clojure.java.jdbc]] connection
+  spec rather than a set of DB details. If an implementation of this method is provided, it will be used automatically
+  in the default `:sql-jdbc` implementation of [[metabase.driver/db-default-timezone]].
 
   This exists so we can reuse this code with the application database without having to create a new Connection pool
   for the application DB."
@@ -102,12 +102,12 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod db-default-timezone :sql-jdbc
-  [_ _]
+  [_driver _jdbc-spec]
   nil)
 
 (defmulti describe-nested-field-columns
-  "Return information about the nestable columns in a `table`. Required for drivers that support `:nested-field-columns`. Results
-  should match the [[metabase.sync.interface/NestedFCMetadata]] schema."
+  "Return information about the nestable columns in a `table`. Required for drivers that support
+  `:nested-field-columns`. Results should match the [[metabase.sync.interface/NestedFCMetadata]] schema."
   {:added "0.43.0", :arglists '([driver database table])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)

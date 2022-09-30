@@ -163,14 +163,14 @@
   "Change the `visibility-type` of `table` via an API call. (This is done via the API so we can see which, if any, side
   effects (e.g. analysis) get triggered.)"
   [table visibility-type]
-  ((mt/user->client :crowberto) :put 200 (format "table/%d" (:id table)) {:display_name    "hiddentable"
-                                                                          :visibility_type visibility-type
-                                                                          :description     "What a nice table!"}))
+  (mt/user-http-request :crowberto :put 200 (format "table/%d" (:id table)) {:display_name    "hiddentable"
+                                                                             :visibility_type visibility-type
+                                                                             :description     "What a nice table!"}))
 
 (defn- api-sync!
   "Trigger a sync of `table` via the API."
   [table]
-  ((mt/user->client :crowberto) :post 200 (format "database/%d/sync" (:db_id table))))
+  (mt/user-http-request :crowberto :post 200 (format "database/%d/sync" (:db_id table))))
 
 ;; use these functions to create fake Tables & Fields that are actually backed by something real in the database.
 ;; Otherwise when we go to resync them the logic will figure out Table/Field doesn't exist and mark it as inactive

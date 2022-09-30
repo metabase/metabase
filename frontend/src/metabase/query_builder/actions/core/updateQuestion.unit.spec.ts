@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import { createMockDataset } from "metabase-types/api/mocks";
 import { Card, StructuredDatasetQuery } from "metabase-types/types/Card";
 import { ConcreteField, TemplateTag } from "metabase-types/types/Query";

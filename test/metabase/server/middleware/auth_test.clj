@@ -91,10 +91,10 @@
 
 (deftest wrap-api-key-test
   (testing "No API key in the request"
-    (is (= nil
-           (:metabase-session-id
-            (wrapped-api-key-handler
-             (ring.mock/request :get "/anyurl"))))))
+    (is (nil?
+         (:metabase-session-id
+          (wrapped-api-key-handler
+           (ring.mock/request :get "/anyurl"))))))
 
   (testing "API Key in header"
     (is (= "foobar"
