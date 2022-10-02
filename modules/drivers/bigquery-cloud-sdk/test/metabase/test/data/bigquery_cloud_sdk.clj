@@ -116,7 +116,7 @@
 
 ;; Fields must contain only letters, numbers, and underscores, start with a letter or underscore, and be at most 128
 ;; characters long.
-(def ^:private ValidFieldName #"^[A-Za-z_]\w{0,127}$")
+(def ^:private ValidFieldName #"^[A-Za-z_][\w-]{0,127}$")
 
 (s/defn ^:private delete-table!
   [dataset-id :- su/NonBlankString, table-id :- su/NonBlankString]
@@ -128,15 +128,15 @@
    table-id           :- su/NonBlankString
    field-name->type   :- {ValidFieldName (apply s/enum valid-field-types)}]
   (u/ignore-exceptions
-   (delete-table! dataset-id table-id)
-   (let [tbl-id (TableId/of dataset-id table-id)
-         schema (Schema/of (u/varargs Field (for [[^String field-name field-type] field-name->type]
-                                              (Field/of
-                                                field-name
-                                                (LegacySQLTypeName/valueOf (name field-type))
-                                                (u/varargs Field [])))))
-         tbl    (TableInfo/of tbl-id (StandardTableDefinition/of schema))]
-     (.create (bigquery) tbl (u/varargs BigQuery$TableOption))))
+   (delete-table! dataset-id table-id))
+  (let [tbl-id (TableId/of dataset-id table-id)
+        schema (Schema/of (u/varargs Field (for [[^String field-name field-type] field-name->type]
+                                             (Field/of
+                                               field-name
+                                               (LegacySQLTypeName/valueOf (name field-type))
+                                               (u/varargs Field [])))))
+        tbl    (TableInfo/of tbl-id (StandardTableDefinition/of schema))]
+    (.create (bigquery) tbl (u/varargs BigQuery$TableOption)))
   ;; now verify that the Table was created
   (.listTables (bigquery) dataset-id (u/varargs BigQuery$TableListOption))
   (println (u/format-color 'blue "Created BigQuery table `%s.%s.%s`." (project-id) dataset-id table-id)))
