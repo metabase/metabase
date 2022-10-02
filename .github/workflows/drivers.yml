@@ -1,0 +1,298 @@
+name: Driver Tests
+
+on:
+  push:
+    branches:
+      - 'master'
+      - 'release-**'
+  pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      - "frontend/test/**"
+      - "enterprise/frontend/test/**"
+
+jobs:
+
+  be-tests-druid-ee:
+    runs-on: buildjet-2vcpu-ubuntu-2004
+    timeout-minutes: 25
+    env:
+      CI: 'true'
+      DRIVERS: druid
+    services:
+      druid:
+        image: metabase/druid:0.20.2
+        ports:
+          - "8082:8082"
+        env:
+          CLUSTER_SIZE: nano-quickstart
+    steps:
+    - uses: actions/checkout@v3
+    - name: Test Druid driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-druid-ee'
+
+  be-tests-mariadb-10-2-ee:
+    runs-on: buildjet-2vcpu-ubuntu-2004
+    timeout-minutes: 25
+    env:
+      CI: 'true'
+      DRIVERS: mysql
+      MB_DB_TYPE: mysql
+      MB_DB_HOST: localhost
+      MB_DB_PORT: 3306
+      MB_DB_DBNAME: circle_test
+      MB_DB_USER: root
+      MB_MYSQL_TEST_USER: root
+    services:
+      mariadb:
+        image: circleci/mariadb:10.2.23
+        ports:
+          - "3306:3306"
+    steps:
+    - uses: actions/checkout@v3
+    - name: Test MariaDB driver (10.2)
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-mariadb-10-2-ee'
+
+  be-tests-mariadb-latest-ee:
+    runs-on: buildjet-2vcpu-ubuntu-2004
+    timeout-minutes: 25
+    env:
+      CI: 'true'
+      DRIVERS: mysql
+      MB_DB_TYPE: mysql
+      MB_DB_HOST: localhost
+      MB_DB_PORT: 3306
+      MB_DB_DBNAME: circle_test
+      MB_DB_USER: root
+      MB_MYSQL_TEST_USER: root
+    services:
+      mariadb:
+        image: circleci/mariadb:latest
+        ports:
+          - "3306:3306"
+    steps:
+    - uses: actions/checkout@v3
+    - name: Test MariaDB driver (latest)
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-mariadb-latest-ee'
+
+  be-tests-mongo-4-0-ee:
+    runs-on: buildjet-2vcpu-ubuntu-2004
+    timeout-minutes: 25
+    env:
+      CI: 'true'
+      DRIVERS: mongo
+    services:
+      mongodb:
+        image: metabase/qa-databases:mongo-sample-4.0
+        ports:
+          - "27017:27017"
+    steps:
+    - uses: actions/checkout@v3
+    - name: Test MongoDB driver (4.0)
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-mongo-4-0-ee'
+
+  be-tests-mongo-5-0-ee:
+    runs-on: buildjet-2vcpu-ubuntu-2004
+    timeout-minutes: 25
+    env:
+      CI: 'true'
+      DRIVERS: mongo
+    services:
+      mongodb:
+        image: metabase/qa-databases:mongo-sample-5.0
+        ports:
+          - "27017:27017"
+    steps:
+    - uses: actions/checkout@v3
+    - name: Test MongoDB driver (5.0)
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-mongo-5-0-ee'
+
+  be-tests-mongo-latest-ee:
+    runs-on: buildjet-2vcpu-ubuntu-2004
+    timeout-minutes: 25
+    env:
+      CI: 'true'
+      DRIVERS: mongo
+    services:
+      mongodb:
+        image: circleci/mongo:latest
+        ports:
+          - "27017:27017"
+        env:
+          MONGO_INITDB_ROOT_USERNAME: metabase
+          MONGO_INITDB_ROOT_PASSWORD: metasample123
+    steps:
+    - uses: actions/checkout@v3
+    - name: Test MongoDB driver (latest)
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-mongo-latest-ee'
+
+  be-tests-mysql-5-7-ee:
+    runs-on: buildjet-2vcpu-ubuntu-2004
+    timeout-minutes: 25
+    env:
+      CI: 'true'
+      DRIVERS: mysql
+      MB_DB_TYPE: mysql
+      MB_DB_HOST: localhost
+      MB_DB_PORT: 3306
+      MB_DB_DBNAME: circle_test
+      MB_DB_USER: root
+      MB_MYSQL_TEST_USER: root
+    services:
+      mysql:
+        image: circleci/mysql:5.7.23
+        ports:
+          - "3306:3306"
+    steps:
+    - uses: actions/checkout@v3
+    - name: Test MySQL driver (5.7)
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-mysql-5-7-ee'
+
+  be-tests-postgres-ee:
+    runs-on: buildjet-2vcpu-ubuntu-2004
+    timeout-minutes: 25
+    env:
+      CI: 'true'
+      DRIVERS: postgres
+      MB_DB_TYPE: postgres
+      MB_DB_PORT: 5432
+      MB_DB_HOST: localhost
+      MB_DB_DBNAME: circle_test
+      MB_DB_USER: circle_test
+      MB_POSTGRESQL_TEST_USER: circle_test
+    services:
+      postgres:
+        image: circleci/postgres:9.6-alpine
+        ports:
+          - "5432:5432"
+        env:
+          POSTGRES_USER: circle_test
+          POSTGRES_DB: circle_test
+    steps:
+    - uses: actions/checkout@v3
+    - name: Test Postgres driver (9.6)
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-postgres-ee'
+
+  be-tests-postgres-latest-ee:
+    runs-on: buildjet-2vcpu-ubuntu-2004
+    timeout-minutes: 25
+    env:
+      CI: 'true'
+      DRIVERS: postgres
+      MB_DB_TYPE: postgres
+      MB_DB_PORT: 5432
+      MB_DB_HOST: localhost
+      MB_DB_DBNAME: circle_test
+      MB_DB_USER: circle_test
+      MB_POSTGRESQL_TEST_USER: circle_test
+      MB_POSTGRES_SSL_TEST_SSL: true
+      MB_POSTGRES_SSL_TEST_SSL_MODE: verify-full
+      MB_POSTGRES_SSL_TEST_SSL_ROOT_CERT_PATH: 'test-resources/certificates/us-east-2-bundle.pem'
+    services:
+      postgres:
+        image: circleci/postgres:latest
+        ports:
+          - "5432:5432"
+        env:
+          POSTGRES_USER: circle_test
+          POSTGRES_DB: circle_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+    steps:
+    - uses: actions/checkout@v3
+    - name: Test Postgres driver (latest)
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-postgres-latest-ee'
+
+  be-tests-presto-186-ee:
+    runs-on: buildjet-2vcpu-ubuntu-2004
+    timeout-minutes: 25
+    env:
+      CI: 'true'
+      DRIVERS: presto
+    services:
+      presto:
+        image: metabase/presto-mb-ci:0.186
+        ports:
+          - "8080:8080"
+        env:
+          JAVA_TOOL_OPTIONS: "-Xmx2g"
+    steps:
+    - uses: actions/checkout@v3
+    - name: Test Presto 0.186 driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-presto-186-ee'
+
+  be-tests-sparksql-ee:
+    runs-on: buildjet-2vcpu-ubuntu-2004
+    timeout-minutes: 25
+    env:
+      CI: 'true'
+      DRIVERS: sparksql
+    services:
+      sparksql:
+        image: metabase/spark:3.2.1
+        ports:
+          - "10000:10000"
+    steps:
+    - uses: actions/checkout@v3
+    - name: Test Spark driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-sparksql-ee'
+
+  be-tests-sqlite-ee:
+    runs-on: buildjet-2vcpu-ubuntu-2004
+    timeout-minutes: 25
+    env:
+      CI: 'true'
+      DRIVERS: sqlite
+    steps:
+    - uses: actions/checkout@v3
+    - name: Test SQLite driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-sqlite-ee'
+
+  be-tests-sqlserver-ee:
+    runs-on: buildjet-2vcpu-ubuntu-2004
+    timeout-minutes: 25
+    env:
+      CI: 'true'
+      DRIVERS: sqlserver
+      MB_SQLSERVER_TEST_HOST: localhost
+      MB_SQLSERVER_TEST_PASSWORD: 'P@ssw0rd'
+      MB_SQLSERVER_TEST_USER: SA
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2017-latest
+        ports:
+          - "1433:1433"
+        env:
+          ACCEPT_EULA: Y
+          SA_PASSWORD: 'P@ssw0rd'
+          MSSQL_MEMORY_LIMIT_MB: 1024
+    steps:
+    - uses: actions/checkout@v3
+    - name: Test MS SQL Server driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-sqlserver-ee'
