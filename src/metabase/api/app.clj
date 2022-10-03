@@ -8,7 +8,7 @@
     [metabase.api.collection :as api.collection]
     [metabase.api.common :as api]
     [metabase.models :refer [App Collection Dashboard Table]]
-    [metabase.models.app.graph :as graph]
+    [metabase.models.app.graph :as app.graph]
     [metabase.models.collection :as collection]
     [metabase.models.dashboard :as dashboard]
     [metabase.util.i18n :as i18n]
@@ -28,7 +28,7 @@
                         (select-keys [:dashboard_id :options :nav_items])
                         (assoc :collection_id (:id collection-instance)))
          app (db/insert! App app-params)]
-     (graph/set-default-permissions! app)
+     (app.graph/set-default-permissions! app)
      (hydrate-details app))))
 
 (api/defendpoint POST "/"
@@ -277,7 +277,7 @@
   "Fetch the global graph of all App Permissions."
   []
   (api/check-superuser)
-  (graph/global-graph))
+  (app.graph/global-graph))
 
 (defn- ->int [id] (Integer/parseInt (name id)))
 
@@ -300,7 +300,7 @@
   (api/check-superuser)
   (-> body
       dejsonify-global-graph
-      graph/update-global-graph!)
-  (graph/global-graph))
+      app.graph/update-global-graph!)
+  (app.graph/global-graph))
 
 (api/define-routes)

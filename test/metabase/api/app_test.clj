@@ -17,16 +17,17 @@
                        :color "#123456"}]
       (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
         (testing "parent_id is ignored when creating apps"
-          (mt/with-temp* [Collection [{collection-id :id}]]
-            (let [coll-params (assoc base-params :parent_id collection-id)
-                  response (mt/user-http-request :crowberto :post 200 "app" {:collection coll-params})]
-              (is (pos-int? (:id response)))
-              (is (pos-int? (:collection_id response)))
-              (is (partial= (assoc base-params :location "/")
-                            (:collection response)))
-              (is (partial= {:groups {(:id (perms-group/all-users)) {(:collection_id response) :write}}}
-                            (graph/graph))
-                  "''All Users'' should have the default permission on the app collection"))))
+          (mt/with-temporary-setting-values [all-users-app-permission :none]
+            (mt/with-temp* [Collection [{collection-id :id}]]
+             (let [coll-params (assoc base-params :parent_id collection-id)
+                   response (mt/user-http-request :crowberto :post 200 "app" {:collection coll-params})]
+               (is (pos-int? (:id response)))
+               (is (pos-int? (:collection_id response)))
+               (is (partial= (assoc base-params :location "/")
+                             (:collection response)))
+               (is (partial= {:groups {(:id (perms-group/all-users)) {(:collection_id response) :none}}}
+                             (graph/graph))
+                   "''All Users'' should have the default permission on the app collection")))))
         (testing "Create app in the root"
           (mt/with-temporary-setting-values [all-users-app-permission :read]
             (let [response (mt/user-http-request :crowberto :post 200 "app" {:collection base-params})]
