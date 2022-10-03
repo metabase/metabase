@@ -430,7 +430,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.get(".bar")
       .last()
       .trigger("mousemove");
-    popover().findByText("12");
+    popover().findAllByText("12");
   });
 
   it.skip("should drill-through a custom question that joins a native SQL question (metabase#14495)", () => {
