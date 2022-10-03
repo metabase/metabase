@@ -153,7 +153,9 @@ function DatasetFieldMetadataSidebar({
       setShouldAnimateFieldChange(true);
       // setTimeout is required as form fields are rerendered pretty frequently
       setTimeout(() => {
-        displayNameInputRef.current?.select?.();
+        if (_.isFunction(displayNameInputRef.current?.select)) {
+          displayNameInputRef.current.select();
+        }
       });
     }
   }, [field, previousField]);
