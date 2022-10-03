@@ -5,7 +5,7 @@ import PropTypes from "prop-types";
 import cx from "classnames";
 import { t } from "ttag";
 import Popover from "metabase/components/Popover";
-import * as FieldRef from "metabase/lib/query/field_ref";
+import * as FieldRef from "metabase-lib/lib/utils/query/field_ref";
 import FieldList from "./FieldList";
 import Clearable from "./Clearable";
 

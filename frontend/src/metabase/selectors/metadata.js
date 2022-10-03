@@ -2,7 +2,10 @@ import { createSelector } from "reselect";
 
 import _ from "underscore";
 import { isVirtualCardId } from "metabase/lib/saved-questions/saved-questions";
-import { getFieldValues, getRemappings } from "metabase/lib/query/field";
+import {
+  getFieldValues,
+  getRemappings,
+} from "metabase-lib/lib/utils/query/field";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Database from "metabase-lib/lib/metadata/Database";
 import Schema from "metabase-lib/lib/metadata/Schema";

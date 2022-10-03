@@ -8,7 +8,7 @@ import _ from "underscore";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 
-import * as AGGREGATION from "metabase/lib/query/aggregation";
+import * as AGGREGATION from "metabase-lib/lib/utils/query/aggregation";
 import Aggregation from "metabase-lib/lib/queries/structured/Aggregation";
 import QueryDefinitionTooltip from "../QueryDefinitionTooltip";
 import ExpressionPopover from "../ExpressionPopover";

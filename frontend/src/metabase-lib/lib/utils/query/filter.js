@@ -5,16 +5,8 @@ import {
   isLiteral,
 } from "metabase/lib/expressions";
 import { STRING, getOperatorByTypeAndName } from "metabase/lib/schema_metadata";
-import {
-  op,
-  args,
-  noNullValues,
-  add,
-  update,
-  remove,
-  clear,
-} from "metabase-lib/lib/utils/query/util";
-import { isStartingFrom } from "../query_time";
+import { isStartingFrom } from "metabase/lib/query_time";
+import { op, args, noNullValues, add, update, remove, clear } from "./util";
 import { isValidField } from "./field_ref";
 
 // returns canonical list of Filters

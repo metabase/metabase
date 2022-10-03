@@ -1,9 +1,8 @@
+import { ORDERS, PRODUCTS } from "__support__/sample_database_fixture";
 import {
   generateQueryDescription,
   getOrderByDescription,
-} from "metabase/lib/query/description";
-
-import { ORDERS, PRODUCTS } from "__support__/sample_database_fixture";
+} from "metabase-lib/lib/utils/query/description";
 
 const mockTableMetadata = {
   display_name: "Order",

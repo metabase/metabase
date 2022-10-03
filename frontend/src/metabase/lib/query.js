@@ -1,11 +1,11 @@
 import _ from "underscore";
 import Utils from "metabase/lib/utils";
 
-import * as QUERY from "./query/query";
-import * as FieldRef from "./query/field_ref";
+import * as QUERY from "../../metabase-lib/lib/utils/query/query";
+import * as FieldRef from "../../metabase-lib/lib/utils/query/field_ref";
 
-export * from "./query/query";
-export * from "./query/field_ref";
+export * from "../../metabase-lib/lib/utils/query/query";
+export * from "../../metabase-lib/lib/utils/query/field_ref";
 
 // The backend won't return more than 2,000 rows so in cases where we
 // need to communicate or use that, use this constant

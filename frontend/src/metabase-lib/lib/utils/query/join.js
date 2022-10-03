@@ -1,4 +1,4 @@
-import { add, update, remove, clear } from "metabase-lib/lib/utils/query/util";
+import { add, update, remove, clear } from "./util";
 
 // returns canonical list of Joins, with nulls removed
 export function getJoins(joins) {
