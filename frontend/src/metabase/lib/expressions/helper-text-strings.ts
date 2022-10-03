@@ -217,6 +217,7 @@ const helperTextStrings: HelpText[] = [
       },
       { name: t`length`, description: t`The number of characters to return.` },
     ],
+    hasDocsPage: true,
   },
   {
     name: "regex-match-first",
@@ -243,6 +244,7 @@ const helperTextStrings: HelpText[] = [
         description: t`This will be added to the end of value1, and so on.`,
       },
     ],
+    hasDocsPage: true,
   },
   {
     name: "replace",
