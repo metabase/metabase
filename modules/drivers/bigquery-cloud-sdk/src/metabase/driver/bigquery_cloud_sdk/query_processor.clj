@@ -519,6 +519,36 @@
     (cond->> ((get-method sql.qp/->honeysql [:sql :relative-datetime]) driver clause)
       t (->temporal-type t))))
 
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :datediff]
+  [driver [_ x y unit :as clause]]
+  (case unit
+    (:year :month :day :hour :minute :second)
+    (let [types               [(temporal-type x) (temporal-type y)]
+          [bq-fn target-type] (cond
+                                ;; bigquery doesn't support year and month timestamp_diff so drop back to datetime
+                                (and (some #{:timestamp} types)
+                                     (#{:year :month} unit)) [:datetime_diff :datetime]
+                                (some #{:timestamp} types)   [:timestamp_diff :timestamp]
+                                (some #{:datetime} types)    [:datetime_diff :datetime]
+                                (some #{:date} types)        [:date_diff :date]
+                                :else                        (throw
+                                                              (ex-info (tru "Unrecognized types")
+                                                                       {:clause clause
+                                                                        :arg-1 (first types)
+                                                                        :arg-2 (second types)})))
+          maybe-cast          (fn [clause current]
+                                (cond->> clause
+                                  (not= current target-type)
+                                  (hx/cast target-type)))]
+      ;; select one of datetime_diff, timestamp_diff, date_diff and ensure types are compatible.
+      (hsql/call bq-fn
+                 (maybe-cast (sql.qp/->honeysql driver x) (first types))
+                 (maybe-cast (sql.qp/->honeysql driver y) (second types))
+                 (hsql/raw (name unit))))
+    (throw (ex-info (tru "Unsupported date-diff unit {0}" unit)
+                    {:clause clause
+                     :supported-units [:year :month :day :hour :minute :second]}))))
+
 (defmethod driver/escape-alias :bigquery-cloud-sdk
   [driver s]
   ;; Convert field alias `s` to a valid BigQuery field identifier. From the dox: Fields must contain only letters,
