@@ -74,14 +74,17 @@ export default function Gauge({ card, data, getColor }: GaugeProps) {
   const centerY = GAUGE_OUTER_RADIUS + CHART_VERTICAL_MARGIN;
   const gaugeOuterRadius = GAUGE_OUTER_RADIUS;
   const gaugeInnerRadius = gaugeOuterRadius - GAUGE_THICKNESS;
-  const startAngle = Math.PI + toRadian((360 - ARC_DEGREE) / 2);
+  const startAngle = -toRadian((360 - ARC_DEGREE) / 2);
   const endAngle = startAngle + toRadian(ARC_DEGREE);
 
   const minValue = gaugeSegmentData[0].min;
   const maxValue = gaugeSegmentData[gaugeSegmentData.length - 1].max;
   const value = data.rows[0][0];
-  const valueAngle =
-    startAngle + calculateValueAngle(value, minValue, maxValue);
+  const valueAngle = limit(
+    startAngle + calculateValueAngle(value, minValue, maxValue),
+    startAngle,
+    endAngle,
+  );
 
   const valuePosition = getCirclePositionInSvgCoordinate(
     gaugeInnerRadius,
@@ -374,8 +377,9 @@ function GaugeNeedle({
     GAUGE_NEEDLE_RADIUS * Math.tan(toRadian(HALF_EQUILATERAL_TRIANGLE_ANGLE));
   return (
     <g
-      transform={`translate(0 ${-translationYOffset})
-      rotate(${toDegree(valueAngle)} ${toSvgPositionString(position)})`}
+      transform={`rotate(${toDegree(valueAngle)} ${toSvgPositionString(
+        position,
+      )}) translate(0 ${-translationYOffset})`}
     >
       <Triangle
         center={position}
@@ -499,4 +503,9 @@ function calculateChartScale(gaugeLabels: GaugeLabelData[]) {
   );
 
   return Math.min(1, GAUGE_OUTER_RADIUS / maxLabelDistanceFromCenter);
+}
+
+function limit(value: number, min: number, max: number) {
+  console.log({ value, min, max });
+  return Math.min(Math.max(value, min), max);
 }
