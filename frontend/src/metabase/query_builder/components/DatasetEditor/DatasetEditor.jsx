@@ -199,7 +199,9 @@ function DatasetEditor(props) {
       return columns;
     }
     return orderedColumns
-      .map(col => columns.find(c => isSameField(c.field_ref, col.fieldRef)))
+      .map(
+        col => columns.find(c => isSameField(c.field_ref, col.fieldRef)) || col,
+      )
       .filter(Boolean);
   }, [orderedColumns, result]);
 
