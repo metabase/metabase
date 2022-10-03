@@ -27,11 +27,17 @@ const DatabaseTablesPane = ({
   searchResults,
 }: DatabaseTablesPaneProps) => {
   const tables = useMemo(
-    () => searchResults?.filter(x => x.model === "table"),
+    () =>
+      searchResults
+        ?.filter(x => x.model === "table")
+        .sort((a, b) => a.name.localeCompare(b.name)),
     [searchResults],
   );
   const models = useMemo(
-    () => searchResults?.filter(x => x.model === "dataset"),
+    () =>
+      searchResults
+        ?.filter(x => x.model === "dataset")
+        .sort((a, b) => a.name.localeCompare(b.name)),
     [searchResults],
   );
   return searchResults ? (
@@ -77,7 +83,7 @@ const DatabaseTablesPane = ({
           <li key={table.id}>
             <NodeListItemLink onClick={() => show("table", table)}>
               <NodeListItemIcon name="table" />
-              <NodeListItemName>{table.name.toUpperCase()}</NodeListItemName>
+              <NodeListItemName>{table.name}</NodeListItemName>
             </NodeListItemLink>
           </li>
         ))}
