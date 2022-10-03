@@ -24,7 +24,7 @@
               (is (pos-int? (:collection_id response)))
               (is (partial= (assoc base-params :location "/")
                             (:collection response)))
-              (is (partial= {:groups {(:id (perms-group/all-users)) {(:collection_id response) :none}}}
+              (is (partial= {:groups {(:id (perms-group/all-users)) {(:collection_id response) :write}}}
                             (graph/graph))
                   "''All Users'' should have the default permission on the app collection"))))
         (testing "Create app in the root"
