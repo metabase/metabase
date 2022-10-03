@@ -14,7 +14,9 @@
             [schema.core :as s]
             [toucan.db :as db]))
 
-(def ^:private AppPermissions
+(def AppPermissions
+  "The valid app permissions. Currently corresponds 1:1 to `CollectionPermissions`
+  since app permissions are implemented in terms of collection permissions."
   graph/CollectionPermissions)
 
 (def ^:private GlobalPermissionsGraph
@@ -51,7 +53,7 @@
 
 (s/defn update-global-graph!
   "Update the global app permission graph to the state specified by
-  `new-graph`."
+  `new-graph`. Returns the new graph as read from the updated database."
   [new-graph :- GlobalPermissionsGraph]
   (let [old-graph (global-graph)
         [diff-old changes] (data/diff (:groups old-graph) (:groups new-graph))]
@@ -69,4 +71,5 @@
           (doseq [collection-id (db/select-field :collection_id 'App)]
             (graph/update-collection-permissions! group-id collection-id permission))
           (perms/save-perms-revision!
-           CollectionPermissionGraphRevision (:revision old-graph) old-graph changes))))))
+           CollectionPermissionGraphRevision (:revision old-graph) old-graph changes))
+        (global-graph)))))
