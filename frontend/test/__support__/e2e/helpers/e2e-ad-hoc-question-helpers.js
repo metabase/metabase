@@ -8,7 +8,7 @@ export function adhocQuestionHash(question) {
   return btoa(unescape(encodeURIComponent(JSON.stringify(question))));
 }
 
-export function visitQuestionAdhoc(question, { autorun = true }) {
+export function visitQuestionAdhoc(question, { autorun = true } = {}) {
   cy.visit("/question#" + adhocQuestionHash(question));
   runQueryIfNeeded(question, autorun);
 }

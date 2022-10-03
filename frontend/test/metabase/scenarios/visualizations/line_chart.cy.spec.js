@@ -149,6 +149,9 @@ describe("scenarios > visualizations > line chart", () => {
       },
     });
 
+    // workaround for metabase/query_builder/components/NativeQueryEditor.jsx#L214
+    cy.wait(2000);
+
     cy.findByText("Settings").click();
 
     cy.findByTestId("sidebar-left").within(() => {
