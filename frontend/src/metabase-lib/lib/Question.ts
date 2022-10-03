@@ -956,7 +956,7 @@ class QuestionInner {
       !question.id() ||
       (originalQuestion && question.isDirtyComparedTo(originalQuestion))
     ) {
-      return Urls.question(question.card(), {
+      return Urls.question(null, {
         hash: question._serializeForUrl({
           clean,
           includeDisplayIsLocked,
@@ -1383,7 +1383,6 @@ export default class Question extends memoizeClass<QuestionInner>(
   }: QuestionCreatorOpts = {}) {
     let card: CardObject = {
       name,
-      dataset,
       collection_id: collectionId,
       display,
       visualization_settings,

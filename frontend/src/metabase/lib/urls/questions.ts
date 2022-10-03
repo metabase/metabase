@@ -117,23 +117,6 @@ export function newQuestion({
   }
 }
 
-export function newDataset({
-  mode,
-  creationType,
-  objectId,
-  ...options
-}: NewQuestionUrlBuilderParams = {}) {
-  const url = Question.create(options).getUrl({
-    creationType,
-    query: objectId ? { objectId } : undefined,
-  });
-  if (mode) {
-    return url.replace(/^\/model/, `/model\/${mode}`);
-  } else {
-    return url;
-  }
-}
-
 export function dataset(...args: Parameters<typeof question>) {
   return question(...args);
 }
