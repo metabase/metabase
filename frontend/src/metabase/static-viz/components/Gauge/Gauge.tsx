@@ -52,10 +52,11 @@ const HORIZONTAL_MARGIN = 20;
 const VERTICAL_MARGIN = HORIZONTAL_MARGIN * 2;
 const WIDTH = 540;
 const VALUE_MARGIN = WIDTH * 0.1;
-const GAUGE_RADIUS = WIDTH / 2 - HORIZONTAL_MARGIN;
-const HEIGHT = GAUGE_RADIUS + 2 * VERTICAL_MARGIN;
+const GAUGE_OUTER_RADIUS = WIDTH / 2 - HORIZONTAL_MARGIN;
+const HEIGHT = GAUGE_OUTER_RADIUS + 2 * VERTICAL_MARGIN;
 const GAUGE_THICKNESS = 70;
 const BASE_FONT_SIZE = GAUGE_THICKNESS * 0.8;
+const SEGMENT_LABEL_FONT_SIZE = BASE_FONT_SIZE * 0.3;
 // TODO: Make this dynamic and calculated from font size,
 const THRESHOLD_ANGLE_DEGREE = toRadian(30);
 
@@ -63,8 +64,8 @@ export default function Gauge({ card, data, getColor }: GaugeProps) {
   const settings = card.visualization_settings;
   const gaugeSegmentData = settings["gauge.segments"];
   const centerX = WIDTH / 2;
-  const centerY = GAUGE_RADIUS + VERTICAL_MARGIN;
-  const gaugeOuterRadius = WIDTH / 2 - HORIZONTAL_MARGIN;
+  const centerY = GAUGE_OUTER_RADIUS + VERTICAL_MARGIN;
+  const gaugeOuterRadius = GAUGE_OUTER_RADIUS;
   const gaugeInnerRadius = gaugeOuterRadius - GAUGE_THICKNESS;
   const startAngle = Math.PI + toRadian((360 - ARC_DEGREE) / 2);
   const endAngle = startAngle + toRadian(ARC_DEGREE);
@@ -213,9 +214,13 @@ export default function Gauge({ card, data, getColor }: GaugeProps) {
       };
     });
 
+  const gaugeLabels = gaugeSegmentMinMaxLabels.concat(gaugeSegmentLabels);
   return (
     <svg width={WIDTH} height={HEIGHT}>
-      <Group transform="scale(0.5)" transform-origin="center">
+      <Group
+        transform={`scale(${calculateChartScale(gaugeLabels)})`}
+        transform-origin="center"
+      >
         <Group top={centerY} left={centerX}>
           <Pie
             data={gaugeSegmentData}
@@ -233,24 +238,19 @@ export default function Gauge({ card, data, getColor }: GaugeProps) {
             position={valuePosition}
             valueAngle={valueAngle}
           />
-          {/* TODO: Make both segment min/max and labels a component. */}
-          {/* TODO: Fix segment min/max and labels overflow */}
-          {gaugeSegmentMinMaxLabels
-            .concat(gaugeSegmentLabels)
-            .map(({ color, position, textAnchor, value }, index) => {
-              const fontSize = BASE_FONT_SIZE * 0.3;
-              return (
-                <GaugeLabel
-                  key={index}
-                  fill={color}
-                  stroke={outlineColor}
-                  fontSize={fontSize}
-                  position={position}
-                  label={value}
-                  textAnchor={textAnchor}
-                />
-              );
-            })}
+          {gaugeLabels.map(({ color, position, textAnchor, value }, index) => {
+            return (
+              <GaugeLabel
+                key={index}
+                fill={color}
+                stroke={outlineColor}
+                fontSize={SEGMENT_LABEL_FONT_SIZE}
+                position={position}
+                label={value}
+                textAnchor={textAnchor}
+              />
+            );
+          })}
           <GaugeLabel
             fill={getColor("text-dark")}
             stroke={outlineColor}
@@ -457,4 +457,40 @@ function isBetweenAngle(
     normalizedAngle >= normalizedFromAngle &&
     normalizedAngle <= normalizedToAngle
   );
+}
+
+function calculateChartScale(gaugeLabels: GaugeLabelData[]) {
+  const gaugeLabelDimensions = gaugeLabels.map(gaugeLabel => {
+    const labelWidth = measureText(gaugeLabel.value, SEGMENT_LABEL_FONT_SIZE);
+    function calculateLeftXOffset() {
+      switch (gaugeLabel.textAnchor) {
+        case "start":
+          return 0;
+        case "end":
+          return labelWidth;
+        case "middle":
+          return labelWidth / 2;
+        default:
+          return 0;
+      }
+    }
+
+    return {
+      left: gaugeLabel.position[0] - calculateLeftXOffset(),
+      right: gaugeLabel.position[0] + (labelWidth - calculateLeftXOffset()),
+    };
+  });
+
+  const maxLabelDistanceFromCenter = gaugeLabelDimensions.reduce(
+    (currentMaxLabelDistanceFromCenter, gaugeLabelDimension) => {
+      return Math.max(
+        Math.abs(gaugeLabelDimension.left),
+        gaugeLabelDimension.right,
+        currentMaxLabelDistanceFromCenter,
+      );
+    },
+    0,
+  );
+
+  return Math.min(1, GAUGE_OUTER_RADIUS / maxLabelDistanceFromCenter);
 }
