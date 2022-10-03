@@ -37,7 +37,7 @@
                                                {:card_id card-id
                                                 :action_id action-id
                                                 :requires_pk false
-                                                :slug "insert"})]
+                                                :slug "custom"})]
             (is (partial=
-                  {:slug "insert"}
+                  {:slug "custom"}
                   response))))))))
