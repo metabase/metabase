@@ -100,7 +100,7 @@ describe("scenarios > visualizations > bar chart", () => {
         },
       });
 
-      cy.findByText("19");
+      cy.findAllByText("19");
       cy.findAllByText("20.0M");
     });
   });
