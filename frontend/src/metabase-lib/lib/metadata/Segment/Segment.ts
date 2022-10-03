@@ -23,7 +23,7 @@ export default class Segment extends Base {
    * @param {boolean} archived
    */
   constructor(object: SegmentProps) {
-    super();
+    super(object);
 
     const { name, description, database, table, id, archived } = object;
     this.name = name;
