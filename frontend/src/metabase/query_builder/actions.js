@@ -691,7 +691,10 @@ export const initializeQB = (location, params) => {
     // if we have loaded up a card that we can run then lets kick that off as well
     // but don't bother for "notebook" mode
     if (question && uiControls.queryBuilderMode !== "notebook") {
-      if (question.canRun()) {
+      if (
+        question.canRun() &&
+        (question.isSaved() || question.isStructured())
+      ) {
         // NOTE: timeout to allow Parameters widget to set parameterValues
         setTimeout(
           () =>

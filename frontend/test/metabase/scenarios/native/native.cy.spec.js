@@ -194,4 +194,22 @@ describe("scenarios > question > native", () => {
         .and("eq", `/question/${questionId}-test-question`);
     });
   });
+
+  it("should not autorun ad-hoc native queries by default", () => {
+    visitQuestionAdhoc(
+      {
+        display: "scalar",
+        dataset_query: {
+          type: "native",
+          native: {
+            query: "SELECT 1",
+          },
+          database: SAMPLE_DB_ID,
+        },
+      },
+      { autorun: false },
+    );
+
+    cy.findByText("Here's where your results will appear").should("be.visible");
+  });
 });
