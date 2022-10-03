@@ -359,7 +359,9 @@ const mapStateToProps = (state, props) => {
   };
 };
 
-const CustomMapFooter = connect(mapStateToProps)(({ isAdmin }) => {
+const CustomMapFooter = connect(mapStateToProps)(function CustomMapFooter({
+  isAdmin,
+}) {
   const content = (
     <CustomMapContent>
       {t`Custom map`}
