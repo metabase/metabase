@@ -86,6 +86,7 @@ import {
 
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
+  dataset?: boolean;
   tableId?: TableId;
   collectionId?: CollectionId;
   metadata?: Metadata;
@@ -941,6 +942,7 @@ class QuestionInner {
     query,
     includeDisplayIsLocked,
     creationType,
+    ...options
   }: {
     originalQuestion?: Question;
     clean?: boolean;
@@ -1374,6 +1376,7 @@ export default class Question extends memoizeClass<QuestionInner>(
     name,
     display = "table",
     visualization_settings = {},
+    dataset,
     dataset_query = type === "native"
       ? NATIVE_QUERY_TEMPLATE
       : STRUCTURED_QUERY_TEMPLATE,
@@ -1383,6 +1386,7 @@ export default class Question extends memoizeClass<QuestionInner>(
       collection_id: collectionId,
       display,
       visualization_settings,
+      dataset,
       dataset_query,
     };
 
