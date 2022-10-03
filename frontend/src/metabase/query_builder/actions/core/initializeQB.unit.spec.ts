@@ -1,5 +1,4 @@
 import { LocationDescriptorObject } from "history";
-import _ from "underscore";
 import xhrMock from "xhr-mock";
 
 import * as CardLib from "metabase/lib/card";
@@ -248,12 +247,6 @@ describe("QB Actions > initializeQB", () => {
           );
         });
 
-        it("runs question query in view mode", async () => {
-          const runQuestionQuerySpy = jest.spyOn(querying, "runQuestionQuery");
-          await setup({ question });
-          expect(runQuestionQuerySpy).toHaveBeenCalledTimes(1);
-        });
-
         it("does not run non-runnable question queries", async () => {
           const runQuestionQuerySpy = jest.spyOn(querying, "runQuestionQuery");
           jest.spyOn(Question.prototype, "canRun").mockReturnValue(false);
@@ -405,6 +398,12 @@ describe("QB Actions > initializeQB", () => {
             ),
           );
         });
+
+        it("runs question query in view mode", async () => {
+          const runQuestionQuerySpy = jest.spyOn(querying, "runQuestionQuery");
+          await setup({ question });
+          expect(runQuestionQuerySpy).toHaveBeenCalledTimes(1);
+        });
       });
     });
   });
@@ -503,6 +502,26 @@ describe("QB Actions > initializeQB", () => {
           expect(dispatch).toHaveBeenCalledWith(setErrorPage(error));
         });
       });
+    });
+  });
+
+  describe("unsaved structured questions", () => {
+    const { question } = TEST_CASE.SAVED_STRUCTURED_QUESTION;
+
+    it("runs question query in view mode", async () => {
+      const runQuestionQuerySpy = jest.spyOn(querying, "runQuestionQuery");
+      await setup({ question });
+      expect(runQuestionQuerySpy).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("unsaved native questions", () => {
+    const { question } = TEST_CASE.UNSAVED_NATIVE_QUESTION;
+
+    it("doesn't run an ad-hoc native question in view mode automatically", async () => {
+      const runQuestionQuerySpy = jest.spyOn(querying, "runQuestionQuery");
+      await setup({ question });
+      expect(runQuestionQuerySpy).not.toHaveBeenCalled();
     });
   });
 
