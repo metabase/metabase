@@ -1,5 +1,6 @@
 (ns metabase.api.model-action
   (:require
+    [compojure.core :refer [DELETE GET POST PUT]]
     [honeysql.core :as hsql]
     [metabase.api.common :as api]
     [metabase.models :refer [Action Card HTTPAction ModelAction QueryAction]]
