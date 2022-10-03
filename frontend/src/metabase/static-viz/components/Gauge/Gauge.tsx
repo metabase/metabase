@@ -48,23 +48,30 @@ interface GaugeLabelData {
 }
 
 const ARC_DEGREE = 180;
-const HORIZONTAL_MARGIN = 20;
-const VERTICAL_MARGIN = HORIZONTAL_MARGIN * 2;
+const CHART_HORIZONTAL_MARGIN = 20;
+const CHART_VERTICAL_MARGIN = CHART_HORIZONTAL_MARGIN * 2;
 const WIDTH = 540;
 const VALUE_MARGIN = WIDTH * 0.1;
-const GAUGE_OUTER_RADIUS = WIDTH / 2 - HORIZONTAL_MARGIN;
-const HEIGHT = GAUGE_OUTER_RADIUS + 2 * VERTICAL_MARGIN;
+const GAUGE_OUTER_RADIUS = WIDTH / 2 - CHART_HORIZONTAL_MARGIN;
+const HEIGHT = GAUGE_OUTER_RADIUS + 2 * CHART_VERTICAL_MARGIN;
 const GAUGE_THICKNESS = 70;
 const BASE_FONT_SIZE = GAUGE_THICKNESS * 0.8;
 const SEGMENT_LABEL_FONT_SIZE = BASE_FONT_SIZE * 0.3;
-// TODO: Make this dynamic and calculated from font size,
-const THRESHOLD_ANGLE_DEGREE = toRadian(30);
+const SEGMENT_LABEL_MARGIN = SEGMENT_LABEL_FONT_SIZE / 2;
+
+// Only allow the bottom of the gauge label to be above the top of the gauge chart.
+// So, the labels don't overlap with the gauge chart, otherwise, uses the label position
+// as a left or right anchor instead of a middle anchor to avoid having the labels protrude
+// the gauge chart.
+const SEGMENT_LABEL_ANCHOR_THRESHOLD_ANGLE = Math.acos(
+  GAUGE_OUTER_RADIUS / (GAUGE_OUTER_RADIUS + SEGMENT_LABEL_MARGIN),
+);
 
 export default function Gauge({ card, data, getColor }: GaugeProps) {
   const settings = card.visualization_settings;
   const gaugeSegmentData = settings["gauge.segments"];
   const centerX = WIDTH / 2;
-  const centerY = GAUGE_OUTER_RADIUS + VERTICAL_MARGIN;
+  const centerY = GAUGE_OUTER_RADIUS + CHART_VERTICAL_MARGIN;
   const gaugeOuterRadius = GAUGE_OUTER_RADIUS;
   const gaugeInnerRadius = gaugeOuterRadius - GAUGE_THICKNESS;
   const startAngle = Math.PI + toRadian((360 - ARC_DEGREE) / 2);
@@ -86,39 +93,36 @@ export default function Gauge({ card, data, getColor }: GaugeProps) {
     gaugeInnerRadius,
   );
 
-  function calculatePosition(fontSize: number, angle: number) {
-    const labelMargin = fontSize / 2;
-    const distanceToMiddleLabelAnchor = fontSize / 2;
+  function calculatePosition(angle: number) {
+    const distanceToMiddleLabelAnchor = SEGMENT_LABEL_FONT_SIZE / 2;
     return getCirclePositionInSvgCoordinate(
-      gaugeOuterRadius + labelMargin + distanceToMiddleLabelAnchor,
+      gaugeOuterRadius + SEGMENT_LABEL_MARGIN + distanceToMiddleLabelAnchor,
       angle,
     );
   }
-  const outlineColor = getColor("white");
 
   const gaugeSegmentMinMaxLabels: GaugeLabelData[] = gaugeSegmentData.flatMap(
     (gaugeSegmentDatum, index): GaugeLabelData | GaugeLabelData[] => {
-      const fontSize = BASE_FONT_SIZE * 0.3;
       const isFirstSegment = index === 0;
       const isLastSegment = index === gaugeSegmentData.length - 1;
       const minAngle =
         startAngle +
         calculateValueAngle(gaugeSegmentDatum.min, minValue, maxValue);
       const minPosition: Position = isFirstSegment
-        ? [-(gaugeInnerRadius + gaugeOuterRadius) / 2, fontSize]
-        : calculatePosition(fontSize, minAngle);
+        ? [-(gaugeInnerRadius + gaugeOuterRadius) / 2, SEGMENT_LABEL_FONT_SIZE]
+        : calculatePosition(minAngle);
       const maxPosition: Position | undefined = isLastSegment
-        ? [(gaugeInnerRadius + gaugeOuterRadius) / 2, fontSize]
+        ? [(gaugeInnerRadius + gaugeOuterRadius) / 2, SEGMENT_LABEL_FONT_SIZE]
         : undefined;
 
       function calculateLabelTextAnchor(angle: number): TextAnchor {
-        const normalizedMinAngle = normalizeAngle(angle);
+        const normalizedAngle = normalizeAngle(angle);
 
         if (
           isBetweenAngle(
-            normalizedMinAngle,
+            normalizedAngle,
             1.5 * Math.PI,
-            normalizeAngle(toRadian(-THRESHOLD_ANGLE_DEGREE)),
+            normalizeAngle(-SEGMENT_LABEL_ANCHOR_THRESHOLD_ANGLE),
           )
         ) {
           return "end";
@@ -126,9 +130,9 @@ export default function Gauge({ card, data, getColor }: GaugeProps) {
 
         if (
           isBetweenAngle(
-            normalizedMinAngle,
-            normalizeAngle(toRadian(-THRESHOLD_ANGLE_DEGREE)),
-            normalizeAngle(toRadian(THRESHOLD_ANGLE_DEGREE)),
+            normalizedAngle,
+            normalizeAngle(-SEGMENT_LABEL_ANCHOR_THRESHOLD_ANGLE),
+            normalizeAngle(SEGMENT_LABEL_ANCHOR_THRESHOLD_ANGLE),
           )
         ) {
           return "middle";
@@ -136,6 +140,7 @@ export default function Gauge({ card, data, getColor }: GaugeProps) {
 
         return "start";
       }
+
       if (maxPosition) {
         return [
           {
@@ -170,7 +175,6 @@ export default function Gauge({ card, data, getColor }: GaugeProps) {
     .filter(gaugeSegmentDatum => gaugeSegmentDatum.label)
     .map((gaugeSegmentDatum, index): GaugeLabelData => {
       const gaugeSegmentLabel = gaugeSegmentDatum.label;
-      const fontSize = BASE_FONT_SIZE * 0.3;
       const angle =
         startAngle +
         calculateValueAngle(
@@ -178,7 +182,7 @@ export default function Gauge({ card, data, getColor }: GaugeProps) {
           minValue,
           maxValue,
         );
-      const position: Position = calculatePosition(fontSize, angle);
+      const position: Position = calculatePosition(angle);
 
       function calculateLabelTextAnchor(angle: number): TextAnchor {
         const normalizedMinAngle = normalizeAngle(angle);
@@ -187,7 +191,7 @@ export default function Gauge({ card, data, getColor }: GaugeProps) {
           isBetweenAngle(
             normalizedMinAngle,
             1.5 * Math.PI,
-            normalizeAngle(toRadian(-THRESHOLD_ANGLE_DEGREE)),
+            normalizeAngle(-SEGMENT_LABEL_ANCHOR_THRESHOLD_ANGLE),
           )
         ) {
           return "end";
@@ -196,8 +200,8 @@ export default function Gauge({ card, data, getColor }: GaugeProps) {
         if (
           isBetweenAngle(
             normalizedMinAngle,
-            normalizeAngle(toRadian(-THRESHOLD_ANGLE_DEGREE)),
-            normalizeAngle(toRadian(THRESHOLD_ANGLE_DEGREE)),
+            normalizeAngle(-SEGMENT_LABEL_ANCHOR_THRESHOLD_ANGLE),
+            normalizeAngle(SEGMENT_LABEL_ANCHOR_THRESHOLD_ANGLE),
           )
         ) {
           return "middle";
@@ -215,6 +219,8 @@ export default function Gauge({ card, data, getColor }: GaugeProps) {
     });
 
   const gaugeLabels = gaugeSegmentMinMaxLabels.concat(gaugeSegmentLabels);
+  const outlineColor = getColor("white");
+
   return (
     <svg width={WIDTH} height={HEIGHT}>
       <Group
