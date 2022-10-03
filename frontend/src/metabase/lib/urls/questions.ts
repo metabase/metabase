@@ -54,6 +54,7 @@ export function question(
   }
 
   const isModel = card?.dataset || card?.model === "dataset";
+  let path = isModel ? "model" : "question";
   if (!card || !card.id) {
     return `/${path}${query}${hash}`;
   }
@@ -95,7 +96,6 @@ type NewQuestionUrlBuilderParams = QuestionCreatorOpts & {
   mode?: "view" | "notebook";
   creationType?: string;
   objectId?: number | string;
-  dataset?: true;
 };
 
 export function newQuestion({
@@ -109,11 +109,13 @@ export function newQuestion({
     creationType,
     query: objectId ? { objectId } : undefined,
   });
+
+  const entity = question.isDataset() ? "model" : "question";
+
   if (mode) {
-    const entity = question.isDataset() ? "model" : "question";
     return url.replace(/^\/(question|model)/, `/${entity}\/${mode}`);
   } else {
-    return url;
+    return url.replace(/^\/(question|model)/, `/${entity}`);
   }
 }
 

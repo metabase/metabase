@@ -1386,6 +1386,7 @@ export default class Question extends memoizeClass<QuestionInner>(
       collection_id: collectionId,
       display,
       visualization_settings,
+      dataset,
       dataset_query,
     };
 

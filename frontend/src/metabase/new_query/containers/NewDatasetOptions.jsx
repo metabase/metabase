@@ -33,7 +33,7 @@ const mapDispatchToProps = {
   push,
 };
 
-class NewQueryOptions extends Component {
+class NewDatasetOptions extends Component {
   componentDidMount() {
     // We need to check if any databases exist otherwise show an empty state.
     // Be aware that the embedded version does not have the Navbar, which also
@@ -79,7 +79,7 @@ class NewQueryOptions extends Component {
                 title={t`Use the notebook editor`}
                 description={t`Use the advanced notebook editor to join data, create custom columns, do math, and more.`}
                 width={180}
-                to={Urls.newDataset({
+                to={Urls.newQuestion({
                   mode: "notebook",
                   creationType: "custom_question",
                   dataset: true,
@@ -94,7 +94,7 @@ class NewQueryOptions extends Component {
                 image="app/img/sql_illustration"
                 title={t`Use a native query`}
                 description={t`For more complicated questions, you can write your own SQL or native query.`}
-                to={Urls.newDataset({
+                to={Urls.newQuestion({
                   type: "native",
                   creationType: "native_question",
                   dataset: true,
@@ -110,4 +110,4 @@ class NewQueryOptions extends Component {
   }
 }
 
-export default connect(mapStateToProps, mapDispatchToProps)(NewQueryOptions);
+export default connect(mapStateToProps, mapDispatchToProps)(NewDatasetOptions);
