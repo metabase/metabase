@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback } from "react";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import _ from "underscore";
 
@@ -17,8 +17,8 @@ import DataAppPageSidebarLink from "./DataAppPageSidebarLink";
 
 interface Props extends MainNavbarProps {
   dataApp: DataApp;
-  pages: any[];
   selectedItems: SelectedItem[];
+  getPageForNavItem: (navItem: DataAppNavItem) => DataAppPage | null;
   onNavItemsOrderChange: (
     oldIndex: number,
     newIndex: number,
@@ -31,8 +31,8 @@ interface Props extends MainNavbarProps {
 
 function DataAppNavbarView({
   dataApp,
-  pages,
   selectedItems,
+  getPageForNavItem,
   onNavItemsOrderChange,
   onEditAppSettings,
   onAddData,
@@ -42,17 +42,6 @@ function DataAppNavbarView({
     selectedItems,
     item => item.type,
   );
-
-  const pageMap = useMemo(() => _.indexBy(pages, "id"), [pages]);
-
-  const pagesWithoutNavItems = useMemo(() => {
-    const pageIds = pages.map(page => page.id);
-    const navItemPageIds = dataApp.nav_items
-      .filter(navItem => navItem.page_id)
-      .map(navItem => navItem.page_id);
-    const pagesWithoutNavItems = _.difference(pageIds, navItemPageIds);
-    return pagesWithoutNavItems.map(pageId => pageMap[pageId]);
-  }, [dataApp.nav_items, pages, pageMap]);
 
   const handleNavItemsOrderChange = useCallback(
     ({ source, destination, draggableId: pageId }) => {
@@ -90,7 +79,7 @@ function DataAppNavbarView({
 
   const renderNavItem = useCallback(
     (navItem: DataAppNavItem, index: number) => {
-      const page = pageMap[navItem.page_id];
+      const page = getPageForNavItem(navItem);
 
       if (!page || navItem.hidden) {
         return null;
@@ -98,18 +87,7 @@ function DataAppNavbarView({
 
       return renderPage(page, index, navItem.indent);
     },
-    [pageMap, renderPage],
-  );
-
-  const renderPageWithoutNavItem = useCallback(
-    (page: DataAppPage, index: number) => {
-      // Pages created via "Add page" flow might not be present in nav items
-      // We also need to know their overall index in the list for reordering items
-      // so we're treating them as if they were at the end of nav items
-      const finalIndex = dataApp.nav_items.length + index;
-      return renderPage(page, finalIndex);
-    },
-    [dataApp.nav_items, renderPage],
+    [getPageForNavItem, renderPage],
   );
 
   return (
@@ -123,7 +101,6 @@ function DataAppNavbarView({
             {provided => (
               <ul ref={provided.innerRef}>
                 {dataApp.nav_items.map(renderNavItem)}
-                {pagesWithoutNavItems.map(renderPageWithoutNavItem)}
               </ul>
             )}
           </Droppable>

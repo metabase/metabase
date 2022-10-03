@@ -68,6 +68,8 @@ function DataAppNavbarContainer({
 }: DataAppNavbarContainerProps & { onReloadNavbar: () => Promise<void> }) {
   const [modal, setModal] = useState<NavbarModal>(null);
 
+  const pageMap = useMemo(() => _.indexBy(pages, "id"), [pages]);
+
   /**
    * Workaround to solve UI flicker when reordering nav items with DND
    * Ideally we should do an optimistic data app update,
@@ -82,17 +84,34 @@ function DataAppNavbarContainer({
     setNavItems(dataAppProp.nav_items ?? []);
   }, [dataAppProp.nav_items]);
 
-  const dataApp: DataApp = useMemo(
-    () => ({
+  const pagesWithoutNavItems = useMemo(() => {
+    const pageIds = pages.map(page => page.id);
+    const navItemPageIds = navItems
+      .filter(navItem => navItem.page_id)
+      .map(navItem => navItem.page_id);
+    const pagesWithoutNavItems = _.difference(pageIds, navItemPageIds);
+    return pagesWithoutNavItems.map(pageId => pageMap[pageId]);
+  }, [navItems, pages, pageMap]);
+
+  const dataApp: DataApp = useMemo(() => {
+    const virtualNavItems = pagesWithoutNavItems.map(page => ({
+      page_id: page.id,
+      indent: 0,
+    }));
+    return {
       ...dataAppProp,
-      nav_items: navItems,
-    }),
-    [dataAppProp, navItems],
-  );
+      nav_items: [...navItems, ...virtualNavItems],
+    };
+  }, [dataAppProp, navItems, pagesWithoutNavItems]);
 
   const finalSelectedItems: SelectedItem[] = useMemo(
     () => getSelectedItems({ dataApp, pages, selectedItems }),
     [dataApp, pages, selectedItems],
+  );
+
+  const getPageForNavItem = useCallback(
+    (navItem: DataAppNavItem) => pageMap[navItem.page_id],
+    [pageMap],
   );
 
   const handleNewDataAdded = useCallback(
@@ -192,8 +211,8 @@ function DataAppNavbarContainer({
       <DataAppNavbarView
         {...props}
         dataApp={dataApp}
-        pages={pages}
         selectedItems={finalSelectedItems}
+        getPageForNavItem={getPageForNavItem}
         onNavItemsOrderChange={handleNavItemsOrderChange}
         onAddData={onAddData}
         onNewPage={onNewPage}
