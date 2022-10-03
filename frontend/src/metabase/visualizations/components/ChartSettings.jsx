@@ -191,7 +191,7 @@ class ChartSettings extends Component {
       settings,
       computedSettings,
       col,
-    ).some(w => !w.hidden);
+    ).some(widget => !widget.hidden);
   }
 
   render() {
