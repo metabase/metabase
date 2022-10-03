@@ -439,7 +439,7 @@
   (testing "that we cannot modify perms for app collections"
     (mt/with-temp* [Collection [{coll-id :id}]
                     App [_app {:collection_id coll-id}]]
-      (is (thrown? clojure.lang.ExceptionInfo
-                   (graph/update-graph! (assoc-in (graph/graph)
-                                                  [:groups (u/the-id (perms-group/all-users)) coll-id]
-                                                  :readl)))))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot set app permissions using this endpoint"
+                            (graph/update-graph! (assoc-in (graph/graph)
+                                                           [:groups (u/the-id (perms-group/all-users)) coll-id]
+                                                           :read)))))))
