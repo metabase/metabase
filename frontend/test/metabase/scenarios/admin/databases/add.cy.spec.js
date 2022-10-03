@@ -26,15 +26,11 @@ describe("scenarios > admin > databases > add", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.server();
   });
 
   it("should add a database and redirect to listing", () => {
-    cy.route({
-      method: "POST",
-      url: "/api/database",
-      response: { id: 42 },
-      delay: 1000,
+    cy.intercept("POST", "/api/database", req => {
+      req.reply({ body: { id: 42 }, delay: 1000 });
     }).as("createDatabase");
 
     cy.visit("/admin/databases/create");
@@ -63,8 +59,10 @@ describe("scenarios > admin > databases > add", () => {
     cy.findByText("Explore sample data");
   });
 
-  it("should trim fields needed to connect to the database", () => {
-    cy.route("POST", "/api/database", { id: 42 }).as("createDatabase");
+  it("should trim fields needed to connect to the database (metabase#12972)", () => {
+    cy.intercept("POST", "/api/database", req => {
+      req.reply({ body: { id: 42 } });
+    }).as("createDatabase");
 
     cy.visit("/admin/databases/create");
 
@@ -100,8 +98,12 @@ describe("scenarios > admin > databases > add", () => {
   });
 
   it("should show scheduling settings if you enable the toggle", () => {
-    cy.route("POST", "/api/database", { id: 42 }).as("createDatabase");
-    cy.route("POST", "/api/database/validate", { valid: true });
+    cy.intercept("POST", "/api/database", req => {
+      req.reply({ body: { id: 42 } });
+    }).as("createDatabase");
+    cy.intercept("POST", "/api/database/validate", req => {
+      req.reply({ body: { valid: true } });
+    });
 
     cy.visit("/admin/databases/create");
 
@@ -126,12 +128,12 @@ describe("scenarios > admin > databases > add", () => {
   });
 
   it("should show error correctly on server error", () => {
-    cy.route({
-      method: "POST",
-      url: "/api/database",
-      response: "DATABASE CONNECTION ERROR",
-      status: 400,
-      delay: 1000,
+    cy.intercept("POST", "/api/database", req => {
+      req.reply({
+        statusCode: 400,
+        body: "DATABASE CONNECTION ERROR",
+        delay: 1000,
+      });
     }).as("createDatabase");
 
     cy.visit("/admin/databases/create");
@@ -225,12 +227,12 @@ describe("scenarios > admin > databases > add", () => {
         .trigger("change", { force: true })
         .trigger("blur", { force: true });
 
-      cy.route({
-        method: "POST",
-        url: "/api/database",
-        response: { id: 123 },
-        status: 200,
-        delay: 100,
+      cy.intercept("POST", "/api/database", req => {
+        req.reply({
+          statusCode: 200,
+          body: { id: 123 },
+          delay: 100,
+        });
       }).as("createDatabase");
 
       // submit form and check that the file's body is included
@@ -243,23 +245,23 @@ describe("scenarios > admin > databases > add", () => {
     });
 
     it("should show the old BigQuery form for previously connected databases", () => {
-      cy.route({
-        method: "GET",
-        url: "/api/database/123",
-        response: {
-          id: 123,
-          engine: "bigquery",
-          details: {
-            "auth-code": "auth-code",
-            "client-id": "client-id",
-            "client-secret": "client-secret",
-            "dataset-id": "dataset-id",
-            "project-id": "project",
-            "use-jvm-timezone": false,
+      cy.intercept("GET", "/api/database/123", req => {
+        req.reply({
+          statusCode: 200,
+          body: {
+            id: 123,
+            engine: "bigquery",
+            details: {
+              "auth-code": "auth-code",
+              "client-id": "client-id",
+              "client-secret": "client-secret",
+              "dataset-id": "dataset-id",
+              "project-id": "project",
+              "use-jvm-timezone": false,
+            },
           },
-        },
-        status: 200,
-        delay: 100,
+          delay: 100,
+        });
       });
       cy.visit("/admin/databases/123");
 
@@ -304,12 +306,8 @@ describe("scenarios > admin > databases > add", () => {
         .trigger("change", { force: true })
         .trigger("blur", { force: true });
 
-      cy.route({
-        method: "POST",
-        url: "/api/database",
-        response: { id: 123 },
-        status: 200,
-        delay: 100,
+      cy.intercept("POST", "/api/database", req => {
+        req.reply({ statusCode: 200, body: { id: 123 }, delay: 100 });
       }).as("createDatabase");
 
       // submit form and check that the file's body is included

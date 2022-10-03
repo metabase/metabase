@@ -129,12 +129,10 @@ describe("scenarios > admin > settings", () => {
 
   it("should display an error if the https redirect check fails", () => {
     cy.visit("/admin/settings/general");
-    cy.server();
-    // return 500 on https check
-    cy.route({ method: "GET", url: "**/api/health", status: 500 }).as(
-      "httpsCheck",
-    );
 
+    cy.intercept("GET", "**/api/health", req => {
+      req.reply({ forceNetworkError: true });
+    }).as("httpsCheck");
     // switch site url to use https
     cy.contains("Site URL")
       .parent()
@@ -145,7 +143,6 @@ describe("scenarios > admin > settings", () => {
 
     cy.wait("@httpsCheck");
     cy.contains("It looks like HTTPS is not properly configured");
-    restore(); // avoid leaving https site url
   });
 
   it("should correctly apply the globalized date formats (metabase#11394) and update the formatting", () => {
@@ -202,8 +199,7 @@ describe("scenarios > admin > settings", () => {
     cy.contains("US/Central");
   });
 
-  it("'General' admin settings should handle setup via `MB_SITE_ULR` environment variable (metabase#14900)", () => {
-    cy.server();
+  it("'General' admin settings should handle setup via `MB_SITE_URL` environment variable (metabase#14900)", () => {
     // 1. Get the array of ALL available settings
     cy.request("GET", "/api/setting").then(({ body }) => {
       // 2. Create a stubbed version of that array by passing modified "site-url" settings
@@ -220,7 +216,9 @@ describe("scenarios > admin > settings", () => {
       });
 
       // 3. Stub the whole response
-      cy.route("GET", "/api/setting", STUBBED_BODY).as("appSettings");
+      cy.intercept("GET", "/api/setting", req => {
+        req.reply({ body: STUBBED_BODY });
+      }).as("appSettings");
     });
     cy.visit("/admin/settings/general");
 
