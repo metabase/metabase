@@ -127,7 +127,7 @@ type SumAgg = ["sum", ConcreteField];
 type MinAgg = ["min", ConcreteField];
 type MaxAgg = ["max", ConcreteField];
 
-type MetricAgg = ["metric", MetricId];
+export type MetricAgg = ["metric", MetricId];
 
 export type BreakoutClause = Array<Breakout>;
 export type Breakout = ConcreteField;
