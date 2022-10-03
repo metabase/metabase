@@ -233,7 +233,7 @@ export default function Gauge({ card, data, getColor }: GaugeProps) {
             endAngle={endAngle}
           />
           <GaugeNeedle
-            color={getColor("text-medium")}
+            color={getColor("bg-dark")}
             outlineColor={outlineColor}
             position={valuePosition}
             valueAngle={valueAngle}
