@@ -10,7 +10,6 @@
             [metabase.models :refer [Database]]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
-            [metabase.test.util :as tu]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]))
 
@@ -58,10 +57,14 @@
                   (and (re-matches #"Database .+ not found .+" (.getMessage e))
                        ::exception-thrown)))))))
 
-(deftest db-timezone-id-test
+(deftest db-default-timezone-test
   (mt/test-driver :h2
-    (is (= "UTC"
-           (tu/db-timezone-id)))))
+    ;; [[driver/db-default-timezone]] returns `nil`. This *probably* doesn't make sense. We should go in an fix it, by
+    ;; implementing [[metabase.driver.sql-jdbc.sync.interface/db-default-timezone]], which is what the default
+    ;; `:sql-jdbc` implementation of `db-default-timezone` hands off to. In the mean time, here is a placeholder test we
+    ;; can update when things are fixed.
+    (is (= nil
+           (driver/db-default-timezone :h2 (mt/db))))))
 
 (deftest disallow-admin-accounts-test
   (testing "Check that we're not allowed to run SQL against an H2 database with a non-admin account"

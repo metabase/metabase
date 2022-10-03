@@ -6,7 +6,7 @@ import {
   clickSend,
 } from "__support__/e2e/helpers";
 
-describe.skip("issue 18009", () => {
+describe.skip("issue 18009", { tags: "@external" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

@@ -49,10 +49,9 @@ import {
   aggregate,
   breakout,
   distribution,
-  drillUnderlyingRecords,
+  drillFilter,
   filter,
   pivot,
-  toUnderlyingRecords,
 } from "metabase/modes/lib/actions";
 import {
   DashboardApi,
@@ -67,10 +66,13 @@ import {
 } from "metabase-types/types/Parameter";
 import { Card as CardObject, DatasetQuery } from "metabase-types/types/Card";
 import { VisualizationSettings } from "metabase-types/api/card";
-import { Dataset, Value } from "metabase-types/types/Dataset";
+import { Column, Dataset, Value } from "metabase-types/types/Dataset";
 import { TableId } from "metabase-types/types/Table";
 import { DatabaseId } from "metabase-types/types/Database";
-import { ClickObject } from "metabase-types/types/Visualization";
+import {
+  ClickObject,
+  DimensionValue,
+} from "metabase-types/types/Visualization";
 import { DependentMetadataItem } from "metabase-types/types/Query";
 import { utf8_to_b64url } from "metabase/lib/encoding";
 import { CollectionId } from "metabase-types/api";
@@ -536,12 +538,41 @@ class QuestionInner {
     return pivot(this, breakouts, dimensions) || this;
   }
 
-  drillUnderlyingRecords(dimensions): Question {
-    return drillUnderlyingRecords(this, dimensions) || this;
+  drillUnderlyingRecords(values: DimensionValue[], column?: Column): Question {
+    let query = this.query();
+    if (!(query instanceof StructuredQuery)) {
+      return this;
+    }
+
+    query = values.reduce(
+      (query, { value, column }) => drillFilter(query, value, column),
+      query,
+    );
+
+    const dimension = column && query.parseFieldReference(column.field_ref);
+    if (dimension instanceof AggregationDimension) {
+      const aggregation = dimension.aggregation();
+      const filters = aggregation ? aggregation.filters() : [];
+      query = filters.reduce((query, filter) => query.filter(filter), query);
+    }
+
+    return query.question().toUnderlyingRecords();
   }
 
   toUnderlyingRecords(): Question {
-    return toUnderlyingRecords(this) || this;
+    const query = this.query();
+    if (!(query instanceof StructuredQuery)) {
+      return this;
+    }
+
+    return query
+      .clearAggregations()
+      .clearBreakouts()
+      .clearSort()
+      .clearLimit()
+      .clearFields()
+      .question()
+      .setDisplay("table");
   }
 
   toUnderlyingData(): Question {

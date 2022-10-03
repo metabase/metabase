@@ -11,12 +11,6 @@
 
 ;; TODO - I think most of the functions in this namespace that we don't remove could be moved to [[metabase.mbql.util]]
 
-(defn ^:deprecated mbql-query? ;; not really needed anymore since we don't need to normalize tokens
-  "Is the given query an MBQL query?
-   DEPRECATED: just look at `:type` directly since it is guaranteed to be normalized?"
-  [query]
-  (= :query (keyword (:type query))))
-
 (defn query-without-aggregations-or-limits?
   "Is the given query an MBQL query without a `:limit`, `:aggregation`, or `:page` clause?"
   [{{aggregations :aggregation, :keys [limit page]} :query}]

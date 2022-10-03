@@ -2,10 +2,8 @@ import React from "react";
 import { createColorGetter } from "metabase/static-viz/lib/colors";
 import CategoricalDonutChart from "../../components/CategoricalDonutChart";
 import { CATEGORICAL_DONUT_CHART_TYPE } from "../../components/CategoricalDonutChart/constants";
-import CategoricalWaterfallChart from "../../components/CategoricalWaterfallChart";
-import { CATEGORICAL_WATERFALL_CHART_TYPE } from "../../components/CategoricalWaterfallChart/constants";
-import TimeSeriesWaterfallChart from "../../components/TimeSeriesWaterfallChart";
-import { TIME_SERIES_WATERFALL_CHART_TYPE } from "../../components/TimeSeriesWaterfallChart/constants";
+import WaterfallChart from "../../components/WaterfallChart";
+import { WATERFALL_CHART_TYPE } from "../../components/WaterfallChart/constants";
 import ProgressBar from "../../components/ProgressBar";
 import { PROGRESS_BAR_TYPE } from "../../components/ProgressBar/constants";
 import LineAreaBarChart from "../../components/LineAreaBarChart";
@@ -21,10 +19,8 @@ const StaticChart = ({ type, options }: StaticChartProps) => {
   switch (type) {
     case CATEGORICAL_DONUT_CHART_TYPE:
       return <CategoricalDonutChart {...chartProps} />;
-    case CATEGORICAL_WATERFALL_CHART_TYPE:
-      return <CategoricalWaterfallChart {...chartProps} />;
-    case TIME_SERIES_WATERFALL_CHART_TYPE:
-      return <TimeSeriesWaterfallChart {...chartProps} />;
+    case WATERFALL_CHART_TYPE:
+      return <WaterfallChart {...chartProps} />;
     case PROGRESS_BAR_TYPE:
       return <ProgressBar {...chartProps} />;
     case LINE_AREA_BAR_CHART_TYPE:

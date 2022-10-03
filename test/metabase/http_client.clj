@@ -151,8 +151,8 @@
   exception."
   [method-name url body expected-status-code actual-status-code]
   ;; if we get a 401 authenticated but weren't expecting it, this means we need to log in and get new credentials for
-  ;; the current user. Throw an Exception and then `user->client` will handle it and call `authenticate` to get new
-  ;; creds and retry the request automatically.
+  ;; the current user. Throw an Exception and then [[metabase.test/user-http-request]] will handle it and call
+  ;; `authenticate` to get new creds and retry the request automatically.
   (when (and (= actual-status-code 401)
              (not= expected-status-code 401))
     (let [message (format "%s %s expected a status code of %d, got %d."

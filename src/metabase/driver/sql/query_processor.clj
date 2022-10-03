@@ -99,6 +99,18 @@
   [_driver]
   :%now)
 
+(def temporal-extract-unit->date-unit
+  "Mapping from the unit we used in `extract` function to the unit we used for `date` function."
+  {:second      :second-of-minute
+   :minute      :minute-of-hour
+   :hour        :hour-of-day
+   :day-of-week :day-of-week
+   :day         :day-of-month
+   :week        :week-of-year
+   :month       :month-of-year
+   :quarter     :quarter-of-year
+   :year        :year-of-era})
+
 ;; TODO - rename this to `temporal-bucket` or something that better describes what it actually does
 (defmulti date
   "Return a HoneySQL form for truncating a date or timestamp field or value to a given resolution, or extracting a date
@@ -109,12 +121,17 @@
 
 ;; default implementation for `:default` bucketing returns expression as-is
 (defmethod date [:sql :default] [_ _ expr] expr)
-
 ;; We have to roll our own to account for arbitrary start of week
-(defmethod date [:sql :week-of-year]
-  [driver _ expr]
+
+(defmethod date [:sql :second-of-minute] [_driver _ expr] (hx/second expr))
+(defmethod date [:sql :minute-of-hour]   [_driver _ expr] (hx/minute expr))
+(defmethod date [:sql :hour-of-day]      [_driver _ expr] (hx/hour expr))
+(defmethod date [:sql :week-of-year]     [driver _ expr]
   ;; Some DBs truncate when doing integer division, therefore force float arithmetics
   (->honeysql driver [:ceil (hx// (date driver :day-of-year (date driver :week expr)) 7.0)]))
+(defmethod date [:sql :month-of-year]    [_driver _ expr] (hx/month expr))
+(defmethod date [:sql :quarter-of-year]  [_driver _ expr] (hx/quarter expr))
+(defmethod date [:sql :year-of-era]      [_driver _ expr] (hx/year expr))
 
 (defmulti add-interval-honeysql-form
   "Return a HoneySQL form that performs represents addition of some temporal interval to the original `hsql-form`.
@@ -569,6 +586,17 @@
                       (current-datetime-honeysql-form driver)
                       (add-interval-honeysql-form driver (current-datetime-honeysql-form driver) amount unit))))
 
+(defmethod ->honeysql [:sql :temporal-extract]
+  [driver [_ arg unit]]
+  (date driver (temporal-extract-unit->date-unit unit) (->honeysql driver arg)))
+
+(defmethod ->honeysql [:sql :date-add]
+  [driver [_ arg amount unit]]
+  (add-interval-honeysql-form driver (->honeysql driver arg) amount unit))
+
+(defmethod ->honeysql [:sql :date-subtract]
+  [driver [_ arg amount unit]]
+  (add-interval-honeysql-form driver (->honeysql driver arg) (- amount) unit))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Field Aliases (AS Forms)                                            |

@@ -1,7 +1,6 @@
 // Reducers needed for main application
 
 import { combineReducers } from "redux";
-import _ from "underscore";
 
 import { PLUGIN_REDUCERS } from "metabase/plugins";
 

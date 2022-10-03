@@ -304,7 +304,7 @@ function DatasetEditor(props) {
 
   const handleSave = useCallback(async () => {
     if (checkCanBeModel(dataset)) {
-      await onSave(dataset.card(), { rerunQuery: true });
+      await onSave(dataset.card());
       setQueryBuilderMode("view");
     } else {
       onOpenModal(MODAL_TYPES.CAN_NOT_CREATE_MODEL);

@@ -254,3 +254,10 @@
              (serdes.hash/identity-hash db)))
       (is (= "b6f1a9e8"
              (serdes.hash/identity-hash db))))))
+
+(deftest create-database-with-null-details-test
+  (testing "Details should get a default value of {} if unspecified"
+    (mt/with-model-cleanup [Database]
+      (let [db (db/insert! Database (dissoc (mt/with-temp-defaults Database) :details))]
+        (is (partial= {:details {}}
+                      db))))))

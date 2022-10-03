@@ -14,7 +14,7 @@ import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 const { admin } = USERS;
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
-describeEE("issue 18669", () => {
+describeEE("issue 18669", { tags: "@external" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

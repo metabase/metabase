@@ -1,18 +1,23 @@
 (ns metabase.driver.common.parameters.values-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.test :refer :all]
             [metabase.driver :as driver]
             [metabase.driver.common.parameters :as params]
             [metabase.driver.common.parameters.values :as params.values]
+            [metabase.driver.ddl.interface :as ddl.i]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.models :refer [Card Collection NativeQuerySnippet]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
+            [metabase.public-settings :as public-settings]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.query-processor.store :as qp.store]
             [metabase.test :as mt]
             [metabase.util :as u]
             [metabase.util.schema :as su]
-            [schema.core :as s])
+            [schema.core :as s]
+            [toucan.db :as db])
   (:import clojure.lang.ExceptionInfo
            java.util.UUID
            metabase.driver.common.parameters.ReferencedCardQuery))
@@ -278,6 +283,8 @@
              clojure.lang.ExceptionInfo
              (query->params-map query)))))))
 
+
+
 (deftest card-query-test
   (testing "Card query template tag gets card's native query"
     (let [test-query "SELECT 1"]
@@ -316,6 +323,56 @@
                      :type         :card
                      :card-id      (:id card)}
                     []))))))))
+
+  (testing "Persisted Models are substituted"
+    (mt/test-driver :postgres
+      (mt/dataset test-data
+        (mt/with-persistence-enabled [persist-models!]
+          (let [mbql-query (mt/mbql-query categories)]
+            (mt/with-temp* [Card [model {:name "model"
+                                         :dataset true
+                                         :dataset_query mbql-query
+                                         :database_id (mt/id)}]]
+              (persist-models!)
+              (testing "tag uses persisted table"
+                (let [pi (db/select-one 'PersistedInfo :card_id (u/the-id model))]
+                  (is (= "persisted" (:state pi)))
+                  (is (re-matches #"select \"id\", \"name\" from \"metabase_cache_[a-z0-9]+_[0-9]+\".\"model_[0-9]+_model\""
+                                  (:query
+                                   (value-for-tag
+                                    {:name         "card-template-tag-test"
+                                     :display-name "Card template tag test"
+                                     :type         :card
+                                     :card-id      (:id model)}
+                                    []))))
+                  (testing "query hits persisted table"
+                    (let [persisted-schema (ddl.i/schema-name {:id (mt/id)}
+                                                              (public-settings/site-uuid))
+                          update-query     (format "update %s.%s set name = name || ' from cached table'"
+                                                   persisted-schema (:table_name pi))
+                          model-query (format "select c_orig.name, c_cached.name
+                                               from categories c_orig
+                                               left join {{#%d}} c_cached
+                                               on c_orig.id = c_cached.id
+                                               order by c_orig.id desc limit 3"
+                                              (u/the-id model))
+                          tag-name    (format "#%d" (u/the-id model))]
+                      (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                                     [update-query])
+                      (is (= [["Winery" "Winery from cached table"]
+                              ["Wine Bar" "Wine Bar from cached table"]
+                              ["Vegetarian / Vegan" "Vegetarian / Vegan from cached table"]]
+                             (mt/rows (qp/process-query
+                                       {:database (mt/id)
+                                        :type :native
+                                        :native {:query model-query
+                                                 :template-tags
+                                                 {(keyword tag-name)
+                                                  {:id "c6558da4-95b0-d829-edb6-45be1ee10d3c"
+                                                   :name tag-name
+                                                   :display-name tag-name
+                                                   :type "card"
+                                                   :card-id (u/the-id model)}}}}))))))))))))))
 
   (testing "Card query template tag wraps error in tag details"
     (mt/with-temp Card [param-card {:dataset_query
