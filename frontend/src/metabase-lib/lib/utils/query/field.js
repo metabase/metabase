@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { add, update, remove, clear } from "metabase-lib/lib/utils/query/util";
+import { add, update, remove, clear } from "./util";
 
 // returns canonical list of Fields, with nulls removed
 export function getFields(fields) {
