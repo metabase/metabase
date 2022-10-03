@@ -12,17 +12,22 @@
 
 (models/defmodel ^:private FakedCard :report_card)
 
-(extend-type #_{:clj-kondo/ignore [:unresolved-symbol]} FakedCardInstance
-  revision/IRevisioned
-  (serialize-instance [_ _ obj]
-    (into {} (assoc obj :serialized true)))
-  (revert-to-revision! [_ _ _ serialized-instance]
-    (reset! reverted-to (dissoc serialized-instance :serialized)))
-  (diff-map [_ o1 o2]
-    {:o1 (when o1 (into {} o1)), :o2 (when o2 (into {} o2))})
-  (diff-str [_ o1 o2]
-    (when o1
-      (str "BEFORE=" (into {} o1) ",AFTER=" (into {} o2)))))
+(defmethod revision/serialize-instance FakedCard
+  [_model _id obj]
+  (into {} (assoc obj :serialized true)))
+
+(defmethod revision/revert-to-revision! FakedCard
+  [_model _id _user-id serialized-instance]
+  (reset! reverted-to (dissoc serialized-instance :serialized)))
+
+(defmethod revision/diff-map FakedCard
+  [_model o1 o2]
+  {:o1 (when o1 (into {} o1)), :o2 (when o2 (into {} o2))})
+
+(defmethod revision/diff-str FakedCard
+  [_model o1 o2]
+  (when o1
+    (str "BEFORE=" (into {} o1) ",AFTER=" (into {} o2))))
 
 (defn- push-fake-revision! [card-id & {:keys [message] :as object}]
   (revision/push-revision!
@@ -46,35 +51,40 @@
   (testing (str "Check that pattern matching allows specialization and that string only reflects the keys that have "
                 "changed")
     (is (= "renamed this Card from \"Tips by State\" to \"Spots by State\"."
-           (revision/default-diff-str Card
-                                      {:name "Tips by State", :private false}
-                                      {:name "Spots by State", :private false})))
+           ((get-method revision/diff-str :default)
+            Card
+            {:name "Tips by State", :private false}
+            {:name "Spots by State", :private false})))
 
     (is (= "made this Card private."
-           (revision/default-diff-str Card
-                                      {:name "Spots by State", :private false}
-                                      {:name "Spots by State", :private true})))))
+           ((get-method revision/diff-str :default)
+            Card
+            {:name "Spots by State", :private false}
+            {:name "Spots by State", :private true})))))
 
 (deftest fallback-description-test
   (testing "Check the fallback sentence fragment for key without specialized sentence fragment"
     (is (= "changed priority from \"Important\" to \"Regular\"."
-           (revision/default-diff-str Card
-                                      {:priority "Important"}
-                                      {:priority "Regular"})))))
+           ((get-method revision/diff-str :default)
+            Card
+            {:priority "Important"}
+            {:priority "Regular"})))))
 
 (deftest multiple-changes-test
   (testing "Check that 2 changes are handled nicely"
     (is (= "made this Card private and renamed it from \"Tips by State\" to \"Spots by State\"."
-           (revision/default-diff-str Card
-                                      {:name "Tips by State", :private false}
-                                      {:name "Spots by State", :private true}))))
+           ((get-method revision/diff-str :default)
+            Card
+            {:name "Tips by State", :private false}
+            {:name "Spots by State", :private true}))))
 
   (testing "Check that several changes are handled nicely"
     (is (= (str "changed priority from \"Important\" to \"Regular\", made this Card private and renamed it from "
                 "\"Tips by State\" to \"Spots by State\".")
-           (revision/default-diff-str Card
-                                      {:name "Tips by State", :private false, :priority "Important"}
-                                      {:name "Spots by State", :private true, :priority "Regular"})))))
+           ((get-method revision/diff-str :default)
+            Card
+            {:name "Tips by State", :private false, :priority "Important"}
+            {:name "Spots by State", :private true, :priority "Regular"})))))
 
 ;;; # REVISIONS + PUSH-REVISION!
 

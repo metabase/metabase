@@ -258,7 +258,9 @@
 ;;; |                                             New Permissions Stuff                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- dispatch-on-model [x & _args]
+(defn dispatch-on-model
+  "Helper dispatch function for multimethods. Dispatches on the first arg, using [[models.dispatch/model]]."
+  [x & _args]
   (models.dispatch/model x))
 
 (defmulti perms-objects-set
@@ -435,6 +437,8 @@
 ;;; swap out [[models/defmodel]] with a special magical version that avoids redefining stuff if the definition has not
 ;;; changed at all. This is important to make the stuff in [[models.dispatch]] work properly, since we're dispatching
 ;;; off of the model objects themselves e.g. [[metabase.models.user/User]] -- it is important that they do not change
+;;;
+;;; This code is temporary until the switch to Toucan 2.
 
 (defonce ^:private original-defmodel @(resolve `models/defmodel))
 
