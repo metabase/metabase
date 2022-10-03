@@ -35,8 +35,7 @@ describe("scenarios > admin > settings", () => {
     const BASE_URL = Cypress.config().baseUrl;
     const DOMAIN_AND_PORT = BASE_URL.replace("http://", "");
 
-    cy.server();
-    cy.route("PUT", "/api/setting/site-url").as("url");
+    cy.intercept("PUT", "/api/setting/site-url").as("url");
 
     cy.visit("/admin/settings/general");
 
@@ -75,8 +74,7 @@ describe("scenarios > admin > settings", () => {
   });
 
   it("should save a setting", () => {
-    cy.server();
-    cy.route("PUT", "**/admin-email").as("saveSettings");
+    cy.intercept("PUT", "**/admin-email").as("saveSettings");
 
     cy.visit("/admin/settings/general");
 
@@ -108,8 +106,8 @@ describe("scenarios > admin > settings", () => {
 
   it("should check for working https before enabling a redirect", () => {
     cy.visit("/admin/settings/general");
-    cy.server();
-    cy.route("GET", "**/api/health", "ok").as("httpsCheck");
+
+    cy.intercept("GET", "**/api/health", "ok").as("httpsCheck");
 
     // settings have loaded, but there's no redirect setting visible
     cy.contains("Site URL");
@@ -189,8 +187,7 @@ describe("scenarios > admin > settings", () => {
   });
 
   it("should search for and select a new timezone", () => {
-    cy.server();
-    cy.route("PUT", "**/report-timezone").as("reportTimezone");
+    cy.intercept("PUT", "**/report-timezone").as("reportTimezone");
 
     cy.visit("/admin/settings/localization");
     cy.contains("Report Timezone")

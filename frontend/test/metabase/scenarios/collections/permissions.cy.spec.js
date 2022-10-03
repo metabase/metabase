@@ -21,7 +21,6 @@ const PERMISSIONS = {
 describe("collection permissions", () => {
   beforeEach(() => {
     restore();
-    cy.server();
   });
 
   describe("item management", () => {

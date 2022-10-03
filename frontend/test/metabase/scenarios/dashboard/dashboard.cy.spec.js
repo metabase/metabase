@@ -457,8 +457,7 @@ describe("scenarios > dashboard", () => {
             ],
           });
 
-          cy.server();
-          cy.route("GET", `/api/dashboard/${NEW_DASHBOARD_ID}`).as(
+          cy.intercept("GET", `/api/dashboard/${NEW_DASHBOARD_ID}`).as(
             "loadDashboard",
           );
         });

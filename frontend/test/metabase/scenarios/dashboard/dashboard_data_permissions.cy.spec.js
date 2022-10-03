@@ -52,8 +52,7 @@ describe("support > permissions (metabase#8472)", () => {
   });
 
   it("should allow a nodata user to select the filter", () => {
-    cy.server();
-    cy.route("GET", "/api/dashboard/1/params/*/search/100 Main Street").as(
+    cy.intercept("GET", "/api/dashboard/1/params/*/search/100 Main Street").as(
       "search",
     );
 

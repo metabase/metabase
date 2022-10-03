@@ -83,7 +83,7 @@ describe("scenarios > admin > databases > add", () => {
   });
 
   it("should show validation error if you enable scheduling toggle and enter invalid db connection info", () => {
-    cy.route("POST", "/api/database").as("createDatabase");
+    cy.intercept("POST", "/api/database").as("createDatabase");
     cy.visit("/admin/databases/create");
 
     chooseDatabase("H2");
