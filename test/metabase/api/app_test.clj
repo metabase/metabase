@@ -217,7 +217,7 @@
                                          {}]}
                         list-page)))))))
 
-(deftest global-ggraph-test
+(deftest global-graph-test
   (mt/with-model-cleanup [Collection Permissions]
     (let [base-params {:name "App collection"
                        :color "#123456"}]
