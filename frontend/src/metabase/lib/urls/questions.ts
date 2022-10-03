@@ -115,7 +115,7 @@ export function newQuestion({
   if (mode) {
     return url.replace(/^\/(question|model)/, `/${entity}\/${mode}`);
   } else {
-    return url.replace(/^\/(question|model)/, `/${entity}`);
+    return url;
   }
 }
 
