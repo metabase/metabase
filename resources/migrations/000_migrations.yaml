@@ -12850,7 +12850,7 @@ databaseChangeLog:
                     unique: true
               - column:
                   name: slug
-                  type: ${text.type}
+                  type: varchar(254)
                   remarks: The referenceable name for this action
                   constraints:
                     nullable: false
