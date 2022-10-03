@@ -80,7 +80,7 @@ class NewDatasetOptions extends Component {
                 description={t`Use the advanced notebook editor to join data, create custom columns, do math, and more.`}
                 width={180}
                 to={Urls.newQuestion({
-                  mode: "notebook",
+                  mode: "query",
                   creationType: "custom_question",
                   dataset: true,
                 })}
@@ -95,6 +95,7 @@ class NewDatasetOptions extends Component {
                 title={t`Use a native query`}
                 description={t`For more complicated questions, you can write your own SQL or native query.`}
                 to={Urls.newQuestion({
+                  mode: "query",
                   type: "native",
                   creationType: "native_question",
                   dataset: true,
