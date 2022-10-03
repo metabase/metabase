@@ -45,12 +45,12 @@ describe("scenarios > admin > settings", () => {
       .type("foo", { delay: 100 })
       .blur();
 
-    cy.wait("@url").should(xhr => {
-      expect(xhr.status).to.eq(500);
+    cy.wait("@url").should(({ response }) => {
+      expect(response.statusCode).to.eq(500);
       // Switching to regex match for assertions - the test was flaky because of the "typing" issue
       // i.e. it sometimes doesn't type the whole string "foo", but only "oo".
       // We only care that the `cause` is starting with "Invalid site URL"
-      expect(xhr.response.body.cause).to.match(/^Invalid site URL/);
+      expect(response.body.cause).to.match(/^Invalid site URL/);
     });
 
     // NOTE: This test is not concerned with HOW we style the error message - only that there is one.

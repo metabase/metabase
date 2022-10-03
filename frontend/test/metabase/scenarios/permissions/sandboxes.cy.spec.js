@@ -731,9 +731,9 @@ describeEE("formatting > sandboxes", () => {
       cy.findByText(QUESTION_NAME).click();
       cy.button("Save").click();
 
-      cy.wait("@sandboxTable").then(xhr => {
-        expect(xhr.status).to.eq(400);
-        expect(xhr.response.body.message).to.eq(ERROR_MESSAGE);
+      cy.wait("@sandboxTable").then(({ response }) => {
+        expect(response.statusCode).to.eq(400);
+        expect(response.body.message).to.eq(ERROR_MESSAGE);
       });
       cy.get(".Modal").scrollTo("bottom");
       cy.findByText(ERROR_MESSAGE);
