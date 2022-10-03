@@ -1,0 +1,75 @@
+import {
+  restore,
+  setupSMTP,
+  openEmailPage,
+  sendSubscriptionsEmail,
+  visitDashboard,
+} from "__support__/e2e/helpers";
+
+import { USERS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+
+const { ORDERS_ID } = SAMPLE_DATABASE;
+
+const { admin } = USERS;
+
+describe("static visualizations", { tags: "@external" }, () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    setupSMTP();
+  });
+
+  it("gauge chart", () => {
+    const dashboardName = "Gauge bar charts dashboard";
+    cy.createDashboardWithQuestions({
+      dashboardName,
+      questions: [
+        createGaugeQuestion([0, 9380, 18760, 37520]),
+        createGaugeQuestion([0, 9380, 18760, 30000]),
+        createGaugeQuestion([0, 9380, 18760, 37520, 75040]),
+        createGaugeQuestion([20000, 30000, 40000]),
+        createGaugeQuestion([0, 5000, 10000]),
+      ],
+    }).then(({ dashboard }) => {
+      visitDashboard(dashboard.id);
+
+      sendSubscriptionsEmail(`${admin.first_name} ${admin.last_name}`);
+
+      openEmailPage(dashboardName).then(() => {
+        cy.createPercySnapshot();
+      });
+    });
+  });
+});
+
+/**
+ * @param {number[]} range
+ */
+function createGaugeQuestion(range) {
+  const colors = ["#ED6E6E", "#F9CF48", "#84BB4C", "#509EE3"];
+  return {
+    name: `Gauge chart with range "${range}"`,
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+    },
+    visualization_settings: {
+      "gauge.segments": range
+        .map((value, index) => {
+          const nextValue = range[index + 1];
+          if (nextValue) {
+            return {
+              min: value,
+              max: nextValue,
+              color: colors[index],
+              label: `Label ${index + 1}`,
+            };
+          }
+        })
+        .filter(value => value),
+    },
+    display: "gauge",
+    database: SAMPLE_DB_ID,
+  };
+}
