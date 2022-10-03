@@ -309,55 +309,57 @@
             created-action (mt/user-http-request :crowberto :post 200 "action" initial-action)
             updated-action (merge initial-action {:name "New name"})
             action-path (str "action/" (:id created-action))]
-        (testing "Create"
-          (is (partial= initial-action created-action)))
-        (testing "Validate POST"
-          (testing "Required fields"
-            (is (partial= {:errors {:type "Only http actions are supported at this time."}}
-                          (mt/user-http-request :crowberto :post 400 "action" {:type "query"})))
-            (is (partial= {:errors {:name "value must be a string."}}
-                          (mt/user-http-request :crowberto :post 400 "action" {:type "http"})))
-            (is (partial= {:errors {:template "value must be a map with schema: (\n  body (optional) : value may be nil, or if non-nil, value must be a string.\n  headers (optional) : value may be nil, or if non-nil, value must be a string.\n  parameter_mappings (optional) : value may be nil, or if non-nil, value must be a map.\n  parameters (optional) : value may be nil, or if non-nil, value must be an array. Each value must be a map.\n  method : value must be one of: `DELETE`, `GET`, `PATCH`, `POST`, `PUT`.\n  url : value must be a string.\n)"}}
-                          (mt/user-http-request :crowberto :post 400 "action" {:type "http" :name "test"}))))
-          (testing "Template needs method and url"
-            (is (partial= {:errors {:template "value must be a map with schema: (\n  body (optional) : value may be nil, or if non-nil, value must be a string.\n  headers (optional) : value may be nil, or if non-nil, value must be a string.\n  parameter_mappings (optional) : value may be nil, or if non-nil, value must be a map.\n  parameters (optional) : value may be nil, or if non-nil, value must be an array. Each value must be a map.\n  method : value must be one of: `DELETE`, `GET`, `PATCH`, `POST`, `PUT`.\n  url : value must be a string.\n)"}}
-                          (mt/user-http-request :crowberto :post 400 "action" {:type "http" :name "Test" :template {}}))))
-          (testing "Template parameters should be well formed"
-            (is (partial= {:errors {:template "value must be a map with schema: (\n  body (optional) : value may be nil, or if non-nil, value must be a string.\n  headers (optional) : value may be nil, or if non-nil, value must be a string.\n  parameter_mappings (optional) : value may be nil, or if non-nil, value must be a map.\n  parameters (optional) : value may be nil, or if non-nil, value must be an array. Each value must be a map.\n  method : value must be one of: `DELETE`, `GET`, `PATCH`, `POST`, `PUT`.\n  url : value must be a string.\n)"}}
-                          (mt/user-http-request :crowberto :post 400 "action" {:type "http"
-                                                                               :name "Test"
-                                                                               :template {:url "https://example.com"
-                                                                                          :method "GET"
-                                                                                          :parameters {}}}))))
-          (testing "Handles need to be valid jq"
-            (is (partial= {:errors {:response_handle "value may be nil, or if non-nil, must be a valid json-query"}}
-                          (mt/user-http-request :crowberto :post 400 "action" (assoc initial-action :response_handle "body"))))
-            (is (partial= {:errors {:error_handle "value may be nil, or if non-nil, must be a valid json-query"}}
-                          (mt/user-http-request :crowberto :post 400 "action" (assoc initial-action :error_handle "x"))))))
-        (testing "Update"
-          (is (partial= updated-action
-                        (mt/user-http-request :crowberto :put 200 action-path
-                                              {:name "New name" :type "http"}))))
-        (testing "Get"
-          (is (partial= updated-action
-                        (mt/user-http-request :crowberto :get 200 action-path)))
-          (is (partial= updated-action
-                        (last (mt/user-http-request :crowberto :get 200 "action")))))
-        (testing "Validate PUT"
-          (testing "Can't create or change http type"
-            (is (partial= {:errors {:type "Only http actions are supported at this time."}}
-                          (mt/user-http-request :crowberto :put 400 action-path {:type "query"}))))
-          (testing "Template needs method and url"
-            (is (partial= {:errors {:template "value may be nil, or if non-nil, value must be a map with schema: (\n  body (optional) : value may be nil, or if non-nil, value must be a string.\n  headers (optional) : value may be nil, or if non-nil, value must be a string.\n  parameter_mappings (optional) : value may be nil, or if non-nil, value must be a map.\n  parameters (optional) : value may be nil, or if non-nil, value must be an array. Each value must be a map.\n  method : value must be one of: `DELETE`, `GET`, `PATCH`, `POST`, `PUT`.\n  url : value must be a string.\n)"}}
-                          (mt/user-http-request :crowberto :put 400 action-path {:type "http" :template {}}))))
-          (testing "Handles need to be valid jq"
-            (is (partial= {:errors {:response_handle "value may be nil, or if non-nil, must be a valid json-query"}}
-                          (mt/user-http-request :crowberto :put 400 action-path (assoc initial-action :response_handle "body"))))
-            (is (partial= {:errors {:error_handle "value may be nil, or if non-nil, must be a valid json-query"}}
-                          (mt/user-http-request :crowberto :put 400 action-path (assoc initial-action :error_handle "x"))))))
-        (testing "Delete"
-          (is (nil? (mt/user-http-request :crowberto :delete 204 action-path)))
-          (is (= "Not found." (mt/user-http-request :crowberto :get 404 action-path))))))))
+        (mt/with-temp* [Card [{card-id :id} {:dataset true}]
+                        ModelAction [_ {:card_id card-id :action_id (:id created-action) :slug "action"}]]
+          (testing "Create"
+            (is (partial= initial-action created-action)))
+          (testing "Validate POST"
+            (testing "Required fields"
+              (is (partial= {:errors {:type "Only http actions are supported at this time."}}
+                            (mt/user-http-request :crowberto :post 400 "action" {:type "query"})))
+              (is (partial= {:errors {:name "value must be a string."}}
+                            (mt/user-http-request :crowberto :post 400 "action" {:type "http"})))
+              (is (partial= {:errors {:template "value must be a map with schema: (\n  body (optional) : value may be nil, or if non-nil, value must be a string.\n  headers (optional) : value may be nil, or if non-nil, value must be a string.\n  parameter_mappings (optional) : value may be nil, or if non-nil, value must be a map.\n  parameters (optional) : value may be nil, or if non-nil, value must be an array. Each value must be a map.\n  method : value must be one of: `DELETE`, `GET`, `PATCH`, `POST`, `PUT`.\n  url : value must be a string.\n)"}}
+                            (mt/user-http-request :crowberto :post 400 "action" {:type "http" :name "test"}))))
+            (testing "Template needs method and url"
+              (is (partial= {:errors {:template "value must be a map with schema: (\n  body (optional) : value may be nil, or if non-nil, value must be a string.\n  headers (optional) : value may be nil, or if non-nil, value must be a string.\n  parameter_mappings (optional) : value may be nil, or if non-nil, value must be a map.\n  parameters (optional) : value may be nil, or if non-nil, value must be an array. Each value must be a map.\n  method : value must be one of: `DELETE`, `GET`, `PATCH`, `POST`, `PUT`.\n  url : value must be a string.\n)"}}
+                            (mt/user-http-request :crowberto :post 400 "action" {:type "http" :name "Test" :template {}}))))
+            (testing "Template parameters should be well formed"
+              (is (partial= {:errors {:template "value must be a map with schema: (\n  body (optional) : value may be nil, or if non-nil, value must be a string.\n  headers (optional) : value may be nil, or if non-nil, value must be a string.\n  parameter_mappings (optional) : value may be nil, or if non-nil, value must be a map.\n  parameters (optional) : value may be nil, or if non-nil, value must be an array. Each value must be a map.\n  method : value must be one of: `DELETE`, `GET`, `PATCH`, `POST`, `PUT`.\n  url : value must be a string.\n)"}}
+                            (mt/user-http-request :crowberto :post 400 "action" {:type "http"
+                                                                                 :name "Test"
+                                                                                 :template {:url "https://example.com"
+                                                                                            :method "GET"
+                                                                                            :parameters {}}}))))
+            (testing "Handles need to be valid jq"
+              (is (partial= {:errors {:response_handle "value may be nil, or if non-nil, must be a valid json-query"}}
+                            (mt/user-http-request :crowberto :post 400 "action" (assoc initial-action :response_handle "body"))))
+              (is (partial= {:errors {:error_handle "value may be nil, or if non-nil, must be a valid json-query"}}
+                            (mt/user-http-request :crowberto :post 400 "action" (assoc initial-action :error_handle "x"))))))
+          (testing "Update"
+            (is (partial= updated-action
+                          (mt/user-http-request :crowberto :put 200 action-path
+                                                {:name "New name" :type "http"}))))
+          (testing "Get"
+            (is (partial= updated-action
+                          (mt/user-http-request :crowberto :get 200 action-path)))
+            (is (partial= updated-action
+                          (last (mt/user-http-request :crowberto :get 200 (str "action?model-id=" card-id))))))
+          (testing "Validate PUT"
+            (testing "Can't create or change http type"
+              (is (partial= {:errors {:type "Only http actions are supported at this time."}}
+                            (mt/user-http-request :crowberto :put 400 action-path {:type "query"}))))
+            (testing "Template needs method and url"
+              (is (partial= {:errors {:template "value may be nil, or if non-nil, value must be a map with schema: (\n  body (optional) : value may be nil, or if non-nil, value must be a string.\n  headers (optional) : value may be nil, or if non-nil, value must be a string.\n  parameter_mappings (optional) : value may be nil, or if non-nil, value must be a map.\n  parameters (optional) : value may be nil, or if non-nil, value must be an array. Each value must be a map.\n  method : value must be one of: `DELETE`, `GET`, `PATCH`, `POST`, `PUT`.\n  url : value must be a string.\n)"}}
+                            (mt/user-http-request :crowberto :put 400 action-path {:type "http" :template {}}))))
+            (testing "Handles need to be valid jq"
+              (is (partial= {:errors {:response_handle "value may be nil, or if non-nil, must be a valid json-query"}}
+                            (mt/user-http-request :crowberto :put 400 action-path (assoc initial-action :response_handle "body"))))
+              (is (partial= {:errors {:error_handle "value may be nil, or if non-nil, must be a valid json-query"}}
+                            (mt/user-http-request :crowberto :put 400 action-path (assoc initial-action :error_handle "x"))))))
+          (testing "Delete"
+            (is (nil? (mt/user-http-request :crowberto :delete 204 action-path)))
+            (is (= "Not found." (mt/user-http-request :crowberto :get 404 action-path)))))))))
 
 (deftest bulk-create-happy-path-test
   (testing "POST /api/action/bulk/create/:table-id"
