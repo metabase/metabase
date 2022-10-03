@@ -146,6 +146,9 @@ describe("scenarios > visualizations > line chart", () => {
       },
     });
 
+    // workaround for https://github.com/metabase/metabase/blob/6ec4c17e8eb1ccc18682360dbe89ef1868ed2858/frontend/src/metabase/query_builder/components/NativeQueryEditor.jsx#L214
+    cy.wait(2000);
+
     cy.findByText("Settings").click();
 
     cy.findByTestId("sidebar-left").within(() => {
