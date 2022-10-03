@@ -182,7 +182,7 @@ class ChartSettings extends Component {
 
   columnHasSettings(col) {
     const { series } = this.props;
-    const settings = this._getSettings();
+    const settings = this._getSettings() || {};
     const settingsDefs = getSettingDefintionsForColumn(series, col);
     const computedSettings = getComputedSettings(settingsDefs, col, settings);
 
