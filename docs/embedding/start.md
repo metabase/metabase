@@ -10,8 +10,8 @@ What is embedding, and how does it work?
 
 ## [Signed embedding](./signed-embedding.md)
 
-Also known as Standalone Embedding, Signed Embedding offers partial drill-through with custom destinations, so you can define what happens when people click on a chart, like sending people to another chart or URL–all while securing the underlying data.
+Also known as Standalone Embedding, Signed Embedding offers drill-through with custom destinations, so you can define what happens when people click on a chart, like sending people to another chart or URL–all while securing the underlying data.
 
 ## [Full-app embedding](./full-app-embedding.md)
 
-Put all of Metabase in your app to give people secure self-serve access to data. Full-app Embedding offers full drill-through: you can set custom destinations if you want, or let people slice and dice their data using Metabase's query builder.
+Put all of Metabase in your app to give people secure self-serve access to data. You can still create custom destinations if you want, but Full-app Embedding integrates with your data permissions to let people slice and dice data on their own using Metabase's query builder.
