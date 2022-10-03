@@ -52,6 +52,10 @@
   [_driver _feat db]
   (-> db :options :persist-models-enabled))
 
+(defmethod driver/database-supports? [:mysql :datediff]
+  [_driver _feature _db]
+  true)
+
 (defmethod driver/supports? [:mysql :regex] [_ _] false)
 (defmethod driver/supports? [:mysql :percentile-aggregations] [_ _] false)
 
@@ -342,6 +346,14 @@
                                       3)
                                 2)
                           (hx/literal "-01"))))
+
+(defmethod sql.qp/->honeysql [:mysql :datediff]
+  [driver [_ x y unit]]
+  (hsql/call :timestampdiff
+             (hsql/raw (name unit))
+             ;; intentionally flipped. This subtracts them under the hood
+             (sql.qp/->honeysql driver y)
+             (sql.qp/->honeysql driver x)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

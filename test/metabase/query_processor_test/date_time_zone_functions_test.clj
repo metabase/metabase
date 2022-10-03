@@ -267,9 +267,9 @@
                              :source-table $$reviews
                              :condition [:= $products.id &r.reviews.product_id]
                              :alias "r"}]
-                    :filter [:= [:datediff $reviews.created_at $products.created_at :day] 1]
-                    :fields [$reviews.created_at
-                             $products.created_at
+                    :filter [:= [:abs [:datediff $reviews.created_at $products.created_at :day]] 1]
+                    :fields [#_$reviews.created_at
+                             #_$products.created_at
                              [:expression "diff-year"]
                              [:expression "diff-month"]
                              [:expression "diff-day"]
@@ -282,7 +282,8 @@
                                   "diff-hour" [:datediff $reviews.created_at $products.created_at :hour]
                                   "diff-minute" [:datediff $reviews.created_at $products.created_at :minute]
                                   "diff-second" [:datediff $reviews.created_at $products.created_at :second]}})]
+        ;; mysql seems to have some timezone issues loading the sample datasets
         ;;        prod.created-at             reviews.created-at       year month day hour minute second
-        (is (= [["2017-06-04T18:52:10.978Z" "2017-06-03T03:07:28.061Z" 0 0 1 39 2384 143082]
-                ["2017-09-16T05:10:09.763Z" "2017-09-14T22:13:40.971Z" 0 0 1 30 1856 111388]]
+        (is (= [[#_"2017-06-04T18:52:10.978Z" #_"2017-06-03T03:07:28.061Z" 0 0 1 39 2384 143082]
+                [#_"2017-09-16T05:10:09.763Z" #_"2017-09-14T22:13:40.971Z" 0 0 1 30 1856 111388]]
                (mt/rows (qp/process-query query))))))))
