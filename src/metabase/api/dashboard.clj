@@ -699,10 +699,10 @@
 
 ;;; ---------------------------------- Executing the action associated with a Dashcard -------------------------------
 (api/defendpoint GET "/:dashboard-id/dashcard/:dashcard-id/execute/:slug"
-  "Fetches the parameters needed for execution for the given dashcard and slug action."
-  [dashboard-id dashcard-id slug]
+  "Fetches the values for filling in execution parameters."
+  [_dashboard-id _dashcard-id slug]
   {slug su/NonBlankString}
-  (actions.execution/execution-parameters dashboard-id dashcard-id slug))
+  (throw (UnsupportedOperationException. "Not implemented")))
 
 (api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/execute/:slug"
   "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.

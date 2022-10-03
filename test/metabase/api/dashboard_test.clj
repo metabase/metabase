@@ -1964,7 +1964,7 @@
                                                           :card_id card-id
                                                           :visualization_settings {:action_slug "implicit"}
                                                           :parameter_mappings [{:parameter_id "dashboard-id"
-                                                                                :target_id "id"}]}]]
+                                                                                :target [:variable [:template-tag "id"]]}]}]]
           (let [execute-path (format "dashboard/%s/dashcard/%s/execute/implicit"
                                      dashboard-id
                                      dashcard-id)]

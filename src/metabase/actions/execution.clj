@@ -145,21 +145,3 @@
     (if-let [action-id (:action_id model-action)]
       (execute-custom-action action-id request-parameters)
       (execute-implicit-action model-action request-parameters))))
-
-(defn execution-parameters
-  "Return the available parameters for executing the referenced action"
-  [dashboard-id dashcard-id slug]
-  (actions/check-actions-enabled)
-  (api/read-check Dashboard dashboard-id)
-  (let [dashcard (api/check-404 (db/select-one DashboardCard
-                                               :id dashcard-id
-                                               :dashboard_id dashboard-id))
-        model-action (api/check-404 (db/select-one ModelAction :card_id (:card_id dashcard) :slug slug))]
-    (if-let [action-id (:action_id model-action)]
-      (let [action (api/check-404 (first (action/select-actions :id action-id)))]
-        (:parameters action))
-      (let [table (implicit-action-table (:card_id model-action))]
-        (for [field (:fields table)]
-          {:id (:name field)
-           :target [:dimension [:field (:id field) nil]]
-           :type (:base_type field)})))))

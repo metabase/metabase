@@ -181,7 +181,7 @@
                                       :fields
                                       (map (fn [field]
                                              {:id (u/slugify (:name field))
-                                              :target [:dimension [:field (:id field) nil]]
+                                              :target [:variable [:template-tag (u/slugify (:name field))]]
                                               :type (:base_type field)
                                               ::pk? (isa? (:semantic_type field) :type/PK)})))]
                 ;; Skip tables for have conflicting slugified columns i.e. table has "name" and "NAME" columns.
