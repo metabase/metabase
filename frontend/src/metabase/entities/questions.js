@@ -13,7 +13,6 @@ import Collections, {
   normalizedCollection,
 } from "metabase/entities/collections";
 import { canonicalCollectionId } from "metabase/collections/utils";
-import { CardApi } from "metabase/services";
 
 import forms from "./questions/forms";
 
@@ -21,13 +20,6 @@ const Questions = createEntity({
   name: "questions",
   nameOne: "question",
   path: "/api/card",
-
-  api: {
-    list: async (params, ...args) =>
-      params.model === true && params.dbId
-        ? CardApi.listModelsForDatabase(params, ...args)
-        : CardApi.list(params, ...args),
-  },
 
   objectActions: {
     setArchived: ({ id, model }, archived, opts) =>
