@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import type { LocationDescriptor } from "history";
 import _ from "underscore";
@@ -58,7 +58,7 @@ const mapDispatchToProps = {
 };
 
 function DataAppNavbarContainer({
-  dataApp,
+  dataApp: dataAppProp,
   pages,
   selectedItems,
   onDataAppChange,
@@ -67,6 +67,28 @@ function DataAppNavbarContainer({
   ...props
 }: DataAppNavbarContainerProps & { onReloadNavbar: () => Promise<void> }) {
   const [modal, setModal] = useState<NavbarModal>(null);
+
+  /**
+   * Workaround to solve UI flicker when reordering nav items with DND
+   * Ideally we should do an optimistic data app update,
+   * so it's updated immediately in Redux and gets reverted if the request fails
+   * This isn't straightforward with our entity framework yet
+   */
+  const [navItems, setNavItems] = useState<DataAppNavItem[]>(
+    dataAppProp.nav_items ?? [],
+  );
+
+  useEffect(() => {
+    setNavItems(dataAppProp.nav_items ?? []);
+  }, [dataAppProp.nav_items]);
+
+  const dataApp: DataApp = useMemo(
+    () => ({
+      ...dataAppProp,
+      nav_items: navItems,
+    }),
+    [dataAppProp, navItems],
+  );
 
   const finalSelectedItems: SelectedItem[] = useMemo(
     () => getSelectedItems({ dataApp, pages, selectedItems }),
@@ -95,10 +117,17 @@ function DataAppNavbarContainer({
 
   const handleNavItemsOrderChange = useCallback(
     (oldIndex: number, newIndex: number, navItem: DataAppNavItem) => {
+      const nextNavItems = moveNavItems(
+        dataApp.nav_items,
+        oldIndex,
+        newIndex,
+        navItem,
+      );
+      setNavItems(nextNavItems);
       onDataAppChange({
         id: dataApp.id,
         collection_id: dataApp.collection_id,
-        nav_items: moveNavItems(dataApp.nav_items, oldIndex, newIndex, navItem),
+        nav_items: nextNavItems,
       });
     },
     [dataApp, onDataAppChange],
