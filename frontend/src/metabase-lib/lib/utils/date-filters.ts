@@ -12,16 +12,22 @@ import Dimension from "metabase-lib/lib/Dimension";
 
 import type Filter from "metabase-lib/lib/queries/structured/Filter";
 
-const getIntervals = ([op, _field, value, _unit]: Filter) =>
-  op === "time-interval" && typeof value === "number" ? Math.abs(value) : 30;
-const getUnit = ([op, _field, _value, unit]: Filter) => {
+function getIntervals([op, _field, value, _unit]: Filter) {
+  return op === "time-interval" && typeof value === "number"
+    ? Math.abs(value)
+    : 30;
+}
+
+function getUnit([op, _field, _value, unit]: Filter) {
   const result = op === "time-interval" && unit ? unit : "day";
   return result;
-};
-const getOptions = ([op, _field, _value, _unit, options]: Filter) =>
-  (op === "time-interval" && options) || {};
+}
 
-const getDate = (value: string): string => {
+function getOptions([op, _field, _value, _unit, options]: Filter) {
+  return (op === "time-interval" && options) || {};
+}
+
+function getDate(value: string): string {
   if (typeof value !== "string" || !moment(value).isValid()) {
     value = moment().format("YYYY-MM-DD");
   }
@@ -30,10 +36,11 @@ const getDate = (value: string): string => {
     return "day";
   }
   return value;
-};
+}
 
-const hasTime = (value: unknown) =>
-  typeof value === "string" && /T\d{2}:\d{2}:\d{2}$/.test(value);
+function hasTime(value: unknown) {
+  return typeof value === "string" && /T\d{2}:\d{2}:\d{2}$/.test(value);
+}
 
 /**
  * Returns MBQL :field clause with temporal bucketing applied.
