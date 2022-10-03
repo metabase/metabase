@@ -292,8 +292,22 @@ export default class Table extends Component {
       getHidden: (_, settings) =>
         settings["view_as"] !== "link" && settings["view_as"] !== "email_link",
       readDependencies: ["view_as"],
-      props: {
-        placeholder: t`Link to {{bird_id}}`,
+      getProps: (
+        col,
+        settings,
+        onChange,
+        {
+          series: [
+            {
+              data: { cols },
+            },
+          ],
+        },
+      ) => {
+        return {
+          keys: cols.map(column => column.name),
+          placeholder: t`Link to {{bird_id}}`,
+        };
       },
     };
 
