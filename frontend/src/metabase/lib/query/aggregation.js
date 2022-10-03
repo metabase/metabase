@@ -1,6 +1,12 @@
 import _ from "underscore";
 import { STANDARD_AGGREGATIONS } from "metabase/lib/expressions";
-import { noNullValues, add, update, remove, clear } from "./util";
+import {
+  noNullValues,
+  add,
+  update,
+  remove,
+  clear,
+} from "metabase-lib/lib/utils/query/util";
 import * as FieldRef from "./field_ref";
 
 // returns canonical list of Aggregations, i.e. with deprecated "rows" removed

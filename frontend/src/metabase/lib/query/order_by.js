@@ -1,4 +1,4 @@
-import { add, update, remove, clear } from "./util";
+import { add, update, remove, clear } from "metabase-lib/lib/utils/query/util";
 
 // returns canonical list of OrderBys, with nulls removed
 export function getOrderBys(breakout) {
