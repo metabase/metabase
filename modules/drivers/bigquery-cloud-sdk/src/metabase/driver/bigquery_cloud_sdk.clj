@@ -316,7 +316,7 @@
 
 (defmethod driver/supports? [:bigquery-cloud-sdk :foreign-keys] [_ _] true)
 
-(defmethod driver/database-supports? [:biquery-cloud-sdk :datediff]
+(defmethod driver/database-supports? [:bigquery-cloud-sdk :datediff]
   [_driver _feat _db] true)
 
 ;; BigQuery is always in UTC
