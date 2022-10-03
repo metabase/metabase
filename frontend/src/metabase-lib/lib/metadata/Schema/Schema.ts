@@ -8,6 +8,11 @@ import { SchemaProps } from "./types";
  * Wrapper class for a {@link Database} schema. Contains {@link Table}s.
  */
 export default class Schema extends Base {
+  id?: string;
+  name: string;
+  database: Database;
+  tables: Table[];
+
   /**
    * @private
    * @param {string} name

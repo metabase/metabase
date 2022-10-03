@@ -3,6 +3,8 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Aggregation from "metabase-lib/lib/queries/structured/Aggregation";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import Base from "../Base";
+import Database from "../Database";
+import Table from "../Table";
 import { MetricProps } from "./types";
 
 /**
@@ -13,6 +15,14 @@ import { MetricProps } from "./types";
  * Wrapper class for a metric. Belongs to a {@link Database} and possibly a {@link Table}
  */
 export default class Metric extends Base {
+  name: string;
+  description: string;
+  database: Database;
+  table: Table;
+  id: number;
+  definition: string;
+  archived: boolean;
+
   /**
    * @private
    * @param {string} name

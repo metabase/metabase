@@ -13,6 +13,13 @@ import { SegmentProps } from "./types";
  */
 
 export default class Segment extends Base {
+  name: string;
+  description: string;
+  database: Database;
+  table: Table;
+  id: number;
+  archived: boolean;
+
   /**
    * @private
    * @param {string} name
