@@ -3,6 +3,7 @@
             [clojure.test :refer :all]
             [java-time :as t]
             [metabase.driver :as driver]
+            [metabase.query-processor :as qp]
             [metabase.test :as mt]
             [metabase.util.date-2 :as u.date]))
 
@@ -256,3 +257,32 @@
                           :fields [[:field (mt/id :times :index)]]}}]]
         (testing title
           (is (= (set expected) (set (test-date-math query)))))))))
+
+(deftest datediff-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :datediff)
+    (mt/dataset sample-dataset
+      (let [query (mt/mbql-query
+                   products
+                   {:joins [{:fields []
+                             :source-table $$reviews
+                             :condition [:= $products.id &r.reviews.product_id]
+                             :alias "r"}]
+                    :filter [:= [:datediff $reviews.created_at $products.created_at :day] 1]
+                    :fields [$reviews.created_at
+                             $products.created_at
+                             [:expression "diff-year"]
+                             [:expression "diff-month"]
+                             [:expression "diff-day"]
+                             [:expression "diff-hour"]
+                             [:expression "diff-minute"]
+                             [:expression "diff-second"]]
+                    :expressions {"diff-year" [:datediff $reviews.created_at $products.created_at :year]
+                                  "diff-month" [:datediff $reviews.created_at $products.created_at :month]
+                                  "diff-day" [:datediff $reviews.created_at $products.created_at :day]
+                                  "diff-hour" [:datediff $reviews.created_at $products.created_at :hour]
+                                  "diff-minute" [:datediff $reviews.created_at $products.created_at :minute]
+                                  "diff-second" [:datediff $reviews.created_at $products.created_at :second]}})]
+        ;;        prod.created-at             reviews.created-at       year month day hour minute second
+        (is (= [["2017-06-04T18:52:10.978Z" "2017-06-03T03:07:28.061Z" 0 0 1 39 2384 143082]
+                ["2017-09-16T05:10:09.763Z" "2017-09-14T22:13:40.971Z" 0 0 1 30 1856 111388]]
+               (mt/rows (qp/process-query query))))))))
