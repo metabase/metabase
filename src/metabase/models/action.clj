@@ -194,7 +194,7 @@
 
    Pass in known-models to save a second Card lookup."
   [known-models & options]
-  (let [model-actions (apply db/select ModelAction options)
+  (let [model-actions (apply db/select ModelAction {:order-by [:id]} options)
         model-action-by-model-slug (m/index-by (juxt :card_id :slug)
                                                model-actions)
         actions-by-id (when-let [action-ids (not-empty (keep :action_id (vals model-action-by-model-slug)))]
