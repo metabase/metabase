@@ -60,7 +60,7 @@ class Select extends Component {
     optionClassNameFn: PropTypes.func,
     optionStylesFn: PropTypes.func,
 
-    footerFn: PropTypes.func,
+    footer: PropTypes.node,
   };
 
   static defaultProps = {
@@ -205,7 +205,7 @@ class Select extends Component {
       onClose,
       disabled,
       width,
-      footerFn,
+      footer,
     } = this.props;
 
     const sections = this._getSections();
@@ -271,7 +271,7 @@ class Select extends Component {
           searchPlaceholder={searchPlaceholder}
           hideEmptySectionsInSearch={hideEmptySectionsInSearch}
         />
-        {footerFn && footerFn()}
+        {footer}
       </PopoverWithTrigger>
     );
   }

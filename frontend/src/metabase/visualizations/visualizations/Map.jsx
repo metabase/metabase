@@ -5,6 +5,10 @@ import { t } from "ttag";
 import _ from "underscore";
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 
+import Link from "metabase/core/components/Link";
+import ExternalLink from "metabase/core/components/ExternalLink";
+import Icon from "metabase/components/Icon";
+
 import {
   isNumeric,
   isLatitude,
@@ -29,14 +33,13 @@ const PIN_MAP_TYPES = new Set(["pin", "heat", "grid"]);
 
 import { getAccentColors } from "metabase/lib/colors/groups";
 import ColorRangeSelector from "metabase/core/components/ColorRangeSelector";
-import Button from "metabase/core/components/Button";
 import LeafletGridHeatMap from "../components/LeafletGridHeatMap";
 import PinMap from "../components/PinMap";
 import ChoroplethMap, {
   getColorplethColorScale,
 } from "../components/ChoroplethMap";
 
-import { CustomMapContainer } from "./Maps.styled";
+import { CustomMapContent } from "./Maps.styled";
 
 export default class Map extends Component {
   static uiName = t`Map`;
@@ -247,7 +250,7 @@ export default class Map extends Component {
           .sortBy(x => x.name.toLowerCase())
           .value(),
         placeholder: t`Select a region`,
-        footerFn: () => <CustomMapFooter />,
+        footer: <CustomMapFooter />,
         hiddenIcons: true,
       }),
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
@@ -356,20 +359,19 @@ const mapStateToProps = (state, props) => {
   };
 };
 
-const CustomMapFooter = connect(mapStateToProps)(({ isAdmin }) => (
-  <CustomMapContainer>
-    <Button
-      borderless
-      iconRight="share"
-      fullWidth
-      as="a"
-      href={
-        isAdmin
-          ? "/admin/settings/maps"
-          : "https://www.metabase.com/docs/latest/configuring-metabase/custom-maps"
-      }
-    >
-      Custom Map
-    </Button>
-  </CustomMapContainer>
-));
+const CustomMapFooter = connect(mapStateToProps)(({ isAdmin }) => {
+  const content = (
+    <CustomMapContent>
+      {t`Custom map`}
+      <Icon name="share" size={14} />
+    </CustomMapContent>
+  );
+
+  return isAdmin ? (
+    <Link to="/admin/settings/maps">{content}</Link>
+  ) : (
+    <ExternalLink href="https://www.metabase.com/docs/latest/configuring-metabase/custom-maps">
+      {content}
+    </ExternalLink>
+  );
+});
