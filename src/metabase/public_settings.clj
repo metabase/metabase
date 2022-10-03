@@ -101,6 +101,13 @@
   :setter     :none
   :type       ::uuid-nonce)
 
+(defsetting site-uuid-for-version-info-fetching
+  "A *different* site-wide UUID that we use for the version info fetching API calls. It works in fundamentally the
+  same way as [[site-uuid]] but should only be used by the version info fetching logic for the sake of privacy."
+  :visibility :internal
+  :setter     :none
+  :type       ::uuid-nonce)
+
 (defn- normalize-site-url [^String s]
   (let [ ;; remove trailing slashes
         s (str/replace s #"/$" "")
