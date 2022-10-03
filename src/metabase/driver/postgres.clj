@@ -25,6 +25,7 @@
             [metabase.models.field :as field]
             [metabase.models.secret :as secret]
             [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
@@ -56,19 +57,15 @@
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
-(defmethod driver/database-supports? [:postgres :persist-models]
-  [_driver _feat _db]
-  true)
-
-(defmethod driver/database-supports? [:postgres :persist-models-enabled]
-  [_driver _feat db]
-  (-> db :options :persist-models-enabled))
-
-(doseq [feature [:actions :actions/custom]]
+(doseq [[feature supported?] {:persist-models         (constantly true)
+                              :convert-timezone       (constantly true)
+                              :persist-models-enabled (fn [_driver db] (-> db :options :persist-models-enabled))
+                              ;; only supported for Postgres for right now. Not supported for child drivers like Redshift or whatever.
+                              :actions                (fn [driver _db] (= driver :postgres))
+                              :actions/custom         (fn [driver _db] (= driver :postgres))}]
   (defmethod driver/database-supports? [:postgres feature]
-    [driver _feat _db]
-    ;; only supported for Postgres for right now. Not supported for child drivers like Redshift or whatever.
-    (= driver :postgres)))
+    [driver _feature database]
+    (supported? driver database)))
 
 (defn- ->timestamp [honeysql-form]
   (hx/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "date"} honeysql-form))
@@ -279,6 +276,25 @@
   (and (str/starts-with? database-type "\"")
        (str/ends-with? database-type "\"")))
 
+;; TODO we should be able to figure a the base type of a form during translation
+;; that ways we don't have to deal with cases where we have to know "timestamp(6) with time zone" is a thing
+;; and if we can do that, we dont' have to convert timezone twice for tz-aware columns
+(defmethod sql.qp/->honeysql [:postgres :convert-timezone]
+  [driver [_ arg to from]]
+  (let [form         (sql.qp/->honeysql driver arg)
+        timestamptz? (hx/is-of-type? form "timestamptz")]
+    ;; TODO we probably want to has a method to check if a column is tz-aware and it should dispatches by drivers
+    (when (and timestamptz?
+               from)
+      (throw (ex-info "timestamptz columns shoudln't have a base timezone" {:to   to
+                                                                            :from from})))
+    (let [from (or from (qp.timezone/results-timezone-id))]
+      (cond->> (sql.qp/->honeysql driver arg)
+        (and (not timestamptz?) from)
+        (hsql/call :timezone from)
+        to
+        (hsql/call :timezone to)))))
+
 (defmethod sql.qp/->honeysql [:postgres :value]
   [driver value]
   (let [[_ value {base-type :base_type, database-type :database_type}] value]
@@ -460,9 +476,9 @@
    :smallserial   :type/Integer
    :text          :type/Text
    :time          :type/Time
-   :timetz        :type/TimeWithLocalTZ
+   :timetz        :type/TimeWithTZ
    :timestamp     :type/DateTime
-   :timestamptz   :type/DateTimeWithLocalTZ
+   :timestamptz   :type/DateTimeWithTZ
    :tsquery       :type/*
    :tsvector      :type/*
    :txid_snapshot :type/*
@@ -475,7 +491,9 @@
    (keyword "double precision")           :type/Float
    (keyword "time with time zone")        :type/Time
    (keyword "time without time zone")     :type/Time
-   (keyword "timestamp with timezone")    :type/DateTime
+   ;; TODO postgres also supports `timestamp(p) with time zone` where p is the precision
+   ;; maybe we should switch this to use `sql-jdbc.sync/pattern-based-database-type->base-type`
+   (keyword "timestamp with timezone")    :type/DateTimeWithTZ
    (keyword "timestamp without timezone") :type/DateTime})
 
 (doseq [[base-type db-type] {:type/BigInteger          "BIGINT"

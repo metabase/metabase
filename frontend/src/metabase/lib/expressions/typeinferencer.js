@@ -39,6 +39,7 @@ export function infer(mbql, env) {
     case "coalesce":
     case "date-add":
     case "date-subtract":
+    case "convert-timezone":
       return infer(mbql[1], env);
   }
 

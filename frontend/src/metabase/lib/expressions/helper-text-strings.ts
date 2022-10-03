@@ -708,6 +708,34 @@ const helperTextStrings: HelpText[] = [
       },
     ],
   },
+  {
+    name: "convert-timezone",
+    structure:
+      "convertTimezone(" +
+      t`column` +
+      ", " +
+      t`to timezone` +
+      ", " +
+      t`from timezone` +
+      ")",
+    description: t`Convert timezone of a datetime column.`,
+    example:
+      "convertTimezone([" + t`Created At` + '], "Asia/Ho_Chi_Minh", "UTC")',
+    args: [
+      {
+        name: t`column`,
+        description: t`The column with your date or timestamp values.`,
+      },
+      {
+        name: t`to timezone`,
+        description: t`The timezone you want to converted to.`,
+      },
+      {
+        name: t`from timezone`,
+        description: t`The current timezone of the column, default is the report timezone.`,
+      },
+    ],
+  },
 ];
 
 export const getHelpText = (name: string): HelpText | undefined => {
