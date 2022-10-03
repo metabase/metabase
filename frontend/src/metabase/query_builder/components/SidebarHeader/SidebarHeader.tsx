@@ -41,12 +41,11 @@ function SidebarHeader({ className, title, icon, onBack, onClose }: Props) {
     hasOnBackHandler: !!onBack,
   });
 
-  const hasHeaderIcon = onBack || icon;
-
   return (
     <HeaderRoot className={className}>
       <HeaderTitleContainer variant={headerVariant} onClick={onBack}>
-        {hasHeaderIcon && <HeaderIcon name={icon || "chevronleft"} />}
+        {onBack && <HeaderIcon name="chevronleft" />}
+        {icon && <HeaderIcon name={icon} />}
         {hasDefaultBackButton ? t`Back` : title}
       </HeaderTitleContainer>
       {onClose && (

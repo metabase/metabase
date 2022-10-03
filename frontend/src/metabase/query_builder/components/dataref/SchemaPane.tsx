@@ -1,23 +1,27 @@
-import React from "react";
-import PropTypes from "prop-types";
+import React, { useMemo } from "react";
 import Icon from "metabase/components/Icon";
-import Table from "metabase/entities/tables";
+import Schemas from "metabase/entities/schemas";
+import { State } from "metabase-types/store";
+import Schema from "metabase-lib/lib/metadata/Schema";
 
-const DatabaseTablesPane = ({ database, show }) => {
-  const tables = database.tables.sort((a, b) => a.name.localeCompare(b.name));
+interface Props {
+  show: (type: string, item: unknown) => void;
+  schema: Schema;
+}
+
+const SchemaPaneInner = ({ schema, show }: Props) => {
+  const tables = useMemo(
+    () => schema.tables.sort((a, b) => a.name.localeCompare(b.name)),
+    [schema.tables],
+  );
   return (
     <div>
       <div className="ml1 my2 flex align-center justify-between border-bottom pb1">
-        <div className="flex align-center">
-          <Icon name="database" className="text-medium pr1" size={14} />
-          <h3 className="text-wrap">{database.name}</h3>
-        </div>
         <div className="flex align-center">
           <Icon name="table2" className="text-light pr1" size={12} />
           <span className="text-medium">{tables.length}</span>
         </div>
       </div>
-
       <ul>
         {tables.map(table => (
           <li key={table.id}>
@@ -34,13 +38,8 @@ const DatabaseTablesPane = ({ database, show }) => {
   );
 };
 
-DatabaseTablesPane.propTypes = {
-  show: PropTypes.func.isRequired,
-  database: PropTypes.object.isRequired,
-};
+const SchemaPane = Schemas.load({
+  id: (_state: State, { schema }: Props) => schema.id,
+})(SchemaPaneInner);
 
-export default Table.loadList({
-  query: (_state, props) => ({
-    dbId: props.database?.id,
-  }),
-})(DatabaseTablesPane);
+export default SchemaPane;

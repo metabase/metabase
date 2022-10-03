@@ -3,15 +3,10 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
-import Icon from "metabase/components/Icon";
 import Card from "metabase/components/Card";
 
 const DetailPane = ({ name, description, extra, values }) => (
   <div className="ml1">
-    <div className="flex align-center">
-      <Icon name="field" className="text-medium pr1" size={16} />
-      <h3 className="text-wrap">{name}</h3>
-    </div>
     <p className={cx("text-spaced", { "text-medium": !description })}>
       {description || t`No description`}
     </p>
