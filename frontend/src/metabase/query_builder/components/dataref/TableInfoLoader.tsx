@@ -8,7 +8,7 @@ import Table from "metabase-lib/lib/metadata/Table";
 
 type OwnProps = {
   table: Table;
-  children: JSX.Element;
+  children: JSX.Element[];
 };
 
 const mapDispatchToProps: {
@@ -61,7 +61,7 @@ export function TableInfoLoader({
     fetchForeignKeys,
     fetchMetadata,
   });
-  return hasFetchedMetadata ? children : null;
+  return hasFetchedMetadata ? <> {children} </> : null;
 }
 
 export default connect(null, mapDispatchToProps)(TableInfoLoader);

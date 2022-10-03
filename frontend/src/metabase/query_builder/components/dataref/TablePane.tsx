@@ -28,29 +28,27 @@ interface TablePaneProps {
 const TablePane = ({ table, show }: TablePaneProps) => {
   return table ? (
     <TableInfoLoader table={table}>
-      <>
-        <div className="ml1">
-          {table.description ? (
-            <Description>{table.description}</Description>
-          ) : (
-            <EmptyDescription>{t`No description`}</EmptyDescription>
-          )}
-        </div>
-        <div className="my2">
-          {table.fields && (
-            <FieldList
-              fields={table.fields}
-              onFieldClick={f => show("field", f)}
-            />
-          )}
-          {table.connectedTables() && (
-            <ConnectedTableList
-              tables={table.connectedTables()}
-              onTableClick={t => show("table", t)}
-            />
-          )}
-        </div>
-      </>
+      <div className="ml1">
+        {table.description ? (
+          <Description>{table.description}</Description>
+        ) : (
+          <EmptyDescription>{t`No description`}</EmptyDescription>
+        )}
+      </div>
+      <div className="my2">
+        {table.fields && (
+          <FieldList
+            fields={table.fields}
+            onFieldClick={f => show("field", f)}
+          />
+        )}
+        {table.connectedTables() && (
+          <ConnectedTableList
+            tables={table.connectedTables()}
+            onTableClick={t => show("table", t)}
+          />
+        )}
+      </div>
     </TableInfoLoader>
   ) : null;
 };
