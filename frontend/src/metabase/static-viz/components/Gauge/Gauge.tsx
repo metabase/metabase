@@ -226,49 +226,53 @@ export default function Gauge({ card, data, getColor }: GaugeProps) {
 
   return (
     <svg width={WIDTH} height={HEIGHT}>
-      <Group
-        transform={`scale(${calculateChartScale(gaugeLabels)})`}
-        transform-origin="center"
-      >
-        <Group top={centerY} left={centerX}>
-          <Pie
-            data={gaugeSegmentData}
-            outerRadius={gaugeOuterRadius}
-            innerRadius={gaugeInnerRadius}
-            pieValue={gaugeAccessor}
-            pieSort={gaugeSorter}
-            fill={colorGetter}
-            startAngle={startAngle}
-            endAngle={endAngle}
-          />
-          <GaugeNeedle
-            color={getColor("bg-dark")}
-            outlineColor={outlineColor}
-            position={valuePosition}
-            valueAngle={valueAngle}
-          />
-          {gaugeLabels.map(({ color, position, textAnchor, value }, index) => {
-            return (
-              <GaugeLabel
-                key={index}
-                fill={color}
-                stroke={outlineColor}
-                fontSize={SEGMENT_LABEL_FONT_SIZE}
-                position={position}
-                label={value}
-                textAnchor={textAnchor}
-              />
-            );
-          })}
-          <GaugeLabel
-            fill={getColor("text-dark")}
-            stroke={outlineColor}
-            fontSize={dynamicValueFontSize}
-            position={[0, -gaugeInnerRadius / 3]}
-            label={displayValue}
-          />
-        </Group>
-      </Group>
+      <g transform={`translate(${WIDTH / 2}, ${HEIGHT / 2})`}>
+        <g
+          transform={`scale(${calculateChartScale(gaugeLabels)})
+                      translate(${-WIDTH / 2}, ${-HEIGHT / 2})`}
+        >
+          <Group top={centerY} left={centerX}>
+            <Pie
+              data={gaugeSegmentData}
+              outerRadius={gaugeOuterRadius}
+              innerRadius={gaugeInnerRadius}
+              pieValue={gaugeAccessor}
+              pieSort={gaugeSorter}
+              fill={colorGetter}
+              startAngle={startAngle}
+              endAngle={endAngle}
+            />
+            <GaugeNeedle
+              color={getColor("bg-dark")}
+              outlineColor={outlineColor}
+              position={valuePosition}
+              valueAngle={valueAngle}
+            />
+            {gaugeLabels.map(
+              ({ color, position, textAnchor, value }, index) => {
+                return (
+                  <GaugeLabel
+                    key={index}
+                    fill={color}
+                    stroke={outlineColor}
+                    fontSize={SEGMENT_LABEL_FONT_SIZE}
+                    position={position}
+                    label={value}
+                    textAnchor={textAnchor}
+                  />
+                );
+              },
+            )}
+            <GaugeLabel
+              fill={getColor("text-dark")}
+              stroke={outlineColor}
+              fontSize={dynamicValueFontSize}
+              position={[0, -gaugeInnerRadius / 3]}
+              label={displayValue}
+            />
+          </Group>
+        </g>
+      </g>
     </svg>
   );
 }
@@ -438,7 +442,7 @@ function getCirclePositionInSvgCoordinate(
 
 function toSvgPositionString(position?: Position) {
   if (position) {
-    return `${position[0]}, ${position[1]}`;
+    return `${position[0]} ${position[1]}`;
   }
 
   return "";
@@ -506,6 +510,5 @@ function calculateChartScale(gaugeLabels: GaugeLabelData[]) {
 }
 
 function limit(value: number, min: number, max: number) {
-  console.log({ value, min, max });
   return Math.min(Math.max(value, min), max);
 }
