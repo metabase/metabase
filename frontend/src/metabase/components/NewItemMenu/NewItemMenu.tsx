@@ -117,7 +117,6 @@ const NewItemMenu = ({
     );
 
     if (hasNativeWrite) {
-      // we should probably get more granular with who sees this
       items.push({
         title: t`Model`,
         icon: "model",
