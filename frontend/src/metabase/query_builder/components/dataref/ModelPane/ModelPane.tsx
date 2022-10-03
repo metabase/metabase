@@ -1,13 +1,14 @@
 import React from "react";
 import { connect } from "react-redux";
 import { t, jt } from "ttag";
-import PropTypes from "prop-types";
+import _ from "underscore";
 
 import DateTime from "metabase/components/DateTime";
 import {
   Description,
   EmptyDescription,
 } from "metabase/components/MetadataInfo/MetadataInfo.styled";
+import Questions from "metabase/entities/questions";
 import { getQuestionFromCard } from "metabase/query_builder/selectors";
 import type { Card } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -76,4 +77,10 @@ const ModelPane = ({ show, question }: ModelPaneProps) => {
   );
 };
 
-export default connect(mapStateToProps)(ModelPane);
+export default _.compose(
+  Questions.load({
+    id: (_state: State, props: ModelPaneProps) => props.model.id,
+    entityAlias: "model",
+  }),
+  connect(mapStateToProps),
+)(ModelPane);

@@ -24,7 +24,6 @@
             [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
             [metabase.models.persisted-info :as persisted-info]
-            [metabase.models.revision.last-edit :as last-edit]
             [metabase.models.secret :as secret]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.models.table :refer [Table]]
@@ -1042,18 +1041,6 @@
                                       [:= :collection_id nil]
                                       [:in :collection_id (api/check-404 (seq (db/select-ids Collection :name schema)))])])
          (map api.table/card->virtual-table))))
-
-(api/defendpoint GET "/:id/models"
-  "Returns a list of models for a database."
-  [id]
-  {id su/IntGreaterThanZero}
-  (api/read-check Database id)
-  (let [cards          (-> (db/select Card, :database_id id, :archived false, :dataset true, {:order-by [[:%lower.name :asc]]})
-                           (hydrate :creator :collection))
-        cards          (filter mi/can-read? cards)
-        last-edit-info (:card (last-edit/fetch-last-edited-info {:card-ids (map :id cards)}))]
-    (vec (for [card cards]
-           (m/assoc-some card :last-edit-info (get last-edit-info (:id card)))))))
 
 (api/defendpoint GET "/db-ids-with-deprecated-drivers"
   "Return a list of database IDs using currently deprecated drivers."

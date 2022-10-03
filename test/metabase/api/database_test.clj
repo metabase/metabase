@@ -1363,27 +1363,3 @@
           (testing "App DB"
             (is (= {:database-enable-actions false}
                    (settings)))))))))
-
-(deftest models-by-database-test
-  (testing "GET /api/database/:id/models"
-    (mt/with-temp* [Database [db]
-                    Card [card-1 {:dataset true  :archived false :database_id (mt/id)}]
-                    Card [card-2 {:dataset true  :archived true  :database_id (mt/id)}]
-                    Card [card-3 {:dataset false :archived false :database_id (mt/id)}]
-                    Card [card-4 {:dataset true  :archived false :database_id (u/the-id db)}]]
-      (api.card-test/with-cards-in-readable-collection [card-1 card-2 card-3 card-4]
-        (is (= [(u/the-id card-1)]
-               (map :id (mt/user-http-request :rasta :get 200 (format "database/%d/models" (mt/id)))))
-            (= [(u/the-id card-4)]
-               (map :id (mt/user-http-request :rasta :get 200 (format "database/%d/models" (u/the-id db)))))))
-      (testing "exclude models without perms"
-        (mt/with-non-admin-groups-no-root-collection-perms
-          (api.card-test/with-cards-in-readable-collection [card-1]
-            (is (= [(u/the-id card-1)]
-                   (map :id (mt/user-http-request :rasta :get 200 (format "database/%d/models" (mt/id)))))
-                (= []
-                   (map :id (mt/user-http-request :rasta :get 200 (format "database/%d/models" (u/the-id db)))))))))
-      (testing "should reject requests for databases for which the user has no perms"
-        (perms/revoke-data-perms! (perms-group/all-users) (u/the-id db))
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :get 403 (format "database/%d/models" (u/the-id db)))))))))

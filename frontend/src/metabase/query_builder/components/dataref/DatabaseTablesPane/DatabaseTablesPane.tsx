@@ -3,7 +3,7 @@ import { ngettext, msgid } from "ttag";
 import _ from "underscore";
 
 import Tables from "metabase/entities/tables";
-import Questions from "metabase/entities/questions";
+import Search from "metabase/entities/search";
 import type { Card } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 import Database from "metabase-lib/lib/metadata/Database";
@@ -96,10 +96,10 @@ export default _.compose(
     }),
     loadingAndErrorWrapper: false,
   }),
-  Questions.loadList({
+  Search.loadList({
     query: (_state: State, props: DatabaseTablesPaneProps) => ({
-      model: true,
-      dbId: props.database.id,
+      models: "dataset",
+      table_db_id: props.database.id,
     }),
     loadingAndErrorWrapper: false,
     listName: "models",
