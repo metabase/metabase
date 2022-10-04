@@ -366,7 +366,7 @@
                                        (offset->zone "+00:00")])))))))
 
       (testing "timestamp with time zone columns"
-        (testing "the result should be reutnred in the converted timezone"
+        (testing "the result should be returned in the converted timezone"
           (is (= "2004-03-19T11:19:09+09:00"
                  (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")]))))
 

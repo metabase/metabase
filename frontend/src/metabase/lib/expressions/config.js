@@ -374,7 +374,8 @@ export const MBQL_CLAUSES = {
   "convert-timezone": {
     displayName: `convertTimezone`,
     type: "expression",
-    args: ["expression", "string", "string"],
+    args: ["expression", "string"],
+    hasOptions: true,
   },
 };
 
