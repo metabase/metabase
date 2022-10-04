@@ -66,8 +66,9 @@
   [f]
   (with-redefs [email/send-email! fake-inbox-email-fn]
     (reset-inbox!)
-    (tu/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
-                                       email-smtp-port 587]
+    (tu/with-temporary-setting-values [email-smtp-host    "fake_smtp_host"
+                                       email-smtp-port    587
+                                       email-from-address "notifications@metabase.com"]
       (f))))
 
 (defmacro with-fake-inbox

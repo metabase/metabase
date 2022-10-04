@@ -205,10 +205,12 @@
                 ldap-auth?   :ldap_auth
                 sso-source   :sso_source
                 is-active?   :is_active}
-               (db/select-one [User :id :google_auth :is_active] :%lower.email (u/lower-case-en email))]
+               (db/select-one [User :id :google_auth :ldap_auth :sso_source :is_active]
+                              :%lower.email
+                              (u/lower-case-en email))]
       (if (or google-auth? ldap-auth? sso-source)
         ;; If user uses any SSO method to log in, no need to generate a reset token
-        (messages/send-password-reset-email! email google-auth? (or ldap-auth? sso-source) nil is-active?)
+        (messages/send-password-reset-email! email google-auth? (boolean (or ldap-auth? sso-source)) nil is-active?)
         (let [reset-token        (user/set-password-reset-token! user-id)
               password-reset-url (str (public-settings/site-url) "/auth/reset_password/" reset-token)]
           (log/info password-reset-url)

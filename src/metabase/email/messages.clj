@@ -175,7 +175,7 @@
   {:pre [(m/boolean? google-auth?)
          (m/boolean? non-google-sso?)
          (u/email? email)
-         (string? password-reset-url)]}
+         ((some-fn string? nil?) password-reset-url)]}
   (let [message-body (stencil/render-file
                       "metabase/email/password_reset"
                       (merge (common-context)
