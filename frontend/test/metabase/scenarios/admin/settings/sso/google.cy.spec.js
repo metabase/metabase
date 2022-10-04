@@ -46,11 +46,27 @@ describe("scenarios > admin > settings > SSO > Google", () => {
       `Invalid Google Sign-In Client ID: must end with ".${CLIENT_ID_SUFFIX}"`,
     ).should("be.visible");
   });
+
+  it("should show the button to sign in via google only when enabled", () => {
+    setupGoogleAuth({ enabled: true });
+    cy.signOut();
+    cy.visit("/auth/login");
+    cy.findByText("Sign in with email").should("be.visible");
+    cy.findByRole("button", { name: /Google/ }).should("be.visible");
+
+    cy.signInAsAdmin();
+    setupGoogleAuth({ enabled: false });
+    cy.signOut();
+    cy.visit("/auth/login");
+    cy.findByText("Email address").should("be.visible");
+    cy.findByText("Password").should("be.visible");
+    cy.findByRole("button", { name: /Google/ }).should("not.exist");
+  });
 });
 
-const setupGoogleAuth = () => {
+const setupGoogleAuth = ({ enabled = true } = {}) => {
   cy.request("PUT", "/api/google/settings", {
-    "google-auth-enabled": true,
+    "google-auth-enabled": enabled,
     "google-auth-client-id": `example.${CLIENT_ID_SUFFIX}`,
     "google-auth-auto-create-accounts-domain": "example.test",
   });
