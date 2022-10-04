@@ -77,6 +77,7 @@ describe("metabase/lib/expression/suggest", () => {
           { type: "functions", text: "coalesce(" },
           { type: "functions", text: "concat(" },
           { type: "functions", text: "contains(" },
+          { type: "functions", text: "convertTimezone(" },
         ]);
       });
 
@@ -219,6 +220,7 @@ describe("metabase/lib/expression/suggest", () => {
           { type: "functions", text: "coalesce(" },
           { type: "functions", text: "concat(" },
           { type: "functions", text: "contains(" },
+          { type: "functions", text: "convertTimezone(" },
         ]);
       });
 
@@ -235,6 +237,7 @@ describe("metabase/lib/expression/suggest", () => {
           { type: "functions", text: "coalesce(" },
           { type: "functions", text: "concat(" },
           { type: "functions", text: "contains(" },
+          { type: "functions", text: "convertTimezone(" },
         ]);
       });
 
@@ -290,6 +293,7 @@ describe("metabase/lib/expression/suggest", () => {
           { type: "functions", text: "coalesce(" },
           { type: "functions", text: "concat(" },
           { type: "functions", text: "contains(" },
+          { type: "functions", text: "convertTimezone(" },
         ]);
       });
 
