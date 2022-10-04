@@ -34,7 +34,7 @@
   (db/insert! ModelAction body))
 
 (api/defendpoint PUT "/:model-action-id"
-  "Endpoint to associate an action with a model"
+  "Endpoint to modify an action of a model"
   [model-action-id :as {{:keys [action_id slug requires_pk parameter_mappings visualization_settings] :as body} :body}]
   {action_id (s/maybe su/IntGreaterThanZero)
    slug (s/maybe su/NonBlankString)
