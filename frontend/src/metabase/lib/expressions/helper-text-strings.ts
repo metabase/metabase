@@ -718,7 +718,7 @@ const helperTextStrings: HelpText[] = [
       ", " +
       t`from timezone` +
       ")",
-    description: t`Convert timezone of a datetime column.`,
+    description: t`Convert timezone of a date or timestamp column.`,
     example:
       "convertTimezone([" + t`Created At` + '], "Asia/Ho_Chi_Minh", "UTC")',
     args: [

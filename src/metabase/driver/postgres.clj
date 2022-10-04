@@ -276,16 +276,13 @@
   (and (str/starts-with? database-type "\"")
        (str/ends-with? database-type "\"")))
 
-;; TODO we should be able to figure a the base type of a form during translation
-;; that ways we don't have to deal with cases where we have to know "timestamp(6) with time zone" is a thing
-;; and if we can do that, we dont' have to convert timezone twice for tz-aware columns
 (defmethod sql.qp/->honeysql [:postgres :convert-timezone]
   [driver [_ arg to-tz from-tz]]
   (let [clause       (sql.qp/->honeysql driver arg)
         timestamptz? (hx/is-of-type? clause "timestamptz")]
     (when (and timestamptz? from-tz)
-      (throw (ex-info "timestamptz columns shoudln't have a from timezone" {:to-tz   to-tz
-                                                                            :from-tz from-tz})))
+      (throw (ex-info "`timestamp with time zone` columns shouldn't have a `from timezone`" {:to-tz   to-tz
+                                                                                             :from-tz from-tz})))
     (let [from-tz (or from-tz (qp.timezone/results-timezone-id))]
       (cond->> clause
         (and (not timestamptz?) from-tz)

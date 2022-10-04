@@ -76,5 +76,5 @@
   [{{:keys [format-rows?] :or {format-rows? true}} :middleware, :as _query} rff]
   (if format-rows?
     (fn format-rows-rff* [metadata]
-      (format-rows-xform (rff metadata)  metadata))
+      (format-rows-xform (rff metadata) metadata))
     rff))
