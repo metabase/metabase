@@ -7,7 +7,7 @@ import _ from "underscore";
 import { assocIn } from "icepick";
 import Label from "metabase/components/type/Label";
 
-import { keyForColumn } from "metabase/lib/dataset";
+import { keyForColumn } from "metabase-lib/lib/utils/dataset";
 import { FieldPartitionColumn } from "./ChartSettingFieldsPartition.styled";
 
 class ChartSettingFieldsPartition extends React.Component {

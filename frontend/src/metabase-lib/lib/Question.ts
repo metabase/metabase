@@ -30,11 +30,6 @@ import { memoizeClass, sortObject } from "metabase-lib/lib/utils";
 
 // TODO: remove these dependencies
 import * as Urls from "metabase/lib/urls";
-import {
-  findColumnIndexForColumnSetting,
-  findColumnSettingIndexForColumn,
-  syncTableColumnsToQuery,
-} from "metabase/lib/dataset";
 import { isTransientId } from "metabase/meta/Card";
 import {
   getCardUiParameters,
@@ -78,6 +73,11 @@ import { utf8_to_b64url } from "metabase/lib/encoding";
 import { CollectionId } from "metabase-types/api";
 
 import { getQuestionVirtualTableId } from "metabase/lib/saved-questions/saved-questions";
+import {
+  findColumnIndexForColumnSetting,
+  findColumnSettingIndexForColumn,
+  syncTableColumnsToQuery,
+} from "metabase-lib/lib/utils/dataset";
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
   ALERT_TYPE_ROWS,

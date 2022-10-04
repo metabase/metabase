@@ -2,7 +2,6 @@
 import React from "react";
 
 import { t, ngettext, msgid } from "ttag";
-import { generateTimeFilterValuesDescriptions } from "metabase/lib/query_time";
 import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
 
 import Value from "metabase/components/Value";
@@ -10,6 +9,7 @@ import Value from "metabase/components/Value";
 import { color } from "metabase/lib/colors";
 
 import ViewPill from "metabase/query_builder/components/view/ViewPill";
+import { generateTimeFilterValuesDescriptions } from "metabase/lib/query_time";
 import { hasFilterOptions } from "metabase-lib/lib/utils/query/filter";
 import Dimension from "metabase-lib/lib/Dimension";
 

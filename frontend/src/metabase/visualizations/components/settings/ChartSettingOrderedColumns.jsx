@@ -3,8 +3,11 @@ import React, { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { keyForColumn, findColumnForColumnSetting } from "metabase/lib/dataset";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
+import {
+  keyForColumn,
+  findColumnForColumnSetting,
+} from "metabase-lib/lib/utils/dataset";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 import ColumnItem from "./ColumnItem";

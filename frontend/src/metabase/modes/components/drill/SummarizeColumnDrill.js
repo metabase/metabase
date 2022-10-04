@@ -1,13 +1,13 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
 import _ from "underscore";
-import { fieldRefForColumn } from "metabase/lib/dataset";
 
 import { TYPE, isa } from "metabase/lib/types";
 import {
   getAggregationOperator,
   isCompatibleAggregationOperatorForField,
 } from "metabase/lib/schema_metadata";
+import { fieldRefForColumn } from "metabase-lib/lib/utils/dataset";
 
 const INVALID_TYPES = [TYPE.Structured];
 

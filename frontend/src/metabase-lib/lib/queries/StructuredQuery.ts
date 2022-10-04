@@ -29,11 +29,11 @@ import { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
 import { TableId } from "metabase-types/types/Table";
 import { Column } from "metabase-types/types/Dataset";
 import { TYPE } from "metabase/lib/types";
-import { fieldRefForColumn } from "metabase/lib/dataset";
 import {
   isVirtualCardId,
   getQuestionIdFromVirtualTableId,
 } from "metabase/lib/saved-questions";
+import { fieldRefForColumn } from "metabase-lib/lib/utils/dataset";
 import { isSegment } from "metabase-lib/lib/utils/query/filter";
 import { getUniqueExpressionName } from "metabase-lib/lib/utils/query/expression";
 import * as Q from "metabase-lib/lib/utils/query/query";
