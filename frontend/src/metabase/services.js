@@ -240,6 +240,10 @@ export const LdapApi = {
   updateSettings: PUT("/api/ldap/settings"),
 };
 
+export const GoogleApi = {
+  updateSettings: PUT("/api/google/settings"),
+};
+
 export const TimelineApi = {
   list: GET("/api/timeline"),
   listForCollection: GET("/api/collection/:collectionId/timelines"),

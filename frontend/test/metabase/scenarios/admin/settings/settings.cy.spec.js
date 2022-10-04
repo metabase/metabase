@@ -61,19 +61,6 @@ describe("scenarios > admin > settings", () => {
     cy.get(".SaveStatus").contains(/^Error: Invalid site URL/);
   });
 
-  it("should render the proper auth options", () => {
-    // Ported from `SettingsAuthenticationOptions.e2e.spec.js`
-    // Google sign in
-    cy.visit("/admin/settings/authentication");
-
-    configureAuth("Sign in with Google");
-
-    cy.contains(
-      "To allow users to sign in with Google you'll need to give Metabase a Google Developers console application client ID.",
-    );
-    cy.findByText("Save changes");
-  });
-
   it("should save a setting", () => {
     cy.server();
     cy.route("PUT", "**/admin-email").as("saveSettings");
@@ -322,10 +309,3 @@ describeEE("scenarios > admin > settings (EE)", () => {
     cy.findByLabelText("store icon").should("not.exist");
   });
 });
-
-function configureAuth(providerTitle) {
-  cy.findByText(providerTitle)
-    .closest(".rounded.bordered")
-    .contains("Configure")
-    .click();
-}
