@@ -19,11 +19,12 @@ const ChartSettingFieldPicker = ({
   columns,
   showColumnSetting,
   showDragHandle,
+  columnHasSettings,
 }) => {
   let columnKey;
   if (value && showColumnSetting && columns) {
     const column = _.findWhere(columns, { name: value });
-    if (column) {
+    if (column && columnHasSettings(column)) {
       columnKey = keyForColumn(column);
     }
   }
