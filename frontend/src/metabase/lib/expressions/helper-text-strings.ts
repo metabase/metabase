@@ -714,9 +714,9 @@ const helperTextStrings: HelpText[] = [
       "convertTimezone(" +
       t`column` +
       ", " +
-      t`to timezone` +
+      t`target` +
       ", " +
-      t`from timezone` +
+      t`source` +
       ")",
     description: t`Convert timezone of a date or timestamp column.`,
     example:
@@ -727,12 +727,12 @@ const helperTextStrings: HelpText[] = [
         description: t`The column with your date or timestamp values.`,
       },
       {
-        name: t`to timezone`,
-        description: t`The timezone you want to converted to.`,
+        name: t`target`,
+        description: t`The timezone you want to assign to your column.`,
       },
       {
         name: t`from timezone`,
-        description: t`The current timezone of the column, default is the report timezone.`,
+        description: t`(Optional) The current timezone of your column. The default timezone is your report timezone.`,
       },
     ],
   },
