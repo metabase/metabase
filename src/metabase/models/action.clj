@@ -222,7 +222,8 @@
                                   {:parameters (cond->> parameters
                                                  (not (:requires_pk model-action)) (remove #(::pk? %))
                                                  (= "delete" (:slug model-action)) (filter #(::pk? %))
-                                                 :always (map #(dissoc % ::pk?)))})]]
+                                                 :always (map #(dissoc % ::pk?)))
+                                   :type "implicit"})]]
       (m/deep-merge (-> model-action
                         (select-keys [:card_id :slug :action_id :visualization_settings :parameter_mappings])
                         (set/rename-keys {:card_id :model_id}))

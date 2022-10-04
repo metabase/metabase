@@ -44,10 +44,11 @@
                             :action_id action-id
                             :parameters [{:id "id"} {:id "name"}]
                             :card {:is_write true}
+                            :type "query"
                             :name "Query Example"}
-                           {:slug "insert" :action_id nil :parameters [{:id "name"}]}
-                           {:slug "update" :action_id nil :parameters [{:id "id"} {:id "name"}]}
-                           {:slug "delete" :action_id nil :parameters [{:id "id"}]}]
+                           {:slug "insert" :action_id nil :parameters [{:id "name"}] :type "implicit"}
+                           {:slug "update" :action_id nil :parameters [{:id "id"} {:id "name"}] :type "implicit"}
+                           {:slug "delete" :action_id nil :parameters [{:id "id"}] :type "implicit"}]
                           response))
             (let [action (some (fn [action]
                                  (when (= (:id action) action-id)
