@@ -130,6 +130,8 @@
     (throw (ex-info (tru "Query actions have to executed by a user.") {})))
   (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
   (check-card-read-perms *card-id*)
+  (when-not (has-data-perms? (required-perms outer-query))
+    (check-block-permissions outer-query))
   (when-not (has-data-perms? (query-action-perms outer-query))
     (throw (perms-exception required-perms))))
 
