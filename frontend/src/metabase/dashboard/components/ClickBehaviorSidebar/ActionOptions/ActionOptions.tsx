@@ -59,7 +59,7 @@ function ActionOptions({
         card_id: action.model_id,
         action,
         visualization_settings: updateSettings(
-          { 
+          {
             "button.label": action.name,
             action_slug: action.slug, // :-( so hacky
           },

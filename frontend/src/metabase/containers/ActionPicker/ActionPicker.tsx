@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { t } from "ttag";
-import { ActionsApi } from "metabase/services";
+
 import Button from "metabase/core/components/Button";
-
-import type { WritebackAction } from "metabase-types/api";
-
 import EmptyState from "metabase/components/EmptyState";
+
+import Actions from "metabase/entities/actions";
+import type { WritebackAction } from "metabase-types/api";
+import type { State } from "metabase-types/store";
+
 import ModelPicker from "../ModelPicker";
 import ActionOptionItem from "./ActionOptionItem";
 
@@ -31,7 +33,8 @@ export default function ActionPicker({
           >
             {t`Select Model`}
           </Button>
-          <ModelActionPicker
+
+          <ConnectedModelActionPicker
             modelId={modelId}
             value={value}
             onChange={onChange}
@@ -43,38 +46,41 @@ export default function ActionPicker({
 }
 
 function ModelActionPicker({
-  modelId,
   value,
   onChange,
+  actions,
 }: {
-  modelId: number;
   value: WritebackAction | undefined;
   onChange: (newValue: WritebackAction) => void;
+  actions: WritebackAction[];
 }) {
-  const [modelActions, setModelActions] = useState<WritebackAction[]>([]);
-
-  useEffect(() => {
-    ActionsApi.list({ "model-id": modelId }).then(setModelActions);
-  }, [modelId]);
+  if (!actions?.length) {
+    return (
+      <EmptyState
+        message={t`There are no actions for this model`}
+        action={t`Create new action`}
+        link={"/action/create"}
+      />
+    );
+  }
 
   return (
     <ul>
-      {!modelActions?.length ? (
-        <EmptyState
-          message={t`There are no actions for this model`}
-          action={t`Create new action`}
-          link={"/action/create"}
+      {actions?.map(action => (
+        <ActionOptionItem
+          name={action.name ?? action.slug}
+          description={action.description}
+          isSelected={action.id === value?.id}
+          key={action.slug}
+          onClick={() => onChange(action)}
         />
-      ) : (
-        modelActions?.map(action => (
-          <ActionOptionItem
-            name={action.name ?? action.slug}
-            isSelected={action.id === value?.id}
-            key={action.slug}
-            onClick={() => onChange(action)}
-          />
-        ))
-      )}
+      ))}
     </ul>
   );
 }
+
+const ConnectedModelActionPicker = Actions.loadList({
+  query: (state: State, props: { modelId?: number | null }) => ({
+    "model-id": props?.modelId,
+  }),
+})(ModelActionPicker);

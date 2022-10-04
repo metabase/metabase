@@ -45,7 +45,7 @@ export const closeActionParametersModal = createAction(
   CLOSE_ACTION_PARAMETERS_MODAL,
 );
 
-interface DashbardAttributes {
+interface DashboardAttributes {
   card_id?: number | null;
   action?: WritebackAction | null;
   parameter_mappings?: ActionParametersMapping[] | null;
@@ -54,7 +54,7 @@ interface DashbardAttributes {
 
 export function updateButtonActionMapping(
   dashCardId: number,
-  attributes: DashbardAttributes,
+  attributes: DashboardAttributes,
 ) {
   return (dispatch: Dispatch) => {
     dispatch(

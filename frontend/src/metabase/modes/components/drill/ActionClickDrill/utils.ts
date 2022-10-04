@@ -7,6 +7,8 @@ import type {
   ParametersForActionExecution,
   WritebackAction,
   WritebackParameter,
+  ParameterId,
+  ActionParameterValue,
 } from "metabase-types/api";
 import type { ParameterValueOrArray } from "metabase-types/types/Parameter";
 
@@ -14,7 +16,7 @@ function formatParameterValue(value: ParameterValueOrArray) {
   return Array.isArray(value) ? value[0] : value;
 }
 
-type ActionParameterTuple = [string, string | number];
+type ActionParameterTuple = [ParameterId, ActionParameterValue];
 
 export function getDashcardParamValues(
   dashcard: ActionDashboardCard,
@@ -57,10 +59,7 @@ function isMappedParameter(
   parameter: WritebackParameter,
   dashboardParamValues: ParametersForActionExecution,
 ) {
-  return Object.prototype.hasOwnProperty.call(
-    dashboardParamValues,
-    parameter.id,
-  );
+  return parameter.id in dashboardParamValues;
 }
 
 export function getNotProvidedActionParameters(
