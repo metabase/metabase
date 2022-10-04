@@ -14,8 +14,7 @@
 (def ^:private dbs-exempt-from-format-rows-tests
   "DBs to skip the tests below for. TIMEZONE FIXME — why are so many databases not running these tests? Most of these
   should be able to pass with a few tweaks."
-  ;#{:oracle :mongo :redshift :presto :sparksql :snowflake})
-  #{})
+  #{:oracle :mongo :redshift :presto :sparksql})
 
 (deftest format-rows-test
   (mt/test-drivers (mt/normal-drivers-except dbs-exempt-from-format-rows-tests)
@@ -164,24 +163,42 @@
     (is (format-rows/format-value java.time.OffsetDateTime/MAX (t/zone-id "UTC")))
     (is (format-rows/format-value java.time.OffsetDateTime/MIN (t/zone-id "UTC")))))
 
-(defn- format-rows [rows]
+(defn- format-rows
+  [rows metadata]
   (let [rff (format-rows/format-rows {} (constantly conj))
-        rf  (rff nil)]
+        rf  (rff metadata)]
     (transduce identity rf rows)))
 
-#_(deftest results-timezone-test
+(deftest results-timezone-test
+  (driver/with-driver ::timezone-driver
     (testing "Make sure ISO-8601 timestamps are written correctly based on the report-timezone"
-      (driver/with-driver ::timezone-driver
-        (doseq [[timezone-id expected-rows] {"UTC"        [["2011-04-18T10:12:47.232Z"
-                                                            "2011-04-18T00:00:00Z"
-                                                            "2011-04-18T10:12:47.232Z"]]
-                                             "Asia/Tokyo" [["2011-04-18T19:12:47.232+09:00"
-                                                            "2011-04-18T00:00:00+09:00"
-                                                            "2011-04-18T19:12:47.232+09:00"]]}]
-          (mt/with-results-timezone-id timezone-id
-            (testing (format "timezone ID '%s'" timezone-id)
-              (let [rows [[(t/instant "2011-04-18T10:12:47.232Z")
-                           (t/local-date 2011 4 18)
-                           (t/offset-date-time "2011-04-18T10:12:47.232Z")]]]
-                (is (= expected-rows
-                       (format-rows rows))))))))))
+      (doseq [[timezone-id expected-rows] {"UTC"        [["2011-04-18T10:12:47.232Z"
+                                                          "2011-04-18T00:00:00Z"
+                                                          "2011-04-18T10:12:47.232Z"]]
+                                           "Asia/Tokyo" [["2011-04-18T19:12:47.232+09:00"
+                                                          "2011-04-18T00:00:00+09:00"
+                                                          "2011-04-18T19:12:47.232+09:00"]]}]
+        (mt/with-results-timezone-id timezone-id
+          (testing (format "timezone ID '%s'" timezone-id)
+            (let [rows [[(t/instant "2011-04-18T10:12:47.232Z")
+                         (t/local-date 2011 4 18)
+                         (t/offset-date-time "2011-04-18T10:12:47.232Z")]]]
+              (is (= expected-rows
+                     (format-rows rows {:cols [{}{}{}]}))))))))
+
+    (testing "Make sure ISO-8601 timestamps respects the converted_timezone metadata"
+      (doseq [[timezone-id expected-rows] {"UTC"        [["2011-04-18T12:12:47.232+02:00"
+                                                          "2011-04-18T00:00:00+07:00"
+                                                          "2011-04-18T10:12:47.232Z"]]
+                                           "Asia/Tokyo" [["2011-04-18T12:12:47.232+02:00"
+                                                          "2011-04-18T00:00:00+07:00"
+                                                          "2011-04-18T10:12:47.232Z"]]}]
+        (mt/with-results-timezone-id timezone-id
+          (testing (format "timezone ID '%s'" timezone-id)
+            (let [rows [[(t/instant "2011-04-18T10:12:47.232Z")
+                         (t/local-date 2011 4 18)
+                         (t/offset-date-time "2011-04-18T10:12:47.232Z")]]]
+              (is (= expected-rows
+                     (format-rows rows {:cols [{:converted_timezone "Europe/Rome"}
+                                               {:converted_timezone "Asia/Ho_Chi_Minh"}
+                                               {:converted_timezone "UTC"}]}))))))))))
