@@ -38,7 +38,7 @@ const DatabasePane = Databases.load({
 })(DatabasePaneInner);
 
 DatabasePane.propTypes = {
-  show: PropTypes.func.isRequired,
+  onItemClick: PropTypes.func.isRequired,
   database: PropTypes.object.isRequired,
 };
 

@@ -28,7 +28,7 @@ const mapDispatchToProps = {
 };
 
 const propTypes = {
-  show: PropTypes.func.isRequired,
+  onItemClick: PropTypes.func.isRequired,
   table: PropTypes.object,
   fetchForeignKeys: PropTypes.func.isRequired,
   fetchMetadata: PropTypes.func.isRequired,
@@ -57,7 +57,7 @@ class TablePane extends React.Component {
   }
 
   render() {
-    const { table, show } = this.props;
+    const { table, onItemClick } = this.props;
     const { error, hasFetchedMetadata } = this.state;
     return table ? (
       <div>
@@ -72,7 +72,7 @@ class TablePane extends React.Component {
           {table.fields && (
             <FieldList
               fields={table.fields}
-              onFieldClick={f => show("field", f)}
+              onFieldClick={f => onItemClick("field", f)}
             />
           )}
           <MetadataContainer>
@@ -85,7 +85,7 @@ class TablePane extends React.Component {
               {table?.connectedTables() && (
                 <ConnectedTableList
                   tables={table.connectedTables()}
-                  onTableClick={t => show("table", t)}
+                  onTableClick={t => onItemClick("table", t)}
                 />
               )}
             </Fade>

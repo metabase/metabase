@@ -10,7 +10,7 @@ import {
   NodeListItemIcon,
 } from "./NodeList.styled";
 
-const MainPane = ({ databases, show }) => (
+const MainPane = ({ databases, onItemClick }) => (
   <div>
     <p className="mt2 mb3 text-spaced">
       {t`Browse the contents of your databases, tables, and columns. Pick a database to get started.`}
@@ -21,7 +21,9 @@ const MainPane = ({ databases, show }) => (
           .filter(db => !db.is_saved_questions)
           .map(database => (
             <li key={database.id}>
-              <NodeListItemLink onClick={() => show("database", database)}>
+              <NodeListItemLink
+                onClick={() => onItemClick("database", database)}
+              >
                 <NodeListItemIcon name="database" />
                 <NodeListItemName>{database.name}</NodeListItemName>
               </NodeListItemLink>
@@ -32,7 +34,7 @@ const MainPane = ({ databases, show }) => (
 );
 
 MainPane.propTypes = {
-  show: PropTypes.func.isRequired,
+  onItemClick: PropTypes.func.isRequired,
   databases: PropTypes.array,
 };
 

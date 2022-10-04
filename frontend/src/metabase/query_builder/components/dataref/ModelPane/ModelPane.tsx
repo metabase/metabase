@@ -24,7 +24,7 @@ import {
 } from "./ModelPane.styled";
 
 interface ModelPaneProps {
-  show: (type: string, item: unknown) => void;
+  onItemClick: (type: string, item: unknown) => void;
   model: Card;
   question: Question;
 }
@@ -33,7 +33,7 @@ const mapStateToProps = (state: State, props: ModelPaneProps) => ({
   question: getQuestionFromCard(state, props.model),
 });
 
-const ModelPane = ({ show, question }: ModelPaneProps) => {
+const ModelPane = ({ onItemClick, question }: ModelPaneProps) => {
   const table = question.table();
   return (
     <div>
@@ -71,7 +71,10 @@ const ModelPane = ({ show, question }: ModelPaneProps) => {
         </ModelPaneDetailText>
       </ModelPaneDetail>
       {table?.fields && (
-        <FieldList fields={table.fields} onFieldClick={f => show("field", f)} />
+        <FieldList
+          fields={table.fields}
+          onFieldClick={f => onItemClick("field", f)}
+        />
       )}
     </div>
   );

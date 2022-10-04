@@ -15,8 +15,8 @@ import {
   NodeListContainer,
   NodeListIcon,
   NodeListTitleText,
-} from "../NodeList.styled";
-import { ModelId } from "./DatabaseTablesPane.styled";
+  ModelId,
+} from "./NodeList.styled";
 
 interface DatabaseTablesPaneProps {
   onItemClick: (type: string, item: unknown) => void;

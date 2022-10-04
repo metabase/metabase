@@ -85,7 +85,7 @@ export default class DataReference extends Component {
     });
   };
 
-  show = (type, item) => {
+  onItemClick = (type, item) => {
     this.setState({
       stack: this.state.stack.concat({ type, item }),
     });
@@ -99,7 +99,7 @@ export default class DataReference extends Component {
     let icon = null;
     if (stack.length === 0) {
       title = t`Data Reference`;
-      content = <MainPane {...this.props} show={this.show} />;
+      content = <MainPane {...this.props} onItemClick={this.onItemClick} />;
     } else {
       const page = stack[stack.length - 1];
       title = page.item.name;
@@ -109,7 +109,7 @@ export default class DataReference extends Component {
         <Pane
           {...this.props}
           {...{ [page.type]: page.item }}
-          show={this.show}
+          onItemClick={this.onItemClick}
         />
       );
     }
