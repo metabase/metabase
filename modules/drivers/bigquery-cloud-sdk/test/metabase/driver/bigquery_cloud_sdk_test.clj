@@ -509,6 +509,14 @@
                  (mt/rows
                   (qp/process-query query)))))))))
 
+(mt/defdataset with-time-column
+  [["datediff-with-time"
+    [{:field-name "index" :base-type :type/Integer}
+     {:field-name "description" :base-type :type/Text}
+     {:field-name "ts" :base-type :type/DateTimeWithTZ}
+     {:field-name "t" :base-type :type/Time}]
+    [[1 "simple comparing across types" #t "2021-08-03T08:09:10.582Z" #t "09:19:09"]]]])
+
 (deftest datediff-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "Edge cases at year and month boundary"
@@ -530,7 +538,7 @@
                                                  $datediff-edgecases.start
                                                  :day]}}))))))
     (testing "Cannot datediff against time column"
-      (mt/dataset useful-dates
+      (mt/dataset with-time-column
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"Only datetime, timestamp, or date types allowed. Found .*"
                               (mt/rows
