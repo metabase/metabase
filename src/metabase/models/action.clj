@@ -167,6 +167,11 @@
       (m/assoc-some card :action_id (get card-id->action-id (:id card))))
     cards))
 
+(defn unique-field-slugs?
+  "Makes sure that if `coll` is indexed by `index-by`, no keys will be in conflict."
+  [fields]
+  (empty? (m/filter-vals #(not= % 1) (frequencies (map (comp u/slugify :name) fields)))))
+
 (defn- implicit-action-parameters
   [cards]
   (let [card-id-by-table-id (into {}
@@ -174,18 +179,19 @@
                                         :let [{:keys [table-id]} (query/query->database-and-table-ids (:dataset_query card))]
                                         :when table-id]
                                     [table-id (:id card)]))
-        tables (hydrate (db/select 'Table :id [:in (keys card-id-by-table-id)]) :fields)]
+        tables (when-let [table-ids (seq (keys card-id-by-table-id))]
+                 (hydrate (db/select 'Table :id [:in table-ids]) :fields))]
     (into {}
           (for [table tables
-                :let [parameters (->> table
-                                      :fields
+                :let [fields (:fields table)]
+                ;; Skip tables for have conflicting slugified columns i.e. table has "name" and "NAME" columns.
+                :when (unique-field-slugs? fields)
+                :let [parameters (->> fields
                                       (map (fn [field]
                                              {:id (u/slugify (:name field))
                                               :target [:variable [:template-tag (u/slugify (:name field))]]
                                               :type (:base_type field)
-                                              ::pk? (isa? (:semantic_type field) :type/PK)})))]
-                ;; Skip tables for have conflicting slugified columns i.e. table has "name" and "NAME" columns.
-                :when (not (keys (m/filter-vals #(not= % 1) (frequencies (map :id parameters)))))]
+                                              ::pk? (isa? (:semantic_type field) :type/PK)})))]]
             [(get card-id-by-table-id (:id table)) parameters]))))
 
 (defn merged-model-action
@@ -197,17 +203,17 @@
   (let [model-actions (apply db/select ModelAction {:order-by [:id]} options)
         model-action-by-model-slug (m/index-by (juxt :card_id :slug)
                                                model-actions)
-        actions-by-id (when-let [action-ids (not-empty (keep :action_id (vals model-action-by-model-slug)))]
+        actions-by-id (when-let [action-ids (not-empty (keep :action_id model-actions))]
                         (m/index-by :id (select-actions :id [:in action-ids])))
-        implicit-card-ids (set (map :card_id (remove :action_id model-actions)))
-        implicit-cards (if known-models
-                         (->> known-models
-                              (filter #(contains? implicit-card-ids (:id %)))
-                              distinct)
-                         (when (seq implicit-card-ids)
-                           (db/select 'Card :id [:in implicit-card-ids])))
-        parameters-by-model-id (when (seq implicit-cards)
-                                 (implicit-action-parameters implicit-cards))]
+        model-ids-with-implicit-actions (set (map :card_id (remove :action_id model-actions)))
+        models-with-implicit-actions (if known-models
+                                       (->> known-models
+                                            (filter #(contains? model-ids-with-implicit-actions (:id %)))
+                                            distinct)
+                                       (when (seq model-ids-with-implicit-actions)
+                                         (db/select 'Card :id [:in model-ids-with-implicit-actions])))
+        parameters-by-model-id (when (seq models-with-implicit-actions)
+                                 (implicit-action-parameters models-with-implicit-actions))]
     (for [model-action model-actions
           :let [model-slug [(:card_id model-action) (:slug model-action)]
                 model-action (get model-action-by-model-slug model-slug)

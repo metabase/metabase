@@ -19,7 +19,7 @@
 
 (defn- execute-query-action!
   "Execute a `QueryAction` with parameters as passed in from an
-  endpoint (see [[map-parameters]] for a description of their shape).
+  endpoint of shape `{<parameter-id> <value>}`.
 
   `action` should already be hydrated with its `:card`."
   [{:keys [card] action-id :id :as action} request-parameters]
@@ -78,21 +78,20 @@
 (defn- execute-implicit-action
   [{:keys [card_id slug requires_pk] :as _model-action} request-parameters]
   (let [{database-id :db_id table-id :id :as table} (implicit-action-table card_id)
-        {pk-fields true} (group-by #(isa? (:semantic_type %) :type/PK) (:fields table))
-        slug->field-name (into {} (map (juxt (comp u/slugify :name) :name) (:fields table)))
-        _ (api/check (empty? (keys (m/filter-vals #(not= % 1) (frequencies (map :name (:fields table))))))
+        pk-fields (filterv #(isa? (:semantic_type %) :type/PK) (:fields table))
+        slug->field-name (into {} (map (juxt (comp u/slugify :name) :name)) (:fields table))
+        _ (api/check (action/unique-field-slugs? (:fields table))
                      400
                      (tru "Cannot execute implicit action on a table with ambiguous column names."))
         _ (api/check (= (count pk-fields) 1)
                      400
-                     (tru "Cannot execute implicit action on a table without a primary key."))
+                     (tru "Must execute implicit action on a table with a single primary key."))
         extra-parameters (set/difference (set (keys request-parameters))
                                          (set (keys slug->field-name)))
 
         pk-field (first pk-fields)
         simple-parameters (update-keys request-parameters (comp keyword slug->field-name))
         pk-field-name (keyword (:name pk-field))
-        row-parameters (dissoc simple-parameters pk-field-name)
         _ (api/check (empty? extra-parameters)
                      400
                      {:message (tru "No destination parameter found for {0}. Found: {1}"
@@ -106,9 +105,6 @@
                      400
                      (tru "Missing primary key parameter: {0}"
                           (pr-str (u/slugify (:name pk-field)))))
-        _ (api/check (seq row-parameters)
-                     400
-                     (tru "Implicit parameters were not provided."))
         query (cond-> {:database database-id,
                        :type :query,
                        :query {:source-table table-id}}
@@ -124,6 +120,11 @@
 
                           :else
                           :row/create)
+        row-parameters (cond-> simple-parameters
+                         (not= implicit-action :row/create) (dissoc pk-field-name))
+        _ (api/check (and (not= implicit-action :row/delete) (seq row-parameters))
+                     400
+                     (tru "Implicit parameters must be provided."))
         arg-map (cond-> query
                   (= implicit-action :row/create)
                   (assoc :create-row row-parameters)
@@ -133,8 +134,8 @@
     (actions/perform-action! implicit-action arg-map)))
 
 (defn execute-dashcard!
-  "Execute the given action in the dashboard/dashcard context with the given unmapped-parameters and extra-parameters.
-   See [[map-parameters]] for a description of their expected shapes."
+  "Execute the given action in the dashboard/dashcard context with the given parameters
+   of shape `{<parameter-id> <value>}."
   [dashboard-id dashcard-id slug request-parameters]
   (actions/check-actions-enabled)
   (api/read-check Dashboard dashboard-id)

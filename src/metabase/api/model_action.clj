@@ -2,6 +2,7 @@
   (:require
     [compojure.core :refer [DELETE GET POST PUT]]
     [honeysql.core :as hsql]
+    [metabase.actions :as actions]
     [metabase.api.common :as api]
     [metabase.models :refer [Action Card HTTPAction ModelAction QueryAction]]
     [metabase.util.schema :as su]
@@ -51,4 +52,4 @@
     (db/delete! Action :id action_id)
     api/generic-204-no-content))
 
-(api/define-routes)
+(api/define-routes actions/+check-actions-enabled)

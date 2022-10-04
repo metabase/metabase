@@ -1875,9 +1875,7 @@
                           ModelAction [_ {:slug "custom" :card_id card-id :action_id action-id}]
                           Dashboard [{dashboard-id :id}]
                           DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
-                                                            :card_id card-id
-                                                            :parameter_mappings [{:parameter_id "my_id"
-                                                                                  :target [:variable [:template-tag "id"]]}]}]]
+                                                            :card_id card-id}]]
             (let [execute-path (format "dashboard/%s/dashcard/%s/execute/custom"
                                        dashboard-id
                                        dashcard-id)]
@@ -1924,11 +1922,7 @@
                           ModelAction [_ {:slug "custom" :card_id card-id :action_id action-id}]
                           Dashboard [{dashboard-id :id}]
                           DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
-                                                            :card_id card-id
-                                                            :parameter_mappings [{:parameter_id "my_id"
-                                                                                  :target [:template-tag "id"]}
-                                                                                 {:parameter_id "my_fail"
-                                                                                  :target [:template-tag "fail"]}]}]]
+                                                            :card_id card-id}]]
             (let [execute-path (format "dashboard/%s/dashcard/%s/execute/custom"
                                        dashboard-id
                                        dashcard-id)]
@@ -1962,9 +1956,7 @@
                         Dashboard [{dashboard-id :id}]
                         DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
                                                           :card_id card-id
-                                                          :visualization_settings {:action_slug "implicit"}
-                                                          :parameter_mappings [{:parameter_id "dashboard-id"
-                                                                                :target [:variable [:template-tag "id"]]}]}]]
+                                                          :visualization_settings {:action_slug "implicit"}}]]
           (let [execute-path (format "dashboard/%s/dashcard/%s/execute/implicit"
                                      dashboard-id
                                      dashcard-id)]
@@ -1981,7 +1973,7 @@
                             (mt/user-http-request :crowberto :post 400 execute-path
                                                   {:parameters {"name" "Birds"}}))))
             (testing "Missing other parameters should fail gracefully"
-              (is (partial= "Implicit parameters were not provided."
+              (is (partial= "Implicit parameters must be provided."
                             (mt/user-http-request :crowberto :post 400 execute-path
                                                   {:parameters {"id" 1}}))))))))))
 
@@ -1994,9 +1986,7 @@
                           ModelAction [_ {:slug "custom" :card_id card-id :action_id action-id}]
                           Dashboard [{dashboard-id :id}]
                           DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
-                                                            :card_id card-id
-                                                            :parameter_mappings [{:parameter_id "my_id"
-                                                                                  :target [:variable [:template-tag "id"]]}]}]]
+                                                            :card_id card-id}]]
             (let [execute-path (format "dashboard/%s/dashcard/%s/execute/custom"
                                        dashboard-id
                                        dashcard-id)]
