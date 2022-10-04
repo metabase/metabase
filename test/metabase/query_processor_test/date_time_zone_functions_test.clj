@@ -285,4 +285,18 @@
           ;;       year month day hour minute second
           (is (= [[0    0     1   39   2384   143082]
                   [0    0     1   30   1856   111388]]
-                 (mt/rows (qp/process-query query)))))))))
+                 (mt/rows (qp/process-query query)))))))
+    (testing "Can compare across dates, datetimes, and with timezones"
+      (mt/dataset useful-dates
+        ;; these particular numbers are not important, just that we can compare between dates, datetimes, etc.
+        (is (= [[428 396 31]]
+               (mt/rows
+                (mt/run-mbql-query datediff-mixed-types
+                                   {:fields [[:expression "dt->tz"]
+                                             [:expression "d->tz"]
+                                             [:expression "dt->d"]]
+                                    :filter [:= $index 1]
+                                    :expressions
+                                    {"dt->tz" [:datediff $dt $tz :day]
+                                     "d->tz"  [:datediff $d $tz :day]
+                                     "dt->d"  [:datediff $dt $d :day]}}))))))))
