@@ -30,7 +30,6 @@ import { memoizeClass, sortObject } from "metabase-lib/lib/utils";
 
 // TODO: remove these dependencies
 import * as Urls from "metabase/lib/urls";
-import { isTransientId } from "metabase/meta/Card";
 import {
   getCardUiParameters,
   remapParameterValuesToTemplateTags,
@@ -73,6 +72,7 @@ import { utf8_to_b64url } from "metabase/lib/encoding";
 import { CollectionId } from "metabase-types/api";
 
 import { getQuestionVirtualTableId } from "metabase/lib/saved-questions/saved-questions";
+import { isTransientId } from "metabase-lib/lib/queries/utils/card";
 import {
   findColumnIndexForColumnSetting,
   findColumnSettingIndexForColumn,
