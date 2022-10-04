@@ -552,16 +552,20 @@ class QuestionInner {
     return pivot(this, breakouts, dimensions) || this;
   }
 
-  drillUnderlyingRecords(values: DimensionValue[], column?: Column): Question {
+  drillUnderlyingRecords(
+    dimensions: DimensionValue[],
+    column?: Column,
+  ): Question {
     let query = this.query();
     if (!(query instanceof StructuredQuery)) {
       return this;
     }
 
-    query = values.reduce(
-      (query, { value, column }) => drillFilter(query, value, column),
-      query,
-    );
+    dimensions.forEach(({ value, column }) => {
+      if (column.source !== "aggregation") {
+        query = drillFilter(query, value, column);
+      }
+    });
 
     const dimension = column && query.parseFieldReference(column.field_ref);
     if (dimension instanceof AggregationDimension) {
