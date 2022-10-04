@@ -15,10 +15,4 @@
    {:field-name "tz" :base-type :type/DateTimeWithTZ}
    {:field-name "d" :base-type :type/Date}
    {:field-name "dt" :base-type :type/DateTime}]
-  [[1 "simple comparing across types" #t "2021-08-03T08:09:10.582Z" #t "2022-09-04" #t "2022-10-05 09:19:09"]]]
- ["datediff-with-time"
-  [{:field-name "index" :base-type :type/Integer}
-   {:field-name "description" :base-type :type/Text}
-   {:field-name "ts" :base-type :type/DateTimeWithTZ}
-   {:field-name "t" :base-type :type/Time}]
-  [[1 "simple comparing across types" #t "2021-08-03T08:09:10.582Z" #t "09:19:09"]]]]
+  [[1 "simple comparing across types" #t "2021-08-03T08:09:10.582Z" #t "2022-09-04" #t "2022-10-05 09:19:09"]]]]
