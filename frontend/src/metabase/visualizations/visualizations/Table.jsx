@@ -11,7 +11,6 @@ import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils"
 import { getColumnCardinality } from "metabase/visualizations/lib/utils";
 import { formatColumn } from "metabase/lib/formatting";
 
-import * as Q_DEPRECATED from "metabase/lib/query";
 import {
   isMetric,
   isDimension,
@@ -29,6 +28,7 @@ import ChartSettingsTableFormatting, {
 
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import * as Q_DEPRECATED from "metabase-lib/lib/utils/query";
 
 import TableSimple from "../components/TableSimple";
 import TableInteractive from "../components/TableInteractive/TableInteractive.jsx";

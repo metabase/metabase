@@ -9,7 +9,7 @@ const mockTableMetadata = {
   fields: [{ id: 1, display_name: "Total" }],
 };
 
-describe("metabase/lib/query/description", () => {
+describe("metabase-lib/lib/utils/query/description", () => {
   describe("generateQueryDescription", () => {
     it("should work with multiple aggregations", () => {
       expect(
