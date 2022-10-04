@@ -47,7 +47,10 @@ function hasTime(value: unknown) {
  * Returns MBQL :field clause with temporal bucketing applied.
  * @deprecated -- just use FieldDimension to do this stuff.
  */
-function getDateTimeDimension(filter: any, bucketing?: string | null) {
+function getDateTimeDimensionFromFilter(
+  filter: any,
+  bucketing?: string | null,
+) {
   let dimension = filter?.dimension?.();
   if (!dimension) {
     dimension = Dimension.parseMBQL(getRelativeDatetimeField(filter));
@@ -62,11 +65,24 @@ function getDateTimeDimension(filter: any, bucketing?: string | null) {
   return null;
 }
 
+// note: this is probably buggy because we aren't passing `metadata` and `query`
+function getDateTimeDimensionFromMbql(mbql: any, bucketing?: string) {
+  const dimension = Dimension.parseMBQL(mbql);
+  if (dimension) {
+    if (bucketing) {
+      return dimension.withTemporalUnit(bucketing).mbql();
+    } else {
+      return dimension.withoutTemporalBucketing().mbql();
+    }
+  }
+  return mbql;
+}
+
 // add temporal-unit to fields if any of them have a time component
-function getDateTimeDimensionAndValues(filter: Filter) {
+function getDateTimeDimensionFromFilterAndValues(filter: Filter) {
   let values = filter.slice(2).map(value => value && getDate(value));
   const bucketing = _.any(values, hasTime) ? "minute" : null;
-  const dimension = getDateTimeDimension(filter, bucketing);
+  const dimension = getDateTimeDimensionFromFilter(filter, bucketing);
   const { hours, minutes } = getTimeComponent(values[0]);
   if (
     typeof hours === "number" &&
@@ -88,7 +104,8 @@ function getDateTimeDimensionAndValues(filter: Filter) {
 
 function getOnFilterDimensionAndValues(filter: Filter) {
   const [op] = filter;
-  const [dimension, ...values] = getDateTimeDimensionAndValues(filter);
+  const [dimension, ...values] =
+    getDateTimeDimensionFromFilterAndValues(filter);
 
   if (op === "between") {
     return [dimension, values[1]];
@@ -99,7 +116,8 @@ function getOnFilterDimensionAndValues(filter: Filter) {
 
 function getBeforeFilterDimensionAndValues(filter: Filter) {
   const [op] = filter;
-  const [dimension, ...values] = getDateTimeDimensionAndValues(filter);
+  const [dimension, ...values] =
+    getDateTimeDimensionFromFilterAndValues(filter);
 
   if (op === "between") {
     return [dimension, values[1]];
@@ -109,13 +127,14 @@ function getBeforeFilterDimensionAndValues(filter: Filter) {
 }
 
 function getAfterFilterDimensionAndValues(filter: Filter) {
-  const [field, ...values] = getDateTimeDimensionAndValues(filter);
+  const [field, ...values] = getDateTimeDimensionFromFilterAndValues(filter);
   return [field, values[0]];
 }
 
 function getBetweenFilterDimensionAndValues(filter: Filter) {
   const [op] = filter;
-  const [dimension, ...values] = getDateTimeDimensionAndValues(filter);
+  const [dimension, ...values] =
+    getDateTimeDimensionFromFilterAndValues(filter);
 
   if (op === "=" || op === "<") {
     const beforeDate = moment(values[0]).subtract(30, "day");
@@ -134,7 +153,7 @@ export function getPreviousDateFilter(filter: Filter) {
   return (
     updateRelativeDatetimeFilter(filter, false) || [
       "time-interval",
-      getDateTimeDimension(filter),
+      getDateTimeDimensionFromFilter(filter),
       -getIntervals(filter),
       getUnit(filter),
       getOptions(filter),
@@ -152,7 +171,7 @@ export function isPreviousDateFilter(filter: Filter) {
 }
 
 export function getCurrentDateFilter(filter: Filter) {
-  return ["time-interval", getDateTimeDimension(filter), "current"];
+  return ["time-interval", getDateTimeDimensionFromFilter(filter), "current"];
 }
 
 export function isCurrentDateFilter(filter: Filter) {
@@ -164,7 +183,7 @@ export function getNextDateFilter(filter: Filter) {
   return (
     updateRelativeDatetimeFilter(filter, true) || [
       "time-interval",
-      getDateTimeDimension(filter),
+      getDateTimeDimensionFromFilter(filter),
       getIntervals(filter),
       getUnit(filter),
       getOptions(filter),
@@ -227,4 +246,91 @@ export function getExcludeDateFilter(filter: Filter) {
 export function isExcludeDateFilter(filter: Filter) {
   const [op] = filter;
   return ["!=", "is-null", "not-null"].indexOf(op) > -1;
+}
+
+export function getTodayDateFilter(filter: Filter) {
+  return [
+    "time-interval",
+    getDateTimeDimensionFromMbql(filter[1]),
+    "current",
+    "day",
+    { include_current: true },
+  ];
+}
+
+export function getYesterdayDateFilter(filter: Filter) {
+  return [
+    "time-interval",
+    getDateTimeDimensionFromMbql(filter[1]),
+    -1,
+    "day",
+    { include_current: false },
+  ];
+}
+
+export function getLast7DaysDateFilter(filter: Filter) {
+  return [
+    "time-interval",
+    getDateTimeDimensionFromMbql(filter[1]),
+    -7,
+    "day",
+    { include_current: false },
+  ];
+}
+
+export function getLast30DaysDateFilter(filter: Filter) {
+  return [
+    "time-interval",
+    getDateTimeDimensionFromMbql(filter[1]),
+    -30,
+    "day",
+    { include_current: false },
+  ];
+}
+
+export function getLastMonthDateFilter(filter: Filter) {
+  return [
+    "time-interval",
+    getDateTimeDimensionFromMbql(filter[1]),
+    -1,
+    "month",
+    { include_current: false },
+  ];
+}
+
+export function getLast3MonthsDateFilter(filter: Filter) {
+  return [
+    "time-interval",
+    getDateTimeDimensionFromMbql(filter[1]),
+    -3,
+    "month",
+    { include_current: false },
+  ];
+}
+
+export function getLast12MonthsDateFilter(filter: Filter) {
+  return [
+    "time-interval",
+    getDateTimeDimensionFromMbql(filter[1]),
+    -12,
+    "month",
+    { include_current: false },
+  ];
+}
+
+export function getInitialSpecificDatesShortcut(filter: Filter) {
+  return [
+    "between",
+    getDateTimeDimensionFromMbql(filter[1]),
+    moment().subtract(30, "day").format("YYYY-MM-DD"),
+    moment().format("YYYY-MM-DD"),
+  ];
+}
+
+export function getInitialRelativeDatesShortcut(filter: Filter) {
+  return ["time-interval", getDateTimeDimensionFromMbql(filter[1]), -30, "day"];
+}
+
+export function getInitialExcludeShortcut(filter: Filter) {
+  return ["!=", getDateTimeDimensionFromMbql(filter[1])];
 }
