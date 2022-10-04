@@ -1,12 +1,12 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
-import { fieldRefForColumn } from "metabase/lib/dataset";
 import {
   getAggregationOperator,
   isCompatibleAggregationOperatorForField,
 } from "metabase/lib/schema_metadata";
 import { capitalize } from "metabase/lib/formatting";
+import { fieldRefForColumn } from "metabase-lib/lib/utils/dataset";
 
 export default ({ question, clicked = {} }) => {
   const { column, value } = clicked;

@@ -5,7 +5,6 @@ import {
   isTableDisplay,
   clickBehaviorIsValid,
 } from "metabase/lib/click-behavior";
-import { keyForColumn } from "metabase/lib/dataset";
 
 import { useOnMount } from "metabase/hooks/use-on-mount";
 import { usePrevious } from "metabase/hooks/use-previous";
@@ -24,6 +23,7 @@ import type {
   DatasetData,
 } from "metabase-types/api";
 import type { Column } from "metabase-types/types/Dataset";
+import { keyForColumn } from "metabase-lib/lib/utils/dataset";
 
 import { getClickBehaviorForColumn } from "./utils";
 import ClickBehaviorSidebarContent from "./ClickBehaviorSidebarContent";

@@ -6,9 +6,9 @@ import _ from "underscore";
 
 import ErrorMessage from "metabase/components/ErrorMessage";
 import Visualization from "metabase/visualizations/components/Visualization";
-import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 import Modal from "metabase/components/Modal";
+import { datasetContainsNoResults } from "metabase-lib/lib/utils/dataset";
 import { ALERT_TYPE_ROWS } from "metabase-lib/lib/Alert";
 
 const ALLOWED_VISUALIZATION_PROPS = [
