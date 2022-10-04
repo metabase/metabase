@@ -1,8 +1,8 @@
 ---
-title: "Exploration and organization overview"
+title: "Organization overview"
 ---
 
-# Exploration and organization overview
+# Organization overview
 
 Tools for finding things and keeping your Metabase organized. 
 
