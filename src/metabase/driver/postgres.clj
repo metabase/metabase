@@ -471,9 +471,9 @@
    :smallserial   :type/Integer
    :text          :type/Text
    :time          :type/Time
-   :timetz        :type/TimeWithLocalTZ
+   :timetz        :type/TimeWithTZ
    :timestamp     :type/DateTime
-   :timestamptz   :type/DateTimeWithLocalTZ
+   :timestamptz   :type/DateTimeWithTZ
    :tsquery       :type/*
    :tsvector      :type/*
    :txid_snapshot :type/*

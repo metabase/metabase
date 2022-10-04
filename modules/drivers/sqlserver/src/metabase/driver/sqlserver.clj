@@ -2,6 +2,7 @@
   "Driver for SQLServer databases. Uses the official Microsoft JDBC driver under the hood (pre-0.25.0, used jTDS)."
   (:require [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
+            [honeysql.format :as hformat]
             [honeysql.helpers :as hh]
             [java-time :as t]
             [metabase.config :as config]
@@ -16,6 +17,7 @@
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.interface :as qp.i]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs]])
   (:import [java.sql Connection ResultSet Time]
@@ -29,6 +31,11 @@
 ;; themselves. Since this isn't something we can really change in the query itself don't present the option to the
 ;; users in the UI
 (defmethod driver/supports? [:sqlserver :case-sensitivity-string-filter-options] [_ _] false)
+
+(doseq [[feature supported?] {:convert-timezone true}]
+  (defmethod driver/database-supports? [:sqlserver feature]
+    [_driver _feature _database]
+    supported?))
 
 (defmethod driver/db-start-of-week :sqlserver
   [_]
@@ -221,6 +228,32 @@
   ;; integer overflow errors (especially for millisecond timestamps).
   ;; Work around this by converting the timestamps to minutes instead before calling DATEADD().
   (date-add :minute (hx// expr 60) (hx/literal "1970-01-01")))
+
+(defn- get-offset-of-zoneid
+  [zone-id]
+  (/ (.getTotalSeconds (.getOffset (t/offset-date-time (t/zone-id zone-id)))) 60))
+
+(defrecord AtTimeZone
+  ;; record type to support applying Presto's `AT TIME ZONE` operator to an expression
+  [expr zone]
+  hformat/ToSql
+  (to-sql [_]
+    (format "%s AT TIME ZONE %d"
+      (hformat/to-sql expr)
+      (hformat/to-sql (hx/literal zone)))))
+
+(defmethod sql.qp/->honeysql [:sqlserver :convert-timezone]
+  [driver [_ arg to from]]
+  (let [from (or from (qp.timezone/results-timezone-id))
+        switch-off-set (partial hsql/call :switchoffset)]
+   (cond-> (sql.qp/->honeysql driver arg)
+     from
+     (switch-off-set (get-offset-of-zoneid from))
+     to
+     (->AtTimeZone (get-offset-of-zoneid to)))))
+
+;;#_(hsql/call :switchoffset form (get-offset-of-zoneid from))
+;;#_(hsql/call :todatetimeoffset form to)
 
 (defmethod sql.qp/cast-temporal-string [:sqlserver :Coercion/ISO8601->DateTime]
   [_driver _semantic_type expr]

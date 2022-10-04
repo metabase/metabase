@@ -15,6 +15,7 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.mbql.util :as mbql.u]
             [metabase.public-settings :as public-settings]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.util :as qp.util]
             [metabase.util.honeysql-extensions :as hx]
@@ -191,6 +192,11 @@
   (->> args
        (map (partial sql.qp/->honeysql driver))
        (reduce (partial hsql/call :concat))))
+
+(defmethod sql.qp/->honeysql [:redshift :convert-timezone]
+  [driver [_ arg to from]]
+  (let [from (or from (qp.timezone/results-timezone-id))]
+    (hsql/call :convert_timezone from to (sql.qp/->honeysql driver arg))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |

@@ -208,7 +208,6 @@
 
 (defn is-of-type?
   "Is `honeysql-form` a typed form with `database-type`?
-
     (is-of-type? expr \"datetime\") ; -> true"
   [honeysql-form database-type]
   (= (some-> honeysql-form type-info type-info->db-type str/lower-case)

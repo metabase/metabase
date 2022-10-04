@@ -48,6 +48,8 @@
 
 (defmethod driver/database-supports? [:mysql :persist-models] [_driver _feat _db] true)
 
+(defmethod driver/database-supports? [:mysql :convert-timezone] [_driver _feat _db] true)
+
 (defmethod driver/database-supports? [:mysql :persist-models-enabled]
   [_driver _feat db]
   (-> db :options :persist-models-enabled))
@@ -343,6 +345,10 @@
                                 2)
                           (hx/literal "-01"))))
 
+(defmethod sql.qp/->honeysql [:mysql :convert-timezone]
+  [driver [_ arg to from]]
+  (let [from (or from (qp.timezone/results-timezone-id))]
+    (hsql/call :convert_tz (sql.qp/->honeysql driver arg) from to)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |

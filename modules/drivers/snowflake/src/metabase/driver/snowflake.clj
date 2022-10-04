@@ -20,6 +20,7 @@
             [metabase.driver.sync :as driver.s]
             [metabase.models.secret :as secret]
             [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
@@ -30,6 +31,10 @@
            metabase.util.honeysql_extensions.Identifier))
 
 (driver/register! :snowflake, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
+
+(defmethod driver/supports? [:snowflake :convert-timezone]
+  [_driver _feature]
+  true)
 
 (defmethod driver/humanize-connection-error-message :snowflake
   [_ message]
@@ -237,6 +242,11 @@
 (defmethod sql.qp/->honeysql [:snowflake :time]
   [driver [_ value _unit]]
   (hx/->time (sql.qp/->honeysql driver value)))
+
+(defmethod sql.qp/->honeysql [:snowflake :convert-timezone]
+  [driver [_ arg to from]]
+  (let [from (or from (qp.timezone/results-timezone-id))]
+    (hsql/call :convert_timezone from to (sql.qp/->honeysql driver arg))))
 
 (defmethod driver/table-rows-seq :snowflake
   [driver database table]

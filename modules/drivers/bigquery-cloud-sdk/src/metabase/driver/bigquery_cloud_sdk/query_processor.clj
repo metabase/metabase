@@ -16,6 +16,7 @@
             [metabase.models.setting :as setting]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
@@ -409,6 +410,15 @@
   (defmethod sql.qp/unix-timestamp->honeysql [:bigquery-cloud-sdk unix-timestamp-type]
     [_ _ expr]
     (with-temporal-type (hsql/call bigquery-fn expr) :timestamp)))
+
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :convert-timezone]
+  [driver [_ arg to from]]
+  (let [from (or from (qp.timezone/results-timezone-id))]
+    (cond->> (sql.qp/->honeysql driver arg)
+      from
+      (hsql/call :datetime from)
+      to
+      (hsql/call :datetime to))))
 
 (defmethod sql.qp/->float :bigquery-cloud-sdk
   [_ value]

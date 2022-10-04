@@ -310,11 +310,13 @@
 ;;; |                                           Other Driver Method Impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod driver/supports? [:bigquery-cloud-sdk :percentile-aggregations] [_ _] true)
-
-(defmethod driver/supports? [:bigquery-cloud-sdk :expressions] [_ _] true)
-
-(defmethod driver/supports? [:bigquery-cloud-sdk :foreign-keys] [_ _] true)
+(doseq [[feature supported?] {:percentile-aggregations false
+                              :expressions             false
+                              :foreign-keys            false
+                              :convert-timezone        true}]
+  (defmethod driver/database-supports? [:bigquery-cloud-sdk feature]
+    [_driver _feature _database]
+    supported?))
 
 ;; BigQuery is always in UTC
 (defmethod driver/db-default-timezone :bigquery-cloud-sdk [_ _]
