@@ -9,9 +9,18 @@ import {
   getTimeComponent,
   setTimeComponent,
 } from "metabase-lib/lib/queries/utils/query-time";
-import Dimension from "metabase-lib/lib/Dimension";
+import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
 
 import type Filter from "metabase-lib/lib/queries/structured/Filter";
+import type Field from "metabase-lib/lib/metadata/Field";
+
+const testTemporalUnit = (unit: string) => (filter: Filter) => {
+  const dimension = FieldDimension.parseMBQLOrWarn(filter[1]);
+  if (dimension) {
+    return dimension.temporalUnit() === unit;
+  }
+  return filter[1]?.[2]?.["temporal-unit"] === unit;
+};
 
 function getIntervals([op, _field, value, _unit]: Filter) {
   return op === "time-interval" && typeof value === "number"
@@ -76,6 +85,16 @@ function getDateTimeDimensionFromMbql(mbql: any, bucketing?: string) {
     }
   }
   return mbql;
+}
+
+function getDateTimeFieldRef(field: Field, bucketing?: string) {
+  const dimension =
+    FieldDimension.parseMBQLOrWarn(field) ?? new FieldDimension(null);
+  if (bucketing) {
+    return dimension.withTemporalUnit(bucketing).mbql();
+  } else {
+    return dimension.withoutTemporalBucketing().mbql();
+  }
 }
 
 // add temporal-unit to fields if any of them have a time component
@@ -318,6 +337,14 @@ export function getLast12MonthsDateFilter(filter: Filter) {
   ];
 }
 
+export function getNotNullDateFilter(filter: Filter) {
+  return ["not-null", getDateTimeFieldRef(filter[1])];
+}
+
+export function getIsNullDateFilter(filter: Filter) {
+  return ["is-null", getDateTimeFieldRef(filter[1])];
+}
+
 export function getInitialSpecificDatesShortcut(filter: Filter) {
   return [
     "between",
@@ -334,3 +361,24 @@ export function getInitialRelativeDatesShortcut(filter: Filter) {
 export function getInitialExcludeShortcut(filter: Filter) {
   return ["!=", getDateTimeDimensionFromMbql(filter[1])];
 }
+
+export function getInitialDayOfWeekFilter(filter: Filter) {
+  return ["!=", getDateTimeFieldRef(filter[1], "day-of-week")];
+}
+
+export function getInitialMonthOfYearFilter(filter: Filter) {
+  return ["!=", getDateTimeFieldRef(filter[1], "day-of-week")];
+}
+
+export function getInitialQuarterOfYearFilter(filter: Filter) {
+  return ["!=", getDateTimeFieldRef(filter[1], "day-of-week")];
+}
+
+export function getInitialHourOfDayFilter(filter: Filter) {
+  return ["!=", getDateTimeFieldRef(filter[1], "day-of-week")];
+}
+
+export const isDayOfWeekDateFilter = testTemporalUnit("day-of-week");
+export const isMonthOfYearDateFilter = testTemporalUnit("day-of-week");
+export const isQuarterofYearDateFilter = testTemporalUnit("day-of-week");
+export const isHourOfDayDateFilter = testTemporalUnit("day-of-week");
