@@ -17,7 +17,7 @@ import {
 import { ModelId } from "./DatabaseTablesPane.styled";
 
 interface DatabaseTablesPaneProps {
-  show: (type: string, item: any) => void;
+  show: (type: string, item: any, name: string) => void;
   database: Database;
   searchResults: any[]; // TODO: /api/search is yet to be typed
 }
@@ -57,7 +57,9 @@ const DatabaseTablesPane = ({
           <ul>
             {models.map(model => (
               <li key={model.id}>
-                <NodeListItemLink onClick={() => show("model", model)}>
+                <NodeListItemLink
+                  onClick={() => show("model", model, model.name)}
+                >
                   <NodeListItemIcon name="model" />
                   <NodeListItemName>{model.name}</NodeListItemName>
                   <ModelId>{`#${model.id}`}</ModelId>
@@ -81,7 +83,9 @@ const DatabaseTablesPane = ({
       <ul>
         {tables.map(table => (
           <li key={table.id}>
-            <NodeListItemLink onClick={() => show("table", table)}>
+            <NodeListItemLink
+              onClick={() => show("table", table, table.table_name)}
+            >
               <NodeListItemIcon name="table" />
               <NodeListItemName>{table.table_name}</NodeListItemName>
             </NodeListItemLink>
