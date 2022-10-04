@@ -87,7 +87,7 @@ export default class DataReference extends Component {
 
   show = (type, item, title) => {
     this.setState({
-      stack: this.state.stack.concat({ type, item, title: title || item.name }),
+      stack: this.state.stack.concat({ type, item, title }),
     });
   };
 
@@ -102,7 +102,7 @@ export default class DataReference extends Component {
       content = <MainPane {...this.props} show={this.show} />;
     } else {
       const page = stack[stack.length - 1];
-      title = page.title;
+      title = page.title || page.item.name;
       icon = TITLE_ICONS[page.type];
       const Pane = PANES[page.type];
       content = Pane && (
