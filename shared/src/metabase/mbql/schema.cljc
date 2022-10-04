@@ -520,6 +520,9 @@
     (partial is-clause? date-arithmetic-functions)
     (s/recursive #'DatetimeExpression)
 
+    (partial is-clause? :convert-timezone)
+    (s/recursive #'DatetimeExpression)
+
     :else
     Field))
 

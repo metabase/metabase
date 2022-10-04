@@ -356,3 +356,16 @@
           (testing "the base timezone should be the timezone of column (Asia/Ho_Chi_Minh)"
             (is (= "2004-03-19T11:19:09+09:00"
                    (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")])))))))))
+
+(deftest nested-convert-timezone-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
+    (mt/dataset timezones-1
+      (testing "convert-timezone nested with datetime extract"
+        (is (= 18
+               (test-date-convert [:get-hour [:convert-timezone [:field (mt/id :times :dt) nil]
+                                              (offset->zone "+09:00")]]))))
+      (testing "convert-timezone nested with date-math, date-extract"
+        (is (= 20
+               (test-date-convert [:get-hour [:date-add [:convert-timezone [:field (mt/id :times :dt) nil]
+                                                         (offset->zone "+09:00")]
+                                              2 :hour]])))))))
