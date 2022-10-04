@@ -307,17 +307,23 @@
      ~@body))
 
 (defn- test-date-convert
-  [{:keys [aggregation breakout expressions fields limit]}]
+  [convert-tz-expression &
+   {:keys [aggregation breakout expressions fields filter limit]
+    :or   {expressions {"expr" convert-tz-expression}
+           filter      [:= [:field (mt/id :times :index) nil] 1]
+           fields      [[:expression "expr"]]}}]
   (if breakout
     (->> (mt/run-mbql-query times {:expressions expressions
                                    :aggregation aggregation
                                    :limit       limit
+                                   :filter      filter
                                    :breakout    breakout})
          mt/rows
          ffirst)
     (->> (mt/run-mbql-query times {:expressions expressions
                                    :aggregation aggregation
                                    :limit       limit
+                                   :filter      filter
                                    :fields      fields})
          mt/rows
          ffirst)))
@@ -336,62 +342,35 @@
 (deftest convert-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
     (mt/dataset timezones-1
-      (testing "timestamp with out timezone"
-        (is (= "2004-03-19T16:19:09+07:00"
-               (test-date-convert {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt) nil ] (offset->zone "+07:00")]}
-                                   :fields      [[:expression "expr"]]})))
+      (testing "timestamp with out timezone columns"
+        (testing "convert from UTC to +09:00"
+          (is (= "2004-03-19T18:19:09+09:00"
+                 (test-date-convert [:convert-timezone [:field (mt/id :times :dt) nil]
+                                                       (offset->zone "+09:00")
+                                                       (offset->zone "UTC")]))))
+        (testing "convert to +09:00, from_tz should have default is system-tz (UTC)"
+          (is (= "2004-03-19T18:19:09+09:00"
+                 (test-date-convert [:convert-timezone [:field (mt/id :times :dt) nil] (offset->zone "+09:00")]))))
 
-        (testing "report timezone shouldn't affect the result"
-          (with-report-timezeone "America/New_York"
-            (is (= "2004-03-19T16:19:09+07:00"
-                   (test-date-convert {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt) nil]
-                                                             (offset->zone "+07:00")
-                                                             (offset->zone "+00:00")]}
-                                       :fields      [[:expression "expr"]]})))
 
-            (is (= "2004-03-19T21:19:09+07:00"
-                   (test-date-convert {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt) nil]
-                                                             (offset->zone "+07:00")]}
-                                       :fields      [[:expression "expr"]]}))))))
+       (testing "with report-tz in Europe/Rome(+02:00) "
+         (with-report-timezeone "Europe/Rome"
+           (testing "from_tz should default to report_tz"
+             (is (= "2004-03-19T17:19:09+09:00"
+                    (test-date-convert [:convert-timezone [:field (mt/id :times :dt) nil] (offset->zone "+09:00")]))))
 
-      (testing "timestamp with timezone"
-        (is (= "2004-03-19T16:19:09+07:00"
-               (test-date-convert {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt) nil ] (offset->zone "+07:00")]}
-                                   :fields      [[:expression "expr"]]})))
+          (testing "if from_tz is provided, ignore report_tz"
+            (is (= "2004-03-19T18:19:09+09:00"
+                   (test-date-convert [:convert-timezone [:field (mt/id :times :dt) nil]
+                                       (offset->zone "+09:00")
+                                       (offset->zone "+00:00")])))))))
 
-        (testing "report timezone shouldn't affect the result"
+      (testing "timestamp with time zone columns"
+        (testing "the result should be reutnred in the converted timezone"
+          (is (= "2004-03-19T11:19:09+09:00"
+                 (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")]))))
+
+        (testing "report_tz shouldn't affect the result"
           (with-report-timezeone "America/New_York"
             (is (= "2004-03-19T11:19:09+09:00"
-                   (test-date-convert {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt_tz) nil]
-                                                             (offset->zone "+09:00")]}
-                                       :fields      [[:expression "expr"]]})))))))))
-
-
-#_(dev/query-jdbc-db
-    [:oracle 'times-mixed]
-    ["select (\"CAM_147\".\"times_mixed_times\".\"dt\" AT TIME ZONE 'Asia/Saigon') AT TIME ZONE 'Asia/Saigon'
-   from \"CAM_147\".\"times_mixed_times\""])
-
-
-
-#_(mt/with-driver :sqlserver
-    (mt/dataset timezones-1
-     (mt/process-query
-        (mt/mbql-query times
-                       {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt) nil ] (offset->zone "+07:00")]}
-                        :fields      [[:expression "expr"]]}))))
-
-
-
-#_(mt/with-driver :mysql
-      (mt/dataset times-mixed
-        (mt/process-query
-          (mt/mbql-query times
-                         {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt) nil] "Asia/Ho_Chi_Minh"]}
-                          :fields      [[:expression "expr"]
-                                        [:field (mt/id :times :dt) nil]]}))))
-
-#_(mt/dataset times-mixed
-              (dev/query-jdbc-db :mysql (mt/mbql-query times {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt_tz) nil] "Asia/Ho_Chi_Minh"]}
-                                                              :fields      [[:expression "expr"]
-                                                                            [:field (mt/id :times :dt_tz) nil]]})))
+                   (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")])))))))))

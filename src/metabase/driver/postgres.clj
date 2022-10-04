@@ -280,20 +280,18 @@
 ;; that ways we don't have to deal with cases where we have to know "timestamp(6) with time zone" is a thing
 ;; and if we can do that, we dont' have to convert timezone twice for tz-aware columns
 (defmethod sql.qp/->honeysql [:postgres :convert-timezone]
-  [driver [_ arg to from]]
-  (let [form         (sql.qp/->honeysql driver arg)
-        timestamptz? (hx/is-of-type? form "timestamptz")]
-    ;; TODO we probably want to has a method to check if a column is tz-aware and it should dispatches by drivers
-    (when (and timestamptz?
-               from)
-      (throw (ex-info "timestamptz columns shoudln't have a base timezone" {:to   to
-                                                                            :from from})))
-    (let [from (or from (qp.timezone/results-timezone-id))]
-      (cond->> (sql.qp/->honeysql driver arg)
-        (and (not timestamptz?) from)
-        (hsql/call :timezone from)
-        to
-        (hsql/call :timezone to)))))
+  [driver [_ arg to-tz from-tz]]
+  (let [clause       (sql.qp/->honeysql driver arg)
+        timestamptz? (hx/is-of-type? clause "timestamptz")]
+    (when (and timestamptz? from-tz)
+      (throw (ex-info "timestamptz columns shoudln't have a from timezone" {:to-tz   to-tz
+                                                                            :from-tz from-tz})))
+    (let [from-tz (or from-tz (qp.timezone/results-timezone-id))]
+      (cond->> clause
+        (and (not timestamptz?) from-tz)
+        (hsql/call :timezone from-tz)
+        to-tz
+        (hsql/call :timezone to-tz)))))
 
 (defmethod sql.qp/->honeysql [:postgres :value]
   [driver value]
@@ -476,9 +474,9 @@
    :smallserial   :type/Integer
    :text          :type/Text
    :time          :type/Time
-   :timetz        :type/TimeWithTZ
+   :timetz        :type/TimeWithLocalTZ
    :timestamp     :type/DateTime
-   :timestamptz   :type/DateTimeWithTZ
+   :timestamptz   :type/DateTimeWithLocalTZ
    :tsquery       :type/*
    :tsvector      :type/*
    :txid_snapshot :type/*
