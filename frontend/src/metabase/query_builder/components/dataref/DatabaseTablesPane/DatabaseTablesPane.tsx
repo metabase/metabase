@@ -83,7 +83,7 @@ const DatabaseTablesPane = ({
           <li key={table.id}>
             <NodeListItemLink onClick={() => show("table", table)}>
               <NodeListItemIcon name="table" />
-              <NodeListItemName>{table.name}</NodeListItemName>
+              <NodeListItemName>{table.table_name}</NodeListItemName>
             </NodeListItemLink>
           </li>
         ))}
