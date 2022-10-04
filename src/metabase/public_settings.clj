@@ -102,8 +102,8 @@
   :type       ::uuid-nonce)
 
 (defsetting site-uuid-for-version-info-fetching
-  "A *different* site-wide UUID that we use for the version info fetching API calls. It works in fundamentally the
-  same way as [[site-uuid]] but should only be used by the version info fetching logic for the sake of privacy."
+  "A *different* site-wide UUID that we use for the version info fetching API calls. Do not use this for any other
+  applications. (See [[site-uuid-for-premium-features-token-checks]] for more reasoning.)"
   :visibility :internal
   :setter     :none
   :type       ::uuid-nonce)
