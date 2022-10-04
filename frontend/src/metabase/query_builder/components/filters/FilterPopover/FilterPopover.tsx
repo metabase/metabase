@@ -8,7 +8,7 @@ import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import ExpressionPopover from "metabase/query_builder/components/ExpressionPopover";
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
-import { isStartingFrom } from "metabase/lib/query_time";
+import { isStartingFrom } from "metabase-lib/lib/utils/query/query_time";
 import { FieldDimension } from "metabase-lib/lib/Dimension";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Filter from "metabase-lib/lib/queries/structured/Filter";

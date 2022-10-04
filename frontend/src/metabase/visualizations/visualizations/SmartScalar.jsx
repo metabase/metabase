@@ -16,7 +16,7 @@ import ScalarValue, {
   ScalarWrapper,
   ScalarTitle,
 } from "metabase/visualizations/components/ScalarValue";
-import { formatBucketing } from "metabase/lib/query_time";
+import { formatBucketing } from "metabase-lib/lib/utils/query/query_time";
 
 import {
   PreviousValueContainer,

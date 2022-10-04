@@ -5,7 +5,7 @@ import {
   setStartingFrom,
   EXCLUDE_OPTIONS,
   EXCLUDE_UNITS,
-} from "metabase/lib/query_time";
+} from "metabase-lib/lib/utils/query/query_time";
 import Dimension, {
   FieldDimension,
   TemplateTagDimension,

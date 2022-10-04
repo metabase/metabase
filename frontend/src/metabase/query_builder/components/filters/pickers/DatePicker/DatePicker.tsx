@@ -4,7 +4,7 @@ import { t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
 
-import { isStartingFrom } from "metabase/lib/query_time";
+import { isStartingFrom } from "metabase-lib/lib/utils/query/query_time";
 import {
   getAfterDateFilter,
   getBeforeDateFilter,

@@ -14,7 +14,7 @@ import {
   generateTimeFilterValuesDescriptions,
   getRelativeDatetimeField,
   isStartingFrom,
-} from "metabase/lib/query_time";
+} from "metabase-lib/lib/utils/query/query_time";
 import {
   isStandard,
   isSegment,

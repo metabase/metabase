@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from "react";
 import moment, { Moment } from "moment-timezone";
 import Calendar from "metabase/components/Calendar";
-import { setTimeComponent } from "metabase/lib/query_time";
+import { setTimeComponent } from "metabase-lib/lib/utils/query/query_time";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import SingleDatePicker, { SingleDatePickerProps } from "./SingleDatePicker";
 import SpecificDatePicker from "./SpecificDatePicker";
