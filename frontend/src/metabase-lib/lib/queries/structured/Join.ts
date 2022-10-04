@@ -3,11 +3,6 @@
 import { t } from "ttag";
 import _ from "underscore";
 import { pluralize } from "metabase/lib/formatting";
-import {
-  getDatetimeUnit,
-  isDateTimeField,
-  isFieldLiteral,
-} from "metabase/lib/query/field_ref";
 import { TableId } from "metabase-types/types/Table";
 import {
   Join as JoinObject,
@@ -19,6 +14,11 @@ import {
   StructuredQuery as StructuredQueryObject,
   ConcreteField,
 } from "metabase-types/types/Query";
+import {
+  getDatetimeUnit,
+  isDateTimeField,
+  isFieldLiteral,
+} from "metabase-lib/lib/utils/query/field_ref";
 import DimensionOptions from "metabase-lib/lib/DimensionOptions";
 import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
 import StructuredQuery from "../StructuredQuery";

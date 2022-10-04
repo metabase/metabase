@@ -7,10 +7,10 @@ import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
 import { startTimer } from "metabase/lib/performance";
 import { defer } from "metabase/lib/promise";
 import { createThunkAction } from "metabase/lib/redux";
-import { isSameField } from "metabase/lib/query/field_ref";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSensibleDisplays } from "metabase/visualizations";
+import { isSameField } from "metabase-lib/lib/utils/query/field_ref";
 
 import Question from "metabase-lib/lib/Question";
 

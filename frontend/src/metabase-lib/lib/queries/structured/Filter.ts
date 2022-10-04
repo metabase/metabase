@@ -13,6 +13,8 @@ import {
   getRelativeDatetimeField,
   isStartingFrom,
 } from "metabase/lib/query_time";
+import { isExpression } from "metabase/lib/expressions";
+import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
 import {
   isStandard,
   isSegment,
@@ -21,9 +23,7 @@ import {
   hasFilterOptions,
   getFilterOptions,
   setFilterOptions,
-} from "metabase/lib/query/filter";
-import { isExpression } from "metabase/lib/expressions";
-import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
+} from "metabase-lib/lib/utils/query/filter";
 import Dimension from "../../Dimension";
 import StructuredQuery from "../StructuredQuery";
 import MBQLClause from "./MBQLClause";

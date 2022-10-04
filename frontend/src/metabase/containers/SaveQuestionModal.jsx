@@ -8,9 +8,9 @@ import Form, { FormField, FormFooter } from "metabase/containers/FormikForm";
 import ModalContent from "metabase/components/ModalContent";
 import Radio from "metabase/core/components/Radio";
 import * as Q_DEPRECATED from "metabase/lib/query";
-import { generateQueryDescription } from "metabase/lib/query/description";
 import validate from "metabase/lib/validate";
 import { canonicalCollectionId } from "metabase/collections/utils";
+import { generateQueryDescription } from "metabase-lib/lib/utils/query/description";
 
 import "./SaveQuestionModal.css";
 

@@ -1,4 +1,4 @@
-import { getName, setName } from "metabase/lib/query/aggregation";
+import { getName, setName } from "metabase-lib/lib/utils/query/aggregation";
 
 describe("getName", () => {
   it("should work with blank display name", () => {

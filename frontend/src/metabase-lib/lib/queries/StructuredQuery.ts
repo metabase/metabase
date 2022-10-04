@@ -6,8 +6,6 @@
 import _ from "underscore";
 import { chain, updateIn } from "icepick";
 import { t } from "ttag";
-import * as Q from "metabase/lib/query/query";
-import { getUniqueExpressionName } from "metabase/lib/query/expression";
 import {
   format as formatExpression,
   DISPLAY_QUOTES,
@@ -27,7 +25,6 @@ import {
   StructuredDatasetQuery,
 } from "metabase-types/types/Card";
 import { AggregationOperator } from "metabase-types/types/Metadata";
-import { isSegment } from "metabase/lib/query/filter";
 import { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
 import { TableId } from "metabase-types/types/Table";
 import { Column } from "metabase-types/types/Dataset";
@@ -37,6 +34,9 @@ import {
   isVirtualCardId,
   getQuestionIdFromVirtualTableId,
 } from "metabase/lib/saved-questions";
+import { isSegment } from "metabase-lib/lib/utils/query/filter";
+import { getUniqueExpressionName } from "metabase-lib/lib/utils/query/expression";
+import * as Q from "metabase-lib/lib/utils/query/query";
 import { memoizeClass } from "metabase-lib/lib/utils";
 import Dimension, {
   FieldDimension,
