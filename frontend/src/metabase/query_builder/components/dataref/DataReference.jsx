@@ -1,8 +1,9 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component } from "react";
+import React, { useCallback, useEffect } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
+import { usePrevious } from "metabase/hooks/use-previous";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import MainPane from "./MainPane";
 import DatabasePane from "./DatabasePane";
@@ -33,96 +34,75 @@ const TITLE_ICONS = {
   model: "model",
 };
 
-export default class DataReference extends Component {
-  constructor(props, context) {
-    super(props, context);
+const DataReferencePropTypes = {
+  query: PropTypes.object.isRequired,
+  dataReferenceStack: PropTypes.array.isRequired,
+  setDataReferenceStack: PropTypes.func.isRequired,
+  onClose: PropTypes.func.isRequired,
+  runQuestionQuery: PropTypes.func.isRequired,
+  setDatasetQuery: PropTypes.func.isRequired,
+};
 
-    this.state = {
-      stack: this.initialStack(),
-      tables: {},
-      fields: {},
-    };
-  }
-
-  componentDidUpdate(prevProps) {
-    const { id: dbId } = this.props.query.database() || {};
-    const { id: prevDbId } = prevProps.query.database() || {};
-    if (dbId !== prevDbId) {
-      this.setState({ stack: this.initialStack() });
+const DataReference = ({
+  query,
+  setDataReferenceStack: setStack,
+  dataReferenceStack: stack,
+  onClose,
+  ...props
+}) => {
+  const previousDbId = usePrevious(query?.database()?.id);
+  useEffect(() => {
+    if (query?.database()?.id === previousDbId) {
+      return;
     }
-  }
-
-  initialStack() {
-    const { query } = this.props;
-
     const stack = [];
-    const database = query && query.database();
-    if (database) {
-      stack.push({ type: "database", item: database });
+    if (query?.database()) {
+      stack.push({ type: "database", item: query.database() });
     }
-    const table = query && query.table();
-    if (table) {
-      stack.push({ type: "table", item: table });
+    if (query?.table()) {
+      stack.push({ type: "table", item: query.table() });
     }
+    setStack(stack);
+  });
 
-    return stack;
-  }
+  const back = useCallback(() => {
+    setStack(stack.slice(0, -1));
+  }, [setStack, stack]);
 
-  static propTypes = {
-    query: PropTypes.object.isRequired,
-    onClose: PropTypes.func.isRequired,
-    runQuestionQuery: PropTypes.func.isRequired,
-    setDatasetQuery: PropTypes.func.isRequired,
-  };
+  const show = useCallback(
+    (type, item, title) => {
+      setStack(stack.concat({ type, item, title }));
+    },
+    [setStack, stack],
+  );
 
-  close = () => {
-    this.props.onClose();
-  };
-
-  back = () => {
-    this.setState({
-      stack: this.state.stack.slice(0, -1),
-    });
-  };
-
-  show = (type, item, title) => {
-    this.setState({
-      stack: this.state.stack.concat({ type, item, title }),
-    });
-  };
-
-  render() {
-    const { stack } = this.state;
-
-    let title = null;
-    let content = null;
-    let icon = null;
-    if (stack.length === 0) {
-      title = t`Data Reference`;
-      content = <MainPane {...this.props} show={this.show} />;
-    } else {
-      const page = stack[stack.length - 1];
-      title = page.title || page.item.name;
-      icon = TITLE_ICONS[page.type];
-      const Pane = PANES[page.type];
-      content = Pane && (
-        <Pane
-          {...this.props}
-          {...{ [page.type]: page.item }}
-          show={this.show}
-        />
-      );
-    }
-
-    return (
-      <SidebarContent
-        title={title}
-        icon={icon}
-        onBack={stack.length > 0 ? this.back : null}
-        onClose={this.close}
-      >
-        <div className="px3">{content}</div>
-      </SidebarContent>
+  let title = null;
+  let content = null;
+  let icon = null;
+  if (stack.length === 0) {
+    title = t`Data Reference`;
+    content = <MainPane {...props} show={show} />;
+  } else {
+    const page = stack[stack.length - 1];
+    title = page.title || page.item.name;
+    icon = TITLE_ICONS[page.type];
+    const Pane = PANES[page.type];
+    content = Pane && (
+      <Pane {...props} {...{ [page.type]: page.item }} show={show} />
     );
   }
-}
+  return (
+    <SidebarContent
+      title={title}
+      icon={icon}
+      onBack={stack.length > 0 ? back : null}
+      onClose={onClose}
+    >
+      <div className="px3">{content}</div>
+    </SidebarContent>
+  );
+};
+
+DataReference.propTypes = DataReferencePropTypes;
+
+export default DataReference;
