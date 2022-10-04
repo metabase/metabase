@@ -511,20 +511,30 @@
 
 (deftest datediff-test
   (mt/test-driver :bigquery-cloud-sdk
-    (mt/dataset useful-dates
-      (is (= [[0 0]
-              ;; different from pg, mysql.
-              [1 365]]
-             (mt/rows
-              (mt/run-mbql-query datediff-edgecases
-                                 {:fields [[:expression "diff-year"]
-                                           [:expression "diff-day"]]
-                                  :expressions
-                                  {"diff-year" [:datediff
-                                                $datediff-edgecases.end
-                                                $datediff-edgecases.start
-                                                :year]
-                                   "diff-day" [:datediff
-                                               $datediff-edgecases.end
-                                               $datediff-edgecases.start
-                                               :day]}})))))))
+    (testing "Edge cases at year and month boundary"
+      (mt/dataset useful-dates
+        (is (= [[0 0]
+                ;; different from pg, mysql.
+                [1 365]]
+               (mt/rows
+                (mt/run-mbql-query datediff-edgecases
+                                   {:fields [[:expression "diff-year"]
+                                             [:expression "diff-day"]]
+                                    :expressions
+                                    {"diff-year" [:datediff
+                                                  $datediff-edgecases.end
+                                                  $datediff-edgecases.start
+                                                  :year]
+                                     "diff-day" [:datediff
+                                                 $datediff-edgecases.end
+                                                 $datediff-edgecases.start
+                                                 :day]}}))))))
+    (testing "Cannot datediff against time column"
+      (mt/dataset useful-dates
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Only datetime, timestamp, or date types allowed. Found .*"
+                              (mt/rows
+                               (mt/run-mbql-query datediff-with-time
+                                                  {:fields [[:expression "diff-day"]]
+                                                   :expressions
+                                                   {"diff-day" [:datediff $ts $t :day]}}))))))))

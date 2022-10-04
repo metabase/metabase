@@ -524,7 +524,14 @@
   (case unit
     (:year :month :day :hour :minute :second)
     (let [types               [(temporal-type x) (temporal-type y)]
+          disallowed-types    (remove #{:timestamp :datetime :date} types)
           [bq-fn target-type] (cond
+                                (seq disallowed-types)
+                                (throw
+                                 (ex-info (tru "Only datetime, timestamp, or date types allowed. Found {0}"
+                                               (pr-str disallowed-types))
+                                          {:allowed #{:timestamp :datetime :date}
+                                           :found   disallowed-types}))
                                 ;; bigquery doesn't support year and month timestamp_diff so drop back to datetime
                                 (and (some #{:timestamp} types)
                                      (#{:year :month} unit)) [:datetime_diff :datetime]
