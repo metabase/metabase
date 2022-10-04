@@ -1,11 +1,10 @@
-/* eslint "react/prop-types": "warn" */
 import React, { useMemo } from "react";
 import { ngettext, msgid } from "ttag";
 
 import Search from "metabase/entities/search";
 import type { Card } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import Database from "metabase-lib/lib/metadata/Database";
+import type Database from "metabase-lib/lib/metadata/Database";
 import {
   NodeListItemLink,
   NodeListItemName,
@@ -33,9 +32,12 @@ const DatabaseSchemasPane = ({
     [models],
   );
   const schemas = database.schemas;
-  return sortedModels ? (
+  if (!sortedModels) {
+    return null;
+  }
+  return (
     <NodeListContainer>
-      {sortedModels?.length ? (
+      {sortedModels.length ? (
         <>
           <NodeListTitle>
             <NodeListIcon name="model" />
@@ -82,7 +84,7 @@ const DatabaseSchemasPane = ({
         ))}
       </ul>
     </NodeListContainer>
-  ) : null;
+  );
 };
 
 export default Search.loadList({

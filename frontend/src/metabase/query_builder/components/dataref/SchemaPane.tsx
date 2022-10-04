@@ -23,7 +23,10 @@ const SchemaPaneInner = ({ show, schema }: SchemaPaneProps) => {
     () => schema.tables.sort((a, b) => a.name.localeCompare(b.name)),
     [schema.tables],
   );
-  return tables ? (
+  if (!tables) {
+    return null;
+  }
+  return (
     <NodeListContainer>
       <NodeListTitle>
         <NodeListIcon name="table" />
@@ -46,7 +49,7 @@ const SchemaPaneInner = ({ show, schema }: SchemaPaneProps) => {
         ))}
       </ul>
     </NodeListContainer>
-  ) : null;
+  );
 };
 
 const SchemaPane = Schemas.load({
