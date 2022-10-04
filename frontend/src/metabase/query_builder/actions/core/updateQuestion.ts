@@ -71,9 +71,7 @@ function checkShouldRerunPivotTableQuestion({
   );
 }
 
-type NextTemplateTagEditorState = "visible" | "hidden" | undefined;
-
-function getNextTemplateTagEditorState({
+function shouldTemplateTagEditorBeVisible({
   currentQuestion,
   newQuestion,
   isVisible,
@@ -83,26 +81,25 @@ function getNextTemplateTagEditorState({
   newQuestion: Question;
   isVisible: boolean;
   queryBuilderMode: QueryBuilderMode;
-}): NextTemplateTagEditorState {
+}): boolean {
+  // The tag types shown in the tag editor are not supported by models, so ignore any changes
+  if (queryBuilderMode === "dataset") {
+    return isVisible;
+  }
   const currentQuery = currentQuestion?.query() as NativeQuery;
   const nextQuery = newQuestion.query() as NativeQuery;
-  const previousTags = currentQuery.templateTagsWithoutSnippets?.() || [];
-  const nextTags = nextQuery.templateTagsWithoutSnippets?.() || [];
+  const tagEditorTags = (q: NativeQuery) =>
+    (q.templateTags?.() || []).filter(
+      t => !["card", "snippet"].includes(t.type),
+    );
+  const previousTags = tagEditorTags(currentQuery);
+  const nextTags = tagEditorTags(nextQuery);
 
-  if (nextTags.length > previousTags.length) {
-    if (queryBuilderMode !== "dataset") {
-      return "visible";
-    }
-    return nextTags.every(isSupportedTemplateTagForModel)
-      ? "visible"
-      : "hidden";
-  }
-
-  if (nextTags.length === 0 && isVisible) {
-    return "hidden";
-  }
-
-  return;
+  return nextTags.length > previousTags.length
+    ? true
+    : nextTags.length === 0
+    ? false
+    : isVisible;
 }
 
 type UpdateQuestionOpts = {
@@ -222,14 +219,14 @@ export const updateQuestion = (
 
     if (currentQuestion?.isNative?.() || newQuestion.isNative()) {
       const isVisible = getIsShowingTemplateTagsEditor(getState());
-      const nextState = getNextTemplateTagEditorState({
+      const shouldBeVisible = shouldTemplateTagEditorBeVisible({
         currentQuestion,
         newQuestion,
         queryBuilderMode,
         isVisible,
       });
-      if (nextState) {
-        dispatch(setIsShowingTemplateTagsEditor(nextState === "visible"));
+      if (isVisible !== shouldBeVisible) {
+        dispatch(setIsShowingTemplateTagsEditor(shouldBeVisible));
       }
     }
 
