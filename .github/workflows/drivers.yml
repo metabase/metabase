@@ -16,7 +16,7 @@ on:
 jobs:
 
   be-tests-druid-ee:
-    runs-on: ubuntu-20.04
+    runs-on: buildjet-2vcpu-ubuntu-2004
     timeout-minutes: 25
     env:
       CI: 'true'
