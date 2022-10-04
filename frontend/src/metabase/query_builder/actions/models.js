@@ -16,6 +16,7 @@ import { setQueryBuilderMode } from "./ui";
 
 export const setDatasetEditorTab = datasetEditorTab => dispatch => {
   dispatch(setQueryBuilderMode("dataset", { datasetEditorTab }));
+  dispatch(runDirtyQuestionQuery());
 };
 
 export const CANCEL_DATASET_CHANGES = "metabase/qb/CANCEL_DATASET_CHANGES";

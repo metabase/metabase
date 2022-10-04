@@ -1,6 +1,5 @@
 import React from "react";
 import PropTypes from "prop-types";
-import _ from "underscore";
 
 import { useScrollOnMount } from "metabase/hooks/use-scroll-on-mount";
 

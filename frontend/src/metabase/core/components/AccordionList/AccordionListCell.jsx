@@ -3,7 +3,6 @@
 import React from "react";
 
 import cx from "classnames";
-import _ from "underscore";
 import { color } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
