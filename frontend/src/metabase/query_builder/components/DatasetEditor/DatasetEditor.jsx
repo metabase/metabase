@@ -303,7 +303,12 @@ function DatasetEditor(props) {
   }, [setQueryBuilderMode, onCancelDatasetChanges]);
 
   const handleSave = useCallback(async () => {
-    if (checkCanBeModel(dataset)) {
+    const canBeDataset = checkCanBeModel(dataset);
+    const isBrandNewDataset = !dataset.id();
+
+    if (canBeDataset && isBrandNewDataset) {
+      onOpenModal(MODAL_TYPES.SAVE);
+    } else if (canBeDataset) {
       await onSave(dataset.card());
       setQueryBuilderMode("view");
     } else {
