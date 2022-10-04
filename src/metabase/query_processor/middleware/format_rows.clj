@@ -57,9 +57,9 @@
   {:pre [(fn? rf)]}
   (log/debug (tru "Formatting rows with results timezone ID {0}" (qp.timezone/results-timezone-id)))
   (let [timezone-id  (t/zone-id (qp.timezone/results-timezone-id))
-        ;; the `convert-timezone` expression will change the timezone of a column, and we will convert
-        ;; the column to such timezone.
-        ;; otherwise default to `results-timezone-id`
+        ;; a column will have `converted_timezone` metadata if it is the result of `convert-timezone` expression
+        ;; in that case we'll format the results to the target timezone.
+        ;; Otherwise format it to results-timezone
         cols-zone-id (map #(t/zone-id (get % :converted_timezone timezone-id)) (:cols metadata))]
     (fn
       ([]
