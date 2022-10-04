@@ -13,7 +13,7 @@ import {
   setRelativeDatetimeValue,
   setStartingFrom,
   toTimeInterval,
-} from "metabase-lib/lib/utils/query/query_time";
+} from "metabase-lib/lib/queries/utils/query-time";
 
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import {

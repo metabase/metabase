@@ -6,7 +6,7 @@ import {
   isNumberParameter,
   isStringParameter,
 } from "metabase/parameters/utils/parameter-type";
-import { isNative } from "metabase-lib/lib/utils/query";
+import { isNative } from "metabase-lib/lib/queries/utils";
 
 export function syncParametersAndEmbeddingParams(before, after) {
   if (after.parameters && before.embedding_params) {

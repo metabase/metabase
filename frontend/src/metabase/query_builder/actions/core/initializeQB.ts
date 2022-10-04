@@ -21,7 +21,7 @@ import {
   QueryBuilderUIControls,
 } from "metabase-types/store";
 import { Card, SavedCard } from "metabase-types/types/Card";
-import { normalize } from "metabase-lib/lib/utils/query/normalize";
+import { normalize } from "metabase-lib/lib/queries/utils/normalize";
 import Question from "metabase-lib/lib/Question";
 import NativeQuery, {
   updateCardTemplateTagNames,

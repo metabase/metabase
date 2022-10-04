@@ -11,7 +11,7 @@ import QueryButton from "metabase/components/QueryButton";
 import { fetchTableMetadata } from "metabase/redux/metadata";
 
 import { getMetadata } from "metabase/selectors/metadata";
-import * as Q_DEPRECATED from "metabase-lib/lib/utils/query";
+import * as Q_DEPRECATED from "metabase-lib/lib/queries/utils";
 import QueryDefinition from "../QueryDefinition";
 import DetailPane from "./DetailPane";
 

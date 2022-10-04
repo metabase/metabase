@@ -33,7 +33,7 @@ import {
 } from "metabase/lib/schema_metadata";
 import type { FieldFingerprint } from "metabase-types/api/field";
 import type { Field as FieldRef } from "metabase-types/types/Query";
-import { getFieldValues } from "metabase-lib/lib/utils/query/field";
+import { getFieldValues } from "metabase-lib/lib/queries/utils/field";
 import { createLookupByProperty, memoizeClass } from "metabase-lib/lib/utils";
 import type StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import type NativeQuery from "metabase-lib/lib/queries/NativeQuery";

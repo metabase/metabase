@@ -7,7 +7,7 @@ import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import {
   keyForColumn,
   findColumnForColumnSetting,
-} from "metabase-lib/lib/utils/dataset";
+} from "metabase-lib/lib/queries/utils/dataset";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 import ColumnItem from "./ColumnItem";

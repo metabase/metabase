@@ -14,7 +14,7 @@ import {
 
 import { getCurrencySymbol } from "metabase/lib/formatting";
 
-import { keyForColumn } from "metabase-lib/lib/utils/dataset";
+import { keyForColumn } from "metabase-lib/lib/queries/utils/dataset";
 import TextPicker from "./TextPicker";
 import SelectPicker from "./SelectPicker";
 import NumberPicker from "./NumberPicker";

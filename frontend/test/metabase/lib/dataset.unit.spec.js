@@ -4,7 +4,7 @@ import {
   syncTableColumnsToQuery,
   findColumnForColumnSetting,
   keyForColumn,
-} from "metabase-lib/lib/utils/dataset";
+} from "metabase-lib/lib/queries/utils/dataset";
 
 describe("metabase/util/dataset", () => {
   describe("fieldRefForColumn", () => {

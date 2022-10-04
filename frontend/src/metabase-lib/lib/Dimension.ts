@@ -18,7 +18,7 @@ import { isa } from "cljs/metabase.types";
 import {
   DATETIME_UNITS,
   formatBucketing,
-} from "metabase-lib/lib/utils/query/query_time";
+} from "metabase-lib/lib/queries/utils/query-time";
 import TemplateTagVariable from "metabase-lib/lib/variables/TemplateTagVariable";
 import Field from "metabase-lib/lib/metadata/Field";
 import {

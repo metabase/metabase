@@ -27,7 +27,7 @@ import { TYPE } from "metabase/lib/types";
 import {
   getFieldValues,
   getRemappings,
-} from "metabase-lib/lib/utils/query/field";
+} from "metabase-lib/lib/queries/utils/field";
 
 // ADDITIONAL OBJECT ACTIONS
 

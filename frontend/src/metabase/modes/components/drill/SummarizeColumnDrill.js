@@ -7,7 +7,7 @@ import {
   getAggregationOperator,
   isCompatibleAggregationOperatorForField,
 } from "metabase/lib/schema_metadata";
-import { fieldRefForColumn } from "metabase-lib/lib/utils/dataset";
+import { fieldRefForColumn } from "metabase-lib/lib/queries/utils/dataset";
 
 const INVALID_TYPES = [TYPE.Structured];
 

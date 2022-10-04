@@ -1,6 +1,6 @@
 import { t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
-import { isExpressionField } from "metabase-lib/lib/utils/query/field_ref";
+import { isExpressionField } from "metabase-lib/lib/queries/utils/field-ref";
 
 export default ({ question, clicked }) => {
   const query = question.query();

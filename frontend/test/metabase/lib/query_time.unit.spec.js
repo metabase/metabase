@@ -6,7 +6,7 @@ import {
   computeFilterTimeRange,
   absolute,
   generateTimeFilterValuesDescriptions,
-} from "metabase-lib/lib/utils/query/query_time";
+} from "metabase-lib/lib/queries/utils/query-time";
 
 describe("query_time", () => {
   describe("parseFieldBucketing()", () => {

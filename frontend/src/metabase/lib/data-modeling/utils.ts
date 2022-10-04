@@ -8,7 +8,7 @@ import {
   CardId,
   StructuredDatasetQuery,
 } from "metabase-types/types/Card";
-import { isStructured } from "metabase-lib/lib/utils/query";
+import { isStructured } from "metabase-lib/lib/queries/utils";
 import Database from "metabase-lib/lib/metadata/Database";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import Question from "metabase-lib/lib/Question";

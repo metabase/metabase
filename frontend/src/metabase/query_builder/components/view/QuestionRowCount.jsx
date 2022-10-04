@@ -7,7 +7,7 @@ import { formatNumber } from "metabase/lib/formatting";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import LimitPopover from "metabase/query_builder/components/LimitPopover";
-import { HARD_ROW_LIMIT } from "metabase-lib/lib/utils/query";
+import { HARD_ROW_LIMIT } from "metabase-lib/lib/queries/utils";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 

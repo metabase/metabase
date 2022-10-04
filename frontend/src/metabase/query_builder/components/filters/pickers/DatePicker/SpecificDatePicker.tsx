@@ -8,7 +8,7 @@ import ExpandingContent from "metabase/components/ExpandingContent";
 import {
   getTimeComponent,
   setTimeComponent,
-} from "metabase-lib/lib/utils/query/query_time";
+} from "metabase-lib/lib/queries/utils/query-time";
 import HoursMinutesInput from "./HoursMinutesInput";
 
 import {

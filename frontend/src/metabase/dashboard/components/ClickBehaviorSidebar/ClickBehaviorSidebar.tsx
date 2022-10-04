@@ -23,7 +23,7 @@ import type {
   DatasetData,
 } from "metabase-types/api";
 import type { Column } from "metabase-types/types/Dataset";
-import { keyForColumn } from "metabase-lib/lib/utils/dataset";
+import { keyForColumn } from "metabase-lib/lib/queries/utils/dataset";
 
 import { getClickBehaviorForColumn } from "./utils";
 import ClickBehaviorSidebarContent from "./ClickBehaviorSidebarContent";

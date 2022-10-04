@@ -6,7 +6,7 @@ import {
   isCompatibleAggregationOperatorForField,
 } from "metabase/lib/schema_metadata";
 import { capitalize } from "metabase/lib/formatting";
-import { fieldRefForColumn } from "metabase-lib/lib/utils/dataset";
+import { fieldRefForColumn } from "metabase-lib/lib/queries/utils/dataset";
 
 export default ({ question, clicked = {} }) => {
   const { column, value } = clicked;

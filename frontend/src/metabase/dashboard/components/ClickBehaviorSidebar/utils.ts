@@ -8,7 +8,7 @@ import type {
   DashboardOrderedCard,
 } from "metabase-types/api";
 import type { Column } from "metabase-types/types/Dataset";
-import { keyForColumn } from "metabase-lib/lib/utils/dataset";
+import { keyForColumn } from "metabase-lib/lib/queries/utils/dataset";
 
 type ClickBehaviorOption = {
   value: ClickBehaviorType | "menu";
