@@ -5,7 +5,7 @@ import { normalizeParameterValue } from "metabase/parameters/utils/parameter-val
 import { deriveFieldOperatorFromParameter } from "metabase/parameters/utils/operators";
 
 import Utils from "metabase/lib/utils";
-import * as Q_DEPRECATED from "metabase-lib/lib/utils/query"; // legacy
+import * as Q_DEPRECATED from "metabase-lib/lib/queries/utils"; // legacy
 
 export const STRUCTURED_QUERY_TEMPLATE = {
   type: "query",

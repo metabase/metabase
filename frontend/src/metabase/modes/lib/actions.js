@@ -7,7 +7,7 @@ import {
   rangeForValue,
   fieldRefForColumn,
   fieldRefWithOption,
-} from "metabase-lib/lib/utils/dataset";
+} from "metabase-lib/lib/queries/utils/dataset";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import { FieldDimension } from "metabase-lib/lib/Dimension";

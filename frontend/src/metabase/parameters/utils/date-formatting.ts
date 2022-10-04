@@ -10,7 +10,7 @@ import {
   generateTimeFilterValuesDescriptions,
   getRelativeDatetimeInterval,
   getStartingFrom,
-} from "metabase/lib/query_time";
+} from "metabase-lib/lib/queries/utils/query-time";
 
 import { UiParameter } from "../types";
 

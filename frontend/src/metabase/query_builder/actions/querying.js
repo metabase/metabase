@@ -10,7 +10,7 @@ import { createThunkAction } from "metabase/lib/redux";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSensibleDisplays } from "metabase/visualizations";
-import { isSameField } from "metabase-lib/lib/utils/query/field_ref";
+import { isSameField } from "metabase-lib/lib/queries/utils/field-ref";
 
 import Question from "metabase-lib/lib/Question";
 

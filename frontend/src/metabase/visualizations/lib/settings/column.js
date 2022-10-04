@@ -51,7 +51,7 @@ export function columnSettings({
 }
 
 import MetabaseSettings from "metabase/lib/settings";
-import { keyForColumn } from "metabase-lib/lib/utils/dataset";
+import { keyForColumn } from "metabase-lib/lib/queries/utils/dataset";
 import { nestedSettings } from "./nested";
 
 export function getGlobalSettingsForColumn(column) {

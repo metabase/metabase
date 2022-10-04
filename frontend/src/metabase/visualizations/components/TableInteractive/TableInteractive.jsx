@@ -34,7 +34,7 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 
 import Ellipsified from "metabase/core/components/Ellipsified";
 import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
-import { fieldRefForColumn } from "metabase-lib/lib/utils/dataset";
+import { fieldRefForColumn } from "metabase-lib/lib/queries/utils/dataset";
 import Dimension from "metabase-lib/lib/Dimension";
 import { memoizeClass } from "metabase-lib/lib/utils";
 import MiniBar from "../MiniBar";

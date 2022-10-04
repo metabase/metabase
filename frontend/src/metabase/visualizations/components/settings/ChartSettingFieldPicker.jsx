@@ -2,7 +2,7 @@
 import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import { keyForColumn } from "metabase-lib/lib/utils/dataset";
+import { keyForColumn } from "metabase-lib/lib/queries/utils/dataset";
 import ChartSettingSelect from "./ChartSettingSelect";
 import {
   SettingsIcon,

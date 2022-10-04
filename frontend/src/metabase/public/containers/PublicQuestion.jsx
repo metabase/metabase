@@ -14,7 +14,6 @@ import {
   getParameterValuesBySlug,
   getParameterValuesByIdFromQueryParams,
 } from "metabase/parameters/utils/parameter-values";
-import { applyParameters } from "metabase/meta/Card";
 import {
   getParametersFromCard,
   getCardUiParameters,
@@ -33,6 +32,7 @@ import { addParamValues, addFields } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import PublicMode from "metabase/modes/components/modes/PublicMode";
+import { applyParameters } from "metabase-lib/lib/queries/utils/card";
 import EmbedFrame from "../components/EmbedFrame";
 
 const mapStateToProps = state => ({

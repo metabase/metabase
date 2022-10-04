@@ -5,8 +5,6 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { deserializeCardFromUrl, loadCard } from "metabase/lib/card";
 import * as Urls from "metabase/lib/urls";
 
-import { cardIsEquivalent } from "metabase/meta/Card";
-
 import { setErrorPage } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getUser } from "metabase/selectors/user";
@@ -21,7 +19,8 @@ import {
   QueryBuilderUIControls,
 } from "metabase-types/store";
 import { Card, SavedCard } from "metabase-types/types/Card";
-import { normalize } from "metabase-lib/lib/utils/query/normalize";
+import { cardIsEquivalent } from "metabase-lib/lib/queries/utils/card";
+import { normalize } from "metabase-lib/lib/queries/utils/normalize";
 import Question from "metabase-lib/lib/Question";
 import NativeQuery, {
   updateCardTemplateTagNames,

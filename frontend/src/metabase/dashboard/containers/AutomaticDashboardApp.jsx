@@ -30,7 +30,7 @@ import Dashboards from "metabase/entities/dashboards";
 import * as Urls from "metabase/lib/urls";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
-import * as Q from "metabase-lib/lib/utils/query/query";
+import * as Q from "metabase-lib/lib/queries/utils/query";
 import Dimension from "metabase-lib/lib/Dimension";
 
 import {

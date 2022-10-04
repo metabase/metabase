@@ -8,7 +8,7 @@ import {
   getRelativeDatetimeField,
   getTimeComponent,
   setTimeComponent,
-} from "metabase/lib/query_time";
+} from "metabase-lib/lib/queries/utils/query-time";
 import Dimension from "metabase-lib/lib/Dimension";
 
 import type Filter from "metabase-lib/lib/queries/structured/Filter";

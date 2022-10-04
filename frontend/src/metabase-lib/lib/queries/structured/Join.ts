@@ -18,7 +18,7 @@ import {
   getDatetimeUnit,
   isDateTimeField,
   isFieldLiteral,
-} from "metabase-lib/lib/utils/query/field_ref";
+} from "metabase-lib/lib/queries/utils/field-ref";
 import DimensionOptions from "metabase-lib/lib/DimensionOptions";
 import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
 import StructuredQuery from "../StructuredQuery";

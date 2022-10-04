@@ -14,7 +14,7 @@ import {
   generateTimeFilterValuesDescriptions,
   getRelativeDatetimeField,
   isStartingFrom,
-} from "metabase/lib/query_time";
+} from "metabase-lib/lib/queries/utils/query-time";
 import {
   isStandard,
   isSegment,
@@ -23,7 +23,7 @@ import {
   hasFilterOptions,
   getFilterOptions,
   setFilterOptions,
-} from "metabase-lib/lib/utils/query/filter";
+} from "metabase-lib/lib/queries/utils/filter";
 import Dimension from "../../Dimension";
 import StructuredQuery from "../StructuredQuery";
 import MBQLClause from "./MBQLClause";

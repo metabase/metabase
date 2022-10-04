@@ -4,7 +4,7 @@ import d3 from "d3";
 
 import { color } from "metabase/lib/colors";
 import { isNumeric, isMetric } from "metabase/lib/schema_metadata";
-import { rangeForValue } from "metabase-lib/lib/utils/dataset";
+import { rangeForValue } from "metabase-lib/lib/queries/utils/dataset";
 import { computeNumericDataInverval } from "../lib/numeric";
 import LeafletMap from "./LeafletMap";
 

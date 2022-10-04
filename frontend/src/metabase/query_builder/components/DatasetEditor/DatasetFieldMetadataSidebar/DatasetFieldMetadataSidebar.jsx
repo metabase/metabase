@@ -25,7 +25,7 @@ import ColumnSettings, {
   hasColumnSettingsWidgets,
 } from "metabase/visualizations/components/ColumnSettings";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
-import { isSameField } from "metabase-lib/lib/utils/query/field_ref";
+import { isSameField } from "metabase-lib/lib/queries/utils/field-ref";
 
 import { EDITOR_TAB_INDEXES } from "../constants";
 import MappedFieldPicker from "./MappedFieldPicker";

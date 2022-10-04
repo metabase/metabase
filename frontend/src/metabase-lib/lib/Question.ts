@@ -23,14 +23,13 @@ import {
   FieldDimension,
 } from "metabase-lib/lib/Dimension";
 import Mode from "metabase-lib/lib/Mode";
-import { isStandard } from "metabase-lib/lib/utils/query/filter";
+import { isStandard } from "metabase-lib/lib/queries/utils/filter";
 import { isFK } from "metabase/lib/schema_metadata";
 import { memoizeClass, sortObject } from "metabase-lib/lib/utils";
 /* eslint-enable import/order */
 
 // TODO: remove these dependencies
 import * as Urls from "metabase/lib/urls";
-import { isTransientId } from "metabase/meta/Card";
 import {
   getCardUiParameters,
   remapParameterValuesToTemplateTags,
@@ -73,11 +72,12 @@ import { utf8_to_b64url } from "metabase/lib/encoding";
 import { CollectionId } from "metabase-types/api";
 
 import { getQuestionVirtualTableId } from "metabase/lib/saved-questions/saved-questions";
+import { isTransientId } from "metabase-lib/lib/queries/utils/card";
 import {
   findColumnIndexForColumnSetting,
   findColumnSettingIndexForColumn,
   syncTableColumnsToQuery,
-} from "metabase-lib/lib/utils/dataset";
+} from "metabase-lib/lib/queries/utils/dataset";
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
   ALERT_TYPE_ROWS,

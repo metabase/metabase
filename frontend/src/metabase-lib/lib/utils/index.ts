@@ -1,3 +1,3 @@
-export { createLookupByProperty } from "./createLookupByProperty";
-export { memoizeClass } from "./memoizeClass";
-export { sortObject } from "./sortObject";
+export { createLookupByProperty } from "./create-lookup-by-property";
+export { memoizeClass } from "./memoize-class";
+export { sortObject } from "./sort-object";
