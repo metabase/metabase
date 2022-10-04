@@ -56,12 +56,8 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
     cy.findAllByRole("option").contains("Unrestricted").click();
 
     // stub out the PUT and save
-    cy.server();
-    cy.route({
-      method: "PUT",
-      url: /\/api\/permissions\/graph$/,
-      status: 500,
-      response: "Server error",
+    cy.intercept("PUT", "/api/permissions/graph", req => {
+      req.reply(500, "Server error");
     });
     cy.contains("Save changes").click();
     cy.contains("button", "Yes").click();
