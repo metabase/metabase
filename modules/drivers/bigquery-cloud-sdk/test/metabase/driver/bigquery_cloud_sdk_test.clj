@@ -508,3 +508,23 @@
                   ["2021-01-10T00:00:00Z" 6]]
                  (mt/rows
                   (qp/process-query query)))))))))
+
+(deftest datediff-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (mt/dataset useful-dates
+      (is (= [[0 0]
+              ;; different from pg, mysql.
+              [1 365]]
+             (mt/rows
+              (mt/run-mbql-query datediff-edgecases
+                                 {:fields [[:expression "diff-year"]
+                                           [:expression "diff-day"]]
+                                  :expressions
+                                  {"diff-year" [:datediff
+                                                $datediff-edgecases.end
+                                                $datediff-edgecases.start
+                                                :year]
+                                   "diff-day" [:datediff
+                                               $datediff-edgecases.end
+                                               $datediff-edgecases.start
+                                               :day]}})))))))

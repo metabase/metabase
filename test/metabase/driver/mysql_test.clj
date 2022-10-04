@@ -185,6 +185,25 @@
           (is (= ["2018-04-18T00:00:00-07:00"]
                  (run-query-with-report-timezone "America/Los_Angeles"))))))))
 
+(deftest datediff-test
+  (mt/test-driver :mysql
+    (mt/dataset useful-dates
+      (is (= [[0 0]
+              [0 364]]
+             (mt/rows
+              (mt/run-mbql-query datediff-edgecases
+                                 {:fields [[:expression "diff-year"]
+                                           [:expression "diff-day"]]
+                                  :expressions
+                                  {"diff-year" [:datediff
+                                                $datediff-edgecases.end
+                                                $datediff-edgecases.start
+                                                :year]
+                                   "diff-day" [:datediff
+                                               $datediff-edgecases.end
+                                               $datediff-edgecases.start
+                                               :day]}})))))))
+
 (def ^:private sample-connection-details
   {:db "my_db", :host "localhost", :port "3306", :user "cam", :password "bad-password"})
 

@@ -1,0 +1,18 @@
+;; useful dates for driver tests
+
+[["datediff-edgecases"
+  [{:field-name "index" :base-type :type/Integer}
+   {:field-name "description" :base-type :type/Text}
+   {:field-name "start" :base-type :type/DateTime}
+   {:field-name "end" :base-type :type/DateTime}]
+  ;; one minute under a day
+  [[1 "just under a day"  #t "2022-10-03 09:19:09" #t "2022-10-03 09:18:09"]
+   ;; one minute under a year
+   [2 "just under a year" #t "2021-10-03 09:19:09" #t "2022-10-03 09:18:09"]]]
+ ["datediff-mixed-types"
+  [{:field-name "index" :base-type :type/Integer}
+   {:field-name "description" :base-type :type/Text}
+   {:field-name "tz" :base-type :type/DateTimeWithTZ}
+   {:field-name "d" :base-type :type/Date}
+   {:field-name "dt" :base-type :type/DateTime}]
+  [[1 "desc" #t "2021-08-03T08:09:10.582Z" #t "2022-09-04" #t "2022-10-05 09:19:09"]]]]

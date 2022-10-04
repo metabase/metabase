@@ -70,6 +70,9 @@
 (tx/defdataset-edn json
   "Dataset with some JSON columns in it. Used to test JSON columns.")
 
+(tx/defdataset-edn useful-dates
+  "Dataset with dates in them.")
+
 (defn- date-only
   "Convert date or datetime temporal value to `t` to an appropriate date type, discarding time information."
   [t]
