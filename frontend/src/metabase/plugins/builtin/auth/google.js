@@ -19,7 +19,7 @@ PLUGIN_AUTH_PROVIDERS.push(providers => {
     Button: require("metabase/auth/containers/GoogleButton").default,
   };
 
-  return MetabaseSettings.isGoogleAuthConfigured()
+  return MetabaseSettings.isGoogleAuthEnabled()
     ? [googleProvider, ...providers]
     : providers;
 });

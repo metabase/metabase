@@ -71,6 +71,7 @@ export type SettingName =
   | "engines"
   | "ga-code"
   | "ga-enabled"
+  | "google-auth-enabled"
   | "google-auth-client-id"
   | "has-sample-database?"
   | "has-user-setup"
@@ -183,8 +184,8 @@ class Settings {
     return this.get("hide-embed-branding?");
   }
 
-  isGoogleAuthConfigured() {
-    return this.get("google-auth-client-id") != null;
+  isGoogleAuthEnabled() {
+    return this.get("google-auth-enabled");
   }
 
   isLdapEnabled() {
@@ -201,11 +202,7 @@ class Settings {
   }
 
   isSsoEnabled() {
-    return (
-      this.isGoogleAuthConfigured() ||
-      this.isLdapEnabled() ||
-      this.isGoogleAuthConfigured()
-    );
+    return this.isLdapEnabled() || this.isGoogleAuthEnabled();
   }
 
   isPasswordLoginEnabled() {
