@@ -105,19 +105,16 @@ export default function Gauge({ card, data, getColor }: GaugeProps) {
     );
   }
 
-  const gaugeSegmentMinMaxLabels: GaugeLabelData[] = gaugeSegmentData.flatMap(
-    (gaugeSegmentDatum, index): GaugeLabelData | GaugeLabelData[] => {
-      const isFirstSegment = index === 0;
-      const isLastSegment = index === gaugeSegmentData.length - 1;
-      const minAngle =
-        startAngle +
-        calculateValueAngle(gaugeSegmentDatum.min, minValue, maxValue);
-      const minPosition: Position = isFirstSegment
-        ? [-(gaugeInnerRadius + gaugeOuterRadius) / 2, SEGMENT_LABEL_FONT_SIZE]
-        : calculatePosition(minAngle);
-      const maxPosition: Position | undefined = isLastSegment
-        ? [(gaugeInnerRadius + gaugeOuterRadius) / 2, SEGMENT_LABEL_FONT_SIZE]
-        : undefined;
+  const gaugeSegmentMinMaxLabels: GaugeLabelData[] = gaugeSegmentData
+    .flatMap(gaugeSegmentDatum => {
+      return [gaugeSegmentDatum.min, gaugeSegmentDatum.max];
+    })
+    .reduce(removeDuplicateElements, [])
+    .map((gaugeSegmentValue, index, gaugeSegmentValues): GaugeLabelData => {
+      const isMinSegmentValue = index === 0;
+      const isMaxSegmentValue = index === gaugeSegmentValues.length - 1;
+      const gaugeSegmentValueAngle =
+        startAngle + calculateValueAngle(gaugeSegmentValue, minValue, maxValue);
 
       function calculateLabelTextAnchor(angle: number): TextAnchor {
         const normalizedAngle = normalizeAngle(angle);
@@ -145,35 +142,37 @@ export default function Gauge({ card, data, getColor }: GaugeProps) {
         return "start";
       }
 
-      if (maxPosition) {
-        return [
-          {
-            position: minPosition,
-            color: getColor("text-medium"),
-            textAnchor: calculateLabelTextAnchor(minAngle),
-            value: formatNumber(gaugeSegmentDatum.min),
-          },
-          {
-            position: maxPosition,
-            color: getColor("text-medium"),
-            textAnchor: isLastSegment
-              ? calculateLabelTextAnchor(minAngle)
-              : "middle",
-            value: formatNumber(gaugeSegmentDatum.max),
-          },
-        ];
+      if (isMinSegmentValue) {
+        return {
+          position: [
+            -(gaugeInnerRadius + GAUGE_OUTER_RADIUS) / 2,
+            SEGMENT_LABEL_FONT_SIZE,
+          ],
+          color: getColor("text-medium"),
+          textAnchor: calculateLabelTextAnchor(gaugeSegmentValueAngle),
+          value: formatNumber(gaugeSegmentValue),
+        };
+      }
+
+      if (isMaxSegmentValue) {
+        return {
+          position: [
+            (gaugeInnerRadius + GAUGE_OUTER_RADIUS) / 2,
+            SEGMENT_LABEL_FONT_SIZE,
+          ],
+          color: getColor("text-medium"),
+          textAnchor: calculateLabelTextAnchor(gaugeSegmentValueAngle),
+          value: formatNumber(gaugeSegmentValue),
+        };
       }
 
       return {
-        position: minPosition,
+        position: calculatePosition(gaugeSegmentValueAngle),
         color: getColor("text-medium"),
-        textAnchor: isFirstSegment
-          ? "middle"
-          : calculateLabelTextAnchor(minAngle),
-        value: formatNumber(gaugeSegmentDatum.min),
+        textAnchor: calculateLabelTextAnchor(gaugeSegmentValueAngle),
+        value: formatNumber(gaugeSegmentValue),
       };
-    },
-  );
+    });
 
   const gaugeSegmentLabels: GaugeLabelData[] = gaugeSegmentData
     .filter(gaugeSegmentDatum => gaugeSegmentDatum.label)
@@ -242,10 +241,57 @@ export default function Gauge({ card, data, getColor }: GaugeProps) {
               innerRadius={gaugeInnerRadius}
               pieValue={gaugeAccessor}
               pieSort={gaugeSorter}
-              fill={colorGetter}
               startAngle={startAngle}
               endAngle={endAngle}
-            />
+            >
+              {pie => {
+                return (
+                  <Group className="visx-pie-arcs-group">
+                    <g key={`pie-arc-base`}>
+                      <path
+                        className="visx-pie-arc"
+                        d={
+                          pie.path({
+                            startAngle,
+                            endAngle,
+                          } as unknown as PieArcDatum<GaugeSegment>) || ""
+                        }
+                        fill={getColor("bg-medium")}
+                      />
+                    </g>
+                    {pie.arcs.map((arc, index) => {
+                      return (
+                        <g key={`pie-arc-${index}`}>
+                          <path
+                            className="visx-pie-arc"
+                            d={
+                              pie.path({
+                                ...arc,
+                                startAngle:
+                                  startAngle +
+                                  calculateValueAngle(
+                                    arc.data.min,
+                                    minValue,
+                                    maxValue,
+                                  ),
+                                endAngle:
+                                  startAngle +
+                                  calculateValueAngle(
+                                    arc.data.max,
+                                    minValue,
+                                    maxValue,
+                                  ),
+                              }) || ""
+                            }
+                            fill={colorGetter(arc)}
+                          />
+                        </g>
+                      );
+                    })}
+                  </Group>
+                );
+              }}
+            </Pie>
             <GaugeNeedle
               color={getColor("bg-dark")}
               outlineColor={outlineColor}
@@ -515,4 +561,15 @@ function calculateChartScale(gaugeLabels: GaugeLabelData[]) {
 
 function limit(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
+}
+
+function removeDuplicateElements(
+  uniqueList: number[],
+  element: number,
+): number[] {
+  if (uniqueList.includes(element)) {
+    return uniqueList;
+  }
+
+  return uniqueList.concat(element);
 }
