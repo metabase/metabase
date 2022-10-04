@@ -1,4 +1,4 @@
-import React, { ComponentProps, Fragment } from "react";
+import React, { Fragment } from "react";
 
 import { Pie } from "@visx/shape";
 import { Group } from "@visx/group";
@@ -7,30 +7,17 @@ import type { PieArcDatum } from "@visx/shape/lib/shapes/Pie";
 import { formatNumber } from "metabase/static-viz/lib/numbers";
 import { measureText, truncateText } from "metabase/static-viz/lib/text";
 import type { ColorGetter } from "metabase/static-viz/lib/colors";
-import OutlinedText from "../Text/OutlinedText";
 
-type Position = [x: number, y: number];
-
-interface GaugeSegment {
-  min: number;
-  max: number;
-  color: string;
-  label: string;
-}
-
-interface GaugeVisualizationSettings {
-  "gauge.segments": GaugeSegment[];
-}
-
-interface Card {
-  visualization_settings: GaugeVisualizationSettings;
-}
-
-type GaugeData = [number];
-
-interface Data {
-  rows: [GaugeData];
-}
+import GaugeNeedle from "./GaugeNeedle";
+import { GaugeLabel } from "./GaugeLabel";
+import type {
+  Card,
+  Data,
+  GaugeLabelData,
+  GaugeSegment,
+  Position,
+  TextAnchor,
+} from "./types";
 
 interface GaugeProps {
   card: Card;
@@ -38,27 +25,27 @@ interface GaugeProps {
   getColor: ColorGetter;
 }
 
-type TextAnchor = ComponentProps<typeof OutlinedText>["textAnchor"];
+// Angles
+const GAUGE_ARC_ANGLE = Math.PI;
 
-interface GaugeLabelData {
-  position: Position;
-  textAnchor: TextAnchor;
-  value: string;
-  color: string;
-}
+// Margins
+const CHART_HORIZONTAL_MARGIN = 10;
+const CHART_VERTICAL_MARGIN = 40;
+const VALUE_MARGIN = 30;
 
-const ARC_DEGREE = 180;
-const CHART_HORIZONTAL_MARGIN = 20;
-const CHART_VERTICAL_MARGIN = CHART_HORIZONTAL_MARGIN * 2;
-const WIDTH = 540;
-const VALUE_MARGIN = WIDTH * 0.1;
-const GAUGE_OUTER_RADIUS = WIDTH / 2 - CHART_HORIZONTAL_MARGIN;
-const HEIGHT = GAUGE_OUTER_RADIUS + 2 * CHART_VERTICAL_MARGIN;
+// Sizes
+const CHART_WIDTH = 540;
 const GAUGE_THICKNESS = 70;
-const BASE_FONT_SIZE = GAUGE_THICKNESS * 0.8;
+const MAX_SEGMENT_VALUE_WIDTH = 150;
+const GAUGE_OUTER_RADIUS = CHART_WIDTH / 2 - CHART_HORIZONTAL_MARGIN;
+const GAUGE_INNER_RADIUS = GAUGE_OUTER_RADIUS - GAUGE_THICKNESS;
+const CHART_HEIGHT = GAUGE_OUTER_RADIUS + 2 * CHART_VERTICAL_MARGIN;
+
+// Font
+const BASE_FONT_SIZE = 56;
 const SEGMENT_LABEL_FONT_SIZE = BASE_FONT_SIZE * 0.3;
-const SEGMENT_LABEL_MARGIN = SEGMENT_LABEL_FONT_SIZE / 2;
-const MAX_SEGMENT_VALUE_WIDTH = 170;
+const SEGMENT_LABEL_MARGIN = SEGMENT_LABEL_FONT_SIZE;
+const DISTANCE_TO_MIDDLE_LABEL_ANCHOR = SEGMENT_LABEL_FONT_SIZE / 2;
 
 // Only allow the bottom of the gauge label to be above the top of the gauge chart.
 // So, the labels don't overlap with the gauge chart, otherwise, uses the label position
@@ -71,39 +58,38 @@ const SEGMENT_LABEL_ANCHOR_THRESHOLD_ANGLE = Math.acos(
 export default function Gauge({ card, data, getColor }: GaugeProps) {
   const settings = card.visualization_settings;
   const gaugeSegmentData = settings["gauge.segments"];
-  const centerX = WIDTH / 2;
-  const centerY = GAUGE_OUTER_RADIUS + CHART_VERTICAL_MARGIN;
-  const gaugeOuterRadius = GAUGE_OUTER_RADIUS;
-  const gaugeInnerRadius = gaugeOuterRadius - GAUGE_THICKNESS;
-  const startAngle = -toRadian((360 - ARC_DEGREE) / 2);
-  const endAngle = startAngle + toRadian(ARC_DEGREE);
 
-  const minValue = gaugeSegmentData[0].min;
-  const maxValue = gaugeSegmentData[gaugeSegmentData.length - 1].max;
+  const gaugeCenterX = CHART_WIDTH / 2;
+  const gaugeCenterY = GAUGE_OUTER_RADIUS + CHART_VERTICAL_MARGIN;
+
+  const startAngle = -GAUGE_ARC_ANGLE / 2;
+  const endAngle = GAUGE_ARC_ANGLE / 2;
+
+  const gaugeSegmentMinValue = gaugeSegmentData[0].min;
+  const gaugeSegmentMaxValue =
+    gaugeSegmentData[gaugeSegmentData.length - 1].max;
+
   const value = data.rows[0][0];
-  const valueAngle = limit(
-    startAngle + calculateValueAngle(value, minValue, maxValue),
+  const gaugeNeedleAngle = limit(
+    startAngle +
+      calculateRelativeValueAngle(
+        value,
+        gaugeSegmentMinValue,
+        gaugeSegmentMaxValue,
+      ),
     startAngle,
     endAngle,
   );
-
-  const valuePosition = getCirclePositionInSvgCoordinate(
-    gaugeInnerRadius,
-    valueAngle,
+  const gaugeNeedlePosition = getCirclePositionInSvgCoordinate(
+    GAUGE_INNER_RADIUS,
+    gaugeNeedleAngle,
   );
+
   const displayValue = formatNumber(value);
   const dynamicValueFontSize = calculateValueFontSize(
     displayValue,
-    gaugeInnerRadius,
+    GAUGE_INNER_RADIUS,
   );
-
-  function calculatePosition(angle: number) {
-    const distanceToMiddleLabelAnchor = SEGMENT_LABEL_FONT_SIZE / 2;
-    return getCirclePositionInSvgCoordinate(
-      gaugeOuterRadius + SEGMENT_LABEL_MARGIN + distanceToMiddleLabelAnchor,
-      angle,
-    );
-  }
 
   const gaugeSegmentMinMaxLabels: GaugeLabelData[] = gaugeSegmentData
     .flatMap(gaugeSegmentDatum => {
@@ -114,42 +100,21 @@ export default function Gauge({ card, data, getColor }: GaugeProps) {
       const isMinSegmentValue = index === 0;
       const isMaxSegmentValue = index === gaugeSegmentValues.length - 1;
       const gaugeSegmentValueAngle =
-        startAngle + calculateValueAngle(gaugeSegmentValue, minValue, maxValue);
-
-      function calculateLabelTextAnchor(angle: number): TextAnchor {
-        const normalizedAngle = normalizeAngle(angle);
-
-        if (
-          isBetweenAngle(
-            normalizedAngle,
-            1.5 * Math.PI,
-            normalizeAngle(-SEGMENT_LABEL_ANCHOR_THRESHOLD_ANGLE),
-          )
-        ) {
-          return "end";
-        }
-
-        if (
-          isBetweenAngle(
-            normalizedAngle,
-            normalizeAngle(-SEGMENT_LABEL_ANCHOR_THRESHOLD_ANGLE),
-            normalizeAngle(SEGMENT_LABEL_ANCHOR_THRESHOLD_ANGLE),
-          )
-        ) {
-          return "middle";
-        }
-
-        return "start";
-      }
+        startAngle +
+        calculateRelativeValueAngle(
+          gaugeSegmentValue,
+          gaugeSegmentMinValue,
+          gaugeSegmentMaxValue,
+        );
 
       if (isMinSegmentValue) {
         return {
           position: [
-            -(gaugeInnerRadius + GAUGE_OUTER_RADIUS) / 2,
-            SEGMENT_LABEL_FONT_SIZE,
+            -(GAUGE_INNER_RADIUS + GAUGE_OUTER_RADIUS) / 2,
+            SEGMENT_LABEL_MARGIN + DISTANCE_TO_MIDDLE_LABEL_ANCHOR,
           ],
           color: getColor("text-medium"),
-          textAnchor: calculateLabelTextAnchor(gaugeSegmentValueAngle),
+          textAnchor: "middle",
           value: formatNumber(gaugeSegmentValue),
         };
       }
@@ -157,19 +122,21 @@ export default function Gauge({ card, data, getColor }: GaugeProps) {
       if (isMaxSegmentValue) {
         return {
           position: [
-            (gaugeInnerRadius + GAUGE_OUTER_RADIUS) / 2,
-            SEGMENT_LABEL_FONT_SIZE,
+            (GAUGE_INNER_RADIUS + GAUGE_OUTER_RADIUS) / 2,
+            SEGMENT_LABEL_MARGIN + DISTANCE_TO_MIDDLE_LABEL_ANCHOR,
           ],
           color: getColor("text-medium"),
-          textAnchor: calculateLabelTextAnchor(gaugeSegmentValueAngle),
+          textAnchor: "middle",
           value: formatNumber(gaugeSegmentValue),
         };
       }
 
       return {
-        position: calculatePosition(gaugeSegmentValueAngle),
+        position: calculateGaugeSegmentLabelPosition(gaugeSegmentValueAngle),
         color: getColor("text-medium"),
-        textAnchor: calculateLabelTextAnchor(gaugeSegmentValueAngle),
+        textAnchor: calculateGaugeSegmentLabelTextAnchor(
+          gaugeSegmentValueAngle,
+        ),
         value: formatNumber(gaugeSegmentValue),
       };
     });
@@ -179,43 +146,16 @@ export default function Gauge({ card, data, getColor }: GaugeProps) {
     .map((gaugeSegmentDatum): GaugeLabelData => {
       const angle =
         startAngle +
-        calculateValueAngle(
+        calculateRelativeValueAngle(
           (gaugeSegmentDatum.max + gaugeSegmentDatum.min) / 2,
-          minValue,
-          maxValue,
+          gaugeSegmentMinValue,
+          gaugeSegmentMaxValue,
         );
-      const position: Position = calculatePosition(angle);
-
-      function calculateLabelTextAnchor(angle: number): TextAnchor {
-        const normalizedMinAngle = normalizeAngle(angle);
-
-        if (
-          isBetweenAngle(
-            normalizedMinAngle,
-            1.5 * Math.PI,
-            normalizeAngle(-SEGMENT_LABEL_ANCHOR_THRESHOLD_ANGLE),
-          )
-        ) {
-          return "end";
-        }
-
-        if (
-          isBetweenAngle(
-            normalizedMinAngle,
-            normalizeAngle(-SEGMENT_LABEL_ANCHOR_THRESHOLD_ANGLE),
-            normalizeAngle(SEGMENT_LABEL_ANCHOR_THRESHOLD_ANGLE),
-          )
-        ) {
-          return "middle";
-        }
-
-        return "start";
-      }
 
       return {
         color: getColor("text-dark"),
-        position: position,
-        textAnchor: calculateLabelTextAnchor(angle),
+        position: calculateGaugeSegmentLabelPosition(angle),
+        textAnchor: calculateGaugeSegmentLabelTextAnchor(angle),
         value: truncateText(
           gaugeSegmentDatum.label,
           MAX_SEGMENT_VALUE_WIDTH,
@@ -228,23 +168,29 @@ export default function Gauge({ card, data, getColor }: GaugeProps) {
   const outlineColor = getColor("white");
 
   return (
-    <svg width={WIDTH} height={HEIGHT}>
-      <g transform={`translate(${WIDTH / 2}, ${HEIGHT / 2})`}>
+    <svg width={CHART_WIDTH} height={CHART_HEIGHT}>
+      <g transform={`translate(${CHART_WIDTH / 2}, ${CHART_HEIGHT / 2})`}>
+        {/* `transform-origin: center` doesn't work when rendered with Batik.
+            This <g /> translates the center of the chart to coordinate (0,0),
+            making `scale(number)` using the center of the chart as a transform
+            origin similar to `transform-origin: center` */}
         <g
           transform={`scale(${calculateChartScale(gaugeLabels)})
-                      translate(${-WIDTH / 2}, ${-HEIGHT / 2})`}
+                      translate(${-CHART_WIDTH / 2}, ${-CHART_HEIGHT / 2})`}
         >
-          <Group top={centerY} left={centerX}>
+          <Group top={gaugeCenterY} left={gaugeCenterX}>
             <Pie
               data={gaugeSegmentData}
-              outerRadius={gaugeOuterRadius}
-              innerRadius={gaugeInnerRadius}
+              outerRadius={GAUGE_OUTER_RADIUS}
+              innerRadius={GAUGE_INNER_RADIUS}
               pieValue={gaugeAccessor}
               pieSort={gaugeSorter}
               startAngle={startAngle}
               endAngle={endAngle}
             >
               {pie => {
+                // Renders similar to Pie's default children.
+                // https://github.com/airbnb/visx/blob/978c143dae4057e482b0ca909e8c5a16c85dfd1e/packages/visx-shape/src/shapes/Pie.tsx#L86-L98
                 return (
                   <Group className="visx-pie-arcs-group">
                     <g key={`pie-arc-base`}>
@@ -269,17 +215,17 @@ export default function Gauge({ card, data, getColor }: GaugeProps) {
                                 ...arc,
                                 startAngle:
                                   startAngle +
-                                  calculateValueAngle(
+                                  calculateRelativeValueAngle(
                                     arc.data.min,
-                                    minValue,
-                                    maxValue,
+                                    gaugeSegmentMinValue,
+                                    gaugeSegmentMaxValue,
                                   ),
                                 endAngle:
                                   startAngle +
-                                  calculateValueAngle(
+                                  calculateRelativeValueAngle(
                                     arc.data.max,
-                                    minValue,
-                                    maxValue,
+                                    gaugeSegmentMinValue,
+                                    gaugeSegmentMaxValue,
                                   ),
                               }) || ""
                             }
@@ -295,8 +241,8 @@ export default function Gauge({ card, data, getColor }: GaugeProps) {
             <GaugeNeedle
               color={getColor("bg-dark")}
               outlineColor={outlineColor}
-              position={valuePosition}
-              valueAngle={valueAngle}
+              position={gaugeNeedlePosition}
+              valueAngle={gaugeNeedleAngle}
             />
             {gaugeLabels.map(
               ({ color, position, textAnchor, value }, index) => {
@@ -317,7 +263,7 @@ export default function Gauge({ card, data, getColor }: GaugeProps) {
               fill={getColor("text-dark")}
               stroke={outlineColor}
               fontSize={dynamicValueFontSize}
-              position={[0, -gaugeInnerRadius / 3]}
+              position={[0, -GAUGE_INNER_RADIUS * 0.4]}
               label={displayValue}
             />
           </Group>
@@ -327,65 +273,19 @@ export default function Gauge({ card, data, getColor }: GaugeProps) {
   );
 }
 
-interface GaugeLabelProps {
-  fill: string;
-  stroke: string;
-  fontSize: number;
-  position: Position;
-  label: string;
-  textAnchor?: TextAnchor;
-}
-
-const CIRCLE_ANGLE = Math.PI * 2;
-/**
- * @returns angle in positive radian
- */
-function normalizeAngle(angle: number) {
-  const maybeNegativeAngle = angle % CIRCLE_ANGLE;
-  return (maybeNegativeAngle + CIRCLE_ANGLE) % CIRCLE_ANGLE;
-}
-
-function calculateValueAngle(
+function calculateRelativeValueAngle(
   value: number,
   minValue: number,
   maxValue: number,
 ) {
-  return toRadian(((value - minValue) / (maxValue - minValue)) * ARC_DEGREE);
+  return ((value - minValue) / (maxValue - minValue)) * GAUGE_ARC_ANGLE;
 }
 
-function GaugeLabel({
-  fill,
-  stroke,
-  fontSize,
-  position,
-  label,
-  textAnchor = "middle",
-}: GaugeLabelProps) {
-  return (
-    <OutlinedText
-      fill={fill}
-      fontWeight={700}
-      fontSize={fontSize}
-      stroke={stroke}
-      strokeWidth={fontSize / 6}
-      x={position[0]}
-      y={position[1]}
-      textAnchor={textAnchor}
-      verticalAnchor="middle"
-    >
-      {label}
-    </OutlinedText>
-  );
-}
-
-function calculateValueFontSize(
-  displayValue: string,
-  gaugeInnerRadius: number,
-) {
+function calculateValueFontSize(displayValue: string, maxWidth: number) {
   let dynamicValueFontSize = BASE_FONT_SIZE;
   while (
     measureText(displayValue, dynamicValueFontSize) >
-    2 * gaugeInnerRadius - VALUE_MARGIN
+    2 * (maxWidth - VALUE_MARGIN)
   ) {
     dynamicValueFontSize -= 1;
   }
@@ -404,123 +304,12 @@ function colorGetter(pieArcDatum: PieArcDatum<GaugeSegment>) {
   return pieArcDatum.data.color;
 }
 
-function toRadian(degree: number) {
-  return (degree / 360) * (2 * Math.PI);
-}
-
-function toDegree(radian: number) {
-  return (radian / (2 * Math.PI)) * 360;
-}
-
-interface GaugeNeedleProps {
-  color: string;
-  outlineColor: string;
-  position: Position;
-  valueAngle: number;
-}
-const GAUGE_NEEDLE_RADIUS = GAUGE_THICKNESS / 6;
-const GAUGE_OUTLINE_RADIUS = GAUGE_NEEDLE_RADIUS * 1.6;
-function GaugeNeedle({
-  color,
-  outlineColor,
-  position,
-  valueAngle,
-}: GaugeNeedleProps) {
-  const HALF_EQUILATERAL_TRIANGLE_ANGLE = 60 / 2;
-  const translationYOffset =
-    GAUGE_NEEDLE_RADIUS * Math.tan(toRadian(HALF_EQUILATERAL_TRIANGLE_ANGLE));
-  return (
-    <g
-      transform={`rotate(${toDegree(valueAngle)} ${toSvgPositionString(
-        position,
-      )}) translate(0 ${-translationYOffset})`}
-    >
-      <Triangle
-        center={position}
-        radius={GAUGE_OUTLINE_RADIUS}
-        color={outlineColor}
-      />
-      <Triangle center={position} radius={GAUGE_NEEDLE_RADIUS} color={color} />
-    </g>
-  );
-}
-interface TriangleProps {
-  center: Position;
-  radius: number;
-  color: string;
-}
-const TRIANGLE_ANGLE = 120;
-function Triangle({ center, radius, color }: TriangleProps) {
-  return (
-    <path
-      fill={color}
-      d={`M ${toSvgPositionString(
-        movePosition(
-          center,
-          getCirclePositionInSvgCoordinate(radius, 0 * TRIANGLE_ANGLE),
-        ),
-      )}
-      L ${toSvgPositionString(
-        movePosition(
-          center,
-          getCirclePositionInSvgCoordinate(
-            radius,
-            toRadian(1 * TRIANGLE_ANGLE),
-          ),
-        ),
-      )}
-      L ${toSvgPositionString(
-        movePosition(
-          center,
-          getCirclePositionInSvgCoordinate(
-            radius,
-            toRadian(2 * TRIANGLE_ANGLE),
-          ),
-        ),
-      )}
-      Z`}
-    />
-  );
-}
-
-function getCirclePositionInSvgCoordinate(
+// utils
+export function getCirclePositionInSvgCoordinate(
   radius: number,
   angleRadian: number,
 ): Position {
   return [Math.sin(angleRadian) * radius, -Math.cos(angleRadian) * radius];
-}
-
-function toSvgPositionString(position?: Position) {
-  if (position) {
-    return `${position[0]} ${position[1]}`;
-  }
-
-  return "";
-}
-
-function movePosition(origin: Position, difference: Position): Position {
-  return [origin[0] + difference[0], origin[1] + difference[1]];
-}
-
-function isBetweenAngle(
-  angle: number,
-  fromAngle: number,
-  toAngle: number,
-): boolean {
-  const normalizedAngle = normalizeAngle(angle);
-  const normalizedFromAngle = normalizeAngle(fromAngle);
-  const normalizedToAngle = normalizeAngle(toAngle);
-  if (normalizedToAngle < normalizedFromAngle) {
-    return (
-      (normalizedAngle >= normalizedFromAngle &&
-        normalizedAngle <= CIRCLE_ANGLE) ||
-      (normalizedAngle >= 0 && normalizedAngle <= normalizedToAngle)
-    );
-  }
-  return (
-    normalizedAngle >= normalizedFromAngle &&
-    normalizedAngle <= normalizedToAngle
-  );
 }
 
 function calculateChartScale(gaugeLabels: GaugeLabelData[]) {
@@ -563,6 +352,13 @@ function limit(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
+function calculateGaugeSegmentLabelPosition(angle: number): Position {
+  return getCirclePositionInSvgCoordinate(
+    GAUGE_OUTER_RADIUS + SEGMENT_LABEL_MARGIN + DISTANCE_TO_MIDDLE_LABEL_ANCHOR,
+    angle,
+  );
+}
+
 function removeDuplicateElements(
   uniqueList: number[],
   element: number,
@@ -572,4 +368,54 @@ function removeDuplicateElements(
   }
 
   return uniqueList.concat(element);
+}
+
+function calculateGaugeSegmentLabelTextAnchor(angle: number): TextAnchor {
+  if (
+    isBetweenAngle(angle, -Math.PI / 2, -SEGMENT_LABEL_ANCHOR_THRESHOLD_ANGLE)
+  ) {
+    return "end";
+  }
+
+  if (
+    isBetweenAngle(
+      angle,
+      -SEGMENT_LABEL_ANCHOR_THRESHOLD_ANGLE,
+      SEGMENT_LABEL_ANCHOR_THRESHOLD_ANGLE,
+    )
+  ) {
+    return "middle";
+  }
+
+  return "start";
+}
+
+const CIRCLE_ANGLE = 2 * Math.PI;
+function isBetweenAngle(
+  angle: number,
+  fromAngle: number,
+  toAngle: number,
+): boolean {
+  const normalizedAngle = normalizeAngle(angle);
+  const normalizedFromAngle = normalizeAngle(fromAngle);
+  const normalizedToAngle = normalizeAngle(toAngle);
+  if (normalizedToAngle < normalizedFromAngle) {
+    return (
+      (normalizedAngle >= normalizedFromAngle &&
+        normalizedAngle <= CIRCLE_ANGLE) ||
+      (normalizedAngle >= 0 && normalizedAngle <= normalizedToAngle)
+    );
+  }
+  return (
+    normalizedAngle >= normalizedFromAngle &&
+    normalizedAngle <= normalizedToAngle
+  );
+}
+
+/**
+ * @returns angle in positive radian
+ */
+function normalizeAngle(angle: number) {
+  const maybeNegativeAngle = angle % CIRCLE_ANGLE;
+  return (maybeNegativeAngle + CIRCLE_ANGLE) % CIRCLE_ANGLE;
 }
