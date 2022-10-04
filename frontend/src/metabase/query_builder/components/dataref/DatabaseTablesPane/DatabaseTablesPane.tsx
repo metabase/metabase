@@ -40,7 +40,10 @@ const DatabaseTablesPane = ({
         .sort((a, b) => a.name.localeCompare(b.name)),
     [searchResults],
   );
-  return searchResults ? (
+  if (!models) {
+    return null;
+  }
+  return (
     <NodeListContainer>
       {models?.length ? (
         <>
@@ -93,7 +96,7 @@ const DatabaseTablesPane = ({
         ))}
       </ul>
     </NodeListContainer>
-  ) : null;
+  );
 };
 
 export default _.compose(
