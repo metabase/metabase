@@ -2,6 +2,7 @@
 
 import d3 from "d3";
 import { createSelector } from "reselect";
+import createCachedSelector from "re-reselect";
 import _ from "underscore";
 import { assocIn, getIn, merge, updateIn } from "icepick";
 
@@ -329,6 +330,14 @@ export const getQuestion = createSelector(
   },
 );
 
+// This jsdoc keeps the TS typechecker happy.
+// Otherwise TS thinks this `getQuestionFromCard` requires two args.
+/** @type {function(unknown, unknown): Question} */
+export const getQuestionFromCard = createCachedSelector(
+  [getMetadata, (_state, card) => card],
+  (metadata, card) => new Question(card, metadata),
+)((_state, card) => card.id);
+
 function normalizeClause(clause) {
   return typeof clause?.raw === "function" ? clause.raw() : clause;
 }
@@ -378,36 +387,50 @@ function areQueriesEqual(queryA, queryB, tableMetadata) {
   return _.isEqual(normalizedQueryA, normalizedQueryB);
 }
 
+// Model questions may be composed via the `composeDataset` method.
+// A composed model question should be treated as equivalent to its original form.
+// We need to handle scenarios where both the `lastRunQuestion` and the `currentQuestion` are
+// in either form.
 function areModelsEquivalent({
   originalQuestion,
   lastRunQuestion,
   currentQuestion,
   tableMetadata,
 }) {
-  if (!originalQuestion?.isDataset()) {
+  if (!lastRunQuestion || !currentQuestion || !originalQuestion?.isDataset()) {
     return false;
   }
 
-  // When viewing a model, its dataset_query is swapped with a clean query using the dataset as a source table
-  // (it's necessary for datasets to behave like tables opened in simple mode)
-  // We need to escape the isDirty check as it will always be true in this case,
-  // and the page will always be covered with a 'rerun' overlay.
-  // Once the dataset_query changes, the question will loose the "dataset" flag and it'll work normally
-  const isCurrentEquivalentToOriginal =
-    currentQuestion && isAdHocModelQuestion(currentQuestion, originalQuestion);
+  const composedOriginal = originalQuestion.composeDataset();
 
-  // When editing a model, the `currentQuestion` reverts to the form of the original question,
-  // but the model query might've already been run in its "ad-hoc" form.
-  const isLastRunUnchangedFromOriginal =
-    lastRunQuestion &&
-    isAdHocModelQuestion(lastRunQuestion, originalQuestion) &&
+  const isLastRunComposed = areQueriesEqual(
+    lastRunQuestion.datasetQuery(),
+    composedOriginal.datasetQuery(),
+    tableMetadata,
+  );
+  const isCurrentComposed = areQueriesEqual(
+    currentQuestion.datasetQuery(),
+    composedOriginal.datasetQuery(),
+    tableMetadata,
+  );
+
+  const isLastRunEquivalentToCurrent =
+    isLastRunComposed &&
     areQueriesEqual(
       currentQuestion.datasetQuery(),
       originalQuestion.datasetQuery(),
       tableMetadata,
     );
 
-  return isCurrentEquivalentToOriginal || isLastRunUnchangedFromOriginal;
+  const isCurrentEquivalentToLastRun =
+    isCurrentComposed &&
+    areQueriesEqual(
+      lastRunQuestion.datasetQuery(),
+      originalQuestion.datasetQuery(),
+      tableMetadata,
+    );
+
+  return isLastRunEquivalentToCurrent || isCurrentEquivalentToLastRun;
 }
 
 function areQueriesEquivalent({
@@ -417,17 +440,17 @@ function areQueriesEquivalent({
   tableMetadata,
 }) {
   return (
+    areQueriesEqual(
+      lastRunQuestion?.datasetQuery(),
+      currentQuestion?.datasetQuery(),
+      tableMetadata,
+    ) ||
     areModelsEquivalent({
       originalQuestion,
       lastRunQuestion,
       currentQuestion,
       tableMetadata,
-    }) ||
-    areQueriesEqual(
-      lastRunQuestion?.datasetQuery(),
-      currentQuestion?.datasetQuery(),
-      tableMetadata,
-    )
+    })
   );
 }
 

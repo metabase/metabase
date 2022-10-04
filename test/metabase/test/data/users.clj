@@ -166,18 +166,6 @@
         (binding [*retrying-authentication*  true]
           (apply client-fn username args))))))
 
-(s/defn ^:deprecated user->client :- (s/pred fn?)
-  "Returns a [[metabase.http-client/client]] partially bound with the credentials for User with `username`.
-   In addition, it forces lazy creation of the User if needed.
-
-     ((user->client) :get 200 \"meta/table\")
-
-  DEPRECATED -- use `user-http-request` instead, which has proper `:arglists` metadata which makes it a bit easier to
-  use when writing code."
-  [username :- TestUserName]
-  (fetch-user username) ; force creation of the user if not already created
-  (partial client-fn username))
-
 (defn user-http-request
   "A version of our test HTTP client that issues the request with credentials for a given User. User may be either a
   redefined test User name, e.g. `:rasta`, or any User or User ID. (Because we don't have the User's original

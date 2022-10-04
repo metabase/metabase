@@ -1,10 +1,10 @@
 ---
-title: "Developer's Guide"
+title: "Developer Guide"
 redirect_from:
   - /docs/latest/developers-guide
 ---
 
-# Developer's Guide
+# Developer Guide
 
 This guide contains detailed information on how to work on Metabase codebase.
 

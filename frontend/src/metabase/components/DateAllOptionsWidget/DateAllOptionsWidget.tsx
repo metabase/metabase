@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 import cx from "classnames";
 
 import { dateParameterValueToMBQL } from "metabase/parameters/utils/mbql";

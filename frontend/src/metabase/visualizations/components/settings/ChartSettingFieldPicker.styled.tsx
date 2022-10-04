@@ -4,12 +4,18 @@ import Icon from "metabase/components/Icon";
 import SelectButton from "metabase/core/components/SelectButton";
 import Triggerable from "metabase/components/Triggerable";
 
-export const ChartSettingFieldPickerRoot = styled.div`
+interface ChartSettingFieldPickerRootProps {
+  disabled: boolean;
+}
+
+export const ChartSettingFieldPickerRoot = styled.div<ChartSettingFieldPickerRootProps>`
   display: flex;
   align-items: center;
   border: 1px solid ${color("border")};
   border-radius: 0.5rem;
   padding-right: 1rem;
+  padding-left: 0.5rem;
+  background: ${color("white")};
 
   ${Triggerable.Trigger} {
     flex: 1;
@@ -18,13 +24,15 @@ export const ChartSettingFieldPickerRoot = styled.div`
 
   ${SelectButton.Root} {
     border: none;
-    padding: 0.75rem;
+    padding: 0.75rem 0.5rem;
   }
 
   ${SelectButton.Icon} {
     margin-left: 0;
     color: ${color("text-dark")};
     height: 0.625rem;
+
+    ${props => props.disabled && "display: none;"}
   }
 
   ${SelectButton.Content} {
@@ -35,13 +43,23 @@ export const ChartSettingFieldPickerRoot = styled.div`
     max-width: 100%;
     white-space: nowrap;
     overflow: hidden;
+    color: ${color("text-dark")};
+  }
+
+  ${SelectButton.Root} {
+    ${props => props.disabled && `background-color: ${color("white")};`}
   }
 `;
 
-export const SettingsIcon = styled(Icon)`
-  margin-left: 0.5rem;
+interface SettingsIconProps {
+  noPointer?: boolean;
+  noMargin?: boolean;
+}
+
+export const SettingsIcon = styled(Icon)<SettingsIconProps>`
+  margin-left: ${props => (props.noMargin ? "0" : "0.75rem")};
   color: ${color("text-medium")};
-  cursor: pointer;
+  cursor: ${props => (props.noPointer ? "inherit" : "pointer")};
 
   &:hover {
     color: ${color("brand")};

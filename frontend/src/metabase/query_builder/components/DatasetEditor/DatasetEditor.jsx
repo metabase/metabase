@@ -253,10 +253,10 @@ function DatasetEditor(props) {
     // Focused field has to be set once the query is completed and the result is rendered
     // Visualization render can remove the focus
     const hasQueryResults = !!result;
-    if (!focusedFieldRef && hasQueryResults && !result.error) {
+    if (!focusedField && hasQueryResults && !result.error) {
       focusFirstField();
     }
-  }, [result, focusedFieldRef, focusFirstField]);
+  }, [result, focusedFieldRef, fields, focusFirstField, focusedField]);
 
   const inheritMappedFieldProperties = useCallback(
     changes => {
@@ -304,7 +304,7 @@ function DatasetEditor(props) {
 
   const handleSave = useCallback(async () => {
     if (checkCanBeModel(dataset)) {
-      await onSave(dataset.card(), { rerunQuery: true });
+      await onSave(dataset.card());
       setQueryBuilderMode("view");
     } else {
       onOpenModal(MODAL_TYPES.CAN_NOT_CREATE_MODEL);

@@ -24,45 +24,86 @@ describe("scenarios > models metadata", () => {
     restore();
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
-  it("should edit GUI model metadata", () => {
-    // Convert saved question "Orders" into a model
-    cy.request("PUT", "/api/card/1", {
-      name: "GUI Model",
-      dataset: true,
+  describe("GUI model", () => {
+    beforeEach(() => {
+      // Convert saved question "Orders" into a model
+      cy.request("PUT", "/api/card/1", {
+        name: "GUI Model",
+        dataset: true,
+      });
+
+      cy.visit("/model/1");
     });
 
-    cy.visit("/model/1");
+    it("should edit GUI model metadata", () => {
+      openQuestionActions();
 
-    openQuestionActions();
+      popover().within(() => {
+        cy.findByTextEnsureVisible("89%").trigger("mouseenter");
+      });
 
-    popover().within(() => {
-      cy.findByTextEnsureVisible("89%").trigger("mouseenter");
+      cy.findByText(
+        "Some columns are missing a column type, description, or friendly name.",
+      );
+      cy.findByText(
+        "Adding metadata makes it easier for your team to explore this data.",
+      );
+
+      cy.findByText("Edit metadata").click();
+
+      cy.url().should("include", "/metadata");
+      cy.findByTextEnsureVisible("Product ID");
+
+      openColumnOptions("Subtotal");
+
+      renameColumn("Subtotal", "Pre-tax");
+      setColumnType("No special type", "Cost");
+      cy.button("Save changes").click();
+
+      startQuestionFromModel("GUI Model");
+
+      visualize();
+      cy.findByText("Pre-tax ($)");
     });
 
-    cy.findByText(
-      "Some columns are missing a column type, description, or friendly name.",
-    );
-    cy.findByText(
-      "Adding metadata makes it easier for your team to explore this data.",
-    );
+    it("allows for canceling changes", () => {
+      openQuestionActions();
 
-    cy.findByText("Edit metadata").click();
+      cy.findByText("Edit metadata").click();
 
-    cy.url().should("include", "/metadata");
-    cy.findByTextEnsureVisible("Product ID");
+      openColumnOptions("Subtotal");
 
-    openColumnOptions("Subtotal");
+      renameColumn("Subtotal", "Pre-tax");
+      setColumnType("No special type", "Cost");
 
-    renameColumn("Subtotal", "Pre-tax");
-    setColumnType("No special type", "Cost");
-    cy.button("Save changes").click();
+      cy.button("Cancel").click();
 
-    startQuestionFromModel("GUI Model");
+      cy.findByText("Subtotal");
+    });
 
-    visualize();
-    cy.findByText("Pre-tax ($)");
+    it("clears custom metadata when a model is turned back into a question", () => {
+      openQuestionActions();
+
+      cy.findByText("Edit metadata").click();
+
+      openColumnOptions("Subtotal");
+
+      renameColumn("Subtotal", "Pre-tax");
+      setColumnType("No special type", "Cost");
+      cy.button("Save changes").click();
+
+      openQuestionActions();
+      popover().within(() => {
+        cy.findByText("Turn back to saved question").click();
+      });
+
+      cy.wait("@dataset");
+
+      cy.findByText("Subtotal");
+    });
   });
 
   it("should edit native model metadata", () => {
@@ -109,6 +150,34 @@ describe("scenarios > models metadata", () => {
 
     visualize();
     cy.findByText("Pre-tax ($)");
+  });
+
+  it("should keep metadata in sync with the query", () => {
+    cy.createNativeQuestion(
+      {
+        name: "Native Model",
+        dataset: true,
+        native: {
+          query: "SELECT * FROM ORDERS",
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    openQuestionActions();
+    popover().within(() => {
+      cy.findByText("Edit query definition").click();
+    });
+
+    cy.get(".ace_content").type(
+      "{selectAll}{backspace}SELECT TOTAL FROM ORDERS",
+    );
+
+    cy.findByTestId("editor-tabs-metadata-name").click();
+    cy.wait("@dataset");
+
+    cy.findByTestId("header-cell").should("have.length", 1);
+    cy.findByLabelText("Display name").should("have.value", "TOTAL");
   });
 
   it("should allow reverting to a specific metadata revision", () => {
@@ -258,7 +327,6 @@ describe("scenarios > models metadata", () => {
           });
 
           cy.go("back");
-          cy.wait("@dataset");
 
           // Drill to Reviews table
           // FK column has a FK semantic type, no mapping to real DB columns

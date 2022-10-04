@@ -45,10 +45,12 @@ export interface Settings {
   "available-locales": LocaleData[] | undefined;
   "enable-public-sharing": boolean;
   "enable-xrays": boolean;
+  "email-configured?": boolean;
   engines: Record<string, Engine>;
   "is-hosted?": boolean;
   "google-auth-client-id": string | null;
   "deprecation-notice-version": string | undefined;
+  "ldap-enabled": boolean;
   "loading-message": LoadingMessage;
   "site-locale": string;
   "show-database-syncing-modal": boolean;

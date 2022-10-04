@@ -33,7 +33,10 @@ interface FormContainerProps<Values extends BaseFieldValues>
   initial?: () => void;
   normalize?: () => void;
 
-  onSubmit: (values: Values) => void | Promise<void>;
+  onSubmit: (
+    values: Values,
+    formikHelpers?: FormikHelpers<Values>,
+  ) => void | Promise<void>;
   onSubmitSuccess?: (action: unknown) => void;
 
   // various props
@@ -216,8 +219,9 @@ function Form<Values extends BaseFieldValues>({
     async (values: Values, formikHelpers: FormikHelpers<Values>) => {
       try {
         const normalized = formObject.normalize(values);
-        const result = await onSubmit(normalized);
+        const result = await onSubmit(normalized, formikHelpers);
         onSubmitSuccess?.(result);
+        setError(null); // clear any previous errors
         return result;
       } catch (e) {
         const error = handleError(e as ServerErrorResponse, formikHelpers);

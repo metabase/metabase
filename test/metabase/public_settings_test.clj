@@ -56,7 +56,7 @@
       (is (= "https://&"
              (setting/get-value-of-type :string :site-url)))
       (is (= nil
-             (mt/suppress-output (public-settings/site-url)))))))
+             (public-settings/site-url))))))
 
 (deftest site-url-settings-normalize
   (testing "We should normalize `site-url` when set via env var we should still normalize it (#9764)"
@@ -70,13 +70,12 @@
 (deftest invalid-site-url-env-var-test
   (testing (str "If `site-url` is set via an env var, and it's invalid, we should return `nil` rather than having the"
                 " whole instance break")
-    (mt/suppress-output
-      (mt/with-temp-env-var-value [mb-site-url "asd_12w31%$;"]
-        (mt/with-temporary-setting-values [site-url nil]
-          (is (= "asd_12w31%$;"
-                 (setting/get-value-of-type :string :site-url)))
-          (is (= nil
-                 (public-settings/site-url))))))))
+    (mt/with-temp-env-var-value [mb-site-url "asd_12w31%$;"]
+      (mt/with-temporary-setting-values [site-url nil]
+        (is (= "asd_12w31%$;"
+               (setting/get-value-of-type :string :site-url)))
+        (is (= nil
+               (public-settings/site-url)))))))
 
 (deftest site-url-should-update-https-redirect-test
   (testing "Changing `site-url` to non-HTTPS should disable forced HTTPS redirection"

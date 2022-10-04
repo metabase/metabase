@@ -8,7 +8,7 @@ import { USERS } from "__support__/e2e/cypress_data";
 
 const { normal, admin } = USERS;
 
-describe("scenarios > alert > alert permissions", () => {
+describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
   // Intentional use of before (not beforeEach) hook because the setup is quite long.
   // Make sure that all tests are always able to run independently!
   before(() => {

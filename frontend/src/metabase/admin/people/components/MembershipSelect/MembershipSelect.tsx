@@ -1,6 +1,5 @@
 import React from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";

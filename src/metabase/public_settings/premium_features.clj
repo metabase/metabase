@@ -237,6 +237,10 @@
   etc.)?"
   :content-management)
 
+(define-premium-feature ^{:added "0.45.0"} enable-serialization?
+  "Enable the v2 SerDes functionality"
+  :serialization)
+
 (defsetting is-hosted?
   "Is the Metabase instance running in the cloud?"
   :type       :boolean

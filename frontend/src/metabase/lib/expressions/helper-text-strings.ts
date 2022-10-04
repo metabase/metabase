@@ -217,6 +217,7 @@ const helperTextStrings: HelpText[] = [
       },
       { name: t`length`, description: t`The number of characters to return.` },
     ],
+    hasDocsPage: true,
   },
   {
     name: "regex-match-first",
@@ -243,6 +244,7 @@ const helperTextStrings: HelpText[] = [
         description: t`This will be added to the end of value1, and so on.`,
       },
     ],
+    hasDocsPage: true,
   },
   {
     name: "replace",
@@ -570,6 +572,143 @@ const helperTextStrings: HelpText[] = [
       },
     ],
     hasDocsPage: true,
+  },
+  {
+    name: "get-year",
+    structure: "year(" + t`column` + ")",
+    description: t`Takes a datetime and returns an integer with the number of the year.`,
+    example: "year([" + t`Created At` + "])",
+    args: [
+      {
+        name: t`column`,
+        description: t`The datetime column.`,
+      },
+    ],
+  },
+  {
+    name: "get-quarter",
+    structure: "quarter(" + t`column` + ")",
+    description: t`Takes a datetime and returns an integer (1-4) with the number of the quarter in the year.`,
+    example: "quarter([" + t`Created At` + "])",
+    args: [
+      {
+        name: t`column`,
+        description: t`The datetime column.`,
+      },
+    ],
+  },
+  {
+    name: "get-month",
+    structure: "month(" + t`column` + ")",
+    description: t`Takes a datetime and returns an integer (1-12) with the number of the month in the year.`,
+    example: "month([" + t`Created At` + "])",
+    args: [
+      {
+        name: t`column`,
+        description: t`The datetime column.`,
+      },
+    ],
+  },
+  {
+    name: "get-day",
+    structure: "day(" + t`column` + ")",
+    description: t`Takes a datetime and returns an integer (1-31) with the number of the day of the month.`,
+    example: "day([" + t`Created At` + "])",
+    args: [
+      {
+        name: t`column`,
+        description: t`The datetime column.`,
+      },
+    ],
+  },
+  {
+    name: "get-day-of-week",
+    structure: "weekday(" + t`column` + ")",
+    description: t`Takes a datetime and returns an integer (1-7) with the number of the day of the week.`,
+    example: "weekday([" + t`Created At` + "])",
+    args: [
+      {
+        name: t`column`,
+        description: t`The datetime column.`,
+      },
+    ],
+  },
+  {
+    name: "get-hour",
+    structure: "hour(" + t`column` + ")",
+    description: t`Takes a datetime and returns an integer (0-23) with the number of the hour. No AM/PM.`,
+    example: "hour([" + t`Created At` + "])",
+    args: [
+      {
+        name: t`column`,
+        description: t`The datetime column.`,
+      },
+    ],
+  },
+  {
+    name: "get-minute",
+    structure: "minute(" + t`column` + ")",
+    description: t`Takes a datetime and returns an integer (0-59) with the number of the minute in the hour.`,
+    example: "minute([" + t`Created At` + "])",
+    args: [
+      {
+        name: t`column`,
+        description: t`The datetime column.`,
+      },
+    ],
+  },
+  {
+    name: "get-second",
+    structure: "second(" + t`column` + ")",
+    description: t`Takes a datetime and returns an integer (0-59) with the number of the seconds in the minute.`,
+    example: "second([" + t`Created At` + "])",
+    args: [
+      {
+        name: t`column`,
+        description: t`The datetime column.`,
+      },
+    ],
+  },
+  {
+    name: "date-add",
+    structure: "dateAdd(" + t`column` + ", " + t`amount` + ", " + t`unit` + ")",
+    description: t`Adds some units of time to a date or timestamp value.`,
+    example: "dateAdd([" + t`Created At` + '], 1, "' + t`month` + '")',
+    args: [
+      {
+        name: t`column`,
+        description: t`The column with your date or timestamp values.`,
+      },
+      {
+        name: t`amount`,
+        description: t`The number of units to be added.`,
+      },
+      {
+        name: t`unit`,
+        description: t`"year", "month", "quarter", "day", "hour", "minute", "second" or "millisecond".`,
+      },
+    ],
+  },
+  {
+    name: "date-subtract",
+    structure:
+      "dateSubtract(" + t`column` + ", " + t`amount` + ", " + t`unit` + ")",
+    description: t`Subtracts some units of time to a date or timestamp value.`,
+    example: "dateSubtract([" + t`Created At` + '], 1, "' + t`month` + '")',
+    args: [
+      {
+        name: t`column`,
+        description: t`The column with your date or timestamp values.`,
+      },
+      {
+        name: t`amount`,
+        description: t`The number of units to be subtracted.`,
+      },
+      {
+        name: t`unit`,
+        description: t`"year", "month", "quarter", "day", "hour", "minute", "second" or "millisecond".`,
+      },
+    ],
   },
 ];
 

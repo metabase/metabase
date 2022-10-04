@@ -30,7 +30,7 @@ For an introduction to expressions, check out [Writing expressions in the notebo
   - [case](./expressions/case.md)
   - [ceil](#ceil)
   - [coalesce](./expressions/coalesce.md)
-  - [concat](#concat)
+  - [concat](./expressions/concat.md)
   - [contains](#contains)
   - [endswith](#endswith)
   - [exp](#exp)
@@ -43,13 +43,13 @@ For an introduction to expressions, check out [Writing expressions in the notebo
   - [log](#log)
   - [lower](#lower)
   - [power](#power)
-  - [regexextract](#regexextract)
+  - [regexextract](./expressions/regexextract.md)
   - [replace](#replace)
   - [righttrim](#righttrim)
   - [round](#round)
   - [sqrt](#sqrt)
   - [startswith](#startswith)
-  - [substring](#substring)
+  - [substring](./expressions/substring.md)
   - [trim](#trim)
   - [upper](#upper)
 - [Database limitations](#database-limitations)
@@ -224,7 +224,7 @@ Example: `case([Weight] > 200, "Large", [Weight] > 150, "Medium", "Small")` If a
 
 ### ceil
 
-Rounds a decimal up (ciel as in ceiling).
+Rounds a decimal up (ceil as in ceiling).
 
 Syntax: `ceil(column)`.
 
@@ -240,7 +240,7 @@ Syntax: `coalesce(value1, value2, …)`
 
 Example: `coalesce([Comments], [Notes], "No comments")`. If both the `Comments` and `Notes` columns are null for that row, the expression will return the string "No comments".
 
-### concat
+### [concat](./expressions/concat.md)
 
 Combine two or more strings together.
 
@@ -362,7 +362,7 @@ Databases that don't support `power`: SQLite.
 
 Related: [exp](#exp).
 
-### regexextract
+### [regexextract](./expressions/regexextract.md)
 
 Extracts matching substrings according to a regular expression.
 
@@ -372,7 +372,7 @@ Example: `regexextract([Address], "[0-9]+")`.
 
 Databases that don't support `regexextract`: H2, SQL Server, SQLite.
 
-Related: [contains](#contains).
+Related: [contains](#contains), [substring](#substring).
 
 ### replace
 
@@ -422,7 +422,7 @@ Example: `startsWith([Course Name], "Computer Science")` would return true for c
 
 Related: [endswith](#endswith), [contains](#contains).
 
-### substring
+### [substring](./expressions/substring.md)
 
 Returns a portion of the supplied text, specified by a starting position and a length.
 
@@ -430,7 +430,7 @@ Syntax: `substring(text, position, length)`
 
 Example: `substring([Title], 0, 10)` returns the first 11 letters of a string (the string index starts at position 0).
 
-Related: [replace](#replace).
+Related: [regexextract](#regexextract), [replace](#replace).
 
 ### trim
 

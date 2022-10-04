@@ -1,12 +1,20 @@
 import React, { useCallback, useMemo } from "react";
 
-import type { Dashboard } from "metabase-types/api";
 import type { VisualizationProps } from "metabase-types/types/Visualization";
+import type {
+  OnSubmitActionForm,
+  WritebackParameter,
+} from "metabase-types/api";
 
 import ActionButtonView from "./ActionButtonView";
 
-interface DefaultActionButtonProps extends VisualizationProps {
-  dashboard: Dashboard;
+interface DefaultActionButtonProps {
+  isSettings: VisualizationProps["isSettings"];
+  settings: VisualizationProps["settings"];
+  getExtraDataForClick: VisualizationProps["getExtraDataForClick"];
+  onVisualizationClick: VisualizationProps["onVisualizationClick"];
+  onSubmit: OnSubmitActionForm;
+  missingParameters: WritebackParameter[];
 }
 
 function DefaultActionButton({
@@ -14,8 +22,13 @@ function DefaultActionButton({
   settings,
   getExtraDataForClick,
   onVisualizationClick,
+  onSubmit,
+  missingParameters,
 }: DefaultActionButtonProps) {
-  const clickObject = useMemo(() => ({ settings }), [settings]);
+  const clickObject = useMemo(
+    () => ({ settings, onSubmit, missingParameters }),
+    [settings, onSubmit, missingParameters],
+  );
 
   const extraData = useMemo(
     () => getExtraDataForClick?.(clickObject),

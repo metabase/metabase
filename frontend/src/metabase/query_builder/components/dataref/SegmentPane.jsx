@@ -141,7 +141,6 @@ class SegmentPane extends Component {
 
     return (
       <DetailPane
-        name={segmentName}
         description={segment.description}
         useForCurrentQuestion={useForCurrentQuestion}
         usefulQuestions={usefulQuestions}
