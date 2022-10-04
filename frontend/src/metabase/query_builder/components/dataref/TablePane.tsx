@@ -21,11 +21,11 @@ const mapStateToProps = (state: State, props: TablePaneProps) => ({
 });
 
 interface TablePaneProps {
-  show: (type: string, item: unknown) => void;
+  onItemClick: (type: string, item: unknown) => void;
   table: Table;
 }
 
-const TablePane = ({ table, show }: TablePaneProps) => {
+const TablePane = ({ table, onItemClick }: TablePaneProps) => {
   return table ? (
     <TableInfoLoader table={table}>
       <div className="ml1">
@@ -39,13 +39,13 @@ const TablePane = ({ table, show }: TablePaneProps) => {
         {table.fields && (
           <FieldList
             fields={table.fields}
-            onFieldClick={f => show("field", f)}
+            onFieldClick={f => onItemClick("field", f)}
           />
         )}
         {table.connectedTables() && (
           <ConnectedTableList
             tables={table.connectedTables()}
-            onTableClick={t => show("table", t)}
+            onTableClick={t => onItemClick("table", t)}
           />
         )}
       </div>

@@ -17,14 +17,14 @@ import {
 } from "./NodeList.styled";
 
 interface DatabaseSchemasPaneProps {
-  show: (type: string, item: unknown) => void;
+  onItemClick: (type: string, item: unknown) => void;
   database: Database;
   models: Card[];
 }
 
 const DatabaseSchemasPane = ({
   database,
-  show,
+  onItemClick,
   models,
 }: DatabaseSchemasPaneProps) => {
   const sortedModels = useMemo(
@@ -52,7 +52,7 @@ const DatabaseSchemasPane = ({
           <ul>
             {sortedModels.map(model => (
               <li key={model.id}>
-                <NodeListItemLink onClick={() => show("model", model)}>
+                <NodeListItemLink onClick={() => onItemClick("model", model)}>
                   <NodeListItemIcon name="model" />
                   <NodeListItemName>{model.name}</NodeListItemName>
                   <ModelId>{`#${model.id}`}</ModelId>
@@ -76,7 +76,7 @@ const DatabaseSchemasPane = ({
       <ul>
         {schemas.map(schema => (
           <li key={schema.id}>
-            <NodeListItemLink onClick={() => show("schema", schema)}>
+            <NodeListItemLink onClick={() => onItemClick("schema", schema)}>
               <NodeListItemIcon name="folder" />
               <NodeListItemName>{schema.name}</NodeListItemName>
             </NodeListItemLink>

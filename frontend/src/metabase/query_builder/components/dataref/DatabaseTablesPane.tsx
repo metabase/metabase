@@ -2,7 +2,9 @@ import React, { useMemo } from "react";
 import { ngettext, msgid } from "ttag";
 import _ from "underscore";
 
+import Tables from "metabase/entities/tables";
 import Search from "metabase/entities/search";
+import type { Card } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 import Database from "metabase-lib/lib/metadata/Database";
 import {
@@ -13,53 +15,46 @@ import {
   NodeListContainer,
   NodeListIcon,
   NodeListTitleText,
-} from "../NodeList.styled";
-import { ModelId } from "./DatabaseTablesPane.styled";
+  ModelId,
+} from "./NodeList.styled";
 
 interface DatabaseTablesPaneProps {
-  onItemClick: (type: string, item: any, name: string) => void;
+  onItemClick: (type: string, item: unknown) => void;
   database: Database;
-  searchResults: any[]; // TODO: /api/search is yet to be typed
+  models: Card[];
 }
 
 const DatabaseTablesPane = ({
+  database,
   onItemClick,
-  searchResults,
+  models,
 }: DatabaseTablesPaneProps) => {
   const tables = useMemo(
-    () =>
-      searchResults
-        ?.filter(x => x.model === "table")
-        .sort((a, b) => a.name.localeCompare(b.name)),
-    [searchResults],
+    () => database.tables.sort((a, b) => a.name.localeCompare(b.name)),
+    [database.tables],
   );
-  const models = useMemo(
-    () =>
-      searchResults
-        ?.filter(x => x.model === "dataset")
-        .sort((a, b) => a.name.localeCompare(b.name)),
-    [searchResults],
+  const sortedModels = useMemo(
+    () => models?.sort((a, b) => a.name.localeCompare(b.name)),
+    [models],
   );
-  return searchResults ? (
+  return sortedModels ? (
     <NodeListContainer>
-      {models?.length ? (
+      {sortedModels?.length ? (
         <>
           <NodeListTitle>
             <NodeListIcon name="model" />
             <NodeListTitleText>
               {ngettext(
-                msgid`${models.length} model`,
-                `${models.length} models`,
-                models.length,
+                msgid`${sortedModels.length} model`,
+                `${sortedModels.length} models`,
+                sortedModels.length,
               )}
             </NodeListTitleText>
           </NodeListTitle>
           <ul>
-            {models.map(model => (
+            {sortedModels.map(model => (
               <li key={model.id}>
-                <NodeListItemLink
-                  onClick={() => onItemClick("model", model, model.name)}
-                >
+                <NodeListItemLink onClick={() => onItemClick("model", model)}>
                   <NodeListItemIcon name="model" />
                   <NodeListItemName>{model.name}</NodeListItemName>
                   <ModelId>{`#${model.id}`}</ModelId>
@@ -83,11 +78,9 @@ const DatabaseTablesPane = ({
       <ul>
         {tables.map(table => (
           <li key={table.id}>
-            <NodeListItemLink
-              onClick={() => onItemClick("table", table, table.table_name)}
-            >
+            <NodeListItemLink onClick={() => onItemClick("table", table)}>
               <NodeListItemIcon name="table" />
-              <NodeListItemName>{table.table_name}</NodeListItemName>
+              <NodeListItemName>{table.name}</NodeListItemName>
             </NodeListItemLink>
           </li>
         ))}
@@ -97,12 +90,18 @@ const DatabaseTablesPane = ({
 };
 
 export default _.compose(
+  Tables.loadList({
+    query: (_state: State, props: DatabaseTablesPaneProps) => ({
+      dbId: props.database.id,
+    }),
+    loadingAndErrorWrapper: false,
+  }),
   Search.loadList({
     query: (_state: State, props: DatabaseTablesPaneProps) => ({
-      models: ["dataset", "table"],
+      models: "dataset",
       table_db_id: props.database.id,
     }),
     loadingAndErrorWrapper: false,
-    listName: "searchResults",
+    listName: "models",
   }),
 )(DatabaseTablesPane);

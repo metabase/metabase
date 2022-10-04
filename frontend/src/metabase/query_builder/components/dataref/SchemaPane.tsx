@@ -14,11 +14,11 @@ import {
 } from "./NodeList.styled";
 
 interface SchemaPaneProps {
-  show: (type: string, item: unknown) => void;
+  onItemClick: (type: string, item: unknown) => void;
   schema: Schema;
 }
 
-const SchemaPaneInner = ({ show, schema }: SchemaPaneProps) => {
+const SchemaPaneInner = ({ onItemClick, schema }: SchemaPaneProps) => {
   const tables = useMemo(
     () => schema.tables.sort((a, b) => a.name.localeCompare(b.name)),
     [schema.tables],
@@ -41,7 +41,7 @@ const SchemaPaneInner = ({ show, schema }: SchemaPaneProps) => {
       <ul>
         {tables.map(table => (
           <li key={table.id}>
-            <NodeListItemLink onClick={() => show("table", table)}>
+            <NodeListItemLink onClick={() => onItemClick("table", table)}>
               <NodeListItemIcon name="table" />
               <NodeListItemName>{table.name}</NodeListItemName>
             </NodeListItemLink>
