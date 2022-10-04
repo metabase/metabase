@@ -52,3 +52,9 @@ export const NodeListTitle = styled.div`
 export const NodeListTitleText = styled.span`
   margin-left: ${space(1)};
 `;
+
+export const ModelId = styled.span`
+  font-size: 0.75rem;
+  color: ${color("text-medium")};
+  margin-left: ${space(0)};
+`;
