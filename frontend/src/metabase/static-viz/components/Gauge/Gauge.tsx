@@ -5,7 +5,7 @@ import { Group } from "@visx/group";
 import type { PieArcDatum } from "@visx/shape/lib/shapes/Pie";
 
 import { formatNumber } from "metabase/static-viz/lib/numbers";
-import { measureText } from "metabase/static-viz/lib/text";
+import { measureText, truncateText } from "metabase/static-viz/lib/text";
 import type { ColorGetter } from "metabase/static-viz/lib/colors";
 import OutlinedText from "../Text/OutlinedText";
 
@@ -58,6 +58,7 @@ const GAUGE_THICKNESS = 70;
 const BASE_FONT_SIZE = GAUGE_THICKNESS * 0.8;
 const SEGMENT_LABEL_FONT_SIZE = BASE_FONT_SIZE * 0.3;
 const SEGMENT_LABEL_MARGIN = SEGMENT_LABEL_FONT_SIZE / 2;
+const MAX_SEGMENT_VALUE_WIDTH = 170;
 
 // Only allow the bottom of the gauge label to be above the top of the gauge chart.
 // So, the labels don't overlap with the gauge chart, otherwise, uses the label position
@@ -176,8 +177,7 @@ export default function Gauge({ card, data, getColor }: GaugeProps) {
 
   const gaugeSegmentLabels: GaugeLabelData[] = gaugeSegmentData
     .filter(gaugeSegmentDatum => gaugeSegmentDatum.label)
-    .map((gaugeSegmentDatum, index): GaugeLabelData => {
-      const gaugeSegmentLabel = gaugeSegmentDatum.label;
+    .map((gaugeSegmentDatum): GaugeLabelData => {
       const angle =
         startAngle +
         calculateValueAngle(
@@ -217,7 +217,11 @@ export default function Gauge({ card, data, getColor }: GaugeProps) {
         color: getColor("text-dark"),
         position: position,
         textAnchor: calculateLabelTextAnchor(angle),
-        value: gaugeSegmentLabel,
+        value: truncateText(
+          gaugeSegmentDatum.label,
+          MAX_SEGMENT_VALUE_WIDTH,
+          SEGMENT_LABEL_FONT_SIZE,
+        ),
       };
     });
 

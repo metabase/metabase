@@ -26,6 +26,10 @@ describe("static visualizations", { tags: "@external" }, () => {
       dashboardName,
       questions: [
         createGaugeQuestion([0, 9380, 18760, 37520]),
+        createGaugeQuestion(
+          [0, 9380, 18760, 37520],
+          ["I am a very very long label", "Not long label", "Label"],
+        ),
         createGaugeQuestion([0, 9380, 18760, 30000]),
         createGaugeQuestion([0, 9380, 18760, 37520, 75040]),
         createGaugeQuestion([20000, 30000, 40000]),
@@ -45,8 +49,9 @@ describe("static visualizations", { tags: "@external" }, () => {
 
 /**
  * @param {number[]} range
+ * @param {string[]=} range
  */
-function createGaugeQuestion(range) {
+function createGaugeQuestion(range, labels) {
   const colors = ["#ED6E6E", "#F9CF48", "#84BB4C", "#509EE3"];
   return {
     name: `Gauge chart with range "${range}"`,
@@ -63,7 +68,7 @@ function createGaugeQuestion(range) {
               min: value,
               max: nextValue,
               color: colors[index],
-              label: `Label ${index + 1}`,
+              label: labels?.[index] || `Label ${index + 1}`,
             };
           }
         })
