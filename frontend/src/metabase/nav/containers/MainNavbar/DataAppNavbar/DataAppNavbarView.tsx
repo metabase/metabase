@@ -1,8 +1,16 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+import type { DraggableChildrenFn } from "react-beautiful-dnd";
 import _ from "underscore";
 
-import type { DataApp, DataAppPage, DataAppNavItem } from "metabase-types/api";
+import { groupNavItems, isSameNavItem } from "metabase/entities/data-apps";
+
+import type {
+  DataApp,
+  DataAppPage,
+  DataAppNavItem,
+  DataAppNavItemWithChildren,
+} from "metabase-types/api";
 
 import { MainNavbarProps, SelectedItem } from "../types";
 import {
@@ -43,52 +51,208 @@ function DataAppNavbarView({
     item => item.type,
   );
 
+  const groupedNavItems = useMemo(
+    () => groupNavItems(dataApp.nav_items),
+    [dataApp],
+  );
+
   const handleNavItemsOrderChange = useCallback(
-    ({ source, destination, draggableId: pageId }) => {
+    ({ source, destination, draggableId: pageId, type, combine, ...rest }) => {
+      console.log("### DROP", {
+        source,
+        destination,
+        draggableId: pageId,
+        combine,
+        ...rest,
+      });
+
       // Pages created via "Add page" flow might not be present in nav items
       // We show them at the end of the page list by default,
       // and would generate a new nav item for them.
-      const navItem = dataApp.nav_items[source.index] || {
+      const navItem = { ...dataApp.nav_items[source.index] } || {
         page_id: Number(pageId),
       };
 
-      onNavItemsOrderChange(source.index, destination.index, navItem);
-    },
-    [dataApp, onNavItemsOrderChange],
-  );
+      if (combine) {
+        const parentPageId = Number(combine.draggableId);
+        const parentNavItemIndex = dataApp.nav_items.findIndex(
+          item => item.page_id === parentPageId,
+        );
+        const parentNavItem = dataApp.nav_items[parentNavItemIndex];
+        const parentIndent = parentNavItem.indent || 0;
 
-  const renderPage = useCallback(
-    (page: DataAppPage, index: number, indent = 0) => (
-      <Draggable key={page.id} draggableId={String(page.id)} index={index}>
-        {(provided, snapshot) => (
-          <DataAppPageSidebarLink
-            {...provided.draggableProps}
-            dataApp={dataApp}
-            page={page}
-            isDragging={snapshot.isDragging}
-            isSelected={dataAppPage?.id === page.id}
-            indent={indent}
-            dragHandleProps={provided.dragHandleProps}
-            ref={provided.innerRef}
-          />
-        )}
-      </Draggable>
-    ),
-    [dataApp, dataAppPage],
-  );
+        navItem.indent = parentIndent + 1;
 
-  const renderNavItem = useCallback(
-    (navItem: DataAppNavItem, index: number) => {
-      const page = getPageForNavItem(navItem);
+        console.log({
+          draggedPage: getPageForNavItem(navItem)?.name,
+          parentPage: getPageForNavItem(parentNavItem)?.name,
+          navItems: dataApp.nav_items.map(item => ({
+            title: getPageForNavItem(item)?.name,
+            indent: item.indent,
+            id: item.page_id,
+          })),
+          parentNavItemIndex,
+          parentNavItem,
+          navItem,
+        });
 
-      if (!page || navItem.hidden) {
-        return null;
+        onNavItemsOrderChange(source.index, parentNavItemIndex + 1, navItem);
+        return;
       }
 
-      return renderPage(page, index, navItem.indent);
+      if (destination.index === 0) {
+        navItem.indent = 0;
+      }
+
+      // console.log("### DROP", {
+      //   originalNavItem: { ...dataApp.nav_items[source.index] } || {
+      //     page_id: Number(pageId),
+      //   },
+      //   navItem,
+      //   from: source.index,
+      //   to: destination.index,
+      // });
+      onNavItemsOrderChange(source.index, destination.index, navItem);
     },
-    [getPageForNavItem, renderPage],
+    [dataApp, getPageForNavItem, onNavItemsOrderChange],
   );
+
+  const renderClone: DraggableChildrenFn = useCallback(
+    (provided, snapshot, rubric) => {
+      const { index } = rubric.source;
+      const navItem = dataApp.nav_items[index];
+      const page = getPageForNavItem(navItem);
+      if (!page) {
+        return <div />;
+      }
+      return (
+        <ul
+          {...provided.draggableProps}
+          {...provided.dragHandleProps}
+          ref={provided.innerRef}
+        >
+          <DataAppPageSidebarLink
+            dataApp={dataApp}
+            page={page}
+            isDragging
+            isSelected={false}
+            indent={0}
+          />
+        </ul>
+      );
+    },
+    [dataApp, getPageForNavItem],
+  );
+
+  const renderNavItemGroup = useCallback(
+    (group: DataAppNavItemWithChildren) => {
+      const { children, ...navItem } = group;
+      const page = getPageForNavItem(navItem);
+      // console.log({ navItem, page: page?.name });
+      if (!page) {
+        return null;
+      }
+      const index = dataApp.nav_items.findIndex(item =>
+        isSameNavItem(item, navItem),
+      );
+      const indent = navItem.indent || 0;
+
+      const droppableId = `${page.id}:${indent}`;
+
+      // console.log(`PAGE ${page.name}`, { index, indent });
+
+      return (
+        <Draggable key={page.id} draggableId={String(page.id)} index={index}>
+          {(provided, snapshot) => (
+            <li {...provided.draggableProps} ref={provided.innerRef}>
+              <ul>
+                <DataAppPageSidebarLink
+                  {...provided.draggableProps}
+                  dataApp={dataApp}
+                  page={page}
+                  isDragging={snapshot.isDragging}
+                  isSelected={dataAppPage?.id === page.id}
+                  indent={navItem.indent}
+                  dragHandleProps={provided.dragHandleProps}
+                  ref={provided.innerRef}
+                  style={{
+                    transitionDuration: "0.001s",
+                  }}
+                />
+                <div
+                  style={
+                    {
+                      // minHeight: "4px",
+                      // width: "100%",
+                      // backgroundColor:
+                      //   !Array.isArray(children) || children?.length === 0
+                      //     ? "blue"
+                      //     : "transparent",
+                    }
+                  }
+                >
+                  {Array.isArray(children) && children.map(renderNavItemGroup)}
+                </div>
+              </ul>
+            </li>
+          )}
+        </Draggable>
+      );
+
+      // return (
+      //   <Draggable key={page.id} draggableId={String(page.id)} index={index}>
+      //     {(draggableProvided, draggableSnapshot) => (
+      //       <li
+      //         {...draggableProvided.draggableProps}
+      //         ref={draggableProvided.innerRef}
+      //       >
+      //         <Droppable
+      //           droppableId={droppableId}
+      //           type="inner"
+      //           renderClone={renderClone}
+      //         >
+      //           {droppableProvided => (
+      //             <ul ref={droppableProvided.innerRef}>
+      //               <DataAppPageSidebarLink
+      //                 {...draggableProvided.draggableProps}
+      //                 dataApp={dataApp}
+      //                 page={page}
+      //                 isDragging={draggableSnapshot.isDragging}
+      //                 isSelected={dataAppPage?.id === page.id}
+      //                 indent={navItem.indent}
+      //                 dragHandleProps={draggableProvided.dragHandleProps}
+      //                 ref={draggableProvided.innerRef}
+      //               />
+      //               <div
+      //                 style={{
+      //                   minHeight: "4px",
+      //                   width: "100%",
+      //                   backgroundColor:
+      //                     !Array.isArray(children) || children?.length === 0
+      //                       ? "blue"
+      //                       : "transparent",
+      //                 }}
+      //               >
+      //                 {Array.isArray(children) &&
+      //                   children.map(renderNavItemGroup)}
+      //               </div>
+      //             </ul>
+      //           )}
+      //         </Droppable>
+      //       </li>
+      //     )}
+      //   </Draggable>
+      // );
+    },
+    [dataApp, dataAppPage, getPageForNavItem, renderClone],
+  );
+
+  console.log({
+    navItems: dataApp.nav_items.map(i => ({
+      page: getPageForNavItem(i)?.name,
+      indent: i.indent,
+    })),
+  });
 
   return (
     <SidebarContentRoot>
@@ -97,10 +261,15 @@ function DataAppNavbarView({
           <SidebarHeading>{dataApp.collection.name}</SidebarHeading>
         </SidebarHeadingWrapper>
         <DragDropContext onDragEnd={handleNavItemsOrderChange}>
-          <Droppable droppableId="droppable" type="droppableItem">
+          <Droppable
+            droppableId="top-level"
+            type="top-level"
+            isCombineEnabled
+            renderClone={renderClone}
+          >
             {provided => (
               <ul ref={provided.innerRef}>
-                {dataApp.nav_items.map(renderNavItem)}
+                {groupedNavItems.map(renderNavItemGroup)}
               </ul>
             )}
           </Droppable>

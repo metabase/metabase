@@ -18,6 +18,10 @@ export interface DataAppNavItem {
   hidden?: boolean;
 }
 
+export type DataAppNavItemWithChildren = DataAppNavItem & {
+  children: DataAppNavItemWithChildren[];
+};
+
 export interface DataApp {
   id: DataAppId;
 

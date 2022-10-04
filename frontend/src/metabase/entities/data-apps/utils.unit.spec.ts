@@ -237,14 +237,67 @@ describe("data app utils", () => {
       ]);
     });
 
-    it("handles pages without corresponding nav items", () => {
-      const navItems = [{ page_id: 1 }, { page_id: 2 }, { page_id: 3 }];
-
-      expect(moveNavItems(navItems, 5, 1, { page_id: 4 })).toEqual([
+    it("respects moved item's indent changes", () => {
+      const navItems = [
         { page_id: 1 },
-        { page_id: 4 },
+        { page_id: 2 },
+        { page_id: 3, indent: 1 },
+        { page_id: 4, indent: 1 },
+      ];
+
+      expect(moveNavItems(navItems, 2, 0, { page_id: 3 })).toEqual([
+        { page_id: 3 },
+        { page_id: 1 },
+        { page_id: 2 },
+        { page_id: 4, indent: 1 },
+      ]);
+    });
+
+    it("cascades moved item's children indents when moving deeper in the tree", () => {
+      const navItems = [
+        { page_id: 1 },
+        { page_id: 2 },
+        { page_id: 3, indent: 1 },
+      ];
+
+      expect(moveNavItems(navItems, 1, 1, { page_id: 2, indent: 1 })).toEqual([
+        { page_id: 1 },
+        { page_id: 2, indent: 1 },
+        { page_id: 3, indent: 2 },
+      ]);
+    });
+
+    it("cascades moved item's children indents when moving to the top-level", () => {
+      const navItems = [
+        { page_id: 1 },
+        { page_id: 2 },
+        { page_id: 3, indent: 1 },
+        { page_id: 4, indent: 2 },
+        { page_id: 5, indent: 2 },
+      ];
+
+      expect(moveNavItems(navItems, 2, 1, { page_id: 3 })).toEqual([
+        { page_id: 1 },
+        { page_id: 3 },
+        { page_id: 4, indent: 1 },
+        { page_id: 5, indent: 1 },
+        { page_id: 2 },
+      ]);
+    });
+
+    it("what", () => {
+      const navItems = [
+        { page_id: 1 },
         { page_id: 2 },
         { page_id: 3 },
+        { page_id: 4 },
+      ];
+
+      expect(moveNavItems(navItems, 0, 2, { page_id: 1, indent: 1 })).toEqual([
+        { page_id: 2 },
+        { page_id: 3 },
+        { page_id: 1, indent: 1 },
+        { page_id: 4 },
       ]);
     });
   });

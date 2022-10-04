@@ -142,6 +142,21 @@ function DataAppNavbarContainer({
         newIndex,
         navItem,
       );
+      console.log("### NEXT NAV ITEMS", {
+        oldIndex,
+        newIndex,
+        navItem,
+        before: dataApp.nav_items.map(i => ({
+          title: pageMap[i.page_id]?.name,
+          indent: i.indent,
+          id: i.page_id,
+        })),
+        after: nextNavItems.map(i => ({
+          title: pageMap[i.page_id]?.name,
+          indent: i.indent,
+          id: i.page_id,
+        })),
+      });
       setNavItems(nextNavItems);
       onDataAppChange({
         id: dataApp.id,
@@ -149,7 +164,7 @@ function DataAppNavbarContainer({
         nav_items: nextNavItems,
       });
     },
-    [dataApp, onDataAppChange],
+    [dataApp, pageMap, onDataAppChange],
   );
 
   const onAddData = useCallback(() => {
