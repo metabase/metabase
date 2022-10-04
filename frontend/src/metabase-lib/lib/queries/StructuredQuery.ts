@@ -1580,16 +1580,18 @@ class StructuredQueryInner extends AtomicQuery {
    * returns the corresponding {Dimension} in the sourceQuery, if any
    */
   dimensionForSourceQuery(dimension: Dimension): Dimension | null | undefined {
-    if (dimension instanceof FieldDimension && dimension.isStringFieldName()) {
+    if (dimension instanceof FieldDimension) {
       const sourceQuery = this.sourceQuery();
 
       if (sourceQuery) {
-        const index = sourceQuery
-          .columnNames()
-          .indexOf(dimension.fieldIdOrName());
+        const fieldIdOrName = dimension.fieldIdOrName();
 
-        if (index >= 0) {
-          return sourceQuery.columnDimensions()[index];
+        const columnIndex = sourceQuery
+          .columns()
+          .findIndex(c => c.id === fieldIdOrName || c.name === fieldIdOrName);
+
+        if (columnIndex >= 0) {
+          return sourceQuery.columnDimensions()[columnIndex];
         }
       }
     }
