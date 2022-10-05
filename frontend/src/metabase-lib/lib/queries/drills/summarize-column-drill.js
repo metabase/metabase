@@ -30,6 +30,10 @@ export function summarizeColumnDrill({ question, clicked }) {
     isCompatibleAggregationOperatorForField(aggregationOperator, column),
   );
 
+  if (!aggregationOperators.length) {
+    return null;
+  }
+
   return {
     aggregationOperators,
   };
