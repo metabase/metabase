@@ -31,7 +31,7 @@
   :visibility :internal
   :default :none
   :setter (fn [v]
-            (set-all-users-app-permission (cond-> v (string? v) keyword))))
+            (set-all-users-app-permission! (cond-> v (string? v) keyword))))
 
 (defn set-default-permissions!
   "Sets the default permissions for the ''All Users'' group on`app` as specified
