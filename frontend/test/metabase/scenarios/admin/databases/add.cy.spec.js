@@ -4,11 +4,8 @@ import {
   describeEE,
   mockSessionProperty,
   isEE,
+  typeAndBlurUsingLabel,
 } from "__support__/e2e/helpers";
-
-function typeField(label, value) {
-  cy.findByLabelText(label).clear().type(value).blur();
-}
 
 function toggleFieldWithDisplayName(displayName) {
   cy.contains(displayName).closest(".Form-field").find("input").click();
@@ -36,8 +33,8 @@ describe("scenarios > admin > databases > add", () => {
     cy.findByText("Need help connecting?");
 
     chooseDatabase("H2");
-    typeField("Display name", "Test db name");
-    typeField("Connection String", "invalid");
+    typeAndBlurUsingLabel("Display name", "Test db name");
+    typeAndBlurUsingLabel("Connection String", "invalid");
 
     cy.button("Save").click();
     cy.wait("@createDatabase");
@@ -56,9 +53,9 @@ describe("scenarios > admin > databases > add", () => {
 
     cy.visit("/admin/databases/create");
 
-    typeField("Display name", "Test db name");
-    typeField("Database name", "test_postgres_db");
-    typeField("Username", "uberadmin");
+    typeAndBlurUsingLabel("Display name", "Test db name");
+    typeAndBlurUsingLabel("Database name", "test_postgres_db");
+    typeAndBlurUsingLabel("Username", "uberadmin");
 
     cy.button("Save").click();
 
@@ -87,8 +84,8 @@ describe("scenarios > admin > databases > add", () => {
       chooseDatabase("BigQuery");
 
       // enter text
-      typeField("Display name", "bq db");
-      // typeField("Dataset ID", "some-dataset");
+      typeAndBlurUsingLabel("Display name", "bq db");
+      // typeAndBlurUsingLabel("Dataset ID", "some-dataset");
       selectFieldOption("Datasets", "Only these...");
       cy.findByPlaceholderText("E.x. public,auth*").type("some-dataset");
 
@@ -167,9 +164,9 @@ describe("scenarios > admin > databases > add", () => {
       cy.visit("/admin/databases/create");
       chooseDatabase("Google Analytics");
 
-      typeField("Display name", "google analytics");
+      typeAndBlurUsingLabel("Display name", "google analytics");
 
-      typeField("Google Analytics Account ID", " 999  ");
+      typeAndBlurUsingLabel("Google Analytics Account ID", " 999  ");
 
       // create blob to act as selected file
       cy.get("input[type=file]")
@@ -199,17 +196,17 @@ describe("scenarios > admin > databases > add", () => {
     });
   });
 
-  describeEE("caching", () => {
+  describeEE.only("caching", () => {
     beforeEach(() => {
       mockSessionProperty("enable-query-caching", true);
 
       cy.intercept("POST", "/api/database", { id: 42 }).as("createDatabase");
       cy.visit("/admin/databases/create");
 
-      typeField("Display name", "Test");
-      typeField("Host", "localhost");
-      typeField("Database name", "db");
-      typeField("Username", "admin");
+      typeAndBlurUsingLabel("Display name", "Test");
+      typeAndBlurUsingLabel("Host", "localhost");
+      typeAndBlurUsingLabel("Database name", "db");
+      typeAndBlurUsingLabel("Username", "admin");
 
       cy.findByText("Show advanced options").click();
     });
