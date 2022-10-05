@@ -1,48 +1,22 @@
-/* eslint-disable react/prop-types */
-import React from "react";
 import { t } from "ttag";
 import {
-  getAggregationOperator,
-  isCompatibleAggregationOperatorForField,
-} from "metabase/lib/schema_metadata";
-import { capitalize } from "metabase/lib/formatting";
-import { fieldRefForColumn } from "metabase-lib/lib/queries/utils/dataset";
+  summarizeColumnByTimeDrill,
+  summarizeColumnByTimeDrillQuestion,
+} from "metabase-lib/lib/queries/drills/summarize-column-by-time-drill";
 
 export default ({ question, clicked = {} }) => {
-  const { column, value } = clicked;
-  const query = question.query();
-  const isStructured = question.isStructured();
-  if (!column || value !== undefined || !isStructured || !query.isEditable()) {
+  if (!summarizeColumnByTimeDrill({ question, clicked })) {
     return [];
   }
-  const dateDimension = query
-    .dimensionOptions(d => d.field().isDate())
-    .all()[0];
-  if (!dateDimension) {
-    return [];
-  }
-  return ["sum"]
-    .map(getAggregationOperator)
-    .filter(aggregator =>
-      isCompatibleAggregationOperatorForField(aggregator, column),
-    )
-    .map(aggregator => ({
+
+  return [
+    {
       name: "summarize-by-time",
       buttonType: "horizontal",
       section: "summarize",
       icon: "line",
-      title: (
-        <span>
-          {capitalize(aggregator.short)} {t`over time`}
-        </span>
-      ),
-      question: () =>
-        question
-          .aggregate(
-            aggregator.requiresField
-              ? [aggregator.short, fieldRefForColumn(column)]
-              : [aggregator.short],
-          )
-          .pivot([dateDimension.defaultBreakout()]),
-    }));
+      title: t`Sum over time`,
+      question: () => summarizeColumnByTimeDrillQuestion({ question, clicked }),
+    },
+  ];
 };
