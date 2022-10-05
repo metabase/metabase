@@ -287,6 +287,16 @@ export function getYesterdayDateFilter(filter: Filter) {
   ];
 }
 
+export function getLastWeekDateFilter(filter: Filter) {
+  return [
+    "time-interval",
+    getDateTimeDimensionFromMbql(filter[1]),
+    -1,
+    "week",
+    { include_current: false },
+  ];
+}
+
 export function getLast7DaysDateFilter(filter: Filter) {
   return [
     "time-interval",
@@ -379,6 +389,6 @@ export function getInitialHourOfDayFilter(filter: Filter) {
 }
 
 export const isDayOfWeekDateFilter = testTemporalUnit("day-of-week");
-export const isMonthOfYearDateFilter = testTemporalUnit("day-of-week");
-export const isQuarterofYearDateFilter = testTemporalUnit("day-of-week");
-export const isHourOfDayDateFilter = testTemporalUnit("day-of-week");
+export const isMonthOfYearDateFilter = testTemporalUnit("month-of-year");
+export const isQuarterofYearDateFilter = testTemporalUnit("quarter-of-year");
+export const isHourOfDayDateFilter = testTemporalUnit("hour-of-day");

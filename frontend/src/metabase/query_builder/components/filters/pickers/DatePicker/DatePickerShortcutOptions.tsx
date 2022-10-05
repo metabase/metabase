@@ -10,6 +10,7 @@ import {
   getLastMonthDateFilter,
   getTodayDateFilter,
   getYesterdayDateFilter,
+  getLastWeekDateFilter,
 } from "metabase-lib/lib/queries/utils/date-filters";
 
 import type Filter from "metabase-lib/lib/queries/structured/Filter";
@@ -30,7 +31,7 @@ const DAY_OPTIONS: Option[] = [
   },
   {
     displayName: t`Last Week`,
-    init: filter => getYesterdayDateFilter(filter),
+    init: filter => getLastWeekDateFilter(filter),
   },
   {
     displayName: t`Last 7 Days`,
