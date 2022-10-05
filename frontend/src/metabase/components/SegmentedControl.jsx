@@ -39,8 +39,8 @@ export function SegmentedControl({
   options,
   onChange,
   fullWidth = false,
-  inactiveColor = "text-medium",
-  variant = "fill-text",
+  inactiveColor = "text-dark",
+  variant = "fill-background",
   ...props
 }) {
   const id = useMemo(() => _.uniqueId("radio-"), []);

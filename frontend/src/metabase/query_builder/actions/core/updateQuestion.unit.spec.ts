@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import { createMockDataset } from "metabase-types/api/mocks";
 import { Card, StructuredDatasetQuery } from "metabase-types/types/Card";
 import { ConcreteField, TemplateTag } from "metabase-types/types/Query";
@@ -523,6 +521,15 @@ describe("QB Actions > updateQuestion", () => {
               dataset_query: questionWithJoin.datasetQuery(),
             }),
           );
+        });
+
+        it("converts the question into a model if the query builder is in 'dataset' mode", async () => {
+          const { result } = await setup({
+            question,
+            queryBuilderMode: "dataset",
+          });
+
+          expect(result.card.dataset).toBe(true);
         });
       });
     });

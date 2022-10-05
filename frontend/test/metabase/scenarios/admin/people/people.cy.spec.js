@@ -209,19 +209,23 @@ describe("scenarios > admin > people", () => {
       clickButton("Done");
     });
 
-    it("should reset user password with SMTP set up", () => {
-      setupSMTP();
+    it(
+      "should reset user password with SMTP set up",
+      { tags: "@external" },
+      () => {
+        setupSMTP();
 
-      cy.visit("/admin/people");
-      showUserOptions(normalUserName);
-      cy.findByText("Reset password").click();
-      cy.findByText(`Reset ${normalUserName}'s password?`);
-      clickButton("Reset password");
-      cy.findByText(`${normalUserName}'s password has been reset`).should(
-        "not.exist",
-      );
-      cy.findByText(/^temporary password$/i).should("not.exist");
-    });
+        cy.visit("/admin/people");
+        showUserOptions(normalUserName);
+        cy.findByText("Reset password").click();
+        cy.findByText(`Reset ${normalUserName}'s password?`);
+        clickButton("Reset password");
+        cy.findByText(`${normalUserName}'s password has been reset`).should(
+          "not.exist",
+        );
+        cy.findByText(/^temporary password$/i).should("not.exist");
+      },
+    );
 
     it("should allow to search people", () => {
       cy.visit("/admin/people");
@@ -247,7 +251,7 @@ describe("scenarios > admin > people", () => {
       cy.findByText("readonly");
     });
 
-    describe("email configured", () => {
+    describe("email configured", { tags: "@external" }, () => {
       beforeEach(() => {
         // Setup email server, since we show different modal message when email isn't configured
         setupSMTP();
@@ -256,6 +260,7 @@ describe("scenarios > admin > people", () => {
         cy.request("PUT", "/api/setting", {
           "google-auth-client-id": "fake-id.apps.googleusercontent.com",
           "google-auth-auto-create-accounts-domain": "metabase.com",
+          "google-auth-enabled": true,
         });
       });
 

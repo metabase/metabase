@@ -365,7 +365,7 @@
 
 (defn- x-and-y-axis-label-info
   "Generate the X and Y axis labels passed in as the `labels` argument
-  to [[metabase.pulse.render.js-svg/timelineseries-waterfall]] and other similar functions for rendering charts with X and Y
+  to [[metabase.pulse.render.js-svg/waterfall]] and other similar functions for rendering charts with X and Y
   axes. Respects custom display names in `viz-settings`; otherwise uses `x-col` and `y-col` display names."
   [x-col y-col viz-settings]
   {:bottom (or (:graph.x_axis.title_text viz-settings)
@@ -789,9 +789,9 @@
         rows           (map (juxt x-axis-rowfn y-axis-rowfn)
                             (common/row-preprocess x-axis-rowfn y-axis-rowfn rows))
         labels         (x-and-y-axis-label-info x-col y-col viz-settings)
-        render-fn      (if (isa? (-> cols x-axis-rowfn :effective_type) :type/Temporal)
-                         js-svg/timelineseries-waterfall
-                         js-svg/categorical-waterfall)
+        waterfall-type (if (isa? (-> cols x-axis-rowfn :effective_type) :type/Temporal)
+                         :timeseries
+                         :categorical)
         show-total     (if (nil? (:waterfall.show_total viz-settings))
                          true
                          (:waterfall.show_total viz-settings))
@@ -800,12 +800,14 @@
                                    :waterfallTotal (:waterfall.total_color viz-settings)
                                    :waterfallPositive (:waterfall.increase_color viz-settings)
                                    :waterfallNegative (:waterfall.decrease_color viz-settings))
-                           (assoc :showTotal show-total))
+                           (assoc :showTotal show-total)
+                           (assoc :show_values (boolean (:graph.show_values viz-settings))))
         image-bundle   (image-bundle/make-image-bundle
                         render-type
-                        (render-fn rows
-                                   labels
-                                   settings))]
+                        (js-svg/waterfall rows
+                                          labels
+                                          settings
+                                          waterfall-type))]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))

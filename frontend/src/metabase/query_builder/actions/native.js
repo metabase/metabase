@@ -1,4 +1,3 @@
-import _ from "underscore";
 import { assoc, updateIn } from "icepick";
 
 import { createAction } from "redux-actions";

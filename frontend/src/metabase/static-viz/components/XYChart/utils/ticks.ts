@@ -25,7 +25,7 @@ import type {
   ChartSettings,
 } from "metabase/static-viz/components/XYChart/types";
 
-export const getRotatedXTickHeight = (tickWidth: number) => {
+const getRotatedXTickHeight = (tickWidth: number) => {
   return tickWidth;
 };
 
@@ -91,7 +91,7 @@ export const getXTicksDimensions = (
     const rotatedSize = getRotatedXTickHeight(maxTextWidth);
 
     return {
-      width: Math.min(rotatedSize, MAX_ROTATED_TICK_WIDTH),
+      width: measureTextHeight(fontSize),
       height: Math.min(rotatedSize, MAX_ROTATED_TICK_WIDTH),
       maxTextWidth,
     };

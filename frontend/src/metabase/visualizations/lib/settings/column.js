@@ -5,7 +5,6 @@ import _ from "underscore";
 
 import ChartNestedSettingColumns from "metabase/visualizations/components/settings/ChartNestedSettingColumns";
 
-import { keyForColumn } from "metabase/lib/dataset";
 import {
   isDate,
   isNumber,
@@ -52,6 +51,7 @@ export function columnSettings({
 }
 
 import MetabaseSettings from "metabase/lib/settings";
+import { keyForColumn } from "metabase-lib/lib/queries/utils/dataset";
 import { nestedSettings } from "./nested";
 
 export function getGlobalSettingsForColumn(column) {
@@ -390,6 +390,9 @@ export const NUMBER_COLUMN_SETTINGS = {
     title: t`Minimum number of decimal places`,
     widget: "number",
     variant: "form-field",
+    props: {
+      placeholder: "1",
+    },
   },
   scale: {
     title: t`Multiply by a number`,
@@ -403,11 +406,17 @@ export const NUMBER_COLUMN_SETTINGS = {
     title: t`Add a prefix`,
     widget: "input",
     variant: "form-field",
+    props: {
+      placeholder: "$",
+    },
   },
   suffix: {
     title: t`Add a suffix`,
     widget: "input",
     variant: "form-field",
+    props: {
+      placeholder: t`dollars`,
+    },
   },
   // Optimization: build a single NumberFormat object that is used by formatting.js
   _numberFormatter: {

@@ -54,7 +54,7 @@ export const ColumnItemContent = styled.div`
 `;
 
 export const ColumnItemContainer = styled.div`
-  padding: 0.5rem;
+  padding: 0.75rem 0.5rem;
   position: relative;
   flex: auto;
   display: flex;

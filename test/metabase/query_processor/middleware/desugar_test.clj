@@ -14,7 +14,9 @@
                                      [:relative-datetime -30 :day]
                                      [:relative-datetime -1 :day]]
                                     [:!= [:field 3 nil] "(not set)"]
-                                    [:!= [:field 3 nil] "url"]]
+                                    [:!= [:field 3 nil] "url"]
+                                    [:> [:temporal-extract [:field 4 nil] :year] 2004]]
+                     :expressions  {"year" [:temporal-extract [:field 4 nil] :year]}
                      :aggregation  [[:share [:and
                                              [:= [:field 1 nil] "Run Query"]
                                              [:between
@@ -30,7 +32,9 @@
                       :filter       [:and
                                      [:= [:field 1 nil] "Run Query"]
                                      [:time-interval [:field 2 nil] -30 :day]
-                                     [:!= [:field 3 nil] "(not set)" "url"]]
+                                     [:!= [:field 3 nil] "(not set)" "url"]
+                                     [:> [:get-year [:field 4 nil]] 2004]]
+                      :expressions  {"year" [:get-year [:field 4 nil]]}
                       :aggregation  [[:share [:and
                                               [:= [:field 1 nil] "Run Query"]
                                               [:time-interval [:field 2 nil] -30 :day]

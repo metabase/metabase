@@ -1,9 +1,5 @@
-import { Card, ActionFormSettings } from "metabase-types/api";
-import {
-  Parameter,
-  ParameterId,
-  ParameterTarget,
-} from "metabase-types/types/Parameter";
+import { Card, ActionFormSettings, ParameterId } from "metabase-types/api";
+import { Parameter, ParameterTarget } from "metabase-types/types/Parameter";
 
 export interface WritebackParameter extends Parameter {
   target: ParameterTarget;
@@ -72,3 +68,13 @@ export type ArbitraryParameterForActionExecution =
   ParameterForActionExecutionBase & {
     target: ParameterTarget;
   };
+
+export interface ActionFormSubmitResult {
+  success: boolean;
+  message?: string;
+  error?: string;
+}
+
+export type OnSubmitActionForm = (
+  parameters: ArbitraryParameterForActionExecution[],
+) => Promise<ActionFormSubmitResult>;

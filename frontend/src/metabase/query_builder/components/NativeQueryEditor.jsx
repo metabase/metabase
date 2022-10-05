@@ -423,14 +423,15 @@ class NativeQueryEditor extends Component {
   }, AUTOCOMPLETE_DEBOUNCE_DURATION);
 
   onChange() {
-    const { query } = this.props;
+    const { query, setDatasetQuery } = this.props;
     if (this._editor && !this._localUpdate) {
       this._updateSize();
       if (query.queryText() !== this._editor.getValue()) {
-        query
-          .setQueryText(this._editor.getValue())
-          .updateSnippetsWithIds(this.props.snippets)
-          .update(this.props.setDatasetQuery);
+        setDatasetQuery(
+          query
+            .setQueryText(this._editor.getValue())
+            .updateSnippetsWithIds(this.props.snippets),
+        );
       }
     }
 
@@ -443,12 +444,9 @@ class NativeQueryEditor extends Component {
 
   /// Change the Database we're currently editing a query for.
   setDatabaseId = databaseId => {
-    const { query } = this.props;
+    const { query, setDatasetQuery } = this.props;
     if (query.databaseId() !== databaseId) {
-      query
-        .setDatabaseId(databaseId)
-        .setDefaultCollection()
-        .update(this.props.setDatasetQuery);
+      setDatasetQuery(query.setDatabaseId(databaseId).setDefaultCollection());
       if (this._editor && !this.props.readOnly) {
         // HACK: the cursor doesn't blink without this intended small delay
         setTimeout(() => this._editor.focus(), 50);
@@ -458,18 +456,16 @@ class NativeQueryEditor extends Component {
 
   setTableId = tableId => {
     // TODO: push more of this into metabase-lib?
-    const { query } = this.props;
+    const { query, setDatasetQuery } = this.props;
     const table = query.metadata().table(tableId);
     if (table?.name !== query.collection()) {
-      query.setCollectionName(table.name).update(this.props.setDatasetQuery);
+      setDatasetQuery(query.setCollectionName(table.name));
     }
   };
 
   setParameterIndex = (parameterId, parameterIndex) => {
     const { query, setDatasetQuery } = this.props;
-    query
-      .setParameterIndex(parameterId, parameterIndex)
-      .update(setDatasetQuery);
+    setDatasetQuery(query.setParameterIndex(parameterId, parameterIndex));
   };
 
   handleFilterButtonClick = () => {
@@ -492,6 +488,7 @@ class NativeQueryEditor extends Component {
       snippetCollections = [],
       resizable,
       requireWriteback = false,
+      setDatasetQuery,
     } = this.props;
 
     const parameters = query.question().parameters();
@@ -568,9 +565,7 @@ class NativeQueryEditor extends Component {
             <SnippetModal
               onSnippetUpdate={(newSnippet, oldSnippet) => {
                 if (newSnippet.name !== oldSnippet.name) {
-                  query
-                    .updateSnippetNames([newSnippet])
-                    .update(this.props.setDatasetQuery);
+                  setDatasetQuery(query.updateSnippetNames([newSnippet]));
                 }
               }}
               snippet={this.props.modalSnippet}

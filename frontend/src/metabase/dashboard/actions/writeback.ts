@@ -21,8 +21,10 @@ import { ActionsApi } from "metabase/services";
 import type {
   Dashboard,
   DashboardOrderedCard,
-  ActionButtonDashboardCard,
+  ActionDashboardCard,
   ParameterMappedForActionExecution,
+  ArbitraryParameterForActionExecution,
+  ActionFormSubmitResult,
 } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
@@ -231,46 +233,50 @@ export const deleteManyRowsFromDataApp = (
 
 export type ExecuteRowActionPayload = {
   dashboard: Dashboard;
-  dashcard: ActionButtonDashboardCard;
+  dashcard: ActionDashboardCard;
   parameters: ParameterMappedForActionExecution[];
-  extra_parameters: ParameterMappedForActionExecution[];
+  extra_parameters: ArbitraryParameterForActionExecution[];
+  dispatch: Dispatch;
+  shouldToast?: boolean;
 };
 
-export const executeRowAction = ({
+export const executeRowAction = async ({
   dashboard,
   dashcard,
   parameters,
   extra_parameters,
-}: ExecuteRowActionPayload) => {
-  return async function (dispatch: any) {
-    try {
-      const result = await ActionsApi.execute({
-        dashboardId: dashboard.id,
-        dashcardId: dashcard.id,
-        parameters,
-        extra_parameters,
-      });
-      if (result["rows-affected"] > 0) {
-        dispatch(reloadDashboardCards());
-        dispatch(
-          addUndo({
-            toastColor: "success",
-            message: t`Successfully executed the action`,
-          }),
-        );
-      } else {
-        dispatch(
-          addUndo({
-            toastColor: "success",
-            message: t`Success! The action returned: ${JSON.stringify(result)}`,
-          }),
-        );
-      }
-    } catch (err) {
-      console.error(err);
-      const message =
-        (<any>err)?.data?.message ||
-        t`Something went wrong while executing the action`;
+  dispatch,
+  shouldToast = true,
+}: ExecuteRowActionPayload): Promise<ActionFormSubmitResult> => {
+  let message = "";
+  try {
+    const result = await ActionsApi.execute({
+      dashboardId: dashboard.id,
+      dashcardId: dashcard.id,
+      parameters,
+      extra_parameters,
+    });
+
+    if (result["rows-affected"] > 0) {
+      dispatch(reloadDashboardCards());
+      message = t`Successfully executed the action`;
+    } else {
+      message = t`Success! The action returned: ${JSON.stringify(result)}`;
+    }
+    if (shouldToast) {
+      dispatch(
+        addUndo({
+          toastColor: "success",
+          message,
+        }),
+      );
+    }
+    return { success: true, message };
+  } catch (err) {
+    const message =
+      (<any>err)?.data?.message ||
+      t`Something went wrong while executing the action`;
+    if (shouldToast) {
       dispatch(
         addUndo({
           icon: "warning",
@@ -279,5 +285,6 @@ export const executeRowAction = ({
         }),
       );
     }
-  };
+    return { success: false, error: message, message };
+  }
 };

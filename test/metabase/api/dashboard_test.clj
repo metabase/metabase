@@ -20,6 +20,8 @@
                                      Emitter
                                      Field
                                      FieldValues
+                                     PermissionsGroup
+                                     PermissionsGroupMembership
                                      Pulse
                                      QueryAction
                                      Revision
@@ -32,6 +34,8 @@
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.revision :as revision]
+            [metabase.plugins.classloader :as classloader]
+            [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.query-processor.streaming.test-util :as streaming.test-util]
             [metabase.server.middleware.util :as mw.util]
             [metabase.test :as mt]
@@ -268,7 +272,7 @@
 
                       Dashboard     [{dashboard-id :id} {:name "Test Dashboard"}]
                       Card          [{card-id :id
-                                      :as     card}         {:name "Dashboard Test Card"}]
+                                      :as     card}     {:name "Dashboard Test Card"}]
                       DashboardCard [dashcard           {:dashboard_id       dashboard-id
                                                          :card_id            card-id
                                                          :parameter_mappings [{:card_id      1
@@ -441,7 +445,7 @@
 (deftest update-dashboard-change-collection-id-test
   (testing "PUT /api/dashboard/:id"
     (testing "Can we change the Collection a Dashboard is in (assuming we have the permissions to do so)?"
-      (dashboard-test/with-dash-in-collection [db collection dash]
+      (dashboard-test/with-dash-in-collection [_db collection dash]
         (mt/with-temp Collection [new-collection]
           ;; grant Permissions for both new and old collections
           (doseq [coll [collection new-collection]]
@@ -454,7 +458,7 @@
 
     (testing "if we don't have the Permissions for the old collection, we should get an Exception"
       (mt/with-non-admin-groups-no-root-collection-perms
-        (dashboard-test/with-dash-in-collection [db collection dash]
+        (dashboard-test/with-dash-in-collection [_db _collection dash]
           (mt/with-temp Collection [new-collection]
             ;; grant Permissions for only the *new* collection
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) new-collection)
@@ -465,7 +469,7 @@
 
     (testing "if we don't have the Permissions for the new collection, we should get an Exception"
       (mt/with-non-admin-groups-no-root-collection-perms
-        (dashboard-test/with-dash-in-collection [db collection dash]
+        (dashboard-test/with-dash-in-collection [_db collection dash]
           (mt/with-temp Collection [new-collection]
             ;; grant Permissions for only the *old* collection
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
@@ -742,7 +746,7 @@
 (deftest copy-dashboard-into-correct-collection-test
   (testing "POST /api/dashboard/:id/copy"
     (testing "Ensure the correct collection is set when copying"
-      (dashboard-test/with-dash-in-collection [db collection dash]
+      (dashboard-test/with-dash-in-collection [_db collection dash]
         (mt/with-temp Collection [new-collection]
           ;; grant Permissions for both new and old collections
           (doseq [coll [collection new-collection]]
@@ -1656,27 +1660,25 @@
                 (testing (format "\nGET %s" (pr-str url))
                   (is (= expected
                          (mt/user-http-request :rasta :get 200 url))))))]
-      (with-chain-filter-fixtures [{{dashboard-id :id} :dashboard}]
-        (mt/$ids
-          (testing (format "\nvenues.price = %d categories.name = %d\n" %venues.price %categories.name)
-            (result= {%venues.price [%categories.name]}
-                     {:filtered [%venues.price], :filtering [%categories.name]})
-            (testing "Multiple Field IDs for each param"
-              (result= {%venues.price    (sort [%venues.price %categories.name])
-                        %categories.name (sort [%venues.price %categories.name])}
-                       {:filtered [%venues.price %categories.name], :filtering [%categories.name %venues.price]}))
-            (testing "filtered-ids cannot be nil"
-              (is (= {:errors {:filtered (str "value must satisfy one of the following requirements:"
-                                              " 1) value must be a valid integer greater than zero."
-                                              " 2) value must be an array. Each value must be a valid integer greater than zero."
-                                              " The array cannot be empty.")}}
-                     (mt/user-http-request :rasta :get 400 (url [] [%categories.name]))))))))
+      (mt/$ids
+        (testing (format "\nvenues.price = %d categories.name = %d\n" %venues.price %categories.name)
+          (result= {%venues.price [%categories.name]}
+                   {:filtered [%venues.price], :filtering [%categories.name]})
+          (testing "Multiple Field IDs for each param"
+            (result= {%venues.price    (sort [%venues.price %categories.name])
+                      %categories.name (sort [%venues.price %categories.name])}
+                     {:filtered [%venues.price %categories.name], :filtering [%categories.name %venues.price]}))
+          (testing "filtered-ids cannot be nil"
+            (is (= {:errors {:filtered (str "value must satisfy one of the following requirements:"
+                                            " 1) value must be a valid integer greater than zero."
+                                            " 2) value must be an array. Each value must be a valid integer greater than zero."
+                                            " The array cannot be empty.")}}
+                   (mt/user-http-request :rasta :get 400 (url [] [%categories.name])))))))
       (testing "should check perms for the Fields in question"
-        (with-chain-filter-fixtures [{{dashboard-id :id} :dashboard}]
-          (mt/with-temp-copy-of-db
-            (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :get 403 (mt/$ids (url [%venues.price] [%categories.name])))))))))))
+        (mt/with-temp-copy-of-db
+          (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (mt/$ids (url [%venues.price] [%categories.name]))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1958,23 +1960,85 @@
                                       "Problem building request:"))))))))))
 
 (deftest dashcard-action-execution-auth-test
-  (actions.test-util/with-actions-test-data
-    (actions.test-util/with-action [{:keys [action-id]} {}]
-      (testing "Executing dashcard with action"
-        (mt/with-temp* [Dashboard [{dashboard-id :id}]
-                        DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
-                                                          :action_id action-id
-                                                          :parameter_mappings [{:parameter_id "my_id"
-                                                                                :target [:variable [:template-tag "id"]]}]}]]
-          (let [execute-path (format "dashboard/%s/dashcard/%s/action/execute"
-                                     dashboard-id
-                                     dashcard-id)]
-            (testing "Without actions enabled"
-              (is (= "Actions are not enabled."
-                     (mt/user-http-request :crowberto :post 400 execute-path
-                                           {:parameters [{:id "my_id" :type :number/= :value 1}]}))))
-            (testing "Without admin"
-              (actions.test-util/with-actions-enabled
-                (is (= "You don't have permissions to do that."
-                       (mt/user-http-request :rasta :post 403 execute-path
-                                             {:parameters [{:id "my_id" :type :number/= :value 1}]})))))))))))
+  (mt/with-temp-copy-of-db
+    (actions.test-util/with-actions-test-data
+      (actions.test-util/with-action [{:keys [action-id]} {}]
+        (testing "Executing dashcard with action"
+          (mt/with-temp* [Dashboard [{dashboard-id :id}]
+                          DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
+                                                            :action_id action-id
+                                                            :parameter_mappings [{:parameter_id "my_id"
+                                                                                  :target [:variable [:template-tag "id"]]}]}]]
+            (let [execute-path (format "dashboard/%s/dashcard/%s/action/execute"
+                                       dashboard-id
+                                       dashcard-id)]
+              (testing "Without actions enabled"
+                (is (= "Actions are not enabled."
+                       (mt/user-http-request :crowberto :post 400 execute-path
+                                             {:parameters [{:id "my_id" :type :number/= :value 1}]}))))
+              (testing "Without execute rights on the DB"
+                (actions.test-util/with-actions-enabled
+                  (is (= "You don't have permissions to do that."
+                         (mt/user-http-request :rasta :post 403 execute-path
+                                               {:parameters [{:id "my_id" :type :number/= :value 1}]})))))
+              (testing "With execute rights on the DB"
+                (perms/update-global-execution-permission! (:id (perms-group/all-users)) :all)
+                (try
+                  (actions.test-util/with-actions-enabled
+                    (is (= {:rows-affected 1}
+                           (mt/user-http-request :rasta :post 200 execute-path
+                                                 {:parameters [{:id "my_id" :type :number/= :value 1}]}))))
+                  (finally
+                    (perms/update-global-execution-permission! (:id (perms-group/all-users)) :none)))))))))))
+
+(defn- ee-features-enabled? []
+  (u/ignore-exceptions
+   (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
+   (some? (resolve 'metabase-enterprise.advanced-permissions.models.permissions/update-db-execute-permissions!))))
+
+(deftest dashcard-action-execution-granular-auth-test
+  (when (ee-features-enabled?)
+    (mt/with-temp-copy-of-db
+      (actions.test-util/with-actions-enabled
+        (actions.test-util/with-actions-test-data
+          (actions.test-util/with-action [{:keys [action-id]} {}]
+            (testing "Executing dashcard with action"
+              (mt/with-temp* [Dashboard [{dashboard-id :id}]
+                              DashboardCard [{dashcard-id :id}
+                                             {:dashboard_id dashboard-id
+                                              :action_id action-id
+                                              :parameter_mappings [{:parameter_id "my_id"
+                                                                    :target [:variable [:template-tag "id"]]}]}]]
+                (let [execute-path (format "dashboard/%s/dashcard/%s/action/execute"
+                                           dashboard-id
+                                           dashcard-id)]
+                  (testing "with :advanced-permissions feature flag"
+                    (premium-features-test/with-premium-features #{:advanced-permissions}
+                      (testing "for non-magic group"
+                        (mt/with-temp* [PermissionsGroup [{group-id :id}]
+                                        PermissionsGroupMembership [_ {:user_id  (mt/user->id :rasta)
+                                                                       :group_id group-id}]]
+                          (is (= "You don't have permissions to do that."
+                                 (mt/user-http-request :rasta :post 403 execute-path
+                                                       {:parameters [{:id "my_id" :type :number/= :value 1}]}))
+                              "Execution permission should be required")
+
+                          (mt/user-http-request
+                           :crowberto :put 200 "permissions/execution/graph"
+                           (assoc-in (perms/execution-perms-graph) [:groups group-id (mt/id)] :all))
+                          (is (= :all
+                                 (get-in (perms/execution-perms-graph) [:groups group-id (mt/id)]))
+                              "Should be able to set execution permission")
+                          (is (= {:rows-affected 1}
+                                 (mt/user-http-request :rasta :post 200 execute-path
+                                                       {:parameters [{:id "my_id" :type :number/= :value 1}]}))
+                              "Execution and data permissions should be enough")
+
+                          (perms/update-data-perms-graph! [group-id (mt/id) :data]
+                                                          {:schemas :block})
+                          (perms/update-data-perms-graph! [(:id (perms-group/all-users)) (mt/id) :data]
+                                                          {:schemas :block})
+                          (is (= "You don't have permissions to do that."
+                                 (mt/user-http-request :rasta :post 403 execute-path
+                                                       {:parameters [{:id "my_id" :type :number/= :value 1}]}))
+                              "Data permissions should be required"))))))))))))))

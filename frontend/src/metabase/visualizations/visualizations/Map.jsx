@@ -1,8 +1,13 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
+
+import Link from "metabase/core/components/Link";
+import ExternalLink from "metabase/core/components/ExternalLink";
+import Icon from "metabase/components/Icon";
 
 import {
   isNumeric,
@@ -22,6 +27,7 @@ import {
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import MetabaseSettings from "metabase/lib/settings";
+import { getUserIsAdmin } from "metabase/selectors/user";
 
 const PIN_MAP_TYPES = new Set(["pin", "heat", "grid"]);
 
@@ -32,6 +38,8 @@ import PinMap from "../components/PinMap";
 import ChoroplethMap, {
   getColorplethColorScale,
 } from "../components/ChoroplethMap";
+
+import { CustomMapContent } from "./Maps.styled";
 
 export default class Map extends Component {
   static uiName = t`Map`;
@@ -241,6 +249,9 @@ export default class Map extends Component {
           .map(([key, value]) => ({ name: value.name || "", value: key }))
           .sortBy(x => x.name.toLowerCase())
           .value(),
+        placeholder: t`Select a region`,
+        footer: <CustomMapFooter />,
+        hiddenIcons: true,
       }),
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
     },
@@ -341,3 +352,28 @@ export default class Map extends Component {
     }
   }
 }
+
+const mapStateToProps = (state, props) => {
+  return {
+    isAdmin: getUserIsAdmin(state, props),
+  };
+};
+
+const CustomMapFooter = connect(mapStateToProps)(function CustomMapFooter({
+  isAdmin,
+}) {
+  const content = (
+    <CustomMapContent>
+      {t`Custom map`}
+      <Icon name="share" size={14} />
+    </CustomMapContent>
+  );
+
+  return isAdmin ? (
+    <Link to="/admin/settings/maps">{content}</Link>
+  ) : (
+    <ExternalLink href="https://www.metabase.com/docs/latest/configuring-metabase/custom-maps">
+      {content}
+    </ExternalLink>
+  );
+});

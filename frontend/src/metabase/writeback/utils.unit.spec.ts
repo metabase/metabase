@@ -3,8 +3,8 @@ import {
   createMockQueryAction,
 } from "metabase-types/api/mocks";
 import type {
-  ActionButtonDashboardCard,
-  ActionButtonParametersMapping,
+  ActionDashboardCard,
+  ActionParametersMapping,
 } from "metabase-types/api";
 import { isMappedExplicitActionButton, isImplicitActionButton } from "./utils";
 
@@ -22,7 +22,7 @@ const EXPLICIT_ACTION = createMockDashboardActionButton({
   visualization_settings: { click_behavior: undefined },
 });
 
-const PARAMETER_MAPPINGS: ActionButtonParametersMapping[] = [
+const PARAMETER_MAPPINGS: ActionParametersMapping[] = [
   {
     parameter_id: "param",
     target: ["variable", ["template-tag", "foo"]],
@@ -96,7 +96,7 @@ describe("isMappedExplicitActionButton", () => {
   });
 
   it("returns false for button without an explicit action attached, but with parameter mappings", () => {
-    const button: ActionButtonDashboardCard = {
+    const button: ActionDashboardCard = {
       ...PLAIN_BUTTON,
       parameter_mappings: PARAMETER_MAPPINGS,
     };
@@ -109,7 +109,7 @@ describe("isMappedExplicitActionButton", () => {
   });
 
   it("returns true for button with an explicit action attached and defined parameter mappings", () => {
-    const button: ActionButtonDashboardCard = {
+    const button: ActionDashboardCard = {
       ...EXPLICIT_ACTION,
       parameter_mappings: PARAMETER_MAPPINGS,
     };

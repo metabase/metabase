@@ -114,7 +114,6 @@ export default class Funnel extends Component {
       section: t`Data`,
       widget: ChartSettingOrderedSimple,
       isValid: (series, settings) => {
-        console.log(series);
         const funnelRows = settings["funnel.rows"];
 
         if (!funnelRows || !_.isArray(funnelRows)) {
@@ -140,6 +139,7 @@ export default class Funnel extends Component {
       getProps: transformedSeries => ({
         items: transformedSeries.map(s => s.card),
       }),
+      dataTestId: "funnel-row-sort",
     },
     ...metricSetting("funnel.metric", {
       section: t`Data`,

@@ -2,7 +2,7 @@
 import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import { keyForColumn } from "metabase/lib/dataset";
+import { keyForColumn } from "metabase-lib/lib/queries/utils/dataset";
 import ChartSettingSelect from "./ChartSettingSelect";
 import {
   SettingsIcon,
@@ -18,18 +18,25 @@ const ChartSettingFieldPicker = ({
   className,
   columns,
   showColumnSetting,
+  showDragHandle,
+  columnHasSettings,
 }) => {
   let columnKey;
   if (value && showColumnSetting && columns) {
     const column = _.findWhere(columns, { name: value });
-    if (column) {
+    if (column && columnHasSettings(column)) {
       columnKey = keyForColumn(column);
     }
   }
   return (
-    <ChartSettingFieldPickerRoot className={className}>
+    <ChartSettingFieldPickerRoot
+      className={className}
+      disabled={options.length === 1 && options[0].value === value}
+    >
+      {showDragHandle && (
+        <SettingsIcon name="grabber2" size={12} noPointer noMargin />
+      )}
       <ChartSettingSelect
-        className="flex-full"
         value={value}
         options={options}
         onChange={onChange}

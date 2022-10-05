@@ -42,6 +42,7 @@ import PulseEditApp from "metabase/pulse/containers/PulseEditApp";
 import SetupApp from "metabase/setup/containers/SetupApp";
 // new question
 import NewQueryOptions from "metabase/new_query/containers/NewQueryOptions";
+import NewDatasetOptions from "metabase/new_query/containers/NewDatasetOptions";
 
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 
@@ -92,6 +93,8 @@ import { getAdminPaths } from "metabase/admin/app/selectors";
 
 import ActionPage from "metabase/writeback/containers/ActionCreatorPage";
 import ActionsListPage from "metabase/writeback/containers/ActionsListPage";
+
+import ModelDetailPage from "metabase/models/containers/ModelDetailPage";
 
 const MetabaseIsSetup = UserAuthWrapper({
   predicate: authData => authData.hasUserSetup,
@@ -279,14 +282,23 @@ export const getRoutes = store => (
           <Route path=":slug/:objectId" component={QueryBuilder} />
         </Route>
 
+        <Route path="/model/:slug/detail" component={ModelDetailPage} />
+
         <Route path="/model">
           <IndexRoute component={QueryBuilder} />
+          <Route
+            path="new"
+            title={t`New Model`}
+            component={NewDatasetOptions}
+          />
           <Route path="notebook" component={QueryBuilder} />
           <Route path=":slug" component={QueryBuilder} />
           <Route path=":slug/notebook" component={QueryBuilder} />
           <Route path=":slug/query" component={QueryBuilder} />
           <Route path=":slug/metadata" component={QueryBuilder} />
           <Route path=":slug/:objectId" component={QueryBuilder} />
+          <Route path="query" component={QueryBuilder} />
+          <Route path="metadata" component={QueryBuilder} />
         </Route>
 
         <Route path="browse" component={BrowseApp}>

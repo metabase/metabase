@@ -4,7 +4,6 @@ import _ from "underscore";
 import moment from "moment-timezone";
 
 import { formatField, stripId } from "metabase/lib/formatting";
-import { getFieldValues } from "metabase/lib/query/field";
 import {
   isDate,
   isTime,
@@ -34,6 +33,7 @@ import {
 } from "metabase/lib/schema_metadata";
 import type { FieldFingerprint } from "metabase-types/api/field";
 import type { Field as FieldRef } from "metabase-types/types/Query";
+import { getFieldValues } from "metabase-lib/lib/queries/utils/field";
 import { createLookupByProperty, memoizeClass } from "metabase-lib/lib/utils";
 import type StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import type NativeQuery from "metabase-lib/lib/queries/NativeQuery";
@@ -87,7 +87,7 @@ class FieldInner extends Base {
       return this.uniqueId;
     }
 
-    const uniqueId = getUniqueFieldId(this.getId(), this.table_id);
+    const uniqueId = getUniqueFieldId(this);
     this.uniqueId = uniqueId;
 
     return uniqueId;

@@ -3,9 +3,8 @@
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
-            [metabase.models :as models :refer [Field Table]]
-            [metabase.models.database :as database]
-            [metabase.models.field :as field]
+            [metabase.models :as models :refer [Database Field Table]]
+            [metabase.models.interface :as mi]
             [metabase.models.table :as table]
             [metabase.test :as mt]
             [toucan.db :as db]))
@@ -59,9 +58,9 @@
               "Did not truncate a text field")))))
 
   (testing "substring checking"
-    (with-redefs [table/database (constantly (database/map->DatabaseInstance {:id 5678}))]
-      (let [table  (table/map->TableInstance {:id 1234})
-            fields [(field/map->FieldInstance {:id 4321 :base_type :type/Text})]]
+    (with-redefs [table/database (constantly (mi/instance Database {:id 5678}))]
+      (let [table  (mi/instance Table {:id 1234})
+            fields [(mi/instance Field {:id 4321 :base_type :type/Text})]]
         (testing "uses substrings if driver supports expressions"
           (with-redefs [driver/supports? (constantly true)]
             (let [query (#'metadata-queries/table-rows-sample-query table fields {:truncation-size 4})]
@@ -71,8 +70,8 @@
             (let [query (#'metadata-queries/table-rows-sample-query table fields {:truncation-size 4})]
               (is (empty? (get-in query [:query :expressions])))))))
       (testing "pre-existing json fields are still marked as `:type/Text`"
-        (let [table (table/map->TableInstance {:id 1234})
-              fields [(field/map->FieldInstance {:id 4321, :base_type :type/Text, :semantic_type :type/SerializedJSON})]]
+        (let [table (mi/instance Table {:id 1234})
+              fields [(mi/instance Field {:id 4321, :base_type :type/Text, :semantic_type :type/SerializedJSON})]]
           (with-redefs [driver/supports? (constantly true)]
             (let [query (#'metadata-queries/table-rows-sample-query table fields {:truncation-size 4})]
               (is (empty? (get-in query [:query :expressions]))))))))))

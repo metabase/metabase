@@ -1,4 +1,3 @@
-import _ from "underscore";
 import { t } from "ttag";
 import { createAction } from "redux-actions";
 
@@ -8,10 +7,10 @@ import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
 import { startTimer } from "metabase/lib/performance";
 import { defer } from "metabase/lib/promise";
 import { createThunkAction } from "metabase/lib/redux";
-import { isSameField } from "metabase/lib/query/field_ref";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSensibleDisplays } from "metabase/visualizations";
+import { isSameField } from "metabase-lib/lib/queries/utils/field-ref";
 
 import Question from "metabase-lib/lib/Question";
 
@@ -22,6 +21,7 @@ import {
   getQueryResults,
   getQuestion,
   getTimeoutId,
+  getIsResultDirty,
 } from "../selectors";
 
 import { updateUrl } from "./navigation";
@@ -72,6 +72,19 @@ const loadCompleteUIControls = createThunkAction(
     }
   },
 );
+
+export const runDirtyQuestionQuery = () => async (dispatch, getState) => {
+  const areResultsDirty = getIsResultDirty(getState());
+  const queryResults = getQueryResults(getState());
+  const hasResults = !!queryResults;
+
+  if (hasResults && !areResultsDirty) {
+    const question = getQuestion(getState());
+    return dispatch(queryCompleted(question, queryResults));
+  }
+
+  return dispatch(runQuestionQuery());
+};
 
 /**
  * Queries the result for the currently active question or alternatively for the card provided in `overrideWithCard`.
@@ -192,7 +205,8 @@ export const queryCompleted = (question, queryResults) => {
     const card = question.card();
 
     const isEditingModel = getQueryBuilderMode(getState()) === "dataset";
-    const modelMetadata = isEditingModel
+    const isEditingSavedModel = isEditingModel && !!originalQuestion;
+    const modelMetadata = isEditingSavedModel
       ? preserveModelMetadata(queryResults, originalQuestion)
       : undefined;
 

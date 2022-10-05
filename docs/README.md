@@ -32,10 +32,9 @@ Metabase is a deep product with a lot of tools to simplify business intelligence
 ## Documentation topics
 
 Metabase's reference documentation.
+### Installation
 
-### Installation and operation
-
-- [Installation and operation overview](./installation-and-operation/start.md)
+- [Installation overview](./installation-and-operation/start.md)
 - [Installing Metabase](./installation-and-operation/installing-metabase.md)
 - [Upgrading Metabase](./installation-and-operation/upgrading-metabase.md)
 - [Configuring the Metabase application database](./installation-and-operation/configuring-application-database.md)
@@ -55,7 +54,7 @@ Metabase's reference documentation.
 - [SSH tunneling](./databases/ssh-tunnel.md)
 - [SSL certificate](./databases/ssl-certificates.md)
 
-### Asking questions
+### Questions
 
 - [Questions overview](./questions/start.md)
 
@@ -64,7 +63,7 @@ Metabase's reference documentation.
 - [Asking questions](./questions/query-builder/introduction.md)
 - [Custom expressions](./questions/query-builder/expressions.md)
 - [List of expressions](./questions/query-builder/expressions-list.md)
-- [Joining data](./questions/query-builder//join.md)
+- [Joining data](./questions/query-builder/join.md)
 
 #### SQL and native queries
 
@@ -100,16 +99,16 @@ Metabase's reference documentation.
 - [Formatting defaults](./data-modeling/formatting.md)
 - [Segments and metrics](./data-modeling/segments-and-metrics.md)
 
-### Exploration and organization overview
+### Organization
 
-- [Exploration and organization overview](./exploration-and-organization/start.md)
+- [Organization overview](./exploration-and-organization/start.md)
 - [Basic exploration](./exploration-and-organization/exploration.md)
 - [Collections](./exploration-and-organization/collections.md)
 - [Events and timelines](./exploration-and-organization/events-and-timelines.md)
 
-### People and groups
+### People
 
-- [People and groups overview](./people-and-groups/start.md)
+- [People overview](./people-and-groups/start.md)
 - [Account settings](./people-and-groups/account-settings.md)
 - [Managing people and groups](./people-and-groups/managing.md)
 - [Password complexity](./people-and-groups/changing-password-complexity.md)
@@ -136,7 +135,7 @@ Metabase's reference documentation.
 - [Data sandboxes](./permissions/data-sandboxes.md)
 - [SQL snippets folder permissions](./permissions/snippets.md)
 
-### Embedding questions and dashboards
+### Embedding
 
 - [Embedding overview](./embedding/start.md)
 - [Embedding introduction](./embedding/introduction.md)
@@ -144,9 +143,9 @@ Metabase's reference documentation.
 - [Full-app embedding](./embedding/full-app-embedding.md)
 - [Embedding example apps](https://github.com/metabase/embedding-reference-apps)
 
-### Configuring Metabase
+### Configuration
 
-- [Configuring Metabase overview](./configuring-metabase/start.md)
+- [Configuration overview](./configuring-metabase/start.md)
 - [Setting up Metabase](./configuring-metabase/setting-up-metabase.md)
 - [General settings](./configuring-metabase/settings.md)
 - [Email](./configuring-metabase/email.md)
@@ -160,9 +159,9 @@ Metabase's reference documentation.
 - [Custom maps](./configuring-metabase/custom-maps.md)
 - [Customizing the Metabase Jetty webserver](./configuring-metabase/customizing-jetty-webserver.md)
 
-### Usage and performance tools
+### Tools
 
-- [Usage and performance tools overview](./usage-and-performance-tools/start.md)
+- [Tools overview](./usage-and-performance-tools/start.md)
 - [Auditing tools](./usage-and-performance-tools/audit.md)
 - [Admin tools](./usage-and-performance-tools/tools.md)
 
@@ -171,9 +170,13 @@ Metabase's reference documentation.
 - [Metabase API documentation](./api-documentation.md)
 - [API tutorial](https://www.metabase.com/learn/administration/metabase-api)
 
-### Troubleshooting guides
+### Troubleshooting
 
 - [Troubleshooting guides](./troubleshooting-guide/index.md)
+
+### Developer guide
+
+- [Developer guide](./developers-guide/start.md)
 
 ## Getting help
 
@@ -232,3 +235,7 @@ Contribute to the Metabase open source project!
 ### [Data and Business Intelligence Glossary](https://www.metabase.com/glossary)
 
 Data jargon explained.
+
+### [Metabase Experts](https://www.metabase.com/partners/)
+
+If you’d like more technical resources to set up your data stack with Metabase, connect with a [Metabase Expert](https://www.metabase.com/partners/).

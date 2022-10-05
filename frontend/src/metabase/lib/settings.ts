@@ -71,11 +71,13 @@ export type SettingName =
   | "engines"
   | "ga-code"
   | "ga-enabled"
+  | "google-auth-enabled"
   | "google-auth-client-id"
   | "has-sample-database?"
   | "has-user-setup"
   | "hide-embed-branding?"
   | "is-hosted?"
+  | "ldap-enabled"
   | "ldap-configured?"
   | "other-sso-configured?"
   | "enable-password-login"
@@ -182,8 +184,12 @@ class Settings {
     return this.get("hide-embed-branding?");
   }
 
-  isGoogleAuthConfigured() {
-    return this.get("google-auth-client-id") != null;
+  isGoogleAuthEnabled() {
+    return this.get("google-auth-enabled");
+  }
+
+  isLdapEnabled() {
+    return this.get("ldap-enabled");
   }
 
   isLdapConfigured() {
@@ -195,12 +201,8 @@ class Settings {
     return this.get("other-sso-configured?");
   }
 
-  isSsoConfigured() {
-    return (
-      this.isGoogleAuthConfigured() ||
-      this.isLdapConfigured() ||
-      this.isGoogleAuthConfigured()
-    );
+  isSsoEnabled() {
+    return this.isLdapEnabled() || this.isGoogleAuthEnabled();
   }
 
   isPasswordLoginEnabled() {

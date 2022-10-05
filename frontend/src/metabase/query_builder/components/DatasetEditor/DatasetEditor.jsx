@@ -22,13 +22,13 @@ import {
   isResultsMetadataDirty,
 } from "metabase/query_builder/selectors";
 
-import { isSameField } from "metabase/lib/query/field_ref";
 import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
 import { checkCanBeModel } from "metabase/lib/data-modeling/utils";
 import { usePrevious } from "metabase/hooks/use-previous";
 import { useToggle } from "metabase/hooks/use-toggle";
 
 import { MODAL_TYPES } from "metabase/query_builder/constants";
+import { isSameField } from "metabase-lib/lib/queries/utils/field-ref";
 import { EDITOR_TAB_INDEXES } from "./constants";
 import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
 import DatasetQueryEditor from "./DatasetQueryEditor";
@@ -172,28 +172,14 @@ function DatasetEditor(props) {
     isMetadataDirty,
     height,
     isDirty: isModelQueryDirty,
-    isRunning,
     setQueryBuilderMode,
     setDatasetEditorTab,
     setFieldMetadata,
     onCancelDatasetChanges,
     onSave,
     handleResize,
-    runQuestionQuery,
     onOpenModal,
   } = props;
-
-  // It's important to reload the query to refresh metadata when coming from the model page
-  // On the model page, results metadata has a shape assuming you're building a nested question
-  // E.g. expression field refs are field literals ["field", "my_formula", ...] instead of ["expression", "my_formula"]
-  // Doing a reload will ensure the editor uses the correct metadata
-  useEffect(() => {
-    if (!isRunning) {
-      runQuestionQuery();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const orderedColumns = useMemo(
     () => dataset.setting("table.columns"),
     [dataset],
@@ -267,10 +253,10 @@ function DatasetEditor(props) {
     // Focused field has to be set once the query is completed and the result is rendered
     // Visualization render can remove the focus
     const hasQueryResults = !!result;
-    if (!focusedFieldRef && hasQueryResults && !result.error) {
+    if (!focusedField && hasQueryResults && !result.error) {
       focusFirstField();
     }
-  }, [result, focusedFieldRef, focusFirstField]);
+  }, [result, focusedFieldRef, fields, focusFirstField, focusedField]);
 
   const inheritMappedFieldProperties = useCallback(
     changes => {
@@ -317,8 +303,13 @@ function DatasetEditor(props) {
   }, [setQueryBuilderMode, onCancelDatasetChanges]);
 
   const handleSave = useCallback(async () => {
-    if (checkCanBeModel(dataset)) {
-      await onSave(dataset.card(), { rerunQuery: true });
+    const canBeDataset = checkCanBeModel(dataset);
+    const isBrandNewDataset = !dataset.id();
+
+    if (canBeDataset && isBrandNewDataset) {
+      onOpenModal(MODAL_TYPES.SAVE);
+    } else if (canBeDataset) {
+      await onSave(dataset.card());
       setQueryBuilderMode("view");
     } else {
       onOpenModal(MODAL_TYPES.CAN_NOT_CREATE_MODEL);

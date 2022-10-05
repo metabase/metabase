@@ -21,7 +21,6 @@ const PERMISSIONS = {
 describe("collection permissions", () => {
   beforeEach(() => {
     restore();
-    cy.server();
   });
 
   describe("item management", () => {
@@ -253,7 +252,7 @@ describe("collection permissions", () => {
                     });
                   });
 
-                  it.skip("visiting already archived collection by its ID shouldn't let you edit it (metabase#12489)", () => {
+                  it("visiting already archived collection by its ID shouldn't let you edit it (metabase#12489)", () => {
                     cy.request("GET", "/api/collection").then(xhr => {
                       const { id: THIRD_COLLECTION_ID } = xhr.body.find(
                         collection => collection.slug === "third_collection",

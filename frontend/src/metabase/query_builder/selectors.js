@@ -2,6 +2,7 @@
 
 import d3 from "d3";
 import { createSelector } from "reselect";
+import createCachedSelector from "re-reselect";
 import _ from "underscore";
 import { assocIn, getIn, merge, updateIn } from "icepick";
 
@@ -16,7 +17,6 @@ import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settin
 import { getCardUiParameters } from "metabase/parameters/utils/cards";
 import { normalizeParameterValue } from "metabase/parameters/utils/parameter-values";
 import { isPK } from "metabase/lib/schema_metadata";
-import Utils from "metabase/lib/utils";
 
 import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
 
@@ -298,6 +298,12 @@ export const getOriginalQuestion = createSelector(
   (metadata, card) => metadata && card && new Question(card, metadata),
 );
 
+export const getLastRunQuestion = createSelector(
+  [getMetadata, getLastRunCard, getParameterValues],
+  (metadata, card, parameterValues) =>
+    card && metadata && new Question(card, metadata, parameterValues),
+);
+
 export const getQuestion = createSelector(
   [getMetadata, getCard, getParameterValues, getQueryBuilderMode],
   (metadata, card, parameterValues, queryBuilderMode) => {
@@ -306,7 +312,8 @@ export const getQuestion = createSelector(
     }
     const question = new Question(card, metadata, parameterValues);
 
-    if (queryBuilderMode === "dataset") {
+    const isEditingModel = queryBuilderMode === "dataset";
+    if (isEditingModel) {
       return question.lockDisplay();
     }
 
@@ -317,11 +324,19 @@ export const getQuestion = createSelector(
     // as it would be blocked by the backend as an ad-hoc query
     // see https://github.com/metabase/metabase/issues/20042
     const hasDataPermission = !!question.database();
-    return question.isDataset() && hasDataPermission
+    return question.isDataset() && hasDataPermission && !isEditingModel
       ? question.composeDataset()
       : question;
   },
 );
+
+// This jsdoc keeps the TS typechecker happy.
+// Otherwise TS thinks this `getQuestionFromCard` requires two args.
+/** @type {function(unknown, unknown): Question} */
+export const getQuestionFromCard = createCachedSelector(
+  [getMetadata, (_state, card) => card],
+  (metadata, card) => new Question(card, metadata),
+)((_state, card) => card.id);
 
 function normalizeClause(clause) {
   return typeof clause?.raw === "function" ? clause.raw() : clause;
@@ -362,12 +377,88 @@ export function normalizeQuery(query, tableMetadata) {
   return query;
 }
 
+function isQuestionEditable(question) {
+  return !question?.query().readOnly();
+}
+
+function areQueriesEqual(queryA, queryB, tableMetadata) {
+  const normalizedQueryA = normalizeQuery(queryA, tableMetadata);
+  const normalizedQueryB = normalizeQuery(queryB, tableMetadata);
+  return _.isEqual(normalizedQueryA, normalizedQueryB);
+}
+
+// Model questions may be composed via the `composeDataset` method.
+// A composed model question should be treated as equivalent to its original form.
+// We need to handle scenarios where both the `lastRunQuestion` and the `currentQuestion` are
+// in either form.
+function areModelsEquivalent({
+  originalQuestion,
+  lastRunQuestion,
+  currentQuestion,
+  tableMetadata,
+}) {
+  if (!lastRunQuestion || !currentQuestion || !originalQuestion?.isDataset()) {
+    return false;
+  }
+
+  const composedOriginal = originalQuestion.composeDataset();
+
+  const isLastRunComposed = areQueriesEqual(
+    lastRunQuestion.datasetQuery(),
+    composedOriginal.datasetQuery(),
+    tableMetadata,
+  );
+  const isCurrentComposed = areQueriesEqual(
+    currentQuestion.datasetQuery(),
+    composedOriginal.datasetQuery(),
+    tableMetadata,
+  );
+
+  const isLastRunEquivalentToCurrent =
+    isLastRunComposed &&
+    areQueriesEqual(
+      currentQuestion.datasetQuery(),
+      originalQuestion.datasetQuery(),
+      tableMetadata,
+    );
+
+  const isCurrentEquivalentToLastRun =
+    isCurrentComposed &&
+    areQueriesEqual(
+      lastRunQuestion.datasetQuery(),
+      originalQuestion.datasetQuery(),
+      tableMetadata,
+    );
+
+  return isLastRunEquivalentToCurrent || isCurrentEquivalentToLastRun;
+}
+
+function areQueriesEquivalent({
+  originalQuestion,
+  lastRunQuestion,
+  currentQuestion,
+  tableMetadata,
+}) {
+  return (
+    areQueriesEqual(
+      lastRunQuestion?.datasetQuery(),
+      currentQuestion?.datasetQuery(),
+      tableMetadata,
+    ) ||
+    areModelsEquivalent({
+      originalQuestion,
+      lastRunQuestion,
+      currentQuestion,
+      tableMetadata,
+    })
+  );
+}
+
 export const getIsResultDirty = createSelector(
   [
     getQuestion,
     getOriginalQuestion,
-    getLastRunDatasetQuery,
-    getNextRunDatasetQuery,
+    getLastRunQuestion,
     getLastRunParameterValues,
     getNextRunParameterValues,
     getTableMetadata,
@@ -375,40 +466,24 @@ export const getIsResultDirty = createSelector(
   (
     question,
     originalQuestion,
-    lastDatasetQuery,
-    nextDatasetQuery,
+    lastRunQuestion,
     lastParameters,
     nextParameters,
     tableMetadata,
   ) => {
-    // When viewing a model, its dataset_query is swapped with a clean query using the dataset as a source table
-    // (it's necessary for datasets to behave like tables opened in simple mode)
-    // We need to escape the isDirty check as it will always be true in this case,
-    // and the page will always be covered with a 'rerun' overlay.
-    // Once the dataset_query changes, the question will loose the "dataset" flag and it'll work normally
-    if (question && isAdHocModelQuestion(question, originalQuestion)) {
-      return false;
-    }
+    const haveParametersChanged = !_.isEqual(lastParameters, nextParameters);
 
-    const hasParametersChange = !Utils.equals(lastParameters, nextParameters);
-    if (hasParametersChange) {
-      return true;
-    }
-
-    if (question && question.query().readOnly()) {
-      return false;
-    }
-
-    lastDatasetQuery = normalizeQuery(lastDatasetQuery, tableMetadata);
-    nextDatasetQuery = normalizeQuery(nextDatasetQuery, tableMetadata);
-    return !Utils.equals(lastDatasetQuery, nextDatasetQuery);
+    return (
+      haveParametersChanged ||
+      (isQuestionEditable(question) &&
+        !areQueriesEquivalent({
+          originalQuestion,
+          lastRunQuestion,
+          currentQuestion: question,
+          tableMetadata,
+        }))
+    );
   },
-);
-
-export const getLastRunQuestion = createSelector(
-  [getMetadata, getLastRunCard, getParameterValues],
-  (metadata, card, parameterValues) =>
-    card && metadata && new Question(card, metadata, parameterValues),
 );
 
 export const getZoomedObjectId = state => state.qb.zoomedRowObjectId;

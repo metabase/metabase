@@ -1,8 +1,6 @@
-import React, { ErrorInfo, ReactNode, useRef, useState } from "react";
+import React, { ErrorInfo, ReactNode, useState } from "react";
 import { connect } from "react-redux";
 import { Location } from "history";
-
-import AppErrorCard from "metabase/components/AppErrorCard/AppErrorCard";
 
 import ScrollToTop from "metabase/hoc/ScrollToTop";
 import {
@@ -19,6 +17,7 @@ import {
   getIsAppBarVisible,
   getIsNavBarVisible,
 } from "metabase/selectors/app";
+import { setErrorPage } from "metabase/redux/app";
 import { useOnMount } from "metabase/hooks/use-on-mount";
 import { initializeIframeResizer } from "metabase/lib/dom";
 
@@ -56,12 +55,16 @@ interface AppStateProps {
   isNavBarVisible: boolean;
 }
 
+interface AppDispatchProps {
+  onError: (error: unknown) => void;
+}
+
 interface AppRouterOwnProps {
   location: Location;
   children: ReactNode;
 }
 
-type AppProps = AppStateProps & AppRouterOwnProps;
+type AppProps = AppStateProps & AppDispatchProps & AppRouterOwnProps;
 
 const mapStateToProps = (
   state: State,
@@ -72,6 +75,10 @@ const mapStateToProps = (
   isAppBarVisible: getIsAppBarVisible(state, props),
   isNavBarVisible: getIsNavBarVisible(state, props),
 });
+
+const mapDispatchToProps: AppDispatchProps = {
+  onError: setErrorPage,
+};
 
 class ErrorBoundary extends React.Component<{
   onError: (errorInfo: ErrorInfo) => void;
@@ -91,16 +98,16 @@ function App({
   isAppBarVisible,
   isNavBarVisible,
   children,
+  onError,
 }: AppProps) {
   const [viewportElement, setViewportElement] = useState<HTMLElement | null>();
-  const [errorInfo, setErrorInfo] = useState<ErrorInfo | null>(null);
 
   useOnMount(() => {
     initializeIframeResizer();
   });
 
   return (
-    <ErrorBoundary onError={setErrorInfo}>
+    <ErrorBoundary onError={onError}>
       <ScrollToTop>
         <AppContainer className="spread">
           <AppBanner />
@@ -115,7 +122,6 @@ function App({
             <UndoListing />
             <StatusListing />
           </AppContentContainer>
-          <AppErrorCard errorInfo={errorInfo} />
         </AppContainer>
       </ScrollToTop>
     </ErrorBoundary>
@@ -124,4 +130,5 @@ function App({
 
 export default connect<AppStateProps, unknown, AppRouterOwnProps, State>(
   mapStateToProps,
+  mapDispatchToProps,
 )(App);

@@ -6,12 +6,10 @@ import _ from "underscore";
 import cx from "classnames";
 import { getIn } from "icepick";
 import * as DataGrid from "metabase/lib/data_grid";
-import { findColumnIndexForColumnSetting } from "metabase/lib/dataset";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
 import { getColumnCardinality } from "metabase/visualizations/lib/utils";
 import { formatColumn } from "metabase/lib/formatting";
 
-import * as Q_DEPRECATED from "metabase/lib/query";
 import {
   isMetric,
   isDimension,
@@ -29,6 +27,8 @@ import ChartSettingsTableFormatting, {
 
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import { findColumnIndexForColumnSetting } from "metabase-lib/lib/queries/utils/dataset";
+import * as Q_DEPRECATED from "metabase-lib/lib/queries/utils";
 
 import TableSimple from "../components/TableSimple";
 import TableInteractive from "../components/TableInteractive/TableInteractive.jsx";
@@ -292,6 +292,9 @@ export default class Table extends Component {
       getHidden: (_, settings) =>
         settings["view_as"] !== "link" && settings["view_as"] !== "email_link",
       readDependencies: ["view_as"],
+      props: {
+        placeholder: t`Link to {{bird_id}}`,
+      },
     };
 
     settings["link_url"] = {
@@ -301,6 +304,9 @@ export default class Table extends Component {
       default: null,
       getHidden: (_, settings) => settings["view_as"] !== "link",
       readDependencies: ["view_as"],
+      props: {
+        placeholder: t`http://toucan.example/{{bird_id}}`,
+      },
     };
 
     return settings;

@@ -5,10 +5,11 @@ import { connect } from "react-redux";
 import Actions from "metabase/entities/actions";
 
 import { updateButtonActionMapping } from "metabase/dashboard/actions";
+import { updateSettings } from "metabase/visualizations/lib/settings";
 
 import type {
-  ActionButtonDashboardCard,
-  ActionButtonParametersMapping,
+  ActionDashboardCard,
+  ActionParametersMapping,
   WritebackAction,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -21,7 +22,7 @@ import ActionOptionItem from "./ActionOptionItem";
 import { ClickMappingsContainer } from "./ActionOptions.styled";
 
 interface ActionOptionsOwnProps {
-  dashcard: ActionButtonDashboardCard;
+  dashcard: ActionDashboardCard;
   parameters: UiParameter[];
 }
 
@@ -30,7 +31,9 @@ interface ActionOptionsDispatchProps {
     dashCardId: number,
     settings: {
       action_id?: number | null;
-      parameter_mappings?: ActionButtonParametersMapping[] | null;
+      action?: WritebackAction;
+      visualization_settings?: ActionDashboardCard["visualization_settings"];
+      parameter_mappings?: ActionParametersMapping[] | null;
     },
   ) => void;
 }
@@ -57,7 +60,11 @@ function ActionOptions({
     (action: WritebackAction) => {
       onUpdateButtonActionMapping(dashcard.id, {
         action_id: action.id,
-
+        action,
+        visualization_settings: updateSettings(
+          { "button.label": action.name },
+          dashcard.visualization_settings,
+        ),
         // Clean mappings from previous action
         // as they're most likely going to be irrelevant
         parameter_mappings: null,
@@ -67,7 +74,7 @@ function ActionOptions({
   );
 
   const handleParameterMappingChange = useCallback(
-    (parameter_mappings: ActionButtonParametersMapping[] | null) => {
+    (parameter_mappings: ActionParametersMapping[] | null) => {
       onUpdateButtonActionMapping(dashcard.id, {
         parameter_mappings,
       });

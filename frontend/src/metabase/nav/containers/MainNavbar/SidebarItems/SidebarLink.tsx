@@ -11,9 +11,11 @@ import {
   NodeRoot,
   SidebarIcon,
   FullWidthButton,
+  LeftElementContainer,
+  RightElementContainer,
 } from "./SidebarItems.styled";
 
-interface Props {
+interface SidebarLinkProps {
   children: string;
   url?: string;
   icon?: string | IconProps | React.ReactElement;
@@ -51,7 +53,7 @@ function SidebarLink({
   left = null,
   right = null,
   ...props
-}: Props) {
+}: SidebarLinkProps) {
   const renderIcon = useCallback(() => {
     if (!icon) {
       return null;
@@ -83,16 +85,25 @@ function SidebarLink({
       onMouseDown={disableImageDragging}
       {...props}
     >
-      {React.isValidElement(left) && left}
+      {React.isValidElement(left) && (
+        <LeftElementContainer>{left}</LeftElementContainer>
+      )}
       <Content>
         {icon && renderIcon()}
         <NameContainer>{children}</NameContainer>
       </Content>
-      {React.isValidElement(right) && right}
+      {React.isValidElement(right) && (
+        <RightElementContainer>{right}</RightElementContainer>
+      )}
     </NodeRoot>
   );
 }
 
+export type { SidebarLinkProps };
+
 export default Object.assign(SidebarLink, {
   NameContainers: [ItemName, TreeNode.NameContainer],
+  Icon: SidebarIcon,
+  LeftElement: LeftElementContainer,
+  RightElement: RightElementContainer,
 });

@@ -1,4 +1,3 @@
-import _ from "underscore";
 import { createAction } from "redux-actions";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
@@ -9,8 +8,6 @@ import * as Urls from "metabase/lib/urls";
 import Utils from "metabase/lib/utils";
 import { createThunkAction } from "metabase/lib/redux";
 
-import { cardIsEquivalent, cardQueryIsEquivalent } from "metabase/meta/Card";
-
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 
 import { openUrl } from "metabase/redux/app";
@@ -18,10 +15,16 @@ import { openUrl } from "metabase/redux/app";
 import Questions from "metabase/entities/questions";
 import Databases from "metabase/entities/databases";
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
+import {
+  cardIsEquivalent,
+  cardQueryIsEquivalent,
+} from "metabase-lib/lib/queries/utils/card";
+import Query from "metabase-lib/lib/queries/Query";
 
 import { trackNewQuestionSaved } from "../../analytics";
 import {
   getCard,
+  getIsResultDirty,
   getOriginalQuestion,
   getQuestion,
   getResultsMetadata,
@@ -160,6 +163,10 @@ export const navigateToNewCardInsideQB = createThunkAction(
 // DEPRECATED, still used in a couple places
 export const setDatasetQuery =
   (datasetQuery, options) => (dispatch, getState) => {
+    if (datasetQuery instanceof Query) {
+      datasetQuery = datasetQuery.datasetQuery();
+    }
+
     const question = getQuestion(getState());
     dispatch(updateQuestion(question.setDatasetQuery(datasetQuery), options));
   };
@@ -205,10 +212,12 @@ export const apiCreateQuestion = question => {
 };
 
 export const API_UPDATE_QUESTION = "metabase/qb/API_UPDATE_QUESTION";
-export const apiUpdateQuestion = (question, { rerunQuery = false } = {}) => {
+export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
   return async (dispatch, getState) => {
     const originalQuestion = getOriginalQuestion(getState());
     question = question || getQuestion(getState());
+
+    rerunQuery = rerunQuery || getIsResultDirty(getState());
 
     // Needed for persisting visualization columns for pulses/alerts, see #6749
     const series = getTransformedSeries(getState());

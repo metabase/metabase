@@ -20,12 +20,9 @@ import {
 } from "../../static-viz/components/ProgressBar/constants";
 import {
   TIME_SERIES_WATERFALL_CHART_DEFAULT_OPTIONS,
-  TIME_SERIES_WATERFALL_CHART_TYPE,
-} from "../../static-viz/components/TimeSeriesWaterfallChart/constants";
-import {
   CATEGORICAL_WATERFALL_CHART_DEFAULT_OPTIONS,
-  CATEGORICAL_WATERFALL_CHART_TYPE,
-} from "../../static-viz/components/CategoricalWaterfallChart/constants";
+  WATERFALL_CHART_TYPE,
+} from "../../static-viz/components/WaterfallChart/constants";
 import {
   FUNNEL_CHART_DEFAULT_OPTIONS,
   FUNNEL_CHART_TYPE,
@@ -160,14 +157,17 @@ export default function StaticVizPage() {
         <PageSection>
           <Subhead>Waterfall chart with timeseries data and no total</Subhead>
           <StaticChart
-            type={TIME_SERIES_WATERFALL_CHART_TYPE}
+            type={WATERFALL_CHART_TYPE}
             options={TIME_SERIES_WATERFALL_CHART_DEFAULT_OPTIONS}
           />
         </PageSection>
         <PageSection>
-          <Subhead>Waterfall chart with categorical data and total</Subhead>
+          <Subhead>
+            Waterfall chart with categorical data and total (rotated X-axis tick
+            labels)
+          </Subhead>
           <StaticChart
-            type={CATEGORICAL_WATERFALL_CHART_TYPE}
+            type={WATERFALL_CHART_TYPE}
             options={CATEGORICAL_WATERFALL_CHART_DEFAULT_OPTIONS}
           />
         </PageSection>

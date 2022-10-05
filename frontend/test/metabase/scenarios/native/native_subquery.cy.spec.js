@@ -109,16 +109,7 @@ describe("scenarios > question > native subquery", () => {
 
           cy.findByText("Open Editor").click();
 
-          cy.get(".ace_editor").should("be.visible").type(" a");
-
-          // Can't use cy.type here as it doesn't consistently keep the autocomplete open
-          cy.realPress("_");
-          cy.realPress("u");
-          cy.realPress("n");
-          cy.realPress("i");
-          cy.realPress("q");
-          cy.realPress("u");
-          cy.realPress("e");
+          cy.get(".ace_editor").should("be.visible").type(" ").type("a_unique");
 
           // Wait until another explicit autocomplete is triggered
           // (slightly longer than AUTOCOMPLETE_DEBOUNCE_DURATION)
@@ -140,14 +131,11 @@ describe("scenarios > question > native subquery", () => {
           // Wait until another explicit autocomplete is triggered
           cy.wait(1000);
 
-          cy.get(".ace_editor:not(.ace_autocomplete)").type(" a");
-
-          cy.realPress("n");
-          cy.realPress("o");
-          cy.realPress("t");
-          cy.realPress("h");
-          cy.realPress("e");
-          cy.realPress("r");
+          // Again, typing in in one go doesn't always work
+          // so type it in two parts
+          cy.get(".ace_editor:not(.ace_autocomplete)")
+            .type(" ")
+            .type("another");
 
           cy.get(".ace_autocomplete")
             .should("be.visible")

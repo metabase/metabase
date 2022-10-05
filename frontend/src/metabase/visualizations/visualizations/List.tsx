@@ -177,6 +177,9 @@ export default Object.assign(ListViz, {
       getHidden: (_: unknown, settings: VisualizationSettings) =>
         settings["view_as"] !== "link" && settings["view_as"] !== "email_link",
       readDependencies: ["view_as"],
+      props: {
+        placeholder: t`Link to {{bird_id}}`,
+      },
     };
 
     settings["link_url"] = {
@@ -187,6 +190,9 @@ export default Object.assign(ListViz, {
       getHidden: (_: unknown, settings: VisualizationSettings) =>
         settings["view_as"] !== "link",
       readDependencies: ["view_as"],
+      props: {
+        placeholder: t`http://toucan.example/{{bird_id}}`,
+      },
     };
 
     return settings;

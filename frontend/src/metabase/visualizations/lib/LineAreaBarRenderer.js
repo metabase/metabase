@@ -8,11 +8,11 @@ import { t } from "ttag";
 import { lighten } from "metabase/lib/colors";
 
 import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
-import { isStructured } from "metabase/meta/Card";
 import {
   updateDateTimeFilter,
   updateNumericFilter,
-} from "metabase/modes/lib/actions";
+} from "metabase-lib/lib/queries/utils/actions";
+import { isStructured } from "metabase-lib/lib/queries/utils/card";
 import Question from "metabase-lib/lib/Question";
 
 import {

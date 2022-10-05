@@ -19,7 +19,12 @@ export interface RouterProps {
 }
 
 const HOMEPAGE_PATH = /^\/$/;
-const PATHS_WITHOUT_NAVBAR = [/\/model\/.*\/query/, /\/model\/.*\/metadata/];
+const PATHS_WITHOUT_NAVBAR = [
+  /\/model\/.*\/query/,
+  /\/model\/.*\/metadata/,
+  /\/model\/query/,
+  /\/model\/metadata/,
+];
 const EMBEDDED_PATHS_WITH_NAVBAR = [
   HOMEPAGE_PATH,
   /^\/collection\/.*/,
