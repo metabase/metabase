@@ -347,7 +347,7 @@
 
 (deftest nested-convert-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
-    (mt/dataset timezones-1
+    (mt/dataset times-mixed
       (testing "convert-timezone nested with datetime extract"
         (is (= 18
                (test-date-convert [:get-hour [:convert-timezone [:field (mt/id :times :dt) nil]
