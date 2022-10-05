@@ -32,6 +32,8 @@
               :base-type :type/Integer}
              {:field-name "dt"
               :base-type :type/DateTime}
+             {:field-name "dt_tz"
+              :base-type  :type/DateTimeWithTZ}
              {:field-name "d"
               :base-type :type/Date}
              {:field-name "as_dt"
@@ -42,10 +44,17 @@
               :base-type :type/Text
               :effective-type :type/Date
               :coercion-strategy :Coercion/ISO8601->Date}]
-    [[1 #t "2004-03-19 09:19:09" #t "2004-03-19" "2004-03-19 09:19:09" "2004-03-19"]
-     [2 #t "2008-06-20 10:20:10" #t "2008-06-20" "2008-06-20 10:20:10" "2008-06-20"]
-     [3 #t "2012-11-21 11:21:11" #t "2012-11-21" "2012-11-21 11:21:11" "2012-11-21"]
-     [4 #t "2012-11-21 11:21:11" #t "2012-11-21" "2012-11-21 11:21:11" "2012-11-21"]]]])
+    (for [[idx t]
+          (map-indexed vector [#t "2004-03-19 09:19:09-00:00[Asia/Ho_Chi_Minh]"
+                               #t "2008-06-20 10:20:10-00:00[Asia/Ho_Chi_Minh]"
+                               #t "2012-11-21 11:21:11-00:00[Asia/Ho_Chi_Minh]"
+                               #t "2012-11-21 11:21:11-00:00[Asia/Ho_Chi_Minh]"])]
+         [(inc idx)
+          (t/local-date-time t)                                  ;; dt
+          (t/with-zone-same-instant t "Asia/Ho_Chi_Minh")        ;; dt_tz
+          (t/local-date t)                                       ;; d
+          (t/format "yyyy-MM-dd HH:mm:ss" (t/local-date-time t)) ;; as _dt
+          (t/format "yyyy-MM-dd" (t/local-date-time t))])]])     ;; as_d
 
 (def ^:private temporal-extraction-op->unit
   {:get-second      :second-of-minute
@@ -262,27 +271,6 @@
 ;;; |                                           Convert Timezone tests                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mt/defdataset timezones-1
-  [["times" [{:field-name "index"
-              :base-type  :type/Integer}
-             {:field-name "dt"
-              :base-type  :type/DateTime}
-             {:field-name "dt_tz"
-              :base-type  :type/DateTimeWithTZ}
-             {:field-name        "as_dt"
-              :base-type         :type/Text
-              :effective-type    :type/DateTime
-              :coercion-strategy :Coercion/ISO8601->DateTime}]
-    (for [[idx t]
-          (map-indexed vector [#t "2004-03-19 09:19:09-00:00[Asia/Ho_Chi_Minh]"
-                               #t "2008-06-20 10:20:10-00:00[Asia/Ho_Chi_Minh]"
-                               #t "2012-11-21 11:21:11-00:00[Asia/Ho_Chi_Minh]"
-                               #t "2012-11-21 11:21:11-00:00[Asia/Ho_Chi_Minh]"])]
-      [(inc idx)
-       (t/local-date-time t)                                  ;; dt
-       (t/with-zone-same-instant t "Asia/Ho_Chi_Minh")        ;; dt_tz
-       (t/format "yyyy-MM-dd HH:mm:ss" (t/local-date-time t))])]]) ;; as_dt
-
 (defn- test-date-convert
   [convert-tz-expression &
    {:keys [aggregation breakout expressions fields filter limit]
@@ -318,7 +306,7 @@
 
 (deftest convert-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
-    (mt/dataset timezones-1
+    (mt/dataset times-mixed
       (testing "timestamp with out timezone columns"
         (testing "convert from UTC to +09:00"
           (is (= "2004-03-19T18:19:09+09:00"
@@ -356,3 +344,16 @@
           (testing "the base timezone should be the timezone of column (Asia/Ho_Chi_Minh)"
             (is (= "2004-03-19T11:19:09+09:00"
                    (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")])))))))))
+
+(deftest nested-convert-timezone-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
+    (mt/dataset timezones-1
+      (testing "convert-timezone nested with datetime extract"
+        (is (= 18
+               (test-date-convert [:get-hour [:convert-timezone [:field (mt/id :times :dt) nil]
+                                              (offset->zone "+09:00")]]))))
+      (testing "convert-timezone nested with date-math, date-extract"
+        (is (= 20
+               (test-date-convert [:get-hour [:date-add [:convert-timezone [:field (mt/id :times :dt) nil]
+                                                         (offset->zone "+09:00")]
+                                              2 :hour]])))))))
