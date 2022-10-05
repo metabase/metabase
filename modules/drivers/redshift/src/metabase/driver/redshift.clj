@@ -194,9 +194,11 @@
        (reduce (partial hsql/call :concat))))
 
 (defmethod sql.qp/->honeysql [:redshift :convert-timezone]
-  [driver [_ arg to from]]
-  (let [from (or from (qp.timezone/results-timezone-id))]
-    (hsql/call :convert_timezone from to (sql.qp/->honeysql driver arg))))
+  [driver [_ arg to-tz from-tz]]
+  (let [from-tz (or from-tz (qp.timezone/results-timezone-id))]
+    (if from-tz
+     (hsql/call :convert_timezone from-tz to-tz (sql.qp/->honeysql driver arg))
+     (hsql/call :convert_timezone to-tz (sql.qp/->honeysql driver arg)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |

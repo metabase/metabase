@@ -271,6 +271,11 @@
 ;;; |                                           Convert Timezone tests                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- format-if-integer [x]
+  (if (number? x)
+    (int x)
+    x))
+
 (defn- test-date-convert
   [convert-tz-expression &
    {:keys [aggregation breakout expressions fields filter limit]
@@ -283,14 +288,14 @@
                                    :limit       limit
                                    :filter      filter
                                    :breakout    breakout})
-         mt/rows
+         (mt/formatted-rows [format-if-integer])
          ffirst)
     (->> (mt/run-mbql-query times {:expressions expressions
                                    :aggregation aggregation
                                    :limit       limit
                                    :filter      filter
                                    :fields      fields})
-         mt/rows
+         (mt/formatted-rows [format-if-integer])
          ffirst)))
 
 (def offset->zone
