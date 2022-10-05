@@ -3,19 +3,19 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
+import _ from "underscore";
 import { fetchTableMetadata } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 
-import DetailPane from "./DetailPane";
 import QueryButton from "metabase/components/QueryButton";
-import UseForButton from "./UseForButton";
-import QueryDefinition from "../QueryDefinition";
 
 import { createCard } from "metabase/lib/card";
-import * as Q_DEPRECATED from "metabase/lib/query";
+import * as Q_DEPRECATED from "metabase-lib/lib/queries/utils";
 
-import _ from "underscore";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import QueryDefinition from "../QueryDefinition";
+import UseForButton from "./UseForButton";
+import DetailPane from "./DetailPane";
 
 const mapDispatchToProps = {
   fetchTableMetadata,
@@ -141,7 +141,6 @@ class SegmentPane extends Component {
 
     return (
       <DetailPane
-        name={segmentName}
         description={segment.description}
         useForCurrentQuestion={useForCurrentQuestion}
         usefulQuestions={usefulQuestions}

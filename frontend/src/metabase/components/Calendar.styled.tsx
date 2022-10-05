@@ -31,11 +31,11 @@ export const CalendarDay = styled.div<CalendarDayProps>`
     color: white;
   }
 
-  ${({ isSelectedStart, isSelectedEnd }) =>
+  ${({ primaryColor, isSelectedStart, isSelectedEnd }) =>
     (isSelectedStart || isSelectedEnd) &&
     css`
       color: ${color("white")} !important;
-      background-color: ${color("filter")};
+      background-color: ${primaryColor};
       z-index: 1;
     `}
 `;

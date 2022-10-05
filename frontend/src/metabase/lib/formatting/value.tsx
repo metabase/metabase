@@ -4,7 +4,6 @@ import Mustache from "mustache";
 import moment, { Moment } from "moment-timezone";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { rangeForValue } from "metabase/lib/dataset";
 import {
   clickBehaviorIsValid,
   getDataFromClicked,
@@ -18,6 +17,9 @@ import {
   isTime,
   isURL,
 } from "metabase/lib/schema_metadata";
+import { renderLinkTextForClick } from "metabase/lib/formatting/link";
+import { NULL_DISPLAY_VALUE, NULL_NUMERIC_VALUE } from "metabase/lib/constants";
+import { rangeForValue } from "metabase-lib/lib/queries/utils/dataset";
 import { formatEmail } from "./email";
 import { formatTime } from "./time";
 import { formatUrl } from "./url";
@@ -26,9 +28,6 @@ import { formatNumber } from "./numbers";
 import { formatCoordinate } from "./geography";
 import { formatStringFallback } from "./strings";
 import { formatImage } from "./image";
-
-import { renderLinkTextForClick } from "metabase/lib/formatting/link";
-import { NULL_DISPLAY_VALUE, NULL_NUMERIC_VALUE } from "metabase/lib/constants";
 
 import { OptionsType } from "./types";
 

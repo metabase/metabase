@@ -3,6 +3,7 @@
   (:require [clj-time.core :as time]
             [metabase.models.database :refer [Database]]
             [metabase.models.field :refer [Field]]
+            [metabase.models.interface :as mi]
             [metabase.models.table :refer [Table]]
             [metabase.util :as u]
             [metabase.util.schema :as su]
@@ -71,10 +72,10 @@
 ;; out from the ns declaration when running `cljr-clean-ns`. Plus as a bonus in the future we could add additional
 ;; validations to these, e.g. requiring that a Field have a base_type
 
-(def DatabaseInstance             "Schema for a valid instance of a Metabase Database." (class Database))
-(def TableInstance                "Schema for a valid instance of a Metabase Table."    (class Table))
-(def FieldInstance                "Schema for a valid instance of a Metabase Field."    (class Field))
-(def ResultColumnMetadataInstance "Schema for a valid instance of a Metabase Field."    (class {}))
+(def DatabaseInstance             "Schema for a valid instance of a Metabase Database." (mi/InstanceOf Database))
+(def TableInstance                "Schema for a valid instance of a Metabase Table."    (mi/InstanceOf Table))
+(def FieldInstance                "Schema for a valid instance of a Metabase Field."    (mi/InstanceOf Field))
+(def ResultColumnMetadataInstance "Schema for result column metadata."                  su/Map)
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

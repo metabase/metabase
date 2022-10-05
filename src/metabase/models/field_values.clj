@@ -18,7 +18,9 @@
     But they will also be automatically deleted when the Full FieldValues of the same Field got updated."
   (:require [clojure.tools.logging :as log]
             [java-time :as t]
+            [metabase.models.serialization.base :as serdes.base]
             [metabase.models.serialization.hash :as serdes.hash]
+            [metabase.models.serialization.util :as serdes.util]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings.premium-features :refer [defenterprise]]
             [metabase.util :as u]
@@ -153,7 +155,7 @@
                                        :else
                                        [])))))
 
-(u/strict-extend (class FieldValues)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class FieldValues)
   models/IModel
   (merge models/IModelDefaults
          {:properties  (constantly {:timestamped? true})
@@ -311,7 +313,7 @@
 
   Note that if the full FieldValues are create/updated/deleted, it'll delete all the Advanced FieldValues of the same `field`."
   [field & [human-readable-values]]
-  (let [field-values                     (FieldValues :field_id (u/the-id field) :type :full)
+  (let [field-values                     (db/select-one FieldValues :field_id (u/the-id field) :type :full)
         {:keys [values has_more_values]} (distinct-values field)
         field-name                       (or (:name field) (:id field))]
     (cond
@@ -375,9 +377,9 @@
   [{field-id :id :as field} & [human-readable-values]]
   {:pre [(integer? field-id)]}
   (when (field-should-have-field-values? field)
-    (or (FieldValues :field_id field-id :type :full)
+    (or (db/select-one FieldValues :field_id field-id :type :full)
         (when (#{::fv-created ::fv-updated} (create-or-update-full-field-values! field human-readable-values))
-          (FieldValues :field_id field-id :type :full)))))
+          (db/select-one FieldValues :field_id field-id :type :full)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  On Demand                                                     |
@@ -413,3 +415,33 @@
          (trs "Field {0} ''{1}'' should have FieldValues and belongs to a Database with On-Demand FieldValues updating."
                  (u/the-id field) (:name field)))
         (create-or-update-full-field-values! field)))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              Serialization                                                     |
+;;; +----------------------------------------------------------------------------------------------------------------+
+(defmethod serdes.base/serdes-generate-path "FieldValues" [_ {:keys [field_id]}]
+  (let [field (db/select-one 'Field :id field_id)]
+    (conj (serdes.base/serdes-generate-path "Field" field)
+          {:model "FieldValues" :id "0"})))
+
+(defmethod serdes.base/serdes-dependencies "FieldValues" [fv]
+  ;; Take the path, but drop the FieldValues section at the end, to get the parent Field's path instead.
+  [(pop (serdes.base/serdes-path fv))])
+
+(defmethod serdes.base/extract-one "FieldValues" [_model-name _opts fv]
+  (-> (serdes.base/extract-one-basics "FieldValues" fv)
+      (dissoc :field_id)))
+
+(defmethod serdes.base/load-xform "FieldValues" [fv]
+  (let [[db schema table field :as field-ref] (map :id (pop (serdes.base/serdes-path fv)))
+        field-ref (if field
+                    field-ref
+                    ;; It's too short, so no schema. Shift them over and add a nil schema.
+                    [db nil schema table])]
+    (-> (serdes.base/load-xform-basics fv)
+        (assoc :field_id (serdes.util/import-field-fk field-ref)))))
+
+(defmethod serdes.base/load-find-local "FieldValues" [path]
+  ;; Delegate to finding the parent Field, then look up its corresponding FieldValues.
+  (let [field-id (serdes.base/load-find-local (pop path))]
+    (db/select-one-id FieldValues :field_id field-id)))

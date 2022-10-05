@@ -3,7 +3,6 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
-import SegmentFieldSidebar from "./SegmentFieldSidebar";
 import SidebarLayout from "metabase/components/SidebarLayout";
 import SegmentFieldDetail from "metabase/reference/segments/SegmentFieldDetail";
 
@@ -17,6 +16,7 @@ import {
   getDatabaseId,
   getIsEditing,
 } from "../selectors";
+import SegmentFieldSidebar from "./SegmentFieldSidebar";
 
 const mapStateToProps = (state, props) => ({
   segment: getSegment(state, props),

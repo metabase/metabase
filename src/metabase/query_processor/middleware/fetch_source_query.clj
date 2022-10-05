@@ -25,10 +25,7 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [medley.core :as m]
-            [metabase.driver :as driver]
             [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.driver.sql.util :as sql.u]
-            [metabase.driver.util :as driver.u]
             [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
@@ -36,6 +33,7 @@
             [metabase.models.persisted-info :as persisted-info :refer [PersistedInfo]]
             [metabase.public-settings :as public-settings]
             [metabase.query-processor.middleware.permissions :as qp.perms]
+            [metabase.query-processor.util.persisted-cache :as qp.persisted]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
             [metabase.util.schema :as su]
@@ -108,42 +106,17 @@
          (assoc m :field_ref [:field (:name m) {:base-type (:base_type m)}]))
        metadata))
 
-(defn- persisted-info-native-query [card database-id]
-  (let [driver (or driver/*driver* (driver.u/database->driver database-id))]
-    (format "select %s from %s.%s"
-            (str/join ", " (map #(sql.u/quote-name
-                                   driver
-                                   :field
-                                   (:field-name %))
-                                (get-in card [:definition :field-definitions])))
-            (sql.u/quote-name
-              driver
-              :table
-              (ddl.i/schema-name {:id database-id} (public-settings/site-uuid)))
-            (sql.u/quote-name
-              driver
-              :table
-              (:table_name card)))))
-
 (s/defn card-id->source-query-and-metadata :- SourceQueryAndMetadata
   "Return the source query info for Card with `card-id`. Pass true as the optional second arg `log?` to enable
   logging. (The circularity check calls this and will print more than desired)"
   ([card-id :- su/IntGreaterThanZero]
    (card-id->source-query-and-metadata card-id false))
   ([card-id :- su/IntGreaterThanZero log? :- s/Bool]
-   (let [card
-         ;; todo: we need to cache this. We are running this in preprocess, compile, and then again
-         (or (->> (db/query {:select    [:card.dataset_query :card.database_id :card.result_metadata :card.dataset
-                                         :persisted.table_name :persisted.definition :persisted.query_hash
-                                         :persisted.state :persisted.active]
-                             :from      [[Card :card]]
-                             :left-join [[PersistedInfo :persisted] [:= :card.id :persisted.card_id]]
-                             :where     [:= :card.id card-id]})
-                  (db/do-post-select Card)
-                  (db/do-post-select PersistedInfo)
-                  first)
-           (throw (ex-info (tru "Card {0} does not exist." card-id)
-                           {:card-id card-id})))
+   (let [;; todo: we need to cache this. We are running this in preprocess, compile, and then again
+         card           (or (db/select-one Card :id card-id)
+                            (throw (ex-info (tru "Card {0} does not exist." card-id)
+                             {:card-id card-id})))
+         persisted-info (db/select-one PersistedInfo :card_id card-id)
 
          {{mbql-query                   :query
            database-id                  :database
@@ -153,14 +126,7 @@
           dataset?                               :dataset}
          card
 
-         persisted? (and persisted-info/*allow-persisted-substitution*
-                         (:active card)
-                         (:definition card)
-                         (:query_hash card)
-                         (= (:query_hash card) (persisted-info/query-hash (:dataset_query card)))
-                         (= (:definition card) (persisted-info/metadata->definition (:result_metadata card)
-                                                                                    (:table_name card)))
-                         (= (:state card) "persisted"))
+         persisted? (qp.persisted/can-substitute? card persisted-info)
 
          source-query (cond
                         mbql-query
@@ -190,7 +156,9 @@
 
      (cond-> {:source-query    (cond-> source-query
                                  ;; This will be applied, if still appropriate, by the peristence middleware
-                                 persisted? (assoc :persisted-info/native (persisted-info-native-query card database-id)))
+                                 persisted?
+                                 (assoc :persisted-info/native
+                                        (qp.persisted/persisted-info-native-query persisted-info)))
               :database        database-id
               :source-metadata (cond-> (seq (map mbql.normalize/normalize-source-metadata result-metadata))
                                  persisted? sub-cached-field-refs)}

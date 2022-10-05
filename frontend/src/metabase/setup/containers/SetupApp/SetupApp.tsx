@@ -1,6 +1,6 @@
 import { connect } from "react-redux";
-import Setup from "../../components/Setup";
 import { State } from "metabase-types/store";
+import Setup from "../../components/Setup";
 import { WELCOME_STEP } from "../../constants";
 import { isStepActive } from "../../selectors";
 

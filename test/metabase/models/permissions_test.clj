@@ -49,6 +49,8 @@
    "/data-model/db/1/schema/PUBLIC/table/1/"
    ;; db details permissions
    "/details/db/1/"
+   ;; execution permissions
+   "/execute/"
    ;; full admin (everything) root permissions
    "/"])
 
@@ -650,12 +652,12 @@
 (deftest broken-out-read-query-perms-in-graph-test
   (testing "Make sure we can set the new broken-out read/query perms for a Table and the graph works as we'd expect"
     (mt/with-temp PermissionsGroup [group]
-      (perms/grant-permissions! group (perms/table-read-path (Table (mt/id :venues))))
+      (perms/grant-permissions! group (perms/table-read-path (db/select-one Table :id (mt/id :venues))))
       (is (= {(mt/id :venues) {:read :all}}
              (test-data-graph group))))
 
     (mt/with-temp PermissionsGroup [group]
-      (perms/grant-permissions! group (perms/table-segmented-query-path (Table (mt/id :venues))))
+      (perms/grant-permissions! group (perms/table-segmented-query-path (db/select-one Table :id (mt/id :venues))))
       (is (= {(mt/id :venues) {:query :segmented}}
              (test-data-graph group))))
 
@@ -680,7 +682,7 @@
                        :details    :yes}}
                (-> (perms/data-perms-graph)
                    (get-in [:groups group_id])
-                   (select-keys [db-id]))))))))
+                   (select-keys [db-id :execute]))))))))
 
 (deftest update-graph-validate-db-perms-test
   (testing "Check that validation of DB `:schemas` and `:native` perms doesn't fail if only one of them changes"

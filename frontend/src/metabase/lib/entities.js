@@ -68,6 +68,18 @@
  *   )(BookContainer);
  */
 
+import createCachedSelector from "re-reselect";
+
+// NOTE: need to use inflection directly here due to circular dependency
+import inflection from "inflection";
+
+import { createSelector } from "reselect";
+import { normalize, denormalize, schema } from "normalizr";
+import { getIn, merge } from "icepick";
+import _ from "underscore";
+import { GET, PUT, POST, DELETE } from "metabase/lib/api";
+import requestsReducer, { setRequestUnloaded } from "metabase/redux/requests";
+import { addUndo } from "metabase/redux/undo";
 import {
   combineReducers,
   handleEntities,
@@ -77,20 +89,6 @@ import {
   withRequestState,
   withCachedDataAndRequestState,
 } from "metabase/lib/redux";
-import createCachedSelector from "re-reselect";
-
-import { addUndo } from "metabase/redux/undo";
-import requestsReducer, { setRequestUnloaded } from "metabase/redux/requests";
-
-import { GET, PUT, POST, DELETE } from "metabase/lib/api";
-
-// NOTE: need to use inflection directly here due to circular dependency
-import inflection from "inflection";
-
-import { createSelector } from "reselect";
-import { normalize, denormalize, schema } from "normalizr";
-import { getIn, merge } from "icepick";
-import _ from "underscore";
 
 export function createEntity(def) {
   const entity = { ...def };
@@ -394,7 +392,11 @@ export function createEntity(def) {
     [getEntities, getEntityId],
     (entities, entityId) => denormalize(entityId, entity.schema, entities),
   )((state, { entityId } = {}) =>
-    typeof entityId === "object" ? JSON.stringify(entityId) : entityId,
+    typeof entityId === "object"
+      ? JSON.stringify(entityId)
+      : entityId
+      ? entityId
+      : "",
   ); // must stringify objects
 
   // LIST SELECTORS
@@ -430,9 +432,9 @@ export function createEntity(def) {
       entityIds
         .map(entityId => entity.selectors.getObject({ entities }, { entityId }))
         .filter(e => e != null), // deleted entities might remain in lists,
-  )((state, { entityQuery } = {}) => {
-    return entityQuery ? JSON.stringify(entityQuery) : "";
-  });
+  )((state, { entityQuery } = {}) =>
+    entityQuery ? JSON.stringify(entityQuery) : "",
+  );
 
   // REQUEST STATE SELECTORS
 

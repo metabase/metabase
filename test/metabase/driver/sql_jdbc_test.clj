@@ -8,7 +8,7 @@
             [metabase.models.table :as table :refer [Table]]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
-            [metabase.test.util.log :as tu.log]))
+            [toucan.db :as db]))
 
 (deftest describe-database-test
   (is (= {:tables (set (for [table ["CATEGORIES" "VENUES" "CHECKINS" "USERS"]]
@@ -49,14 +49,14 @@
                      :base-type         :type/Integer
                      :database-position 5
                      :database-required false}}}
-         (driver/describe-table :h2 (mt/db) (Table (mt/id :venues))))))
+         (driver/describe-table :h2 (mt/db) (db/select-one Table :id (mt/id :venues))))))
 
 (deftest describe-table-fks-test
   (is (= #{{:fk-column-name   "CATEGORY_ID"
             :dest-table       {:name   "CATEGORIES"
                                :schema "PUBLIC"}
             :dest-column-name "ID"}}
-         (driver/describe-table-fks :h2 (mt/db) (Table (mt/id :venues))))))
+         (driver/describe-table-fks :h2 (mt/db) (db/select-one Table :id (mt/id :venues))))))
 
 (deftest table-rows-sample-test
   (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
@@ -65,8 +65,8 @@
             ["33 Taps"]
             ["800 Degrees Neapolitan Pizzeria"]
             ["BCD Tofu House"]]
-           (->> (metadata-queries/table-rows-sample (Table (mt/id :venues))
-                  [(Field (mt/id :venues :name))]
+           (->> (metadata-queries/table-rows-sample (db/select-one Table :id (mt/id :venues))
+                  [(db/select-one Field :id (mt/id :venues :name))]
                   (constantly conj))
                 ;; since order is not guaranteed do some sorting here so we always get the same results
                 (sort-by first)
@@ -81,7 +81,7 @@
             {:name "Brite Spot Family Restaurant", :price 2, :category_id 20, :id 5}]
            (for [row (take 5 (sort-by :id (driver/table-rows-seq driver/*driver*
                                                                  (mt/db)
-                                                                 (Table (mt/id :venues)))))]
+                                                                 (db/select-one Table :id (mt/id :venues)))))]
              ;; different DBs use different precisions for these
              (-> (dissoc row :latitude :longitude)
                  (update :price int)
@@ -111,8 +111,7 @@
                             :tunnel-port    21212
                             :tunnel-user    "example"
                             :user           "postgres"}]
-               (tu.log/suppress-output
-                (driver.u/can-connect-with-details? :postgres details :throw-exceptions)))
+               (driver.u/can-connect-with-details? :postgres details :throw-exceptions))
              (catch Throwable e
                (loop [^Throwable e e]
                  (or (when (instance? java.net.ConnectException e)

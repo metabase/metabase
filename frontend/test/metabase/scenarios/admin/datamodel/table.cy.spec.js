@@ -10,9 +10,9 @@ describe("scenarios > admin > databases > table", () => {
     cy.signInAsAdmin();
   });
 
-  it("should see 6 tables in sample database", () => {
+  it("should see 8 tables in sample database", () => {
     cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}`);
-    cy.get(".AdminList-item").should("have.length", 6);
+    cy.get(".AdminList-item").should("have.length", 8);
   });
 
   it("should be able to see details of each table", () => {

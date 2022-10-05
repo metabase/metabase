@@ -1,7 +1,7 @@
 ---
 title: List of expressions
 redirect_from:
-  - /docs/latest/users-guide/expression-list
+  - /docs/latest/users-guide/expressions-list
 ---
 
 # List of expressions
@@ -27,29 +27,29 @@ For an introduction to expressions, check out [Writing expressions in the notebo
 - [Functions](#functions)
   - [abs](#abs)
   - [between](#between)
-  - [case](./expressions/case)
+  - [case](./expressions/case.md)
   - [ceil](#ceil)
-  - [coalesce](./expressions/coalesce)
-  - [concat](#concat)
+  - [coalesce](./expressions/coalesce.md)
+  - [concat](./expressions/concat.md)
   - [contains](#contains)
   - [endswith](#endswith)
   - [exp](#exp)
   - [floor](#floor)
   - [interval](#interval)
-  - [isempty](./expressions/isempty)
-  - [isnull](./expressions/isnull)
+  - [isempty](./expressions/isempty.md)
+  - [isnull](./expressions/isnull.md)
   - [lefttrim](#lefttrim)
   - [length](#length)
   - [log](#log)
   - [lower](#lower)
   - [power](#power)
-  - [regexextract](#regexextract)
+  - [regexextract](./expressions/regexextract.md)
   - [replace](#replace)
   - [righttrim](#righttrim)
   - [round](#round)
   - [sqrt](#sqrt)
   - [startswith](#startswith)
-  - [substring](#substring)
+  - [substring](./expressions/substring.md)
   - [trim](#trim)
   - [upper](#upper)
 - [Database limitations](#database-limitations)
@@ -214,7 +214,7 @@ Example: `between([Created At], "2019-01-01", "2020-12-31")` would return rows w
 
 Related: [interval](#interval).
 
-### [case](./expressions/case)
+### [case](./expressions/case.md)
 
 Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met.
 
@@ -224,7 +224,7 @@ Example: `case([Weight] > 200, "Large", [Weight] > 150, "Medium", "Small")` If a
 
 ### ceil
 
-Rounds a decimal up (ciel as in ceiling).
+Rounds a decimal up (ceil as in ceiling).
 
 Syntax: `ceil(column)`.
 
@@ -232,7 +232,7 @@ Example: `ceil([Price])`. `ceil(2.99)` would return 3.
 
 Related: [floor](#floor), [round](#round).
 
-### [coalesce](./expressions/coalesce)
+### [coalesce](./expressions/coalesce.md)
 
 Looks at the values in each argument in order and returns the first non-null value for each row.
 
@@ -240,7 +240,7 @@ Syntax: `coalesce(value1, value2, …)`
 
 Example: `coalesce([Comments], [Notes], "No comments")`. If both the `Comments` and `Notes` columns are null for that row, the expression will return the string "No comments".
 
-### concat
+### [concat](./expressions/concat.md)
 
 Combine two or more strings together.
 
@@ -298,7 +298,7 @@ Example: `interval([Created At], -1, "month")`.
 
 Related: [between](#between).
 
-### [isempty](./expressions/isempty)
+### [isempty](./expressions/isempty.md)
 
 Returns true if the column is empty.
 
@@ -306,7 +306,7 @@ Syntax: `isempty(column)`
 
 Example: `isempty([Discount])` would return true if there were no value in the discount field.
 
-### [isnull](./expressions/isnull)
+### [isnull](./expressions/isnull.md)
 
 Returns true if the column is null.
 
@@ -362,7 +362,7 @@ Databases that don't support `power`: SQLite.
 
 Related: [exp](#exp).
 
-### regexextract
+### [regexextract](./expressions/regexextract.md)
 
 Extracts matching substrings according to a regular expression.
 
@@ -372,7 +372,7 @@ Example: `regexextract([Address], "[0-9]+")`.
 
 Databases that don't support `regexextract`: H2, SQL Server, SQLite.
 
-Related: [contains](#contains).
+Related: [contains](#contains), [substring](#substring).
 
 ### replace
 
@@ -422,7 +422,7 @@ Example: `startsWith([Course Name], "Computer Science")` would return true for c
 
 Related: [endswith](#endswith), [contains](#contains).
 
-### substring
+### [substring](./expressions/substring.md)
 
 Returns a portion of the supplied text, specified by a starting position and a length.
 
@@ -430,7 +430,7 @@ Syntax: `substring(text, position, length)`
 
 Example: `substring([Title], 0, 10)` returns the first 11 letters of a string (the string index starts at position 0).
 
-Related: [replace](#replace).
+Related: [regexextract](#regexextract), [replace](#replace).
 
 ### trim
 
@@ -466,6 +466,6 @@ Additionally, **Presto** only provides _approximate_ results for `Median` and `P
 
 If you're using or maintaining a third-party database driver, please [refer to the wiki](https://github.com/metabase/metabase/wiki/What's-new-in-0.35.0-for-Metabase-driver-authors) to see how your driver might be impacted.
 
-See [Custom expressions in the notebook editor](https://www.metabase.com/blog/custom-expressions/index.html) to learn more.
+See [Custom expressions in the notebook editor](https://www.metabase.com/learn/questions/custom-expressions) to learn more.
 
 [expressions]: ./expressions.md

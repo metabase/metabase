@@ -1,29 +1,17 @@
 ---
-title: Dashboards overview
+title: Embedding overview
 ---
 
 # Embedding overview
 
-## [Introduction to embedding](./introduction.md)
+## [Introduction](./introduction.md)
 
-How to embed charts and dashboards in applications and websites.
+What is embedding, and how does it work?
 
-## [Public links](./public-links.md)
+## [Signed embedding](./signed-embedding.md)
 
-Sharing questions using public links.
+Also known as Standalone Embedding, Signed Embedding offers drill-through with custom destinations, so you can define what happens when people click on a chart, like sending people to another chart or URL–all while securing the underlying data.
 
 ## [Full-app embedding](./full-app-embedding.md)
 
-How to embed the graphical query builder and more in your application.
-
-## [Customize embeds](./customize-embeds.md)
-
-Introduction to customizing embedded charts and dashboards.
-
-## [Whitelabeling](./whitelabeling.md)
-
-How to customize the look and feel of embedded charts and dashboards to match your application's branding.
-
-## [Fonts](./fonts.md)
-
-How to customize the fonts in your charts and dashboards.
+Put all of Metabase in your app to give people secure self-serve access to data. You can still create custom destinations if you want, but Full-app Embedding integrates with your data permissions to let people slice and dice data on their own using Metabase's query builder.

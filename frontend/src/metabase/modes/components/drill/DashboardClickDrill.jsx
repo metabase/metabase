@@ -2,14 +2,12 @@
 import { getIn } from "icepick";
 import _ from "underscore";
 import querystring from "querystring";
+import { push } from "react-router-redux";
 
-import Question from "metabase-lib/lib/Question";
 import {
   setOrUnsetParameterValues,
   setParameterValue,
-  openActionParametersModal,
 } from "metabase/dashboard/actions";
-import { executeRowAction } from "metabase/dashboard/writeback-actions";
 import {
   getDataFromClicked,
   getTargetForQueryParams,
@@ -17,10 +15,7 @@ import {
 } from "metabase/lib/click-behavior";
 import { renderLinkURLForClick } from "metabase/lib/formatting/link";
 import * as Urls from "metabase/lib/urls";
-import {
-  getActionParameters,
-  getNotProvidedActionParameters,
-} from "metabase/writeback/utils";
+import Question from "metabase-lib/lib/Question";
 
 export default ({ question, clicked }) => {
   const settings = (clicked && clicked.settings) || {};
@@ -47,49 +42,7 @@ export default ({ question, clicked }) => {
     return [];
   }
 
-  if (type === "action") {
-    const parameters = getActionParameters(parameterMapping, {
-      data,
-      extraData,
-      clickBehavior,
-    });
-    const action = extraData.actions[clickBehavior.action];
-    const missingParameters = getNotProvidedActionParameters(
-      action,
-      parameters,
-    );
-    const emitterId = clickBehavior.emitter_id || clickBehavior.id;
-
-    if (missingParameters.length > 0) {
-      behavior = {
-        action: () =>
-          openActionParametersModal({
-            emitterId: emitterId,
-            props: {
-              missingParameters,
-              onSubmit: filledMissingParameters =>
-                executeRowAction({
-                  dashboard: extraData.dashboard,
-                  emitterId: emitterId,
-                  parameters: {
-                    ...parameters,
-                    ...filledMissingParameters,
-                  },
-                }),
-            },
-          }),
-      };
-    } else {
-      behavior = {
-        action: () =>
-          executeRowAction({
-            dashboard: extraData.dashboard,
-            emitterId: emitterId,
-            parameters,
-          }),
-      };
-    }
-  } else if (type === "crossfilter") {
+  if (type === "crossfilter") {
     const parameterIdValuePairs = getParameterIdValuePairs(parameterMapping, {
       data,
       extraData,
@@ -133,6 +86,32 @@ export default ({ question, clicked }) => {
 
         behavior = { url: () => url };
       }
+    } else if (linkType === "page") {
+      const { location, routerParams } = extraData;
+
+      const isInDataApp =
+        Urls.isDataAppPagePath(location.pathname) ||
+        Urls.isDataAppPath(location.pathname);
+
+      if (!isInDataApp) {
+        return [];
+      }
+
+      const dataAppId = Urls.extractEntityId(routerParams.slug);
+      if (!dataAppId) {
+        return [];
+      }
+
+      const queryParams = getParameterValuesBySlug(parameterMapping, {
+        data,
+        extraData,
+        clickBehavior,
+      });
+
+      const path = Urls.dataAppPage({ id: dataAppId }, { id: targetId });
+      const url = `${path}?${querystring.stringify(queryParams)}`;
+
+      behavior = { action: () => push(url) };
     } else if (linkType === "question" && extraData && extraData.questions) {
       const queryParams = getParameterValuesBySlug(parameterMapping, {
         data,

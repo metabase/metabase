@@ -18,7 +18,6 @@
             [metabase.test :as mt]
             [metabase.test.data.presto-jdbc :as data.presto-jdbc]
             [metabase.test.fixtures :as fixtures]
-            [metabase.test.util :as tu]
             [toucan.db :as db])
   (:import java.io.File))
 
@@ -26,20 +25,20 @@
 
 (deftest describe-database-test
   (mt/test-driver :presto-jdbc
-    (is (= {:tables #{{:name "categories" :schema "default"}
-                      {:name "venues" :schema "default"}
-                      {:name "checkins" :schema "default"}
-                      {:name "users" :schema "default"}}}
+    (is (= {:tables #{{:name "test_data_categories" :schema "default"}
+                      {:name "test_data_venues" :schema "default"}
+                      {:name "test_data_checkins" :schema "default"}
+                      {:name "test_data_users" :schema "default"}}}
            (-> (driver/describe-database :presto-jdbc (mt/db))
-               (update :tables (comp set (partial filter (comp #{"categories"
-                                                                 "venues"
-                                                                 "checkins"
-                                                                 "users"}
+               (update :tables (comp set (partial filter (comp #{"test_data_categories"
+                                                                 "test_data_venues"
+                                                                 "test_data_checkins"
+                                                                 "test_data_users"}
                                                                :name)))))))))
 
 (deftest describe-table-test
   (mt/test-driver :presto-jdbc
-    (is (= {:name   "venues"
+    (is (= {:name   "test_data_venues"
             :schema "default"
             :fields #{{:name          "name",
                        ;; for HTTP based Presto driver, this is coming back as varchar(255)
@@ -76,9 +75,9 @@
             [3 "The Apple Pan"]
             [4 "Wurstküche"]
             [5 "Brite Spot Family Restaurant"]]
-           (->> (metadata-queries/table-rows-sample (Table (mt/id :venues))
-                  [(Field (mt/id :venues :id))
-                   (Field (mt/id :venues :name))]
+           (->> (metadata-queries/table-rows-sample (db/select-one Table :id (mt/id :venues))
+                  [(db/select-one Field :id (mt/id :venues :id))
+                   (db/select-one Field :id (mt/id :venues :name))]
                   (constantly conj))
                 (sort-by first)
                 (take 5))))))
@@ -103,8 +102,8 @@
 
 (deftest db-default-timezone-test
   (mt/test-driver :presto-jdbc
-    (is (= "UTC"
-           (tu/db-timezone-id)))))
+    (is (= nil
+           (driver/db-default-timezone :presto-jdbc (mt/db))))))
 
 (deftest template-tag-timezone-test
   (mt/test-driver :presto-jdbc
@@ -135,8 +134,8 @@
                    :filter      [:= $name "wow"]})]
       (testing "The native query returned in query results should use user-friendly splicing"
         (is (= (str "SELECT count(*) AS \"count\" "
-                    "FROM \"default\".\"venues\" "
-                    "WHERE \"default\".\"venues\".\"name\" = 'wow'")
+                    "FROM \"default\".\"test_data_venues\" "
+                    "WHERE \"default\".\"test_data_venues\".\"name\" = 'wow'")
                (:query (qp/compile-and-splice-parameters query))
                (-> (qp/process-query query) :data :native_form :query)))))))
 

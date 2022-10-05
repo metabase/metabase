@@ -12605,6 +12605,321 @@ databaseChangeLog:
         - dropTable:
             tableName: emitter_action
 
+  - changeSet:
+      id: v45.00-022
+      author: snoe
+      comment: Added 0.45.0 - add app container
+      changes:
+        - createTable:
+            tableName: app
+            remarks: Defines top level concerns for App
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity.
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: The associated collection
+                  constraints:
+                    nullable: false
+                    referencedTableName: collection
+                    referencedColumnNames: id
+                    foreignKeyName: fk_app_ref_collection_id
+                    deleteCascade: true
+                    unique: true
+              - column:
+                  name: dashboard_id
+                  type: int
+                  remarks: The homepage of the app
+              - column:
+                  remarks: JSON for the navigation items of the app
+                  name: nav_items
+                  type: ${text.type}
+              - column:
+                  remarks: JSON for frontend related additions, such as styling
+                  name: options
+                  type: ${text.type}
+              - column:
+                  remarks: The timestamp of when the app was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the app was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v45.00-023
+      author: snoe
+      comment: Added 0.45.0 - add app container
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: app
+            baseColumnNames: dashboard_id
+            referencedTableName: report_dashboard
+            referencedColumnNames: id
+            constraintName: fk_app_ref_dashboard_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v45.00-025
+      author: metamben
+      comment: Added 0.45.0 - mark app pages
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: is_app_page
+                  type: boolean
+                  defaultValueBoolean: false
+                  remarks: Indicates that this dashboard serves as a page of an app
+                  constraints:
+                    nullable: false
+            tableName: report_dashboard
+
+  - changeSet:
+      id: v45.00-026
+      author: snoe
+      comment: Added 0.45.0 - apps add action_id to report_dashboardcard
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: action_id
+                  type: int
+                  remarks: The related action
+            tableName: report_dashboardcard
+
+  # FK constraint is added separately because deleteCascade doesn't work in addColumn -- see #14321
+  - changeSet:
+      id: v45.00-027
+      author: snoe
+      comment: Added 0.45.0 - apps add fk for action_id to report_dashboardcard
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_dashboardcard
+            baseColumnNames: action_id
+            referencedTableName: action
+            referencedColumnNames: id
+            constraintName: fk_report_dashboardcard_ref_action_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v45.00-028
+      author: camsaul
+      comment: Added 0.45.0 -- rename DashboardCard sizeX to size_x. See https://github.com/metabase/metabase/issues/16344
+      changes:
+        - renameColumn:
+            tableName: report_dashboardcard
+            columnDataType: int
+            oldColumnName: sizeX
+            newColumnName: size_x
+
+  - changeSet:
+      id: v45.00-029
+      author: camsaul
+      comment: Added 0.45.0 -- rename DashboardCard size_y to size_y. See https://github.com/metabase/metabase/issues/16344
+      changes:
+        - renameColumn:
+            tableName: report_dashboardcard
+            columnDataType: int
+            oldColumnName: sizeY
+            newColumnName: size_y
+
+  - changeSet:
+      id: v45.00-030
+      author: camsaul
+      comment: Added 0.45.0 -- add default value to DashboardCard size_x -- this was previously done by Toucan
+      changes:
+        - addDefaultValue:
+            tableName: report_dashboardcard
+            columnName: size_x
+            defaultValue: 2
+
+  - changeSet:
+      id: v45.00-031
+      author: camsaul
+      comment: Added 0.45.0 -- add default value to DashboardCard size_y -- this was previously done by Toucan
+      changes:
+        - addDefaultValue:
+            tableName: report_dashboardcard
+            columnName: size_y
+            defaultValue: 2
+
+  - changeSet:
+      id: v45.00-032
+      author: camsaul
+      comment: Added 0.45.0 -- add default value for DashboardCard created_at (Postgres/H2)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: postgresql,h2
+      changes:
+        - addDefaultValue:
+            tableName: report_dashboardcard
+            columnName: created_at
+            columnDataType: ${timestamp_type}
+            defaultValueComputed: current_timestamp
+
+    # addDefaultValue with defaultValueComputed doesn't work for MySQL/MariaDB so we have to do this the hard way.
+  - changeSet:
+      id: v45.00-033
+      author: camsaul
+      comment: Added 0.45.0 -- add default value for DashboardCard created_at (MySQL/MariaDB)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+      changes:
+        - sql:
+            sql: >-
+              ALTER TABLE report_dashboardcard
+              CHANGE created_at
+              created_at timestamp(6) NOT NULL DEFAULT current_timestamp(6);
+
+  - changeSet:
+      id: v45.00-034
+      author: camsaul
+      comment: Added 0.45.0 -- add default value for DashboardCard updated_at (Postgres/H2)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: postgresql,h2
+      changes:
+        - addDefaultValue:
+            tableName: report_dashboardcard
+            columnName: updated_at
+            columnDataType: ${timestamp_type}
+            defaultValueComputed: current_timestamp
+
+  - changeSet:
+      id: v45.00-035
+      author: camsaul
+      comment: Added 0.45.0 -- add default value for DashboardCard updated_at (MySQL/MariaDB)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+      changes:
+        - sql:
+            sql: >-
+              ALTER TABLE report_dashboardcard
+              CHANGE updated_at
+              updated_at timestamp(6) NOT NULL DEFAULT current_timestamp(6);
+
+  # The next 4 values add default values for Database `created_at` and `updated_at`; previously this was handled by
+  # Toucan but it's more convenient to do this at the application database level instead -- it facilitates stuff like
+  # schema migration tests that don't use Toucan, or other manual scripting
+  - changeSet:
+      id: v45.00-038
+      author: camsaul
+      comment: Added 0.45.0 -- add default value for Database created_at (Postgres/H2)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: postgresql,h2
+      changes:
+        - addDefaultValue:
+            tableName: metabase_database
+            columnName: created_at
+            columnDataType: ${timestamp_type}
+            defaultValueComputed: current_timestamp
+
+    # addDefaultValue with defaultValueComputed doesn't work for MySQL/MariaDB so we have to do this the hard way.
+  - changeSet:
+      id: v45.00-039
+      author: camsaul
+      comment: Added 0.45.0 -- add default value for Database created_at (MySQL/MariaDB)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+      changes:
+        - sql:
+            sql: >-
+              ALTER TABLE metabase_database
+              CHANGE created_at
+              created_at timestamp(6) NOT NULL DEFAULT current_timestamp(6);
+
+  - changeSet:
+      id: v45.00-040
+      author: camsaul
+      comment: Added 0.45.0 -- add default value for Database updated_at (Postgres/H2)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: postgresql,h2
+      changes:
+        - addDefaultValue:
+            tableName: metabase_database
+            columnName: updated_at
+            columnDataType: ${timestamp_type}
+            defaultValueComputed: current_timestamp
+
+  - changeSet:
+      id: v45.00-041
+      author: camsaul
+      comment: Added 0.45.0 -- add default value for Database updated_at (MySQL/MariaDB)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+      changes:
+        - sql:
+            sql: >-
+              ALTER TABLE metabase_database
+              CHANGE updated_at
+              updated_at timestamp(6) NOT NULL DEFAULT current_timestamp(6);
+
+  # It was probably an oversight, but while we validated Database `details` in the API layer it was not a required/NOT
+  # NULL column in the application Database itself. No problem; let's add it now that we've noticed it.
+  #
+  # MySQL (at least 5.7) won't let us have nice things:
+  #
+  # https://dev.mysql.com/doc/refman/5.7/en/data-type-defaults.html
+  #
+  # The BLOB, TEXT, GEOMETRY, and JSON data types cannot be assigned a default value.
+  #
+  # Because of this restriction we will just have to update existing NULL values in SQL and then add a NOT NULL
+  # restriction separately; we can use Toucan `pre-insert` to set defaults values when saving things.
+  - changeSet:
+      id: v45.00-042
+      author: camsaul
+      comment: Added 0.45.0 -- add default value for Database with NULL details
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_database SET details = '{}' WHERE details IS NULL;
+
+  - changeSet:
+      id: v45.00-043
+      author: camsaul
+      comment: Added 0.45.0 -- make Database details NOT NULL
+      changes:
+        - addNotNullConstraint:
+            columnDataType: ${text.type}
+            tableName: metabase_database
+            columnName: details
+
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

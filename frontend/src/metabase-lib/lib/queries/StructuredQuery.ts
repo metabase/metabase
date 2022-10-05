@@ -3,17 +3,14 @@
 /**
  * Represents a structured MBQL query.
  */
-import * as Q from "metabase/lib/query/query";
-import { getUniqueExpressionName } from "metabase/lib/query/expression";
+import _ from "underscore";
+import { chain, updateIn } from "icepick";
+import { t } from "ttag";
 import {
   format as formatExpression,
   DISPLAY_QUOTES,
 } from "metabase/lib/expressions/format";
 import { isCompatibleAggregationOperatorForField } from "metabase/lib/schema_metadata";
-import _ from "underscore";
-import { chain, updateIn } from "icepick";
-import { t } from "ttag";
-import { memoizeClass } from "metabase-lib/lib/utils";
 import {
   StructuredQuery as StructuredQueryObject,
   Aggregation,
@@ -28,29 +25,38 @@ import {
   StructuredDatasetQuery,
 } from "metabase-types/types/Card";
 import { AggregationOperator } from "metabase-types/types/Metadata";
+import { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
+import { TableId } from "metabase-types/types/Table";
+import { Column } from "metabase-types/types/Dataset";
+import { TYPE } from "metabase/lib/types";
+import {
+  isVirtualCardId,
+  getQuestionIdFromVirtualTableId,
+} from "metabase/lib/saved-questions";
+import { fieldRefForColumn } from "metabase-lib/lib/queries/utils/dataset";
+import { isSegment } from "metabase-lib/lib/queries/utils/filter";
+import { getUniqueExpressionName } from "metabase-lib/lib/queries/utils/expression";
+import * as Q from "metabase-lib/lib/queries/utils/query";
+import { memoizeClass } from "metabase-lib/lib/utils";
 import Dimension, {
   FieldDimension,
   ExpressionDimension,
   AggregationDimension,
 } from "metabase-lib/lib/Dimension";
-import { isSegment } from "metabase/lib/query/filter";
 import DimensionOptions from "metabase-lib/lib/DimensionOptions";
 import Segment from "../metadata/Segment";
-import { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
 import Database from "../metadata/Database";
 import Question from "../Question";
-import { TableId } from "metabase-types/types/Table";
-import { Column } from "metabase-types/types/Dataset";
+import Table from "../metadata/Table";
+import Field from "../metadata/Field";
 import AtomicQuery from "./AtomicQuery";
 import AggregationWrapper from "./structured/Aggregation";
 import BreakoutWrapper from "./structured/Breakout";
 import FilterWrapper from "./structured/Filter";
 import JoinWrapper from "./structured/Join";
 import OrderByWrapper from "./structured/OrderBy";
-import Table from "../metadata/Table";
-import Field from "../metadata/Field";
-import { TYPE } from "metabase/lib/types";
-import { fieldRefForColumn } from "metabase/lib/dataset";
+
+import { getStructuredQueryTable } from "./utils/structured-query-table";
 
 type DimensionFilter = (dimension: Dimension) => boolean;
 type FieldFilter = (filter: Field) => boolean;
@@ -243,6 +249,11 @@ class StructuredQueryInner extends AtomicQuery {
     return this.query()?.["source-table"];
   }
 
+  sourceTable(): Table | null | undefined {
+    const tableId = this.sourceTableId();
+    return tableId != null ? this._metadata.table(tableId) : null;
+  }
+
   /**
    * @returns a new query with the provided Table ID set.
    */
@@ -326,41 +337,8 @@ class StructuredQueryInner extends AtomicQuery {
   /**
    * @returns the table object, if a table is selected and loaded.
    */
-  table(): Table {
-    const sourceQuery = this.sourceQuery();
-
-    if (sourceQuery) {
-      const fields = sourceQuery.columns().map(column => {
-        const id = [
-          "field",
-          column.name,
-          {
-            "base-type": column.base_type,
-          },
-        ];
-
-        return new Field({
-          ...column,
-          // TODO FIXME -- Do NOT use field-literal unless you're referring to a native query
-          id,
-          source: "fields",
-          // HACK: need to thread the query through to this fake Field
-          query: this,
-        });
-      });
-
-      return new Table({
-        id: this.sourceTableId(),
-        name: "",
-        display_name: "",
-        db: sourceQuery.database(),
-        fields,
-        segments: [],
-        metrics: [],
-      });
-    }
-
-    return this.metadata().table(this.sourceTableId());
+  table(): Table | null {
+    return getStructuredQueryTable(this);
   }
 
   /**
@@ -1297,7 +1275,16 @@ class StructuredQueryInner extends AtomicQuery {
       for (const dimension of fkDimensions) {
         const field = dimension.field();
 
-        if (field && explicitJoins.has(this._keyForFK(field, field.target))) {
+        const queryHasExplicitJoin =
+          field && explicitJoins.has(this._keyForFK(field, field.target));
+        const isNestedCardTable = table?.isVirtualCard();
+        const tableHasExplicitJoin =
+          isNestedCardTable &&
+          table.fields.find(
+            tableField => tableField.id === field.fk_target_field_id,
+          );
+
+        if (queryHasExplicitJoin || tableHasExplicitJoin) {
           continue;
         }
 
@@ -1402,7 +1389,7 @@ class StructuredQueryInner extends AtomicQuery {
             f.parent_id == null
           );
         })
-        .sortBy(d => d.displayName().toLowerCase())
+        .sortBy(d => d.displayName()?.toLowerCase())
         .sortBy(d => {
           const type = d.field().semantic_type;
           return type === TYPE.PK ? 0 : type === TYPE.Name ? 1 : 2;
@@ -1453,20 +1440,8 @@ class StructuredQueryInner extends AtomicQuery {
   }
 
   // TODO: better name may be parseDimension?
-  parseFieldReference(fieldRef): Dimension | null | undefined {
-    return Dimension.parseMBQL(fieldRef, this._metadata, this);
-  }
-
-  dimensionForColumn(column) {
-    if (column) {
-      const fieldRef = this.fieldReferenceForColumn(column);
-
-      if (fieldRef) {
-        return this.parseFieldReference(fieldRef);
-      }
-    }
-
-    return null;
+  parseFieldReference(fieldRef, query = this): Dimension | null | undefined {
+    return Dimension.parseMBQL(fieldRef, this._metadata, query);
   }
 
   setDatasetQuery(datasetQuery: DatasetQuery): StructuredQuery {
@@ -1501,8 +1476,7 @@ class StructuredQueryInner extends AtomicQuery {
    * Returns the "first" of the nested queries, or this query it not nested
    */
   rootQuery(): StructuredQuery {
-    const sourceQuery = this.sourceQuery();
-    return sourceQuery ? sourceQuery.rootQuery() : this;
+    return this;
   }
 
   /**
@@ -1548,11 +1522,27 @@ class StructuredQueryInner extends AtomicQuery {
     return null;
   }
 
+  dimensionForColumn(column: Column) {
+    if (column) {
+      const fieldRef = this.fieldReferenceForColumn(column);
+
+      if (fieldRef) {
+        const dimension = this.queries()
+          .flatMap(q => q.dimensions())
+          .find(d => d.isEqual(fieldRef));
+
+        return this.parseFieldReference(fieldRef, dimension?.query());
+      }
+    }
+
+    return null;
+  }
+
   /**
    * Returns the corresponding {Column} in the "top-level" {StructuredQuery}
    */
   topLevelColumn(column: Column): Column | null | undefined {
-    const dimension = this.dimensionForColumn(column);
+    const dimension = this.topLevelDimensionForColumn(column);
 
     if (dimension) {
       const topDimension = this.topLevelDimension(dimension);
@@ -1565,20 +1555,32 @@ class StructuredQueryInner extends AtomicQuery {
     return null;
   }
 
+  topLevelDimensionForColumn(column) {
+    if (column) {
+      const fieldRef = this.fieldReferenceForColumn(column);
+
+      if (fieldRef) {
+        return this.parseFieldReference(fieldRef);
+      }
+    }
+  }
+
   /**
    * returns the corresponding {Dimension} in the sourceQuery, if any
    */
   dimensionForSourceQuery(dimension: Dimension): Dimension | null | undefined {
-    if (dimension instanceof FieldDimension && dimension.isStringFieldName()) {
+    if (dimension instanceof FieldDimension) {
       const sourceQuery = this.sourceQuery();
 
       if (sourceQuery) {
-        const index = sourceQuery
-          .columnNames()
-          .indexOf(dimension.fieldIdOrName());
+        const fieldIdOrName = dimension.fieldIdOrName();
 
-        if (index >= 0) {
-          return sourceQuery.columnDimensions()[index];
+        const columnIndex = sourceQuery
+          .columns()
+          .findIndex(c => c.id === fieldIdOrName || c.name === fieldIdOrName);
+
+        if (columnIndex >= 0) {
+          return sourceQuery.columnDimensions()[columnIndex];
         }
       }
     }
@@ -1590,6 +1592,12 @@ class StructuredQueryInner extends AtomicQuery {
    * returns the original Table object at the beginning of the nested queries
    */
   rootTable(): Table {
+    const question = this.question();
+    const questionTableId = question?.tableId();
+    if (questionTableId != null) {
+      return this.metadata().table(questionTableId);
+    }
+
     return this.rootQuery().table();
   }
 
@@ -1661,6 +1669,13 @@ class StructuredQueryInner extends AtomicQuery {
         id: tableId,
         foreignTables,
       });
+
+      if (isVirtualCardId(tableId)) {
+        addDependency({
+          type: "question",
+          id: getQuestionIdFromVirtualTableId(tableId),
+        });
+      }
     }
 
     // any explicitly joined tables
@@ -1732,6 +1747,10 @@ class NestedStructuredQuery extends StructuredQuery {
       datasetQuery,
       this._parent,
     );
+  }
+
+  rootQuery(): StructuredQuery {
+    return this.parentQuery().rootQuery();
   }
 
   parentQuery() {

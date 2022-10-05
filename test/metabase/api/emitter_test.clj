@@ -6,7 +6,8 @@
    [metabase.models :refer [Card Dashboard Emitter]]
    [metabase.test :as mt]
    [metabase.util.schema :as su]
-   [schema.core :as s]))
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (deftest create-emitter-test
   (testing "POST /api/emitter"
@@ -41,7 +42,7 @@
             (testing "Should be able to update an emitter"
               (mt/user-http-request :crowberto :put 204 (format "emitter/%d" emitter-id)
                                     {:options {:a 1}})
-              (is (partial= {:options {:a 1}} (Emitter emitter-id))))
+              (is (partial= {:options {:a 1}} (db/select-one Emitter :id emitter-id))))
             (testing "Should 404 if bad emitter-id"
               (is (= "Not found."
                      (mt/user-http-request :crowberto :put 404 (format "emitter/%d" Integer/MAX_VALUE)
@@ -71,7 +72,7 @@
                      (mt/user-http-request :crowberto :post 200 emitter-path
                                            {:parameters {"my_id" {:type  :number/=
                                                                   :value 1}}}))))
-            (is (= [1 "Bird Shop"]
+            (is (= [1 "Shop"]
                    (mt/first-row
                      (mt/run-mbql-query categories {:filter [:= $id 1]}))))
             (testing "Should affect 0 rows if id is out of range"

@@ -8,7 +8,7 @@
             [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.db :as mdb]
-            [metabase.models :refer [Database]]
+            [metabase.models :refer [App Database]]
             [metabase.models.bookmark :refer [CardBookmark CollectionBookmark DashboardBookmark]]
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.interface :as mi]
@@ -74,6 +74,7 @@
    :archived            :boolean
    ;; returned for Card, Dashboard, Pulse, and Collection
    :collection_id       :integer
+   :collection_app_id   :integer
    :collection_name     :text
    :collection_authority_level :text
    ;; returned for Card and Dashboard
@@ -85,6 +86,8 @@
    :dashboardcard_count :integer
    :dataset_query       :text
    :moderated_status    :text
+   ;; returned for Collection only
+   :app_id              :integer
    ;; returned for Metric and Segment
    :table_id            :integer
    :database_id         :integer
@@ -232,7 +235,9 @@
     (cond-> honeysql-query
       (not= collection-id-column :collection.id)
       (hh/merge-left-join [Collection :collection]
-                          [:= collection-id-column :collection.id]))))
+                          [:= collection-id-column :collection.id]
+                          [App :collection_app]
+                          [:= :collection.id :collection_app.collection_id]))))
 
 (s/defn ^:private add-table-db-id-clause
   "Add a WHERE clause to only return tables with the given DB id.
@@ -278,27 +283,51 @@
       (update :select (fn [columns]
                         (cons [(hx/literal "dataset") :model] (rest columns))))))
 
-(s/defmethod search-query-for-model "collection"
-  [model search-ctx :- SearchContext]
-  (-> (base-query-for-model model search-ctx)
+(defn- shared-collection-impl
+  [model search-ctx]
+  (-> (base-query-for-model "collection" search-ctx)
+      (update :where (fn [where] [:and [(if (= model "app") :<> :=) :app.id nil] where]))
       (hh/left-join [CollectionBookmark :bookmark]
                     [:and
                      [:= :bookmark.collection_id :collection.id]
-                     [:= :bookmark.user_id api/*current-user-id*]])
+                     [:= :bookmark.user_id api/*current-user-id*]]
+                    [App :app]
+                    [:= :app.collection_id :collection.id])
       (add-collection-join-and-where-clauses :collection.id search-ctx)))
+
+(s/defmethod search-query-for-model "collection"
+  [model search-ctx :- SearchContext]
+  (shared-collection-impl model search-ctx))
+
+(s/defmethod search-query-for-model "app"
+  [model search-ctx :- SearchContext]
+  (-> (shared-collection-impl model search-ctx)
+      (update :select (fn [columns]
+                        (cons [(hx/literal model) :model] (rest columns))))))
 
 (s/defmethod search-query-for-model "database"
   [model search-ctx :- SearchContext]
   (base-query-for-model model search-ctx))
 
-(s/defmethod search-query-for-model "dashboard"
-  [model search-ctx :- SearchContext]
-  (-> (base-query-for-model model search-ctx)
+(defn- shared-dashboard-impl
+  [model search-ctx]
+  (-> (base-query-for-model "dashboard" search-ctx)
+      (update :where (fn [where] [:and [:= :dashboard.is_app_page (= model "page")] where]))
       (hh/left-join [DashboardBookmark :bookmark]
                     [:and
                      [:= :bookmark.dashboard_id :dashboard.id ]
                      [:= :bookmark.user_id api/*current-user-id*]])
       (add-collection-join-and-where-clauses :dashboard.collection_id search-ctx)))
+
+(s/defmethod search-query-for-model "dashboard"
+  [model search-ctx :- SearchContext]
+  (shared-dashboard-impl model search-ctx))
+
+(s/defmethod search-query-for-model "page"
+  [model search-ctx :- SearchContext]
+  (-> (shared-dashboard-impl model search-ctx)
+      (update :select (fn [columns]
+                        (cons [(hx/literal model) :model] (rest columns))))))
 
 (s/defmethod search-query-for-model "pulse"
   [model search-ctx :- SearchContext]
@@ -373,15 +402,15 @@
 
 (defmethod check-permissions-for-model :metric
   [{:keys [id]}]
-  (-> id Metric mi/can-read?))
+  (-> (db/select-one Metric :id id) mi/can-read?))
 
 (defmethod check-permissions-for-model :segment
   [{:keys [id]}]
-  (-> id Segment mi/can-read?))
+  (-> (db/select-one Segment :id id) mi/can-read?))
 
 (defmethod check-permissions-for-model :database
   [{:keys [id]}]
-  (-> id Database mi/can-read?))
+  (-> (db/select-one Database :id id) mi/can-read?))
 
 (defn- query-model-set
   "Queries all models with respect to query for one result, to see if we get a result or not"
@@ -474,9 +503,8 @@
   For the list of models, check `metabase.search.config/all-models.
 
   To search in archived portions of models, pass in `archived=true`.
-  If you want, while searching tables, only tables of a certain DB id,
-  pass in a DB id value to `table_db_id`.
-
+  To search for tables, cards, and models of a certain DB, pass in a DB id value
+  to `table_db_id`.
   To specify a list of models, pass in an array to `models`.
   "
   [q archived table_db_id models]

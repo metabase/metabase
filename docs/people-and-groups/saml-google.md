@@ -1,10 +1,10 @@
 ---
-title: Setting up SAML with Google
+title: SAML with Google
 redirect_from:
   - /docs/latest/enterprise-guide/saml-google
 ---
 
-# Setting up SAML with Google
+# SAML with Google
 
 {% include plans-blockquote.html feature="Google SAML authentication" %}
 
@@ -15,7 +15,7 @@ redirect_from:
   - [Provide Metabase info to Google ](#filling-out-service-provider-details).
   - [Set up attribute mappings in Google](#setting-up-attribute-mappings).
 
-See [authenticating with SAML](../enterprise-guide/authenticating-with-saml.html) for general SAML info.
+See [authenticating with SAML](./authenticating-with-saml.md) for general SAML info.
 
 ## Saving Google IdP info for Metabase
 
@@ -59,4 +59,4 @@ For example, to add the attribute "First name":
 
 ## Troubleshooting SAML issues
 
-For common issues, go to [Troubleshooting SAML](../troubleshooting-guide/saml.html).
+- [Troubleshooting SAML](../troubleshooting-guide/saml.md).

@@ -66,6 +66,7 @@
           :cljs @(#'clojure.core/get-global-hierarchy))
        :parents
        keys
+       (filter keyword?)
        (filter #(= (namespace %) (name keyword-namespace)))))
 
 (defn- test-derived-from [a-type {:keys [required disallowed]}]

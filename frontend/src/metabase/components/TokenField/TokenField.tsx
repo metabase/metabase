@@ -6,7 +6,6 @@ import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-import { TokenFieldAddon, TokenFieldItem } from "../TokenFieldItem";
 
 import {
   KEYCODE_ESCAPE,
@@ -18,6 +17,7 @@ import {
   KEY_COMMA,
 } from "metabase/lib/keyboard";
 import { isObscured } from "metabase/lib/dom";
+import { TokenFieldAddon, TokenFieldItem } from "../TokenFieldItem";
 
 import {
   TokenInputItem,

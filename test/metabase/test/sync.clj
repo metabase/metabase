@@ -3,7 +3,6 @@
             [metabase.models.database :refer [Database]]
             [metabase.models.task-history :refer [TaskHistory]]
             [metabase.sync :as sync]
-            [metabase.test :as mt]
             [metabase.test.data :as data]
             [toucan.db :as db]))
 
@@ -12,7 +11,7 @@
   []
   (data/with-temp-copy-of-db
     ;; `sync-database!` does both sync an analysis steps
-    (sync/sync-database! (Database (data/id)))
+    (sync/sync-database! (db/select-one Database :id (data/id)))
     (db/count TaskHistory :db_id (data/id))))
 
 (defn crash-fn
@@ -24,6 +23,5 @@
   "Can sync process survive `f` crashing?"
   [f]
   `(is (= (sync-steps-run-to-completion)
-          (mt/suppress-output
-            (with-redefs [~f crash-fn]
-              (sync-steps-run-to-completion))))))
+          (with-redefs [~f crash-fn]
+            (sync-steps-run-to-completion)))))

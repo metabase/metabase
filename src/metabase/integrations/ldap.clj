@@ -3,6 +3,7 @@
             [clj-ldap.client :as ldap]
             [metabase.integrations.ldap.default-implementation :as default-impl]
             [metabase.integrations.ldap.interface :as i]
+            [metabase.models.interface :as mi]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.models.user :refer [User]]
             [metabase.plugins.classloader :as classloader]
@@ -15,11 +16,6 @@
 ;; Load the EE namespace up front so that the extra Settings it defines are available immediately.
 ;; Otherwise, this would only happen the first time `find-user` or `fetch-or-create-user!` is called.
 (u/ignore-exceptions (classloader/require ['metabase-enterprise.enhancements.integrations.ldap]))
-
-(defsetting ldap-enabled
-  (deferred-tru "Enable LDAP authentication.")
-  :type    :boolean
-  :default false)
 
 (defsetting ldap-host
   (deferred-tru "Server hostname."))
@@ -95,13 +91,27 @@
                    (setting/set-value-of-type! :json :ldap-group-mappings new-value)))))
 
 (defsetting ldap-configured?
-  "Check if LDAP is enabled and that the mandatory settings are configured."
+  (deferred-tru "Have the mandatory LDAP settings (host and user search base) been validated and saved?")
   :type       :boolean
   :visibility :public
   :setter     :none
-  :getter     (fn [] (boolean (and (ldap-enabled)
-                                   (ldap-host)
+  :getter     (fn [] (boolean (and (ldap-host)
                                    (ldap-user-base)))))
+
+(def mb-settings->ldap-details
+  "Mappings from Metabase setting names to keys to use for LDAP connections"
+  {:ldap-host                :host
+   :ldap-port                :port
+   :ldap-bind-dn             :bind-dn
+   :ldap-password            :password
+   :ldap-security            :security
+   :ldap-user-base           :user-base
+   :ldap-user-filter         :user-filter
+   :ldap-attribute-email     :attribute-email
+   :ldap-attribute-firstname :attribute-firstname
+   :ldap-attribute-lastname  :attribute-lastname
+   :ldap-group-sync          :group-sync
+   :ldap-group-base          :group-base})
 
 (defn- details->ldap-options [{:keys [host port bind-dn password security]}]
   (let [security (keyword security)
@@ -179,6 +189,13 @@
     (catch Exception e
       {:status :ERROR, :message (.getMessage e)})))
 
+(defn test-current-ldap-details
+  "Tests the connection to an LDAP server using the currently set settings."
+  []
+  (let [settings (into {} (for [[k v] mb-settings->ldap-details]
+                             [v (setting/get k)]))]
+    (test-ldap-connection settings)))
+
 (defn verify-password
   "Verifies if the supplied password is valid for the `user-info` (from `find-user`) or DN."
   ([user-info password]
@@ -210,7 +227,7 @@
   ([ldap-connection :- LDAPConnectionPool, username :- su/NonBlankString]
    (default-impl/find-user ldap-connection username (ldap-settings))))
 
-(s/defn fetch-or-create-user! :- (class User)
-  "Using the `user-info` (from `find-user`) get the corresponding Metabase user, creating it if necessary."
+(s/defn fetch-or-create-user! :- (mi/InstanceOf User)
+  "Using the `user-info` (from [[find-user]]) get the corresponding Metabase user, creating it if necessary."
   [user-info :- i/UserInfo]
   (default-impl/fetch-or-create-user! user-info (ldap-settings)))

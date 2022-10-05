@@ -4,10 +4,10 @@ import React from "react";
 import { ngettext, msgid, t } from "ttag";
 
 import { formatNumber } from "metabase/lib/formatting";
-import { HARD_ROW_LIMIT } from "metabase/lib/query";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import LimitPopover from "metabase/query_builder/components/LimitPopover";
+import { HARD_ROW_LIMIT } from "metabase-lib/lib/queries/utils";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
@@ -16,6 +16,7 @@ const QuestionRowCount = ({
   result,
   className,
   isResultDirty,
+  onQueryChange,
   ...props
 }) => {
   const formatRowCount = count => {
@@ -71,9 +72,9 @@ const QuestionRowCount = ({
             limit={limit}
             onChangeLimit={limit => {
               if (limit > 0) {
-                query.updateLimit(limit).update();
+                onQueryChange(query.updateLimit(limit));
               } else {
-                query.clearLimit().update();
+                onQueryChange(query.clearLimit());
               }
             }}
             onClose={onClose}

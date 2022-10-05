@@ -2,7 +2,9 @@
 // @ts-nocheck
 import _ from "underscore";
 import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
+/* eslint-disable import/order */
 // NOTE: the order of these matters due to circular dependency issues
+import slugg from "slugg";
 import StructuredQuery, {
   STRUCTURED_QUERY_TEMPLATE,
 } from "metabase-lib/lib/queries/StructuredQuery";
@@ -21,17 +23,13 @@ import {
   FieldDimension,
 } from "metabase-lib/lib/Dimension";
 import Mode from "metabase-lib/lib/Mode";
-import { isStandard } from "metabase/lib/query/filter";
+import { isStandard } from "metabase-lib/lib/queries/utils/filter";
 import { isFK } from "metabase/lib/schema_metadata";
 import { memoizeClass, sortObject } from "metabase-lib/lib/utils";
+/* eslint-enable import/order */
+
 // TODO: remove these dependencies
 import * as Urls from "metabase/lib/urls";
-import {
-  findColumnIndexForColumnSetting,
-  findColumnSettingIndexForColumn,
-  syncTableColumnsToQuery,
-} from "metabase/lib/dataset";
-import { isTransientId } from "metabase/meta/Card";
 import {
   getCardUiParameters,
   remapParameterValuesToTemplateTags,
@@ -41,15 +39,6 @@ import {
   normalizeParameterValue,
   getParameterValuesBySlug,
 } from "metabase/parameters/utils/parameter-values";
-import {
-  aggregate,
-  breakout,
-  distribution,
-  drillUnderlyingRecords,
-  filter,
-  pivot,
-  toUnderlyingRecords,
-} from "metabase/modes/lib/actions";
 import {
   DashboardApi,
   CardApi,
@@ -63,23 +52,41 @@ import {
 } from "metabase-types/types/Parameter";
 import { Card as CardObject, DatasetQuery } from "metabase-types/types/Card";
 import { VisualizationSettings } from "metabase-types/api/card";
-import { Dataset, Value } from "metabase-types/types/Dataset";
+import { Column, Dataset, Value } from "metabase-types/types/Dataset";
 import { TableId } from "metabase-types/types/Table";
 import { DatabaseId } from "metabase-types/types/Database";
-import { ClickObject } from "metabase-types/types/Visualization";
+import {
+  ClickObject,
+  DimensionValue,
+} from "metabase-types/types/Visualization";
 import { DependentMetadataItem } from "metabase-types/types/Query";
+import { utf8_to_b64url } from "metabase/lib/encoding";
+import { CollectionId } from "metabase-types/api";
+
+import { getQuestionVirtualTableId } from "metabase/lib/saved-questions/saved-questions";
+import {
+  aggregate,
+  breakout,
+  distribution,
+  drillFilter,
+  filter,
+  pivot,
+} from "metabase-lib/lib/queries/utils/actions";
+import { isTransientId } from "metabase-lib/lib/queries/utils/card";
+import {
+  findColumnIndexForColumnSetting,
+  findColumnSettingIndexForColumn,
+  syncTableColumnsToQuery,
+} from "metabase-lib/lib/queries/utils/dataset";
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
   ALERT_TYPE_ROWS,
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/lib/Alert";
-import { utf8_to_b64url } from "metabase/lib/encoding";
-import { CollectionId } from "metabase-types/api";
-
-type QuestionUpdateFn = (q: Question) => Promise<void> | null | undefined;
 
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
+  dataset?: boolean;
   tableId?: TableId;
   collectionId?: CollectionId;
   metadata?: Metadata;
@@ -115,18 +122,12 @@ class QuestionInner {
   _parameterValues: ParameterValues;
 
   /**
-   * Bound update function, if any
-   */
-  _update: QuestionUpdateFn | null | undefined;
-
-  /**
    * Question constructor
    */
   constructor(
     card: CardObject,
     metadata?: Metadata,
     parameterValues?: ParameterValues,
-    update?: QuestionUpdateFn | null | undefined,
   ) {
     this._card = card;
     this._metadata =
@@ -140,16 +141,10 @@ class QuestionInner {
         questions: {},
       });
     this._parameterValues = parameterValues || {};
-    this._update = update;
   }
 
   clone() {
-    return new Question(
-      this._card,
-      this._metadata,
-      this._parameterValues,
-      this._update,
-    );
+    return new Question(this._card, this._metadata, this._parameterValues);
   }
 
   metadata(): Metadata {
@@ -163,27 +158,6 @@ class QuestionInner {
   setCard(card: CardObject): Question {
     const q = this.clone();
     q._card = card;
-    return q;
-  }
-
-  /**
-   * calls the passed in update function (useful for chaining) or bound update function with the question
-   * NOTE: this passes Question instead of card, unlike how Query passes dataset_query
-   */
-  update(update?: QuestionUpdateFn, ...args: any[]) {
-    // TODO: if update returns a new card, create a new Question based on that and return it
-    if (update) {
-      update(this, ...args);
-    } else if (this._update) {
-      this._update(this, ...args);
-    } else {
-      throw new Error("Question update function not provided or bound");
-    }
-  }
-
-  bindUpdate(update: QuestionUpdateFn) {
-    const q = this.clone();
-    q._update = update;
     return q;
   }
 
@@ -315,6 +289,12 @@ class QuestionInner {
 
   setDataset(dataset) {
     return this.setCard(assoc(this.card(), "dataset", dataset));
+  }
+
+  setPinned(pinned: boolean) {
+    return this.setCard(
+      assoc(this.card(), "collection_position", pinned ? 1 : null),
+    );
   }
 
   setIsAction(isAction) {
@@ -559,12 +539,45 @@ class QuestionInner {
     return pivot(this, breakouts, dimensions) || this;
   }
 
-  drillUnderlyingRecords(dimensions): Question {
-    return drillUnderlyingRecords(this, dimensions) || this;
+  drillUnderlyingRecords(
+    dimensions: DimensionValue[],
+    column?: Column,
+  ): Question {
+    let query = this.query();
+    if (!(query instanceof StructuredQuery)) {
+      return this;
+    }
+
+    dimensions.forEach(({ value, column }) => {
+      if (column.source !== "aggregation") {
+        query = drillFilter(query, value, column);
+      }
+    });
+
+    const dimension = column && query.parseFieldReference(column.field_ref);
+    if (dimension instanceof AggregationDimension) {
+      const aggregation = dimension.aggregation();
+      const filters = aggregation ? aggregation.filters() : [];
+      query = filters.reduce((query, filter) => query.filter(filter), query);
+    }
+
+    return query.question().toUnderlyingRecords();
   }
 
   toUnderlyingRecords(): Question {
-    return toUnderlyingRecords(this) || this;
+    const query = this.query();
+    if (!(query instanceof StructuredQuery)) {
+      return this;
+    }
+
+    return query
+      .clearAggregations()
+      .clearBreakouts()
+      .clearSort()
+      .clearLimit()
+      .clearFields()
+      .question()
+      .setDisplay("table");
   }
 
   toUnderlyingData(): Question {
@@ -583,7 +596,7 @@ class QuestionInner {
           type: "query",
           database: this.databaseId(),
           query: {
-            "source-table": "card__" + this.id(),
+            "source-table": getQuestionVirtualTableId(this.card()),
           },
         },
       };
@@ -592,7 +605,7 @@ class QuestionInner {
   }
 
   composeDataset() {
-    if (!this.isDataset()) {
+    if (!this.isDataset() || !this.isSaved()) {
       return this;
     }
 
@@ -600,7 +613,7 @@ class QuestionInner {
       type: "query",
       database: this.databaseId(),
       query: {
-        "source-table": "card__" + this.id(),
+        "source-table": getQuestionVirtualTableId(this.card()),
       },
     });
   }
@@ -841,7 +854,11 @@ class QuestionInner {
     return this._card && this._card.name;
   }
 
-  setDisplayName(name: string) {
+  slug(): string | null | undefined {
+    return this._card?.name && `${this._card.id}-${slugg(this._card.name)}`;
+  }
+
+  setDisplayName(name: string | null | undefined) {
     return this.setCard(assoc(this.card(), "name", name));
   }
 
@@ -849,7 +866,7 @@ class QuestionInner {
     return this._card && this._card.collection_id;
   }
 
-  setCollectionId(collectionId: number) {
+  setCollectionId(collectionId: number | null | undefined) {
     return this.setCard(assoc(this.card(), "collection_id", collectionId));
   }
 
@@ -929,6 +946,7 @@ class QuestionInner {
     query,
     includeDisplayIsLocked,
     creationType,
+    ...options
   }: {
     originalQuestion?: Question;
     clean?: boolean;
@@ -1021,10 +1039,17 @@ class QuestionInner {
   }
 
   dependentMetadata(): DependentMetadataItem[] {
-    if (!this.isDataset()) {
-      return [];
-    }
     const dependencies = [];
+
+    // we frequently treat dataset/model questions like they are already nested
+    // so we need to fetch the virtual card table representation of the Question
+    // so that we can properly access the table's fields in various scenarios
+    if (this.isDataset() && this.isSaved()) {
+      dependencies.push({
+        type: "table",
+        id: getQuestionVirtualTableId(this.card()),
+      });
+    }
 
     this.getResultMetadata().forEach(field => {
       if (isFK(field) && field.fk_target_field_id) {
@@ -1355,6 +1380,7 @@ export default class Question extends memoizeClass<QuestionInner>(
     name,
     display = "table",
     visualization_settings = {},
+    dataset,
     dataset_query = type === "native"
       ? NATIVE_QUERY_TEMPLATE
       : STRUCTURED_QUERY_TEMPLATE,
@@ -1364,6 +1390,7 @@ export default class Question extends memoizeClass<QuestionInner>(
       collection_id: collectionId,
       display,
       visualization_settings,
+      dataset,
       dataset_query,
     };
 

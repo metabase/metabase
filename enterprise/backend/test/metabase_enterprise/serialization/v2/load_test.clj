@@ -4,8 +4,8 @@
             [metabase-enterprise.serialization.v2.extract :as serdes.extract]
             [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
             [metabase-enterprise.serialization.v2.load :as serdes.load]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard Database Field Metric Pulse PulseChannel
-                                     PulseChannelRecipient Segment Table User]]
+            [metabase.models :refer [Card Collection Dashboard DashboardCard Database Field FieldValues Metric Pulse
+                                     PulseChannel PulseChannelRecipient Segment Table User]]
             [metabase.models.serialization.base :as serdes.base]
             [metabase.models.serialization.hash :as serdes.hash]
             [toucan.db :as db]))
@@ -153,7 +153,7 @@
           t1s        (atom nil)
           t2s        (atom nil)]
       (ts/with-source-and-dest-dbs
-        (testing "serializing the two collections"
+        (testing "serializing the two databases"
           (ts/with-source-db
             (reset! db1s (ts/create! Database :name "db1"))
             (reset! t1s  (ts/create! Table    :name "posts" :db_id (:id @db1s)))
@@ -659,3 +659,165 @@
                        :card_id      (:id @card1d)
                        :target       [:dimension [:field (:id @field1d) {:source-field (:id @field2d)}]]}]
                      (:parameter_mappings @dashcard1d))))))))))
+
+(deftest users-test
+  ;; Users are serialized as their email address. If a corresponding user is found during deserialization, its ID is
+  ;; used. However, if no such user exists, a new one is created with mostly blank fields.
+  (testing "existing users are found and used; missing users are created on the fly"
+    (let [serialized (atom nil)
+          metric1s   (atom nil)
+          metric2s   (atom nil)
+          user1s     (atom nil)
+          user2s     (atom nil)
+          user1d     (atom nil)
+          metric1d   (atom nil)
+          metric2d   (atom nil)]
+
+      (ts/with-source-and-dest-dbs
+        (testing "serializing the original entities"
+          (ts/with-source-db
+            (reset! user1s    (ts/create! User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
+            (reset! user2s    (ts/create! User :first_name "Neil"  :last_name "Peart"   :email "neil@rush.yyz"))
+            (reset! metric1s  (ts/create! Metric :name "Large Users"       :creator_id (:id @user1s)))
+            (reset! metric2s  (ts/create! Metric :name "Support Headaches" :creator_id (:id @user2s)))
+            (reset! serialized (into [] (serdes.extract/extract-metabase {})))))
+
+        (testing "exported form is properly converted"
+          (is (= "tom@bost.on"
+                 (-> @serialized
+                     (by-model "Metric")
+                     first
+                     :creator_id))))
+
+        (testing "deserializing finds the matching user and synthesizes the missing one"
+          (ts/with-dest-db
+            ;; Create another random user to change the user IDs.
+            (ts/create! User   :first_name "Gideon" :last_name "Nav" :email "griddle@ninth.tomb")
+            ;; Likewise, create some other metrics.
+            (ts/create! Metric :name "Other metric A")
+            (ts/create! Metric :name "Other metric B")
+            (ts/create! Metric :name "Other metric C")
+            (reset! user1d  (ts/create! User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
+
+            ;; Load the serialized content.
+            (serdes.load/load-metabase (ingestion-in-memory @serialized))
+
+            ;; Fetch the relevant bits
+            (reset! metric1d (db/select-one Metric :name "Large Users"))
+            (reset! metric2d (db/select-one Metric :name "Support Headaches"))
+
+            (testing "the Metrics and Users have different IDs now"
+              (is (not= (:id @metric1s) (:id @metric1d)))
+              (is (not= (:id @metric2s) (:id @metric2d)))
+              (is (not= (:id @user1s)   (:id @user1d))))
+
+            (testing "both existing User and the new one are set up properly"
+              (is (= (:id @user1d) (:creator_id @metric1d)))
+              (let [user2d-id (:creator_id @metric2d)
+                    user2d    (db/select-one User :id user2d-id)]
+                (is (any? user2d))
+                (is (= (:email @user2s) (:email user2d)))))))))))
+
+(deftest field-values-test
+  ;; FieldValues are a bit special - they map 1-1 with Fields but are a separate table serialized separately.
+  ;; The main special thing to test here is that the custom load-find-local correctly finds an existing FieldValues.
+  ;; This test creates:
+  ;; - in src: a database, table, and two fields each with field values.
+  ;; - in dst: a different database, table and field, to fiddle the IDs; plus the same database, table, both fields, but
+  ;;   only one FieldValues. The existing and new FieldValues should both work correctly.
+  ;; Another thing tested here is that the :field_id is properly reconstructed from the serdes path.
+  (testing "FieldValues are portable"
+    (let [serialized (atom nil)
+          db1s       (atom nil)
+          table1s    (atom nil)
+          field1s    (atom nil)
+          field2s    (atom nil)
+          fv1s       (atom nil)
+          fv2s       (atom nil)
+
+          db1d       (atom nil)
+          table1d    (atom nil)
+          field1d    (atom nil)
+          field2d    (atom nil)
+          fv1d       (atom nil)
+          fv2d       (atom nil)
+          db2d       (atom nil)
+          table2d    (atom nil)
+          field3d    (atom nil)]
+
+      (testing "serializing the original database, table, field and fieldvalues"
+        (ts/with-empty-h2-app-db
+          (reset! db1s     (ts/create! Database :name "my-db"))
+          (reset! table1s  (ts/create! Table :name "CUSTOMERS" :db_id (:id @db1s)))
+          (reset! field1s  (ts/create! Field :name "STATE" :table_id (:id @table1s)))
+          (reset! field2s  (ts/create! Field :name "CATEGORY" :table_id (:id @table1s)))
+          (reset! fv1s     (ts/create! FieldValues :field_id (:id @field1s) :values ["AZ" "CA" "NY" "TX"]))
+          (reset! fv2s     (ts/create! FieldValues :field_id (:id @field2s)
+                                       :values ["CONSTRUCTION" "DAYLIGHTING" "DELIVERY" "HAULING"]))
+
+          (reset! serialized (into [] (serdes.extract/extract-metabase {})))
+
+          (testing "the expected fields are serialized"
+            (is (= 1
+                   (->> @serialized
+                        (filter #(= (:serdes/meta %)
+                                    [{:model "Database" :id "test-data"}
+                                     {:model "Schema"   :id "PUBLIC"}
+                                     {:model "Table"    :id "VENUES"}
+                                     {:model "Field"    :id "NAME"}]))
+                        count))))
+
+          (testing "FieldValues are serialized under their fields, with their own ID always 0"
+            (let [fvs (by-model @serialized "FieldValues")]
+              (is (= #{[{:model "Database"    :id "my-db"}
+                        {:model "Table"       :id "CUSTOMERS"}
+                        {:model "Field"       :id "STATE"}
+                        {:model "FieldValues" :id "0"}]
+                       [{:model "Database"    :id "my-db"}
+                        {:model "Table"       :id "CUSTOMERS"}
+                        {:model "Field"       :id "CATEGORY"}
+                        {:model "FieldValues" :id "0"}]}
+                     (->> fvs
+                          (map serdes.base/serdes-path)
+                          (filter #(-> % first :id (= "my-db")))
+                          set)))))))
+
+      (testing "deserializing finds existing FieldValues properly"
+        (ts/with-empty-h2-app-db
+          ;; A different database and tables, so the IDs don't match.
+          (reset! db2d    (ts/create! Database :name "other-db"))
+          (reset! table2d (ts/create! Table    :name "ORDERS" :db_id (:id @db2d)))
+          (reset! field3d (ts/create! Field    :name "SUBTOTAL" :table_id (:id @table2d)))
+          (ts/create! Field :name "DISCOUNT" :table_id (:id @table2d))
+          (ts/create! Field :name "UNITS"    :table_id (:id @table2d))
+
+          ;; Now the database, table, fields and *one* of the FieldValues from the src side.
+          (reset! db1d     (ts/create! Database :name "my-db"))
+          (reset! table1d  (ts/create! Table :name "CUSTOMERS" :db_id (:id @db1d)))
+          (reset! field1d  (ts/create! Field :name "STATE" :table_id (:id @table1d)))
+          (reset! field2d  (ts/create! Field :name "CATEGORY" :table_id (:id @table1d)))
+          ;; The :values are different here; they should get overwritten by the update.
+          (reset! fv1d     (ts/create! FieldValues :field_id (:id @field1d) :values ["WA" "NC" "NM" "WI"]))
+
+          ;; Load the serialized content.
+          (serdes.load/load-metabase (ingestion-in-memory @serialized))
+
+          ;; Fetch the relevant bits
+          (reset! fv1d (db/select-one FieldValues :field_id (:id @field1d)))
+          (reset! fv2d (db/select-one FieldValues :field_id (:id @field2d)))
+
+          (testing "the main Database, Table, and Field have different IDs now"
+            (is (not= (:id @db1s)    (:id @db1d)))
+            (is (not= (:id @table1s) (:id @table1d)))
+            (is (not= (:id @field1s) (:id @field1d)))
+            (is (not= (:id @field2s) (:id @field2d))))
+
+          (testing "there are 2 FieldValues defined under fields of table1d"
+            (let [fields (db/select-ids Field :table_id (:id @table1d))]
+              (is (= 2 (db/count FieldValues :field_id [:in fields])))))
+
+          (testing "existing FieldValues are properly found and updated"
+            (is (= (:values @fv1s) (:values @fv1d))))
+          (testing "new FieldValues are properly added"
+            (is (= (dissoc @fv2s :id :field_id)
+                   (dissoc @fv2d :id :field_id)))))))))

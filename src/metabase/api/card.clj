@@ -151,7 +151,7 @@
 (api/defendpoint GET "/:id"
   "Get `Card` with ID."
   [id ignore_view]
-  (let [raw-card (Card id)
+  (let [raw-card (db/select-one Card :id id)
         card (-> raw-card
                  (hydrate :creator
                           :bookmarked
@@ -163,7 +163,7 @@
                  (cond-> ;; card
                    api/*is-superuser?* (hydrate [:emitters [:action :card]])
                    (:dataset raw-card) (hydrate :persisted)
-                   (:is_write raw-card) (hydrate :card/emitter-usages))
+                   (:is_write raw-card) (hydrate :card/emitter-usages :card/action-id))
                  api/read-check
                  (last-edit/with-last-edit-info :card))]
     (u/prog1 card
@@ -261,8 +261,6 @@
            after  (:is_write card-updates)]
        (log/tracef "is_write value will change from %s => %s" (pr-str before) (pr-str after))
        (when-not (= before after)
-         ;; make sure current User is a superuser
-         (api/check-superuser)
          (try
            ;; make sure Card is not a Dataset
            (when (:dataset (merge card-updates card-before-update))
@@ -322,7 +320,7 @@ saved later when it is ready."
                   (log/info (trs "Not updating metadata asynchronously for card {0} because query has changed"
                                  id)))))))))
 
-(defn- create-card!
+(defn create-card!
   "Create a new Card. Metadata will be fetched off thread. If the metadata takes longer than [[metadata-sync-wait-ms]]
   the card will be saved without metadata and it will be saved to the card in the future when it is ready."
   [{:keys [dataset_query result_metadata dataset parameters parameter_mappings], :as card-data}]
@@ -361,6 +359,8 @@ saved later when it is ready."
                           :average_query_time
                           :last_query_start
                           :collection [:moderation_reviews :moderator_details])
+                 (cond-> ;; card
+                   (:is_write card) (hydrate :card/action-id))
                  (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))
       (when timed-out?
         (schedule-metadata-saving result-metadata-chan <>)))))
@@ -582,7 +582,7 @@ saved later when it is ready."
                   :parameters :parameter_mappings :embedding_params :result_metadata :is_write :collection_preview})))
     ;; Fetch the updated Card from the DB
 
-  (let [card (Card id)]
+  (let [card (db/select-one Card :id id)]
     (delete-alerts-if-needed! card-before-update card)
     (publish-card-update! card archived)
     ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently
@@ -596,7 +596,7 @@ saved later when it is ready."
                  :collection [:moderation_reviews :moderator_details])
         (cond-> ;; card
           (:dataset card) (hydrate :persisted)
-          (:is_write card) (hydrate :card/emitter-usages))
+          (:is_write card) (hydrate :card/emitter-usages :card/action-id))
         (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
 
 (api/defendpoint PUT "/:id"
@@ -833,7 +833,7 @@ saved later when it is ready."
 (api/defendpoint GET "/:id/related"
   "Return related entities."
   [id]
-  (-> id Card api/read-check related/related))
+  (-> (db/select-one Card :id id) api/read-check related/related))
 
 (api/defendpoint POST "/related"
   "Return related entities for an ad-hoc query."
@@ -855,8 +855,8 @@ saved later when it is ready."
   query in place of the model's query."
   [card-id]
   {card-id su/IntGreaterThanZero}
-  (api/let-404 [{:keys [dataset database_id] :as card} (Card card-id)]
-    (let [database (Database database_id)]
+  (api/let-404 [{:keys [dataset database_id] :as card} (db/select-one Card :id card-id)]
+    (let [database (db/select-one Database :id database_id)]
       (api/write-check database)
       (when-not (driver/database-supports? (:engine database)
                                            :persist-models database)
@@ -878,13 +878,13 @@ saved later when it is ready."
   "Refresh the persisted model caching `card-id`."
   [card-id]
   {card-id su/IntGreaterThanZero}
-  (api/let-404 [card           (Card card-id)
+  (api/let-404 [card           (db/select-one Card :id card-id)
                 persisted-info (db/select-one PersistedInfo :card_id card-id)]
     (when (not (:dataset card))
       (throw (ex-info (trs "Cannot refresh a non-model question") {:status-code 400})))
     (when (:archived card)
       (throw (ex-info (trs "Cannot refresh an archived model") {:status-code 400})))
-    (api/write-check (Database (:database_id persisted-info)))
+    (api/write-check (db/select-one Database :id (:database_id persisted-info)))
     (task.persist-refresh/schedule-refresh-for-individual! persisted-info)
     api/generic-204-no-content))
 
@@ -893,9 +893,9 @@ saved later when it is ready."
   query rather than the saved version of the query."
   [card-id]
   {card-id su/IntGreaterThanZero}
-  (api/let-404 [_card (Card card-id)]
-    (api/let-404 [persisted-info (PersistedInfo :card_id card-id)]
-      (api/write-check (Database (:database_id persisted-info)))
+  (api/let-404 [_card (db/select-one Card :id card-id)]
+    (api/let-404 [persisted-info (db/select-one PersistedInfo :card_id card-id)]
+      (api/write-check (db/select-one Database :id (:database_id persisted-info)))
       (persisted-info/mark-for-pruning! {:id (:id persisted-info)} "off")
       api/generic-204-no-content)))
 

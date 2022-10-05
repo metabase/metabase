@@ -183,7 +183,7 @@
              (hx/with-database-type-info (hx/with-database-type-info :field "date") nil))))))
 
 (deftest ^:parallel is-of-type?-test
-  (mt/are+ [expr tyype expected] (= expected (hx/is-of-type? expr tyype))
+  (are [expr tyype expected] (= expected (hx/is-of-type? expr tyype))
     typed-form     "text" true
     typed-form     "TEXT" true
     typed-form     :text  true

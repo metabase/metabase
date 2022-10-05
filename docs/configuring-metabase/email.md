@@ -1,18 +1,12 @@
 ---
-title: Setting up email
+title: Email
 redirect_from:
-  - /docs/latest/administration-guide/02-setting-up-email
+  - /docs/latest/administration-guide/02-setting-up-email.html
 ---
 
-# Setting up email
+# Email
 
 Once you connect your database to Metabase, you'll want to configure an email account to send system notifications to your organization's users.  Metabase uses email to reset passwords, onboard new users, and notify you when something happens.
-
-- [Configuring your email account](#configuring-your-email-account)
-  - [Google Apps](#google-apps)
-  - [Amazon SES](#amazon-ses)
-  - [Mandrill](#mandrill)
-- [Recommended settings](#recommended-settings)
 
 ## Configuring your email account
 
@@ -50,7 +44,7 @@ Check if [email quotas](https://docs.aws.amazon.com/ses/latest/dg/quotas.html) a
 
 1. Log in to your Mandrill account and locate your credentials from the **SMTP & API Info** page there.
 2. Your SMTP password is any active API key for your account — *not* your Mandrill password.
-3. Although Mandrill lists **port 587**, [any port supported by Mandrill](https://mandrill.zendesk.com/hc/en-us/articles/205582167-What-SMTP-ports-can-I-use-) will work for SMTP email.
+3. Although Mandrill lists **port 587**, [any port supported by Mandrill](https://mailchimp.com/developer/transactional/docs/smtp-integration/#the-basics) will work for SMTP email.
 4. Now you can go back to the Metabase Admin Panel form and enter the info there.
 
 ## Recommended settings

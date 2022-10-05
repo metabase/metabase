@@ -2,7 +2,6 @@ import {
   popover,
   restore,
   selectDashboardFilter,
-  expectedRouteCalls,
   editDashboard,
   showDashboardCardActions,
   filterWidget,
@@ -271,8 +270,8 @@ describe("scenarios > dashboard", () => {
                 card_id: questionId,
                 row: 0,
                 col: 0,
-                sizeX: 10,
-                sizeY: 8,
+                size_x: 10,
+                size_y: 8,
                 parameter_mappings: [
                   {
                     parameter_id: "92eb69ea",
@@ -379,8 +378,8 @@ describe("scenarios > dashboard", () => {
           card_id: 1,
           row: 0,
           col: 0,
-          sizeX: 12,
-          sizeY: 8,
+          size_x: 12,
+          size_y: 8,
           parameter_mappings: [
             {
               parameter_id: FILTER_ID,
@@ -400,12 +399,15 @@ describe("scenarios > dashboard", () => {
       ],
     });
 
-    cy.server();
-    cy.route(`/api/dashboard/1/params/${FILTER_ID}/values`).as(
-      "fetchDashboardParams",
+    cy.intercept(
+      `/api/dashboard/1/params/${FILTER_ID}/values`,
+      cy.spy().as("fetchDashboardParams"),
     );
-    cy.route(`/api/field/${PRODUCTS.CATEGORY}`).as("fetchField");
-    cy.route(`/api/field/${PRODUCTS.CATEGORY}/values`).as("fetchFieldValues");
+    cy.intercept(`/api/field/${PRODUCTS.CATEGORY}`, cy.spy().as("fetchField"));
+    cy.intercept(
+      `/api/field/${PRODUCTS.CATEGORY}/values`,
+      cy.spy().as("fetchFieldValues"),
+    );
 
     visitDashboard(1);
 
@@ -415,9 +417,9 @@ describe("scenarios > dashboard", () => {
       cy.findByText(category);
     });
 
-    expectedRouteCalls({ route_alias: "fetchDashboardParams", calls: 1 });
-    expectedRouteCalls({ route_alias: "fetchField", calls: 0 });
-    expectedRouteCalls({ route_alias: "fetchFieldValues", calls: 0 });
+    cy.get("@fetchDashboardParams").should("have.been.calledOnce");
+    cy.get("@fetchField").should("not.have.been.called");
+    cy.get("@fetchFieldValues").should("not.have.been.called");
   });
 
   it("should be possible to visit a dashboard with click-behavior linked to the dashboard without permissions (metabase#15368)", () => {
@@ -437,8 +439,8 @@ describe("scenarios > dashboard", () => {
                 card_id: 1,
                 row: 0,
                 col: 0,
-                sizeX: 12,
-                sizeY: 8,
+                size_x: 12,
+                size_y: 8,
                 series: [],
                 visualization_settings: {
                   column_settings: {
@@ -457,8 +459,7 @@ describe("scenarios > dashboard", () => {
             ],
           });
 
-          cy.server();
-          cy.route("GET", `/api/dashboard/${NEW_DASHBOARD_ID}`).as(
+          cy.intercept("GET", `/api/dashboard/${NEW_DASHBOARD_ID}`).as(
             "loadDashboard",
           );
         });
@@ -481,8 +482,8 @@ describe("scenarios > dashboard", () => {
           card_id: 1,
           row: 0,
           col: 0,
-          sizeX: 12,
-          sizeY: 20,
+          size_x: 12,
+          size_y: 20,
           series: [],
           visualization_settings: {},
           parameter_mappings: [],

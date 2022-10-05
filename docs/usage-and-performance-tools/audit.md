@@ -1,10 +1,10 @@
 ---
-title: Audit logs
+title: Auditing tools
 redirect_from:
   - /docs/latest/enterprise-guide/audit
 ---
 
-# Audit logs
+# Auditing tools
 
 {% include plans-blockquote.html feature="Audit logs" %}
 
@@ -47,7 +47,7 @@ The __Items__ section focuses on questions, dashboards, downloads, and Subscript
 
 The Questions section will show you your most popular queries, as well as your slowest queries. If queries you think are important aren't appearing on your most popular queries list, you may want to make sure your team is focusing on the right things.
 
-If important queries are appearing on the list of slowest queries, you will want to look at optimizing them. One option is to adjust your [caching settings](../administration-guide/14-caching.md), but there are plenty of other options as well. To help you determine if your optimization efforts are heading in the right direction, use the `Query views and speed per day` visualization at the bottom of the page.
+If important queries are appearing on the list of slowest queries, you will want to look at optimizing them. One option is to adjust your [caching settings](../configuring-metabase/caching.md), but there are plenty of other options as well. To help you determine if your optimization efforts are heading in the right direction, use the `Query views and speed per day` visualization at the bottom of the page.
 
 ![Items](./images/audit-questions.png)
 

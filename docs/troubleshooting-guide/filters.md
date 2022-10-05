@@ -63,10 +63,10 @@ If a filter that used to work no longer seems to, or seems to eliminate all of t
 2. Compare the names of the fields used in the question with the actual names of the fields in the database.
 3. Modify the question to match the current database schema.
 
-[field-filter]: /learn/sql-questions/field-filters.html
-[filter-widget-gloss]: /glossary/filter_widget
-[linked-filter-gloss]: /glossary/linked_filter
-[sql-variable-gloss]: /glossary/variable#example-variable-in-metabase
-[sync-scan]: ./sync-fingerprint-scan.html
-[troubleshoot-linked-filters]: ./linked-filters.html
-[troubleshoot-sql-variables]: ./sql.html#my-sql-variables-arent-working
+[field-filter]: https://www.metabase.com/learn/sql-questions/field-filters
+[filter-widget-gloss]: https://www.metabase.com/glossary/filter_widget
+[linked-filter-gloss]: https://www.metabase.com/glossary/linked_filter
+[sql-variable-gloss]: https://www.metabase.com/glossary/variable#example-variable-in-metabase
+[sync-scan]: ./sync-fingerprint-scan.md
+[troubleshoot-linked-filters]: ./linked-filters.md
+[troubleshoot-sql-variables]: ./sql.md#my-sql-variables-arent-working

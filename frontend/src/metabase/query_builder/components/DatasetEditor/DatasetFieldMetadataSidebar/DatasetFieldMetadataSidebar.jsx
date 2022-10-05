@@ -15,7 +15,6 @@ import {
   field_visibility_types,
   field_semantic_types,
 } from "metabase/lib/core";
-import { isLocalField, isSameField } from "metabase/lib/query/field_ref";
 import { isFK, getSemanticTypeIcon } from "metabase/lib/schema_metadata";
 
 import RootForm from "metabase/containers/FormikForm";
@@ -26,6 +25,7 @@ import ColumnSettings, {
   hasColumnSettingsWidgets,
 } from "metabase/visualizations/components/ColumnSettings";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
+import { isSameField } from "metabase-lib/lib/queries/utils/field-ref";
 
 import { EDITOR_TAB_INDEXES } from "../constants";
 import MappedFieldPicker from "./MappedFieldPicker";
@@ -149,13 +149,11 @@ function DatasetFieldMetadataSidebar({
   const previousField = usePrevious(field);
 
   useEffect(() => {
-    const compareExact =
-      !isLocalField(field.field_ref) || !isLocalField(previousField?.field_ref);
-    if (!isSameField(field.field_ref, previousField?.field_ref, compareExact)) {
+    if (!isSameField(field.field_ref, previousField?.field_ref)) {
       setShouldAnimateFieldChange(true);
       // setTimeout is required as form fields are rerendered pretty frequently
       setTimeout(() => {
-        displayNameInputRef.current?.select();
+        displayNameInputRef.current?.select?.();
       });
     }
   }, [field, previousField]);

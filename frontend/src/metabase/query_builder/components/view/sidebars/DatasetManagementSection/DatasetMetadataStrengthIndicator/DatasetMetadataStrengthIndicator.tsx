@@ -1,14 +1,13 @@
 import React from "react";
 import { t } from "ttag";
 
-import Question from "metabase-lib/lib/Question";
-
 import ProgressBar from "metabase/components/ProgressBar";
 import Tooltip from "metabase/components/Tooltip";
 
 import { color } from "metabase/lib/colors";
 import { getDatasetMetadataCompletenessPercentage } from "metabase/lib/data-modeling/metadata";
 import { useHover } from "metabase/hooks/use-hover";
+import Question from "metabase-lib/lib/Question";
 
 import {
   Root,

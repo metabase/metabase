@@ -5,6 +5,7 @@ import { connect } from "react-redux";
 import cx from "classnames";
 import _ from "underscore";
 
+import { dissoc } from "icepick";
 import title from "metabase/hoc/Title";
 import withToast from "metabase/hoc/Toast";
 import DashboardData from "metabase/dashboard/hoc/DashboardData";
@@ -28,11 +29,10 @@ import Collections from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
 import * as Urls from "metabase/lib/urls";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import * as Q from "metabase/lib/query/query";
-import Dimension from "metabase-lib/lib/Dimension";
 import { color } from "metabase/lib/colors";
+import * as Q from "metabase-lib/lib/queries/utils/query";
+import Dimension from "metabase-lib/lib/Dimension";
 
-import { dissoc } from "icepick";
 import {
   ItemContent,
   ItemDescription,

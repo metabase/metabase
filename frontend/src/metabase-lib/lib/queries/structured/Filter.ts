@@ -1,19 +1,20 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import MBQLClause from "./MBQLClause";
+import { t, ngettext, msgid } from "ttag";
+import _ from "underscore";
 import {
   Filter as FilterObject,
   FieldFilter,
   Field,
 } from "metabase-types/types/Query";
 import { FilterOperator } from "metabase-types/types/Metadata";
-import StructuredQuery from "../StructuredQuery";
-import Dimension from "../../Dimension";
+import { isExpression } from "metabase/lib/expressions";
+import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
 import {
   generateTimeFilterValuesDescriptions,
   getRelativeDatetimeField,
   isStartingFrom,
-} from "metabase/lib/query_time";
+} from "metabase-lib/lib/queries/utils/query-time";
 import {
   isStandard,
   isSegment,
@@ -22,11 +23,10 @@ import {
   hasFilterOptions,
   getFilterOptions,
   setFilterOptions,
-} from "metabase/lib/query/filter";
-import { isExpression } from "metabase/lib/expressions";
-import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
-import { t, ngettext, msgid } from "ttag";
-import _ from "underscore";
+} from "metabase-lib/lib/queries/utils/filter";
+import Dimension from "../../Dimension";
+import StructuredQuery from "../StructuredQuery";
+import MBQLClause from "./MBQLClause";
 
 export interface FilterDisplayNameOpts {
   includeDimension?: boolean;

@@ -298,15 +298,13 @@ class FieldValuesWidgetInner extends Component {
       valuesMode,
     });
 
-    const isLoading = loadingState === "LOADING";
-    const usesListField =
+    const isListMode =
       !disableList &&
-      hasList({
-        fields,
-        disableSearch,
-        options,
-      }) &&
-      valuesMode === "list";
+      shouldList(fields, disableSearch) &&
+      valuesMode === "list" &&
+      !forceTokenField;
+    const isLoading = loadingState === "LOADING";
+    const hasListValues = hasList({ fields, disableSearch, options });
 
     return (
       <div
@@ -316,22 +314,19 @@ class FieldValuesWidgetInner extends Component {
           maxWidth: this.props.maxWidth,
         }}
       >
-        {usesListField &&
-          !forceTokenField &&
-          (isLoading ? (
-            <LoadingState />
-          ) : (
-            <ListField
-              isDashboardFilter={parameter}
-              placeholder={tokenFieldPlaceholder}
-              value={value.filter(v => v != null)}
-              onChange={onChange}
-              options={options}
-              optionRenderer={optionRenderer}
-              checkedColor={checkedColor}
-            />
-          ))}
-        {(!usesListField || forceTokenField) && (
+        {isListMode && isLoading ? (
+          <LoadingState />
+        ) : isListMode && hasListValues ? (
+          <ListField
+            isDashboardFilter={parameter}
+            placeholder={tokenFieldPlaceholder}
+            value={value.filter(v => v != null)}
+            onChange={onChange}
+            options={options}
+            optionRenderer={optionRenderer}
+            checkedColor={checkedColor}
+          />
+        ) : (
           <TokenField
             prefix={prefix}
             value={value.filter(v => v != null)}
@@ -529,18 +524,10 @@ export function isSearchable({
     );
   }
 
-  function everyFieldIsConfiguredToShowValues() {
-    return fields.every(
-      f => f.has_field_values === "search" || f.has_field_values === "list",
-    );
-  }
-
   return (
     !disableSearch &&
     (valuesMode === "search" ||
-      (everyFieldIsSearchable() &&
-        someFieldIsConfiguredForSearch() &&
-        everyFieldIsConfiguredToShowValues()))
+      (everyFieldIsSearchable() && someFieldIsConfiguredForSearch()))
   );
 }
 

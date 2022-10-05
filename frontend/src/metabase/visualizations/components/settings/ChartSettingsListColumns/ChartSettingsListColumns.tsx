@@ -4,13 +4,11 @@ import _ from "underscore";
 
 import Button from "metabase/core/components/Button";
 
-import { keyForColumn } from "metabase/lib/dataset";
-
-import Question from "metabase-lib/lib/Question";
-
 import { Column } from "metabase-types/types/Dataset";
 import { FieldId } from "metabase-types/types/Field";
 import { ConcreteField } from "metabase-types/types/Query";
+import { keyForColumn } from "metabase-lib/lib/queries/utils/dataset";
+import Question from "metabase-lib/lib/Question";
 
 import {
   ColumnItemContainer,
@@ -30,7 +28,7 @@ interface Props {
   columns: Column[];
   question: Question;
   onChange: (value: SettingValue) => void;
-  onShowWidget: (config: unknown) => void;
+  onShowWidget: (config: unknown, targetElement: HTMLElement | null) => void;
 }
 
 type ListColumnSlot = "left" | "right";
@@ -69,19 +67,22 @@ function ChartSettingsListColumns({
   );
 
   const onColumnSettingsClick = useCallback(
-    fieldIdOrFieldRef => {
+    (fieldIdOrFieldRef, targetElement) => {
       const column = columns.find(
         column =>
           column.id === fieldIdOrFieldRef ||
           _.isEqual(column.field_ref, fieldIdOrFieldRef),
       );
       if (column) {
-        onShowWidget({
-          id: "column_settings",
-          props: {
-            initialKey: keyForColumn(column),
+        onShowWidget(
+          {
+            id: "column_settings",
+            props: {
+              initialKey: keyForColumn(column),
+            },
           },
-        });
+          targetElement,
+        );
       }
     },
     [columns, onShowWidget],
@@ -116,7 +117,7 @@ function ChartSettingsListColumns({
             icon="gear"
             onlyIcon
             disabled={fieldIdOrFieldRef === null}
-            onClick={() => onColumnSettingsClick(fieldIdOrFieldRef)}
+            onClick={e => onColumnSettingsClick(fieldIdOrFieldRef, e.target)}
           />
         </ColumnItemContainer>
       ))}
@@ -135,7 +136,7 @@ function ChartSettingsListColumns({
             icon="gear"
             onlyIcon
             disabled={fieldIdOrFieldRef === null}
-            onClick={() => onColumnSettingsClick(fieldIdOrFieldRef)}
+            onClick={e => onColumnSettingsClick(fieldIdOrFieldRef, e.target)}
           />
         </ColumnItemContainer>
       ))}

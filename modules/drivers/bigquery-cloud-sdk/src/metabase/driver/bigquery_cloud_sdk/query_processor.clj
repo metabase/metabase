@@ -173,7 +173,7 @@
     "TIME"      :time
     nil))
 
-(defmethod temporal-type (class Field)
+(defmethod temporal-type Field
   [{base-type :base_type, effective-type :effective_type, database-type :database_type}]
   (or (database-type->temporal-type database-type)
       (base-type->temporal-type (or effective-type base-type))))
@@ -371,18 +371,20 @@
     ;; for datetimes or anything without a known temporal type, cast to timestamp and go from there
     (recur unit (->temporal-type :timestamp expr))))
 
-(defmethod sql.qp/date [:bigquery-cloud-sdk :minute]          [_ _ expr] (trunc   :minute    expr))
-(defmethod sql.qp/date [:bigquery-cloud-sdk :minute-of-hour]  [_ _ expr] (extract :minute    expr))
-(defmethod sql.qp/date [:bigquery-cloud-sdk :hour]            [_ _ expr] (trunc   :hour      expr))
-(defmethod sql.qp/date [:bigquery-cloud-sdk :hour-of-day]     [_ _ expr] (extract :hour      expr))
-(defmethod sql.qp/date [:bigquery-cloud-sdk :day]             [_ _ expr] (trunc   :day       expr))
-(defmethod sql.qp/date [:bigquery-cloud-sdk :day-of-month]    [_ _ expr] (extract :day       expr))
-(defmethod sql.qp/date [:bigquery-cloud-sdk :day-of-year]     [_ _ expr] (extract :dayofyear expr))
-(defmethod sql.qp/date [:bigquery-cloud-sdk :month]           [_ _ expr] (trunc   :month     expr))
-(defmethod sql.qp/date [:bigquery-cloud-sdk :month-of-year]   [_ _ expr] (extract :month     expr))
-(defmethod sql.qp/date [:bigquery-cloud-sdk :quarter]         [_ _ expr] (trunc   :quarter   expr))
-(defmethod sql.qp/date [:bigquery-cloud-sdk :quarter-of-year] [_ _ expr] (extract :quarter   expr))
-(defmethod sql.qp/date [:bigquery-cloud-sdk :year]            [_ _ expr] (trunc   :year      expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :second-of-minute] [_ _ expr] (extract :second    expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :minute]           [_ _ expr] (trunc   :minute    expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :minute-of-hour]   [_ _ expr] (extract :minute    expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :hour]             [_ _ expr] (trunc   :hour      expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :hour-of-day]      [_ _ expr] (extract :hour      expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :day]              [_ _ expr] (trunc   :day       expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :day-of-month]     [_ _ expr] (extract :day       expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :day-of-year]      [_ _ expr] (extract :dayofyear expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :month]            [_ _ expr] (trunc   :month     expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :month-of-year]    [_ _ expr] (extract :month     expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :quarter]          [_ _ expr] (trunc   :quarter   expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :quarter-of-year]  [_ _ expr] (extract :quarter   expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :year]             [_ _ expr] (trunc   :year      expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :year-of-era]      [_ _ expr] (extract :year      expr))
 
 ;; BigQuery mod is a function like mod(x, y) rather than an operator like x mod y
 (defmethod hformat/fn-handler (u/qualified-name ::mod)
@@ -725,7 +727,7 @@
 
 (defmethod sql.qp/cast-temporal-string [:bigquery-cloud-sdk :Coercion/ISO8601->DateTime]
   [_driver _semantic_type expr]
-  (hx/->timestamp expr))
+  (hx/->datetime expr))
 
 (defmethod sql.qp/cast-temporal-string [:bigquery-cloud-sdk :Coercion/ISO8601->Date]
   [_driver _semantic_type expr]

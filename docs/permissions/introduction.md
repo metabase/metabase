@@ -1,10 +1,10 @@
 ---
-title: Permissions overview
+title: Permissions introduction
 redirect_from:
   - /docs/latest/administration-guide/05-setting-permissions
 ---
 
-# Permissions overview
+# Permissions introduction
 
 There are always going to be sensitive bits of information in your data, and thankfully Metabase provides a rich set of tools to ensure that people on your team only see the data they’re supposed to.
 
@@ -68,9 +68,9 @@ Whenever you change permissions for a group, make sure you:
 [dashboard-subscriptions]: ../dashboards/subscriptions.md
 [data-permissions]: ./data.md
 [data-sandboxing]: ./data-sandboxes.md
-[permissions]: /learn/permissions/
-[sandbox-columns]: /learn/permissions/data-sandboxing-column-permissions
-[sandbox-rows]: /learn/permissions/data-sandboxing-row-permissionsk
+[permissions]: https://www.metabase.com/learn/permissions/
+[sandbox-columns]: https://www.metabase.com/learn/permissions/data-sandboxing-column-permissions
+[sandbox-rows]: https://www.metabase.com/learn/permissions/data-sandboxing-row-permissionsk
 [slack-integration]: ../configuring-metabase/slack.md
 [sql-snippet-folders]: ../questions/native-editor/sql-snippets.md
 [table-permissions]: data.md#table-permissions

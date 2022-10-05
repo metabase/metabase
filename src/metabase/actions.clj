@@ -11,7 +11,8 @@
    [metabase.models.setting :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [schema.core :as schema]))
+   [schema.core :as schema]
+   [toucan.db :as db]))
 
 (setting/defsetting experimental-enable-actions
   (i18n/deferred-tru "Whether to enable using the new experimental Actions features globally. (Actions must also be enabled for each Database.)")
@@ -26,9 +27,15 @@
   :visibility :public
   :database-local :only)
 
+(defn check-actions-enabled
+  "Function that checks that the [[metabase.actions/experimental-enable-actions]] feature flag is enabled, and
+  throws a 400 response if not"
+  []
+  (api/check (experimental-enable-actions) 400 (i18n/tru "Actions are not enabled.")))
+
 (defn +check-actions-enabled
   "Ring middleware that checks that the [[metabase.actions/experimental-enable-actions]] feature flag is enabled, and
-  returns a 403 Unauthorized response "
+  returns a 400 response if not"
   [handler]
   (fn [request respond raise]
     (if (experimental-enable-actions)
@@ -147,7 +154,7 @@
                       {:status-code 400})))
     ;; Check that Actions are enabled for this specific Database.
     (let [{database-id :database}                         arg-map
-          {db-settings :settings, driver :engine, :as db} (api/check-404 (Database database-id))]
+          {db-settings :settings, driver :engine, :as db} (api/check-404 (db/select-one Database :id database-id))]
       ;; make sure the Driver supports Actions.
       (when-not (driver/database-supports? driver :actions db)
         (throw (ex-info (i18n/tru "{0} Database {1} does not support actions."
@@ -161,11 +168,6 @@
         (when-not (database-enable-actions)
           (throw (ex-info (i18n/tru "Actions are not enabled for Database {0}." database-id)
                           {:status-code 400})))
-        ;; TODO -- need to check permissions once we have Actions-specific perms in place. For now just make sure the
-        ;; current User is an admin. This check is only done if [[api/*current-user*]] is bound (which will always be
-        ;; the case when invoked from an API endpoint) to make Actions testable separately from the API endpoints.
-        (when api/*current-user*
-          (api/check-superuser))
         ;; Ok, now we can hand off to [[perform-action!*]]
         (perform-action!* driver action db arg-map)))))
 

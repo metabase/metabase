@@ -9,7 +9,7 @@
   as
 
     (let [_ \"Description\"
-          _ :type 
+          _ :type
           _ :boolean]
       (defn my-setting \"Docstring.\" [])
       (defn my-setting! \"Docstring.\" [_value-or-nil]))

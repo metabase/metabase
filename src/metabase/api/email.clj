@@ -77,32 +77,47 @@
              (name (mb-to-smtp-settings k))
              (str/upper-case v))])))
 
+(defn- env-var-values-by-email-setting
+  "Returns a map of setting names (keywords) and env var values.
+   If an env var is not set, the setting is not included in the result."
+  []
+  (into {}
+        (for [setting-name (keys mb-to-smtp-settings)
+              :let         [value (setting/env-var-value setting-name)]
+              :when        (some? value)]
+          [setting-name value])))
+
 (api/defendpoint PUT "/"
   "Update multiple email Settings. You must be a superuser or have `setting` permission to do this."
   [:as {settings :body}]
   {settings su/Map}
   (validation/check-has-application-permission :setting)
-  ;; the frontend has access to an obfuscated version of the password. Watch for whether it sent us a new password or
-  ;; the obfuscated version
-  (let [obfuscated? (and (:email-smtp-password settings) (email/email-smtp-password)
+  (let [;; the frontend has access to an obfuscated version of the password. Watch for whether it sent us a new password or
+        ;; the obfuscated version
+        obfuscated? (and (:email-smtp-password settings) (email/email-smtp-password)
                          (= (:email-smtp-password settings) (setting/obfuscate-value (email/email-smtp-password))))
-        settings    (-> (cond-> settings
-                          obfuscated?
-                          (assoc :email-smtp-password (email/email-smtp-password)))
-                        (select-keys (keys mb-to-smtp-settings))
-                        (set/rename-keys mb-to-smtp-settings))
-        settings    (cond-> settings
-                      (string? (:port settings))     (update :port #(Long/parseLong ^String %))
-                      (string? (:security settings)) (update :security keyword))
-        response (email/test-smtp-connection settings)]
+        ;; override `nil` values in the request with environment variables for testing the SMTP connection
+        env-var-settings (env-var-values-by-email-setting)
+        settings         (merge settings env-var-settings)
+        settings         (-> (cond-> settings
+                               obfuscated?
+                               (assoc :email-smtp-password (email/email-smtp-password)))
+                             (select-keys (keys mb-to-smtp-settings))
+                             (set/rename-keys mb-to-smtp-settings))
+        settings         (cond-> settings
+                           (string? (:port settings))     (update :port #(Long/parseLong ^String %))
+                           (string? (:security settings)) (update :security keyword))
+        response         (email/test-smtp-connection settings)]
     (if-not (::email/error response)
       ;; test was good, save our settings
-      (cond-> (assoc (setting/set-many! (set/rename-keys response (set/map-invert mb-to-smtp-settings)))
-                     :with-corrections  (let [[_ corrections] (data/diff settings response)]
-                                          (-> corrections
-                                              (set/rename-keys (set/map-invert mb-to-smtp-settings))
-                                              humanize-email-corrections)))
-        obfuscated? (update :email-smtp-password setting/obfuscate-value))
+      (let [[_ corrections] (data/diff settings response)
+            new-settings    (set/rename-keys response (set/map-invert mb-to-smtp-settings))]
+        ;; don't update settings if they are set by environment variables
+        (setting/set-many! (apply dissoc new-settings (keys env-var-settings)))
+        (cond-> (assoc new-settings :with-corrections (-> corrections
+                                                          (set/rename-keys (set/map-invert mb-to-smtp-settings))
+                                                          humanize-email-corrections))
+          obfuscated? (update :email-smtp-password setting/obfuscate-value)))
       ;; test failed, return response message
       {:status 400
        :body   (humanize-error-messages response)})))

@@ -1,7 +1,7 @@
 import React from "react";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import { t, jt } from "ttag";
 import { updateIn } from "icepick";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import { LOGIN, LOGIN_GOOGLE } from "metabase/auth/actions";
 
 import { hasPremiumFeature } from "metabase-enterprise/settings";
@@ -13,7 +13,6 @@ import {
   PLUGIN_REDUX_MIDDLEWARES,
 } from "metabase/plugins";
 import { UtilApi } from "metabase/services";
-import { createSessionMiddleware } from "../auth/middleware/session-middleware";
 
 import AuthenticationOption from "metabase/admin/settings/components/widgets/AuthenticationOption";
 import GroupMappingsWidget from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
@@ -21,6 +20,7 @@ import SecretKeyWidget from "metabase/admin/settings/components/widgets/SecretKe
 import SessionTimeoutSetting from "metabase-enterprise/auth/components/SessionTimeoutSetting";
 
 import SettingsGoogleForm from "metabase/admin/settings/components/SettingsGoogleForm";
+import { createSessionMiddleware } from "../auth/middleware/session-middleware";
 import SettingsSAMLForm from "./components/SettingsSAMLForm";
 import SettingsJWTForm from "./components/SettingsJWTForm";
 
@@ -51,7 +51,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
       description: t`When enabled, users can additionally log in with email and password.`,
       type: "boolean",
       getHidden: settings =>
-        !settings["google-auth-client-id"] &&
+        !settings["google-auth-enabled"] &&
         !settings["ldap-enabled"] &&
         !settings["saml-enabled"] &&
         !settings["jwt-enabled"],
@@ -62,7 +62,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
       description: t`When enabled, administrators will receive an email the first time a user uses Single Sign-On.`,
       type: "boolean",
       getHidden: settings =>
-        !settings["google-auth-client-id"] &&
+        !settings["google-auth-enabled"] &&
         !settings["ldap-enabled"] &&
         !settings["saml-enabled"] &&
         !settings["jwt-enabled"],
@@ -258,7 +258,10 @@ PLUGIN_AUTH_PROVIDERS.push(providers => {
   if (MetabaseSettings.get("other-sso-configured?")) {
     providers = [SSO_PROVIDER, ...providers];
   }
-  if (!MetabaseSettings.isPasswordLoginEnabled()) {
+  if (
+    !MetabaseSettings.isPasswordLoginEnabled() &&
+    !MetabaseSettings.isLdapEnabled()
+  ) {
     providers = providers.filter(p => p.name !== "password");
   }
   return providers;
@@ -301,6 +304,8 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
     settings: [
       {
         key: "google-auth-client-id",
+        required: true,
+        autoFocus: true,
       },
       {
         // Default to OSS fields if enterprise SSO is not enabled

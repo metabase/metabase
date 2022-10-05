@@ -107,6 +107,7 @@
    #'fix-bad-refs/fix-bad-references
    #'qp.mark-outer-fields/mark-outer-fields
    #'escape-join-aliases/escape-join-aliases
+   ;; yes, this is called a second time, because we need to handle any joins that got added
    (resolve 'ee.sandbox.rows/apply-sandboxing)
    #'qp.cumulative-aggregations/rewrite-cumulative-aggregations
    #'qp.pre-alias-aggregations/pre-alias-aggregations

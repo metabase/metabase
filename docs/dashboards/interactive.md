@@ -8,7 +8,7 @@ redirect_from:
 
 You can customize what happens when people click on questions in your dashboard.
 
-By default, when you create charts using Metabase's graphical query builder, your charts automatically come with [drill-through capabilities](https://www.metabase.com/blog/drilling-through-data/index.html), which let folks click on a chart to explore further. But if you have a more customized click path in mind, Metabase allows you to customize what happens when a user clicks on a chart or table in your dashboard.
+By default, when you create charts using Metabase's graphical query builder, your charts automatically come with [drill-through capabilities](https://www.metabase.com/learn/questions/drill-through), which let folks click on a chart to explore further. But if you have a more customized click path in mind, Metabase allows you to customize what happens when a user clicks on a chart or table in your dashboard.
 
 You can set up a dashboard card to:
 
@@ -19,16 +19,16 @@ To configure this interactivity, you'll use the **click behavior** option on a d
 
 ## Customizing click behavior
 
-From your dashboard, first click on the **pencil** icon to enter dashboard edit mode. 
+From your dashboard, first click on the **pencil** icon to enter dashboard edit mode.
 
-If you hover over the card that contains question you want to customize, Metabase will display a menu at the top right of that card containing these options, from left to right: 
+If you hover over the card that contains question you want to customize, Metabase will display a menu at the top right of that card containing these options, from left to right:
 
 - **Visualization options**: This icon looks like a painter's palette.
 - **Click behavior**: This is the icon with the mouse cursor clicking on a card.
 - **Add series**: If your question has a visualization to which you can add an [additional series](./multiple-series.md) (like a line or bar chart), you'll see this icon as a **+** next to a small representation of that chart type. Not all cards will show this option.
 - **Remove**: This icon is an **X**. Selecting this will remove your question from the dashboard.
 
-Select the **Click behavior** option. 
+Select the **Click behavior** option.
 
 ![Click behavior icon](./images/click-behavior-icon.png)
 
@@ -48,7 +48,7 @@ If your dashboard has a filter, you'll also see an option to [update the filter]
 
 ## Open the action menu
 
-For questions composed using the query builder, the default click behavior is to open the **action menu**, which presents people with the option to [drill through the data](https://www.metabase.com/blog/drilling-through-data/index.html):
+For questions composed using the query builder, the default click behavior is to open the **action menu**, which presents people with the option to [drill through the data](https://www.metabase.com/learn/questions/drill-through):
 
 ![Action menu](./images/action-menu.png)
 
@@ -66,7 +66,7 @@ Possible destinations include:
 
 ## Passing values to the destination
 
-If you're linking to a dashboard or a SQL question that has filters, you can pass values from the current dashboard to filters in the destination. 
+If you're linking to a dashboard or a SQL question that has filters, you can pass values from the current dashboard to filters in the destination.
 
 For example, if you link to a dashboard that has a filter for `Category`, you can pass a value for `Category` from the origin question to the destination dashboard:
 
@@ -88,14 +88,14 @@ You can also use values to construct URLs to external resources.
 
 From the **Click behavior** sidebar, select **Go to a custom destination** and link to **URL**. The **Enter a URL to link to** modal will pop up, allowing you to specify a URL, as well as a column or dashboard filter.
 
-What we need to do here is to type in the full URL of where a user should go when they click on a value in a card. But the really powerful thing we can do is to include variables in the URL. These variables will insert the value that the user clicks on into the URL. 
+What we need to do here is to type in the full URL of where a user should go when they click on a value in a card. But the really powerful thing we can do is to include variables in the URL. These variables will insert the value that the user clicks on into the URL.
 
 For example, we could type a URL like this:
 
  ```
  https://www.metabase.com/search.html?query={% raw %}{{Category}}{% endraw %}
  ```
- 
+
  The important part is the `{% raw %}{{Category}}{% endraw %}` bit. What we’re doing here is referring to the `Category` that the user clicked on. So if a user clicks on the `Widget` bar in our chart, the value of the `Category` column for that bar (`Widget`) would be inserted into our URL: `https://www.metabase.com/search.html?query=Widget`. Your URL can use as many column variables as you want - you can even refer to the same column multiple times in different parts of the URL. Click on the dropdown menu **Values you can reference** to see your options for which variables you can include in the URL.
 
 Next we’ll click **Done**, then **Save** our dashboard. Now when we click our chart, we’ll be taken to the URL that we entered above, with the value of the clicked bar inserted into the URL.
@@ -112,7 +112,7 @@ For example, clicking on the `Widget` bar will update the current dashboard's **
 
 ![Cross-filtering](./images/cross-filter.png)
 
-To set up cross-filtering, choose a dashboard filter that you'd like to update on click, and a question to use to update that filter. You can think of this question as your "navigation question." Instead of wiring this navigation question up to the filter, you'll [wire up every other question on the dashboard to the filter](./filters.md). 
+To set up cross-filtering, choose a dashboard filter that you'd like to update on click, and a question to use to update that filter. You can think of this question as your "navigation question." Instead of wiring this navigation question up to the filter, you'll [wire up every other question on the dashboard to the filter](./filters.md).
 
 Below, we'll use the **Orders by product category question** as our navigation question, so we'll leave this question disconnected from the filter, and connect all the other questions to the **Category** filter.
 
@@ -124,7 +124,7 @@ Metabase will list the filters you can update. Here we select the **Category** f
 
 ![Update a dashboard filter](./images/update-a-dashboard-filter.png)
 
-Click **Done** in the sidebar, then **Save** your dashboard. 
+Click **Done** in the sidebar, then **Save** your dashboard.
 
 Now we can use our navigation question (Orders by product category) to interactively filter the data across your dashboard. When people click on a value in the navigation question, Metabase will send the clicked value to the filter, and update every card on the dashboard by filtering them for the clicked value - every card except for the navigation question: Orders by product category. The reason we don't want the navigation question to update is so that we can click on other bars to update the filter with a different value.
 

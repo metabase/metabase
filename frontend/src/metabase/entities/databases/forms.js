@@ -1,16 +1,16 @@
 import React from "react";
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
 import { getElevatedEngines } from "metabase/lib/engine";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { PLUGIN_CACHING } from "metabase/plugins";
-import getFieldsForBigQuery from "./big-query-fields";
 
-import getFieldsForMongo from "./mongo-fields";
 import MetadataSyncScheduleWidget from "metabase/admin/databases/components/widgets/MetadataSyncScheduleWidget";
 import CacheFieldValuesScheduleWidget from "metabase/admin/databases/components/widgets/CacheFieldValuesScheduleWidget";
 import EngineWidget from "metabase/admin/databases/components/widgets/EngineWidget";
+import getFieldsForMongo from "./mongo-fields";
+import getFieldsForBigQuery from "./big-query-fields";
 
 const DATABASE_DETAIL_OVERRIDES = {
   "tunnel-enabled": () => ({
@@ -76,6 +76,9 @@ const DATABASE_DETAIL_OVERRIDES = {
     title: t`Server SSL certificate chain`,
     placeholder: t`Paste the contents of the server's SSL certificate chain here`,
     type: "text",
+  }),
+  "ssl-key-options": engine => ({
+    description: getSslKeyOptionsDescription(engine),
   }),
   "schedules.metadata_sync": () => ({
     name: "schedules.metadata_sync",
@@ -147,6 +150,25 @@ function getSshDescription() {
   );
 
   return jt`If a direct connection to your database isn't possible, you may want to use an SSH tunnel. ${link}.`;
+}
+
+function getSslKeyOptionsDescription(engine) {
+  if (engine !== "postgres") {
+    return null;
+  }
+
+  const link = (
+    <ExternalLink
+      href={MetabaseSettings.docsUrl(
+        "databases/connections/postgresql",
+        "authenticate-client-certificate",
+      )}
+    >
+      {t`Learn more`}
+    </ExternalLink>
+  );
+
+  return jt`If you have a PEM SSL client key, you can convert that key to the PKCS-8/DER format using OpenSSL. ${link}.`;
 }
 
 const AUTH_URL_PREFIXES = {

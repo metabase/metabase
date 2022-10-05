@@ -90,7 +90,7 @@
   (let [metrics     (some-> card
                             (get-in [:visualization_settings :graph.metrics]))
         col-indices (map #(column-name->index % results) metrics)]
-    (when (seq? col-indices)
+    (when (seq col-indices)
       (fn [row]
         (let [res (vec (for [idx col-indices]
                          (get row idx)))]
@@ -105,7 +105,7 @@
   (let [dimensions  (some-> card
                             (get-in [:visualization_settings :graph.dimensions]))
         col-indices (map #(column-name->index % results) dimensions)]
-    (when (seq? col-indices)
+    (when (seq col-indices)
       (fn [row]
         (let [res (vec (for [idx col-indices]
                          (get row idx)))]

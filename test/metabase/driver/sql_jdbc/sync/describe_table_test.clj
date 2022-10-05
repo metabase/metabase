@@ -6,7 +6,8 @@
             [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
             [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
             [metabase.models.table :refer [Table]]
-            [metabase.test :as mt]))
+            [metabase.test :as mt]
+            [toucan.db :as db]))
 
 (defn- sql-jdbc-drivers-with-default-describe-table-impl
   "All SQL JDBC drivers that use the default SQL JDBC implementation of `describe-table`. (As far as I know, this is
@@ -48,7 +49,7 @@
                  {:name "latitude"    :base-type :type/Float}
                  {:name "name"        :base-type :type/Text}
                  {:name "id"          :base-type :type/Integer}}
-               (->> (sql-jdbc.describe-table/describe-table driver/*driver* (mt/id) (Table (mt/id :venues)))
+               (->> (sql-jdbc.describe-table/describe-table driver/*driver* (mt/id) (db/select-one Table :id (mt/id :venues)))
                     :fields
                     (map (fn [{:keys [name base-type]}]
                            {:name      (str/lower-case name)
@@ -64,7 +65,7 @@
                                                                   (when (= (str/lower-case column-name) "longitude")
                                                                     :type/Longitude))]
       (is (= [["longitude" :type/Longitude]]
-             (->> (sql-jdbc.describe-table/describe-table (or driver/*driver* :h2) (mt/id) (Table (mt/id :venues)))
+             (->> (sql-jdbc.describe-table/describe-table (or driver/*driver* :h2) (mt/id) (db/select-one Table :id (mt/id :venues)))
                   :fields
                   (filter :semantic-type)
                   (map (juxt (comp str/lower-case :name) :semantic-type))))))))

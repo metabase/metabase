@@ -120,15 +120,26 @@
                                            :dataset_query {:database (mt/id)
                                                            :type     :native
                                                            :native   {:query         (str "UPDATE categories\n"
-                                                                                          "SET name = 'Bird Shop'\n"
+                                                                                          "SET name = [[{{name}} || ' ' ||]] 'Shop'\n"
                                                                                           "WHERE id = {{id}}")
                                                                       :template-tags {"id" {:name         "id"
                                                                                             :display-name "ID"
                                                                                             :type         :number
-                                                                                            :required     true}}}}
+                                                                                            :required     true}
+                                                                                      "name" {:name         "name"
+                                                                                              :display-name "Name"
+                                                                                              :type         :text
+                                                                                              :required     false}}}}
                                            :name          "Query Example"
-                                           :parameters    [{:id "id" :type "number"}]
-                                           :is_write      true}
+                                           :parameters    [{:id "id"
+                                                            :type "number"
+                                                            :target [:variable [:template-tag "id"]]}
+                                                           {:id "name"
+                                                            :type "text"
+                                                            :required false
+                                                            :target [:variable [:template-tag "name"]]}]
+                                           :is_write      true
+                                           :visualization_settings {:inline true}}
                                           (dissoc options-map :type))]]
       (let [action-id (db/select-one-field :action_id QueryAction :card_id card-id)]
         (f {:query-action-card-id card-id
@@ -143,8 +154,12 @@
                                                     :method "POST"
                                                     :body "{\"the_parameter\": {{id}}}"
                                                     :headers "{\"x-test\": \"{{id}}\"}"
-                                                    :parameters [{:id "id" :type "number"}
-                                                                 {:id "fail" :type "text"}]}
+                                                    :parameters [{:id "id"
+                                                                  :type "number"
+                                                                  :target [:template-tag "id"]}
+                                                                 {:id "fail"
+                                                                  :type "text"
+                                                                  :target [:template-tag "fail"]}]}
                                          :response_handle ".body"}
                                         options-map))]
         (f {:action-id action-id})))))
@@ -178,11 +193,11 @@
                (db/select-one-field :parameter_mappings Emitter :id emitter-id))))
       ;; these are tied to the Card or Dashboad and Emitter above and will get cascade deleted. We can't use `with-temp*` for them
       ;; because it doesn't seem to work with tables with compound PKs
-      (condp = (type parent-model)
-        (type Card)
+      (condp = parent-model
+        Card
         (db/insert! CardEmitter {:card_id    emitter-parent-id
                                  :emitter_id emitter-id})
-        (type Dashboard)
+        Dashboard
         (db/insert! DashboardEmitter {:dashboard_id emitter-parent-id
                                       :emitter_id   emitter-id}))
       (f (assoc context

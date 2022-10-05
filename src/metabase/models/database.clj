@@ -12,6 +12,7 @@
             [metabase.models.secret :as secret :refer [Secret]]
             [metabase.models.serialization.base :as serdes.base]
             [metabase.models.serialization.hash :as serdes.hash]
+            [metabase.models.serialization.util :as serdes.util]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
@@ -21,6 +22,10 @@
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (models/defmodel Database :metabase_database)
+
+(doto Database
+  (derive ::mi/read-policy.partial-perms-for-perms-set)
+  (derive ::mi/write-policy.full-perms-for-perms-set))
 
 (defn- schedule-tasks!
   "(Re)schedule sync operation tasks for `database`. (Existing scheduled tasks will be deleted first.)"
@@ -179,17 +184,19 @@
                       :metadata_sync_schedule      new-metadata-schedule
                       :cache_field_values_schedule new-fieldvalues-schedule)))))))))
 
-(defn- pre-insert [database]
-  (-> database
+(defn- pre-insert [{:keys [details], :as database}]
+  (-> (cond-> database
+        (not details) (assoc :details {}))
       handle-secrets-changes
       (assoc :initial_sync_status "incomplete")))
 
-(defn- perms-objects-set [{db-id :id} read-or-write]
+(defmethod mi/perms-objects-set Database
+  [{db-id :id} read-or-write]
   #{(case read-or-write
       :read  (perms/data-perms-path db-id)
       :write (perms/db-details-write-perms-path db-id))})
 
-(u/strict-extend (class Database)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Database)
   models/IModel
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:database :db])
@@ -200,17 +207,11 @@
                                        :cache_field_values_schedule :cron-string
                                        :start_of_week               :keyword
                                        :settings                    :encrypted-json})
-          :properties     (constantly {:timestamped? true})
           :post-insert    post-insert
           :post-select    post-select
           :pre-insert     pre-insert
           :pre-update     pre-update
           :pre-delete     pre-delete})
-  mi/IObjectPermissions
-  (merge mi/IObjectPermissionsDefaults
-         {:perms-objects-set perms-objects-set
-          :can-read?         (partial mi/current-user-has-partial-permissions? :read)
-          :can-write?        (partial mi/current-user-has-full-permissions? :write)})
 
   serdes.hash/IdentityHashable
   {:identity-hash-fields (constantly [:name :engine])})
@@ -267,6 +268,7 @@
 ;; Users with write perms can see the `details` but remove anything resembling a password. No one gets to see this in
 ;; an API response!
 (add-encoder
+ #_{:clj-kondo/ignore [:unresolved-symbol]}
  DatabaseInstance
  (fn [db json-generator]
    (encode-map
@@ -286,7 +288,7 @@
   ;; TODO Support alternative encryption of secret database details.
   ;; There's one optional foreign key: creator_id. Resolve it as an email.
   (cond-> (serdes.base/extract-one-basics "Database" entity)
-    (:creator_id entity) (assoc :creator_id (db/select-one-field :email 'User :id (:creator_id entity)))
+    true                 (update :creator_id serdes.util/export-user)
     (= :exclude secrets) (dissoc :details)))
 
 (defmethod serdes.base/serdes-entity-id "Database"
@@ -301,6 +303,9 @@
   [[{:keys [id]}]]
   (db/select-one-field :id Database :name id))
 
-(defmethod serdes.base/load-xform "Database" [{:keys [creator_id] :as entity}]
-  (cond-> (serdes.base/load-xform-basics entity)
-    creator_id (assoc :creator_id (db/select-one-field :id 'User :email creator_id))))
+(defmethod serdes.base/load-xform "Database"
+  [database]
+  (-> (cond-> database
+        (not (:details database)) (assoc :details "{}"))
+      serdes.base/load-xform-basics
+      (update :creator_id serdes.util/import-user)))

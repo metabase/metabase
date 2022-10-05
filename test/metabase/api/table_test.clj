@@ -13,8 +13,6 @@
             [metabase.models.table :as table]
             [metabase.server.middleware.util :as mw.util]
             [metabase.test :as mt]
-            [metabase.test.mock.util :as mock.util]
-            [metabase.test.util :as tu]
             [metabase.timeseries-query-processor-test.util :as tqpt]
             [metabase.util :as u]
             [toucan.db :as db]))
@@ -111,7 +109,7 @@
             {:schema       "PUBLIC"
              :name         "VENUES"
              :display_name "Venues"
-             :pk_field     (table/pk-field-id (Table (mt/id :venues)))
+             :pk_field     (table/pk-field-id (db/select-one Table :id (mt/id :venues)))
              :id           (mt/id :venues)
              :db_id        (mt/id)})
            (mt/user-http-request :rasta :get 200 (format "table/%d" (mt/id :venues)))))
@@ -144,7 +142,7 @@
                :name         "USERS"
                :display_name "Users"
                :entity_type  "entity/UserTable"
-               :fields       [(assoc (field-details (Field (mt/id :users :id)))
+               :fields       [(assoc (field-details (db/select-one Field :id (mt/id :users :id)))
                                      :semantic_type     "type/PK"
                                      :table_id         (mt/id :users)
                                      :name             "ID"
@@ -155,7 +153,7 @@
                                      :visibility_type  "normal"
                                      :has_field_values "none"
                                      :database_required false)
-                              (assoc (field-details (Field (mt/id :users :name)))
+                              (assoc (field-details (db/select-one Field :id (mt/id :users :name)))
                                      :semantic_type             "type/Name"
                                      :table_id                 (mt/id :users)
                                      :name                     "NAME"
@@ -170,7 +168,7 @@
                                      :position                 1
                                      :database_position        1
                                      :database_required        false)
-                              (assoc (field-details (Field (mt/id :users :last_login)))
+                              (assoc (field-details (db/select-one Field :id (mt/id :users :last_login)))
                                      :table_id                 (mt/id :users)
                                      :name                     "LAST_LOGIN"
                                      :display_name             "Last Login"
@@ -184,7 +182,7 @@
                                      :position                 2
                                      :database_position        2
                                      :database_required        false)
-                              (assoc (field-details (Field :table_id (mt/id :users), :name "PASSWORD"))
+                              (assoc (field-details (db/select-one Field :table_id (mt/id :users), :name "PASSWORD"))
                                      :semantic_type     "type/Category"
                                      :table_id         (mt/id :users)
                                      :name             "PASSWORD"
@@ -211,7 +209,7 @@
                :name         "USERS"
                :display_name "Users"
                :entity_type  "entity/UserTable"
-               :fields       [(assoc (field-details (Field (mt/id :users :id)))
+               :fields       [(assoc (field-details (db/select-one Field :id (mt/id :users :id)))
                                      :table_id         (mt/id :users)
                                      :semantic_type     "type/PK"
                                      :name             "ID"
@@ -221,7 +219,7 @@
                                      :effective_type   "type/BigInteger"
                                      :has_field_values "none"
                                      :database_required false)
-                              (assoc (field-details (Field (mt/id :users :name)))
+                              (assoc (field-details (db/select-one Field :id (mt/id :users :name)))
                                      :table_id         (mt/id :users)
                                      :semantic_type     "type/Name"
                                      :name             "NAME"
@@ -233,7 +231,7 @@
                                      :position          1
                                      :database_position 1
                                      :database_required false)
-                              (assoc (field-details (Field (mt/id :users :last_login)))
+                              (assoc (field-details (db/select-one Field :id (mt/id :users :last_login)))
                                      :table_id                 (mt/id :users)
                                      :name                     "LAST_LOGIN"
                                      :display_name             "Last Login"
@@ -377,8 +375,8 @@
 (deftest get-fks-test
   (testing "GET /api/table/:id/fks"
     (testing "We expect a single FK from CHECKINS.USER_ID -> USERS.ID"
-      (let [checkins-user-field (Field (mt/id :checkins :user_id))
-            users-id-field      (Field (mt/id :users :id))]
+      (let [checkins-user-field (db/select-one Field :id (mt/id :checkins :user_id))
+            users-id-field      (db/select-one Field :id (mt/id :users :id))]
         (is (= [{:origin_id      (:id checkins-user-field)
                  :destination_id (:id users-id-field)
                  :relationship   "Mt1"
@@ -433,7 +431,7 @@
              :name         "CATEGORIES"
              :display_name "Categories"
              :fields       [(merge
-                             (field-details (Field (mt/id :categories :id)))
+                             (field-details (db/select-one Field :id (mt/id :categories :id)))
                              {:table_id          (mt/id :categories)
                               :semantic_type     "type/PK"
                               :name              "ID"
@@ -444,7 +442,7 @@
                               :has_field_values  "none"
                               :database_required false})
                             (merge
-                             (field-details (Field (mt/id :categories :name)))
+                             (field-details (db/select-one Field :id (mt/id :categories :name)))
                              {:table_id                 (mt/id :categories)
                               :semantic_type            "type/Name"
                               :name                     "NAME"
@@ -502,42 +500,42 @@
                   :dimension_options (default-dimension-options)
                   :fields            (map (comp #(merge (default-card-field-for-venues card-virtual-table-id) %)
                                                 with-field-literal-id)
-                                          [{:name         "NAME"
-                                            :display_name "NAME"
-                                            :base_type    "type/Text"
-                                            :effective_type "type/Text"
-                                            :semantic_type "type/Name"
-                                            :fingerprint  (:name mock.util/venue-fingerprints)
-                                            :field_ref    ["field" "NAME" {:base-type "type/Text"}]}
-                                           {:name         "ID"
-                                            :display_name "ID"
-                                            :base_type    "type/BigInteger"
-                                            :effective_type "type/BigInteger"
-                                            :semantic_type nil
-                                            :fingerprint  (:id mock.util/venue-fingerprints)
-                                            :field_ref    ["field" "ID" {:base-type "type/BigInteger"}]}
-                                           (with-numeric-dimension-options
-                                             {:name         "PRICE"
-                                              :display_name "PRICE"
-                                              :base_type    "type/Integer"
-                                              :effective_type "type/Integer"
-                                              :semantic_type nil
-                                              :fingerprint  (:price mock.util/venue-fingerprints)
-                                              :field_ref    ["field" "PRICE" {:base-type "type/Integer"}]})
-                                           (with-coordinate-dimension-options
-                                             {:name         "LATITUDE"
-                                              :display_name "LATITUDE"
-                                              :base_type    "type/Float"
-                                              :effective_type "type/Float"
-                                              :semantic_type "type/Latitude"
-                                              :fingerprint  (:latitude mock.util/venue-fingerprints)
-                                              :field_ref    ["field" "LATITUDE" {:base-type "type/Float"}]})])})
+                                          (let [id->fingerprint   (db/select-id->field :fingerprint Field :table_id (mt/id :venues))
+                                                name->fingerprint (comp id->fingerprint (partial mt/id :venues))]
+                                            [{:name           "NAME"
+                                              :display_name   "NAME"
+                                              :base_type      "type/Text"
+                                              :effective_type "type/Text"
+                                              :semantic_type  "type/Name"
+                                              :fingerprint    (name->fingerprint :name)
+                                              :field_ref      ["field" "NAME" {:base-type "type/Text"}]}
+                                             {:name           "ID"
+                                              :display_name   "ID"
+                                              :base_type      "type/BigInteger"
+                                              :effective_type "type/BigInteger"
+                                              :semantic_type  nil
+                                              :fingerprint    (name->fingerprint :id)
+                                              :field_ref      ["field" "ID" {:base-type "type/BigInteger"}]}
+                                             (with-numeric-dimension-options
+                                               {:name           "PRICE"
+                                                :display_name   "PRICE"
+                                                :base_type      "type/Integer"
+                                                :effective_type "type/Integer"
+                                                :semantic_type  nil
+                                                :fingerprint    (name->fingerprint :price)
+                                                :field_ref      ["field" "PRICE" {:base-type "type/Integer"}]})
+                                             (with-coordinate-dimension-options
+                                               {:name           "LATITUDE"
+                                                :display_name   "LATITUDE"
+                                                :base_type      "type/Float"
+                                                :effective_type "type/Float"
+                                                :semantic_type  "type/Latitude"
+                                                :fingerprint    (name->fingerprint :latitude)
+                                                :field_ref      ["field" "LATITUDE" {:base-type "type/Float"}]})]))})
                (->> card
                     u/the-id
                     (format "table/card__%d/query_metadata")
-                    (mt/user-http-request :crowberto :get 200)
-                    (tu/round-fingerprint-cols [:fields])
-                    (mt/round-all-decimals 2))))))))
+                    (mt/user-http-request :crowberto :get 200))))))))
 
 (deftest include-date-dimensions-in-nested-query-test
   (testing "GET /api/table/:id/query_metadata"
@@ -833,7 +831,7 @@
           (mt/user-http-request :crowberto :put 200 (format "table/%s/fields/order" (mt/id :venues))
                                 {:request-options {:body (json/encode custom-field-order)}})
           (is (= custom-field-order
-                 (->> (table/fields (Table (mt/id :venues)))
+                 (->> (table/fields (db/select-one Table :id (mt/id :venues)))
                       (map u/the-id))))))
       (finally (mt/user-http-request :crowberto :put 200 (format "table/%s" (mt/id :venues))
                                      {:field_order original-field-order})))))

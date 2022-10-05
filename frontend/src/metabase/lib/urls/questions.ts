@@ -3,8 +3,8 @@ import slugg from "slugg";
 import { serializeCardForUrl } from "metabase/lib/card";
 import MetabaseSettings from "metabase/lib/settings";
 
-import Question, { QuestionCreatorOpts } from "metabase-lib/lib/Question";
 import { Card as BaseCard } from "metabase-types/types/Card";
+import Question, { QuestionCreatorOpts } from "metabase-lib/lib/Question";
 
 import { appendSlug, extractQueryParams } from "./utils";
 
@@ -22,11 +22,17 @@ type QuestionUrlBuilderParams = {
   hash?: Card | string;
   query?: Record<string, unknown> | string;
   objectId?: number | string;
+  isModelDetail?: boolean;
 };
 
 export function question(
   card: Card | null,
-  { hash = "", query = "", objectId }: QuestionUrlBuilderParams = {},
+  {
+    hash = "",
+    query = "",
+    objectId,
+    isModelDetail = false,
+  }: QuestionUrlBuilderParams = {},
 ) {
   if (hash && typeof hash === "object") {
     hash = serializeCardForUrl(hash);
@@ -47,13 +53,13 @@ export function question(
     query = "?" + query;
   }
 
+  const isModel = card?.dataset || card?.model === "dataset";
+  let path = isModel ? "model" : "question";
   if (!card || !card.id) {
-    return `/question${query}${hash}`;
+    return `/${path}${query}${hash}`;
   }
 
   const { card_id, id, name } = card;
-  let path = card?.dataset || card?.model === "dataset" ? "model" : "question";
-
   /**
    * If the question has been added to the dashboard we're reading the dashCard's properties.
    * In that case `card_id` is the actual question's id, while `id` corresponds with the dashCard itself.
@@ -73,7 +79,9 @@ export function question(
     path = appendSlug(path, slugg(name));
   }
 
-  if (objectId) {
+  if (isModel && isModelDetail) {
+    path = `${path}/detail`;
+  } else if (objectId) {
     path = `${path}/${objectId}`;
   }
 
@@ -85,7 +93,7 @@ export function serializedQuestion(card: Card, opts = {}) {
 }
 
 type NewQuestionUrlBuilderParams = QuestionCreatorOpts & {
-  mode?: "view" | "notebook";
+  mode?: "view" | "notebook" | "query";
   creationType?: string;
   objectId?: number | string;
 };
@@ -96,12 +104,16 @@ export function newQuestion({
   objectId,
   ...options
 }: NewQuestionUrlBuilderParams = {}) {
-  const url = Question.create(options).getUrl({
+  const question = Question.create(options);
+  const url = question.getUrl({
     creationType,
     query: objectId ? { objectId } : undefined,
   });
+
+  const entity = question.isDataset() ? "model" : "question";
+
   if (mode) {
-    return url.replace(/^\/question/, `/question\/${mode}`);
+    return url.replace(/^\/(question|model)/, `/${entity}\/${mode}`);
   } else {
     return url;
   }

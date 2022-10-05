@@ -4,22 +4,17 @@ import { connect } from "react-redux";
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
 
-import { WritebackActionEmitter } from "metabase/writeback/types";
 import ActionParametersInputForm from "metabase/writeback/containers/ActionParametersInputForm";
 
-import { DashboardWithCards } from "metabase-types/types/Dashboard";
-import { State } from "metabase-types/store";
+import type { WritebackAction } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
+import { getFormTitle } from "metabase/writeback/components/ActionCreator/FormCreator";
 import { closeActionParametersModal } from "../actions";
-import { getEmitterParametersFormProps } from "../selectors";
-
-type DataAppDashboard = DashboardWithCards & {
-  emitters?: WritebackActionEmitter[];
-};
+import { getActionParametersModalFormProps } from "../selectors";
 
 interface OwnProps {
-  dashboard: DataAppDashboard;
-  focusedEmitterId: number;
+  action: WritebackAction;
 }
 
 interface StateProps {
@@ -34,7 +29,7 @@ type Props = OwnProps & StateProps & DispatchProps;
 
 function mapStateToProps(state: State) {
   return {
-    formProps: getEmitterParametersFormProps(state),
+    formProps: getActionParametersModalFormProps(state),
   };
 }
 
@@ -44,25 +39,17 @@ const mapDispatchToProps = {
 
 function ActionParametersInputModal({
   formProps,
-  dashboard,
-  focusedEmitterId,
+  action,
   closeActionParametersModal,
 }: Props) {
-  const emitter = dashboard.emitters?.find(
-    emitter => emitter.id === focusedEmitterId,
-  );
-
-  if (!emitter) {
-    return null;
-  }
-
-  const action = emitter.action;
+  const title = getFormTitle(action);
 
   return (
     <Modal onClose={closeActionParametersModal}>
-      <ModalContent title={action.name} onClose={closeActionParametersModal}>
+      <ModalContent title={title} onClose={closeActionParametersModal}>
         <ActionParametersInputForm
           {...formProps}
+          action={action}
           onSubmitSuccess={closeActionParametersModal}
         />
       </ModalContent>

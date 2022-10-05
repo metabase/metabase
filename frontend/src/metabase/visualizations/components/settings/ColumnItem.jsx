@@ -1,38 +1,57 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
-import Icon from "metabase/components/Icon";
-
-import cx from "classnames";
+import {
+  ColumnItemIcon,
+  ColumnItemSpan,
+  ColumnItemContent,
+  ColumnItemContainer,
+  ColumnItemRoot,
+  ColumnItemDragHandle,
+} from "./ColumnItem.styled";
 
 const ActionIcon = ({ icon, onClick }) => (
-  <Icon
+  <ColumnItemIcon
     name={icon}
-    className="cursor-pointer text-light text-medium-hover ml1"
     onClick={e => {
       e.stopPropagation();
-      onClick();
+      onClick(e.target);
     }}
   />
 );
 
-const ColumnItem = ({ title, onAdd, onRemove, onClick, onEdit, draggable }) => (
-  <div
-    className={cx("my1 bordered rounded overflow-hidden bg-white", {
-      "cursor-grab shadowed": draggable,
-      "cursor-pointer": onClick,
-    })}
-    onClick={onClick}
-  >
-    <div className="p1 border-bottom relative">
-      <div className="px1 flex align-center relative">
-        <span className="h4 flex-auto text-dark text-wrap">{title}</span>
-        {onEdit && <ActionIcon icon="gear" onClick={onEdit} />}
-        {onAdd && <ActionIcon icon="add" onClick={onAdd} />}
-        {onRemove && <ActionIcon icon="close" onClick={onRemove} />}
-      </div>
-    </div>
-  </div>
-);
+const ColumnItem = ({
+  title,
+  onAdd,
+  onRemove,
+  onClick,
+  onEdit,
+  onEnable,
+  draggable,
+  className = "",
+}) => {
+  return (
+    <ColumnItemRoot
+      className={className}
+      onClick={onClick}
+      isDraggable={draggable}
+      data-testid={`draggable-item-${title}`}
+    >
+      <ColumnItemContainer>
+        {draggable && <ColumnItemDragHandle name="grabber2" size={12} />}
+        <ColumnItemContent>
+          <ColumnItemSpan>{title}</ColumnItemSpan>
+          {onEdit && <ActionIcon icon="ellipsis" onClick={onEdit} />}
+          {onAdd && <ActionIcon icon="add" onClick={onAdd} />}
+          {onRemove && <ActionIcon icon="eye_filled" onClick={onRemove} />}
+          {onEnable && <ActionIcon icon="eye_crossed_out" onClick={onEnable} />}
+        </ColumnItemContent>
+      </ColumnItemContainer>
+    </ColumnItemRoot>
+  );
+};
 
-export default ColumnItem;
+export default Object.assign(ColumnItem, {
+  Root: ColumnItemRoot,
+  Container: ColumnItemContainer,
+});

@@ -27,7 +27,7 @@ If you’re creating a new question, you can view the results as a multi-series 
 
 As an example, we might want to see which website or service is referring the most people to our website. In the **Sample Database** that ships with Metabase, you would group by the `Source` and `Created At` columns of the **People** table.
 
-To create the multi-series chart, select the **People** table, click on the **Summarize** button in the upper right, then add `Source` and `Created At` as groupings (the `count of rows` metric that we want is selected by default). Be sure to click the plus button to the right of your selection, so Metabase knows to add the grouping; otherwise, Metabase will switch to that grouping. [Learn more about asking questions](../users-guide/04-asking-questions.md).
+To create the multi-series chart, select the **People** table, click on the **Summarize** button in the upper right, then add `Source` and `Created At` as groupings (the `count of rows` metric that we want is selected by default). Be sure to click the plus button to the right of your selection, so Metabase knows to add the grouping; otherwise, Metabase will switch to that grouping. [Learn more about asking questions](../questions/start.md).
 
 Metabase will automatically display a multi-series line chart visualization of how each referrer has performed for us.
 
@@ -97,4 +97,4 @@ Now go forth and start letting your data get to know each other!
 
 ## Further reading
 
-- [Time series comparisons](https://www.metabase.com/blog/Time-Series-Comparisons/index.html).
+- [Time series comparisons](https://www.metabase.com/learn/questions/time-series-comparisons)

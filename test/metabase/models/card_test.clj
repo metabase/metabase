@@ -3,6 +3,7 @@
             [clojure.test :refer :all]
             [metabase.models :refer [Action Card Collection Dashboard DashboardCard QueryAction]]
             [metabase.models.card :as card]
+            [metabase.models.serialization.base :as serdes.base]
             [metabase.models.serialization.hash :as serdes.hash]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
@@ -19,7 +20,7 @@
       (letfn [(add-card-to-dash! [dash]
                 (db/insert! DashboardCard :card_id card-id, :dashboard_id (u/the-id dash)))
               (get-dashboard-count []
-                (card/dashboard-count (Card card-id)))]
+                (card/dashboard-count (db/select-one Card :id card-id)))]
         (is (= 0
                (get-dashboard-count)))
         (testing "add to a Dashboard"
@@ -35,7 +36,7 @@
   (testing "Test that when somebody archives a Card, it is removed from any Dashboards it belongs to"
     (tt/with-temp* [Dashboard     [dashboard]
                     Card          [card]
-                    DashboardCard [dashcard  {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card)}]]
+                    DashboardCard [_dashcard {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card)}]]
       (db/update! Card (u/the-id card) :archived true)
       (is (= 0
              (db/count DashboardCard :dashboard_id (u/the-id dashboard)))))))
@@ -59,9 +60,9 @@
    :native   {:query "SELECT count(*) FROM toucan_sightings;"}})
 
 (deftest database-id-test
-  (tt/with-temp Card [{:keys [id] :as card} {:name          "some name"
-                                             :dataset_query (dummy-dataset-query (mt/id))
-                                             :database_id   (mt/id)}]
+  (tt/with-temp Card [{:keys [id]} {:name          "some name"
+                                    :dataset_query (dummy-dataset-query (mt/id))
+                                    :database_id   (mt/id)}]
     (testing "before update"
       (is (= {:name "some name", :database_id (mt/id)}
              (into {} (db/select-one [Card :name :database_id] :id id)))))
@@ -361,3 +362,16 @@
       (is (= "ead6cc05"
              (serdes.hash/raw-hash ["the card" (serdes.hash/identity-hash coll)])
              (serdes.hash/identity-hash card))))))
+
+(deftest serdes-descendants-test
+  (testing "regular cards don't depend on anything"
+    (mt/with-temp* [Card [card {:name "some card"}]]
+      (is (empty? (serdes.base/serdes-descendants "Card" (:id card))))))
+
+  (testing "cards which have another card as the source depend on that card"
+    (mt/with-temp* [Card [card1 {:name "base card"}]
+                    Card [card2 {:name "derived card"
+                                 :dataset_query {:query {:source-table (str "card__" (:id card1))}}}]]
+      (is (empty? (serdes.base/serdes-descendants "Card" (:id card1))))
+      (is (= #{["Card" (:id card1)]}
+             (serdes.base/serdes-descendants "Card" (:id card2)))))))

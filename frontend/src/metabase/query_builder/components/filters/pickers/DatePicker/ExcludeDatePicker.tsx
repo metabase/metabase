@@ -3,6 +3,11 @@ import { t } from "ttag";
 import moment from "moment-timezone";
 import _ from "underscore";
 
+import { Field } from "metabase-types/types/Field";
+import { color } from "metabase/lib/colors";
+import { EXCLUDE_OPTIONS } from "metabase-lib/lib/queries/utils/query-time";
+import Filter from "metabase-lib/lib/queries/structured/Filter";
+import { FieldDimension } from "metabase-lib/lib/Dimension";
 import {
   ExcludeCheckBox,
   ExcludeColumn,
@@ -11,12 +16,6 @@ import {
   OptionButton,
   Separator,
 } from "./ExcludeDatePicker.styled";
-
-import { FieldDimension } from "metabase-lib/lib/Dimension";
-import { Field } from "metabase-types/types/Field";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
-import { color } from "metabase/lib/colors";
-import { EXCLUDE_OPTIONS } from "metabase/lib/query_time";
 
 function getDateTimeField(field: Field, bucketing?: string) {
   const dimension =

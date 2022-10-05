@@ -9,7 +9,6 @@ import { connect } from "react-redux";
 
 import _ from "underscore";
 import { t } from "ttag";
-import { humanizeCoercionStrategy } from "./humanizeCoercionStrategy";
 
 // COMPONENTS
 
@@ -22,25 +21,16 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import AdminLayout from "metabase/components/AdminLayout";
 import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
-import Section, { SectionHeader } from "../components/Section";
-import SelectSeparator from "../components/SelectSeparator";
 
 import { is_coerceable, coercions_for_type } from "cljs/metabase.types";
 import { isFK } from "metabase/lib/types";
 
-import {
-  FieldVisibilityPicker,
-  SemanticTypeAndTargetPicker,
-} from "../components/database/ColumnItem";
-import FieldRemapping from "../components/FieldRemapping";
-import UpdateCachedFieldValues from "../components/UpdateCachedFieldValues";
 import ColumnSettings from "metabase/visualizations/components/ColumnSettings";
 
 // SELECTORS
 import { getMetadata } from "metabase/selectors/metadata";
 
 // ACTIONS
-import { rescanFieldValues, discardFieldValues } from "../field";
 
 // LIB
 import { has_field_values_options } from "metabase/lib/core";
@@ -50,6 +40,16 @@ import { isCurrency } from "metabase/lib/schema_metadata";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import Fields from "metabase/entities/fields";
+import { rescanFieldValues, discardFieldValues } from "../field";
+import UpdateCachedFieldValues from "../components/UpdateCachedFieldValues";
+import FieldRemapping from "../components/FieldRemapping";
+import {
+  FieldVisibilityPicker,
+  SemanticTypeAndTargetPicker,
+} from "../components/database/ColumnItem";
+import SelectSeparator from "../components/SelectSeparator";
+import Section, { SectionHeader } from "../components/Section";
+import { humanizeCoercionStrategy } from "./humanizeCoercionStrategy";
 import { BackButtonLink, FieldNameInput } from "./FieldApp.styled";
 
 const mapStateToProps = (state, props) => {

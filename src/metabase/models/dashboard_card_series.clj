@@ -9,7 +9,7 @@
 (defn- dashboard-card [{:keys [dashboardcard_id]}]
   (db/select-one 'DashboardCard :id dashboardcard_id))
 
-(u/strict-extend (class DashboardCardSeries)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class DashboardCardSeries)
   serdes.hash/IdentityHashable
   {:identity-hash-fields (constantly [(comp serdes.hash/identity-hash dashboard-card)
                                       (serdes.hash/hydrated-hash :card)])})

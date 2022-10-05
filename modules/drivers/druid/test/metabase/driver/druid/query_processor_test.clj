@@ -13,7 +13,8 @@
             [metabase.test :as mt]
             [metabase.timeseries-query-processor-test.util :as tqpt]
             [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]))
+            [metabase.util.date-2 :as u.date]
+            [toucan.db :as db]))
 
 (defn- str->absolute-dt [s]
   [:absolute-datetime (u.date/parse s "UTC") :default])
@@ -233,10 +234,10 @@
                 {:aggregation [[:+ 1 [:aggregation-options [:distinct $checkins.venue_name] {:name "__distinct_0"}]]]})))))))
 
 (defn- table-rows-sample []
-  (->> (metadata-queries/table-rows-sample (Table (mt/id :checkins))
-         [(Field (mt/id :checkins :id))
-          (Field (mt/id :checkins :venue_name))
-          (Field (mt/id :checkins :timestamp))]
+  (->> (metadata-queries/table-rows-sample (db/select-one Table :id (mt/id :checkins))
+         [(db/select-one Field :id (mt/id :checkins :id))
+          (db/select-one Field :id (mt/id :checkins :venue_name))
+          (db/select-one Field :id (mt/id :checkins :timestamp))]
          (constantly conj))
        (sort-by first)
        (take 5)))

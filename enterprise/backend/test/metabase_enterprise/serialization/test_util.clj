@@ -21,14 +21,12 @@
 (def temp-db-name "Fingerprint test-data copy")
 
 (defn temp-field [from-field-id table-id]
-  (-> from-field-id
-      Field
+  (-> (db/select-one Field :id from-field-id)
       (dissoc :id)
       (assoc :table_id table-id)))
 
 (defn temp-table [from-tbl-id db-id]
-  (-> from-tbl-id
-      Table
+  (-> (db/select-one Table :id from-tbl-id)
       (dissoc :id)
       (update :display_name #(str "Temp " %))
       (assoc :db_id db-id)))

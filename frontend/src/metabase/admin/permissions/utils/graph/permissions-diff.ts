@@ -1,7 +1,9 @@
-import _ from "underscore";
-
-import { Group, GroupsPermissions } from "metabase-types/api";
-import Database from "metabase-lib/lib/metadata/Database";
+import type {
+  Group,
+  GroupsPermissions,
+  ConcreteTableId,
+} from "metabase-types/api";
+import type Database from "metabase-lib/lib/metadata/Database";
 import {
   getFieldsPermission,
   getNativePermission,
@@ -46,7 +48,7 @@ function diffDatabasePermissions(
       {
         databaseId: database.id,
         schemaName: table.schema_name || "",
-        tableId: table.id,
+        tableId: table.id as ConcreteTableId,
       },
       "data",
     );
@@ -56,7 +58,7 @@ function diffDatabasePermissions(
       {
         databaseId: database.id,
         schemaName: table.schema_name || "",
-        tableId: table.id,
+        tableId: table.id as ConcreteTableId,
       },
       "data",
     );

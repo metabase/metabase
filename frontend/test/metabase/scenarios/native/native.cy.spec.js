@@ -58,7 +58,7 @@ describe("scenarios > question > native", () => {
     // selecting a question should update the query
     popover().contains("Orders").click();
 
-    cy.contains("select * from {{#1}}");
+    cy.contains("select * from {{#1-orders}}");
 
     // run query and see that a value from the results appears
     cy.get(".NativeQueryEditor .Icon-play").click();
@@ -66,7 +66,9 @@ describe("scenarios > question > native", () => {
 
     // update the text of the query to reference question 2
     // :visible is needed because there is an unused .ace_content present in the DOM
-    cy.get(".ace_content:visible").type("{leftarrow}{leftarrow}{backspace}2");
+    cy.get(".ace_content:visible").type(
+      "{leftarrow}{leftarrow}{backspace}{backspace}{backspace}{backspace}{backspace}{backspace}{backspace}{backspace}2",
+    );
 
     // sidebar should show updated question title and name
     cy.contains("Question #2").parent().parent().contains("Orders, Count");
@@ -199,7 +201,7 @@ describe("scenarios > question > native", () => {
     cy.findByTestId("sidebar-left")
       .as("sidebar")
       .contains(/hidden/i)
-      .siblings(".Icon-close")
+      .siblings(".Icon-eye_filled")
       .click();
     cy.get("@editor").type("{movetoend}, 3 as added");
     cy.get("@runQuery").click();
@@ -261,5 +263,23 @@ describe("scenarios > question > native", () => {
         .should("have.attr", "href")
         .and("eq", `/question/${questionId}-test-question`);
     });
+  });
+
+  it("should not autorun ad-hoc native queries by default", () => {
+    visitQuestionAdhoc(
+      {
+        display: "scalar",
+        dataset_query: {
+          type: "native",
+          native: {
+            query: "SELECT 1",
+          },
+          database: SAMPLE_DB_ID,
+        },
+      },
+      { autorun: false },
+    );
+
+    cy.findByText("Here's where your results will appear").should("be.visible");
   });
 });

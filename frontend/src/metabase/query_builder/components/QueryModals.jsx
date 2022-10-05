@@ -54,6 +54,11 @@ class QueryModals extends React.Component {
     }
   };
 
+  onQueryChange = query => {
+    const question = query.question();
+    this.props.updateQuestion(question, { run: true });
+  };
+
   render() {
     const {
       modal,
@@ -166,7 +171,11 @@ class QueryModals extends React.Component {
       </Modal>
     ) : modal === MODAL_TYPES.FILTERS ? (
       <Modal fit onClose={onCloseModal}>
-        <BulkFilterModal question={question} onClose={onCloseModal} />
+        <BulkFilterModal
+          question={question}
+          onQueryChange={this.onQueryChange}
+          onClose={onCloseModal}
+        />
       </Modal>
     ) : modal === MODAL_TYPES.HISTORY ? (
       <Modal onClose={onCloseModal}>
@@ -228,7 +237,6 @@ class QueryModals extends React.Component {
               ...question.card(),
               ...formValues,
               description: formValues.description || null,
-              collection_position: null,
             });
             return { payload: { object } };
           }}

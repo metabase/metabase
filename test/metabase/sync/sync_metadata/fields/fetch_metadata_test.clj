@@ -86,4 +86,4 @@
                                                                    ;; defined in sets. changing keys will change the
                                                                    ;; order in the set implementation
                                                                    (m/filter-vals some? (dissoc % :id :database-position))))]
-             (remove-ids-and-nil-vals (#'fetch-metadata/our-metadata (Table transactions-table-id))))))))
+             (remove-ids-and-nil-vals (#'fetch-metadata/our-metadata (db/select-one Table :id transactions-table-id))))))))

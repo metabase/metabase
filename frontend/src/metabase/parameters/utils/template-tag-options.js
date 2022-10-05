@@ -1,13 +1,12 @@
 import { t } from "ttag";
 
-import { getOperatorDisplayName, buildTypedOperatorOptions } from "./operators";
-import { fieldFilterForParameter } from "./filters";
-
 import {
   OPTIONS_WITH_OPERATOR_SUBTYPES,
   PARAMETER_OPERATOR_TYPES,
   ID_OPTION,
 } from "../constants";
+import { getOperatorDisplayName, buildTypedOperatorOptions } from "./operators";
+import { fieldFilterForParameter } from "./filters";
 
 export function getParameterOptions() {
   return [

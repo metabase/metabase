@@ -57,7 +57,7 @@
           (some
            (fn [a-snippet]
              (= (u/the-id a-snippet) (u/the-id snippet)))
-           ((mt/user->client :rasta) :get "native-query-snippet"))))))))
+           (mt/user-http-request :rasta :get "native-query-snippet"))))))))
 
 (deftest fetch-test
   (testing "GET /api/native-query-snippet/:id"
@@ -65,7 +65,7 @@
       (test-perms
        :read
        (fn [snippet]
-         (let [response ((mt/user->client :rasta) :get (format "native-query-snippet/%d" (u/the-id snippet)))]
+         (let [response (mt/user-http-request :rasta :get (format "native-query-snippet/%d" (u/the-id snippet)))]
            (not= response "You don't have permissions to do that.")))))))
 
 (deftest create-test
@@ -78,7 +78,7 @@
          (let [snippet-name       (mt/random-name)
                snippet-properties (-> snippet (assoc :name snippet-name) (dissoc :id))]
            (try
-             (let [response ((mt/user->client :rasta) :post "native-query-snippet" snippet-properties)]
+             (let [response (mt/user-http-request :rasta :post "native-query-snippet" snippet-properties)]
                (not= response "You don't have permissions to do that."))
              (finally
                (db/delete! NativeQuerySnippet :name snippet-name)))))))))
@@ -89,7 +89,7 @@
       (test-perms
        :write
        (fn [snippet]
-         (let [response ((mt/user->client :rasta) :put (format "native-query-snippet/%d" (u/the-id snippet)) {:name (mt/random-name)})]
+         (let [response (mt/user-http-request :rasta :put (format "native-query-snippet/%d" (u/the-id snippet)) {:name (mt/random-name)})]
            (not= response "You don't have permissions to do that.")))))))
 
 (deftest move-perms-test
@@ -104,7 +104,7 @@
                 (letfn [(has-perms? []
                           ;; make sure the Snippet is back in the original Collection if it was changed
                           (db/update! NativeQuerySnippet (:id snippet) :collection_id (:id source-collection))
-                          (let [response ((mt/user->client :rasta) :put (format "native-query-snippet/%d" (:id snippet))
+                          (let [response (mt/user-http-request :rasta :put (format "native-query-snippet/%d" (:id snippet))
                                           {:collection_id (:id dest-collection)})]
                             (cond
                               (= response "You don't have permissions to do that.")                     false

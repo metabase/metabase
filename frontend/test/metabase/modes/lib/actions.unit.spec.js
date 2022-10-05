@@ -1,5 +1,5 @@
-import { drillFilter } from "metabase/modes/lib/actions";
 import { ORDERS } from "__support__/sample_database_fixture";
+import { drillFilter } from "metabase-lib/lib/queries/utils/actions";
 
 describe("actions", () => {
   describe("drillFilter", () => {

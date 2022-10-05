@@ -260,7 +260,7 @@
       (time/to-time-zone (time.coerce/from-date parsed-date) joda-tz))))
 
 (defn ^:deprecated create-db-time-formatters
-  "Creates date formatters from `DATE-FORMAT-STR` that will preserve the offset/timezone information. Will return a
+  "Creates date formatters from `date-format-str` that will preserve the offset/timezone information. Will return a
   JodaTime date formatter and a core Java SimpleDateFormat. Results of this are threadsafe and can safely be def'd."
   [date-format-str]
   [(.withOffsetParsed ^DateTimeFormatter (time.format/formatter date-format-str))
@@ -275,22 +275,22 @@
         (parse formatter time-str))))
 
 (defmulti ^:deprecated current-db-time-native-query
-  "Return a native query that will fetch the current time (presumably as a string) used by the `current-db-time`
+  "Return a native query that will fetch the current time (presumably as a string) used by the [[current-db-time]]
   implementation below.
 
-  DEPRECATED — `metabase.driver/current-db-time`, the method this function provides an implementation for, is itself
-  deprecated. Implement `metabase.driver/db-default-timezone` instead directly."
+  DEPRECATED — [[metabase.driver/current-db-time]], the method this function provides an implementation for, is itself
+  deprecated. Implement [[metabase.driver/db-default-timezone]] instead directly."
   {:arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defmulti ^:deprecated current-db-time-date-formatters
-  "Return JODA time date formatters to parse the current time returned by `current-db-time-native-query`. Used by
-  `current-db-time` implementation below. You can use `create-db-time-formatters` provided by this namespace to create
+  "Return JODA time date formatters to parse the current time returned by [[current-db-time-native-query`]] Used by
+  `current-db-time` implementation below. You can use [[create-db-time-formatters]] provided by this namespace to create
   formatters for a date format string.
 
-  DEPRECATED — `metabase.driver/current-db-time`, the method this function provides an implementation for, is itself
-  deprecated. Implement `metabase.driver/db-default-timezone` instead directly."
+  DEPRECATED — [[metabase.driver/current-db-time]], the method this function provides an implementation for, is itself
+  deprecated. Implement [[metabase.driver/db-default-timezone]] instead directly."
   {:arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
@@ -309,8 +309,8 @@
     (let [native-query    (current-db-time-native-query driver)
           date-formatters (current-db-time-date-formatters driver)
           time-str        (try
-                            ;; need to initialize the store since we're calling `execute-reducible-query` directly
-                            ;; instead of going thru normal QP pipeline
+                            ;; need to initialize the store since we're calling [[driver/execute-reducible-query]]
+                            ;; directly instead of going thru normal QP pipeline
                             (qp.store/with-store
                               (qp.store/fetch-and-store-database! (u/the-id database))
                               (let [query {:database (u/the-id database), :native {:query native-query}}

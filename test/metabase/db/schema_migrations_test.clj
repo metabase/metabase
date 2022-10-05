@@ -18,6 +18,7 @@
    [metabase.models :refer [Card Collection Dashboard Database Field Permissions PermissionsGroup Pulse Setting Table User]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
    [metabase.util :as u]
@@ -37,7 +38,7 @@
         (db/simple-insert! Field (assoc mock-field :name "Field 1"))
         (db/simple-insert! Field (assoc mock-field :name "Field 2")))
       (testing "sanity check: Fields should not have a `:database_position` column yet"
-        (is (not (contains? (Field 1) :database_position))))
+        (is (not (contains? (db/select-one Field :id 1) :database_position))))
       ;; now run migration 165
       (migrate!)
       (testing "Fields should get `:database_position` equal to their IDs"
@@ -668,3 +669,14 @@
                                                            :group_id (all-users-group-id)}]})
                               (migrate!)
                               (is (= ["All Users"] (get-perms))))))))
+
+(deftest make-database-details-not-null-test
+  (testing "Migrations v45.00-042 and v45.00-043: set default value of '{}' for Database rows with NULL details"
+    (impl/test-migrations ["v45.00-042" "v45.00-043"] [migrate!]
+      (let [database-id (db/simple-insert! Database (-> (dissoc (mt/with-temp-defaults Database) :details)
+                                                        (assoc :engine "h2")))]
+        (is (partial= {:details nil}
+                      (db/select-one Database :id database-id)))
+        (migrate!)
+        (is (partial= {:details {}}
+                      (db/select-one Database :id database-id)))))))

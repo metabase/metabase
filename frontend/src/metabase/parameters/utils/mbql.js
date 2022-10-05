@@ -1,6 +1,11 @@
 import moment from "moment-timezone";
 import _ from "underscore";
 
+import {
+  setStartingFrom,
+  EXCLUDE_OPTIONS,
+  EXCLUDE_UNITS,
+} from "metabase-lib/lib/queries/utils/query-time";
 import Dimension, {
   FieldDimension,
   TemplateTagDimension,
@@ -9,11 +14,6 @@ import { getParameterSubType, isDateParameter } from "./parameter-type";
 import { getParameterOperatorName } from "./operators";
 import { isDimensionTarget } from "./targets";
 import { hasParameterValue } from "./parameter-values";
-import {
-  setStartingFrom,
-  EXCLUDE_OPTIONS,
-  EXCLUDE_UNITS,
-} from "metabase/lib/query_time";
 
 const withTemporalUnit = (fieldRef, unit) => {
   const dimension =

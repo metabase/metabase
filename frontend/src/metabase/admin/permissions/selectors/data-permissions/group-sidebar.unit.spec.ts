@@ -1,5 +1,5 @@
-import { getGroupsDataPermissionEditor } from ".";
 import { state } from "./data-permissions.unit.spec.fixtures";
+import { getGroupsDataPermissionEditor } from ".";
 
 describe("getGroupsDataPermissionEditor", () => {
   it("returns data for permission editor header", () => {

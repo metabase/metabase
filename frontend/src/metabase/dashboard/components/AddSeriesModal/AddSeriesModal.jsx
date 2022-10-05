@@ -16,9 +16,8 @@ import Questions from "metabase/entities/questions";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { loadMetadataForQueries } from "metabase/redux/metadata";
 
-import Question from "metabase-lib/lib/Question";
-
 import { getVisualizationRaw } from "metabase/visualizations";
+import Question from "metabase-lib/lib/Question";
 
 import { QuestionList } from "./QuestionList";
 

@@ -18,6 +18,11 @@
 
 (models/defmodel Segment :segment)
 
+(doto Segment
+  (derive ::mi/read-policy.full-perms-for-perms-set)
+  (derive ::mi/write-policy.superuser)
+  (derive ::mi/create-policy.superuser))
+
 (defn- pre-update [{:keys [creator_id id], :as updates}]
   (u/prog1 updates
     ;; throw an Exception if someone tries to update creator_id
@@ -25,12 +30,13 @@
       (when (not= creator_id (db/select-one-field :creator_id Segment :id id))
         (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Segment.")))))))
 
-(defn- perms-objects-set [segment read-or-write]
+(defmethod mi/perms-objects-set Segment
+  [segment read-or-write]
   (let [table (or (:table segment)
                   (db/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id segment))))]
     (mi/perms-objects-set table read-or-write)))
 
-(u/strict-extend (class Segment)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Segment)
   models/IModel
   (merge
    models/IModelDefaults
@@ -39,15 +45,6 @@
                                  :entity_id    true})
     :hydration-keys (constantly [:segment])
     :pre-update     pre-update})
-  mi/IObjectPermissions
-  (merge
-   mi/IObjectPermissionsDefaults
-   {:perms-objects-set perms-objects-set
-    :can-read?         (partial mi/current-user-has-full-permissions? :read)
-    ;; for the time being you need to be a superuser in order to create or update Segments because the UI for
-    ;; doing so is only exposed in the admin panel
-    :can-write?        mi/superuser?
-    :can-create?       mi/superuser?})
 
   serdes.hash/IdentityHashable
   {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :table)])})
@@ -55,31 +52,27 @@
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
-(defn- serialize-segment [_ _ instance]
+(defmethod revision/serialize-instance Segment
+  [_model _id instance]
   (dissoc instance :created_at :updated_at))
 
-(defn- diff-segments [this segment1 segment2]
+(defmethod revision/diff-map Segment
+  [model segment1 segment2]
   (if-not segment1
     ;; this is the first version of the segment
     (m/map-vals (fn [v] {:after v}) (select-keys segment2 [:name :description :definition]))
     ;; do our diff logic
-    (let [base-diff (revision/default-diff-map this
-                                               (select-keys segment1 [:name :description :definition])
-                                               (select-keys segment2 [:name :description :definition]))]
+    (let [base-diff ((get-method revision/diff-map :default)
+                     model
+                     (select-keys segment1 [:name :description :definition])
+                     (select-keys segment2 [:name :description :definition]))]
       (cond-> (merge-with merge
                           (m/map-vals (fn [v] {:after v}) (:after base-diff))
                           (m/map-vals (fn [v] {:before v}) (:before base-diff)))
-              (or (get-in base-diff [:after :definition])
-                  (get-in base-diff [:before :definition])) (assoc :definition {:before (get-in segment1 [:definition])
-                                                                                :after  (get-in segment2 [:definition])})))))
+        (or (get-in base-diff [:after :definition])
+            (get-in base-diff [:before :definition])) (assoc :definition {:before (get-in segment1 [:definition])
+                                                                          :after  (get-in segment2 [:definition])})))))
 
-
-(u/strict-extend (class Segment)
-  revision/IRevisioned
-  (merge
-   revision/IRevisionedDefaults
-   {:serialize-instance serialize-segment
-    :diff-map           diff-segments}))
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
 
@@ -92,14 +85,14 @@
   [_model-name _opts segment]
   (-> (serdes.base/extract-one-basics "Segment" segment)
       (update :table_id   serdes.util/export-table-fk)
-      (update :creator_id serdes.util/export-fk-keyed 'User :email)
+      (update :creator_id serdes.util/export-user)
       (update :definition serdes.util/export-json-mbql)))
 
 (defmethod serdes.base/load-xform "Segment" [segment]
   (-> segment
       serdes.base/load-xform-basics
       (update :table_id   serdes.util/import-table-fk)
-      (update :creator_id serdes.util/import-fk-keyed 'User :email)
+      (update :creator_id serdes.util/import-user)
       (update :definition serdes.util/import-json-mbql)))
 
 (defmethod serdes.base/serdes-dependencies "Segment" [{:keys [definition table_id]}]
@@ -108,7 +101,7 @@
 
 ;;; ------------------------------------------------------ Etc. ------------------------------------------------------
 
-(s/defn retrieve-segments :- [SegmentInstance]
+(s/defn retrieve-segments :- [(mi/InstanceOf Segment)]
   "Fetch all `Segments` for a given `Table`. Optional second argument allows filtering by active state by providing
    one of 3 keyword values: `:active`, `:deleted`, `:all`. Default filtering is for `:active`."
   ([table-id :- su/IntGreaterThanZero]

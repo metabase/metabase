@@ -181,7 +181,7 @@
 (defmacro ^:private calculate-bird-scarcity [formula & [filter-clause]]
   `(mt/dataset ~'daily-bird-counts
      (mt/$ids ~'bird-count
-       (calculate-bird-scarcity* ~formula ~filter-clause))))
+              (calculate-bird-scarcity* ~formula ~filter-clause))))
 
 (deftest nulls-and-zeroes-test
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :expressions)

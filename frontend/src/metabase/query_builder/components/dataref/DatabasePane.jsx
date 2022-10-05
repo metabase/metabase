@@ -1,10 +1,10 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import PropTypes from "prop-types";
-import DatabaseSchemasPane from "./DatabaseSchemasPane";
-import DatabaseTablesPane from "./DatabaseTablesPane";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Databases from "metabase/entities/databases";
+import DatabaseSchemasPane from "./DatabaseSchemasPane";
+import DatabaseTablesPane from "./DatabaseTablesPane";
 
 class DatabasePaneInner extends React.Component {
   componentDidMount() {

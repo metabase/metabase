@@ -1,6 +1,5 @@
 import React, { useMemo } from "react";
 import cx from "classnames";
-import _ from "underscore";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
 

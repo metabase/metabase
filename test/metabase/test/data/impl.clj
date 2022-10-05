@@ -119,7 +119,7 @@
                 (catch Throwable e
                   (log/error e "Error adding extra metadata"))))))
         ;; make sure we're returing an up-to-date copy of the DB
-        (Database (u/the-id db))
+        (db/select-one Database :id (u/the-id db))
         (catch Throwable e
           (let [e (ex-info (format "Failed to create test database: %s" (ex-message e))
                            {:driver             driver

@@ -3,17 +3,17 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import DetailPane from "./DetailPane";
-import QueryButton from "metabase/components/QueryButton";
-import QueryDefinition from "../QueryDefinition";
-
-import { createCard } from "metabase/lib/card";
-import * as Q_DEPRECATED from "metabase/lib/query";
 
 import _ from "underscore";
+import { createCard } from "metabase/lib/card";
+
+import QueryButton from "metabase/components/QueryButton";
 import { fetchTableMetadata } from "metabase/redux/metadata";
 
 import { getMetadata } from "metabase/selectors/metadata";
+import * as Q_DEPRECATED from "metabase-lib/lib/queries/utils";
+import QueryDefinition from "../QueryDefinition";
+import DetailPane from "./DetailPane";
 
 const mapDispatchToProps = {
   fetchTableMetadata,
@@ -87,7 +87,6 @@ class MetricPane extends Component {
 
     return (
       <DetailPane
-        name={metricName}
         description={metric.description}
         useForCurrentQuestion={useForCurrentQuestion}
         usefulQuestions={usefulQuestions}

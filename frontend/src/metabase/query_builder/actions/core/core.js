@@ -1,4 +1,3 @@
-import _ from "underscore";
 import { createAction } from "redux-actions";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
@@ -9,19 +8,23 @@ import * as Urls from "metabase/lib/urls";
 import Utils from "metabase/lib/utils";
 import { createThunkAction } from "metabase/lib/redux";
 
-import { cardIsEquivalent, cardQueryIsEquivalent } from "metabase/meta/Card";
-
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 
 import { openUrl } from "metabase/redux/app";
-import { setRequestUnloaded } from "metabase/redux/requests";
 
 import Questions from "metabase/entities/questions";
+import Databases from "metabase/entities/databases";
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
+import {
+  cardIsEquivalent,
+  cardQueryIsEquivalent,
+} from "metabase-lib/lib/queries/utils/card";
+import Query from "metabase-lib/lib/queries/Query";
 
 import { trackNewQuestionSaved } from "../../analytics";
 import {
   getCard,
+  getIsResultDirty,
   getOriginalQuestion,
   getQuestion,
   getResultsMetadata,
@@ -96,7 +99,7 @@ export const setCardAndRun = (nextCard, shouldUpdateUrl = true) => {
 
     const originalCard = card.original_card_id
       ? // If the original card id is present, dynamically load its information for showing lineage
-        await loadCard(card.original_card_id)
+        await loadCard(card.original_card_id, { dispatch, getState })
       : // Otherwise, use a current card as the original card if the card has been saved
       // This is needed for checking whether the card is in dirty state or not
       card.id
@@ -131,7 +134,9 @@ export const navigateToNewCardInsideQB = createThunkAction(
         // Do not reload questions with breakouts when clicked on a legend item
       } else if (cardIsEquivalent(previousCard, nextCard)) {
         // This is mainly a fallback for scenarios where a visualization legend is clicked inside QB
-        dispatch(setCardAndRun(await loadCard(nextCard.id)));
+        dispatch(
+          setCardAndRun(await loadCard(nextCard.id, { dispatch, getState })),
+        );
       } else {
         const card = getCardAfterVisualizationClick(nextCard, previousCard);
         const url = Urls.serializedQuestion(card);
@@ -158,6 +163,10 @@ export const navigateToNewCardInsideQB = createThunkAction(
 // DEPRECATED, still used in a couple places
 export const setDatasetQuery =
   (datasetQuery, options) => (dispatch, getState) => {
+    if (datasetQuery instanceof Query) {
+      datasetQuery = datasetQuery.datasetQuery();
+    }
+
     const question = getQuestion(getState());
     dispatch(updateQuestion(question.setDatasetQuery(datasetQuery), options));
   };
@@ -177,10 +186,10 @@ export const apiCreateQuestion = question => {
       .setResultsMetadata(resultsMetadata)
       .reduxCreate(dispatch);
 
-    // remove the databases in the store that are used to populate the QB databases list.
-    // This is done when saving a Card because the newly saved card will be eligible for use as a source query
-    // so we want the databases list to be re-fetched next time we hit "New Question" so it shows up
-    dispatch(setRequestUnloaded(["entities", "databases"]));
+    const databases = Databases.selectors.getList(getState());
+    if (databases && !databases.some(d => d.is_saved_questions)) {
+      dispatch({ type: Databases.actionTypes.INVALIDATE_LISTS_ACTION });
+    }
 
     dispatch(updateUrl(createdQuestion.card(), { dirty: false }));
     MetabaseAnalytics.trackStructEvent(
@@ -203,10 +212,12 @@ export const apiCreateQuestion = question => {
 };
 
 export const API_UPDATE_QUESTION = "metabase/qb/API_UPDATE_QUESTION";
-export const apiUpdateQuestion = (question, { rerunQuery = false } = {}) => {
+export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
   return async (dispatch, getState) => {
     const originalQuestion = getOriginalQuestion(getState());
     question = question || getQuestion(getState());
+
+    rerunQuery = rerunQuery || getIsResultDirty(getState());
 
     // Needed for persisting visualization columns for pulses/alerts, see #6749
     const series = getTransformedSeries(getState());
@@ -228,11 +239,6 @@ export const apiUpdateQuestion = (question, { rerunQuery = false } = {}) => {
     // reload the question alerts for the current question
     // (some of the old alerts might be removed during update)
     await dispatch(fetchAlertsForQuestion(updatedQuestion.id()));
-
-    // remove the databases in the store that are used to populate the QB databases list.
-    // This is done when saving a Card because the newly saved card will be eligible for use as a source query
-    // so we want the databases list to be re-fetched next time we hit "New Question" so it shows up
-    dispatch(setRequestUnloaded(["entities", "databases"]));
 
     MetabaseAnalytics.trackStructEvent(
       "QueryBuilder",

@@ -60,13 +60,9 @@
   "Color for dark text."
   "#4C5773")
 
-(def ^:const color-header-row-border
-  "Used as color for the bottom border of table headers for charts with `:table` vizualization."
-  "#EDF0F1")
-
-(def ^:const color-body-row-border
-  "Used as color for the bottom border of table body rows for charts with `:table` vizualization."
-  "#F0F0F04D")
+(def ^:const color-border
+  "Used as color for the border of table, table header, and table body rows for charts with `:table` vizualization."
+  "#F0F0F0")
 
 ;; don't try to improve the code and make this a plain variable, in EE it's customizable which is why it's a function.
 ;; Too much of a hassle to have it be a fn in one version of the code an a constant in another
@@ -95,7 +91,7 @@
   []
   (merge
    (font-style)
-   {:font-size       :14px
+   {:font-size       :18px
     :font-weight     700
     :color           (primary-color)
     :text-decoration :none}))

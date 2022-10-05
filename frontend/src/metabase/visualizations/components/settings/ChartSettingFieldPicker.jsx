@@ -1,11 +1,13 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
-import cx from "classnames";
 import _ from "underscore";
-import { keyForColumn } from "metabase/lib/dataset";
+import { keyForColumn } from "metabase-lib/lib/queries/utils/dataset";
 import ChartSettingSelect from "./ChartSettingSelect";
-import { SettingsIcon } from "./ChartSettingFieldPicker.styled";
+import {
+  SettingsIcon,
+  ChartSettingFieldPickerRoot,
+} from "./ChartSettingFieldPicker.styled";
 
 const ChartSettingFieldPicker = ({
   value,
@@ -16,44 +18,57 @@ const ChartSettingFieldPicker = ({
   className,
   columns,
   showColumnSetting,
+  showDragHandle,
+  columnHasSettings,
 }) => {
   let columnKey;
   if (value && showColumnSetting && columns) {
     const column = _.findWhere(columns, { name: value });
-    if (column) {
+    if (column && columnHasSettings(column)) {
       columnKey = keyForColumn(column);
     }
   }
   return (
-    <div className={cx(className, "flex align-center")}>
+    <ChartSettingFieldPickerRoot
+      className={className}
+      disabled={options.length === 1 && options[0].value === value}
+    >
+      {showDragHandle && (
+        <SettingsIcon name="grabber2" size={12} noPointer noMargin />
+      )}
       <ChartSettingSelect
-        className="flex-full"
         value={value}
         options={options}
         onChange={onChange}
         placeholder={t`Select a field`}
         placeholderNoOptions={t`No valid fields`}
         isInitiallyOpen={value === undefined}
+        hiddenIcons
       />
       {columnKey && (
         <SettingsIcon
-          name="gear"
-          onClick={() => {
-            onShowWidget({
-              id: "column_settings",
-              props: {
-                initialKey: columnKey,
+          name="ellipsis"
+          onClick={e => {
+            onShowWidget(
+              {
+                id: "column_settings",
+                props: {
+                  initialKey: columnKey,
+                },
               },
-            });
+              e.target,
+            );
           }}
         />
       )}
-      <SettingsIcon
-        data-testid={`remove-${value}`}
-        name="close"
-        onClick={onRemove}
-      />
-    </div>
+      {onRemove && (
+        <SettingsIcon
+          data-testid={`remove-${value}`}
+          name="close"
+          onClick={onRemove}
+        />
+      )}
+    </ChartSettingFieldPickerRoot>
   );
 };
 

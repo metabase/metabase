@@ -98,12 +98,9 @@ describe("scenarios > question > saved", () => {
   });
 
   it("should duplicate a saved question", () => {
-    cy.server();
-    cy.route("POST", "/api/card").as("cardCreate");
-    cy.route("POST", "/api/card/1/query").as("query");
+    cy.intercept("POST", "/api/card").as("cardCreate");
 
     visitQuestion(1);
-    cy.wait("@query");
 
     openQuestionActions();
     popover().within(() => {

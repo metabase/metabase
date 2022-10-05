@@ -4,6 +4,7 @@
             [metabase-enterprise.audit-app.pages.common :as common]
             [metabase.models.card :refer [Card]]
             [metabase.models.dashboard :refer [Dashboard]]
+            [metabase.models.interface :as mi]
             [metabase.models.revision :as revision]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.schema :as su]
@@ -77,7 +78,8 @@
 
 (s/defn revision-history
   "Get a revision history table for a Card or Dashboard."
-  [model-entity :- (s/cond-pre (class Card) (class Dashboard)), model-id :- su/IntGreaterThanZero]
+  [model-entity :- (s/cond-pre (mi/InstanceOf Card) (mi/InstanceOf Dashboard))
+   model-id     :- su/IntGreaterThanZero]
   {:metadata [[:timestamp   {:display_name "Edited on",   :base_type :type/DateTime}]
               [:user_id     {:display_name "User ID",     :base_type :type/Integer, :remapped_to   :user_name}]
               [:user_name   {:display_name "Edited by",   :base_type :type/Name,    :remapped_from :user_id}]

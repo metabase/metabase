@@ -1,5 +1,7 @@
 ---
 title: Data reference
+redirect_from:
+  - /docs/latest/users-guide/12-data-model-reference
 ---
 
 ## Data reference
@@ -20,4 +22,4 @@ If you click on a column you’re interested in, you’ll see a description of i
 
 ### Foreign keys
 
-You can find a list of connections to other tables (i.e., [foreign key](/glossary/foreign_key) relationships) under **Connected to these tables**. If there’s a column in the table you’re looking at that’s included in another table, Metabase will display this section in the sidebar. Note that connections are managed by your Metabase admin. If a foreign key relationship exists in your database, but not in your Metabase, your Metabase admin will need to update your [Metabase data model](../../data-modeling/metadata-editing.md).
+You can find a list of connections to other tables (i.e., [foreign key](https://www.metabase.com/glossary/foreign_key) relationships) under **Connected to these tables**. If there’s a column in the table you’re looking at that’s included in another table, Metabase will display this section in the sidebar. Note that connections are managed by your Metabase admin. If a foreign key relationship exists in your database, but not in your Metabase, your Metabase admin will need to update your [Metabase data model](../../data-modeling/metadata-editing.md).
