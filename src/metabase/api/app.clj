@@ -173,7 +173,7 @@
                                                :field-id)]
                   page-type ["list" "detail"]]
               {:scaffold-target ["card" table-id page-type]
-               :name (format "Query %s %s"
+               :name (format "%s %s"
                              (or (:display_name table) (:name table))
                              (get-in page-type-display [page-type :name]))
                :display (get-in page-type-display [page-type :display])
@@ -219,7 +219,7 @@
                                                          "target" ["dimension", ["field", pk-field-id, nil]]}]
                                    :card_id ["scaffold-target-id" "card" table-id "detail"]
                                    :scaffold-target ["dashcard" table-id]}
-                                  {:size_y 1 :size_x 2 :row 0 :col 0
+                                  {:size_y 1 :size_x 3 :row 0 :col 0
                                    :visualization_settings {"virtual_card" {"display" "action"}
                                                             "button.label" (i18n/tru "← Back to list"),
                                                             "click_behavior" {"type" "link" "linkType" "page" "targetId" ["scaffold-target-id" "page" table-id "list"]}}}
