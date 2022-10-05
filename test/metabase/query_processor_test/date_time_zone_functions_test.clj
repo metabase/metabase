@@ -304,54 +304,6 @@
               .toString)
           zone-id])))
 
-#_(mt/with-driver :mysql
-    (mt/dataset times-mixed
-                (->> (mt/mbql-query times
-                                         {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt_tz) nil]
-                                                                (offset->zone "+09:00")
-                                                                (offset->zone "+00:00")]}
-                                          :limit 1
-                                          :fields [[:expression "expr"]
-                                                   [:field (mt/id :times :dt_tz) nil]]})
-                     mt/process-query
-                     mt/rows)))
-
-  (mt/with-report-timezone-id "Asia/Singapore"
-   (mt/with-driver :mysql
-       (mt/dataset times-mixed
-                   (->> (mt/mbql-query times
-                                            {:limit 1
-                                             :fields [[:field (mt/id :times :dt_tz) nil]]})
-                        mt/process-query
-                        mt/rows))))
-
-
-
-#_(mt/with-driver :mysql
-      (mt/dataset times-mixed
-                  (->> (mt/mbql-query times
-                                           {:limit 1
-                                            :fields [[:field (mt/id :times :dt_tz) nil]]})
-                       mt/process-query
-                       mt/rows)))
-;; => [["2004-03-19T03:19:09Z"]]
-#_(mt/with-driver :postgres
-         (mt/dataset times-mixed
-                     (->> (mt/mbql-query times
-                                              {:limit 1
-                                               :fields [[:field (mt/id :times :dt_tz) nil]]})
-                          mt/process-query
-                          mt/rows)))
-;; => [["2004-03-19T02:19:09Z"]]
-
-#_(dev/query-jdbc-db [:mysql 'times-mixed] "select @@session.time_zone;")
-
-#_(dev/query-jdbc-db [:postgres 'times-mixed] "show timezone;")
-
-#_(metabase.test.data.sql-jdbc.load-data/destroy-db! :mysql times-mixed)
-
-#_(metabase.test.data.sql-jdbc.load-data/create-db! :mysql times-mixed)
-
 (deftest convert-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
     (mt/dataset times-mixed
