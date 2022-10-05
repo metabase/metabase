@@ -97,9 +97,11 @@ export default class SaveQuestionModal extends Component {
           : "create",
     };
 
+    const questionType = card.dataset ? "model" : "question";
+
     const title = this.props.multiStep
-      ? t`First, save your question`
-      : t`Save question`;
+      ? t`First, save your ${questionType}`
+      : t`Save ${questionType}`;
 
     const showSaveType =
       !card.id &&

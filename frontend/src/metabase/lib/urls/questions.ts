@@ -93,7 +93,7 @@ export function serializedQuestion(card: Card, opts = {}) {
 }
 
 type NewQuestionUrlBuilderParams = QuestionCreatorOpts & {
-  mode?: "view" | "notebook";
+  mode?: "view" | "notebook" | "query";
   creationType?: string;
   objectId?: number | string;
 };
@@ -109,8 +109,10 @@ export function newQuestion({
     creationType,
     query: objectId ? { objectId } : undefined,
   });
+
+  const entity = question.isDataset() ? "model" : "question";
+
   if (mode) {
-    const entity = question.isDataset() ? "model" : "question";
     return url.replace(/^\/(question|model)/, `/${entity}\/${mode}`);
   } else {
     return url;
