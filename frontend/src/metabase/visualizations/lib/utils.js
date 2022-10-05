@@ -306,6 +306,22 @@ export function getDefaultDimensionsAndMetrics(
   ) {
     dimensions = dimensionNotMetricColumns;
     metrics = metricColumns;
+  } else if (
+    dimensionNotMetricColumns.length > maxDimensions &&
+    metricColumns.length <= maxMetrics
+  ) {
+    //We only sort up to 10 dimensions because calculating column cardinality can be expensive
+    const sortableDimensions = dimensionNotMetricColumns
+      .slice(0, 10)
+      .map(dimension => ({
+        dimension,
+        cardinality: getColumnCardinality(cols, rows, cols.indexOf(dimension)),
+      }));
+    dimensions = sortableDimensions
+      .sort((a, b) => b.cardinality - a.cardinality)
+      .map(sortedDimension => sortedDimension.dimension)
+      .slice(0, maxDimensions);
+    metrics = metricColumns;
   }
 
   if (dimensions.length === 2) {

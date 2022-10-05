@@ -70,7 +70,15 @@ function getDefaultScatterColumns([
 }
 
 function getDefaultLineAreaBarColumns(series) {
-  return getDefaultDimensionsAndMetrics(series);
+  const [
+    {
+      card: { display },
+    },
+  ] = series;
+  return getDefaultDimensionsAndMetrics(
+    series,
+    getMaxDimensionsSupported(display),
+  );
 }
 
 export const GRAPH_DATA_SETTINGS = {
