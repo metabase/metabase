@@ -80,22 +80,14 @@ export function calculateSegmentLabelTextAnchor(angle: number): TextAnchor {
 export function calculateChartScale(gaugeLabels: GaugeLabelData[]) {
   const gaugeLabelDimensions = gaugeLabels.map(gaugeLabel => {
     const labelWidth = measureText(gaugeLabel.value, SEGMENT_LABEL_FONT_SIZE);
-    function calculateLeftXOffset() {
-      switch (gaugeLabel.textAnchor) {
-        case "start":
-          return 0;
-        case "end":
-          return labelWidth;
-        case "middle":
-          return labelWidth / 2;
-        default:
-          return 0;
-      }
-    }
 
     return {
-      left: gaugeLabel.position[0] - calculateLeftXOffset(),
-      right: gaugeLabel.position[0] + (labelWidth - calculateLeftXOffset()),
+      left:
+        gaugeLabel.position[0] -
+        calculateLeftXOffset(gaugeLabel.textAnchor, labelWidth),
+      right:
+        gaugeLabel.position[0] +
+        (labelWidth - calculateLeftXOffset(gaugeLabel.textAnchor, labelWidth)),
     };
   });
 
@@ -111,6 +103,19 @@ export function calculateChartScale(gaugeLabels: GaugeLabelData[]) {
   );
 
   return Math.min(1, GAUGE_OUTER_RADIUS / maxLabelDistanceFromCenter);
+}
+
+function calculateLeftXOffset(textAnchor: TextAnchor, labelWidth: number) {
+  switch (textAnchor) {
+    case "start":
+      return 0;
+    case "end":
+      return labelWidth;
+    case "middle":
+      return labelWidth / 2;
+    default:
+      return 0;
+  }
 }
 
 export function gaugeAccessor(segment: GaugeSegment) {
