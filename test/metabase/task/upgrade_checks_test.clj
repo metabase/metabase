@@ -7,9 +7,7 @@
 (deftest site-uuid-test
   (testing "A unique and stable site UUID is included in version info requests"
     (http-fake/with-fake-routes-in-isolation
-      {#"http://static.metabase.com/version-info(-ee)?.json.*"
-       (fn [req]
-         (is (= (str "instance=" (public-settings/site-uuid-for-version-info-fetching))
-                (get-in req [:query-string])))
-         {:status 200 :body "{}"})}
+      {{:address #"http://static.metabase.com/version-info(-ee)?.json"
+        :query-params {:instance (public-settings/site-uuid-for-version-info-fetching)}}
+       (constantly {:status 200 :body ""})}
       (@#'upgrade-checks/get-version-info))))
