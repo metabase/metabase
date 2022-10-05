@@ -98,9 +98,9 @@ export default function Gauge({ card, data, getColor }: GaugeProps) {
             -(GAUGE_INNER_RADIUS + GAUGE_OUTER_RADIUS) / 2,
             SEGMENT_LABEL_MARGIN + DISTANCE_TO_MIDDLE_LABEL_ANCHOR,
           ],
-          color: getColor("text-medium"),
           textAnchor: "middle",
           value: formatNumber(segmentValue),
+          color: getColor("text-medium"),
         };
       }
 
@@ -110,17 +110,17 @@ export default function Gauge({ card, data, getColor }: GaugeProps) {
             (GAUGE_INNER_RADIUS + GAUGE_OUTER_RADIUS) / 2,
             SEGMENT_LABEL_MARGIN + DISTANCE_TO_MIDDLE_LABEL_ANCHOR,
           ],
-          color: getColor("text-medium"),
           textAnchor: "middle",
           value: formatNumber(segmentValue),
+          color: getColor("text-medium"),
         };
       }
 
       return {
         position: calculateSegmentLabelPosition(segmentValueAngle),
-        color: getColor("text-medium"),
         textAnchor: calculateSegmentLabelTextAnchor(segmentValueAngle),
         value: formatNumber(segmentValue),
+        color: getColor("text-medium"),
       };
     });
 
@@ -136,7 +136,6 @@ export default function Gauge({ card, data, getColor }: GaugeProps) {
         );
 
       return {
-        color: getColor("text-dark"),
         position: calculateSegmentLabelPosition(angle),
         textAnchor: calculateSegmentLabelTextAnchor(angle),
         value: truncateText(
@@ -144,6 +143,7 @@ export default function Gauge({ card, data, getColor }: GaugeProps) {
           MAX_SEGMENT_VALUE_WIDTH,
           SEGMENT_LABEL_FONT_SIZE,
         ),
+        color: getColor("text-dark"),
       };
     });
 
