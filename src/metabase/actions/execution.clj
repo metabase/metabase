@@ -122,7 +122,7 @@
                           :row/create)
         row-parameters (cond-> simple-parameters
                          (not= implicit-action :row/create) (dissoc pk-field-name))
-        _ (api/check (and (not= implicit-action :row/delete) (seq row-parameters))
+        _ (api/check (or (= implicit-action :row/delete) (seq row-parameters))
                      400
                      (tru "Implicit parameters must be provided."))
         arg-map (cond-> query
