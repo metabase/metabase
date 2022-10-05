@@ -3,7 +3,8 @@
     [clojure.test :refer [deftest is testing]]
     [metabase.actions.test-util :as actions.test-util]
     [metabase.models :refer [Card ModelAction]]
-    [metabase.test :as mt]))
+    [metabase.test :as mt]
+    [toucan.db :as db]))
 
 (deftest get-test
   (actions.test-util/with-actions-enabled
@@ -41,3 +42,12 @@
             (is (partial=
                   {:slug "custom"}
                   response))))))))
+
+(deftest put-test
+  (actions.test-util/with-actions-enabled
+    (actions.test-util/with-action [{:keys [action-id]} {}]
+      (mt/with-temp* [Card [{card-id :id} {:dataset true}]
+                      ModelAction [{model-action-id :id} {:card_id card-id :slug "implicit"}]]
+        (mt/user-http-request :crowberto :put 204 (str "model-action/" model-action-id)
+                              {:action_id action-id})
+        (is (= action-id (db/select-one-field :action_id ModelAction :id model-action-id)))))))

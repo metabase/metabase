@@ -700,8 +700,10 @@
 ;;; ---------------------------------- Executing the action associated with a Dashcard -------------------------------
 (api/defendpoint GET "/:dashboard-id/dashcard/:dashcard-id/execute/:slug"
   "Fetches the values for filling in execution parameters."
-  [_dashboard-id _dashcard-id slug]
-  {slug su/NonBlankString}
+  [dashboard-id dashcard-id slug]
+  {dashboard-id su/IntGreaterThanZero
+   dashcard-id su/IntGreaterThanZero
+   slug su/NonBlankString}
   (throw (UnsupportedOperationException. "Not implemented")))
 
 (api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/execute/:slug"
@@ -710,8 +712,10 @@
    `parameters` should be the mapped dashboard parameters with values.
    `extra_parameters` should be the extra, user entered parameter values."
   [dashboard-id dashcard-id slug :as {{:keys [parameters], :as _body} :body}]
-  {parameters (s/maybe {s/Keyword s/Any})
-   slug su/NonBlankString}
+  {dashboard-id su/IntGreaterThanZero
+   dashcard-id su/IntGreaterThanZero
+   slug su/NonBlankString
+   parameters (s/maybe {s/Keyword s/Any})}
   ;; Undo middleware string->keyword coercion
   (actions.execution/execute-dashcard! dashboard-id dashcard-id slug (update-keys parameters name)))
 

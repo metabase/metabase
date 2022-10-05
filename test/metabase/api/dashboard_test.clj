@@ -1071,7 +1071,7 @@
           ;; Only action card should change
           (is (partial= [{:card_id model-id-2}
                          {:card_id model-id}]
-                        (db/select DashboardCard :dashboard_id dashboard-id))))))))
+                        (db/select DashboardCard :dashboard_id dashboard-id {:order-by [:id]}))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        GET /api/dashboard/:id/revisions                                        |
