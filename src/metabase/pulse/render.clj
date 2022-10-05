@@ -81,11 +81,8 @@
         (#{:pin_map :state :country} display-type)
         (chart-type nil "display-type is %s" display-type)
 
-        (= display-type :gauge)
-        (chart-type display-type "display-type is gauge")
-
         ;; for scalar/smartscalar, the display-type might actually be :line, so we can't have line above
-        (and (not= display-type :progress)
+        (and (not (contains? #{:progress :gauge} display-type))
              (= @col-sample-count @row-sample-count 1))
         (chart-type :scalar "result has one row and one column")
 
@@ -97,6 +94,7 @@
            :combo
            :funnel
            :progress
+           :gauge
            :table
            :waterfall} display-type)
         (chart-type display-type "display-type is %s" display-type)
