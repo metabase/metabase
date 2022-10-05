@@ -384,7 +384,6 @@ commands:
                 exit 1
             fi
             echo "Created checksums for $(cat << parameters.filename >> | wc -l) files"
-
   run-clojure-command:
     parameters:
       before-steps:
@@ -480,7 +479,6 @@ jobs:
               echo 'This is not a release branch; removing .git directory (not needed for tests)'
               rm -rf /home/circleci/metabase/metabase/.git
             fi
-
       - run:
           name: Remove ./OSX directory (not needed for tests)
           command: rm -rf /home/circleci/metabase/metabase/OSX
@@ -722,7 +720,7 @@ workflows:
               driver: ["bigquery-cloud-sdk", "googleanalytics", "sqlite"]
           name: be-tests-<< matrix.driver >>-ee
           requires:
-            - be-deps
+            - be-tests-java-11-ee
           driver: << matrix.driver >>
 
       - test-driver:
@@ -731,19 +729,18 @@ workflows:
               driver: ["sqlserver", "druid"]
           name: be-tests-<< matrix.driver >>-ee
           requires:
-            - be-deps
+            - be-tests-java-11-ee
           e: << matrix.driver >>
           driver: << matrix.driver >>
 
       - test-driver:
           name: be-google-related-drivers-classpath-test
           requires:
-            - be-deps
+            - be-tests-java-11-ee
           driver: googleanalytics,bigquery-cloud-sdk
           test-args: >-
             :only "[metabase.query-processor-test.expressions-test metabase.driver.google-test
                     metabase.driver.googleanalytics-test]"
-
       - test-driver:
           matrix:
             parameters:
@@ -751,7 +748,7 @@ workflows:
           name: be-tests-<< matrix.version >>-ee
           description: "(<< matrix.version >>)"
           requires:
-            - be-deps
+            - be-tests-java-11-ee
           e: << matrix.version >>
           driver: mongo
 
@@ -762,7 +759,7 @@ workflows:
           name: be-tests-<< matrix.version >>-ee
           description: "(<< matrix.version >>)"
           requires:
-            - be-deps
+            - be-tests-java-11-ee
           e:
             name: << matrix.version >>
           driver: mysql
@@ -771,7 +768,7 @@ workflows:
           name: be-tests-mysql-latest-ee
           description: "(MySQL latest)"
           requires:
-            - be-deps
+            - be-tests-java-11-ee
           e:
             name: mysql-latest
           driver: mysql
@@ -788,11 +785,10 @@ workflows:
             MB_MYSQL_SSL_TEST_SSL_CERT="$(cat /home/circleci/metabase/metabase/resources/certificates/rds-combined-ca-bundle.pem)"
             MB_MYSQL_SSL_TEST_USER=metabase
             MB_MYSQL_SSL_TEST_PASSWORD=$MYSQL_RDS_SSL_INSTANCE_PASSWORD
-
       - test-driver:
           name: be-tests-oracle-ee
           requires:
-            - be-deps
+            - be-tests-java-11-ee
           before-steps:
             - fetch-jdbc-driver:
                 source: ORACLE_JDBC_JAR
@@ -808,12 +804,11 @@ workflows:
             MB_ORACLE_SSL_TEST_SSL_TRUSTSTORE_PATH=/home/circleci/metabase/metabase/resources/certificates/rds_root_ca_truststore.jks
             MB_ORACLE_SSL_TEST_SSL_TRUSTSTORE_OPTIONS=local
             MB_ORACLE_SSL_TEST_SSL_TRUSTSTORE_PASSWORD_VALUE=metabase
-
       - test-driver:
           name: be-tests-postgres-ee
           description: "(9.6)"
           requires:
-            - be-deps
+            - be-tests-java-11-ee
           e: postgres-9-6
           driver: postgres
 
@@ -821,18 +816,17 @@ workflows:
           name: be-tests-postgres-latest-ee
           description: "(Latest)"
           requires:
-            - be-deps
+            - be-tests-java-11-ee
           e: postgres-latest
           driver: postgres
           extra-env: >-
             MB_POSTGRES_SSL_TEST_SSL=true
             MB_POSTGRES_SSL_TEST_SSL_MODE=verify-full
             MB_POSTGRES_SSL_TEST_SSL_ROOT_CERT_PATH=/home/circleci/metabase/metabase/test-resources/certificates/us-east-2-bundle.pem
-
       - test-driver:
           name: be-tests-presto-ee
           requires:
-            - be-deps
+            - be-tests-java-11-ee
           e: presto-186
           before-steps:
             - wait-for-port:
@@ -842,7 +836,7 @@ workflows:
       - test-driver:
           name: be-tests-presto-jdbc-ee
           requires:
-            - be-deps
+            - be-tests-java-11-ee
           e: presto-jdbc-env # specific env for running Presto JDBC tests (newer Presto version, SSL, etc.)
           before-steps:
             - wait-for-port:
@@ -878,21 +872,21 @@ workflows:
       - test-driver:
           name: be-tests-redshift-ee
           requires:
-            - be-deps
+            - be-tests-java-11-ee
           driver: redshift
           timeout: 15m
 
       - test-driver:
           name: be-tests-snowflake-ee
           requires:
-            - be-deps
+            - be-tests-java-11-ee
           driver: snowflake
           timeout: 115m
 
       - test-driver:
           name: be-tests-sparksql-ee
           requires:
-            - be-deps
+            - be-tests-java-11-ee
           e: sparksql
           before-steps:
             - wait-for-port:
@@ -902,7 +896,7 @@ workflows:
       - test-driver:
           name: be-tests-vertica-ee
           requires:
-            - be-deps
+            - be-tests-java-11-ee
           e: vertica
           before-steps:
             - fetch-jdbc-driver:
