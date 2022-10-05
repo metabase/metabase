@@ -26,7 +26,7 @@ export default function GaugeLabel({
       fontWeight={700}
       fontSize={fontSize}
       stroke={stroke}
-      strokeWidth={fontSize / 6}
+      strokeWidth={fontSize / 4}
       x={position[0]}
       y={position[1]}
       textAnchor={textAnchor}
