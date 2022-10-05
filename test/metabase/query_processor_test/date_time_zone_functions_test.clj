@@ -308,11 +308,11 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
     (mt/dataset times-mixed
       (testing "timestamp with out timezone columns"
-        (testing "convert from UTC to +09:00"
-          (is (= "2004-03-19T18:19:09+09:00"
+        (testing "convert from +05:00 to +09:00"
+          (is (= "2004-03-19T13:19:09+09:00"
                  (test-date-convert [:convert-timezone [:field (mt/id :times :dt) nil]
                                                        (offset->zone "+09:00")
-                                                       (offset->zone "UTC")]))))
+                                                       (offset->zone "+05:00")]))))
         (testing "convert to +09:00, from_tz should have default is system-tz (UTC)"
           (is (= "2004-03-19T18:19:09+09:00"
                  (test-date-convert [:convert-timezone [:field (mt/id :times :dt) nil] (offset->zone "+09:00")]))))
