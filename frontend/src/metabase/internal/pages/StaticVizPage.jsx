@@ -7,10 +7,8 @@ import {
   STATIC_CHART_DEFAULT_OPTIONS,
 } from "metabase/static-viz/containers/StaticChart/constants";
 import StaticChart from "metabase/static-viz/containers/StaticChart";
-import {
-  GAUGE_CHART_DEFAULT_OPTIONS,
-  GAUGE_CHART_TYPE,
-} from "metabase/static-viz/components/Gauge/constants";
+import { GAUGE_CHART_TYPE } from "metabase/static-viz/components/Gauge/constants";
+import { GAUGE_CHART_DEFAULT_OPTIONS } from "metabase/static-viz/components/Gauge/constants.dev";
 import {
   CATEGORICAL_DONUT_CHART_DEFAULT_OPTIONS,
   CATEGORICAL_DONUT_CHART_TYPE,

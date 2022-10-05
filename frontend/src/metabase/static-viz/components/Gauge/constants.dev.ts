@@ -1,6 +1,3 @@
-export const GAUGE_CHART_TYPE = "gauge";
-
-// TODO: Clean up example data, as only certain keys are used.
 export const GAUGE_CHART_DEFAULT_OPTIONS = {
   card: {
     visualization_settings: {

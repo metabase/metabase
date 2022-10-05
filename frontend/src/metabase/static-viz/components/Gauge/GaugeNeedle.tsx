@@ -1,6 +1,6 @@
 import React from "react";
 
-import { getCirclePositionInSvgCoordinate } from "./Gauge";
+import { getCirclePositionInSvgCoordinate } from "./utils";
 import type { Position } from "./types";
 
 interface GaugeNeedleProps {
