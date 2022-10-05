@@ -1,13 +1,17 @@
 import { drillDownForDimensions } from "metabase-lib/lib/queries/utils/drilldown";
 
-export function canZoomDrill({ question, clicked }) {
+export function zoomDrill({ question, clicked }) {
   if (!question.query().isEditable()) {
-    return false;
+    return null;
   }
 
   const dimensions = (clicked && clicked.dimensions) || [];
   const drilldown = drillDownForDimensions(dimensions, question.metadata());
-  return drilldown != null;
+  if (!drilldown) {
+    return null;
+  }
+
+  return true;
 }
 
 export function zoomDrillQuestion({ question, clicked }) {

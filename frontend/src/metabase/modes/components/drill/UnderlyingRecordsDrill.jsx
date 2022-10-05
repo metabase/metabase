@@ -1,42 +1,34 @@
 import { ngettext, msgid } from "ttag";
-import { inflect } from "metabase/lib/formatting";
+import { inflect } from "metabase/lib/formatting/strings";
+import {
+  underlyingRecordsDrill,
+  underlyingRecordsDrillQuestion,
+} from "metabase-lib/lib/queries/drills/underlying-records-drill";
 
 export default ({ question, clicked }) => {
-  // removes post-aggregation filter stage
-  clicked = clicked && question.topLevelClicked(clicked);
-  question = question.topLevelQuestion();
-
-  const query = question.query();
-  if (!question.isStructured() || !query.isEditable()) {
+  const drill = underlyingRecordsDrill({ question, clicked });
+  if (!drill) {
     return [];
   }
 
-  const dimensions = (clicked && clicked.dimensions) || [];
-  if (!clicked || dimensions.length === 0) {
-    return [];
-  }
+  const tableTitle = drill.tableName
+    ? inflect(drill.tableName, drill.rowCount)
+    : ngettext(msgid`record`, `records`, drill.rowCount);
 
-  // the metric value should be the number of rows that will be displayed
-  const count = typeof clicked.value === "number" ? clicked.value : 2;
+  const actionTitle = ngettext(
+    msgid`View this ${tableTitle}`,
+    `View these ${tableTitle}`,
+    drill.rowCount,
+  );
 
-  const recordName = query.table() && query.table().displayName();
-  const inflectedTableName = recordName
-    ? inflect(recordName, count)
-    : ngettext(msgid`record`, `records`, count);
   return [
     {
       name: "underlying-records",
       section: "records",
       buttonType: "horizontal",
       icon: "table_spaced",
-      title: ngettext(
-        msgid`View this ${inflectedTableName}`,
-        `View these ${inflectedTableName}`,
-        count,
-      ),
-      question: () => {
-        return question.drillUnderlyingRecords(dimensions, clicked.column);
-      },
+      title: actionTitle,
+      question: () => underlyingRecordsDrillQuestion({ question, clicked }),
     },
   ];
 };

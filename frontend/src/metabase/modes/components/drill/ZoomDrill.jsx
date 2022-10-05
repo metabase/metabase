@@ -1,11 +1,11 @@
 import { t } from "ttag";
 import {
-  canZoomDrill,
+  zoomDrill,
   zoomDrillQuestion,
 } from "metabase-lib/lib/queries/drills/zoom-drill";
 
 export default ({ question, clicked }) => {
-  if (!canZoomDrill({ question, clicked })) {
+  if (!zoomDrill({ question, clicked })) {
     return [];
   }
 
