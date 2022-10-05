@@ -202,18 +202,19 @@ describe("scenarios > admin > databases > add", () => {
   describeEE("caching", () => {
     beforeEach(() => {
       mockSessionProperty("enable-query-caching", true);
-    });
 
-    it("sets cache ttl to null by default", () => {
       cy.intercept("POST", "/api/database", { id: 42 }).as("createDatabase");
       cy.visit("/admin/databases/create");
 
-      typeField("Display name", "Test db name");
+      typeField("Display name", "Test");
       typeField("Host", "localhost");
-      typeField("Database name", "test_postgres_db");
-      typeField("Username", "uberadmin");
+      typeField("Database name", "db");
+      typeField("Username", "admin");
 
       cy.findByText("Show advanced options").click();
+    });
+
+    it("sets cache ttl to null by default", () => {
       cy.button("Save").click();
 
       cy.wait("@createDatabase").then(({ request }) => {
@@ -222,15 +223,6 @@ describe("scenarios > admin > databases > add", () => {
     });
 
     it("allows to set cache ttl", () => {
-      cy.intercept("POST", "/api/database", { id: 42 }).as("createDatabase");
-      cy.visit("/admin/databases/create");
-
-      typeField("Display name", "Test db name");
-      typeField("Host", "localhost");
-      typeField("Database name", "test_postgres_db");
-      typeField("Username", "uberadmin");
-
-      cy.findByText("Show advanced options").click();
       cy.findByText("Use instance default (TTL)").click();
       popover().findByText("Custom").click();
       cy.findByDisplayValue("24").clear().type("48").blur();
