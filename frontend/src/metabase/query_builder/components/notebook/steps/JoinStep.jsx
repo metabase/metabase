@@ -7,8 +7,8 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
 import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
 import FieldList from "metabase/query_builder/components/FieldList";
-import { isDateTimeField } from "metabase/lib/query/field_ref";
 import Select from "metabase/core/components/Select";
+import { isDateTimeField } from "metabase-lib/lib/queries/utils/field-ref";
 import Join from "metabase-lib/lib/queries/structured/Join";
 
 import { NotebookCellItem, NotebookCellAdd } from "../NotebookCell";

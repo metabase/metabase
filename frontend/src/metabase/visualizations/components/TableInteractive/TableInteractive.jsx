@@ -25,7 +25,6 @@ import {
   isColumnRightAligned,
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
-import { fieldRefForColumn } from "metabase/lib/dataset";
 import { isAdHocModelQuestionCard } from "metabase/lib/data-modeling/utils";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { zoomInRow } from "metabase/query_builder/actions";
@@ -35,6 +34,7 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 
 import Ellipsified from "metabase/core/components/Ellipsified";
 import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
+import { fieldRefForColumn } from "metabase-lib/lib/queries/utils/dataset";
 import Dimension from "metabase-lib/lib/Dimension";
 import { memoizeClass } from "metabase-lib/lib/utils";
 import MiniBar from "../MiniBar";

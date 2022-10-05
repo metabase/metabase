@@ -29,8 +29,8 @@ export function capitalize(str: string, { lowercase = true } = {}) {
 export function inflect(
   str: string,
   count: number,
-  singular: string | undefined,
-  plural: string | undefined,
+  singular?: string,
+  plural?: string,
 ) {
   return inflection.inflect(str, count, singular, plural);
 }

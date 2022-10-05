@@ -21,6 +21,8 @@
                                      Field
                                      FieldValues
                                      ModelAction
+                                     PermissionsGroup
+                                     PermissionsGroupMembership
                                      Pulse
                                      QueryAction
                                      Revision
@@ -33,6 +35,8 @@
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.revision :as revision]
+            [metabase.plugins.classloader :as classloader]
+            [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.query-processor.streaming.test-util :as streaming.test-util]
             [metabase.server.middleware.util :as mw.util]
             [metabase.test :as mt]
@@ -2008,3 +2012,55 @@
                                                  {:parameters {"id" 1}}))))
                   (finally
                     (perms/update-global-execution-permission! (:id (perms-group/all-users)) :none)))))))))))
+
+(defn- ee-features-enabled? []
+  (u/ignore-exceptions
+   (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
+   (some? (resolve 'metabase-enterprise.advanced-permissions.models.permissions/update-db-execute-permissions!))))
+
+(deftest dashcard-action-execution-granular-auth-test
+  (when (ee-features-enabled?)
+    (mt/with-temp-copy-of-db
+      (actions.test-util/with-actions-enabled
+        (actions.test-util/with-actions-test-data
+          (actions.test-util/with-action [{:keys [action-id]} {}]
+            (testing "Executing dashcard with action"
+              (mt/with-temp* [Dashboard [{dashboard-id :id}]
+                              DashboardCard [{dashcard-id :id}
+                                             {:dashboard_id dashboard-id
+                                              :action_id action-id
+                                              :parameter_mappings [{:parameter_id "my_id"
+                                                                    :target [:variable [:template-tag "id"]]}]}]]
+                (let [execute-path (format "dashboard/%s/dashcard/%s/action/execute"
+                                           dashboard-id
+                                           dashcard-id)]
+                  (testing "with :advanced-permissions feature flag"
+                    (premium-features-test/with-premium-features #{:advanced-permissions}
+                      (testing "for non-magic group"
+                        (mt/with-temp* [PermissionsGroup [{group-id :id}]
+                                        PermissionsGroupMembership [_ {:user_id  (mt/user->id :rasta)
+                                                                       :group_id group-id}]]
+                          (is (= "You don't have permissions to do that."
+                                 (mt/user-http-request :rasta :post 403 execute-path
+                                                       {:parameters [{:id "my_id" :type :number/= :value 1}]}))
+                              "Execution permission should be required")
+
+                          (mt/user-http-request
+                           :crowberto :put 200 "permissions/execution/graph"
+                           (assoc-in (perms/execution-perms-graph) [:groups group-id (mt/id)] :all))
+                          (is (= :all
+                                 (get-in (perms/execution-perms-graph) [:groups group-id (mt/id)]))
+                              "Should be able to set execution permission")
+                          (is (= {:rows-affected 1}
+                                 (mt/user-http-request :rasta :post 200 execute-path
+                                                       {:parameters [{:id "my_id" :type :number/= :value 1}]}))
+                              "Execution and data permissions should be enough")
+
+                          (perms/update-data-perms-graph! [group-id (mt/id) :data]
+                                                          {:schemas :block})
+                          (perms/update-data-perms-graph! [(:id (perms-group/all-users)) (mt/id) :data]
+                                                          {:schemas :block})
+                          (is (= "You don't have permissions to do that."
+                                 (mt/user-http-request :rasta :post 403 execute-path
+                                                       {:parameters [{:id "my_id" :type :number/= :value 1}]}))
+                              "Data permissions should be required"))))))))))))))

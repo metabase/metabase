@@ -22,13 +22,13 @@ import {
   isResultsMetadataDirty,
 } from "metabase/query_builder/selectors";
 
-import { isSameField } from "metabase/lib/query/field_ref";
 import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
 import { checkCanBeModel } from "metabase/lib/data-modeling/utils";
 import { usePrevious } from "metabase/hooks/use-previous";
 import { useToggle } from "metabase/hooks/use-toggle";
 
 import { MODAL_TYPES } from "metabase/query_builder/constants";
+import { isSameField } from "metabase-lib/lib/queries/utils/field-ref";
 import { EDITOR_TAB_INDEXES } from "./constants";
 import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
 import DatasetQueryEditor from "./DatasetQueryEditor";
@@ -253,10 +253,10 @@ function DatasetEditor(props) {
     // Focused field has to be set once the query is completed and the result is rendered
     // Visualization render can remove the focus
     const hasQueryResults = !!result;
-    if (!focusedFieldRef && hasQueryResults && !result.error) {
+    if (!focusedField && hasQueryResults && !result.error) {
       focusFirstField();
     }
-  }, [result, focusedFieldRef, focusFirstField]);
+  }, [result, focusedFieldRef, fields, focusFirstField, focusedField]);
 
   const inheritMappedFieldProperties = useCallback(
     changes => {
@@ -303,7 +303,12 @@ function DatasetEditor(props) {
   }, [setQueryBuilderMode, onCancelDatasetChanges]);
 
   const handleSave = useCallback(async () => {
-    if (checkCanBeModel(dataset)) {
+    const canBeDataset = checkCanBeModel(dataset);
+    const isBrandNewDataset = !dataset.id();
+
+    if (canBeDataset && isBrandNewDataset) {
+      onOpenModal(MODAL_TYPES.SAVE);
+    } else if (canBeDataset) {
       await onSave(dataset.card());
       setQueryBuilderMode("view");
     } else {

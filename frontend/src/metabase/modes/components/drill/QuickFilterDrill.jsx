@@ -3,9 +3,9 @@ import React from "react";
 import { jt } from "ttag";
 
 import { isFK, isPK, TYPE, isa } from "metabase/lib/types";
-import { isLocalField } from "metabase/lib/query/field_ref";
 import { isDate, isNumeric } from "metabase/lib/schema_metadata";
 import { singularize, pluralize, stripId } from "metabase/lib/formatting";
+import { isLocalField } from "metabase-lib/lib/queries/utils/field-ref";
 
 const INVALID_TYPES = [TYPE.Structured];
 

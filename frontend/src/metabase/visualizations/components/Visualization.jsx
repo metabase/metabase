@@ -26,7 +26,6 @@ import { performDefaultAction } from "metabase/visualizations/lib/action";
 import { getFont } from "metabase/styled-components/selectors";
 
 import Utils from "metabase/lib/utils";
-import { datasetContainsNoResults } from "metabase/lib/dataset";
 
 import {
   MinRowsError,
@@ -34,6 +33,7 @@ import {
 } from "metabase/visualizations/lib/errors";
 
 import NoResults from "assets/img/no_results.svg";
+import { datasetContainsNoResults } from "metabase-lib/lib/queries/utils/dataset";
 
 export const ERROR_MESSAGE_GENERIC = t`There was a problem displaying this chart.`;
 export const ERROR_MESSAGE_PERMISSION = t`Sorry, you don't have permission to see this card.`;

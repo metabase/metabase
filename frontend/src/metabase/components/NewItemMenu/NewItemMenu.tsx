@@ -116,6 +116,16 @@ const NewItemMenu = ({
       },
     );
 
+    if (hasNativeWrite) {
+      items.push({
+        title: t`Model`,
+        icon: "model",
+        link: "/model/new",
+        event: `${analyticsContext};New Model Click;`,
+        onClose: onCloseNavbar,
+      });
+    }
+
     return items;
   }, [
     hasDataAccess,

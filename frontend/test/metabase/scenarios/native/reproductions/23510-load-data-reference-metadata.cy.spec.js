@@ -40,9 +40,6 @@ describe("issue 23510", () => {
       cy.findByText("PRODUCTS");
       cy.findByText("REVIEWS");
       cy.findByText("PEOPLE");
-
-      cy.findByText("Back").click();
-
       cy.findByText("Sample Database");
     });
   });

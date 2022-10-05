@@ -7,10 +7,10 @@ import { t } from "ttag";
 import Form, { FormField, FormFooter } from "metabase/containers/FormikForm";
 import ModalContent from "metabase/components/ModalContent";
 import Radio from "metabase/core/components/Radio";
-import * as Q_DEPRECATED from "metabase/lib/query";
-import { generateQueryDescription } from "metabase/lib/query/description";
 import validate from "metabase/lib/validate";
 import { canonicalCollectionId } from "metabase/collections/utils";
+import * as Q_DEPRECATED from "metabase-lib/lib/queries/utils";
+import { generateQueryDescription } from "metabase-lib/lib/queries/utils/description";
 
 import "./SaveQuestionModal.css";
 
@@ -97,9 +97,11 @@ export default class SaveQuestionModal extends Component {
           : "create",
     };
 
+    const questionType = card.dataset ? "model" : "question";
+
     const title = this.props.multiStep
-      ? t`First, save your question`
-      : t`Save question`;
+      ? t`First, save your ${questionType}`
+      : t`Save ${questionType}`;
 
     const showSaveType =
       !card.id &&

@@ -1,13 +1,13 @@
 import moment from "moment-timezone";
 
+import { isDate, isNumber } from "metabase/lib/schema_metadata";
+
+import { parseTimestamp } from "metabase/lib/time";
 import {
   rangeForValue,
   fieldRefForColumn,
   fieldRefWithOption,
-} from "metabase/lib/dataset";
-import { isDate, isNumber } from "metabase/lib/schema_metadata";
-
-import { parseTimestamp } from "metabase/lib/time";
+} from "metabase-lib/lib/queries/utils/dataset";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import { FieldDimension } from "metabase-lib/lib/Dimension";

@@ -1,7 +1,7 @@
 import _ from "underscore";
 import { STANDARD_AGGREGATIONS } from "metabase/lib/expressions";
+import * as FieldRef from "./field-ref";
 import { noNullValues, add, update, remove, clear } from "./util";
-import * as FieldRef from "./field_ref";
 
 // returns canonical list of Aggregations, i.e. with deprecated "rows" removed
 export function getAggregations(aggregation) {
