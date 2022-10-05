@@ -35,9 +35,8 @@ export default ({ question, clicked = {} }) => {
     name: aggregationOperator.short,
     question: () =>
       summarizeColumnDrillQuestion({ question, clicked, aggregationOperator }),
-    action: () => dispatch => {
+    action: () => dispatch =>
       // HACK: drill through closes sidebars, so open sidebar asynchronously
-      setTimeout(() => dispatch({ type: "metabase/qb/EDIT_SUMMARY" }));
-    },
+      setTimeout(() => dispatch({ type: "metabase/qb/EDIT_SUMMARY" })),
   }));
 };
