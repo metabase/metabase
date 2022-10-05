@@ -218,16 +218,19 @@
       (hformat/to-sql (hx/literal zone)))))
 
 (defmethod sql.qp/->honeysql [:oracle :convert-timezone]
-  [driver [_ arg to from]]
-  (let [from    (or from (qp.timezone/results-timezone-id))
-        form    (sql.qp/->honeysql driver arg)
-        from-tz (partial hsql/call :from_tz)]
-    (cond-> (sql.qp/->honeysql driver arg)
-      (and (not (hx/is-of-type? form #"timestamp(\(\d\))? with time zone"))
-           from)
-      (from-tz from)
-      to
-      (->AtTimeZone to))))
+  [driver [_ arg to-tz from-tz]]
+  (let [clause       (sql.qp/->honeysql driver arg)
+        hsql-from-tz (partial hsql/call :from_tz)
+        has-timezone? (hx/is-of-type? clause #"timestamp(\(\d\))? with time zone")]
+    (when (and has-timezone? from-tz)
+      (throw (ex-info "`timestamp with time zone` columns shouldn't have a `from timezone`" {:to-tz   to-tz
+                                                                                             :from-tz from-tz})))
+    (let [from-tz (or from-tz (qp.timezone/results-timezone-id))]
+      (cond-> clause
+        (and (not has-timezone?) from-tz)
+        (hsql-from-tz from-tz)
+        to-tz
+        (->AtTimeZone to-tz)))))
 
 (def ^:private now (hsql/raw "SYSDATE"))
 

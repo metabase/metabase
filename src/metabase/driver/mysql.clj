@@ -345,9 +345,12 @@
                           (hx/literal "-01"))))
 
 (defmethod sql.qp/->honeysql [:mysql :convert-timezone]
-  [driver [_ arg to from]]
-  (let [from (or from (qp.timezone/results-timezone-id))]
-    (hsql/call :convert_tz (sql.qp/->honeysql driver arg) from to)))
+  [driver [_ arg to-tz from-tz]]
+  (let [clause (sql.qp/->honeysql driver arg)]
+    (when (and (hx/is-of-type? clause "timestamp") from-tz)
+      (throw (ex-info "`timestamp with time zone` columns shouldn't have a `from timezone`" {:to-tz   to-tz
+                                                                                             :from-tz from-tz})))
+    (hsql/call :convert_tz clause (or from-tz (qp.timezone/results-timezone-id)) to-tz)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
