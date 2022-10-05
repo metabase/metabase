@@ -28,27 +28,6 @@ describe("scenarios > admin > databases > add", () => {
     cy.signInAsAdmin();
   });
 
-  it("should trim fields needed to connect to the database (metabase#12972)", () => {
-    cy.intercept("POST", "/api/database", req => {
-      req.reply({ body: { id: 42 } });
-    }).as("createDatabase");
-
-    cy.visit("/admin/databases/create");
-
-    typeField("Display name", "Test db name");
-    typeField("Host", "localhost  \n  ");
-    typeField("Database name", " test_postgres_db");
-    typeField("Username", "   uberadmin   ");
-
-    cy.findByText("Save").click();
-
-    cy.wait("@createDatabase").then(({ request }) => {
-      expect(request.body.details.host).to.equal("localhost");
-      expect(request.body.details.dbname).to.equal("test_postgres_db");
-      expect(request.body.details.user).to.equal("uberadmin");
-    });
-  });
-
   it("should show validation error if you enable scheduling toggle and enter invalid db connection info", () => {
     cy.intercept("POST", "/api/database").as("createDatabase");
     cy.visit("/admin/databases/create");
