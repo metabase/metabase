@@ -1,1 +1,1 @@
-export { default } from "./Gauge";
+export { default } from "./GaugeContainer";
