@@ -150,7 +150,7 @@ export default class SaveQuestionModal extends Component {
                       autoFocus
                       name="name"
                       title={t`Name`}
-                      placeholder={t`What is the name of your card?`}
+                      placeholder={t`What is the name of your ${questionType}?`}
                     />
                     <FormField
                       name="description"
