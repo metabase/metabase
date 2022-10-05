@@ -95,7 +95,7 @@ export function calculateChartScale(gaugeLabels: GaugeLabelData[]) {
     (currentMaxLabelDistanceFromCenter, gaugeLabelDimension) => {
       return Math.max(
         Math.abs(gaugeLabelDimension.left),
-        gaugeLabelDimension.right,
+        Math.abs(gaugeLabelDimension.right),
         currentMaxLabelDistanceFromCenter,
       );
     },
