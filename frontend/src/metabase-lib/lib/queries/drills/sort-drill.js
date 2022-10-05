@@ -4,7 +4,6 @@ import Dimension from "metabase-lib/lib/Dimension";
 const INVALID_TYPES = [TYPE.Structured];
 
 export function sortDrill({ question, clicked }) {
-  const { column } = clicked;
   const query = question.query();
   if (!question.isStructured() || !query.isEditable()) {
     return null;
@@ -20,6 +19,7 @@ export function sortDrill({ question, clicked }) {
     return null;
   }
 
+  const { column } = clicked;
   const fieldRef = query.fieldReferenceForColumn(column);
   if (!fieldRef) {
     return null;
