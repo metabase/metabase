@@ -50,9 +50,15 @@ export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
 ///////////////////////////
 // QUERY TEXT TAG UTILS
 
-// Matches all snippet, card, and variable template tags. See unit tests for `recognizeTemplateTags` for examples
-const TAG_REGEX: RegExp =
-  /\{\{\s*((snippet:\s*[^}]+)|[A-Za-z0-9_\.]+?|(#[0-9]*(?:-[a-z0-9-]*)?))\s*\}\}/g;
+const VARIABLE_TAG_REGEX: RegExp = /\{\{\s*([A-Za-z0-9_\.]+)?\s*\}\}/g;
+const SNIPPET_TAG_REGEX: RegExp = /\{\{\s*(snippet:\s*[^}]+)\s*\}\}/g;
+export const CARD_TAG_REGEX: RegExp =
+  /\{\{\s*(#([0-9]*)(-[a-z0-9-]*)?)\s*\}\}/g;
+const TAG_REGEXES: RegExp[] = [
+  VARIABLE_TAG_REGEX,
+  SNIPPET_TAG_REGEX,
+  CARD_TAG_REGEX,
+];
 
 // look for variable usage in the query (like '{{varname}}').  we only allow alphanumeric characters for the variable name
 // a variable name can optionally end with :start or :end which is not considered part of the actual variable name
@@ -60,14 +66,10 @@ const TAG_REGEX: RegExp =
 // anything that doesn't match our rule is ignored, so {{&foo!}} would simply be ignored
 // See unit tests for examples
 export function recognizeTemplateTags(queryText: string): string[] {
-  const tagNames = [];
-  let match;
-  while ((match = TAG_REGEX.exec(queryText)) != null) {
-    tagNames.push(match[1]);
-  }
-
-  // eliminate any duplicates since it's allowed for a user to reference the same variable multiple times
-  return _.uniq(tagNames);
+  const tagNames = TAG_REGEXES.flatMap(r =>
+    Array.from(queryText.matchAll(r)),
+  ).map(m => m[1]);
+  return _.uniq(tagNames); // dedupe since it's allowed for a user to reference the same variable multiple times
 }
 
 // needs to match logically with `cardTagRegexFromId`
@@ -107,9 +109,9 @@ export function replaceCardTagNameById(
   return query.setQueryText(queryText);
 }
 
-export function cardIdFromTagName(name: string): number | null {
+export function cardIdFromTagName(name: string): number | undefined {
   const match = name.match(CARD_TAG_NAME_REGEX);
-  return match && match[1].length > 0 ? parseInt(match[1]) : null;
+  return parseInt(match?.[1]);
 }
 
 function isCardTagName(tagName: string): boolean {
