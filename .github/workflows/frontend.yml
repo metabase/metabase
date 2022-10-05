@@ -46,8 +46,8 @@ jobs:
       name: Check types
 
   fe-tests-unit:
-    runs-on: buildjet-2vcpu-ubuntu-2004
-    timeout-minutes: 20
+    runs-on: ubuntu-20.04
+    timeout-minutes: 30
     steps:
     - uses: actions/checkout@v3
     - name: Prepare front-end environment
@@ -61,8 +61,8 @@ jobs:
         flags: front-end
 
   fe-tests-timezones:
-    runs-on: buildjet-2vcpu-ubuntu-2004
-    timeout-minutes: 14
+    runs-on: ubuntu-20.04
+    timeout-minutes: 20
     steps:
     - uses: actions/checkout@v3
     - name: Prepare front-end environment
