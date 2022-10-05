@@ -10,21 +10,17 @@ export function summarizeColumnByTimeDrill({ question, clicked }) {
   const isStructured = question.isStructured();
 
   if (!column || value !== undefined || !isStructured || !query.isEditable()) {
-    return null;
+    return false;
   }
 
   const dimensionOptions = query.dimensionOptions(d => d.field().isDate());
   const dateDimension = dimensionOptions.all()[0];
   if (!dateDimension) {
-    return null;
+    return false;
   }
 
   const aggregator = getAggregationOperator("sum");
-  if (!isCompatibleAggregationOperatorForField(aggregator, column)) {
-    return null;
-  }
-
-  return true;
+  return isCompatibleAggregationOperatorForField(aggregator, column);
 }
 
 export function summarizeColumnByTimeDrillQuestion({ question, clicked }) {
