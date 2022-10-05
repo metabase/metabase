@@ -30,7 +30,10 @@ describe("scenarios > admin > databases > add", () => {
 
   it("should show validation error if you enable scheduling toggle and enter invalid db connection info", () => {
     cy.intercept("POST", "/api/database").as("createDatabase");
+
+    // should display a setup help card
     cy.visit("/admin/databases/create");
+    cy.findByText("Need help connecting?");
 
     chooseDatabase("H2");
     typeField("Display name", "Test db name");
@@ -78,11 +81,6 @@ describe("scenarios > admin > databases > add", () => {
       cy.findByText("Oracle");
       cy.findByText("Vertica");
     });
-  });
-
-  it("should display a setup help card", () => {
-    cy.visit("/admin/databases/create");
-    cy.findByText("Need help connecting?");
   });
 
   describe("BigQuery", () => {
