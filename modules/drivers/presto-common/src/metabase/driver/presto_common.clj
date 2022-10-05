@@ -200,11 +200,10 @@
       (hformat/to-sql (hx/literal zone)))))
 
 (defmethod sql.qp/->honeysql [:presto-common :convert-timezone]
-  [driver [_ arg to from]]
-  (let [from (or from (qp.timezone/report-timezone-id-if-supported driver))]
-    (cond-> (sql.qp/->honeysql driver arg)
+  [driver [_ arg to _from]]
+  (cond-> (sql.qp/->honeysql driver arg)
       to
-      (->AtTimeZone to))))
+      (->AtTimeZone to)))
 
 (defmethod driver.common/current-db-time-date-formatters :presto-common
   [_]
