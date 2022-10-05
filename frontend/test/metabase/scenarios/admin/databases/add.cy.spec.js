@@ -7,18 +7,6 @@ import {
   typeAndBlurUsingLabel,
 } from "__support__/e2e/helpers";
 
-function toggleFieldWithDisplayName(displayName) {
-  cy.contains(displayName).closest(".Form-field").find("input").click();
-}
-
-function selectFieldOption(fieldName, option) {
-  cy.contains(fieldName)
-    .parents(".Form-field")
-    .findByTestId("select-button")
-    .click();
-  popover().contains(option).click({ force: true });
-}
-
 describe("scenarios > admin > databases > add", () => {
   beforeEach(() => {
     restore();
@@ -275,6 +263,17 @@ describe("scenarios > admin > databases > add", () => {
     );
   });
 });
+function toggleFieldWithDisplayName(displayName) {
+  cy.contains(displayName).closest(".Form-field").find("input").click();
+}
+
+function selectFieldOption(fieldName, option) {
+  cy.contains(fieldName)
+    .parents(".Form-field")
+    .findByTestId("select-button")
+    .click();
+  popover().contains(option).click({ force: true });
+}
 
 function chooseDatabase(database) {
   selectFieldOption("Database type", database);
