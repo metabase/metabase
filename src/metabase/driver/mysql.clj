@@ -46,13 +46,12 @@
       true
       json-setting)))
 
-(defmethod driver/database-supports? [:mysql :persist-models] [_driver _feat _db] true)
-
-(defmethod driver/database-supports? [:mysql :convert-timezone] [_driver _feat _db] true)
-
-(defmethod driver/database-supports? [:mysql :persist-models-enabled]
-  [_driver _feat db]
-  (-> db :options :persist-models-enabled))
+(doseq [[feature supported?] {:persist-models         (constantly true)
+                              :convert-timezone       (constantly true)
+                              :persist-models-enabled (fn [_driver db] (-> db :options :persist-models-enabled))}]
+  (defmethod driver/database-supports? [:mysql feature]
+    [driver _feature database]
+    (supported? driver database)))
 
 (defmethod driver/supports? [:mysql :regex] [_ _] false)
 (defmethod driver/supports? [:mysql :percentile-aggregations] [_ _] false)
