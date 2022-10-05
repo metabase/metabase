@@ -23,6 +23,8 @@ import {
   ActionPickerWrapper,
 } from "./ActionOptions.styled";
 
+import { ensureParamsHaveNames } from "./utils";
+
 interface ActionOptionsOwnProps {
   dashcard: ActionDashboardCard;
   parameters: UiParameter[];
@@ -59,10 +61,10 @@ function ActionOptions({
         card_id: action.model_id,
         action,
         visualization_settings: updateSettings(
-          { 
-			"button.label": action.name,
-			action_slug: action.slug, // :-( so hacky
-		  },
+          {
+            "button.label": action.name,
+            action_slug: action.slug, // :-( so hacky
+          },
           dashcard.visualization_settings,
         ),
         // Clean mappings from previous action
@@ -89,7 +91,10 @@ function ActionOptions({
       {!!selectedAction && (
         <ClickMappingsContainer>
           <ActionClickMappings
-            action={selectedAction}
+            action={{
+              ...selectedAction,
+              parameters: ensureParamsHaveNames(selectedAction.parameters),
+            }}
             dashcard={dashcard}
             parameters={parameters}
             onChange={handleParameterMappingChange}

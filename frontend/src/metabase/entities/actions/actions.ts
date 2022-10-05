@@ -1,6 +1,11 @@
 import { createEntity } from "metabase/lib/entities";
 
-import type { ActionFormSettings } from "metabase-types/api";
+import type {
+  ActionFormSettings,
+  ModelAction,
+  WritebackAction,
+} from "metabase-types/api";
+import type { Dispatch } from "metabase-types/store";
 
 import { ActionsApi, CardApi, ModelActionsApi } from "metabase/services";
 
@@ -71,6 +76,29 @@ const associateAction = ({
     requires_pk: false,
   });
 
+const defaultImplicitActionCreateOptions = {
+  insert: true,
+  update: true,
+  delete: true,
+};
+
+const enableImplicitActionsForModel =
+  async (modelId: number, options = defaultImplicitActionCreateOptions) =>
+  async (dispatch: Dispatch) => {
+    await Promise.all(
+      Object.entries(options)
+        .filter(([, shouldCreate]) => !!shouldCreate)
+        .map(([method]) =>
+          ModelActionsApi.createImplicitAction({
+            card_id: modelId,
+            slug: method,
+            requires_pk: method !== "insert",
+          }),
+        ),
+    );
+    dispatch({ type: Actions.actionTypes.INVALIDATE_LISTS_ACTION });
+  };
+
 const Actions = createEntity({
   name: "actions",
   nameOne: "action",
@@ -88,6 +116,17 @@ const Actions = createEntity({
       return card;
     },
     update: updateAction,
+    list: async (params: any) => {
+      const actions = await ActionsApi.list(params);
+
+      return actions.map((action: ModelAction | WritebackAction) => ({
+        ...action,
+        id: action.id ?? `implicit-${action.slug}`,
+      }));
+    },
+  },
+  actions: {
+    enableImplicitActionsForModel,
   },
   forms: {
     saveForm,

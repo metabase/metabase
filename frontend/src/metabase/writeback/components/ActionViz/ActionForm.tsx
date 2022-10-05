@@ -21,7 +21,7 @@ interface ActionFormProps {
 function ActionForm({ onSubmit, missingParameters, action }: ActionFormProps) {
   return (
     <DataAppPageFormWrapper>
-      <DataAppPageFormTitle>{action.name}</DataAppPageFormTitle>
+      <DataAppPageFormTitle>{action.name ?? action.slug}</DataAppPageFormTitle>
       <ActionParametersInputForm
         onSubmit={onSubmit}
         missingParameters={missingParameters}

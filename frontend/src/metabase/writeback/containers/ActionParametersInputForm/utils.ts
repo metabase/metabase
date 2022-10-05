@@ -18,3 +18,16 @@ export function setDefaultValues(
 
   return params;
 }
+
+export function setNumericValues(
+  params: ParametersForActionExecution,
+  fieldSettings: { [tagId: string]: FieldSettings },
+) {
+  Object.entries(params).forEach(([key, value]) => {
+    if (fieldSettings[key]?.fieldType === "number") {
+      params[key] = Number(value) ?? 0;
+    }
+  });
+
+  return params;
+}
