@@ -21,7 +21,7 @@ describe("scenarios > admin > databases > add", () => {
     cy.findByText("Need help connecting?");
 
     chooseDatabase("H2");
-    typeAndBlurUsingLabel("Display name", "Test db name");
+    typeAndBlurUsingLabel("Display name", "Test");
     typeAndBlurUsingLabel("Connection String", "invalid");
 
     cy.button("Save").click();
@@ -41,9 +41,9 @@ describe("scenarios > admin > databases > add", () => {
 
     cy.visit("/admin/databases/create");
 
-    typeAndBlurUsingLabel("Display name", "Test db name");
-    typeAndBlurUsingLabel("Database name", "test_postgres_db");
-    typeAndBlurUsingLabel("Username", "uberadmin");
+    typeAndBlurUsingLabel("Display name", "Test");
+    typeAndBlurUsingLabel("Database name", "db");
+    typeAndBlurUsingLabel("Username", "admin");
 
     cy.button("Save").click();
 
