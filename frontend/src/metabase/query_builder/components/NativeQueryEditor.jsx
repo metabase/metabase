@@ -30,6 +30,7 @@ import Snippets from "metabase/entities/snippets";
 import SnippetCollections from "metabase/entities/snippet-collections";
 import SnippetModal from "metabase/query_builder/components/template_tags/SnippetModal";
 import Questions from "metabase/entities/questions";
+import { CARD_TAG_REGEX } from "metabase-lib/lib/queries/NativeQuery";
 import { ResponsiveParametersList } from "./ResponsiveParametersList";
 import NativeQueryEditorSidebar from "./NativeQueryEditor/NativeQueryEditorSidebar";
 import VisibilityToggler from "./NativeQueryEditor/VisibilityToggler";
@@ -179,8 +180,22 @@ class NativeQueryEditor extends Component {
   // this is overwritten when the editor mounts
   swapCompleters = () => undefined;
 
+  cardTemplateTagMatch = ({ row, column }) => {
+    const line = this._editor.getValue().split("\n")[row];
+    const matches = Array.from(line.matchAll(CARD_TAG_REGEX));
+    return matches.find(
+      m => column > m.index && column < m.index + m[0].length,
+    );
+  };
+
   handleCursorChange = _.debounce((e, { cursor }) => {
-    this.swapCompleters(cursor);
+    const cardTagMatch = this.cardTemplateTagMatch(cursor);
+    if (cardTagMatch) {
+      const cardId = parseInt(cardTagMatch[2]);
+      if (cardId) {
+        this.props.openDataReferenceAtCard(cardId);
+      }
+    }
     if (this.props.setNativeEditorSelectedRange) {
       this.props.setNativeEditorSelectedRange(this._editor.getSelectionRange());
     }

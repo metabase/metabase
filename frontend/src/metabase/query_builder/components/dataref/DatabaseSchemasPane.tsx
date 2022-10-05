@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { ngettext, msgid } from "ttag";
 
 import Search from "metabase/entities/search";
+import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import type { Card } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 import type Database from "metabase-lib/lib/metadata/Database";
@@ -17,14 +18,18 @@ import {
 } from "./NodeList.styled";
 
 interface DatabaseSchemasPaneProps {
+  onBack: () => void;
+  onClose: () => void;
   onItemClick: (type: string, item: unknown) => void;
   database: Database;
   models: Card[];
 }
 
 const DatabaseSchemasPane = ({
-  database,
+  onBack,
+  onClose,
   onItemClick,
+  database,
   models,
 }: DatabaseSchemasPaneProps) => {
   const sortedModels = useMemo(
@@ -36,54 +41,61 @@ const DatabaseSchemasPane = ({
     return null;
   }
   return (
-    <NodeListContainer>
-      {sortedModels.length ? (
-        <>
-          <NodeListTitle>
-            <NodeListIcon name="model" />
-            <NodeListTitleText>
-              {ngettext(
-                msgid`${sortedModels.length} model`,
-                `${sortedModels.length} models`,
-                sortedModels.length,
-              )}
-            </NodeListTitleText>
-          </NodeListTitle>
-          <ul>
-            {sortedModels.map(model => (
-              <li key={model.id}>
-                <NodeListItemLink onClick={() => onItemClick("model", model)}>
-                  <NodeListItemIcon name="model" />
-                  <NodeListItemName>{model.name}</NodeListItemName>
-                  <ModelId>{`#${model.id}`}</ModelId>
-                </NodeListItemLink>
-              </li>
-            ))}
-          </ul>
-          <br></br>
-        </>
-      ) : null}
-      <NodeListTitle>
-        <NodeListIcon name="folder" />
-        <NodeListTitleText>
-          {ngettext(
-            msgid`${schemas.length} schema`,
-            `${schemas.length} schemas`,
-            schemas.length,
-          )}
-        </NodeListTitleText>
-      </NodeListTitle>
-      <ul>
-        {schemas.map(schema => (
-          <li key={schema.id}>
-            <NodeListItemLink onClick={() => onItemClick("schema", schema)}>
-              <NodeListItemIcon name="folder" />
-              <NodeListItemName>{schema.name}</NodeListItemName>
-            </NodeListItemLink>
-          </li>
-        ))}
-      </ul>
-    </NodeListContainer>
+    <SidebarContent
+      title={database.name}
+      icon={"database"}
+      onBack={onBack}
+      onClose={onClose}
+    >
+      <NodeListContainer>
+        {sortedModels.length ? (
+          <>
+            <NodeListTitle>
+              <NodeListIcon name="model" />
+              <NodeListTitleText>
+                {ngettext(
+                  msgid`${sortedModels.length} model`,
+                  `${sortedModels.length} models`,
+                  sortedModels.length,
+                )}
+              </NodeListTitleText>
+            </NodeListTitle>
+            <ul>
+              {sortedModels.map(model => (
+                <li key={model.id}>
+                  <NodeListItemLink onClick={() => onItemClick("model", model)}>
+                    <NodeListItemIcon name="model" />
+                    <NodeListItemName>{model.name}</NodeListItemName>
+                    <ModelId>{`#${model.id}`}</ModelId>
+                  </NodeListItemLink>
+                </li>
+              ))}
+            </ul>
+            <br></br>
+          </>
+        ) : null}
+        <NodeListTitle>
+          <NodeListIcon name="folder" />
+          <NodeListTitleText>
+            {ngettext(
+              msgid`${schemas.length} schema`,
+              `${schemas.length} schemas`,
+              schemas.length,
+            )}
+          </NodeListTitleText>
+        </NodeListTitle>
+        <ul>
+          {schemas.map(schema => (
+            <li key={schema.id}>
+              <NodeListItemLink onClick={() => onItemClick("schema", schema)}>
+                <NodeListItemIcon name="folder" />
+                <NodeListItemName>{schema.name}</NodeListItemName>
+              </NodeListItemLink>
+            </li>
+          ))}
+        </ul>
+      </NodeListContainer>
+    </SidebarContent>
   );
 };
 

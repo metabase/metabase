@@ -9,6 +9,7 @@ import {
   EmptyDescription,
 } from "metabase/components/MetadataInfo/MetadataInfo.styled";
 import Questions from "metabase/entities/questions";
+import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { getQuestionFromCard } from "metabase/query_builder/selectors";
 import type { Card } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -25,6 +26,8 @@ import {
 
 interface ModelPaneProps {
   onItemClick: (type: string, item: unknown) => void;
+  onBack: any;
+  onClose: any;
   model: Card;
   question: Question;
 }
@@ -33,10 +36,20 @@ const mapStateToProps = (state: State, props: ModelPaneProps) => ({
   question: getQuestionFromCard(state, props.model),
 });
 
-const ModelPane = ({ onItemClick, question }: ModelPaneProps) => {
+const ModelPane = ({
+  onItemClick,
+  question,
+  onBack,
+  onClose,
+}: ModelPaneProps) => {
   const table = question.table();
   return (
-    <div>
+    <SidebarContent
+      title={question.displayName() || undefined}
+      icon={"model"}
+      onBack={onBack}
+      onClose={onClose}
+    >
       <ModelPaneDescription>
         {question.description() ? (
           <Description>{question.description()}</Description>
@@ -76,7 +89,7 @@ const ModelPane = ({ onItemClick, question }: ModelPaneProps) => {
           onFieldClick={f => onItemClick("field", f)}
         />
       )}
-    </div>
+    </SidebarContent>
   );
 };
 

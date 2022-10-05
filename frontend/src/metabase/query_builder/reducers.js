@@ -7,6 +7,7 @@ import {
   RESET_QB,
   INITIALIZE_QB,
   SET_DATA_REFERENCE_STACK,
+  OPEN_DATA_REFERENCE_AT_CARD,
   TOGGLE_DATA_REFERENCE,
   TOGGLE_TEMPLATE_TAGS_EDITOR,
   TOGGLE_SNIPPET_SIDEBAR,
@@ -164,6 +165,17 @@ export const uiControls = handleActions(
         ...state,
         dataReferenceStack: payload,
       }),
+    },
+    [OPEN_DATA_REFERENCE_AT_CARD]: {
+      next: (state, { payload }) => {
+        const cardId = payload;
+        return {
+          ...state,
+          dataReferenceStack: [
+            { type: "model", item: { id: cardId }, title: "Model" },
+          ],
+        };
+      },
     },
     [TOGGLE_TEMPLATE_TAGS_EDITOR]: {
       next: (state, { payload }) => ({

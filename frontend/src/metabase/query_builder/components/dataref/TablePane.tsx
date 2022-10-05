@@ -10,6 +10,7 @@ import {
   EmptyDescription,
 } from "metabase/components/MetadataInfo/MetadataInfo.styled";
 import ConnectedTableList from "metabase/query_builder/components/dataref/ConnectedTableList";
+import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import type Table from "metabase-lib/lib/metadata/Table";
 import TableInfoLoader from "./TableInfoLoader";
 import FieldList from "./FieldList";
@@ -21,12 +22,19 @@ const mapStateToProps = (state: State, props: TablePaneProps) => ({
 });
 
 interface TablePaneProps {
+  onBack: () => void;
+  onClose: () => void;
   onItemClick: (type: string, item: unknown) => void;
   table: Table;
 }
 
-const TablePane = ({ table, onItemClick }: TablePaneProps) => {
-  return table ? (
+const TablePane = ({ table, onItemClick, onBack, onClose }: TablePaneProps) => (
+  <SidebarContent
+    title={table.name}
+    icon={"table"}
+    onBack={onBack}
+    onClose={onClose}
+  >
     <TableInfoLoader table={table}>
       <div className="ml1">
         {table.description ? (
@@ -50,8 +58,8 @@ const TablePane = ({ table, onItemClick }: TablePaneProps) => {
         )}
       </div>
     </TableInfoLoader>
-  ) : null;
-};
+  </SidebarContent>
+);
 
 export default _.compose(
   Tables.load({

@@ -17,21 +17,11 @@ import ModelPane from "./ModelPane";
 const PANES = {
   database: DatabasePane, // displays either schemas or tables in a database
   schema: SchemaPane, // displays tables in a schema
-  table: TablePane, // displays fields in a table
+  table: TablePane, // displays fields of a table
   field: FieldPane,
   model: ModelPane, // displays columns of a model
   segment: SegmentPane,
   metric: MetricPane,
-};
-
-const TITLE_ICONS = {
-  database: "database",
-  schema: "folder",
-  table: "table",
-  field: "field",
-  segment: "segment",
-  metric: "metric",
-  model: "model",
 };
 
 const DataReferencePropTypes = {
@@ -51,8 +41,9 @@ const DataReference = ({
   ...props
 }) => {
   const previousDbId = usePrevious(query?.database()?.id);
+  // initialize the stack if it's empty or the database changed
   useEffect(() => {
-    if (query?.database()?.id === previousDbId) {
+    if (stack?.length || query?.database()?.id === previousDbId) {
       return;
     }
     const stack = [];
@@ -69,38 +60,32 @@ const DataReference = ({
     setStack(stack.slice(0, -1));
   }, [setStack, stack]);
 
-  const show = useCallback(
-    (type, item, title) => {
-      setStack(stack.concat({ type, item, title }));
+  const onItemClick = useCallback(
+    (type, item) => {
+      setStack(stack.concat({ type, item }));
     },
     [setStack, stack],
   );
 
-  let title = null;
-  let content = null;
-  let icon = null;
-  if (stack.length === 0) {
-    title = t`Data Reference`;
-    content = <MainPane {...props} show={show} />;
-  } else {
+  if (stack.length) {
     const page = stack[stack.length - 1];
-    title = page.title || page.item.name;
-    icon = TITLE_ICONS[page.type];
     const Pane = PANES[page.type];
-    content = Pane && (
-      <Pane {...props} {...{ [page.type]: page.item }} show={show} />
+    return (
+      <Pane
+        {...props}
+        {...{ [page.type]: page.item }}
+        onItemClick={onItemClick}
+        onClose={onClose}
+        onBack={back}
+      />
+    );
+  } else {
+    return (
+      <SidebarContent title={t`Data Reference`} onClose={onClose}>
+        <MainPane {...props} onItemClick={onItemClick} />
+      </SidebarContent>
     );
   }
-  return (
-    <SidebarContent
-      title={title}
-      icon={icon}
-      onBack={stack.length > 0 ? back : null}
-      onClose={onClose}
-    >
-      <div className="px3">{content}</div>
-    </SidebarContent>
-  );
 };
 
 DataReference.propTypes = DataReferencePropTypes;
