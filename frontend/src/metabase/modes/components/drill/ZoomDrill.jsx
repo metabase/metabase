@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import { drillDownForDimensions } from "metabase/modes/lib/actions";
+import { drillDownForDimensions } from "metabase-lib/lib/queries/utils/actions";
 
 export default ({ question, clicked }) => {
   if (!question.query().isEditable()) {
