@@ -382,6 +382,26 @@ const helperTextStrings: HelpText[] = [
     ],
   },
   {
+    name: "datediff",
+    structure:
+      "datediff(" + t`column` + ", " + t`column` + ", " + t`unit` + ")",
+    description: t`Returns the number of units between the two expressions.`,
+    example:
+      "datediff([" +
+      t`created_at` +
+      "], [" +
+      t`shipped_at` +
+      "], " +
+      t`month` +
+      ")",
+    args: [
+      {
+        name: t`column`,
+        description: t`The column or number to return the exponential value of.`,
+      },
+    ],
+  },
+  {
     name: "exp",
     structure: "exp(" + t`column` + ")",
     description: t`Returns Euler's number, e, raised to the power of the supplied number.`,
