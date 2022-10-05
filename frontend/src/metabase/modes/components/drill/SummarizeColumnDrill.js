@@ -6,19 +6,16 @@ import {
 
 const ACTIONS = {
   sum: {
-    name: "sum",
     title: t`Sum`,
     section: "sum",
     buttonType: "token",
   },
   avg: {
-    name: "avg",
     title: t`Avg`,
     section: "sum",
     buttonType: "token",
   },
   distinct: {
-    name: "distinct",
     title: t`Distinct values`,
     section: "sum",
     buttonType: "token",
@@ -35,6 +32,7 @@ export default ({ question, clicked = {} }) => {
 
   return aggregationOperators.map(aggregationOperator => ({
     ...ACTIONS[aggregationOperator.short],
+    name: aggregationOperator.short,
     question: () =>
       summarizeColumnDrillQuestion({ question, clicked, aggregationOperator }),
     action: () => dispatch => {
