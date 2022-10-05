@@ -21,7 +21,7 @@
   {:revision s/Int
    :groups   {su/IntGreaterThanZero AppPermissions}})
 
-(s/defn ^:private set-all-users-app-permission
+(s/defn ^:private set-all-users-app-permission!
   [permission :- AppPermissions]
   (setting/set-value-of-type! :keyword :all-users-app-permission permission))
 
