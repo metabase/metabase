@@ -10,7 +10,7 @@ import {
   getLastMonthDateFilter,
   getTodayDateFilter,
   getYesterdayDateFilter,
-} from "metabase-lib/lib/utils/date-filters";
+} from "metabase-lib/lib/queries/utils/date-filters";
 
 import type Filter from "metabase-lib/lib/queries/structured/Filter";
 
