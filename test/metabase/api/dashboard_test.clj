@@ -2048,12 +2048,13 @@
           (actions.test-util/with-action [{:keys [action-id]} {}]
             (testing "Executing dashcard with action"
               (mt/with-temp* [Dashboard [{dashboard-id :id}]
+                              Card [{card-id :id} {:dataset true}]
+                              ModelAction [_ {:action_id action-id :card_id card-id :slug "custom"}]
                               DashboardCard [{dashcard-id :id}
                                              {:dashboard_id dashboard-id
-                                              :action_id action-id
-                                              :parameter_mappings [{:parameter_id "my_id"
-                                                                    :target [:variable [:template-tag "id"]]}]}]]
-                (let [execute-path (format "dashboard/%s/dashcard/%s/action/execute"
+                                              :card_id card-id
+                                              :visualization_settings {:action_slug "custom"}}]]
+                (let [execute-path (format "dashboard/%s/dashcard/%s/execute/custom"
                                            dashboard-id
                                            dashcard-id)]
                   (testing "with :advanced-permissions feature flag"
@@ -2064,7 +2065,7 @@
                                                                        :group_id group-id}]]
                           (is (= "You don't have permissions to do that."
                                  (mt/user-http-request :rasta :post 403 execute-path
-                                                       {:parameters [{:id "my_id" :type :number/= :value 1}]}))
+                                                       {:parameters {"id" 1}}))
                               "Execution permission should be required")
 
                           (mt/user-http-request
@@ -2075,7 +2076,7 @@
                               "Should be able to set execution permission")
                           (is (= {:rows-affected 1}
                                  (mt/user-http-request :rasta :post 200 execute-path
-                                                       {:parameters [{:id "my_id" :type :number/= :value 1}]}))
+                                                       {:parameters {"id" 1}}))
                               "Execution and data permissions should be enough")
 
                           (perms/update-data-perms-graph! [group-id (mt/id) :data]
@@ -2084,5 +2085,5 @@
                                                           {:schemas :block})
                           (is (= "You don't have permissions to do that."
                                  (mt/user-http-request :rasta :post 403 execute-path
-                                                       {:parameters [{:id "my_id" :type :number/= :value 1}]}))
+                                                       {:parameters {"id" 1}}))
                               "Data permissions should be required"))))))))))))))
