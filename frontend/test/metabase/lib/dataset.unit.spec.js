@@ -1,11 +1,10 @@
+import { ORDERS, PRODUCTS } from "__support__/sample_database_fixture";
 import {
   fieldRefForColumn,
   syncTableColumnsToQuery,
   findColumnForColumnSetting,
   keyForColumn,
-} from "metabase/lib/dataset";
-
-import { ORDERS, PRODUCTS } from "__support__/sample_database_fixture";
+} from "metabase-lib/lib/queries/utils/dataset";
 
 describe("metabase/util/dataset", () => {
   describe("fieldRefForColumn", () => {

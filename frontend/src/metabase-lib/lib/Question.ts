@@ -23,19 +23,13 @@ import {
   FieldDimension,
 } from "metabase-lib/lib/Dimension";
 import Mode from "metabase-lib/lib/Mode";
-import { isStandard } from "metabase/lib/query/filter";
+import { isStandard } from "metabase-lib/lib/queries/utils/filter";
 import { isFK } from "metabase/lib/schema_metadata";
 import { memoizeClass, sortObject } from "metabase-lib/lib/utils";
 /* eslint-enable import/order */
 
 // TODO: remove these dependencies
 import * as Urls from "metabase/lib/urls";
-import {
-  findColumnIndexForColumnSetting,
-  findColumnSettingIndexForColumn,
-  syncTableColumnsToQuery,
-} from "metabase/lib/dataset";
-import { isTransientId } from "metabase/meta/Card";
 import {
   getCardUiParameters,
   remapParameterValuesToTemplateTags,
@@ -45,14 +39,6 @@ import {
   normalizeParameterValue,
   getParameterValuesBySlug,
 } from "metabase/parameters/utils/parameter-values";
-import {
-  aggregate,
-  breakout,
-  distribution,
-  drillFilter,
-  filter,
-  pivot,
-} from "metabase/modes/lib/actions";
 import {
   DashboardApi,
   CardApi,
@@ -79,6 +65,20 @@ import { CollectionId } from "metabase-types/api";
 
 import { getQuestionVirtualTableId } from "metabase/lib/saved-questions/saved-questions";
 import {
+  aggregate,
+  breakout,
+  distribution,
+  drillFilter,
+  filter,
+  pivot,
+} from "metabase-lib/lib/queries/utils/actions";
+import { isTransientId } from "metabase-lib/lib/queries/utils/card";
+import {
+  findColumnIndexForColumnSetting,
+  findColumnSettingIndexForColumn,
+  syncTableColumnsToQuery,
+} from "metabase-lib/lib/queries/utils/dataset";
+import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
   ALERT_TYPE_ROWS,
   ALERT_TYPE_TIMESERIES_GOAL,
@@ -86,6 +86,7 @@ import {
 
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
+  dataset?: boolean;
   tableId?: TableId;
   collectionId?: CollectionId;
   metadata?: Metadata;
@@ -538,16 +539,20 @@ class QuestionInner {
     return pivot(this, breakouts, dimensions) || this;
   }
 
-  drillUnderlyingRecords(values: DimensionValue[], column?: Column): Question {
+  drillUnderlyingRecords(
+    dimensions: DimensionValue[],
+    column?: Column,
+  ): Question {
     let query = this.query();
     if (!(query instanceof StructuredQuery)) {
       return this;
     }
 
-    query = values.reduce(
-      (query, { value, column }) => drillFilter(query, value, column),
-      query,
-    );
+    dimensions.forEach(({ value, column }) => {
+      if (column.source !== "aggregation") {
+        query = drillFilter(query, value, column);
+      }
+    });
 
     const dimension = column && query.parseFieldReference(column.field_ref);
     if (dimension instanceof AggregationDimension) {
@@ -941,6 +946,7 @@ class QuestionInner {
     query,
     includeDisplayIsLocked,
     creationType,
+    ...options
   }: {
     originalQuestion?: Question;
     clean?: boolean;
@@ -1374,6 +1380,7 @@ export default class Question extends memoizeClass<QuestionInner>(
     name,
     display = "table",
     visualization_settings = {},
+    dataset,
     dataset_query = type === "native"
       ? NATIVE_QUERY_TEMPLATE
       : STRUCTURED_QUERY_TEMPLATE,
@@ -1383,6 +1390,7 @@ export default class Question extends memoizeClass<QuestionInner>(
       collection_id: collectionId,
       display,
       visualization_settings,
+      dataset,
       dataset_query,
     };
 

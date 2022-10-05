@@ -115,16 +115,16 @@
     :below (trs "gone below its goal")
     :rows  (trs "results")))
 
-(def ^:private ^:dynamic *slack-mrkdwn-length-limit*
-  3000)
+(def ^:private block-text-length-limit 3000)
+(def ^:private attachment-text-length-limit 2000)
 
 (defn- truncate-mrkdwn
   "If a mrkdwn string is greater than Slack's length limit, truncates it to fit the limit and
   adds an ellipsis character to the end."
-  [mrkdwn]
-  (if (> (count mrkdwn) *slack-mrkdwn-length-limit*)
+  [mrkdwn limit]
+  (if (> (count mrkdwn) limit)
     (-> mrkdwn
-        (subs 0 (dec *slack-mrkdwn-length-limit*))
+        (subs 0 (dec limit))
         (str "…"))
     mrkdwn))
 
@@ -146,7 +146,7 @@
                  (when (not (str/blank? mrkdwn))
                    {:blocks [{:type "section"
                               :text {:type "mrkdwn"
-                                     :text (truncate-mrkdwn mrkdwn)}}]})))))
+                                     :text (truncate-mrkdwn mrkdwn block-text-length-limit)}}]})))))
          (remove nil?))))
 
 (defn- subject
@@ -155,6 +155,12 @@
           (some :dashboard_id cards))
     name
     (trs "Pulse: {0}" name)))
+
+(defn- filter-text
+  [filter]
+  (truncate-mrkdwn
+   (format "*%s*\n%s" (:name filter) (params/value-string filter))
+   attachment-text-length-limit))
 
 (defn- slack-dashboard-header
   "Returns a block element that includes a dashboard's name, creator, and filters, for inclusion in a
@@ -170,7 +176,7 @@
         filters         (params/parameters pulse dashboard)
         filter-fields   (for [filter filters]
                           {:type "mrkdwn"
-                           :text (str "*" (:name filter) "*\n" (params/value-string filter))})
+                           :text (filter-text filter)})
         filter-section  (when (seq filter-fields)
                           {:type   "section"
                            :fields filter-fields})]

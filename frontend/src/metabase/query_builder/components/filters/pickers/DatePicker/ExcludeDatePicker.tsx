@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import { Field } from "metabase-types/types/Field";
 import { color } from "metabase/lib/colors";
-import { EXCLUDE_OPTIONS } from "metabase/lib/query_time";
+import { EXCLUDE_OPTIONS } from "metabase-lib/lib/queries/utils/query-time";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import { FieldDimension } from "metabase-lib/lib/Dimension";
 import {

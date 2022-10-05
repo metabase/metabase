@@ -9,8 +9,8 @@ import "leaflet-draw";
 
 import _ from "underscore";
 
-import { updateLatLonFilter } from "metabase/modes/lib/actions";
 import MetabaseSettings from "metabase/lib/settings";
+import { updateLatLonFilter } from "metabase-lib/lib/queries/utils/actions";
 import Question from "metabase-lib/lib/Question";
 
 export default class LeafletMap extends Component {

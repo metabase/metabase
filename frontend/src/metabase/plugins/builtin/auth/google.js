@@ -9,7 +9,7 @@ import {
 
 import MetabaseSettings from "metabase/lib/settings";
 
-import AuthenticationOption from "metabase/admin/settings/components/widgets/AuthenticationOption";
+import AuthenticationWidget from "metabase/admin/settings/components/widgets/AuthenticationWidget";
 import SettingsGoogleForm from "metabase/admin/settings/components/SettingsGoogleForm";
 
 PLUGIN_AUTH_PROVIDERS.push(providers => {
@@ -19,7 +19,7 @@ PLUGIN_AUTH_PROVIDERS.push(providers => {
     Button: require("metabase/auth/containers/GoogleButton").default,
   };
 
-  return MetabaseSettings.isGoogleAuthConfigured()
+  return MetabaseSettings.isGoogleAuthEnabled()
     ? [googleProvider, ...providers]
     : providers;
 });
@@ -28,11 +28,15 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
   updateIn(sections, ["authentication", "settings"], settings => [
     ...settings,
     {
-      authName: t`Sign in with Google`,
-      authDescription: t`Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password.`,
-      authType: "google",
-      authEnabled: settings => !!settings["google-auth-client-id"],
-      widget: AuthenticationOption,
+      key: "google-auth-enabled",
+      description: null,
+      widget: AuthenticationWidget,
+      getProps: (setting, settings) => ({
+        authType: "google",
+        authName: t`Sign in with Google`,
+        authDescription: t`Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password.`,
+        authConfigured: Boolean(settings["google-auth-client-id"]),
+      }),
     },
   ]),
 );
@@ -44,6 +48,8 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
     settings: [
       {
         key: "google-auth-client-id",
+        required: true,
+        autoFocus: true,
       },
       {
         key: "google-auth-auto-create-accounts-domain",

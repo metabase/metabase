@@ -3,10 +3,10 @@ import * as B from "./breakout";
 import * as F from "./filter";
 import * as J from "./join";
 import * as L from "./limit";
-import * as O from "./order_by";
+import * as O from "./order-by";
 import * as E from "./expression";
 import * as FIELD from "./field";
-import * as FIELD_REF from "./field_ref";
+import * as FIELD_REF from "./field-ref";
 
 // AGGREGATION
 

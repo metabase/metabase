@@ -4,8 +4,8 @@ import { updateIn } from "icepick";
 import { normalizeParameterValue } from "metabase/parameters/utils/parameter-values";
 import { deriveFieldOperatorFromParameter } from "metabase/parameters/utils/operators";
 
-import * as Q_DEPRECATED from "metabase/lib/query"; // legacy
 import Utils from "metabase/lib/utils";
+import * as Q_DEPRECATED from "metabase-lib/lib/queries/utils"; // legacy
 
 export const STRUCTURED_QUERY_TEMPLATE = {
   type: "query",
