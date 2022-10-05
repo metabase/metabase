@@ -324,6 +324,12 @@ async function handleQBInit(
 
   const finalCard = question.card();
 
+  // This will tell the URL builder to keep "/model" in it
+  // if that's where we are
+  if (location.pathname?.startsWith("/model")) {
+    finalCard.dataset = true;
+  }
+
   const parameterValues = getParameterValuesForQuestion({
     card: finalCard,
     queryParams,
