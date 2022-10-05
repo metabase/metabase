@@ -1,70 +1,42 @@
-/* eslint-disable react/prop-types */
 import { t } from "ttag";
-import _ from "underscore";
-
-import { TYPE, isa } from "metabase/lib/types";
 import {
-  getAggregationOperator,
-  isCompatibleAggregationOperatorForField,
-} from "metabase/lib/schema_metadata";
-import { fieldRefForColumn } from "metabase-lib/lib/queries/utils/dataset";
+  summarizeColumnDrill,
+  summarizeColumnDrillQuestion,
+} from "metabase-lib/lib/queries/drills/summarize-column-drill";
 
-const INVALID_TYPES = [TYPE.Structured];
-
-const AGGREGATIONS = {
+const ACTIONS = {
   sum: {
+    title: t`Sum`,
     section: "sum",
     buttonType: "token",
-    title: t`Sum`,
   },
   avg: {
+    title: t`Avg`,
     section: "sum",
     buttonType: "token",
-    title: t`Avg`,
   },
   distinct: {
+    title: t`Distinct values`,
     section: "sum",
     buttonType: "token",
-    title: t`Distinct values`,
   },
 };
 
 export default ({ question, clicked = {} }) => {
-  const { column, value } = clicked;
-  if (
-    !column ||
-    value !== undefined ||
-    _.any(INVALID_TYPES, type => isa(clicked.column.base_type, type))
-  ) {
+  const drill = summarizeColumnDrill({ question, clicked });
+  if (!drill) {
     return [];
   }
 
-  const query = question.query();
-  if (!question.isStructured() || !query.isEditable()) {
-    return [];
-  }
+  const { aggregationOperators } = drill;
 
-  return Object.entries(AGGREGATIONS)
-    .map(([aggregationShort, action]) => [
-      getAggregationOperator(aggregationShort),
-      action,
-    ])
-    .filter(([aggregator]) =>
-      isCompatibleAggregationOperatorForField(aggregator, column),
-    )
-    .map(([aggregator, action]) => ({
-      name: action.title.toLowerCase(),
-      ...action,
-      question: () =>
-        query
-          .aggregate([aggregator.short, fieldRefForColumn(column)])
-          .question()
-          .setDefaultDisplay(),
-      action: () => dispatch => {
-        // HACK: drill through closes sidebars, so open sidebar asynchronously
-        setTimeout(() => {
-          dispatch({ type: "metabase/qb/EDIT_SUMMARY" });
-        });
-      },
-    }));
+  return aggregationOperators.map(aggregationOperator => ({
+    ...ACTIONS[aggregationOperator.short],
+    name: aggregationOperator.short,
+    question: () =>
+      summarizeColumnDrillQuestion({ question, clicked, aggregationOperator }),
+    action: () => dispatch =>
+      // HACK: drill through closes sidebars, so open sidebar asynchronously
+      setTimeout(() => dispatch({ type: "metabase/qb/EDIT_SUMMARY" })),
+  }));
 };

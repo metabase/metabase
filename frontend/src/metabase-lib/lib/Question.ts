@@ -40,14 +40,6 @@ import {
   getParameterValuesBySlug,
 } from "metabase/parameters/utils/parameter-values";
 import {
-  aggregate,
-  breakout,
-  distribution,
-  drillFilter,
-  filter,
-  pivot,
-} from "metabase/modes/lib/actions";
-import {
   DashboardApi,
   CardApi,
   maybeUsePivotEndpoint,
@@ -72,6 +64,14 @@ import { utf8_to_b64url } from "metabase/lib/encoding";
 import { CollectionId } from "metabase-types/api";
 
 import { getQuestionVirtualTableId } from "metabase/lib/saved-questions/saved-questions";
+import {
+  aggregate,
+  breakout,
+  distribution,
+  drillFilter,
+  filter,
+  pivot,
+} from "metabase-lib/lib/queries/utils/actions";
 import { isTransientId } from "metabase-lib/lib/queries/utils/card";
 import {
   findColumnIndexForColumnSetting,
