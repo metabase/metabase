@@ -28,7 +28,7 @@ describe("scenarios > admin > databases > add", () => {
     cy.signInAsAdmin();
   });
 
-  it("should show validation error if you enable scheduling toggle and enter invalid db connection info", () => {
+  it("should show validation error if you enter invalid db connection info", () => {
     cy.intercept("POST", "/api/database").as("createDatabase");
 
     // should display a setup help card
@@ -38,9 +38,6 @@ describe("scenarios > admin > databases > add", () => {
     chooseDatabase("H2");
     typeField("Display name", "Test db name");
     typeField("Connection String", "invalid");
-
-    cy.findByText("Show advanced options").click();
-    toggleFieldWithDisplayName("Choose when syncs and scans happen");
 
     cy.button("Save").click();
     cy.wait("@createDatabase");
