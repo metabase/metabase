@@ -11,6 +11,7 @@ import { Parameter, ParameterQueryObject } from "./Parameter";
 export type CardId = number;
 
 export type UnsavedCard<Query = DatasetQuery> = {
+  dataset?: boolean;
   dataset_query: Query;
   display: string;
   visualization_settings: VisualizationSettings;
