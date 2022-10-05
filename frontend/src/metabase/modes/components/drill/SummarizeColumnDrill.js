@@ -31,7 +31,9 @@ export default ({ question, clicked = {} }) => {
     return [];
   }
 
-  return drill.aggregationOperators.map(aggregationOperator => ({
+  const { aggregationOperators } = drill;
+
+  return aggregationOperators.map(aggregationOperator => ({
     ...ACTIONS[aggregationOperator.short],
     question: () =>
       summarizeColumnDrillQuestion({ question, clicked, aggregationOperator }),

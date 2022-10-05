@@ -11,14 +11,16 @@ export default ({ question, clicked }) => {
     return [];
   }
 
-  const tableTitle = drill.tableName
-    ? inflect(drill.tableName, drill.rowCount)
-    : ngettext(msgid`record`, `records`, drill.rowCount);
+  const { tableName, rowCount } = drill;
+
+  const tableTitle = tableName
+    ? inflect(tableName, rowCount)
+    : ngettext(msgid`record`, `records`, rowCount);
 
   const actionTitle = ngettext(
     msgid`View this ${tableTitle}`,
     `View these ${tableTitle}`,
-    drill.rowCount,
+    rowCount,
   );
 
   return [
