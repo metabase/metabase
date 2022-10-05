@@ -9,11 +9,12 @@ describe(
       cy.signInAsAdmin();
 
       cy.intercept("POST", "/api/database").as("createDatabase");
+
+      cy.visit("/admin/databases/create");
+      cy.contains("Database type").closest(".Form-field").find("a").click();
     });
 
     it("should add Postgres database and redirect to listing (metabase#12972, metabase#14334, metabase#17450)", () => {
-      cy.visit("/admin/databases/create");
-      cy.contains("Database type").closest(".Form-field").find("a").click();
       cy.contains("PostgreSQL").click({ force: true });
 
       cy.findByText("Show advanced options").click();
@@ -72,8 +73,6 @@ describe(
     });
 
     it("should add Mongo database and redirect to listing", () => {
-      cy.visit("/admin/databases/create");
-      cy.contains("Database type").closest(".Form-field").find("a").click();
       cy.contains("MongoDB").click({ force: true });
       cy.findByText("Show advanced options").click();
       cy.contains("Additional connection string options");
@@ -103,8 +102,6 @@ describe(
     });
 
     it("should add MySQL database and redirect to listing", () => {
-      cy.visit("/admin/databases/create");
-      cy.contains("Database type").closest(".Form-field").find("a").click();
       cy.contains("MySQL").click({ force: true });
       cy.findByText("Show advanced options").click();
       cy.contains("Additional JDBC connection string options");
