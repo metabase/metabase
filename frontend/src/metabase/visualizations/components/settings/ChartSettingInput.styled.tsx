@@ -1,31 +1,21 @@
 import styled from "@emotion/styled";
-import Input from "metabase/core/components/Input";
+import { css } from "@emotion/react";
+import InputBlurChange from "metabase/components/InputBlurChange";
 
 import { color } from "metabase/lib/colors";
 
-export const ChartSettingInputBlurChange = styled(Input)`
+export const ChartSettingInputStyle = css`
+  font-size: 0.875rem;
+  border: 1px solid ${color("border")};
+  border-radius: 0.5rem;
+  color: ${color("text-dark")};
+  padding: 0.625rem 0.75rem;
   display: block;
-
-  ${Input.Field} {
-    font-size: 0.875rem;
-    width: 100%;
-    padding: 0.625rem 0.75rem;
-    border-radius: 0.5rem;
-  }
+  width: 100%;
+  transition: border 0.3s;
+  font-weight: 700;
 `;
 
-export const SuggestionContainer = styled.div`
-  padding: 0.5rem;
-  display: flex;
-  flex-direction: column;
-`;
-
-export const Suggestion = styled.span`
-  font-size: 0.75rem;
-  margin-bottom: 0.25rem;
-
-  &:hover {
-    color: ${color("brand")};
-    cursor: pointer;
-  }
+export const ChartSettingInputBlurChange = styled(InputBlurChange)`
+  ${ChartSettingInputStyle}
 `;
