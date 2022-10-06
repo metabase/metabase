@@ -166,7 +166,8 @@
                                                  :from [Card]
                                                  :where [:and
                                                          [:= :collection_id (:collection_id app)]
-                                                         [:= :dataset true]]}]}))))))
+                                                         [:= :dataset true]]}]
+                                        :order-by [:id]}))))))
     (testing "Bad or duplicate tables"
       (is (= (format "Some tables could not be found. Given: (%s %s) Found: (%s)"
                      (data/id :venues)
