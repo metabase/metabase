@@ -600,24 +600,21 @@ class NativeQueryEditor extends Component {
   }
 }
 
-const mapStateToProps = () => ({});
-const mapDispatchToProps = dispatch => {
-  return {
-    fetchQuestion: async id => {
-      const action = await dispatch(
-        Questions.actions.fetch(
-          { id },
-          { noEvent: true, useCachedForbiddenError: true },
-        ),
-      );
-      return Questions.HACK_getObjectFromAction(action);
-    },
-  };
-};
+const mapDispatchToProps = dispatch => ({
+  fetchQuestion: async id => {
+    const action = await dispatch(
+      Questions.actions.fetch(
+        { id },
+        { noEvent: true, useCachedForbiddenError: true },
+      ),
+    );
+    return Questions.HACK_getObjectFromAction(action);
+  },
+});
 
 export default _.compose(
   ExplicitSize(),
   Snippets.loadList({ loadingAndErrorWrapper: false }),
   SnippetCollections.loadList({ loadingAndErrorWrapper: false }),
-  connect(mapStateToProps, mapDispatchToProps),
+  connect(null, mapDispatchToProps),
 )(NativeQueryEditor);
