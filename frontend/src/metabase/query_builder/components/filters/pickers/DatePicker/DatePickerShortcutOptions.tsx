@@ -1,20 +1,19 @@
 import { t } from "ttag";
-import moment from "moment-timezone";
+import {
+  getInitialExcludeShortcut,
+  getInitialSpecificDatesShortcut,
+  getInitialRelativeDatesShortcut,
+  getLast12MonthsDateFilter,
+  getLast30DaysDateFilter,
+  getLast3MonthsDateFilter,
+  getLast7DaysDateFilter,
+  getLastMonthDateFilter,
+  getTodayDateFilter,
+  getYesterdayDateFilter,
+  getLastWeekDateFilter,
+} from "metabase-lib/lib/queries/utils/date-filters";
 
-import Dimension from "metabase-lib/lib/Dimension";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
-
-function getDateTimeDimension(mbql: any, bucketing?: string) {
-  const dimension = Dimension.parseMBQL(mbql);
-  if (dimension) {
-    if (bucketing) {
-      return dimension.withTemporalUnit(bucketing).mbql();
-    } else {
-      return dimension.withoutTemporalBucketing().mbql();
-    }
-  }
-  return mbql;
-}
+import type Filter from "metabase-lib/lib/queries/structured/Filter";
 
 type Option = {
   displayName: string;
@@ -24,111 +23,53 @@ type Option = {
 const DAY_OPTIONS: Option[] = [
   {
     displayName: t`Today`,
-    init: filter => [
-      "time-interval",
-      getDateTimeDimension(filter[1]),
-      "current",
-      "day",
-      { include_current: true },
-    ],
+    init: filter => getTodayDateFilter(filter),
   },
   {
     displayName: t`Yesterday`,
-    init: filter => [
-      "time-interval",
-      getDateTimeDimension(filter[1]),
-      -1,
-      "day",
-      { include_current: false },
-    ],
+    init: filter => getYesterdayDateFilter(filter),
   },
   {
     displayName: t`Last Week`,
-    init: filter => [
-      "time-interval",
-      getDateTimeDimension(filter[1]),
-      -1,
-      "week",
-      { include_current: false },
-    ],
+    init: filter => getLastWeekDateFilter(filter),
   },
   {
     displayName: t`Last 7 Days`,
-    init: filter => [
-      "time-interval",
-      getDateTimeDimension(filter[1]),
-      -7,
-      "day",
-      { include_current: false },
-    ],
+    init: filter => getLast7DaysDateFilter(filter),
   },
   {
     displayName: t`Last 30 Days`,
-    init: filter => [
-      "time-interval",
-      getDateTimeDimension(filter[1]),
-      -30,
-      "day",
-      { include_current: false },
-    ],
+    init: filter => getLast30DaysDateFilter(filter),
   },
 ];
 
 const MONTH_OPTIONS: Option[] = [
   {
     displayName: t`Last Month`,
-    init: filter => [
-      "time-interval",
-      getDateTimeDimension(filter[1]),
-      -1,
-      "month",
-      { include_current: false },
-    ],
+    init: filter => getLastMonthDateFilter(filter),
   },
   {
     displayName: t`Last 3 Months`,
-    init: filter => [
-      "time-interval",
-      getDateTimeDimension(filter[1]),
-      -3,
-      "month",
-      { include_current: false },
-    ],
+    init: filter => getLast3MonthsDateFilter(filter),
   },
   {
     displayName: t`Last 12 Months`,
-    init: filter => [
-      "time-interval",
-      getDateTimeDimension(filter[1]),
-      -12,
-      "month",
-      { include_current: false },
-    ],
+    init: filter => getLast12MonthsDateFilter(filter),
   },
 ];
 
 const MISC_OPTIONS: Option[] = [
   {
     displayName: t`Specific dates...`,
-    init: filter => [
-      "between",
-      getDateTimeDimension(filter[1]),
-      moment().subtract(30, "day").format("YYYY-MM-DD"),
-      moment().format("YYYY-MM-DD"),
-    ],
+    init: filter => getInitialSpecificDatesShortcut(filter),
   },
   {
     displayName: t`Relative dates...`,
-    init: filter => [
-      "time-interval",
-      getDateTimeDimension(filter[1]),
-      -30,
-      "day",
-    ],
+    init: filter => getInitialRelativeDatesShortcut(filter),
   },
   {
     displayName: t`Exclude...`,
-    init: filter => ["!=", getDateTimeDimension(filter[1])],
+    init: filter => getInitialExcludeShortcut(filter),
   },
 ];
 

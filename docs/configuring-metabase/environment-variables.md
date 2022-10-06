@@ -219,9 +219,9 @@ When set to `false`, Metabase will print migrations needed to be done in the app
 ### `MB_DB_CONNECTION_TIMEOUT_MS`
 
 Type: integer<br>
-Default: `5000`
+Default: `10000`
 
-Timeout in milliseconds for connecting to the application database.
+Timeout in milliseconds for connecting to databases, both Metabase application database and data connections. In case you're connecting via an SSH tunnel and run into a timeout, you might consider increasing this value as the connections via tunnels have more overhead than connections without.
 
 ### `MB_DB_CONNECTION_URI`
 

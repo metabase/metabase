@@ -424,7 +424,7 @@ function DatasetEditor(props) {
             key="save"
             disabled={!canSaveChanges}
             actionFn={handleSave}
-            normalText={t`Save changes`}
+            normalText={dataset.isSaved() ? t`Save changes` : t`Save`}
             activeText={t`Saving…`}
             failedText={t`Save failed`}
             successText={t`Saved`}
