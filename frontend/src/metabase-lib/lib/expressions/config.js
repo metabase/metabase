@@ -365,6 +365,7 @@ export const MBQL_CLAUSES = {
     displayName: `datediff`,
     type: "number",
     args: ["expression", "expression", "string"],
+    requiresFeature: "datediff",
   },
   "date-add": {
     displayName: `dateAdd`,
