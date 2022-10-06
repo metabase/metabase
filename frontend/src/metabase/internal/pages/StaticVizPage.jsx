@@ -92,11 +92,21 @@ export default function StaticVizPage() {
             }}
           >
             <option id="">---</option>
-            {STATIC_CHART_TYPES.map((chartType, chartTypeIndex) => (
-              <option key={chartType} value={chartTypeIndex}>
-                {chartType}
-              </option>
-            ))}
+            {STATIC_CHART_TYPES.map((chartType, chartTypeIndex) => {
+              if (chartType === WATERFALL_CHART_TYPE) {
+                return (
+                  <option key={chartTypeIndex} value={chartTypeIndex}>
+                    waterfall (
+                    {chartTypeIndex === 1 ? "categorical" : "timeseries"})
+                  </option>
+                );
+              }
+              return (
+                <option key={chartType} value={chartTypeIndex}>
+                  {chartType}
+                </option>
+              );
+            })}
           </select>
 
           {(staticChartCustomOptions ||
