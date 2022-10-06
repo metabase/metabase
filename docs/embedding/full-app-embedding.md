@@ -139,7 +139,7 @@ To specify the size of an iframe so that it matches an embedded Metabase page (e
 
 ## Passing an embedding URL between Metabase and your app
 
-To make a request for an particular embedding URL (e.g., for deep linking), you can use [postMessage](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage) to send a "location" message _from_ your embedded Metabase to your app:
+To make a request for a particular embedding URL (e.g., for deep linking), you can use [postMessage](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage) to send a "location" message _from_ your embedded Metabase to your app:
 
 ```
 { “metabase”: { “type”: “location”, “location”: LOCATION_OBJECT }}
