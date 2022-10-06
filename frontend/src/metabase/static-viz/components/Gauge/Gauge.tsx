@@ -67,7 +67,7 @@ export default function Gauge({
   const outlineColor = getColor("white");
 
   return (
-    <svg width={CHART_WIDTH} height={CHART_HEIGHT}>
+    <svg width={CHART_WIDTH} height={CHART_HEIGHT} fontFamily="Lato">
       <g transform={`translate(${CHART_WIDTH / 2}, ${CHART_HEIGHT / 2})`}>
         {/* `transform-origin: center` doesn't work when rendered with Batik.
             This <g /> translates the center of the chart to coordinate (0,0),
