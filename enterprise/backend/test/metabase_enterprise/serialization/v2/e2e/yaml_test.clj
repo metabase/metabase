@@ -260,7 +260,11 @@
 
             (testing "each entity matches its in-memory original"
               (doseq [entity extraction]
-                (is (= (-> entity
-                           (update :serdes/meta strip-labels)
-                           (dissoc :updated_at))
-                         (ingest/ingest-one ingestable (serdes.base/serdes-path entity))))))))))))
+                (let [->utc   #(t/zoned-date-time % (ZoneId/of "UTC"))]
+                  (is (= (cond-> entity
+                           true                                       (update :serdes/meta strip-labels)
+                           true                                       (dissoc :updated_at)
+                           ;; TIMESTAMP WITH TIME ZONE columns come out of the database as OffsetDateTime, but read back
+                           ;; from YAML as ZonedDateTimes; coerce the expected value to match.
+                           (t/offset-date-time? (:created_at entity)) (update :created_at ->utc))
+                         (ingest/ingest-one ingestable (serdes.base/serdes-path entity)))))))))))))
