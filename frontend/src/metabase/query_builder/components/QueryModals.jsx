@@ -88,7 +88,7 @@ class QueryModals extends React.Component {
           onClose={onCloseModal}
         />
       </Modal>
-    ) : modal === MODAL_TYPES.SAVED ? (
+    ) : modal === MODAL_TYPES.SAVED && !question.isDataset() ? (
       <Modal small onClose={onCloseModal}>
         <QuestionSavedModal
           onClose={onCloseModal}
