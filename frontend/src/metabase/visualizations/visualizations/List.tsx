@@ -6,6 +6,7 @@ import { formatColumn } from "metabase/lib/formatting";
 
 import List from "metabase/visualizations/components/List/List";
 import ChartSettingsListColumns from "metabase/visualizations/components/settings/ChartSettingsListColumns";
+import ChartSettingInputSuggestion from "metabase/visualizations/components/settings/ChartSettingInputSuggestion";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import { VisualizationSettings } from "metabase-types/api/card";
@@ -173,27 +174,56 @@ export default Object.assign(ListViz, {
 
     settings["link_text"] = {
       title: t`Link text`,
-      widget: "input",
+      widget: ChartSettingInputSuggestion,
       hint: linkFieldsHint,
       default: null,
       getHidden: (_: unknown, settings: VisualizationSettings) =>
         settings["view_as"] !== "link" && settings["view_as"] !== "email_link",
       readDependencies: ["view_as"],
-      props: {
-        placeholder: t`Link to {{bird_id}}`,
+      getProps: (
+        col: Column,
+        settings: VisualizationSettings,
+        onChange: (col: Column) => void,
+        {
+          series: [
+            {
+              data: { cols },
+            },
+          ],
+        }: { series: Series },
+      ) => {
+        return {
+          keys: cols.map(column => column.name),
+          placeholder: t`Link to {{bird_id}}`,
+        };
       },
     };
 
     settings["link_url"] = {
       title: t`Link URL`,
-      widget: "input",
+      widget: ChartSettingInputSuggestion,
       hint: linkFieldsHint,
       default: null,
       getHidden: (_: unknown, settings: VisualizationSettings) =>
         settings["view_as"] !== "link",
       readDependencies: ["view_as"],
-      props: {
-        placeholder: t`http://toucan.example/{{bird_id}}`,
+      getProps: (
+        col: Column,
+        settings: VisualizationSettings,
+        onChange: (col: Column) => void,
+        {
+          series: [
+            {
+              data: { cols },
+            },
+          ],
+        }: { series: Series },
+      ) => {
+        console.log(col);
+        return {
+          keys: cols.map(column => column.name),
+          placeholder: t`http://toucan.example/{{bird_id}}`,
+        };
       },
     };
 
