@@ -1,5 +1,6 @@
 (ns metabase.api.geojson
-  (:require [clojure.java.io :as io]
+  (:require [clj-http.client :as http]
+            [clojure.java.io :as io]
             [compojure.core :refer [GET]]
             [metabase.api.common :as api]
             [metabase.api.common.validation :as validation]
@@ -9,7 +10,8 @@
             [ring.util.codec :as codec]
             [ring.util.response :as response]
             [schema.core :as s])
-  (:import [java.net InetAddress URL]
+  (:import java.io.BufferedReader
+           [java.net InetAddress URL]
            org.apache.commons.io.input.ReaderInputStream))
 
 (defsetting custom-geojson-enabled
@@ -101,6 +103,17 @@
                (setting/set-value-of-type! :json :custom-geojson new-value)))
   :visibility :public)
 
+(defn- read-url-and-respond
+  "Reads the provided URL and responds with the contents as a stream."
+  [url respond]
+  (with-open [^BufferedReader reader (if-let [resource (io/resource url)]
+                                       (io/reader resource)
+                                       (:body (http/get url {:as                :reader
+                                                             :redirect-strategy :none})))
+              is                     (ReaderInputStream. reader)]
+    (respond (-> (response/response is)
+                 (response/content-type "application/json")))))
+
 (api/defendpoint-async GET "/:key"
   "Fetch a custom GeoJSON file as defined in the `custom-geojson` setting. (This just acts as a simple proxy for the
   file specified for `key`)."
@@ -110,11 +123,7 @@
     (raise (ex-info (tru "Custom GeoJSON is not enabled") {:status-code 400})))
   (if-let [url (get-in (custom-geojson) [(keyword key) :url])]
     (try
-      (with-open [reader (io/reader (or (io/resource url)
-                                        url))
-                  is     (ReaderInputStream. reader)]
-        (respond (-> (response/response is)
-                     (response/content-type "application/json"))))
+      (read-url-and-respond url respond)
       (catch Throwable _e
         (raise (ex-info (tru "GeoJSON URL failed to load") {:status-code 400}))))
     (raise (ex-info (tru "Invalid custom GeoJSON key: {0}" key) {:status-code 400}))))
@@ -132,11 +141,7 @@
       (when-not (valid-geojson-url? decoded-url)
         (throw (ex-info (invalid-location-msg) {:status-code 400})))
       (try
-        (with-open [reader (io/reader (or (io/resource decoded-url)
-                                          decoded-url))
-                    is     (ReaderInputStream. reader)]
-          (respond (-> (response/response is)
-                       (response/content-type "application/json"))))
+        (read-url-and-respond decoded-url respond)
         (catch Throwable _
           (throw (ex-info (tru "GeoJSON URL failed to load") {:status-code 400}))))
       (catch Throwable e
