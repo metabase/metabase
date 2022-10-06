@@ -1,5 +1,5 @@
-import { isFK, isPK } from "metabase/lib/types";
 import { stripId } from "metabase/lib/formatting/strings";
+import { isFK, isPK } from "metabase-lib/lib/types/utils/isa";
 
 export function foreignKeyDrill({ question, clicked }) {
   const query = question.query();
