@@ -1,12 +1,6 @@
 import { t } from "ttag";
 import _ from "underscore";
 import {
-  isDimension,
-  isMetric,
-  isNumeric,
-  isAny,
-} from "metabase/lib/schema_metadata";
-import {
   columnsAreValid,
   getFriendlyName,
   getDefaultDimensionsAndMetrics,
@@ -26,6 +20,12 @@ import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 import { getMaxMetricsSupported } from "metabase/visualizations";
 
 import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
+import {
+  isDimension,
+  isMetric,
+  isNumeric,
+  isAny,
+} from "metabase-lib/lib/types/utils/isa";
 
 // NOTE: currently we don't consider any date extracts to be histgrams
 const HISTOGRAM_DATE_EXTRACTS = new Set([

@@ -1,10 +1,14 @@
 import React, { useMemo, useCallback } from "react";
 
-import { isBoolean, isString, isNumber } from "metabase/lib/schema_metadata";
 import { BooleanPickerCheckbox } from "metabase/query_builder/components/filters/pickers/BooleanPicker";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import Dimension from "metabase-lib/lib/Dimension";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import {
+  isBoolean,
+  isString,
+  isNumber,
+} from "metabase-lib/lib/types/utils/isa";
 
 import { BulkFilterSelect } from "../BulkFilterSelect";
 import { InlineCategoryPicker } from "../InlineCategoryPicker";

@@ -34,12 +34,11 @@ import { getMetadata } from "metabase/selectors/metadata";
 // LIB
 import { has_field_values_options } from "metabase/lib/core";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
-import { isCurrency } from "metabase/lib/schema_metadata";
 
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import Fields from "metabase/entities/fields";
-import { isTypeFK } from "metabase-lib/lib/types/utils/isa";
+import { isTypeFK, isCurrency } from "metabase-lib/lib/types/utils/isa";
 import { rescanFieldValues, discardFieldValues } from "../field";
 import UpdateCachedFieldValues from "../components/UpdateCachedFieldValues";
 import FieldRemapping from "../components/FieldRemapping";

@@ -1,15 +1,5 @@
 import _ from "underscore";
 import {
-  getFieldType,
-  TEMPORAL,
-  STRING,
-  STRING_LIKE,
-  NUMBER,
-  BOOLEAN,
-  LOCATION,
-  COORDINATE,
-  PRIMARY_KEY,
-  FOREIGN_KEY,
   foreignKeyCountsByOriginTable,
   isEqualsOperator,
   doesOperatorExist,
@@ -21,8 +11,20 @@ import {
   getSemanticTypeIcon,
   getSemanticTypeName,
 } from "metabase/lib/schema_metadata";
+import { getFieldType } from "metabase-lib/lib/types/utils/isa";
 
-import { TYPE } from "metabase-lib/lib/types/constants";
+import {
+  TYPE,
+  TEMPORAL,
+  STRING,
+  STRING_LIKE,
+  NUMBER,
+  BOOLEAN,
+  LOCATION,
+  COORDINATE,
+  PRIMARY_KEY,
+  FOREIGN_KEY,
+} from "metabase-lib/lib/types/constants";
 
 describe("schema_metadata", () => {
   describe("getFieldType", () => {

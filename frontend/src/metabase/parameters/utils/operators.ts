@@ -3,10 +3,8 @@ import { UiParameter } from "metabase/parameters/types";
 import {
   doesOperatorExist,
   getOperatorByTypeAndName,
-  NUMBER,
-  STRING,
-  PRIMARY_KEY,
 } from "metabase/lib/schema_metadata";
+import { NUMBER, STRING, PRIMARY_KEY } from "metabase-lib/lib/types/constants";
 import { PARAMETER_OPERATOR_TYPES } from "../constants";
 import { getParameterType, getParameterSubType } from "./parameter-type";
 

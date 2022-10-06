@@ -1,5 +1,10 @@
-import { isDate, isNumeric } from "metabase/lib/schema_metadata";
-import { isa, isTypeFK, isTypePK } from "metabase-lib/lib/types/utils/isa";
+import {
+  isa,
+  isTypeFK,
+  isTypePK,
+  isDate,
+  isNumeric,
+} from "metabase-lib/lib/types/utils/isa";
 import { TYPE } from "metabase-lib/lib/types/constants";
 import { isLocalField } from "metabase-lib/lib/queries/utils";
 

@@ -5,8 +5,8 @@ import _ from "underscore";
 import cx from "classnames";
 import d3 from "d3";
 import L from "leaflet";
-import { hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
 import { LatitudeLongitudeError } from "metabase/visualizations/lib/errors";
+import { hasLatitudeAndLongitudeColumns } from "metabase-lib/lib/types/utils/isa";
 
 import LeafletMarkerPinMap from "./LeafletMarkerPinMap";
 import LeafletTilePinMap from "./LeafletTilePinMap";

@@ -4,12 +4,11 @@ import cx from "classnames";
 import { getIn } from "icepick";
 import { t } from "ttag";
 import * as MetabaseCore from "metabase/lib/core";
-import { isNumericBaseType } from "metabase/lib/schema_metadata";
 
 import Select from "metabase/core/components/Select";
 
 import D from "metabase/reference/components/Detail.css";
-import { isTypeFK } from "metabase-lib/lib/types/utils/isa";
+import { isTypeFK, isNumericBaseType } from "metabase-lib/lib/types/utils/isa";
 
 const FieldTypeDetail = ({
   field,

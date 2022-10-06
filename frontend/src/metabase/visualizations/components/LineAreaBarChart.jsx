@@ -9,12 +9,6 @@ import { iconPropTypes } from "metabase/components/Icon";
 
 import "./LineAreaBarChart.css";
 
-import {
-  isNumeric,
-  isDate,
-  isDimension,
-  isMetric,
-} from "metabase/lib/schema_metadata";
 import { getFriendlyName, MAX_SERIES } from "metabase/visualizations/lib/utils";
 import { addCSSRule } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
@@ -25,6 +19,20 @@ import {
   MinRowsError,
   ChartSettingsError,
 } from "metabase/visualizations/lib/errors";
+import { getAccentColors } from "metabase/lib/colors/groups";
+import {
+  isNumeric,
+  isDate,
+  isDimension,
+  isMetric,
+} from "metabase-lib/lib/types/utils/isa";
+
+import {
+  LineAreaBarChartRoot,
+  ChartLegendCaption,
+} from "./LineAreaBarChart.styled";
+import LegendLayout from "./legend/LegendLayout";
+import CardRenderer from "./CardRenderer";
 
 const MUTE_STYLE = "opacity: 0.25;";
 for (let i = 0; i < MAX_SERIES; i++) {
@@ -65,14 +73,6 @@ for (let i = 0; i < MAX_SERIES; i++) {
   // row charts don't support multiseries
   addCSSRule(`.LineAreaBarChart.mute-${i} svg:not(.stacked) .row`, MUTE_STYLE);
 }
-
-import { getAccentColors } from "metabase/lib/colors/groups";
-import {
-  LineAreaBarChartRoot,
-  ChartLegendCaption,
-} from "./LineAreaBarChart.styled";
-import LegendLayout from "./legend/LegendLayout";
-import CardRenderer from "./CardRenderer";
 
 export default class LineAreaBarChart extends Component {
   static noHeader = true;

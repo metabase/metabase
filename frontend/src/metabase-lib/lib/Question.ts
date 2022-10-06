@@ -24,7 +24,7 @@ import {
 } from "metabase-lib/lib/Dimension";
 import Mode from "metabase-lib/lib/Mode";
 import { isStandard } from "metabase-lib/lib/queries/utils/filter";
-import { isFK } from "metabase/lib/schema_metadata";
+import { isFK } from "metabase-lib/lib/types/utils/isa";
 import { memoizeClass, sortObject } from "metabase-lib/lib/utils";
 /* eslint-enable import/order */
 

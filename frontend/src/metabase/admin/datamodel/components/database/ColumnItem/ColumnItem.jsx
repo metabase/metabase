@@ -9,13 +9,12 @@ import cx from "classnames";
 import Select, { Option } from "metabase/core/components/Select";
 import Button from "metabase/core/components/Button";
 import * as MetabaseCore from "metabase/lib/core";
-import { isCurrency } from "metabase/lib/schema_metadata";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 
 import { currency } from "cljs/metabase.shared.util.currency";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import { isTypeFK } from "metabase-lib/lib/types/utils/isa";
+import { isTypeFK, isCurrency } from "metabase-lib/lib/types/utils/isa";
 import { getFieldRawName } from "../../../utils";
 import { ColumnItemInput } from "./ColumnItem.styled";
 

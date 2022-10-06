@@ -13,8 +13,8 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 import Ellipsified from "metabase/core/components/Ellipsified";
 
 import { isPositiveInteger } from "metabase/lib/number";
-import { isID } from "metabase/lib/schema_metadata";
 import { isColumnRightAligned } from "metabase/visualizations/lib/table";
+import { isID } from "metabase-lib/lib/types/utils/isa";
 
 import TableCell from "./TableCell";
 import TableFooter from "./TableFooter";
