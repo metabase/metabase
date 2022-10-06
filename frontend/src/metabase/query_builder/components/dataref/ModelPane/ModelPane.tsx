@@ -42,7 +42,7 @@ const ModelPane = ({
   onBack,
   onClose,
 }: ModelPaneProps) => {
-  const table = question.table();
+  const table = question.composeThisQuery()?.table();
   return (
     <SidebarContent
       title={question.displayName() || undefined}
