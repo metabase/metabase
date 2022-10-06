@@ -39,7 +39,7 @@ If you're dealing with a [multi-tenant](https://www.metabase.com/learn/customer-
    - [Add your license token](../configuring-metabase/environment-variables.md#mb_premium_embedding_token).
    - [Embed Metabase in a different domain](#embedding-metabase-in-a-different-domain).
    - [Secure your full-app embed](#securing-full-app-embeds).
-3. Optional: Enable communication to and from the embedded Metabase using[`postMessage`](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage):
+3. Optional: Enable communication to and from the embedded Metabase using [`postMessage`](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage):
    - [Fill an entire iframe with an embedded Metabase page](#filling-an-entire-iframe-with-an-embedded-metabase-page).
    - [Fit an iframe to a Metabase page with a fixed size](#fitting-an-iframe-to-a-metabase-page-with-a-fixed-size).
    - [Pass an embedding URL between Metabase and your app](#passing-an-embedding-url-between-metabase-and-your-app).
