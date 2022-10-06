@@ -2,7 +2,7 @@
   (:require
     [clojure.test :refer [deftest is testing]]
     [medley.core :as m]
-    [metabase.models :refer [App Card Collection Dashboard]]
+    [metabase.models :refer [App Card Collection Dashboard ModelAction]]
     [metabase.models.permissions :as perms]
     [metabase.models.permissions-group :as perms-group]
     [metabase.test :as mt]
@@ -155,7 +155,18 @@
                                                                   :linkType "page",
                                                                   :targetId (:id detail-page)}}}
                                        {}]}
-                      list-page))))
+                      list-page))
+        (testing "Implicit actions are created"
+          (is (partial=
+                [{:slug "insert"}
+                 {:slug "update"}
+                 {:slug "delete"}]
+                (db/select ModelAction {:where [:= :model_action.card_id
+                                                {:select [:id]
+                                                 :from [Card]
+                                                 :where [:and
+                                                         [:= :collection_id (:collection_id app)]
+                                                         [:= :dataset true]]}]}))))))
     (testing "Bad or duplicate tables"
       (is (= (format "Some tables could not be found. Given: (%s %s) Found: (%s)"
                      (data/id :venues)
