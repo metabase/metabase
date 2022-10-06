@@ -5,7 +5,7 @@ export function zoomDrill({ question, clicked }) {
     return false;
   }
 
-  const dimensions = (clicked && clicked.dimensions) || [];
+  const dimensions = clicked?.dimensions ?? [];
   const drilldown = drillDownForDimensions(dimensions, question.metadata());
   return drilldown != null;
 }

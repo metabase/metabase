@@ -1,10 +1,8 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { jt } from "ttag";
 
 import { isFK, isPK, TYPE, isa } from "metabase/lib/types";
 import { isDate, isNumeric } from "metabase/lib/schema_metadata";
-import { singularize, pluralize, stripId } from "metabase/lib/formatting";
 import { isLocalField } from "metabase-lib/lib/queries/utils/field-ref";
 
 const INVALID_TYPES = [TYPE.Structured];
@@ -25,23 +23,6 @@ function getFiltersForColumn(column) {
   } else {
     return [];
   }
-}
-
-function getFKFilter({ question, query, column, value }) {
-  const formattedColumnName = singularize(stripId(column.display_name));
-  const formattedTableName = pluralize(query.table().display_name);
-  return {
-    name: "view-fks",
-    section: "standalone_filter",
-    buttonType: "horizontal",
-    icon: "filter",
-    title: (
-      <span>
-        {jt`View this ${formattedColumnName}'s ${formattedTableName}`}
-      </span>
-    ),
-    question: () => question.filter("=", column, value),
-  };
 }
 
 function getFieldLiteralFromColumn(column) {
@@ -112,7 +93,7 @@ export default function QuickFilterDrill({ question, clicked }) {
   }
 
   if (isFK(column.semantic_type)) {
-    return [getFKFilter({ question, query, column, value })];
+    return [];
   }
 
   const operators = getFiltersForColumn(column) || [];
