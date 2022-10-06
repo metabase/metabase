@@ -175,6 +175,11 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.findByText("Visualization").click();
     cy.findByTestId("Waterfall-button").click();
 
+    cy.contains("Select a field").click();
+    cy.get(".List-item").contains("Created At").click();
+    cy.contains("Select a field").click();
+    cy.get(".List-item").contains("Count").click();
+
     cy.get(".CardVisualization svg"); // Chart renders after removing the second metric
 
     cy.findByText(/Add another/).should("not.exist");
