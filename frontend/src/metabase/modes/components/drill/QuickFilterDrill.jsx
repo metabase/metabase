@@ -18,6 +18,6 @@ export default function QuickFilterDrill({ question, clicked }) {
     section: "filter",
     buttonType: "token-filter",
     title: <span className="h2">{name}</span>,
-    question: quickFilterDrillQuestion({ question, clicked, operator }),
+    question: () => quickFilterDrillQuestion({ question, clicked, operator }),
   }));
 }
