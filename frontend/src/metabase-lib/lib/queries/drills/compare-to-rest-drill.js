@@ -3,7 +3,7 @@ import { isExpressionField } from "metabase-lib/lib/queries/utils";
 export function compareToRestDrill({ question, clicked, enableXrays }) {
   const query = question.query();
   if (!question.isStructured() || !query.isEditable()) {
-    return [];
+    return false;
   }
 
   // questions with a breakout
