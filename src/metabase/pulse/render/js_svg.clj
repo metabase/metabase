@@ -6,7 +6,8 @@
   (:require [cheshire.core :as json]
             [clojure.string :as str]
             [metabase.public-settings :as public-settings]
-            [metabase.pulse.render.js-engine :as js])
+            [metabase.pulse.render.js-engine :as js]
+            [metabase.pulse.render.png :as png])
   (:import [java.io ByteArrayInputStream ByteArrayOutputStream]
            java.nio.charset.StandardCharsets
            [org.apache.batik.anim.dom SAXSVGDocumentFactory SVGOMDocument]
@@ -87,6 +88,7 @@
 
 (defn- render-svg
   ^bytes [^SVGOMDocument svg-document]
+  (png/register-fonts-if-needed!)
   (with-open [os (ByteArrayOutputStream.)]
     (let [^SVGOMDocument fixed-svg-doc (post-process svg-document fix-fill)
           in                           (TranscoderInput. fixed-svg-doc)

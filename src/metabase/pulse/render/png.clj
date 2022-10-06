@@ -43,7 +43,6 @@
         (throw (ex-info message {} e))))))
 
 (defonce ^{:doc      "Makes custom fonts available to Java so that CSSBox can render them."
-           :private  true
            :arglists '([])} register-fonts-if-needed!
   (let [register!* (delay (register-fonts!))]
     (fn []
