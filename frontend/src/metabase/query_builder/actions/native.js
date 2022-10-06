@@ -30,6 +30,13 @@ export const toggleDataReference = createAction(TOGGLE_DATA_REFERENCE, () => {
 export const SET_DATA_REFERENCE_STACK = "metabase/qb/SET_DATA_REFERENCE_STACK";
 export const setDataReferenceStack = createAction(SET_DATA_REFERENCE_STACK);
 
+export const POP_DATA_REFERENCE_STACK = "metabase/qb/POP_DATA_REFERENCE_STACK";
+export const popDataReferenceStack = createAction(POP_DATA_REFERENCE_STACK);
+
+export const PUSH_DATA_REFERENCE_STACK =
+  "metabase/qb/PUSH_DATA_REFERENCE_STACK";
+export const pushDataReferenceStack = createAction(PUSH_DATA_REFERENCE_STACK);
+
 export const OPEN_DATA_REFERENCE_AT_CARD =
   "metabase/qb/OPEN_DATA_REFERENCE_AT_CARD";
 export const openDataReferenceAtCard = createThunkAction(

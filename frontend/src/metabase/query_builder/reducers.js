@@ -7,6 +7,8 @@ import {
   RESET_QB,
   INITIALIZE_QB,
   SET_DATA_REFERENCE_STACK,
+  POP_DATA_REFERENCE_STACK,
+  PUSH_DATA_REFERENCE_STACK,
   OPEN_DATA_REFERENCE_AT_CARD,
   TOGGLE_DATA_REFERENCE,
   TOGGLE_TEMPLATE_TAGS_EDITOR,
@@ -164,6 +166,18 @@ export const uiControls = handleActions(
       next: (state, { payload }) => ({
         ...state,
         dataReferenceStack: payload,
+      }),
+    },
+    [POP_DATA_REFERENCE_STACK]: {
+      next: (state, { payload }) => ({
+        ...state,
+        dataReferenceStack: state.dataReferenceStack.slice(0, -1),
+      }),
+    },
+    [PUSH_DATA_REFERENCE_STACK]: {
+      next: (state, { payload }) => ({
+        ...state,
+        dataReferenceStack: state.dataReferenceStack.concat([payload]),
       }),
     },
     [OPEN_DATA_REFERENCE_AT_CARD]: {

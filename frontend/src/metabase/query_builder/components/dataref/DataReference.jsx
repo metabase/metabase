@@ -1,9 +1,8 @@
 /* eslint "react/prop-types": "warn" */
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import { usePrevious } from "metabase/hooks/use-previous";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import MainPane from "./MainPane";
 import DatabasePane from "./DatabasePane";
@@ -27,7 +26,8 @@ const PANES = {
 const DataReferencePropTypes = {
   query: PropTypes.object.isRequired,
   dataReferenceStack: PropTypes.array.isRequired,
-  setDataReferenceStack: PropTypes.func.isRequired,
+  popDataReferenceStack: PropTypes.func.isRequired,
+  pushDataReferenceStack: PropTypes.func.isRequired,
   onClose: PropTypes.func.isRequired,
   runQuestionQuery: PropTypes.func.isRequired,
   setDatasetQuery: PropTypes.func.isRequired,
@@ -35,36 +35,15 @@ const DataReferencePropTypes = {
 
 const DataReference = ({
   query,
-  setDataReferenceStack,
   dataReferenceStack,
+  popDataReferenceStack,
+  pushDataReferenceStack,
   onClose,
   ...props
 }) => {
-  const previousDbId = usePrevious(query?.database()?.id);
-  // initialize the stack if it's empty or the database changed
-  useEffect(() => {
-    if (dataReferenceStack?.length || query?.database()?.id === previousDbId) {
-      return;
-    }
-    const stack = [];
-    if (query?.database()) {
-      stack.push({ type: "database", item: query.database() });
-    }
-    if (query?.table()) {
-      stack.push({ type: "table", item: query.table() });
-    }
-    setDataReferenceStack(stack);
-  });
-
-  const back = useCallback(() => {
-    setDataReferenceStack(dataReferenceStack.slice(0, -1));
-  }, [setDataReferenceStack, dataReferenceStack]);
-
   const onItemClick = useCallback(
-    (type, item) => {
-      setDataReferenceStack(dataReferenceStack.concat({ type, item }));
-    },
-    [setDataReferenceStack, dataReferenceStack],
+    (type, item) => pushDataReferenceStack({ type, item }),
+    [pushDataReferenceStack],
   );
 
   if (dataReferenceStack.length) {
@@ -76,12 +55,12 @@ const DataReference = ({
         {...{ [page.type]: page.item }}
         onItemClick={onItemClick}
         onClose={onClose}
-        onBack={back}
+        onBack={popDataReferenceStack}
       />
     );
   } else {
     return (
-      <SidebarContent title={t`Data Reference`} onClose={onClose}>
+      <SidebarContent title={t`Data Reference`}>
         <MainPane {...props} onItemClick={onItemClick} />
       </SidebarContent>
     );
