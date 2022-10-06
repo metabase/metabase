@@ -1,16 +1,22 @@
 import _ from "underscore";
-import { isa, TYPE } from "metabase/lib/types";
 import {
   getAggregationOperator,
   isCompatibleAggregationOperatorForField,
 } from "metabase/lib/schema_metadata";
+import { isa } from "metabase-lib/lib/types/utils/isa";
+import { TYPE } from "metabase-lib/lib/types/constants";
 import { fieldRefForColumn } from "metabase-lib/lib/queries/utils/dataset";
 
 const AGGREGATIONS = ["sum", "avg", "distinct"];
 const INVALID_TYPES = [TYPE.Structured];
 
 export function summarizeColumnDrill({ question, clicked }) {
+  if (!clicked) {
+    return null;
+  }
+
   const { column, value } = clicked;
+
   if (
     !column ||
     value !== undefined ||

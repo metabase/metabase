@@ -6,8 +6,7 @@
   subsequent code simplification and cleanup by @camsaul
 
   CSSBox JavaDoc is here: http://cssbox.sourceforge.net/api/index.html"
-  (:require [clojure.java.io :as io]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
             [hiccup.core :refer [html]]
             [metabase.pulse.render.common :as common]
             [metabase.pulse.render.style :as style]
@@ -24,30 +23,6 @@
            [org.fit.cssbox.io DefaultDOMSource StreamDocumentSource]
            org.fit.cssbox.layout.Dimension
            org.w3c.dom.Document))
-
-(defn- register-font! [filename]
-  (with-open [is (io/input-stream (io/resource filename))]
-    (.registerFont (java.awt.GraphicsEnvironment/getLocalGraphicsEnvironment)
-                   (java.awt.Font/createFont java.awt.Font/TRUETYPE_FONT is))))
-
-(defn- register-fonts! []
-  (try
-    (doseq [weight ["regular" "700" "900"]]
-      (register-font! (format "frontend_client/app/fonts/Lato/lato-v16-latin-%s.ttf" weight)))
-    (catch Throwable e
-      (let [message (str (trs "Error registering fonts: Metabase will not be able to send Pulses.")
-                         " "
-                         (trs "This is a known issue with certain JVMs. See {0} and for more details."
-                              "https://github.com/metabase/metabase/issues/7986"))]
-        (log/error e message)
-        (throw (ex-info message {} e))))))
-
-(defonce ^{:doc      "Makes custom fonts available to Java so that CSSBox can render them."
-           :private  true
-           :arglists '([])} register-fonts-if-needed!
-  (let [register!* (delay (register-fonts!))]
-    (fn []
-      @register!*)))
 
 (defn- write-image!
   [^BufferedImage image, ^String format-name, ^ByteArrayOutputStream output-stream]
@@ -67,7 +42,7 @@
 
 (defn- render-to-png
   [^String html, width]
-  (register-fonts-if-needed!)
+  (style/register-fonts-if-needed!)
   (with-open [is         (ByteArrayInputStream. (.getBytes html StandardCharsets/UTF_8))
               doc-source (StreamDocumentSource. is nil "text/html; charset=utf-8")]
     (let [dimension       (Dimension. width 1)

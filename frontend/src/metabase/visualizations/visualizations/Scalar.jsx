@@ -4,7 +4,6 @@ import { t } from "ttag";
 
 import _ from "underscore";
 import { formatValue } from "metabase/lib/formatting";
-import { TYPE } from "metabase/lib/types";
 
 import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
@@ -13,6 +12,7 @@ import ScalarValue, {
   ScalarWrapper,
   ScalarTitle,
 } from "metabase/visualizations/components/ScalarValue";
+import { TYPE } from "metabase-lib/lib/types/constants";
 import { ScalarContainer } from "./Scalar.styled";
 
 // convert legacy `scalar.*` visualization settings to format options

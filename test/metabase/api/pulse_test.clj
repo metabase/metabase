@@ -12,7 +12,7 @@
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.pulse-channel :as pulse-channel]
             [metabase.models.pulse-test :as pulse-test]
-            [metabase.pulse.render.png :as png]
+            [metabase.pulse.render.style :as style]
             [metabase.server.middleware.util :as mw.util]
             [metabase.test :as mt]
             [metabase.test.mock.util :refer [pulse-channel-defaults]]
@@ -1029,7 +1029,7 @@
             (is (some? body))))
 
         (testing "If rendering a Pulse fails (e.g. because font registration failed) the endpoint should return the error message"
-          (with-redefs [png/register-fonts-if-needed! (fn []
+          (with-redefs [style/register-fonts-if-needed! (fn []
                                                         (throw (ex-info "Can't register fonts!"
                                                                         {}
                                                                         (NullPointerException.))))]

@@ -1,7 +1,10 @@
 (ns metabase.pulse.render.style
   "CSS styles and related helper code for Pulse rendering."
-  (:require [clojure.string :as str]
-            [metabase.public-settings :as public-settings]))
+  (:require [clojure.java.io :as io]
+            [clojure.string :as str]
+            [clojure.tools.logging :as log]
+            [metabase.public-settings :as public-settings]
+            [metabase.util.i18n :refer [trs]]))
 
 ;; TODO - we should move other CSS definitions from `metabase.pulse.render` namespaces into this one, so they're all
 ;; in one place.
@@ -104,3 +107,26 @@
    {:font-size   :24px
     :font-weight 700
     :color       color-text-dark}))
+
+(defn- register-font! [filename]
+  (with-open [is (io/input-stream (io/resource filename))]
+    (.registerFont (java.awt.GraphicsEnvironment/getLocalGraphicsEnvironment)
+                   (java.awt.Font/createFont java.awt.Font/TRUETYPE_FONT is))))
+
+(defn- register-fonts! []
+  (try
+    (doseq [weight ["regular" "700" "900"]]
+      (register-font! (format "frontend_client/app/fonts/Lato/lato-v16-latin-%s.ttf" weight)))
+    (catch Throwable e
+      (let [message (str (trs "Error registering fonts: Metabase will not be able to send Pulses.")
+                         " "
+                         (trs "This is a known issue with certain JVMs. See {0} and for more details."
+                              "https://github.com/metabase/metabase/issues/7986"))]
+        (log/error e message)
+        (throw (ex-info message {} e))))))
+
+(defonce ^{:doc      "Makes custom fonts available to Java so that CSSBox can render them."
+           :arglists '([])} register-fonts-if-needed!
+  (let [register!* (delay (register-fonts!))]
+    (fn []
+      @register!*)))

@@ -2,9 +2,8 @@
 import React from "react";
 import { t } from "ttag";
 
-import { TYPE } from "metabase/lib/types";
-
 import ColumnSettings from "metabase/visualizations/components/ColumnSettings";
+import { TYPE } from "metabase-lib/lib/types/constants";
 
 const SETTING_TYPES = [
   {
