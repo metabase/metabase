@@ -131,7 +131,7 @@ To make an embedded Metabase page fill up the entire iframe (e.g., a question pa
 
 ## Fitting an iframe to a Metabase page with a fixed size
 
-To specify the size of an iframe so that it matches an embedded Metabase page (e.g., a dashboard page), use [postMessage()](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage) to send a "frame" message _from_ Metabase to your app:
+To specify the size of an iframe so that it matches an embedded Metabase page (e.g., a dashboard page), use [postMessage](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage) to send a "frame" message _from_ Metabase to your app:
 
 ```
 { “metabase”: { “type”: “frame”, “frame”: { “mode”: “fit”, height: HEIGHT_IN_PIXELS }}}
