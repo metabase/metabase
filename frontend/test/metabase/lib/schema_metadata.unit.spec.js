@@ -22,7 +22,7 @@ import {
   getSemanticTypeName,
 } from "metabase/lib/schema_metadata";
 
-import { TYPE } from "metabase/lib/types";
+import { TYPE } from "metabase-lib/lib/types/constants";
 
 describe("schema_metadata", () => {
   describe("getFieldType", () => {

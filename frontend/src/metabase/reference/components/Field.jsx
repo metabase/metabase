@@ -6,11 +6,11 @@ import { t } from "ttag";
 import { getIn } from "icepick";
 import cx from "classnames";
 import * as MetabaseCore from "metabase/lib/core";
-import { isFK } from "metabase/lib/types";
 
 import S from "metabase/components/List.css";
 import Select from "metabase/core/components/Select";
 import Icon from "metabase/components/Icon";
+import { isFK } from "metabase-lib/lib/types/utils/isa";
 import F from "./Field.css";
 
 const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
