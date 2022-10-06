@@ -26,8 +26,8 @@ import {
 
 interface ModelPaneProps {
   onItemClick: (type: string, item: unknown) => void;
-  onBack: any;
-  onClose: any;
+  onBack: () => void;
+  onClose: () => void;
   model: Card;
   question: Question;
 }
