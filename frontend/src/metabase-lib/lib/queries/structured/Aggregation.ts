@@ -2,11 +2,11 @@
 // @ts-nocheck
 import { t } from "ttag";
 import { TYPE } from "metabase/lib/types";
-import * as AGGREGATION from "metabase/lib/query/aggregation";
 import { Aggregation as AggregationObject } from "metabase-types/types/Query";
 import { AggregationOperator } from "metabase-types/types/Metadata";
 import { MetricId } from "metabase-types/types/Metric";
 import { FieldId } from "metabase-types/types/Field";
+import * as AGGREGATION from "metabase-lib/lib/queries/utils/aggregation";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import Metric from "metabase-lib/lib/metadata/Metric";
 import StructuredQuery from "../StructuredQuery";

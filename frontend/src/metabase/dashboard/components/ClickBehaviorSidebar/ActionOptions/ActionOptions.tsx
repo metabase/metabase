@@ -5,6 +5,7 @@ import { connect } from "react-redux";
 import Actions from "metabase/entities/actions";
 
 import { updateButtonActionMapping } from "metabase/dashboard/actions";
+import { updateSettings } from "metabase/visualizations/lib/settings";
 
 import type {
   ActionDashboardCard,
@@ -30,6 +31,8 @@ interface ActionOptionsDispatchProps {
     dashCardId: number,
     settings: {
       action_id?: number | null;
+      action?: WritebackAction;
+      visualization_settings?: ActionDashboardCard["visualization_settings"];
       parameter_mappings?: ActionParametersMapping[] | null;
     },
   ) => void;
@@ -57,7 +60,11 @@ function ActionOptions({
     (action: WritebackAction) => {
       onUpdateButtonActionMapping(dashcard.id, {
         action_id: action.id,
-
+        action,
+        visualization_settings: updateSettings(
+          { "button.label": action.name },
+          dashcard.visualization_settings,
+        ),
         // Clean mappings from previous action
         // as they're most likely going to be irrelevant
         parameter_mappings: null,

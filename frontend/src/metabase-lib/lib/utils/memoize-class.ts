@@ -1,4 +1,4 @@
-import { Constructor } from "./types";
+type Constructor<T> = new (...args: any[]) => T;
 
 function getWithFallback(
   map: Map<string, any>,

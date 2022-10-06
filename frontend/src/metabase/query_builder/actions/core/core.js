@@ -8,8 +8,6 @@ import * as Urls from "metabase/lib/urls";
 import Utils from "metabase/lib/utils";
 import { createThunkAction } from "metabase/lib/redux";
 
-import { cardIsEquivalent, cardQueryIsEquivalent } from "metabase/meta/Card";
-
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 
 import { openUrl } from "metabase/redux/app";
@@ -17,6 +15,10 @@ import { openUrl } from "metabase/redux/app";
 import Questions from "metabase/entities/questions";
 import Databases from "metabase/entities/databases";
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
+import {
+  cardIsEquivalent,
+  cardQueryIsEquivalent,
+} from "metabase-lib/lib/queries/utils/card";
 import Query from "metabase-lib/lib/queries/Query";
 
 import { trackNewQuestionSaved } from "../../analytics";

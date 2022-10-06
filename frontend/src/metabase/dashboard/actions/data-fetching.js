@@ -7,7 +7,6 @@ import { createAction, createThunkAction } from "metabase/lib/redux";
 import { defer } from "metabase/lib/promise";
 
 import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
-import { applyParameters } from "metabase/meta/Card";
 import {
   getParameterValuesBySlug,
   getParameterValuesByIdFromQueryParams,
@@ -28,6 +27,7 @@ import {
 } from "metabase/services";
 
 import { getMetadata } from "metabase/selectors/metadata";
+import { applyParameters } from "metabase-lib/lib/queries/utils/card";
 import {
   getDashboardComplete,
   getParameterValues,

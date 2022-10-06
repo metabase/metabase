@@ -9,8 +9,6 @@ import { color } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
 
-import { formatBucketing } from "metabase/lib/query_time";
-
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { NoBreakoutError } from "metabase/visualizations/lib/errors";
 
@@ -18,6 +16,7 @@ import ScalarValue, {
   ScalarWrapper,
   ScalarTitle,
 } from "metabase/visualizations/components/ScalarValue";
+import { formatBucketing } from "metabase-lib/lib/queries/utils/query-time";
 
 import {
   PreviousValueContainer,

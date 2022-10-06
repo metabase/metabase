@@ -5,7 +5,6 @@ import _ from "underscore";
 
 import ChartNestedSettingColumns from "metabase/visualizations/components/settings/ChartNestedSettingColumns";
 
-import { keyForColumn } from "metabase/lib/dataset";
 import {
   isDate,
   isNumber,
@@ -52,6 +51,7 @@ export function columnSettings({
 }
 
 import MetabaseSettings from "metabase/lib/settings";
+import { keyForColumn } from "metabase-lib/lib/queries/utils/dataset";
 import { nestedSettings } from "./nested";
 
 export function getGlobalSettingsForColumn(column) {

@@ -10,7 +10,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import QueryButton from "metabase/components/QueryButton";
 
 import { createCard } from "metabase/lib/card";
-import * as Q_DEPRECATED from "metabase/lib/query";
+import * as Q_DEPRECATED from "metabase-lib/lib/queries/utils";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import QueryDefinition from "../QueryDefinition";

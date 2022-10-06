@@ -13,9 +13,12 @@ import {
 } from "metabase-types/types/Query";
 import { VariableTarget } from "metabase-types/types/Parameter";
 import { IconName } from "metabase-types/types";
-import { DATETIME_UNITS, formatBucketing } from "metabase/lib/query_time";
 import { infer, MONOTYPE } from "metabase/lib/expressions/typeinferencer";
 import { isa } from "cljs/metabase.types";
+import {
+  DATETIME_UNITS,
+  formatBucketing,
+} from "metabase-lib/lib/queries/utils/query-time";
 import TemplateTagVariable from "metabase-lib/lib/variables/TemplateTagVariable";
 import Field from "metabase-lib/lib/metadata/Field";
 import {

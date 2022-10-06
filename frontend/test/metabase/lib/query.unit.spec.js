@@ -1,7 +1,6 @@
-import * as Q_DEPRECATED from "metabase/lib/query";
-
 import { ORDERS } from "__support__/sample_database_fixture";
 import Utils from "metabase/lib/utils";
+import * as Q_DEPRECATED from "metabase-lib/lib/queries/utils";
 
 describe("Legacy Q_DEPRECATED library", () => {
   describe("createQuery", () => {

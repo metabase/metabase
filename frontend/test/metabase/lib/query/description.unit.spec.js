@@ -1,16 +1,15 @@
+import { ORDERS, PRODUCTS } from "__support__/sample_database_fixture";
 import {
   generateQueryDescription,
   getOrderByDescription,
-} from "metabase/lib/query/description";
-
-import { ORDERS, PRODUCTS } from "__support__/sample_database_fixture";
+} from "metabase-lib/lib/queries/utils/description";
 
 const mockTableMetadata = {
   display_name: "Order",
   fields: [{ id: 1, display_name: "Total" }],
 };
 
-describe("metabase/lib/query/description", () => {
+describe("metabase-lib/lib/queries/utils/description", () => {
   describe("generateQueryDescription", () => {
     it("should work with multiple aggregations", () => {
       expect(
