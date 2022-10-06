@@ -190,12 +190,11 @@ class NativeQueryEditor extends Component {
   };
 
   handleCursorChange = _.debounce((e, { cursor }) => {
+    this.swapCompleters(cursor);
     const cardTagMatch = this.cardTemplateTagMatch(cursor);
-    if (cardTagMatch) {
-      const cardId = parseInt(cardTagMatch[2]);
-      if (cardId) {
-        this.props.openDataReferenceAtCard(cardId);
-      }
+    const cardId = parseInt(cardTagMatch?.[2]);
+    if (cardId) {
+      this.props.openDataReferenceAtCard(cardId);
     }
     if (this.props.setNativeEditorSelectedRange) {
       this.props.setNativeEditorSelectedRange(this._editor.getSelectionRange());
@@ -356,12 +355,11 @@ class NativeQueryEditor extends Component {
     const standardCompleters = [...this._editor.completers];
 
     this.swapCompleters = pos => {
-      this._editor.completers =
-        this.getSnippetNameAtCursor(pos) !== null
-          ? [{ getCompletions: this.getSnippetCompletions }]
-          : this.getCardSlugAtCursor(pos) !== null
-          ? [{ getCompletions: this.getCardTagCompletions }]
-          : standardCompleters;
+      this._editor.completers = this.getSnippetNameAtCursor(pos)
+        ? [{ getCompletions: this.getSnippetCompletions }]
+        : this.getCardSlugAtCursor(pos)
+        ? [{ getCompletions: this.getCardTagCompletions }]
+        : standardCompleters;
     };
   }
 
@@ -369,14 +367,14 @@ class NativeQueryEditor extends Component {
     const lines = this._editor.getValue().split("\n");
     const linePrefix = lines[row].slice(0, column);
     const match = linePrefix.match(/\{\{\s*snippet:\s*([^\}]*)$/);
-    return match ? match[1] : null;
+    return match?.[1];
   };
 
   getCardSlugAtCursor = ({ row, column }) => {
     const lines = this._editor.getValue().split("\n");
     const linePrefix = lines[row].slice(0, column);
     const match = linePrefix.match(/\{\{\s*#([^\}]*)$/);
-    return match ? match[1] : null;
+    return match?.[1];
   };
 
   getSnippetCompletions = (editor, session, pos, prefix, callback) => {
