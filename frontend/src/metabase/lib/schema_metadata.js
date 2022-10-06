@@ -1,12 +1,12 @@
 import _ from "underscore";
 import { t } from "ttag";
+import { field_semantic_types_map } from "metabase/lib/core";
 import {
   isa,
   isFK as isTypeFK,
   isPK as isTypePK,
-  TYPE,
-} from "metabase/lib/types";
-import { field_semantic_types_map } from "metabase/lib/core";
+} from "metabase-lib/lib/types/utils/isa";
+import { TYPE } from "metabase-lib/lib/types/constants";
 
 // primary field types used for picking operators, etc
 export const NUMBER = "NUMBER";
