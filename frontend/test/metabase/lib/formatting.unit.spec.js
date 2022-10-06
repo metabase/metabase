@@ -171,6 +171,18 @@ describe("formatting", () => {
       expect(formatNumber(111.111)).toEqual("111.11");
     });
 
+    it("should format to correct number of decimal places set under 'minimum number of decimal places'", () => {
+      const options = {
+        compact: true,
+        number_style: "decimal",
+        decimals: 0,
+      };
+      expect(formatNumber(500000, options)).toEqual("500k");
+      expect(formatNumber(500000, { ...options, decimals: 1 })).toEqual(
+        "500.0k",
+      );
+    });
+
     describe("number_style = currency", () => {
       it("should handle positive currency", () => {
         expect(

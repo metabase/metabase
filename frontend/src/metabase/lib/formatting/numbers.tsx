@@ -14,7 +14,7 @@ interface FormatNumberOptionsType {
   currency?: string;
   currency_in_header?: boolean;
   currency_style?: string;
-  decimals?: string | number;
+  decimals?: number;
   jsx?: any;
   maximumFractionDigits?: number;
   minimumFractionDigits?: number;
@@ -192,10 +192,11 @@ function formatNumberCompact(value: number, options: FormatNumberOptionsType) {
       minimumFractionDigits: 1,
     });
   }
-  return formatNumberCompactWithoutOptions(value);
+
+  return formatNumberCompactWithoutOptions(value, options.decimals);
 }
 
-function formatNumberCompactWithoutOptions(value: number) {
+function formatNumberCompactWithoutOptions(value: number, decimals?: number) {
   if (value === 0) {
     // 0 => 0
     return "0";
@@ -205,7 +206,7 @@ function formatNumberCompactWithoutOptions(value: number) {
   } else {
     // 1 => 1
     // 1000 => 1K
-    return Humanize.compactInteger(Math.round(value), 1);
+    return Humanize.compactInteger(Math.round(value), decimals ?? 1);
   }
 }
 
