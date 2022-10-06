@@ -6,10 +6,12 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { createThunkAction } from "metabase/lib/redux";
 import Utils from "metabase/lib/utils";
 
+import Questions from "metabase/entities/questions";
 import {
   getTemplateTagsForParameters,
   getTemplateTagParameters,
 } from "metabase/parameters/utils/cards";
+import { getMetadata } from "metabase/selectors/metadata";
 import {
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
@@ -30,8 +32,24 @@ export const setDataReferenceStack = createAction(SET_DATA_REFERENCE_STACK);
 
 export const OPEN_DATA_REFERENCE_AT_CARD =
   "metabase/qb/OPEN_DATA_REFERENCE_AT_CARD";
-export const openDataReferenceAtCard = createAction(
+export const openDataReferenceAtCard = createThunkAction(
   OPEN_DATA_REFERENCE_AT_CARD,
+  id => async (dispatch, getState) => {
+    const action = await dispatch(
+      Questions.actions.fetch(
+        { id },
+        { noEvent: true, useCachedForbiddenError: true },
+      ),
+    );
+    const card = Questions.HACK_getObjectFromAction(action);
+    if (card) {
+      const database = getMetadata(getState()).database(card.database_id);
+      return [
+        { type: "database", item: database },
+        { type: "model", item: card },
+      ];
+    }
+  },
 );
 
 export const TOGGLE_TEMPLATE_TAGS_EDITOR =

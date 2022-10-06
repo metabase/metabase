@@ -168,13 +168,13 @@ export const uiControls = handleActions(
     },
     [OPEN_DATA_REFERENCE_AT_CARD]: {
       next: (state, { payload }) => {
-        const cardId = payload;
-        return {
-          ...state,
-          dataReferenceStack: [
-            { type: "model", item: { id: cardId }, title: "Model" },
-          ],
-        };
+        return payload
+          ? {
+              ...state,
+              dataReferenceStack: payload,
+              isShowingDataReference: true,
+            }
+          : state;
       },
     },
     [TOGGLE_TEMPLATE_TAGS_EDITOR]: {
