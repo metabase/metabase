@@ -109,9 +109,9 @@ export function replaceCardTagNameById(
   return query.setQueryText(queryText);
 }
 
-export function cardIdFromTagName(name: string): number | undefined {
+export function cardIdFromTagName(name: string): number | null {
   const match = name.match(CARD_TAG_NAME_REGEX);
-  return parseInt(match?.[1]);
+  return parseInt(match?.[1]) || null;
 }
 
 function isCardTagName(tagName: string): boolean {
