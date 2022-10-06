@@ -147,7 +147,6 @@
 (defn gauge
   "Clojure entrypoint to render a gauge chart. Returns a byte array of a png file"
   [card data]
-  (tap> [(json/generate-string card) (json/generate-string data)])
   (let [js-res (js/execute-fn-name @context "gauge"
                                    (json/generate-string card)
                                    (json/generate-string data))
