@@ -35,15 +35,15 @@ const DataReferencePropTypes = {
 
 const DataReference = ({
   query,
-  setDataReferenceStack: setStack,
-  dataReferenceStack: stack,
+  setDataReferenceStack,
+  dataReferenceStack,
   onClose,
   ...props
 }) => {
   const previousDbId = usePrevious(query?.database()?.id);
   // initialize the stack if it's empty or the database changed
   useEffect(() => {
-    if (stack?.length || query?.database()?.id === previousDbId) {
+    if (dataReferenceStack?.length || query?.database()?.id === previousDbId) {
       return;
     }
     const stack = [];
@@ -53,22 +53,22 @@ const DataReference = ({
     if (query?.table()) {
       stack.push({ type: "table", item: query.table() });
     }
-    setStack(stack);
+    setDataReferenceStack(stack);
   });
 
   const back = useCallback(() => {
-    setStack(stack.slice(0, -1));
-  }, [setStack, stack]);
+    setDataReferenceStack(dataReferenceStack.slice(0, -1));
+  }, [setDataReferenceStack, dataReferenceStack]);
 
   const onItemClick = useCallback(
     (type, item) => {
-      setStack(stack.concat({ type, item }));
+      setDataReferenceStack(dataReferenceStack.concat({ type, item }));
     },
-    [setStack, stack],
+    [setDataReferenceStack, dataReferenceStack],
   );
 
-  if (stack.length) {
-    const page = stack[stack.length - 1];
+  if (dataReferenceStack.length) {
+    const page = dataReferenceStack[dataReferenceStack.length - 1];
     const Pane = PANES[page.type];
     return (
       <Pane
