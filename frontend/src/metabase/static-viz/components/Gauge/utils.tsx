@@ -1,4 +1,5 @@
 import type { PieArcDatum } from "@visx/shape/lib/shapes/Pie";
+import { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
 
 import { measureText } from "metabase/static-viz/lib/text";
 import {
@@ -19,6 +20,12 @@ import type {
   Position,
   TextAnchor,
 } from "./types";
+
+export function populateDefaultColumnSettings(
+  columnSettings: NumberFormatOptions,
+): NumberFormatOptions {
+  return { currency: "USD", currency_style: "symbol", ...columnSettings };
+}
 
 export function limit(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);

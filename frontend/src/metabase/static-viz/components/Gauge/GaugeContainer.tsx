@@ -16,6 +16,7 @@ import {
   SEGMENT_LABEL_FONT_SIZE,
 } from "./constants";
 import {
+  populateDefaultColumnSettings,
   removeDuplicateElements,
   calculateRelativeValueAngle,
   calculateSegmentLabelPosition,
@@ -37,6 +38,9 @@ export default function GaugeContainer({
   getColor,
 }: GaugeContainerProps) {
   const settings = card.visualization_settings;
+  const columnSettings =
+    settings.column_settings &&
+    populateDefaultColumnSettings(Object.values(settings.column_settings)[0]);
   const segments = settings["gauge.segments"];
 
   const segmentMinValue = segments[0].min;
@@ -48,6 +52,10 @@ export default function GaugeContainer({
   ];
 
   const value = data.rows[0][0];
+
+  const valueFormatter = (value: number) => {
+    return formatNumber(value, columnSettings);
+  };
 
   const segmentMinMaxLabels: GaugeLabelData[] = segments
     .flatMap(segmentDatum => {
@@ -74,7 +82,7 @@ export default function GaugeContainer({
             SEGMENT_LABEL_MARGIN + DISTANCE_TO_MIDDLE_LABEL_ANCHOR,
           ],
           textAnchor: "middle",
-          value: formatNumber(segmentValue),
+          value: valueFormatter(segmentValue),
           color: getColor("text-medium"),
         };
       }
@@ -86,7 +94,7 @@ export default function GaugeContainer({
             SEGMENT_LABEL_MARGIN + DISTANCE_TO_MIDDLE_LABEL_ANCHOR,
           ],
           textAnchor: "middle",
-          value: formatNumber(segmentValue),
+          value: valueFormatter(segmentValue),
           color: getColor("text-medium"),
         };
       }
@@ -94,7 +102,7 @@ export default function GaugeContainer({
       return {
         position: calculateSegmentLabelPosition(segmentValueAngle),
         textAnchor: calculateSegmentLabelTextAnchor(segmentValueAngle),
-        value: formatNumber(segmentValue),
+        value: valueFormatter(segmentValue),
         color: getColor("text-medium"),
       };
     });
@@ -127,6 +135,7 @@ export default function GaugeContainer({
   return (
     <Gauge
       value={value}
+      valueFormatter={valueFormatter}
       segments={segments}
       gaugeLabels={gaugeLabels}
       center={center}

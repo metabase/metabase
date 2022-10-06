@@ -33,6 +33,7 @@ import type { GaugeLabelData, GaugeSegment, Position } from "./types";
 
 interface GaugeProps {
   value: number;
+  valueFormatter: (value: number) => string;
   segments: GaugeSegment[];
   gaugeLabels: GaugeLabelData[];
   center: Position;
@@ -41,6 +42,7 @@ interface GaugeProps {
 
 export default function Gauge({
   value,
+  valueFormatter,
   segments,
   gaugeLabels,
   center,
@@ -59,7 +61,7 @@ export default function Gauge({
     gaugeNeedleAngle,
   );
 
-  const formattedValue = formatNumber(value);
+  const formattedValue = valueFormatter(value);
   const dynamicValueFontSize = calculateValueFontSize(
     formattedValue,
     GAUGE_INNER_RADIUS,

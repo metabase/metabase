@@ -12,6 +12,9 @@ export interface GaugeSegment {
 
 interface GaugeVisualizationSettings {
   "gauge.segments": GaugeSegment[];
+  column_settings?: {
+    [key: string]: Record<string, string | number>;
+  };
 }
 
 export interface Card {
