@@ -717,12 +717,13 @@
                                               "Seafood" "Steakhouse" "Tea Room" "Winery"]}]]
       (testing "field values"
         (let [ser (serdes.base/extract-one "FieldValues" {} (select-one "FieldValues" [:= :id fv-id]))]
-          (is (schema= {:serdes/meta                 (s/eq [{:model "Database" :id "My Database"}
-                                                            {:model "Table"    :id "Schemaless Table"}
-                                                            {:model "Field"    :id "Some Field"}
-                                                            {:model "FieldValues" :id "0"}]) ; Always 0.
-                        :values                      (s/eq (json/generate-string values))
-                        s/Keyword                    s/Any}
+          (is (schema= {:serdes/meta (s/eq [{:model "Database" :id "My Database"}
+                                            {:model "Table"    :id "Schemaless Table"}
+                                            {:model "Field"    :id "Some Field"}
+                                            {:model "FieldValues" :id "0"}]) ; Always 0.
+                        :created_at  LocalDateTime
+                        :values      (s/eq (json/generate-string values))
+                        s/Keyword    s/Any}
                        ser))
           (is (not (contains? ser :id)))
           (is (not (contains? ser :field_id))
