@@ -357,7 +357,7 @@ class NativeQueryEditor extends Component {
     this.swapCompleters = pos => {
       this._editor.completers = this.getSnippetNameAtCursor(pos)
         ? [{ getCompletions: this.getSnippetCompletions }]
-        : this.getCardSlugAtCursor(pos)
+        : this.getCardTagNameAtCursor(pos)
         ? [{ getCompletions: this.getCardTagCompletions }]
         : standardCompleters;
     };
@@ -370,10 +370,10 @@ class NativeQueryEditor extends Component {
     return match?.[1];
   };
 
-  getCardSlugAtCursor = ({ row, column }) => {
+  getCardTagNameAtCursor = ({ row, column }) => {
     const lines = this._editor.getValue().split("\n");
     const linePrefix = lines[row].slice(0, column);
-    const match = linePrefix.match(/\{\{\s*#([^\}]*)$/);
+    const match = linePrefix.match(/\{\{\s*(#[^\}]*)$/);
     return match?.[1];
   };
 
@@ -398,7 +398,8 @@ class NativeQueryEditor extends Component {
     // e.g. if `|` is the cursor position and the user is typing:
     //   - {{#123-foo|}} will fetch completions for the word "123-foo"
     //   - {{#123 foo|}} will not fetch completions because the word "foo" is not the first word in the tag.
-    if (prefix !== this.getCardSlugAtCursor(pos)) {
+    // Note we need to drop the leading `#` from the card tag name because the prefix only includes alphanumerics
+    if (prefix !== this.getCardTagNameAtCursor(pos).substring(1)) {
       callback(null, null);
       return null;
     }
