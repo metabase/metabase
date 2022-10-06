@@ -801,21 +801,16 @@
 (deftest datediff-test
   (mt/test-driver :postgres
     (mt/dataset useful-dates
-      (is (= [[0 0]
-              [0 364]]
-             (mt/rows
-              (mt/run-mbql-query datediff-edgecases
-                                 {:fields [[:expression "diff-year"]
-                                           [:expression "diff-day"]]
-                                  :expressions
-                                  {"diff-year" [:datediff
-                                                $datediff-edgecases.end
-                                                $datediff-edgecases.start
-                                                :year]
-                                   "diff-day" [:datediff
-                                               $datediff-edgecases.end
-                                               $datediff-edgecases.start
-                                               :day]}})))))))
+      (testing "Does not mark as a year or day unless it has completely elapsed"
+        (is (= [[0 0]
+                [0 364]]
+               (mt/rows
+                (mt/run-mbql-query datediff-edgecases
+                                   {:fields [[:expression "diff-year"]
+                                             [:expression "diff-day"]]
+                                    :expressions
+                                    {"diff-year" [:datediff $end $start :year]
+                                     "diff-day" [:datediff $end $start :day]}}))))))))
 
 ;;; ----------------------------------------------------- Other ------------------------------------------------------
 

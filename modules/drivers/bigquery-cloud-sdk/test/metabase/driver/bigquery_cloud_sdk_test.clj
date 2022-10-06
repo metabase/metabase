@@ -529,14 +529,8 @@
                                    {:fields [[:expression "diff-year"]
                                              [:expression "diff-day"]]
                                     :expressions
-                                    {"diff-year" [:datediff
-                                                  $datediff-edgecases.end
-                                                  $datediff-edgecases.start
-                                                  :year]
-                                     "diff-day" [:datediff
-                                                 $datediff-edgecases.end
-                                                 $datediff-edgecases.start
-                                                 :day]}}))))))
+                                    {"diff-year" [:datediff $end $start :year]
+                                     "diff-day" [:datediff $end $start :day]}}))))))
     (testing "Cannot datediff against time column"
       (mt/dataset with-time-column
         (is (thrown-with-msg? clojure.lang.ExceptionInfo

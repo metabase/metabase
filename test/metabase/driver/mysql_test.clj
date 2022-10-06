@@ -195,14 +195,8 @@
                                  {:fields [[:expression "diff-year"]
                                            [:expression "diff-day"]]
                                   :expressions
-                                  {"diff-year" [:datediff
-                                                $datediff-edgecases.end
-                                                $datediff-edgecases.start
-                                                :year]
-                                   "diff-day" [:datediff
-                                               $datediff-edgecases.end
-                                               $datediff-edgecases.start
-                                               :day]}})))))))
+                                  {"diff-year" [:datediff $end $start :year]
+                                   "diff-day" [:datediff $end $start :day]}})))))))
 
 (def ^:private sample-connection-details
   {:db "my_db", :host "localhost", :port "3306", :user "cam", :password "bad-password"})
