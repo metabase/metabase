@@ -16,9 +16,9 @@ describe("scenarios > models > create", () => {
 
     cy.get(".ace_editor").should("be.visible").type("select * from ORDERS");
 
-    cy.findByText("Save changes").click();
+    cy.findByText("Save").click();
 
-    cy.findByPlaceholderText("What is the name of your card?").type("A name");
+    cy.findByPlaceholderText("What is the name of your model?").type("A name");
 
     cy.findByText("Save").click();
 
