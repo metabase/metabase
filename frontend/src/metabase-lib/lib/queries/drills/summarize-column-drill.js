@@ -10,7 +10,12 @@ const AGGREGATIONS = ["sum", "avg", "distinct"];
 const INVALID_TYPES = [TYPE.Structured];
 
 export function summarizeColumnDrill({ question, clicked }) {
+  if (!clicked) {
+    return null;
+  }
+
   const { column, value } = clicked;
+
   if (
     !column ||
     value !== undefined ||
