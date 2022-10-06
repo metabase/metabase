@@ -184,7 +184,7 @@ describe("scenarios > admin > databases > add", () => {
     });
   });
 
-  describeEE.only("caching", () => {
+  describeEE("caching", () => {
     beforeEach(() => {
       mockSessionProperty("enable-query-caching", true);
 
