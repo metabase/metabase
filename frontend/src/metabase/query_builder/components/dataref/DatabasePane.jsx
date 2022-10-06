@@ -1,41 +1,28 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import _ from "underscore";
 import PropTypes from "prop-types";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Databases from "metabase/entities/databases";
+import Schemas from "metabase/entities/schemas";
 import DatabaseSchemasPane from "./DatabaseSchemasPane";
 import DatabaseTablesPane from "./DatabaseTablesPane";
 
-class DatabasePaneInner extends React.Component {
-  componentDidMount() {
-    const { database } = this.props;
-    if (database.schemas.length === 0) {
-      database.fetchSchemas();
-    }
-  }
+const DatabasePaneInner = ({ database, ...props }) => {
+  const Component =
+    database.schemas.length > 1 ? DatabaseSchemasPane : DatabaseTablesPane;
+  return <Component database={database} {...props} />;
+};
 
-  componentDidUpdate(prevProps) {
-    const { database } = this.props;
-    if (database.id !== prevProps.database.id) {
-      database.fetchSchemas();
-    }
-  }
-
-  render() {
-    const { schemas } = this.props.database;
-    if (schemas.length === 0) {
-      return <LoadingSpinner />;
-    }
-    const Component =
-      schemas.length > 1 ? DatabaseSchemasPane : DatabaseTablesPane;
-    return <Component {...this.props} />;
-  }
-}
-
-const DatabasePane = Databases.load({
-  id: (state, { database }) => database && database.id,
-  wrapped: true,
-})(DatabasePaneInner);
+const DatabasePane = _.compose(
+  Databases.load({
+    id: (_state, { database }) => database.id,
+  }),
+  Schemas.loadList({
+    query: (_state, { database }) => ({
+      dbId: database.id,
+    }),
+  }),
+)(DatabasePaneInner);
 
 DatabasePane.propTypes = {
   onItemClick: PropTypes.func.isRequired,
