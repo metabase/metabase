@@ -14,7 +14,7 @@ interface FormatNumberOptionsType {
   currency?: string;
   currency_in_header?: boolean;
   currency_style?: string;
-  decimals?: number;
+  decimals?: string | number;
   jsx?: any;
   maximumFractionDigits?: number;
   minimumFractionDigits?: number;
@@ -193,7 +193,12 @@ function formatNumberCompact(value: number, options: FormatNumberOptionsType) {
     });
   }
 
-  return formatNumberCompactWithoutOptions(value, options.decimals);
+  const decimals =
+    typeof options.decimals === "string"
+      ? parseInt(options.decimals, 10) || 1
+      : options.decimals;
+
+  return formatNumberCompactWithoutOptions(value, decimals);
 }
 
 function formatNumberCompactWithoutOptions(value: number, decimals?: number) {
