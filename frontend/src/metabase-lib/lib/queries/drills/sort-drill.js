@@ -1,4 +1,4 @@
-import { isa, TYPE } from "metabase/lib/types";
+import { isa, TYPE } from "metabase-lib/lib/types/utils/isa";
 import Dimension from "metabase-lib/lib/Dimension";
 
 const INVALID_TYPES = [TYPE.Structured];

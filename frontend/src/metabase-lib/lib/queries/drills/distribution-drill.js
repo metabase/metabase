@@ -1,4 +1,4 @@
-import { isa, TYPE } from "metabase/lib/types";
+import { isa, TYPE } from "metabase-lib/lib/types/utils/isa";
 
 const DENYLIST_TYPES = [
   TYPE.PK,

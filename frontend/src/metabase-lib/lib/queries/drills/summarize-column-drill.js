@@ -1,9 +1,9 @@
 import _ from "underscore";
-import { isa, TYPE } from "metabase/lib/types";
 import {
   getAggregationOperator,
   isCompatibleAggregationOperatorForField,
 } from "metabase/lib/schema_metadata";
+import { isa, TYPE } from "metabase-lib/lib/types/utils/isa";
 import { fieldRefForColumn } from "metabase-lib/lib/queries/utils/dataset";
 
 const AGGREGATIONS = ["sum", "avg", "distinct"];

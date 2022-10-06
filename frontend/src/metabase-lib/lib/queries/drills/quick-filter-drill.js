@@ -1,5 +1,5 @@
-import { isa, isFK, isPK, TYPE } from "metabase/lib/types";
 import { isDate, isNumeric } from "metabase/lib/schema_metadata";
+import { isa, isFK, isPK, TYPE } from "metabase-lib/lib/types/utils/isa";
 import { isLocalField } from "metabase-lib/lib/queries/utils";
 
 const INVALID_TYPES = [TYPE.Structured];

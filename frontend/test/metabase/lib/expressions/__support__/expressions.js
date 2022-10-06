@@ -1,5 +1,5 @@
-import { TYPE } from "metabase/lib/types";
 import { makeMetadata } from "__support__/sample_database_fixture";
+import { TYPE } from "metabase-lib/lib/types/utils/isa";
 
 const metadata = makeMetadata({
   databases: {

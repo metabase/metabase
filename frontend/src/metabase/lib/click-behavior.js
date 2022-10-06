@@ -4,13 +4,13 @@ import { t, ngettext, msgid } from "ttag";
 
 import { isDate } from "metabase/lib/schema_metadata";
 import { parseTimestamp } from "metabase/lib/time";
-import { isa, TYPE } from "metabase/lib/types";
 import { formatDateTimeForParameter } from "metabase/lib/formatting/date";
 import {
   dimensionFilterForParameter,
   variableFilterForParameter,
 } from "metabase/parameters/utils/filters";
 import { isValidImplicitActionClickBehavior } from "metabase/writeback/utils";
+import { isa, TYPE } from "metabase-lib/lib/types/utils/isa";
 import Question from "metabase-lib/lib/Question";
 import TemplateTagVariable from "metabase-lib/lib/variables/TemplateTagVariable";
 import { TemplateTagDimension } from "metabase-lib/lib/Dimension";

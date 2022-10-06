@@ -2,7 +2,7 @@ import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import validate from "metabase/lib/validate";
-import { TYPE } from "metabase/lib/types";
+import { TYPE } from "metabase-lib/lib/types/utils/isa";
 
 import Field from "metabase-lib/lib/metadata/Field";
 import Table from "metabase-lib/lib/metadata/Table";
