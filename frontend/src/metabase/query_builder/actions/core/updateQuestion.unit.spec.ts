@@ -539,7 +539,7 @@ describe("QB Actions > updateQuestion", () => {
     const TEMPLATE_TAG_1: TemplateTag = {
       id: "id_1",
       name: "tag",
-      type: "card",
+      type: "text",
       "display-name": "Tag",
     };
 
