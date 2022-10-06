@@ -5,8 +5,8 @@ import {
   isa,
   isFK as isTypeFK,
   isPK as isTypePK,
-  TYPE,
 } from "metabase-lib/lib/types/utils/isa";
+import { TYPE } from "metabase-lib/lib/types/constants";
 
 // primary field types used for picking operators, etc
 export const NUMBER = "NUMBER";

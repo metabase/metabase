@@ -10,7 +10,8 @@ import {
   variableFilterForParameter,
 } from "metabase/parameters/utils/filters";
 import { isValidImplicitActionClickBehavior } from "metabase/writeback/utils";
-import { isa, TYPE } from "metabase-lib/lib/types/utils/isa";
+import { isa } from "metabase-lib/lib/types/utils/isa";
+import { TYPE } from "metabase-lib/lib/types/constants";
 import Question from "metabase-lib/lib/Question";
 import TemplateTagVariable from "metabase-lib/lib/variables/TemplateTagVariable";
 import { TemplateTagDimension } from "metabase-lib/lib/Dimension";

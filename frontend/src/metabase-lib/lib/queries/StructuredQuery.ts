@@ -32,7 +32,7 @@ import {
   isVirtualCardId,
   getQuestionIdFromVirtualTableId,
 } from "metabase/lib/saved-questions";
-import { TYPE } from "metabase-lib/lib/types/utils/isa";
+import { TYPE } from "metabase-lib/lib/types/constants";
 import { fieldRefForColumn } from "metabase-lib/lib/queries/utils/dataset";
 import { isSegment } from "metabase-lib/lib/queries/utils/filter";
 import { getUniqueExpressionName } from "metabase-lib/lib/queries/utils/expression";

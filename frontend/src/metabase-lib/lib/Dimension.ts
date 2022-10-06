@@ -14,7 +14,7 @@ import { VariableTarget } from "metabase-types/types/Parameter";
 import { IconName } from "metabase-types/types";
 import { infer, MONOTYPE } from "metabase/lib/expressions/typeinferencer";
 import { isa } from "cljs/metabase.types";
-import { TYPE } from "metabase-lib/lib/types/utils/isa";
+import { TYPE } from "metabase-lib/lib/types/constants";
 import {
   DATETIME_UNITS,
   formatBucketing,

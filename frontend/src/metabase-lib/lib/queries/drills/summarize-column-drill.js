@@ -3,7 +3,8 @@ import {
   getAggregationOperator,
   isCompatibleAggregationOperatorForField,
 } from "metabase/lib/schema_metadata";
-import { isa, TYPE } from "metabase-lib/lib/types/utils/isa";
+import { isa } from "metabase-lib/lib/types/utils/isa";
+import { TYPE } from "metabase-lib/lib/types/constants";
 import { fieldRefForColumn } from "metabase-lib/lib/queries/utils/dataset";
 
 const AGGREGATIONS = ["sum", "avg", "distinct"];

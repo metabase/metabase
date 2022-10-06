@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { TYPE } from "metabase-lib/lib/types/utils/isa";
+import { TYPE } from "metabase-lib/lib/types/constants";
 import Field from "metabase-lib/lib/metadata/Field";
 import { FieldDimension } from "metabase-lib/lib/Dimension";
 import * as Table from "./table";
