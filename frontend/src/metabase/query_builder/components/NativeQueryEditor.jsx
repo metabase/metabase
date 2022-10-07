@@ -179,7 +179,7 @@ class NativeQueryEditor extends Component {
   }
 
   // this is overwritten when the editor mounts
-  swapCompleters = () => undefined;
+  nextCompleters = undefined;
 
   cardTagId = ({ row, column }) => {
     const line = this._editor.getValue().split("\n")[row];
@@ -191,7 +191,7 @@ class NativeQueryEditor extends Component {
   };
 
   handleCursorChange = _.debounce((e, { cursor }) => {
-    this.swapCompleters(cursor);
+    this._editor.completers = this.nextCompleters(cursor);
     if (this.props.setNativeEditorSelectedRange) {
       this.props.setNativeEditorSelectedRange(this._editor.getSelectionRange());
     }
@@ -354,13 +354,12 @@ class NativeQueryEditor extends Component {
     // the completers when the editor mounts are the standard ones
     const standardCompleters = [...this._editor.completers];
 
-    this.swapCompleters = pos => {
-      this._editor.completers = this.getSnippetNameAtCursor(pos)
+    this.nextCompleters = pos =>
+      this.getSnippetNameAtCursor(pos)
         ? [{ getCompletions: this.getSnippetCompletions }]
         : this.getCardTagNameAtCursor(pos)
         ? [{ getCompletions: this.getCardTagCompletions }]
         : standardCompleters;
-    };
   }
 
   getSnippetNameAtCursor = ({ row, column }) => {
