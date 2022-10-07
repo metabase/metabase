@@ -10,7 +10,6 @@
     [metabase-enterprise.serialization.v2.models :as serdes.models]
     [metabase.models.collection :as collection]
     [metabase.models.serialization.base :as serdes.base]
-    [metabase.util.i18n :refer [trs]]
     [toucan.db :as db]
     [toucan.hydrate :refer [hydrate]]))
 
@@ -31,44 +30,8 @@
                         :when (model-pred model)]
                     (serdes.base/extract-all model opts)))))
 
-(defn- descendant-legal
-  [{:keys [on-error] :or {on-error "abort"}} legal-collections [model id :as desc]]
-  (letfn [(abort [coll-id]
-            (throw (ex-info
-                     (trs (str "{0} {1} belongs to Collection {2}, but that Collection is not being serialized. "
-                               "Selective serialization requires that all transitive contents belong to the serialized "
-                               "collections. Watch for Dashboards that include alien Cards, or Cards that are derived "
-                               "from alien Cards.")
-                          model id coll-id)
-                     {:model             model
-                      :id                id
-                      :collection_id     coll-id
-                      :legal-collections legal-collections})))
-          ;; Returns false so that this entity will get skipped.
-          (continue [] false)
-          (err-fn [coll-id]
-            (if (= on-error "continue")
-              (continue)
-              (abort coll-id)))]
-    (cond
-      ;; Cards and Dashboards have collection_id parameters.
-      (#{"Card" "Dashboard"} model)
-      (let [coll-id (db/select-one-field :collection_id (symbol model) :id id)]
-        (if (or (nil? coll-id)
-                (legal-collections coll-id))
-          desc
-          (err-fn coll-id)))
-
-      ;; Collections themselves are checked against the set.
-      (= model "Collection") (if (legal-collections id)
-                               desc
-                               (err-fn id))
-
-      ;; DashCards are always included - they don't belong directly to Collections, just their Cards and Dashboards do.
-      (= model "DashboardCard") desc)))
-
 ;; TODO Properly support "continue" - it should be contagious. Eg. a Dashboard with an illegal Card gets excluded too.
-(defn- descendants-closure [opts targets]
+(defn- descendants-closure [_opts targets]
   (loop [to-chase (set targets)
          chased   #{}]
     (let [[m i :as item] (first to-chase)
@@ -104,7 +67,7 @@
                                                            (filter :card_id) ; Text cards have a nil card_id
                                                            (filter (comp not cards :card_id))
                                                            set)]
-                                       :when (not (empty? escapees))]
+                                       :when (seq escapees)]
                                    [(:id dash) escapees]))
         ;; {source-card-id target-card-id} the key is in the curated set, the value is not.
         all-cards          (for [id cards]
@@ -127,9 +90,9 @@
                                                  dc            dashcards]
                                              (:card_id dc))))]
     (cond-> nil
-      (not (empty? escaped-dashcards)) (assoc :escaped-dashcards escaped-dashcards)
-      (not (empty? escaped-questions)) (assoc :escaped-questions escaped-questions)
-      (not (empty? problem-cards))     (assoc :problem-cards     problem-cards))))
+      (seq escaped-dashcards) (assoc :escaped-dashcards escaped-dashcards)
+      (seq escaped-questions) (assoc :escaped-questions escaped-questions)
+      (seq problem-cards)     (assoc :problem-cards     problem-cards))))
 
 (defn- collection-label [coll-id]
   (if coll-id

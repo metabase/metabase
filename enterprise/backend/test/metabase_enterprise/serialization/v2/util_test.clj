@@ -1,4 +1,4 @@
-(ns metabase-enterprise.models.serialization.util-test
+(ns metabase-enterprise.serialization.v2.util-test
   (:require [clojure.test :refer :all]
             [metabase.models.serialization.util :as serdes.util]
             [metabase.models :refer [Card Database Field Table]]

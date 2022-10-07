@@ -6,6 +6,7 @@
             [metabase-enterprise.serialization.v2.storage.yaml :as storage.yaml]
             [metabase.models :refer [Collection Database Field FieldValues Table]]
             [metabase.models.serialization.base :as serdes.base]
+            [metabase.util.date-2 :as u.date]
             [toucan.db :as db]
             [yaml.core :as yaml]))
 
@@ -50,7 +51,7 @@
       (ts/with-temp-dpc [Database    [db      {:name "My Company Data"}]
                          Table       [table   {:name "Customers" :db_id (:id db)}]
                          Field       [website {:name "Company/organization website" :table_id (:id table)}]
-                         FieldValues [fc      {:field_id (:id website)}]]
+                         FieldValues [_       {:field_id (:id website)}]]
         (let [export          (into [] (extract/extract-metabase nil))]
           (storage.yaml/store! export dump-dir)
           (testing "the right files in the right places"
@@ -65,6 +66,7 @@
 
           (testing "the Field was properly exported"
             (is (= (-> (into {} (serdes.base/extract-one "Field" {} (db/select-one 'Field :id (:id website))))
+                       (update :created_at      u.date/format)
                        (dissoc :serdes/meta))
                    (-> (yaml/from-file (io/file dump-dir
                                                 "Database" "My Company Data"
