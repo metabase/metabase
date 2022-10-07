@@ -62,7 +62,7 @@ async function main(args) {
 }
 
 async function fetch(uri, options) {
-  let xhr = new XMLHttpRequest();
+  const xhr = new XMLHttpRequest();
   return new Promise((resolve, reject) => {
     xhr.open(options.method, uri, true);
     for (const headerName in options.headers) {
@@ -70,14 +70,16 @@ async function fetch(uri, options) {
     }
     xhr.send(options.body);
     xhr.onload = () => {
-      responseObject = { 
-        status: xhr.status, 
-        response: xhr.responseText 
-      }
-      xhr.status >= 200 && xhr.status <= 299 ? resolve(responseObject) : reject(responseObject)
-    }
-  })
-};
+      const responseObject = {
+        status: xhr.status,
+        response: xhr.responseText,
+      };
+      xhr.status >= 200 && xhr.status <= 299
+        ? resolve(responseObject)
+        : reject(responseObject);
+    };
+  });
+}
 
 // simple API client for poeditor
 function poeditor(command, params = {}) {
