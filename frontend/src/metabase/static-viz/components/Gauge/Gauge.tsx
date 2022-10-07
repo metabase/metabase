@@ -3,7 +3,6 @@ import { Pie } from "@visx/shape";
 import { Group } from "@visx/group";
 import { PieArcDatum } from "@visx/shape/lib/shapes/Pie";
 
-import { formatNumber } from "metabase/static-viz/lib/numbers";
 import { ColorGetter } from "metabase/static-viz/lib/colors";
 
 import {
@@ -92,47 +91,41 @@ export default function Gauge({
               {pie => {
                 // Renders similar to Pie's default children.
                 // https://github.com/airbnb/visx/blob/978c143dae4057e482b0ca909e8c5a16c85dfd1e/packages/visx-shape/src/shapes/Pie.tsx#L86-L98
+                const baseArcPath = pie.path({
+                  startAngle: START_ANGLE,
+                  endAngle: END_ANGLE,
+                } as unknown as PieArcDatum<GaugeSegment>);
                 return (
                   <Group className="visx-pie-arcs-group">
-                    <g key={`pie-arc-base`}>
-                      <path
-                        className="visx-pie-arc"
-                        d={
-                          pie.path({
-                            startAngle: START_ANGLE,
-                            endAngle: END_ANGLE,
-                          } as unknown as PieArcDatum<GaugeSegment>) || ""
-                        }
-                        fill={getColor("bg-medium")}
-                      />
-                    </g>
+                    {baseArcPath && (
+                      <g>
+                        <path d={baseArcPath} fill={getColor("bg-medium")} />
+                      </g>
+                    )}
                     {pie.arcs.map((arc, index) => {
+                      const arcPath = pie.path({
+                        ...arc,
+                        startAngle:
+                          START_ANGLE +
+                          calculateRelativeValueAngle(
+                            arc.data.min,
+                            segmentMinValue,
+                            segmentMaxValue,
+                          ),
+                        endAngle:
+                          START_ANGLE +
+                          calculateRelativeValueAngle(
+                            arc.data.max,
+                            segmentMinValue,
+                            segmentMaxValue,
+                          ),
+                      });
                       return (
-                        <g key={`pie-arc-${index}`}>
-                          <path
-                            className="visx-pie-arc"
-                            d={
-                              pie.path({
-                                ...arc,
-                                startAngle:
-                                  START_ANGLE +
-                                  calculateRelativeValueAngle(
-                                    arc.data.min,
-                                    segmentMinValue,
-                                    segmentMaxValue,
-                                  ),
-                                endAngle:
-                                  START_ANGLE +
-                                  calculateRelativeValueAngle(
-                                    arc.data.max,
-                                    segmentMinValue,
-                                    segmentMaxValue,
-                                  ),
-                              }) || ""
-                            }
-                            fill={colorGetter(arc)}
-                          />
-                        </g>
+                        arcPath && (
+                          <g key={`pie-arc-${index}`}>
+                            <path d={arcPath} fill={colorGetter(arc)} />
+                          </g>
+                        )
                       );
                     })}
                   </Group>
