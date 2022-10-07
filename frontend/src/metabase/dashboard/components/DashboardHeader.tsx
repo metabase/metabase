@@ -38,6 +38,7 @@ interface DashboardHeaderProps {
   isEditing: boolean;
   isEditingInfo: boolean;
   isNavBarOpen: boolean;
+  isDataApp: boolean;
   dashboard: Dashboard;
   isBadgeVisible: boolean;
   isLastEditInfoVisible: boolean;
@@ -59,6 +60,7 @@ const DashboardHeader = ({
   headerModalMessage,
   isEditing,
   isNavBarOpen,
+  isDataApp,
   dashboard,
   isLastEditInfoVisible,
   children,
