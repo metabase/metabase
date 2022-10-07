@@ -243,6 +243,7 @@ class Dashboard extends Component {
         setParameterValue={setParameterValue}
         setParameterIndex={setParameterIndex}
         setEditingParameter={setEditingParameter}
+        isDataApp={dashboard && dashboard.is_app_page}
       />
     );
 
@@ -281,7 +282,7 @@ class Dashboard extends Component {
                   onSharingClick={this.onSharingClick}
                   onToggleAddQuestionSidebar={this.onToggleAddQuestionSidebar}
                   showAddQuestionSidebar={showAddQuestionSidebar}
-                  isDataApp={dashboard.is_app_page}
+                  isDataApp={dashboard && dashboard.is_app_page}
                 />
 
                 {shouldRenderParametersWidgetInEditMode && (

@@ -64,6 +64,7 @@ export default class ParameterWidget extends Component {
       parameter,
       isEditing,
       isFullscreen,
+      isDataApp,
       editingParameter,
       setEditingParameter,
       setValue,
@@ -78,6 +79,10 @@ export default class ParameterWidget extends Component {
       const fieldHasValueOrFocus =
         parameter.value != null || this.state.isFocused;
       const legend = fieldHasValueOrFocus ? parameter.name : "";
+
+      if (isDataApp && parameter.type === "id") {
+        return <></>;
+      }
 
       return (
         <FieldSet

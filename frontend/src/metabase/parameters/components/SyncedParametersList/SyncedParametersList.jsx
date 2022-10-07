@@ -21,6 +21,7 @@ const propTypes = {
   setParameterValue: PropTypes.func.isRequired,
   setParameterIndex: PropTypes.func,
   setEditingParameter: PropTypes.func,
+  isDataApp: PropTypes.bool,
 };
 
 export function SyncedParametersList({
@@ -34,6 +35,7 @@ export function SyncedParametersList({
   isFullscreen,
   isNightMode,
   isEditing,
+  isDataApp,
   commitImmediately,
 
   setParameterValue,
@@ -58,6 +60,7 @@ export function SyncedParametersList({
       editingParameter={editingParameter}
       isFullscreen={isFullscreen}
       isNightMode={isNightMode}
+      isDataApp={isDataApp}
       hideParameters={hideParameters}
       isEditing={isEditing}
       commitImmediately={commitImmediately}

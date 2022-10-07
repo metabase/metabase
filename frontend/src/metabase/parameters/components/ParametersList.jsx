@@ -40,6 +40,7 @@ function ParametersList({
 
   isFullscreen,
   isNightMode,
+  isDataApp,
   hideParameters,
   isEditing,
   vertical,
@@ -95,6 +96,7 @@ function ParametersList({
           isEditing={isEditing}
           isFullscreen={isFullscreen}
           isNightMode={isNightMode}
+          isDataApp={isDataApp}
           parameter={valuePopulatedParameter}
           parameters={parameters}
           dashboard={dashboard}
