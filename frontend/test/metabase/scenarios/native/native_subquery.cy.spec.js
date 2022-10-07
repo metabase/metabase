@@ -38,8 +38,9 @@ describe("scenarios > question > native subquery", () => {
           cy.findByText("A People Question");
           // typing a template tag id should open the editor
           cy.get(".ace_editor:not(.ace_autocomplete)")
-            .type(` {{`, { parseSpecialCharSequences: false })
-            .type(`{leftarrow}{leftarrow}#${questionId2}`);
+            .type(" ")
+            .type(`{{#`, { parseSpecialCharSequences: false })
+            .type(`{leftarrow}{leftarrow}${questionId2}`);
           cy.findByText("A People Model");
         });
       });
