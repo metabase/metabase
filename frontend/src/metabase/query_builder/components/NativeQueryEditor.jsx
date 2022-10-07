@@ -197,7 +197,7 @@ class NativeQueryEditor extends Component {
     }
     const cardTagId = this.cardTagId(cursor);
     if (cardTagId) {
-      this.props.openDataReferenceAtCard(cardTagId);
+      this.props.openDataReferenceAtQuestion(cardTagId);
     }
   }, 100);
 
