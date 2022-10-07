@@ -16,6 +16,7 @@ describe("scenarios > question > native subquery", () => {
         native: {
           query: "SELECT id AS another_unique_column_name FROM PEOPLE",
         },
+        dataset: true,
       }).then(({ body: { id: questionId2 } }) => {
         const tagName1 = `#${questionId1}-a-people-question-1`;
         const queryText = `{{${tagName1}}}`;
