@@ -162,8 +162,8 @@
          [diff-old changes] (data/diff old-perms new-perms)]
      (perms/log-permissions-changes diff-old changes)
      (perms/check-revision-numbers old-graph new-graph)
-     (check-no-app-collections changes)
      (when (seq changes)
+       (check-no-app-collections changes)
        (db/transaction
          (doseq [[group-id changes] changes]
            (update-group-permissions! collection-namespace group-id changes))
