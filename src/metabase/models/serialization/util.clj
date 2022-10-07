@@ -404,32 +404,18 @@
         export-visualizations
         (update :column_settings export-column-settings))))
 
-(comment
-
-  )
-
 (defn- import-visualizations [entity]
   (mbql.u/replace
     entity
-    [:field-id (fully-qualified-name :guard vector?) tail]
+    [(:or :field-id "field-id") (fully-qualified-name :guard vector?) tail]
     [:field-id (import-field-fk fully-qualified-name) (import-visualizations tail)]
-    [:field-id (fully-qualified-name :guard vector?)]
+    [(:or :field-id "field-id") (fully-qualified-name :guard vector?)]
     [:field-id (import-field-fk fully-qualified-name)]
 
-    ["field-id" (fully-qualified-name :guard vector?) tail]
-    ["field-id" (import-field-fk fully-qualified-name) (import-visualizations tail)]
-    ["field-id" (fully-qualified-name :guard vector?)]
-    ["field-id" (import-field-fk fully-qualified-name)]
-
-    [:field (fully-qualified-name :guard vector?) tail]
+    [(:or :field "field") (fully-qualified-name :guard vector?) tail]
     [:field (import-field-fk fully-qualified-name) (import-visualizations tail)]
-    [:field (fully-qualified-name :guard vector?)]
+    [(:or :field "field") (fully-qualified-name :guard vector?)]
     [:field (import-field-fk fully-qualified-name)]
-
-    ["field" (fully-qualified-name :guard vector?) tail]
-    ["field" (import-field-fk fully-qualified-name) (import-visualizations tail)]
-    ["field" (fully-qualified-name :guard vector?)]
-    ["field" (import-field-fk fully-qualified-name)]
 
     (_ :guard map?)
     (m/map-vals import-visualizations &match)

@@ -35,36 +35,6 @@
                     (.endsWith (name %) "_at")))
        (reduce #(update %1 %2 u.date/parse) entity)))
 
-(defonce last-ingested (atom []))
-
-(comment
-  (identity @last-ingested)
-
-  (def cards (into {} (for [c (toucan.db/select 'Card)]
-             [(metabase.models.serialization.hash/identity-hash c) c])))
-  (->> (metabase.models.serialization.base/raw-reducible-query "Card" {:where [:= :id 431]})
-       (into [])
-       first
-       (metabase.models.serialization.base/extract-one "Card" {})
-       (metabase.models.serialization.base/serdes-descendants "Card" 431))
-
-  (-> (ingest-yaml "/tmp/stats-export")
-      (ingest/ingest-one [{:model "Card" :id "df16d670"}])
-      #_(metabase.models.serialization.base/serdes-dependencies)
-      :name
-      )
-
-  (metabase.models.serialization.base/serdes-descendants "Card" 99)
-
-  (->> (toucan.db/select-one 'Card :name "Net Revenue Retention (NRR)")
-       :dataset_query
-       :native
-       :template-tags
-       vals
-       (filter :card-id)
-       )
-  )
-
 (defn- keywords [obj]
   (cond
     (map? obj)        (m/map-kv (fn [k v]
@@ -85,12 +55,6 @@
   original labels by eg. truncating them to keep the file names from getting too long. The labels aren't used at all on
   the loading side, so it's fine to drop them."
   [root-dir hierarchy]
-  (swap! last-ingested (fn [li]
-                         (conj (if (>= (count li) 20)
-                                 (vec (drop 1 li))
-                                 li)
-                               hierarchy)))
-
   (let [unlabeled (mapv #(dissoc % :label) hierarchy)
         file      (u.yaml/hierarchy->file root-dir hierarchy)] ; Use the original hierarchy for the filesystem.
     (-> (when (.exists file) file) ; If the returned file doesn't actually exist, replace it with nil.
