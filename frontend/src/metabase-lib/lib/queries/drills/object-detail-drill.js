@@ -36,7 +36,7 @@ function objectDetailDrillType({ question, clicked }) {
 
   const { extraData } = clicked;
   if (isPK(column) && hasManyPKColumns(question)) {
-    return "fk";
+    return "pk";
   } else if (isPK(column) && extraData?.dashboard != null) {
     return "dashboard";
   } else if (isPK(column)) {
