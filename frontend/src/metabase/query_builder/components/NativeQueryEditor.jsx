@@ -181,7 +181,7 @@ class NativeQueryEditor extends Component {
   // this is overwritten when the editor mounts
   nextCompleters = undefined;
 
-  cardTagId = ({ row, column }) => {
+  cardTagIdAtCursor = ({ row, column }) => {
     const line = this._editor.getValue().split("\n")[row];
     const matches = Array.from(line.matchAll(CARD_TAG_REGEX));
     const match = matches.find(
@@ -195,7 +195,7 @@ class NativeQueryEditor extends Component {
     if (this.props.setNativeEditorSelectedRange) {
       this.props.setNativeEditorSelectedRange(this._editor.getSelectionRange());
     }
-    const cardTagId = this.cardTagId(cursor);
+    const cardTagId = this.cardTagIdAtCursor(cursor);
     if (cardTagId) {
       this.props.openDataReferenceAtQuestion(cardTagId);
     }
