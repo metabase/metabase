@@ -125,14 +125,6 @@ export function isCompatibleAggregationOperatorForField(
   );
 }
 
-export function addValidOperatorsToFields(table) {
-  for (const field of table.fields) {
-    field.filter_operators = getFilterOperators(field, table);
-  }
-  table.aggregation_operators = getAggregationOperators(table);
-  return table;
-}
-
 export function isEqualsOperator(operator) {
   return !!operator && operator.name === "=";
 }
