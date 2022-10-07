@@ -11,7 +11,6 @@ interface FieldPaneProps {
 }
 
 const FieldPane = ({ onBack, onClose, field }: FieldPaneProps) => {
-  const dimension = field.dimension();
   return (
     <SidebarContent
       title={field.name}
@@ -19,7 +18,7 @@ const FieldPane = ({ onBack, onClose, field }: FieldPaneProps) => {
       onBack={onBack}
       onClose={onClose}
     >
-      {dimension && <DimensionInfo dimension={dimension} showAllFieldValues />}
+      <DimensionInfo dimension={field.dimension()} showAllFieldValues />
     </SidebarContent>
   );
 };

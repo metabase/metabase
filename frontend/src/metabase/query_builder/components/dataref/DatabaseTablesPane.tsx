@@ -46,7 +46,7 @@ const DatabaseTablesPane = ({
         .sort((a, b) => a.name.localeCompare(b.name)),
     [searchResults],
   );
-  if (!models) {
+  if (!searchResults) {
     return null;
   }
   return (
@@ -57,7 +57,7 @@ const DatabaseTablesPane = ({
       onClose={onClose}
     >
       <NodeListContainer>
-        {models?.length ? (
+        {models.length ? (
           <>
             <NodeListTitle>
               <NodeListIcon name="model" />

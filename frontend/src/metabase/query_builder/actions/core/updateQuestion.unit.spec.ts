@@ -610,19 +610,17 @@ describe("QB Actions > updateQuestion", () => {
       };
     }
 
-    [TEST_CASE.NATIVE_MODEL].forEach(testCase => {
-      const { question, questionType } = testCase;
-      describe(questionType, () => {
-        it("doesn't open tags editor bar after adding a variable tag for native models", async () => {
-          const { setTemplateTagEditorVisibleSpy } = await setupTemplateTags({
-            question,
-            tagsBefore: {},
-            tagsAfter: { foo: VARIABLE_TAG_1 },
-            isShowingTemplateTagsEditor: false,
-          });
-
-          expect(setTemplateTagEditorVisibleSpy).not.toHaveBeenCalled();
+    describe("native models", () => {
+      const { question } = TEST_CASE.NATIVE_MODEL;
+      it("doesn't open tags editor bar after adding a variable tag", async () => {
+        const { setTemplateTagEditorVisibleSpy } = await setupTemplateTags({
+          question,
+          tagsBefore: {},
+          tagsAfter: { foo: VARIABLE_TAG_1 },
+          isShowingTemplateTagsEditor: false,
         });
+
+        expect(setTemplateTagEditorVisibleSpy).not.toHaveBeenCalled();
       });
     });
 

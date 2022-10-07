@@ -28,7 +28,7 @@ const SchemaPaneInner = ({
   schema,
 }: SchemaPaneProps) => {
   const tables = useMemo(
-    () => schema.tables?.sort((a, b) => a.name.localeCompare(b.name)),
+    () => schema.tables.sort((a, b) => a.name.localeCompare(b.name)),
     [schema.tables],
   );
   return (
@@ -38,30 +38,28 @@ const SchemaPaneInner = ({
       onBack={onBack}
       onClose={onClose}
     >
-      {tables && (
-        <NodeListContainer>
-          <NodeListTitle>
-            <NodeListIcon name="table" />
-            <NodeListTitleText>
-              {ngettext(
-                msgid`${tables.length} table`,
-                `${tables.length} tables`,
-                tables.length,
-              )}
-            </NodeListTitleText>
-          </NodeListTitle>
-          <ul>
-            {tables.map(table => (
-              <li key={table.id}>
-                <NodeListItemLink onClick={() => onItemClick("table", table)}>
-                  <NodeListItemIcon name="table" />
-                  <NodeListItemName>{table.name}</NodeListItemName>
-                </NodeListItemLink>
-              </li>
-            ))}
-          </ul>
-        </NodeListContainer>
-      )}
+      <NodeListContainer>
+        <NodeListTitle>
+          <NodeListIcon name="table" />
+          <NodeListTitleText>
+            {ngettext(
+              msgid`${tables.length} table`,
+              `${tables.length} tables`,
+              tables.length,
+            )}
+          </NodeListTitleText>
+        </NodeListTitle>
+        <ul>
+          {tables.map(table => (
+            <li key={table.id}>
+              <NodeListItemLink onClick={() => onItemClick("table", table)}>
+                <NodeListItemIcon name="table" />
+                <NodeListItemName>{table.name}</NodeListItemName>
+              </NodeListItemLink>
+            </li>
+          ))}
+        </ul>
+      </NodeListContainer>
     </SidebarContent>
   );
 };
