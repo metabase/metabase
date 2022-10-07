@@ -5,8 +5,6 @@ const { spawn } = require("child_process");
 const os = require("os");
 const path = require("path");
 
-const fetch = require("isomorphic-fetch");
-
 const CypressBackend = {
   createServer(port = 4000) {
     const generateTempDbPath = () =>
@@ -104,6 +102,26 @@ const CypressBackend = {
     // Copied here from `frontend/src/metabase/lib/promise.js` to decouple Cypress from Typescript
     function delay(duration) {
       return new Promise((resolve, reject) => setTimeout(resolve, duration));
+    }
+
+    async function fetch(uri, options) {
+      const xhr = new XMLHttpRequest();
+      return new Promise((resolve, reject) => {
+        xhr.open(options.method, uri, true);
+        for (const headerName in options.headers) {
+          xhr.setRequestHeader(headerName, options.headers[headerName]);
+        }
+        xhr.send(options.body);
+        xhr.onload = () => {
+          const responseObject = {
+            status: xhr.status,
+            response: xhr.responseText,
+          };
+          xhr.status >= 200 && xhr.status <= 299
+            ? resolve(responseObject)
+            : reject(responseObject);
+        };
+      });
     }
 
     async function isReady(host) {

@@ -9,7 +9,6 @@
 const fs = require("fs");
 const fsp = fs.promises;
 const https = require("https");
-const fetch = require("isomorphic-fetch");
 const url = require("url");
 
 const POEDITOR_API_TOKEN = process.env["POEDITOR_API_TOKEN"];
@@ -61,6 +60,24 @@ async function main(args) {
     throw new Error("Some wanted language not found");
   }
 }
+
+async function fetch(uri, options) {
+  let xhr = new XMLHttpRequest();
+  return new Promise((resolve, reject) => {
+    xhr.open(options.method, uri, true);
+    for (const headerName in options.headers) {
+      xhr.setRequestHeader(headerName, options.headers[headerName]);
+    }
+    xhr.send(options.body);
+    xhr.onload = () => {
+      responseObject = { 
+        status: xhr.status, 
+        response: xhr.responseText 
+      }
+      xhr.status >= 200 && xhr.status <= 299 ? resolve(responseObject) : reject(responseObject)
+    }
+  })
+};
 
 // simple API client for poeditor
 function poeditor(command, params = {}) {
