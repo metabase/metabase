@@ -1,4 +1,4 @@
-import { isFK, isPK } from "metabase/lib/schema_metadata";
+import { isFK, isPK } from "metabase-lib/lib/types/utils/isa";
 
 export function objectDetailDrill({ question, clicked }) {
   const type = objectDetailDrillType({ question, clicked });
