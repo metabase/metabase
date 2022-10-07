@@ -11,6 +11,7 @@ import { Dataset } from "metabase-types/api";
 import { Series } from "metabase-types/types/Visualization";
 import { Dispatch, GetState, QueryBuilderMode } from "metabase-types/store";
 import Question from "metabase-lib/lib/Question";
+import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
@@ -86,10 +87,12 @@ function shouldTemplateTagEditorBeVisible({
   if (queryBuilderMode === "dataset") {
     return isVisible;
   }
-  const currentQuery = currentQuestion?.query() as NativeQuery;
-  const nextQuery = newQuestion.query() as NativeQuery;
-  const previousTags = currentQuery?.variableTemplateTags() || [];
-  const nextTags = nextQuery.variableTemplateTags();
+  const previousTags = currentQuestion?.isNative()
+    ? (currentQuestion.query() as NativeQuery).variableTemplateTags()
+    : [];
+  const nextTags = newQuestion.isNative()
+    ? (newQuestion.query() as NativeQuery).variableTemplateTags()
+    : [];
   return nextTags.length > previousTags.length
     ? true
     : nextTags.length === 0
