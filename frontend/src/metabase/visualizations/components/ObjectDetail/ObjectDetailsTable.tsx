@@ -7,9 +7,8 @@ import { DatasetData } from "metabase-types/types/Dataset";
 import ExpandableString from "metabase/query_builder/components/ExpandableString";
 import EmptyState from "metabase/components/EmptyState";
 
-import { isID } from "metabase/lib/schema_metadata";
 import { formatValue, formatColumn } from "metabase/lib/formatting";
-import { isa } from "metabase-lib/lib/types/utils/isa";
+import { isa, isID } from "metabase-lib/lib/types/utils/isa";
 import { TYPE } from "metabase-lib/lib/types/constants";
 
 import { OnVisualizationClickType } from "./types";

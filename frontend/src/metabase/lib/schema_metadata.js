@@ -2,246 +2,28 @@ import _ from "underscore";
 import { t } from "ttag";
 import { field_semantic_types_map } from "metabase/lib/core";
 import {
-  isa,
-  isFK as isTypeFK,
-  isPK as isTypePK,
+  isNumeric,
+  isDate,
+  isBoolean,
+  isScope,
+  isSummable,
+  getFieldType,
+  isFieldType,
+  isLongitude,
 } from "metabase-lib/lib/types/utils/isa";
-import { TYPE } from "metabase-lib/lib/types/constants";
-
-// primary field types used for picking operators, etc
-export const NUMBER = "NUMBER";
-export const STRING = "STRING";
-export const STRING_LIKE = "STRING_LIKE";
-export const BOOLEAN = "BOOLEAN";
-export const TEMPORAL = "TEMPORAL";
-export const LOCATION = "LOCATION";
-export const COORDINATE = "COORDINATE";
-export const FOREIGN_KEY = "FOREIGN_KEY";
-export const PRIMARY_KEY = "PRIMARY_KEY";
-
-// other types used for various purporses
-export const ENTITY = "ENTITY";
-export const SUMMABLE = "SUMMABLE";
-export const SCOPE = "SCOPE";
-export const CATEGORY = "CATEGORY";
-export const DIMENSION = "DIMENSION";
-
-export const UNKNOWN = "UNKNOWN";
-
-// define various type hierarchies
-// NOTE: be sure not to create cycles using the "other" types
-const TYPES = {
-  [TEMPORAL]: {
-    base: [TYPE.Temporal],
-    effective: [TYPE.Temporal],
-    semantic: [TYPE.Temporal],
-  },
-  [NUMBER]: {
-    base: [TYPE.Number],
-    effective: [TYPE.Number],
-    semantic: [TYPE.Number],
-  },
-  [STRING]: {
-    base: [TYPE.Text],
-    effective: [TYPE.Text],
-    semantic: [TYPE.Text, TYPE.Category],
-  },
-  [STRING_LIKE]: {
-    base: [TYPE.TextLike],
-    effective: [TYPE.TextLike],
-  },
-  [BOOLEAN]: {
-    base: [TYPE.Boolean],
-    effective: [TYPE.Boolean],
-  },
-  [COORDINATE]: {
-    semantic: [TYPE.Coordinate],
-  },
-  [LOCATION]: {
-    semantic: [TYPE.Address],
-  },
-  [ENTITY]: {
-    semantic: [TYPE.FK, TYPE.PK, TYPE.Name],
-  },
-  [FOREIGN_KEY]: {
-    semantic: [TYPE.FK],
-  },
-  [PRIMARY_KEY]: {
-    semantic: [TYPE.PK],
-  },
-  [SUMMABLE]: {
-    include: [NUMBER],
-    exclude: [ENTITY, LOCATION, TEMPORAL],
-  },
-  [SCOPE]: {
-    include: [NUMBER, TEMPORAL, CATEGORY, ENTITY, STRING],
-    exclude: [LOCATION],
-  },
-  [CATEGORY]: {
-    base: [TYPE.Boolean],
-    effective: [TYPE.Boolean],
-    semantic: [TYPE.Category],
-    include: [LOCATION],
-  },
-  // NOTE: this is defunct right now.  see definition of isDimension below.
-  [DIMENSION]: {
-    include: [TEMPORAL, CATEGORY, ENTITY],
-  },
-};
-
-export function isFieldType(type, field) {
-  if (!field) {
-    return false;
-  }
-
-  const typeDefinition = TYPES[type];
-  // check to see if it belongs to any of the field types:
-  const props = field.effective_type
-    ? ["effective", "semantic"]
-    : ["base", "semantic"];
-  for (const prop of props) {
-    const allowedTypes = typeDefinition[prop];
-    if (!allowedTypes) {
-      continue;
-    }
-
-    const fieldType = field[prop + "_type"];
-    for (const allowedType of allowedTypes) {
-      if (isa(fieldType, allowedType)) {
-        return true;
-      }
-    }
-  }
-
-  // recursively check to see if it's NOT another field type:
-  for (const excludedType of typeDefinition.exclude || []) {
-    if (isFieldType(excludedType, field)) {
-      return false;
-    }
-  }
-
-  // recursively check to see if it's another field type:
-  for (const includedType of typeDefinition.include || []) {
-    if (isFieldType(includedType, field)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-export function getFieldType(field) {
-  // try more specific types first, then more generic types
-  for (const type of [
-    TEMPORAL,
-    LOCATION,
-    COORDINATE,
-    FOREIGN_KEY,
-    PRIMARY_KEY,
-    STRING,
-    STRING_LIKE,
-    NUMBER,
-    BOOLEAN,
-  ]) {
-    if (isFieldType(type, field)) {
-      return type;
-    }
-  }
-}
-
-export const isDate = isFieldType.bind(null, TEMPORAL);
-export const isNumeric = isFieldType.bind(null, NUMBER);
-export const isBoolean = isFieldType.bind(null, BOOLEAN);
-export const isString = isFieldType.bind(null, STRING);
-export const isSummable = isFieldType.bind(null, SUMMABLE);
-export const isScope = isFieldType.bind(null, SCOPE);
-export const isCategory = isFieldType.bind(null, CATEGORY);
-export const isLocation = isFieldType.bind(null, LOCATION);
-
-export const isDimension = col =>
-  col && col.source !== "aggregation" && !isDescription(col);
-export const isMetric = col =>
-  col && col.source !== "breakout" && isSummable(col);
-
-export const isFK = field => field && isTypeFK(field.semantic_type);
-export const isPK = field => field && isTypePK(field.semantic_type);
-export const isEntityName = field =>
-  field && isa(field.semantic_type, TYPE.Name);
-
-export const isAny = col => true;
-
-export const isNumericBaseType = field => {
-  if (!field) {
-    return false;
-  }
-  if (field.effective_type) {
-    return isa(field.effective_type, TYPE.Number);
-  } else {
-    return isa(field.base_type, TYPE.Number);
-  }
-};
-
-export const isDateWithoutTime = field => {
-  if (!field) {
-    return false;
-  }
-  if (field.effective_type) {
-    return isa(field.effective_type, TYPE.Date);
-  } else {
-    return isa(field.base_type, TYPE.Date);
-  }
-};
-
-// ZipCode, ID, etc derive from Number but should not be formatted as numbers
-export const isNumber = field =>
-  field &&
-  isNumericBaseType(field) &&
-  (field.semantic_type == null || isa(field.semantic_type, TYPE.Number));
-
-export const isBinnedNumber = field => isNumber(field) && !!field.binning_info;
-
-export const isTime = field => {
-  if (!field) {
-    return false;
-  }
-  if (field.effective_type) {
-    return isa(field.effective_type, TYPE.Time);
-  } else {
-    return isa(field.base_type, TYPE.Time);
-  }
-};
-
-export const isAddress = field =>
-  field && isa(field.semantic_type, TYPE.Address);
-export const isCity = field => field && isa(field.semantic_type, TYPE.City);
-export const isState = field => field && isa(field.semantic_type, TYPE.State);
-export const isZipCode = field =>
-  field && isa(field.semantic_type, TYPE.ZipCode);
-export const isCountry = field =>
-  field && isa(field.semantic_type, TYPE.Country);
-export const isCoordinate = field =>
-  field && isa(field.semantic_type, TYPE.Coordinate);
-export const isLatitude = field =>
-  field && isa(field.semantic_type, TYPE.Latitude);
-export const isLongitude = field =>
-  field && isa(field.semantic_type, TYPE.Longitude);
-
-export const isCurrency = field =>
-  field && isa(field.semantic_type, TYPE.Currency);
-
-export const isDescription = field =>
-  field && isa(field.semantic_type, TYPE.Description);
-
-export const isComment = field =>
-  field && isa(field.semantic_type, TYPE.Comment);
-
-export const isID = field => isFK(field) || isPK(field);
-
-export const isURL = field => field && isa(field.semantic_type, TYPE.URL);
-export const isEmail = field => field && isa(field.semantic_type, TYPE.Email);
-export const isAvatarURL = field =>
-  field && isa(field.semantic_type, TYPE.AvatarURL);
-export const isImageURL = field =>
-  field && isa(field.semantic_type, TYPE.ImageURL);
+import {
+  TYPE,
+  TEMPORAL,
+  LOCATION,
+  COORDINATE,
+  FOREIGN_KEY,
+  PRIMARY_KEY,
+  STRING,
+  STRING_LIKE,
+  NUMBER,
+  BOOLEAN,
+  UNKNOWN,
+} from "metabase-lib/lib/types/constants";
 
 // filter operator argument constructors:
 
@@ -306,7 +88,7 @@ function equivalentArgument(field, table) {
 
 function longitudeFieldSelectArgument(field, table) {
   const values = table.fields
-    .filter(field => isa(field.semantic_type, TYPE.Longitude))
+    .filter(field => isLongitude(field))
     .map(field => ({
       key: field.id,
       name: field.display_name,
@@ -738,20 +520,6 @@ export function addValidOperatorsToFields(table) {
   }
   table.aggregation_operators = getAggregationOperators(table);
   return table;
-}
-
-export function hasLatitudeAndLongitudeColumns(cols) {
-  let hasLatitude = false;
-  let hasLongitude = false;
-  for (const col of cols) {
-    if (isLatitude(col)) {
-      hasLatitude = true;
-    }
-    if (isLongitude(col)) {
-      hasLongitude = true;
-    }
-  }
-  return hasLatitude && hasLongitude;
 }
 
 export function foreignKeyCountsByOriginTable(fks) {

@@ -5,6 +5,12 @@ import moment from "moment-timezone";
 
 import { formatField, stripId } from "metabase/lib/formatting";
 import {
+  getIconForField,
+  getFilterOperators,
+} from "metabase/lib/schema_metadata";
+import type { FieldFingerprint } from "metabase-types/api/field";
+import type { Field as FieldRef } from "metabase-types/types/Query";
+import {
   isDate,
   isTime,
   isNumber,
@@ -28,11 +34,7 @@ import {
   isPK,
   isFK,
   isEntityName,
-  getIconForField,
-  getFilterOperators,
-} from "metabase/lib/schema_metadata";
-import type { FieldFingerprint } from "metabase-types/api/field";
-import type { Field as FieldRef } from "metabase-types/types/Query";
+} from "metabase-lib/lib/types/utils/isa";
 import { getFieldValues } from "metabase-lib/lib/queries/utils/field";
 import { createLookupByProperty, memoizeClass } from "metabase-lib/lib/utils";
 import type StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";

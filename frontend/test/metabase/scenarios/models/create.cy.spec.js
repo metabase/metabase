@@ -22,8 +22,6 @@ describe("scenarios > models > create", () => {
 
     cy.findByText("Save").click();
 
-    cy.findByText("Not now").click();
-
     cy.findByText("Saved");
   });
 });
