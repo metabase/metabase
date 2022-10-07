@@ -2,16 +2,17 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import Databases from "metabase/entities/databases";
 
+import Databases from "metabase/entities/databases";
+import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import {
   NodeListItemLink,
   NodeListItemName,
   NodeListItemIcon,
 } from "./NodeList.styled";
 
-const MainPane = ({ databases, onItemClick }) => (
-  <div>
+const MainPane = ({ databases, onClose, onItemClick }) => (
+  <SidebarContent title={t`Data Reference`} onClose={onClose}>
     <p className="mt2 mb3 text-spaced">
       {t`Browse the contents of your databases, tables, and columns. Pick a database to get started.`}
     </p>
@@ -30,12 +31,13 @@ const MainPane = ({ databases, onItemClick }) => (
             </li>
           ))}
     </ul>
-  </div>
+  </SidebarContent>
 );
 
 MainPane.propTypes = {
-  onItemClick: PropTypes.func.isRequired,
   databases: PropTypes.array,
+  onClose: PropTypes.func.isRequired,
+  onItemClick: PropTypes.func.isRequired,
 };
 
 export default Databases.loadList()(MainPane);

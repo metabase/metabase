@@ -15,12 +15,6 @@ import type Table from "metabase-lib/lib/metadata/Table";
 import TableInfoLoader from "./TableInfoLoader";
 import FieldList from "./FieldList";
 
-const mapStateToProps = (state: State, props: TablePaneProps) => ({
-  table: Tables.selectors.getObject(state, {
-    entityId: props.table.id,
-  }),
-});
-
 interface TablePaneProps {
   onBack: () => void;
   onClose: () => void;
@@ -62,6 +56,10 @@ const TablePane = ({ table, onItemClick, onBack, onClose }: TablePaneProps) => (
     </TableInfoLoader>
   </SidebarContent>
 );
+
+const mapStateToProps = (state: State, props: TablePaneProps) => ({
+  table: Tables.selectors.getObject(state, { entityId: props.table.id }),
+});
 
 export default _.compose(
   Tables.load({

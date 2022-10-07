@@ -11,8 +11,8 @@ import {
 import Questions from "metabase/entities/questions";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { getQuestionFromCard } from "metabase/query_builder/selectors";
-import type { Card } from "metabase-types/api";
 import type { State } from "metabase-types/store";
+import Table from "metabase-lib/lib/metadata/Table";
 import Question from "metabase-lib/lib/Question";
 import FieldList from "../FieldList";
 import {
@@ -41,7 +41,7 @@ const QuestionPane = ({
   onBack,
   onClose,
 }: QuestionPaneProps) => {
-  const table = question.composeThisQuery()?.table();
+  const table = question.composeThisQuery()?.table() as Table; // ? is only needed to satisfy type-checker
   return (
     <SidebarContent
       title={question.displayName() || undefined}
@@ -82,7 +82,7 @@ const QuestionPane = ({
           )}`}
         </QuestionPaneDetailText>
       </QuestionPaneDetail>
-      {table?.fields && (
+      {table.fields && (
         <FieldList
           fields={table.fields}
           onFieldClick={f => onItemClick("field", f)}

@@ -1,4 +1,4 @@
-/* eslint-disable react/prop-types */
+/* eslint "react/prop-types": "warn" */
 import React from "react";
 import _ from "underscore";
 import PropTypes from "prop-types";
@@ -7,13 +7,17 @@ import Schemas from "metabase/entities/schemas";
 import DatabaseSchemasPane from "./DatabaseSchemasPane";
 import DatabaseTablesPane from "./DatabaseTablesPane";
 
-const DatabasePaneInner = ({ database, ...props }) => {
+const DatabasePane = ({ database, ...props }) => {
   const Component =
     database.schemas.length > 1 ? DatabaseSchemasPane : DatabaseTablesPane;
   return <Component {...props} database={database} />;
 };
 
-const DatabasePane = _.compose(
+DatabasePane.propTypes = {
+  database: PropTypes.object.isRequired,
+};
+
+export default _.compose(
   Databases.load({
     id: (_state, { database }) => database.id,
   }),
@@ -22,10 +26,4 @@ const DatabasePane = _.compose(
       dbId: database.id,
     }),
   }),
-)(DatabasePaneInner);
-
-DatabasePane.propTypes = {
-  database: PropTypes.object.isRequired,
-};
-
-export default DatabasePane;
+)(DatabasePane);

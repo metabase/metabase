@@ -22,7 +22,7 @@ interface SchemaPaneProps {
   schema: Schema;
 }
 
-const SchemaPaneInner = ({
+const SchemaPane = ({
   onBack,
   onClose,
   onItemClick,
@@ -65,8 +65,6 @@ const SchemaPaneInner = ({
   );
 };
 
-const SchemaPane = Schemas.load({
+export default Schemas.load({
   id: (_state: State, props: SchemaPaneProps) => props.schema.id,
-})(SchemaPaneInner);
-
-export default SchemaPane;
+})(SchemaPane);
