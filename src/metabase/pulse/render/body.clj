@@ -708,7 +708,6 @@
      [:div
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]]}))
-    
 
 (s/defmethod render :row :- common/RenderedPulseCard
   [_ render-type _timezone-id card _dashcard data]
