@@ -1,5 +1,6 @@
 import { ngettext, msgid } from "ttag";
 import React, { useMemo } from "react";
+
 import Schemas from "metabase/entities/schemas";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { State } from "metabase-types/store";
@@ -65,7 +66,7 @@ const SchemaPaneInner = ({
 };
 
 const SchemaPane = Schemas.load({
-  id: (_state: State, { schema }: SchemaPaneProps) => schema.id,
+  id: (_state: State, props: SchemaPaneProps) => props.schema.id,
 })(SchemaPaneInner);
 
 export default SchemaPane;

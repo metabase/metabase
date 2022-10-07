@@ -12,11 +12,11 @@ import FieldPane from "./FieldPane";
 import QuestionPane from "./QuestionPane";
 
 const PANES = {
-  database: DatabasePane, // displays either schemas or tables in a database
-  schema: SchemaPane, // displays tables in a schema
-  table: TablePane, // displays fields of a table
-  question: QuestionPane, // displays columns of a question
-  field: FieldPane,
+  database: DatabasePane, // lists schemas, tables and models of a database
+  schema: SchemaPane, // lists tables of a schema
+  table: TablePane, // lists fields of a table
+  question: QuestionPane, // lists fields of a question
+  field: FieldPane, // field details and metadata
 };
 
 const DataReferencePropTypes = {

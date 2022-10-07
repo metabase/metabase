@@ -20,7 +20,7 @@ import {
 interface DatabaseTablesPaneProps {
   onBack: () => void;
   onClose: () => void;
-  onItemClick: (type: string, item: any) => void;
+  onItemClick: (type: string, item: unknown) => void;
   database: Database;
   searchResults: any[]; // TODO: /api/search is yet to be typed
 }

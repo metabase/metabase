@@ -25,7 +25,6 @@ const DatabasePane = _.compose(
 )(DatabasePaneInner);
 
 DatabasePane.propTypes = {
-  onItemClick: PropTypes.func.isRequired,
   database: PropTypes.object.isRequired,
 };
 
