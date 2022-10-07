@@ -9,8 +9,6 @@ import DatabasePane from "./DatabasePane";
 import SchemaPane from "./SchemaPane";
 import TablePane from "./TablePane";
 import FieldPane from "./FieldPane";
-import SegmentPane from "./SegmentPane";
-import MetricPane from "./MetricPane";
 import QuestionPane from "./QuestionPane";
 
 const PANES = {
@@ -19,8 +17,6 @@ const PANES = {
   table: TablePane, // displays fields of a table
   question: QuestionPane, // displays columns of a question
   field: FieldPane,
-  segment: SegmentPane,
-  metric: MetricPane,
 };
 
 const DataReferencePropTypes = {
