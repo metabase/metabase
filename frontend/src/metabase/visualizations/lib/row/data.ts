@@ -1,7 +1,6 @@
 import { t } from "ttag";
 import { DatasetData, RowValue, RowValues } from "metabase-types/api";
 
-import { isMetric } from "metabase/lib/schema_metadata";
 import {
   ChartColumns,
   ColumnDescriptor,
@@ -15,7 +14,8 @@ import {
   MetricValue,
   SeriesInfo,
 } from "metabase/visualizations/types/data";
-import { Series } from "../../shared/components/RowChart/types";
+import { Series } from "metabase/visualizations/shared/components/RowChart/types";
+import { isMetric } from "metabase-lib/lib/types/utils/isa";
 
 const getMetricValue = (value: RowValue): MetricValue => {
   if (typeof value === "number") {
