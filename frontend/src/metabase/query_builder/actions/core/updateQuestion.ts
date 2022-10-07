@@ -88,7 +88,7 @@ function shouldTemplateTagEditorBeVisible({
   }
   const currentQuery = currentQuestion?.query() as NativeQuery;
   const nextQuery = newQuestion.query() as NativeQuery;
-  const previousTags = currentQuery.variableTemplateTags();
+  const previousTags = currentQuery?.variableTemplateTags() || [];
   const nextTags = nextQuery.variableTemplateTags();
   return nextTags.length > previousTags.length
     ? true
