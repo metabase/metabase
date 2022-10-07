@@ -82,19 +82,14 @@ function shouldTemplateTagEditorBeVisible({
   isVisible: boolean;
   queryBuilderMode: QueryBuilderMode;
 }): boolean {
-  // The tag types shown in the tag editor are not supported by models, so ignore any changes
+  // The variable tags are not supported by models, so don't change the visibility
   if (queryBuilderMode === "dataset") {
     return isVisible;
   }
   const currentQuery = currentQuestion?.query() as NativeQuery;
   const nextQuery = newQuestion.query() as NativeQuery;
-  const tagEditorTags = (q: NativeQuery) =>
-    (q.templateTags?.() || []).filter(
-      t => !["card", "snippet"].includes(t.type),
-    );
-  const previousTags = tagEditorTags(currentQuery);
-  const nextTags = tagEditorTags(nextQuery);
-
+  const previousTags = currentQuery.variableTemplateTags();
+  const nextTags = nextQuery.variableTemplateTags();
   return nextTags.length > previousTags.length
     ? true
     : nextTags.length === 0

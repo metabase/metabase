@@ -365,6 +365,12 @@ export default class NativeQuery extends AtomicQuery {
     return Object.values(this.templateTagsMap());
   }
 
+  variableTemplateTags(): TemplateTag[] {
+    return this.templateTags().filter(t =>
+      ["dimension", "text", "number", "date"].includes(t.type),
+    );
+  }
+
   hasSnippets() {
     return this.templateTags().some(t => t.type === "snippet");
   }

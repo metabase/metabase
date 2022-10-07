@@ -48,13 +48,7 @@ export default class TagEditorSidebar extends React.Component {
       setParameterValue,
       onClose,
     } = this.props;
-
-    // The tag editor sidebar excludes snippets and cards since they have separate sidebars.
-    const tagEditorTags = q =>
-      (q.templateTags?.() || []).filter(
-        t => !["card", "snippet"].includes(t.type),
-      );
-    const tags = tagEditorTags(query);
+    const tags = query.variableTemplateTags();
     const database = query.database();
     const parameters = query.question().parameters();
     const parametersById = _.indexBy(parameters, "id");
