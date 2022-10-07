@@ -82,7 +82,7 @@ function shouldTemplateTagEditorBeVisible({
   isVisible: boolean;
   queryBuilderMode: QueryBuilderMode;
 }): boolean {
-  // The variable tags are not supported by models, so don't change the visibility
+  // variable tags are not supported by models, so don't change the visibility
   if (queryBuilderMode === "dataset") {
     return isVisible;
   }
