@@ -53,7 +53,7 @@ export const openDataReferenceAtQuestion = createThunkAction(
       const database = getMetadata(getState()).database(question.database_id);
       return [
         { type: "database", item: database },
-        { type: "model", item: question },
+        { type: "question", item: question },
       ];
     }
   },

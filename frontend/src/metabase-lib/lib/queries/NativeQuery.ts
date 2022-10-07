@@ -66,9 +66,9 @@ const TAG_REGEXES: RegExp[] = [
 // anything that doesn't match our rule is ignored, so {{&foo!}} would simply be ignored
 // See unit tests for examples
 export function recognizeTemplateTags(queryText: string): string[] {
-  const tagNames = TAG_REGEXES.flatMap(r =>
-    Array.from(queryText.matchAll(r)),
-  ).map(m => m[1]);
+  const tagNames = TAG_REGEXES.flatMap(r => Array.from(queryText.matchAll(r)))
+    .map(m => m[1])
+    .filter(Boolean);
   return _.uniq(tagNames); // dedupe since it's allowed for a user to reference the same variable multiple times
 }
 
