@@ -695,7 +695,6 @@
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]]}))
 
-
 (s/defmethod render :gauge :- common/RenderedPulseCard
   [_chart-type render-type _timezone-id :- (s/maybe s/Str) card _dashcard data]
   (let [image-bundle (image-bundle/make-image-bundle
