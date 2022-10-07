@@ -282,7 +282,7 @@ class Dashboard extends Component {
                   onSharingClick={this.onSharingClick}
                   onToggleAddQuestionSidebar={this.onToggleAddQuestionSidebar}
                   showAddQuestionSidebar={showAddQuestionSidebar}
-                  isDataApp={dashboard && dashboard.is_app_page}
+                  isDataApp={dashboard.is_app_page}
                 />
 
                 {shouldRenderParametersWidgetInEditMode && (
