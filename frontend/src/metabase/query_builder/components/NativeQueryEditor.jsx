@@ -366,14 +366,14 @@ class NativeQueryEditor extends Component {
     const lines = this._editor.getValue().split("\n");
     const linePrefix = lines[row].slice(0, column);
     const match = linePrefix.match(/\{\{\s*snippet:\s*([^\}]*)$/);
-    return match?.[1];
+    return match?.[1] || null;
   };
 
   getCardTagNameAtCursor = ({ row, column }) => {
     const lines = this._editor.getValue().split("\n");
     const linePrefix = lines[row].slice(0, column);
     const match = linePrefix.match(/\{\{\s*(#[^\}]*)$/);
-    return match?.[1];
+    return match?.[1] || null;
   };
 
   getSnippetCompletions = (editor, session, pos, prefix, callback) => {
