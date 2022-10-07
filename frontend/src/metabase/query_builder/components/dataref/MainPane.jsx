@@ -18,18 +18,14 @@ const MainPane = ({ databases, onClose, onItemClick }) => (
     </p>
     <ul>
       {databases &&
-        databases
-          .filter(db => !db.is_saved_questions)
-          .map(database => (
-            <li key={database.id}>
-              <NodeListItemLink
-                onClick={() => onItemClick("database", database)}
-              >
-                <NodeListItemIcon name="database" />
-                <NodeListItemName>{database.name}</NodeListItemName>
-              </NodeListItemLink>
-            </li>
-          ))}
+        databases.map(database => (
+          <li key={database.id}>
+            <NodeListItemLink onClick={() => onItemClick("database", database)}>
+              <NodeListItemIcon name="database" />
+              <NodeListItemName>{database.name}</NodeListItemName>
+            </NodeListItemLink>
+          </li>
+        ))}
     </ul>
   </SidebarContent>
 );
