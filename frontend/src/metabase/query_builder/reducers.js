@@ -9,7 +9,7 @@ import {
   SET_DATA_REFERENCE_STACK,
   POP_DATA_REFERENCE_STACK,
   PUSH_DATA_REFERENCE_STACK,
-  OPEN_DATA_REFERENCE_AT_CARD,
+  OPEN_DATA_REFERENCE_AT_QUESTION,
   TOGGLE_DATA_REFERENCE,
   TOGGLE_TEMPLATE_TAGS_EDITOR,
   TOGGLE_SNIPPET_SIDEBAR,
@@ -180,7 +180,7 @@ export const uiControls = handleActions(
         dataReferenceStack: state.dataReferenceStack.concat([payload]),
       }),
     },
-    [OPEN_DATA_REFERENCE_AT_CARD]: {
+    [OPEN_DATA_REFERENCE_AT_QUESTION]: {
       next: (state, { payload }) => {
         return payload
           ? {

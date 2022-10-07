@@ -37,10 +37,10 @@ export const PUSH_DATA_REFERENCE_STACK =
   "metabase/qb/PUSH_DATA_REFERENCE_STACK";
 export const pushDataReferenceStack = createAction(PUSH_DATA_REFERENCE_STACK);
 
-export const OPEN_DATA_REFERENCE_AT_CARD =
-  "metabase/qb/OPEN_DATA_REFERENCE_AT_CARD";
-export const openDataReferenceAtCard = createThunkAction(
-  OPEN_DATA_REFERENCE_AT_CARD,
+export const OPEN_DATA_REFERENCE_AT_QUESTION =
+  "metabase/qb/OPEN_DATA_REFERENCE_AT_QUESTION";
+export const openDataReferenceAtQuestion = createThunkAction(
+  OPEN_DATA_REFERENCE_AT_QUESTION,
   id => async (dispatch, getState) => {
     const action = await dispatch(
       Questions.actions.fetch(
@@ -48,12 +48,12 @@ export const openDataReferenceAtCard = createThunkAction(
         { noEvent: true, useCachedForbiddenError: true },
       ),
     );
-    const card = Questions.HACK_getObjectFromAction(action);
-    if (card) {
-      const database = getMetadata(getState()).database(card.database_id);
+    const question = Questions.HACK_getObjectFromAction(action);
+    if (question) {
+      const database = getMetadata(getState()).database(question.database_id);
       return [
         { type: "database", item: database },
-        { type: "model", item: card },
+        { type: "model", item: question },
       ];
     }
   },
