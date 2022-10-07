@@ -50,7 +50,7 @@ export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
 ///////////////////////////
 // QUERY TEXT TAG UTILS
 
-const VARIABLE_TAG_REGEX: RegExp = /\{\{\s*([A-Za-z0-9_\.]+)?\s*\}\}/g;
+const VARIABLE_TAG_REGEX: RegExp = /\{\{\s*([A-Za-z0-9_\.]+)\s*\}\}/g;
 const SNIPPET_TAG_REGEX: RegExp = /\{\{\s*(snippet:\s*[^}]+)\s*\}\}/g;
 export const CARD_TAG_REGEX: RegExp =
   /\{\{\s*(#([0-9]*)(-[a-z0-9-]*)?)\s*\}\}/g;
@@ -69,7 +69,7 @@ export function recognizeTemplateTags(queryText: string): string[] {
   const tagNames = TAG_REGEXES.flatMap(r => Array.from(queryText.matchAll(r)))
     .map(m => m[1])
     .filter(Boolean);
-  return _.uniq(tagNames); // dedupe since it's allowed for a user to reference the same variable multiple times
+  return _.uniq(tagNames);
 }
 
 // needs to match logically with `cardTagRegexFromId`
