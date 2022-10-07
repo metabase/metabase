@@ -14,9 +14,9 @@ function toJSMap(m) {
   return o;
 }
 
-function row_chart(card, data) {
+function row_chart(settings, data) {
   return StaticViz.RenderChart("row", {
-    card: JSON.parse(card),
+    settings: JSON.parse(settings),
     data: JSON.parse(data),
   });
 }

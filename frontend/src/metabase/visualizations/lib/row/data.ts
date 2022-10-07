@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import { DatasetData, RowValue, RowValues } from "metabase-types/api";
+import { RowValue, RowValues } from "metabase-types/api";
 
 import {
   ChartColumns,
@@ -15,6 +15,7 @@ import {
   SeriesInfo,
 } from "metabase/visualizations/types/data";
 import { Series } from "metabase/visualizations/shared/components/RowChart/types";
+import { TwoDimensionalChartData } from "metabase/visualizations/shared/types/data";
 import { isMetric } from "metabase-lib/lib/types/utils/isa";
 
 const getMetricValue = (value: RowValue): MetricValue => {
@@ -89,7 +90,7 @@ const groupDataByDimensions = (
 };
 
 export const getGroupedDataset = (
-  data: DatasetData,
+  data: TwoDimensionalChartData,
   chartColumns: ChartColumns,
   columnFormatter: ColumnFormatter,
 ): GroupedDataset => {
@@ -156,7 +157,7 @@ export const trimData = (
 };
 
 const getBreakoutDistinctValues = (
-  data: DatasetData,
+  data: TwoDimensionalChartData,
   breakout: ColumnDescriptor,
   columnFormatter: ColumnFormatter,
 ) => {
@@ -210,7 +211,7 @@ const getMultipleMetricSeries = (
 };
 
 export const getSeries = (
-  data: DatasetData,
+  data: TwoDimensionalChartData,
   chartColumns: ChartColumns,
   columnFormatter: ColumnFormatter,
   seriesOrder?: string[],

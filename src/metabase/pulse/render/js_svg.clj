@@ -139,9 +139,9 @@
 
 (defn row-chart
   "Clojure entrypoint to render a row chart."
-  [card data]
+  [settings data]
   (let [svg-string (.asString (js/execute-fn-name @context "row_chart"
-                                                  (json/generate-string card)
+                                                  (json/generate-string settings)
                                                   (json/generate-string data)))]
     (svg-string->bytes svg-string)))
 

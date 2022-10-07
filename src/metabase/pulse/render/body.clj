@@ -710,10 +710,13 @@
              :src   (:image-src image-bundle)}]]}))
 
 (s/defmethod render :row :- common/RenderedPulseCard
-  [_ render-type _timezone-id card _dashcard data]
-  (let [image-bundle   (image-bundle/make-image-bundle
+  [_ render-type _timezone-id card _dashcard {:keys [rows cols] :as _data}]
+  (let [viz-settings (get-in card [:visualization_settings])
+        data {:rows rows
+              :cols cols}
+        image-bundle   (image-bundle/make-image-bundle
                         render-type
-                        (js-svg/row-chart card data))]
+                        (js-svg/row-chart viz-settings data))]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))

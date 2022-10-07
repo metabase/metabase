@@ -12,8 +12,9 @@ import {
   trimData,
 } from "metabase/visualizations/lib/row/data";
 import { getChartGoal } from "metabase/visualizations/lib/settings/goal";
-import { DatasetData, VisualizationSettings } from "metabase-types/api";
+import { VisualizationSettings } from "metabase-types/api";
 import { ColorGetter } from "metabase/static-viz/lib/colors";
+import { TwoDimensionalChartData } from "metabase/visualizations/shared/types/data";
 import {
   getLabelsFormatter,
   getStaticColumnValueFormatter,
@@ -26,19 +27,15 @@ const WIDTH = 620;
 const HEIGHT = 440;
 
 interface StaticRowChartProps {
-  data: DatasetData;
-  card: {
-    visualization_settings: VisualizationSettings;
-  };
+  data: TwoDimensionalChartData;
+  settings: VisualizationSettings;
   getColor: ColorGetter;
 }
 
 const staticTextMeasurer: TextMeasurer = (text: string, style: FontStyle) =>
   measureText(text, parseInt(style.size, 10), parseInt(style.weight));
 
-const StaticRowChart = ({ data, card, getColor }: StaticRowChartProps) => {
-  const settings = card.visualization_settings;
-
+const StaticRowChart = ({ data, settings, getColor }: StaticRowChartProps) => {
   const columnValueFormatter = getStaticColumnValueFormatter();
   const labelsFormatter = getLabelsFormatter();
   const { chartColumns, series, seriesColors } = useChartSeries(

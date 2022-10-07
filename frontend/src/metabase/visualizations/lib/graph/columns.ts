@@ -3,6 +3,7 @@ import {
   DatasetData,
   VisualizationSettings,
 } from "metabase-types/api";
+import { TwoDimensionalChartData } from "metabase/visualizations/shared/types/data";
 
 export type ColumnDescriptor = {
   index: number;
@@ -56,7 +57,7 @@ export type MultipleMetricsChartColumns = {
 export type ChartColumns = BreakoutChartColumns | MultipleMetricsChartColumns;
 
 export const getChartColumns = (
-  data: DatasetData,
+  data: TwoDimensionalChartData,
   visualizationSettings: VisualizationSettings,
 ): ChartColumns => {
   const [dimension, breakout] = getColumnDescriptors(
