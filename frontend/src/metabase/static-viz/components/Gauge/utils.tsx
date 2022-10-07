@@ -22,8 +22,13 @@ import type {
 } from "./types";
 
 export function populateDefaultColumnSettings(
-  columnSettings: NumberFormatOptions,
+  columnSettings?: NumberFormatOptions,
 ): NumberFormatOptions {
+  // This is needed because we don't store settings in the database
+  // but we calculate settings on the fly and has certain defaults.
+  // e.g. https://github.com/metabase/metabase/blob/f7572fa46007ca596247129f1ee26a2f7cb89815/frontend/src/metabase/visualizations/lib/settings/column.js#L315
+
+  // TODO: Remove the the hard-coded default value and possibly use value from https://github.com/metabase/metabase/blob/f7572fa46007ca596247129f1ee26a2f7cb89815/frontend/src/metabase/visualizations/lib/settings.js#L34
   return { currency: "USD", currency_style: "symbol", ...columnSettings };
 }
 
