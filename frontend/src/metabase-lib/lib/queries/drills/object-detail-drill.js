@@ -1,48 +1,16 @@
-import { isPK, isFK } from "metabase-lib/lib/types/utils/isa";
-
-export function objectDetailPKDrill({ question, clicked }) {
-  if (!objectDetailDrill({ question, clicked })) {
-    return false;
-  }
-
-  const { column } = clicked;
-  return isPK(column) && hasManyPKColumns(question);
-}
-
-export function objectDetailDashboardDrill({ question, clicked }) {
-  if (!objectDetailDrill({ question, clicked })) {
-    return false;
-  }
-
-  const { column, extraData } = clicked;
-  return isPK(column) && extraData != null && extraData.dashboard != null;
-}
-
-export function objectDetailZoomDrill({ question, clicked }) {
-  if (!objectDetailDrill({ question, clicked })) {
-    return false;
-  }
-
-  const { column } = clicked;
-  return isPK(column);
-}
-
-export function objectDetailFKDrill({ question, clicked }) {
-  if (!objectDetailDrill({ question, clicked })) {
-    return false;
-  }
-
-  const { column } = clicked;
-  return isFK(column);
-}
+import { isFK, isPK } from "metabase/lib/schema_metadata";
 
 export function objectDetailDrill({ question, clicked }) {
-  return (
-    clicked != null &&
-    clicked.column != null &&
-    clicked.value !== undefined &&
-    question.query().isEditable()
-  );
+  const type = objectDetailDrillType({ question, clicked });
+  if (!type) {
+    return null;
+  }
+
+  return {
+    type,
+    objectId: clicked.value,
+    hasManyPKColumns: hasManyPKColumns(question),
+  };
 }
 
 export function objectDetailPKDrillQuestion({ question, clicked }) {
@@ -54,6 +22,30 @@ export function objectDetailFKDrillQuestion({ question, clicked }) {
   const { column, value: objectId } = clicked;
   const targetField = getFKTargetField(column, question.metadata());
   return question.drillPK(targetField, objectId);
+}
+
+function objectDetailDrillType({ question, clicked }) {
+  if (!clicked) {
+    return null;
+  }
+
+  const { column, value } = clicked;
+  if (column == null || value === undefined || !question.query().isEditable()) {
+    return null;
+  }
+
+  const { extraData } = clicked;
+  if (isPK(column) && hasManyPKColumns(question)) {
+    return "fk";
+  } else if (isPK(column) && extraData?.dashboard != null) {
+    return "dashboard";
+  } else if (isPK(column)) {
+    return "zoom";
+  } else if (isFK(column)) {
+    return "fk";
+  } else {
+    return null;
+  }
 }
 
 function getFKTargetField(column, metadata) {

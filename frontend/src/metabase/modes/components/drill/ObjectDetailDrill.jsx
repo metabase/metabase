@@ -1,41 +1,43 @@
 import { t } from "ttag";
 import { zoomInRow } from "metabase/query_builder/actions";
 import {
-  objectDetailDashboardDrill,
-  objectDetailFKDrill,
+  objectDetailDrill,
   objectDetailFKDrillQuestion,
-  objectDetailPKDrill,
   objectDetailPKDrillQuestion,
-  objectDetailZoomDrill,
 } from "metabase-lib/lib/queries/drills/object-detail-drill";
 
-function getAction({ question, clicked }) {
-  if (objectDetailPKDrill({ question, clicked })) {
+function getAction({ question, clicked, type, objectId }) {
+  switch (type) {
+    case "pk":
+      return {
+        question: () => objectDetailPKDrillQuestion({ question, clicked }),
+      };
+    case "fk":
+      return {
+        question: () => objectDetailFKDrillQuestion({ question, clicked }),
+      };
+    case "zoom":
+      return { action: () => zoomInRow({ objectId }) };
+    case "dashboard":
+      return { question: () => question };
+  }
+}
+
+function getActionExtraData({ objectId, hasManyPKColumns }) {
+  if (!hasManyPKColumns) {
     return {
-      question: () => objectDetailPKDrillQuestion({ question, clicked }),
-    };
-  }
-
-  if (objectDetailDashboardDrill({ question, clicked })) {
-    return { question: () => question };
-  }
-
-  if (objectDetailZoomDrill({ question, clicked })) {
-    return { action: () => zoomInRow({ objectId: clicked.value }) };
-  }
-
-  if (objectDetailFKDrill({ question, clicked })) {
-    return {
-      question: () => objectDetailFKDrillQuestion({ question, clicked }),
+      extra: () => ({ objectId }),
     };
   }
 }
 
 export default ({ question, clicked }) => {
-  const action = getAction({ question, clicked });
-  if (!action) {
+  const drill = objectDetailDrill({ question, clicked });
+  if (!drill) {
     return [];
   }
+
+  const { type, objectId, hasManyPKColumns } = drill;
 
   return [
     {
@@ -45,7 +47,8 @@ export default ({ question, clicked }) => {
       buttonType: "horizontal",
       icon: "document",
       default: true,
-      ...action,
+      ...getAction({ question, clicked, type, objectId }),
+      ...getActionExtraData({ objectId, hasManyPKColumns }),
     },
   ];
 };
