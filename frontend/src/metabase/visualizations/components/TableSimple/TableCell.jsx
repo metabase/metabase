@@ -5,13 +5,13 @@ import cx from "classnames";
 import ExternalLink from "metabase/core/components/ExternalLink";
 
 import { formatValue } from "metabase/lib/formatting";
-import { isID, isFK } from "metabase/lib/schema_metadata";
 import {
   getTableCellClickedObject,
   getTableClickedObjectRowData,
   isColumnRightAligned,
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
+import { isID, isFK } from "metabase-lib/lib/types/utils/isa";
 
 import MiniBar from "../MiniBar";
 import { CellRoot, CellContent } from "./TableCell.styled";

@@ -1,6 +1,11 @@
 import _ from "underscore";
-import { isLatitude, isLongitude, isDate } from "metabase/lib/schema_metadata";
-import { isa } from "metabase-lib/lib/types/utils/isa";
+
+import {
+  isa,
+  isLatitude,
+  isLongitude,
+  isDate,
+} from "metabase-lib/lib/types/utils/isa";
 import { TYPE } from "metabase-lib/lib/types/constants";
 
 import { isExpressionField } from "metabase-lib/lib/queries/utils/field-ref";

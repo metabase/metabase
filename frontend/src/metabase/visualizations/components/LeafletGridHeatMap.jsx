@@ -3,7 +3,7 @@ import { t } from "ttag";
 import d3 from "d3";
 
 import { color } from "metabase/lib/colors";
-import { isNumeric, isMetric } from "metabase/lib/schema_metadata";
+import { isNumeric, isMetric } from "metabase-lib/lib/types/utils/isa";
 import { rangeForValue } from "metabase-lib/lib/queries/utils/dataset";
 import { computeNumericDataInverval } from "../lib/numeric";
 import LeafletMap from "./LeafletMap";

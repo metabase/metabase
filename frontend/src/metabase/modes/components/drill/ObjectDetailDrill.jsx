@@ -1,6 +1,6 @@
 import { t } from "ttag";
-import { isFK, isPK } from "metabase/lib/schema_metadata";
 import { zoomInRow } from "metabase/query_builder/actions";
+import { isFK, isPK } from "metabase-lib/lib/types/utils/isa";
 
 function hasManyPKColumns(question) {
   const fields = question.isDataset()

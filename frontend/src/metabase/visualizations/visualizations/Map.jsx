@@ -9,15 +9,6 @@ import Link from "metabase/core/components/Link";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Icon from "metabase/components/Icon";
 
-import {
-  isNumeric,
-  isLatitude,
-  isLongitude,
-  isMetric,
-  hasLatitudeAndLongitudeColumns,
-  isState,
-  isCountry,
-} from "metabase/lib/schema_metadata";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 import {
   metricSetting,
@@ -33,6 +24,15 @@ const PIN_MAP_TYPES = new Set(["pin", "heat", "grid"]);
 
 import { getAccentColors } from "metabase/lib/colors/groups";
 import ColorRangeSelector from "metabase/core/components/ColorRangeSelector";
+import {
+  isNumeric,
+  isLatitude,
+  isLongitude,
+  isMetric,
+  hasLatitudeAndLongitudeColumns,
+  isState,
+  isCountry,
+} from "metabase-lib/lib/types/utils/isa";
 import LeafletGridHeatMap from "../components/LeafletGridHeatMap";
 import PinMap from "../components/PinMap";
 import ChoroplethMap, {

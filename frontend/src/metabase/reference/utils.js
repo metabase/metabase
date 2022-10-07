@@ -3,7 +3,7 @@ import { assoc, assocIn, chain } from "icepick";
 import { titleize, humanize } from "metabase/lib/formatting";
 import { startNewCard } from "metabase/lib/card";
 import * as Urls from "metabase/lib/urls";
-import { isPK } from "metabase-lib/lib/types/utils/isa";
+import { isTypePK } from "metabase-lib/lib/types/utils/isa";
 
 export const idsToObjectMap = (ids, objects) =>
   ids
@@ -26,11 +26,12 @@ export const databaseToForeignKeys = database =>
         // ignore tables without primary key
         .filter(
           table =>
-            table && table.fields.find(field => isPK(field.semantic_type)),
+            table && table.fields.find(field => isTypePK(field.semantic_type)),
         )
         .map(table => ({
           table: table,
-          field: table && table.fields.find(field => isPK(field.semantic_type)),
+          field:
+            table && table.fields.find(field => isTypePK(field.semantic_type)),
         }))
         .map(({ table, field }) => ({
           id: field.id,
