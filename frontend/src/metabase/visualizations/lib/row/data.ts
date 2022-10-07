@@ -15,7 +15,7 @@ import {
   MetricValue,
   SeriesInfo,
 } from "metabase/visualizations/types/data";
-import { Series } from "../../components/RowChart/types";
+import { Series } from "../../shared/components/RowChart/types";
 
 const getMetricValue = (value: RowValue): MetricValue => {
   if (typeof value === "number") {

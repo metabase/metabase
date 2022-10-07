@@ -9,8 +9,8 @@ import { HoveredData } from "metabase/visualizations/types/events";
 import { ChartGoal } from "metabase/visualizations/types/settings";
 import { ChartTheme } from "metabase/visualizations/types/theme";
 import { Margin } from "metabase/visualizations/types/layout";
-import { ChartBar } from "../utils/layout";
-import { VerticalGoalLine } from "./VerticalGoalLine";
+import { ChartBar } from "../RowChart/utils/layout";
+import { VerticalGoalLine } from "../VerticalGoalLine.tsx/VerticalGoalLine";
 
 export interface RowChartViewProps {
   width: number;
@@ -18,17 +18,6 @@ export interface RowChartViewProps {
   yScale: ScaleBand<string>;
   xScale: ScaleLinear<number, number, never>;
   barsSeries: (ChartBar | null)[][];
-  hoveredData?: HoveredData | null;
-  onHover?: (
-    event: React.MouseEvent,
-    seriesIndex: number | null,
-    datumIndex: number | null,
-  ) => void;
-  onClick?: (
-    event: React.MouseEvent,
-    seriesIndex: number,
-    datumIndex: number,
-  ) => void;
   labelsFormatter: (value: NumberValue) => string;
   yTickFormatter: (value: string | number) => string;
   xTickFormatter: (value: NumberValue) => string;
@@ -41,6 +30,18 @@ export interface RowChartViewProps {
   shouldShowDataLabels?: boolean;
   xLabel?: string | null;
   yLabel?: string | null;
+  style?: React.CSSProperties;
+  hoveredData?: HoveredData | null;
+  onHover?: (
+    event: React.MouseEvent,
+    seriesIndex: number | null,
+    datumIndex: number | null,
+  ) => void;
+  onClick?: (
+    event: React.MouseEvent,
+    seriesIndex: number,
+    datumIndex: number,
+  ) => void;
 }
 
 export const RowChartView = ({
@@ -53,16 +54,17 @@ export const RowChartView = ({
   goal,
   theme,
   margin,
-  hoveredData,
   labelsFormatter,
   yTickFormatter,
   xTickFormatter,
-  onHover,
-  onClick,
   xTicksCount,
   shouldShowDataLabels,
   yLabel,
   xLabel,
+  style,
+  hoveredData,
+  onHover,
+  onClick,
 }: RowChartViewProps) => {
   const handleBarMouseEnter = (
     event: React.MouseEvent,
@@ -87,7 +89,7 @@ export const RowChartView = ({
   const goalLineX = xScale(goal?.value ?? 0);
 
   return (
-    <svg width={width} height={height}>
+    <svg width={width} height={height} style={style}>
       <Group top={margin.top} left={margin.left}>
         <GridColumns
           scale={xScale}

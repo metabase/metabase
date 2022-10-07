@@ -8,7 +8,7 @@ import { ChartGoal } from "metabase/visualizations/types/settings";
 import { ChartTicksFormatters } from "metabase/visualizations/types/format";
 import { HoveredData } from "metabase/visualizations/types/events";
 import { ChartTheme } from "metabase/visualizations/types/theme";
-import { RowChartView, RowChartViewProps } from "./RowChartView/RowChartView";
+import { RowChartView, RowChartViewProps } from "../RowChartView/RowChartView";
 import {
   getMaxYValuesCount,
   getChartMargin,
@@ -21,6 +21,8 @@ import { Series } from "./types";
 
 const MIN_BAR_HEIGHT = 24;
 
+const defaultFormatter = (value: any) => String(value);
+
 export interface RowChartProps<TDatum> {
   width: number;
   height: number;
@@ -29,7 +31,7 @@ export interface RowChartProps<TDatum> {
   series: Series<TDatum>[];
   seriesColors: Record<string, string>;
 
-  trimData: (data: TDatum[], maxLength: number) => TDatum[];
+  trimData?: (data: TDatum[], maxLength: number) => TDatum[];
 
   goal: ChartGoal | null;
   theme: ChartTheme;
@@ -39,14 +41,15 @@ export interface RowChartProps<TDatum> {
   yLabel?: string;
   xLabel?: string;
 
-  tickFormatters: ChartTicksFormatters;
-  labelsFormatter: (value: NumberValue) => string;
+  tickFormatters?: ChartTicksFormatters;
+  labelsFormatter?: (value: NumberValue) => string;
   measureText: TextMeasurer;
-
-  hoveredData?: HoveredData | null;
 
   xScaleType?: "linear" | "pow" | "log";
 
+  style?: React.CSSProperties;
+
+  hoveredData?: HoveredData | null;
   onClick?: RowChartViewProps["onClick"];
   onHover?: RowChartViewProps["onHover"];
 }
@@ -68,14 +71,19 @@ export const RowChart = <TDatum,>({
   xLabel,
   yLabel,
 
-  tickFormatters,
-  labelsFormatter,
+  tickFormatters = {
+    xTickFormatter: defaultFormatter,
+    yTickFormatter: defaultFormatter,
+  },
+  labelsFormatter = defaultFormatter,
+
+  xScaleType = "linear",
+
   measureText,
 
+  style,
+
   hoveredData,
-
-  xScaleType,
-
   onClick,
   onHover,
 }: RowChartProps<TDatum>) => {
@@ -90,7 +98,7 @@ export const RowChart = <TDatum,>({
     [height, multipleSeries.length, stackingOffset],
   );
 
-  const trimmedData = trimData(data, maxYValues);
+  const trimmedData = trimData?.(data, maxYValues) ?? data;
 
   const { xTickFormatter, yTickFormatter } = tickFormatters;
 
@@ -166,6 +174,7 @@ export const RowChart = <TDatum,>({
 
   return (
     <RowChartView
+      style={style}
       barsSeries={bars}
       innerHeight={innerHeight}
       innerWidth={innerWidth}

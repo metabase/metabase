@@ -1,5 +1,5 @@
 import React from "react";
-import { RowChart } from "metabase/visualizations/components/RowChart";
+import { RowChart } from "metabase/visualizations/shared/components/RowChart";
 import {
   FontStyle,
   TextMeasurer,

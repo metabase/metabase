@@ -3,7 +3,7 @@ import { DatasetData, VisualizationSettings } from "metabase-types/api";
 import { getChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { ColumnFormatter } from "metabase/visualizations/types/format";
 import { getSeries } from "../lib/row/data";
-import { getSeriesColors } from "../components/RowChart/utils/colors";
+import { getSeriesColors } from "../shared/components/RowChart/utils/colors";
 
 export const useChartSeries = (
   data: DatasetData,
