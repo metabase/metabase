@@ -81,7 +81,7 @@ describe("data utils", () => {
           {
             dimensionValue: 2020,
             metrics: {
-              count: 950,
+              count: 850,
               avg: 190,
             },
           },
@@ -109,7 +109,7 @@ describe("data utils", () => {
         {
           dimensionValue: 2020,
           metrics: {
-            count: 950,
+            count: 850,
             avg: 190,
           },
           breakout: {
