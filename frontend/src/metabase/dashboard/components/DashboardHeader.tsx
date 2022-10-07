@@ -38,7 +38,6 @@ interface DashboardHeaderProps {
   isEditing: boolean;
   isEditingInfo: boolean;
   isNavBarOpen: boolean;
-  isDataApp: boolean;
   dashboard: Dashboard;
   isBadgeVisible: boolean;
   isLastEditInfoVisible: boolean;
@@ -60,7 +59,6 @@ const DashboardHeader = ({
   headerModalMessage,
   isEditing,
   isNavBarOpen,
-  isDataApp,
   dashboard,
   isLastEditInfoVisible,
   children,
@@ -115,6 +113,8 @@ const DashboardHeader = ({
     return () => clearTimeout(timerId);
   });
 
+  const isDataApp = dashboard.is_app_page;
+
   return (
     <div>
       {isEditing && (
@@ -137,7 +137,7 @@ const DashboardHeader = ({
         className={cx("QueryBuilder-section", headerClassName)}
         ref={header}
       >
-        <HeaderContent showSubHeader={showSubHeader}>
+        <HeaderContent showSubHeader={!isDataApp && showSubHeader}>
           <HeaderCaptionContainer>
             <HeaderCaption
               key={dashboard.name}
