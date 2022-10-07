@@ -458,11 +458,10 @@ class NativeQueryEditor extends Component {
 
   /// Change the Database we're currently editing a query for.
   setDatabaseId = databaseId => {
-    const { query, setDatasetQuery, setDataReferenceStackAtDatabase } =
-      this.props;
+    const { query, setDatasetQuery, setDataReferenceStack } = this.props;
     if (query.databaseId() !== databaseId) {
       setDatasetQuery(query.setDatabaseId(databaseId).setDefaultCollection());
-      setDataReferenceStackAtDatabase(databaseId);
+      setDataReferenceStack([{ type: "database", item: { id: databaseId } }]);
       if (this._editor && !this.props.readOnly) {
         // HACK: the cursor doesn't blink without this intended small delay
         setTimeout(() => this._editor.focus(), 50);
@@ -602,8 +601,7 @@ class NativeQueryEditor extends Component {
 }
 
 const mapDispatchToProps = dispatch => ({
-  setDataReferenceStackAtDatabase: id =>
-    dispatch(setDataReferenceStack([{ type: "database", item: { id } }])),
+  setDataReferenceStack: stack => dispatch(setDataReferenceStack(stack)),
   fetchQuestion: async id => {
     const action = await dispatch(
       Questions.actions.fetch(
