@@ -44,18 +44,20 @@ const TablePane = ({ table, onItemClick, onBack, onClose }: TablePaneProps) => (
         )}
       </div>
       <div className="my2">
-        {table.fields && (
-          <FieldList
-            fields={table.fields}
-            onFieldClick={f => onItemClick("field", f)}
-          />
-        )}
-        {table.connectedTables() && (
-          <ConnectedTableList
-            tables={table.connectedTables()}
-            onTableClick={t => onItemClick("table", t)}
-          />
-        )}
+        {table.fields.length ? (
+          <>
+            <FieldList
+              fields={table.fields}
+              onFieldClick={f => onItemClick("field", f)}
+            />
+            {table.connectedTables() && (
+              <ConnectedTableList
+                tables={table.connectedTables()}
+                onTableClick={t => onItemClick("table", t)}
+              />
+            )}
+          </>
+        ) : null}
       </div>
     </TableInfoLoader>
   </SidebarContent>
