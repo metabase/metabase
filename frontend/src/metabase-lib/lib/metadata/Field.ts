@@ -4,10 +4,7 @@ import _ from "underscore";
 import moment from "moment-timezone";
 
 import { formatField, stripId } from "metabase/lib/formatting";
-import {
-  getIconForField,
-  getFilterOperators,
-} from "metabase/lib/schema_metadata";
+import { getIconForField } from "metabase/lib/schema_metadata";
 import type { FieldFingerprint } from "metabase-types/api/field";
 import type { Field as FieldRef } from "metabase-types/types/Query";
 import {
@@ -35,6 +32,7 @@ import {
   isFK,
   isEntityName,
 } from "metabase-lib/lib/types/utils/isa";
+import { getFilterOperators } from "metabase-lib/lib/operators/utils";
 import { getFieldValues } from "metabase-lib/lib/queries/utils/field";
 import { createLookupByProperty, memoizeClass } from "metabase-lib/lib/utils";
 import type StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
