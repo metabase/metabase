@@ -701,13 +701,21 @@
   (let [image-bundle (image-bundle/make-image-bundle
                       render-type
                       (js-svg/gauge card data))]
+    {:attachments
+     (when image-bundle
+       (image-bundle/image-bundle->attachment image-bundle))
+
+     :content
+     [:div
+      [:img {:style (style/style {:display :block :width :100%})
+             :src   (:image-src image-bundle)}]]}))
+    
 
 (s/defmethod render :row :- common/RenderedPulseCard
   [_ render-type _timezone-id card _dashcard data]
   (let [image-bundle   (image-bundle/make-image-bundle
                         render-type
                         (js-svg/row-chart card data))]
-
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))
