@@ -1,5 +1,7 @@
-import { ChartTheme } from "metabase/visualizations/types/theme";
+import { RowChartTheme } from "../types";
 
-export const getXTicksCount = (theme: ChartTheme, innerWidth: number) => {
-  return Math.max(2, Math.floor(innerWidth / theme.axis.minTicksInterval));
+const MIN_TICKS_INTERVAL = 160;
+
+export const getXTicksCount = (_theme: RowChartTheme, innerWidth: number) => {
+  return Math.max(2, Math.floor(innerWidth / MIN_TICKS_INTERVAL));
 };

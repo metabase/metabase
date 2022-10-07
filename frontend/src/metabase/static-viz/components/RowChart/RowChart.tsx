@@ -3,14 +3,14 @@ import { RowChart } from "metabase/visualizations/shared/components/RowChart";
 import {
   FontStyle,
   TextMeasurer,
-} from "metabase/visualizations/types/measure-text";
+} from "metabase/visualizations/shared/types/measure-text";
 import { measureText } from "metabase/static-viz/lib/text";
 import { getStackingOffset } from "metabase/visualizations/lib/settings/stacking";
-import { useChartSeries } from "metabase/visualizations/hooks/use-chart-series";
+import { useTwoDimensionalChartSeries } from "metabase/visualizations/shared/hooks/use-two-dimensional-chart-series";
 import {
   getGroupedDataset,
   trimData,
-} from "metabase/visualizations/lib/row/data";
+} from "metabase/visualizations/shared/utils/data";
 import { getChartGoal } from "metabase/visualizations/lib/settings/goal";
 import { VisualizationSettings } from "metabase-types/api";
 import { ColorGetter } from "metabase/static-viz/lib/colors";
@@ -38,7 +38,7 @@ const staticTextMeasurer: TextMeasurer = (text: string, style: FontStyle) =>
 const StaticRowChart = ({ data, settings, getColor }: StaticRowChartProps) => {
   const columnValueFormatter = getStaticColumnValueFormatter();
   const labelsFormatter = getLabelsFormatter();
-  const { chartColumns, series, seriesColors } = useChartSeries(
+  const { chartColumns, series, seriesColors } = useTwoDimensionalChartSeries(
     data,
     settings,
     columnValueFormatter,

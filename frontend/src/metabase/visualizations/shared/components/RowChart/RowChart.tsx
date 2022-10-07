@@ -3,12 +3,11 @@ import React, { useMemo } from "react";
 import _ from "underscore";
 import type { NumberValue } from "d3-scale";
 
-import { TextMeasurer } from "metabase/visualizations/types/measure-text";
-import { ChartGoal } from "metabase/visualizations/types/settings";
-import { ChartTicksFormatters } from "metabase/visualizations/types/format";
-import { HoveredData } from "metabase/visualizations/types/events";
-import { ChartTheme } from "metabase/visualizations/types/theme";
+import { TextMeasurer } from "metabase/visualizations/shared/types/measure-text";
+import { ChartTicksFormatters } from "metabase/visualizations/shared/types/format";
+import { HoveredData } from "metabase/visualizations/shared/types/events";
 import { RowChartView, RowChartViewProps } from "../RowChartView/RowChartView";
+import { ChartGoal } from "../../types/settings";
 import {
   getMaxYValuesCount,
   getChartMargin,
@@ -17,7 +16,7 @@ import {
   calculateNonStackedBars,
 } from "./utils/layout";
 import { getXTicksCount } from "./utils/ticks";
-import { Series } from "./types";
+import { RowChartTheme, Series } from "./types";
 
 const MIN_BAR_HEIGHT = 24;
 
@@ -34,7 +33,7 @@ export interface RowChartProps<TDatum> {
   trimData?: (data: TDatum[], maxLength: number) => TDatum[];
 
   goal: ChartGoal | null;
-  theme: ChartTheme;
+  theme: RowChartTheme;
   stackingOffset: StackingOffset;
   shouldShowDataLabels?: boolean;
 

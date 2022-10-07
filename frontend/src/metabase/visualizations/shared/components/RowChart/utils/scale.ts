@@ -6,7 +6,7 @@ import {
   scalePower,
 } from "@visx/scale";
 import type { Series as D3Series } from "d3-shape";
-import { ContinuousScaleType } from "metabase/visualizations/types/scale";
+import { ContinuousScaleType } from "metabase/visualizations/shared/types/scale";
 import { Series } from "../types";
 import { createStackedXDomain, createXDomain, createYDomain } from "./domain";
 

@@ -2,7 +2,7 @@ import { RowValue, VisualizationSettings } from "metabase-types/api";
 import { ChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { getStackingOffset } from "metabase/visualizations/lib/settings/stacking";
 import { formatNumber, formatPercent } from "metabase/static-viz/lib/numbers";
-import { ChartTicksFormatters } from "metabase/visualizations/types/format";
+import { ChartTicksFormatters } from "metabase/visualizations/shared/types/format";
 
 export const getXValueMetricColumn = (chartColumns: ChartColumns) => {
   // For multi-metrics charts we use the first metic column settings for formatting

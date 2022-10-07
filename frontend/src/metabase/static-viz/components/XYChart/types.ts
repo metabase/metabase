@@ -1,7 +1,7 @@
 import type { ScaleBand, ScaleLinear, ScaleTime } from "d3-scale";
 import type { DateFormatOptions } from "metabase/static-viz/lib/dates";
 import type { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
-import { ContinuousScaleType } from "metabase/visualizations/types/scale";
+import { ContinuousScaleType } from "metabase/visualizations/shared/types/scale";
 
 export type Range = [number, number];
 export type ContinuousDomain = [number, number];

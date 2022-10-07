@@ -6,16 +6,16 @@ import {
   ColumnDescriptor,
   getColumnDescriptors,
 } from "metabase/visualizations/lib/graph/columns";
-import { ColumnFormatter } from "metabase/visualizations/types/format";
+import { ColumnFormatter } from "metabase/visualizations/shared/types/format";
 import {
   GroupedDataset,
   GroupedDatum,
   MetricDatum,
   MetricValue,
   SeriesInfo,
-} from "metabase/visualizations/types/data";
+  TwoDimensionalChartData,
+} from "metabase/visualizations/shared/types/data";
 import { Series } from "metabase/visualizations/shared/components/RowChart/types";
-import { TwoDimensionalChartData } from "metabase/visualizations/shared/types/data";
 import { isMetric } from "metabase-lib/lib/types/utils/isa";
 
 const getMetricValue = (value: RowValue): MetricValue => {

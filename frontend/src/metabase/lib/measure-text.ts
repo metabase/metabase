@@ -1,7 +1,7 @@
 import {
   FontStyle,
   TextMeasurer,
-} from "metabase/visualizations/types/measure-text";
+} from "metabase/visualizations/shared/types/measure-text";
 
 let canvas: HTMLCanvasElement | null = null;
 

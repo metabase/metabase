@@ -1,13 +1,13 @@
 import React from "react";
 import { Line } from "@visx/shape";
 import { Text } from "@visx/text";
-import { ChartTheme } from "metabase/visualizations/types/theme";
+import { GoalStyle } from "../../types/style";
 
 interface VerticalGoalLineProps {
   x: number;
   height: number;
   label: string;
-  style: ChartTheme["goal"];
+  style: GoalStyle;
 }
 
 export const VerticalGoalLine = ({

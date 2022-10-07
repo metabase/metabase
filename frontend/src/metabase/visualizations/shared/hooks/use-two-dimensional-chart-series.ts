@@ -1,12 +1,12 @@
 import { useMemo } from "react";
 import { DatasetData, VisualizationSettings } from "metabase-types/api";
 import { getChartColumns } from "metabase/visualizations/lib/graph/columns";
-import { ColumnFormatter } from "metabase/visualizations/types/format";
-import { getSeries } from "../lib/row/data";
-import { getSeriesColors } from "../shared/components/RowChart/utils/colors";
-import { TwoDimensionalChartData } from "../shared/types/data";
+import { ColumnFormatter } from "metabase/visualizations/shared/types/format";
+import { getSeries } from "../utils/data";
+import { getSeriesColors } from "../utils/colors";
+import { TwoDimensionalChartData } from "../types/data";
 
-export const useChartSeries = (
+export const useTwoDimensionalChartSeries = (
   data: TwoDimensionalChartData,
   settings: VisualizationSettings,
   columnFormatter: ColumnFormatter,

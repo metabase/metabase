@@ -1,11 +1,10 @@
 import { ColorGetter } from "metabase/static-viz/lib/colors";
-import { ChartTheme } from "metabase/visualizations/types/theme";
+import { RowChartTheme } from "metabase/visualizations/shared/components/RowChart/types";
 
-export const getStaticChartTheme = (getColor: ColorGetter): ChartTheme => {
+export const getStaticChartTheme = (getColor: ColorGetter): RowChartTheme => {
   return {
     axis: {
       color: getColor("bg-dark"),
-      minTicksInterval: 60,
       ticks: {
         size: 12,
         weight: 700,

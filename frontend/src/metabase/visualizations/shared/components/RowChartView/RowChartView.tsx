@@ -5,12 +5,12 @@ import { Bar } from "@visx/shape";
 import type { NumberValue, ScaleBand, ScaleLinear } from "d3-scale";
 import { Text } from "@visx/text";
 import { GridColumns } from "@visx/grid";
-import { HoveredData } from "metabase/visualizations/types/events";
-import { ChartGoal } from "metabase/visualizations/types/settings";
-import { ChartTheme } from "metabase/visualizations/types/theme";
-import { Margin } from "metabase/visualizations/types/layout";
+import { HoveredData } from "metabase/visualizations/shared/types/events";
+import { Margin } from "metabase/visualizations/shared/types/layout";
 import { ChartBar } from "../RowChart/utils/layout";
-import { VerticalGoalLine } from "../VerticalGoalLine.tsx/VerticalGoalLine";
+import { VerticalGoalLine } from "../VerticalGoalLine/VerticalGoalLine";
+import { ChartGoal } from "../../types/settings";
+import { RowChartTheme } from "../RowChart/types";
 
 export interface RowChartViewProps {
   width: number;
@@ -22,7 +22,7 @@ export interface RowChartViewProps {
   yTickFormatter: (value: string | number) => string;
   xTickFormatter: (value: NumberValue) => string;
   goal: ChartGoal | null;
-  theme: ChartTheme;
+  theme: RowChartTheme;
   margin: Margin;
   innerWidth: number;
   innerHeight: number;

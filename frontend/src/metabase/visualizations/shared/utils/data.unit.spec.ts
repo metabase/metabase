@@ -4,7 +4,7 @@ import {
   BreakoutChartColumns,
   MultipleMetricsChartColumns,
 } from "metabase/visualizations/lib/graph/columns";
-import { ColumnFormatter } from "metabase/visualizations/types/format";
+import { ColumnFormatter } from "metabase/visualizations/shared/types/format";
 import { getGroupedDataset } from "./data";
 
 jest.mock("metabase/lib/schema_metadata", () => ({
