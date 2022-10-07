@@ -181,23 +181,23 @@ class NativeQueryEditor extends Component {
   // this is overwritten when the editor mounts
   swapCompleters = () => undefined;
 
-  cardTemplateTagMatch = ({ row, column }) => {
+  cardTagId = ({ row, column }) => {
     const line = this._editor.getValue().split("\n")[row];
     const matches = Array.from(line.matchAll(CARD_TAG_REGEX));
-    return matches.find(
+    const match = matches.find(
       m => column > m.index && column < m.index + m[0].length,
     );
+    return parseInt(match?.[2]) || null;
   };
 
   handleCursorChange = _.debounce((e, { cursor }) => {
     this.swapCompleters(cursor);
-    const cardTagMatch = this.cardTemplateTagMatch(cursor);
-    const cardId = parseInt(cardTagMatch?.[2]);
-    if (cardId) {
-      this.props.openDataReferenceAtCard(cardId);
-    }
     if (this.props.setNativeEditorSelectedRange) {
       this.props.setNativeEditorSelectedRange(this._editor.getSelectionRange());
+    }
+    const cardTagId = this.cardTagId(cursor);
+    if (cardTagId) {
+      this.props.openDataReferenceAtCard(cardTagId);
     }
   }, 100);
 
