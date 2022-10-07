@@ -16,32 +16,31 @@ import type { State } from "metabase-types/store";
 import Question from "metabase-lib/lib/Question";
 import FieldList from "../FieldList";
 import {
-  ModelPaneDetail,
-  ModelPaneDetailLink,
-  ModelPaneDetailLinkText,
-  ModelPaneDetailText,
-  ModelPaneIcon,
-  ModelPaneDescription,
-} from "./ModelPane.styled";
+  QuestionPaneDetail,
+  QuestionPaneDetailLink,
+  QuestionPaneDetailLinkText,
+  QuestionPaneDetailText,
+  QuestionPaneIcon,
+  QuestionPaneDescription,
+} from "./QuestionPane.styled";
 
-interface ModelPaneProps {
+interface QuestionPaneProps {
   onItemClick: (type: string, item: unknown) => void;
   onBack: () => void;
   onClose: () => void;
-  model: Card;
   question: Question;
 }
 
-const mapStateToProps = (state: State, props: ModelPaneProps) => ({
-  question: getQuestionFromCard(state, props.model),
+const mapStateToProps = (state: State, props: QuestionPaneProps) => ({
+  question: getQuestionFromCard(state, props.question),
 });
 
-const ModelPane = ({
+const QuestionPane = ({
   onItemClick,
   question,
   onBack,
   onClose,
-}: ModelPaneProps) => {
+}: QuestionPaneProps) => {
   const table = question.composeThisQuery()?.table();
   return (
     <SidebarContent
@@ -50,30 +49,30 @@ const ModelPane = ({
       onBack={onBack}
       onClose={onClose}
     >
-      <ModelPaneDescription>
+      <QuestionPaneDescription>
         {question.description() ? (
           <Description>{question.description()}</Description>
         ) : (
           <EmptyDescription>{t`No description`}</EmptyDescription>
         )}
-      </ModelPaneDescription>
-      <ModelPaneDetail>
-        <ModelPaneDetailLink
+      </QuestionPaneDescription>
+      <QuestionPaneDetail>
+        <QuestionPaneDetailLink
           href={question.getUrl()}
           target="_blank"
           rel="noreferrer"
         >
-          <ModelPaneIcon name="share" />
-          <ModelPaneDetailLinkText>{t`See it`}</ModelPaneDetailLinkText>
-        </ModelPaneDetailLink>
-      </ModelPaneDetail>
-      <ModelPaneDetail>
-        <ModelPaneIcon name="label" />
-        <ModelPaneDetailText>{t`ID #${question.id()}`}</ModelPaneDetailText>
-      </ModelPaneDetail>
-      <ModelPaneDetail>
-        <ModelPaneIcon name="calendar" />
-        <ModelPaneDetailText>
+          <QuestionPaneIcon name="share" />
+          <QuestionPaneDetailLinkText>{t`See it`}</QuestionPaneDetailLinkText>
+        </QuestionPaneDetailLink>
+      </QuestionPaneDetail>
+      <QuestionPaneDetail>
+        <QuestionPaneIcon name="label" />
+        <QuestionPaneDetailText>{t`ID #${question.id()}`}</QuestionPaneDetailText>
+      </QuestionPaneDetail>
+      <QuestionPaneDetail>
+        <QuestionPaneIcon name="calendar" />
+        <QuestionPaneDetailText>
           {jt`Last edited ${(
             <DateTime
               key="day"
@@ -81,8 +80,8 @@ const ModelPane = ({
               value={question.lastEditInfo().timestamp}
             />
           )}`}
-        </ModelPaneDetailText>
-      </ModelPaneDetail>
+        </QuestionPaneDetailText>
+      </QuestionPaneDetail>
       {table?.fields && (
         <FieldList
           fields={table.fields}
@@ -95,8 +94,7 @@ const ModelPane = ({
 
 export default _.compose(
   Questions.load({
-    id: (_state: State, props: ModelPaneProps) => props.model.id,
-    entityAlias: "model",
+    id: (_state: State, props: QuestionPaneProps) => props.question.id,
   }),
   connect(mapStateToProps),
-)(ModelPane);
+)(QuestionPane);

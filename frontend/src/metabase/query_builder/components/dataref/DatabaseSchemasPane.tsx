@@ -14,7 +14,7 @@ import {
   NodeListContainer,
   NodeListIcon,
   NodeListTitleText,
-  ModelId,
+  QuestionId,
 } from "./NodeList.styled";
 
 interface DatabaseSchemasPaneProps {
@@ -63,10 +63,12 @@ const DatabaseSchemasPane = ({
             <ul>
               {sortedModels.map(model => (
                 <li key={model.id}>
-                  <NodeListItemLink onClick={() => onItemClick("model", model)}>
+                  <NodeListItemLink
+                    onClick={() => onItemClick("question", model)}
+                  >
                     <NodeListItemIcon name="model" />
                     <NodeListItemName>{model.name}</NodeListItemName>
-                    <ModelId>{`#${model.id}`}</ModelId>
+                    <QuestionId>{`#${model.id}`}</QuestionId>
                   </NodeListItemLink>
                 </li>
               ))}

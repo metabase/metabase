@@ -11,14 +11,14 @@ import TablePane from "./TablePane";
 import FieldPane from "./FieldPane";
 import SegmentPane from "./SegmentPane";
 import MetricPane from "./MetricPane";
-import ModelPane from "./ModelPane";
+import QuestionPane from "./QuestionPane";
 
 const PANES = {
   database: DatabasePane, // displays either schemas or tables in a database
   schema: SchemaPane, // displays tables in a schema
   table: TablePane, // displays fields of a table
+  question: QuestionPane, // displays columns of a question
   field: FieldPane,
-  model: ModelPane, // displays columns of a model
   segment: SegmentPane,
   metric: MetricPane,
 };

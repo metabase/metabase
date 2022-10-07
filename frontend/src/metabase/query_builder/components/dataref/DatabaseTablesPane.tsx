@@ -14,13 +14,13 @@ import {
   NodeListContainer,
   NodeListIcon,
   NodeListTitleText,
-  ModelId,
+  QuestionId,
 } from "./NodeList.styled";
 
 interface DatabaseTablesPaneProps {
   onBack: () => void;
   onClose: () => void;
-  onItemClick: (type: string, item: any, name: string) => void;
+  onItemClick: (type: string, item: any) => void;
   database: Database;
   searchResults: any[]; // TODO: /api/search is yet to be typed
 }
@@ -73,11 +73,11 @@ const DatabaseTablesPane = ({
               {models.map(model => (
                 <li key={model.id}>
                   <NodeListItemLink
-                    onClick={() => onItemClick("model", model, model.name)}
+                    onClick={() => onItemClick("question", model)}
                   >
                     <NodeListItemIcon name="model" />
                     <NodeListItemName>{model.name}</NodeListItemName>
-                    <ModelId>{`#${model.id}`}</ModelId>
+                    <QuestionId>{`#${model.id}`}</QuestionId>
                   </NodeListItemLink>
                 </li>
               ))}
@@ -98,9 +98,7 @@ const DatabaseTablesPane = ({
         <ul>
           {tables.map(table => (
             <li key={table.id}>
-              <NodeListItemLink
-                onClick={() => onItemClick("table", table, table.table_name)}
-              >
+              <NodeListItemLink onClick={() => onItemClick("table", table)}>
                 <NodeListItemIcon name="table" />
                 <NodeListItemName>{table.table_name}</NodeListItemName>
               </NodeListItemLink>
