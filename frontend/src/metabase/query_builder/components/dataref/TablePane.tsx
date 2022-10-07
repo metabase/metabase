@@ -22,6 +22,10 @@ interface TablePaneProps {
   table: Table;
 }
 
+const mapStateToProps = (state: State, props: TablePaneProps) => ({
+  table: Tables.selectors.getObject(state, { entityId: props.table.id }),
+});
+
 const TablePane = ({ table, onItemClick, onBack, onClose }: TablePaneProps) => (
   <SidebarContent
     title={table.name}
@@ -57,14 +61,9 @@ const TablePane = ({ table, onItemClick, onBack, onClose }: TablePaneProps) => (
   </SidebarContent>
 );
 
-const mapStateToProps = (state: State, props: TablePaneProps) => ({
-  table: Tables.selectors.getObject(state, { entityId: props.table.id }),
-});
-
 export default _.compose(
   Tables.load({
     id: (_state: State, props: TablePaneProps) => props.table.id,
-    wrapped: true,
   }),
   connect(mapStateToProps),
 )(TablePane);

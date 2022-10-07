@@ -35,20 +35,17 @@ const DatabaseTablesPane = ({
   const tables = useMemo(
     () =>
       searchResults
-        ?.filter(x => x.model === "table")
+        .filter(x => x.model === "table")
         .sort((a, b) => a.name.localeCompare(b.name)),
     [searchResults],
   );
   const models = useMemo(
     () =>
       searchResults
-        ?.filter(x => x.model === "dataset")
+        .filter(x => x.model === "dataset")
         .sort((a, b) => a.name.localeCompare(b.name)),
     [searchResults],
   );
-  if (!searchResults) {
-    return null;
-  }
   return (
     <SidebarContent
       title={database.name}
@@ -116,7 +113,6 @@ export default _.compose(
       models: ["dataset", "table"],
       table_db_id: props.database.id,
     }),
-    loadingAndErrorWrapper: false,
     listName: "searchResults",
   }),
 )(DatabaseTablesPane);

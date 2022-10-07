@@ -33,13 +33,10 @@ const DatabaseSchemasPane = ({
   models,
 }: DatabaseSchemasPaneProps) => {
   const sortedModels = useMemo(
-    () => models?.sort((a, b) => a.name.localeCompare(b.name)),
+    () => models.sort((a, b) => a.name.localeCompare(b.name)),
     [models],
   );
   const schemas = database.schemas;
-  if (!sortedModels) {
-    return null;
-  }
   return (
     <SidebarContent
       title={database.name}
@@ -106,6 +103,5 @@ export default Search.loadList({
     models: "dataset",
     table_db_id: props.database.id,
   }),
-  loadingAndErrorWrapper: false,
   listName: "models",
 })(DatabaseSchemasPane);
