@@ -8,17 +8,17 @@ describe("scenarios > question > native subquery", () => {
 
   it("typing a card tag should open the data reference", () => {
     cy.createNativeQuestion({
-      name: "A People Question 1",
+      name: "A People Question",
       native: { query: "SELECT id AS a_unique_column_name FROM PEOPLE" },
     }).then(({ body: { id: questionId1 } }) => {
       cy.createNativeQuestion({
-        name: "A People Question 2",
+        name: "A People Model",
         native: {
           query: "SELECT id AS another_unique_column_name FROM PEOPLE",
         },
         dataset: true,
       }).then(({ body: { id: questionId2 } }) => {
-        const tagName1 = `#${questionId1}-a-people-question-1`;
+        const tagName1 = `#${questionId1}-a-people-question`;
         const queryText = `{{${tagName1}}}`;
         // create a question with a template tag
         cy.createNativeQuestion({
@@ -32,15 +32,15 @@ describe("scenarios > question > native subquery", () => {
           cy.findByText("Open Editor").click();
           // placing the cursor inside an existing template tag should open the data reference
           cy.get(".ace_content:visible").type("{leftarrow}");
-          cy.findByText("A People Question 1");
+          cy.findByText("A People Question");
           // subsequently moving the cursor out from the tag should keep the data reference open
           cy.get(".ace_content:visible").type("{rightarrow}");
-          cy.findByText("A People Question 1");
+          cy.findByText("A People Question");
           // typing a template tag id should open the editor
           cy.get(".ace_editor:not(.ace_autocomplete)")
             .type(` {{`, { parseSpecialCharSequences: false })
             .type(`{leftarrow}{leftarrow}#${questionId2}`);
-          cy.findByText("A People Question 2");
+          cy.findByText("A People Model");
         });
       });
     });
