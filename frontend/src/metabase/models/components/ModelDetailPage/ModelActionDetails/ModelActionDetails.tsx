@@ -53,6 +53,6 @@ function ModelActionDetails({ actions }: Props) {
 
 export default Actions.loadList({
   query: (state: State, props: { modelId?: number | null }) => ({
-    modelId: props?.modelId,
+    "model-id": props?.modelId,
   }),
 })(ModelActionDetails);

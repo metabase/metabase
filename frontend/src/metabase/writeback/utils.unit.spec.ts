@@ -19,7 +19,10 @@ const QUERY_ACTION = createMockQueryAction();
 const EXPLICIT_ACTION = createMockDashboardActionButton({
   action_id: QUERY_ACTION.id,
   action: QUERY_ACTION,
-  visualization_settings: { click_behavior: undefined },
+  visualization_settings: {
+    click_behavior: undefined,
+    action_slug: "action_1337",
+  },
 });
 
 const PARAMETER_MAPPINGS: ActionParametersMapping[] = [
