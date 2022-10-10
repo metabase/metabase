@@ -314,7 +314,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
     (mt/dataset times-mixed
       (testing "timestamp without timezone columns"
-        (mt/with-results-timezone-id "UTC"
+        (mt/with-report-timezone-id "UTC"
           (testing "convert from +05:00 to +09:00"
            (is (= "2004-03-19T13:19:09+09:00"
                   (test-date-convert [:convert-timezone [:field (mt/id :times :dt) nil]
@@ -324,7 +324,7 @@
             (is (= "2004-03-19T18:19:09+09:00"
                    (test-date-convert [:convert-timezone [:field (mt/id :times :dt) nil] (offset->zone "+09:00")])))))
 
-        (mt/with-results-timezone-id "Europe/Rome"
+        (mt/with-report-timezone-id "Europe/Rome"
           (testing "from_tz should default to report_tz"
             (is (= "2004-03-19T17:19:09+09:00"
                    (test-date-convert [:convert-timezone [:field (mt/id :times :dt) nil] (offset->zone "+09:00")]))))
@@ -336,7 +336,7 @@
                                        (offset->zone "+00:00")]))))))
 
       (testing "timestamp with time zone columns"
-        (mt/with-results-timezone-id "UTC"
+        (mt/with-report-timezone-id "UTC"
           (testing "convert to +09:00"
             (is (= "2004-03-19T11:19:09+09:00"
                    (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")]))))
@@ -349,12 +349,12 @@
                                      (offset->zone "+09:00")
                                      (offset->zone "+00:00")])))))
 
-        (mt/with-results-timezone-id "Europe/Rome"
+        (mt/with-report-timezone-id "Europe/Rome"
           (testing "the base timezone should be the timezone of column (Asia/Ho_Chi_Minh)"
             (is (= "2004-03-19T11:19:09+09:00"
                    (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")])))))))))
 
-#_(mt/with-results-timezone-id "Asia/Singapore"
+#_(mt/with-report-timezone-id "Asia/Singapore"
     (mt/with-driver :sqlserver
          (mt/dataset times-mixed
            (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil]
