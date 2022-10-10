@@ -1,11 +1,7 @@
 import React, { useCallback } from "react";
-import { t } from "ttag";
 import { connect } from "react-redux";
 
 import { updateButtonActionMapping } from "metabase/dashboard/actions";
-import { updateSettings } from "metabase/visualizations/lib/settings";
-
-import ActionPicker from "metabase/containers/ActionPicker";
 
 import type {
   ActionDashboardCard,
@@ -15,13 +11,10 @@ import type {
 import type { State } from "metabase-types/store";
 import type { UiParameter } from "metabase/parameters/types";
 
-import { Heading, SidebarContent } from "../ClickBehaviorSidebar.styled";
+import { SidebarContent } from "../ClickBehaviorSidebar.styled";
 
 import ActionClickMappings from "./ActionClickMappings";
-import {
-  ClickMappingsContainer,
-  ActionPickerWrapper,
-} from "./ActionOptions.styled";
+import { ClickMappingsContainer } from "./ActionOptions.styled";
 
 import { ensureParamsHaveNames } from "./utils";
 
@@ -55,26 +48,6 @@ function ActionOptions({
 }: ActionOptionsProps) {
   const selectedAction = dashcard.action;
 
-  const handleActionSelected = useCallback(
-    (action: WritebackAction) => {
-      onUpdateButtonActionMapping(dashcard.id, {
-        card_id: action.model_id,
-        action,
-        visualization_settings: updateSettings(
-          {
-            "button.label": action.name,
-            action_slug: action.slug, // :-( so hacky
-          },
-          dashcard.visualization_settings,
-        ),
-        // Clean mappings from previous action
-        // as they're most likely going to be irrelevant
-        parameter_mappings: null,
-      });
-    },
-    [dashcard, onUpdateButtonActionMapping],
-  );
-
   const handleParameterMappingChange = useCallback(
     (parameter_mappings: ActionParametersMapping[] | null) => {
       onUpdateButtonActionMapping(dashcard.id, {
@@ -84,36 +57,23 @@ function ActionOptions({
     [dashcard, onUpdateButtonActionMapping],
   );
 
-  return (
-    <ActionPickerWrapper>
-      <ActionPicker value={selectedAction} onChange={handleActionSelected} />
+  if (!selectedAction) {
+    return null;
+  }
 
-      {!!selectedAction && (
-        <ClickMappingsContainer>
-          <ActionClickMappings
-            action={{
-              ...selectedAction,
-              parameters: ensureParamsHaveNames(selectedAction.parameters),
-            }}
-            dashcard={dashcard}
-            parameters={parameters}
-            onChange={handleParameterMappingChange}
-          />
-        </ClickMappingsContainer>
-      )}
-    </ActionPickerWrapper>
-  );
-}
-
-function ActionOptionsContainer(props: ActionOptionsProps) {
   return (
     <SidebarContent>
-      <Heading className="text-medium">{t`Pick an action`}</Heading>
-      <ActionOptions
-        dashcard={props.dashcard}
-        parameters={props.parameters}
-        onUpdateButtonActionMapping={props.onUpdateButtonActionMapping}
-      />
+      <ClickMappingsContainer>
+        <ActionClickMappings
+          action={{
+            ...selectedAction,
+            parameters: ensureParamsHaveNames(selectedAction?.parameters ?? []),
+          }}
+          dashcard={dashcard}
+          parameters={parameters}
+          onChange={handleParameterMappingChange}
+        />
+      </ClickMappingsContainer>
     </SidebarContent>
   );
 }
@@ -126,4 +86,4 @@ export default connect<
 >(
   null,
   mapDispatchToProps,
-)(ActionOptionsContainer);
+)(ActionOptions);
