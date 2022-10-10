@@ -48,6 +48,7 @@ export default function ParameterFieldWidget({
   const hasValue = Array.isArray(value) ? value.length > 0 : value != null;
 
   const isValid =
+    unsavedValue.length > 0 &&
     unsavedValue.every(value => value != null) &&
     (multi || unsavedValue.length === numFields);
 
