@@ -63,6 +63,7 @@ class DashboardHeader extends Component {
 
   static propTypes = {
     dashboard: PropTypes.object.isRequired,
+    dashcardData: PropTypes.object.isRequired,
     isEditable: PropTypes.bool.isRequired,
     isEditing: PropTypes.oneOfType([PropTypes.bool, PropTypes.object])
       .isRequired,
@@ -403,6 +404,7 @@ class DashboardHeader extends Component {
         objectType="dashboard"
         analyticsContext="Dashboard"
         dashboard={dashboard}
+        dashcardData={this.props.dashcardData}
         isEditing={isEditing}
         isBadgeVisible={!isEditing && !isFullscreen && isAdditionalInfoVisible}
         isLastEditInfoVisible={hasLastEditInfo && isAdditionalInfoVisible}

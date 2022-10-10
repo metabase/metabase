@@ -171,6 +171,8 @@ const DashboardApp = props => {
     setIsShowingToaster(false);
   }, []);
 
+  console.log("top level data?", props.dashcardData);
+
   return (
     <DataAppContext>
       <div className="shrink-below-content-size full-height">
@@ -178,6 +180,7 @@ const DashboardApp = props => {
           editingOnLoad={editingOnLoad}
           addCardOnLoad={addCardOnLoad}
           {...props}
+          dashcardData={props.dashcardData}
         />
         {/* For rendering modal urls */}
         {props.children}

@@ -2,6 +2,7 @@ import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
+import Card from "metabase/components/Card";
 
 import { alpha, color } from "metabase/lib/colors";
 import {
@@ -51,6 +52,7 @@ export const HeaderCaption = styled(EditableText)`
   font-size: 1.25rem;
   font-weight: 700;
   line-height: 1.5rem;
+  min-width: 200px;
 `;
 
 export const HeaderBadges = styled.div`
@@ -161,4 +163,26 @@ export const HeaderButtonSection = styled.div<TypeForItemsThatRespondToNavBarOpe
     width: 100%;
     justify-content: space-between;
   }
+`;
+
+export const DataAppTitleContainer = styled.div`
+  position: relative;
+
+  input {
+    padding: 1em;
+    font-size: 1.5em;
+    font-weight: bold;
+    background: transparent;
+    border: 1px solid transparent;
+
+    &:hover {
+      border: 1px solid #ddd;
+    }
+  }
+`;
+
+export const DataAppTitleSuggestions = styled(Card)`
+  position: absolute;
+  width: 200px;
+  z-index: 1000;
 `;

@@ -25,6 +25,8 @@ import {
   HeaderLastEditInfoLabel,
   HeaderCaption,
   HeaderCaptionContainer,
+  DataAppTitleContainer,
+  DataAppTitleSuggestions,
 } from "./DashboardHeader.styled";
 
 interface DashboardHeaderProps {
@@ -39,6 +41,7 @@ interface DashboardHeaderProps {
   isEditingInfo: boolean;
   isNavBarOpen: boolean;
   dashboard: Dashboard;
+  dashcardData: object;
   isBadgeVisible: boolean;
   isLastEditInfoVisible: boolean;
   children: React.ReactNode;
@@ -60,6 +63,7 @@ const DashboardHeader = ({
   isEditing,
   isNavBarOpen,
   dashboard,
+  dashcardData,
   isLastEditInfoVisible,
   children,
   onHeaderModalDone,
@@ -115,6 +119,9 @@ const DashboardHeader = ({
 
   const isDataApp = dashboard.is_app_page;
 
+  console.log(dashboard);
+  console.log("dashboard header data", dashcardData);
+
   return (
     <div>
       {isEditing && (
@@ -139,14 +146,23 @@ const DashboardHeader = ({
       >
         <HeaderContent showSubHeader={!isDataApp && showSubHeader}>
           <HeaderCaptionContainer>
-            <HeaderCaption
-              key={dashboard.name}
-              initialValue={dashboard.name}
-              placeholder={t`Add title`}
-              isDisabled={!dashboard.can_write}
-              data-testid="dashboard-name-heading"
-              onChange={handleUpdateCaption}
-            />
+            {isDataApp ? (
+              <DataAppTitle
+                title={dashboard.name}
+                dashboard={dashboard}
+                dashcardData={dashcardData}
+                setDashboardAttribute={setDashboardAttribute}
+              />
+            ) : (
+              <HeaderCaption
+                key={dashboard.name}
+                initialValue={dashboard.name}
+                placeholder={t`Add title`}
+                isDisabled={!dashboard.can_write}
+                data-testid="dashboard-name-heading"
+                onChange={handleUpdateCaption}
+              />
+            )}
           </HeaderCaptionContainer>
           <HeaderBadges>
             {isLastEditInfoVisible && (
@@ -165,6 +181,124 @@ const DashboardHeader = ({
       </HeaderRoot>
       {children}
     </div>
+  );
+};
+
+interface DataAppTitleProps {
+  title: string;
+  dashboard: Dashboard;
+  setDashboardAttribute: () => any;
+  dashcardData: Record<string, never>;
+}
+
+const DataAppTitle = ({
+  title,
+  dashboard,
+  setDashboardAttribute,
+  dashcardData,
+}: DataAppTitleProps) => {
+  const [inputValue, setInputValue] = useState(title ?? "");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestonFocusIndex, setSuggestionFocusIndex] = useState(0);
+  const [dataFieldID, setDataFieldID] = useState();
+  const [dataCardID, setDataCardID] = useState();
+
+  const suggestionTerm =
+    showSuggestions &&
+    inputValue.substr(inputValue.indexOf("@") + 1, inputValue.length);
+
+  const validForSuggestions = dashboard.ordered_cards.filter(
+    card => card.card.result_metadata,
+  );
+
+  console.log(validForSuggestions);
+
+  const handleChange = ev => {
+    if (ev.currentTarget.value.indexOf("@") > -1) {
+      setShowSuggestions(true);
+    } else {
+      setShowSuggestions(false);
+    }
+    setInputValue(ev.currentTarget.value);
+  };
+
+  const getSuggestions = term => {
+    if (inputValue.indexOf(".") > -1) {
+      console.log("we be here?");
+      const source =
+        validForSuggestions[suggestonFocusIndex].card.result_metadata;
+      console.log(source);
+      return (
+        <ol>
+          {source.map(s => (
+            <li
+              key={s.id}
+              onClick={() => {
+                setInputValue(`${inputValue}${s.name}`);
+                setDataFieldID(s.id);
+                setShowSuggestions(false);
+              }}
+            >
+              {s.name}
+            </li>
+          ))}
+        </ol>
+      );
+    } else {
+      return (
+        <ol>
+          {validForSuggestions.map((v, i) => (
+            <li
+              key={i}
+              onClick={() => {
+                setSuggestionFocusIndex(i);
+                setDataCardID(v.card.id);
+                setInputValue(`${inputValue}${v.card.name}.`);
+              }}
+            >
+              {v.card.name}
+            </li>
+          ))}
+        </ol>
+      );
+    }
+  };
+
+  const getDataForTitle = () => {
+    const inner = Object.values(dashcardData);
+    const target = inner.filter(i => {
+      return Number(Object.keys(i)[0]) === dataCardID;
+    });
+    const f = Object.values(target[0])[0];
+    const pos = f.data.cols
+      .map((c, i) => (c.id === dataFieldID ? i : false))
+      .filter(v => v !== false)[0];
+    const val = f.data.rows[0][pos];
+    return val;
+  };
+
+  return (
+    <DataAppTitleContainer>
+      <div className="flex align-center relative">
+        <input
+          value={dataFieldID ? getDataForTitle() : inputValue}
+          onChange={handleChange}
+          placeholder={"App title"}
+          onBlur={async () => {
+            await setDashboardAttribute("name", inputValue);
+          }}
+        />
+        <span
+          style={{ position: "absolute", top: 0, right: 0 }}
+          onClick={() => setShowSuggestions(!showSuggestions)}
+        >{`{...}`}</span>
+      </div>
+      {showSuggestions && (
+        <DataAppTitleSuggestions>
+          {getSuggestions(suggestionTerm)}
+        </DataAppTitleSuggestions>
+      )}
+    </DataAppTitleContainer>
   );
 };
 

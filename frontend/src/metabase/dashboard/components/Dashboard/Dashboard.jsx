@@ -51,6 +51,7 @@ class Dashboard extends Component {
 
     dashboard: PropTypes.object,
     dashboardId: PropTypes.number,
+    dashcardData: PropTypes.object,
     parameters: PropTypes.array,
     parameterValues: PropTypes.object,
     editingParameter: PropTypes.object,
@@ -210,6 +211,7 @@ class Dashboard extends Component {
     const {
       addParameter,
       dashboard,
+      dashcardData,
       isEditing,
       isEditingParameter,
       isFullscreen,
@@ -257,6 +259,8 @@ class Dashboard extends Component {
       !shouldRenderParametersWidgetInViewMode &&
       (!isEditing || isEditingParameter);
 
+    console.log("dashboard comnp data", dashcardData);
+
     return (
       <DashboardLoadingAndErrorWrapper
         isFullHeight={isEditing || isSharing}
@@ -283,6 +287,7 @@ class Dashboard extends Component {
                   onToggleAddQuestionSidebar={this.onToggleAddQuestionSidebar}
                   showAddQuestionSidebar={showAddQuestionSidebar}
                   isDataApp={dashboard.is_app_page}
+                  dashcardData={dashcardData}
                 />
 
                 {shouldRenderParametersWidgetInEditMode && (

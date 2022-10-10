@@ -64,7 +64,7 @@ export const DashboardBody = styled.div`
 
 export const HeaderContainer = styled.header`
   position: relative;
-  z-index: 2;
+  z-index: 5;
 
   ${({ isDataApp }) =>
     !isDataApp &&
