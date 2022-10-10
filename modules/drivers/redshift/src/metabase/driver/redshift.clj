@@ -24,7 +24,7 @@
 
 (driver/register! :redshift, :parent #{:postgres ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
-(defmethod driver/database-supports? [:postgres :datediff]
+(defmethod driver/database-supports? [:redshift :datediff]
   [_driver _feat _db]
   ;; postgres uses `date_part` on an interval or a call to `age` to get datediffs. It seems postgres does not have
   ;; this and errors with:
