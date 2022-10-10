@@ -723,7 +723,22 @@
   (t/is (mbql.u/datetime-arithmetics?
          [:field "a" {:temporal-unit :month}]))
   (t/is (not (mbql.u/datetime-arithmetics?
-              [:+ [:field-id 13] 3]))))
+              [:+ [:field-id 13] 3])))
+  (t/is (not (mbql.u/datetime-arithmetics?
+              [:+
+               [:datediff
+                [:date-add [:field 13 {:temporal-unit :default}] 1 "hour"]
+                [:field 14 {:temporal-unit :default}]]
+               1])))
+  (t/is (mbql.u/datetime-arithmetics?
+         [:+
+          [:date-add
+           [:field 13 {:tempoarl-unit :default}]
+           [:datediff
+            [:date-add [:field 13 {:temporal-unit :default}] 1 "hour"]
+            [:field 14 {:temporal-unit :default}]]
+           "hour"]
+          1])))
 
 (t/deftest ^:parallel expression-with-name-test
   (t/is (= [:+ 1 1]

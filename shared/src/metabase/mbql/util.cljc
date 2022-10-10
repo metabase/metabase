@@ -455,7 +455,10 @@
   "Is a given artihmetics clause operating on datetimes?"
   [clause]
   (mbql.match/match-one clause
-    #{:interval :relative-datetime}
+    #{:datediff :temporal-extract}
+    false
+
+    #{:interval :relative-datetime :date-add}
     true
 
     [:field _ (_ :guard :temporal-unit)]

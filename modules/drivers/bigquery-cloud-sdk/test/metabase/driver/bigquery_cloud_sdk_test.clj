@@ -519,8 +519,8 @@
 
 (deftest datediff-test
   (mt/test-driver :bigquery-cloud-sdk
-    (testing "Edge cases at year and month boundary"
-      (mt/dataset useful-dates
+    (mt/dataset useful-dates
+      (testing "Edge cases at year and month boundary"
         (is (= [[0 0]
                 ;; different from pg, mysql.
                 [1 365]]
@@ -530,7 +530,32 @@
                                              [:expression "diff-day"]]
                                     :expressions
                                     {"diff-year" [:datediff $end $start :year]
-                                     "diff-day" [:datediff $end $start :day]}}))))))
+                                     "diff-day" [:datediff $end $start :day]}})))))
+      (testing "Types from nested functions are ok"
+        (testing "Nested functions are ok"
+          (is (= [[-3] [362]]
+                 (mt/rows
+                  (mt/run-mbql-query datediff-edgecases
+                                     {:fields [[:expression "diff-day"]]
+                                      :expressions
+                                      {"diff-day"
+                                       [:datediff
+                                        $end
+                                        [:date-add $start 3 "day"]
+                                        :day]}}))))))
+      (testing "Result works in arithmetic expressions"
+        (is (= [[0 5 0 5] [1 6 365 370]]
+               (mt/rows
+                (mt/run-mbql-query datediff-edgecases
+                                   {:fields [[:expression "datediff1"]
+                                             [:expression "datediff1-add"]
+                                             [:expression "datediff2"]
+                                             [:expression "datediff2-add"]]
+                                    :expressions
+                                    {"datediff1" [:datediff $end $start :year]
+                                     "datediff1-add" [:+ [:datediff $end $start :year] 5]
+                                     "datediff2" [:datediff $end $start :day]
+                                     "datediff2-add" [:+ 5 [:datediff $end $start :day]]}}))))))
     (testing "Cannot datediff against time column"
       (mt/dataset with-time-column
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
@@ -539,4 +564,23 @@
                                (mt/run-mbql-query datediff-with-time
                                                   {:fields [[:expression "diff-day"]]
                                                    :expressions
-                                                   {"diff-day" [:datediff $ts $t :day]}}))))))))
+                                                   {"diff-day" [:datediff $ts $t :day]}}))))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Only datetime, timestamp, or date types allowed. Found .*"
+                              (mt/rows
+                               (mt/run-mbql-query datediff-with-time
+                                                  {:fields [[:expression "diff-day"]]
+                                                   :expressions
+                                                   {"diff-day"
+                                                    [:datediff $ts $t :day]}}))))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Only datetime, timestamp, or date types allowed. Found .*"
+                              (mt/rows
+                               (mt/run-mbql-query datediff-with-time
+                                                  {:fields [[:expression "diff-day"]]
+                                                   :expressions
+                                                   {"diff-day"
+                                                    [:datediff
+                                                     $ts
+                                                     [:date-add $t 3 "hour"]
+                                                     :day]}}))))))))

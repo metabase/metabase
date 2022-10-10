@@ -262,33 +262,34 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :datediff)
     (mt/with-bigquery-fks :bigquery-cloud-sdk
       (mt/dataset sample-dataset
-        (let [query (mt/mbql-query
-                     products
-                     {:joins [{:fields []
-                               :source-table $$reviews
-                               :condition [:= $products.id &r.reviews.product_id]
-                               :alias "r"}]
-                      :filter [:= [:abs [:datediff $reviews.created_at $products.created_at :day]] 1]
-                      :fields [[:expression "diff-year"]
-                               [:expression "diff-month"]
-                               [:expression "diff-day"]
-                               [:expression "diff-hour"]
-                               [:expression "diff-minute"]
-                               [:expression "diff-second"]]
-                      :expressions {"diff-year" [:datediff $reviews.created_at $products.created_at :year]
-                                    "diff-month" [:datediff $reviews.created_at $products.created_at :month]
-                                    "diff-day" [:datediff $reviews.created_at $products.created_at :day]
-                                    "diff-hour" [:datediff $reviews.created_at $products.created_at :hour]
-                                    "diff-minute" [:datediff $reviews.created_at $products.created_at :minute]
-                                    "diff-second" [:datediff $reviews.created_at $products.created_at :second]}})]
-          (testing "Computes without errors"
-            ;; There are only two rows where the product and review creation is one day apart
-            ;;       year month day hour minute second
-            (is (= [[0    0     1   39   2384   143082]
-                    [0    0     1   30   1856   111388]]
-                   (mt/rows (qp/process-query query))))))))
-    (testing "Can compare across dates, datetimes, and with timezones"
-      (mt/dataset useful-dates
+        (testing "Generall works for year, month, day, hour, minute, second"
+          (let [query (mt/mbql-query
+                       products
+                       {:joins [{:fields []
+                                 :source-table $$reviews
+                                 :condition [:= $products.id &r.reviews.product_id]
+                                 :alias "r"}]
+                        :filter [:= [:abs [:datediff $reviews.created_at $products.created_at :day]] 1]
+                        :fields [[:expression "diff-year"]
+                                 [:expression "diff-month"]
+                                 [:expression "diff-day"]
+                                 [:expression "diff-hour"]
+                                 [:expression "diff-minute"]
+                                 [:expression "diff-second"]]
+                        :expressions {"diff-year" [:datediff $reviews.created_at $products.created_at :year]
+                                      "diff-month" [:datediff $reviews.created_at $products.created_at :month]
+                                      "diff-day" [:datediff $reviews.created_at $products.created_at :day]
+                                      "diff-hour" [:datediff $reviews.created_at $products.created_at :hour]
+                                      "diff-minute" [:datediff $reviews.created_at $products.created_at :minute]
+                                      "diff-second" [:datediff $reviews.created_at $products.created_at :second]}})]
+            (testing "Computes without errors"
+              ;; There are only two rows where the product and review creation is one day apart
+              ;;       year month day hour minute second
+              (is (= [[0    0     1   39   2384   143082]
+                      [0    0     1   30   1856   111388]]
+                     (mt/rows (qp/process-query query)))))))))
+    (mt/dataset useful-dates
+      (testing "Can compare across dates, datetimes, and with timezones"
         ;; these particular numbers are not important, just that we can compare between dates, datetimes, etc.
         (is (= [[428 396 31]]
                (mt/rows

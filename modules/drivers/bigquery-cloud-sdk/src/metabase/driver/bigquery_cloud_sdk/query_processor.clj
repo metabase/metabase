@@ -523,8 +523,10 @@
   [driver [_ x y unit :as clause]]
   (case unit
     (:year :month :day :hour :minute :second)
-    (let [types               [(temporal-type x) (temporal-type y)]
-          disallowed-types    (remove #{:timestamp :datetime :date} types)
+    (let [x'                  (sql.qp/->honeysql driver x)
+          y'                  (sql.qp/->honeysql driver y)
+          types               [(temporal-type x') (temporal-type y')]
+          disallowed-types    (->> types (keep identity) (remove #{:timestamp :datetime :date}))
           [bq-fn target-type] (cond
                                 (seq disallowed-types)
                                 (throw
@@ -548,9 +550,7 @@
                                   (not= current target-type)
                                   (hx/cast target-type)))]
       ;; select one of datetime_diff, timestamp_diff, date_diff and ensure types are compatible.
-      (hsql/call bq-fn
-                 (maybe-cast (sql.qp/->honeysql driver x) (first types))
-                 (maybe-cast (sql.qp/->honeysql driver y) (second types))
+      (hsql/call bq-fn (maybe-cast x' (first types)) (maybe-cast y' (second types))
                  (hsql/raw (name unit))))
     (throw (ex-info (tru "Unsupported date-diff unit {0}" unit)
                     {:clause clause
@@ -654,6 +654,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- interval [amount unit]
+  ;; todo: can bigquery have an expression here or just a numeric literal?
   (hsql/raw (format "INTERVAL %d %s" (int amount) (name unit))))
 
 ;; We can coerce the HoneySQL form this wraps to whatever we want and generate the appropriate SQL.
