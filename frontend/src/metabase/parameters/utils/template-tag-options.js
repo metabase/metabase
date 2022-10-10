@@ -9,7 +9,7 @@ import {
   getOperatorDisplayName,
   buildTypedOperatorOptions,
 } from "metabase-lib/lib/parameters/utils/operators";
-import { fieldFilterForParameter } from "./filters";
+import { fieldFilterForParameter } from "metabase-lib/lib/parameters/utils/filters";
 
 export function getParameterOptions() {
   return [
