@@ -1,6 +1,6 @@
+import getGAMetadata from "promise-loader?global!metabase-lib/lib/metadata/utils/ga-metadata"; // eslint-disable-line import/default
 import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
-import getGAMetadata from "promise-loader?global!metabase/lib/ga-metadata"; // eslint-disable-line import/default
 
 import Question from "metabase-lib/lib/Question";
 import { getPivotColumnSplit } from "metabase-lib/lib/queries/utils/pivot";
