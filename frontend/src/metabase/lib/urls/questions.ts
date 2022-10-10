@@ -108,6 +108,7 @@ export function newQuestion({
   const url = question.getUrl({
     creationType,
     query: objectId ? { objectId } : undefined,
+    dataset: options.dataset,
   });
 
   const entity = question.isDataset() ? "model" : "question";
