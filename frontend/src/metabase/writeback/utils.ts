@@ -3,6 +3,7 @@ import type {
   BaseDashboardOrderedCard,
   ClickBehavior,
   Database as IDatabase,
+  WritebackAction,
 } from "metabase-types/api";
 import type { SavedCard } from "metabase-types/types/Card";
 import { TYPE } from "metabase-lib/lib/types/constants";
@@ -125,3 +126,9 @@ export function getActionButtonLabel(dashCard: ActionDashboardCard) {
   const label = dashCard.visualization_settings?.["button.label"];
   return label || "";
 }
+
+export const hasImplicitActions = (actions: WritebackAction[]): boolean =>
+  actions.some(isImplicitAction);
+
+export const isImplicitAction = (action: WritebackAction): boolean =>
+  action.type === "implicit";

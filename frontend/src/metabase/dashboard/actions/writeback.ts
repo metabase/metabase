@@ -264,12 +264,16 @@ export const executeRowAction = async ({
       parameters,
     });
 
-    if (result["rows-affected"] > 0) {
-      dispatch(reloadDashboardCards());
+    if (result["rows-affected"] > 0 || result["rows-updated"]?.[0] > 0) {
       message = t`Successfully executed the action`;
+    } else if (result["created-row"]) {
+      message = t`Successfully saved`;
+    } else if (result["rows-deleted"]?.[0] > 0) {
+      message = t`Successfully deleted`;
     } else {
       message = t`Success! The action returned: ${JSON.stringify(result)}`;
     }
+    dispatch(reloadDashboardCards());
     if (shouldToast) {
       dispatch(
         addUndo({
