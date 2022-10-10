@@ -26,8 +26,9 @@
 
 (defn- create-app! [{:keys [collection] :as app}]
   (db/transaction
-   (let [coll-params (select-keys collection [:name :color :description :namespace :authority_level])
-         collection-instance (api.collection/create-collection! coll-params)
+   (let [coll-params (select-keys collection [:name :color :description :authority_level])
+         collection-instance (api.collection/create-collection!
+                              (assoc coll-params :namespace :apps))
          app-params (-> app
                         (select-keys [:dashboard_id :options :nav_items])
                         (assoc :collection_id (:id collection-instance)))

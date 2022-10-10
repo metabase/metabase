@@ -110,8 +110,8 @@
                                     (str/includes? collection-name "Personal Collection"))))
                       (map :name)))))))
 
-    (mt/with-temp* [Collection [{coll1-id :id} {:name "Archived Collection", :archived true}]
-                    Collection [{coll2-id :id} {:name "Regular Collection"}]
+    (mt/with-temp* [Collection [{coll1-id :id} {:name "Archived Collection", :namespace :apps, :archived true}]
+                    Collection [{coll2-id :id} {:name "Regular Collection", :namespace :apps}]
                     App [{app1-id :id} {:collection_id coll1-id}]
                     App [{app2-id :id} {:collection_id coll2-id}]]
       (letfn [(remove-other-collections [collections]
@@ -184,41 +184,35 @@
       (testing "sanity check"
         (is (some? personal-collection)))
       (with-collection-hierarchy [a b c d e f g]
-        (mt/with-temp* [App [{app-a-id :id} {:collection_id (:id a)}]
-                        App [{app-c-id :id} {:collection_id (:id c)}]
-                        App [{app-g-id :id} {:collection_id (:id g)}]]
-          (let [ids      (set (map :id (cons personal-collection [a b c d e f g])))
-                response (mt/user-http-request :rasta :get 200 "collection/tree")]
-            (testing "Make sure overall tree shape of the response is as is expected"
-              (is (= [{:name     "A"
-                       :app_id   app-a-id
-                       :children [{:name "B", :children []}
-                                  {:name     "C"
-                                   :app_id   app-c-id
-                                   :children [{:name     "D"
-                                               :children [{:name "E", :children []}]}
-                                              {:name     "F"
-                                               :children [{:name     "G"
-                                                           :app_id   app-g-id
-                                                           :children []}]}]}]}
-                      {:name "Rasta Toucan's Personal Collection", :children []}]
-                     (collection-tree-view ids [:name :app_id] response))))
-            (testing "Make sure each Collection comes back with the expected keys"
-              (is (= {:description       nil
-                      :archived          false
-                      :entity_id         (:entity_id personal-collection)
-                      :slug              "rasta_toucan_s_personal_collection"
-                      :color             "#31698A"
-                      :name              "Rasta Toucan's Personal Collection"
-                      :personal_owner_id (mt/user->id :rasta)
-                      :id                (:id (collection/user->personal-collection (mt/user->id :rasta)))
-                      :location          "/"
-                      :namespace         nil
-                      :children          []
-                      :authority_level   nil}
-                     (some #(when (= (:id %) (:id (collection/user->personal-collection (mt/user->id :rasta))))
-                              %)
-                           response)))))))
+        (let [ids      (set (map :id (cons personal-collection [a b c d e f g])))
+              response (mt/user-http-request :rasta :get 200 "collection/tree")]
+          (testing "Make sure overall tree shape of the response is as is expected"
+            (is (= [{:name     "A"
+                     :children [{:name "B", :children []}
+                                {:name     "C"
+                                 :children [{:name     "D"
+                                             :children [{:name "E", :children []}]}
+                                            {:name     "F"
+                                             :children [{:name     "G"
+                                                         :children []}]}]}]}
+                    {:name "Rasta Toucan's Personal Collection", :children []}]
+                   (collection-tree-view ids [:name :app_id] response))))
+          (testing "Make sure each Collection comes back with the expected keys"
+            (is (= {:description       nil
+                    :archived          false
+                    :entity_id         (:entity_id personal-collection)
+                    :slug              "rasta_toucan_s_personal_collection"
+                    :color             "#31698A"
+                    :name              "Rasta Toucan's Personal Collection"
+                    :personal_owner_id (mt/user->id :rasta)
+                    :id                (:id (collection/user->personal-collection (mt/user->id :rasta)))
+                    :location          "/"
+                    :namespace         nil
+                    :children          []
+                    :authority_level   nil}
+                   (some #(when (= (:id %) (:id (collection/user->personal-collection (mt/user->id :rasta))))
+                            %)
+                         response))))))
       (testing "Excludes archived collections (#19603)"
         (mt/with-temp* [Collection [a {:name "A"}]
                         Collection [b {:name     "B archived"
@@ -324,7 +318,7 @@
 (deftest fetch-collection-test
   (testing "GET /api/collection/:id"
     (testing "check that we can see collection details"
-      (mt/with-temp* [Collection [collection {:name "Coin Collection"}]
+      (mt/with-temp* [Collection [collection {:name "Coin Collection", :namespace :apps}]
                       App [{app-id :id} {:collection_id (:id collection)}]]
         (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
         (is (= ["Coin Collection" app-id]
@@ -686,7 +680,7 @@
 (deftest filter-facet-test
   (testing "Filter facets"
     (mt/with-temp* [Collection [_ {:name "Top level collection"}]
-                    Collection [{app-coll-id :id} {:name "App with items"}]
+                    Collection [{app-coll-id :id} {:name "App with items", :namespace :apps}]
                     App        [{app-id :id} {:collection_id app-coll-id}]
                     Collection [_ {:name "subcollection"
                                    :location (format "/%d/" app-coll-id)
@@ -1530,7 +1524,7 @@
                    (update :entity_id string?))))))
 
     (testing "I shouldn't be allowed to move an App away from root."
-      (mt/with-temp* [Collection [collection-a]
+      (mt/with-temp* [Collection [collection-a {:namespace :apps}]
                       App [_app {:collection_id (:id collection-a)}]
                       Collection [collection-b]]
         (is (= "You don't have permissions to do that."

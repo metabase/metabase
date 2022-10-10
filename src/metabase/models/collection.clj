@@ -1131,7 +1131,7 @@
 
 (defmethod allowed-namespaces :default
   [_]
-  #{nil})
+  #{nil :apps})
 
 (defn check-collection-namespace
   "Check that object's `:collection_id` refers to a Collection in an allowed namespace (see

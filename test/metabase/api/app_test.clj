@@ -60,7 +60,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (let [app-data {:nav_items [{:options {:item "stuff"}}]
                     :options {:frontend "stuff"}}]
-      (mt/with-temp* [Collection [{collection_id :id}]
+      (mt/with-temp* [Collection [{collection_id :id} {:namespace :apps}]
                       App [{app_id :id} (assoc app-data :collection_id collection_id)]
                       Dashboard [{dashboard_id :id}]]
         (let [expected (assoc app-data :collection_id collection_id :dashboard_id dashboard_id)]
@@ -77,11 +77,11 @@
                                                                                          :options nil})))))))
     (testing "Collection permissions"
       (mt/with-non-admin-groups-no-root-collection-perms
-        (mt/with-temp* [Collection [{collection_id :id}]
+        (mt/with-temp* [Collection [{collection_id :id} {:namespace :apps}]
                         App [{app_id :id} {:collection_id collection_id}]]
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :put 403 (str "app/" app_id) {})))))
-      (mt/with-temp* [Collection [{collection_id :id}]
+      (mt/with-temp* [Collection [{collection_id :id} {:namespace :apps}]
                       App [{app_id :id} {:collection_id collection_id}]]
         (is (partial= {:collection_id collection_id}
                       (mt/user-http-request :rasta :put 200 (str "app/" app_id) {})))))))
@@ -90,7 +90,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (let [app-data {:nav_items [{:options {:item "stuff"}}]
                     :options {:frontend "stuff"}}]
-      (mt/with-temp* [Collection [{collection_id :id :as collection}]
+      (mt/with-temp* [Collection [{collection_id :id :as collection} {:namespace :apps}]
                       Dashboard [{dashboard_id :id}]
                       App [{app-id :id} (assoc app-data :collection_id collection_id :dashboard_id dashboard_id)]]
         (let [expected (merge app-data {:id app-id
@@ -102,8 +102,8 @@
                           (mt/user-http-request :crowberto :get 200 "app"))))))
       (testing "can only see apps with permission for"
         (mt/with-non-admin-groups-no-root-collection-perms
-          (mt/with-temp* [Collection [collection-1 {:name "Collection 1"}]
-                          Collection [collection-2 {:name "Collection 2"}]
+          (mt/with-temp* [Collection [collection-1 {:name "Collection 1", :namespace :apps}]
+                          Collection [collection-2 {:name "Collection 2", :namespace :apps}]
                           Dashboard [{dashboard_id :id}]
                           App [{app-id :id} (assoc app-data :collection_id (:id collection-1) :dashboard_id dashboard_id)]
                           App [_            (assoc app-data :collection_id (:id collection-2) :dashboard_id dashboard_id)]]
@@ -115,8 +115,8 @@
               (is (partial= [expected]
                             (mt/user-http-request :rasta :get 200 "app")))))))
       (testing "archives"
-        (mt/with-temp* [Collection [collection-1 {:name "Collection 1"}]
-                        Collection [collection-2 {:name "Collection 2" :archived true}]
+        (mt/with-temp* [Collection [collection-1 {:name "Collection 1", :namespace :apps}]
+                        Collection [collection-2 {:name "Collection 2", :namespace :apps, :archived true}]
                         Dashboard [{dashboard_id :id}]
                         App [{app-1-id :id} (assoc app-data :collection_id (:id collection-1) :dashboard_id dashboard_id)]
                         App [{app-2-id :id} (assoc app-data :collection_id (:id collection-2) :dashboard_id dashboard_id)]]
@@ -139,7 +139,7 @@
   (let [app-data {:nav_items [{:options {:item "stuff"}}]
                   :options {:frontend "stuff"}}]
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp* [Collection [{collection_id :id :as collection}]
+      (mt/with-temp* [Collection [{collection_id :id :as collection} {:namespace :apps}]
                       Dashboard [{dashboard_id :id}]
                       App [{app-id :id} (assoc app-data :collection_id collection_id :dashboard_id dashboard_id)]]
         (testing "that we can see app details"
@@ -218,7 +218,7 @@
 
 (deftest scaffold-app-test
   (mt/with-model-cleanup [Card Dashboard]
-    (mt/with-temp* [Collection [{collection-id :id}]
+    (mt/with-temp* [Collection [{collection-id :id} {:namespace :apps}]
                     App [{app-id :id} {:collection_id collection-id}]]
       (testing "Without existing pages"
         (let [app (mt/user-http-request

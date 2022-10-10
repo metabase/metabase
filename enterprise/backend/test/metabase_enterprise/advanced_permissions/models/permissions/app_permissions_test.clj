@@ -13,7 +13,7 @@
              (mt/user-http-request :crowberto :get 402 "app/graph")))))
 
   (premium-features-test/with-premium-features #{:advanced-permissions}
-    (mt/with-temp* [Collection [{app-coll-id :id} {:location "/"}]
+    (mt/with-temp* [Collection [{app-coll-id :id} {:location "/", :namespace :apps}]
                     App [{app-id :id} {:collection_id app-coll-id}]
                     PermissionsGroup [{group-id :id}]]
       (testing "GET /api/app/graph\n"
@@ -29,7 +29,7 @@
 
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp* [Collection [_ {:location "/"}]
-                      Collection [{app-coll-id :id} {:location "/"}]
+                      Collection [{app-coll-id :id} {:location "/", :namespace :apps}]
                       App [{app-id :id} {:collection_id app-coll-id}]
                       PermissionsGroup [{group-id :id}]]
         (testing "All users' right to root collection is respected"
@@ -49,7 +49,7 @@
                                                                     :groups {1 {1 "write"}}})))))
 
   (premium-features-test/with-premium-features #{:advanced-permissions}
-    (mt/with-temp* [Collection [{app-coll-id :id} {:location "/"}]
+    (mt/with-temp* [Collection [{app-coll-id :id} {:location "/", :namespace :apps}]
                     App [{app-id :id} {:collection_id app-coll-id}]
                     PermissionsGroup [{group-id :id}]]
       (testing "PUT /api/app/graph\n"

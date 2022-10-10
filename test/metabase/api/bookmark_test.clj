@@ -15,7 +15,7 @@
 
 (deftest bookmarks-test
   (testing "POST /api/bookmark/:model/:model-id"
-    (mt/with-temp* [Collection [{coll-id :id :as collection} {:name "Test Collection"}]
+    (mt/with-temp* [Collection [{coll-id :id :as collection} {:name "Test Collection", :namespace :apps}]
                     Card       [card {:name "Test Card", :display "area", :collection_id coll-id}]
                     Dashboard  [dashboard {:name "Test Dashboard", :is_app_page true, :collection_id coll-id}]
                     App        [app {:collection_id coll-id, :dashboard_id (:id dashboard)}]]
