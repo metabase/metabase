@@ -9,7 +9,6 @@ import type {
 import { isMappedExplicitActionButton, isImplicitActionButton } from "./utils";
 
 const PLAIN_BUTTON = createMockDashboardActionButton({
-  action_id: null,
   action: undefined,
   visualization_settings: { click_behavior: undefined },
 });
@@ -17,7 +16,6 @@ const PLAIN_BUTTON = createMockDashboardActionButton({
 const QUERY_ACTION = createMockQueryAction();
 
 const EXPLICIT_ACTION = createMockDashboardActionButton({
-  action_id: QUERY_ACTION.id,
   action: QUERY_ACTION,
   visualization_settings: {
     click_behavior: undefined,
@@ -33,7 +31,6 @@ const PARAMETER_MAPPINGS: ActionParametersMapping[] = [
 ];
 
 const IMPLICIT_INSERT_ACTION = createMockDashboardActionButton({
-  action_id: null,
   action: undefined,
   visualization_settings: {
     click_behavior: {
@@ -45,7 +42,6 @@ const IMPLICIT_INSERT_ACTION = createMockDashboardActionButton({
 });
 
 const IMPLICIT_UPDATE_ACTION = createMockDashboardActionButton({
-  action_id: null,
   action: undefined,
   visualization_settings: {
     click_behavior: {
@@ -57,7 +53,6 @@ const IMPLICIT_UPDATE_ACTION = createMockDashboardActionButton({
 });
 
 const IMPLICIT_DELETE_ACTION = createMockDashboardActionButton({
-  action_id: null,
   action: undefined,
   visualization_settings: {
     click_behavior: {
@@ -69,7 +64,6 @@ const IMPLICIT_DELETE_ACTION = createMockDashboardActionButton({
 });
 
 const NAVIGATION_ACTION_BUTTON = createMockDashboardActionButton({
-  action_id: null,
   action: undefined,
   visualization_settings: {
     click_behavior: {
@@ -151,7 +145,6 @@ describe("isImplicitActionButton", () => {
 
   it("returns false for implicit action with incomplete shape", () => {
     const insertActionWithoutTableId = createMockDashboardActionButton({
-      action_id: null,
       action: undefined,
       visualization_settings: {
         click_behavior: {
@@ -166,7 +159,6 @@ describe("isImplicitActionButton", () => {
 
   it("returns false for implicit action with unrecognized `actionType`", () => {
     const unrecognizedAction = createMockDashboardActionButton({
-      action_id: null,
       action: undefined,
       visualization_settings: {
         click_behavior: {

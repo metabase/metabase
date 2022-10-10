@@ -16,7 +16,7 @@ export const getDefaultFormSettings = (
   overrides: Partial<ActionFormSettings> = {},
 ): ActionFormSettings => ({
   name: "",
-  type: "modal",
+  type: "button",
   description: "",
   fields: {},
   confirmMessage: "",
