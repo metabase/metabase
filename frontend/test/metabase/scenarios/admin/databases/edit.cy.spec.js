@@ -12,9 +12,7 @@ describe("scenarios > admin > databases > edit", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.server();
-    cy.route("GET", "/api/database/*").as("databaseGet");
-    cy.route("PUT", "/api/database/*").as("databaseUpdate");
+    cy.intercept("PUT", "/api/database/*").as("databaseUpdate");
   });
 
   describe("Database type", () => {
@@ -209,7 +207,7 @@ describe("scenarios > admin > databases > edit", () => {
 
   describe("Actions sidebar", () => {
     it("lets you trigger the manual database schema sync", () => {
-      cy.route("POST", `/api/database/${SAMPLE_DB_ID}/sync_schema`).as(
+      cy.intercept("POST", `/api/database/${SAMPLE_DB_ID}/sync_schema`).as(
         "sync_schema",
       );
 
@@ -220,7 +218,7 @@ describe("scenarios > admin > databases > edit", () => {
     });
 
     it("lets you trigger the manual rescan of field values", () => {
-      cy.route("POST", `/api/database/${SAMPLE_DB_ID}/rescan_values`).as(
+      cy.intercept("POST", `/api/database/${SAMPLE_DB_ID}/rescan_values`).as(
         "rescan_values",
       );
 
@@ -231,7 +229,7 @@ describe("scenarios > admin > databases > edit", () => {
     });
 
     it("lets you discard saved field values", () => {
-      cy.route("POST", `/api/database/${SAMPLE_DB_ID}/discard_values`).as(
+      cy.intercept("POST", `/api/database/${SAMPLE_DB_ID}/discard_values`).as(
         "discard_values",
       );
 
@@ -242,7 +240,7 @@ describe("scenarios > admin > databases > edit", () => {
     });
 
     it("lets you remove the Sample Database", () => {
-      cy.route("DELETE", `/api/database/${SAMPLE_DB_ID}`).as("delete");
+      cy.intercept("DELETE", `/api/database/${SAMPLE_DB_ID}`).as("delete");
 
       cy.visit(`/admin/databases/${SAMPLE_DB_ID}`);
       cy.findByText("Remove this database").click();

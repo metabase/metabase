@@ -63,7 +63,7 @@ Metabase's reference documentation.
 - [Asking questions](./questions/query-builder/introduction.md)
 - [Custom expressions](./questions/query-builder/expressions.md)
 - [List of expressions](./questions/query-builder/expressions-list.md)
-- [Joining data](./questions/query-builder//join.md)
+- [Joining data](./questions/query-builder/join.md)
 
 #### SQL and native queries
 
@@ -173,6 +173,10 @@ Metabase's reference documentation.
 ### Troubleshooting
 
 - [Troubleshooting guides](./troubleshooting-guide/index.md)
+
+### Developer guide
+
+- [Developer guide](./developers-guide/start.md)
 
 ## Getting help
 

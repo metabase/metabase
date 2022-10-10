@@ -57,6 +57,57 @@ const orders_count_card = {
   },
 };
 
+const orders_count_where_card = {
+  id: 2,
+  name: "# orders data",
+  display: "table",
+  visualization_settings: {},
+  dataset_query: {
+    type: "query",
+    database: SAMPLE_DATABASE.id,
+    query: {
+      "source-table": ORDERS.id,
+      aggregation: [["count-where", [">", ORDERS.TOTAL.id, 50]]],
+    },
+  },
+};
+
+const orders_metric_filter_card = {
+  id: 2,
+  name: "# orders data",
+  display: "table",
+  visualization_settings: {},
+  dataset_query: {
+    type: "query",
+    database: SAMPLE_DATABASE.id,
+    query: {
+      "source-table": ORDERS.id,
+      aggregation: [["metric", 2]],
+    },
+  },
+};
+
+const orders_multi_stage_card = {
+  id: 2,
+  name: "# orders data",
+  display: "line",
+  dataset_query: {
+    type: "query",
+    database: SAMPLE_DATABASE.id,
+    query: {
+      "source-query": {
+        "source-table": ORDERS.id,
+        filter: [">", ["field", ORDERS.TOTAL.id, null], 10],
+        aggregation: [["count"]],
+        breakout: [
+          ["field", ORDERS.CREATED_AT.id, { "temporal-unit": "month" }],
+        ],
+      },
+      filter: [">", ["field", "count", { "base-type": "type/Integer" }], 20],
+    },
+  },
+};
+
 const native_orders_count_card = {
   id: 3,
   name: "# orders data",
@@ -532,25 +583,84 @@ describe("Question", () => {
     });
 
     describe("drillUnderlyingRecords(...)", () => {
-      const ordersCountQuestion = new Question(
-        orders_count_by_id_card,
-        metadata,
-      );
-
-      // ???
-      it("applies a filter to a given filterspec", () => {
+      it("applies a filter to a given query", () => {
+        const question = new Question(orders_count_by_id_card, metadata);
         const dimensions = [{ value: 1, column: ORDERS.ID.column() }];
 
-        const drilledQuestion =
-          ordersCountQuestion.drillUnderlyingRecords(dimensions);
-        expect(drilledQuestion.canRun()).toBe(true);
+        const newQuestion = question.drillUnderlyingRecords(dimensions);
 
-        expect(drilledQuestion._card.dataset_query).toEqual({
+        expect(newQuestion._card.dataset_query).toEqual({
           type: "query",
           database: SAMPLE_DATABASE.id,
           query: {
             "source-table": ORDERS.id,
             filter: ["=", ["field", ORDERS.ID.id, null], 1],
+          },
+        });
+      });
+
+      it("applies a filter from an aggregation to a given query", () => {
+        const question = new Question(orders_count_where_card, metadata);
+        const dimensions = [{ value: 1, column: ORDERS.ID.column() }];
+        const column = { field_ref: ["aggregation", 0] };
+
+        const newQuestion = question.drillUnderlyingRecords(dimensions, column);
+
+        expect(newQuestion.canRun()).toBe(true);
+        expect(newQuestion._card.dataset_query).toEqual({
+          type: "query",
+          database: SAMPLE_DATABASE.id,
+          query: {
+            "source-table": ORDERS.id,
+            filter: [
+              "and",
+              ["=", ["field", ORDERS.ID.id, null], 1],
+              [">", ORDERS.TOTAL.id, 50],
+            ],
+          },
+        });
+      });
+
+      it("applies a filter from a metric to a given query", () => {
+        const question = new Question(orders_metric_filter_card, metadata);
+        const dimensions = [{ value: 1, column: ORDERS.ID.column() }];
+        const column = { field_ref: ["aggregation", 0] };
+
+        const newQuestion = question.drillUnderlyingRecords(dimensions, column);
+
+        expect(newQuestion.canRun()).toBe(true);
+        expect(newQuestion._card.dataset_query).toEqual({
+          type: "query",
+          database: SAMPLE_DATABASE.id,
+          query: {
+            "source-table": ORDERS.id,
+            filter: [
+              "and",
+              ["=", ["field", ORDERS.ID.id, null], 1],
+              [">", ORDERS.TOTAL.id, 20],
+            ],
+          },
+        });
+      });
+
+      it("removes post-aggregation filters from a given query", () => {
+        const question = new Question(orders_multi_stage_card, metadata);
+        const dimensions = [{ value: 1, column: ORDERS.ID.column() }];
+
+        const newQuestion = question
+          .topLevelQuestion()
+          .drillUnderlyingRecords(dimensions);
+
+        expect(newQuestion._card.dataset_query).toEqual({
+          type: "query",
+          database: SAMPLE_DATABASE.id,
+          query: {
+            "source-table": ORDERS.id,
+            filter: [
+              "and",
+              [">", ["field", ORDERS.TOTAL.id, null], 10],
+              ["=", ["field", ORDERS.ID.id, null], 1],
+            ],
           },
         });
       });
