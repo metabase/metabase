@@ -4,9 +4,11 @@ import { isEmpty } from "metabase/lib/validate";
 import type {
   ActionDashboardCard,
   ActionParametersMapping,
-  ParameterMappedForActionExecution,
+  ParametersForActionExecution,
   WritebackAction,
   WritebackParameter,
+  ParameterId,
+  ActionParameterValue,
 } from "metabase-types/api";
 import type { ParameterValueOrArray } from "metabase-types/types/Parameter";
 
@@ -14,25 +16,29 @@ function formatParameterValue(value: ParameterValueOrArray) {
   return Array.isArray(value) ? value[0] : value;
 }
 
+type ActionParameterTuple = [ParameterId, ActionParameterValue];
+
 export function getDashcardParamValues(
   dashcard: ActionDashboardCard,
   parameterValues: { [id: string]: ParameterValueOrArray },
-) {
+): ParametersForActionExecution {
   if (!dashcard.action || !dashcard?.parameter_mappings?.length) {
-    return [];
+    return {};
   }
   const { action, parameter_mappings } = dashcard;
 
-  return parameter_mappings
-    .map(mapping => prepareParameter(mapping, action, parameterValues))
-    .filter(Boolean) as ParameterMappedForActionExecution[];
+  return Object.fromEntries(
+    parameter_mappings
+      ?.map(mapping => prepareParameter(mapping, action, parameterValues))
+      ?.filter(Boolean) as ActionParameterTuple[],
+  );
 }
 
 export function prepareParameter(
   mapping: ActionParametersMapping,
   action: WritebackAction,
   parameterValues: { [id: string]: ParameterValueOrArray },
-) {
+): ActionParameterTuple | undefined {
   const { parameter_id: sourceParameterId, target: actionParameterTarget } =
     mapping;
 
@@ -46,29 +52,22 @@ export function prepareParameter(
     return;
   }
 
-  return {
-    id: sourceParameterId,
-    type: actionParameter.type,
-    value: formatParameterValue(parameterValue),
-    target: actionParameterTarget,
-  };
+  return [actionParameter.id, formatParameterValue(parameterValue)];
 }
 
 function isMappedParameter(
   parameter: WritebackParameter,
-  parameterMappings: ParameterMappedForActionExecution[],
+  dashboardParamValues: ParametersForActionExecution,
 ) {
-  return parameterMappings.some(mapping =>
-    _.isEqual(mapping.target, parameter.target),
-  );
+  return parameter.id in dashboardParamValues;
 }
 
 export function getNotProvidedActionParameters(
   action: WritebackAction,
-  dashboardParamValues: ParameterMappedForActionExecution[],
+  dashboardParamValues: ParametersForActionExecution,
 ) {
   // return any action parameters that don't have mapped values
-  return action.parameters.filter(parameter => {
+  return (action.parameters ?? []).filter(parameter => {
     if ("default" in parameter) {
       return false;
     }
