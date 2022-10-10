@@ -1,11 +1,9 @@
-import _ from "underscore";
-
 import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import getGAMetadata from "promise-loader?global!metabase/lib/ga-metadata"; // eslint-disable-line import/default
 
 import Question from "metabase-lib/lib/Question";
-import { FieldDimension } from "metabase-lib/lib/Dimension";
+import { getPivotColumnSplit } from "metabase-lib/lib/queries/utils/pivot";
 
 // use different endpoints for embed previews
 const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
@@ -48,39 +46,16 @@ export const StoreApi = {
 // Those endpoints take the query along with `pivot_rows` and `pivot_cols` to return the subtotal data.
 // If we add breakout/grouping sets to MBQL in the future we can remove this API switching.
 export function maybeUsePivotEndpoint(api, card, metadata) {
-  function canonicalFieldRef(ref) {
-    // Field refs between the query and setting might differ slightly.
-    // This function trims binned dimensions to just the field-id
-    const dimension = FieldDimension.parseMBQL(ref);
-    if (!dimension) {
-      return ref;
-    }
-    return dimension.withoutOptions("binning").mbql();
-  }
-
   const question = new Question(card, metadata);
 
   function wrap(api) {
     return (params, ...rest) => {
-      const setting = question.setting("pivot_table.column_split");
-      const breakout =
-        (question.isStructured() && question.query().breakouts()) || [];
-      const { rows: pivot_rows, columns: pivot_cols } = _.mapObject(
-        setting,
-        fieldRefs =>
-          fieldRefs
-            .map(field_ref =>
-              breakout.findIndex(b =>
-                _.isEqual(canonicalFieldRef(b), canonicalFieldRef(field_ref)),
-              ),
-            )
-            .filter(index => index !== -1),
-      );
+      const { pivot_rows, pivot_cols } = getPivotColumnSplit(question);
       return api({ ...params, pivot_rows, pivot_cols }, ...rest);
     };
   }
   if (
-    card.display !== "pivot" ||
+    question.display() !== "pivot" ||
     !question.isStructured() ||
     // if we have metadata for the db, check if it supports pivots
     (question.database() && !question.database().supportsPivots())
