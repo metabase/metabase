@@ -1270,6 +1270,7 @@ class QuestionInner {
       dataset_query: query.datasetQuery(),
       display: this._card.display,
       parameters: this._card.parameters,
+      dataset: this._card.dataset,
       ...(_.isEmpty(this._parameterValues)
         ? undefined
         : {
