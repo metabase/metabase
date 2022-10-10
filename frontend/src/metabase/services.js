@@ -1,9 +1,9 @@
-import getGAMetadata from "promise-loader?global!metabase-lib/lib/metadata/utils/ga-metadata"; // eslint-disable-line import/default
 import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 
 import Question from "metabase-lib/lib/Question";
 import { getPivotColumnSplit } from "metabase-lib/lib/queries/utils/pivot";
+import { injectTableMetadata } from "metabase-lib/lib/metadata/utils/tables";
 
 // use different endpoints for embed previews
 const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
@@ -269,47 +269,7 @@ export const MetabaseApi = {
   // table_reorder_fields:       POST("/api/table/:tableId/reorder"),
   table_query_metadata: GET(
     "/api/table/:tableId/query_metadata",
-    async table => {
-      // HACK: inject GA metadata that we don't have intergrated on the backend yet
-      if (table && table.db && table.db.engine === "googleanalytics") {
-        const GA = await getGAMetadata();
-        table.fields = table.fields.map(field => ({
-          ...field,
-          ...GA.fields[field.name],
-        }));
-        table.metrics.push(
-          ...GA.metrics.map(metric => ({
-            ...metric,
-            table_id: table.id,
-            googleAnalyics: true,
-          })),
-        );
-        table.segments.push(
-          ...GA.segments.map(segment => ({
-            ...segment,
-            table_id: table.id,
-            googleAnalyics: true,
-          })),
-        );
-      }
-
-      if (table && table.fields) {
-        // replace dimension_options IDs with objects
-        for (const field of table.fields) {
-          if (field.dimension_options) {
-            field.dimension_options = field.dimension_options.map(
-              id => table.dimension_options[id],
-            );
-          }
-          if (field.default_dimension_option) {
-            field.default_dimension_option =
-              table.dimension_options[field.default_dimension_option];
-          }
-        }
-      }
-
-      return table;
-    },
+    injectTableMetadata,
   ),
   // table_sync_metadata:        POST("/api/table/:tableId/sync"),
   table_rescan_values: POST("/api/table/:tableId/rescan_values"),
