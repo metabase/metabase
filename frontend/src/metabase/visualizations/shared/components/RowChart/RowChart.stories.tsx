@@ -64,8 +64,8 @@ Default.args = {
   },
 
   goal: {
-    label: "Goal",
-    value: 20,
+    label: "Very very very long goal label",
+    value: 100,
   },
 
   shouldShowDataLabels: true,

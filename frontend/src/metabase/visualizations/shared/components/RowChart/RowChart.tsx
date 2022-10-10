@@ -14,6 +14,7 @@ import {
   StackingOffset,
   calculateStackedBars,
   calculateNonStackedBars,
+  getRowChartGoal,
 } from "./utils/layout";
 import { getXTicks } from "./utils/ticks";
 import { RowChartTheme, Series } from "./types";
@@ -181,6 +182,11 @@ export const RowChart = <TDatum,>({
     [innerWidth, measureText, theme.axis.ticks, xScale, xTickFormatter],
   );
 
+  const rowChartGoal = useMemo(
+    () => getRowChartGoal(goal, theme.goal, measureText, xScale),
+    [goal, measureText, theme.goal, xScale],
+  );
+
   return (
     <RowChartView
       style={style}
@@ -193,7 +199,7 @@ export const RowChart = <TDatum,>({
       height={height}
       xScale={xScale}
       yScale={yScale}
-      goal={goal}
+      goal={rowChartGoal}
       hoveredData={hoveredData}
       yTickFormatter={yTickFormatter}
       xTickFormatter={xTickFormatter}

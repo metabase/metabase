@@ -3,14 +3,18 @@ import _ from "underscore";
 import { stack, stackOffsetExpand, stackOffsetNone } from "d3-shape";
 import type { SeriesPoint } from "d3-shape";
 import { scaleBand } from "@visx/scale";
-import type { ScaleBand, ScaleLinear } from "d3-scale";
+import type { ScaleBand, ScaleContinuousNumeric, ScaleLinear } from "d3-scale";
 import {
   FontStyle,
   TextMeasurer,
 } from "metabase/visualizations/shared/types/measure-text";
 import { Margin } from "metabase/visualizations/shared/types/layout";
 import { ContinuousScaleType } from "metabase/visualizations/shared/types/scale";
-import { ChartFont } from "metabase/visualizations/shared/types/style";
+import {
+  ChartFont,
+  GoalStyle,
+} from "metabase/visualizations/shared/types/style";
+import { ChartGoal } from "metabase/visualizations/shared/types/settings";
 import { LABEL_PADDING } from "../constants";
 import { Series } from "../types";
 import { createXScale, createYScale } from "./scale";
@@ -304,4 +308,29 @@ export const getScaleSidePadding = (
     : 0;
 
   return Math.max(requiredLabelSpace, requiredTickSpace);
+};
+
+export const getRowChartGoal = (
+  goal: ChartGoal | null | undefined,
+  style: GoalStyle,
+  measureText: TextMeasurer,
+  xScale: ScaleContinuousNumeric<number, number, never>,
+) => {
+  if (!goal) {
+    return null;
+  }
+
+  const labelWidth = measureText(goal.label, style.label);
+  const goalX = xScale(goal.value);
+  const xMax = xScale.range()[1];
+  const availableRightSideSpace = xMax - goalX;
+  const position =
+    labelWidth > availableRightSideSpace
+      ? ("left" as const)
+      : ("right" as const);
+
+  return {
+    ...goal,
+    position,
+  };
 };

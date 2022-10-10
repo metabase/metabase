@@ -1,8 +1,8 @@
 export type ChartFont = {
   size: number;
-  family?: string;
-  weight?: number;
-  color?: string;
+  family: string;
+  weight: number;
+  color: string;
 };
 
 export type GoalStyle = {

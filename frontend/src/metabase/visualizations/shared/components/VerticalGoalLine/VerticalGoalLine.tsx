@@ -7,6 +7,7 @@ interface VerticalGoalLineProps {
   x: number;
   height: number;
   label: string;
+  position: "left" | "right";
   style: GoalStyle;
 }
 
@@ -15,12 +16,15 @@ export const VerticalGoalLine = ({
   height,
   label,
   style,
+  position = "right",
 }: VerticalGoalLineProps) => {
+  const textAnchor = position === "right" ? "start" : "end";
+
   return (
     <>
       <Text
         y={0}
-        textAnchor="start"
+        textAnchor={textAnchor}
         verticalAnchor="end"
         dy="-0.2em"
         x={x}

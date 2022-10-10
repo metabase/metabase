@@ -33,7 +33,11 @@ interface StaticRowChartProps {
 }
 
 const staticTextMeasurer: TextMeasurer = (text: string, style: FontStyle) =>
-  measureText(text, parseInt(style.size, 10), parseInt(style.weight, 10));
+  measureText(
+    text,
+    parseInt(style.size.toString(), 10),
+    style.weight ? parseInt(style.weight.toString(), 10) : 400,
+  );
 
 const StaticRowChart = ({ data, settings, getColor }: StaticRowChartProps) => {
   const columnValueFormatter = getStaticColumnValueFormatter();

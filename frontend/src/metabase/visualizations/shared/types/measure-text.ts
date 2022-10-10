@@ -1,7 +1,7 @@
 export type FontStyle = {
-  size: string;
+  size: string | number;
   family: string;
-  weight: string;
+  weight: string | number;
 };
 
 export type TextMeasurer = (text: string, style: FontStyle) => number;

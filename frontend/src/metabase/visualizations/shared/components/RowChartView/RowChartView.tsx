@@ -9,7 +9,6 @@ import { HoveredData } from "metabase/visualizations/shared/types/events";
 import { Margin } from "metabase/visualizations/shared/types/layout";
 import { ChartBar } from "../RowChart/utils/layout";
 import { VerticalGoalLine } from "../VerticalGoalLine/VerticalGoalLine";
-import { ChartGoal } from "../../types/settings";
 import { RowChartTheme } from "../RowChart/types";
 
 export interface RowChartViewProps {
@@ -21,7 +20,11 @@ export interface RowChartViewProps {
   labelsFormatter: (value: NumberValue) => string;
   yTickFormatter: (value: string | number) => string;
   xTickFormatter: (value: NumberValue) => string;
-  goal: ChartGoal | null;
+  goal: {
+    label: string;
+    value: number;
+    position: "left" | "right";
+  } | null;
   theme: RowChartTheme;
   margin: Margin;
   innerWidth: number;
@@ -163,6 +166,7 @@ export const RowChartView = ({
             height={innerHeight}
             label={goal.label}
             style={theme.goal}
+            position={goal.position}
           />
         )}
 
