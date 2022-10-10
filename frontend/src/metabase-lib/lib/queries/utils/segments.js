@@ -1,19 +1,13 @@
 import Question from "metabase-lib/lib/Question";
 
 export function getSegmentOrMetricQuestion(query, table, metadata) {
-  if (!table) {
-    return Question.create({ metadata });
-  }
-
-  return Question.create({
-    dataset_query: { type: "query", database: table.db_id, query },
-    metadata,
-  });
+  return table
+    ? metadata.table(table.id).query(query).question()
+    : Question.create({ metadata });
 }
 
 export function getDefaultSegmentOrMetricQuestion(table, metadata) {
-  const { id: tableId, db_id: databaseId } = table;
-  const question = Question.create({ databaseId, tableId, metadata });
+  const question = metadata.table(table.id).question();
 
   if (table.entity_type === "entity/GoogleAnalyticsTable") {
     const dateField = table.fields.find(f => f.name === "ga:date");
