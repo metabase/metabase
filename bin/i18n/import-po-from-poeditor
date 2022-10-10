@@ -61,7 +61,7 @@ async function main(args) {
   }
 }
 
-async function fetch(uri, options) {
+async function promXhr(uri, options) {
   const xhr = new XMLHttpRequest();
   return new Promise((resolve, reject) => {
     xhr.open(options.method, uri, true);
@@ -93,7 +93,7 @@ function poeditor(command, params = {}) {
     id: POEDITOR_PROJECT_ID,
     ...params,
   };
-  return fetch(uri, {
+  return promXhr(uri, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: url.format({ query }).replace(/^\?/, ""),

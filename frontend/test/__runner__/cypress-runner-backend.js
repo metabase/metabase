@@ -104,7 +104,7 @@ const CypressBackend = {
       return new Promise((resolve, reject) => setTimeout(resolve, duration));
     }
 
-    async function fetch(uri, options) {
+    async function promXhr(uri, options) {
       const xhr = new XMLHttpRequest();
       return new Promise((resolve, reject) => {
         xhr.open(options.method, uri, true);
@@ -126,7 +126,7 @@ const CypressBackend = {
 
     async function isReady(host) {
       try {
-        const { status } = await fetch(`${host}/api/health`);
+        const { status } = await promXhr(`${host}/api/health`);
         if (status === 200) {
           return true;
         }
