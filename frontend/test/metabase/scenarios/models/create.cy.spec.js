@@ -18,11 +18,9 @@ describe("scenarios > models > create", () => {
 
     cy.findByText("Save").click();
 
-    cy.findByPlaceholderText("What is the name of your card?").type("A name");
+    cy.findByPlaceholderText("What is the name of your model?").type("A name");
 
     cy.findByText("Save").click();
-
-    cy.findByText("Not now").click();
 
     cy.findByText("Saved");
   });

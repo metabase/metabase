@@ -24,7 +24,7 @@ import {
 } from "metabase-lib/lib/Dimension";
 import Mode from "metabase-lib/lib/Mode";
 import { isStandard } from "metabase-lib/lib/queries/utils/filter";
-import { isFK } from "metabase/lib/schema_metadata";
+import { isFK } from "metabase-lib/lib/types/utils/isa";
 import { memoizeClass, sortObject } from "metabase-lib/lib/utils";
 /* eslint-enable import/order */
 
@@ -1270,6 +1270,7 @@ class QuestionInner {
       dataset_query: query.datasetQuery(),
       display: this._card.display,
       parameters: this._card.parameters,
+      dataset: this._card.dataset,
       ...(_.isEmpty(this._parameterValues)
         ? undefined
         : {

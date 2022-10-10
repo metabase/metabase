@@ -1,4 +1,4 @@
-import { isNumber, isCoordinate } from "metabase/lib/schema_metadata";
+import { isNumber, isCoordinate } from "metabase-lib/lib/types/utils/isa";
 
 export function getTableClickedObjectRowData(
   [series],

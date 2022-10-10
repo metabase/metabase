@@ -6,7 +6,8 @@
   (:require [cheshire.core :as json]
             [clojure.string :as str]
             [metabase.public-settings :as public-settings]
-            [metabase.pulse.render.js-engine :as js])
+            [metabase.pulse.render.js-engine :as js]
+            [metabase.pulse.render.style :as style])
   (:import [java.io ByteArrayInputStream ByteArrayOutputStream]
            java.nio.charset.StandardCharsets
            [org.apache.batik.anim.dom SAXSVGDocumentFactory SVGOMDocument]
@@ -87,6 +88,7 @@
 
 (defn- render-svg
   ^bytes [^SVGOMDocument svg-document]
+  (style/register-fonts-if-needed!)
   (with-open [os (ByteArrayOutputStream.)]
     (let [^SVGOMDocument fixed-svg-doc (post-process svg-document fix-fill)
           in                           (TranscoderInput. fixed-svg-doc)
@@ -140,6 +142,15 @@
   byte array of a png file"
   [rows colors]
   (let [svg-string (.asString (js/execute-fn-name @context "categorical_donut" rows (seq colors)))]
+    (svg-string->bytes svg-string)))
+
+(defn gauge
+  "Clojure entrypoint to render a gauge chart. Returns a byte array of a png file"
+  [card data]
+  (let [js-res (js/execute-fn-name @context "gauge"
+                                   (json/generate-string card)
+                                   (json/generate-string data))
+        svg-string (.asString js-res)]
     (svg-string->bytes svg-string)))
 
 (defn progress

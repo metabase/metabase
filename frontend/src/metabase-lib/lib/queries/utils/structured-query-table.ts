@@ -20,15 +20,15 @@ export function getStructuredQueryTable(query: StructuredQuery): Table | null {
     return getNestedCardTable(query);
   }
 
-  // 3. The query's question is a dataset.
+  // 3. The query's question is a saved dataset.
   const question = query.question();
-  const isDataset = question?.isDataset() ?? false;
+  const isDataset = question?.isDataset() && question.isSaved();
   if (isDataset) {
     return getDatasetTable(query);
   }
 
   // 4. The query's table is a concrete table, assuming one exists in `metadata`.
-  // Faiure to find a table at this point indicates that there is a bug.
+  // Failure to find a table at this point indicates that there is a bug.
   return query.metadata().table(sourceTableId);
 }
 

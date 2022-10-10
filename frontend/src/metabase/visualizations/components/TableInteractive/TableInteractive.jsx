@@ -17,7 +17,6 @@ import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/components/Tooltip";
 
 import { formatValue } from "metabase/lib/formatting";
-import { isID, isPK, isFK } from "metabase/lib/schema_metadata";
 import {
   getTableCellClickedObject,
   getTableHeaderClickedObject,
@@ -34,6 +33,7 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 
 import Ellipsified from "metabase/core/components/Ellipsified";
 import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
+import { isID, isPK, isFK } from "metabase-lib/lib/types/utils/isa";
 import { fieldRefForColumn } from "metabase-lib/lib/queries/utils/dataset";
 import Dimension from "metabase-lib/lib/Dimension";
 import { memoizeClass } from "metabase-lib/lib/utils";
