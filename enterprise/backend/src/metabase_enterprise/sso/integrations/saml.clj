@@ -126,10 +126,10 @@
                             :credential (sp-cert-keystore-details)})
             relay-state  (saml/str->base64 redirect-url)]
         (saml/idp-redirect-response saml-request idp-url relay-state))
-    (catch Throwable e
-      (let [msg (trs "Error generating SAML request")]
-        (log/error e msg)
-        (throw (ex-info msg {:status-code 500} e)))))))
+     (catch Throwable e
+       (let [msg (trs "Error generating SAML request")]
+         (log/error e msg)
+         (throw (ex-info msg {:status-code 500} e)))))))
 
 (defn- validate-response [response]
   (let [idp-cert (or (sso-settings/saml-identity-provider-certificate)

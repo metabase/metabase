@@ -15,11 +15,6 @@
 (def ^:private ^{:arglists '([group-mappings])} validate-group-mappings
   (s/validator GroupMappings))
 
-(defsetting saml-enabled
-  (deferred-tru "Enable SAML authentication.")
-  :type    :boolean
-  :default false)
-
 (defsetting saml-identity-provider-uri
   (deferred-tru "This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re
 using, this usually looks like https://your-org-name.example.com or https://example.com/app/my_saml_app/abc123/sso/saml"))
@@ -90,6 +85,20 @@ on your IdP, this usually looks something like http://www.example.com/141xkex604
   :type    :json
   :default {}
   :setter (comp (partial setting/set-value-of-type! :json :saml-group-mappings) validate-group-mappings))
+
+(defsetting saml-enabled
+  (deferred-tru "Enable SAML authentication.")
+  :type    :boolean
+  :default false
+  :setter (fn [new-value]
+            ;; Check that require settings are set and valid before allowing SAML to be enabled
+            (if (and (saml-identity-provider-uri)
+                     (saml-identity-provider-certificate))
+              (do
+               (validate-saml-idp-cert (saml-identity-provider-certificate))
+               (setting/set-value-of-type! :boolean :saml-enabled new-value))
+              (throw (ex-info (tru "SAML is not configured. Please set the IdP URI and Certificate first.")
+                              {:status-code 400})))))
 
 (defn saml-configured?
   "Check if SAML is enabled and that the mandatory settings are configured."
