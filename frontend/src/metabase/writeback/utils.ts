@@ -117,7 +117,7 @@ export function isImplicitActionButton(
   const isAction = isActionDashCard(dashCard);
   return (
     isAction &&
-    dashCard.action_id == null &&
+    dashCard.action?.type === "implicit" &&
     isValidImplicitActionClickBehavior(
       dashCard.visualization_settings?.click_behavior,
     )
