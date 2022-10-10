@@ -11,7 +11,6 @@ import Tooltip from "metabase/components/Tooltip";
 import PaginationControls from "metabase/components/PaginationControls";
 
 import PersistedModels from "metabase/entities/persisted-models";
-import { checkCanRefreshModelCache } from "metabase/lib/data-modeling/utils";
 import { capitalize } from "metabase/lib/formatting";
 import * as Urls from "metabase/lib/urls";
 
@@ -21,6 +20,7 @@ import { ModelCacheRefreshStatus } from "metabase-types/api";
 
 import NoResults from "assets/img/no_results.svg";
 
+import { checkCanRefreshModelCache } from "metabase-lib/lib/metadata/utils/models";
 import {
   ErrorBox,
   IconButtonContainer,

@@ -23,12 +23,12 @@ import {
 } from "metabase/query_builder/selectors";
 
 import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
-import { checkCanBeModel } from "metabase/lib/data-modeling/utils";
 import { usePrevious } from "metabase/hooks/use-previous";
 import { useToggle } from "metabase/hooks/use-toggle";
 
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { isSameField } from "metabase-lib/lib/queries/utils/field-ref";
+import { checkCanBeModel } from "metabase-lib/lib/metadata/utils/models";
 import { EDITOR_TAB_INDEXES } from "./constants";
 import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
 import DatasetQueryEditor from "./DatasetQueryEditor";
