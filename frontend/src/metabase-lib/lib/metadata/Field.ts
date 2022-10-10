@@ -450,7 +450,7 @@ class FieldInner extends Base {
 
     const { fks } = table.query().fieldOptions();
     return fks
-      .filter(fk => fk.field.id === this.id)
+      .filter(({ field }) => field.id === this.id)
       .map(({ field, dimension, dimensions }) => ({
         field,
         dimension,
