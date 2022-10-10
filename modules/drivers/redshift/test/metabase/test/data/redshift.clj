@@ -15,6 +15,7 @@
                                    :type/Boolean    "BOOL"
                                    :type/Date       "DATE"
                                    :type/DateTime   "TIMESTAMP"
+                                   :type/DateTimeWithTZ "TIMESTAMP WITH TIME ZONE"
                                    :type/Decimal    "DECIMAL"
                                    :type/Float      "FLOAT8"
                                    :type/Integer    "INTEGER"

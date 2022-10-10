@@ -878,7 +878,8 @@ workflows:
       - test-driver:
           name: be-tests-redshift-ee
           requires:
-            - be-tests-java-11-ee
+            #- be-tests-java-11-ee
+            - be-deps
           driver: redshift
           timeout: 15m
 
