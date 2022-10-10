@@ -269,7 +269,7 @@
                                  :source-table $$reviews
                                  :condition [:= $products.id &r.reviews.product_id]
                                  :alias "r"}]
-                        :filter [:= [:abs [:datediff $reviews.created_at $products.created_at :day]] 1]
+                        :filter [:= [:abs [:datediff &r.created_at $created_at :day]] 1]
                         :fields [[:expression "diff-year"]
                                  [:expression "diff-month"]
                                  [:expression "diff-week"]
@@ -277,13 +277,13 @@
                                  [:expression "diff-hour"]
                                  [:expression "diff-minute"]
                                  [:expression "diff-second"]]
-                        :expressions {"diff-year" [:datediff $reviews.created_at $products.created_at :year]
-                                      "diff-month" [:datediff $reviews.created_at $products.created_at :month]
-                                      "diff-week" [:datediff $reviews.created_at $products.created_at :week]
-                                      "diff-day" [:datediff $reviews.created_at $products.created_at :day]
-                                      "diff-hour" [:datediff $reviews.created_at $products.created_at :hour]
-                                      "diff-minute" [:datediff $reviews.created_at $products.created_at :minute]
-                                      "diff-second" [:datediff $reviews.created_at $products.created_at :second]}})]
+                        :expressions {"diff-year" [:datediff &r.created_at $created_at :year]
+                                      "diff-month" [:datediff &r.created_at $created_at :month]
+                                      "diff-week" [:datediff &r.created_at $created_at :week]
+                                      "diff-day" [:datediff &r.created_at $created_at :day]
+                                      "diff-hour" [:datediff &r.created_at $created_at :hour]
+                                      "diff-minute" [:datediff &r.created_at $created_at :minute]
+                                      "diff-second" [:datediff &r.created_at $created_at :second]}})]
             (testing "Computes without errors"
               ;; There are only two rows where the product and review creation is one day apart
               ;;       year month week day hour minute second
