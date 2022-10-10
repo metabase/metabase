@@ -68,7 +68,7 @@ function ModelActionPicker({
     <ul>
       {actions?.map(action => (
         <ActionOptionItem
-          name={action.name ?? action.slug}
+          name={action.name}
           description={action.description}
           isSelected={action.id === value?.id}
           key={action.slug}

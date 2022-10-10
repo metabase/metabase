@@ -85,17 +85,20 @@ const defaultImplicitActionCreateOptions = {
 const enableImplicitActionsForModel =
   async (modelId: number, options = defaultImplicitActionCreateOptions) =>
   async (dispatch: Dispatch) => {
-    await Promise.all(
-      Object.entries(options)
-        .filter(([, shouldCreate]) => !!shouldCreate)
-        .map(([method]) =>
-          ModelActionsApi.createImplicitAction({
-            card_id: modelId,
-            slug: method,
-            requires_pk: method !== "insert",
-          }),
-        ),
+    const methodsToCreate = Object.entries(options)
+      .filter(([, shouldCreate]) => !!shouldCreate)
+      .map(([method]) => method);
+
+    const apiCalls = methodsToCreate.map(method =>
+      ModelActionsApi.createImplicitAction({
+        card_id: modelId,
+        slug: method,
+        requires_pk: method !== "insert",
+      }),
     );
+
+    await Promise.all(apiCalls);
+
     dispatch({ type: Actions.actionTypes.INVALIDATE_LISTS_ACTION });
   };
 
@@ -122,6 +125,7 @@ const Actions = createEntity({
       return actions.map((action: ModelAction | WritebackAction) => ({
         ...action,
         id: action.id ?? `implicit-${action.slug}`,
+        name: action.name ?? action.slug,
       }));
     },
   },
