@@ -41,7 +41,7 @@ export const createXScale = (
       return scaleLog({
         range,
         domain,
-        base: 2,
+        base: 10,
       });
     default:
       return scaleLinear({

@@ -134,7 +134,7 @@ type CalculatedStackedChartInput<TDatum> = {
   innerWidth: number;
   innerHeight: number;
   seriesColors: Record<string, string>;
-  xScaleType?: ContinuousScaleType;
+  xScaleType: ContinuousScaleType;
 };
 
 export const calculateStackedBars = <TDatum>({
@@ -154,16 +154,26 @@ export const calculateStackedBars = <TDatum>({
 
   const d3Stack = stack<TDatum>()
     .keys(multipleSeries.map(s => s.seriesKey))
-    .value((datum, seriesKey) => {
-      return seriesByKey[seriesKey].xAccessor(datum) ?? 0;
-    })
+    .value((datum, seriesKey) => seriesByKey[seriesKey].xAccessor(datum) ?? 0)
     .offset(StackingOffsetFn[stackingOffset ?? "none"]);
 
   const stackedSeries = d3Stack(data);
 
+  // For log scale starting value for stack is 1
+  // Stacked log charts does not make much sense but we support them, so I replicate the behavior of line/area/bar charts
+  if (xScaleType === "log") {
+    stackedSeries[0].forEach((_, index) => {
+      stackedSeries[0][index][0] = 1;
+    });
+  }
+
   const yScale = createYScale(data, multipleSeries, innerHeight);
 
-  const xDomain = createStackedXDomain(stackedSeries, additionalXValues);
+  const xDomain = createStackedXDomain(
+    stackedSeries,
+    additionalXValues,
+    xScaleType,
+  );
   const xScale = createXScale(xDomain, [0, innerWidth], xScaleType);
 
   const bars = multipleSeries.map((series, seriesIndex) => {
@@ -198,6 +208,7 @@ const getNonStackedBar = <TDatum>(
   innerBarScale: ScaleBand<number> | null,
   seriesIndex: number,
   color: string,
+  xScaleType: ContinuousScaleType,
 ): ChartBar | null => {
   const yValue = series.yAccessor(datum);
   const xValue = series.xAccessor(datum);
@@ -207,8 +218,10 @@ const getNonStackedBar = <TDatum>(
     return null;
   }
 
-  const x = xScale(isNegative ? xValue : 0);
-  const width = Math.abs(xScale(isNegative ? 0 : xValue) - x);
+  const defaultValue = xScaleType === "log" ? 1 : 0;
+
+  const x = xScale(isNegative ? xValue : defaultValue);
+  const width = Math.abs(xScale(isNegative ? defaultValue : xValue) - x);
 
   const height = innerBarScale?.bandwidth() ?? yScale.bandwidth();
   const innerY = innerBarScale?.(seriesIndex) ?? 0;
@@ -231,7 +244,7 @@ type CalculatedNonStackedChartInput<TDatum> = {
   innerWidth: number;
   innerHeight: number;
   seriesColors: Record<string, string>;
-  xScaleType?: ContinuousScaleType;
+  xScaleType: ContinuousScaleType;
 };
 
 export const calculateNonStackedBars = <TDatum>({
@@ -244,7 +257,12 @@ export const calculateNonStackedBars = <TDatum>({
   xScaleType,
 }: CalculatedNonStackedChartInput<TDatum>) => {
   const yScale = createYScale(data, multipleSeries, innerHeight);
-  const xDomain = createXDomain(data, multipleSeries, additionalXValues);
+  const xDomain = createXDomain(
+    data,
+    multipleSeries,
+    additionalXValues,
+    xScaleType,
+  );
   const xScale = createXScale(xDomain, [0, innerWidth], xScaleType);
 
   const innerBarScale = scaleBand({
@@ -262,6 +280,7 @@ export const calculateNonStackedBars = <TDatum>({
         innerBarScale,
         seriesIndex,
         seriesColors[series.seriesKey],
+        xScaleType,
       );
     });
   });
