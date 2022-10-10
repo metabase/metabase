@@ -27,7 +27,7 @@ using, this usually looks like https://your-org-name.example.com or https://exam
     (catch Throwable e
       (log/error e (trs "Error parsing SAML identity provider certificate"))
       (throw
-       (Exception. (tru "Invalid identity provider certificate. Certificate should be a base-64 encoded string."))))))
+       (ex-info (tru "Invalid identity provider certificate. Certificate should be a base-64 encoded string.") {})))))
 
 (defsetting saml-identity-provider-certificate
   (deferred-tru "Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,
@@ -91,14 +91,16 @@ on your IdP, this usually looks something like http://www.example.com/141xkex604
   :type    :boolean
   :default false
   :setter (fn [new-value]
-            ;; Check that require settings are set and valid before allowing SAML to be enabled
-            (if (and (saml-identity-provider-uri)
-                     (saml-identity-provider-certificate))
-              (do
-               (validate-saml-idp-cert (saml-identity-provider-certificate))
-               (setting/set-value-of-type! :boolean :saml-enabled new-value))
-              (throw (ex-info (tru "SAML is not configured. Please set the IdP URI and Certificate first.")
-                              {:status-code 400})))))
+            (if new-value
+              ;; Check that require settings are set and valid before allowing SAML to be enabled
+              (if (and (saml-identity-provider-uri)
+                       (saml-identity-provider-certificate))
+                (do
+                 (validate-saml-idp-cert (saml-identity-provider-certificate))
+                 (setting/set-value-of-type! :boolean :saml-enabled new-value))
+                (throw (ex-info (tru "SAML is not configured. Please set the IdP URI and Certificate first.")
+                                {:samle-enabled new-value})))
+              (setting/set-value-of-type! :boolean :saml-enabled new-value))))
 
 (defn saml-configured?
   "Check if SAML is enabled and that the mandatory settings are configured."

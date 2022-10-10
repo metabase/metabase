@@ -60,9 +60,13 @@
   "Update SAML settings. You must be a superuser or have settings permissions to call this API."
   [:as {{:keys [saml-enabled] :as new-settings} :body}]
   (validation/check-has-application-permission :setting)
-  (let [settings (dissoc new-settings :saml-enabled)]
-    (db/transaction
+  (try
+   (let [settings (dissoc new-settings :saml-enabled)]
+     (db/transaction
       (setting/set-many! settings)
-      (setting/set-value-of-type! :boolean :saml-enabled saml-enabled))))
+      (setting/set-value-of-type! :boolean :saml-enabled saml-enabled)))
+   (catch clojure.lang.ExceptionInfo e
+     (log/error e (trs "Error updating SAML settings"))
+     (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400))))))
 
 (api/define-routes)
