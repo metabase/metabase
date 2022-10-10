@@ -3,7 +3,7 @@ import {
   getParameterType,
   getParameterSubType,
 } from "metabase-lib/lib/parameters/utils/parameter-type";
-import { getParameterOperatorName } from "./operators";
+import { getParameterOperatorName } from "metabase-lib/lib/parameters/utils/operators";
 
 export function fieldFilterForParameter(parameter) {
   const type = getParameterType(parameter);

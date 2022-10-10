@@ -15,7 +15,7 @@ import {
   getParameterSubType,
   isDateParameter,
 } from "metabase-lib/lib/parameters/utils/parameter-type";
-import { getParameterOperatorName } from "./operators";
+import { getParameterOperatorName } from "metabase-lib/lib/parameters/utils/operators";
 import { hasParameterValue } from "./parameter-values";
 
 const withTemporalUnit = (fieldRef, unit) => {

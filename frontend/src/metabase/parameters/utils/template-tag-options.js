@@ -5,7 +5,10 @@ import {
   PARAMETER_OPERATOR_TYPES,
   ID_OPTION,
 } from "metabase-lib/lib/parameters/constants";
-import { getOperatorDisplayName, buildTypedOperatorOptions } from "./operators";
+import {
+  getOperatorDisplayName,
+  buildTypedOperatorOptions,
+} from "metabase-lib/lib/parameters/utils/operators";
 import { fieldFilterForParameter } from "./filters";
 
 export function getParameterOptions() {
