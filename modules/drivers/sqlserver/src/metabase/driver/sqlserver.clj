@@ -1,6 +1,9 @@
 (ns metabase.driver.sqlserver
   "Driver for SQLServer databases. Uses the official Microsoft JDBC driver under the hood (pre-0.25.0, used jTDS)."
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.data.xml :as xml]
+            [clojure.java.io :as io]
+            [clojure.tools.logging :as log]
+            [clojure.string :as str]
             [honeysql.core :as hsql]
             [honeysql.format :as hformat]
             [honeysql.helpers :as hh]
@@ -27,7 +30,7 @@
 
 (defmethod driver/supports? [:sqlserver :regex] [_ _] false)
 (defmethod driver/supports? [:sqlserver :percentile-aggregations] [_ _] false)
-;; SQLServer LIKE clauses are case-sensitive or not based on whether the collation of the server and the columns
+;; SQLServer LIKE clauses are case-sensitive or not based on whether the collation of ehe server and the columns
 ;; themselves. Since this isn't something we can really change in the query itself don't present the option to the
 ;; users in the UI
 (defmethod driver/supports? [:sqlserver :case-sensitivity-string-filter-options] [_ _] false)
@@ -229,30 +232,43 @@
   ;; Work around this by converting the timestamps to minutes instead before calling DATEADD().
   (date-add :minute (hx// expr 60) (hx/literal "1970-01-01")))
 
-(defn- get-offset-of-zoneid
-  [zone-id]
-  (/ (.getTotalSeconds (.getOffset (t/offset-date-time (t/zone-id zone-id)))) 60))
+(def ^:private zone-id->windows-zone
+  (let [data (-> (io/resource "windowsZones.xml")
+              io/reader
+              xml/parse
+              :content
+              second
+              :content
+              first
+              :content)]
+    (apply merge (for [mapZone data
+                        :let [attr     (:attrs mapZone)
+                              zone-ids (str/split (:type attr) #" ")]]
+                    (into {"UTC" "UTC"} (map (fn [zone-id] [zone-id (:other attr)]) zone-ids))))))
 
 (defrecord AtTimeZone
-  ;; record type to support applying Presto's `AT TIME ZONE` operator to an expression
   [expr zone]
   hformat/ToSql
   (to-sql [_]
-    (format "%s AT TIME ZONE %d"
-      (hformat/to-sql expr)
-      (hformat/to-sql (hx/literal zone)))))
+    (format "%s AT TIME ZONE %s"
+            (hformat/to-sql expr)
+            (hformat/to-sql (hx/literal zone)))))
 
 (defmethod sql.qp/->honeysql [:sqlserver :convert-timezone]
-  [driver [_ arg to from]]
-  (let [from (or from (qp.timezone/results-timezone-id))
-        switch-off-set (partial hsql/call :switchoffset)]
-   (cond-> (sql.qp/->honeysql driver arg)
-     from
-     (switch-off-set (get-offset-of-zoneid from))
-     to
-     (->AtTimeZone (get-offset-of-zoneid to)))))
+  [driver [_ arg to-tz from-tz]]
+  (let [clause          (sql.qp/->honeysql driver arg)
+        datetimeoffset? (hx/is-of-type? clause "datetimeoffset")]
+    (when (and datetimeoffset? from-tz)
+      (throw (ex-info "`timestamp with time zone` columns shouldn't have a `from timezone`" {:to-tz   to-tz
+                                                                                             :from-tz from-tz})))
+    (let [from-tz (or from-tz (qp.timezone/results-timezone-id))]
+      (cond-> clause
+        from-tz
+        (->AtTimeZone (zone-id->windows-zone from-tz))
+        to-tz
+        (->AtTimeZone (zone-id->windows-zone to-tz))))))
 
-;;#_(hsql/call :switchoffset form (get-offset-of-zoneid from))
+;;#_(hsql/call :switchoffset form (get-offset-of-zoneid from)))
 ;;#_(hsql/call :todatetimeoffset form to)
 
 (defmethod sql.qp/cast-temporal-string [:sqlserver :Coercion/ISO8601->DateTime]
@@ -544,6 +560,8 @@
 (defmethod unprepare/unprepare-value [:sqlserver OffsetTime]
   [driver t]
   (unprepare/unprepare-value driver (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))))
+
+
 
 (defmethod unprepare/unprepare-value [:sqlserver OffsetDateTime]
   [_ ^OffsetDateTime t]

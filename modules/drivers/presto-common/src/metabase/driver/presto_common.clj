@@ -190,21 +190,6 @@
   [_ _ expr]
   (hsql/call :from_unixtime expr))
 
-(defrecord AtTimeZone
-  ;; record type to support applying Presto's `AT TIME ZONE` operator to an expression
-  [expr zone]
-  hformat/ToSql
-  (to-sql [_]
-    (format "%s AT TIME ZONE %s"
-      (hformat/to-sql expr)
-      (hformat/to-sql (hx/literal zone)))))
-
-(defmethod sql.qp/->honeysql [:presto-common :convert-timezone]
-  [driver [_ arg to _from]]
-  (cond-> (sql.qp/->honeysql driver arg)
-      to
-      (->AtTimeZone to)))
-
 (defmethod driver.common/current-db-time-date-formatters :presto-common
   [_]
   (driver.common/create-db-time-formatters "yyyy-MM-dd'T'HH:mm:ss.SSSZ"))
@@ -224,6 +209,5 @@
                               :native-parameters               true
                               :expression-aggregations         true
                               :binning                         true
-                              :foreign-keys                    true
-                              :convert-timezone                true}]
+                              :foreign-keys                    true}]
   (defmethod driver/supports? [:presto-common feature] [_ _] supported?))

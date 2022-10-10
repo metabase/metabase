@@ -303,11 +303,12 @@
   {\"+07\00\" \"Asia/Saigon\"}"
   (into {"+00:00" "UTC"}
         (for [zone-id (java.time.ZoneId/getAvailableZoneIds)]
-         [(-> (t/zone-id zone-id)
-              .getRules
-              (.getOffset (java.time.Instant/now))
-              .toString)
-          zone-id])))
+          [(-> (t/zone-id zone-id)
+               .getRules
+               (.getOffset (java.time.Instant/now))
+               .toString)
+           zone-id])))
+
 
 (deftest convert-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
@@ -323,7 +324,7 @@
             (is (= "2004-03-19T18:19:09+09:00"
                    (test-date-convert [:convert-timezone [:field (mt/id :times :dt) nil] (offset->zone "+09:00")])))))
 
-        (mt/with-report-timezone-id "Europe/Rome"
+        (mt/with-results-timezone-id "Europe/Rome"
           (testing "from_tz should default to report_tz"
             (is (= "2004-03-19T17:19:09+09:00"
                    (test-date-convert [:convert-timezone [:field (mt/id :times :dt) nil] (offset->zone "+09:00")]))))
@@ -348,10 +349,32 @@
                                      (offset->zone "+09:00")
                                      (offset->zone "+00:00")])))))
 
-        (mt/with-report-timezone-id "Europe/Rome"
+        (mt/with-results-timezone-id "Europe/Rome"
           (testing "the base timezone should be the timezone of column (Asia/Ho_Chi_Minh)"
             (is (= "2004-03-19T11:19:09+09:00"
                    (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")])))))))))
+
+#_(mt/with-results-timezone-id "Asia/Singapore"
+    (mt/with-driver :sqlserver
+         (mt/dataset times-mixed
+           (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil]
+                                       (offset->zone "+09:00")
+                                       (offset->zone "+00:00")]))))
+
+
+#_(dev/query-jdbc-db
+   [:sqlserver 'times-mixed]
+   ["select dt, dt at time zone 'West Asia Standard Time' from times"])
+
+#_(dev/query-jdbc-db
+    [:sqlserver 'times-mixed]
+    ["select * from sys.time_zone_info"])
+
+#_(.getDisplayName
+    (t/zone-id "Asia/Ho_Chi_Minh")
+    java.time.format.TextStyle/FULL_STANDALONE
+    (java.util.Locale/getDefault))
+;; => "Indochina Time"
 
 
 (deftest nested-convert-timezone-test

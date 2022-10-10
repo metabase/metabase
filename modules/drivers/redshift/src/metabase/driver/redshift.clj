@@ -195,10 +195,14 @@
 
 (defmethod sql.qp/->honeysql [:redshift :convert-timezone]
   [driver [_ arg to-tz from-tz]]
-  (let [from-tz (or from-tz (qp.timezone/results-timezone-id))]
-    (if from-tz
-     (hsql/call :convert_timezone from-tz to-tz (sql.qp/->honeysql driver arg))
-     (hsql/call :convert_timezone to-tz (sql.qp/->honeysql driver arg)))))
+  (let [clause       (sql.qp/->honeysql driver arg)
+        timestamptz? (hx/is-of-type? clause "timestamptz")]
+   (when (and timestamptz? from-tz)
+         (throw (ex-info "`timestamp with time zone` columns shouldn't have a `from timezone`" {:to-tz   to-tz
+                                                                                                :from-tz from-tz})))
+   (if from-tz
+    (hsql/call :convert_timezone from-tz to-tz (sql.qp/->honeysql driver arg))
+    (hsql/call :convert_timezone to-tz (sql.qp/->honeysql driver arg)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
