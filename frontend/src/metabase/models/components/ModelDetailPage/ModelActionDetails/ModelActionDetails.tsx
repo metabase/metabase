@@ -46,11 +46,7 @@ function ModelActionDetails({
         <Button onClick={handleCreateImplicitActions} icon="add">
           {t`Enable implicit actions`}
         </Button>
-        <Button
-          as={Link}
-          to="/action/create"
-          icon="add"
-        >{t`Create a new action`}</Button>
+        <AddActionButton modelId={modelId} />
       </EmptyStateContainer>
     );
   }
@@ -64,6 +60,7 @@ function ModelActionDetails({
           {t`Enable implicit actions`}
         </Button>
       )}
+      <AddActionButton modelId={modelId} />
       <ul>
         {actions.map(action => (
           <li key={action.id}>
@@ -82,6 +79,14 @@ function ModelActionDetails({
     </>
   );
 }
+
+const AddActionButton = ({ modelId }: { modelId: number }) => (
+  <Button
+    as={Link}
+    to={`/action/create?model-id=${modelId}`}
+    icon="add"
+  >{t`Create a new action`}</Button>
+);
 
 export default Actions.loadList(
   {
