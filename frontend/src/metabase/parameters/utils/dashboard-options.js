@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import { ID_OPTION } from "../constants";
+import { ID_OPTION } from "metabase-lib/lib/parameters/constants";
 import { buildTypedOperatorOptions } from "./operators";
 
 export function getDashboardParameterSections() {

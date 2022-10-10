@@ -9,7 +9,7 @@ import {
   getParameterType,
   getParameterSubType,
 } from "metabase-lib/lib/parameters/utils/parameter-type";
-import { PARAMETER_OPERATOR_TYPES } from "../constants";
+import { PARAMETER_OPERATOR_TYPES } from "metabase-lib/lib/parameters/constants";
 
 type OperatorType = "date" | "number" | "string";
 

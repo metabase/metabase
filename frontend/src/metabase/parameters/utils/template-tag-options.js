@@ -4,7 +4,7 @@ import {
   OPTIONS_WITH_OPERATOR_SUBTYPES,
   PARAMETER_OPERATOR_TYPES,
   ID_OPTION,
-} from "../constants";
+} from "metabase-lib/lib/parameters/constants";
 import { getOperatorDisplayName, buildTypedOperatorOptions } from "./operators";
 import { fieldFilterForParameter } from "./filters";
 
