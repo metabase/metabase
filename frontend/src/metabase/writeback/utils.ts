@@ -1,3 +1,4 @@
+import { action } from "@storybook/addon-actions";
 import { TYPE } from "metabase/lib/types";
 
 import type {
@@ -5,6 +6,7 @@ import type {
   BaseDashboardOrderedCard,
   ClickBehavior,
   Database as IDatabase,
+  WritebackAction,
 } from "metabase-types/api";
 import type { SavedCard } from "metabase-types/types/Card";
 import type Database from "metabase-lib/lib/metadata/Database";
@@ -126,3 +128,9 @@ export function getActionButtonLabel(dashCard: ActionDashboardCard) {
   const label = dashCard.visualization_settings?.["button.label"];
   return label || "";
 }
+
+export const hasImplicitActions = (actions: WritebackAction[]): boolean =>
+  actions.some(isImplicitAction);
+
+export const isImplicitAction = (action: WritebackAction): boolean =>
+  action.type === "implicit";

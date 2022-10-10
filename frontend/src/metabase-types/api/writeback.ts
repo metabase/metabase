@@ -5,7 +5,7 @@ export interface WritebackParameter extends Parameter {
   target: ParameterTarget;
 }
 
-export type WritebackActionType = "http" | "query";
+export type WritebackActionType = "http" | "query" | "implicit";
 
 export interface WritebackActionBase {
   id: number;
@@ -25,7 +25,7 @@ export type QueryActionCard = Card & {
 };
 
 export interface QueryAction {
-  type: "query";
+  type: "query" | "implicit";
   card: QueryActionCard;
   card_id: number;
 }

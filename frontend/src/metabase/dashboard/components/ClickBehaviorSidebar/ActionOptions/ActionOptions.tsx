@@ -23,6 +23,8 @@ import {
   ActionPickerWrapper,
 } from "./ActionOptions.styled";
 
+import { ensureParamsHaveNames } from "./utils";
+
 interface ActionOptionsOwnProps {
   dashcard: ActionDashboardCard;
   parameters: UiParameter[];
@@ -89,7 +91,10 @@ function ActionOptions({
       {!!selectedAction && (
         <ClickMappingsContainer>
           <ActionClickMappings
-            action={selectedAction}
+            action={{
+              ...selectedAction,
+              parameters: ensureParamsHaveNames(selectedAction.parameters),
+            }}
             dashcard={dashcard}
             parameters={parameters}
             onChange={handleParameterMappingChange}

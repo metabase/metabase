@@ -554,6 +554,7 @@ export const ActionsApi = {
 
 export const ModelActionsApi = {
   connectActionToModel: POST("/api/model-action"),
+  createImplicitAction: POST("/api/model-action"),
   updateConnection: PUT("/api/model-action/:id"),
   disconnectActionFromModel: POST("/api/model-action"),
 };
