@@ -32,9 +32,11 @@ For an introduction to expressions, check out [Writing expressions in the notebo
   - [coalesce](./expressions/coalesce.md)
   - [concat](./expressions/concat.md)
   - [contains](#contains)
+  - [day](#day)
   - [endswith](#endswith)
   - [exp](#exp)
   - [floor](#floor)
+  - [hour](#hour)
   - [interval](#interval)
   - [isempty](./expressions/isempty.md)
   - [isnull](./expressions/isnull.md)
@@ -42,16 +44,20 @@ For an introduction to expressions, check out [Writing expressions in the notebo
   - [length](#length)
   - [log](#log)
   - [lower](#lower)
+  - [minute](#minute)
   - [power](#power)
+  - [quarter](#quarter)
   - [regexextract](./expressions/regexextract.md)
   - [replace](#replace)
   - [righttrim](#righttrim)
   - [round](#round)
+  - [second](#second)
   - [sqrt](#sqrt)
   - [startswith](#startswith)
   - [substring](./expressions/substring.md)
   - [trim](#trim)
   - [upper](#upper)
+  - [year](#year)
 - [Database limitations](#database-limitations)
 
 ## Aggregations
@@ -258,6 +264,14 @@ Example: `contains([Status], "Class")`. If `Status` were "Classified", the expre
 
 Related: [regexextract](#regexextract).
 
+### day
+
+Takes a datetime and returns an integer with the day of the month as an integer.
+
+Syntax: `day([datetime column)`.
+
+Example: `day("March 25, 2021, 12:52:37")` would return the month as an integer, `25`.
+
 ### endswith
 
 Returns true if the end of the text matches the comparison text.
@@ -270,7 +284,7 @@ Related: [contains](#contains) and [startswith](#startswith).
 
 ### exp
 
-Returns [Euler's number](https://en.wikipedia.org/wiki/E_(mathematical_constant)), e, raised to the power of the supplied number. (Euler sounds like "Oy-ler").
+Returns [Euler's number](<https://en.wikipedia.org/wiki/E_(mathematical_constant)>), e, raised to the power of the supplied number. (Euler sounds like "Oy-ler").
 
 Syntax: `exp(column)`.
 
@@ -350,6 +364,22 @@ Example: `lower([Status])`. If the `Status` were "QUIET", the expression would r
 
 Related: [upper](#upper).
 
+### minute
+
+Takes a datetime and returns an integer with the minute as an integer (0-59).
+
+Syntax: `minute([datetime column)`.
+
+Example: `minute("March 25, 2021, 12:52:37")` would return `52`.
+
+### month
+
+Takes a datetime and returns an integer with the month number (1-12).
+
+Syntax: `month([datetime column)`.
+
+Example: `month("March 25, 2021, 12:52:37")` would return the month as an integer, `3`.
+
 ### power
 
 Raises a number to the power of the exponent value.
@@ -361,6 +391,14 @@ Example: `power([Length], 2)`. If the length were `3`, the expression would retu
 Databases that don't support `power`: SQLite.
 
 Related: [exp](#exp).
+
+### quarter
+
+Takes a datetime and returns an integer (1-4) with the number of the quarter in the year.
+
+Syntax: `quarter([datetime column)`.
+
+Example: `quarter("March 25, 2021, 12:52:37")` would return `1` for the first quarter.
 
 ### [regexextract](./expressions/regexextract.md)
 
@@ -399,6 +437,14 @@ Rounds a decimal number either up or down to the nearest integer value.
 Syntax: `round(column)`.
 
 Example: `round([Temperature])`. If the temp were `13.5` degrees centigrade, the expression would return `14`.
+
+### second
+
+Takes a datetime and returns an integer with the number of seconds in the minute (0-59.
+
+Syntax: `second([datetime column)`.
+
+Example: `second("March 25, 2021, 12:52:37")` would return the integer `37`.
 
 ### sqrt
 
@@ -447,6 +493,14 @@ Returns the text in all upper case.
 Syntax: `upper(text)`.
 
 Example: `upper([Status])`. If status were "hyper", `upper("hyper")` would return "HYPER".
+
+### year
+
+Takes a datetime and returns an integer with the number of the year.
+
+Syntax: `year([datetime column)`.
+
+Example: `year("March 25, 2021, 12:52:37")` would return the year 2021 as an integer, `2,021`.
 
 ## Database limitations
 
