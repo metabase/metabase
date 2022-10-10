@@ -1,4 +1,4 @@
-import { UiParameter } from "metabase/parameters/types";
+import { Parameter } from "metabase-types/types/Parameter";
 
 import {
   doesOperatorExist,
@@ -31,7 +31,7 @@ export function getParameterOperatorName(maybeOperatorName?: string) {
   return doesOperatorExist(maybeOperatorName) ? maybeOperatorName : "=";
 }
 
-export function deriveFieldOperatorFromParameter(parameter: UiParameter) {
+export function deriveFieldOperatorFromParameter(parameter: Parameter) {
   const type = getParameterType(parameter);
   const subtype = getParameterSubType(parameter);
   const operatorType = getParameterOperatorType(type);
@@ -74,7 +74,7 @@ export function buildTypedOperatorOptions(
   });
 }
 
-export function getNumberParameterArity(parameter: UiParameter) {
+export function getNumberParameterArity(parameter: Parameter) {
   switch (parameter.type) {
     case "number/=":
     case "number/!=":
@@ -86,7 +86,7 @@ export function getNumberParameterArity(parameter: UiParameter) {
   }
 }
 
-export function getStringParameterArity(parameter: UiParameter) {
+export function getStringParameterArity(parameter: Parameter) {
   switch (parameter.type) {
     case "string/=":
     case "string/!=":
