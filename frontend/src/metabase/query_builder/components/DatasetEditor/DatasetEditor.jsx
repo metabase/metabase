@@ -400,6 +400,13 @@ function DatasetEditor(props) {
     onFieldMetadataChange,
   });
 
+  const editorTabOptions = dataset.isSaved()
+    ? [
+        { id: "query", name: t`Query`, icon: "notebook" },
+        { id: "metadata", name: t`Metadata`, icon: "label" },
+      ]
+    : [];
+
   return (
     <>
       <DatasetEditBar
@@ -408,10 +415,7 @@ function DatasetEditor(props) {
           <EditorTabs
             currentTab={datasetEditorTab}
             onChange={onChangeEditorTab}
-            options={[
-              { id: "query", name: t`Query`, icon: "notebook" },
-              { id: "metadata", name: t`Metadata`, icon: "label" },
-            ]}
+            options={editorTabOptions}
           />
         }
         buttons={[
