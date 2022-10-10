@@ -1,7 +1,7 @@
 (ns metabase.db.env
   "Logic related to fetching and working with the connection details for the application database. These are provided by
   environment variables -- either as a single JDBC connection URL string (`MB_DB_CONNECTION_URI`) or as broken-out
-  enviornment variables e.g. `MB_DB_TYPE`, `MB_DB_HOST`, etc. `MB_DB_CONNECTION_URI` is used preferentially if both
+  environment variables e.g. `MB_DB_TYPE`, `MB_DB_HOST`, etc. `MB_DB_CONNECTION_URI` is used preferentially if both
   are specified.
 
   There are three ways you can specify application JDBC connection information for Metabase:
@@ -92,7 +92,7 @@
     (mdb.data-source/broken-out-details->DataSource db-type (broken-out-details db-type env-vars))))
 
 
-;;;; exports: [[db-type]], [[db-file]], and [[data-source]] created using enviornment variables.
+;;;; exports: [[db-type]], [[db-file]], and [[data-source]] created using environment variables.
 
 (def ^:private env
   {:mb-db-type           (config/config-kw :mb-db-type)
