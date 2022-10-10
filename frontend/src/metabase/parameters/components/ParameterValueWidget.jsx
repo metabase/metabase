@@ -9,10 +9,6 @@ import {
   getParameterWidgetTitle,
 } from "metabase/parameters/utils/ui";
 import {
-  isDateParameter,
-  isNumberParameter,
-} from "metabase/parameters/utils/parameter-type";
-import {
   getNumberParameterArity,
   getStringParameterArity,
 } from "metabase/parameters/utils/operators";
@@ -30,6 +26,10 @@ import WidgetStatusIcon from "metabase/parameters/components/WidgetStatusIcon";
 import FormattedParameterValue from "metabase/parameters/components/FormattedParameterValue";
 import NumberInputWidget from "metabase/parameters/components/widgets/NumberInputWidget";
 import StringInputWidget from "metabase/parameters/components/widgets/StringInputWidget";
+import {
+  isDateParameter,
+  isNumberParameter,
+} from "metabase-lib/lib/parameters/utils/parameter-type";
 
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
 import S from "./ParameterWidget.css";

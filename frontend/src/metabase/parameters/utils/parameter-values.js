@@ -1,4 +1,4 @@
-import { getParameterType } from "./parameter-type";
+import { getParameterType } from "metabase-lib/lib/parameters/utils/parameter-type";
 
 export function getValuePopulatedParameters(parameters, parameterValues) {
   return parameterValues

@@ -5,8 +5,11 @@ import {
   getOperatorByTypeAndName,
 } from "metabase-lib/lib/operators/utils";
 import { NUMBER, STRING, PRIMARY_KEY } from "metabase-lib/lib/types/constants";
+import {
+  getParameterType,
+  getParameterSubType,
+} from "metabase-lib/lib/parameters/utils/parameter-type";
 import { PARAMETER_OPERATOR_TYPES } from "../constants";
-import { getParameterType, getParameterSubType } from "./parameter-type";
 
 type OperatorType = "date" | "number" | "string";
 

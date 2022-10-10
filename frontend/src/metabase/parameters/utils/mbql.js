@@ -11,7 +11,10 @@ import Dimension, {
   TemplateTagDimension,
 } from "metabase-lib/lib/Dimension";
 import { isDimensionTarget } from "metabase-lib/lib/parameters/utils/targets";
-import { getParameterSubType, isDateParameter } from "./parameter-type";
+import {
+  getParameterSubType,
+  isDateParameter,
+} from "metabase-lib/lib/parameters/utils/parameter-type";
 import { getParameterOperatorName } from "./operators";
 import { hasParameterValue } from "./parameter-values";
 
