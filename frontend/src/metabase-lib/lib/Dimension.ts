@@ -583,6 +583,12 @@ export default class Dimension {
     return this.withoutTemporalBucketing().withoutBinning();
   }
 
+  isValidFKRemappingTarget() {
+    return !(
+      this.defaultDimension() instanceof FieldDimension && this.temporalUnit()
+    );
+  }
+
   /**
    * The name to be shown when this dimension is being displayed as a sub-dimension of another.
    *
