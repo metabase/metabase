@@ -301,15 +301,15 @@
   (sql.qp/->honeysql driver [:percentile arg 0.5]))
 
 (defmethod sql.qp/->honeysql [:postgres :datediff]
-  [driver [_ date-x date-y unit]]
+  [driver [_ x y unit]]
   (case unit
     (:year :day)
     (hx/cast
      :integer
      (hsql/call :date_part (hsql/raw (format "'%s'" (name unit)))
                 (hsql/call (case unit :year :age :day :-)
-                           (sql.qp/->honeysql driver date-x)
-                           (sql.qp/->honeysql driver date-y))))
+                           (sql.qp/->honeysql driver x)
+                           (sql.qp/->honeysql driver y))))
     (:month :hour :minute :second)
     (let [[from-unit-above unit-above] ({:month [12 :year]
                                          :hour [24 :day]
@@ -320,15 +320,15 @@
        (hsql/call
         :+
         (hsql/call :* from-unit-above
-                   (sql.qp/->honeysql driver [:datediff date-x date-y unit-above]))
+                   (sql.qp/->honeysql driver [:datediff x y unit-above]))
         (hsql/call :floor
                    (hsql/call :date_part (hsql/raw (format "'%s'" (name unit)))
                               (hsql/call :age
-                                         (sql.qp/->honeysql driver date-x)
-                                         (sql.qp/->honeysql driver date-y)))))))
+                                         (sql.qp/->honeysql driver x)
+                                         (sql.qp/->honeysql driver y)))))))
     (:week)
     (throw (ex-info "Working on it"
-                    {:date-x date-x :date-y date-y :unit unit}))))
+                    {:date-x x :date-y y :unit unit}))))
 
 (p/defrecord+ RegexMatchFirst [identifier pattern]
   hformat/ToSql
