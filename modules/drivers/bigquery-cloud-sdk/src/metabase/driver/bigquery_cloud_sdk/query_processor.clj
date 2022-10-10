@@ -522,6 +522,12 @@
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :datediff]
   [driver [_ x y unit :as clause]]
   (case unit
+    ;; the default week implementation gave incorrect results in tests
+    :week
+    (->> (hsql/call :/ (sql.qp/->honeysql driver [:datediff x y :day]) 7)
+         (hsql/call :floor)
+         (hx/cast :integer))
+
     (:year :month :day :hour :minute :second)
     (let [x'                  (sql.qp/->honeysql driver x)
           y'                  (sql.qp/->honeysql driver y)
@@ -543,8 +549,8 @@
                                 :else                        (throw
                                                               (ex-info (tru "Unrecognized types")
                                                                        {:clause clause
-                                                                        :arg-1 (first types)
-                                                                        :arg-2 (second types)})))
+                                                                        :arg-1  (first types)
+                                                                        :arg-2  (second types)})))
           maybe-cast          (fn [clause current]
                                 (cond->> clause
                                   (not= current target-type)
@@ -553,8 +559,8 @@
       (hsql/call bq-fn (maybe-cast x' (first types)) (maybe-cast y' (second types))
                  (hsql/raw (name unit))))
     (throw (ex-info (tru "Unsupported date-diff unit {0}" unit)
-                    {:clause clause
-                     :supported-units [:year :month :day :hour :minute :second]}))))
+                    {:clause          clause
+                     :supported-units [:year :month :week :day :hour :minute :second]}))))
 
 (defmethod driver/escape-alias :bigquery-cloud-sdk
   [driver s]

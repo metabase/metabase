@@ -310,6 +310,12 @@
                 (hsql/call (case unit :year :age :day :-)
                            (sql.qp/->honeysql driver x)
                            (sql.qp/->honeysql driver y))))
+
+    :week
+    (->> (hsql/call :/ (sql.qp/->honeysql driver [:datediff x y :day]) 7)
+         (hsql/call :floor)
+         (hx/cast :integer))
+
     (:month :hour :minute :second)
     (let [[from-unit-above unit-above] ({:month [12 :year]
                                          :hour [24 :day]
@@ -326,9 +332,11 @@
                               (hsql/call :age
                                          (sql.qp/->honeysql driver x)
                                          (sql.qp/->honeysql driver y)))))))
-    (:week)
-    (throw (ex-info "Working on it"
-                    {:date-x x :date-y y :unit unit}))))
+
+    ;; else
+    (throw (ex-info (trs "Invalid datediff unit: {0}" unit)
+                    {:valid-units [:year :month :week :day :hour :minute :second]
+                     :bad-unit unit}))))
 
 (p/defrecord+ RegexMatchFirst [identifier pattern]
   hformat/ToSql
