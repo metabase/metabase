@@ -67,11 +67,11 @@
         color (render.style/primary-color)]
     (cond
       (= url "app/assets/img/logo.svg") "http://static.metabase.com/email_logo.png"
-      :else nil)))
       ;; NOTE: disabling whitelabeled URLs for now since some email clients don't render them correctly
       ;; We need to extract them and embed as attachments like we do in metabase.pulse.render.image-bundle
-      ;; (data-uri-svg? url)               (themed-image-url url color)
-      ;; :else                             url
+      true                              nil
+      (data-uri-svg? url)               (themed-image-url url color)
+      :else                             url)))
 
 (defn- icon-bundle
   [icon-name]
