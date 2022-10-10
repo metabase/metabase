@@ -1,6 +1,6 @@
 import _ from "underscore";
-import { isEqualsOperator } from "metabase/lib/schema_metadata";
 import { UiParameter } from "metabase/parameters/types";
+import { isEqualsOperator } from "metabase-lib/lib/operators/utils";
 
 import { getParameterType } from "./parameter-type";
 import { deriveFieldOperatorFromParameter } from "./operators";
