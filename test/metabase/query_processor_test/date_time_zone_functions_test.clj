@@ -314,7 +314,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
     (mt/dataset times-mixed
       (testing "timestamp without timezone columns"
-        (mt/with-report-timezone-id "UTC"
+        (mt/with-results-timezone-id "UTC"
           (testing "convert from +05:00 to +09:00"
            (is (= "2004-03-19T13:19:09+09:00"
                   (test-date-convert [:convert-timezone [:field (mt/id :times :dt) nil]
@@ -336,7 +336,7 @@
                                        (offset->zone "+00:00")]))))))
 
       (testing "timestamp with time zone columns"
-        (mt/with-report-timezone-id "UTC"
+        (mt/with-results-timezone-id "UTC"
           (testing "convert to +09:00"
             (is (= "2004-03-19T11:19:09+09:00"
                    (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")]))))
