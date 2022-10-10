@@ -5,10 +5,13 @@ import {
   scaleLog,
   scalePower,
 } from "@visx/scale";
-import type { Series as D3Series } from "d3-shape";
-import { ContinuousScaleType } from "metabase/visualizations/shared/types/scale";
+import type { ScaleContinuousNumeric } from "d3-scale";
+import {
+  ContinuousScaleType,
+  Range,
+} from "metabase/visualizations/shared/types/scale";
 import { Series } from "../types";
-import { createStackedXDomain, createXDomain, createYDomain } from "./domain";
+import { createYDomain } from "./domain";
 
 export const createYScale = <TDatum>(
   data: TDatum[],
@@ -22,9 +25,9 @@ export const createYScale = <TDatum>(
   });
 };
 
-export const getScaleByType = (
+export const createXScale = (
   domain: ContinuousDomain,
-  range: number[],
+  range: Range,
   type: ContinuousScaleType = "linear",
 ) => {
   switch (type) {
@@ -49,23 +52,14 @@ export const getScaleByType = (
   }
 };
 
-export const createXScale = <TDatum>(
-  data: TDatum[],
-  series: Series<TDatum>[],
-  additionalValues: number[],
-  range: [number, number],
-  type: ContinuousScaleType = "linear",
+export const addScalePadding = (
+  scale: ScaleContinuousNumeric<number, number, unknown>,
+  paddingStart: number = 0,
+  paddingEnd: number = 0,
 ) => {
-  const domain = createXDomain(data, series, additionalValues);
-  return getScaleByType(domain, range, type);
-};
+  const [start, end] = scale.range();
+  const adjustedDomainStart = scale.invert(start - paddingStart);
+  const adjustedDomainEnd = scale.invert(end + paddingEnd);
 
-export const createStackedXScale = <TDatum>(
-  stackedSeries: D3Series<TDatum, string>[],
-  additionalValues: number[],
-  range: [number, number],
-  type: ContinuousScaleType = "linear",
-) => {
-  const domain = createStackedXDomain(stackedSeries, additionalValues);
-  return getScaleByType(domain, range, type);
+  return scale.domain([adjustedDomainStart, adjustedDomainEnd]);
 };

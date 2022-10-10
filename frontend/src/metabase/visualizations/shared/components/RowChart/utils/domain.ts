@@ -1,5 +1,6 @@
 import d3 from "d3";
 import type { Series as D3Series } from "d3-shape";
+import { ContinuousDomain } from "metabase/visualizations/shared/types/scale";
 import { Series } from "../types";
 
 export const createYDomain = <TDatum>(
@@ -14,7 +15,7 @@ export const createXDomain = <TDatum>(
   data: TDatum[],
   series: Series<TDatum>[],
   additionalValues: number[],
-) => {
+): ContinuousDomain => {
   const allXValues = series.flatMap(
     series =>
       data

@@ -3,9 +3,6 @@ import type { DateFormatOptions } from "metabase/static-viz/lib/dates";
 import type { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
 import { ContinuousScaleType } from "metabase/visualizations/shared/types/scale";
 
-export type Range = [number, number];
-export type ContinuousDomain = [number, number];
-
 export type XValue = string | number;
 export type YValue = number;
 export type SeriesDatum = [XValue, YValue];

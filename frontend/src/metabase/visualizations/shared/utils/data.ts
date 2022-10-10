@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import { RowValue, RowValues } from "metabase-types/api";
+import { RowValue, RowValues, SeriesOrderSetting } from "metabase-types/api";
 
 import {
   ChartColumns,
@@ -214,7 +214,6 @@ export const getSeries = (
   data: TwoDimensionalChartData,
   chartColumns: ChartColumns,
   columnFormatter: ColumnFormatter,
-  seriesOrder?: string[],
 ): Series<GroupedDatum, SeriesInfo>[] => {
   let series: Series<GroupedDatum, SeriesInfo>[];
 
@@ -225,27 +224,25 @@ export const getSeries = (
       columnFormatter,
     );
 
-    series = getBreakoutSeries(
+    return getBreakoutSeries(
       breakoutValues,
       chartColumns.metric,
       chartColumns.dimension,
     );
-  } else {
-    series = getMultipleMetricSeries(
-      chartColumns.dimension,
-      chartColumns.metrics,
-    );
   }
 
-  // FIXME: wait for reordering to be fixed
-  // if (seriesOrder) {
-  //   return seriesOrder
-  //     .map(
-  //       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  //       seriesKey => series.find(series => series.seriesKey === seriesKey)!,
-  //     )
-  //     .filter(Boolean);
-  // }
+  return getMultipleMetricSeries(chartColumns.dimension, chartColumns.metrics);
+};
 
-  return series;
+export const getOrderedSeries = (
+  series: Series<GroupedDatum, SeriesInfo>[],
+  seriesOrder?: SeriesOrderSetting[],
+) => {
+  if (seriesOrder == null) {
+    return series;
+  }
+
+  return seriesOrder
+    .filter(orderSetting => orderSetting.enabled)
+    .map(orderSetting => series[orderSetting.originalIndex]);
 };

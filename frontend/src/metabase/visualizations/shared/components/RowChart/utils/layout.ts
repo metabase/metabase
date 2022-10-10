@@ -1,16 +1,20 @@
 import _ from "underscore";
 
 import { stack, stackOffsetExpand, stackOffsetNone } from "d3-shape";
-import type { Series as D3Series, SeriesPoint } from "d3-shape";
+import type { SeriesPoint } from "d3-shape";
 import { scaleBand } from "@visx/scale";
 import type { ScaleBand, ScaleLinear } from "d3-scale";
-import { TextMeasurer } from "metabase/visualizations/shared/types/measure-text";
+import {
+  FontStyle,
+  TextMeasurer,
+} from "metabase/visualizations/shared/types/measure-text";
 import { Margin } from "metabase/visualizations/shared/types/layout";
 import { ContinuousScaleType } from "metabase/visualizations/shared/types/scale";
 import { ChartFont } from "metabase/visualizations/shared/types/style";
 import { LABEL_PADDING } from "../constants";
 import { Series } from "../types";
-import { createStackedXScale, createXScale, createYScale } from "./scale";
+import { createXScale, createYScale } from "./scale";
+import { createStackedXDomain, createXDomain } from "./domain";
 
 const CHART_PADDING = 10;
 const TICKS_OFFSET = 10;
@@ -158,12 +162,9 @@ export const calculateStackedBars = <TDatum>({
   const stackedSeries = d3Stack(data);
 
   const yScale = createYScale(data, multipleSeries, innerHeight);
-  const xScale = createStackedXScale(
-    stackedSeries,
-    additionalXValues,
-    [0, innerWidth],
-    xScaleType,
-  );
+
+  const xDomain = createStackedXDomain(stackedSeries, additionalXValues);
+  const xScale = createXScale(xDomain, [0, innerWidth], xScaleType);
 
   const bars = multipleSeries.map((series, seriesIndex) => {
     return data.map((_datum, datumIndex) => {
@@ -243,13 +244,8 @@ export const calculateNonStackedBars = <TDatum>({
   xScaleType,
 }: CalculatedNonStackedChartInput<TDatum>) => {
   const yScale = createYScale(data, multipleSeries, innerHeight);
-  const xScale = createXScale(
-    data,
-    multipleSeries,
-    additionalXValues,
-    [0, innerWidth],
-    xScaleType,
-  );
+  const xDomain = createXDomain(data, multipleSeries, additionalXValues);
+  const xScale = createXScale(xDomain, [0, innerWidth], xScaleType);
 
   const innerBarScale = scaleBand({
     domain: multipleSeries.map((_, index) => index),
@@ -271,4 +267,22 @@ export const calculateNonStackedBars = <TDatum>({
   });
 
   return { xScale, yScale, bars };
+};
+
+type MeasurableText = {
+  text: string;
+  font: FontStyle;
+};
+
+export const getScaleSidePadding = (
+  measureText: TextMeasurer,
+  borderTick: MeasurableText,
+  borderLabel?: MeasurableText,
+) => {
+  const requiredTickSpace = measureText(borderTick.text, borderTick.font) / 2;
+  const requiredLabelSpace = borderLabel
+    ? measureText(borderLabel.text, borderLabel.font)
+    : 0;
+
+  return Math.max(requiredLabelSpace, requiredTickSpace);
 };

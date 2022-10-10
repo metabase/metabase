@@ -26,7 +26,7 @@ export interface RowChartViewProps {
   margin: Margin;
   innerWidth: number;
   innerHeight: number;
-  xTicksCount: number;
+  xTicks: number[];
   shouldShowDataLabels?: boolean;
   xLabel?: string | null;
   yLabel?: string | null;
@@ -57,7 +57,7 @@ export const RowChartView = ({
   labelsFormatter,
   yTickFormatter,
   xTickFormatter,
-  xTicksCount,
+  xTicks,
   shouldShowDataLabels,
   yLabel,
   xLabel,
@@ -95,7 +95,7 @@ export const RowChartView = ({
           scale={xScale}
           height={innerHeight}
           stroke={theme.grid.color}
-          numTicks={xTicksCount}
+          tickValues={xTicks}
         />
 
         {barsSeries.map((series, seriesIndex) => {
@@ -200,7 +200,7 @@ export const RowChartView = ({
             textAnchor: "middle",
           }}
           hideTicks
-          numTicks={xTicksCount}
+          tickValues={xTicks}
           tickFormat={xTickFormatter}
           top={innerHeight}
           scale={xScale}

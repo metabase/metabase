@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { RowChart } from "metabase/visualizations/shared/components/RowChart";
 import {
   FontStyle,
@@ -6,7 +6,6 @@ import {
 } from "metabase/visualizations/shared/types/measure-text";
 import { measureText } from "metabase/static-viz/lib/text";
 import { getStackingOffset } from "metabase/visualizations/lib/settings/stacking";
-import { useTwoDimensionalChartSeries } from "metabase/visualizations/shared/hooks/use-two-dimensional-chart-series";
 import {
   getGroupedDataset,
   trimData,
@@ -15,6 +14,7 @@ import { getChartGoal } from "metabase/visualizations/lib/settings/goal";
 import { VisualizationSettings } from "metabase-types/api";
 import { ColorGetter } from "metabase/static-viz/lib/colors";
 import { TwoDimensionalChartData } from "metabase/visualizations/shared/types/data";
+import { getTwoDimensionalChartSeries } from "metabase/visualizations/shared/utils/series";
 import {
   getLabelsFormatter,
   getStaticColumnValueFormatter,
@@ -33,12 +33,12 @@ interface StaticRowChartProps {
 }
 
 const staticTextMeasurer: TextMeasurer = (text: string, style: FontStyle) =>
-  measureText(text, parseInt(style.size, 10), parseInt(style.weight));
+  measureText(text, parseInt(style.size, 10), parseInt(style.weight, 10));
 
 const StaticRowChart = ({ data, settings, getColor }: StaticRowChartProps) => {
   const columnValueFormatter = getStaticColumnValueFormatter();
   const labelsFormatter = getLabelsFormatter();
-  const { chartColumns, series, seriesColors } = useTwoDimensionalChartSeries(
+  const { chartColumns, series, seriesColors } = getTwoDimensionalChartSeries(
     data,
     settings,
     columnValueFormatter,

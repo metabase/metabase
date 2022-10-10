@@ -15,7 +15,7 @@ import {
   calculateStackedBars,
   calculateNonStackedBars,
 } from "./utils/layout";
-import { getXTicksCount } from "./utils/ticks";
+import { getXTicks } from "./utils/ticks";
 import { RowChartTheme, Series } from "./types";
 
 const MIN_BAR_HEIGHT = 24;
@@ -169,7 +169,17 @@ export const RowChart = <TDatum,>({
     ],
   );
 
-  const xTicksCount = getXTicksCount(theme, innerWidth);
+  const xTicks = useMemo(
+    () =>
+      getXTicks(
+        theme.axis.ticks,
+        innerWidth,
+        xScale,
+        xTickFormatter,
+        measureText,
+      ),
+    [innerWidth, measureText, theme.axis.ticks, xScale, xTickFormatter],
+  );
 
   return (
     <RowChartView
@@ -190,7 +200,7 @@ export const RowChart = <TDatum,>({
       labelsFormatter={labelsFormatter}
       onClick={onClick}
       onHover={onHover}
-      xTicksCount={xTicksCount}
+      xTicks={xTicks}
       shouldShowDataLabels={shouldShowDataLabels}
       yLabel={yLabel}
       xLabel={xLabel}
