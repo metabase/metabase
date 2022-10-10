@@ -1,4 +1,4 @@
-import { getDatasetMetadataCompletenessPercentage } from "./metadata";
+import { getDatasetMetadataCompletenessPercentage } from "./models";
 
 describe("getDatasetMetadataCompletenessPercentage", () => {
   it("returns 0 when no field metadata list is empty", () => {
