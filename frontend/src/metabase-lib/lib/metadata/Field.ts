@@ -442,6 +442,22 @@ class FieldInner extends Base {
     });
   }
 
+  remappingOptions = () => {
+    const table = this.table;
+    if (!table) {
+      return [];
+    }
+
+    const { fks } = table.query().fieldOptions();
+    return fks
+      .filter(fk => fk.field.id === this.id)
+      .map(({ field, dimension, dimensions }) => ({
+        field,
+        dimension,
+        dimensions: dimensions.filter(d => d.isValidFKRemappingTarget()),
+      }));
+  };
+
   clone(fieldMetadata) {
     if (fieldMetadata instanceof Field) {
       throw new Error("`fieldMetadata` arg must be a plain object");

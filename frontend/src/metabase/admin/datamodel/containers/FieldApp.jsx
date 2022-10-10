@@ -352,6 +352,7 @@ const FieldGeneralPane = ({
         field={field}
         table={table}
         fields={metadata.fields}
+        metadata={metadata}
         fieldsError={fieldsError}
         updateFieldProperties={onUpdateFieldProperties}
         updateFieldValues={onUpdateFieldValues}
