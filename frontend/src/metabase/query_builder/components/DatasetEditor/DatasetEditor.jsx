@@ -423,7 +423,11 @@ function DatasetEditor(props) {
         }
         buttons={[
           dataset.isSaved() ? (
-            <Button small onClick={handleCancelEdit}>{t`Cancel`}</Button>
+            <Button
+              key="cancel"
+              small
+              onClick={handleCancelEdit}
+            >{t`Cancel`}</Button>
           ) : (
             <Confirm
               key="cancel"
