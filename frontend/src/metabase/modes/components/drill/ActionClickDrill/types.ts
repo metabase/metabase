@@ -1,7 +1,7 @@
 import type {
   ActionDashboardCard,
   Dashboard,
-  ParameterMappedForActionExecution,
+  ParametersForActionExecution,
   WritebackParameter,
 } from "metabase-types/api";
 import type { Column } from "metabase-types/types/Dataset";
@@ -22,7 +22,7 @@ export type ActionClickObject = Omit<ClickObject, "extraData"> & {
   data: any;
   extraData: ActionClickExtraData;
   onSubmit: () => (
-    parameters: ParameterMappedForActionExecution[],
+    parameters: ParametersForActionExecution,
   ) => Promise<boolean>;
   missingParameters: WritebackParameter[];
 };
