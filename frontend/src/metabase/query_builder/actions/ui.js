@@ -1,5 +1,4 @@
 import { createAction } from "redux-actions";
-import { push } from "react-router-redux";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { createThunkAction } from "metabase/lib/redux";
@@ -13,10 +12,6 @@ export const setUIControls = createAction(SET_UI_CONTROLS);
 
 export const RESET_UI_CONTROLS = "metabase/qb/RESET_UI_CONTROLS";
 export const resetUIControls = createAction(RESET_UI_CONTROLS);
-
-export const onCancelCreateNewModel = () => async dispatch => {
-  await dispatch(push("/"));
-};
 
 export const setQueryBuilderMode =
   (
