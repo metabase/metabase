@@ -3,7 +3,6 @@ import { createAction } from "redux-actions";
 
 import { PLUGIN_SELECTORS } from "metabase/plugins";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
 import { startTimer } from "metabase/lib/performance";
 import { defer } from "metabase/lib/promise";
 import { createThunkAction } from "metabase/lib/redux";
@@ -14,6 +13,7 @@ import { isSameField } from "metabase-lib/lib/queries/utils/field-ref";
 
 import Question from "metabase-lib/lib/Question";
 
+import { isAdHocModelQuestion } from "metabase-lib/lib/metadata/utils/models";
 import {
   getIsRunning,
   getOriginalQuestion,
