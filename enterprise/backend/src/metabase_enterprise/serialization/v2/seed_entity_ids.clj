@@ -30,7 +30,7 @@
                                                          (:mysql :postgres) "entity_id"))]
         (into #{} (map (comp u/lower-case-en :table_name)) (resultset-seq rset))))))
 
-(defn- table-name->model
+(defn- make-table-name->model
   "Create a map of (lower-cased) application DB table name -> corresponding Toucan model."
   []
   (into {} (for [^Class klass (extenders toucan.models/IModel)
@@ -46,7 +46,7 @@
   "Return a set of all Toucan models that have an `entity_id` column."
   []
   (let [entity-id-table-names       (entity-id-table-names)
-        table-name->model           (table-name->model)
+        table-name->model           (make-table-name->model)
         entity-id-table-name->model (into {}
                                           (map (fn [table-name]
                                                  [table-name (table-name->model table-name)]))
