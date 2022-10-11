@@ -32,6 +32,8 @@ For an introduction to expressions, check out [Writing expressions in the notebo
   - [coalesce](./expressions/coalesce.md)
   - [concat](./expressions/concat.md)
   - [contains](#contains)
+  - [dateAdd](#dateadd)
+  - [dateSubtract](#datesubtract)
   - [day](#day)
   - [endswith](#endswith)
   - [exp](#exp)
@@ -263,6 +265,30 @@ Syntax: `contains(string1, string2)`
 Example: `contains([Status], "Class")`. If `Status` were "Classified", the expression would return `true`.
 
 Related: [regexextract](#regexextract).
+
+### dateAdd
+
+Adds some unit of time to a date or timestamp value.
+
+Syntax: `dateAdd(column, amount, unit)`.
+
+ - column: the column with your date or timestamp values.
+ - amount: The number of units to be added.
+ - units: "year", "quarter", "month", "day", "hour", "second", or "millisecond".
+
+Example: `dateAdd("March 25, 2021, 12:52:37", 1, "month")` would return `April 25, 2021, 12:52:37`.
+
+### dateSubtract
+
+Subtract some unit of time to a date or timestamp value.
+
+Syntax: `dateSubtract(column, amount, unit)`.
+
+ - column: the column with your date or timestamp values.
+ - amount: The number of units to be subtracted.
+ - units: "year", "quarter", "month", "day", "hour", "second", or "millisecond".
+
+Example: `dateSubtract("March 25, 2021, 12:52:37", 1, "month")` would return `February 25, 2021, 12:52:37`.
 
 ### day
 
