@@ -118,13 +118,18 @@
       (hformat/to-sql (hx/literal zone)))))
 
 (defmethod sql.qp/->honeysql [:vertica :convert-timezone]
-  [driver [_ arg to from]]
-  (let [from (or from (qp.timezone/results-timezone-id driver))]
-    (cond-> (sql.qp/->honeysql driver arg)
-      from
-      (->AtTimeZone from)
-      to
-      (->AtTimeZone to))))
+  [driver [_ arg to-tz from-tz]]
+  (let [clause  (sql.qp/->honeysql driver arg)
+        timestamptz? (hx/is-of-type? clause "timestamptz")]
+   (when (and timestamptz? from-tz)
+         (throw (ex-info "`timestamp with time zone` columns shouldn't have a `from timezone`" {:to-tz   to-tz
+                                                                                                :from-tz from-tz})))
+   (let [from-tz (or from-tz (qp.timezone/results-timezone-id driver))]
+    (cond-> clause
+      (and (not timestamptz?) from-tz)
+      (->AtTimeZone from-tz)
+      to-tz
+      (->AtTimeZone to-tz)))))
 
 (defmethod sql.qp/->honeysql [:vertica :concat]
   [driver [_ & args]]

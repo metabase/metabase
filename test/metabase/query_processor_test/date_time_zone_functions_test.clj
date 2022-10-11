@@ -27,7 +27,7 @@
          (mt/formatted-rows [int])
          (map first))))
 
-(mt/defdataset times-mixed
+(mt/defdataset times-mixed-1
   [["times" [{:field-name "index"
               :base-type :type/Integer}
              {:field-name "dt"
@@ -85,7 +85,7 @@
                                     :breakout    [[:expression "expr"]]})}])
 
 (deftest extraction-function-tests
-  (mt/dataset times-mixed
+  (mt/dataset times-mixed-1
     ;; need to have seperate tests for mongo because it doesn't have supports for casting yet
     (mt/test-drivers (disj (mt/normal-drivers-with-feature :temporal-extract) :mongo)
       (testing "with datetime columns"
@@ -126,7 +126,7 @@
 
 (deftest temporal-extraction-with-filter-expresion-tests
   (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
-    (mt/dataset times-mixed
+    (mt/dataset times-mixed-1
       (doseq [{:keys [title expected query]}
               [{:title    "Nested expression"
                 :expected [2004]
@@ -204,7 +204,7 @@
          (map first))))
 
 (deftest date-math-tests
-  (mt/dataset times-mixed
+  (mt/dataset times-mixed-1
     ;; mongo doesn't supports coercion yet so we exclude it here, Tests for it are in [[metabase.driver.mongo.query-processor-test]]
     (mt/test-drivers (disj (mt/normal-drivers-with-feature :date-arithmetics) :mongo)
       (testing "date arithmetic with datetime columns"
@@ -247,7 +247,7 @@
 
 (deftest date-math-with-extract-test
   (mt/test-drivers (mt/normal-drivers-with-feature :date-arithmetics)
-    (mt/dataset times-mixed
+    (mt/dataset times-mixed-1
       (doseq [{:keys [title expected query]}
               [{:title    "Nested date math then extract"
                 :expected [2006 2010 2014]
@@ -311,8 +311,9 @@
 
 
 (deftest convert-timezone-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
-    (mt/dataset times-mixed
+  ;(mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
+  (mt/test-drivers #{:bigquery-cloud-sdk}
+    (mt/dataset times-mixed-1
       (testing "timestamp without timezone columns"
         (mt/with-results-timezone-id "UTC"
           (testing "convert from +05:00 to +09:00"
@@ -376,10 +377,11 @@
               (is (= "2004-03-19T18:19:09+09:00"
                      (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")]))))))))))
 
-#_(mt/with-results-timezone-id "Asia/Singapore"
-    (mt/with-driver :redshift
-         (mt/dataset times-mixed
-                     (-> (mt/mbql-query times {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")]}
+#_(mt/with-results-timezone-id "UTC"
+    (mt/with-driver :bigquery-cloud-sdk
+         (mt/dataset times-mixed-1
+                     (-> (mt/mbql-query times {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt) nil] (offset->zone "+09:00")
+                                                                     (offset->zone "+07:00")]}
                                                :fields      [[:expression "expr"]]
                                                :limit 1})
                          mt/process-query
@@ -389,9 +391,9 @@
                          #_println))))
 
 #_(mt/with-results-timezone-id "UTC"
-      (mt/with-driver :redshift
-           (mt/dataset times-mixed
-                       (-> (mt/mbql-query times {:fields      [[:field (mt/id :times :dt_tz) nil]]
+      (mt/with-driver :bigquery-cloud-sdk
+           (mt/dataset times-mixed-1
+                       (-> (mt/mbql-query times {:fields      [[:field (mt/id :times :dt) nil]]
                                                  :limit 1})
                            mt/process-query
                            mt/rows
@@ -405,30 +407,30 @@
 
 
 #_(dev/query-jdbc-db
-   [:redshift 'times-mixed]
+   [ 'times-mixed-1]
    ["select pg_get_cols('schema_86.times_mixed_times');"])
 
 
 #_(dev/query-jdbc-db
-   [:redshift 'times-mixed]
-   ["select timezone('Asia/Ho_Chi_Minh', dt_tz) from schema_92.times_mixed_times limit 1;"])
+   [:bigquery-cloud-sdk 'times-mixed-1]
+   ["select * from v3_times_mixed_times.times;"])
 
 #_(dev/query-jdbc-db
-     [:redshift 'times-mixed]
+     [:redshift 'times-mixed-1]
      ["select dt_tz from schema_92.times_mixed_times limit 1;"])
 
 
 #_(dev/query-jdbc-db
-     [:postgres 'times-mixed]
+     [:postgres 'times-mixed-1]
      ["select dt_tz from times_mixed_times limit 1;"])
 
 #_(dev/query-jdbc-db
-   [:redshift 'times-mixed]
+   [:redshift 'times-mixed-1]
    ["SELECT '2018-11-01T09:00:00+07:00'::timestamptz;"])
 
 
 #_(dev/query-jdbc-db
-    [:sqlserver 'times-mixed]
+    [:sqlserver 'times-mixed-1]
     ["select * from sys.time_zone_info"])
 
 #_(.getDisplayName
@@ -437,12 +439,12 @@
     (java.util.Locale/getDefault))
 ;; => "Indochina Time"
 
-#_(metabase.test.data.interface/create-db! :postgres times-mixed)
+#_(metabase.test.data.interface/destroy-db! :bigquery-cloud-sdk)
 
 
 (deftest nested-convert-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
-    (mt/dataset times-mixed
+    (mt/dataset times-mixed-1
       (testing "convert-timezone nested with datetime extract"
         (is (= 18
                (test-date-convert [:get-hour [:convert-timezone [:field (mt/id :times :dt) nil]

@@ -118,8 +118,8 @@
   (parse-value column-mode v (partial parse-timestamp-str timezone-id)))
 
 (defmethod parse-result-of-type "DATETIME"
-  [_ column-mode timezone-id v]
-  (parse-value column-mode v (partial parse-timestamp-str timezone-id)))
+  [_ column-mode _timezone-id v]
+  (parse-value column-mode v (partial parse-timestamp-str nil)))
 
 (defmethod parse-result-of-type "TIMESTAMP"
   [_ column-mode timezone-id v]
@@ -412,13 +412,20 @@
     (with-temporal-type (hsql/call bigquery-fn expr) :timestamp)))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :convert-timezone]
-  [driver [_ arg to from]]
-  (let [from (or from (qp.timezone/results-timezone-id))]
-    (cond->> (sql.qp/->honeysql driver arg)
-      from
-      (hsql/call :datetime from)
-      to
-      (hsql/call :datetime to))))
+  [driver [_ arg to-tz from-tz]]
+  (let [timestamp (partial hsql/call :timestamp)
+        datetime  (partial hsql/call :datetime)
+        clause    (sql.qp/->honeysql driver arg)
+        timestamptz? (hx/is-of-type? clause "timestamp")]
+    (when (and timestamptz? from-tz)
+      (throw (ex-info "`timestamp with time zone` columns shouldn't have a `from timezone`" {:to-tz   to-tz
+                                                                                             :from-tz from-tz})))
+    (let [from-tz (or from-tz (qp.timezone/results-timezone-id))]
+      (cond-> clause
+        (and (not timestamptz?) from-tz)
+        (timestamp from-tz)
+        to-tz
+        (datetime to-tz)))))
 
 (defmethod sql.qp/->float :bigquery-cloud-sdk
   [_ value]
