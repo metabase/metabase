@@ -7,7 +7,6 @@ import _ from "underscore";
 import Color from "color";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
-import { isMetric, isString } from "metabase/lib/schema_metadata";
 import { MinColumnsError } from "metabase/visualizations/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -17,6 +16,7 @@ import {
   computeMinimalBounds,
   getCanonicalRowKey,
 } from "metabase/visualizations/lib/mapping";
+import { isMetric, isString } from "metabase-lib/lib/types/utils/isa";
 import ChartWithLegend from "./ChartWithLegend";
 import LegacyChoropleth from "./LegacyChoropleth";
 import LeafletChoropleth from "./LeafletChoropleth";

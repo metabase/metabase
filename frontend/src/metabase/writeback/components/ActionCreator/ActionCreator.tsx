@@ -110,7 +110,7 @@ function ActionCreatorComponent({
         <Modal onClose={handleClose}>
           <Actions.ModalForm
             title={isNew ? t`New action` : t`Save action`}
-            form={Actions.forms.saveForm}
+            form={isNew ? Actions.forms.saveForm : Actions.forms.updateForm}
             action={{
               id: (question.card() as SavedCard).id,
               name: question.displayName(),

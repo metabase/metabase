@@ -7,9 +7,9 @@ import TippyPopover from "metabase/components/Popover/TippyPopover";
 
 import { MetabaseApi } from "metabase/services";
 
-import { getModelCacheSchemaName } from "metabase/lib/data-modeling/utils";
 import MetabaseSettings from "metabase/lib/settings";
 import Database from "metabase-lib/lib/metadata/Database";
+import { getModelCacheSchemaName } from "metabase-lib/lib/metadata/utils/models";
 
 import {
   ControlContainer,
@@ -59,7 +59,8 @@ function ModelCachingControl({ database }: Props) {
     ? t`Turn model caching off`
     : t`Turn model caching on`;
 
-  const cacheSchemaName = getModelCacheSchemaName(databaseId);
+  const siteUUID = MetabaseSettings.get("site-uuid");
+  const cacheSchemaName = getModelCacheSchemaName(databaseId, siteUUID);
 
   const handleCachingChange = async () => {
     setError(null);

@@ -1,4 +1,4 @@
-import { Margin } from "../types";
+import { Margin } from "metabase/visualizations/shared/types/layout";
 
 export const calculateBounds = (
   margin: Margin,

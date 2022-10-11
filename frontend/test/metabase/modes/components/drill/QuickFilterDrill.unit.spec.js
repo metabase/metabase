@@ -106,27 +106,6 @@ describe("QuickFilterDrill", () => {
     expect(actions).toHaveLength(0);
   });
 
-  describe("FK cells", () => {
-    const FK_VALUE = 1;
-    const { actions } = setup({
-      column: ORDERS.PRODUCT_ID.column(),
-      value: FK_VALUE,
-    });
-
-    it("should return only 'view this records' filter", () => {
-      expect(actions).toMatchObject([{ name: "view-fks" }]);
-    });
-
-    it("should apply 'view this records' filter correctly", () => {
-      const [action] = actions;
-      const card = action.question().card();
-      expect(card.dataset_query.query).toEqual({
-        "source-table": ORDERS.id,
-        filter: ["=", ORDERS.PRODUCT_ID.reference(), FK_VALUE],
-      });
-    });
-  });
-
   describe("numeric cells", () => {
     const clickedField = ORDERS.TOTAL;
     const { actions } = setup({ column: clickedField.column() });

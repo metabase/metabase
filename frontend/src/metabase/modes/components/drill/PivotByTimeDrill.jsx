@@ -1,7 +1,41 @@
-import { t } from "ttag";
+/* eslint-disable react/prop-types */
+import React from "react";
+import { t, jt } from "ttag";
+import BreakoutPopover from "metabase/query_builder/components/BreakoutPopover";
+import { pivotByTimeDrill } from "metabase-lib/lib/queries/drills/pivot-drill";
 
-import { isDate } from "metabase/lib/schema_metadata";
+export default ({ question, clicked }) => {
+  const drill = pivotByTimeDrill({ question, clicked });
+  if (!drill) {
+    return [];
+  }
 
-import PivotByDrill from "./PivotByDrill";
+  const { query, dimensions, breakoutOptions } = drill;
 
-export default PivotByDrill(t`Time`, "clock", field => isDate(field));
+  return [
+    {
+      name: "pivot-by-time",
+      section: "breakout",
+      buttonType: "token",
+      title: (
+        <span>
+          {jt`Break out by ${(<span className="text-dark">{t`time`}</span>)}`}
+        </span>
+      ),
+      popover: function PivotDrillPopover({ onChangeCardAndRun, onClose }) {
+        return (
+          <BreakoutPopover
+            query={query}
+            breakoutOptions={breakoutOptions}
+            onChangeBreakout={breakout => {
+              const nextCard = question.pivot([breakout], dimensions).card();
+              onChangeCardAndRun({ nextCard });
+            }}
+            onClose={onClose}
+            alwaysExpanded
+          />
+        );
+      },
+    },
+  ];
+};

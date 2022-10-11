@@ -3,13 +3,6 @@ import { t } from "ttag";
 import _ from "lodash";
 
 import { formatColumn } from "metabase/lib/formatting";
-import {
-  isNumber,
-  isURL,
-  isEmail,
-  isImageURL,
-  isAvatarURL,
-} from "metabase/lib/schema_metadata";
 
 import List from "metabase/visualizations/components/List/List";
 import ChartSettingsListColumns from "metabase/visualizations/components/settings/ChartSettingsListColumns";
@@ -19,6 +12,13 @@ import { VisualizationSettings } from "metabase-types/api/card";
 import { Column } from "metabase-types/types/Dataset";
 import type { DatasetColumn } from "metabase-types/api/dataset";
 import { Series, VisualizationProps } from "metabase-types/types/Visualization";
+import {
+  isNumber,
+  isURL,
+  isEmail,
+  isImageURL,
+  isAvatarURL,
+} from "metabase-lib/lib/types/utils/isa";
 
 function ListViz(props: VisualizationProps) {
   const { data, settings } = props;

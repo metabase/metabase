@@ -13,7 +13,7 @@ import {
   getCurrencySymbol,
 } from "metabase/lib/formatting";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { TYPE } from "metabase/lib/types";
+import { TYPE } from "metabase-lib/lib/types/constants";
 
 describe("formatting", () => {
   describe("capitalize", () => {

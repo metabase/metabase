@@ -4,12 +4,11 @@ import cx from "classnames";
 import { getIn } from "icepick";
 import { t } from "ttag";
 import * as MetabaseCore from "metabase/lib/core";
-import { isNumericBaseType } from "metabase/lib/schema_metadata";
-import { isFK } from "metabase/lib/types";
 
 import Select from "metabase/core/components/Select";
 
 import D from "metabase/reference/components/Detail.css";
+import { isTypeFK, isNumericBaseType } from "metabase-lib/lib/types/utils/isa";
 
 const FieldTypeDetail = ({
   field,
@@ -56,8 +55,8 @@ const FieldTypeDetail = ({
         </span>
         <span className="ml4">
           {isEditing
-            ? (isFK(fieldTypeFormField.value) ||
-                (isFK(field.semantic_type) &&
+            ? (isTypeFK(fieldTypeFormField.value) ||
+                (isTypeFK(field.semantic_type) &&
                   fieldTypeFormField.value === undefined)) && (
                 <Select
                   placeholder={t`Select a foreign key`}
@@ -69,7 +68,7 @@ const FieldTypeDetail = ({
                   optionValueFn={o => o.id}
                 />
               )
-            : isFK(field.semantic_type) && (
+            : isTypeFK(field.semantic_type) && (
                 <span>
                   {getIn(foreignKeys, [field.fk_target_field_id, "name"])}
                 </span>

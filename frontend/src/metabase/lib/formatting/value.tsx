@@ -8,6 +8,9 @@ import {
   clickBehaviorIsValid,
   getDataFromClicked,
 } from "metabase/lib/click-behavior";
+import { renderLinkTextForClick } from "metabase/lib/formatting/link";
+import { NULL_DISPLAY_VALUE, NULL_NUMERIC_VALUE } from "metabase/lib/constants";
+import { rangeForValue } from "metabase-lib/lib/queries/utils/dataset";
 import {
   isBoolean,
   isCoordinate,
@@ -16,10 +19,7 @@ import {
   isNumber,
   isTime,
   isURL,
-} from "metabase/lib/schema_metadata";
-import { renderLinkTextForClick } from "metabase/lib/formatting/link";
-import { NULL_DISPLAY_VALUE, NULL_NUMERIC_VALUE } from "metabase/lib/constants";
-import { rangeForValue } from "metabase-lib/lib/queries/utils/dataset";
+} from "metabase-lib/lib/types/utils/isa";
 import { formatEmail } from "./email";
 import { formatTime } from "./time";
 import { formatUrl } from "./url";

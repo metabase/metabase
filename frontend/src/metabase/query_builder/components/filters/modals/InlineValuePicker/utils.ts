@@ -1,4 +1,4 @@
-import { isString } from "metabase/lib/schema_metadata";
+import { isString } from "metabase-lib/lib/types/utils/isa";
 import type Field from "metabase-lib/lib/metadata/Field";
 import type Filter from "metabase-lib/lib/queries/structured/Filter";
 

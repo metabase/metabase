@@ -1,29 +1,13 @@
 import { t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
-import { isExpressionField } from "metabase-lib/lib/queries/utils/field-ref";
+import {
+  automaticDashboardDrill,
+  automaticDashboardDrillUrl,
+} from "metabase-lib/lib/queries/drills/automatic-dashboard-drill";
 
 export default ({ question, clicked }) => {
-  const query = question.query();
-
-  if (!question.isStructured() || !query.isEditable()) {
-    return [];
-  }
-
-  // questions with a breakout
-  const dimensions = (clicked && clicked.dimensions) || [];
-
-  // ExpressionDimensions don't work right now (see metabase#16680)
-  const includesExpressionDimensions = dimensions.some(dimension => {
-    return isExpressionField(dimension.column.field_ref);
-  });
-
-  const isUnsupportedDrill =
-    !clicked ||
-    dimensions.length === 0 ||
-    !MetabaseSettings.get("enable-xrays") ||
-    includesExpressionDimensions;
-
-  if (isUnsupportedDrill) {
+  const enableXrays = MetabaseSettings.get("enable-xrays");
+  if (!automaticDashboardDrill({ question, clicked, enableXrays })) {
     return [];
   }
 
@@ -34,15 +18,7 @@ export default ({ question, clicked }) => {
       icon: "bolt",
       buttonType: "token",
       title: t`X-ray`,
-      url: () => {
-        const filters = query
-          .clearFilters() // clear existing filters so we don't duplicate them
-          .question()
-          .drillUnderlyingRecords(dimensions)
-          .query()
-          .filters();
-        return question.getAutomaticDashboardUrl(filters);
-      },
+      url: () => automaticDashboardDrillUrl({ question, clicked }),
     },
   ];
 };

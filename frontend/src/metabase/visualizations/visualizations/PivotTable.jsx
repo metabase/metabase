@@ -13,7 +13,6 @@ import ChartSettingsTableFormatting from "metabase/visualizations/components/set
 
 import Ellipsified from "metabase/core/components/Ellipsified";
 import Icon from "metabase/components/Icon";
-import { isDimension } from "metabase/lib/schema_metadata";
 import {
   COLLAPSED_ROWS_SETTING,
   COLUMN_SPLIT_SETTING,
@@ -30,6 +29,7 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { ChartSettingIconRadio } from "metabase/visualizations/components/settings/ChartSettingIconRadio";
 
 import { PLUGIN_SELECTORS } from "metabase/plugins";
+import { isDimension } from "metabase-lib/lib/types/utils/isa";
 import {
   PivotTableRoot,
   PivotTableCell,

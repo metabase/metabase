@@ -1,12 +1,6 @@
 import { t } from "ttag";
 import _ from "underscore";
 import {
-  isDimension,
-  isMetric,
-  isNumeric,
-  isAny,
-} from "metabase/lib/schema_metadata";
-import {
   columnsAreValid,
   getFriendlyName,
   getDefaultDimensionsAndMetrics,
@@ -23,9 +17,18 @@ import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils"
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 
-import { getMaxMetricsSupported } from "metabase/visualizations";
+import {
+  getMaxMetricsSupported,
+  getMaxDimensionsSupported,
+} from "metabase/visualizations";
 
 import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
+import {
+  isDimension,
+  isMetric,
+  isNumeric,
+  isAny,
+} from "metabase-lib/lib/types/utils/isa";
 
 // NOTE: currently we don't consider any date extracts to be histgrams
 const HISTOGRAM_DATE_EXTRACTS = new Set([
@@ -67,7 +70,15 @@ function getDefaultScatterColumns([
 }
 
 function getDefaultLineAreaBarColumns(series) {
-  return getDefaultDimensionsAndMetrics(series);
+  const [
+    {
+      card: { display },
+    },
+  ] = series;
+  return getDefaultDimensionsAndMetrics(
+    series,
+    getMaxDimensionsSupported(display),
+  );
 }
 
 export const GRAPH_DATA_SETTINGS = {
@@ -121,15 +132,16 @@ export const GRAPH_DATA_SETTINGS = {
       ),
     persistDefault: true,
     getProps: ([{ card, data }], vizSettings) => {
-      const value = vizSettings["graph.dimensions"];
+      const addedDimensions = vizSettings["graph.dimensions"];
+      const maxDimensionsSupported = getMaxDimensionsSupported(card.display);
       const options = data.cols
         .filter(vizSettings["graph._dimension_filter"])
         .map(getOptionFromColumn);
       return {
         options,
         addAnother:
-          options.length > value.length &&
-          value.length < 2 &&
+          options.length > addedDimensions.length &&
+          addedDimensions.length < maxDimensionsSupported &&
           vizSettings["graph.metrics"].length < 2
             ? t`Add series breakout`
             : null,

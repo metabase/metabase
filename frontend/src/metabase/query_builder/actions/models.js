@@ -1,4 +1,5 @@
 import { createAction } from "redux-actions";
+import { push } from "react-router-redux";
 import { merge } from "icepick";
 import { t } from "ttag";
 
@@ -17,6 +18,10 @@ import { setQueryBuilderMode } from "./ui";
 export const setDatasetEditorTab = datasetEditorTab => dispatch => {
   dispatch(setQueryBuilderMode("dataset", { datasetEditorTab }));
   dispatch(runDirtyQuestionQuery());
+};
+
+export const onCancelCreateNewModel = () => async dispatch => {
+  await dispatch(push("/"));
 };
 
 export const CANCEL_DATASET_CHANGES = "metabase/qb/CANCEL_DATASET_CHANGES";
