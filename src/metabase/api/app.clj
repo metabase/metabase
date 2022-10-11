@@ -198,7 +198,7 @@
                                  :query (cond-> {:source_table table-id}
                                           order-by-field-id (assoc :order_by [["desc", ["field", order-by-field-id, nil]]]))}}
                 {:scaffold-target ["card" table-id page-type]
-                 :name (format "Query %s %s"
+                 :name (format "%s %s"
                                (or (:display_name table) (:name table))
                                (get-in page-type-display [page-type :name]))
                  :display (get-in page-type-display [page-type :display])
@@ -219,7 +219,7 @@
                               (get-in page-type-display [page-type :name]))
                 :scaffold-target ["page" table-id page-type]
                 :ordered_cards (if (= "list" page-type)
-                                 [{:size_y 8 :size_x 18 :row 1 :col 0
+                                 [{:size_y 12 :size_x 18 :row 1 :col 0
                                    :card_id ["scaffold-target-id" "card" table-id page-type]
                                    :visualization_settings {"click_behavior"
                                                             {"type" "link"
@@ -236,13 +236,13 @@
                                    :visualization_settings {"virtual_card" {"display" "action"}
                                                             "button.label" (i18n/tru "New"),
                                                             "action_slug" "insert"}}]
-                                 [{:size_y 8 :size_x 18 :row 1 :col 0
+                                 [{:size_y 12 :size_x 18 :row 1 :col 0
                                    :parameter_mappings [{"parameter_id" (str "scaffold_" table-id)
                                                          "card_id" ["scaffold-target-id" "card" table-id "detail"]
                                                          "target" ["variable", ["template-tag", pk-field-name]]}]
                                    :card_id ["scaffold-target-id" "card" table-id "detail"]
                                    :scaffold-target ["dashcard" table-id]}
-                                  {:size_y 1 :size_x 2 :row 0 :col 0
+                                  {:size_y 1 :size_x 3 :row 0 :col 0
                                    :visualization_settings {"virtual_card" {"display" "action"}
                                                             "button.label" (i18n/tru "← Back to list"),
                                                             "click_behavior" {"type" "link" "linkType" "page" "targetId" ["scaffold-target-id" "page" table-id "list"]}}}
