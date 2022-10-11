@@ -69,7 +69,7 @@ export const HeaderContainer = styled.header`
   ${({ isDataApp }) =>
     !isDataApp &&
     css`
-      background-color: white;
+      background-color: ${color("bg-white")};
       border-bottom: 1px solid ${color("border")};
     `}
 
