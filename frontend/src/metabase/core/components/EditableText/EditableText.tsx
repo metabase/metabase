@@ -26,6 +26,8 @@ export interface EditableTextProps extends EditableTextAttributes {
   isMultiline?: boolean;
   isDisabled?: boolean;
   onChange?: (value: string) => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
   "data-testid"?: string;
 }
 
@@ -37,6 +39,8 @@ const EditableText = forwardRef(function EditableText(
     isMultiline = false,
     isDisabled = false,
     onChange,
+    onFocus,
+    onBlur,
     "data-testid": dataTestId,
     ...props
   }: EditableTextProps,
@@ -62,8 +66,9 @@ const EditableText = forwardRef(function EditableText(
         setSubmitValue(inputValue);
         onChange?.(inputValue);
       }
+      onBlur?.();
     },
-    [inputValue, submitValue, isOptional, onChange],
+    [inputValue, submitValue, isOptional, onChange, onBlur],
   );
 
   const handleChange = useCallback(
@@ -101,6 +106,7 @@ const EditableText = forwardRef(function EditableText(
         placeholder={placeholder}
         disabled={isDisabled}
         data-testid={dataTestId}
+        onFocus={onFocus}
         onBlur={handleBlur}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
