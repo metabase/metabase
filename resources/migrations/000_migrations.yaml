@@ -12919,6 +12919,129 @@ databaseChangeLog:
             tableName: metabase_database
             columnName: details
 
+  # Add created_at to Collection
+  - changeSet:
+      id: v45.00-044
+      author: camsaul
+      comment: Added 0.45.0 -- add created_at to Collection
+      changes:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp of when this Collection was created.
+
+  # Seed Collection created_at based on the max created at of child objects
+  #
+  # At the time of this writing, the following Models can appear in a Collection:
+  #
+  # - App
+  # - Card
+  # - Dashboard
+  # - Pulse
+  # - Timeline
+  # - NativeQuerySnippet
+  #
+  # For Personal Collections, we can give them a created_at of when their corresponding User joined.
+  - changeSet:
+      id: v45.00-045
+      author: camsaul
+      comment: Added 0.45.0 -- seed Collection created_at with value of oldest item
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              UPDATE collection c
+              SET created_at = created_ats.created_at
+              FROM (
+                SELECT min(created_at) AS created_at,
+                collection_id
+                FROM (
+                    SELECT created_at, collection_id
+                    FROM app
+                  UNION ALL
+                    SELECT created_at, collection_id
+                    FROM report_card
+                  UNION ALL
+                    SELECT created_at, collection_id
+                    FROM report_dashboard
+                  UNION ALL
+                    SELECT created_at, collection_id
+                    FROM pulse
+                  UNION ALL
+                    SELECT created_at, collection_id
+                    FROM timeline
+                  UNION ALL
+                    SELECT created_at, collection_id
+                    FROM native_query_snippet
+                  UNION ALL
+                    SELECT u.date_joined, c.id
+                    FROM core_user u
+                    LEFT JOIN collection c
+                      ON c.personal_owner_id = u.id
+                    WHERE c.personal_owner_id IS NOT NULL
+                ) created_ats
+                GROUP BY collection_id
+              ) created_ats
+              WHERE c.id = created_ats.collection_id;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              TODO
+        - sql:
+            dbms: h2
+            sql: >-
+              TODO
+
+  # Now we can make created_at be NOT NULL and give it a default value.
+  - changeSet:
+      id: v45.00-046
+      author: camsaul
+      comment: Added 0.45.0 -- add default value for Collection created_at (Postgres/H2)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: postgresql,h2
+      changes:
+        - addDefaultValue:
+            tableName: collection
+            columnName: created_at
+            columnDataType: ${timestamp_type}
+            defaultValueComputed: current_timestamp
+
+  - changeSet:
+      id: v45.00-046
+      author: camsaul
+      comment: Added 0.45.0 -- make Collection created_at NOT NULL (Postgres/H2)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: postgresql,h2
+      changes:
+        - addNotNullConstraint:
+            columnDataType: ${timestamp_type}
+            tableName: collection
+            columnName: created_at
+
+  # addDefaultValue with defaultValueComputed doesn't work for MySQL/MariaDB so we have to do this the hard way.
+  - changeSet:
+      id: v45.00-047
+      author: camsaul
+      comment: Added 0.45.0 -- add default value for Collection created_at; make it NOT NULL (MySQL/MariaDB)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+      changes:
+        - sql:
+            sql: >-
+              ALTER TABLE collection
+              CHANGE created_at
+              updated_at timestamp(6) NOT NULL DEFAULT current_timestamp(6);
+
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
