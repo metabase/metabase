@@ -18,12 +18,13 @@ export function invalidDateWarning(value) {
 }
 
 export const UNAGGREGATED_DATA_WARNING = "UNAGGREGATED_DATA_WARNING";
-export function unaggregatedDataWarning(col) {
+export function unaggregatedDataWarning(col, axis = "x") {
   return {
     key: UNAGGREGATED_DATA_WARNING,
     text: t`"${getFriendlyName(
       col,
-    )}" is an unaggregated field: if it has more than one value at a point on the x-axis, the values will be summed.`,
+      // TODO: y-axis
+    )}" is an unaggregated field: if it has more than one value at a point on the ${axis}-axis, the values will be summed.`,
   };
 }
 

@@ -53,7 +53,7 @@ export const createXScale = (
 };
 
 export const addScalePadding = (
-  scale: ScaleContinuousNumeric<number, number, unknown>,
+  scale: ScaleContinuousNumeric<number, number, never>,
   paddingStart: number = 0,
   paddingEnd: number = 0,
 ) => {

@@ -112,6 +112,7 @@ export function seriesSetting({
       title: t`Y-axis position`,
       widget: "segmentedControl",
       default: null,
+      getHidden: (single, settings) => settings["display"] === "row",
       props: {
         options: [
           { name: t`Auto`, value: null },
@@ -119,6 +120,7 @@ export function seriesSetting({
           { name: t`Right`, value: "right" },
         ],
       },
+      readDependencies: ["display"],
     },
     show_series_values: {
       title: t`Show values for this series`,

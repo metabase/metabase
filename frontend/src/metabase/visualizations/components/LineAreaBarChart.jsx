@@ -364,7 +364,6 @@ export default class LineAreaBarChart extends Component {
       isFullscreen,
       isQueryBuilder,
       onHoverChange,
-      onAddSeries,
       onRemoveSeries,
       settings,
     } = this.props;
@@ -414,7 +413,6 @@ export default class LineAreaBarChart extends Component {
           isFullscreen={isFullscreen}
           isQueryBuilder={isQueryBuilder}
           onHoverChange={onHoverChange}
-          onAddSeries={!hasBreakout ? onAddSeries : undefined}
           onRemoveSeries={!hasBreakout ? onRemoveSeries : undefined}
           onSelectSeries={this.handleSelectSeries}
         >

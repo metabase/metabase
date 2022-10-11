@@ -1,16 +1,16 @@
-import type { ScaleLinear } from "d3-scale";
+import type { ScaleContinuousNumeric, ScaleLinear } from "d3-scale";
 import { ValueFormatter } from "metabase/visualizations/shared/types/format";
 import { TextMeasurer } from "metabase/visualizations/shared/types/measure-text";
 import { ChartFont } from "metabase/visualizations/shared/types/style";
 
 const TICK_SPACING = 4;
 
-const getMinTickInterval = (innerWidth: number) => innerWidth / 4;
+const getWidthBasedTickInterval = (innerWidth: number) => innerWidth / 8;
 
 const omitOverlappingTicks = (
   ticks: number[],
   ticksFont: ChartFont,
-  xScale: ScaleLinear<number, number, never>,
+  xScale: ScaleContinuousNumeric<number, number, never>,
   xTickFormatter: ValueFormatter,
   measureText: TextMeasurer,
 ) => {
@@ -45,7 +45,7 @@ const omitOverlappingTicks = (
 export const getXTicks = (
   ticksFont: ChartFont,
   innerWidth: number,
-  xScale: ScaleLinear<number, number, never>,
+  xScale: ScaleContinuousNumeric<number, number, never>,
   xTickFormatter: ValueFormatter,
   measureText: TextMeasurer,
 ) => {
@@ -56,7 +56,7 @@ export const getXTicks = (
 
   const ticksInterval = Math.max(
     ...borderTicksWidths,
-    getMinTickInterval(innerWidth),
+    getWidthBasedTickInterval(innerWidth),
   );
 
   const ticksCount = Math.floor(innerWidth / ticksInterval);

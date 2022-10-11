@@ -83,14 +83,11 @@ function getDefaultLineAreaBarColumns(series) {
 
 export const GRAPH_DATA_SETTINGS = {
   ...columnSettings({
-    getColumns: (
-      [
-        {
-          data: { cols },
-        },
-      ],
-      settings,
-    ) => cols,
+    getColumns: ([
+      {
+        data: { cols },
+      },
+    ]) => cols,
     hidden: true,
   }),
   "graph._dimension_filter": {
@@ -373,6 +370,9 @@ export const GRAPH_GOAL_SETTINGS = {
     getHidden: (series, vizSettings) => vizSettings["graph.show_goal"] !== true,
     readDependencies: ["graph.show_goal"],
   },
+};
+
+export const GRAPH_TREND_SETTINGS = {
   "graph.show_trendline": {
     section: t`Display`,
     title: t`Trend line`,
@@ -588,28 +588,6 @@ export const GRAPH_AXIS_SETTINGS = {
     getHidden: (series, vizSettings) =>
       vizSettings["graph.y_axis.auto_range"] !== false,
   },
-  /*
-  "graph.y_axis_right.auto_range": {
-      section: t`Axes`,
-      title: t`Auto right-hand y-axis range`,
-      widget: "toggle",
-      default: true
-  },
-  "graph.y_axis_right.min": {
-      section: t`Axes`,
-      title: t`Min`,
-      widget: "number",
-      default: 0,
-      getHidden: (series, vizSettings) => vizSettings["graph.y_axis_right.auto_range"] !== false
-  },
-  "graph.y_axis_right.max": {
-      section: t`Axes`,
-      title: t`Max`,
-      widget: "number",
-      default: 100,
-      getHidden: (series, vizSettings) => vizSettings["graph.y_axis_right.auto_range"] !== false
-  },
-*/
   "graph.y_axis.auto_split": {
     section: t`Axes`,
     group: t`Y-axis`,
