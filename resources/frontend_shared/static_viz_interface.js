@@ -23,6 +23,13 @@ function combo_chart(series, settings, colors) {
   });
 }
 
+function gauge(card, data) {
+  return StaticViz.RenderChart("gauge", {
+    card: JSON.parse(card),
+    data: JSON.parse(data),
+  });
+}
+
 function waterfall(data, labels, settings, waterfallType, instanceColors) {
   return StaticViz.RenderChart("waterfall", {
     data: toJSArray(data),

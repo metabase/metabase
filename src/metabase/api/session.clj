@@ -200,12 +200,21 @@
 (defn- forgot-password-impl
   [email]
   (future
-    (when-let [{user-id :id, google-auth? :google_auth, is-active? :is_active}
-               (db/select-one [User :id :google_auth :is_active] :%lower.email (u/lower-case-en email))]
-      (let [reset-token        (user/set-password-reset-token! user-id)
-            password-reset-url (str (public-settings/site-url) "/auth/reset_password/" reset-token)]
-        (log/info password-reset-url)
-        (messages/send-password-reset-email! email google-auth? password-reset-url is-active?)))))
+    (when-let [{user-id      :id
+                google-auth? :google_auth
+                ldap-auth?   :ldap_auth
+                sso-source   :sso_source
+                is-active?   :is_active}
+               (db/select-one [User :id :google_auth :ldap_auth :sso_source :is_active]
+                              :%lower.email
+                              (u/lower-case-en email))]
+      (if (or google-auth? ldap-auth? sso-source)
+        ;; If user uses any SSO method to log in, no need to generate a reset token
+        (messages/send-password-reset-email! email google-auth? (boolean (or ldap-auth? sso-source)) nil is-active?)
+        (let [reset-token        (user/set-password-reset-token! user-id)
+              password-reset-url (str (public-settings/site-url) "/auth/reset_password/" reset-token)]
+          (log/info password-reset-url)
+          (messages/send-password-reset-email! email false false password-reset-url is-active?))))))
 
 (api/defendpoint POST "/forgot_password"
   "Send a reset email when user has forgotten their password."

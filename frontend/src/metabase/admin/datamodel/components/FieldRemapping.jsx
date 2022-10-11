@@ -12,7 +12,7 @@ import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
-import Question from "metabase-lib/lib/Question";
+import { isEntityName, isFK } from "metabase-lib/lib/types/utils/isa";
 import SelectSeparator from "../components/SelectSeparator";
 import {
   FieldMappingContainer,
@@ -57,9 +57,9 @@ export default class FieldRemapping extends React.Component {
     throw new Error(t`Unrecognized mapping type`);
   };
 
-  hasForeignKeys = () =>
-    this.props.field.semantic_type === "type/FK" &&
-    this.getForeignKeys().length > 0;
+  hasForeignKeys = () => {
+    return isFK(this.props.field) && this.getForeignKeys().length > 0;
+  };
 
   hasMappableNumeralValues = () => {
     const { field } = this.props;
@@ -95,10 +95,7 @@ export default class FieldRemapping extends React.Component {
     const fkTargetFields = fks[0] && fks[0].dimensions.map(dim => dim.field());
 
     if (fkTargetFields) {
-      // TODO Atte Keinänen 7/11/17: Should there be `isName(field)` in Field.js?
-      const nameField = fkTargetFields.find(
-        field => field.semantic_type === "type/Name",
-      );
+      const nameField = fkTargetFields.find(field => isEntityName(field));
       return nameField ? nameField.id : null;
     } else {
       throw new Error(
@@ -217,34 +214,9 @@ export default class FieldRemapping extends React.Component {
     return updateFieldValues({ id: field.id }, Array.from(remappings));
   };
 
-  // TODO Atte Keinänen 7/11/17: Should we have stricter criteria for valid remapping targets?
-  isValidFKRemappingTarget = dimension =>
-    !(
-      dimension.defaultDimension() instanceof FieldDimension &&
-      dimension.temporalUnit()
-    );
-
   getForeignKeys = () => {
-    const { table, field } = this.props;
-
-    // this method has a little odd structure due to using fieldOptions(); basically filteredFKs should
-    // always be an array with a single value
-    const metadata = table.metadata;
-    const fieldOptions = Question.create({
-      metadata,
-      databaseId: table.db.id,
-      tableId: table.id,
-    })
-      .query()
-      .fieldOptions();
-    const unfilteredFks = fieldOptions.fks;
-    const filteredFKs = unfilteredFks.filter(fk => fk.field.id === field.id);
-
-    return filteredFKs.map(filteredFK => ({
-      field: filteredFK.field,
-      dimension: filteredFK.dimension,
-      dimensions: filteredFK.dimensions.filter(this.isValidFKRemappingTarget),
-    }));
+    const { field, metadata } = this.props;
+    return metadata.field(field.id).remappingOptions();
   };
 
   onFkPopoverDismiss = () => {

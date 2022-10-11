@@ -83,7 +83,11 @@ class QueryModals extends React.Component {
           }}
           onCreate={async card => {
             await this.props.onCreate(card);
-            onOpenModal(MODAL_TYPES.SAVED);
+            if (question.isDataset()) {
+              onCloseModal();
+            } else {
+              onOpenModal(MODAL_TYPES.SAVED);
+            }
           }}
           onClose={onCloseModal}
         />

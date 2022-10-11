@@ -17,7 +17,6 @@ import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/components/Tooltip";
 
 import { formatValue } from "metabase/lib/formatting";
-import { isID, isPK, isFK } from "metabase/lib/schema_metadata";
 import {
   getTableCellClickedObject,
   getTableHeaderClickedObject,
@@ -25,7 +24,6 @@ import {
   isColumnRightAligned,
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
-import { isAdHocModelQuestionCard } from "metabase/lib/data-modeling/utils";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { zoomInRow } from "metabase/query_builder/actions";
 import { getQueryBuilderMode } from "metabase/query_builder/selectors";
@@ -34,9 +32,11 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 
 import Ellipsified from "metabase/core/components/Ellipsified";
 import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
+import { isID, isPK, isFK } from "metabase-lib/lib/types/utils/isa";
 import { fieldRefForColumn } from "metabase-lib/lib/queries/utils/dataset";
 import Dimension from "metabase-lib/lib/Dimension";
 import { memoizeClass } from "metabase-lib/lib/utils";
+import { isAdHocModelQuestionCard } from "metabase-lib/lib/metadata/utils/models";
 import MiniBar from "../MiniBar";
 import {
   ExpandButton,

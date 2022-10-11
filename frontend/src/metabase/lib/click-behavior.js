@@ -2,15 +2,14 @@ import _ from "underscore";
 import { getIn } from "icepick";
 import { t, ngettext, msgid } from "ttag";
 
-import { isDate } from "metabase/lib/schema_metadata";
 import { parseTimestamp } from "metabase/lib/time";
 import { formatDateTimeForParameter } from "metabase/lib/formatting/date";
+import { isValidImplicitActionClickBehavior } from "metabase/writeback/utils";
 import {
   dimensionFilterForParameter,
   variableFilterForParameter,
-} from "metabase/parameters/utils/filters";
-import { isValidImplicitActionClickBehavior } from "metabase/writeback/utils";
-import { isa } from "metabase-lib/lib/types/utils/isa";
+} from "metabase-lib/lib/parameters/utils/filters";
+import { isa, isDate } from "metabase-lib/lib/types/utils/isa";
 import { TYPE } from "metabase-lib/lib/types/constants";
 import Question from "metabase-lib/lib/Question";
 import TemplateTagVariable from "metabase-lib/lib/variables/TemplateTagVariable";

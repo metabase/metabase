@@ -10,6 +10,14 @@ import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils"
 import { getColumnCardinality } from "metabase/visualizations/lib/utils";
 import { formatColumn } from "metabase/lib/formatting";
 
+import ChartSettingOrderedColumns from "metabase/visualizations/components/settings/ChartSettingOrderedColumns";
+import ChartSettingsTableFormatting, {
+  isFormattable,
+} from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
+
+import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
+
 import {
   isMetric,
   isDimension,
@@ -18,15 +26,7 @@ import {
   isEmail,
   isImageURL,
   isAvatarURL,
-} from "metabase/lib/schema_metadata";
-
-import ChartSettingOrderedColumns from "metabase/visualizations/components/settings/ChartSettingOrderedColumns";
-import ChartSettingsTableFormatting, {
-  isFormattable,
-} from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
-
-import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
+} from "metabase-lib/lib/types/utils/isa";
 import { findColumnIndexForColumnSetting } from "metabase-lib/lib/queries/utils/dataset";
 import * as Q_DEPRECATED from "metabase-lib/lib/queries/utils";
 

@@ -1,5 +1,5 @@
 import { stripId } from "metabase/lib/formatting/strings";
-import { isFK, isPK } from "metabase-lib/lib/types/utils/isa";
+import { isTypeFK, isTypePK } from "metabase-lib/lib/types/utils/isa";
 
 export function foreignKeyDrill({ question, clicked }) {
   const query = question.query();
@@ -14,7 +14,7 @@ export function foreignKeyDrill({ question, clicked }) {
   }
 
   const { column } = clicked;
-  if (isPK(column.semantic_type) || !isFK(column.semantic_type)) {
+  if (isTypePK(column.semantic_type) || !isTypeFK(column.semantic_type)) {
     return null;
   }
 

@@ -144,6 +144,15 @@
   (let [svg-string (.asString (js/execute-fn-name @context "categorical_donut" rows (seq colors)))]
     (svg-string->bytes svg-string)))
 
+(defn gauge
+  "Clojure entrypoint to render a gauge chart. Returns a byte array of a png file"
+  [card data]
+  (let [js-res (js/execute-fn-name @context "gauge"
+                                   (json/generate-string card)
+                                   (json/generate-string data))
+        svg-string (.asString js-res)]
+    (svg-string->bytes svg-string)))
+
 (defn progress
   "Clojure entrypoint to render a progress bar. Returns a byte array of a png file"
   [value goal settings]

@@ -1,9 +1,9 @@
 import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { isBoolean, isDate } from "metabase/lib/schema_metadata";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import { DateShortcutOptions } from "metabase/query_builder/components/filters/pickers/DatePicker/DatePickerShortcutOptions";
+import { isBoolean, isDate } from "metabase-lib/lib/types/utils/isa";
 import StructuredQuery, {
   SegmentOption,
 } from "metabase-lib/lib/queries/StructuredQuery";

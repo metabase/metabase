@@ -2,7 +2,6 @@ import { createAction } from "redux-actions";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { loadCard } from "metabase/lib/card";
-import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
 import { shouldOpenInBlankWindow } from "metabase/lib/dom";
 import * as Urls from "metabase/lib/urls";
 import Utils from "metabase/lib/utils";
@@ -21,6 +20,7 @@ import {
 } from "metabase-lib/lib/queries/utils/card";
 import Query from "metabase-lib/lib/queries/Query";
 
+import { isAdHocModelQuestion } from "metabase-lib/lib/metadata/utils/models";
 import { trackNewQuestionSaved } from "../../analytics";
 import {
   getCard,

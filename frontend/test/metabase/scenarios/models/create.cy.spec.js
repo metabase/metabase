@@ -10,9 +10,14 @@ describe("scenarios > models > create", () => {
   it("creates a native query model via the New button", () => {
     cy.visit("/");
 
-    cy.findByText("New").click();
-    cy.findByText("Model").click();
-    cy.findByText("Use a native query").click();
+    goFromHomePageToNewNativeQueryModelPage();
+
+    // Cancel creation with confirmation modal
+    cy.findByText("Cancel").click();
+    cy.findByText("Yes").click();
+
+    // Now we will create a model
+    goFromHomePageToNewNativeQueryModelPage();
 
     cy.get(".ace_editor").should("be.visible").type("select * from ORDERS");
 
@@ -22,8 +27,12 @@ describe("scenarios > models > create", () => {
 
     cy.findByText("Save").click();
 
-    cy.findByText("Not now").click();
-
     cy.findByText("Saved");
   });
 });
+
+function goFromHomePageToNewNativeQueryModelPage() {
+  cy.findByText("New").click();
+  cy.findByText("Model").click();
+  cy.findByText("Use a native query").click();
+}
