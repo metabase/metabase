@@ -7,7 +7,7 @@ import {
 import { ColumnFormatter } from "metabase/visualizations/shared/types/format";
 import { getGroupedDataset } from "./data";
 
-jest.mock("metabase/lib/schema_metadata", () => ({
+jest.mock("metabase-lib/lib/types/utils/isa", () => ({
   isMetric: jest.fn((column: DatasetColumn) =>
     ["avg", "count"].includes(column.name),
   ),
