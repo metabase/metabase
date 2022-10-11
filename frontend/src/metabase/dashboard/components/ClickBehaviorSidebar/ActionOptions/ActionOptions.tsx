@@ -3,6 +3,8 @@ import { connect } from "react-redux";
 
 import { updateButtonActionMapping } from "metabase/dashboard/actions";
 
+import ActionPicker from "metabase/containers/ActionPicker";
+
 import type {
   ActionDashboardCard,
   ActionParametersMapping,

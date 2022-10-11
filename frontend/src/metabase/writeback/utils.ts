@@ -1,6 +1,3 @@
-import { action } from "@storybook/addon-actions";
-import { TYPE } from "metabase/lib/types";
-
 import type {
   ActionDashboardCard,
   BaseDashboardOrderedCard,
@@ -9,6 +6,7 @@ import type {
   WritebackAction,
 } from "metabase-types/api";
 import type { SavedCard } from "metabase-types/types/Card";
+import { TYPE } from "metabase-lib/lib/types/constants";
 import type Database from "metabase-lib/lib/metadata/Database";
 import type Field from "metabase-lib/lib/metadata/Field";
 

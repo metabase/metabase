@@ -86,15 +86,19 @@ export const HeaderContent = styled.div<HeaderContentProps>`
     opacity: ${props => (props.showSubHeader ? "1x" : "0")};
   }
 
-  &:hover,
-  &:focus-within {
-    ${HeaderCaptionContainer} {
-      top: 0;
-    }
-    ${HeaderLastEditInfoLabel} {
-      opacity: 1;
-    }
-  }
+  ${({ showSubHeader }) =>
+    showSubHeader &&
+    css`
+      &:hover,
+      &:focus-within {
+        ${HeaderCaptionContainer} {
+          top: 0;
+        }
+        ${HeaderLastEditInfoLabel} {
+          opacity: 1;
+        }
+      }
+    `}
 
   ${breakpointMaxSmall} {
     padding-top: 0;

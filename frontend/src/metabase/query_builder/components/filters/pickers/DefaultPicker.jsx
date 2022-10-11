@@ -6,14 +6,13 @@ import { t } from "ttag";
 
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 
+import { getCurrencySymbol } from "metabase/lib/formatting";
+
 import {
   getFilterArgumentFormatOptions,
   isFuzzyOperator,
-  isCurrency,
-} from "metabase/lib/schema_metadata";
-
-import { getCurrencySymbol } from "metabase/lib/formatting";
-
+} from "metabase-lib/lib/operators/utils";
+import { isCurrency } from "metabase-lib/lib/types/utils/isa";
 import { keyForColumn } from "metabase-lib/lib/queries/utils/dataset";
 import TextPicker from "./TextPicker";
 import SelectPicker from "./SelectPicker";

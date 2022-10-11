@@ -14,6 +14,8 @@ import Button from "metabase/core/components/Button";
 import CheckBox from "metabase/core/components/CheckBox";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Modal from "metabase/components/Modal";
+import Icon from "metabase/components/Icon";
+import { color } from "metabase/lib/colors";
 
 import { useConfirmation } from "metabase/hooks/use-confirmation";
 
@@ -49,6 +51,7 @@ import {
   InfoContentContainer,
   RowActionsContainer,
   RowActionButtonContainer,
+  RowIconContainer,
   LIST_ITEM_BORDER_DIVIDER_WIDTH,
 } from "./List.styled";
 
@@ -310,6 +313,9 @@ function List({
             {canSelectForBulkAction && renderBulkSelectionControl(rowIndex)}
             {renderListItemCell(rowIndex, firstColumnIndex)}
             <ListCell.Root>
+              <RowIconContainer>
+                <Icon name="document" color={color("text-light")} />
+              </RowIconContainer>
               <InfoContentContainer>
                 {secondColumnIndex !== null && (
                   <ListCell.Content
@@ -336,6 +342,9 @@ function List({
       return (
         <>
           {canSelectForBulkAction && renderBulkSelectionControl(rowIndex)}
+          <RowIconContainer>
+            <Icon name="document" color={color("text-light")} />
+          </RowIconContainer>
           {left.map(columnIndex => renderListItemCell(rowIndex, columnIndex))}
         </>
       );
@@ -541,7 +550,10 @@ function List({
         <div>
           <Table>
             <TableHeader>
-              <tr>{renderColumnHeaders()}</tr>
+              <tr>
+                <td></td> {/* for icon alignment */}
+                {renderColumnHeaders()}
+              </tr>
             </TableHeader>
             <TableBody>{paginatedRowIndexes.map(renderListItem)}</TableBody>
           </Table>

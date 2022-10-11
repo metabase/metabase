@@ -2,8 +2,8 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 
 import { DetailsTable } from "metabase/visualizations/components/ObjectDetail/ObjectDetailsTable";
-import { TYPE } from "metabase/lib/types";
 import testDataset from "__support__/testDataset";
+import { TYPE } from "metabase-lib/lib/types/constants";
 
 const objectDetailCard = {
   card: {
