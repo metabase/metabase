@@ -309,12 +309,17 @@
                .toString)
            zone-id])))
 
+(defmacro with-results-and-report-timezone-id
+  [timezone-id & body]
+  `(mt/with-results-timezone-id ~timezone-id
+     (mt/with-report-timezone-id ~timezone-id
+       ~@body)))
 
 (deftest convert-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
     (mt/dataset times-mixed-1
       (testing "timestamp without timezone columns"
-        (mt/with-results-timezone-id "UTC"
+        (with-results-and-report-timezone-id "UTC"
           (testing "convert from +05:00 to +09:00"
            (is (= "2004-03-19T13:19:09+09:00"
                   (test-date-convert [:convert-timezone [:field (mt/id :times :dt) nil]
@@ -324,7 +329,7 @@
             (is (= "2004-03-19T18:19:09+09:00"
                    (test-date-convert [:convert-timezone [:field (mt/id :times :dt) nil] (offset->zone "+09:00")])))))
 
-        (mt/with-results-timezone-id "Europe/Rome"
+        (with-results-and-report-timezone-id "Europe/Rome"
           (testing "from_tz should default to report_tz"
             (is (= "2004-03-19T17:19:09+09:00"
                    (test-date-convert [:convert-timezone [:field (mt/id :times :dt) nil] (offset->zone "+09:00")]))))
@@ -339,7 +344,7 @@
       ;; so the tests result is a bit different
       (if-not (#{:redshift} driver/*driver*)
         (testing "timestamp with time zone columns"
-          (mt/with-results-timezone-id "UTC"
+          (with-results-and-report-timezone-id "UTC"
             (testing "convert to +09:00"
               (is (= "2004-03-19T11:19:09+09:00"
                      (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")]))))
@@ -352,13 +357,13 @@
                                        (offset->zone "+09:00")
                                        (offset->zone "+00:00")])))))
 
-          (mt/with-results-timezone-id "Europe/Rome"
+          (with-results-and-report-timezone-id "Europe/Rome"
             (testing "the base timezone should be the timezone of column (Asia/Ho_Chi_Minh)"
               (is (= "2004-03-19T11:19:09+09:00"
                      (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")]))))))
 
         (testing "timestamp with time zone columns"
-          (mt/with-results-timezone-id "UTC"
+          (with-results-and-report-timezone-id "UTC"
             (testing "convert to +09:00"
               (is (= "2004-03-19T18:19:09+09:00"
                      (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")]))))
@@ -371,7 +376,7 @@
                                        (offset->zone "+09:00")
                                        (offset->zone "+00:00")])))))
 
-          (mt/with-results-timezone-id "Europe/Rome"
+          (with-results-and-report-timezone-id "Europe/Rome"
             (testing "the base timezone should be the timezone of column (Asia/Ho_Chi_Minh)"
               (is (= "2004-03-19T18:19:09+09:00"
                      (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")]))))))))))
@@ -389,16 +394,10 @@
                          #_:query
                          #_println))))
 
-#_(mt/with-results-timezone-id "UTC"
-      (mt/with-driver :bigquery-cloud-sdk
-           (mt/dataset times-mixed-1
-                       (-> (mt/mbql-query times {:fields      [[:field (mt/id :times :dt) nil]]
-                                                 :limit 1})
-                           mt/process-query
-                           mt/rows
-                           #_mt/compile
-                           #_:query
-                           #_println))))
+#_(mt/with-results-timezone-id "Europe/Rome"
+    (mt/with-driver :mysql
+         (mt/dataset times-mixed-1
+                     (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")]))))
 
 
 
@@ -415,8 +414,8 @@
    ["select * from v3_times_mixed_times.times;"])
 
 #_(dev/query-jdbc-db
-     [:redshift 'times-mixed-1]
-     ["select dt_tz from schema_92.times_mixed_times limit 1;"])
+     [:mysql 'times-mixed-1]
+     ["select @@session.time_zone;"])
 
 
 #_(dev/query-jdbc-db
