@@ -28,4 +28,3 @@
                            :breakout     [["datetime-field" ["field-id" ["Metabase Store" "public"
                                                                          "crm_survey_response" "created_at"]] "week"]],
                            :filter       ["<" ["field-id" ["Metabase Store" "public" "crm_survey_response" "nps"]] 9]}}))))))
-
