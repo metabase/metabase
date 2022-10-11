@@ -8,6 +8,7 @@
     [clojure.tools.logging :as log]
     [medley.core :as m]
     [metabase-enterprise.serialization.v2.models :as serdes.models]
+    [metabase.models :refer [Card Collection Dashboard DashboardCard]]
     [metabase.models.collection :as collection]
     [metabase.models.serialization.base :as serdes.base]
     [toucan.db :as db]
@@ -50,19 +51,19 @@
   Returns a data structure detailing the gaps. Use [[escape-report]] to output this data in a human-friendly format.
   Returns nil if there are no escaped values, which is useful for a test."
   [collection-ids]
-  (let [collection-set (->> (toucan.db/select 'Collection :id [:in collection-ids])
+  (let [collection-set (->> (toucan.db/select Collection :id [:in collection-ids])
                             (mapcat metabase.models.collection/descendant-ids)
                             set
                             (set/union (set collection-ids)))
-        dashboards     (db/select 'Dashboard :collection_id [:in collection-set])
+        dashboards     (db/select Dashboard :collection_id [:in collection-set])
         ;; All cards that are in this collection set.
         cards          (reduce set/union (for [coll-id collection-set]
-                                           (db/select-ids 'Card :collection_id coll-id)))
+                                           (db/select-ids Card :collection_id coll-id)))
 
         ;; Map of {dashboard-id #{DashboardCard}} for dashcards whose cards are outside the transitive collection set.
         escaped-dashcards  (into {}
                                  (for [dash  dashboards
-                                       :let [dcs (db/select 'DashboardCard :dashboard_id (:id dash))
+                                       :let [dcs (db/select DashboardCard :dashboard_id (:id dash))
                                              escapees (->> dcs
                                                            (filter :card_id) ; Text cards have a nil card_id
                                                            (filter (comp not cards :card_id))
@@ -71,7 +72,7 @@
                                    [(:id dash) escapees]))
         ;; {source-card-id target-card-id} the key is in the curated set, the value is not.
         all-cards          (for [id cards]
-                             (db/select-one ['Card :id :collection_id :dataset_query] :id id))
+                             (db/select-one [Card :id :collection_id :dataset_query] :id id))
         bad-source         (for [card all-cards
                                  :let [src (some-> card :dataset_query :query :source-table)]
                                  :when (and (string? src) (.startsWith src "card__"))
@@ -96,7 +97,7 @@
 
 (defn- collection-label [coll-id]
   (if coll-id
-    (let [collection (hydrate (db/select-one 'Collection :id coll-id) :ancestors)
+    (let [collection (hydrate (db/select-one Collection :id coll-id) :ancestors)
           names      (->> (conj (:ancestors collection) collection)
                           (map :name)
                           (str/join " > "))]
@@ -110,10 +111,10 @@
     (println "Dashboard cards outside the collection")
     (println "======================================")
     (doseq [[dash-id dashcards] escaped-dashcards
-            :let [dash-name (db/select-one-field :name 'Dashboard :id dash-id)]]
+            :let [dash-name (db/select-one-field :name Dashboard :id dash-id)]]
       (printf "Dashboard %d: %s\n" dash-id dash-name)
       (doseq [{:keys [card_id col row]} dashcards
-              :let [card (db/select-one ['Card :collection_id :name] :id card_id)]]
+              :let [card (db/select-one [Card :collection_id :name] :id card_id)]]
         (printf "    %dx%d \tCard %d: %s\n"    col row card_id (:name card))
         (printf "        from collection %s\n" (collection-label (:collection_id card))))))
 
@@ -121,8 +122,8 @@
     (println "Questions based on outside questions")
     (println "====================================")
     (doseq [[curated-id alien-id] escaped-questions
-            :let [curated-card (db/select-one ['Card :collection_id :name] :id curated-id)
-                  alien-card   (db/select-one ['Card :collection_id :name] :id alien-id)]]
+            :let [curated-card (db/select-one [Card :collection_id :name] :id curated-id)
+                  alien-card   (db/select-one [Card :collection_id :name] :id alien-id)]]
       (printf "%-4d      %s    (%s)\n  -> %-4d %s    (%s)\n"
               curated-id (:name curated-card) (collection-label (:collection_id curated-card))
               alien-id   (:name alien-card)   (collection-label (:collection_id alien-card))))))
