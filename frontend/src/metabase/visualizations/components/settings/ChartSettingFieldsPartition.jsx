@@ -16,7 +16,6 @@ import {
 class ChartSettingFieldsPartition extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { draggingColumn: null };
   }
 
   handleEditFormatting = (column, targetElement) => {
@@ -77,14 +76,12 @@ class ChartSettingFieldsPartition extends React.Component {
   };
 
   render() {
-    const value = _.mapObject(
-      this.state.displayedValue || this.props.value || {},
-      fieldRefs =>
-        fieldRefs
-          .map(field_ref =>
-            this.props.columns.find(col => _.isEqual(col.field_ref, field_ref)),
-          )
-          .filter(col => col != null),
+    const value = _.mapObject(this.props.value || {}, fieldRefs =>
+      fieldRefs
+        .map(field_ref =>
+          this.props.columns.find(col => _.isEqual(col.field_ref, field_ref)),
+        )
+        .filter(col => col != null),
     );
 
     return (
@@ -101,46 +98,42 @@ class ChartSettingFieldsPartition extends React.Component {
                 >
                   <Label color="medium">{title}</Label>
                   <Droppable droppableId={partitionName} type={partitionType}>
-                    {(provided, snapshot) => {
-                      return (
-                        <DroppableContainer
-                          {...provided.droppableProps}
-                          ref={provided.innerRef}
-                          isDragSource={!!snapshot.draggingFromThisWith}
-                        >
-                          {columns.length === 0 ? (
-                            <EmptyColumnPlaceholder>{t`Drag fields here`}</EmptyColumnPlaceholder>
-                          ) : (
-                            columns.map((col, index) => (
-                              <Draggable
-                                key={`draggable-${col.display_name}`}
-                                draggableId={`draggable-${col.display_name}`}
-                                index={index}
-                              >
-                                {provided => (
-                                  <div
-                                    ref={provided.innerRef}
-                                    {...provided.draggableProps}
-                                    {...provided.dragHandleProps}
-                                    className="mb1"
-                                  >
-                                    <Column
-                                      key={`${partitionName}-${col.display_name}`}
-                                      column={col}
-                                      index={index}
-                                      onEditFormatting={
-                                        this.handleEditFormatting
-                                      }
-                                    />
-                                  </div>
-                                )}
-                              </Draggable>
-                            ))
-                          )}
-                          {provided.placeholder}
-                        </DroppableContainer>
-                      );
-                    }}
+                    {(provided, snapshot) => (
+                      <DroppableContainer
+                        {...provided.droppableProps}
+                        ref={provided.innerRef}
+                        isDragSource={!!snapshot.draggingFromThisWith}
+                      >
+                        {columns.length === 0 ? (
+                          <EmptyColumnPlaceholder>{t`Drag fields here`}</EmptyColumnPlaceholder>
+                        ) : (
+                          columns.map((col, index) => (
+                            <Draggable
+                              key={`draggable-${col.display_name}`}
+                              draggableId={`draggable-${col.display_name}`}
+                              index={index}
+                            >
+                              {provided => (
+                                <div
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  {...provided.dragHandleProps}
+                                  className="mb1"
+                                >
+                                  <Column
+                                    key={`${partitionName}-${col.display_name}`}
+                                    column={col}
+                                    index={index}
+                                    onEditFormatting={this.handleEditFormatting}
+                                  />
+                                </div>
+                              )}
+                            </Draggable>
+                          ))
+                        )}
+                        {provided.placeholder}
+                      </DroppableContainer>
+                    )}
                   </Droppable>
                 </div>
               );
