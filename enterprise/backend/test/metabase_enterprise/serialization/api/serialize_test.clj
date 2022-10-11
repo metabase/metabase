@@ -6,8 +6,7 @@
     :as premium-features-test]
    [metabase.test :as mt]
    [metabase.util.files :as u.files]
-   [toucan.db :as db]
-   [clojure.string :as str]))
+   [toucan.db :as db]))
 
 (defn- do-serialize-data-model [f]
   (premium-features-test/with-premium-features #{:serialization}
