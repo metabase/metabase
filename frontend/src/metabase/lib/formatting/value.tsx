@@ -4,12 +4,12 @@ import Mustache from "mustache";
 import moment, { Moment } from "moment-timezone";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
+import { renderLinkTextForClick } from "metabase/lib/formatting/link";
+import { NULL_DISPLAY_VALUE, NULL_NUMERIC_VALUE } from "metabase/lib/constants";
 import {
   clickBehaviorIsValid,
   getDataFromClicked,
-} from "metabase/lib/click-behavior";
-import { renderLinkTextForClick } from "metabase/lib/formatting/link";
-import { NULL_DISPLAY_VALUE, NULL_NUMERIC_VALUE } from "metabase/lib/constants";
+} from "metabase-lib/lib/parameters/utils/click-behavior";
 import { rangeForValue } from "metabase-lib/lib/queries/utils/dataset";
 import {
   isBoolean,

@@ -8,13 +8,13 @@ import {
   setOrUnsetParameterValues,
   setParameterValue,
 } from "metabase/dashboard/actions";
+import { renderLinkURLForClick } from "metabase/lib/formatting/link";
+import * as Urls from "metabase/lib/urls";
 import {
   getDataFromClicked,
   getTargetForQueryParams,
   formatSourceForTarget,
-} from "metabase/lib/click-behavior";
-import { renderLinkURLForClick } from "metabase/lib/formatting/link";
-import * as Urls from "metabase/lib/urls";
+} from "metabase-lib/lib/parameters/utils/click-behavior";
 import Question from "metabase-lib/lib/Question";
 
 export default ({ question, clicked }) => {
