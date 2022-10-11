@@ -8,7 +8,7 @@
     [metabase.api.collection :as api.collection]
     [metabase.api.common :as api]
     [metabase.mbql.schema :as mbql.s]
-    [metabase.models :refer [App Collection Dashboard Table]]
+    [metabase.models :refer [App Collection Dashboard ModelAction Table]]
     [metabase.models.app.graph :as app.graph]
     [metabase.models.collection :as collection]
     [metabase.models.dashboard :as dashboard]
@@ -108,6 +108,10 @@
                                                                       (cond-> ;; card
                                                                         (not (:dataset card))
                                                                         (update-in [:dataset_query :query :source_table] #(str "card__" %)))))]
+                                  (when (:dataset card)
+                                    (db/insert-many! ModelAction [{:card_id (:id card) :slug "insert" :requires_pk false}
+                                                                  {:card_id (:id card) :slug "update" :requires_pk true}
+                                                                  {:card_id (:id card) :slug "delete" :requires_pk true}]))
                                   (assoc accum (into ["scaffold-target-id"] scaffold-target) (:id card))))
                               {}
                               cards)]

@@ -2,7 +2,12 @@
   (:require
     [clojure.test :refer [deftest is testing]]
     [medley.core :as m]
-    [metabase.models :refer [App Card Collection Dashboard Permissions]]
+    [metabase.models :refer [App
+                             Card
+                             Collection
+                             Dashboard
+                             ModelAction
+                             Permissions]]
     [metabase.models.collection.graph :as graph]
     [metabase.models.permissions :as perms]
     [metabase.models.permissions-group :as perms-group]
@@ -150,9 +155,9 @@
     (testing "Golden path"
       (mt/with-temporary-setting-values [all-users-app-permission :read]
         (let [app (mt/user-http-request
-                   :crowberto :post 200 "app/scaffold"
-                   {:table-ids [(data/id :venues)]
-                    :app-name "My test app"})
+                    :crowberto :post 200 "app/scaffold"
+                    {:table-ids [(data/id :venues)]
+                     :app-name "My test app"})
               pages (m/index-by :name (hydrate (db/select Dashboard :collection_id (:collection_id app)) :ordered_cards))
               list-page (get pages "Venues List")
               detail-page (get pages "Venues Detail")]
@@ -166,6 +171,18 @@
                                                                     :targetId (:id detail-page)}}}
                                          {}]}
                         list-page))
+          (testing "Implicit actions are created"
+            (is (partial=
+                  [{:slug "insert"}
+                   {:slug "update"}
+                   {:slug "delete"}]
+                  (db/select ModelAction {:where [:= :model_action.card_id
+                                                  {:select [:id]
+                                                   :from [Card]
+                                                   :where [:and
+                                                           [:= :collection_id (:collection_id app)]
+                                                           [:= :dataset true]]}]
+                                          :order-by [:id]}))))
           (is (partial= {:groups {(:id (perms-group/all-users)) {(:collection_id app) :read}}}
                         (graph/graph))
               "''All Users'' should have the default permission on the app collection"))))
