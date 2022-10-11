@@ -63,10 +63,15 @@ export const DashboardBody = styled.div`
 `;
 
 export const HeaderContainer = styled.header`
-  background-color: white;
-  border-bottom: 1px solid ${color("border")};
   position: relative;
   z-index: 2;
+
+  ${({ isDataApp }) =>
+    !isDataApp &&
+    css`
+      background-color: ${color("bg-white")};
+      border-bottom: 1px solid ${color("border")};
+    `}
 
   ${({ isFullscreen }) =>
     isFullscreen &&
