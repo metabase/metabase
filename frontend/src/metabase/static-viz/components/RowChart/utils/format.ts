@@ -1,6 +1,6 @@
 import { RowValue, VisualizationSettings } from "metabase-types/api";
 import { ChartColumns } from "metabase/visualizations/lib/graph/columns";
-import { getStackingOffset } from "metabase/visualizations/lib/settings/stacking";
+import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import { formatNumber, formatPercent } from "metabase/static-viz/lib/numbers";
 import { ChartTicksFormatters } from "metabase/visualizations/shared/types/format";
 
@@ -26,7 +26,7 @@ export const getStaticFormatters = (
   const xTickFormatter = (value: any) =>
     formatNumber(value, metricColumnSettings);
 
-  const shouldFormatXTicksAsPercent = getStackingOffset(settings) === "expand";
+  const shouldFormatXTicksAsPercent = getStackOffset(settings) === "expand";
 
   return {
     yTickFormatter,

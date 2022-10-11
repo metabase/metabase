@@ -11,7 +11,7 @@ import { ChartGoal } from "../../types/settings";
 import {
   getMaxYValuesCount,
   getChartMargin,
-  StackingOffset,
+  StackOffset,
   calculateStackedBars,
   calculateNonStackedBars,
   getRowChartGoal,
@@ -35,7 +35,7 @@ export interface RowChartProps<TDatum> {
 
   goal: ChartGoal | null;
   theme: RowChartTheme;
-  stackingOffset: StackingOffset;
+  stackOffset: StackOffset;
   shouldShowDataLabels?: boolean;
 
   yLabel?: string;
@@ -65,7 +65,7 @@ export const RowChart = <TDatum,>({
 
   goal,
   theme,
-  stackingOffset,
+  stackOffset,
   shouldShowDataLabels,
 
   xLabel,
@@ -92,10 +92,10 @@ export const RowChart = <TDatum,>({
       getMaxYValuesCount(
         height,
         MIN_BAR_HEIGHT,
-        stackingOffset != null,
+        stackOffset != null,
         multipleSeries.length,
       ),
-    [height, multipleSeries.length, stackingOffset],
+    [height, multipleSeries.length, stackOffset],
   );
 
   const trimmedData = trimData?.(data, maxYValues) ?? data;
@@ -138,12 +138,12 @@ export const RowChart = <TDatum,>({
 
   const { xScale, yScale, bars } = useMemo(
     () =>
-      stackingOffset != null
+      stackOffset != null
         ? calculateStackedBars<TDatum>({
             data: trimmedData,
             multipleSeries,
             additionalXValues,
-            stackingOffset,
+            stackOffset,
             innerWidth,
             innerHeight,
             seriesColors,
@@ -164,7 +164,7 @@ export const RowChart = <TDatum,>({
       innerWidth,
       multipleSeries,
       seriesColors,
-      stackingOffset,
+      stackOffset,
       trimmedData,
       xScaleType,
     ],

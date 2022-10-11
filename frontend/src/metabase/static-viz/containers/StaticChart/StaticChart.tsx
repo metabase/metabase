@@ -1,8 +1,8 @@
 import React from "react";
 
 import { createColorGetter } from "metabase/static-viz/lib/colors";
-import { ROW_CHART_TYPE } from "metabase/static-viz/components/RowChart/constants";
 import RowChart from "metabase/static-viz/components/RowChart";
+import { ROW_CHART_TYPE } from "metabase/static-viz/components/RowChart/constants";
 import Gauge from "metabase/static-viz/components/Gauge";
 import { GAUGE_CHART_TYPE } from "metabase/static-viz/components/Gauge/constants";
 import CategoricalDonutChart from "metabase/static-viz/components/CategoricalDonutChart";

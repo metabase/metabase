@@ -323,9 +323,9 @@
     "test-visual-open": "percy exec -- yarn test-cypress-open",
     "test-visual": "yarn build && ./bin/build-for-test && yarn test-visual-run",
     "prepare": "husky install",
-    "storybook": "start-storybook -p 6006",
-    "build-storybook": "build-storybook",
-    "chromatic": "chromatic",
+    "storybook": "yarn build:cljs && start-storybook -p 6006",
+    "build-storybook": "yarn build:cljs && build-storybook",
+    "chromatic": "yarn build:cljs && chromatic",
     "docs-lint-links": "find docs -type f -name '*.md' -print0 | xargs -0 markdown-link-check --quiet --config .mlc_config.json"
   },
   "lint-staged": {

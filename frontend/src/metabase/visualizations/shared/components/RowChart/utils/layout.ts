@@ -88,9 +88,9 @@ export const getMaxYValuesCount = (
   return Math.max(Math.floor(viewportHeight / singleValueHeight), 1);
 };
 
-export type StackingOffset = "none" | "expand" | null;
+export type StackOffset = "none" | "expand" | null;
 
-const StackingOffsetFn = {
+const StackOffsetFn = {
   none: stackOffsetNone,
   expand: stackOffsetExpand,
 } as const;
@@ -133,7 +133,7 @@ const getStackedBar = <TDatum>(
 type CalculatedStackedChartInput<TDatum> = {
   data: TDatum[];
   multipleSeries: Series<TDatum>[];
-  stackingOffset: StackingOffset;
+  stackOffset: StackOffset;
   additionalXValues: number[];
   innerWidth: number;
   innerHeight: number;
@@ -144,7 +144,7 @@ type CalculatedStackedChartInput<TDatum> = {
 export const calculateStackedBars = <TDatum>({
   data,
   multipleSeries,
-  stackingOffset,
+  stackOffset,
   additionalXValues,
   innerWidth,
   innerHeight,
@@ -159,7 +159,7 @@ export const calculateStackedBars = <TDatum>({
   const d3Stack = stack<TDatum>()
     .keys(multipleSeries.map(s => s.seriesKey))
     .value((datum, seriesKey) => seriesByKey[seriesKey].xAccessor(datum) ?? 0)
-    .offset(StackingOffsetFn[stackingOffset ?? "none"]);
+    .offset(StackOffsetFn[stackOffset ?? "none"]);
 
   const stackedSeries = d3Stack(data);
 
@@ -184,7 +184,7 @@ export const calculateStackedBars = <TDatum>({
     return data.map((_datum, datumIndex) => {
       const stackedDatum = stackedSeries[seriesIndex][datumIndex];
       const shouldIncludeValue =
-        seriesIndex === multipleSeries.length - 1 && stackingOffset === "none";
+        seriesIndex === multipleSeries.length - 1 && stackOffset === "none";
 
       return getStackedBar(
         stackedDatum,

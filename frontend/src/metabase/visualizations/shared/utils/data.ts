@@ -73,12 +73,11 @@ const groupDataByDimensions = (
         chartColumns.breakout.column,
       );
 
-      datum.breakout ??= {};
       datum.breakout = {
         ...datum.breakout,
         [breakoutName]: sumMetrics(
           rowMetrics,
-          datum.breakout[breakoutName] ?? {},
+          datum.breakout?.[breakoutName] ?? {},
         ),
       };
     }
@@ -94,6 +93,7 @@ export const getGroupedDataset = (
   chartColumns: ChartColumns,
   columnFormatter: ColumnFormatter,
 ): GroupedDataset => {
+  // We are grouping all metrics because they are used in chart tooltips
   const allMetricColumns = data.cols
     .filter(isMetric)
     .map(column => column.name);

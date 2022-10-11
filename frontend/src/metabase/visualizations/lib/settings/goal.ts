@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import { VisualizationSettings } from "metabase-types/api";
 import { ChartGoal } from "metabase/visualizations/shared/types/settings";
-import { getStackingOffset } from "./stacking";
+import { getStackOffset } from "./stacking";
 
 const getGoalValue = (value: number, isPercent: boolean) =>
   isPercent ? value / 100 : value;
@@ -12,7 +12,7 @@ export const getChartGoal = (
   if (!settings["graph.show_goal"]) {
     return null;
   }
-  const isPercent = getStackingOffset(settings) === "expand";
+  const isPercent = getStackOffset(settings) === "expand";
 
   return {
     value: getGoalValue(settings["graph.goal_value"] ?? 0, isPercent),

@@ -5,7 +5,7 @@ import {
   TextMeasurer,
 } from "metabase/visualizations/shared/types/measure-text";
 import { measureText } from "metabase/static-viz/lib/text";
-import { getStackingOffset } from "metabase/visualizations/lib/settings/stacking";
+import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import {
   getGroupedDataset,
   trimData,
@@ -54,9 +54,9 @@ const StaticRowChart = ({ data, settings, getColor }: StaticRowChartProps) => {
   );
   const goal = getChartGoal(settings);
   const theme = getStaticChartTheme(getColor);
-  const stackingOffset = getStackingOffset(settings);
+  const stackOffset = getStackOffset(settings);
   const shouldShowDataLabels =
-    settings["graph.show_values"] && stackingOffset !== "expand";
+    settings["graph.show_values"] && stackOffset !== "expand";
 
   const tickFormatters = getStaticFormatters(chartColumns, settings);
 
@@ -73,7 +73,7 @@ const StaticRowChart = ({ data, settings, getColor }: StaticRowChartProps) => {
         seriesColors={seriesColors}
         goal={goal}
         theme={theme}
-        stackingOffset={stackingOffset}
+        stackOffset={stackOffset}
         shouldShowDataLabels={shouldShowDataLabels}
         tickFormatters={tickFormatters}
         labelsFormatter={labelsFormatter}

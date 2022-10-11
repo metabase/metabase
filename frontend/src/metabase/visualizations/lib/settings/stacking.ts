@@ -1,6 +1,6 @@
 import { VisualizationSettings } from "metabase-types/api";
 
-export const getStackingOffset = (settings: VisualizationSettings) => {
+export const getStackOffset = (settings: VisualizationSettings) => {
   if (settings["stackable.stack_type"] == null) {
     return null;
   }

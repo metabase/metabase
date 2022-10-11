@@ -1,6 +1,9 @@
 import { GAUGE_CHART_TYPE } from "metabase/static-viz/components/Gauge/constants";
 import { GAUGE_CHART_DEFAULT_OPTIONS } from "metabase/static-viz/components/Gauge/constants.dev";
-import { ROW_CHART_TYPE } from "metabase/static-viz/components/RowChart/constants";
+import {
+  ROW_CHART_TYPE,
+  ROW_CHART_DEFAULT_OPTIONS,
+} from "metabase/static-viz/components/RowChart/constants";
 import {
   CATEGORICAL_DONUT_CHART_DEFAULT_OPTIONS,
   CATEGORICAL_DONUT_CHART_TYPE,
@@ -42,4 +45,5 @@ export const STATIC_CHART_DEFAULT_OPTIONS = [
   PROGRESS_BAR_DEFAULT_DATA_1,
   LINE_AREA_BAR_DEFAULT_OPTIONS_1,
   FUNNEL_CHART_DEFAULT_OPTIONS,
+  ROW_CHART_DEFAULT_OPTIONS,
 ] as const;
