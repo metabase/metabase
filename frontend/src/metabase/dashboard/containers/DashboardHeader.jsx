@@ -34,10 +34,13 @@ import {
 } from "./DashboardHeader.styled";
 
 const mapStateToProps = (state, props) => {
+  const isDataApp = props.dashboard.is_app_page;
+  const isShowingDashboardInfoSidebar =
+    !isDataApp && getIsShowDashboardInfoSidebar(state);
   return {
     isBookmarked: getIsBookmarked(state, props),
     isNavBarOpen: getIsNavbarOpen(state),
-    isShowingDashboardInfoSidebar: getIsShowDashboardInfoSidebar(state),
+    isShowingDashboardInfoSidebar,
   };
 };
 
@@ -196,6 +199,7 @@ class DashboardHeader extends Component {
       closeSidebar,
     } = this.props;
 
+    const isDataAppPage = dashboard.is_app_page;
     const canEdit = dashboard.can_write && isEditable && !!dashboard;
 
     const buttons = [];
@@ -361,24 +365,26 @@ class DashboardHeader extends Component {
             onDeleteBookmark={deleteBookmark}
             isBookmarked={isBookmarked}
           />,
-          <Tooltip key="dashboard-info-button" tooltip={t`More info`}>
-            <DashboardHeaderButton
-              icon="info"
-              isActive={isShowingDashboardInfoSidebar}
-              onClick={() =>
-                isShowingDashboardInfoSidebar
-                  ? closeSidebar()
-                  : setSidebar({ name: SIDEBAR_NAME.info })
-              }
-            />
-          </Tooltip>,
+          !isDataAppPage && (
+            <Tooltip key="dashboard-info-button" tooltip={t`More info`}>
+              <DashboardHeaderButton
+                icon="info"
+                isActive={isShowingDashboardInfoSidebar}
+                onClick={() =>
+                  isShowingDashboardInfoSidebar
+                    ? closeSidebar()
+                    : setSidebar({ name: SIDEBAR_NAME.info })
+                }
+              />
+            </Tooltip>
+          ),
           <EntityMenu
             key="dashboard-action-menu-button"
             items={extraButtons}
             triggerIcon="ellipsis"
             tooltip={t`Move, archive, and more...`}
           />,
-        ],
+        ].filter(Boolean),
       );
     }
 
@@ -395,6 +401,7 @@ class DashboardHeader extends Component {
       setSidebar,
     } = this.props;
 
+    const isDataAppPage = dashboard.is_app_page;
     const hasLastEditInfo = dashboard["last-edit-info"] != null;
 
     return (
@@ -405,7 +412,9 @@ class DashboardHeader extends Component {
         dashboard={dashboard}
         isEditing={isEditing}
         isBadgeVisible={!isEditing && !isFullscreen && isAdditionalInfoVisible}
-        isLastEditInfoVisible={hasLastEditInfo && isAdditionalInfoVisible}
+        isLastEditInfoVisible={
+          !isDataAppPage && hasLastEditInfo && isAdditionalInfoVisible
+        }
         isEditingInfo={isEditing}
         isNavBarOpen={this.props.isNavBarOpen}
         headerButtons={this.getHeaderButtons()}

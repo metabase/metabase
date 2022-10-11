@@ -8,7 +8,7 @@
     [metabase.api.collection :as api.collection]
     [metabase.api.common :as api]
     [metabase.mbql.schema :as mbql.s]
-    [metabase.models :refer [App Collection Dashboard Table]]
+    [metabase.models :refer [App Collection Dashboard ModelAction Table]]
     [metabase.models.app.graph :as app.graph]
     [metabase.models.collection :as collection]
     [metabase.models.dashboard :as dashboard]
@@ -108,6 +108,10 @@
                                                                       (cond-> ;; card
                                                                         (not (:dataset card))
                                                                         (update-in [:dataset_query :query :source_table] #(str "card__" %)))))]
+                                  (when (:dataset card)
+                                    (db/insert-many! ModelAction [{:card_id (:id card) :slug "insert" :requires_pk false}
+                                                                  {:card_id (:id card) :slug "update" :requires_pk true}
+                                                                  {:card_id (:id card) :slug "delete" :requires_pk true}]))
                                   (assoc accum (into ["scaffold-target-id"] scaffold-target) (:id card))))
                               {}
                               cards)]
@@ -194,7 +198,7 @@
                                  :query (cond-> {:source_table table-id}
                                           order-by-field-id (assoc :order_by [["desc", ["field", order-by-field-id, nil]]]))}}
                 {:scaffold-target ["card" table-id page-type]
-                 :name (format "Query %s %s"
+                 :name (format "%s %s"
                                (or (:display_name table) (:name table))
                                (get-in page-type-display [page-type :name]))
                  :display (get-in page-type-display [page-type :display])
@@ -215,7 +219,7 @@
                               (get-in page-type-display [page-type :name]))
                 :scaffold-target ["page" table-id page-type]
                 :ordered_cards (if (= "list" page-type)
-                                 [{:size_y 8 :size_x 18 :row 1 :col 0
+                                 [{:size_y 12 :size_x 18 :row 1 :col 0
                                    :card_id ["scaffold-target-id" "card" table-id page-type]
                                    :visualization_settings {"click_behavior"
                                                             {"type" "link"
@@ -232,13 +236,13 @@
                                    :visualization_settings {"virtual_card" {"display" "action"}
                                                             "button.label" (i18n/tru "New"),
                                                             "action_slug" "insert"}}]
-                                 [{:size_y 8 :size_x 18 :row 1 :col 0
+                                 [{:size_y 12 :size_x 18 :row 1 :col 0
                                    :parameter_mappings [{"parameter_id" (str "scaffold_" table-id)
                                                          "card_id" ["scaffold-target-id" "card" table-id "detail"]
                                                          "target" ["variable", ["template-tag", pk-field-name]]}]
                                    :card_id ["scaffold-target-id" "card" table-id "detail"]
                                    :scaffold-target ["dashcard" table-id]}
-                                  {:size_y 1 :size_x 2 :row 0 :col 0
+                                  {:size_y 1 :size_x 3 :row 0 :col 0
                                    :visualization_settings {"virtual_card" {"display" "action"}
                                                             "button.label" (i18n/tru "← Back to list"),
                                                             "click_behavior" {"type" "link" "linkType" "page" "targetId" ["scaffold-target-id" "page" table-id "list"]}}}
