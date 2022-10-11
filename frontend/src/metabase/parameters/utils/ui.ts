@@ -32,12 +32,14 @@ export function buildHiddenParametersSlugSet(
 
 export function getVisibleParameters(
   parameters: UiParameter[],
-  hiddenParameterSlugs: string | undefined,
+  hiddenParameterSlugs?: string,
 ) {
   const hiddenParametersSlugSet =
     buildHiddenParametersSlugSet(hiddenParameterSlugs);
 
-  return parameters.filter(p => !hiddenParametersSlugSet.has(p.slug));
+  return parameters.filter(
+    p => !hiddenParametersSlugSet.has(p.slug) && !p.hidden,
+  );
 }
 
 export function getParameterWidgetTitle(parameter: UiParameter) {
