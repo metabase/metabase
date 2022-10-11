@@ -44,10 +44,11 @@
    {:types      (constantly {:definition :metric-segment-definition})
     :properties (constantly {:timestamped? true
                              :entity_id    true})
-    :pre-update pre-update})
+    :pre-update pre-update}))
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :table)])})
+(defmethod serdes.hash/identity-hash-fields Metric
+  [_metric]
+  [:name (serdes.hash/hydrated-hash :table)])
 
 
 ;;; --------------------------------------------------- REVISIONS ----------------------------------------------------

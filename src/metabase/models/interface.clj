@@ -454,3 +454,5 @@
          (alter-meta! (var ~model) assoc ::defmodel-hash ~(hash &form))))))
 
 (alter-var-root #'models/defmodel (constantly @#'defmodel))
+(alter-meta! #'models/defmodel (fn [mta]
+                                 (merge mta (select-keys (meta #'defmodel) [:file :line :column :ns]))))

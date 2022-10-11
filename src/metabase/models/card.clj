@@ -324,10 +324,11 @@
           :pre-insert     (comp populate-query-fields pre-insert populate-result-metadata maybe-normalize-query)
           :post-insert    post-insert
           :pre-delete     pre-delete
-          :post-select    public-settings/remove-public-uuid-if-public-sharing-is-disabled})
+          :post-select    public-settings/remove-public-uuid-if-public-sharing-is-disabled}))
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :collection)])})
+(defmethod serdes.hash/identity-hash-fields Card
+  [_card]
+  [:name (serdes.hash/hydrated-hash :collection)])
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 (defmethod serdes.base/extract-query "Card" [_ {:keys [user]}]

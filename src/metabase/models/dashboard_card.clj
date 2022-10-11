@@ -48,14 +48,15 @@
                                    :entity_id    true})
           :types      (constantly {:parameter_mappings     :parameters-list
                                    :visualization_settings :visualization-settings})
-          :pre-insert pre-insert})
+          :pre-insert pre-insert}))
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [(serdes.hash/hydrated-hash :card)
-                                      (comp serdes.hash/identity-hash
-                                            #(db/select-one 'Dashboard :id %)
-                                            :dashboard_id)
-                                      :visualization_settings])})
+(defmethod serdes.hash/identity-hash-fields DashboardCard
+  [_dashboard-card]
+  [(serdes.hash/hydrated-hash :card)
+   (comp serdes.hash/identity-hash
+         #(db/select-one 'Dashboard :id %)
+         :dashboard_id)
+   :visualization_settings])
 
 
 ;;; --------------------------------------------------- HYDRATION ----------------------------------------------------
