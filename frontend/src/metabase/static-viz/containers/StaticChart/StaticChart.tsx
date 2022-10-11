@@ -1,6 +1,8 @@
 import React from "react";
 
 import { createColorGetter } from "metabase/static-viz/lib/colors";
+import RowChart from "metabase/static-viz/components/RowChart";
+import { ROW_CHART_TYPE } from "metabase/static-viz/components/RowChart/constants";
 import Gauge from "metabase/static-viz/components/Gauge";
 import { GAUGE_CHART_TYPE } from "metabase/static-viz/components/Gauge/constants";
 import CategoricalDonutChart from "metabase/static-viz/components/CategoricalDonutChart";
@@ -27,6 +29,8 @@ const StaticChart = ({ type, options }: StaticChartProps) => {
       return <WaterfallChart {...chartProps} />;
     case GAUGE_CHART_TYPE:
       return <Gauge {...chartProps} />;
+    case ROW_CHART_TYPE:
+      return <RowChart {...chartProps} />;
     case PROGRESS_BAR_TYPE:
       return <ProgressBar {...chartProps} />;
     case LINE_AREA_BAR_CHART_TYPE:
