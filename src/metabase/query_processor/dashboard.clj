@@ -1,8 +1,7 @@
 (ns metabase.query-processor.dashboard
   "Code for running a query in the context of a specific DashboardCard."
   (:require [clojure.tools.logging :as log]
-            [medley.core :as m]
-            [metabase.api.common :as api]
+            [medley.core :as m] [metabase.api.common :as api]
             [metabase.driver.common.parameters.operators :as params.ops]
             [metabase.mbql.normalize :as mbql.normalize]
             [metabase.models.dashboard :as dashboard :refer [Dashboard]]

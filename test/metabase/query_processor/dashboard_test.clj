@@ -46,6 +46,20 @@
                      (qp/process-query (assoc query :async? false) info))
      options)))
 
+(deftest card-and-dashcard-id-validation-test
+  (mt/with-temp* [Card          [{card-id :id} {:dataset_query (mt/mbql-query venues)}]
+                  Dashboard     [{dashboard-id :id} {:parameters []}]
+                  DashboardCard [{dashcard-id :id} {:card_id card-id, :dashboard_id dashboard-id}]]
+    (testing "A 404 error should be thrown if the card-id is not valid for the dashboard"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Not found"
+                              (run-query-for-dashcard (inc card-id) dashcard-id dashboard-id))))
+
+    (testing "A 404 error should be thrown if the dashcard-id is not valid for the dashboard"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Not found"
+                              (run-query-for-dashcard card-id (inc dashcard-id) dashboard-id))))))
+
 (deftest default-value-precedence-test-field-filters
   (testing "If both Dashboard and Card have default values for a Field filter parameter, Card defaults should take precedence\n"
     (mt/dataset sample-dataset
