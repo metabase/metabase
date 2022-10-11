@@ -165,11 +165,11 @@
                                      {:page_id (:id detail-page) :hidden true :indent 1}]
                          :dashboard_id (:id list-page)}
                         app))
-          (is (partial= {:ordered_cards [{}
-                                         {:visualization_settings {:click_behavior
+          (is (partial= {:ordered_cards [{:visualization_settings {:click_behavior
                                                                    {:type "link",
                                                                     :linkType "page",
-                                                                    :targetId (:id detail-page)}}}]}
+                                                                    :targetId (:id detail-page)}}}
+                                         {}]}
                         list-page))
           (testing "Implicit actions are created"
             (is (partial=
