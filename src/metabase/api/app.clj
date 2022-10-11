@@ -226,7 +226,7 @@
                                                             {"type" "link"
                                                              "linkType" "page"
                                                              "parameterMapping" {(str "scaffold_" table-id) {"source" {"type" "column",
-                                                                                                                       "id" pk-field-name
+                                                                                                                       "id" (:name pk-field)
                                                                                                                        "name" (:name pk-field)},
                                                                                                              "target" {"type" "parameter",
                                                                                                                        "id" (str "scaffold_" table-id)},
