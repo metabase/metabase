@@ -72,7 +72,7 @@
                          :instance    instance
                          :primary-key primary-key})))
       (let [new-hash (serdes.hash/identity-hash instance)]
-        (log/infof #_debugf "Update %s %s entity ID => %s" (name model) (pr-str pk-value) (pr-str new-hash))
+        (log/infof "Update %s %s entity ID => %s" (name model) (pr-str pk-value) (pr-str new-hash))
         (db/update! model pk-value :entity_id new-hash))
       {:update-count 1})
     (catch Throwable e
