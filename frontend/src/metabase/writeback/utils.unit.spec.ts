@@ -1,6 +1,7 @@
 import {
   createMockDashboardActionButton,
   createMockQueryAction,
+  createMockImplictQueryAction,
 } from "metabase-types/api/mocks";
 import type {
   ActionDashboardCard,
@@ -31,35 +32,23 @@ const PARAMETER_MAPPINGS: ActionParametersMapping[] = [
 ];
 
 const IMPLICIT_INSERT_ACTION = createMockDashboardActionButton({
-  action: undefined,
+  action: createMockImplictQueryAction({ slug: "insert" }),
   visualization_settings: {
-    click_behavior: {
-      type: "action",
-      actionType: "insert",
-      tableId: 5,
-    },
+    action_slug: "insert",
   },
 });
 
 const IMPLICIT_UPDATE_ACTION = createMockDashboardActionButton({
-  action: undefined,
+  action: createMockImplictQueryAction({ slug: "update" }),
   visualization_settings: {
-    click_behavior: {
-      type: "action",
-      actionType: "update",
-      objectDetailDashCardId: 5,
-    },
+    action_slug: "update",
   },
 });
 
 const IMPLICIT_DELETE_ACTION = createMockDashboardActionButton({
-  action: undefined,
+  action: createMockImplictQueryAction({ slug: "delete" }),
   visualization_settings: {
-    click_behavior: {
-      type: "action",
-      actionType: "delete",
-      objectDetailDashCardId: 5,
-    },
+    action_slug: "delete",
   },
 });
 
@@ -174,8 +163,8 @@ describe("isImplicitActionButton", () => {
   });
 
   IMPLICIT_ACTIONS.forEach(({ action, type }) => {
-    it(`returns true for implicit ${type} action`, () => {
-      expect(isImplicitActionButton(action)).toBe(true);
+    it(`returns false for implicit ${type} action`, () => {
+      expect(isImplicitActionButton(action)).toBe(false);
     });
   });
 });
