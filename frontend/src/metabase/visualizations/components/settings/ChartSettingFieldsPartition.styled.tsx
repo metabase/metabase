@@ -21,16 +21,22 @@ export const FieldPartitionColumn = styled(
 `;
 
 interface DroppableContainerProps {
-  isDraggingOver: boolean;
   isDragSource: boolean;
 }
 
 export const DroppableContainer = styled.div<DroppableContainerProps>`
-  background-color: ${({ isDraggingOver, isDragSource }) =>
-    isDraggingOver
-      ? lighten("brand")
-      : isDragSource
-      ? color("border")
-      : "none"};
+  background-color: ${({ isDragSource }) =>
+    isDragSource ? color("border") : "none"};
   border-radius: 0.5rem;
+  min-height: 58px;
+  position: relative;
+`;
+
+export const EmptyColumnPlaceholder = styled.div`
+  position: absolute;
+  width: 100%;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  background-color: ${color("bg-light")};
+  color: ${color("text-medium")};
 `;

@@ -4,13 +4,13 @@ import cx from "classnames";
 import { t } from "ttag";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import _ from "underscore";
-import { assocIn } from "icepick";
 import Label from "metabase/components/type/Label";
 
 import { keyForColumn } from "metabase-lib/lib/queries/utils/dataset";
 import {
   DroppableContainer,
   FieldPartitionColumn,
+  EmptyColumnPlaceholder,
 } from "./ChartSettingFieldsPartition.styled";
 
 class ChartSettingFieldsPartition extends React.Component {
@@ -86,16 +86,14 @@ class ChartSettingFieldsPartition extends React.Component {
           )
           .filter(col => col != null),
     );
-    console.log(this.props);
 
     return (
       <DragDropContext onDragEnd={this.handleDragEnd}>
         <div>
           {this.props.partitions.map(
-            ({ name: partitionName, title, columnFilter }, index) => {
+            ({ name: partitionName, title }, index) => {
               const columns = value[partitionName];
               const partitionType = this.getPartitionType(partitionName);
-              console.log(partitionType);
               return (
                 <div
                   className={cx("py2", { "border-top": index > 0 })}
@@ -104,16 +102,14 @@ class ChartSettingFieldsPartition extends React.Component {
                   <Label color="medium">{title}</Label>
                   <Droppable droppableId={partitionName} type={partitionType}>
                     {(provided, snapshot) => {
-                      console.log(partitionName, snapshot);
                       return (
                         <DroppableContainer
                           {...provided.droppableProps}
                           ref={provided.innerRef}
-                          isDraggingOver={snapshot.isDraggingOver}
                           isDragSource={!!snapshot.draggingFromThisWith}
                         >
                           {columns.length === 0 ? (
-                            <div className="p2 bg-light rounded text-medium">{t`Drag fields here`}</div>
+                            <EmptyColumnPlaceholder>{t`Drag fields here`}</EmptyColumnPlaceholder>
                           ) : (
                             columns.map((col, index) => (
                               <Draggable
@@ -141,7 +137,6 @@ class ChartSettingFieldsPartition extends React.Component {
                               </Draggable>
                             ))
                           )}
-
                           {provided.placeholder}
                         </DroppableContainer>
                       );
