@@ -8,7 +8,7 @@ import type Database from "./Database";
 import type Table from "./Table";
 import type Schema from "./Schema";
 import type Field from "./Field";
-import { getUniqueFieldId } from "./utils";
+import { getUniqueFieldId } from "./utils/fields";
 
 /**
  * @typedef { import("./metadata").DatabaseId } DatabaseId

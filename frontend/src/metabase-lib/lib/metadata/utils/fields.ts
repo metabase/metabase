@@ -1,5 +1,5 @@
 import { isVirtualCardId } from "metabase/lib/saved-questions/saved-questions";
-import type Field from "./Field";
+import type Field from "../Field";
 
 export function getUniqueFieldId(field: Field): number | string {
   const { table_id } = field;
