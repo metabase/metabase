@@ -444,8 +444,8 @@
     ;; DEFAULTS TO TRUE
     :date-arithmetics
 
-    ;; Does the driver support :datediff functions
-    :datediff
+    ;; Does the driver support :datetimediff functions
+    :datetimediff
 
     ;; Does the driver support experimental "writeback" actions like "delete this row" or "insert a new row" from 44+?
     :actions

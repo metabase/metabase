@@ -56,7 +56,7 @@
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
-(defmethod driver/database-supports? [:postgres :datediff]
+(defmethod driver/database-supports? [:postgres :datetimediff]
   [_driver _feat _db]
   true)
 
@@ -300,7 +300,7 @@
   [driver [_ arg]]
   (sql.qp/->honeysql driver [:percentile arg 0.5]))
 
-(defmethod sql.qp/->honeysql [:postgres :datediff]
+(defmethod sql.qp/->honeysql [:postgres :datetimediff]
   [driver [_ x y unit]]
   (case unit
     (:year :day)
@@ -312,7 +312,7 @@
                            (sql.qp/->honeysql driver y))))
 
     :week
-    (->> (hsql/call :/ (sql.qp/->honeysql driver [:datediff x y :day]) 7)
+    (->> (hsql/call :/ (sql.qp/->honeysql driver [:datetimediff x y :day]) 7)
          (hsql/call :floor)
          (hx/cast :integer))
 
@@ -326,7 +326,7 @@
        (hsql/call
         :+
         (hsql/call :* from-unit-above
-                   (sql.qp/->honeysql driver [:datediff x y unit-above]))
+                   (sql.qp/->honeysql driver [:datetimediff x y unit-above]))
         (hsql/call :floor
                    (hsql/call :date_part (hsql/raw (format "'%s'" (name unit)))
                               (hsql/call :age
@@ -334,7 +334,7 @@
                                          (sql.qp/->honeysql driver y)))))))
 
     ;; else
-    (throw (ex-info (trs "Invalid datediff unit: {0}" unit)
+    (throw (ex-info (trs "Invalid datetimediff unit: {0}" unit)
                     {:valid-units [:year :month :week :day :hour :minute :second]
                      :bad-unit unit}))))
 

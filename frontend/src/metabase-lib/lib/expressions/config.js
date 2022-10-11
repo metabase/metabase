@@ -361,11 +361,11 @@ export const MBQL_CLAUSES = {
     type: "number",
     args: ["expression"],
   },
-  datediff: {
-    displayName: `datediff`,
+  datetimediff: {
+    displayName: `datetimediff`,
     type: "number",
     args: ["expression", "expression", "string"],
-    requiresFeature: "datediff",
+    requiresFeature: "datetimediff",
   },
   "date-add": {
     displayName: `dateAdd`,
@@ -448,7 +448,7 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "power",
   "log",
   "exp",
-  "datediff",
+  "datetimediff",
   // date/time
   "get-year",
   "get-quarter",

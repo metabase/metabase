@@ -71,8 +71,8 @@
         (not (every? auto-bucketable-value? vs)))))
    ;; do not auto-bucket fields inside a `:time-interval` filter -- it already supplies its own unit
    (mbql.u/is-clause? :time-interval x)
-   ;; do not auto-bucket fields inside a `:datediff` clause: the precise timestamp is needed for the difference
-   (mbql.u/is-clause? :datediff x)
+   ;; do not auto-bucket fields inside a `:datetimediff` clause: the precise timestamp is needed for the difference
+   (mbql.u/is-clause? :datetimediff x)
    ;; do not autobucket Fields that already have a temporal unit, or have a binning strategy
    (and (mbql.u/is-clause? :field x)
         (let [[_ _ opts] x]

@@ -382,12 +382,12 @@ const helperTextStrings: HelpText[] = [
     ],
   },
   {
-    name: "datediff",
+    name: "datetimediff",
     structure:
-      "datediff(" + t`column` + ", " + t`column` + ", " + t`unit` + ")",
+      "datetimediff(" + t`column` + ", " + t`column` + ", " + t`unit` + ")",
     description: t`Returns the number of units between the two expressions.`,
     example:
-      "datediff([" +
+      "datetimediff([" +
       t`created_at` +
       "], [" +
       t`shipped_at` +

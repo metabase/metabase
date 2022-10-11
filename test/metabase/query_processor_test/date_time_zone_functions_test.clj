@@ -258,8 +258,8 @@
         (testing title
           (is (= (set expected) (set (test-date-math query)))))))))
 
-(deftest datediff-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :datediff)
+(deftest datetimediff-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :datetimediff)
     (mt/with-bigquery-fks :bigquery-cloud-sdk
       (mt/dataset sample-dataset
         (testing "Generall works for year, month, day, hour, minute, second"
@@ -269,7 +269,7 @@
                                  :source-table $$reviews
                                  :condition [:= $products.id &r.reviews.product_id]
                                  :alias "r"}]
-                        :filter [:= [:abs [:datediff &r.created_at $created_at :day]] 1]
+                        :filter [:= [:abs [:datetimediff &r.created_at $created_at :day]] 1]
                         :fields [[:expression "diff-year"]
                                  [:expression "diff-month"]
                                  [:expression "diff-week"]
@@ -277,13 +277,13 @@
                                  [:expression "diff-hour"]
                                  [:expression "diff-minute"]
                                  [:expression "diff-second"]]
-                        :expressions {"diff-year" [:datediff &r.created_at $created_at :year]
-                                      "diff-month" [:datediff &r.created_at $created_at :month]
-                                      "diff-week" [:datediff &r.created_at $created_at :week]
-                                      "diff-day" [:datediff &r.created_at $created_at :day]
-                                      "diff-hour" [:datediff &r.created_at $created_at :hour]
-                                      "diff-minute" [:datediff &r.created_at $created_at :minute]
-                                      "diff-second" [:datediff &r.created_at $created_at :second]}})]
+                        :expressions {"diff-year" [:datetimediff &r.created_at $created_at :year]
+                                      "diff-month" [:datetimediff &r.created_at $created_at :month]
+                                      "diff-week" [:datetimediff &r.created_at $created_at :week]
+                                      "diff-day" [:datetimediff &r.created_at $created_at :day]
+                                      "diff-hour" [:datetimediff &r.created_at $created_at :hour]
+                                      "diff-minute" [:datetimediff &r.created_at $created_at :minute]
+                                      "diff-second" [:datetimediff &r.created_at $created_at :second]}})]
             (testing "Computes without errors"
               ;; There are only two rows where the product and review creation is one day apart
               ;;       year month week day hour minute second
@@ -301,6 +301,6 @@
                                              [:expression "dt->d"]]
                                     :filter [:= $index 1]
                                     :expressions
-                                    {"dt->tz" [:datediff $dt $tz :day]
-                                     "d->tz"  [:datediff $d $tz :day]
-                                     "dt->d"  [:datediff $dt $d :day]}}))))))))
+                                    {"dt->tz" [:datetimediff $dt $tz :day]
+                                     "d->tz"  [:datetimediff $d $tz :day]
+                                     "dt->d"  [:datetimediff $dt $d :day]}}))))))))

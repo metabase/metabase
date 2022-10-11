@@ -185,7 +185,7 @@
           (is (= ["2018-04-18T00:00:00-07:00"]
                  (run-query-with-report-timezone "America/Los_Angeles"))))))))
 
-(deftest datediff-test
+(deftest datetimediff-test
   (mt/test-driver :mysql
     (mt/dataset useful-dates
       (is (= [[0 0]
@@ -195,8 +195,8 @@
                                  {:fields [[:expression "diff-year"]
                                            [:expression "diff-day"]]
                                   :expressions
-                                  {"diff-year" [:datediff $end $start :year]
-                                   "diff-day" [:datediff $end $start :day]}})))))))
+                                  {"diff-year" [:datetimediff $end $start :year]
+                                   "diff-day" [:datetimediff $end $start :day]}})))))))
 
 (def ^:private sample-connection-details
   {:db "my_db", :host "localhost", :port "3306", :user "cam", :password "bad-password"})

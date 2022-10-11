@@ -798,7 +798,7 @@
                    :table_id (db/select-one-id Table :db_id (u/the-id database))))))))))
 
 
-(deftest datediff-test
+(deftest datetimediff-test
   (mt/test-driver :postgres
     (mt/dataset useful-dates
       (testing "Does not mark as a year or day unless it has completely elapsed"
@@ -809,8 +809,8 @@
                                    {:fields [[:expression "diff-year"]
                                              [:expression "diff-day"]]
                                     :expressions
-                                    {"diff-year" [:datediff $end $start :year]
-                                     "diff-day" [:datediff $end $start :day]}}))))))))
+                                    {"diff-year" [:datetimediff $end $start :year]
+                                     "diff-day" [:datetimediff $end $start :day]}}))))))))
 
 ;;; ----------------------------------------------------- Other ------------------------------------------------------
 

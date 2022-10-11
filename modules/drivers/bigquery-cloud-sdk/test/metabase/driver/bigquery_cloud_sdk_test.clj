@@ -517,7 +517,7 @@
      {:field-name "t" :base-type :type/Time}]
     [[1 "simple comparing across types" #t "2021-08-03T08:09:10.582Z" #t "09:19:09"]]]])
 
-(deftest datediff-test
+(deftest datetimediff-test
   (mt/test-driver :bigquery-cloud-sdk
     (mt/dataset useful-dates
       (testing "Edge cases at year and month boundary"
@@ -529,8 +529,8 @@
                                    {:fields [[:expression "diff-year"]
                                              [:expression "diff-day"]]
                                     :expressions
-                                    {"diff-year" [:datediff $end $start :year]
-                                     "diff-day" [:datediff $end $start :day]}})))))
+                                    {"diff-year" [:datetimediff $end $start :year]
+                                     "diff-day" [:datetimediff $end $start :day]}})))))
       (testing "Types from nested functions are ok"
         (testing "Nested functions are ok"
           (is (= [[-3] [362]]
@@ -539,7 +539,7 @@
                                      {:fields [[:expression "diff-day"]]
                                       :expressions
                                       {"diff-day"
-                                       [:datediff
+                                       [:datetimediff
                                         $end
                                         [:date-add $start 3 "day"]
                                         :day]}}))))))
@@ -552,11 +552,11 @@
                                              [:expression "datediff2"]
                                              [:expression "datediff2-add"]]
                                     :expressions
-                                    {"datediff1" [:datediff $end $start :year]
-                                     "datediff1-add" [:+ [:datediff $end $start :year] 5]
-                                     "datediff2" [:datediff $end $start :day]
-                                     "datediff2-add" [:+ 5 [:datediff $end $start :day]]}}))))))
-    (testing "Cannot datediff against time column"
+                                    {"datediff1" [:datetimediff $end $start :year]
+                                     "datediff1-add" [:+ [:datetimediff $end $start :year] 5]
+                                     "datediff2" [:datetimediff $end $start :day]
+                                     "datediff2-add" [:+ 5 [:datetimediff $end $start :day]]}}))))))
+    (testing "Cannot datetimediff against time column"
       (mt/dataset with-time-column
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"Only datetime, timestamp, or date types allowed. Found .*"
@@ -564,7 +564,7 @@
                                (mt/run-mbql-query datediff-with-time
                                                   {:fields [[:expression "diff-day"]]
                                                    :expressions
-                                                   {"diff-day" [:datediff $ts $t :day]}}))))
+                                                   {"diff-day" [:datetimediff $ts $t :day]}}))))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"Only datetime, timestamp, or date types allowed. Found .*"
                               (mt/rows
@@ -572,7 +572,7 @@
                                                   {:fields [[:expression "diff-day"]]
                                                    :expressions
                                                    {"diff-day"
-                                                    [:datediff $ts $t :day]}}))))
+                                                    [:datetimediff $ts $t :day]}}))))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"Only datetime, timestamp, or date types allowed. Found .*"
                               (mt/rows
@@ -580,7 +580,7 @@
                                                   {:fields [[:expression "diff-day"]]
                                                    :expressions
                                                    {"diff-day"
-                                                    [:datediff
+                                                    [:datetimediff
                                                      $ts
                                                      [:date-add $t 3 "hour"]
                                                      :day]}}))))))))

@@ -52,7 +52,7 @@
   [_driver _feat db]
   (-> db :options :persist-models-enabled))
 
-(defmethod driver/database-supports? [:mysql :datediff]
+(defmethod driver/database-supports? [:mysql :datetimediff]
   [_driver _feature _db]
   true)
 
@@ -347,7 +347,7 @@
                                 2)
                           (hx/literal "-01"))))
 
-(defmethod sql.qp/->honeysql [:mysql :datediff]
+(defmethod sql.qp/->honeysql [:mysql :datetimediff]
   [driver [_ x y unit]]
   (hsql/call :timestampdiff
              (hsql/raw (name unit))
