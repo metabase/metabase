@@ -8,6 +8,7 @@ import { getMainElement } from "metabase/lib/dom";
 import DashboardHeader from "metabase/dashboard/containers/DashboardHeader";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import { getValuePopulatedParameters } from "metabase/parameters/utils/parameter-values";
+import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import DashboardControls from "../../hoc/DashboardControls";
 import { DashboardSidebars } from "../DashboardSidebars";
 import DashboardGrid from "../DashboardGrid";
@@ -24,10 +25,6 @@ import DashboardEmptyState from "./DashboardEmptyState/DashboardEmptyState";
 import { updateParametersWidgetStickiness } from "./stickyParameters";
 
 const SCROLL_THROTTLE_INTERVAL = 1000 / 24;
-
-function getVisibleParameters(parameters) {
-  return parameters.filter(parameter => !parameter.hidden);
-}
 
 // NOTE: move DashboardControls HoC to container
 
@@ -240,10 +237,7 @@ class Dashboard extends Component {
 
     const parametersWidget = (
       <SyncedParametersList
-        parameters={getValuePopulatedParameters(
-          visibleParameters,
-          parameterValues,
-        )}
+        parameters={getValuePopulatedParameters(parameters, parameterValues)}
         editingParameter={editingParameter}
         dashboard={dashboard}
         isFullscreen={isFullscreen}
