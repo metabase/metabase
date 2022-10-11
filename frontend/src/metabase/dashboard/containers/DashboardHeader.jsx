@@ -401,6 +401,7 @@ class DashboardHeader extends Component {
       setSidebar,
     } = this.props;
 
+    const isDataAppPage = dashboard.is_app_page;
     const hasLastEditInfo = dashboard["last-edit-info"] != null;
 
     return (
@@ -411,7 +412,9 @@ class DashboardHeader extends Component {
         dashboard={dashboard}
         isEditing={isEditing}
         isBadgeVisible={!isEditing && !isFullscreen && isAdditionalInfoVisible}
-        isLastEditInfoVisible={hasLastEditInfo && isAdditionalInfoVisible}
+        isLastEditInfoVisible={
+          !isDataAppPage && hasLastEditInfo && isAdditionalInfoVisible
+        }
         isEditingInfo={isEditing}
         isNavBarOpen={this.props.isNavBarOpen}
         headerButtons={this.getHeaderButtons()}

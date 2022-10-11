@@ -74,6 +74,7 @@ export const HeaderLastEditInfoLabel = styled(LastEditInfoLabel)`
 
 interface HeaderContentProps {
   showSubHeader: boolean;
+  hasSubHeader: boolean;
 }
 
 export const HeaderContent = styled.div<HeaderContentProps>`
@@ -86,8 +87,8 @@ export const HeaderContent = styled.div<HeaderContentProps>`
     opacity: ${props => (props.showSubHeader ? "1x" : "0")};
   }
 
-  ${({ showSubHeader }) =>
-    showSubHeader &&
+  ${({ hasSubHeader }) =>
+    hasSubHeader &&
     css`
       &:hover,
       &:focus-within {
