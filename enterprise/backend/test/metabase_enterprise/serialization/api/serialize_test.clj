@@ -6,7 +6,8 @@
     :as premium-features-test]
    [metabase.test :as mt]
    [metabase.util.files :as u.files]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [clojure.string :as str]))
 
 (defn- do-serialize-data-model [f]
   (premium-features-test/with-premium-features #{:serialization}
@@ -21,6 +22,8 @@
       (mt/with-temp-dir [dir "serdes-dir"]
         (f {:collection-id collection-id, :dir dir})))))
 
+(System/getProperty "java.io.tmpdir")
+
 (deftest serialize-data-model-happy-path-test
   (do-serialize-data-model
    (fn [{:keys [collection-id dir]}]
@@ -33,10 +36,9 @@
                  (sort (map str (u.files/files-seq path))))
                (files [& path-components]
                  (path-files (apply u.files/get-path dir path-components)))]
-         (is (= ["/tmp/serdes-dir/Card"
-                 "/tmp/serdes-dir/Collection"
-                 "/tmp/serdes-dir/Dashboard"
-                 "/tmp/serdes-dir/settings.yaml"]
+         (is (= (map
+                 #(str (System/getProperty "java.io.tmpdir") "serdes-dir/" %)
+                 ["Card" "Collection" "Dashboard" "settings.yaml"])
                 (files)))
          (testing "subdirs"
            (testing "Card"
