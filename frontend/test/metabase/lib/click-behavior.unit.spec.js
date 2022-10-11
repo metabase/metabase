@@ -1,11 +1,11 @@
 import _ from "underscore";
+import { metadata, PRODUCTS } from "__support__/sample_database_fixture";
+import * as dateFormatUtils from "metabase/lib/formatting/date";
 import {
   getDataFromClicked,
   getTargetsWithSourceFilters,
   formatSourceForTarget,
-} from "metabase/lib/click-behavior";
-import { metadata, PRODUCTS } from "__support__/sample_database_fixture";
-import * as dateFormatUtils from "metabase/lib/formatting/date";
+} from "metabase-lib/lib/parameters/utils/click-behavior";
 
 describe("metabase/lib/click-behavior", () => {
   describe("getDataFromClicked", () => {

@@ -3,7 +3,6 @@ import { t, jt } from "ttag";
 
 import Icon from "metabase/components/Icon";
 
-import { isTableDisplay } from "metabase/lib/click-behavior";
 import {
   isActionDashCard,
   getActionButtonLabel,
@@ -11,6 +10,7 @@ import {
 
 import type { DashboardOrderedCard } from "metabase-types/api";
 import type { Column } from "metabase-types/types/Dataset";
+import { isTableDisplay } from "metabase-lib/lib/parameters/utils/click-behavior";
 
 import { Heading, SidebarHeader } from "../ClickBehaviorSidebar.styled";
 import {

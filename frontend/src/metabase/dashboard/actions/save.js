@@ -5,9 +5,8 @@ import { createThunkAction } from "metabase/lib/redux";
 
 import Dashboards from "metabase/entities/dashboards";
 
-import { clickBehaviorIsValid } from "metabase/lib/click-behavior";
-
 import { DashboardApi, CardApi } from "metabase/services";
+import { clickBehaviorIsValid } from "metabase-lib/lib/parameters/utils/click-behavior";
 
 import { getDashboardBeforeEditing } from "../selectors";
 
