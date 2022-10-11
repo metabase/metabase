@@ -119,7 +119,7 @@
 
 (defmethod sql.qp/->honeysql [:vertica :convert-timezone]
   [driver [_ arg to from]]
-  (let [from (or from (qp.timezone/report-timezone-id-if-supported driver))]
+  (let [from (or from (qp.timezone/results-timezone-id driver))]
     (cond-> (sql.qp/->honeysql driver arg)
       from
       (->AtTimeZone from)

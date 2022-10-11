@@ -45,10 +45,10 @@
               :effective-type :type/Date
               :coercion-strategy :Coercion/ISO8601->Date}]
     (for [[idx t]
-          (map-indexed vector [#t "2004-03-19 09:19:09-00:00[Asia/Ho_Chi_Minh]"
-                               #t "2008-06-20 10:20:10-00:00[Asia/Ho_Chi_Minh]"
-                               #t "2012-11-21 11:21:11-00:00[Asia/Ho_Chi_Minh]"
-                               #t "2012-11-21 11:21:11-00:00[Asia/Ho_Chi_Minh]"])]
+          (map-indexed vector [#t "2004-03-19 09:19:09+07:00[Asia/Ho_Chi_Minh]"
+                               #t "2008-06-20 10:20:10+07:00[Asia/Ho_Chi_Minh]"
+                               #t "2012-11-21 11:21:11+07:00[Asia/Ho_Chi_Minh]"
+                               #t "2012-11-21 11:21:11+07:00[Asia/Ho_Chi_Minh]"])]
          [(inc idx)
           (t/local-date-time t)                                  ;; dt
           (t/with-zone-same-instant t "Asia/Ho_Chi_Minh")        ;; dt_tz
@@ -314,7 +314,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
     (mt/dataset times-mixed
       (testing "timestamp without timezone columns"
-        (mt/with-report-timezone-id "UTC"
+        (mt/with-results-timezone-id "UTC"
           (testing "convert from +05:00 to +09:00"
            (is (= "2004-03-19T13:19:09+09:00"
                   (test-date-convert [:convert-timezone [:field (mt/id :times :dt) nil]
@@ -324,7 +324,7 @@
             (is (= "2004-03-19T18:19:09+09:00"
                    (test-date-convert [:convert-timezone [:field (mt/id :times :dt) nil] (offset->zone "+09:00")])))))
 
-        (mt/with-report-timezone-id "Europe/Rome"
+        (mt/with-results-timezone-id "Europe/Rome"
           (testing "from_tz should default to report_tz"
             (is (= "2004-03-19T17:19:09+09:00"
                    (test-date-convert [:convert-timezone [:field (mt/id :times :dt) nil] (offset->zone "+09:00")]))))
@@ -335,36 +335,97 @@
                                        (offset->zone "+09:00")
                                        (offset->zone "+00:00")]))))))
 
-      (testing "timestamp with time zone columns"
-        (mt/with-report-timezone-id "UTC"
-          (testing "convert to +09:00"
-            (is (= "2004-03-19T11:19:09+09:00"
-                   (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")]))))
+      ;; for some reasons the dt_tz column for redshift is inserted in UTC, not Asia/Ho_Chi_Minh.
+      ;; so the tests result is a bit different
+      (if-not (#{:redshift} driver/*driver*)
+        (testing "timestamp with time zone columns"
+          (mt/with-results-timezone-id "UTC"
+            (testing "convert to +09:00"
+              (is (= "2004-03-19T11:19:09+09:00"
+                     (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")]))))
 
-          (testing "timestamp with time zone columns shouldn't have `from_tz`"
-            (is (thrown-with-msg?
-                 clojure.lang.ExceptionInfo
-                 #"`timestamp with time zone` columns shouldn't have a `from timezone`"
-                 (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil]
-                                     (offset->zone "+09:00")
-                                     (offset->zone "+00:00")])))))
-
-        (mt/with-report-timezone-id "Europe/Rome"
-          (testing "the base timezone should be the timezone of column (Asia/Ho_Chi_Minh)"
-            (is (= "2004-03-19T11:19:09+09:00"
-                   (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")])))))))))
-
-#_(mt/with-report-timezone-id "Asia/Singapore"
-    (mt/with-driver :sqlserver
-         (mt/dataset times-mixed
-           (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil]
+            (testing "timestamp with time zone columns shouldn't have `from_tz`"
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo
+                   #"`timestamp with time zone` columns shouldn't have a `from timezone`"
+                   (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil]
                                        (offset->zone "+09:00")
-                                       (offset->zone "+00:00")]))))
+                                       (offset->zone "+00:00")])))))
+
+          (mt/with-results-timezone-id "Europe/Rome"
+            (testing "the base timezone should be the timezone of column (Asia/Ho_Chi_Minh)"
+              (is (= "2004-03-19T11:19:09+09:00"
+                     (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")]))))))
+
+        (testing "timestamp with time zone columns"
+          (mt/with-results-timezone-id "UTC"
+            (testing "convert to +09:00"
+              (is (= "2004-03-19T18:19:09+09:00"
+                     (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")]))))
+
+            (testing "timestamp with time zone columns shouldn't have `from_tz`"
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo
+                   #"`timestamp with time zone` columns shouldn't have a `from timezone`"
+                   (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil]
+                                       (offset->zone "+09:00")
+                                       (offset->zone "+00:00")])))))
+
+          (mt/with-results-timezone-id "Europe/Rome"
+            (testing "the base timezone should be the timezone of column (Asia/Ho_Chi_Minh)"
+              (is (= "2004-03-19T18:19:09+09:00"
+                     (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")]))))))))))
+
+#_(mt/with-results-timezone-id "Asia/Singapore"
+    (mt/with-driver :redshift
+         (mt/dataset times-mixed
+                     (-> (mt/mbql-query times {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")]}
+                                               :fields      [[:expression "expr"]]
+                                               :limit 1})
+                         mt/process-query
+                         mt/rows
+                         #_mt/compile
+                         #_:query
+                         #_println))))
+
+#_(mt/with-results-timezone-id "UTC"
+      (mt/with-driver :redshift
+           (mt/dataset times-mixed
+                       (-> (mt/mbql-query times {:fields      [[:field (mt/id :times :dt_tz) nil]]
+                                                 :limit 1})
+                           mt/process-query
+                           mt/rows
+                           #_mt/compile
+                           #_:query
+                           #_println))))
+
+
+
+#_(+ 1 2 3)
 
 
 #_(dev/query-jdbc-db
-   [:sqlserver 'times-mixed]
-   ["select dt, dt at time zone 'West Asia Standard Time' from times"])
+   [:redshift 'times-mixed]
+   ["select pg_get_cols('schema_86.times_mixed_times');"])
+
+
+#_(dev/query-jdbc-db
+   [:redshift 'times-mixed]
+   ["select timezone('Asia/Ho_Chi_Minh', dt_tz) from schema_92.times_mixed_times limit 1;"])
+
+#_(dev/query-jdbc-db
+     [:redshift 'times-mixed]
+     ["select dt_tz from schema_92.times_mixed_times limit 1;"])
+
+
+#_(dev/query-jdbc-db
+     [:postgres 'times-mixed]
+     ["select dt_tz from times_mixed_times limit 1;"])
+
+#_(dev/query-jdbc-db
+   [:redshift 'times-mixed]
+   ["SELECT '2018-11-01T09:00:00+07:00'::timestamptz;"])
+
 
 #_(dev/query-jdbc-db
     [:sqlserver 'times-mixed]
@@ -375,6 +436,8 @@
     java.time.format.TextStyle/FULL_STANDALONE
     (java.util.Locale/getDefault))
 ;; => "Indochina Time"
+
+#_(metabase.test.data.interface/create-db! :postgres times-mixed)
 
 
 (deftest nested-convert-timezone-test
