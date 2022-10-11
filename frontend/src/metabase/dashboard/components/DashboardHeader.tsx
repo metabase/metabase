@@ -16,6 +16,7 @@ import { Dashboard } from "metabase-types/api";
 import EditBar from "metabase/components/EditBar";
 import EditWarning from "metabase/components/EditWarning";
 import HeaderModal from "metabase/components/HeaderModal";
+
 import {
   HeaderRoot,
   HeaderBadges,
@@ -25,6 +26,7 @@ import {
   HeaderLastEditInfoLabel,
   HeaderCaption,
   HeaderCaptionContainer,
+  DataAppPageCaption,
 } from "./DashboardHeader.styled";
 
 interface DashboardHeaderProps {
@@ -139,14 +141,24 @@ const DashboardHeader = ({
       >
         <HeaderContent hasSubHeader={!isDataApp} showSubHeader={showSubHeader}>
           <HeaderCaptionContainer>
-            <HeaderCaption
-              key={dashboard.name}
-              initialValue={dashboard.name}
-              placeholder={t`Add title`}
-              isDisabled={!dashboard.can_write}
-              data-testid="dashboard-name-heading"
-              onChange={handleUpdateCaption}
-            />
+            {isDataApp ? (
+              <DataAppPageCaption
+                key={dashboard.name}
+                page={dashboard}
+                placeholder={t`Add title`}
+                data-testid="dashboard-name-heading"
+                onChange={handleUpdateCaption}
+              />
+            ) : (
+              <HeaderCaption
+                key={dashboard.name}
+                initialValue={dashboard.name}
+                placeholder={t`Add title`}
+                isDisabled={!dashboard.can_write}
+                data-testid="dashboard-name-heading"
+                onChange={handleUpdateCaption}
+              />
+            )}
           </HeaderCaptionContainer>
           <HeaderBadges>
             {isLastEditInfoVisible && (
