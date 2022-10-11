@@ -24,7 +24,9 @@
                     (models.dispatch/model (a-user)))))
   (testing ".newInstance"
     (is (identical? User
-                    (models.dispatch/model (.newInstance (class User)))))))
+                    (models.dispatch/model (.newInstance
+                                            #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]}
+                                            (class User)))))))
 
 (deftest dispatch-by-clause-name-or-class-test
   (testing (str `mbql.u/dispatch-by-clause-name-or-class " should use " `models.dispatch/dispatch-value)
