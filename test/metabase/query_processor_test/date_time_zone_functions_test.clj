@@ -311,8 +311,7 @@
 
 
 (deftest convert-timezone-test
-  ;(mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
-  (mt/test-drivers #{:bigquery-cloud-sdk}
+  (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
     (mt/dataset times-mixed-1
       (testing "timestamp without timezone columns"
         (mt/with-results-timezone-id "UTC"
