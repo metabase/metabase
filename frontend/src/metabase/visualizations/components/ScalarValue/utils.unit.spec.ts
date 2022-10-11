@@ -7,11 +7,7 @@ jest.doMock("metabase/lib/measure-text", () => ({
 }));
 
 const createMockMeasureText = (width: number) => {
-  return (_text: string, _style: FontStyle) => {
-    return {
-      width,
-    } as TextMetrics;
-  };
+  return (_text: string, _style: FontStyle) => width;
 };
 
 const defaults = {
