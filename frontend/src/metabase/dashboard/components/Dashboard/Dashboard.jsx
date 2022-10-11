@@ -25,6 +25,10 @@ import { updateParametersWidgetStickiness } from "./stickyParameters";
 
 const SCROLL_THROTTLE_INTERVAL = 1000 / 24;
 
+function getVisibleParameters(parameters) {
+  return parameters.filter(parameter => !parameter.hidden);
+}
+
 // NOTE: move DashboardControls HoC to container
 
 class Dashboard extends Component {
@@ -102,9 +106,10 @@ class Dashboard extends Component {
     this.parametersAndCardsContainerRef = React.createRef();
   }
 
-  static getDerivedStateFromProps(props, state) {
-    return props.parameters.length !== state.parametersListLength
-      ? { parametersListLength: props.parameters.length }
+  static getDerivedStateFromProps({ parameters }, { parametersListLength }) {
+    const visibleParameters = getVisibleParameters(parameters);
+    return visibleParameters.length !== parametersListLength
+      ? { parametersListLength: visibleParameters.length }
       : null;
   }
 
@@ -231,10 +236,14 @@ class Dashboard extends Component {
 
     const shouldRenderAsNightMode = isNightMode && isFullscreen;
     const dashboardHasCards = dashboard => dashboard.ordered_cards.length > 0;
+    const visibleParameters = getVisibleParameters(parameters);
 
     const parametersWidget = (
       <SyncedParametersList
-        parameters={getValuePopulatedParameters(parameters, parameterValues)}
+        parameters={getValuePopulatedParameters(
+          visibleParameters,
+          parameterValues,
+        )}
         editingParameter={editingParameter}
         dashboard={dashboard}
         isFullscreen={isFullscreen}
@@ -247,10 +256,10 @@ class Dashboard extends Component {
     );
 
     const shouldRenderParametersWidgetInViewMode =
-      !isEditing && !isFullscreen && parameters.length > 0;
+      !isEditing && !isFullscreen && visibleParameters.length > 0;
 
     const shouldRenderParametersWidgetInEditMode =
-      isEditing && parameters.length > 0;
+      isEditing && visibleParameters.length > 0;
 
     const cardsContainerShouldHaveMarginTop =
       !shouldRenderParametersWidgetInViewMode &&
