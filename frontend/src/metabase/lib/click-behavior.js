@@ -4,11 +4,11 @@ import { t, ngettext, msgid } from "ttag";
 
 import { parseTimestamp } from "metabase/lib/time";
 import { formatDateTimeForParameter } from "metabase/lib/formatting/date";
+import { isValidImplicitActionClickBehavior } from "metabase/writeback/utils";
 import {
   dimensionFilterForParameter,
   variableFilterForParameter,
-} from "metabase/parameters/utils/filters";
-import { isValidImplicitActionClickBehavior } from "metabase/writeback/utils";
+} from "metabase-lib/lib/parameters/utils/filters";
 import { isa, isDate } from "metabase-lib/lib/types/utils/isa";
 import { TYPE } from "metabase-lib/lib/types/constants";
 import Question from "metabase-lib/lib/Question";

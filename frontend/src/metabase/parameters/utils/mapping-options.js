@@ -2,12 +2,11 @@ import { tag_names } from "cljs/metabase.shared.parameters.parameters";
 import { isActionCard } from "metabase/writeback/utils";
 import Question from "metabase-lib/lib/Question";
 import { ExpressionDimension } from "metabase-lib/lib/Dimension";
-
 import {
   dimensionFilterForParameter,
   getTagOperatorFilterForParameter,
   variableFilterForParameter,
-} from "./filters";
+} from "metabase-lib/lib/parameters/utils/filters";
 
 function buildStructuredQuerySectionOptions(section) {
   return section.items.map(({ dimension }) => ({
