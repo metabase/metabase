@@ -21,8 +21,6 @@
       (mt/with-temp-dir [dir "serdes-dir"]
         (f {:collection-id collection-id, :dir dir})))))
 
-(System/getProperty "java.io.tmpdir")
-
 (deftest serialize-data-model-happy-path-test
   (do-serialize-data-model
    (fn [{:keys [collection-id dir]}]
