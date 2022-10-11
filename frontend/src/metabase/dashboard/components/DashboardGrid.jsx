@@ -68,7 +68,7 @@ class DashboardGrid extends Component {
   };
 
   static defaultProps = {
-    width: 0,
+    width: 1200,
     isEditing: false,
     isEditingParameter: false,
   };
@@ -354,7 +354,7 @@ class DashboardGrid extends Component {
   );
 
   renderGrid() {
-    const { dashboard, width } = this.props;
+    const { dashboard } = this.props;
     const { layouts } = this.state;
     const rowHeight = this.getRowHeight();
     return (
@@ -366,8 +366,8 @@ class DashboardGrid extends Component {
         layouts={layouts}
         breakpoints={GRID_BREAKPOINTS}
         cols={GRID_COLUMNS}
-        width={width}
-        margin={{ desktop: [6, 6], mobile: [6, 10] }}
+        width={1200}
+        margin={{ desktop: [32, 18], mobile: [6, 10] }}
         containerPadding={[0, 0]}
         rowHeight={rowHeight}
         onLayoutChange={this.onLayoutChange}
