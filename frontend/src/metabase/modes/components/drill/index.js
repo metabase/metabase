@@ -1,6 +1,7 @@
 import SortAction from "./SortAction";
 import ObjectDetailDrill from "./ObjectDetailDrill";
 import QuickFilterDrill from "./QuickFilterDrill";
+import ForeignKeyDrill from "./ForeignKeyDrill";
 import ColumnFilterDrill from "./ColumnFilterDrill";
 import UnderlyingRecordsDrill from "./UnderlyingRecordsDrill";
 import AutomaticDashboardDrill from "./AutomaticDashboardDrill";
@@ -14,6 +15,7 @@ export const getDefaultDrills = () => [
   SortAction,
   ObjectDetailDrill,
   QuickFilterDrill,
+  ForeignKeyDrill,
   ColumnFilterDrill,
   UnderlyingRecordsDrill,
   AutomaticDashboardDrill,

@@ -1,7 +1,7 @@
 import L from "leaflet";
 
 import _ from "underscore";
-import { isPK } from "metabase/lib/schema_metadata";
+import { isPK } from "metabase-lib/lib/types/utils/isa";
 
 import LeafletMap from "./LeafletMap";
 

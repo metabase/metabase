@@ -819,5 +819,5 @@
           (testing "existing FieldValues are properly found and updated"
             (is (= (:values @fv1s) (:values @fv1d))))
           (testing "new FieldValues are properly added"
-            (is (= (dissoc @fv2s :id :field_id)
-                   (dissoc @fv2d :id :field_id)))))))))
+            (is (= (dissoc @fv2s :id :field_id :created_at :updated_at)
+                   (dissoc @fv2d :id :field_id :created_at :updated_at)))))))))

@@ -1,10 +1,6 @@
 import _ from "underscore";
 
 import {
-  getParameterTargetField,
-  getTemplateTagFromTarget,
-} from "metabase/parameters/utils/targets";
-import {
   getValuePopulatedParameters,
   hasParameterValue,
 } from "metabase/parameters/utils/parameter-values";
@@ -12,6 +8,10 @@ import { ParameterWithTarget, UiParameter } from "metabase/parameters/types";
 import { Parameter, ParameterTarget } from "metabase-types/types/Parameter";
 import { Card } from "metabase-types/types/Card";
 import { TemplateTag } from "metabase-types/types/Query";
+import {
+  getParameterTargetField,
+  getTemplateTagFromTarget,
+} from "metabase-lib/lib/parameters/utils/targets";
 import Question from "metabase-lib/lib/Question";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 

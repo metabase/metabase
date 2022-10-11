@@ -10,9 +10,12 @@ import Dimension, {
   FieldDimension,
   TemplateTagDimension,
 } from "metabase-lib/lib/Dimension";
-import { getParameterSubType, isDateParameter } from "./parameter-type";
-import { getParameterOperatorName } from "./operators";
-import { isDimensionTarget } from "./targets";
+import { isDimensionTarget } from "metabase-lib/lib/parameters/utils/targets";
+import {
+  getParameterSubType,
+  isDateParameter,
+} from "metabase-lib/lib/parameters/utils/parameter-type";
+import { getParameterOperatorName } from "metabase-lib/lib/parameters/utils/operators";
 import { hasParameterValue } from "./parameter-values";
 
 const withTemporalUnit = (fieldRef, unit) => {

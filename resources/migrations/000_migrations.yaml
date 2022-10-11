@@ -12825,6 +12825,80 @@ databaseChangeLog:
               CHANGE updated_at
               updated_at timestamp(6) NOT NULL DEFAULT current_timestamp(6);
 
+  - changeSet:
+      id: v45.00-036
+      author: snoe
+      comment: Added 0.45.0 - add model action table
+      changes:
+        - createTable:
+            tableName: model_action
+            remarks: Ties actions to models
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity.
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: slug
+                  type: varchar(254)
+                  remarks: The referenceable name for this action
+                  constraints:
+                    nullable: false
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: The associated model
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_model_action_ref_card_id
+                    deleteCascade: true
+              - column:
+                  name: action_id
+                  type: int
+                  remarks: The associated action
+                  constraints:
+                    nullable: true
+                    referencedTableName: action
+                    referencedColumnNames: id
+                    foreignKeyName: fk_model_action_ref_action_id
+                    deleteCascade: true
+              - column:
+                  name: requires_pk
+                  remarks: Indicates that the primary key(s) need to be passed in as parameters
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: parameter_mappings
+                  type: ${text.type}
+                  remarks: Mappings for primary keys to action parameters
+              - column:
+                  name: visualization_settings
+                  type: ${text.type}
+                  remarks: Settings for rendering the action
+  - changeSet:
+      id: v45.00-037
+      author: snoe
+      comment: Added 0.45.0 - model action
+      changes:
+        - addUniqueConstraint:
+            tableName: model_action
+            columnNames: card_id, slug
+            constraintName: unique_model_action_card_id_slug
+
   # The next 4 values add default values for Database `created_at` and `updated_at`; previously this was handled by
   # Toucan but it's more convenient to do this at the application database level instead -- it facilitates stuff like
   # schema migration tests that don't use Toucan, or other manual scripting
@@ -12918,7 +12992,6 @@ databaseChangeLog:
             columnDataType: ${text.type}
             tableName: metabase_database
             columnName: details
-
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

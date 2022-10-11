@@ -270,6 +270,7 @@ class Dashboard extends Component {
               <HeaderContainer
                 isFullscreen={isFullscreen}
                 isNightMode={shouldRenderAsNightMode}
+                isDataApp={dashboard.is_app_page}
               >
                 <DashboardHeader
                   {...this.props}
@@ -280,6 +281,7 @@ class Dashboard extends Component {
                   onSharingClick={this.onSharingClick}
                   onToggleAddQuestionSidebar={this.onToggleAddQuestionSidebar}
                   showAddQuestionSidebar={showAddQuestionSidebar}
+                  isDataApp={dashboard.is_app_page}
                 />
 
                 {shouldRenderParametersWidgetInEditMode && (

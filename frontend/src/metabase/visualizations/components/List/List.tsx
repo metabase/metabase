@@ -253,8 +253,7 @@ function List({
     );
   }, [connectedDashCard, settings, bulkActions]);
 
-  const hasInlineActions =
-    !isSelectingItems && (hasEditButton || hasDeleteButton);
+  const hasInlineActions = false; // TODO remove completely
 
   const renderBulkSelectionControl = useCallback(
     (rowIndex: number) => {

@@ -9,8 +9,6 @@ import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import ParameterTargetList from "metabase/parameters/components/ParameterTargetList";
-import { isVariableTarget } from "metabase/parameters/utils/targets";
-import { isDateParameter } from "metabase/parameters/utils/parameter-type";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   getNativeDashCardEmptyMappingText,
@@ -18,6 +16,8 @@ import {
   isVirtualDashCard,
   showVirtualDashCardInfoText,
 } from "metabase/dashboard/utils";
+import { isDateParameter } from "metabase-lib/lib/parameters/utils/parameter-type";
+import { isVariableTarget } from "metabase-lib/lib/parameters/utils/targets";
 import Question from "metabase-lib/lib/Question";
 
 import {

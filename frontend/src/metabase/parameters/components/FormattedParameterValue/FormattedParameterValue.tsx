@@ -1,9 +1,9 @@
 import React from "react";
 
 import { formatParameterValue } from "metabase/parameters/utils/formatting";
-import { isDateParameter } from "metabase/parameters/utils/parameter-type";
 import { UiParameter, FieldFilterUiParameter } from "metabase/parameters/types";
 import ParameterFieldWidgetValue from "metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidgetValue/ParameterFieldWidgetValue";
+import { isDateParameter } from "metabase-lib/lib/parameters/utils/parameter-type";
 
 type FormattedParameterValueProps = {
   parameter: UiParameter;

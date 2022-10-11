@@ -1,8 +1,7 @@
 import moment from "moment-timezone";
 
-import { isDate, isNumber } from "metabase/lib/schema_metadata";
-
 import { parseTimestamp } from "metabase/lib/time";
+import { isDate, isNumber } from "metabase-lib/lib/types/utils/isa";
 import {
   rangeForValue,
   fieldRefForColumn,

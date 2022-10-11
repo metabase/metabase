@@ -1,7 +1,6 @@
 import _ from "underscore";
 import { assocIn } from "icepick";
 
-import { isSupportedTemplateTagForModel } from "metabase/lib/data-modeling/utils";
 import {
   getTemplateTagsForParameters,
   getTemplateTagParameters,
@@ -14,6 +13,7 @@ import Question from "metabase-lib/lib/Question";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
+import { isSupportedTemplateTagForModel } from "metabase-lib/lib/metadata/utils/models";
 import {
   getFirstQueryResult,
   getIsShowingTemplateTagsEditor,

@@ -8,6 +8,7 @@ import { merge } from "icepick";
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/core/components/Button";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
+import Confirm from "metabase/components/Confirm";
 
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 import ViewSidebar from "metabase/query_builder/components/view/ViewSidebar";
@@ -23,12 +24,12 @@ import {
 } from "metabase/query_builder/selectors";
 
 import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
-import { checkCanBeModel } from "metabase/lib/data-modeling/utils";
 import { usePrevious } from "metabase/hooks/use-previous";
 import { useToggle } from "metabase/hooks/use-toggle";
 
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { isSameField } from "metabase-lib/lib/queries/utils/field-ref";
+import { checkCanBeModel } from "metabase-lib/lib/metadata/utils/models";
 import { EDITOR_TAB_INDEXES } from "./constants";
 import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
 import DatasetQueryEditor from "./DatasetQueryEditor";
@@ -59,6 +60,7 @@ const propTypes = {
   setDatasetEditorTab: PropTypes.func.isRequired,
   setFieldMetadata: PropTypes.func.isRequired,
   onSave: PropTypes.func.isRequired,
+  onCancelCreateNewModel: PropTypes.func.isRequired,
   onCancelDatasetChanges: PropTypes.func.isRequired,
   handleResize: PropTypes.func.isRequired,
   runQuestionQuery: PropTypes.func.isRequired,
@@ -176,6 +178,7 @@ function DatasetEditor(props) {
     setDatasetEditorTab,
     setFieldMetadata,
     onCancelDatasetChanges,
+    onCancelCreateNewModel,
     onSave,
     handleResize,
     onOpenModal,
@@ -186,6 +189,10 @@ function DatasetEditor(props) {
   );
 
   const fields = useMemo(() => {
+    const virtualCardTable = dataset.table();
+    const virtualCardColumns = (virtualCardTable?.fields ?? []).map(field =>
+      field.column(),
+    );
     // Columns in results_metadata contain all the necessary metadata
     // orderedColumns contain properly sorted columns, but they only contain field names and refs.
     // Normally, columns in results_metadata are ordered too,
@@ -199,9 +206,13 @@ function DatasetEditor(props) {
       return columns;
     }
     return orderedColumns
-      .map(col => columns.find(c => isSameField(c.field_ref, col.fieldRef)))
+      .map(
+        col =>
+          columns.find(c => isSameField(c.field_ref, col.fieldRef)) ||
+          virtualCardColumns.find(c => isSameField(c.field_ref, col.fieldRef)),
+      )
       .filter(Boolean);
-  }, [orderedColumns, result]);
+  }, [dataset, orderedColumns, result?.data?.results_metadata?.columns]);
 
   const isEditingQuery = datasetEditorTab === "query";
   const isEditingMetadata = datasetEditorTab === "metadata";
@@ -297,7 +308,11 @@ function DatasetEditor(props) {
     [initialEditorHeight, setDatasetEditorTab],
   );
 
-  const handleCancel = useCallback(() => {
+  const handleCancelCreate = useCallback(() => {
+    onCancelCreateNewModel();
+  }, [onCancelCreateNewModel]);
+
+  const handleCancelEdit = useCallback(() => {
     onCancelDatasetChanges();
     setQueryBuilderMode("view");
   }, [setQueryBuilderMode, onCancelDatasetChanges]);
@@ -415,16 +430,26 @@ function DatasetEditor(props) {
           />
         }
         buttons={[
-          <Button
-            key="cancel"
-            onClick={handleCancel}
-            small
-          >{t`Cancel`}</Button>,
+          dataset.isSaved() ? (
+            <Button
+              key="cancel"
+              small
+              onClick={handleCancelEdit}
+            >{t`Cancel`}</Button>
+          ) : (
+            <Confirm
+              key="cancel"
+              action={handleCancelCreate}
+              title={t`Cancel creating model`}
+            >
+              <Button small>{t`Cancel`}</Button>
+            </Confirm>
+          ),
           <ActionButton
             key="save"
             disabled={!canSaveChanges}
             actionFn={handleSave}
-            normalText={t`Save changes`}
+            normalText={dataset.isSaved() ? t`Save changes` : t`Save`}
             activeText={t`Saving…`}
             failedText={t`Save failed`}
             successText={t`Saved`}
