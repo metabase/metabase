@@ -74,7 +74,7 @@
         all-cards          (for [id cards]
                              (db/select-one [Card :id :collection_id :dataset_query] :id id))
         bad-source         (for [card all-cards
-                                 :let [src (some-> card :dataset_query :query :source-table)]
+                                 :let [^String src (some-> card :dataset_query :query :source-table)]
                                  :when (and (string? src) (.startsWith src "card__"))
                                  :let [card-id (Integer/parseInt (.substring src 6))]
                                  :when (not (cards card-id))]
