@@ -1,8 +1,8 @@
 (ns metabase-enterprise.serialization.v2.util-test
   (:require [clojure.test :refer :all]
-            [metabase.models.serialization.util :as serdes.util]
-            [metabase.models :refer [Card Database Field Table]]
-            [metabase-enterprise.serialization.test-util :as ts]))
+            [metabase-enterprise.serialization.test-util :as ts]
+            [metabase.models :refer [Database Field Table]]
+            [metabase.models.serialization.util :as serdes.util]))
 
 (deftest mbql-deserialize-test
   (ts/with-empty-h2-app-db
