@@ -8,6 +8,7 @@ import { merge } from "icepick";
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/core/components/Button";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
+import Confirm from "metabase/components/Confirm";
 
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 import ViewSidebar from "metabase/query_builder/components/view/ViewSidebar";
@@ -59,6 +60,7 @@ const propTypes = {
   setDatasetEditorTab: PropTypes.func.isRequired,
   setFieldMetadata: PropTypes.func.isRequired,
   onSave: PropTypes.func.isRequired,
+  onCancelCreateNewModel: PropTypes.func.isRequired,
   onCancelDatasetChanges: PropTypes.func.isRequired,
   handleResize: PropTypes.func.isRequired,
   runQuestionQuery: PropTypes.func.isRequired,
@@ -176,6 +178,7 @@ function DatasetEditor(props) {
     setDatasetEditorTab,
     setFieldMetadata,
     onCancelDatasetChanges,
+    onCancelCreateNewModel,
     onSave,
     handleResize,
     onOpenModal,
@@ -305,7 +308,11 @@ function DatasetEditor(props) {
     [initialEditorHeight, setDatasetEditorTab],
   );
 
-  const handleCancel = useCallback(() => {
+  const handleCancelCreate = useCallback(() => {
+    onCancelCreateNewModel();
+  }, [onCancelCreateNewModel]);
+
+  const handleCancelEdit = useCallback(() => {
     onCancelDatasetChanges();
     setQueryBuilderMode("view");
   }, [setQueryBuilderMode, onCancelDatasetChanges]);
@@ -423,11 +430,21 @@ function DatasetEditor(props) {
           />
         }
         buttons={[
-          <Button
-            key="cancel"
-            onClick={handleCancel}
-            small
-          >{t`Cancel`}</Button>,
+          dataset.isSaved() ? (
+            <Button
+              key="cancel"
+              small
+              onClick={handleCancelEdit}
+            >{t`Cancel`}</Button>
+          ) : (
+            <Confirm
+              key="cancel"
+              action={handleCancelCreate}
+              title={t`Cancel creating model`}
+            >
+              <Button small>{t`Cancel`}</Button>
+            </Confirm>
+          ),
           <ActionButton
             key="save"
             disabled={!canSaveChanges}
