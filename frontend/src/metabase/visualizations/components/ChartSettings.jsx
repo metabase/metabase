@@ -196,16 +196,8 @@ class ChartSettings extends Component {
   }
 
   render() {
-    const {
-      className,
-      question,
-      addField,
-      noPreview,
-      children,
-      setSidebarPropsOverride,
-      dashboard,
-      isDashboard,
-    } = this.props;
+    const { className, question, addField, noPreview, dashboard, isDashboard } =
+      this.props;
     const { currentWidget, popoverRef } = this.state;
 
     const settings = this._getSettings();
@@ -237,7 +229,6 @@ class ChartSettings extends Component {
       "data",
       "display",
       "axes",
-      "labels",
       // include all section names so any forgotten sections are sorted to the end
       ...sectionNames.map(x => x.toLowerCase()),
     ];
@@ -287,30 +278,10 @@ class ChartSettings extends Component {
       </SectionContainer>
     );
 
-    // const widgetList = visibleWidgets.map(widget => (
-    //   <ChartSettingsWidget
-    //     key={widget.id}
-    //     {...widget}
-    //     {...extraWidgetProps}
-    //   />
-    // ));
-
     const onReset =
       !_.isEqual(settings, {}) && (settings || {}).virtual_card == null // resetting virtual cards wipes the text and broke the UI (metabase#14644)
         ? this.handleResetSettings
         : null;
-
-    // custom render prop layout:
-    // if (children) {
-    //   return children({
-    //     sectionNames,
-    //     sectionPicker,
-    //     widgetList,
-    //     onDone: this.handleDone,
-    //     onCancel: this.handleCancel,
-    //     onReset: onReset,
-    //   });
-    // }
 
     const showSectionPicker =
       // don't show section tabs for a single section

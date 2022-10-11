@@ -4,12 +4,12 @@ import ChartSettingsWidget from "./ChartSettingsWidget";
 
 import {
   ChartSettingsWidgetListHeader,
-  ChartSettingsWidgetListContainer,
+  ChartSettingsWidgetListDivider,
 } from "./ChartSettingsWidgetList.styled";
 
 interface ChartSettingsWidgetListProps {
   widgets: { id: string; group?: string }[];
-  extraWidgetProps: {};
+  extraWidgetProps: Record<string, unknown>;
 }
 
 const ChartSettingsWidgetList = ({
@@ -32,15 +32,16 @@ const ChartSettingsWidgetList = ({
       {},
     );
 
-    return Object.keys(groupedWidgets).map(group => {
+    return Object.keys(groupedWidgets).map((group, groupIndex, groups) => {
+      const lastGroup = groupIndex === groups.length - 1;
       return (
-        <div>
+        <div key={`group-${groupIndex}`}>
           {group && (
             <ChartSettingsWidgetListHeader>
               {group}
             </ChartSettingsWidgetListHeader>
           )}
-          <ChartSettingsWidgetListContainer>
+          <div>
             {_.sortBy(groupedWidgets[group], "index").map(widget => (
               <ChartSettingsWidget
                 key={widget.id}
@@ -48,7 +49,8 @@ const ChartSettingsWidgetList = ({
                 {...extraWidgetProps}
               />
             ))}
-          </ChartSettingsWidgetListContainer>
+            {!lastGroup && <ChartSettingsWidgetListDivider />}
+          </div>
         </div>
       );
     });
