@@ -1,4 +1,7 @@
-import { getParameterType, getParameterSubType } from "./parameter-type";
+import {
+  getParameterType,
+  getParameterSubType,
+} from "metabase-lib/lib/parameters/utils/parameter-type";
 
 describe("parameters/utils/parameter-type", () => {
   describe("getParameterType", () => {

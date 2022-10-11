@@ -41,7 +41,7 @@ import { FieldDimension } from "../Dimension";
 import Base from "./Base";
 import type Table from "./Table";
 import type Metadata from "./Metadata";
-import { getUniqueFieldId } from "./utils";
+import { getUniqueFieldId } from "./utils/fields";
 
 export const LONG_TEXT_MIN = 80;
 

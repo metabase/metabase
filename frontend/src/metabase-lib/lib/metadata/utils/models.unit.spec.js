@@ -11,7 +11,7 @@ import {
   isAdHocModelQuestion,
   isAdHocModelQuestionCard,
   getDatasetMetadataCompletenessPercentage,
-} from "./models";
+} from "metabase-lib/lib/metadata/utils/models";
 
 describe("data model utils", () => {
   const DB_WITHOUT_NESTED_QUERIES_SUPPORT = new Database({

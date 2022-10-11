@@ -137,19 +137,24 @@
 (s/defn update-dashboard-card!
   "Update an existing DashboardCard` including all DashboardCardSeries.
    Returns the updated DashboardCard or throws an Exception."
-  [{:keys [id action_id parameter_mappings visualization_settings] :as dashboard-card} :- DashboardCardUpdates]
+  [{:keys [id card_id action_id parameter_mappings visualization_settings] :as dashboard-card} :- DashboardCardUpdates]
   (let [{:keys [size_x size_y row col series]} (merge {:series []} dashboard-card)]
     (db/transaction
      ;; update the dashcard itself (positional attributes)
      (when (and size_x size_y row col)
        (db/update-non-nil-keys! DashboardCard id
-                                :action_id              action_id
-                                :size_x                 size_x
-                                :size_y                 size_y
-                                :row                    row
-                                :col                    col
-                                :parameter_mappings     parameter_mappings
-                                :visualization_settings visualization_settings))
+                                (cond->
+                                  {:action_id              action_id
+                                   :size_x                 size_x
+                                   :size_y                 size_y
+                                   :row                    row
+                                   :col                    col
+                                   :parameter_mappings     parameter_mappings
+                                   :visualization_settings visualization_settings}
+                                  ;; Allow changing card for model_actions
+                                  ;; This is to preserve the existing behavior of questions and card_id
+                                  ;; I don't know why card_id couldn't be changed for questions though.
+                                  (:action_slug visualization_settings) (assoc :card_id card_id))))
      ;; update series (only if they changed)
      (when-not (= series (map :card_id (db/select [DashboardCardSeries :card_id]
                                                   :dashboardcard_id id
