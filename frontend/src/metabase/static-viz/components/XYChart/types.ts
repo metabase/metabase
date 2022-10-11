@@ -1,17 +1,15 @@
 import type { ScaleBand, ScaleLinear, ScaleTime } from "d3-scale";
 import type { DateFormatOptions } from "metabase/static-viz/lib/dates";
 import type { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
-
-export type Range = [number, number];
-export type ContinuousDomain = [number, number];
+import { ContinuousScaleType } from "metabase/visualizations/shared/types/scale";
 
 export type XValue = string | number;
 export type YValue = number;
 export type SeriesDatum = [XValue, YValue];
 export type SeriesData = SeriesDatum[];
 
-export type XAxisType = "timeseries" | "linear" | "ordinal" | "pow" | "log";
-export type YAxisType = "linear" | "pow" | "log";
+export type XAxisType = ContinuousScaleType | "timeseries" | "ordinal";
+export type YAxisType = ContinuousScaleType;
 
 export type YAxisPosition = "left" | "right";
 
@@ -60,13 +58,6 @@ export type ChartSettings = {
 export interface Dimensions {
   width: number;
   height: number;
-}
-
-export interface Margin {
-  top: number;
-  right: number;
-  bottom: number;
-  left: number;
 }
 
 export type ChartStyle = {

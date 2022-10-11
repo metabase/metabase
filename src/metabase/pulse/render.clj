@@ -92,6 +92,7 @@
            :area
            :bar
            :combo
+           :row
            :funnel
            :progress
            :gauge

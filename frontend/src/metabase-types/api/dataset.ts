@@ -2,6 +2,9 @@ import type { DatetimeUnit } from "metabase-types/api/query";
 import { DatabaseId } from "./database";
 import { DownloadPermission } from "./permissions";
 
+export type RowValue = string | number | null | boolean;
+export type RowValues = RowValue[];
+
 export interface DatasetColumn {
   display_name: string;
   source: string;
@@ -11,7 +14,7 @@ export interface DatasetColumn {
 }
 
 export interface DatasetData {
-  rows: any[][];
+  rows: RowValues[];
   cols: DatasetColumn[];
   rows_truncated: number;
   download_perms?: DownloadPermission;

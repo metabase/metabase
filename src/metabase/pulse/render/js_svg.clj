@@ -137,6 +137,14 @@
                                                   (json/generate-string (:colors settings))))]
     (svg-string->bytes svg-string)))
 
+(defn row-chart
+  "Clojure entrypoint to render a row chart."
+  [settings data]
+  (let [svg-string (.asString (js/execute-fn-name @context "row_chart"
+                                                  (json/generate-string settings)
+                                                  (json/generate-string data)))]
+    (svg-string->bytes svg-string)))
+
 (defn categorical-donut
   "Clojure entrypoint to render a categorical donut chart. Rows should be tuples of [category numeric-value]. Returns a
   byte array of a png file"
