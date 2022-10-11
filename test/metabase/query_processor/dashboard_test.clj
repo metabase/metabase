@@ -47,18 +47,28 @@
      options)))
 
 (deftest card-and-dashcard-id-validation-test
-  (mt/with-temp* [Card          [{card-id :id} {:dataset_query (mt/mbql-query venues)}]
-                  Dashboard     [{dashboard-id :id} {:parameters []}]
-                  DashboardCard [{dashcard-id :id} {:card_id card-id, :dashboard_id dashboard-id}]]
+  (mt/with-temp* [Dashboard     [{dashboard-id :id} {:parameters []}]
+                  Card          [{card-id-1 :id} {:dataset_query (mt/mbql-query venues)}]
+                  Card          [{card-id-2 :id} {:dataset_query (mt/mbql-query venues)}]
+                  DashboardCard [{dashcard-id-1 :id} {:card_id card-id-1, :dashboard_id dashboard-id}]
+                  DashboardCard [{dashcard-id-2 :id} {:card_id card-id-2, :dashboard_id dashboard-id}]]
+    (testing "Sanity check that a valid combination card, dashcard and dashboard IDs executes successfully"
+      (is (= 100 (count (mt/rows (run-query-for-dashcard dashboard-id card-id-1 dashcard-id-1))))))
+
     (testing "A 404 error should be thrown if the card-id is not valid for the dashboard"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"Not found"
-                              (run-query-for-dashcard (inc card-id) dashcard-id dashboard-id))))
+                              (run-query-for-dashcard (* card-id-1 2) dashcard-id-1 dashboard-id))))
 
     (testing "A 404 error should be thrown if the dashcard-id is not valid for the dashboard"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"Not found"
-                              (run-query-for-dashcard card-id (inc dashcard-id) dashboard-id))))))
+                              (run-query-for-dashcard card-id-1 (* dashcard-id-1 2) dashboard-id))))
+
+    (testing "A 404 error should be thrown if the dashcard-id is not valid for the card"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Not found"
+                              (run-query-for-dashcard card-id-1 dashcard-id-2 dashboard-id))))))
 
 (deftest default-value-precedence-test-field-filters
   (testing "If both Dashboard and Card have default values for a Field filter parameter, Card defaults should take precedence\n"
