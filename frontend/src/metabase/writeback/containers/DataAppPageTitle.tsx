@@ -13,7 +13,7 @@ interface Props
   page: DataAppPage;
 }
 
-function DataAppTitle({ page, ...props }: Props) {
+function DataAppPageTitle({ page, ...props }: Props) {
   const { format } = useDataAppContext();
 
   return (
@@ -26,4 +26,4 @@ function DataAppTitle({ page, ...props }: Props) {
   );
 }
 
-export default DataAppTitle;
+export default DataAppPageTitle;
