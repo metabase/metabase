@@ -425,7 +425,12 @@ function DatasetEditor(props) {
             onChange={onChangeEditorTab}
             options={[
               { id: "query", name: t`Query`, icon: "notebook" },
-              { id: "metadata", name: t`Metadata`, icon: "label" },
+              {
+                id: "metadata",
+                name: t`Metadata`,
+                icon: "label",
+                disabled: !result?.data,
+              },
             ]}
           />
         }

@@ -19,6 +19,9 @@ describe("scenarios > models > create", () => {
     // Now we will create a model
     goFromHomePageToNewNativeQueryModelPage();
 
+    // Clicking on metadata should not work until we run a query
+    cy.findByTestId("editor-tabs-metadata").should("be.disabled");
+
     cy.get(".ace_editor").should("be.visible").type("select * from ORDERS");
 
     cy.findByText("Save").click();
