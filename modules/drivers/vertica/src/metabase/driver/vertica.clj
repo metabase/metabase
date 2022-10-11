@@ -98,7 +98,7 @@
 (defmethod sql.qp/date [:vertica :quarter]         [_ _ expr] (date-trunc :quarter expr))
 (defmethod sql.qp/date [:vertica :quarter-of-year] [_ _ expr] (extract-integer :quarter expr))
 (defmethod sql.qp/date [:vertica :year]            [_ _ expr] (date-trunc :year expr))
-(defmethod sql.qp/date [:vertica :year-of-era]     [_ _ expr] (date-trunc :year expr))
+(defmethod sql.qp/date [:vertica :year-of-era]     [_ _ expr] (extract-integer :year expr))
 
 (defmethod sql.qp/date [:vertica :week]
   [_ _ expr]
@@ -124,7 +124,7 @@
    (when (and timestamptz? from-tz)
          (throw (ex-info "`timestamp with time zone` columns shouldn't have a `from timezone`" {:to-tz   to-tz
                                                                                                 :from-tz from-tz})))
-   (let [from-tz (or from-tz (qp.timezone/results-timezone-id driver))]
+   (let [from-tz (or from-tz (qp.timezone/results-timezone-id))]
     (cond-> clause
       (and (not timestamptz?) from-tz)
       (->AtTimeZone from-tz)
