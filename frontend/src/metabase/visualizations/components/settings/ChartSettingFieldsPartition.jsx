@@ -15,6 +15,20 @@ import {
   EmptyColumnPlaceholder,
 } from "./ChartSettingFieldsPartition.styled";
 
+const columnMove = (columns, from, to) => {
+  const columnCopy = [...columns];
+  columnCopy.splice(to, 0, columnCopy.splice(from, 1)[0]);
+  return columnCopy;
+};
+
+const columnRemove = (columns, from) => {
+  return splice(columns, from, 1);
+};
+
+const columnAdd = (columns, to, column) => {
+  return splice(columns, to, 0, column);
+};
+
 class ChartSettingFieldsPartition extends React.Component {
   constructor(props) {
     super(props);
@@ -35,9 +49,13 @@ class ChartSettingFieldsPartition extends React.Component {
   };
 
   getPartitionType = partitionName => {
-    return partitionName === "rows" || partitionName === "columns"
-      ? "dimension"
-      : "metric";
+    switch (partitionName) {
+      case "rows":
+      case "columns":
+        return "dimension";
+      default:
+        return "metric";
+    }
   };
 
   handleDragEnd = ({ source, destination }) => {
@@ -53,25 +71,22 @@ class ChartSettingFieldsPartition extends React.Component {
       sourcePartition === destinationPartition &&
       sourceIndex !== destinationIndex
     ) {
-      const partition = value[sourcePartition];
-      const partitionDup = [...partition];
-
-      partitionDup.splice(
-        destinationIndex,
-        0,
-        partitionDup.splice(sourceIndex, 1)[0],
-      );
-
-      onChange({ ...value, [sourcePartition]: partitionDup });
+      onChange({
+        ...value,
+        [sourcePartition]: columnMove(
+          value[sourcePartition],
+          sourceIndex,
+          destinationIndex,
+        ),
+      });
     } else if (sourcePartition !== destinationPartition) {
       const column = value[sourcePartition][sourceIndex];
       onChange({
         ...value,
-        [sourcePartition]: splice(value[sourcePartition], sourceIndex, 1),
-        [destinationPartition]: splice(
+        [sourcePartition]: columnRemove(value[sourcePartition], sourceIndex),
+        [destinationPartition]: columnAdd(
           value[destinationPartition],
           destinationIndex,
-          0,
           column,
         ),
       });

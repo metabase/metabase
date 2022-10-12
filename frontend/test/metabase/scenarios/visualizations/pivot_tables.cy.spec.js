@@ -897,7 +897,6 @@ function createAndVisitTestQuestion({ display = "pivot" } = {}) {
 
 function assertOnPivotSettings() {
   cy.findAllByTestId(/draggable-item/).as("fieldOption");
-  //cy.get("[draggable=true]").as("fieldOption");
 
   cy.log("Implicit side-bar assertions");
   cy.findByText(/Pivot Table options/i);
