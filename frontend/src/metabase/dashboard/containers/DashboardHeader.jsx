@@ -433,7 +433,7 @@ class DashboardHeader extends Component {
         isEditingInfo={isEditing}
         isNavBarOpen={this.props.isNavBarOpen}
         headerButtons={
-          dashboard.is_app_page
+          !isEditing && dashboard.is_app_page
             ? [
                 <Tooltip
                   key="edit-dashboard"
