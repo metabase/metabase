@@ -23,7 +23,7 @@ const ChartSettingsWidgetList = ({
       <ChartSettingsWidget key={widget.id} {...widget} {...extraWidgetProps} />
     ));
   } else {
-    const groupedWidgets = widgets.reduce<{ [key: string]: any[] }>(
+    const groupedWidgets = widgets.reduce<Record<string, any[]>>(
       (memo, widget) => {
         const group = widget.group || "";
         (memo[group] = memo[group] || []).push(widget);

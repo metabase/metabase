@@ -467,7 +467,7 @@ export const GRAPH_AXIS_SETTINGS = {
   },
   "graph.x_axis.scale": {
     section: t`Axes`,
-    group: t`X-AXIS`,
+    group: t`X-axis`,
     title: t`Scale`,
     index: 4,
     widget: "select",
@@ -505,7 +505,7 @@ export const GRAPH_AXIS_SETTINGS = {
     section: t`Axes`,
     title: t`Scale`,
     index: 7,
-    group: t`Y-AXIS`,
+    group: t`Y-axis`,
     widget: "select",
     default: "linear",
     getProps: (series, vizSettings) => ({
@@ -518,7 +518,7 @@ export const GRAPH_AXIS_SETTINGS = {
   },
   "graph.x_axis.axis_enabled": {
     section: t`Axes`,
-    group: t`X-AXIS`,
+    group: t`X-axis`,
     title: t`Show lines and marks`,
     index: 3,
     widget: "select",
@@ -537,7 +537,7 @@ export const GRAPH_AXIS_SETTINGS = {
     section: t`Axes`,
     title: t`Show lines and marks`,
     index: 8,
-    group: t`Y-AXIS`,
+    group: t`Y-axis`,
     widget: "select",
     props: {
       options: [
@@ -549,7 +549,7 @@ export const GRAPH_AXIS_SETTINGS = {
   },
   "graph.y_axis.auto_range": {
     section: t`Axes`,
-    group: t`Y-AXIS`,
+    group: t`Y-axis`,
     index: 4,
     title: t`Auto y-axis range`,
     inline: true,
@@ -558,7 +558,7 @@ export const GRAPH_AXIS_SETTINGS = {
   },
   "graph.y_axis.min": {
     section: t`Axes`,
-    group: t`Y-AXIS`,
+    group: t`Y-axis`,
     index: 5,
     title: t`Min`,
     widget: "number",
@@ -568,7 +568,7 @@ export const GRAPH_AXIS_SETTINGS = {
   },
   "graph.y_axis.max": {
     section: t`Axes`,
-    group: t`Y-AXIS`,
+    group: t`Y-axis`,
     index: 6,
     title: t`Max`,
     widget: "number",
@@ -600,7 +600,7 @@ export const GRAPH_AXIS_SETTINGS = {
 */
   "graph.y_axis.auto_split": {
     section: t`Axes`,
-    group: t`Y-AXIS`,
+    group: t`Y-axis`,
     index: 3,
     title: t`Split y-axis when necessary`,
     widget: "toggle",
@@ -610,7 +610,7 @@ export const GRAPH_AXIS_SETTINGS = {
   },
   "graph.x_axis.labels_enabled": {
     section: t`Axes`,
-    group: t`X-AXIS`,
+    group: t`X-axis`,
     index: 1,
     title: t`Show label`,
     inline: true,
@@ -621,18 +621,22 @@ export const GRAPH_AXIS_SETTINGS = {
     section: t`Axes`,
     title: t`Label`,
     index: 2,
-    group: t`X-AXIS`,
+    group: t`X-axis`,
     widget: "input",
     getHidden: (series, vizSettings) =>
       vizSettings["graph.x_axis.labels_enabled"] === false,
     getDefault: (series, vizSettings) =>
-      series.length === 1 ? getFriendlyName(series[0].data.cols[0]) : null,
+      series.length > 1 ? getFriendlyName(series[0].data.cols[0]) : null,
+    getProps: series => ({
+      placeholder:
+        series.length > 1 ? getFriendlyName(series[0].data.cols[0]) : null,
+    }),
   },
   "graph.y_axis.labels_enabled": {
     section: t`Axes`,
     title: t`Show label`,
     index: 1,
-    group: t`Y-AXIS`,
+    group: t`Y-axis`,
     widget: "toggle",
     inline: true,
     default: true,
@@ -641,7 +645,7 @@ export const GRAPH_AXIS_SETTINGS = {
     section: t`Axes`,
     title: t`Label`,
     index: 2,
-    group: t`Y-AXIS`,
+    group: t`Y-axis`,
     widget: "input",
     getHidden: (series, vizSettings) =>
       vizSettings["graph.y_axis.labels_enabled"] === false,
