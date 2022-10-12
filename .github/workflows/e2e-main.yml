@@ -51,6 +51,7 @@ jobs:
       MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
       MB_SNOWPLOW_AVAILABLE: true
       MB_SNOWPLOW_URL: "http://localhost:9090"  # Snowplow micro
+      RECORDING_ENABLED: ${{ secrets.CURRENTS_KEY }}
     strategy:
       fail-fast: false
       matrix:
@@ -137,7 +138,7 @@ jobs:
         mv version.properties resources/
 
     - name: Run Cypress tests on ${{ matrix.folder }} - Master Branch
-      if: ${{ github.ref == 'refs/heads/master' }}
+      if: github.ref == 'refs/heads/master' && env.RECORDING_ENABLED != null
       run: |
         yarn run test-cypress-run \
           --folder ${{ matrix.folder }} \

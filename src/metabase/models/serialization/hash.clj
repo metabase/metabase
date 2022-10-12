@@ -71,6 +71,11 @@
                       {:entity entity}
                       e)))))
 
+(defn identity-hash?
+  "Given a string, confirms whether it is a valid identity hash. That is, an 8-character hexadecimal number."
+  [s]
+  (boolean (re-matches #"^[0-9a-fA-F]{8}$" s)))
+
 (defn hydrated-hash
   "Many entities reference other entities. Using the autoincrementing ID is not portable, so we use the identity hash
   of the referenced entity. This is a helper for writing [[identity-hash-fields]]."

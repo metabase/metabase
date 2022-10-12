@@ -137,7 +137,7 @@ const DashboardHeader = ({
         className={cx("QueryBuilder-section", headerClassName)}
         ref={header}
       >
-        <HeaderContent showSubHeader={!isDataApp && showSubHeader}>
+        <HeaderContent hasSubHeader={!isDataApp} showSubHeader={showSubHeader}>
           <HeaderCaptionContainer>
             <HeaderCaption
               key={dashboard.name}
