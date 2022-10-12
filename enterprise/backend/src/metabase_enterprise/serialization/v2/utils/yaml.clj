@@ -1,5 +1,6 @@
 (ns metabase-enterprise.serialization.v2.utils.yaml
-  (:require [clojure.java.io :as io])
+  (:require [clojure.java.io :as io]
+            [clojure.string :as str])
   (:import java.io.File
            java.nio.file.Path))
 
@@ -18,6 +19,21 @@
                 (leaf-file-name id)
                 (str id "+" (truncate-label label) ".yaml"))))
 
+(defn- escape-segment
+  "Given a path segment, which is supposed to be the name of a single file or directory, escape any slashes inside it.
+  This occurs in practice, for example with a `Field.name` containing a slash like \"Company/organization website\"."
+  [segment]
+  (-> segment
+      (str/replace "/"  "__SLASH__")
+      (str/replace "\\" "__BACKSLASH__")))
+
+(defn- unescape-segment
+  "Given an escaped path segment (see [[escape-segment]]), this reverses the escaping and restores the original name."
+  [segment]
+  (-> segment
+      (str/replace "__SLASH__"     "/")
+      (str/replace "__BACKSLASH__" "\\")))
+
 (defn hierarchy->file
   "Given a :serdes/meta abstract path, return a [[File]] corresponding to it."
   ^File [root-dir hierarchy]
@@ -27,17 +43,17 @@
         ;; The last part of the hierarchy is used for the basename; this is the only part with the label.
         {:keys [id model label]} (last hierarchy)
         leaf-name                (leaf-file-name id label)
-        as-given                 (apply io/file root-dir (concat prefix [model leaf-name]))]
+        as-given                 (apply io/file root-dir (map escape-segment (concat prefix [model leaf-name])))]
     (if (.exists ^File as-given)
       as-given
       ; If that file name doesn't exist, check the directory to see if there's one that's the requested file plus a
       ; human-readable portion.
-      (let [dir       (apply io/file root-dir (concat prefix [model]))
+      (let [dir       (apply io/file root-dir (map escape-segment (concat prefix [model])))
             matches   (filter #(and (.startsWith ^String % (str id "+"))
                                     (.endsWith ^String % ".yaml"))
                               (.list ^File dir))]
         (if (empty? matches)
-          (io/file dir leaf-name)
+          (io/file dir (escape-segment leaf-name))
           (io/file dir (first matches)))))))
 
 (defn path-split
@@ -50,11 +66,13 @@
 
 (defn path->hierarchy
   "Given the list of file path chunks as returned by [[path-split]], reconstruct the `:serdes/meta` abstract path
-  corresponding to it."
+  corresponding to it.
+  Note that the __SLASH__ and __BACKSLASH__ interpolations of [[escape-segment]] are reversed here."
   [path-parts]
   (let [parentage        (into [] (for [[model id] (partition 2 (drop-last 2 path-parts))]
-                                    {:model model :id id}))
+                                    {:model model :id (unescape-segment id)}))
         [model basename] (take-last 2 path-parts)
+        basename         (unescape-segment basename)
         [_ id label]     (or (re-matches #"^([A-Za-z0-9_\.:-]+)(?:\+(.*))?\.yaml$" basename)
                              (re-matches #"^(.+)\.yaml$" basename))]
     (conj parentage (cond-> {:model model :id id}
