@@ -1,12 +1,13 @@
 (ns metabase-enterprise.sso.api.sso-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.string :as str]
+            [clojure.test :refer :all]
             [metabase-enterprise.sso.integrations.saml-test :as saml-test]
             [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
             [metabase.test :as mt]
             [metabase.test.data.users :as test.users]))
 
 (def ^:private default-idp-uri  "http://test.idp.metabase.com")
-(def ^:private default-idp-cert (slurp "test_resources/sso/auth0-public-idp.cert"))
+(def ^:private default-idp-cert (str/trim (slurp "test_resources/sso/auth0-public-idp.cert")))
 
 (deftest saml-settings-test
   (testing "PUT /auth/sso/saml/settings"
