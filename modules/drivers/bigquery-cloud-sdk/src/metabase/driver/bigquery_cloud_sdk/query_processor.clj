@@ -119,6 +119,7 @@
 
 (defmethod parse-result-of-type "DATETIME"
   [_ column-mode _timezone-id v]
+  ;; this should returns a LocalDateTime
   (parse-value column-mode v (partial parse-timestamp-str nil)))
 
 (defmethod parse-result-of-type "TIMESTAMP"
