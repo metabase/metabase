@@ -1,5 +1,6 @@
 (ns metabase.api.app-test
   (:require
+    [cheshire.core :as json]
     [clojure.test :refer [deftest is testing]]
     [medley.core :as m]
     [metabase.models :refer [App
@@ -150,6 +151,20 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (str "app/" app-id)))))))))
 
+(defn- normalized-models [models]
+  (->> models (sort-by :id) json/generate-string))
+
+(defn- scaffolded-models [app]
+  (-> (db/select 'Card {:where [:and
+                                [:= :collection_id (:collection_id app)]
+                                :dataset]})
+      normalized-models))
+
+(defn- api-models [app]
+  (-> (mt/user-http-request :crowberto :get 200 (str "app/" (:id app)))
+      :models
+      normalized-models))
+
 (deftest scaffold-test
   (mt/with-model-cleanup [Card Dashboard Collection Permissions]
     (testing "Golden path"
@@ -185,16 +200,18 @@
                                           :order-by [:id]}))))
           (is (partial= {:groups {(:id (perms-group/all-users)) {(:collection_id app) :read}}}
                         (graph/graph))
-              "''All Users'' should have the default permission on the app collection"))))
+              "''All Users'' should have the default permission on the app collection")
+          (is (= (scaffolded-models app)
+               (api-models app))))))
     (testing "Bad or duplicate tables"
       (is (= (format "Some tables could not be found. Given: (%s %s) Found: (%s)"
                      (data/id :venues)
                      Integer/MAX_VALUE
                      (data/id :venues))
              (mt/user-http-request
-               :crowberto :post 400 "app/scaffold"
-               {:table-ids [(data/id :venues) (data/id :venues) Integer/MAX_VALUE]
-                :app-name (str "My test app " (gensym))}))))))
+              :crowberto :post 400 "app/scaffold"
+              {:table-ids [(data/id :venues) (data/id :venues) Integer/MAX_VALUE]
+               :app-name (str "My test app " (gensym))}))))))
 
 (deftest scaffold-app-test
   (mt/with-model-cleanup [Card Dashboard]
@@ -215,7 +232,9 @@
                                                                     :linkType "page",
                                                                     :targetId (:id detail-page)}}}
                                          {}]}
-                        list-page))))
+                        list-page))
+        (is (= (scaffolded-models app)
+               (api-models app)))))
       (testing "With existing pages"
         (let [app (mt/user-http-request
                     :crowberto :post 200 (format "app/%s/scaffold" app-id)
@@ -254,4 +273,6 @@
                                               :write))
               (is (partial= {:groups {(:id (perms-group/all-users)) {(:collection_id response1) :write
                                                                      (:collection_id response2) :write}}}
-                            (graph/graph))))))))))
+                            (graph/graph)))
+              (is (= (scaffolded-models app)
+                     (api-models app))))))))))

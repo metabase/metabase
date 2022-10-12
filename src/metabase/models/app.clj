@@ -41,3 +41,11 @@
           (cond-> coll
             app-id (assoc :app_id app-id)))))
     collections))
+
+(defn add-models
+  "Add the fully hydrated models used by the app."
+  {:hydrate :models}
+  [app]
+  (db/select 'Card {:where [:and
+                            [:= :collection_id (:collection_id app)]
+                            :dataset]}))
