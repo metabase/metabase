@@ -193,6 +193,16 @@ In the Environment Properties section, you'll be able to set or change the varia
 
 ![EB Environment Variables](images/EBEnvVariables.png)
 
+## Increase the query timeout
+
+By default, you will get an "Your question took too long" error if the query takes longer than 60 seconds.  This is due to a Load Balancer default when your Elastic Beanstalk application is created.  If you want to increase this timeout:
+
+1. In AWS, go to the "EC2" page and click on "Load Balancers" in the side navigation.
+2. Select the load balancer for your metabase application.  If you have multiple load balancers, finding the correct one might be based on your setup, but yours might have a "Tag" of "elasticbeanstalk:environment-name" which equals "Metabase-env".
+3. In the "Attributes" section for the metabase loadbalancer, notice how the "Idle Timeout" is set to "60 seconds".
+4. Click "Edit Attributes" and set the "Idle Timeout" to the desired value.  Example: `600` will give you a timeout of 10 minutes.
+5. Click Save.
+
 ## Notifications
 
 For a simple way to keep tabs on your application, enter an email address  in the **Notifications** block to get notifications about your deployment and any changes to your application.
