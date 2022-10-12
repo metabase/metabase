@@ -45,7 +45,6 @@ import {
   maybeUsePivotEndpoint,
   MetabaseApi,
 } from "metabase/services";
-import Questions from "metabase/entities/questions";
 import {
   Parameter as ParameterObject,
   ParameterValues,
@@ -1165,39 +1164,6 @@ class QuestionInner {
       );
       return Promise.all(datasetQueries.map(getDatasetQueryResult));
     }
-  }
-
-  // NOTE: prefer `reduxCreate` so the store is automatically updated
-  async apiCreate() {
-    const createdCard = await Questions.api.create(this.card());
-    return this.setCard(createdCard);
-  }
-
-  // NOTE: prefer `reduxUpdate` so the store is automatically updated
-  async apiUpdate() {
-    const updatedCard = await Questions.api.update(this.card());
-    return this.setCard(updatedCard);
-  }
-
-  async reduxCreate(dispatch) {
-    const action = await dispatch(Questions.actions.create(this.card()));
-    return this.setCard(Questions.HACK_getObjectFromAction(action));
-  }
-
-  async reduxUpdate(dispatch, { excludeDatasetQuery = false } = {}) {
-    const fullCard = this.card();
-    const card = excludeDatasetQuery
-      ? _.omit(fullCard, "dataset_query")
-      : fullCard;
-    const action = await dispatch(
-      Questions.actions.update(
-        {
-          id: this.id(),
-        },
-        card,
-      ),
-    );
-    return this.setCard(Questions.HACK_getObjectFromAction(action));
   }
 
   setParameters(parameters) {
