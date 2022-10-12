@@ -23,7 +23,11 @@ import {
 } from "metabase/dashboard/actions";
 
 import { ButtonOptions } from "./ButtonOptions";
-import { Heading, SidebarContent } from "./AddActionSidebar.styled";
+import {
+  Heading,
+  SidebarContent,
+  BorderedSidebarContent,
+} from "./AddActionSidebar.styled";
 
 const mapDispatchToProps = {
   addAction: addActionToDashboard,
@@ -71,31 +75,35 @@ function AddActionSidebarFn({
 
   return (
     <Sidebar>
-      <SidebarContent>
+      <BorderedSidebarContent>
         <Heading>
           {t`Add a ${
             displayType === "button" ? t`button` : t`form`
           } to the page`}
         </Heading>
+      </BorderedSidebarContent>
 
-        {showActionPicker && (
+      {showActionPicker && (
+        <SidebarContent>
           <ActionPicker modelIds={modelIds} onClick={handleActionSelected} />
-        )}
+        </SidebarContent>
+      )}
 
-        {showButtonOptions && (
-          <ButtonOptions
-            addLink={addLink}
-            closeSidebar={closeSidebar}
-            dashboard={dashboard}
-            ActionPicker={
+      {showButtonOptions && (
+        <ButtonOptions
+          addLink={addLink}
+          closeSidebar={closeSidebar}
+          dashboard={dashboard}
+          ActionPicker={
+            <SidebarContent>
               <ActionPicker
                 modelIds={modelIds}
                 onClick={handleActionSelected}
               />
-            }
-          />
-        )}
-      </SidebarContent>
+            </SidebarContent>
+          }
+        />
+      )}
     </Sidebar>
   );
 }

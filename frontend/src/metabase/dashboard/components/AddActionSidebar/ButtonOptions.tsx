@@ -6,12 +6,19 @@ import type {
   CustomDestinationClickBehavior,
   DashboardOrderedCard,
 } from "metabase-types/api";
+import { clickBehaviorIsValid } from "metabase/lib/click-behavior";
 
 import { BehaviorOption } from "metabase/dashboard/components/ClickBehaviorSidebar/TypeSelector/TypeSelector";
 import LinkOptions from "metabase/dashboard/components/ClickBehaviorSidebar/LinkOptions";
+import Icon from "metabase/components/Icon";
 
-import { hasLinkDestination } from "./utils";
-import { ClickBehaviorPickerText } from "./AddActionSidebar.styled";
+import {
+  ClickBehaviorPickerText,
+  SidebarContent,
+  BackButtonIconContainer,
+  BackButtonContainer,
+  BorderedSidebarContent,
+} from "./AddActionSidebar.styled";
 
 type ButtonType = "action" | "link" | null;
 
@@ -53,7 +60,7 @@ export const ButtonOptions = ({
     if (newClickBehavior.type !== "link") {
       return;
     }
-    if (hasLinkDestination(newClickBehavior)) {
+    if (clickBehaviorIsValid(newClickBehavior)) {
       addLink({ dashId: dashboard.id, clickBehavior: newClickBehavior });
       closeSidebar();
       return;
@@ -87,20 +94,19 @@ const ButtonTypePicker = ({
 }) => {
   if (value) {
     return (
-      <div className="mb2">
-        <BehaviorOption
-          option={t`Change button type`}
-          selected={false}
-          icon="arrow_left"
-          hasNextStep={false}
-          onClick={() => onChange(null)}
-        />
-      </div>
+      <BorderedSidebarContent>
+        <BackButtonContainer onClick={() => onChange(null)}>
+          <BackButtonIconContainer>
+            <Icon name="chevronleft" size={16} />
+          </BackButtonIconContainer>
+          <div>{t`Change button type`}</div>
+        </BackButtonContainer>
+      </BorderedSidebarContent>
     );
   }
 
   return (
-    <div>
+    <SidebarContent>
       <ClickBehaviorPickerText>
         {t`What type of button do you want to add?`}
       </ClickBehaviorPickerText>
@@ -118,6 +124,6 @@ const ButtonTypePicker = ({
         hasNextStep
         onClick={() => onChange("link")}
       />
-    </div>
+    </SidebarContent>
   );
 };

@@ -6,7 +6,7 @@ import type {
 } from "metabase-types/types/Parameter";
 
 import type { CardId, SavedCard } from "metabase-types/types/Card";
-import { WritebackAction } from "./writeback";
+import type { WritebackAction } from "./writeback";
 
 import type { Dataset } from "./dataset";
 

@@ -87,13 +87,18 @@ export const addTextDashCardToDashboard = function ({ dashId }) {
 };
 
 const esitmateCardSize = (displayType, action) => {
+  const BASE_HEIGHT = 3;
+  const HEIGHT_PER_FIELD = 1.5;
+
   if (displayType === "button") {
     return { size_x: 2, size_y: 1 };
   }
 
   return {
     size_x: 6,
-    size_y: Math.round(3 + action.parameters.length * 1.5),
+    size_y: Math.round(
+      BASE_HEIGHT + action.parameters.length * HEIGHT_PER_FIELD,
+    ),
   };
 };
 

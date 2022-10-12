@@ -10,11 +10,14 @@ import Questions from "metabase/entities/questions";
 import type { Card, WritebackAction } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
+import Link from "metabase/core/components/Link";
+import Button from "metabase/core/components/Button";
 import {
   ModelTitle,
   ActionItem,
   ModelActionList,
   EmptyState,
+  EmptyModelStateContainer,
 } from "./ActionPicker.styled";
 
 export default function ActionPicker({
@@ -33,6 +36,13 @@ export default function ActionPicker({
           onClick={onClick}
         />
       ))}
+      {!modelIds.length && (
+        <EmptyState
+          message={t`No models found`}
+          action={t`Create new model`}
+          link={"/model/new"}
+        />
+      )}
     </div>
   );
 }
@@ -61,11 +71,16 @@ function ModelActionPicker({
           ))}
         </ul>
       ) : (
-        <EmptyState
-          message={t`There are no actions for this model`}
-          action={t`Create new action`}
-          link={`/action/create?model-id=${model.id}`}
-        />
+        <EmptyModelStateContainer>
+          <div>{t`There are no actions for this model`}</div>
+          <Button
+            as={Link}
+            to={`/action/create?model-id=${model.id}`}
+            borderless
+          >
+            {t`Create new action`}
+          </Button>
+        </EmptyModelStateContainer>
       )}
     </ModelActionList>
   );

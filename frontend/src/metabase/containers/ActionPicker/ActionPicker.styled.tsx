@@ -34,3 +34,9 @@ export const ActionItem = styled.li`
 export const EmptyState = styled(UnstyledEmptyState)`
   margin-bottom: ${space(2)};
 `;
+
+export const EmptyModelStateContainer = styled.div`
+  padding-bottom: ${space(2)};
+  color: ${color("text-medium")};
+  text-align: center;
+`;
