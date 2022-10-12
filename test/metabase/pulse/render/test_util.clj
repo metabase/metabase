@@ -73,7 +73,7 @@
     {:name         col-name
      :display_name col-name
      :settings     nil
-     :field_ref    [:field idx (when (= :type/Temporal ttype) {}:temporal-unit :default)]
+     :field_ref    [:field idx (when (= :type/Temporal ttype) {:temporal-unit :default})]
      :base_type    (guess-type col-sample)}))
 
 (defn base-viz-settings
