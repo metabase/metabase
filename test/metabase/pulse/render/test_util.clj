@@ -9,16 +9,14 @@
   1. build a minimal card and query result dataset for different visualization types and settings (scenarios)
   2. run the real rendering pipeline, but, return a hiccup tree instead of png bytes
   3. provide quick ways to 'query' the tree for different content, to confirm that elements are properly rendered."
-  (:require [clojure.zip :as zip]
-            [cheshire.core :as json]
+  (:require [cheshire.core :as json]
+            [clojure.zip :as zip]
             [metabase.pulse.render :as render]
             [metabase.pulse.render.body :as body]
             [metabase.pulse.render.datetime :as datetime]
             [metabase.pulse.render.image-bundle :as image-bundle]
             [metabase.pulse.render.js-svg :as js-svg])
-  (:import java.io.ByteArrayInputStream
-           java.nio.charset.StandardCharsets
-           [org.apache.batik.anim.dom SAXSVGDocumentFactory SVGOMDocument]
+  (:import [org.apache.batik.anim.dom SVGOMDocument]
            [org.w3c.dom Element Node]))
 
 (def test-card
