@@ -74,23 +74,20 @@ function DataAppNavbarView({
   );
 
   return (
-    <SidebarContentRoot>
-      <SidebarSection>
-        <SidebarHeadingWrapper>
-          <SidebarHeading>{dataApp.collection.name}</SidebarHeading>
-        </SidebarHeadingWrapper>
-        <ul>
-          {dataApp.nav_items.map(renderNavItem)}
-          {pagesWithoutNavItems.map(page => renderPage(page))}
-        </ul>
-      </SidebarSection>
-      <DataAppActionPanel
-        dataApp={dataApp}
-        onAddData={onAddData}
-        onNewPage={onNewPage}
-        onEditAppSettings={onEditAppSettings}
-      />
-    </SidebarContentRoot>
+    <div className="flex align-center">
+      <ul className="flex align-center">
+        {dataApp.nav_items.map(renderNavItem)}
+        {pagesWithoutNavItems.map(page => renderPage(page))}
+      </ul>
+      <div className="ml-auto">
+        <DataAppActionPanel
+          dataApp={dataApp}
+          onAddData={onAddData}
+          onNewPage={onNewPage}
+          onEditAppSettings={onEditAppSettings}
+        />
+      </div>
+    </div>
   );
 }
 

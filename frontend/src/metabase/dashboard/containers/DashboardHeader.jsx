@@ -432,7 +432,32 @@ class DashboardHeader extends Component {
         }
         isEditingInfo={isEditing}
         isNavBarOpen={this.props.isNavBarOpen}
-        headerButtons={this.getHeaderButtons()}
+        headerButtons={
+          dashboard.is_app_page
+            ? [
+                <Tooltip
+                  key="edit-dashboard"
+                  tooltip={
+                    dashboard.is_app_page ? t`Edit page` : t`Edit dashboard`
+                  }
+                >
+                  <DashboardHeaderButton
+                    key="edit"
+                    data-metabase-event="Dashboard;Edit"
+                    icon="pencil"
+                    className="text-white cursor-pointer bg-brand p2 m2"
+                    style={{
+                      position: "fixed",
+                      bottom: 0,
+                      right: 0,
+                      zIndex: 100,
+                    }}
+                    onClick={() => this.handleEdit(dashboard)}
+                  />
+                </Tooltip>,
+              ]
+            : this.getHeaderButtons()
+        }
         editWarning={this.getEditWarning(dashboard)}
         editingTitle={
           dashboard.is_app_page
