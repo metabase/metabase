@@ -280,7 +280,7 @@ Example: `dateAdd("March 25, 2021, 12:52:37", 1, "month")` would return `April 2
 
 ### dateSubtract
 
-Subtract some unit of time to a date or timestamp value.
+Subtracts some unit of time from a date or timestamp value.
 
 Syntax: `dateSubtract(column, amount, unit)`.
 
@@ -292,11 +292,11 @@ Example: `dateSubtract("March 25, 2021, 12:52:37", 1, "month")` would return `Fe
 
 ### day
 
-Takes a datetime and returns an integer with the day of the month as an integer.
+Takes a datetime and returns the day of the month as an integer.
 
 Syntax: `day([datetime column)`.
 
-Example: `day("March 25, 2021, 12:52:37")` would return the month as an integer, `25`.
+Example: `day("March 25, 2021, 12:52:37")` would return the day as an integer, `25`.
 
 ### endswith
 
@@ -330,7 +330,7 @@ Related: [ceil](#ceil), [round](#round).
 
 ### hour
 
-Takes a datetime and returns an integer with the hour as an integer (0-23).
+Takes a datetime and returns the hour as an integer (0-23).
 
 Syntax: `hour([datetime column)`.
 
@@ -400,7 +400,7 @@ Related: [upper](#upper).
 
 ### minute
 
-Takes a datetime and returns an integer with the minute as an integer (0-59).
+Takes a datetime and returns the minute as an integer (0-59).
 
 Syntax: `minute([datetime column)`.
 
@@ -408,7 +408,7 @@ Example: `minute("March 25, 2021, 12:52:37")` would return `52`.
 
 ### month
 
-Takes a datetime and returns an integer with the month number (1-12).
+Takes a datetime and returns the month number (1-12) as an integer.
 
 Syntax: `month([datetime column)`.
 
@@ -428,7 +428,7 @@ Related: [exp](#exp).
 
 ### quarter
 
-Takes a datetime and returns an integer (1-4) with the number of the quarter in the year.
+Takes a datetime and returns the number of the quarter in a year (1-4) as an integer.
 
 Syntax: `quarter([datetime column)`.
 
@@ -474,7 +474,7 @@ Example: `round([Temperature])`. If the temp were `13.5` degrees centigrade, the
 
 ### second
 
-Takes a datetime and returns an integer with the number of seconds in the minute (0-59.
+Takes a datetime and returns the number of seconds in the minute (0-59) as an integer.
 
 Syntax: `second([datetime column)`.
 
@@ -530,7 +530,7 @@ Example: `upper([Status])`. If status were "hyper", `upper("hyper")` would retur
 
 ### year
 
-Takes a datetime and returns an integer with the number of the year.
+Takes a datetime and returns the year as an integer.
 
 Syntax: `year([datetime column)`.
 
