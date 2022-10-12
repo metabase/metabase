@@ -79,7 +79,7 @@
 (defn base-viz-settings
   [display-type rows]
   (let [header-row (first rows)
-        sample-row (second rows)]
+        _sample-row (second rows)]
     ({:pin_map     {}
       :state       {}
       :country     {}
@@ -516,6 +516,6 @@
   [tree]
   (let [matcher (fn [loc] (map? (second (zip/node loc))))
         edit-fn (fn [loc]
-                  (let [[k m & c] (zip/node loc)]
+                  (let [[k _m & c] (zip/node loc)]
                     (zip/replace loc (into [k] c))))]
     (edit-nodes tree matcher edit-fn)))
