@@ -116,7 +116,7 @@
 
 ;; Fields must contain only letters, numbers, and underscores, start with a letter or underscore, and be at most 128
 ;; characters long.
-(def ^:private ValidFieldName #"^[A-Za-z_][\w-]{0,127}$")
+(def ^:private ValidFieldName #"^[A-Za-z_]\w{0,127}$")
 
 (s/defn ^:private delete-table!
   [dataset-id :- su/NonBlankString, table-id :- su/NonBlankString]
