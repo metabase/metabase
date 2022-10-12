@@ -1,7 +1,9 @@
 import {
   ParameterTarget,
   ParameterDimensionTarget,
+  ParameterVariableTarget,
 } from "metabase-types/types/Parameter";
+import { SavedCard } from "metabase-types/types/Card";
 import Dimension from "metabase-lib/lib/Dimension";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Question from "metabase-lib/lib/Question";
@@ -53,4 +55,18 @@ export function buildTemplateTagVariableTarget(variable: TemplateTagVariable) {
 
 export function buildTextTagTarget(tagName: string) {
   return ["text-tag", tagName];
+}
+
+export function getTargetFieldFromCard(
+  target: ParameterVariableTarget | ParameterDimensionTarget,
+  card: SavedCard,
+  metadata: Metadata,
+) {
+  if (!card?.dataset_query) {
+    return null;
+  }
+
+  const question = new Question(card, metadata);
+  const field = getParameterTargetField(target, metadata, question);
+  return field ?? null;
 }
