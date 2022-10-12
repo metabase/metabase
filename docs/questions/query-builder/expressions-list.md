@@ -328,6 +328,14 @@ Example: `floor([Price])`. If the `Price` were 1.99, the expression would return
 
 Related: [ceil](#ceil), [round](#round).
 
+### hour
+
+Takes a datetime and returns an integer with the hour as an integer (0-23).
+
+Syntax: `hour([datetime column)`.
+
+Example: `hour("March 25, 2021, 12:52:37")` would return `12`.
+
 ### interval
 
 Checks a date column's values to see if they're within the relative range.
