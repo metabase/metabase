@@ -1,10 +1,9 @@
 (ns metabase.query-processor-test.date-time-zone-functions-test
   (:require [clojure.string :as str]
-            [clojure.tools.macro :as tools.macro]
             [clojure.test :refer :all]
+            [clojure.tools.macro :as tools.macro]
             [java-time :as t]
             [metabase.driver :as driver]
-            [metabase.query-processor :as qp]
             [metabase.test :as mt]
             [metabase.util.date-2 :as u.date]))
 
