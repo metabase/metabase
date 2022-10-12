@@ -193,17 +193,6 @@
        (map (partial sql.qp/->honeysql driver))
        (reduce (partial hsql/call :concat))))
 
-#_(defmethod sql.qp/->honeysql [:redshift :convert-timezone]
-    [driver [_ arg to-tz from-tz]]
-    (let [clause       (sql.qp/->honeysql driver arg)
-          timestamptz? (hx/is-of-type? clause "timestamptz")]
-     (when (and timestamptz? from-tz)
-           (throw (ex-info "`timestamp with time zone` columns shouldn't have a `from timezone`" {:to-tz   to-tz
-                                                                                                  :from-tz from-tz})))
-     (if from-tz
-      (hsql/call :convert_timezone from-tz to-tz (sql.qp/->honeysql driver arg))
-      (hsql/call :convert_timezone to-tz (sql.qp/->honeysql driver arg)))))
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+

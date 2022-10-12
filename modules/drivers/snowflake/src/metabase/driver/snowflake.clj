@@ -244,9 +244,18 @@
   (hx/->time (sql.qp/->honeysql driver value)))
 
 (defmethod sql.qp/->honeysql [:snowflake :convert-timezone]
-  [driver [_ arg to from]]
-  (let [from (or from (qp.timezone/results-timezone-id))]
-    (hsql/call :convert_timezone from to (sql.qp/->honeysql driver arg))))
+  [driver [_ arg to-tz from-tz]]
+  (let [clause       (sql.qp/->honeysql driver arg)
+        timestamptz? (hx/is-of-type? clause "timestamptz")]
+    (when (and timestamptz? from-tz)
+      (throw (ex-info "`timestamp with time zone` columns shouldn't have a `from timezone`" {:to-tz   to-tz
+                                                                                             :from-tz from-tz})))
+    (if from-tz
+      (hsql/call :convert_timezone from-tz to-tz (sql.qp/->honeysql driver arg))
+      (hsql/call :convert_timezone to-tz (sql.qp/->honeysql driver arg))))
+
+ (let [from-tz (or from-tz (qp.timezone/results-timezone-id))]
+   (hsql/call :convert_timezone from-tz to-tz (sql.qp/->honeysql driver arg))))
 
 (defmethod driver/table-rows-seq :snowflake
   [driver database table]
