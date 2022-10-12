@@ -25,13 +25,13 @@ export function getDashboardDrillType(clicked) {
   }
 
   if (type === "crossfilter") {
-    return "dashboard-params-toggle";
+    return "dashboard-filter";
   } else if (type === "link") {
     if (linkType === "url") {
       return "link-url";
     } else if (linkType === "dashboard") {
       if (extraData.dashboard.id === targetId) {
-        return "dashboard-params-overwrite";
+        return "dashboard-reset";
       } else {
         return "dashboard-url";
       }
