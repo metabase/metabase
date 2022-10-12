@@ -10,6 +10,7 @@
   2. run the real rendering pipeline, but, return a hiccup tree instead of png bytes
   3. provide quick ways to 'query' the tree for different content, to confirm that elements are properly rendered."
   (:require [clojure.zip :as zip]
+            [cheshire.core :as json]
             [metabase.pulse.render :as render]
             [metabase.pulse.render.body :as body]
             [metabase.pulse.render.datetime :as datetime]
@@ -67,11 +68,15 @@
     :else :type/Number))
 
 (defn- base-cols-settings
-  [col-name col-sample]
-  {:name         col-name
-   :display_name col-name
-   :settings     nil
-   :base_type    (guess-type col-sample)})
+  "Create a basic settings map for a column, which ends up in the vector at [:data :cols].
+  This mimics the shape of column-settings data returned from the query processor."
+  [idx col-name col-sample]
+  (let [ttype (guess-type col-sample)]
+    {:name         col-name
+     :display_name col-name
+     :settings     nil
+     :field_ref    [:field idx (when (= :type/Temporal ttype) {}:temporal-unit :default)]
+     :base_type    (guess-type col-sample)}))
 
 (defn base-viz-settings
   [display-type rows]
@@ -105,7 +110,7 @@
   {:card {:display display-type
           :visualization_settings (base-viz-settings display-type rows)}
    :data {:viz-settings {}
-          :cols (mapv base-cols-settings (first rows) (second rows))
+          :cols (mapv base-cols-settings (range (count (first rows))) (first rows) (second rows))
           :rows (vec (rest rows))}})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -120,13 +125,13 @@
    :area        #{:goal-line :multi-series :stack}
    :bar         #{:goal-line :multi-series :stack}
    :combo       #{:goal-line :multi-series :stack}
-   :pie         #{}
+   :pie         #{:custom-column-formatting}
    :funnel      #{}
-   :progress    #{}
-   :scalar      #{}
-   :smartscalar #{}
+   :progress    #{:custom-column-formatting}
+   :scalar      #{:custom-column-formatting}
+   :smartscalar #{:custom-column-formatting}
    :gauge       #{}
-   :table       #{}
+   :table       #{:custom-column-names :reordered-columns :hidden-columns :custom-column-formatting}
    :scatter     #{}
    :row         #{}
    :list        #{}
@@ -134,52 +139,193 @@
 
 (defn- validate-viz-scenario
   [display-type viz-scenario]
-  (->> viz-scenario
-       (filter (valid-viz-scenarios display-type))))
+  (select-keys viz-scenario (valid-viz-scenarios display-type)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;    apply viz-scenarios
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmulti ^:private apply-viz-scenario-key
-  "WIP. Create a map of card and data mimicking a valid card and dataset-query result according to a `visualization-scenario`.
+(defn merge-viz-settings
+  "Merges the provided viz-settings into the `[:data :viz-settings]` path of the `card-and-data` map.
+  Notice that this does *not* merge settings into :visualization_settings of the card.
 
-  A `visualization-scenario` is a set of keys dictating the various visualization settings possible."
-  (fn [scenario-key _] scenario-key))
+  What is the difference between :visualization_settings in a card's data and [:data :viz-settings]?
+  The first is a key saved to the Card in the app-db, and does not run a query.
+  The latter is returned by the query processor under :data :viz-settings, if the process-viz-settinsg middleware
+  is run on the card's query. Since these util functions are mimicing a query result without running the processor,
+  we have to add the appropriate viz-settings in this location, as if the card's query was actually processed."
+  [card-and-data viz-settings]
+  (update-in card-and-data [:data :viz-settings] merge viz-settings))
+
+(defn merge-column-settings
+  "Merges the provided column-settings into the `[:data :column-settings]` path of the `card-and-data` map."
+  [card-and-data column-settings]
+  (update-in card-and-data [:data :viz-settings :column-settings] merge column-settings))
+
+(defn merge-global-column-settings
+  "Merges the provided global-column-settings into the `[:data :global-column-settings]` path of the `card-and-data` map."
+  [card-and-data global-column-settings]
+  (update-in card-and-data [:data :viz-settings :global-column-settings] merge global-column-settings))
+
+(defmulti ^:private apply-viz-scenario-key
+  (fn [scenario-key _ _] scenario-key))
 
 (defmethod apply-viz-scenario-key :default
-  [_ card-and-data]
+  [_ _scenario-settings card-and-data]
   card-and-data)
 
+;; example scenario-settings for goal-line
+#_{:goal-line {:graph.show_goal true
+               :graph.goal_label "target"
+               :graph.goal_value 10}}
 (defmethod apply-viz-scenario-key :goal-line
-  [_ card-and-data]
-  (update-in card-and-data [:data :viz-settings] merge
-             {:graph.show_goal  true
-              :graph.goal_label "Goal"
-              :graph.goal_value 0}))
+  [_ scenario-settings card-and-data]
+  (merge-viz-settings card-and-data
+                      (merge {:graph.show_goal  true
+                              :graph.goal_label "Goal"
+                              :graph.goal_value 0}
+                             scenario-settings)))
 
 (defn- next-char-string [s]
   (apply str (map (comp char inc int) s)))
 
+;; example scenario-settings for multi-series
+#_{:multi-series {:rows ["C" 10 9 8]}}
 (defmethod apply-viz-scenario-key :multi-series
-  [_ card-and-data]
+  [_ scenario-settings card-and-data]
   (let [rows (get-in card-and-data [:data :rows])]
     (if (> (count (first rows)) 2)
       card-and-data
-      (let [new-col-name (next-char-string (last (get-in card-and-data [:card :visualization_settings :graph.metrics])))
-            new-col-data (map inc (range (count rows)))
+      (let [existing-cols (get-in card-and-data [:data :cols])
+            provided-new-rows (:rows scenario-settings)
+            new-col-name (or (first provided-new-rows)
+                             (next-char-string (last (get-in card-and-data [:card :visualization_settings :graph.metrics]))))
+            new-col-data (if provided-new-rows
+                           (rest provided-new-rows)
+                           (map inc (range (count rows))))
             new-rows (mapv conj rows new-col-data)]
         (-> card-and-data
             (update-in [:card :visualization_settings :graph.metrics] conj new-col-name)
-            (update-in [:data :cols] conj (base-cols-settings new-col-name (first new-col-data)))
+            (update-in [:data :cols] conj (base-cols-settings (inc (count existing-cols)) new-col-name (first new-col-data)))
             (assoc-in [:data :rows] new-rows))))))
 
-(defn- apply-viz-scenario
+(defn- table-col
+  "Make a table column map for `destination`, which is either :card or :data."
+  [{col-name :name field-ref :field_ref} destination]
+  (case destination
+    :data ;; this goes in [:data :viz-settings :table-columns]
+    {:table-column-name col-name
+     :table-column-field-ref field-ref
+     :table-column-enabled true}
+
+    :card ;; this goes in [:card :visualization_settings :table.columns]
+    {:name col-name
+     :fieldRef field-ref
+     :enabled true}))
+
+(defn- make-table-cols-viz
+  [cols destination]
+  (mapv #(table-col % destination) cols))
+
+(defmethod apply-viz-scenario-key :hidden-columns
+  [_ scenario-settings card-and-data]
+  (let [cols (get-in card-and-data [:data :cols])
+        keep (if (:hide scenario-settings)
+               (remove (set (:hide scenario-settings)) (range (count cols)))
+               (range (dec (count cols))))
+        cols-to-keep (->> cols
+                         (filter #((set keep) (second (:field_ref %))))
+                         (remove nil?)
+                         vec)
+        new-rows (mapv (fn [row] (mapv #(get row (second (:field_ref %))) cols-to-keep))
+                       (get-in card-and-data [:data :rows]))]
+    (-> card-and-data
+        (update-in [:card :visualization_settings] merge {:table.columns (make-table-cols-viz cols-to-keep :card)})
+        (merge-viz-settings (merge {:table-columns (make-table-cols-viz cols-to-keep :data)}))
+        (assoc-in [:data :cols] cols-to-keep)
+        (assoc-in [:data :rows] new-rows))))
+
+#_{:reordered-columns {:order [2 0 1]}}
+(defmethod apply-viz-scenario-key :reordered-columns
+  [_ scenario-settings card-and-data]
+  (let [cols (get-in card-and-data [:data :cols])
+        order (or (:order scenario-settings)
+                  (vec (reverse (range (apply max (map #(second (:field_ref %)) cols))))))
+        cols-idx->rows-idx (into {} (map-indexed #(vector (second (:field_ref %2)) %1) cols))
+        cols-idx-map (update-vals (group-by #(second (:field_ref %)) cols) first)
+        reorder-row (fn [row]
+                      (let [new-row (map #(get (vec row) (get cols-idx->rows-idx %)) order)]
+                        (vec (remove nil? new-row))))]
+    (-> card-and-data
+        (update-in [:card :visualization_settings]
+                   merge {:table.columns (->> (map #(get cols-idx-map %) order)
+                                              (remove nil?)
+                                              (mapv #(make-table-cols-viz % :card)))})
+        (merge-viz-settings
+         (merge {:table-columns (->> (map #(get cols-idx-map %) order)
+                                     (remove nil?)
+                                     (mapv #(make-table-cols-viz % :data)))}))
+        (update-in [:data :rows] #(mapv reorder-row %))
+        (assoc-in [:data :cols] (->> (map #(get cols-idx-map %) order)
+                                     (remove nil?)
+                                     vec)))))
+
+(defn- make-settings-for-col
+  "Make the column-settings map for the given `col` the :card or :data `destination`.
+  This returns a map with one key and the settings.
+
+  The key will look like {:field-id 0} for :data
+  The key will be a json-stringified version of [\"ref\" [\"field\" 0 nil]] for :card."
+  [{field-ref :field_ref} settings destination]
+  (let [[_ id unit] field-ref]
+    (case destination
+      :data ;; goes in  [:data :viz-settings :column-settings]
+      {{:metabase.shared.models.visualization-settings/field-id id} settings}
+
+      :card ;; this goes in [:card :visualization_settings :column_settings]
+      {(json/generate-string ["ref" ["field" id unit]]) settings})))
+
+;; HERE add viz-scenarios for tables:
+;; {:custom-column-formatting}
+(defmethod apply-viz-scenario-key :custom-column-names
+  [_ scenario-settings card-and-data]
+  (let [cols (sort-by #(second (:field_ref %)) (get-in card-and-data [:data :cols]))
+        col-names (or (:names scenario-settings)
+                      (mapv #(next-char-string (:name %)) cols))
+        data-col-settings (apply merge (map #(make-settings-for-col % {:column-title (get col-names (second (:field_ref %)))} :data)
+                                            cols))
+        card-col-settings (apply merge (map #(make-settings-for-col % {:column_title (get col-names (second (:field_ref %)))} :card)
+                                            cols))]
+    (-> card-and-data
+        (merge-column-settings data-col-settings)
+        (update-in [:card :visualization_settings :column_settings] merge card-col-settings))))
+
+(defn apply-viz-scenario
+  "Add keys/vals to `card-and-data` mimicking a card and dataset-query result according to a `viz-scenario`.
+  Note that `viz-scenario` is just a name used in this namespace to describe possible viz configurations, it
+  does not map to any models.
+
+  A `viz-scenario` is a combination of 'scenario-keys' and optional maps with settings for that scenario.
+  For example, the following viz-scenario map will:
+  - add a goal line with a custom value and label to the card if the display-type of the card allows goal lines.
+  - add another series, using default data defined in the multi-series multimethod.
+
+  {:goal-line {:goal.value 10 :goal.label \"My Goal\"}
+   :multi-series ni}
+
+  Any viz-scenario may have different key/value requirements for the settings map on that key, according to what
+  the scenario actually needs to add/remove from the card-and-data. Every scenario has useful defaults for testing,
+  so you can always pass {} or nil if you don't know the correct shape of the settings.
+
+  Alternatively, if you already know what data is necessary and where, you can build up your own make-card-and-data
+  map using the util fns in this namespace, and call `render-as-hiccup` on that to get the tree."
   [viz-scenario card-and-data]
   (if (seq viz-scenario)
-    (let [viz-scenario-keys (vec viz-scenario)
-          xf-card-and-data  (apply-viz-scenario-key (first viz-scenario-keys) card-and-data)]
-      (recur (rest viz-scenario-keys) xf-card-and-data))
+    (let [viz-scenario-keys (vec (keys viz-scenario))
+          scenario-key (first viz-scenario-keys)
+          scenario-settings (get viz-scenario scenario-key)
+          xf-card-and-data  (apply-viz-scenario-key scenario-key scenario-settings card-and-data)]
+      (recur (dissoc viz-scenario scenario-key) xf-card-and-data))
     card-and-data))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

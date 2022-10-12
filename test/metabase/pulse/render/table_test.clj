@@ -86,9 +86,10 @@
 
 ;; todo: actually make a proper test, this is a quick setup to show that new render test utils can be used
 (deftest table-column-formatting-test
-  (let [rows [["A" "B" "C" "D"]
-              [1 2 3 4]]
-        {:keys [viz-tree]} (render.tu/make-viz-data rows :table #{})]
-    (testing "Column formatting is applied correctly to the table"
-      (is (= [:td "1.00"]
+  (let [rows [["As" "Bs" "Cs" "Ds" "Es"]
+              ["aa" "bb" "cc" "dd" "ee"]
+              ["aaa" "bbb" "ccc" "ddd" "eee"]]
+        {:keys [viz-tree]} (render.tu/make-viz-data rows :table {:reordered-columns {:order [4 3 2 1 0]}})]
+    (testing "Column reordering is applied correctly to the table"
+      (is (= [:td "ee"]
              (first (render.tu/nodes-with-tag :td (render.tu/remove-attrs viz-tree))))))))
