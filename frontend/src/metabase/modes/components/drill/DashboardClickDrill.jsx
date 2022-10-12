@@ -47,7 +47,7 @@ function getAction(type, question, clicked) {
 }
 
 export default ({ question, clicked }) => {
-  const type = getDashboardDrillType({ clicked });
+  const type = getDashboardDrillType(clicked);
   if (!type) {
     return [];
   }
