@@ -4,6 +4,8 @@ import cx from "classnames";
 import { t } from "ttag";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import _ from "underscore";
+import { splice } from "icepick";
+
 import Label from "metabase/components/type/Label";
 
 import { keyForColumn } from "metabase-lib/lib/queries/utils/dataset";
@@ -54,23 +56,24 @@ class ChartSettingFieldsPartition extends React.Component {
       const partition = value[sourcePartition];
       const partitionDup = [...partition];
 
-      partitionDup[sourceIndex] = partition[destinationIndex];
-      partitionDup[destinationIndex] = partition[sourceIndex];
+      partitionDup.splice(
+        destinationIndex,
+        0,
+        partitionDup.splice(sourceIndex, 1)[0],
+      );
 
       onChange({ ...value, [sourcePartition]: partitionDup });
     } else if (sourcePartition !== destinationPartition) {
       const column = value[sourcePartition][sourceIndex];
       onChange({
         ...value,
-        [sourcePartition]: [
-          ...value[sourcePartition].slice(0, sourceIndex),
-          ...value[sourcePartition].slice(sourceIndex + 1),
-        ],
-        [destinationPartition]: [
-          ...value[destinationPartition].slice(0, destinationIndex),
+        [sourcePartition]: splice(value[sourcePartition], sourceIndex, 1),
+        [destinationPartition]: splice(
+          value[destinationPartition],
+          destinationIndex,
+          0,
           column,
-          ...value[destinationPartition].slice(destinationIndex),
-        ],
+        ),
       });
     }
   };
@@ -86,60 +89,56 @@ class ChartSettingFieldsPartition extends React.Component {
 
     return (
       <DragDropContext onDragEnd={this.handleDragEnd}>
-        <div>
-          {this.props.partitions.map(
-            ({ name: partitionName, title }, index) => {
-              const columns = value[partitionName];
-              const partitionType = this.getPartitionType(partitionName);
-              return (
-                <div
-                  className={cx("py2", { "border-top": index > 0 })}
-                  key={partitionName}
-                >
-                  <Label color="medium">{title}</Label>
-                  <Droppable droppableId={partitionName} type={partitionType}>
-                    {(provided, snapshot) => (
-                      <DroppableContainer
-                        {...provided.droppableProps}
-                        ref={provided.innerRef}
-                        isDragSource={!!snapshot.draggingFromThisWith}
-                      >
-                        {columns.length === 0 ? (
-                          <EmptyColumnPlaceholder>{t`Drag fields here`}</EmptyColumnPlaceholder>
-                        ) : (
-                          columns.map((col, index) => (
-                            <Draggable
-                              key={`draggable-${col.display_name}`}
-                              draggableId={`draggable-${col.display_name}`}
-                              index={index}
+        {this.props.partitions.map(({ name: partitionName, title }, index) => {
+          const columns = value[partitionName];
+          const partitionType = this.getPartitionType(partitionName);
+          return (
+            <div
+              className={cx("py2", { "border-top": index > 0 })}
+              key={partitionName}
+            >
+              <Label color="medium">{title}</Label>
+              <Droppable droppableId={partitionName} type={partitionType}>
+                {(provided, snapshot) => (
+                  <DroppableContainer
+                    {...provided.droppableProps}
+                    ref={provided.innerRef}
+                    isDragSource={!!snapshot.draggingFromThisWith}
+                  >
+                    {columns.length === 0 ? (
+                      <EmptyColumnPlaceholder>{t`Drag fields here`}</EmptyColumnPlaceholder>
+                    ) : (
+                      columns.map((col, index) => (
+                        <Draggable
+                          key={`draggable-${col.display_name}`}
+                          draggableId={`draggable-${col.display_name}`}
+                          index={index}
+                        >
+                          {provided => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                              className="mb1"
                             >
-                              {provided => (
-                                <div
-                                  ref={provided.innerRef}
-                                  {...provided.draggableProps}
-                                  {...provided.dragHandleProps}
-                                  className="mb1"
-                                >
-                                  <Column
-                                    key={`${partitionName}-${col.display_name}`}
-                                    column={col}
-                                    index={index}
-                                    onEditFormatting={this.handleEditFormatting}
-                                  />
-                                </div>
-                              )}
-                            </Draggable>
-                          ))
-                        )}
-                        {provided.placeholder}
-                      </DroppableContainer>
+                              <Column
+                                key={`${partitionName}-${col.display_name}`}
+                                column={col}
+                                index={index}
+                                onEditFormatting={this.handleEditFormatting}
+                              />
+                            </div>
+                          )}
+                        </Draggable>
+                      ))
                     )}
-                  </Droppable>
-                </div>
-              );
-            },
-          )}
-        </div>
+                    {provided.placeholder}
+                  </DroppableContainer>
+                )}
+              </Droppable>
+            </div>
+          );
+        })}
       </DragDropContext>
     );
   }
