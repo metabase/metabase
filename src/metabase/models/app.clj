@@ -1,5 +1,6 @@
 (ns metabase.models.app
-  (:require [metabase.models.permissions :as perms]
+  (:require [clojure.walk :as walk]
+            [metabase.models.permissions :as perms]
             [metabase.models.serialization.hash :as serdes.hash]
             [metabase.util :as u]
             [toucan.db :as db]
@@ -42,21 +43,55 @@
             app-id (assoc :app_id app-id)))))
     collections))
 
-(defn add-models
-  "Add the fully hydrated models used by the app."
-  {:hydrate :models}
-  [app]
+(defn- app-cards [app]
   (->> (db/query {:union
                   [{:select [:c.*]
                     :from [[:report_card :c]]
                     :where [:and
-                            [:= :c.collection_id (:collection_id app)]
-                            :c.dataset]}
+                            [:= :c.collection_id (:collection_id app)]]}
                    {:select [:c.*]
                     :from [[:report_card :c]]
                     :join [[:report_dashboardcard :dc] [:= :dc.card_id :c.id]
                            [:report_dashboard :d] [:= :d.id :dc.dashboard_id]]
                     :where [:and
-                            [:= :d.collection_id (:collection_id app)]
-                            :c.dataset]}]})
+                            [:= :d.collection_id (:collection_id app)]]}]})
        (db/do-post-select 'Card)))
+
+(defn- parse-source-query-id
+  "Return the ID of the card used as source table, if applicable; otherwise return `nil`."
+  [source-table]
+  (when (string? source-table)
+    (when-let [[_ card-id-str] (re-matches #"^card__(\d+$)" source-table)]
+      (parse-long card-id-str))))
+
+(defn- collect-model-ids
+  "Return a sequence of model ids referenced in the MBQL query `mbql-form`."
+  [mbql-form]
+  (let [ids (java.util.HashSet.)
+        walker (fn [form]
+                 (when (map? form)
+                   ;; model references in native queries
+                   (when-let [card-id (:card-id form)]
+                     (when (int? card-id)
+                       (.add ids card-id)))
+                   ;; source tables (possibly in joins)
+                   (when-let [card-id (parse-source-query-id (:source-table form))]
+                     (.add ids card-id)))
+                 form)]
+    (walk/prewalk walker mbql-form)
+    (seq ids)))
+
+(defn- referenced-models [cards]
+  (when-let [model-ids
+             (->> cards
+                  (into #{} (mapcat (comp collect-model-ids :dataset_query)))
+                  not-empty)]
+    (db/select 'Card :id [:in model-ids])))
+
+(defn add-models
+  "Add the fully hydrated models used by the app."
+  {:hydrate :models}
+  [app]
+  (let [used-cards (app-cards app)
+        contained-models (into #{} (filter :dataset) used-cards)]
+    (into contained-models (referenced-models used-cards))))

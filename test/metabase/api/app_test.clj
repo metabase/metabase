@@ -15,6 +15,7 @@
     [metabase.models.permissions-group :as perms-group]
     [metabase.test :as mt]
     [metabase.test.data :as data]
+    [metabase.test.initialize :as initialize]
     [toucan.db :as db]
     [toucan.hydrate :refer [hydrate]]))
 
@@ -172,9 +173,9 @@
     (testing "Golden path"
       (mt/with-temporary-setting-values [all-users-app-permission :read]
         (let [app (mt/user-http-request
-                    :crowberto :post 200 "app/scaffold"
-                    {:table-ids [(data/id :venues)]
-                     :app-name "My test app"})
+                   :crowberto :post 200 "app/scaffold"
+                   {:table-ids [(data/id :venues)]
+                    :app-name "My test app"})
               pages (m/index-by :name (hydrate (db/select Dashboard :collection_id (:collection_id app)) :ordered_cards))
               list-page (get pages "Venues List")
               detail-page (get pages "Venues Detail")]
@@ -190,21 +191,21 @@
                         list-page))
           (testing "Implicit actions are created"
             (is (partial=
-                  [{:slug "insert"}
-                   {:slug "update"}
-                   {:slug "delete"}]
-                  (db/select ModelAction {:where [:= :model_action.card_id
-                                                  {:select [:id]
-                                                   :from [Card]
-                                                   :where [:and
-                                                           [:= :collection_id (:collection_id app)]
-                                                           [:= :dataset true]]}]
-                                          :order-by [:id]}))))
+                 [{:slug "insert"}
+                  {:slug "update"}
+                  {:slug "delete"}]
+                 (db/select ModelAction {:where [:= :model_action.card_id
+                                                 {:select [:id]
+                                                  :from [Card]
+                                                  :where [:and
+                                                          [:= :collection_id (:collection_id app)]
+                                                          [:= :dataset true]]}]
+                                         :order-by [:id]}))))
           (is (partial= {:groups {(:id (perms-group/all-users)) {(:collection_id app) :read}}}
                         (graph/graph))
               "''All Users'' should have the default permission on the app collection")
           (is (= (scaffolded-models app)
-               (api-models app))))))
+                 (api-models app))))))
     (testing "Bad or duplicate tables"
       (is (= (format "Some tables could not be found. Given: (%s %s) Found: (%s)"
                      (data/id :venues)
@@ -263,6 +264,41 @@
             (is (= (scaffolded-models app added-model)
                    (api-models app)))))))))
 
+(deftest imported-model-test
+  (initialize/initialize-if-needed! :web-server)
+  (mt/with-temp* [Collection [{collection-id :id}]
+                  App [app {:collection_id collection-id}]
+                  Dashboard [{dashboard-id :id} {:collection_id collection-id}]
+                  Card [model1 {:dataset true}]
+                  Card [model2 {:dataset true}]
+                  Card [model3 {:dataset true}]
+                  Card [join-card
+                        {:dataset_query
+                         {:query
+                          {:source-table (str "card__" (:id model1))
+                           :joins [{:source-table (str "card__" (:id model2))}]}}}]
+                  Card [native-card
+                        (let [mid (:id model3)
+                              mref (str "#" mid)]
+                          {:dataset_query
+                           {:type :native
+                            :native
+                            {:query (format "select * from {{%s}}" mref)
+                             :template-tags
+                             {mref
+                              {:id "853afab2-c5fd-ab80-5047-2f20f3466c8f"
+                               :name mref
+                               :display-name mref
+                               :type :card
+                               :card-id mid}}},
+                            :database 1}})]
+                  DashboardCard [_ {:dashboard_id dashboard-id
+                                    :card_id (:id join-card)}]
+                  DashboardCard [_ {:dashboard_id dashboard-id
+                                    :card_id (:id native-card)}]]
+    (is (= (normalized-models [model1 model2 model3])
+           (api-models app)))))
+
 (deftest global-graph-test
   (mt/with-model-cleanup [Collection Permissions]
     (let [base-params {:name "App collection"
@@ -282,6 +318,4 @@
                                               :write))
               (is (partial= {:groups {(:id (perms-group/all-users)) {(:collection_id response1) :write
                                                                      (:collection_id response2) :write}}}
-                            (graph/graph)))
-              (is (= (scaffolded-models app)
-                     (api-models app))))))))))
+                            (graph/graph))))))))))
