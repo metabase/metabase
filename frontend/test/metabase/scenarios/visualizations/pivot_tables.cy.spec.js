@@ -896,7 +896,7 @@ function createAndVisitTestQuestion({ display = "pivot" } = {}) {
 }
 
 function assertOnPivotSettings() {
-  cy.get("[draggable=true]").as("fieldOption");
+  cy.findAllByTestId(/draggable-item/).as("fieldOption");
 
   cy.log("Implicit side-bar assertions");
   cy.findByText(/Pivot Table options/i);
@@ -929,9 +929,39 @@ function assertOnPivotFields() {
 function dragField(startIndex, dropIndex) {
   cy.get(".Icon-grabber2").should("be.visible").as("dragHandle");
 
-  cy.get("@dragHandle").eq(startIndex).trigger("dragstart");
-
-  cy.get("@dragHandle").eq(dropIndex).trigger("drop");
+  const BUTTON_INDEX = 0;
+  const SLOPPY_CLICK_THRESHOLD = 10;
+  cy.get("@dragHandle")
+    .eq(dropIndex)
+    .then($target => {
+      const coordsDrop = $target[0].getBoundingClientRect();
+      cy.get("@dragHandle")
+        .eq(startIndex)
+        .then(subject => {
+          const coordsDrag = subject[0].getBoundingClientRect();
+          cy.wrap(subject)
+            .trigger("mousedown", {
+              button: BUTTON_INDEX,
+              clientX: coordsDrag.x,
+              clientY: coordsDrag.y,
+              force: true,
+            })
+            .trigger("mousemove", {
+              button: BUTTON_INDEX,
+              clientX: coordsDrag.x + SLOPPY_CLICK_THRESHOLD,
+              clientY: coordsDrag.y,
+              force: true,
+            });
+          cy.get("body")
+            .trigger("mousemove", {
+              button: BUTTON_INDEX,
+              clientX: coordsDrop.x,
+              clientY: coordsDrop.y,
+              force: true,
+            })
+            .trigger("mouseup");
+        });
+    });
 }
 
 function getIframeBody(selector = "iframe") {
