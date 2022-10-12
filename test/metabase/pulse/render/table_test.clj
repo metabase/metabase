@@ -84,12 +84,68 @@
       (is (= "A..." (subs long-rendered (- (count long-rendered) 4) (count long-rendered))))
       (is (not= long-heading long-rendered)))))
 
-;; todo: actually make a proper test, this is a quick setup to show that new render test utils can be used
-(deftest table-column-formatting-test
+;; question: is this kind of test strictly necessary? The frontend already doesn't send hidden rows
+;; and sends rows already reordered
+;; this DOES show that the rendering pipeline respects the order of columns passed in, so not completely useless
+(deftest table-columns-test
   (let [rows [["As" "Bs" "Cs" "Ds" "Es"]
-              ["aa" "bb" "cc" "dd" "ee"]
-              ["aaa" "bbb" "ccc" "ddd" "eee"]]
-        {:keys [viz-tree]} (render.tu/make-viz-data rows :table {:reordered-columns {:order [4 3 2 1 0]}})]
+              ["a" "b" "c" "d" "e"]
+              ["aa" "bb" "cc" "dd" "ee"]]]
     (testing "Column reordering is applied correctly to the table"
-      (is (= [:td "ee"]
-             (first (render.tu/nodes-with-tag :td (render.tu/remove-attrs viz-tree))))))))
+      (let [{:keys [viz-tree]} (render.tu/make-viz-data
+                                rows :table {:reordered-columns {:order [3 4 1 0 2]}})]
+        (is (= ["Ds" "Es" "Bs" "As" "Cs"]
+               (-> viz-tree
+                   render.tu/remove-attrs
+                   (render.tu/nodes-with-tag :th)
+                   (->> (map second))
+                   (->> (take 5)))))
+        (is (= ["d" "e" "b" "a" "c"]
+               (-> viz-tree
+                   render.tu/remove-attrs
+                   (render.tu/nodes-with-tag :td)
+                   (->> (map second))
+                   (->> (take 5)))))))
+    (testing "A table with hidden columns does not render hidden columns"
+      (let [{:keys [viz-tree]} (render.tu/make-viz-data
+                                rows :table {:hidden-columns {:hide [0 2 4]}})]
+        (is (= ["Bs" "Ds"]
+               (-> viz-tree
+                   render.tu/remove-attrs
+                   (render.tu/nodes-with-tag :th)
+                   (->> (map second))
+                   (->> (take 2)))))
+        (is (= ["b" "d"]
+               (-> viz-tree
+                   render.tu/remove-attrs
+                   (render.tu/nodes-with-tag :td)
+                   (->> (map second))
+                   (->> (take 2)))))))))
+
+(deftest table-column-formatting-test
+  (let [rows [["A" "B" "C"]
+              [0.1 9000 "2022-10-12T00:00:00Z"]]]
+    (testing "Custom column titles are respected in render."
+      (is (= ["Eh" "Bee" "Sea"]
+             (-> rows
+                 (render.tu/make-card-and-data :table)
+                 (render.tu/make-column-settings [{:column-title "Eh"}
+                                                  {:column-title "Bee"}
+                                                  {:column-title "Sea"}])
+                 render.tu/render-as-hiccup
+                 render.tu/remove-attrs
+                 (render.tu/nodes-with-tag :th)
+                 (->> (map second))
+                 (->> (take (count (first rows))))))))
+    (testing "Column format settings are respected in render."
+      (is (= ["10%" "9,000" "12/10/2022"]
+             (-> rows
+                 (render.tu/make-card-and-data :table)
+                 (render.tu/make-column-settings [{:number-style "percent"}
+                                                  {}
+                                                  {:date-style "D/M/YYYY"}])
+                 render.tu/render-as-hiccup
+                 render.tu/remove-attrs
+                 (render.tu/nodes-with-tag :td)
+                 (->> (map second))
+                 (->> (take (count (first rows))))))))))

@@ -88,7 +88,7 @@
                          :column-settings
                          (update-keys strip-ns)
                          (update-vals strip-ns))]
-    (-> (get col-settings {:field-id field-id})
+    (-> (col-settings {:field-id field-id})
         (update-keys (fn [k] (-> k name (str/replace #"-" "_") keyword))))))
 
 (s/defn ^:private get-format
@@ -122,14 +122,26 @@
               :when remapped_from]
           [remapped_from col-idx])))
 
+(defn- ref-key-with-id?
+  "True if the `settings-key` is a ref and matches the id. The key will look something like:
+  [\"ref\" [\"field-ref\" id {:maybe more}]]"
+  [settings-key id]
+  (and (= "ref" (first settings-key))
+       (= id (get-in settings-key [1 1]))))
+
 (defn- column-name
   "Returns first column name from a hierarchy of possible column names"
   [card col]
   (let [column-settings (some->> (get-in card [:visualization_settings :column_settings])
                                  (m/map-keys (comp vec json/parse-string name)))]
-    (name (or (when-let [[k n _] (:field_ref col)]
-                (or (get-in column-settings [["ref" (mapv #(if (keyword? %) (name %) %) [k n nil])] :column_title])
-                    (get-in column-settings [["ref" (mapv #(if (keyword? %) (name %) %) [k n])] :column_title])))
+    (name (or (when-let [[_ id _] (:field_ref col)]
+                ;; field-ref keys can come in with additional stuff like :meta-data or unit maps,
+                ;; so we just use the field_ref ID number to try find the settings for this particular column
+                (->> column-settings
+                     (filter #(ref-key-with-id? (first %) id))
+                     first
+                     second
+                     :column_title))
               (get-in column-settings [["name" (:name col)] :column_title])
               (:display_name col)
               (:name col)))))
@@ -175,7 +187,7 @@
                                                   [(nth formatters remapped-index)
                                                    (nth row remapped-index)])
                                                 [fmt-fn maybe-remapped-row-cell])]]
-              (fmt-fn row-cell))})))
+                  (fmt-fn row-cell))})))
 
 (s/defn ^:private prep-for-html-rendering
   "Convert the query results (`cols` and `rows`) into a formatted seq of rows (list of strings) that can be rendered as

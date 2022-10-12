@@ -107,12 +107,31 @@
       open-hiccup-as-html)
 
   (-> [["As" "Bs" "Cs" "Ds" "Es"]
-                     ["aa" "bb" "cc" "dd" "ee"]
-                     ["aaa" "bbb" "ccc" "ddd" "eee"]]
+       ["aa" "bb" "cc" "dd" "ee"]
+       ["aaa" "bbb" "ccc" "ddd" "eee"]]
       (render.tu/make-viz-data :table {:reordered-columns   {:order [2 3 1 0 4]}
                                        :custom-column-names {:names ["-A-" "-B-" "-C-" "-D-"]}
                                        :hidden-columns      {:hide [0 2]}})
                     :viz-tree
                     open-hiccup-as-html)
 
+  (-> [["As" "Bs"]
+       ["aa" "bb"]
+       ["aaa" "bbb"]]
+      (render.tu/make-viz-data :table {})
+      (render.tu/make-column-settings [{:column-title "WWWWWW"} {} {} {} {}])
+      :viz-tree
+      open-hiccup-as-html)
+
+  (->  [["A" "B" "C"]
+        [0.1 9000 "2022-10-12T00:00:00Z"]]
+       (render.tu/make-card-and-data :table)
+       (render.tu/make-column-settings [{:column-title "Eh"}
+                                        {:column-title "Bee"}
+                                        {:column-title "Sea"}])
+       render.tu/render-as-hiccup
+       render.tu/remove-attrs
+       (render.tu/nodes-with-tag :td)
+       (->> (map second))
+       (->> (take 3)))
   )

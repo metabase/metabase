@@ -10,12 +10,14 @@
   2. run the real rendering pipeline, but, return a hiccup tree instead of png bytes
   3. provide quick ways to 'query' the tree for different content, to confirm that elements are properly rendered."
   (:require [cheshire.core :as json]
+            [clojure.string :as str]
             [clojure.zip :as zip]
             [metabase.pulse.render :as render]
             [metabase.pulse.render.body :as body]
             [metabase.pulse.render.datetime :as datetime]
             [metabase.pulse.render.image-bundle :as image-bundle]
-            [metabase.pulse.render.js-svg :as js-svg])
+            [metabase.pulse.render.js-svg :as js-svg]
+            [metabase.util :as u])
   (:import [org.apache.batik.anim.dom SVGOMDocument]
            [org.w3c.dom Element Node]))
 
@@ -74,6 +76,7 @@
      :display_name col-name
      :settings     nil
      :field_ref    [:field idx (when (= :type/Temporal ttype) {:temporal-unit :default})]
+     :unit         :default
      :base_type    (guess-type col-sample)}))
 
 (defn base-viz-settings
@@ -103,8 +106,9 @@
       :list        {}
       :pivot       {}} display-type)))
 
-(defn- make-card-and-data
-  [display-type rows]
+(defn make-card-and-data
+  "Make a basic `card-and-data` map for a given `display-type` key. Useful for buildng up test viz data without the need for `viz-scenarios`."
+  [rows display-type]
   {:card {:display display-type
           :visualization_settings (base-viz-settings display-type rows)}
    :data {:viz-settings {}
@@ -148,22 +152,74 @@
   Notice that this does *not* merge settings into :visualization_settings of the card.
 
   What is the difference between :visualization_settings in a card's data and [:data :viz-settings]?
-  The first is a key saved to the Card in the app-db, and does not run a query.
+  The first is a key saved to the Card in the app-db, and does nothing until it is later used by the query processor's process-viz-settings middleware.
   The latter is returned by the query processor under :data :viz-settings, if the process-viz-settinsg middleware
   is run on the card's query. Since these util functions are mimicing a query result without running the processor,
   we have to add the appropriate viz-settings in this location, as if the card's query was actually processed."
   [card-and-data viz-settings]
   (update-in card-and-data [:data :viz-settings] merge viz-settings))
 
-(defn merge-column-settings
+(defn- lisp-key
+  "Convert a keyword or string `k` from `snake_case` to `lisp-case`."
+  [k]
+  (if (keyword? k)
+    (keyword (lisp-key (name k)))
+    (str/replace k #"_" "-")))
+
+(defn- lisp-keys
+  "Convert the keys in a map from `snake_case` to `lisp-case`."
+  [m]
+  (u/recursive-map-keys lisp-key m))
+
+(defn- viz-namespaced-keys
+  [m]
+  (let [ns-key (fn [k]
+                 (keyword (str "metabase.shared.models.visualization-settings/" (name k))))]
+    (u/recursive-map-keys ns-key m)))
+
+(defn- merge-column-settings-for-data
   "Merges the provided column-settings into the `[:data :column-settings]` path of the `card-and-data` map."
   [card-and-data column-settings]
-  (update-in card-and-data [:data :viz-settings :column-settings] merge column-settings))
+  (update-in card-and-data [:data :viz-settings
+                            :metabase.shared.models.visualization-settings/column-settings]
+             (fn [a b] (merge-with merge a b)) (-> column-settings
+                                                   (update-vals lisp-keys)
+                                                   (update-vals viz-namespaced-keys))))
 
-(defn merge-global-column-settings
-  "Merges the provided global-column-settings into the `[:data :global-column-settings]` path of the `card-and-data` map."
-  [card-and-data global-column-settings]
-  (update-in card-and-data [:data :viz-settings :global-column-settings] merge global-column-settings))
+(defn- merge-column-settings-for-card
+  "Merges the provided column-settings into the `[:card :visualization_settings :column_settings]` path of the `card-and-data` map."
+  [card-and-data column-settings]
+  (update-in card-and-data [:card :visualization_settings
+                            :column_settings]
+             (fn [a b] (merge-with merge a b)) (update-vals column-settings u/snake-keys)))
+
+(defn- make-settings-for-col
+  "Make the column-settings map for the given `col` the :card or :data `destination`.
+  This returns a map with one key and the settings.
+
+  The key will look like {:field-id 0} for :data
+  The key will be a json-stringified version of [\"ref\" [\"field\" 0 nil]] for :card."
+  [{field-ref :field_ref} settings destination]
+  (let [[_ id] field-ref]
+    (case destination
+      :data ;; goes in  [:data :viz-settings :column-settings]
+      {{:metabase.shared.models.visualization-settings/field-id id} settings}
+
+      :card ;; this goes in [:card :visualization_settings :column_settings]
+      {(json/generate-string ["ref" ["field" id nil]]) settings})))
+
+(defn make-column-settings
+  "Makes and adds each map in the `column-settings` vector to the appropriate columns in `card-and-data`."
+  [card-and-data column-settings]
+  (let [cols (get-in card-and-data [:data :cols])
+        cols-idx-map (update-vals (group-by #(second (:field_ref %)) cols) first)
+        data-col-settings (into {} (map-indexed
+                                    #(make-settings-for-col (get cols-idx-map %1) %2 :data) column-settings))
+        card-col-settings (into {} (map-indexed
+                                    #(make-settings-for-col (get cols-idx-map %1) %2 :card) column-settings))]
+    (-> card-and-data
+        (merge-column-settings-for-data data-col-settings)
+        (merge-column-settings-for-card card-col-settings))))
 
 (defmulti ^:private apply-viz-scenario-key
   (fn [scenario-key _ _] scenario-key))
@@ -248,7 +304,7 @@
   [_ scenario-settings card-and-data]
   (let [cols (get-in card-and-data [:data :cols])
         order (or (:order scenario-settings)
-                  (vec (reverse (range (apply max (map #(second (:field_ref %)) cols))))))
+                  (vec (reverse (range (inc (apply max (map #(second (:field_ref %)) cols)))))))
         cols-idx->rows-idx (into {} (map-indexed #(vector (second (:field_ref %2)) %1) cols))
         cols-idx-map (update-vals (group-by #(second (:field_ref %)) cols) first)
         reorder-row (fn [row]
@@ -258,30 +314,15 @@
         (update-in [:card :visualization_settings]
                    merge {:table.columns (->> (map #(get cols-idx-map %) order)
                                               (remove nil?)
-                                              (mapv #(make-table-cols-viz % :card)))})
+                                              (#(make-table-cols-viz % :card)))})
         (merge-viz-settings
          (merge {:table-columns (->> (map #(get cols-idx-map %) order)
                                      (remove nil?)
-                                     (mapv #(make-table-cols-viz % :data)))}))
+                                     (#(make-table-cols-viz % :data)))}))
         (update-in [:data :rows] #(mapv reorder-row %))
         (assoc-in [:data :cols] (->> (map #(get cols-idx-map %) order)
                                      (remove nil?)
                                      vec)))))
-
-(defn- make-settings-for-col
-  "Make the column-settings map for the given `col` the :card or :data `destination`.
-  This returns a map with one key and the settings.
-
-  The key will look like {:field-id 0} for :data
-  The key will be a json-stringified version of [\"ref\" [\"field\" 0 nil]] for :card."
-  [{field-ref :field_ref} settings destination]
-  (let [[_ id unit] field-ref]
-    (case destination
-      :data ;; goes in  [:data :viz-settings :column-settings]
-      {{:metabase.shared.models.visualization-settings/field-id id} settings}
-
-      :card ;; this goes in [:card :visualization_settings :column_settings]
-      {(json/generate-string ["ref" ["field" id unit]]) settings})))
 
 ;; HERE add viz-scenarios for tables:
 ;; {:custom-column-formatting}
@@ -295,7 +336,7 @@
         card-col-settings (apply merge (map #(make-settings-for-col % {:column_title (get col-names (second (:field_ref %)))} :card)
                                             cols))]
     (-> card-and-data
-        (merge-column-settings data-col-settings)
+        (merge-column-settings-for-data data-col-settings)
         (update-in [:card :visualization_settings :column_settings] merge card-col-settings))))
 
 (defn apply-viz-scenario
@@ -483,8 +524,7 @@
   :"
   [rows display-type viz-scenario]
   (let [valid-viz-scenario (validate-viz-scenario display-type viz-scenario)
-        card-and-data      (->> rows
-                                (make-card-and-data display-type)
+        card-and-data      (->> (make-card-and-data rows display-type)
                                 (apply-viz-scenario valid-viz-scenario))]
     (assoc card-and-data :viz-tree (render-as-hiccup card-and-data))))
 
@@ -497,7 +537,7 @@
   The tree is assumed to be a valid hiccup-style tree.
 
   `(nodes-with-text \"the text\" [:svg [:tspan [:text \"the text\"]]]) -> ([:text \"the text\"])`"
-  [text tree]
+  [tree text]
   (->> tree
        (tree-seq vector? (fn [s] (remove #(or (map? %) (string? %) (keyword? %)) s)))
        (filter #(#{text} (last %)))))
@@ -507,7 +547,7 @@
   The tag can be any valid hiccup key, but will often be a keyword or a string. The tree is assumed to be a valid hiccup-style tree.
 
   `(nodes-with-tag :tspan [:svg [:tspan [:text \"the text\"]]]) -> ([:tspan [:text \"the text\"]])`"
-  [tag tree]
+  [tree tag]
   (->> tree
        (tree-seq vector? (fn [s] (remove #(or (map? %) (string? %) (keyword? %)) s)))
        (filter #(#{tag} (first %)))))
