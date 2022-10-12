@@ -2,14 +2,13 @@ import React, { useMemo, useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { hasActionsMenu } from "metabase/lib/click-behavior";
-
 import type {
   DashboardOrderedCard,
   ClickBehavior,
   ClickBehaviorType,
 } from "metabase-types/api";
 import type { Column as IColumn } from "metabase-types/types/Dataset";
+import { hasActionsMenu } from "metabase-lib/lib/parameters/utils/click-behavior";
 
 import Column from "./Column";
 

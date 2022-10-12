@@ -1,6 +1,5 @@
-import { getDataFromClicked } from "metabase/lib/click-behavior";
-
 import { openActionParametersModal } from "metabase/dashboard/actions";
+import { getDataFromClicked } from "metabase-lib/lib/parameters/utils/click-behavior";
 
 import type { ActionClickObject } from "./types";
 
