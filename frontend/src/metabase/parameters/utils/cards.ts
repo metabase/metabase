@@ -1,13 +1,13 @@
 import _ from "underscore";
 
-import {
-  getValuePopulatedParameters,
-  hasParameterValue,
-} from "metabase/parameters/utils/parameter-values";
 import { ParameterWithTarget, UiParameter } from "metabase/parameters/types";
 import { Parameter, ParameterTarget } from "metabase-types/types/Parameter";
 import { Card } from "metabase-types/types/Card";
 import { TemplateTag } from "metabase-types/types/Query";
+import {
+  getValuePopulatedParameters,
+  hasParameterValue,
+} from "metabase-lib/lib/parameters/utils/parameter-values";
 import {
   getParameterTargetField,
   getTemplateTagFromTarget,
