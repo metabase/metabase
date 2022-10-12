@@ -51,7 +51,7 @@
   Returns a data structure detailing the gaps. Use [[escape-report]] to output this data in a human-friendly format.
   Returns nil if there are no escaped values, which is useful for a test."
   [collection-ids]
-  (let [collection-set (->> (toucan.db/select Collection :id [:in collection-ids])
+  (let [collection-set (->> (toucan.db/select Collection :id [:in (set collection-ids)])
                             (mapcat metabase.models.collection/descendant-ids)
                             set
                             (set/union (set collection-ids)))
