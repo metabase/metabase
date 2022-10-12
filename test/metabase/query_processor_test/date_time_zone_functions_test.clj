@@ -1,5 +1,6 @@
 (ns metabase.query-processor-test.date-time-zone-functions-test
   (:require [clojure.string :as str]
+            [clojure.tools.macro :as tools.macro]
             [clojure.test :refer :all]
             [java-time :as t]
             [metabase.driver :as driver]
@@ -260,36 +261,26 @@
 
 (deftest datetimediff-test
   (mt/test-drivers (mt/normal-drivers-with-feature :datetimediff)
-    (mt/with-bigquery-fks :bigquery-cloud-sdk
-      (mt/dataset sample-dataset
-        (testing "Generall works for year, month, day, hour, minute, second"
-          (let [query (mt/mbql-query
-                       products
-                       {:joins [{:fields []
-                                 :source-table $$reviews
-                                 :condition [:= $products.id &r.reviews.product_id]
-                                 :alias "r"}]
-                        :filter [:= [:abs [:datetimediff &r.created_at $created_at :day]] 1]
-                        :fields [[:expression "diff-year"]
-                                 [:expression "diff-month"]
-                                 [:expression "diff-week"]
-                                 [:expression "diff-day"]
-                                 [:expression "diff-hour"]
-                                 [:expression "diff-minute"]
-                                 [:expression "diff-second"]]
-                        :expressions {"diff-year" [:datetimediff &r.created_at $created_at :year]
-                                      "diff-month" [:datetimediff &r.created_at $created_at :month]
-                                      "diff-week" [:datetimediff &r.created_at $created_at :week]
-                                      "diff-day" [:datetimediff &r.created_at $created_at :day]
-                                      "diff-hour" [:datetimediff &r.created_at $created_at :hour]
-                                      "diff-minute" [:datetimediff &r.created_at $created_at :minute]
-                                      "diff-second" [:datetimediff &r.created_at $created_at :second]}})]
-            (testing "Computes without errors"
-              ;; There are only two rows where the product and review creation is one day apart
-              ;;       year month week day hour minute second
-              (is (= [[0    0     0    1   39   2384   143082]
-                      [0    0     0    1   30   1856   111388]]
-                     (mt/rows (qp/process-query query)))))))))
+    (tools.macro/macrolet [(datetimediff-of [unit]
+                             `(testing ~(name unit)
+                                (mt/mbql-query
+                                 datetimediff-demo
+                                 {:filter [:= ~'$description ~(name unit)]
+                                  :fields [[:expression ~(str "diff-" (name unit))]]
+                                  :expressions
+                                  {~(str "diff-" (name unit))
+                                   [:datetimediff ~'$end ~'$start ~unit]}})))]
+      (mt/dataset useful-dates
+        (testing "year"
+          (is (= [[1] [2] [0]] (mt/rows (mt/process-query (datetimediff-of :year))))))
+        (testing "month"
+          (is (= [[1] [3] [0]] (mt/rows (mt/process-query (datetimediff-of :month))))))
+        (testing "day"
+          (is (= [[3] [368] [0]] (mt/rows (mt/process-query (datetimediff-of :day))))))
+        (testing "hour"
+          (is (= [[2] [0] [72] [8760]] (mt/rows (mt/process-query (datetimediff-of :hour))))))
+        (testing "minute"
+          (is (= [[120] [4] [525604]] (mt/rows (mt/process-query (datetimediff-of :minute))))))))
     (mt/dataset useful-dates
       (testing "Can compare across dates, datetimes, and with timezones"
         ;; these particular numbers are not important, just that we can compare between dates, datetimes, etc.
