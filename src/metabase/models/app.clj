@@ -1,6 +1,6 @@
 (ns metabase.models.app
-  (:require [clojure.walk :as walk]
-            [metabase.models.permissions :as perms]
+  (:require [metabase.models.permissions :as perms]
+            [metabase.models.query :as query]
             [metabase.models.serialization.hash :as serdes.hash]
             [metabase.util :as u]
             [toucan.db :as db]
@@ -57,34 +57,10 @@
                             [:= :d.collection_id (:collection_id app)]]}]})
        (db/do-post-select 'Card)))
 
-(defn- parse-source-query-id
-  "Return the ID of the card used as source table, if applicable; otherwise return `nil`."
-  [source-table]
-  (when (string? source-table)
-    (when-let [[_ card-id-str] (re-matches #"^card__(\d+$)" source-table)]
-      (parse-long card-id-str))))
-
-(defn- collect-card-ids
-  "Return a sequence of model ids referenced in the MBQL query `mbql-form`."
-  [mbql-form]
-  (let [ids (java.util.HashSet.)
-        walker (fn [form]
-                 (when (map? form)
-                   ;; model references in native queries
-                   (when-let [card-id (:card-id form)]
-                     (when (int? card-id)
-                       (.add ids card-id)))
-                   ;; source tables (possibly in joins)
-                   (when-let [card-id (parse-source-query-id (:source-table form))]
-                     (.add ids card-id)))
-                 form)]
-    (walk/prewalk walker mbql-form)
-    (seq ids)))
-
 (defn- referenced-models [cards]
   (when-let [model-ids
              (->> cards
-                  (into #{} (mapcat (comp collect-card-ids :dataset_query)))
+                  (into #{} (mapcat (comp query/collect-card-ids :dataset_query)))
                   not-empty)]
     (db/select 'Card {:where [:and
                               [:in :id model-ids]
