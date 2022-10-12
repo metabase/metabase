@@ -306,7 +306,7 @@
     (:year :day)
     (hx/cast
      :integer
-     (hsql/call :date_part (hsql/raw (format "'%s'" (name unit)))
+     (hsql/call :date_part (hx/literal (name unit))
                 (hsql/call (case unit :year :age :day :-)
                            (sql.qp/->honeysql driver x)
                            (sql.qp/->honeysql driver y))))
