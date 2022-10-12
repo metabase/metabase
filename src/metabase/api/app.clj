@@ -211,7 +211,8 @@
                         _ (when (not= 1 (count pks))
                             (throw (ex-info (i18n/tru "Table must have a single primary key: {0}" (:name table))
                                             {:status-code 400})))
-                        pk-field-name (u/slugify (:name (first pks)))]
+                        pk-field (first pks)
+                        pk-field-name (u/slugify (:name pk-field))]
                   page-type ["list" "detail"]]
               (cond->
                {:name (format "%s %s"
@@ -225,8 +226,8 @@
                                                             {"type" "link"
                                                              "linkType" "page"
                                                              "parameterMapping" {(str "scaffold_" table-id) {"source" {"type" "column",
-                                                                                                                       "id" "ID",
-                                                                                                                       "name" "ID"},
+                                                                                                                       "id" (:name pk-field)
+                                                                                                                       "name" (:name pk-field)},
                                                                                                              "target" {"type" "parameter",
                                                                                                                        "id" (str "scaffold_" table-id)},
                                                                                                              "id" (str "scaffold_" table-id)}}
@@ -239,7 +240,7 @@
                                  [{:size_y 12 :size_x 18 :row 1 :col 0
                                    :parameter_mappings [{"parameter_id" (str "scaffold_" table-id)
                                                          "card_id" ["scaffold-target-id" "card" table-id "detail"]
-                                                         "target" ["variable", ["template-tag", pk-field-name]]}]
+                                                         "target" ["dimension", ["field", (:id pk-field) nil]]}]
                                    :card_id ["scaffold-target-id" "card" table-id "detail"]
                                    :scaffold-target ["dashcard" table-id]}
                                   {:size_y 1 :size_x 3 :row 0 :col 0
