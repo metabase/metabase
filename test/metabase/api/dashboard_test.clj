@@ -2077,6 +2077,25 @@
                   (finally
                     (perms/update-global-execution-permission! (:id (perms-group/all-users)) :none)))))))))))
 
+(deftest dashcard-execution-fetch-prefill-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+    (actions.test-util/with-actions-test-data-and-actions-enabled
+      (testing "Executing dashcard insert"
+        (mt/with-temp* [Card [{card-id :id} {:dataset true :dataset_query (mt/mbql-query categories)}]
+                        ModelAction [_ {:slug "update" :card_id card-id :requires_pk true}]
+                        Dashboard [{dashboard-id :id}]
+                        DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
+                                                          :card_id card-id
+                                                          :visualization_settings {:action_slug "update"}}]]
+          (let [execute-path (format "dashboard/%s/dashcard/%s/execute/update" dashboard-id dashcard-id)
+                values (mt/user-http-request :crowberto :get 200 execute-path
+                                             {:parameters {"id" 1}})]
+            (is (partial= {:id 1 :name "African"} values))
+            (testing "Missing pk parameter should fail gracefully"
+              (is (partial= "Missing primary key parameter: \"id\""
+                            (mt/user-http-request :crowberto :post 400 execute-path
+                                                  {:parameters {"name" "Birds"}}))))))))))
+
 (defn- ee-features-enabled? []
   (u/ignore-exceptions
    (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
