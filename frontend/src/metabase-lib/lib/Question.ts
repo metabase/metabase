@@ -34,7 +34,6 @@ import {
   getCardUiParameters,
   remapParameterValuesToTemplateTags,
 } from "metabase/parameters/utils/cards";
-import { fieldFilterParameterToMBQLFilter } from "metabase/parameters/utils/mbql";
 import {
   normalizeParameterValue,
   getParameterValuesBySlug,
@@ -62,6 +61,7 @@ import { DependentMetadataItem } from "metabase-types/types/Query";
 import { utf8_to_b64url } from "metabase/lib/encoding";
 import { CollectionId } from "metabase-types/api";
 
+import { fieldFilterParameterToMBQLFilter } from "metabase-lib/lib/parameters/utils/mbql";
 import { getQuestionVirtualTableId } from "metabase-lib/lib/metadata/utils/saved-questions";
 import {
   aggregate,
