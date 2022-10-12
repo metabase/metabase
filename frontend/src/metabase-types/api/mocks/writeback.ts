@@ -2,6 +2,7 @@ import {
   Card,
   QueryAction,
   WritebackAction,
+  WritebackQueryAction,
   QueryActionCard,
 } from "metabase-types/api";
 import { createMockCard } from "./card";
@@ -25,7 +26,7 @@ export const createMockQueryAction = ({
   ...opts
 }: Partial<WritebackAction & QueryAction> = {}): WritebackAction => {
   return {
-    id: 1,
+    action_id: 1,
     type: "query",
     card_id: card.id,
     card,
@@ -37,3 +38,30 @@ export const createMockQueryAction = ({
     ...opts,
   };
 };
+
+export const createMockImplictQueryAction = (
+  options: Partial<WritebackQueryAction>,
+): WritebackQueryAction => ({
+  card_id: 1,
+  name: "",
+  description: "",
+  "updated-at": new Date().toISOString(),
+  "created-at": new Date().toISOString(),
+  slug: "",
+  parameters: [
+    {
+      id: "id",
+      target: ["variable", ["template-tag", "id"]],
+      type: "type/Integer",
+    },
+    {
+      id: "name",
+      target: ["variable", ["template-tag", "name"]],
+      type: "type/Text",
+    },
+  ] as WritebackAction["parameters"],
+  type: "implicit",
+  visualization_settings: undefined,
+  card: createMockQueryActionCard(),
+  ...options,
+});

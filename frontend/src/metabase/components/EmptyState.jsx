@@ -48,9 +48,10 @@ const EmptyState = ({
   link,
   illustrationElement,
   onActionClick,
+  className,
   ...rest
 }) => (
-  <div>
+  <div className={className}>
     <EmptyStateHeader>
       {illustrationElement && (
         <EmptyStateIllustration>{illustrationElement}</EmptyStateIllustration>

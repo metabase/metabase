@@ -188,7 +188,6 @@ describe("ActionClickDrill", () => {
     const action = createMockQueryAction();
     const dashcard = createMockDashboardActionButton({
       action,
-      action_id: action.id,
     });
     const dashboard = createMockDashboard({
       ordered_cards: [dashcard as unknown as DashboardOrderedCard],
@@ -269,7 +268,6 @@ describe("ActionClickDrill", () => {
 
   it("does nothing for buttons without linked action", () => {
     const dashcard = createMockDashboardActionButton({
-      action_id: null,
       parameter_mappings: [PARAMETER_MAPPING],
     });
     const dashboard = createMockDashboard({

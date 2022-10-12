@@ -60,7 +60,7 @@ export const EmptyStateContainer = styled.div`
   align-items: center;
   gap: 1rem;
 
-  margin-top: 3rem;
+  margin: 3rem 0;
 `;
 
 export const EmptyStateTitle = styled.span`
