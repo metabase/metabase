@@ -246,7 +246,7 @@
 (defmethod sql.qp/->honeysql [:snowflake :convert-timezone]
   [driver [_ arg to-tz from-tz]]
   (let [clause       (sql.qp/->honeysql driver arg)
-        timestamptz? (hx/is-of-type? clause "timestamptz")]
+        timestamptz? (hx/is-of-type? clause #"^timestamptz*")]
     (when (and timestamptz? from-tz)
       (throw (ex-info "`timestamp with time zone` columns shouldn't have a `from timezone`" {:to-tz   to-tz
                                                                                              :from-tz from-tz})))
