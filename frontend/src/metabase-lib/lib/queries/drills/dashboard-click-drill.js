@@ -2,12 +2,12 @@ import _ from "underscore";
 import { getIn } from "icepick";
 import querystring from "querystring";
 import * as Urls from "metabase/lib/urls";
+import { renderLinkURLForClick } from "metabase/lib/formatting/link";
 import {
   formatSourceForTarget,
   getDataFromClicked,
   getTargetForQueryParams,
-} from "metabase/lib/click-behavior";
-import { renderLinkURLForClick } from "metabase/lib/formatting/link";
+} from "metabase-lib/lib/parameters/utils/click-behavior";
 import Question from "metabase-lib/lib/Question";
 
 export function getDashboardDrillType(clicked) {
