@@ -7,6 +7,7 @@
                              Card
                              Collection
                              Dashboard
+                             DashboardCard
                              ModelAction
                              Permissions]]
     [metabase.models.collection.graph :as graph]
@@ -154,10 +155,11 @@
 (defn- normalized-models [models]
   (->> models (sort-by :id) json/generate-string))
 
-(defn- scaffolded-models [app]
+(defn- scaffolded-models [app & extra-models]
   (-> (db/select 'Card {:where [:and
                                 [:= :collection_id (:collection_id app)]
                                 :dataset]})
+      (concat extra-models)
       normalized-models))
 
 (defn- api-models [app]
@@ -236,23 +238,30 @@
         (is (= (scaffolded-models app)
                (api-models app)))))
       (testing "With existing pages"
-        (let [app (mt/user-http-request
-                    :crowberto :post 200 (format "app/%s/scaffold" app-id)
-                    {:table-ids [(data/id :checkins)]})
-              pages (m/index-by :name (hydrate (db/select Dashboard :collection_id (:collection_id app)) :ordered_cards))
-              list-page (get pages "Checkins List")
-              detail-page (get pages "Checkins Detail")]
-          (is (partial= {:nav_items [{:page_id (get-in pages ["Venues List" :id])}
-                                     {:page_id (get-in pages ["Venues Detail" :id])}
-                                     {:page_id (:id list-page)}
-                                     {:page_id (:id detail-page) :hidden true :indent 1}]}
-                        app))
-          (is (partial= {:ordered_cards [{:visualization_settings {:click_behavior
-                                                                   {:type "link",
-                                                                    :linkType "page",
-                                                                    :targetId (:id detail-page)}}}
-                                         {}]}
-                        list-page)))))))
+        (mt/with-temp* [Dashboard [{dashboard-id :id} {:collection_id collection-id}]
+                        Card [{card-id :id :as added-model} {:dataset true}]
+                        DashboardCard [_ {:dashboard_id dashboard-id
+                                          :card_id card-id
+                                          :visualization_settings {:action_slug "custom"}}]]
+          (let [app (mt/user-http-request
+                     :crowberto :post 200 (format "app/%s/scaffold" app-id)
+                     {:table-ids [(data/id :checkins)]})
+                pages (m/index-by :name (hydrate (db/select Dashboard :collection_id (:collection_id app)) :ordered_cards))
+                list-page (get pages "Checkins List")
+                detail-page (get pages "Checkins Detail")]
+            (is (partial= {:nav_items [{:page_id (get-in pages ["Venues List" :id])}
+                                       {:page_id (get-in pages ["Venues Detail" :id])}
+                                       {:page_id (:id list-page)}
+                                       {:page_id (:id detail-page) :hidden true :indent 1}]}
+                          app))
+            (is (partial= {:ordered_cards [{:visualization_settings {:click_behavior
+                                                                     {:type "link",
+                                                                      :linkType "page",
+                                                                      :targetId (:id detail-page)}}}
+                                           {}]}
+                          list-page))
+            (is (= (scaffolded-models app added-model)
+                   (api-models app)))))))))
 
 (deftest global-graph-test
   (mt/with-model-cleanup [Collection Permissions]

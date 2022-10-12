@@ -46,6 +46,17 @@
   "Add the fully hydrated models used by the app."
   {:hydrate :models}
   [app]
-  (db/select 'Card {:where [:and
-                            [:= :collection_id (:collection_id app)]
-                            :dataset]}))
+  (->> (db/query {:union
+                  [{:select [:c.*]
+                    :from [[:report_card :c]]
+                    :where [:and
+                            [:= :c.collection_id (:collection_id app)]
+                            :c.dataset]}
+                   {:select [:c.*]
+                    :from [[:report_card :c]]
+                    :join [[:report_dashboardcard :dc] [:= :dc.card_id :c.id]
+                           [:report_dashboard :d] [:= :d.id :dc.dashboard_id]]
+                    :where [:and
+                            [:= :d.collection_id (:collection_id app)]
+                            :c.dataset]}]})
+       (db/do-post-select 'Card)))
