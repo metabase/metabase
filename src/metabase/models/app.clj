@@ -64,7 +64,7 @@
     (when-let [[_ card-id-str] (re-matches #"^card__(\d+$)" source-table)]
       (parse-long card-id-str))))
 
-(defn- collect-model-ids
+(defn- collect-card-ids
   "Return a sequence of model ids referenced in the MBQL query `mbql-form`."
   [mbql-form]
   (let [ids (java.util.HashSet.)
@@ -84,9 +84,11 @@
 (defn- referenced-models [cards]
   (when-let [model-ids
              (->> cards
-                  (into #{} (mapcat (comp collect-model-ids :dataset_query)))
+                  (into #{} (mapcat (comp collect-card-ids :dataset_query)))
                   not-empty)]
-    (db/select 'Card :id [:in model-ids])))
+    (db/select 'Card {:where [:and
+                              [:in :id model-ids]
+                              :dataset]})))
 
 (defn add-models
   "Add the fully hydrated models used by the app."

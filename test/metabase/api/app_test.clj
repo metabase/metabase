@@ -272,11 +272,13 @@
                   Card [model1 {:dataset true}]
                   Card [model2 {:dataset true}]
                   Card [model3 {:dataset true}]
+                  Card [{card-id :id}]
                   Card [join-card
                         {:dataset_query
                          {:query
                           {:source-table (str "card__" (:id model1))
-                           :joins [{:source-table (str "card__" (:id model2))}]}}}]
+                           :joins [{:source-table (str "card__" (:id model2))}
+                                   {:source-table (str "card__" card-id)}]}}}]
                   Card [native-card
                         (let [mid (:id model3)
                               mref (str "#" mid)]
