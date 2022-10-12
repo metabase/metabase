@@ -104,29 +104,25 @@ const CypressBackend = {
       return new Promise((resolve, reject) => setTimeout(resolve, duration));
     }
 
-    async function promXhr(uri, options) {
-      const xhr = new XMLHttpRequest();
-      return new Promise((resolve, reject) => {
-        xhr.open(options.method, uri, true);
-        for (const headerName in options.headers) {
-          xhr.setRequestHeader(headerName, options.headers[headerName]);
-        }
-        xhr.send(options.body);
-        xhr.onload = () => {
-          const responseObject = {
-            status: xhr.status,
-            response: xhr.responseText,
-          };
-          xhr.status >= 200 && xhr.status <= 299
-            ? resolve(responseObject)
-            : reject(responseObject);
-        };
-      });
-    }
-
     async function isReady(host) {
+      // Netflix/pollyjs
+      // This is needed until we can use NodeJS native `fetch`.
+      function request(url) {
+        return new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+
+          xhr.addEventListener("load", function () {
+            resolve(xhr);
+          });
+
+          xhr.addEventListener("error", reject);
+          xhr.open("GET", url, true);
+          xhr.send();
+        });
+      }
+
       try {
-        const { status } = await promXhr(`${host}/api/health`);
+        const { status } = await request(`${host}/api/health`);
         if (status === 200) {
           return true;
         }
