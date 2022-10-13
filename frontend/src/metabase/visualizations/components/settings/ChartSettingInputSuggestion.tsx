@@ -11,29 +11,32 @@ interface ChartSettingInputSuggestionProps {
   value: string;
   onChange: (value: string) => void;
   id?: string;
-  keys?: string[];
+  options?: string[];
 }
+
+const matchPattern = /.*{{([^{}]*)$/;
 
 const ChartSettingInputSuggestion = ({
   value: initialValue,
   onChange,
-  keys,
+  options,
   ...props
 }: ChartSettingInputSuggestionProps) => {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [value, setValue] = useState(initialValue);
-  const optionsListRef = useRef<HTMLElement>(null);
+  const optionsListRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLDivElement>(null);
 
   const handleChange = (text: string) => {
-    if (keys) {
-      const match = text.match(/.*{{([^}]*)$/);
+    if (options) {
+      const match = text.match(matchPattern);
 
       if (match) {
         const suggestionFilter = match[1];
 
         setSuggestions(
-          keys.filter(
-            k => k.toLowerCase().indexOf(suggestionFilter.toLowerCase()) !== -1,
+          options.filter(option =>
+            option.toLowerCase().includes(suggestionFilter.toLowerCase()),
           ),
         );
       } else {
@@ -44,10 +47,8 @@ const ChartSettingInputSuggestion = ({
   };
 
   const handleSuggestionClick = (suggestion: string) => {
-    const match = value.match(/.*{{([^}]*)$/);
+    const match = value.match(matchPattern);
     const partial = match?.[1];
-
-    console.log(match);
 
     if (partial) {
       setValue(v => v.replace(partial, `${suggestion}}}`));
@@ -63,13 +64,12 @@ const ChartSettingInputSuggestion = ({
     }
   };
 
-  console.log(suggestions);
-
   return (
     <TippyPopoverWithTrigger
-      renderTrigger={({ onClick: handleShowPopover, closePopover }) => (
+      renderTrigger={({ onClick: handleShowPopover }) => (
         <SuggestionInput
           {...props}
+          ref={inputRef}
           data-testid={props.id}
           value={value}
           onClick={handleShowPopover}
@@ -79,15 +79,16 @@ const ChartSettingInputSuggestion = ({
         />
       )}
       placement="bottom-start"
-      popoverContent={({ closePopover }) => {
+      popoverContent={() => {
         if (suggestions.length === 0) {
           return null;
         }
 
         return (
           <SuggestionContainer
-            ref={optionsListRef as any}
+            ref={optionsListRef}
             onMouseDown={handleListMouseDown}
+            style={{ width: inputRef.current?.offsetWidth }}
           >
             {suggestions.map(option => (
               <Suggestion

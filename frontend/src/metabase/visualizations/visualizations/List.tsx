@@ -219,7 +219,6 @@ export default Object.assign(ListViz, {
           ],
         }: { series: Series },
       ) => {
-        console.log(col);
         return {
           keys: cols.map(column => column.name),
           placeholder: t`http://toucan.example/{{bird_id}}`,

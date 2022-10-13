@@ -306,7 +306,7 @@ export default class Table extends Component {
         },
       ) => {
         return {
-          keys: cols.map(column => column.name),
+          options: cols.map(column => column.name),
           placeholder: t`Link to {{bird_id}}`,
         };
       },
@@ -332,7 +332,7 @@ export default class Table extends Component {
         },
       ) => {
         return {
-          keys: cols.map(column => column.name),
+          options: cols.map(column => column.name),
           placeholder: t`http://toucan.example/{{bird_id}}`,
         };
       },
