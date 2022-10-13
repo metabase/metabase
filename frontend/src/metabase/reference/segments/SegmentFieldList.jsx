@@ -17,10 +17,9 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import EditHeader from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
 
-import { getIconForField } from "metabase/lib/schema_metadata";
-
 import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";
+import { getIconForField } from "metabase-lib/lib/metadata/utils/fields";
 import {
   getError,
   getFieldsBySegment,

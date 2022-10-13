@@ -1,5 +1,34 @@
 import { isVirtualCardId } from "metabase-lib/lib/metadata/utils/saved-questions";
+import {
+  BOOLEAN,
+  COORDINATE,
+  FOREIGN_KEY,
+  LOCATION,
+  NUMBER,
+  PRIMARY_KEY,
+  STRING,
+  STRING_LIKE,
+  TEMPORAL,
+} from "metabase-lib/lib/types/constants";
+import { getFieldType } from "metabase-lib/lib/types/utils/isa";
 import type Field from "../Field";
+
+const ICON_MAPPING: Record<string, string> = {
+  [TEMPORAL]: "calendar",
+  [LOCATION]: "location",
+  [COORDINATE]: "location",
+  [STRING]: "string",
+  [STRING_LIKE]: "string",
+  [NUMBER]: "int",
+  [BOOLEAN]: "io",
+  [FOREIGN_KEY]: "connections",
+  [PRIMARY_KEY]: "label",
+};
+
+export function getIconForField(fieldOrColumn: any) {
+  const type = getFieldType(fieldOrColumn);
+  return type && ICON_MAPPING[type] ? ICON_MAPPING[type] : "unknown";
+}
 
 export function getUniqueFieldId(field: Field): number | string {
   const { table_id } = field;
