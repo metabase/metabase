@@ -24,8 +24,8 @@
 
 (defmethod serdes.hash/identity-hash-fields Dimension
   [_dimension]
-  (constantly [(serdes.hash/hydrated-hash :field)
-               (serdes.hash/hydrated-hash :human_readable_field)]))
+  [(serdes.hash/hydrated-hash :field)
+   (serdes.hash/hydrated-hash :human_readable_field)])
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 (defmethod serdes.base/extract-one "Dimension"

@@ -11,5 +11,5 @@
 
 (defmethod serdes.hash/identity-hash-fields DashboardCardSeries
   [_dashboard-card-series]
-  (constantly [(comp serdes.hash/identity-hash dashboard-card)
-               (serdes.hash/hydrated-hash :card)]))
+  [(comp serdes.hash/identity-hash dashboard-card)
+   (serdes.hash/hydrated-hash :card)])
