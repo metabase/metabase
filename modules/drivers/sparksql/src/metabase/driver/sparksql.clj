@@ -24,6 +24,11 @@
 
 (driver/register! :sparksql, :parent :hive-like)
 
+(defmethod driver/database-supports? [:sparksql :convert-timezone]
+  [_driver _feature _database]
+  ;; TODO sparksql can supports convert-timezone, but it requires change in how to we infer database-type->base-type
+  false)
+
 ;;; ------------------------------------------ Custom HoneySQL Clause Impls ------------------------------------------
 
 (def ^:private source-table-alias
