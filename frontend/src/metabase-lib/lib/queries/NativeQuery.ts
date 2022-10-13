@@ -1,17 +1,11 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import { t } from "ttag";
-import { chain, assoc, getIn, assocIn, updateIn } from "icepick";
+import { assoc, assocIn, chain, getIn, updateIn } from "icepick";
 import _ from "underscore";
 import slugg from "slugg";
-import { countLines } from "metabase/lib/string";
 import { humanize } from "metabase/lib/formatting";
 import Utils from "metabase/lib/utils";
-import {
-  getEngineNativeAceMode,
-  getEngineNativeType,
-  getEngineNativeRequiresTable,
-} from "metabase/lib/engine";
 import {
   Card,
   DatasetQuery,
@@ -19,8 +13,8 @@ import {
 } from "metabase-types/types/Card";
 import {
   DependentMetadataItem,
-  TemplateTags,
   TemplateTag,
+  TemplateTags,
 } from "metabase-types/types/Query";
 import { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
 import Question from "metabase-lib/lib/Question";
@@ -31,7 +25,7 @@ import Variable from "metabase-lib/lib/variables/Variable";
 import TemplateTagVariable from "metabase-lib/lib/variables/TemplateTagVariable";
 import { createTemplateTag } from "metabase-lib/lib/queries/TemplateTag";
 import ValidationError from "metabase-lib/lib/ValidationError";
-import Dimension, { TemplateTagDimension, FieldDimension } from "../Dimension";
+import Dimension, { FieldDimension, TemplateTagDimension } from "../Dimension";
 import DimensionOptions from "../DimensionOptions";
 
 import { getNativeQueryTable } from "./utils/native-query-table";
@@ -331,28 +325,14 @@ export default class NativeQuery extends AtomicQuery {
 
   lineCount(): number {
     const queryText = this.queryText();
-    return queryText ? countLines(queryText) : 0;
-  }
-
-  /**
-   * The ACE Editor mode name, e.g. 'ace/mode/json'
-   */
-  aceMode(): string {
-    return getEngineNativeAceMode(this.engine());
-  }
-
-  /**
-   * Name used to describe the text written in that mode, e.g. 'JSON'. Used to fill in the blank in 'This question is written in _______'.
-   */
-  nativeQueryLanguage() {
-    return getEngineNativeType(this.engine()).toUpperCase();
+    return queryText ? queryText.split(/\n/g).length : 0;
   }
 
   /**
    * Whether the DB selector should be a DB + Table selector. Mongo needs both DB + Table.
    */
   requiresTable() {
-    return getEngineNativeRequiresTable(this.engine());
+    return this.engine() === "mongo";
   }
 
   templateTagsMap(): TemplateTags {
