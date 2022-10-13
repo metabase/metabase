@@ -103,20 +103,20 @@
   (testing "SSO requests fail if SAML is enabled but hasn't been configured"
     (with-valid-premium-features-token
       (mt/with-temporary-setting-values   [saml-identity-provider-uri nil]
-        (mt/with-temporary-raw-setting-values [saml-enabled true]
+        (mt/with-temporary-raw-setting-values [saml-enabled "true"]
           (is (some? (client :get 400 "/auth/sso")))))))
 
   (testing "The IDP provider certificate must also be included for SSO to be configured"
     (with-valid-premium-features-token
       (mt/with-temporary-setting-values [saml-identity-provider-uri         default-idp-uri
                                          saml-identity-provider-certificate nil]
-        (mt/with-temporary-raw-setting-values [saml-enabled true]
+        (mt/with-temporary-raw-setting-values [saml-enabled "true"]
           (is (some? (client :get 400 "/auth/sso"))))))))
 
 (defn- call-with-default-saml-config [f]
   (mt/with-temporary-setting-values [saml-identity-provider-uri         default-idp-uri
                                      saml-identity-provider-certificate default-idp-cert]
-    (mt/with-temporary-raw-setting-values [saml-enabled true]
+    (mt/with-temporary-raw-setting-values [saml-enabled "true"]
       (f))))
 
 (defn call-with-login-attributes-cleared!
