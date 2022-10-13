@@ -1,7 +1,8 @@
 // normalizr schema for use in actions/reducers
 
 import { schema } from "normalizr";
-import { generateSchemaId, entityTypeForObject } from "metabase/lib/schema";
+import { entityTypeForObject } from "metabase/lib/schema";
+import { generateSchemaId } from "metabase-lib/lib/metadata/utils/schema";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/lib/metadata/utils/saved-questions";
 import { getUniqueFieldId } from "metabase-lib/lib/metadata/utils/fields";
 
