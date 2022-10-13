@@ -5,7 +5,7 @@
 import Question from "../Question"; // eslint-disable-line import/order
 import { singularize } from "metabase/lib/formatting";
 import type { TableId } from "metabase-types/types/Table";
-import { isVirtualCardId } from "metabase/lib/saved-questions/saved-questions";
+import { isVirtualCardId } from "metabase-lib/lib/metadata/utils/saved-questions";
 import { getAggregationOperators } from "metabase-lib/lib/operators/utils";
 import { createLookupByProperty, memoizeClass } from "metabase-lib/lib/utils";
 import Base from "./Base";

@@ -1,4 +1,4 @@
-import { isVirtualCardId } from "metabase/lib/saved-questions/saved-questions";
+import { isVirtualCardId } from "metabase-lib/lib/metadata/utils/saved-questions";
 import type Field from "../Field";
 
 export function getUniqueFieldId(field: Field): number | string {

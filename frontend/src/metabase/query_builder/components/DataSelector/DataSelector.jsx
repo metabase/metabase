@@ -5,12 +5,6 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 
-import {
-  isVirtualCardId,
-  getQuestionVirtualTableId,
-  SAVED_QUESTIONS_VIRTUAL_DB_ID,
-} from "metabase/lib/saved-questions";
-
 import EmptyState from "metabase/components/EmptyState";
 import ListSearchField from "metabase/components/ListSearchField";
 import Icon from "metabase/components/Icon";
@@ -29,6 +23,11 @@ import { PLUGIN_MODERATION } from "metabase/plugins";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { getHasDataAccess } from "metabase/new_query/selectors";
+import {
+  isVirtualCardId,
+  getQuestionVirtualTableId,
+  SAVED_QUESTIONS_VIRTUAL_DB_ID,
+} from "metabase-lib/lib/metadata/utils/saved-questions";
 import {
   SearchResults,
   convertSearchResultToTableLikeItem,
