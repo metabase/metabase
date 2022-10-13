@@ -94,16 +94,43 @@
 
 ;;;; exports: [[db-type]], [[db-file]], and [[data-source]] created using environment variables.
 
+(defmulti ^:private env-defaults
+  {:arglists '([db-type])}
+  keyword)
+
+(defmethod env-defaults :h2
+  [_db-type]
+  nil)
+
+(defmethod env-defaults :mysql
+  [_db-type]
+  {:mb-db-host "localhost"
+   :mb-db-port 3306})
+
+(defmethod env-defaults :postgres
+  [_db-type]
+  {:mb-db-host "localhost"
+   :mb-db-port 5432})
+
+(defn- env* [db-type]
+  (merge-with
+   (fn [env-value default-value]
+     (if (nil? env-value)
+       default-value
+       env-value))
+   {:mb-db-type           db-type
+    :mb-db-in-memory      (config/config-bool :mb-db-in-memory)
+    :mb-db-file           (config/config-str :mb-db-file)
+    :mb-db-connection-uri (config/config-str :mb-db-connection-uri)
+    :mb-db-host           (config/config-str :mb-db-host)
+    :mb-db-port           (config/config-int :mb-db-port)
+    :mb-db-dbname         (config/config-str :mb-db-dbname)
+    :mb-db-user           (config/config-str :mb-db-user)
+    :mb-db-pass           (config/config-str :mb-db-pass)}
+   (env-defaults db-type)))
+
 (def ^:private env
-  {:mb-db-type           (config/config-kw :mb-db-type)
-   :mb-db-in-memory      (config/config-bool :mb-db-in-memory)
-   :mb-db-file           (config/config-str :mb-db-file)
-   :mb-db-connection-uri (config/config-str :mb-db-connection-uri)
-   :mb-db-host           (config/config-str :mb-db-host)
-   :mb-db-port           (config/config-int :mb-db-port)
-   :mb-db-dbname         (config/config-str :mb-db-dbname)
-   :mb-db-user           (config/config-str :mb-db-user)
-   :mb-db-pass           (config/config-str :mb-db-pass)})
+  (env* (config/config-kw :mb-db-type)))
 
 (def db-type
   "Keyword type name of the application DB details specified by environment variables. Matches corresponding driver
