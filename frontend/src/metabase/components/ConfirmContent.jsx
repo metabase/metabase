@@ -16,7 +16,7 @@ const ConfirmContent = ({
   onAction = nop,
   onCancel = nop,
   confirmButtonText = t`Yes`,
-  cancelButtonText = t`No`,
+  cancelButtonText = t`Cancel`,
 }) => (
   <ModalContent
     title={title}

@@ -440,7 +440,9 @@ function DatasetEditor(props) {
             <Confirm
               key="cancel"
               action={handleCancelCreate}
-              title={t`Cancel creating model`}
+              title={t`Discard changes?`}
+              message={t`Your model won't be created.`}
+              confirmButtonText={t`Discard`}
             >
               <Button small>{t`Cancel`}</Button>
             </Confirm>

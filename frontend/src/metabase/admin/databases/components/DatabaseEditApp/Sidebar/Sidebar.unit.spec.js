@@ -88,7 +88,7 @@ it("discards saved field values", () => {
 
   expect(screen.getAllByText("Discard saved field values").length).toBe(2);
 
-  const cancelButton = screen.getByText("No");
+  const cancelButton = screen.getByText("Cancel");
 
   fireEvent.click(cancelButton);
 
