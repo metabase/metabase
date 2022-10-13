@@ -5,6 +5,8 @@ import type {
   ParametersForActionExecution,
 } from "metabase-types/api";
 
+import type { StandardFormFieldDefinition } from "metabase-types/forms";
+
 // set user-defined default values for any non-required empty parameters
 export function setDefaultValues(
   params: ParametersForActionExecution,
@@ -31,3 +33,31 @@ export function setNumericValues(
 
   return params;
 }
+
+export const getChangedValues = (
+  newValues: ParametersForActionExecution,
+  oldValues: ParametersForActionExecution,
+) => {
+  const changedValues = Object.entries(newValues).filter(
+    ([newKey, newValue]) => {
+      const oldValue = oldValues[newKey];
+      return newValue !== oldValue;
+    },
+  );
+
+  return Object.fromEntries(changedValues);
+};
+
+type BasicForm = {
+  fields: StandardFormFieldDefinition[];
+};
+
+// maps intial values, if any, into an intialValues map
+export const getInitialValues = (
+  form: BasicForm,
+  prefetchValues: ParametersForActionExecution,
+) => {
+  return Object.fromEntries(
+    form.fields.map(field => [field.name, prefetchValues[field.name] ?? ""]),
+  );
+};

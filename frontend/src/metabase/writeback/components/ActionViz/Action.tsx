@@ -17,6 +17,8 @@ import {
   getNotProvidedActionParameters,
 } from "metabase/modes/components/drill/ActionClickDrill/utils";
 import { executeRowAction } from "metabase/dashboard/actions";
+import { setNumericValues } from "metabase/writeback/containers/ActionParametersInputForm/utils";
+import { generateFieldSettingsFromParameters } from "../ActionCreator/FormCreator";
 import { StyledButton } from "./ActionButton.styled";
 
 import LinkButton from "./LinkButton";
@@ -63,17 +65,25 @@ function ActionComponent({
     actionDisplayType !== "form" || !missingParameters.length;
 
   const onSubmit = useCallback(
-    (parameterMap: ParametersForActionExecution) =>
-      executeRowAction({
+    (parameterMap: ParametersForActionExecution) => {
+      const params = {
+        ...dashcardParamValues,
+        ...parameterMap,
+      };
+
+      const paramsForExecution = setNumericValues(
+        params,
+        generateFieldSettingsFromParameters(dashcard?.action?.parameters),
+      );
+
+      return executeRowAction({
         dashboard,
         dashcard,
-        parameters: {
-          ...dashcardParamValues,
-          ...parameterMap,
-        },
+        parameters: paramsForExecution,
         dispatch,
         shouldToast: shouldDisplayButton,
-      }),
+      });
+    },
     [dashboard, dashcard, dashcardParamValues, dispatch, shouldDisplayButton],
   );
 
@@ -82,7 +92,9 @@ function ActionComponent({
       <ActionForm
         onSubmit={onSubmit}
         dashcard={dashcard}
+        dashboard={dashboard}
         missingParameters={missingParameters}
+        dashcardParamValues={dashcardParamValues}
         action={dashcard.action as WritebackQueryAction}
         shouldDisplayButton={shouldDisplayButton}
       />

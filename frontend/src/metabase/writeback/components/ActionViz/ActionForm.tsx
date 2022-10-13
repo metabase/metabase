@@ -6,6 +6,7 @@ import type {
   OnSubmitActionForm,
   ActionDashboardCard,
   ParametersForActionExecution,
+  Dashboard,
 } from "metabase-types/api";
 import { getFormTitle } from "metabase/writeback/components/ActionCreator/FormCreator";
 
@@ -21,7 +22,9 @@ import {
 interface ActionFormProps {
   onSubmit: OnSubmitActionForm;
   dashcard: ActionDashboardCard;
+  dashboard: Dashboard;
   missingParameters: WritebackParameter[];
+  dashcardParamValues: ParametersForActionExecution;
   action: WritebackQueryAction;
   shouldDisplayButton: boolean;
 }
@@ -29,7 +32,9 @@ interface ActionFormProps {
 function ActionForm({
   onSubmit,
   dashcard,
+  dashboard,
   missingParameters,
+  dashcardParamValues,
   action,
   shouldDisplayButton,
 }: ActionFormProps) {
@@ -66,7 +71,10 @@ function ActionForm({
           >
             <ActionParametersInputForm
               onSubmit={onModalSubmit}
+              dashboard={dashboard}
+              dashcard={dashcard}
               missingParameters={missingParameters}
+              dashcardParamValues={dashcardParamValues}
               action={action}
             />
           </ActionParametersInputModal>
@@ -80,7 +88,10 @@ function ActionForm({
       <DataAppPageFormTitle>{title}</DataAppPageFormTitle>
       <ActionParametersInputForm
         onSubmit={onSubmit}
+        dashboard={dashboard}
+        dashcard={dashcard}
         missingParameters={missingParameters}
+        dashcardParamValues={dashcardParamValues}
         action={action}
       />
     </DataAppPageFormWrapper>

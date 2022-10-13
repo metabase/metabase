@@ -5,6 +5,7 @@ import type {
   WritebackAction,
   FieldSettings,
   ParameterId,
+  WritebackParameter,
 } from "metabase-types/api";
 
 import validate from "metabase/lib/validate";
@@ -106,6 +107,17 @@ export const getFormFieldForParameter = (
   title: parameter.name ?? parameter.id,
   ...getParameterFieldProps(fieldSettings),
 });
+
+export const getFormFromParameters = (
+  missingParameters: WritebackParameter[],
+  fieldSettings: Record<string, FieldSettings>,
+) => {
+  return {
+    fields: missingParameters?.map(param =>
+      getFormFieldForParameter(param, fieldSettings[param.id] ?? {}),
+    ),
+  };
+};
 
 export const getFormTitle = (action: WritebackAction): string =>
   action.visualization_settings?.name ||
