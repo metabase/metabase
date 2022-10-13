@@ -9,7 +9,7 @@ import type {
   CustomDestinationClickBehavior,
   CustomDestinationClickBehaviorLinkType,
 } from "metabase-types/api";
-import { isTableDisplay } from "metabase-lib/lib/parameters/utils/click-behavior";
+import { isTableDisplay } from "metabase/lib/click-behavior";
 import { SidebarContent } from "../ClickBehaviorSidebar.styled";
 import CustomLinkText from "./CustomLinkText";
 import LinkedEntityPicker from "./LinkedEntityPicker";

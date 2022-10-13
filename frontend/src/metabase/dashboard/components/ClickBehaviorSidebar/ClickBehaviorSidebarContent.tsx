@@ -13,8 +13,8 @@ import type {
   DatasetData,
 } from "metabase-types/api";
 import type { Column } from "metabase-types/types/Dataset";
-import { isTableDisplay } from "metabase-lib/lib/parameters/utils/click-behavior";
 
+import { isTableDisplay } from "metabase/lib/click-behavior";
 import { getClickBehaviorForColumn } from "./utils";
 import ClickBehaviorSidebarMainView from "./ClickBehaviorSidebarMainView";
 import TableClickBehaviorView from "./TableClickBehaviorView";

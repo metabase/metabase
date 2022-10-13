@@ -11,10 +11,8 @@ import type {
   ClickBehavior,
   DashboardOrderedCard,
 } from "metabase-types/api";
-import {
-  isTableDisplay,
-  clickBehaviorIsValid,
-} from "metabase-lib/lib/parameters/utils/click-behavior";
+import { isTableDisplay } from "metabase/lib/click-behavior";
+import { clickBehaviorIsValid } from "metabase-lib/lib/parameters/utils/click-behavior";
 
 import { SidebarItem } from "../SidebarItem";
 import CustomLinkText from "./CustomLinkText";

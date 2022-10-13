@@ -18,10 +18,8 @@ import type {
   DatasetData,
 } from "metabase-types/api";
 import type { Column } from "metabase-types/types/Dataset";
-import {
-  isTableDisplay,
-  clickBehaviorIsValid,
-} from "metabase-lib/lib/parameters/utils/click-behavior";
+import { isTableDisplay } from "metabase/lib/click-behavior";
+import { clickBehaviorIsValid } from "metabase-lib/lib/parameters/utils/click-behavior";
 import { keyForColumn } from "metabase-lib/lib/queries/utils/dataset";
 
 import { getClickBehaviorForColumn } from "./utils";

@@ -6,7 +6,7 @@ import type {
   DashboardOrderedCard,
 } from "metabase-types/api";
 import type { Column } from "metabase-types/types/Dataset";
-import { hasActionsMenu } from "metabase-lib/lib/parameters/utils/click-behavior";
+import { hasActionsMenu } from "metabase/lib/click-behavior";
 import { keyForColumn } from "metabase-lib/lib/queries/utils/dataset";
 
 type ClickBehaviorOption = {

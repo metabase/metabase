@@ -32,7 +32,7 @@ import { isActionCard } from "metabase/writeback/utils";
 
 import { getParameterValuesBySlug } from "metabase/parameters/utils/parameter-values";
 import Utils from "metabase/lib/utils";
-import { getClickBehaviorDescription } from "metabase-lib/lib/parameters/utils/click-behavior";
+import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
 import DashCardParameterMapper from "./DashCardParameterMapper";
 import { DashCardRoot } from "./DashCard.styled";
 
