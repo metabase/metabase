@@ -70,7 +70,7 @@
                                 base
                                 (apply str base "." (repeat decimals "0")))
 
-                              (> decimals-in-value 0)
+                              (and (> decimals-in-value 0) (not currency?) (not integral?))
                               (apply str base "." (repeat decimals-in-value "0"))
 
                               (and integral? (not currency?))
@@ -80,22 +80,20 @@
                               (apply str base (when (> decimal-digits 0) ".") (repeat decimal-digits "0")))
                       (= number-style "scientific") (str "E0")
                       (= number-style "percent")    (str "%"))
-            fmtr (DecimalFormat. fmt-str symbols)
-            a (if (number? value)
-                (NumericWrapper.
-                 (str (when prefix prefix)
-                      (when (and currency? (or (nil? currency-style)
-                                               (= currency-style "symbol")))
-                        (get-in currency/currency [(keyword (or currency "USD")) :symbol]))
-                      (when (and currency? (= currency-style "code"))
-                        (str (get-in currency/currency [(keyword (or currency "USD")) :code]) \space))
-                      (.format fmtr (* value (or scale 1)))
-                      (when (and currency? (= currency-style "name"))
-                        (str \space (get-in currency/currency [(keyword (or currency "USD")) :name_plural])))
-                      (when suffix suffix)))
-                value)]
-        (println "value: " value "xf-value: " a "fmt-str: " fmt-str)
-        a))))
+            fmtr (DecimalFormat. fmt-str symbols)]
+        (if (number? value)
+          (NumericWrapper.
+           (str (when prefix prefix)
+                (when (and currency? (or (nil? currency-style)
+                                         (= currency-style "symbol")))
+                  (get-in currency/currency [(keyword (or currency "USD")) :symbol]))
+                (when (and currency? (= currency-style "code"))
+                  (str (get-in currency/currency [(keyword (or currency "USD")) :code]) \space))
+                (.format fmtr (* value (or scale 1)))
+                (when (and currency? (= currency-style "name"))
+                  (str \space (get-in currency/currency [(keyword (or currency "USD")) :name_plural])))
+                (when suffix suffix)))
+          value)))))
 
 (s/defn format-number :- NumericWrapper
   "Format a number `n` and return it as a NumericWrapper; this type is used to do special formatting in other
