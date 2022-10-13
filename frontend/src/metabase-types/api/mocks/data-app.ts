@@ -30,7 +30,6 @@ export const createMockDashboardActionButton = ({
   ...opts
 }: Partial<ActionDashboardCard> = {}): ActionDashboardCard => ({
   id: 1,
-  action_id: null,
   parameter_mappings: null,
   visualization_settings: merge(
     {

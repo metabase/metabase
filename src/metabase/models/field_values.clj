@@ -164,10 +164,11 @@
                                     :type                  :keyword})
           :pre-insert  pre-insert
           :pre-update  pre-update
-          :post-select post-select})
+          :post-select post-select}))
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [(serdes.hash/hydrated-hash :field)])})
+(defmethod serdes.hash/identity-hash-fields FieldValues
+  [_field-values]
+  [(serdes.hash/hydrated-hash :field)])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  Utils fns                                                     |

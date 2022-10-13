@@ -1,86 +1,99 @@
-import React, { useState } from "react";
+import React from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
-import Button from "metabase/core/components/Button";
-import EmptyState from "metabase/components/EmptyState";
+import Icon from "metabase/components/Icon";
 
 import Actions from "metabase/entities/actions";
-import type { WritebackAction } from "metabase-types/api";
+import Questions from "metabase/entities/questions";
+
+import type { Card, WritebackAction } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import ModelPicker from "../ModelPicker";
-import ActionOptionItem from "./ActionOptionItem";
+import Link from "metabase/core/components/Link";
+import Button from "metabase/core/components/Button";
+import {
+  ModelTitle,
+  ActionItem,
+  ModelActionList,
+  EmptyState,
+  EmptyModelStateContainer,
+} from "./ActionPicker.styled";
 
 export default function ActionPicker({
-  value,
-  onChange,
+  modelIds,
+  onClick,
 }: {
-  value: WritebackAction | undefined;
-  onChange: (value: WritebackAction) => void;
+  modelIds: number[];
+  onClick: (action: WritebackAction) => void;
 }) {
-  const [modelId, setModelId] = useState<number | undefined>(value?.model_id);
-
   return (
     <div className="scroll-y">
-      {!modelId ? (
-        <ModelPicker value={modelId} onChange={setModelId} />
-      ) : (
-        <>
-          <Button
-            icon="arrow_left"
-            borderless
-            onClick={() => setModelId(undefined)}
-          >
-            {t`Select Model`}
-          </Button>
-
-          <ConnectedModelActionPicker
-            modelId={modelId}
-            value={value}
-            onChange={onChange}
-          />
-        </>
+      {modelIds.map(modelId => (
+        <ConnectedModelActionPicker
+          key={modelId}
+          modelId={modelId}
+          onClick={onClick}
+        />
+      ))}
+      {!modelIds.length && (
+        <EmptyState
+          message={t`No models found`}
+          action={t`Create new model`}
+          link={"/model/new"}
+        />
       )}
     </div>
   );
 }
 
 function ModelActionPicker({
-  value,
-  onChange,
+  onClick,
+  model,
   actions,
 }: {
-  value: WritebackAction | undefined;
-  onChange: (newValue: WritebackAction) => void;
+  onClick: (newValue: WritebackAction) => void;
+  model: Card;
   actions: WritebackAction[];
 }) {
-  if (!actions?.length) {
-    return (
-      <EmptyState
-        message={t`There are no actions for this model`}
-        action={t`Create new action`}
-        link={"/action/create"}
-      />
-    );
-  }
-
   return (
-    <ul>
-      {actions?.map(action => (
-        <ActionOptionItem
-          name={action.name}
-          description={action.description}
-          isSelected={action.id === value?.id}
-          key={action.slug}
-          onClick={() => onChange(action)}
-        />
-      ))}
-    </ul>
+    <ModelActionList>
+      <ModelTitle>
+        <Icon name="model" size={16} className="mr2" />
+        {model.name}
+      </ModelTitle>
+      {actions?.length ? (
+        <ul>
+          {actions?.map(action => (
+            <ActionItem onClick={() => onClick(action)} key={action.id}>
+              {action.name}
+            </ActionItem>
+          ))}
+        </ul>
+      ) : (
+        <EmptyModelStateContainer>
+          <div>{t`There are no actions for this model`}</div>
+          <Button
+            as={Link}
+            to={`/action/create?model-id=${model.id}`}
+            borderless
+          >
+            {t`Create new action`}
+          </Button>
+        </EmptyModelStateContainer>
+      )}
+    </ModelActionList>
   );
 }
 
-const ConnectedModelActionPicker = Actions.loadList({
-  query: (state: State, props: { modelId?: number | null }) => ({
-    "model-id": props?.modelId,
+const ConnectedModelActionPicker = _.compose(
+  Questions.load({
+    id: (state: State, props: { modelId?: number | null }) => props?.modelId,
+    entityAlias: "model",
   }),
-})(ModelActionPicker);
+  Actions.loadList({
+    query: (state: State, props: { modelId?: number | null }) => ({
+      "model-id": props?.modelId,
+    }),
+  }),
+)(ModelActionPicker);

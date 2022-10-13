@@ -48,14 +48,15 @@
                                    :entity_id    true})
           :types      (constantly {:parameter_mappings     :parameters-list
                                    :visualization_settings :visualization-settings})
-          :pre-insert pre-insert})
+          :pre-insert pre-insert}))
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [(serdes.hash/hydrated-hash :card)
-                                      (comp serdes.hash/identity-hash
-                                            #(db/select-one 'Dashboard :id %)
-                                            :dashboard_id)
-                                      :visualization_settings])})
+(defmethod serdes.hash/identity-hash-fields DashboardCard
+  [_dashboard-card]
+  [(serdes.hash/hydrated-hash :card)
+   (comp serdes.hash/identity-hash
+         #(db/select-one 'Dashboard :id %)
+         :dashboard_id)
+   :visualization_settings])
 
 
 ;;; --------------------------------------------------- HYDRATION ----------------------------------------------------
@@ -234,8 +235,8 @@
   [{:keys [card_id dashboard_id parameter_mappings visualization_settings]}]
   (->> (mapcat serdes.util/mbql-deps parameter_mappings)
        (concat (serdes.util/visualization-settings-deps visualization_settings))
-       (concat #{[{:model "Dashboard" :id dashboard_id}]
-                 [{:model "Card"      :id card_id}]})
+       (concat #{[{:model "Dashboard" :id dashboard_id}] })
+       (concat (when card_id #{[{:model "Card" :id card_id}]}))
        set))
 
 (defmethod serdes.base/serdes-generate-path "DashboardCard" [_ dashcard]
@@ -260,5 +261,6 @@
 
 (defmethod serdes.base/serdes-descendants "DashboardCard" [_model-name id]
   (let [{:keys [card_id dashboard_id]} (db/select-one DashboardCard :id id)]
-    #{["Card"      card_id]
-      ["Dashboard" dashboard_id]}))
+    (cond-> #{["Dashboard" dashboard_id]}
+      ;; card_id is nil for text cards; in that case there's no Card to depend on.
+      card_id (conj ["Card" card_id]))))

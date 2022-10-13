@@ -154,6 +154,15 @@
    (let [cmd (resolve-enterprise-command 'metabase-enterprise.serialization.cmd/dump)]
      (cmd path (cmd-args->map args)))))
 
+(defn ^:command seed-entity-ids
+  "Add entity IDs for instances of serializable models that don't already have them."
+  [& options]
+  (let [cmd     (resolve-enterprise-command 'metabase-enterprise.serialization.cmd/seed-entity-ids)
+        options (cmd-args->map options)]
+    (system-exit! (if (cmd options)
+                    0
+                    1))))
+
 (defn ^:command rotate-encryption-key
   "Rotate the encryption key of a metabase database. The MB_ENCRYPTION_SECRET_KEY environment variable has to be set to
   the current key, and the parameter `new-key` has to be the new key. `new-key` has to be at least 16 chars."

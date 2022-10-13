@@ -45,7 +45,7 @@ function ActionComponent({
   const dashcardSettings = dashcard.visualization_settings;
   const actionSettings = dashcard.action?.visualization_settings;
   const actionDisplayType =
-    dashcardSettings?.actionDisplayType ?? actionSettings?.type ?? "modal";
+    dashcardSettings?.actionDisplayType ?? actionSettings?.type ?? "button";
 
   const dashcardParamValues = useMemo(
     () => getDashcardParamValues(dashcard, parameterValues),
@@ -63,7 +63,7 @@ function ActionComponent({
   }, [dashcard, dashcardParamValues]);
 
   const shouldDisplayButton =
-    actionDisplayType !== "inline" || !missingParameters.length;
+    actionDisplayType !== "form" || !missingParameters.length;
 
   const onSubmit = useCallback(
     (parameterMap: ParametersForActionExecution) =>

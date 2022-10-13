@@ -43,5 +43,5 @@ export function hasActionsMenu(dashcard) {
 }
 
 export function isTableDisplay(dashcard) {
-  return dashcard.card.display === "table";
+  return dashcard?.card?.display === "table";
 }

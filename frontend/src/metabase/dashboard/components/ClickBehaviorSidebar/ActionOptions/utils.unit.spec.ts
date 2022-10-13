@@ -63,7 +63,6 @@ describe("turnDashCardParameterMappingsIntoClickBehaviorMappings", () => {
     const action = createMockQueryAction({ parameters: actionParameters });
     const dashCard = createMockDashboardActionButton({
       action,
-      action_id: action.id,
       parameter_mappings: dashCardParameterMappings,
     });
     return { action, dashCard };

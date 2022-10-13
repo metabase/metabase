@@ -56,10 +56,11 @@
   (merge
    models/IModelDefaults
    {:properties (constantly {:timestamped? true
-                             :entity_id    true})})
+                             :entity_id    true})}))
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :collection)])})
+(defmethod serdes.hash/identity-hash-fields Timeline
+  [_timeline]
+  [:name (serdes.hash/hydrated-hash :collection)])
 
 ;;;; serialization
 (defmethod serdes.base/extract-one "Timeline"

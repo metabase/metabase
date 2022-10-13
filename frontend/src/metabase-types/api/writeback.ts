@@ -8,7 +8,8 @@ export interface WritebackParameter extends Parameter {
 export type WritebackActionType = "http" | "query" | "implicit";
 
 export interface WritebackActionBase {
-  id: number;
+  id?: number;
+  action_id?: number;
   model_id?: number;
   slug?: string;
   name: string;
