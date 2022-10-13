@@ -5,17 +5,6 @@
             [metabase.test :as mt]
             [toucan.db :as db]))
 
-(deftest card-create-test
-  (mt/with-temp* [User [user]
-                  Card [card {:creator_id (:id user)}]]
-    (view-log/handle-view-event! {:topic :card-create
-                                  :item  card})
-    (is (= {:user_id  (:id user)
-            :model    "card"
-            :model_id (:id card)}
-           (mt/derecordize
-            (db/select-one [ViewLog :user_id :model :model_id], :user_id (:id user)))))))
-
 (deftest card-read-test
   (mt/with-temp* [User [user]
                   Card [card {:creator_id (:id user)}]]

@@ -7,8 +7,7 @@
 
 (def ^:private view-log-topics
   "The `Set` of event topics which we subscribe to for view counting."
-  #{:card-create
-    :card-read
+  #{:card-read
     :card-query
     :dashboard-read
     :table-read})
