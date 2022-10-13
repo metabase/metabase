@@ -328,12 +328,12 @@
   (let [graph (resolve-advanced-app-permission-function 'graph)]
     (graph)))
 
-(defn- ->int [id] (Integer/parseInt (name id)))
+(defn- ->int [id] (parse-long (name id)))
 
 (defn- dejsonify-with [f m]
   (into {}
         (map (fn [[k v]]
-               [(->int k) (f v)]))
+               [(or (->int k) k) (f v)]))
         m))
 
 (defn- dejsonify-id->permission-map [m]
@@ -341,12 +341,6 @@
 
 (defn- dejsonify-groups-map [m]
   (dejsonify-with dejsonify-id->permission-map m))
-
-(defn- dejsonify-global-graph
-  "Fix the types in the graph when it comes in from the API, e.g. converting things like `\"none\"` to `:none` and
-  parsing object keys as integers."
-  [graph]
-  (update graph :groups dejsonify-id->permission-map))
 
 (defn- dejsonify-graph
   "Fix the types in the graph when it comes in from the API, e.g. converting things like `\"none\"` to `:none` and
@@ -360,7 +354,7 @@
   {body su/Map}
   (api/check-superuser)
   (-> body
-      dejsonify-global-graph
+      dejsonify-graph
       app.graph/update-global-graph!))
 
 (api/defendpoint PUT "/graph"

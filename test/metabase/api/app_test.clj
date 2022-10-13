@@ -47,7 +47,9 @@
                             (graph/graph :apps))
                   "''All Users'' should have the default permission on the app collection"))))
         (testing "With initial dashboard and nav_items"
-          (mt/with-temp Dashboard [{dashboard-id :id}]
+          (mt/with-temp* [Permissions [_ {:group_id (:id (perms-group/all-users))
+                                          :object "/collection/namespace/apps/root/"}]
+                          Dashboard [{dashboard-id :id}]]
             (let [nav_items [{:options {:click_behavior {}}}]]
               (is (partial= {:collection (assoc base-params :location "/")
                              :dashboard_id dashboard-id
@@ -121,13 +123,13 @@
                             (mt/user-http-request :rasta :get 200 "app")))))))
       (testing "archives"
         (mt/with-model-cleanup [Permissions]
-          (mt/with-temp* [Collection [collection-1 {:name "Collection 1", :namespace :apps}]
+          (mt/with-temp* [Permissions [_ {:group_id (:id (perms-group/all-users))
+                                          :object "/collection/namespace/apps/root/"}]
+                          Collection [collection-1 {:name "Collection 1", :namespace :apps}]
                           Collection [collection-2 {:name "Collection 2", :namespace :apps, :archived true}]
                           Dashboard [{dashboard_id :id}]
                           App [{app-1-id :id} (assoc app-data :collection_id (:id collection-1) :dashboard_id dashboard_id)]
                           App [{app-2-id :id} (assoc app-data :collection_id (:id collection-2) :dashboard_id dashboard_id)]]
-            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-1)
-            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-2)
             (testing "listing normal apps"
               (let [expected (merge app-data {:id app-1-id
                                               :collection_id (:id collection-1)
@@ -331,7 +333,7 @@
               (mt/user-http-request :crowberto :put 200 "app/global-graph"
                                     (assoc-in (mt/user-http-request :crowberto :get 200 "app/global-graph")
                                               [:groups (:id (perms-group/all-users))]
-                                              :write))
+                                              {:root :write}))
               (is (partial= {:groups {(:id (perms-group/all-users)) {(:collection_id response1) :write
                                                                      (:collection_id response2) :write}}}
                             (graph/graph :apps))))))))))

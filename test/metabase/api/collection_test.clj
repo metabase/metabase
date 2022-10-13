@@ -5,7 +5,8 @@
             [honeysql.core :as hsql]
             [metabase.api.collection :as api.collection]
             [metabase.models :refer [App Card Collection Dashboard DashboardCard ModerationReview NativeQuerySnippet
-                                     PermissionsGroup PermissionsGroupMembership Pulse PulseCard PulseChannel
+                                     Permissions PermissionsGroup PermissionsGroupMembership
+                                     Pulse PulseCard PulseChannel
                                      PulseChannelRecipient Revision Timeline TimelineEvent User]]
             [metabase.models.collection :as collection]
             [metabase.models.collection-test :as collection-test]
@@ -339,9 +340,16 @@
 (deftest fetch-collection-test
   (testing "GET /api/collection/:id"
     (testing "check that we can see collection details"
-      (mt/with-temp* [Collection [collection {:name "Coin Collection", :namespace :apps}]
+      (mt/with-temp Collection [collection {:name "Coin Collection"}]
+        (is (= "Coin Collection"
+               (:name
+                (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection))))))))
+
+    (testing "check that we can see app collection details"
+      (mt/with-temp* [Permissions [_ {:group_id (:id (perms-group/all-users))
+                                      :object "/collection/namespace/apps/root/read/"}]
+                      Collection [collection {:name "Coin Collection", :namespace :apps}]
                       App [{app-id :id} {:collection_id (:id collection)}]]
-        (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
         (is (= ["Coin Collection" app-id]
                ((juxt :name :app_id)
                 (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection))))))))

@@ -17,7 +17,7 @@
 
 (def ^:private GroupPermissionsGraph
   "collection-id -> status"
-  {su/IntGreaterThanZero app.graph/AppPermissions}) ; be present, which is why it's *optional*
+  {su/IntGreaterThanZero app.graph/RootPermissions}) ; be present, which is why it's *optional*
 
 (def ^:private PermissionsGraph
   {:revision s/Int

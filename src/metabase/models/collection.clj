@@ -26,7 +26,8 @@
             [schema.core :as s]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]
-            [toucan.models :as models])
+            [toucan.models :as models]
+            [metabase.models.collection :as collection])
   (:import metabase.models.collection.root.RootCollection))
 
 (comment collection.root/keep-me)
@@ -871,14 +872,25 @@
   (let [collection (if (integer? collection-or-id)
                      (db/select-one [Collection :id :namespace] :id (collection-or-id))
                      collection-or-id)]
-    ;; HACK Collections in the "snippets" namespace have no-op permissions unless EE enhancements are enabled
-    ;;
-    ;; TODO -- Pretty sure snippet perms should be feature flagged by `advanced-permissions` instead
-    (if (and (= (u/qualified-name (:namespace collection)) "snippets")
-             (not (premium-features/enable-enhancements?)))
+    (cond
+      ;; HACK Collections in the "snippets" namespace have no-op permissions unless EE enhancements are enabled
+      ;;
+      ;; TODO -- Pretty sure snippet perms should be feature flagged by `advanced-permissions` instead
+      (and (= (u/qualified-name (:namespace collection)) "snippets")
+           (not (premium-features/enable-enhancements?)))
       #{}
+
+      ;; Collections in the "apps" namespace use the permissions of the root unless advanced permissions are enabled
+      (and (= (u/qualified-name (:namespace collection)) "apps")
+           (not (premium-features/has-feature? :advanced-permissions)))
+      #{(let [root (assoc collection/root-collection :namespace :apps)]
+          (case read-or-write
+            :read  (perms/collection-read-path root)
+            :write (perms/collection-readwrite-path root)))}
+
       ;; This is not entirely accurate as you need to be a superuser to modifiy a collection itself (e.g., changing its
       ;; name) but if you have write perms you can add/remove cards
+      :else
       #{(case read-or-write
           :read  (perms/collection-read-path collection-or-id)
           :write (perms/collection-readwrite-path collection-or-id))})))
