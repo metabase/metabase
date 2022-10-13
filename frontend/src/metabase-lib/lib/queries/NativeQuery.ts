@@ -4,7 +4,6 @@ import { t } from "ttag";
 import { assoc, assocIn, chain, getIn, updateIn } from "icepick";
 import _ from "underscore";
 import slugg from "slugg";
-import { countLines } from "metabase/lib/string";
 import { humanize } from "metabase/lib/formatting";
 import Utils from "metabase/lib/utils";
 import {
@@ -326,7 +325,7 @@ export default class NativeQuery extends AtomicQuery {
 
   lineCount(): number {
     const queryText = this.queryText();
-    return queryText ? countLines(queryText) : 0;
+    return queryText ? queryText.split(/\n/g).length : 0;
   }
 
   /**
