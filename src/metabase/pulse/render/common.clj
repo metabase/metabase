@@ -1,5 +1,6 @@
 (ns metabase.pulse.render.common
   (:require [clojure.pprint :refer [cl-format]]
+            [clojure.string :as str]
             hiccup.util
             [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.shared.util.currency :as currency]
@@ -24,6 +25,11 @@
 
   Object
   (toString [_] num-str))
+
+(defn- digits-after-decimal
+  [value]
+  (let [[_n d] (str/split (str value) #"[^\d*]")]
+    (count d)))
 
 (defn number-formatter
   "Return a function that will take a number and format it according to its column viz settings. Useful to compute the
@@ -50,40 +56,48 @@
         symbols            (doto (DecimalFormatSymbols.)
                              (cond-> decimal (.setDecimalSeparator decimal))
                              (cond-> grouping (.setGroupingSeparator grouping)))
-        base               (if (= number-style "scientific") "0" "#,###")
+        base               (if (= number-style "scientific") "0" "#,##0")
         integral?          (isa? (or effective_type base_type) :type/Integer)
         decimal-digits     (if currency?
                              (get-in currency/currency [(keyword (or currency "USD")) :decimal_digits])
-                             2)
-        fmt-str            (cond-> (cond
-                                     decimals
-                                     (if (zero? decimals)
-                                       base
-                                       (apply str base "." (repeat decimals "0")))
-
-                                     (and integral?
-                                          (not currency?))
-                                     base
-
-                                     :else
-                                     (apply str base (when (> decimal-digits 0) ".") (repeat decimal-digits "0")))
-                             (= number-style "scientific") (str "E0")
-                             (= number-style "percent")    (str "%"))
-        fmtr               (DecimalFormat. fmt-str symbols)]
+                             0)]
+    (def a {:col-id col-id
+            :column-settings (get viz-settings ::mb.viz/column-settings)})
     (fn [value]
-      (if (number? value)
-        (NumericWrapper.
-         (str (when prefix prefix)
-              (when (and currency? (or (nil? currency-style)
-                                       (= currency-style "symbol")))
-                (get-in currency/currency [(keyword (or currency "USD")) :symbol]))
-              (when (and currency? (= currency-style "code"))
-                (str (get-in currency/currency [(keyword (or currency "USD")) :code]) \space))
-              (.format fmtr (* value (or scale 1)))
-              (when (and currency? (= currency-style "name"))
-                (str \space (get-in currency/currency [(keyword (or currency "USD")) :name_plural])))
-              (when suffix suffix)))
-        value))))
+      (let [decimals-in-value (cond-> (digits-after-decimal value)
+                                (= number-style "percent") (- 2))
+            fmt-str (cond-> (cond
+                              decimals
+                              (if (zero? decimals)
+                                base
+                                (apply str base "." (repeat decimals "0")))
+
+                              (> decimals-in-value 0)
+                              (apply str base "." (repeat decimals-in-value "0"))
+
+                              (and integral? (not currency?))
+                              base
+
+                              :else
+                              (apply str base (when (> decimal-digits 0) ".") (repeat decimal-digits "0")))
+                      (= number-style "scientific") (str "E0")
+                      (= number-style "percent")    (str "%"))
+            fmtr (DecimalFormat. fmt-str symbols)
+            a (if (number? value)
+                (NumericWrapper.
+                 (str (when prefix prefix)
+                      (when (and currency? (or (nil? currency-style)
+                                               (= currency-style "symbol")))
+                        (get-in currency/currency [(keyword (or currency "USD")) :symbol]))
+                      (when (and currency? (= currency-style "code"))
+                        (str (get-in currency/currency [(keyword (or currency "USD")) :code]) \space))
+                      (.format fmtr (* value (or scale 1)))
+                      (when (and currency? (= currency-style "name"))
+                        (str \space (get-in currency/currency [(keyword (or currency "USD")) :name_plural])))
+                      (when suffix suffix)))
+                value)]
+        (println "value: " value "xf-value: " a "fmt-str: " fmt-str)
+        a))))
 
 (s/defn format-number :- NumericWrapper
   "Format a number `n` and return it as a NumericWrapper; this type is used to do special formatting in other

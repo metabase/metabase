@@ -123,10 +123,10 @@
                    (->> (take 2)))))))))
 
 (deftest table-column-formatting-test
-  (let [rows [["A" "B" "C"]
-              [0.1 9000 "2022-10-12T00:00:00Z"]]]
+  (let [rows [["A" "B" "C" "D" "E"]
+              [0.1 9000 "2022-10-12T00:00:00Z" 0.123 0.6666667]]]
     (testing "Custom column titles are respected in render."
-      (is (= ["Eh" "Bee" "Sea"]
+      (is (= ["Eh" "Bee" "Sea" "D" "E"]
              (-> rows
                  (render.tu/make-card-and-data :table)
                  (render.tu/make-column-settings [{:column-title "Eh"}
@@ -138,12 +138,14 @@
                  (->> (map second))
                  (->> (take (count (first rows))))))))
     (testing "Column format settings are respected in render."
-      (is (= ["10%" "9,000" "12/10/2022"]
+      (is (= ["10%" "9,000" "12/10/2022" "0.123" "0.667"]
              (-> rows
                  (render.tu/make-card-and-data :table)
                  (render.tu/make-column-settings [{:number-style "percent"}
                                                   {}
-                                                  {:date-style "D/M/YYYY"}])
+                                                  {:date-style "D/M/YYYY"}
+                                                  {}
+                                                  {:decimals 3}])
                  render.tu/render-as-hiccup
                  render.tu/remove-attrs
                  (render.tu/nodes-with-tag :td)
