@@ -271,13 +271,19 @@
                                    [:datetimediff ~'$end ~'$start ~unit]}})))]
       (mt/dataset useful-dates
         (testing "year"
-          (is (= [[1] [2] [0]] (mt/rows (mt/process-query (datetimediff-of :year))))))
+          (is (= (case driver/*driver*
+                   :bigquery-cloud-sdk [[1] [2] [1]]
+                   [[1] [2] [0]])
+                 (mt/rows (mt/process-query (datetimediff-of :year))))))
         (testing "month"
-          (is (= [[1] [3] [0]] (mt/rows (mt/process-query (datetimediff-of :month))))))
+          (is (= [[1] [3] [0]]
+                 (mt/rows (mt/process-query (datetimediff-of :month))))))
         (testing "day"
-          (is (= [[3] [368] [0]] (mt/rows (mt/process-query (datetimediff-of :day))))))
+          (is (= [[3] [368] [0]]
+                 (mt/rows (mt/process-query (datetimediff-of :day))))))
         (testing "hour"
-          (is (= [[2] [0] [72] [8760]] (mt/rows (mt/process-query (datetimediff-of :hour))))))
+          (is (= [[2] [0] [72] [8760]]
+                 (mt/rows (mt/process-query (datetimediff-of :hour))))))
         (testing "minute"
           (is (= [[120] [4] [525604]] (mt/rows (mt/process-query (datetimediff-of :minute))))))))
     (mt/dataset useful-dates
