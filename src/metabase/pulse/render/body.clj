@@ -515,18 +515,29 @@
 
 (defn- join-series
   [names colors types row-seqs y-axis-positions]
-  ;;; gotta flatten i guess
-  (let [joined (map vector names colors types row-seqs y-axis-positions)]
-    (vec (for [[card-name card-color card-type rows y-axis-position] joined]
-           {:name          card-name
-            :color         card-color
-            :type          card-type
-            :data          rows
-            :yAxisPosition y-axis-position}))))
+  (vec (for [[card-name card-color card-type rows y-axis-position]
+             (map vector names colors types row-seqs y-axis-positions)]
+         {:name          card-name
+          :color         card-color
+          :type          card-type
+          :data          rows
+          :yAxisPosition y-axis-position})))
 
+(defn- attach-image-bundle
+  [image-bundle]
+  {:attachments
+     (when image-bundle
+       (image-bundle/image-bundle->attachment image-bundle))
 
-(s/defmethod render :multiple
-  [_ render-type _timezone-id card dashcard {:keys [viz-settings] :as data}]
+     :content
+     [:div
+      [:img {:style (style/style {:display :block
+                                  :width   :100%})
+             :src   (:image-src image-bundle)}]]})
+
+(defn- render-multiple-lab-chart
+  "When multiple non-scalar cards are combined, render them as a line, area, or bar chart"
+  [render-type card dashcard {:keys [viz-settings] :as data}]
   (let [viz-settings  (merge viz-settings (:visualization_settings dashcard))
         multi-res     (pu/execute-multi-card card dashcard)
         ;; multi-res gets the other results from the set of multis.
@@ -535,33 +546,54 @@
         cards         (cons card (map :card multi-res))
         multi-data    (cons data (map #(get-in % [:result :data]) multi-res))
         rowfns        (mapv common/graphing-column-row-fns cards multi-data)
-        row-seqs      (map :rows multi-data)
-        row-seqs      (for [[row-seq rowfnpair] (map vector row-seqs rowfns)]
-                        (let [[x-rowfn y-rowfn] rowfnpair]
-                          (map (juxt x-rowfn y-rowfn)
-                               (common/row-preprocess x-rowfn y-rowfn row-seq))))
+        row-seqs      (for [[row-seq [x-rowfn y-rowfn]] (map vector (map :rows multi-data) rowfns)]
+                        (map (juxt x-rowfn y-rowfn)
+                             (common/row-preprocess x-rowfn y-rowfn row-seq)))
         col-seqs      (map :cols multi-data)
         first-rowfns  (first rowfns)
         [x-col y-col] ((juxt (first first-rowfns) (second first-rowfns)) (first col-seqs))
         labels        (x-and-y-axis-label-info x-col y-col viz-settings)
         names         (map :name cards)
         colors        (take (count multi-data) colors)
-        types         (map :display cards)
+        types         (replace {:scalar :bar} (map :display cards))
         settings      (->ts-viz x-col y-col labels viz-settings)
         y-pos         (take (count names) (default-y-pos viz-settings))
-        series        (join-series names colors types row-seqs y-pos)
-        image-bundle  (image-bundle/make-image-bundle
-                        render-type
-                        (js-svg/combo-chart series settings))]
-   {:attachments
-    (when image-bundle
-      (image-bundle/image-bundle->attachment image-bundle))
+        series        (join-series names colors types row-seqs y-pos)]
+     (attach-image-bundle (image-bundle/make-image-bundle render-type (js-svg/combo-chart series settings)))))
 
-    :content
-    [:div
-     [:img {:style (style/style {:display :block
-                                 :width   :100%})
-            :src   (:image-src image-bundle)}]]}))
+(defn- multiple-scalar-series
+  [joined-rows _x-cols _y-cols _viz-settings]
+  ;; TODO: Extra vars could be used for color settings
+  (for [[idx row-val] (map-indexed vector joined-rows)]
+    {:name  (first row-val)
+     :color (nth colors idx)
+     :type  :bar
+     :data [row-val]
+     :yAxisPosition "left"}))
+
+(defn- render-multiple-scalars
+  "When multiple scalar cards are combined, they render as a bar chart"
+  [render-type card dashcard {:keys [viz-settings] :as data}]
+  (let [viz-settings (merge viz-settings (:visualization_settings dashcard))
+        multi-res    (pu/execute-multi-card card dashcard)
+        cards        (cons card (map :card multi-res))
+        multi-data   (cons data (map #(get-in % [:result :data]) multi-res))
+        x-rows       (map :name cards) ;; Bar labels
+        y-rows       (mapcat :rows multi-data)
+        x-cols       [{:base_type :type/Text
+                       :effective_type :type/Text}]
+        y-cols       (select-keys (first (:cols data)) [:base_type :effective_type])
+        series       (multiple-scalar-series (mapv vector x-rows (flatten y-rows)) x-cols y-cols viz-settings)
+        labels       (combo-label-info x-cols y-cols viz-settings)
+        settings     (->ts-viz (first x-cols) (first y-cols) labels viz-settings)]
+    (attach-image-bundle (image-bundle/make-image-bundle render-type (js-svg/combo-chart series settings)))))
+
+(s/defmethod render :multiple
+  [_ render-type _timezone-id card dashcard data]
+  ((if (= :scalar (:display card))
+     render-multiple-scalars
+     render-multiple-lab-chart)
+   render-type card dashcard data))
 
 (defn- series-setting [viz-settings outer-key inner-key]
   (get-in viz-settings [:series_settings (keyword outer-key) inner-key]))
@@ -622,78 +654,44 @@
 
   Use the combo charts for every chart-type in line area bar because we get multiple chart series for cheaper this way."
   [chart-type render-type _timezone-id card dashcard {:keys [cols rows viz-settings] :as data}]
-  (let [viz-settings     (merge viz-settings (:visualization_settings dashcard))
-        x-axis-rowfn     (or (ui-logic/mult-x-axis-rowfn card data) #(vector (first %)))
-        y-axis-rowfn     (or (ui-logic/mult-y-axis-rowfn card data) #(vector (second %)))
-        x-rows           (filter some? (map x-axis-rowfn rows))
-        y-rows           (filter some? (map y-axis-rowfn rows))
-        joined-rows      (mapv vector x-rows y-rows)
-        viz-settings     (set-default-stacked viz-settings card)
-        [x-cols y-cols]  ((juxt x-axis-rowfn y-axis-rowfn) (vec cols))
+  (let [viz-settings    (merge viz-settings (:visualization_settings dashcard))
+        x-axis-rowfn    (or (ui-logic/mult-x-axis-rowfn card data) #(vector (first %)))
+        y-axis-rowfn    (or (ui-logic/mult-y-axis-rowfn card data) #(vector (second %)))
+        x-rows          (filter some? (map x-axis-rowfn rows))
+        y-rows          (filter some? (map y-axis-rowfn rows))
+        joined-rows     (mapv vector x-rows y-rows)
+        viz-settings    (set-default-stacked viz-settings card)
+        [x-cols y-cols] ((juxt x-axis-rowfn y-axis-rowfn) (vec cols))
 
-        enforced-type    (if (= chart-type :combo)
-                           nil
-                           chart-type)
+        enforced-type   (if (= chart-type :combo)
+                          nil
+                          chart-type)
         ;; NB: There's a hardcoded limit of arity 2 on x-axis, so there's only the 1-axis or 2-axis case
-        series           (if (= (count x-cols) 1)
-                           (single-x-axis-combo-series enforced-type joined-rows x-cols y-cols viz-settings)
-                           (double-x-axis-combo-series enforced-type joined-rows x-cols y-cols viz-settings))
+        series          (if (= (count x-cols) 1)
+                          (single-x-axis-combo-series enforced-type joined-rows x-cols y-cols viz-settings)
+                          (double-x-axis-combo-series enforced-type joined-rows x-cols y-cols viz-settings))
 
-        labels           (combo-label-info x-cols y-cols viz-settings)
-        settings         (->ts-viz (first x-cols) (first y-cols) labels viz-settings)]
+        labels          (combo-label-info x-cols y-cols viz-settings)
+        settings        (->ts-viz (first x-cols) (first y-cols) labels viz-settings)]
     (image-bundle/make-image-bundle
-      render-type
-      (js-svg/combo-chart series settings))))
+     render-type
+     (js-svg/combo-chart series settings))))
 
 (s/defmethod render :line :- common/RenderedPulseCard
   [_ render-type timezone-id card dashcard data]
-  (let [image-bundle     (lab-image-bundle :line render-type timezone-id card dashcard data)]
-    {:attachments
-     (when image-bundle
-       (image-bundle/image-bundle->attachment image-bundle))
-
-     :content
-     [:div
-      [:img {:style (style/style {:display :block
-                                  :width   :100%})
-             :src   (:image-src image-bundle)}]]}))
+  (attach-image-bundle (lab-image-bundle :line render-type timezone-id card dashcard data)))
 
 (s/defmethod render :area :- common/RenderedPulseCard
   [_ render-type timezone-id card dashcard data]
-  (let [image-bundle     (lab-image-bundle :area render-type timezone-id card dashcard data)]
-    {:attachments
-     (when image-bundle
-       (image-bundle/image-bundle->attachment image-bundle))
-
-     :content
-     [:div
-      [:img {:style (style/style {:display :block
-                                  :width   :100%})
-             :src   (:image-src image-bundle)}]]}))
+  (attach-image-bundle (lab-image-bundle :area render-type timezone-id card dashcard data)))
 
 (s/defmethod render :bar :- common/RenderedPulseCard
   [_chart-type render-type timezone-id :- (s/maybe s/Str) card dashcard data]
-  (let [image-bundle (lab-image-bundle :bar render-type timezone-id card dashcard data)]
-    {:attachments
-     (when image-bundle
-       (image-bundle/image-bundle->attachment image-bundle))
-
-     :content
-     [:div
-      [:img {:style (style/style {:display :block :width :100%})
-             :src   (:image-src image-bundle)}]]}))
+  (attach-image-bundle (lab-image-bundle :bar render-type timezone-id card dashcard data)))
 
 (s/defmethod render :combo :- common/RenderedPulseCard
   [_chart-type render-type timezone-id :- (s/maybe s/Str) card dashcard data]
-  (let [image-bundle (lab-image-bundle :combo render-type timezone-id card dashcard data)]
-    {:attachments
-     (when image-bundle
-       (image-bundle/image-bundle->attachment image-bundle))
-
-     :content
-     [:div
-      [:img {:style (style/style {:display :block :width :100%})
-             :src   (:image-src image-bundle)}]]}))
+  (attach-image-bundle (lab-image-bundle :combo render-type timezone-id card dashcard data)))
 
 (s/defmethod render :gauge :- common/RenderedPulseCard
   [_chart-type render-type _timezone-id :- (s/maybe s/Str) card _dashcard data]
