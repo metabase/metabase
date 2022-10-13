@@ -351,7 +351,7 @@
 
 (deftest date-math-tests
   (mt/test-driver :mongo
-    (mt/dataset qp.datetime-test/times-mixed-1
+    (mt/dataset qp.datetime-test/times-mixed
       ;; date arithmetic doesn't supports until mongo 5+
       (when (driver/database-supports? :mongo :date-arithmetics (mt/db))
         (testing "date arithmetic with datetime columns"

@@ -27,7 +27,7 @@
          (mt/formatted-rows [int])
          (map first))))
 
-(mt/defdataset times-mixed-1
+(mt/defdataset times-mixed
   [["times" [{:field-name "index"
               :base-type :type/Integer}
              {:field-name "dt"
@@ -85,7 +85,7 @@
                                     :breakout    [[:expression "expr"]]})}])
 
 (deftest extraction-function-tests
-  (mt/dataset times-mixed-1
+  (mt/dataset times-mixed
     ;; need to have seperate tests for mongo because it doesn't have supports for casting yet
     (mt/test-drivers (disj (mt/normal-drivers-with-feature :temporal-extract) :mongo)
       (testing "with datetime columns"
@@ -126,7 +126,7 @@
 
 (deftest temporal-extraction-with-filter-expresion-tests
   (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
-    (mt/dataset times-mixed-1
+    (mt/dataset times-mixed
       (doseq [{:keys [title expected query]}
               [{:title    "Nested expression"
                 :expected [2004]
@@ -204,7 +204,7 @@
          (map first))))
 
 (deftest date-math-tests
-  (mt/dataset times-mixed-1
+  (mt/dataset times-mixed
     ;; mongo doesn't supports coercion yet so we exclude it here, Tests for it are in [[metabase.driver.mongo.query-processor-test]]
     (mt/test-drivers (disj (mt/normal-drivers-with-feature :date-arithmetics) :mongo)
       (testing "date arithmetic with datetime columns"
@@ -247,7 +247,7 @@
 
 (deftest date-math-with-extract-test
   (mt/test-drivers (mt/normal-drivers-with-feature :date-arithmetics)
-    (mt/dataset times-mixed-1
+    (mt/dataset times-mixed
       (doseq [{:keys [title expected query]}
               [{:title    "Nested date math then extract"
                 :expected [2006 2010 2014]
@@ -317,7 +317,7 @@
 
 (deftest convert-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
-    (mt/dataset times-mixed-1
+    (mt/dataset times-mixed
       (testing "timestamp without timezone columns"
         (with-results-and-report-timezone-id "UTC"
           (testing "convert from +05:00 to +09:00"
@@ -369,7 +369,7 @@
 ;; expect 11
 #_(with-results-and-report-timezone-id "UTC"
    (mt/with-driver :snowflake
-        (mt/dataset times-mixed-1
+        (mt/dataset times-mixed
                     (-> (mt/mbql-query times {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")]}
                                               :fields      [[:expression "expr"]]
                                               :limit       1})
@@ -383,30 +383,30 @@
 
 
 #_(dev/query-jdbc-db
-   [ 'times-mixed-1]
+   [ 'times-mixed]
    ["select pg_get_cols('schema_86.times_mixed_times');"])
 
 
 #_(dev/query-jdbc-db
-   [:bigquery-cloud-sdk 'times-mixed-1]
+   [:bigquery-cloud-sdk 'times-mixed]
    ["select * from v3_times_mixed_times.times;"])
 
 #_(dev/query-jdbc-db
-     [:mysql 'times-mixed-1]
+     [:mysql 'times-mixed]
      ["select @@session.time_zone;"])
 
 
 #_(dev/query-jdbc-db
-     [:postgres 'times-mixed-1]
+     [:postgres 'times-mixed]
      ["select dt_tz from times_mixed_times limit 1;"])
 
 #_(dev/query-jdbc-db
-   [:redshift 'times-mixed-1]
+   [:redshift 'times-mixed]
    ["SELECT '2018-11-01T09:00:00+07:00'::timestamptz;"])
 
 
 #_(dev/query-jdbc-db
-    [:sqlserver 'times-mixed-1]
+    [:sqlserver 'times-mixed]
     ["select * from sys.time_zone_info"])
 
 #_(.getDisplayName
@@ -420,7 +420,7 @@
 
 (deftest nested-convert-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
-    (mt/dataset times-mixed-1
+    (mt/dataset times-mixed
       (testing "convert-timezone nested with datetime extract"
         (is (= 18
                (test-date-convert [:get-hour [:convert-timezone [:field (mt/id :times :dt) nil]
