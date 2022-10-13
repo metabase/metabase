@@ -12,7 +12,6 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import MetabaseSettings from "metabase/lib/settings";
-import { getSchemaName } from "metabase/lib/schema";
 
 import Databases from "metabase/entities/databases";
 import Schemas from "metabase/entities/schemas";
@@ -23,6 +22,7 @@ import { PLUGIN_MODERATION } from "metabase/plugins";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { getHasDataAccess } from "metabase/new_query/selectors";
+import { getSchemaName } from "metabase-lib/lib/metadata/utils/schema";
 import {
   isVirtualCardId,
   getQuestionVirtualTableId,

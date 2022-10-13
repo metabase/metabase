@@ -2,10 +2,13 @@ import { updateIn } from "icepick";
 import { createEntity } from "metabase/lib/entities";
 
 import { GET } from "metabase/lib/api";
-import { generateSchemaId, parseSchemaId } from "metabase/lib/schema";
 
 import { SchemaSchema } from "metabase/schema";
 import Questions from "metabase/entities/questions";
+import {
+  generateSchemaId,
+  parseSchemaId,
+} from "metabase-lib/lib/metadata/utils/schema";
 import {
   getCollectionVirtualSchemaId,
   getQuestionVirtualTableId,
