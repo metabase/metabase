@@ -31,7 +31,25 @@ function createCollectionIdField() {
   };
 }
 
+function createShallowCopyField() {
+  return {
+    name: "shallow_copy",
+    title: t`Shallow copy`,
+    type: "text",
+    placeholder: t`Make a shallow copy?`,
+  };
+}
+
 function createForm() {
+  return [
+    createNameField(),
+    createDescriptionField(),
+    createCollectionIdField(),
+    createShallowCopyField(),
+  ];
+}
+
+function createFormTwo() {
   return [
     createNameField(),
     createDescriptionField(),
@@ -41,7 +59,7 @@ function createForm() {
 
 export default {
   create: {
-    fields: createForm,
+    fields: () => createFormTwo(),
   },
   edit: {
     fields: () => {
