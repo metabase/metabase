@@ -820,10 +820,6 @@ class QuestionInner {
     }
   }
 
-  mode(): Mode | null | undefined {
-    return Mode.forQuestion(this);
-  }
-
   /**
    * A user-defined name for the question
    */
