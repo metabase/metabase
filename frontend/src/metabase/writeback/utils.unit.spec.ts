@@ -1,6 +1,7 @@
 import {
   createMockDashboardActionButton,
   createMockQueryAction,
+  createMockImplictQueryAction,
 } from "metabase-types/api/mocks";
 import type {
   ActionDashboardCard,
@@ -9,7 +10,6 @@ import type {
 import { isMappedExplicitActionButton, isImplicitActionButton } from "./utils";
 
 const PLAIN_BUTTON = createMockDashboardActionButton({
-  action_id: null,
   action: undefined,
   visualization_settings: { click_behavior: undefined },
 });
@@ -17,9 +17,11 @@ const PLAIN_BUTTON = createMockDashboardActionButton({
 const QUERY_ACTION = createMockQueryAction();
 
 const EXPLICIT_ACTION = createMockDashboardActionButton({
-  action_id: QUERY_ACTION.id,
   action: QUERY_ACTION,
-  visualization_settings: { click_behavior: undefined },
+  visualization_settings: {
+    click_behavior: undefined,
+    action_slug: "action_1337",
+  },
 });
 
 const PARAMETER_MAPPINGS: ActionParametersMapping[] = [
@@ -30,43 +32,27 @@ const PARAMETER_MAPPINGS: ActionParametersMapping[] = [
 ];
 
 const IMPLICIT_INSERT_ACTION = createMockDashboardActionButton({
-  action_id: null,
-  action: undefined,
+  action: createMockImplictQueryAction({ slug: "insert" }),
   visualization_settings: {
-    click_behavior: {
-      type: "action",
-      actionType: "insert",
-      tableId: 5,
-    },
+    action_slug: "insert",
   },
 });
 
 const IMPLICIT_UPDATE_ACTION = createMockDashboardActionButton({
-  action_id: null,
-  action: undefined,
+  action: createMockImplictQueryAction({ slug: "update" }),
   visualization_settings: {
-    click_behavior: {
-      type: "action",
-      actionType: "update",
-      objectDetailDashCardId: 5,
-    },
+    action_slug: "update",
   },
 });
 
 const IMPLICIT_DELETE_ACTION = createMockDashboardActionButton({
-  action_id: null,
-  action: undefined,
+  action: createMockImplictQueryAction({ slug: "delete" }),
   visualization_settings: {
-    click_behavior: {
-      type: "action",
-      actionType: "delete",
-      objectDetailDashCardId: 5,
-    },
+    action_slug: "delete",
   },
 });
 
 const NAVIGATION_ACTION_BUTTON = createMockDashboardActionButton({
-  action_id: null,
   action: undefined,
   visualization_settings: {
     click_behavior: {
@@ -148,7 +134,6 @@ describe("isImplicitActionButton", () => {
 
   it("returns false for implicit action with incomplete shape", () => {
     const insertActionWithoutTableId = createMockDashboardActionButton({
-      action_id: null,
       action: undefined,
       visualization_settings: {
         click_behavior: {
@@ -163,7 +148,6 @@ describe("isImplicitActionButton", () => {
 
   it("returns false for implicit action with unrecognized `actionType`", () => {
     const unrecognizedAction = createMockDashboardActionButton({
-      action_id: null,
       action: undefined,
       visualization_settings: {
         click_behavior: {
@@ -179,8 +163,8 @@ describe("isImplicitActionButton", () => {
   });
 
   IMPLICIT_ACTIONS.forEach(({ action, type }) => {
-    it(`returns true for implicit ${type} action`, () => {
-      expect(isImplicitActionButton(action)).toBe(true);
+    it(`returns false for implicit ${type} action`, () => {
+      expect(isImplicitActionButton(action)).toBe(false);
     });
   });
 });

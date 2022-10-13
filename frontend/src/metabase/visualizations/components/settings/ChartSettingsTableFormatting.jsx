@@ -26,7 +26,7 @@ import {
 } from "metabase/components/sortable";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import { isNumeric, isString } from "metabase/lib/schema_metadata";
+import { isNumeric, isString } from "metabase-lib/lib/types/utils/isa";
 
 const NUMBER_OPERATOR_NAMES = {
   "<": t`is less than`,

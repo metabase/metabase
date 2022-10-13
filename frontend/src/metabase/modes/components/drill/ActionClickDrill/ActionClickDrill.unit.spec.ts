@@ -3,7 +3,7 @@ import * as dashboardActions from "metabase/dashboard/actions/writeback";
 import type {
   ActionParametersMapping,
   DashboardOrderedCard,
-  ParameterMappedForActionExecution,
+  ParametersForActionExecution,
   WritebackParameter,
 } from "metabase-types/api";
 import type { ParameterValueOrArray } from "metabase-types/types/Parameter";
@@ -104,12 +104,10 @@ describe("prepareParameter", () => {
       dashboardParamterValues,
     );
 
-    expect(parameter).toEqual({
-      id: DASHBOARD_FILTER_PARAMETER.id,
-      type: WRITEBACK_PARAMETER.type,
-      value: DASHBOARD_FILTER_PARAMETER.value,
-      target: WRITEBACK_PARAMETER.target,
-    });
+    expect(parameter).toEqual([
+      WRITEBACK_PARAMETER.id,
+      DASHBOARD_FILTER_PARAMETER.value,
+    ]);
   });
 
   it("handles array-like parameter value", () => {
@@ -123,12 +121,10 @@ describe("prepareParameter", () => {
       dashboardParamterValues,
     );
 
-    expect(parameter).toEqual({
-      id: DASHBOARD_FILTER_PARAMETER.id,
-      type: WRITEBACK_PARAMETER.type,
-      value: DASHBOARD_FILTER_PARAMETER.value,
-      target: WRITEBACK_PARAMETER.target,
-    });
+    expect(parameter).toEqual([
+      WRITEBACK_PARAMETER.id,
+      DASHBOARD_FILTER_PARAMETER.value,
+    ]);
   });
 });
 
@@ -136,21 +132,16 @@ describe("getNotProvidedActionParameters", () => {
   it("returns empty list if no parameters passed", () => {
     const action = createMockQueryAction();
 
-    const result = getNotProvidedActionParameters(action, []);
+    const result = getNotProvidedActionParameters(action, {});
 
     expect(result).toHaveLength(0);
   });
 
   it("returns empty list if all parameters have values", () => {
     const action = createMockQueryAction({ parameters: [WRITEBACK_PARAMETER] });
-    const result = getNotProvidedActionParameters(action, [
-      {
-        id: DASHBOARD_FILTER_PARAMETER.id,
-        value: 5,
-        type: "number",
-        target: WRITEBACK_PARAMETER.target,
-      },
-    ]);
+    const result = getNotProvidedActionParameters(action, {
+      [WRITEBACK_PARAMETER.id]: 5,
+    });
 
     expect(result).toHaveLength(0);
   });
@@ -160,14 +151,9 @@ describe("getNotProvidedActionParameters", () => {
       parameters: [WRITEBACK_PARAMETER, WRITEBACK_ARBITRARY_PARAMETER],
     });
 
-    const result = getNotProvidedActionParameters(action, [
-      {
-        id: DASHBOARD_FILTER_PARAMETER.id,
-        value: 5,
-        type: "number",
-        target: WRITEBACK_ARBITRARY_PARAMETER.target,
-      },
-    ]);
+    const result = getNotProvidedActionParameters(action, {
+      [WRITEBACK_ARBITRARY_PARAMETER.id]: 5,
+    });
 
     expect(result).toEqual([WRITEBACK_PARAMETER]);
   });
@@ -177,7 +163,7 @@ describe("getNotProvidedActionParameters", () => {
       parameters: [{ ...WRITEBACK_PARAMETER, default: 10 }],
     });
 
-    const result = getNotProvidedActionParameters(action, []);
+    const result = getNotProvidedActionParameters(action, {});
 
     expect(result).toHaveLength(0);
   });
@@ -202,7 +188,6 @@ describe("ActionClickDrill", () => {
     const action = createMockQueryAction();
     const dashcard = createMockDashboardActionButton({
       action,
-      action_id: action.id,
     });
     const dashboard = createMockDashboard({
       ordered_cards: [dashcard as unknown as DashboardOrderedCard],
@@ -283,7 +268,6 @@ describe("ActionClickDrill", () => {
 
   it("does nothing for buttons without linked action", () => {
     const dashcard = createMockDashboardActionButton({
-      action_id: null,
       parameter_mappings: [PARAMETER_MAPPING],
     });
     const dashboard = createMockDashboard({

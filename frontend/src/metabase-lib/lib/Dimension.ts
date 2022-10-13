@@ -3,7 +3,6 @@
 import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
 import { stripId, FK_SYMBOL } from "metabase/lib/formatting";
-import { TYPE } from "metabase/lib/types";
 import {
   Field as AbstractField,
   ConcreteField,
@@ -15,6 +14,7 @@ import { VariableTarget } from "metabase-types/types/Parameter";
 import { IconName } from "metabase-types/types";
 import { infer, MONOTYPE } from "metabase/lib/expressions/typeinferencer";
 import { isa } from "cljs/metabase.types";
+import { TYPE } from "metabase-lib/lib/types/constants";
 import {
   DATETIME_UNITS,
   formatBucketing,
@@ -581,6 +581,12 @@ export default class Dimension {
    */
   baseDimension(): Dimension {
     return this.withoutTemporalBucketing().withoutBinning();
+  }
+
+  isValidFKRemappingTarget() {
+    return !(
+      this.defaultDimension() instanceof FieldDimension && this.temporalUnit()
+    );
   }
 
   /**

@@ -77,7 +77,6 @@ export const saveDashboardAndCards = createThunkAction(
               // mark isAdded because addcard doesn't record the position
               return {
                 ...result,
-                action_id: dc.action_id,
                 col: dc.col,
                 row: dc.row,
                 size_x: dc.size_x,
@@ -113,8 +112,8 @@ export const saveDashboardAndCards = createThunkAction(
         const cards = updatedDashcards.map(
           ({
             id,
-            action_id,
             card_id,
+            action,
             row,
             col,
             size_x,
@@ -124,8 +123,8 @@ export const saveDashboardAndCards = createThunkAction(
             visualization_settings,
           }) => ({
             id,
-            action_id,
             card_id,
+            action,
             row,
             col,
             size_x,
@@ -142,6 +141,7 @@ export const saveDashboardAndCards = createThunkAction(
                   }) &&
                   // filter out mappings for deleted series
                   (!card_id ||
+                    action ||
                     card_id === mapping.card_id ||
                     _.findWhere(series, { id: mapping.card_id })),
               ),
@@ -159,8 +159,12 @@ export const saveDashboardAndCards = createThunkAction(
 
       await dispatch(Dashboards.actions.update(dashboard));
 
-      // make sure that we've fully cleared out any dirty state from editing (this is overkill, but simple)
-      dispatch(fetchDashboard(dashboard.id, null)); // disable using query parameters when saving
+      if (dashboard.is_app_page) {
+        dispatch(fetchDashboard(dashboard.id, window.location.search, true));
+      } else {
+        // make sure that we've fully cleared out any dirty state from editing (this is overkill, but simple)
+        dispatch(fetchDashboard(dashboard.id, null)); // disable using query parameters when saving
+      }
     };
   },
 );

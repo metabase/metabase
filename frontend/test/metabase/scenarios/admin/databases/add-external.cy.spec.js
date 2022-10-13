@@ -9,32 +9,45 @@ describe(
       cy.signInAsAdmin();
 
       cy.intercept("POST", "/api/database").as("createDatabase");
-    });
 
-    it("should add Postgres database and redirect to listing (metabase#17450)", () => {
       cy.visit("/admin/databases/create");
       cy.contains("Database type").closest(".Form-field").find("a").click();
+    });
+
+    it("should add Postgres database and redirect to listing (metabase#12972, metabase#14334, metabase#17450)", () => {
       cy.contains("PostgreSQL").click({ force: true });
 
       cy.findByText("Show advanced options").click();
+
+      // Reproduces (metabase#14334)
+      cy.findByLabelText("Rerun queries for simple explorations").should(
+        "have.attr",
+        "aria-checked",
+        "true",
+      );
       cy.contains("Additional JDBC connection string options");
-      // Reproduces metabase#17450
+      // Reproduces (metabase#17450)
       cy.findByLabelText("Choose when syncs and scans happen")
         .click()
         .should("have.attr", "aria-checked", "true");
 
       isSyncOptionSelected("Never, I'll do this manually if I need to");
 
+      // make sure fields needed to connect to the database are properly trimmed (metabase#12972)
       typeAndBlurUsingLabel("Display name", "QA Postgres12");
-      typeAndBlurUsingLabel("Host", "localhost");
+      typeAndBlurUsingLabel("Host", "localhost  \n  ");
       typeAndBlurUsingLabel("Port", "5432");
-      typeAndBlurUsingLabel("Database name", "sample");
-      typeAndBlurUsingLabel("Username", "metabase");
+      typeAndBlurUsingLabel("Database name", "  sample");
+      typeAndBlurUsingLabel("Username", "  metabase  ");
       typeAndBlurUsingLabel("Password", "metasample123");
 
       cy.button("Save").should("not.be.disabled").click();
 
-      cy.wait("@createDatabase");
+      cy.wait("@createDatabase").then(({ request }) => {
+        expect(request.body.details.host).to.equal("localhost");
+        expect(request.body.details.dbname).to.equal("sample");
+        expect(request.body.details.user).to.equal("metabase");
+      });
 
       cy.url().should("match", /\/admin\/databases\?created=true$/);
 
@@ -60,8 +73,6 @@ describe(
     });
 
     it("should add Mongo database and redirect to listing", () => {
-      cy.visit("/admin/databases/create");
-      cy.contains("Database type").closest(".Form-field").find("a").click();
       cy.contains("MongoDB").click({ force: true });
       cy.findByText("Show advanced options").click();
       cy.contains("Additional connection string options");
@@ -91,8 +102,6 @@ describe(
     });
 
     it("should add MySQL database and redirect to listing", () => {
-      cy.visit("/admin/databases/create");
-      cy.contains("Database type").closest(".Form-field").find("a").click();
       cy.contains("MySQL").click({ force: true });
       cy.findByText("Show advanced options").click();
       cy.contains("Additional JDBC connection string options");

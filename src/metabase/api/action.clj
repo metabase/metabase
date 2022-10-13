@@ -71,8 +71,9 @@
 
 (api/defendpoint GET "/"
   "Returns cards that can be used for QueryActions"
-  []
-  (hydrate (action/select-actions) :action/emitter-usages))
+  [model-id]
+  {model-id su/IntGreaterThanZero}
+  (action/merged-model-action nil :card_id model-id))
 
 (api/defendpoint GET "/:action-id"
   [action-id]

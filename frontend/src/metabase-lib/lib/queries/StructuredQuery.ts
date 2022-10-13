@@ -10,7 +10,6 @@ import {
   format as formatExpression,
   DISPLAY_QUOTES,
 } from "metabase/lib/expressions/format";
-import { isCompatibleAggregationOperatorForField } from "metabase/lib/schema_metadata";
 import {
   StructuredQuery as StructuredQueryObject,
   Aggregation,
@@ -28,11 +27,12 @@ import { AggregationOperator } from "metabase-types/types/Metadata";
 import { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
 import { TableId } from "metabase-types/types/Table";
 import { Column } from "metabase-types/types/Dataset";
-import { TYPE } from "metabase/lib/types";
 import {
   isVirtualCardId,
   getQuestionIdFromVirtualTableId,
 } from "metabase/lib/saved-questions";
+import { isCompatibleAggregationOperatorForField } from "metabase-lib/lib/operators/utils";
+import { TYPE } from "metabase-lib/lib/types/constants";
 import { fieldRefForColumn } from "metabase-lib/lib/queries/utils/dataset";
 import { isSegment } from "metabase-lib/lib/queries/utils/filter";
 import { getUniqueExpressionName } from "metabase-lib/lib/queries/utils/expression";

@@ -4,7 +4,8 @@ import {
   FILTER_OPERATORS,
   isLiteral,
 } from "metabase/lib/expressions";
-import { STRING, getOperatorByTypeAndName } from "metabase/lib/schema_metadata";
+import { getOperatorByTypeAndName } from "metabase-lib/lib/operators/utils";
+import { STRING } from "metabase-lib/lib/types/constants";
 import { isStartingFrom } from "metabase-lib/lib/queries/utils/query-time";
 import { op, args, noNullValues, add, update, remove, clear } from "./util";
 import { isValidField } from "./field-ref";

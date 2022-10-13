@@ -24,7 +24,7 @@ import {
 } from "metabase-lib/lib/Dimension";
 import Mode from "metabase-lib/lib/Mode";
 import { isStandard } from "metabase-lib/lib/queries/utils/filter";
-import { isFK } from "metabase/lib/schema_metadata";
+import { isFK } from "metabase-lib/lib/types/utils/isa";
 import { memoizeClass, sortObject } from "metabase-lib/lib/utils";
 /* eslint-enable import/order */
 
@@ -45,7 +45,6 @@ import {
   maybeUsePivotEndpoint,
   MetabaseApi,
 } from "metabase/services";
-import Questions from "metabase/entities/questions";
 import {
   Parameter as ParameterObject,
   ParameterValues,
@@ -1167,39 +1166,6 @@ class QuestionInner {
     }
   }
 
-  // NOTE: prefer `reduxCreate` so the store is automatically updated
-  async apiCreate() {
-    const createdCard = await Questions.api.create(this.card());
-    return this.setCard(createdCard);
-  }
-
-  // NOTE: prefer `reduxUpdate` so the store is automatically updated
-  async apiUpdate() {
-    const updatedCard = await Questions.api.update(this.card());
-    return this.setCard(updatedCard);
-  }
-
-  async reduxCreate(dispatch) {
-    const action = await dispatch(Questions.actions.create(this.card()));
-    return this.setCard(Questions.HACK_getObjectFromAction(action));
-  }
-
-  async reduxUpdate(dispatch, { excludeDatasetQuery = false } = {}) {
-    const fullCard = this.card();
-    const card = excludeDatasetQuery
-      ? _.omit(fullCard, "dataset_query")
-      : fullCard;
-    const action = await dispatch(
-      Questions.actions.update(
-        {
-          id: this.id(),
-        },
-        card,
-      ),
-    );
-    return this.setCard(Questions.HACK_getObjectFromAction(action));
-  }
-
   setParameters(parameters) {
     return this.setCard(assoc(this.card(), "parameters", parameters));
   }
@@ -1270,6 +1236,7 @@ class QuestionInner {
       dataset_query: query.datasetQuery(),
       display: this._card.display,
       parameters: this._card.parameters,
+      dataset: this._card.dataset,
       ...(_.isEmpty(this._parameterValues)
         ? undefined
         : {

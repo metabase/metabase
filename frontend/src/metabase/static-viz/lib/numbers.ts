@@ -3,7 +3,7 @@ import { merge } from "icepick";
 export type NumberFormatOptions = {
   number_style?: "currency" | "decimal" | "scientific" | "percentage";
   currency?: string;
-  currency_style?: string;
+  currency_style?: "symbol" | "code" | "name";
   number_separators?: ".,";
   decimals?: number;
   scale?: number;

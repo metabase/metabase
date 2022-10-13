@@ -22,9 +22,10 @@ import type {
   Dashboard,
   DashboardOrderedCard,
   ActionDashboardCard,
-  ParameterMappedForActionExecution,
-  ArbitraryParameterForActionExecution,
+  ParametersForActionExecution,
   ActionFormSubmitResult,
+  WritebackAction,
+  ActionParametersMapping,
 } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
@@ -44,9 +45,16 @@ export const closeActionParametersModal = createAction(
   CLOSE_ACTION_PARAMETERS_MODAL,
 );
 
+interface DashboardAttributes {
+  card_id?: number | null;
+  action?: WritebackAction | null;
+  parameter_mappings?: ActionParametersMapping[] | null;
+  visualization_settings?: ActionDashboardCard["visualization_settings"];
+}
+
 export function updateButtonActionMapping(
   dashCardId: number,
-  attributes: { action_id?: number | null; parameter_mappings?: any },
+  attributes: DashboardAttributes,
 ) {
   return (dispatch: Dispatch) => {
     dispatch(
@@ -234,8 +242,7 @@ export const deleteManyRowsFromDataApp = (
 export type ExecuteRowActionPayload = {
   dashboard: Dashboard;
   dashcard: ActionDashboardCard;
-  parameters: ParameterMappedForActionExecution[];
-  extra_parameters: ArbitraryParameterForActionExecution[];
+  parameters: ParametersForActionExecution;
   dispatch: Dispatch;
   shouldToast?: boolean;
 };
@@ -244,7 +251,6 @@ export const executeRowAction = async ({
   dashboard,
   dashcard,
   parameters,
-  extra_parameters,
   dispatch,
   shouldToast = true,
 }: ExecuteRowActionPayload): Promise<ActionFormSubmitResult> => {
@@ -253,16 +259,21 @@ export const executeRowAction = async ({
     const result = await ActionsApi.execute({
       dashboardId: dashboard.id,
       dashcardId: dashcard.id,
+      modelId: dashcard.card_id,
+      slug: dashcard.action?.slug,
       parameters,
-      extra_parameters,
     });
 
-    if (result["rows-affected"] > 0) {
-      dispatch(reloadDashboardCards());
+    if (result["rows-affected"] > 0 || result["rows-updated"]?.[0] > 0) {
       message = t`Successfully executed the action`;
+    } else if (result["created-row"]) {
+      message = t`Successfully saved`;
+    } else if (result["rows-deleted"]?.[0] > 0) {
+      message = t`Successfully deleted`;
     } else {
       message = t`Success! The action returned: ${JSON.stringify(result)}`;
     }
+    dispatch(reloadDashboardCards());
     if (shouldToast) {
       dispatch(
         addUndo({
