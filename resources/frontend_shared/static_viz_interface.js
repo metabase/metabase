@@ -14,6 +14,13 @@ function toJSMap(m) {
   return o;
 }
 
+function row_chart(settings, data) {
+  return StaticViz.RenderChart("row", {
+    settings: JSON.parse(settings),
+    data: JSON.parse(data),
+  });
+}
+
 function combo_chart(series, settings, colors) {
   // Thinking of combo as similar to multiple, although they're different in BE
   return StaticViz.RenderChart("combo-chart", {

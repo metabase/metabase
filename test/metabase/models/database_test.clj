@@ -52,7 +52,6 @@
         (is (schema= {:description         (s/eq (format "sync-and-analyze Database %d" db-id))
                       :key                 (s/eq (format "metabase.task.sync-and-analyze.trigger.%d" db-id))
                       :misfire-instruction (s/eq "DO_NOTHING")
-                      :state               (s/eq "NORMAL")
                       :may-fire-again?     (s/eq true)
                       :schedule            (s/eq "0 50 * * * ? *")
                       :final-fire-time     (s/eq nil)
@@ -215,9 +214,9 @@
                 (testing " updating the value works as expected"
                   (db/update! Database id :details (assoc details :password-path  "/path/to/my/password-file"))
                   (check-db-fn (db/select-one Database :id id) {:kind    :password
-                                              :source  :file-path
-                                              :version 2
-                                              :value   "/path/to/my/password-file"}))))
+                                                                :source  :file-path
+                                                                :version 2
+                                                                :value   "/path/to/my/password-file"}))))
             (testing "Secret instances are deleted from the app DB when the DatabaseInstance is deleted"
               (is (seq @secret-ids) "At least one Secret instance should have been created")
               (doseq [secret-id @secret-ids]

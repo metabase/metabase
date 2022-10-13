@@ -478,7 +478,9 @@
 (defn entity-id?
   "Checks if the given string is a 21-character NanoID. Useful for telling entity IDs apart from identity hashes."
   [id-str]
-  (boolean (and id-str (re-matches #"^[A-Za-z0-9_-]{21}$" id-str))))
+  (boolean (and id-str
+                (string? id-str)
+                (re-matches #"^[A-Za-z0-9_-]{21}$" id-str))))
 
 (defn- find-by-identity-hash
   "Given a model and a target identity hash, this scans the appdb for any instance of the model corresponding to the

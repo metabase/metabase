@@ -1,5 +1,6 @@
 (ns metabase.models.app
   (:require [metabase.models.permissions :as perms]
+            [metabase.models.query :as query]
             [metabase.models.serialization.hash :as serdes.hash]
             [metabase.util :as u]
             [toucan.db :as db]
@@ -42,3 +43,34 @@
           (cond-> coll
             app-id (assoc :app_id app-id)))))
     collections))
+
+(defn- app-cards [app]
+  (->> (db/query {:union
+                  [{:select [:c.*]
+                    :from [[:report_card :c]]
+                    :where [:and
+                            [:= :c.collection_id (:collection_id app)]]}
+                   {:select [:c.*]
+                    :from [[:report_card :c]]
+                    :join [[:report_dashboardcard :dc] [:= :dc.card_id :c.id]
+                           [:report_dashboard :d] [:= :d.id :dc.dashboard_id]]
+                    :where [:and
+                            [:= :d.collection_id (:collection_id app)]]}]})
+       (db/do-post-select 'Card)))
+
+(defn- referenced-models [cards]
+  (when-let [model-ids
+             (->> cards
+                  (into #{} (mapcat (comp query/collect-card-ids :dataset_query)))
+                  not-empty)]
+    (db/select 'Card {:where [:and
+                              [:in :id model-ids]
+                              :dataset]})))
+
+(defn add-models
+  "Add the fully hydrated models used by the app."
+  {:hydrate :models}
+  [app]
+  (let [used-cards (app-cards app)
+        contained-models (into #{} (filter :dataset) used-cards)]
+    (into contained-models (referenced-models used-cards))))

@@ -2,7 +2,6 @@ import { parse as parseUrl } from "url";
 import { createAction } from "redux-actions";
 import { push, replace } from "react-router-redux";
 
-import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
 import { createThunkAction } from "metabase/lib/redux";
 import Utils from "metabase/lib/utils";
 
@@ -11,6 +10,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { isEqualCard } from "metabase/lib/card";
 import Question from "metabase-lib/lib/Question";
 
+import { isAdHocModelQuestion } from "metabase-lib/lib/metadata/utils/models";
 import {
   getCard,
   getDatasetEditorTab,

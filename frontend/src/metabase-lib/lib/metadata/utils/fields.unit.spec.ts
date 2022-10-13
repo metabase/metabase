@@ -1,5 +1,5 @@
-import { getUniqueFieldId } from "./utils";
-import { createMockConcreteField, createMockVirtualField } from "./mocks";
+import { createMockConcreteField, createMockVirtualField } from "../mocks";
+import { getUniqueFieldId } from "./fields";
 
 const structuredVirtualCardField = createMockConcreteField({
   apiOpts: {

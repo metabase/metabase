@@ -1,10 +1,12 @@
 import _ from "underscore";
+import { humanize } from "metabase/lib/formatting";
 
 import type {
   ActionDashboardCard,
   ActionParametersMapping,
   ClickBehaviorParameterMapping,
   WritebackAction,
+  WritebackParameter,
 } from "metabase-types/api";
 import type { UiParameter } from "metabase/parameters/types";
 
@@ -70,4 +72,13 @@ export function turnClickBehaviorParameterMappingsIntoDashCardMappings(
   });
 
   return parameter_mappings;
+}
+
+export function ensureParamsHaveNames(
+  parameters: WritebackParameter[],
+): WritebackParameter[] {
+  return parameters.map(parameter => ({
+    ...parameter,
+    name: parameter.name ?? humanize(parameter.id),
+  }));
 }

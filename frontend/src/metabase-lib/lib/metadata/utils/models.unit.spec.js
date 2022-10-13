@@ -1,98 +1,17 @@
-import MetabaseSettings from "metabase/lib/settings";
-
-import { ModelCacheState } from "metabase-types/api";
-import {
-  TemplateTag,
-  TemplateTagType,
-  TemplateTags,
-  SourceTableId,
-} from "metabase-types/types/Query";
-import { CardId } from "metabase-types/types/Card";
-
-import { createMockDatabase } from "metabase-types/api/mocks/database";
 import { getMockModelCacheInfo } from "metabase-types/api/mocks/models";
+import { createMockDatabase } from "metabase-types/api/mocks/database";
 import { ORDERS, metadata } from "__support__/sample_database_fixture";
-import Database from "metabase-lib/lib/metadata/Database";
 import Question from "metabase-lib/lib/Question";
+import Database from "metabase-lib/lib/metadata/Database";
 
 import {
   checkCanBeModel,
-  isAdHocModelQuestion,
-  isAdHocModelQuestionCard,
   checkCanRefreshModelCache,
   getModelCacheSchemaName,
-} from "./utils";
-
-type NativeQuestionFactoryOpts = {
-  isModel?: boolean;
-  tags?: TemplateTags;
-};
-
-function getNativeQuestion({
-  tags = {},
-  isModel,
-}: NativeQuestionFactoryOpts = {}) {
-  return new Question(
-    {
-      id: 1,
-      dataset: isModel,
-      display: "table",
-      can_write: true,
-      public_uuid: "",
-      dataset_query: {
-        type: "native",
-        database: 1,
-        native: {
-          query: "select * from orders",
-          "template-tags": tags,
-        },
-      },
-      visualization_settings: {},
-    },
-    metadata,
-  );
-}
-
-type StructuredQuestionFactoryOpts = {
-  id?: CardId;
-  sourceTable?: SourceTableId;
-  isModel?: boolean;
-};
-
-function getStructuredQuestion({
-  id = 1,
-  sourceTable = 1,
-  isModel = false,
-}: StructuredQuestionFactoryOpts = {}) {
-  return new Question(
-    {
-      id,
-      dataset: isModel,
-      display: "table",
-      can_write: true,
-      public_uuid: "",
-      dataset_query: {
-        type: "query",
-        database: 1,
-        query: {
-          "source-table": sourceTable,
-        },
-      },
-      visualization_settings: {},
-    },
-    metadata,
-  );
-}
-
-function getTemplateTag(tag: Partial<TemplateTag> = {}): TemplateTag {
-  return {
-    id: "_",
-    name: "_",
-    "display-name": "_",
-    type: "card",
-    ...tag,
-  };
-}
+  isAdHocModelQuestion,
+  isAdHocModelQuestionCard,
+  getDatasetMetadataCompletenessPercentage,
+} from "metabase-lib/lib/metadata/utils/models";
 
 describe("data model utils", () => {
   const DB_WITHOUT_NESTED_QUERIES_SUPPORT = new Database({
@@ -101,7 +20,7 @@ describe("data model utils", () => {
   });
 
   describe("checkCanBeModel", () => {
-    const UNSUPPORTED_TEMPLATE_TAG_TYPES: TemplateTagType[] = [
+    const UNSUPPORTED_TEMPLATE_TAG_TYPES = [
       "text",
       "number",
       "date",
@@ -259,7 +178,7 @@ describe("data model utils", () => {
   });
 
   describe("checkCanRefreshModelCache", () => {
-    const testCases: Record<ModelCacheState, boolean> = {
+    const testCases = {
       creating: false,
       refreshing: false,
       persisted: true,
@@ -267,7 +186,7 @@ describe("data model utils", () => {
       deletable: false,
       off: false,
     };
-    const states = Object.keys(testCases) as ModelCacheState[];
+    const states = Object.keys(testCases);
 
     states.forEach(state => {
       const canRefresh = testCases[state];
@@ -280,21 +199,122 @@ describe("data model utils", () => {
 
   describe("getModelCacheSchemaName", () => {
     const DB_ID = 9;
-
-    beforeEach(() => {
-      const defaultGet = MetabaseSettings.get;
-      jest.spyOn(MetabaseSettings, "get").mockImplementation(key => {
-        if (key === "site-uuid") {
-          return "143dd8ce-e116-4c7f-8d6d-32e99eaefbbc";
-        }
-        return defaultGet(key);
-      });
-    });
+    const SITE_UUID = "143dd8ce-e116-4c7f-8d6d-32e99eaefbbc";
 
     it("generates correct schema name", () => {
-      expect(getModelCacheSchemaName(DB_ID)).toBe(
+      expect(getModelCacheSchemaName(DB_ID, SITE_UUID)).toBe(
         `metabase_cache_1e483_${DB_ID}`,
       );
     });
   });
+
+  describe("getDatasetMetadataCompletenessPercentage", () => {
+    it("returns 0 when no field metadata list is empty", () => {
+      expect(getDatasetMetadataCompletenessPercentage([])).toBe(0);
+    });
+
+    it("returns 0 for completely missing metadata", () => {
+      const percent = getDatasetMetadataCompletenessPercentage([
+        { display_name: "Created_At" },
+        { display_name: "Products → Category" },
+      ]);
+      expect(percent).toBe(0);
+    });
+
+    it("returns 1 for complete metadata", () => {
+      const percent = getDatasetMetadataCompletenessPercentage([
+        {
+          display_name: "Created At",
+          description: "Date created",
+          semantic_type: "DateTime",
+        },
+        {
+          display_name: "Product Category",
+          description: "The name is pretty self-explaining",
+          semantic_type: "String",
+        },
+      ]);
+      expect(percent).toBe(1);
+    });
+
+    it("returns 0.5 for half-complete metadata", () => {
+      const percent = getDatasetMetadataCompletenessPercentage([
+        { display_name: "Created_At" },
+        {
+          display_name: "Product Category",
+          description: "The name is pretty self-explaining",
+          semantic_type: "String",
+        },
+      ]);
+      expect(percent).toBe(0.5);
+    });
+
+    it("returns percent value for partially complete metadata", () => {
+      const percent = getDatasetMetadataCompletenessPercentage([
+        { display_name: "Created_At" },
+        {
+          display_name: "Product Category",
+          semantic_type: "String",
+        },
+      ]);
+      expect(percent).toBe(0.33);
+    });
+  });
 });
+
+function getNativeQuestion({ tags = {}, isModel } = {}) {
+  return new Question(
+    {
+      id: 1,
+      dataset: isModel,
+      display: "table",
+      can_write: true,
+      public_uuid: "",
+      dataset_query: {
+        type: "native",
+        database: 1,
+        native: {
+          query: "select * from orders",
+          "template-tags": tags,
+        },
+      },
+      visualization_settings: {},
+    },
+    metadata,
+  );
+}
+
+function getStructuredQuestion({
+  id = 1,
+  sourceTable = 1,
+  isModel = false,
+} = {}) {
+  return new Question(
+    {
+      id,
+      dataset: isModel,
+      display: "table",
+      can_write: true,
+      public_uuid: "",
+      dataset_query: {
+        type: "query",
+        database: 1,
+        query: {
+          "source-table": sourceTable,
+        },
+      },
+      visualization_settings: {},
+    },
+    metadata,
+  );
+}
+
+function getTemplateTag(tag = {}) {
+  return {
+    id: "_",
+    name: "_",
+    "display-name": "_",
+    type: "card",
+    ...tag,
+  };
+}

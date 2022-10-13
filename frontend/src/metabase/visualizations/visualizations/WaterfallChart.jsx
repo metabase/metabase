@@ -17,6 +17,7 @@ export default class WaterfallChart extends LineAreaBarChart {
   static noun = t`waterfall chart`;
 
   static maxMetricsSupported = 1;
+  static maxDimensionsSupported = 1;
 
   static settings = {
     ...GRAPH_AXIS_SETTINGS,

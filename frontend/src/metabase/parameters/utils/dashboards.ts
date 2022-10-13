@@ -1,10 +1,6 @@
 import _ from "underscore";
 
 import { generateParameterId } from "metabase/parameters/utils/parameter-id";
-import {
-  getParameterTargetField,
-  isVariableTarget,
-} from "metabase/parameters/utils/targets";
 import { isFieldFilterParameter } from "metabase/parameters/utils/parameter-type";
 import { slugify } from "metabase/lib/formatting";
 import {
@@ -24,6 +20,10 @@ import {
   DashboardOrderedCard,
 } from "metabase-types/api";
 import { SavedCard } from "metabase-types/types/Card";
+import {
+  getParameterTargetField,
+  isVariableTarget,
+} from "metabase-lib/lib/parameters/utils/targets";
 import Question from "metabase-lib/lib/Question";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Field from "metabase-lib/lib/metadata/Field";

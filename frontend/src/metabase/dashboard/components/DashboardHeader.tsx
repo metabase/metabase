@@ -113,6 +113,8 @@ const DashboardHeader = ({
     return () => clearTimeout(timerId);
   });
 
+  const isDataApp = dashboard.is_app_page;
+
   return (
     <div>
       {isEditing && (
@@ -135,7 +137,7 @@ const DashboardHeader = ({
         className={cx("QueryBuilder-section", headerClassName)}
         ref={header}
       >
-        <HeaderContent showSubHeader={showSubHeader}>
+        <HeaderContent hasSubHeader={!isDataApp} showSubHeader={showSubHeader}>
           <HeaderCaptionContainer>
             <HeaderCaption
               key={dashboard.name}

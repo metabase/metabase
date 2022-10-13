@@ -78,7 +78,7 @@ function ModelDetailPage({ model, mainTable, onChangeModel }: Props) {
             options={[
               { value: "usage", name: t`Used by` },
               { value: "schema", name: t`Schema` },
-              // { value: "actions", name: t`Actions` },
+              { value: "actions", name: t`Actions` },
             ]}
             onChange={tab => setTab(tab as ModelTab)}
           />
@@ -89,7 +89,7 @@ function ModelDetailPage({ model, mainTable, onChangeModel }: Props) {
             <ModelSchemaDetails model={model} />
           </TabPanel>
           <TabPanel value="actions">
-            <ModelActionDetails model={model} />
+            <ModelActionDetails modelId={model.id()} />
           </TabPanel>
         </TabContent>
       </ModelMain>
