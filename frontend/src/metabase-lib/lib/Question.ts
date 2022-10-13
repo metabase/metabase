@@ -26,7 +26,6 @@ import Mode from "metabase-lib/lib/Mode";
 import { isStandard } from "metabase-lib/lib/queries/utils/filter";
 import { isFK } from "metabase-lib/lib/types/utils/isa";
 import { memoizeClass, sortObject } from "metabase-lib/lib/utils";
-/* eslint-enable import/order */
 
 // TODO: remove these dependencies
 import * as Urls from "metabase/lib/urls";
