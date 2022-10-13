@@ -66,7 +66,6 @@
 
            :else
            (case (:unit col)
-             :default (reformat-temporal-str timezone-id s (str/replace (or date-style "MMM d, yyyy") #"D" "d"))
              ;; these types have special formatting
              :minute  (reformat-temporal-str timezone-id s
                                              (str (or date-style "MMMM, yyyy") ", "
@@ -89,7 +88,7 @@
              (:week-of-year :minute-of-hour :day-of-month :day-of-year) (x-of-y (parse-long s))
 
              ;; for everything else return in this format
-             (reformat-temporal-str timezone-id s "MMM d, yyyy"))))))
+             (reformat-temporal-str timezone-id s (str/replace (or date-style "MMM d, yyyy") #"D" "d")))))))
 
 (def ^:private RenderableInterval
   {:interval-start     Temporal

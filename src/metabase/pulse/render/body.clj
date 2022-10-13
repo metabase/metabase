@@ -80,15 +80,17 @@
 
 (defn- viz-settings-for-col
   [col viz-settings]
-  (let [[_ field-id _] (:field_ref col)
-        strip-ns (fn [v] (if (map? v)
+  (let [[_ field-id _]    (:field_ref col)
+        strip-ns          (fn [v] (if (map? v)
                            (update-keys v #(keyword (name %)))
                            v))
-        col-settings (-> (update-keys viz-settings #(keyword (name %)))
-                         :column-settings
-                         (update-keys strip-ns)
-                         (update-vals strip-ns))]
-    (-> (col-settings {:field-id field-id})
+        all-cols-settings (-> (update-keys viz-settings #(keyword (name %)))
+                              :column-settings
+                              (update-keys strip-ns)
+                              (update-keys #(into {} (take 2 %))) ;; throw out any unit/metadata to make key matching simpler
+                              (update-vals strip-ns))]
+    (-> (or (all-cols-settings {:field-id field-id})
+            (all-cols-settings {:column-name field-id}))
         (update-keys (fn [k] (-> k name (str/replace #"-" "_") keyword))))))
 
 (s/defn ^:private get-format
