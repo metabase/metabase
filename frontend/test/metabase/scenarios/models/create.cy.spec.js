@@ -14,7 +14,7 @@ describe("scenarios > models > create", () => {
 
     // Cancel creation with confirmation modal
     cy.findByText("Cancel").click();
-    cy.findByText("Yes").click();
+    cy.findByText("Discard").click();
 
     // Now we will create a model
     goFromHomePageToNewNativeQueryModelPage();
