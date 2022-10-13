@@ -700,13 +700,12 @@
 ;;; ---------------------------------- Executing the action associated with a Dashcard -------------------------------
 (api/defendpoint GET "/:dashboard-id/dashcard/:dashcard-id/execute/:slug"
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
-  [dashboard-id dashcard-id slug :as {{:keys [parameters], :as _body} :body}]
+  [dashboard-id dashcard-id slug parameters]
   {dashboard-id su/IntGreaterThanZero
    dashcard-id su/IntGreaterThanZero
    slug su/NonBlankString
-   parameters (s/maybe {s/Keyword s/Any})}
-  ;; Undo middleware string->keyword coercion
-  (actions.execution/fetch-values dashboard-id dashcard-id slug (update-keys parameters name)))
+   parameters su/JSONString}
+  (actions.execution/fetch-values dashboard-id dashcard-id slug (json/parse-string parameters)))
 
 (api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/execute/:slug"
   "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.

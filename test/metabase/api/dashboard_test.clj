@@ -2087,9 +2087,8 @@
                         DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
                                                           :card_id card-id
                                                           :visualization_settings {:action_slug "update"}}]]
-          (let [execute-path (format "dashboard/%s/dashcard/%s/execute/update" dashboard-id dashcard-id)
-                values (mt/user-http-request :crowberto :get 200 execute-path
-                                             {:parameters {"id" 1}})]
+          (let [execute-path (format "dashboard/%s/dashcard/%s/execute/update?parameters=%s" dashboard-id dashcard-id (json/encode {"id" 1}))
+                values (mt/user-http-request :crowberto :get 200 execute-path)]
             (is (partial= {:id 1 :name "African"} values))
             (testing "Missing pk parameter should fail gracefully"
               (is (partial= "Missing primary key parameter: \"id\""
