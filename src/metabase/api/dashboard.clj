@@ -219,10 +219,17 @@
 (defn- duplicate-cards
   "Takes a dashboard id, and duplicates the cards both on the dashboard's cards and dashcardseries. Returns a map of
   {old-card-id duplicated-card} so that the new dashboard can adjust accordingly."
-  [dashboard destination-collection]
-  (let [card-ids (into #{} (comp
+  [dashboard dest-coll-id]
+  (let [same-collection? (= (:collection_id dashboard) dest-coll-id)
+        card-ids (into #{} (comp
                             (mapcat (fn [{:keys [card series]}]
-                                      (into [(:id card)] (map :id) series)))
+                                      ;; if there are series on top of a card they cannot write (ie, don't have curate
+                                      ;; perms for collection) the series can't be copied either
+                                      (when (and (:id card) (mi/can-write? card))
+                                        (into [(:id card)]
+                                              (comp (filter mi/can-write?)
+                                                    (map :id))
+                                              series))))
                             (keep identity))
                        (:ordered_cards dashboard))
         id->card (m/index-by :id (db/select 'Card :id [:in card-ids]))]
@@ -230,9 +237,42 @@
               (assoc m id
                      (if (:dataset card)
                        card
-                       (api.card/create-card! (assoc card :collection_id destination-collection)))))
+                       (api.card/create-card!
+                        (cond-> (assoc card :collection_id dest-coll-id)
+                          same-collection?
+                          (update :name #(str % " -- " (tru "Duplicate"))))))))
             {}
             id->card)))
+
+(defn update-cards-for-copy
+  "Update ordered-cards in a dashboard for copying. If shallow copy, returns the cards. If deep copy, replaces ids with
+  id from the newly-copied cards. If there is no new id, it means user lacked curate permissions for the cards
+  collections and it is omitted."
+  [ordered-cards copy-style id->new-card]
+  (if (not= copy-style "deep")
+    ordered-cards
+    (keep (fn [dashboard-card]
+            (cond
+              ;; text cards need no manipulation
+              (nil? (:card_id dashboard-card))
+              dashboard-card
+
+              ;; if we didn't duplicate, it doesn't go in the dashboard
+              (not (id->new-card (:card_id dashboard-card)))
+              nil
+
+              :else
+              (let [new-id (fn [id]
+                             (-> id id->new-card :id))]
+                (-> dashboard-card
+                    (update :card_id new-id)
+                    (update :card update :id new-id)
+                    (update :series (fn [series]
+                                      (keep (fn [card]
+                                              (when-let [id' (new-id (:id card))]
+                                                (assoc card :id id')))
+                                            series)))))))
+          ordered-cards)))
 
 (api/defendpoint POST "/:from-dashboard-id/copy"
   "Copy a Dashboard."
@@ -250,12 +290,13 @@
   (collection/check-write-perms-for-collection collection_id)
   (when destination-collection
     (api/read-check Collection destination-collection))
-  (let [existing-dashboard (get-dashboard from-dashboard-id)
+  (let [dest-coll-id   destination-collection ; if we want to change the api nothing downstream affected
+        existing-dashboard (get-dashboard from-dashboard-id)
         dashboard-data {:name                (or name (:name existing-dashboard))
                         :description         (or description (:description existing-dashboard))
                         :parameters          (or (:parameters existing-dashboard) [])
                         :creator_id          api/*current-user-id*
-                        :collection_id       (or destination-collection collection_id)
+                        :collection_id       (or dest-coll-id collection_id)
                         :collection_position collection_position
                         :is_app_page         (:is_app_page existing-dashboard)}
         dashboard      (db/transaction
@@ -266,27 +307,11 @@
                         (u/prog1 (db/insert! Dashboard dashboard-data)
                           ;; Get cards from existing dashboard and associate to copied dashboard
                           (let [id->new-card (when (= copy-style "deep")
-                                               (duplicate-cards existing-dashboard
-                                                                destination-collection))
-                                id->new-id  (if (seq id->new-card)
-                                              (fn [id]
-                                                (when id
-                                                  ;; text cards don't have ids
-                                                  (or (:id (id->new-card id))
-                                                      (throw (ex-info (tru "Card {0} not duplicated"
-                                                                           id)
-                                                                      {:id id
-                                                                       :ids id->new-card})))))
-                                              identity)]
-                            (doseq [card (:ordered_cards existing-dashboard)]
-                              (api/check-500 (dashboard/add-dashcard!
-                                              <>
-                                              (id->new-id (:card_id card))
-                                              (update card
-                                                      :series
-                                                      (fn [series]
-                                                        (map #(update % :id id->new-id)
-                                                             series)))))))))]
+                                               (duplicate-cards existing-dashboard dest-coll-id))]
+                            (doseq [card (update-cards-for-copy (:ordered_cards existing-dashboard)
+                                                                copy-style
+                                                                id->new-card)]
+                              (api/check-500 (dashboard/add-dashcard! <> (:card_id card) card))))))]
     (snowplow/track-event! ::snowplow/dashboard-created api/*current-user-id* {:dashboard-id (u/the-id dashboard)})
     (events/publish-event! :dashboard-create dashboard)))
 
