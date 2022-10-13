@@ -19,7 +19,7 @@
       (testing "GET /api/app/graph\n"
         (testing "Should be able to fetch the permissions graph for apps"
           (is (partial= {(:id (perms-group/admin)) {app-id "write"}
-                         (:id (perms-group/all-users)) {app-id "write"}
+                         (:id (perms-group/all-users)) {app-id "none"}
                          group-id {app-id "none"}}
                         (:groups (mt/user-http-request :crowberto :get 200 "app/graph")))))
 

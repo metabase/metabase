@@ -98,21 +98,21 @@
                    (default-search-results)))
 
 (defn- do-with-search-items [search-string {:keys [in-root-collection? in-app-collection?]} f]
-  (let [data-map      (fn [instance-name]
+  (let [data-map      (fn [instance-name app-collection?]
                         (cond-> {:name (format instance-name search-string)}
-                          in-app-collection? (assoc :namespace :apps)))
+                          app-collection? (assoc :namespace :apps)))
         coll-data-map (fn [instance-name collection]
-                        (merge (data-map instance-name)
+                        (merge (data-map instance-name false)
                                (when-not in-root-collection?
                                  {:collection_id (u/the-id collection)})))]
-    (mt/with-temp* [Collection [coll      (data-map "collection %s collection")]
+    (mt/with-temp* [Collection [coll      (data-map "collection %s collection" in-app-collection?)]
                     Card       [card      (coll-data-map "card %s card" coll)]
                     Card       [dataset   (assoc (coll-data-map "dataset %s dataset" coll)
                                                  :dataset true)]
                     Dashboard  [dashboard (coll-data-map "dashboard %s dashboard" coll)]
                     Pulse      [pulse     (coll-data-map "pulse %s pulse" coll)]
-                    Metric     [metric    (data-map "metric %s metric")]
-                    Segment    [segment   (data-map "segment %s segment")]]
+                    Metric     [metric    (data-map "metric %s metric" false)]
+                    Segment    [segment   (data-map "segment %s segment" false)]]
       (f {:collection coll
           :card       card
           :dataset    dataset
@@ -626,14 +626,14 @@
                     (not (#{"metric" "segment"} (:model result))) (assoc-in [:collection :app_id] true)
                     (= (:model result) "collection")              (assoc :model "app" :app_id true)))
                 (default-results-with-collection))
-               (search-request-data :rasta :q "test"))))))
+               (search-request-data :crowberto :q "test"))))))
   (testing "App collections should filterable as \"app\""
     (mt/with-temp* [Collection [collection {:name "App collection to find", :namespace :apps}]
                     App [_ {:collection_id (:id collection)}]
                     Collection [_ {:name "Another collection to find"}]]
       (is (partial= [(assoc (select-keys collection [:name])
                             :model "app")]
-             (search-request-data :rasta :q "find" :models "app"))))))
+             (search-request-data :crowberto :q "find" :models "app"))))))
 
 (deftest page-test
   (testing "Search results should pages with model \"page\""
@@ -668,4 +668,4 @@
       (is (not= app-id coll-id) "app-id and coll-id should be different. Fix the test!")
       (is (partial= (repeat 4 {:collection {:app_id app-id
                                             :id coll-id}})
-                    (:data (make-search-request :rasta [:q "important text"])))))))
+                    (:data (make-search-request :crowberto [:q "important text"])))))))

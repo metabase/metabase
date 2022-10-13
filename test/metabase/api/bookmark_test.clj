@@ -9,13 +9,18 @@
             [metabase.models.collection :refer [Collection]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.interface :as mi]
+            [metabase.models.permissions :refer [Permissions]]
+            [metabase.models.permissions-group :as perms-group]
             [metabase.test :as mt]
             [metabase.util :as u]
             [toucan.db :as db]))
 
 (deftest bookmarks-test
+  (mt/initialize-if-needed! :db)
   (testing "POST /api/bookmark/:model/:model-id"
-    (mt/with-temp* [Collection [{coll-id :id :as collection} {:name "Test Collection", :namespace :apps}]
+    (mt/with-temp* [Permissions [_ {:group_id (:id (perms-group/all-users))
+                                    :object "/collection/namespace/apps/root/"}]
+                    Collection [{coll-id :id :as collection} {:name "Test Collection", :namespace :apps}]
                     Card       [card {:name "Test Card", :display "area", :collection_id coll-id}]
                     Dashboard  [dashboard {:name "Test Dashboard", :is_app_page true, :collection_id coll-id}]
                     App        [app {:collection_id coll-id, :dashboard_id (:id dashboard)}]]

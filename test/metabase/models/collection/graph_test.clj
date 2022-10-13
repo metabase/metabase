@@ -440,6 +440,7 @@
     (mt/with-temp* [Collection [{coll-id :id} {:namespace :apps}]
                     App [_app {:collection_id coll-id}]]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot set app permissions using this endpoint"
-                            (graph/update-graph! (assoc-in (graph/graph)
+                            (graph/update-graph! :apps
+                                                 (assoc-in (graph/graph :apps)
                                                            [:groups (u/the-id (perms-group/all-users)) coll-id]
                                                            :read)))))))

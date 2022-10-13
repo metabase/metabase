@@ -33,7 +33,6 @@
                         (select-keys [:dashboard_id :options :nav_items])
                         (assoc :collection_id (:id collection-instance)))
          app (db/insert! App app-params)]
-     (app.graph/set-default-permissions! app)
      (hydrate-details app))))
 
 (api/defendpoint POST "/"

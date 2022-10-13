@@ -110,28 +110,49 @@
                                     (str/includes? collection-name "Personal Collection"))))
                       (map :name)))))))
 
-    (mt/with-temp* [Collection [{coll1-id :id} {:name "Archived Collection", :namespace :apps, :archived true}]
-                    Collection [{coll2-id :id} {:name "Regular Collection", :namespace :apps}]
-                    App [{app1-id :id} {:collection_id coll1-id}]
-                    App [{app2-id :id} {:collection_id coll2-id}]]
+    (mt/with-temp* [Collection [_ {:name "Archived Collection", :archived true}]
+                    Collection [_ {:name "Regular Collection"}]]
       (letfn [(remove-other-collections [collections]
                 (filter (fn [{collection-name :name}]
                           (or (#{"Our analytics" "Archived Collection" "Regular Collection"} collection-name)
                               (str/includes? collection-name "Personal Collection")))
                         collections))]
         (testing "check that we don't see collections if they're archived"
-          (is (= [["Our analytics" nil]
-                  ["Rasta Toucan's Personal Collection" nil]
-                  ["Regular Collection" app2-id]]
+          (is (= ["Our analytics"
+                  "Rasta Toucan's Personal Collection"
+                  "Regular Collection"]
                  (->> (mt/user-http-request :rasta :get 200 "collection")
                       remove-other-collections
-                      (map (juxt :name :app_id))))))
+                      (map :name)))))
 
         (testing "Check that if we pass `?archived=true` we instead see archived Collections"
-          (is (= [["Archived Collection" app1-id]]
+          (is (= ["Archived Collection"]
                  (->> (mt/user-http-request :rasta :get 200 "collection" :archived :true)
                       remove-other-collections
-                      (map (juxt :name :app_id))))))))
+                      (map :name)))))))
+
+    (testing "app collections"
+      (mt/with-temp* [Collection [{coll1-id :id} {:name "Archived Collection", :namespace :apps, :archived true}]
+                      Collection [{coll2-id :id} {:name "Regular Collection", :namespace :apps}]
+                      App [{app1-id :id} {:collection_id coll1-id}]
+                      App [{app2-id :id} {:collection_id coll2-id}]]
+        (letfn [(remove-other-collections [collections]
+                  (filter (fn [{collection-name :name}]
+                            (or (#{"Our analytics" "Archived Collection" "Regular Collection"} collection-name)
+                                (str/includes? collection-name "Personal Collection")))
+                          collections))]
+          (testing "check that we don't see collections if they're archived"
+            (is (= [["Our analytics" nil]
+                    ["Regular Collection" app2-id]]
+                   (->> (mt/user-http-request :crowberto :get 200 "collection?namespace=apps")
+                        remove-other-collections
+                        (map (juxt :name :app_id))))))
+
+          (testing "Check that if we pass `?archived=true` we instead see archived Collections"
+            (is (= [["Archived Collection" app1-id]]
+                   (->> (mt/user-http-request :crowberto :get 200 "collection?namespace=apps&archived=true")
+                        remove-other-collections
+                        (map (juxt :name :app_id)))))))))
 
     (testing "?namespace= parameter"
       (mt/with-temp* [Collection [{normal-id :id} {:name "Normal Collection"}]
@@ -683,6 +704,7 @@
                     Collection [{app-coll-id :id} {:name "App with items", :namespace :apps}]
                     App        [{app-id :id} {:collection_id app-coll-id}]
                     Collection [_ {:name "subcollection"
+                                   :namespace :apps
                                    :location (format "/%d/" app-coll-id)
                                    :authority_level "official"}]
                     Card       [_ {:name "card" :collection_id app-coll-id}]
@@ -691,36 +713,35 @@
                     Dashboard  [_ {:name "page" :collection_id app-coll-id :is_app_page true}]]
       (let [items (->> "/items?models=dashboard&models=card&models=collection"
                        (str "collection/" app-coll-id)
-                       (mt/user-http-request :rasta :get 200)
+                       (mt/user-http-request :crowberto :get 200)
                        :data)]
         (is (= #{"card" "dash" "subcollection"}
                (into #{} (map :name) items))))
       (let [items (->> "/items?models=dashboard&models=card&models=collection&models=dataset"
                        (str "collection/" app-coll-id)
-                       (mt/user-http-request :rasta :get 200)
+                       (mt/user-http-request :crowberto :get 200)
                        :data)]
         (is (= #{"card" "dash" "subcollection" "dataset"}
                (into #{} (map :name) items))))
       (let [items (->> "/items?models=page"
                        (str "collection/" app-coll-id)
-                       (mt/user-http-request :rasta :get 200)
+                       (mt/user-http-request :crowberto :get 200)
                        :data)]
         (is (= #{"page"}
                (into #{} (map :name) items))))
       (let [items (mt/user-http-request
-                   :rasta :get 200 "collection/root/items?models=app")]
+                   :crowberto :get 200 "collection/root/items?models=app&namespace=apps")]
         (is (partial= [{:id app-coll-id
                         :app_id app-id
                         :model "app"}]
                       (:data items))))
       (let [items (mt/user-http-request
-                   :rasta :get 200 "collection/root/items")]
-        (is (= #{["app" "App with items"]
-                 ["collection" "Top level collection"]
-                 ["collection" "Rasta Toucan's Personal Collection"]}
+                   :crowberto :get 200 "collection/root/items")]
+        (is (= #{["collection" "Top level collection"]
+                 ["collection" "Crowberto Corv's Personal Collection"]}
                (into #{} (map (juxt :model :name)) (:data items)))))
       (let [items (->> (str "collection/" app-coll-id "/items")
-                       (mt/user-http-request :rasta :get 200)
+                       (mt/user-http-request :crowberto :get 200)
                        :data)]
         (is (= #{"card" "dash" "subcollection" "dataset" "page"}
                (into #{} (map :name) items)))))))
