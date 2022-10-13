@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
-
-import { color, lighten } from "metabase/lib/colors";
 import Input from "metabase/core/components/Input";
+import SelectList from "metabase/components/SelectList";
 
 export const SuggestionInput = styled(Input)`
   display: block;
@@ -13,21 +12,8 @@ export const SuggestionInput = styled(Input)`
   }
 `;
 
-export const SuggestionContainer = styled.div`
+export const SuggestionContainer = styled(SelectList)`
   padding: 0.5rem;
   display: flex;
   flex-direction: column;
-`;
-
-export const Suggestion = styled.span`
-  font-size: 0.875rem;
-  font-weight: 700;
-  padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-
-  &:hover {
-    color: ${color("brand")};
-    background: ${lighten("brand")};
-    cursor: pointer;
-  }
 `;

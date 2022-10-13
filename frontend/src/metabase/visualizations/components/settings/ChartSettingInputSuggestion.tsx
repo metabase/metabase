@@ -1,10 +1,10 @@
 import React, { useState, useRef } from "react";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-
+import SelectList from "metabase/components/SelectList";
+import { useListKeyboardNavigation } from "metabase/hooks/use-list-keyboard-navigation";
 import {
   SuggestionInput,
   SuggestionContainer,
-  Suggestion,
 } from "./ChartSettingInputSuggestion.styled";
 
 interface ChartSettingInputSuggestionProps {
@@ -24,8 +24,15 @@ const ChartSettingInputSuggestion = ({
 }: ChartSettingInputSuggestionProps) => {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [value, setValue] = useState(initialValue);
-  const optionsListRef = useRef<HTMLDivElement>(null);
+  const optionsListRef = useRef<HTMLUListElement>(null);
   const inputRef = useRef<HTMLDivElement>(null);
+
+  const { cursorIndex } = useListKeyboardNavigation({
+    list: suggestions,
+    onEnter: (item: string) => handleSuggestionClick(item),
+    resetOnListChange: true,
+    ref: inputRef,
+  });
 
   const handleChange = (text: string) => {
     if (options) {
@@ -90,15 +97,18 @@ const ChartSettingInputSuggestion = ({
             onMouseDown={handleListMouseDown}
             style={{ width: inputRef.current?.offsetWidth }}
           >
-            {suggestions.map(option => (
-              <Suggestion
+            {suggestions.map((option, index) => (
+              <SelectList.Item
                 key={option}
-                onClick={() => {
+                id={option}
+                name={option}
+                isSelected={index === cursorIndex}
+                onSelect={() => {
                   handleSuggestionClick(option);
                 }}
               >
                 {option}
-              </Suggestion>
+              </SelectList.Item>
             ))}
           </SuggestionContainer>
         );
