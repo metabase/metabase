@@ -113,13 +113,13 @@ export const getGroupedDataset = (
 
 export const trimData = (
   dataset: GroupedDataset,
-  valuesLimit: number,
+  valuesCountLimit: number,
 ): GroupedDataset => {
-  if (dataset.length <= valuesLimit) {
+  if (dataset.length <= valuesCountLimit) {
     return dataset;
   }
 
-  const groupStartingFromIndex = valuesLimit - 1;
+  const groupStartingFromIndex = valuesCountLimit - 1;
   const result = dataset.slice();
   const dataToGroup = result.splice(groupStartingFromIndex);
 
@@ -149,7 +149,6 @@ export const trimData = (
     {
       dimensionValue: groupedDatumDimensionValue,
       metrics: {},
-      breakout: {},
     },
   );
 

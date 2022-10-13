@@ -31,7 +31,6 @@ import {
   ChartSettingsError,
   MinRowsError,
 } from "metabase/visualizations/lib/errors";
-import LegendCaption from "metabase/visualizations/components/legend/LegendCaption";
 import {
   RowChart,
   RowChartProps,
@@ -189,15 +188,15 @@ const RowChartVisualization = ({
         }
       : null;
 
-  const xLabel =
-    settings["graph.y_axis.labels_enabled"] &&
-    (settings["graph.y_axis.title_text"]?.length ?? 0) > 0
-      ? settings["graph.y_axis.title_text"]
-      : undefined;
   const yLabel =
     settings["graph.x_axis.labels_enabled"] &&
     (settings["graph.x_axis.title_text"]?.length ?? 0) > 0
       ? settings["graph.x_axis.title_text"]
+      : undefined;
+  const xLabel =
+    settings["graph.y_axis.labels_enabled"] &&
+    (settings["graph.y_axis.title_text"]?.length ?? 0) > 0
+      ? settings["graph.y_axis.title_text"]
       : undefined;
 
   const hasTitle = showTitle && settings["card.title"];

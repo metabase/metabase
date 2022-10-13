@@ -8,6 +8,7 @@ import { ChartTicksFormatters } from "metabase/visualizations/shared/types/forma
 import { HoveredData } from "metabase/visualizations/shared/types/events";
 import { RowChartView, RowChartViewProps } from "../RowChartView/RowChartView";
 import { ChartGoal } from "../../types/settings";
+import { ContinuousScaleType } from "../../types/scale";
 import {
   getMaxYValuesCount,
   getChartMargin,
@@ -45,7 +46,7 @@ export interface RowChartProps<TDatum> {
   labelsFormatter?: (value: NumberValue) => string;
   measureText: TextMeasurer;
 
-  xScaleType?: "linear" | "pow" | "log";
+  xScaleType?: ContinuousScaleType;
 
   style?: React.CSSProperties;
 
@@ -178,8 +179,16 @@ export const RowChart = <TDatum,>({
         xScale,
         xTickFormatter,
         measureText,
+        xScaleType,
       ),
-    [innerWidth, measureText, theme.axis.ticks, xScale, xTickFormatter],
+    [
+      innerWidth,
+      measureText,
+      theme.axis.ticks,
+      xScale,
+      xScaleType,
+      xTickFormatter,
+    ],
   );
 
   const rowChartGoal = useMemo(

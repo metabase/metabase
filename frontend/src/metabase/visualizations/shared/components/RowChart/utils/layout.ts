@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { stack, stackOffsetExpand, stackOffsetNone } from "d3-shape";
+import { stack, stackOffsetDiverging, stackOffsetExpand } from "d3-shape";
 import type { SeriesPoint } from "d3-shape";
 import { scaleBand } from "@visx/scale";
 import type { ScaleBand, ScaleContinuousNumeric, ScaleLinear } from "d3-scale";
@@ -21,6 +21,7 @@ import { createXScale, createYScale } from "./scale";
 import { createStackedXDomain, createXDomain } from "./domain";
 
 const CHART_PADDING = 10;
+const RIGHT_PADDING = 30;
 const TICKS_OFFSET = 10;
 const GOAL_LINE_PADDING = 14;
 
@@ -71,7 +72,7 @@ export const getChartMargin = <TDatum>(
       TICKS_OFFSET +
       ticksFont.size +
       (xLabel != null ? LABEL_PADDING + labelFont.size : 0),
-    right: CHART_PADDING,
+    right: RIGHT_PADDING,
   };
 
   return margin;
@@ -88,10 +89,10 @@ export const getMaxYValuesCount = (
   return Math.max(Math.floor(viewportHeight / singleValueHeight), 1);
 };
 
-export type StackOffset = "none" | "expand" | null;
+export type StackOffset = "diverging" | "expand" | null;
 
 const StackOffsetFn = {
-  none: stackOffsetNone,
+  diverging: stackOffsetDiverging,
   expand: stackOffsetExpand,
 } as const;
 
@@ -112,7 +113,8 @@ const getStackedBar = <TDatum>(
   color: string,
   shouldIncludeValue: boolean,
 ): ChartBar | null => {
-  const [xStartDomain, xEndDomain] = stackedDatum;
+  const xStartDomain = Math.min(...stackedDatum);
+  const xEndDomain = Math.max(...stackedDatum);
 
   const x = xScale(xStartDomain);
   const width = Math.abs(xScale(xEndDomain) - x);
@@ -159,7 +161,7 @@ export const calculateStackedBars = <TDatum>({
   const d3Stack = stack<TDatum>()
     .keys(multipleSeries.map(s => s.seriesKey))
     .value((datum, seriesKey) => seriesByKey[seriesKey].xAccessor(datum) ?? 0)
-    .offset(StackOffsetFn[stackOffset ?? "none"]);
+    .offset(StackOffsetFn[stackOffset ?? "diverging"]);
 
   const stackedSeries = d3Stack(data);
 

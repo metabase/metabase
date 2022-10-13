@@ -1,6 +1,7 @@
-import type { ScaleContinuousNumeric, ScaleLinear } from "d3-scale";
+import type { ScaleContinuousNumeric } from "d3-scale";
 import { ValueFormatter } from "metabase/visualizations/shared/types/format";
 import { TextMeasurer } from "metabase/visualizations/shared/types/measure-text";
+import { ContinuousScaleType } from "metabase/visualizations/shared/types/scale";
 import { ChartFont } from "metabase/visualizations/shared/types/style";
 
 const TICK_SPACING = 4;
@@ -9,9 +10,9 @@ const getWidthBasedTickInterval = (innerWidth: number) => innerWidth / 8;
 
 const omitOverlappingTicks = (
   ticks: number[],
-  ticksFont: ChartFont,
+  tickFont: ChartFont,
   xScale: ScaleContinuousNumeric<number, number, never>,
-  xTickFormatter: ValueFormatter,
+  tickFormatter: ValueFormatter,
   measureText: TextMeasurer,
 ) => {
   if (ticks.length <= 1) {
@@ -20,14 +21,11 @@ const omitOverlappingTicks = (
 
   const nonOverlappingTicks = [ticks[0]];
   let nextAvailableX =
-    measureText(xTickFormatter(ticks[0]), ticksFont) / 2 + TICK_SPACING;
+    measureText(tickFormatter(ticks[0]), tickFont) / 2 + TICK_SPACING;
 
   for (let i = 1; i < ticks.length; i++) {
     const currentTick = ticks[i];
-    const currentTickWidth = measureText(
-      xTickFormatter(currentTick),
-      ticksFont,
-    );
+    const currentTickWidth = measureText(tickFormatter(currentTick), tickFont);
     const currentTickX = xScale(currentTick);
     const currentTickStart = currentTickX - currentTickWidth / 2;
 
@@ -42,31 +40,82 @@ const omitOverlappingTicks = (
   return nonOverlappingTicks;
 };
 
-export const getXTicks = (
-  ticksFont: ChartFont,
-  innerWidth: number,
-  xScale: ScaleContinuousNumeric<number, number, never>,
-  xTickFormatter: ValueFormatter,
+const getMaxTickWidth = (
+  scale: ScaleContinuousNumeric<number, number, never>,
   measureText: TextMeasurer,
+  tickFormatter: ValueFormatter,
+  tickFont: ChartFont,
 ) => {
   // Assume border ticks on a continuous scale are the widest
-  const borderTicksWidths = xScale
+  const borderTicksWidths = scale
     .domain()
-    .map(tick => measureText(xTickFormatter(tick), ticksFont) + TICK_SPACING);
+    .map(tick => measureText(tickFormatter(tick), tickFont) + TICK_SPACING);
 
-  const ticksInterval = Math.max(
-    ...borderTicksWidths,
-    getWidthBasedTickInterval(innerWidth),
+  return Math.max(...borderTicksWidths);
+};
+
+const getMinTicksInterval = (
+  scale: ScaleContinuousNumeric<number, number, never>,
+  measureText: TextMeasurer,
+  tickFormatter: ValueFormatter,
+  tickFont: ChartFont,
+  innerWidth: number,
+) => {
+  const maxTickWidth = getMaxTickWidth(
+    scale,
+    measureText,
+    tickFormatter,
+    tickFont,
+  );
+  return Math.max(maxTickWidth, getWidthBasedTickInterval(innerWidth));
+};
+
+const getEvenlySpacedTicks = (
+  scale: ScaleContinuousNumeric<number, number, never>,
+  ticksInterval: number,
+  ticksCount: number,
+) => {
+  const ticks: number[] = [];
+
+  const [startCoordinate] = scale.range();
+
+  for (let i = 0; i < ticksCount; i++) {
+    const tickCoordinate = startCoordinate + i * ticksInterval;
+    const tickValue = scale.invert(tickCoordinate);
+    ticks.push(tickValue);
+  }
+
+  return ticks;
+};
+
+export const getXTicks = (
+  tickFont: ChartFont,
+  innerWidth: number,
+  xScale: ScaleContinuousNumeric<number, number, never>,
+  tickFormatter: ValueFormatter,
+  measureText: TextMeasurer,
+  scaleType: ContinuousScaleType,
+) => {
+  const ticksInterval = getMinTicksInterval(
+    xScale,
+    measureText,
+    tickFormatter,
+    tickFont,
+    innerWidth,
   );
 
   const ticksCount = Math.floor(innerWidth / ticksInterval);
-  const ticks = xScale.ticks(ticksCount);
+
+  const ticks =
+    scaleType === "log"
+      ? getEvenlySpacedTicks(xScale, ticksInterval, ticksCount)
+      : xScale.ticks(ticksCount);
 
   return omitOverlappingTicks(
     ticks,
-    ticksFont,
+    tickFont,
     xScale,
-    xTickFormatter,
+    tickFormatter,
     measureText,
   );
 };
