@@ -202,12 +202,6 @@ function getDataSourceParts({ question, subHead, isObjectDetail }) {
     );
   }
 
-  if (isObjectDetail) {
-    parts.push({
-      name: undefined,
-    });
-  }
-
   return parts.filter(
     part => React.isValidElement(part) || part.name || part.icon,
   );
