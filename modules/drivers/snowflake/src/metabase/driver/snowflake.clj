@@ -32,9 +32,10 @@
 
 (driver/register! :snowflake, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
-(defmethod driver/supports? [:snowflake :convert-timezone]
-  [_driver _feature]
-  true)
+(doseq [[feature supported?] {:convert-timezone true}]
+  (defmethod driver/database-supports? [:snowflake feature]
+    [_driver _feature _database]
+    supported?))
 
 (defmethod driver/humanize-connection-error-message :snowflake
   [_ message]

@@ -108,15 +108,6 @@
   [_ _ expr]
   (sql.qp/adjust-day-of-week :vertica (hsql/call :dayofweek_iso expr)))
 
-(defrecord AtTimeZone
-  ;; record type to support applying Presto's `AT TIME ZONE` operator to an expression
-  [expr zone]
-  hformat/ToSql
-  (to-sql [_]
-    (format "%s AT TIME ZONE %s"
-      (hformat/to-sql expr)
-      (hformat/to-sql (hx/literal zone)))))
-
 (defmethod sql.qp/->honeysql [:vertica :convert-timezone]
   [driver [_ arg to-tz from-tz]]
   (let [clause  (sql.qp/->honeysql driver arg)
@@ -127,9 +118,9 @@
    (let [from-tz (or from-tz (qp.timezone/results-timezone-id))]
     (cond-> clause
       (and (not timestamptz?) from-tz)
-      (->AtTimeZone from-tz)
+      (hx/->AtTimeZone from-tz)
       to-tz
-      (->AtTimeZone to-tz)))))
+      (hx/->AtTimeZone to-tz)))))
 
 (defmethod sql.qp/->honeysql [:vertica :concat]
   [driver [_ & args]]

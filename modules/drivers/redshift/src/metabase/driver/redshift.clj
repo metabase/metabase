@@ -16,7 +16,6 @@
             [metabase.mbql.util :as mbql.u]
             [metabase.public-settings :as public-settings]
             [metabase.query-processor.store :as qp.store]
-            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.query-processor.util :as qp.util]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs]])

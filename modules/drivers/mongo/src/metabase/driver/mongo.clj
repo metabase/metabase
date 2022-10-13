@@ -218,8 +218,7 @@
 
 (doseq [[feature supports?] {:basic-aggregations true
                              :nested-fields      true
-                             :native-parameters  true
-                             :convert-timezone   false}]
+                             :native-parameters  true}]
   (defmethod driver/supports? [:mongo feature] [_ _] supports?))
 
 (defn- db-major-version

@@ -161,6 +161,14 @@
 (alter-meta! #'->TypedHoneySQLForm assoc :private true)
 (alter-meta! #'map->TypedHoneySQLForm assoc :private true)
 
+(p.types/defrecord+ AtTimeZone
+  [expr zone]
+  hformat/ToSql
+  (to-sql [_]
+    (clojure.core/format "%s AT TIME ZONE %s"
+            (hformat/to-sql expr)
+            (hformat/to-sql (literal zone)))))
+
 (def ^:private NormalizedTypeInfo
   {(s/optional-key ::database-type) (s/constrained
                                      su/NonBlankString
