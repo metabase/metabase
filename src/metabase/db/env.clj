@@ -132,8 +132,6 @@
 (def ^:private env
   (env* (config/config-kw :mb-db-type)))
 
-(println "(pr-str env):" (pr-str env)) ; NOCOMMIT
-
 (def db-type
   "Keyword type name of the application DB details specified by environment variables. Matches corresponding driver
   name e.g. `:h2`, `:mysql`, or `:postgres`."
