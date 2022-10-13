@@ -11,36 +11,18 @@ import ActionButtonView from "./ActionButtonView";
 interface DefaultActionButtonProps {
   isSettings: VisualizationProps["isSettings"];
   settings: VisualizationProps["settings"];
-  getExtraDataForClick: VisualizationProps["getExtraDataForClick"];
   onVisualizationClick: VisualizationProps["onVisualizationClick"];
-  onSubmit: OnSubmitActionForm;
-  missingParameters: WritebackParameter[];
 }
 
-function DefaultActionButton({
+function LinkButton({
   isSettings,
   settings,
-  getExtraDataForClick,
   onVisualizationClick,
-  onSubmit,
-  missingParameters,
 }: DefaultActionButtonProps) {
-  const clickObject = useMemo(
-    () => ({ settings, onSubmit, missingParameters }),
-    [settings, onSubmit, missingParameters],
+  const onClick = useCallback(
+    () => onVisualizationClick({ settings }),
+    [onVisualizationClick, settings],
   );
-
-  const extraData = useMemo(
-    () => getExtraDataForClick?.(clickObject),
-    [clickObject, getExtraDataForClick],
-  );
-
-  const onClick = useCallback(() => {
-    onVisualizationClick({
-      ...clickObject,
-      extraData,
-    });
-  }, [clickObject, extraData, onVisualizationClick]);
 
   return (
     <ActionButtonView
@@ -51,4 +33,4 @@ function DefaultActionButton({
   );
 }
 
-export default DefaultActionButton;
+export default LinkButton;

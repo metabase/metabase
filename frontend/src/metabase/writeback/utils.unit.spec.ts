@@ -7,7 +7,7 @@ import type {
   ActionDashboardCard,
   ActionParametersMapping,
 } from "metabase-types/api";
-import { isMappedExplicitActionButton, isImplicitActionButton } from "./utils";
+import { isMappedExplicitActionButton } from "./utils";
 
 const PLAIN_BUTTON = createMockDashboardActionButton({
   action: undefined,
@@ -101,70 +101,5 @@ describe("isMappedExplicitActionButton", () => {
     };
 
     expect(isMappedExplicitActionButton(button)).toBe(true);
-  });
-});
-
-describe("isImplicitActionButton", () => {
-  const IMPLICIT_ACTIONS = [
-    { action: IMPLICIT_INSERT_ACTION, type: "insert" },
-    { action: IMPLICIT_UPDATE_ACTION, type: "update" },
-    { action: IMPLICIT_DELETE_ACTION, type: "delete" },
-  ];
-
-  it("returns false for navigation buttons", () => {
-    expect(isImplicitActionButton(NAVIGATION_ACTION_BUTTON)).toBe(false);
-  });
-
-  it("returns false for cards without action-button display", () => {
-    const dashcard = createMockDashboardActionButton({
-      visualization_settings: {
-        virtual_card: { display: "table" },
-      },
-    });
-    expect(isImplicitActionButton(dashcard)).toBe(false);
-  });
-
-  it("returns false for plain button", () => {
-    expect(isImplicitActionButton(PLAIN_BUTTON)).toBe(false);
-  });
-
-  it("returns false for explicit action buttons", () => {
-    expect(isImplicitActionButton(EXPLICIT_ACTION)).toBe(false);
-  });
-
-  it("returns false for implicit action with incomplete shape", () => {
-    const insertActionWithoutTableId = createMockDashboardActionButton({
-      action: undefined,
-      visualization_settings: {
-        click_behavior: {
-          type: "action",
-          actionType: "insert",
-        },
-      },
-    });
-
-    expect(isImplicitActionButton(insertActionWithoutTableId)).toBe(false);
-  });
-
-  it("returns false for implicit action with unrecognized `actionType`", () => {
-    const unrecognizedAction = createMockDashboardActionButton({
-      action: undefined,
-      visualization_settings: {
-        click_behavior: {
-          type: "action",
-          // @ts-expect-error — testing unrecognized actionType
-          actionType: "play-some-tunes",
-          objectDetailDashCardId: 5,
-        },
-      },
-    });
-
-    expect(isImplicitActionButton(unrecognizedAction)).toBe(false);
-  });
-
-  IMPLICIT_ACTIONS.forEach(({ action, type }) => {
-    it(`returns false for implicit ${type} action`, () => {
-      expect(isImplicitActionButton(action)).toBe(false);
-    });
   });
 });
