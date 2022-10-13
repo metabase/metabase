@@ -145,6 +145,8 @@ const DashboardHeader = ({
               <DataAppPageCaption
                 key={dashboard.name}
                 page={dashboard}
+                isEditing={isEditing}
+                isDisabled={!isEditing}
                 placeholder={t`Add title`}
                 data-testid="dashboard-name-heading"
                 onChange={handleUpdateCaption}

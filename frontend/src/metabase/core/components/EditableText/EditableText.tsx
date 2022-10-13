@@ -22,6 +22,7 @@ export type EditableTextAttributes = Omit<
 export interface EditableTextProps extends EditableTextAttributes {
   initialValue?: string | null;
   placeholder?: string;
+  isEditing?: boolean;
   isOptional?: boolean;
   isMultiline?: boolean;
   isDisabled?: boolean;
@@ -35,6 +36,7 @@ const EditableText = forwardRef(function EditableText(
   {
     initialValue,
     placeholder,
+    isEditing = false,
     isOptional = false,
     isMultiline = false,
     isDisabled = false,
@@ -98,6 +100,7 @@ const EditableText = forwardRef(function EditableText(
     <EditableTextRoot
       {...props}
       ref={ref}
+      isEditing={isEditing}
       isDisabled={isDisabled}
       data-value={`${displayValue}\u00A0`}
     >
