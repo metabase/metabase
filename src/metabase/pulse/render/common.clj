@@ -61,8 +61,6 @@
         decimal-digits     (if currency?
                              (get-in currency/currency [(keyword (or currency "USD")) :decimal_digits])
                              0)]
-    (def a {:col-id col-id
-            :column-settings (get viz-settings ::mb.viz/column-settings)})
     (fn [value]
       (let [decimals-in-value (cond-> (digits-after-decimal value)
                                 (= number-style "percent") (- 2))
