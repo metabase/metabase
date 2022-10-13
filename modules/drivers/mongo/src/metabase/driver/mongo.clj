@@ -216,10 +216,10 @@
                         [#{} 0]
                         column-info))})))
 
-(doseq [[feature supports?] {:basic-aggregations true
-                             :nested-fields      true
-                             :native-parameters  true}]
-  (defmethod driver/supports? [:mongo feature] [_ _] supports?))
+(doseq [feature [:basic-aggregations
+                 :nested-fields
+                 :native-parameters]]
+  (defmethod driver/supports? [:mongo feature] [_ _] true))
 
 (defn- db-major-version
   [db]
@@ -228,13 +228,16 @@
           first
           Integer/parseInt))
 
-(defmethod driver/database-supports? [:mongo :expressions] [_ _ db]
+(defmethod driver/database-supports? [:mongo :expressions] [_driver _feature db]
   (let [version (db-major-version db)]
     (and (some? version) (>= version 4))))
 
-(defmethod driver/database-supports? [:mongo :date-arithmetics] [_ _ db]
+(defmethod driver/database-supports? [:mongo :date-arithmetics] [_driver _feature db]
   (let [version (db-major-version db)]
     (and (some? version) (>= version 5))))
+
+(defmethod driver/database-supports? [:mongo :convert-timezone] [_driver _feature _db]
+  false)
 
 (defmethod driver/mbql->native :mongo
   [_ query]

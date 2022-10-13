@@ -13,10 +13,11 @@
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.query-processor.empty-string-is-null :as sql.qp.empty-string-is-null]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs]])
+            [metabase.util.i18n :refer [trs tru]])
   (:import [java.sql ResultSet Types]))
 
 (driver/register! :vertica, :parent #{:sql-jdbc
@@ -113,8 +114,10 @@
   (let [clause  (sql.qp/->honeysql driver arg)
         timestamptz? (hx/is-of-type? clause "timestamptz")]
    (when (and timestamptz? from-tz)
-         (throw (ex-info "`timestamp with time zone` columns shouldn't have a `from timezone`" {:to-tz   to-tz
-                                                                                                :from-tz from-tz})))
+         (throw (ex-info (tru "`timestamp with time zone` columns shouldn''t have a `from timezone` argument")
+                    {:type    qp.error-type/invalid-parameter
+                     :to-tz   to-tz
+                     :from-tz from-tz})))
    (let [from-tz (or from-tz (qp.timezone/results-timezone-id))]
     (cond-> clause
       (and (not timestamptz?) from-tz)

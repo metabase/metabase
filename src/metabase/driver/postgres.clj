@@ -24,13 +24,14 @@
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.models.field :as field]
             [metabase.models.secret :as secret]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs]]
+            [metabase.util.i18n :refer [trs tru]]
             [potemkin :as p]
             [pretty.core :refer [PrettyPrintable]])
   (:import [java.sql ResultSet ResultSetMetaData Time Types]
@@ -281,8 +282,10 @@
   (let [clause       (sql.qp/->honeysql driver arg)
         timestamptz? (hx/is-of-type? clause "timestamptz")]
     (when (and timestamptz? from-tz)
-      (throw (ex-info "`timestamp with time zone` columns shouldn't have a `from timezone`" {:to-tz   to-tz
-                                                                                             :from-tz from-tz})))
+      (throw (ex-info (tru "`timestamp with time zone` columns shouldn''t have a `from timezone` argument")
+                    {:type    qp.error-type/invalid-parameter
+                     :to-tz   to-tz
+                     :from-tz from-tz})))
     (let [from-tz (or from-tz (qp.timezone/results-timezone-id))]
       (cond->> clause
         (and (not timestamptz?) from-tz)

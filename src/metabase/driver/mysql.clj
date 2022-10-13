@@ -21,12 +21,13 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.models.field :as field]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [deferred-tru trs]])
+            [metabase.util.i18n :refer [deferred-tru trs tru]])
   (:import [java.sql DatabaseMetaData ResultSet ResultSetMetaData Types]
            [java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime]
            metabase.util.honeysql_extensions.Identifier))
@@ -47,7 +48,6 @@
       json-setting)))
 
 (doseq [[feature supported?] {:persist-models         (constantly true)
-                              :convert-timezone       (constantly true)
                               :persist-models-enabled (fn [_driver db] (-> db :options :persist-models-enabled))}]
   (defmethod driver/database-supports? [:mysql feature]
     [driver _feature database]
@@ -348,8 +348,10 @@
   [driver [_ arg to-tz from-tz]]
   (let [clause (sql.qp/->honeysql driver arg)]
     (when (and (hx/is-of-type? clause "timestamp") from-tz)
-      (throw (ex-info "`timestamp with time zone` columns shouldn't have a `from timezone`" {:to-tz   to-tz
-                                                                                             :from-tz from-tz})))
+      (throw (ex-info (tru "`timestamp with time zone` columns shouldn''t have a `from timezone` argument")
+                    {:type    qp.error-type/invalid-parameter
+                     :to-tz   to-tz
+                     :from-tz from-tz})))
     (hsql/call :convert_tz clause (or from-tz (qp.timezone/results-timezone-id)) to-tz)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

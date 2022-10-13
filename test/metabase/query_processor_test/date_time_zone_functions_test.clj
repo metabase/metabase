@@ -343,7 +343,7 @@
       (testing "timestamp with time zone columns"
         (with-results-and-report-timezone-id "UTC"
           (testing "convert to +09:00"
-            ;; for some reasons the dt_tz column for redshift is inserted in UTC, not Asia/Ho_Chi_Minh.
+            ;; for some reasons the dt_tz column for redshift and snowflake is inserted in UTC, not Asia/Ho_Chi_Minh.
             ;; so the tests result is a bit different
             (is (= (case driver/*driver*
                      (:redshift :snowflake) "2004-03-19T18:19:09+09:00"
@@ -353,7 +353,7 @@
           (testing "timestamp with time zone columns shouldn't have `from_tz`"
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
-                 #"`timestamp with time zone` columns shouldn't have a `from timezone`"
+                 #"`timestamp with time zone` columns shouldn't have a `from timezone` argument"
                  (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil]
                                      (offset->zone "+09:00")
                                      (offset->zone "+00:00")])))))
@@ -364,59 +364,6 @@
                      (:redshift :snowflake) "2004-03-19T18:19:09+09:00"
                      "2004-03-19T11:19:09+09:00")
                    (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")])))))))))
-
-
-;; expect 11
-#_(with-results-and-report-timezone-id "UTC"
-   (mt/with-driver :snowflake
-        (mt/dataset times-mixed
-                    (-> (mt/mbql-query times {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")]}
-                                              :fields      [[:expression "expr"]]
-                                              :limit       1})
-                        #_mt/process-query
-                        #_mt/rows
-                        mt/compile))))
-
-
-
-#_(metabase.test.data.interface/create-db! :snowflake times-mixed)
-
-
-#_(dev/query-jdbc-db
-   [ 'times-mixed]
-   ["select pg_get_cols('schema_86.times_mixed_times');"])
-
-
-#_(dev/query-jdbc-db
-   [:bigquery-cloud-sdk 'times-mixed]
-   ["select * from v3_times_mixed_times.times;"])
-
-#_(dev/query-jdbc-db
-     [:mysql 'times-mixed]
-     ["select @@session.time_zone;"])
-
-
-#_(dev/query-jdbc-db
-     [:postgres 'times-mixed]
-     ["select dt_tz from times_mixed_times limit 1;"])
-
-#_(dev/query-jdbc-db
-   [:redshift 'times-mixed]
-   ["SELECT '2018-11-01T09:00:00+07:00'::timestamptz;"])
-
-
-#_(dev/query-jdbc-db
-    [:sqlserver 'times-mixed]
-    ["select * from sys.time_zone_info"])
-
-#_(.getDisplayName
-    (t/zone-id "Asia/Ho_Chi_Minh")
-    java.time.format.TextStyle/FULL_STANDALONE
-    (java.util.Locale/getDefault))
-;; => "Indochina Time"
-
-#_(metabase.test.data.interface/destroy-db! :bigquery-cloud-sdk)
-
 
 (deftest nested-convert-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)

@@ -2,10 +2,9 @@
   "Driver for SQLServer databases. Uses the official Microsoft JDBC driver under the hood (pre-0.25.0, used jTDS)."
   (:require [clojure.data.xml :as xml]
             [clojure.java.io :as io]
-            [clojure.tools.logging :as log]
             [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
-            [honeysql.format :as hformat]
             [honeysql.helpers :as hh]
             [java-time :as t]
             [metabase.config :as config]
@@ -19,10 +18,11 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.mbql.util :as mbql.u]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.interface :as qp.i]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs]])
+            [metabase.util.i18n :refer [trs tru]])
   (:import [java.sql Connection ResultSet Time]
            [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
 
@@ -251,8 +251,10 @@
   (let [clause          (sql.qp/->honeysql driver arg)
         datetimeoffset? (hx/is-of-type? clause "datetimeoffset")]
     (when (and datetimeoffset? from-tz)
-      (throw (ex-info "`timestamp with time zone` columns shouldn't have a `from timezone`" {:to-tz   to-tz
-                                                                                             :from-tz from-tz})))
+      (throw (ex-info (tru "`timestamp with time zone` columns shouldn''t have a `from timezone` argument")
+                    {:type    qp.error-type/invalid-parameter
+                     :to-tz   to-tz
+                     :from-tz from-tz})))
     (let [from-tz (or from-tz (qp.timezone/results-timezone-id))]
       (cond-> clause
         from-tz

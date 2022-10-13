@@ -19,10 +19,11 @@
             [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.models.secret :as secret]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs]]
+            [metabase.util.i18n :refer [trs tru]]
             [metabase.util.ssh :as ssh])
   (:import com.mchange.v2.c3p0.C3P0ProxyConnection
            [java.sql Connection ResultSet Types]
@@ -31,11 +32,6 @@
            oracle.sql.TIMESTAMPTZ))
 
 (driver/register! :oracle, :parent #{:sql-jdbc ::sql.qp.empty-string-is-null/empty-string-is-null})
-
-(doseq [[feature supported?] {:convert-timezone true}]
-  (defmethod driver/database-supports? [:oracle feature]
-    [_driver _feature _database]
-    supported?))
 
 (def ^:private database-type->base-type
   (sql-jdbc.sync/pattern-based-database-type->base-type
@@ -213,8 +209,10 @@
         hsql-from-tz (partial hsql/call :from_tz)
         has-timezone? (hx/is-of-type? clause #"timestamp(\(\d\))? with time zone")]
     (when (and has-timezone? from-tz)
-      (throw (ex-info "`timestamp with time zone` columns shouldn't have a `from timezone`" {:to-tz   to-tz
-                                                                                             :from-tz from-tz})))
+      (throw (ex-info (tru "`timestamp with time zone` columns shouldn''t have a `from timezone` argument")
+                    {:type    qp.error-type/invalid-parameter
+                     :to-tz   to-tz
+                     :from-tz from-tz})))
     (let [from-tz (or from-tz (qp.timezone/results-timezone-id))]
       (cond-> clause
         (and (not has-timezone?) from-tz)

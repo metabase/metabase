@@ -316,6 +316,12 @@
 
 (defmethod driver/supports? [:bigquery-cloud-sdk :foreign-keys] [_ _] true)
 
+(defmethod driver/database-supports? [:bigquery-cloud-sdk :convert-timezone]
+  [_driver _feature _database]
+  ;; bigquery can supporst convert-timezone, but it requires a change in how we parse value
+  ;; of `datetime` column, so we'll add support for it later one.
+  false)
+
 ;; BigQuery is always in UTC
 (defmethod driver/db-default-timezone :bigquery-cloud-sdk [_ _]
   "UTC")
