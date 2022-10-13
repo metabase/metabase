@@ -5,6 +5,7 @@ import type {
   WritebackParameter,
   OnSubmitActionForm,
   ActionDashboardCard,
+  ParametersForActionExecution,
 } from "metabase-types/api";
 import { getFormTitle } from "metabase/writeback/components/ActionCreator/FormCreator";
 
@@ -43,6 +44,13 @@ function ActionForm({
     }
   };
 
+  const onModalSubmit = async (params: ParametersForActionExecution) => {
+    const { success } = await onSubmit(params);
+    if (success) {
+      setShowModal(false);
+    }
+  };
+
   if (shouldDisplayButton) {
     return (
       <>
@@ -56,7 +64,7 @@ function ActionForm({
             title={title}
           >
             <ActionParametersInputForm
-              onSubmit={onSubmit}
+              onSubmit={onModalSubmit}
               missingParameters={missingParameters}
               action={action}
             />
