@@ -204,7 +204,7 @@ function getDataSourceParts({ question, subHead, isObjectDetail }) {
 
   if (isObjectDetail) {
     parts.push({
-      name: question.objectDetailPK(),
+      name: undefined,
     });
   }
 

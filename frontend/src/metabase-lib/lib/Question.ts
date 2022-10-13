@@ -825,28 +825,6 @@ class QuestionInner {
   }
 
   /**
-   * Returns true if, based on filters and table columns, the expected result is a single row.
-   * However, it might not be true when a PK column is not unique, leading to multiple rows.
-   * Because of that, always check query results in addition to this property.
-   */
-  isObjectDetail(): boolean {
-    const mode = this.mode();
-    return mode ? mode.name() === "object" : false;
-  }
-
-  objectDetailPK(): any {
-    const query = this.query();
-
-    if (this.isObjectDetail() && query instanceof StructuredQuery) {
-      const filters = query.filters();
-
-      if (filters[0] && isStandard(filters[0])) {
-        return filters[0][2];
-      }
-    }
-  }
-
-  /**
    * A user-defined name for the question
    */
   displayName(): string | null | undefined {
