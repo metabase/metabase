@@ -30,7 +30,7 @@ import {
   getCanZoomNextRow,
 } from "metabase/query_builder/selectors";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import { isVirtualCardId } from "metabase/lib/saved-questions";
+import { isVirtualCardId } from "metabase-lib/lib/metadata/utils/saved-questions";
 import { isPK } from "metabase-lib/lib/types/utils/isa";
 import Table from "metabase-lib/lib/metadata/Table";
 import Question from "metabase-lib/lib/Question";

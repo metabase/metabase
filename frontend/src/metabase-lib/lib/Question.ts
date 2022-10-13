@@ -62,7 +62,7 @@ import { DependentMetadataItem } from "metabase-types/types/Query";
 import { utf8_to_b64url } from "metabase/lib/encoding";
 import { CollectionId } from "metabase-types/api";
 
-import { getQuestionVirtualTableId } from "metabase/lib/saved-questions/saved-questions";
+import { getQuestionVirtualTableId } from "metabase-lib/lib/metadata/utils/saved-questions";
 import {
   aggregate,
   breakout,

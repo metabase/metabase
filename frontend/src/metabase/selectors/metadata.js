@@ -1,7 +1,7 @@
 import { createSelector } from "reselect";
 
 import _ from "underscore";
-import { isVirtualCardId } from "metabase/lib/saved-questions/saved-questions";
+import { isVirtualCardId } from "metabase-lib/lib/metadata/utils/saved-questions";
 import {
   getFieldValues,
   getRemappings,
