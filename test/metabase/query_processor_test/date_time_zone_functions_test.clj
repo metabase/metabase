@@ -340,68 +340,46 @@
                                        (offset->zone "+09:00")
                                        (offset->zone "+00:00")]))))))
 
-      ;; for some reasons the dt_tz column for redshift is inserted in UTC, not Asia/Ho_Chi_Minh.
-      ;; so the tests result is a bit different
-      (if-not (#{:redshift} driver/*driver*)
-        (testing "timestamp with time zone columns"
-          (with-results-and-report-timezone-id "UTC"
-            (testing "convert to +09:00"
-              (is (= "2004-03-19T11:19:09+09:00"
-                     (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")]))))
+      (testing "timestamp with time zone columns"
+        (with-results-and-report-timezone-id "UTC"
+          (testing "convert to +09:00"
+            ;; for some reasons the dt_tz column for redshift is inserted in UTC, not Asia/Ho_Chi_Minh.
+            ;; so the tests result is a bit different
+            (is (= (case driver/*driver*
+                     (:redshift :snowflake) "2004-03-19T18:19:09+09:00"
+                     "2004-03-19T11:19:09+09:00")
+                   (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")]))))
 
-            (testing "timestamp with time zone columns shouldn't have `from_tz`"
-              (is (thrown-with-msg?
-                   clojure.lang.ExceptionInfo
-                   #"`timestamp with time zone` columns shouldn't have a `from timezone`"
-                   (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil]
-                                       (offset->zone "+09:00")
-                                       (offset->zone "+00:00")])))))
+          (testing "timestamp with time zone columns shouldn't have `from_tz`"
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"`timestamp with time zone` columns shouldn't have a `from timezone`"
+                 (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil]
+                                     (offset->zone "+09:00")
+                                     (offset->zone "+00:00")])))))
 
-          (with-results-and-report-timezone-id "Europe/Rome"
-            (testing "the base timezone should be the timezone of column (Asia/Ho_Chi_Minh)"
-              (is (= "2004-03-19T11:19:09+09:00"
-                     (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")]))))))
+        (with-results-and-report-timezone-id "Europe/Rome"
+          (testing "the base timezone should be the timezone of column (Asia/Ho_Chi_Minh)"
+            (is (= (case driver/*driver*
+                     (:redshift :snowflake) "2004-03-19T18:19:09+09:00"
+                     "2004-03-19T11:19:09+09:00")
+                   (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")])))))))))
 
-        (testing "timestamp with time zone columns"
-          (with-results-and-report-timezone-id "UTC"
-            (testing "convert to +09:00"
-              (is (= "2004-03-19T18:19:09+09:00"
-                     (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")]))))
 
-            (testing "timestamp with time zone columns shouldn't have `from_tz`"
-              (is (thrown-with-msg?
-                   clojure.lang.ExceptionInfo
-                   #"`timestamp with time zone` columns shouldn't have a `from timezone`"
-                   (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil]
-                                       (offset->zone "+09:00")
-                                       (offset->zone "+00:00")])))))
-
-          (with-results-and-report-timezone-id "Europe/Rome"
-            (testing "the base timezone should be the timezone of column (Asia/Ho_Chi_Minh)"
-              (is (= "2004-03-19T18:19:09+09:00"
-                     (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")]))))))))))
-
-#_(mt/with-results-timezone-id "UTC"
-    (mt/with-driver :bigquery-cloud-sdk
-         (mt/dataset times-mixed-1
-                     (-> (mt/mbql-query times {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt) nil] (offset->zone "+09:00")
-                                                                     (offset->zone "+07:00")]}
-                                               :fields      [[:expression "expr"]]
-                                               :limit 1})
-                         mt/process-query
-                         mt/rows
-                         #_mt/compile
-                         #_:query
-                         #_println))))
-
-#_(mt/with-results-timezone-id "Europe/Rome"
-    (mt/with-driver :mysql
-         (mt/dataset times-mixed-1
-                     (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")]))))
+;; expect 11
+#_(with-results-and-report-timezone-id "UTC"
+   (mt/with-driver :snowflake
+        (mt/dataset times-mixed-1
+                    (-> (mt/mbql-query times {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")]}
+                                              :fields      [[:expression "expr"]]
+                                              :limit       1})
+                        #_mt/process-query
+                        #_mt/rows
+                        mt/compile))))
 
 
 
-#_(+ 1 2 3)
+#_(metabase.test.data.interface/create-db! :snowflake times-mixed)
 
 
 #_(dev/query-jdbc-db

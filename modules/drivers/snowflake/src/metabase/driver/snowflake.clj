@@ -250,9 +250,9 @@
     (when (and timestamptz? from-tz)
       (throw (ex-info "`timestamp with time zone` columns shouldn't have a `from timezone`" {:to-tz   to-tz
                                                                                              :from-tz from-tz})))
-    (if (timestamptz?)
-     (hsql/call :convert_timezone to-tz (sql.qp/->honeysql driver arg))
-     (hsql/call :convert_timezone (or from-tz (qp.timezone/results-timezone-id)) to-tz (sql.qp/->honeysql driver arg)))))
+   (if timestamptz?
+    (hsql/call :convert_timezone to-tz (sql.qp/->honeysql driver arg))
+    (hsql/call :convert_timezone (or from-tz (qp.timezone/results-timezone-id)) to-tz (sql.qp/->honeysql driver arg)))))
 
 (defmethod driver/table-rows-seq :snowflake
   [driver database table]
