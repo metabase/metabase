@@ -223,7 +223,6 @@
                 action (get actions-by-id (:action_id model-action))
                 implicit-action (when-let [parameters (get parameters-by-model-id (:card_id model-action))]
                                   {:parameters (cond->> parameters
-                                                 (not (:requires_pk model-action)) (remove #(::pk? %))
                                                  (= "delete" (:slug model-action)) (filter #(::pk? %))
                                                  :always (map #(dissoc % ::pk?)))
                                    :type "implicit"})]]

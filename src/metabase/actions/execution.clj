@@ -8,6 +8,7 @@
     [metabase.api.common :as api]
     [metabase.models :refer [Card Dashboard DashboardCard Table]]
     [metabase.models.action :as action]
+    [metabase.models.persisted-info :as persisted-info]
     [metabase.models.query :as query]
     [metabase.query-processor :as qp]
     [metabase.query-processor.card :as qp.card]
@@ -99,6 +100,11 @@
         pk-field-name (keyword (:name pk-field))
         row-parameters (cond-> simple-parameters
                          (not= implicit-action :row/create) (dissoc pk-field-name))]
+    (api/check (or (not requires_pk)
+                   (some? (get simple-parameters pk-field-name)))
+               400
+               (tru "Missing primary key parameter: {0}"
+                    (pr-str (u/slugify (:name pk-field)))))
     (api/check (empty? extra-parameters)
                400
                {:message (tru "No destination parameter found for {0}. Found: {1}"
@@ -106,11 +112,6 @@
                               (pr-str (set (keys slug->field-name))))
                 :parameters request-parameters
                 :destination-parameters (keys slug->field-name)})
-    (api/check (or (not requires_pk)
-                   (some? (get simple-parameters pk-field-name)))
-               400
-               (tru "Missing primary key parameter: {0}"
-                    (pr-str (u/slugify (:name pk-field)))))
     (cond->
       {:query {:database database-id,
                :type :query,
@@ -175,9 +176,11 @@
               :context :question
               :dashboard-id dashboard-id}
         card (db/select-one Card :id (:model_id model-action))
-        result (qp/process-query-and-save-execution!
-                 (qp.card/query-for-card card prefetch-parameters nil nil)
-                 info)
+        ;; prefilling a form with day old data would be bad
+        result (binding [persisted-info/*allow-persisted-substitution* false]
+                 (qp/process-query-and-save-execution!
+                   (qp.card/query-for-card card prefetch-parameters nil nil)
+                   info))
         exposed-params (set (map :id (:parameters model-action)))]
     (m/filter-keys
       #(contains? exposed-params %)

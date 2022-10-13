@@ -2015,7 +2015,7 @@
             (testing "Extra parameter should fail gracefully"
               (is (partial= {:message "No destination parameter found for #{\"extra\"}. Found: #{\"id\" \"name\"}"}
                             (mt/user-http-request :crowberto :post 400 execute-path
-                                                  {:parameters {"extra" 1}}))))
+                                                  {:parameters {"extra" 1 "id" 1}}))))
             (testing "Missing pk parameter should fail gracefully"
               (is (partial= "Missing primary key parameter: \"id\""
                             (mt/user-http-request :crowberto :post 400 execute-path
@@ -2037,9 +2037,9 @@
                      (mt/user-http-request :crowberto :post 200 execute-path
                                            {:parameters {"id" 1}}))))
             (testing "Extra parameter should fail gracefully"
-              (is (partial= {:message "No destination parameter found for #{\"extra\"}. Found: #{\"id\" \"name\"}"}
+              (is (partial= {:message "No destination parameter found for #{\"extra\"}. Found: #{\"id\"}"}
                             (mt/user-http-request :crowberto :post 400 execute-path
-                                                  {:parameters {"extra" 1}}))))
+                                                  {:parameters {"extra" 1 "id" 1}}))))
             (testing "Missing pk parameter should fail gracefully"
               (is (partial= "Missing primary key parameter: \"id\""
                             (mt/user-http-request :crowberto :post 400 execute-path
