@@ -6,11 +6,11 @@ import type {
   CustomDestinationClickBehavior,
   DashboardOrderedCard,
 } from "metabase-types/api";
-import { clickBehaviorIsValid } from "metabase/lib/click-behavior";
 
 import { BehaviorOption } from "metabase/dashboard/components/ClickBehaviorSidebar/TypeSelector/TypeSelector";
 import LinkOptions from "metabase/dashboard/components/ClickBehaviorSidebar/LinkOptions";
 import Icon from "metabase/components/Icon";
+import { clickBehaviorIsValid } from "metabase-lib/lib/parameters/utils/click-behavior";
 
 import {
   ClickBehaviorPickerText,
