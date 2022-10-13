@@ -659,13 +659,7 @@ class TableInteractive extends Component {
       return undefined;
     }
 
-    const dimension = Dimension.parseMBQL(
-      column.field_ref,
-      query.metadata(),
-      query,
-    );
-
-    return dimension;
+    return query.parseDimension(column.field_ref);
   }
 
   // TableInteractive renders invisible columns to remeasure the layout (see the _measure method)
