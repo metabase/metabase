@@ -39,10 +39,11 @@
    {:properties (constantly {:timestamped? true
                              :entity_id    true})
     :pre-insert pre-insert
-    :pre-update pre-update})
+    :pre-update pre-update}))
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :collection)])})
+(defmethod serdes.hash/identity-hash-fields NativeQuerySnippet
+  [_snippet]
+  [:name (serdes.hash/hydrated-hash :collection)])
 
 (defmethod mi/can-read? NativeQuerySnippet
   [& args]

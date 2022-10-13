@@ -7,6 +7,7 @@
             [metabase-enterprise.serialization.v2.extract :as v2.extract]
             [metabase-enterprise.serialization.v2.ingest.yaml :as v2.ingest]
             [metabase-enterprise.serialization.v2.load :as v2.load]
+            [metabase-enterprise.serialization.v2.seed-entity-ids :as v2.seed-entity-ids]
             [metabase-enterprise.serialization.v2.storage.yaml :as v2.storage]
             [metabase.db :as mdb]
             [metabase.models.card :refer [Card]]
@@ -202,3 +203,10 @@
   (if v2
     (v2-dump path opts)
     (v1-dump path state user opts)))
+
+(defn seed-entity-ids
+  "Add entity IDs for instances of serializable models that don't already have them.
+
+  Returns truthy if all entity IDs were added successfully, or falsey if any errors were encountered."
+  [options]
+  (v2.seed-entity-ids/seed-entity-ids! options))
