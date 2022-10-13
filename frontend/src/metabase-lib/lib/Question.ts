@@ -1303,10 +1303,9 @@ class QuestionInner {
   }
 }
 
-export default class Question extends memoizeClass<QuestionInner>(
-  "query",
-  "mode",
-)(QuestionInner) {
+export default class Question extends memoizeClass<QuestionInner>("query")(
+  QuestionInner,
+) {
   /**
    * TODO Atte Keinänen 6/13/17: Discussed with Tom that we could use the default Question constructor instead,
    * but it would require changing the constructor signature so that `card` is an optional parameter and has a default value
