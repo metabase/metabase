@@ -45,10 +45,11 @@ function ActionForm({
   };
 
   const onModalSubmit = async (params: ParametersForActionExecution) => {
-    const { success } = await onSubmit(params);
-    if (success) {
+    const result = await onSubmit(params);
+    if (result.success) {
       setShowModal(false);
     }
+    return result;
   };
 
   if (shouldDisplayButton) {
