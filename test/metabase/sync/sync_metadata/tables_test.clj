@@ -27,7 +27,7 @@
     (mt/dataset metabase.sync.sync-metadata.tables-test/db-with-some-cruft
       (is (= #{{:name "SOUTH_MIGRATIONHISTORY", :visibility_type :cruft, :initial_sync_status "complete"}
                {:name "ACQUIRED_TOUCANS",       :visibility_type nil,    :initial_sync_status "complete"}}
-             (set (for [table (db/select [Table :name :visibility_type], :db_id (mt/id))]
+             (set (for [table (db/select [Table :name :visibility_type :initial_sync_status], :db_id (mt/id))]
                     (into {} table))))))))
 
 (deftest retire-tables-test
