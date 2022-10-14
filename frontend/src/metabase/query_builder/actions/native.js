@@ -9,7 +9,7 @@ import Utils from "metabase/lib/utils";
 import {
   getTemplateTagsForParameters,
   getTemplateTagParameters,
-} from "metabase/parameters/utils/cards";
+} from "metabase-lib/lib/parameters/utils/template-tags";
 import {
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,

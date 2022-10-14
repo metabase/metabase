@@ -7,12 +7,12 @@ import { IFRAMED, initializeIframeResizer } from "metabase/lib/dom";
 import { parseHashOptions } from "metabase/lib/browser";
 
 import MetabaseSettings from "metabase/lib/settings";
-import { getValuePopulatedParameters } from "metabase/parameters/utils/parameter-values";
 
 import TitleAndDescription from "metabase/components/TitleAndDescription";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
-import LogoBadge from "./LogoBadge";
+import { getValuePopulatedParameters } from "metabase-lib/lib/parameters/utils/parameter-values";
 
+import LogoBadge from "./LogoBadge";
 import "./EmbedFrame.css";
 
 const DEFAULT_OPTIONS = {
