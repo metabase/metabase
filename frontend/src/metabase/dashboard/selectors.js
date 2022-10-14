@@ -4,6 +4,8 @@ import { createSelector } from "reselect";
 import { getMetadata } from "metabase/selectors/metadata";
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 
+import DataApps from "metabase/entities/data-apps";
+
 import {
   getDashboardUiParameters,
   getFilteringParameterValuesMap,
@@ -237,3 +239,14 @@ export const getIsAdditionalInfoVisible = createSelector(
   [getIsEmbedded, getEmbedOptions],
   (isEmbedded, embedOptions) => !isEmbedded || embedOptions.additional_info,
 );
+
+export const getDataApp = (state, routerParams) => {
+  const dataAppId = Number(routerParams.slug);
+  return DataApps.selectors.getObject(state, { entityId: dataAppId });
+};
+
+export const getDataAppNavItem = (state, routerParams) => {
+  const dashboard = getDashboardComplete(state);
+  const dataApp = getDataApp(state, routerParams);
+  return dataApp?.nav_items.find(navItem => navItem.page_id === dashboard.id);
+};
