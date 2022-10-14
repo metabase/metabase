@@ -84,7 +84,7 @@ function mapStateToProps(state) {
   return {
     datasetEditorTab: getDatasetEditorTab(state),
     isMetadataDirty: isResultsMetadataDirty(state),
-    hasResultsMetadata: getResultsMetadata(state) !== null,
+    hasResultsMetadata: Boolean(getResultsMetadata(state)),
   };
 }
 
