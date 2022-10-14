@@ -2,8 +2,6 @@ import React, { useMemo, useCallback } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
-import { isImplicitActionButton } from "metabase/writeback/utils";
-
 import type {
   ActionDashboardCard,
   Dashboard,
@@ -21,7 +19,7 @@ import {
 import { executeRowAction } from "metabase/dashboard/actions";
 import { StyledButton } from "./ActionButton.styled";
 
-import DefaultActionButton from "./DefaultActionButton";
+import LinkButton from "./LinkButton";
 import ImplicitActionButton from "./ImplicitActionButton";
 import ActionForm from "./ActionForm";
 
@@ -38,7 +36,6 @@ function ActionComponent({
   dispatch,
   isSettings,
   settings,
-  getExtraDataForClick,
   onVisualizationClick,
   parameterValues,
 }: ActionProps) {
@@ -80,28 +77,23 @@ function ActionComponent({
     [dashboard, dashcard, dashcardParamValues, dispatch, shouldDisplayButton],
   );
 
-  if (isImplicitActionButton(dashcard)) {
-    return <ImplicitActionButton isSettings={isSettings} settings={settings} />;
-  }
-
-  if (shouldDisplayButton) {
+  if (dashcard.action) {
     return (
-      <DefaultActionButton
+      <ActionForm
         onSubmit={onSubmit}
+        dashcard={dashcard}
         missingParameters={missingParameters}
-        isSettings={isSettings}
-        settings={settings}
-        getExtraDataForClick={getExtraDataForClick}
-        onVisualizationClick={onVisualizationClick}
+        action={dashcard.action as WritebackQueryAction}
+        shouldDisplayButton={shouldDisplayButton}
       />
     );
   }
 
   return (
-    <ActionForm
-      onSubmit={onSubmit}
-      missingParameters={missingParameters}
-      action={dashcard.action as WritebackQueryAction}
+    <LinkButton
+      isSettings={isSettings}
+      settings={settings}
+      onVisualizationClick={onVisualizationClick}
     />
   );
 }
