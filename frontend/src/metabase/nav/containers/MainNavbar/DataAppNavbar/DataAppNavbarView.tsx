@@ -3,6 +3,11 @@ import _ from "underscore";
 
 import type { DataApp, DataAppPage, DataAppNavItem } from "metabase-types/api";
 
+import * as Urls from "metabase/lib/urls";
+import Link from "metabase/core/components/Link";
+import Icon from "metabase/components/Icon";
+import Tooltip from "metabase/components/Tooltip";
+
 import { MainNavbarProps, SelectedItem } from "../types";
 import {
   SidebarContentRoot,
@@ -79,13 +84,18 @@ function DataAppNavbarView({
         {dataApp.nav_items.map(renderNavItem)}
         {pagesWithoutNavItems.map(page => renderPage(page))}
       </ul>
-      <div className="ml-auto">
+      <div className="flex align-center ml-auto">
         <DataAppActionPanel
           dataApp={dataApp}
           onAddData={onAddData}
           onNewPage={onNewPage}
           onEditAppSettings={onEditAppSettings}
         />
+        <Tooltip tooltip={`App elements`}>
+          <Link to={Urls.dataApp(dataApp, { mode: "preview" })}>
+            <Icon name="list" />
+          </Link>
+        </Tooltip>
       </div>
     </div>
   );
