@@ -7,7 +7,7 @@ import Button from "metabase/core/components/Button";
 import { Column } from "metabase-types/types/Dataset";
 import { FieldId } from "metabase-types/types/Field";
 import { ConcreteField } from "metabase-types/types/Query";
-import { keyForColumn } from "metabase-lib/lib/queries/utils/dataset";
+import { getColumnKey } from "metabase-lib/lib/queries/utils/get-column-key";
 import Question from "metabase-lib/lib/Question";
 
 import {
@@ -78,7 +78,7 @@ function ChartSettingsListColumns({
           {
             id: "column_settings",
             props: {
-              initialKey: keyForColumn(column),
+              initialKey: getColumnKey(column),
             },
           },
           targetElement,

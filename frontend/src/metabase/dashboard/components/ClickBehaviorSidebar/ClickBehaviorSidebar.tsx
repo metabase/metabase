@@ -20,8 +20,8 @@ import type {
 import type { Column } from "metabase-types/types/Dataset";
 import { isTableDisplay } from "metabase/lib/click-behavior";
 import { clickBehaviorIsValid } from "metabase-lib/lib/parameters/utils/click-behavior";
-import { keyForColumn } from "metabase-lib/lib/queries/utils/dataset";
 
+import { getColumnKey } from "metabase-lib/lib/queries/utils/get-column-key";
 import { getClickBehaviorForColumn } from "./utils";
 import ClickBehaviorSidebarContent from "./ClickBehaviorSidebarContent";
 import ClickBehaviorSidebarHeader from "./ClickBehaviorSidebarHeader";
@@ -105,7 +105,7 @@ function ClickBehaviorSidebar({
           click_behavior: nextClickBehavior,
         });
       } else {
-        onUpdateDashCardColumnSettings(id, keyForColumn(selectedColumn), {
+        onUpdateDashCardColumnSettings(id, getColumnKey(selectedColumn), {
           click_behavior: nextClickBehavior,
         });
       }

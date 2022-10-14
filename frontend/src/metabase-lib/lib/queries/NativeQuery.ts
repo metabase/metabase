@@ -25,6 +25,7 @@ import Variable from "metabase-lib/lib/variables/Variable";
 import TemplateTagVariable from "metabase-lib/lib/variables/TemplateTagVariable";
 import { createTemplateTag } from "metabase-lib/lib/queries/TemplateTag";
 import ValidationError from "metabase-lib/lib/ValidationError";
+import { isFieldReference } from "metabase-lib/lib/references";
 import Dimension, { FieldDimension, TemplateTagDimension } from "../Dimension";
 import DimensionOptions from "../DimensionOptions";
 
@@ -561,9 +562,7 @@ export default class NativeQuery extends AtomicQuery {
     const templateTags = this.templateTags();
     return templateTags
       .filter(
-        tag =>
-          tag.type === "dimension" &&
-          FieldDimension.isFieldClause(tag.dimension),
+        tag => tag.type === "dimension" && isFieldReference(tag.dimension),
       )
       .map(tag => {
         const dimension = FieldDimension.parseMBQL(

@@ -7,7 +7,7 @@ import type {
 } from "metabase-types/api";
 import type { Column } from "metabase-types/types/Dataset";
 import { hasActionsMenu } from "metabase/lib/click-behavior";
-import { keyForColumn } from "metabase-lib/lib/queries/utils/dataset";
+import { getColumnKey } from "metabase-lib/lib/queries/utils/get-column-key";
 
 type ClickBehaviorOption = {
   value: ClickBehaviorType | "menu";
@@ -47,7 +47,7 @@ export function getClickBehaviorForColumn(
   return getIn(dashcard, [
     "visualization_settings",
     "column_settings",
-    keyForColumn(column),
+    getColumnKey(column),
     "click_behavior",
   ]);
 }

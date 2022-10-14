@@ -6,11 +6,14 @@ export type RowValue = string | number | null | boolean;
 export type RowValues = RowValue[];
 
 export interface DatasetColumn {
+  id?: number;
   display_name: string;
   source: string;
   name: string;
   remapped_to_column?: DatasetColumn;
   unit?: DatetimeUnit;
+  field_ref?: any;
+  expression_name?: any;
 }
 
 export interface DatasetData {

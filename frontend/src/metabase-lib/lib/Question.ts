@@ -22,8 +22,6 @@ import {
   AggregationDimension,
   FieldDimension,
 } from "metabase-lib/lib/Dimension";
-import Mode from "metabase-lib/lib/Mode";
-import { isStandard } from "metabase-lib/lib/queries/utils/filter";
 import { isFK } from "metabase-lib/lib/types/utils/isa";
 import { memoizeClass, sortObject } from "metabase-lib/lib/utils";
 
@@ -81,6 +79,7 @@ import {
   ALERT_TYPE_ROWS,
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/lib/Alert";
+import { getBaseDimensionReference } from "metabase-lib/lib/references";
 
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
@@ -713,7 +712,7 @@ class QuestionInner {
             const dimension = query.columnDimensionWithName(name);
             return {
               name: name,
-              field_ref: dimension.baseDimension().mbql(),
+              field_ref: getBaseDimensionReference(dimension.mbql()),
               enabled: true,
             };
           }),
