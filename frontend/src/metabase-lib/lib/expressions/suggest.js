@@ -1,12 +1,5 @@
 import _ from "underscore";
 
-import {
-  getDimensionName,
-  formatDimensionName,
-  formatMetricName,
-  formatSegmentName,
-} from "../expressions";
-
 import { partialMatch, enclosingFunction } from "./completer";
 
 import { getHelpText } from "./helper-text-strings";
@@ -18,6 +11,12 @@ import {
   getMBQLName,
   EDITOR_FK_SYMBOLS,
 } from "./config";
+import {
+  getDimensionName,
+  formatDimensionName,
+  formatMetricName,
+  formatSegmentName,
+} from "./index";
 
 const suggestionText = func => {
   const { displayName, args } = func;

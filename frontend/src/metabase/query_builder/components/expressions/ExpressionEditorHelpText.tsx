@@ -2,11 +2,11 @@ import React from "react";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
-import { getHelpDocsUrl } from "metabase/lib/expressions/helper-text-strings";
-import { HelpText } from "metabase/lib/expressions/types";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Icon from "metabase/components/Icon";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
+import { HelpText } from "metabase-lib/lib/expressions/types";
+import { getHelpDocsUrl } from "metabase-lib/lib/expressions/helper-text-strings";
 
 interface ExpressionEditorHelpTextProps {
   helpText: HelpText;

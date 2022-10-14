@@ -1,29 +1,16 @@
 import { t } from "ttag";
 
+import { LOGICAL_OPS, COMPARISON_OPS, resolve } from "./resolver";
+import { parse, lexify, compile, ResolverError } from "./pratt";
+import { useShorthands, adjustCase, adjustOptions } from "./recursive-parser";
+import { tokenize, TOKEN, OPERATOR } from "./tokenizer";
 import {
   MBQL_CLAUSES,
   getMBQLName,
   parseDimension,
   parseMetric,
   parseSegment,
-} from "metabase/lib/expressions";
-import {
-  LOGICAL_OPS,
-  COMPARISON_OPS,
-  resolve,
-} from "metabase/lib/expressions/resolver";
-import {
-  parse,
-  lexify,
-  compile,
-  ResolverError,
-} from "metabase/lib/expressions/pratt";
-import {
-  useShorthands,
-  adjustCase,
-  adjustOptions,
-} from "metabase/lib/expressions/recursive-parser";
-import { tokenize, TOKEN, OPERATOR } from "metabase/lib/expressions/tokenizer";
+} from "./";
 
 // e.g. "COUNTIF(([Total]-[Tax] <5" returns 2 (missing parentheses)
 export function countMatchingParentheses(tokens) {

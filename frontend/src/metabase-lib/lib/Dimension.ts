@@ -2,6 +2,7 @@
 // @ts-nocheck
 import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
+import { isa } from "cljs/metabase.types";
 import { stripId, FK_SYMBOL } from "metabase/lib/formatting";
 import {
   Field as AbstractField,
@@ -12,8 +13,7 @@ import {
 } from "metabase-types/types/Query";
 import { VariableTarget } from "metabase-types/types/Parameter";
 import { IconName } from "metabase-types/types";
-import { infer, MONOTYPE } from "metabase/lib/expressions/typeinferencer";
-import { isa } from "cljs/metabase.types";
+import { infer, MONOTYPE } from "metabase-lib/lib/expressions/typeinferencer";
 import { TYPE } from "metabase-lib/lib/types/constants";
 import {
   DATETIME_UNITS,

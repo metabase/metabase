@@ -18,7 +18,7 @@ import {
   getExpressionName,
   formatStringLiteral,
   hasOptions,
-} from ".";
+} from "./index";
 
 export { DISPLAY_QUOTES, EDITOR_QUOTES } from "./config";
 

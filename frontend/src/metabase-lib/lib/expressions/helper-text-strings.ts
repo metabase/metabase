@@ -1,6 +1,6 @@
 import { t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
-import { getExpressionName } from "metabase/lib/expressions/config";
+import { getExpressionName } from "./config";
 import { HelpText } from "./types";
 
 const helperTextStrings: HelpText[] = [
