@@ -4,12 +4,15 @@ import {
   SAMPLE_DATABASE,
 } from "__support__/sample_database_fixture";
 import { ParameterDimensionTarget } from "metabase-types/types/Parameter";
+import { SavedCard } from "metabase-types/types/Card";
+import Database from "metabase-lib/lib/metadata/Database";
 import {
   getParameterTargetField,
   isDimensionTarget,
   isVariableTarget,
   getTemplateTagFromTarget,
-} from "./targets";
+  getTargetFieldFromCard,
+} from "metabase-lib/lib/parameters/utils/targets";
 
 describe("parameters/utils/targets", () => {
   describe("isDimensionTarget", () => {
@@ -124,6 +127,40 @@ describe("parameters/utils/targets", () => {
         expect.objectContaining({
           id: PRODUCTS.CATEGORY.id,
         }),
+      );
+    });
+  });
+
+  describe("getTargetFieldFromCard", () => {
+    const target = [
+      "dimension",
+      ["field", PRODUCTS.CATEGORY.id, null],
+    ] as ParameterDimensionTarget;
+
+    it("should return null when given a card without a `dataset_query`", () => {
+      const card = {
+        id: 1,
+      } as SavedCard;
+
+      expect(getTargetFieldFromCard(target, card, metadata)).toBe(null);
+    });
+
+    it("should return the field that maps to the mapping target", () => {
+      const field = PRODUCTS.CATEGORY;
+
+      const card = {
+        id: 1,
+        dataset_query: {
+          type: "query",
+          database: (SAMPLE_DATABASE as Database).id,
+          query: {
+            "source-table": PRODUCTS.id,
+          },
+        },
+      } as SavedCard;
+
+      expect(getTargetFieldFromCard(target, card, metadata)).toEqual(
+        expect.objectContaining({ id: field.id }),
       );
     });
   });

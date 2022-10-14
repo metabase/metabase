@@ -228,10 +228,12 @@
   ((resolve 'metabase.driver.sql.query-processor/current-datetime-honeysql-form) (mdb.connection/db-type)))
 
 (defn- add-created-at-timestamp [obj & _]
-  (assoc obj :created_at (now)))
+  (cond-> obj
+    (not (:created_at obj)) (assoc :created_at (now))))
 
 (defn- add-updated-at-timestamp [obj & _]
-  (assoc obj :updated_at (now)))
+  (cond-> obj
+    (not (:updated_at obj)) (assoc :updated_at (now))))
 
 (models/add-property! :timestamped?
   :insert (comp add-created-at-timestamp add-updated-at-timestamp)
