@@ -28,7 +28,10 @@
 
 (defn- digits-after-decimal
   [value]
-  (let [[_n d] (str/split (str value) #"[^\d*]")]
+  (let [val-string (if (instance? java.math.BigDecimal value)
+                     (.toPlainString value)
+                     (str value))
+        [_n d] (str/split val-string #"[^\d*]")]
     (count d)))
 
 (defn number-formatter
@@ -52,36 +55,34 @@
                                                                     (:type/Currency global-settings))
                                                                   (:type/Number global-settings)
                                                                   column-settings)
+        integral?       (isa? (or effective_type base_type) :type/Integer)
+        percent?        (= number-style "percent")
+        scientific?     (= number-style "scientific")
         [decimal grouping] (or number-separators ".,")
         symbols            (doto (DecimalFormatSymbols.)
                              (cond-> decimal (.setDecimalSeparator decimal))
                              (cond-> grouping (.setGroupingSeparator grouping)))
-        base               (if (= number-style "scientific") "0" "#,##0")
-        integral?          (isa? (or effective_type base_type) :type/Integer)
-        decimal-digits     (if currency?
-                             (get-in currency/currency [(keyword (or currency "USD")) :decimal_digits])
-                             0)]
+        base               (if (= number-style "scientific") "0" "#,##0")]
     (fn [value]
-      (let [decimals-in-value (cond-> (digits-after-decimal value)
-                                (= number-style "percent") (- 2))
-            fmt-str (cond-> (cond
-                              decimals
-                              (if (zero? decimals)
-                                base
-                                (apply str base "." (repeat decimals "0")))
-
-                              (and (> decimals-in-value 0) (not currency?) (not integral?))
-                              (apply str base "." (repeat decimals-in-value "0"))
-
-                              (and integral? (not currency?))
-                              base
-
-                              :else
-                              (apply str base (when (> decimal-digits 0) ".") (repeat decimal-digits "0")))
-                      (= number-style "scientific") (str "E0")
-                      (= number-style "percent")    (str "%"))
-            fmtr (DecimalFormat. fmt-str symbols)]
-        (if (number? value)
+      (if (number? value)
+        (let [scaled-value (* value (or scale 1))
+              decimals-in-value (digits-after-decimal (if (= number-style "percent")
+                                                        (* 100 scaled-value)
+                                                        scaled-value))
+              decimal-digits (cond
+                               integral? 0
+                               currency? (get-in currency/currency [(keyword (or currency "USD")) :decimal_digits])
+                               decimals decimals
+                               :else (if (and scaled-value
+                                              (>= scaled-value 1))
+                                       (min 2 decimals-in-value)
+                                       decimals-in-value))
+            fmt-str (cond-> base
+                      (not (zero? decimal-digits)) (str "." (apply str (repeat decimal-digits "0")))
+                      scientific? (str "E0")
+                      percent?    (str "%"))
+            _ (println "val:" value "decimals-in-value: " decimals-in-value "decimal-digits: " decimal-digits "fmt-str: " fmt-str)
+              fmtr (DecimalFormat. fmt-str symbols)]
           (NumericWrapper.
            (str (when prefix prefix)
                 (when (and currency? (or (nil? currency-style)
@@ -89,11 +90,11 @@
                   (get-in currency/currency [(keyword (or currency "USD")) :symbol]))
                 (when (and currency? (= currency-style "code"))
                   (str (get-in currency/currency [(keyword (or currency "USD")) :code]) \space))
-                (.format fmtr (* value (or scale 1)))
+                (.format fmtr scaled-value)
                 (when (and currency? (= currency-style "name"))
                   (str \space (get-in currency/currency [(keyword (or currency "USD")) :name_plural])))
-                (when suffix suffix)))
-          value)))))
+                (when suffix suffix))))
+        value))))
 
 (s/defn format-number :- NumericWrapper
   "Format a number `n` and return it as a NumericWrapper; this type is used to do special formatting in other

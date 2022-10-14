@@ -14,13 +14,14 @@
   (let [value 12345.5432
         fmt   (partial format value)]
     (testing "Regular Number formatting"
-      (is (= "12,345.5432" (fmt nil)))
-      (is (= "12*345^5432" (fmt {::mb.viz/number-separators "^*"})))
-      (is (= "prefix12,345.5432suffix" (fmt {::mb.viz/prefix "prefix"
+      (is (= "12,345.54" (fmt nil)))
+      (is (= "12*345^54" (fmt {::mb.viz/number-separators "^*"})))
+      (is (= "prefix12,345.54suffix" (fmt {::mb.viz/prefix "prefix"
                                              ::mb.viz/suffix "suffix"})))
       (is (= "12,345.54" (fmt {::mb.viz/decimals 2})))
       (is (= "12,345.5432000" (fmt {::mb.viz/decimals 7})))
-      (is (= "12,346" (fmt {::mb.viz/decimals 0}))))
+      (is (= "12,346" (fmt {::mb.viz/decimals 0})))
+      (is (= "2" (format 2 nil))))
     (testing "Currency"
       (testing "defaults to USD and two decimal places and symbol"
         (is (= "$12,345.54" (fmt {::mb.viz/number-style "currency"}))))
@@ -44,7 +45,7 @@
                                 ::mb.viz/currency-style style}))
               style))))
     (testing "scientific notation"
-      (is (= "1.2346E4" (fmt {::mb.viz/number-style "scientific"})))
+      (is (= "1.23E4" (fmt {::mb.viz/number-style "scientific"})))
       (is (= "1.23E4" (fmt {::mb.viz/number-style "scientific"
                             ::mb.viz/decimals     2})))
       (is (= "1.235E4" (fmt {::mb.viz/number-style "scientific"
@@ -58,7 +59,10 @@
       (is (= "1.234.554,3200%"
              (fmt {::mb.viz/number-style      "percent"
                    ::mb.viz/decimals          4
-                   ::mb.viz/number-separators ",."}))))
+                   ::mb.viz/number-separators ",."})))
+      (is (= "10%" (format 0.1 {::mb.viz/number-style "percent"})))
+      (is (= "1%" (format 0.01 {::mb.viz/number-style "percent"})))
+      (is (= "0.00001%" (format 0.0000001 {::mb.viz/number-style "percent"}))))
     (testing "Column Settings"
       (letfn [(fmt-with-type [type value]
                 (let [fmt-fn (common/number-formatter {:id 1 :effective_type type}
@@ -68,10 +72,11 @@
                   (str (fmt-fn value))))]
         (is (= "3" (fmt-with-type :type/Integer 3)))
         (is (= "3" (fmt-with-type :type/Integer 3.0)))
-        (is (= "3" (fmt-with-type :type/Decimal 3)))
-        (is (= "3.0" (fmt-with-type :type/Decimal 3.0)))
-        (is (= "3.1" (fmt-with-type :type/Decimal 3.1)))
-        (is (= "3.01" (fmt-with-type :type/Decimal 3.01)))))
+        (is (= "3.00" (fmt-with-type :type/Decimal 3)))
+        (is (= "3.00" (fmt-with-type :type/Decimal 3.0)))
+        (is (= "3.10" (fmt-with-type :type/Decimal 3.1)))
+        (is (= "3.01" (fmt-with-type :type/Decimal 3.010)))
+        (is (= "0.25" (fmt-with-type :type/Decimal 0.254)))))
     (testing "Does not throw on nils"
         (is (nil?
              ((common/number-formatter {:id 1}
