@@ -6,6 +6,8 @@ import _ from "underscore";
 import { getMainElement } from "metabase/lib/dom";
 
 import DashboardHeader from "metabase/dashboard/containers/DashboardHeader";
+import DataAppNavbarContainer from "metabase/nav/containers/MainNavbar/DataAppNavbar";
+
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import { getValuePopulatedParameters } from "metabase-lib/lib/parameters/utils/parameter-values";
@@ -89,6 +91,7 @@ class Dashboard extends Component {
     }).isRequired,
     closeSidebar: PropTypes.func.isRequired,
     embedOptions: PropTypes.object,
+    params: PropTypes.object,
   };
 
   static defaultProps = {
@@ -217,6 +220,7 @@ class Dashboard extends Component {
       setEditingParameter,
       isHeaderVisible,
       embedOptions,
+      params,
     } = this.props;
 
     const { error, isParametersWidgetSticky } = this.state;
@@ -262,29 +266,41 @@ class Dashboard extends Component {
         {() => (
           <DashboardStyled>
             {isHeaderVisible && (
-              <HeaderContainer
-                isFullscreen={isFullscreen}
-                isNightMode={shouldRenderAsNightMode}
-                isDataApp={isDataApp}
-              >
-                <DashboardHeader
-                  {...this.props}
-                  onEditingChange={this.setEditing}
-                  setDashboardAttribute={this.setDashboardAttribute}
-                  addParameter={addParameter}
-                  parametersWidget={parametersWidget}
-                  onSharingClick={this.onSharingClick}
-                />
-
-                {shouldRenderParametersWidgetInEditMode && (
-                  <ParametersWidgetContainer
-                    data-testid="edit-dashboard-parameters-widget-container"
-                    isEditing={isEditing}
-                  >
-                    {parametersWidget}
-                  </ParametersWidgetContainer>
+              <>
+                {isDataApp && !isEditing && (
+                  <div className="bg-white border-bottom py1">
+                    <div className="px2">
+                      <DataAppNavbarContainer
+                        params={params}
+                        selectedItems={[]}
+                      />
+                    </div>
+                  </div>
                 )}
-              </HeaderContainer>
+                <HeaderContainer
+                  isFullscreen={isFullscreen}
+                  isNightMode={shouldRenderAsNightMode}
+                  isDataApp={isDataApp}
+                >
+                  <DashboardHeader
+                    {...this.props}
+                    onEditingChange={this.setEditing}
+                    setDashboardAttribute={this.setDashboardAttribute}
+                    addParameter={addParameter}
+                    parametersWidget={parametersWidget}
+                    onSharingClick={this.onSharingClick}
+                  />
+
+                  {shouldRenderParametersWidgetInEditMode && (
+                    <ParametersWidgetContainer
+                      data-testid="edit-dashboard-parameters-widget-container"
+                      isEditing={isEditing}
+                    >
+                      {parametersWidget}
+                    </ParametersWidgetContainer>
+                  )}
+                </HeaderContainer>
+              </>
             )}
 
             <DashboardBody isEditingOrSharing={isEditing || isSharing}>

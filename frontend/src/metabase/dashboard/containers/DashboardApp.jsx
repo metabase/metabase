@@ -9,7 +9,6 @@ import { t } from "ttag";
 import title from "metabase/hoc/Title";
 import favicon from "metabase/hoc/Favicon";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
-import DataAppNavbarContainer from "metabase/nav/containers/MainNavbar/DataAppNavbar";
 
 import Dashboard from "metabase/dashboard/components/Dashboard/Dashboard";
 import Toaster from "metabase/components/Toaster";
@@ -114,13 +113,7 @@ const mapDispatchToProps = {
 const DashboardApp = props => {
   const options = parseHashOptions(window.location.hash);
 
-  const {
-    isRunning,
-    isLoadingComplete,
-    dashboard,
-    focusedActionWithMissingParameters,
-    params,
-  } = props;
+  const { isRunning, isLoadingComplete, dashboard } = props;
 
   const [editingOnLoad] = useState(options.edit);
   const [addCardOnLoad] = useState(options.add && parseInt(options.add));
@@ -169,13 +162,6 @@ const DashboardApp = props => {
 
   return (
     <DataAppContext>
-      {dashboard && dashboard.is_app_page && (
-        <div className="bg-white border-bottom py1">
-          <div className="px2">
-            <DataAppNavbarContainer params={params} selectedItems={[]} />
-          </div>
-        </div>
-      )}
       <div className="shrink-below-content-size full-height">
         <Dashboard
           editingOnLoad={editingOnLoad}
