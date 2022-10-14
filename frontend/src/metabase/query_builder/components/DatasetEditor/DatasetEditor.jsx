@@ -84,7 +84,7 @@ function mapStateToProps(state) {
   return {
     datasetEditorTab: getDatasetEditorTab(state),
     isMetadataDirty: isResultsMetadataDirty(state),
-    hasResultsMetadata: Boolean(getResultsMetadata(state)),
+    resultsMetadata: getResultsMetadata(state),
   };
 }
 
@@ -434,7 +434,7 @@ function DatasetEditor(props) {
                 id: "metadata",
                 name: t`Metadata`,
                 icon: "label",
-                disabled: resultsMetadata === null,
+                disabled: !resultsMetadata,
               },
             ]}
           />
