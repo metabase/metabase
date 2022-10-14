@@ -9,12 +9,6 @@ import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 
 import { MainNavbarProps, SelectedItem } from "../types";
-import {
-  SidebarContentRoot,
-  SidebarHeading,
-  SidebarHeadingWrapper,
-  SidebarSection,
-} from "../MainNavbar.styled";
 import DataAppActionPanel from "./DataAppActionPanel";
 
 import DataAppPageSidebarLink from "./DataAppPageSidebarLink";
@@ -92,7 +86,7 @@ function DataAppNavbarView({
           onEditAppSettings={onEditAppSettings}
         />
         <Tooltip tooltip={`App elements`}>
-          <Link to={Urls.dataApp(dataApp, { mode: "preview" })}>
+          <Link to={Urls.dataApp(dataApp, { mode: "preview" })} className="ml2">
             <Icon name="list" />
           </Link>
         </Tooltip>
