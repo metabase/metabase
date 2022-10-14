@@ -4,24 +4,14 @@
   (:require [clojure.data :as data]
             [clojure.set :as set]
             [clojure.tools.logging :as log]
-            [metabase.models.app.graph :as app.graph]
             [metabase.models.collection-permission-graph-revision :as c-perm-revision
              :refer [CollectionPermissionGraphRevision]]
             [metabase.models.collection.graph :as graph]
             [metabase.models.permissions :as perms]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.util.i18n :as i18n]
-            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
-
-(def ^:private GroupPermissionsGraph
-  "collection-id -> status"
-  {su/IntGreaterThanZero app.graph/RootPermissions}) ; be present, which is why it's *optional*
-
-(def ^:private PermissionsGraph
-  {:revision s/Int
-   :groups   {su/IntGreaterThanZero GroupPermissionsGraph}})
 
 (defn- check-advanced-permissions []
   (log/fatal "checking advanced permsissions")
@@ -47,7 +37,7 @@
   [base override]
   (merge-with merge base override))
 
-(s/defn graph :- PermissionsGraph
+(s/defn graph :- graph/PermissionsGraph
   "Returns the app permission graph. Throws an exception if the
   advanced-permissions feature is not enabled."
   []
@@ -56,7 +46,7 @@
    (let [collection-id->app-id (set/map-invert (db/select-id->field :collection_id 'App))]
      (-> collection-id->app-id
          keys
-         graph/collection-permission-graph
+         (graph/collection-permission-graph :apps)
          (update :groups replace-collection-ids collection-id->app-id)))))
 
 (defn update-collection-graph!
@@ -78,21 +68,21 @@
       (db/transaction
         (doseq [[group-id new-group-perms] changes
                 [collection-id new-perms] new-group-perms]
-          (graph/update-collection-permissions! nil group-id collection-id new-perms))
-       (perms/save-perms-revision! CollectionPermissionGraphRevision (:revision old-graph)
-                                   (assoc old-graph :namespace nil) changes)))))
+          (graph/update-collection-permissions! :apps group-id collection-id new-perms))
+        (perms/save-perms-revision! CollectionPermissionGraphRevision (:revision old-graph)
+                                    (assoc old-graph :namespace nil) changes)))))
 
-(s/defn update-graph! :- PermissionsGraph
+(s/defn update-graph! :- graph/PermissionsGraph
   "Updates the app permissions according to `new-graph` and returns the
   resulting graph as read from the database. Throws an exception if the
   advanced-permissions feature is not enabled."
-  [new-graph :- PermissionsGraph]
+  [new-graph :- graph/PermissionsGraph]
   (check-advanced-permissions)
   (db/transaction
     (let [{:keys [revision groups]} new-graph
           app-id->collection-id (db/select-id->field :collection_id 'App)
           collection-ids (vals app-id->collection-id)
-          old-graph (graph/graph)
+          old-graph (graph/graph :apps)
           new-graph (-> old-graph
                         (assoc :revision revision)
                         (update :groups update-vals (fn [group-permissions]

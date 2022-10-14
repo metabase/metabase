@@ -29,7 +29,7 @@
   {(s/optional-key :root) CollectionPermissions   ; when doing a delta between old graph and new graph root won't always
    su/IntGreaterThanZero  CollectionPermissions}) ; be present, which is why it's *optional*
 
-(def ^:private PermissionsGraph
+(def PermissionsGraph
   {:revision s/Int
    :groups   {su/IntGreaterThanZero GroupPermissionsGraph}})
 

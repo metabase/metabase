@@ -27,19 +27,18 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 "app/graph"))))))
 
-    (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp* [Collection [_ {:location "/"}]
-                      Collection [{app-coll-id :id} {:location "/", :namespace :apps}]
-                      App [{app-id :id} {:collection_id app-coll-id}]
-                      PermissionsGroup [{group-id :id}]]
-        (testing "All users' right to root collection is respected"
-          (let [group-perms (:groups (mt/user-http-request :crowberto :get 200 "app/graph"))]
-            (is (partial= {(:id (perms-group/admin)) {app-id "write"}
-                           (:id (perms-group/all-users)) {app-id "none"}
-                           group-id {app-id "none"}}
-                          group-perms))
-            (is (= #{app-id} (into #{} (mapcat keys) (vals group-perms)))
-                "Shouldn't confuse collection IDs and app IDs")))))))
+    (mt/with-temp* [Collection [_ {:location "/"}]
+                    Collection [{app-coll-id :id} {:location "/", :namespace :apps}]
+                    App [{app-id :id} {:collection_id app-coll-id}]
+                    PermissionsGroup [{group-id :id}]]
+      (testing "All users' right to root collection is respected"
+        (let [group-perms (:groups (mt/user-http-request :crowberto :get 200 "app/graph"))]
+          (is (partial= {(:id (perms-group/admin)) {app-id "write"}
+                         (:id (perms-group/all-users)) {app-id "none"}
+                         group-id {app-id "none"}}
+                        group-perms))
+          (is (= #{app-id} (into #{} (mapcat keys) (vals group-perms)))
+              "Shouldn't confuse collection IDs and app IDs"))))))
 
 (deftest graph-update-test
   (testing "PUT /api/app/graph works only with advanced permissions"
@@ -53,19 +52,20 @@
                     App [{app-id :id} {:collection_id app-coll-id}]
                     PermissionsGroup [{group-id :id}]]
       (testing "PUT /api/app/graph\n"
-        (testing "Should be able to update the permissions graph for apps"
+        (testing "Should be able to update the permissions graph for apps\n"
           (let [initial-graph (mt/user-http-request :crowberto :get 200 "app/graph")
                 updated-graph (assoc-in initial-graph [:groups group-id app-id] "read")]
-            (is (partial= {(:id (perms-group/admin)) {app-id "write"}
-                           (:id (perms-group/all-users)) {app-id "write"}
-                           group-id {app-id "none"}}
-                          (:groups initial-graph))
-                "Unexpected initial state")
+            (testing "Initial assumptions should hold"
+              (is (partial= {(:id (perms-group/admin)) {app-id "write"}
+                             (:id (perms-group/all-users)) {app-id "none"}
+                             group-id {app-id "none"}}
+                            (:groups initial-graph))
+                  "Unexpected initial state"))
 
-            (testing "have to be a superuser"
+            (testing "Have to be a superuser"
               (is (= "You don't have permissions to do that."
                      (mt/user-http-request :rasta :put 403 "app/graph" updated-graph))))
 
-            (testing "superuser can update"
+            (testing "Superuser can update"
               (is (= (:groups updated-graph)
                      (:groups (mt/user-http-request :crowberto :put 200 "app/graph" updated-graph)))))))))))
