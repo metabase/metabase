@@ -250,3 +250,6 @@ export const getDataAppNavItem = (state, routerParams) => {
   const dataApp = getDataApp(state, routerParams);
   return dataApp?.nav_items.find(navItem => navItem.page_id === dashboard.id);
 };
+
+export const getPageTitleTemplateChange = state =>
+  state.dashboard.titleTemplateChange;
