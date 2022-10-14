@@ -20,6 +20,7 @@ import { calcInitialEditorHeight } from "metabase/query_builder/components/Nativ
 import { setDatasetEditorTab } from "metabase/query_builder/actions";
 import {
   getDatasetEditorTab,
+  getResultsMetadata,
   isResultsMetadataDirty,
 } from "metabase/query_builder/selectors";
 
@@ -51,6 +52,7 @@ const propTypes = {
   question: PropTypes.object.isRequired,
   datasetEditorTab: PropTypes.oneOf(["query", "metadata"]).isRequired,
   metadata: PropTypes.object,
+  hasResultsMetadata: PropTypes.bool.isRequired,
   isMetadataDirty: PropTypes.bool.isRequired,
   result: PropTypes.object,
   height: PropTypes.number,
@@ -82,6 +84,7 @@ function mapStateToProps(state) {
   return {
     datasetEditorTab: getDatasetEditorTab(state),
     isMetadataDirty: isResultsMetadataDirty(state),
+    hasResultsMetadata: Boolean(getResultsMetadata(state)),
   };
 }
 
@@ -170,6 +173,7 @@ function DatasetEditor(props) {
     question: dataset,
     datasetEditorTab,
     result,
+    hasResultsMetadata,
     metadata,
     isMetadataDirty,
     height,
@@ -425,7 +429,12 @@ function DatasetEditor(props) {
             onChange={onChangeEditorTab}
             options={[
               { id: "query", name: t`Query`, icon: "notebook" },
-              { id: "metadata", name: t`Metadata`, icon: "label" },
+              {
+                id: "metadata",
+                name: t`Metadata`,
+                icon: "label",
+                disabled: !hasResultsMetadata,
+              },
             ]}
           />
         }

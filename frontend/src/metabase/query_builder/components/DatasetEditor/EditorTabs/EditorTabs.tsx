@@ -10,6 +10,7 @@ type Props = {
     id: string;
     name: string;
     icon: string;
+    disabled?: boolean;
   }[];
   onChange: (optionId: string) => void;
 };
@@ -25,7 +26,12 @@ function EditorTabs({ currentTab, options, onChange, ...props }: Props) {
         const labelId = `${id}-label`;
         return (
           <li key={option.id}>
-            <Tab id={labelId} htmlFor={id} selected={selected}>
+            <Tab
+              id={labelId}
+              htmlFor={id}
+              selected={selected}
+              disabled={option.disabled}
+            >
               <Icon name={option.icon} />
               <RadioInput
                 id={id}
@@ -36,6 +42,8 @@ function EditorTabs({ currentTab, options, onChange, ...props }: Props) {
                   onChange(option.id);
                 }}
                 aria-labelledby={labelId}
+                disabled={option.disabled}
+                data-testid={id}
               />
               <span data-testid={`${id}-name`}>{option.name}</span>
             </Tab>
