@@ -19,11 +19,6 @@ export const Root = styled.div<{ isQueryBuilder?: boolean }>`
     css`
       margin: 2rem 6rem;
     `}
-  td {
-    max-width: 200px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
 `;
 
 const standardTableStyleReset = css`
