@@ -1,14 +1,14 @@
 import { createContext, useContext } from "react";
 import _ from "lodash";
 
-import { Column } from "metabase-types/types/Dataset";
+import type { Column, Value } from "metabase-types/types/Dataset";
 
 type FieldName = string;
 type CardName = string;
 
-type ObjectDetailField = {
+export type ObjectDetailField = {
   column: Column;
-  value: unknown;
+  value: Value;
 };
 
 export type FormattedObjectDetail = Record<FieldName, ObjectDetailField>;

@@ -2,9 +2,13 @@ import _ from "lodash";
 import { getIn } from "icepick";
 import { t } from "ttag";
 
-import { Dataset } from "metabase-types/types/Dataset";
+import type { Dataset } from "metabase-types/types/Dataset";
 
-import { DataAppContextType, FormattedObjectDetail } from "./DataAppContext";
+import type {
+  DataAppContextType,
+  FormattedObjectDetail,
+  ObjectDetailField,
+} from "./DataAppContext";
 
 export function turnRawDataIntoObjectDetail({ data }: Dataset) {
   const objectDetail: FormattedObjectDetail = {};
@@ -38,6 +42,17 @@ function getContextPath(accessorString: string) {
 
 const PARAMETER_ACCESSOR_REGEXP = /{{(.*?)}}/m;
 
+function getTemplateParameterDisplayValue(
+  templateParameter?: ObjectDetailField,
+) {
+  const isLoading = !templateParameter;
+  if (isLoading) {
+    return t`Loading…`;
+  }
+  const missingValue = templateParameter.value === null;
+  return missingValue ? t`N/A` : String(templateParameter.value);
+}
+
 /**
  * Takes a string and replaces all instances of {{parameterName}} with the value of the parameter
  *
@@ -60,10 +75,10 @@ export function formatDataAppString(
   const [parameterAccessor] = match;
   let formattedText = text;
   const path = getContextPath(parameterAccessor);
-  const parameter = getIn(context, path);
+  const parameter: ObjectDetailField = getIn(context, path);
   formattedText = formattedText.replace(
     parameterAccessor,
-    parameter?.value ? parameter.value : t`Loading…`,
+    getTemplateParameterDisplayValue(parameter),
   );
   return formatDataAppString(formattedText, context);
 }
