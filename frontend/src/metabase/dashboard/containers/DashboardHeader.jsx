@@ -135,7 +135,8 @@ class DashboardHeader extends Component {
   }
 
   async onSave() {
-    await this.props.saveDashboardAndCards(this.props.dashboard.id);
+    const { dashboard, location, params, saveDashboardAndCards } = this.props;
+    await saveDashboardAndCards(dashboard.id, { location, params });
     this.onDoneEditing();
   }
 

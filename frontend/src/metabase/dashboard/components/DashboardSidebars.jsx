@@ -35,6 +35,7 @@ DashboardSidebars.propTypes = {
   isFullscreen: PropTypes.bool.isRequired,
   onCancel: PropTypes.func.isRequired,
   params: PropTypes.object,
+  location: PropTypes.object,
   sidebar: PropTypes.shape({
     name: PropTypes.string,
     props: PropTypes.object,
@@ -62,6 +63,7 @@ export function DashboardSidebars({
   setParameterFilteringParameters,
   isFullscreen,
   onCancel,
+  location,
   params,
   sidebar,
   closeSidebar,
@@ -157,6 +159,8 @@ export function DashboardSidebars({
       return (
         <DashboardInfoSidebar
           dashboard={dashboard}
+          location={location}
+          params={params}
           saveDashboardAndCards={saveDashboardAndCards}
           setDashboardAttribute={setDashboardAttribute}
         />
