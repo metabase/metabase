@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from "react";
+import { t } from "ttag";
 import _ from "lodash";
 
 import EditableText, {
@@ -32,6 +33,8 @@ function DataAppPageTitle({
 }: DataAppPageTitleProps) {
   const [selectedCardName, setSelectedCardName] = useState("");
 
+  const hasSuggestions = Object.keys(suggestions).length > 0;
+
   const onSelect = useCallback(
     (columnName: string) => {
       const token = `{{ data.${selectedCardName}.${columnName} }}`;
@@ -52,8 +55,15 @@ function DataAppPageTitle({
             onChange={onChange}
           />
           {isEditing && (
-            <IconButton onClick={handleShowPopover}>
-              <Icon name="database" />
+            <IconButton onClick={handleShowPopover} disabled={!hasSuggestions}>
+              <Icon
+                name="database"
+                tooltip={
+                  hasSuggestions
+                    ? null
+                    : t`Page should have an object detail card to reference data`
+                }
+              />
             </IconButton>
           )}
         </Root>

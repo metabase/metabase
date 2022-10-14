@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import Icon from "metabase/components/Icon";
@@ -11,11 +12,22 @@ export const IconButton = styled(IconButtonWrapper)`
     color: ${color("brand-light")};
   }
 
-  &:hover {
-    ${Icon.Root} {
-      color: ${color("brand")};
-    }
-  }
+  ${props =>
+    props.disabled &&
+    css`
+      opacity: 0.5;
+      cursor: not-allowed;
+    `}
+
+  ${props =>
+    !props.disabled &&
+    css`
+      &:hover {
+        ${Icon.Root} {
+          color: ${color("brand")};
+        }
+      }
+    `}
 `;
 
 export const Root = styled.div`
