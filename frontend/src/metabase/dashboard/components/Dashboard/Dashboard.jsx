@@ -249,6 +249,8 @@ class Dashboard extends Component {
       !shouldRenderParametersWidgetInViewMode &&
       (!isEditing || isEditingParameter);
 
+    const isDataApp = dashboard && dashboard.is_app_page;
+
     return (
       <DashboardLoadingAndErrorWrapper
         isFullHeight={isEditing || isSharing}
@@ -263,7 +265,7 @@ class Dashboard extends Component {
               <HeaderContainer
                 isFullscreen={isFullscreen}
                 isNightMode={shouldRenderAsNightMode}
-                isDataApp={dashboard.is_app_page}
+                isDataApp={isDataApp}
               >
                 <DashboardHeader
                   {...this.props}
@@ -296,6 +298,7 @@ class Dashboard extends Component {
                     ref={element => (this.parametersWidgetRef = element)}
                     isNavbarOpen={isNavbarOpen}
                     isSticky={isParametersWidgetSticky}
+                    isDataApp={isDataApp}
                     topNav={embedOptions?.top_nav}
                   >
                     {parametersWidget}
@@ -313,7 +316,7 @@ class Dashboard extends Component {
                     />
                   ) : (
                     <DashboardEmptyState
-                      isDataApp={dashboard.is_app_page}
+                      isDataApp={isDataApp}
                       isNightMode={shouldRenderAsNightMode}
                     />
                   )}

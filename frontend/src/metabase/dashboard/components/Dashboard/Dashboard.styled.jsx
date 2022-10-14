@@ -135,6 +135,12 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)`
       left: ${parseInt(NAV_SIDEBAR_WIDTH) + 1 + "px"};
       width: calc(100% - ${NAV_SIDEBAR_WIDTH});
     `}
+
+    ${({ isDataApp }) =>
+    isDataApp &&
+    css`
+      max-width: 1200px;
+    `}
 `;
 
 export const CardsContainer = styled(FullWidthContainer)`
