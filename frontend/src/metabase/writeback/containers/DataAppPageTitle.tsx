@@ -6,18 +6,27 @@ import DataAppPageTitleView, {
   DataAppPageTitleProps as DataAppPageTitleViewProps,
 } from "metabase/writeback/components/DataAppPageTitle";
 
-import type { DataAppPage } from "metabase-types/api";
+import type { DataAppPage, DataAppNavItem } from "metabase-types/api";
 
 interface Props
   extends Omit<
     DataAppPageTitleViewProps,
     "titleTemplate" | "compiledTitle" | "suggestions"
   > {
+  value?: string;
   page: DataAppPage;
+  navItem?: DataAppNavItem;
 }
 
-function DataAppPageTitle({ page, ...props }: Props) {
+function DataAppPageTitle({
+  page,
+  navItem,
+  value: initialValue,
+  ...props
+}: Props) {
   const { data, format } = useDataAppContext();
+
+  const value = initialValue ?? navItem?.title_template ?? page.name;
 
   const suggestions = useMemo(() => {
     const entries = Object.entries(data);
@@ -32,8 +41,8 @@ function DataAppPageTitle({ page, ...props }: Props) {
 
   return (
     <DataAppPageTitleView
-      titleTemplate={page.name}
-      compiledTitle={format(page.name)}
+      titleTemplate={value}
+      compiledTitle={format(value)}
       isDisabled={!page.can_write}
       suggestions={suggestions}
       {...props}
