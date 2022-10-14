@@ -1,8 +1,8 @@
 import { ngettext, msgid, t } from "ttag";
 
-import { OPERATOR as OP } from "metabase/lib/expressions/tokenizer";
-import { ResolverError } from "metabase/lib/expressions/pratt/types";
-import { getMBQLName, MBQL_CLAUSES } from "metabase/lib/expressions";
+import { ResolverError } from "metabase-lib/lib/expressions/pratt/types";
+import { OPERATOR as OP } from "./tokenizer";
+import { getMBQLName, MBQL_CLAUSES } from ".";
 
 export const FIELD_MARKERS = ["dimension", "segment", "metric"];
 export const LOGICAL_OPS = [OP.Not, OP.And, OP.Or];

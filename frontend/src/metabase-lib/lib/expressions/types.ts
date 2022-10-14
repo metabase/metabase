@@ -4,7 +4,7 @@ export interface HelpText {
   description: string;
   example: string;
   structure: string;
-  hasDocsPage?: boolean;
+  docsPage?: string;
 }
 
 export interface HelpTextArg {
