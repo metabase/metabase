@@ -135,13 +135,8 @@ const DashboardHeader = ({
       <HeaderRoot
         isNavBarOpen={isNavBarOpen}
         className={cx("QueryBuilder-section", headerClassName)}
+        isDataApp={isDataApp}
         ref={header}
-        style={{
-          width: dashboard.is_app_page ? 1200 : "inherit",
-          marginLeft: "auto",
-          marginRight: "auto",
-          padding: 0,
-        }}
       >
         <HeaderContent hasSubHeader={!isDataApp} showSubHeader={showSubHeader}>
           <HeaderCaptionContainer>

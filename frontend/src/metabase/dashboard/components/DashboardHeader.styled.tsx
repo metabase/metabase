@@ -14,6 +14,7 @@ import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthC
 
 interface TypeForItemsThatRespondToNavBarOpen {
   isNavBarOpen: boolean;
+  isDataApp: boolean | undefined;
 }
 
 export const HeaderRoot = styled(
@@ -30,6 +31,15 @@ export const HeaderRoot = styled(
         align-items: baseline;
       `}
   }
+
+  ${props =>
+    props.isDataApp &&
+    css`
+      width: 1200px;
+      margin-left: auto;
+      margin-right: auto;
+      padding: 0;
+    `}
 
   ${breakpointMaxSmall} {
     flex-direction: column;
