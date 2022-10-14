@@ -1,6 +1,4 @@
 import { t } from "ttag";
-import MetabaseSettings from "metabase/lib/settings";
-import { getExpressionName } from "./config";
 import { HelpText } from "./types";
 
 const helperTextStrings: HelpText[] = [
@@ -714,12 +712,4 @@ const helperTextStrings: HelpText[] = [
 
 export const getHelpText = (name: string): HelpText | undefined => {
   return helperTextStrings.find(h => h.name === name);
-};
-
-export const getHelpDocsUrl = ({ name, hasDocsPage }: HelpText): string => {
-  const docsUrl = hasDocsPage
-    ? `questions/query-builder/expressions/${getExpressionName(name)}`
-    : "questions/query-builder/expressions";
-
-  return MetabaseSettings.docsUrl(docsUrl);
 };
