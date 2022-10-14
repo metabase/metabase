@@ -2,7 +2,7 @@ import { ngettext, msgid, t } from "ttag";
 
 import { OPERATOR as OP } from "./tokenizer";
 import { ResolverError } from "./pratt/types";
-import { getMBQLName, MBQL_CLAUSES } from "./";
+import { getMBQLName, MBQL_CLAUSES } from ".";
 
 export const FIELD_MARKERS = ["dimension", "segment", "metric"];
 export const LOGICAL_OPS = [OP.Not, OP.And, OP.Or];

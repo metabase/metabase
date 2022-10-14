@@ -10,7 +10,7 @@ import {
   parseDimension,
   parseMetric,
   parseSegment,
-} from "./";
+} from ".";
 
 // e.g. "COUNTIF(([Total]-[Tax] <5" returns 2 (missing parentheses)
 export function countMatchingParentheses(tokens) {

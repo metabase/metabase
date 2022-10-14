@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { parse, adjustBooleans } from "./recursive-parser";
 import { resolve } from "./resolver";
 
-import { parseDimension, parseMetric, parseSegment } from "./";
+import { parseDimension, parseMetric, parseSegment } from ".";
 
 export function processSource(options) {
   const resolveMBQLField = (kind, name) => {
