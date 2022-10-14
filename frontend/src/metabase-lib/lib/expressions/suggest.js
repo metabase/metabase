@@ -16,7 +16,7 @@ import {
   formatDimensionName,
   formatMetricName,
   formatSegmentName,
-} from "./index";
+} from ".";
 
 const suggestionText = func => {
   const { displayName, args } = func;
