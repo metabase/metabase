@@ -1,7 +1,7 @@
 import { ngettext, msgid, t } from "ttag";
 
+import { ResolverError } from "metabase-lib/lib/expressions/pratt/types";
 import { OPERATOR as OP } from "./tokenizer";
-import { ResolverError } from "./pratt/types";
 import { getMBQLName, MBQL_CLAUSES } from ".";
 
 export const FIELD_MARKERS = ["dimension", "segment", "metric"];

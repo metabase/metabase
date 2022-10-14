@@ -1,9 +1,7 @@
 import _ from "underscore";
 
+import { getHelpText } from "metabase-lib/lib/expressions/helper-text-strings";
 import { partialMatch, enclosingFunction } from "./completer";
-
-import { getHelpText } from "./helper-text-strings";
-
 import {
   EXPRESSION_FUNCTIONS,
   AGGREGATION_FUNCTIONS,

@@ -1,7 +1,12 @@
 import { t } from "ttag";
 
+import {
+  parse,
+  lexify,
+  compile,
+  ResolverError,
+} from "metabase-lib/lib/expressions/pratt";
 import { LOGICAL_OPS, COMPARISON_OPS, resolve } from "./resolver";
-import { parse, lexify, compile, ResolverError } from "./pratt";
 import { useShorthands, adjustCase, adjustOptions } from "./recursive-parser";
 import { tokenize, TOKEN, OPERATOR } from "./tokenizer";
 import {

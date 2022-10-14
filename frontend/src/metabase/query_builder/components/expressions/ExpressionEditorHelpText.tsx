@@ -6,8 +6,8 @@ import MetabaseSettings from "metabase/lib/settings";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Icon from "metabase/components/Icon";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
+import { getHelpDocsUrl } from "metabase-lib/lib/expressions/helper-text-strings";
 import { HelpText } from "metabase-lib/lib/expressions/types";
-import { getExpressionName } from "metabase-lib/lib/expressions";
 
 interface ExpressionEditorHelpTextProps {
   helpText: HelpText;
@@ -54,7 +54,7 @@ const ExpressionEditorHelpText = ({
               <ExternalLink
                 className="link text-bold block my1"
                 target="_blank"
-                href={getHelpDocsUrl(helpText)}
+                href={MetabaseSettings.docsUrl(getHelpDocsUrl(helpText))}
               >
                 <Icon name="reference" size={12} className="mr1" />
                 {t`Learn more`}
@@ -65,14 +65,6 @@ const ExpressionEditorHelpText = ({
       }
     />
   );
-};
-
-const getHelpDocsUrl = ({ name, hasDocsPage }: HelpText): string => {
-  const docsUrl = hasDocsPage
-    ? `questions/query-builder/expressions/${getExpressionName(name)}`
-    : "questions/query-builder/expressions";
-
-  return MetabaseSettings.docsUrl(docsUrl);
 };
 
 export default ExpressionEditorHelpText;

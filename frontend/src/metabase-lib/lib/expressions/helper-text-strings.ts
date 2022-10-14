@@ -215,7 +215,7 @@ const helperTextStrings: HelpText[] = [
       },
       { name: t`length`, description: t`The number of characters to return.` },
     ],
-    hasDocsPage: true,
+    docsPage: "substring",
   },
   {
     name: "regex-match-first",
@@ -229,6 +229,7 @@ const helperTextStrings: HelpText[] = [
         description: t`The regular expression to match.`,
       },
     ],
+    docsPage: "regexextract",
   },
   {
     name: "concat",
@@ -242,7 +243,7 @@ const helperTextStrings: HelpText[] = [
         description: t`This will be added to the end of value1, and so on.`,
       },
     ],
-    hasDocsPage: true,
+    docsPage: "concat",
   },
   {
     name: "replace",
@@ -507,7 +508,7 @@ const helperTextStrings: HelpText[] = [
         description: t`The column to check.`,
       },
     ],
-    hasDocsPage: true,
+    docsPage: "isnull",
   },
   {
     name: "is-empty",
@@ -520,7 +521,7 @@ const helperTextStrings: HelpText[] = [
         description: t`The column to check.`,
       },
     ],
-    hasDocsPage: true,
+    docsPage: "isempty",
   },
   {
     name: "coalesce",
@@ -541,7 +542,7 @@ const helperTextStrings: HelpText[] = [
         description: t`If value1 is empty, value2 gets returned if its not empty, and so on.`,
       },
     ],
-    hasDocsPage: true,
+    docsPage: "coalesce",
   },
   {
     name: "case",
@@ -569,7 +570,7 @@ const helperTextStrings: HelpText[] = [
         description: t`The value that will be returned if the preceding condition is true, and so on.`,
       },
     ],
-    hasDocsPage: true,
+    docsPage: "case",
   },
   {
     name: "get-year",
@@ -712,4 +713,10 @@ const helperTextStrings: HelpText[] = [
 
 export const getHelpText = (name: string): HelpText | undefined => {
   return helperTextStrings.find(h => h.name === name);
+};
+
+export const getHelpDocsUrl = ({ docsPage }: HelpText): string => {
+  return docsPage
+    ? `questions/query-builder/expressions/${docsPage}`
+    : "questions/query-builder/expressions";
 };
