@@ -52,6 +52,7 @@ function DataAppPageTitle({
             {...props}
             initialValue={isEditing ? titleTemplate : compiledTitle}
             isEditing={isEditing}
+            isOptional
             onChange={onChange}
           />
           {isEditing && (

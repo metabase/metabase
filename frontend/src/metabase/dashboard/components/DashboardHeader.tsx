@@ -11,7 +11,7 @@ import cx from "classnames";
 import { useOnMount } from "metabase/hooks/use-on-mount";
 
 import { getScrollY } from "metabase/lib/dom";
-import { Dashboard } from "metabase-types/api";
+import type { Dashboard, DataAppNavItem } from "metabase-types/api";
 
 import EditBar from "metabase/components/EditBar";
 import EditWarning from "metabase/components/EditWarning";
@@ -41,6 +41,8 @@ interface DashboardHeaderProps {
   isEditingInfo: boolean;
   isNavBarOpen: boolean;
   dashboard: Dashboard;
+  dataAppNavItem?: DataAppNavItem;
+  pageTitleTemplate?: string;
   isBadgeVisible: boolean;
   isLastEditInfoVisible: boolean;
   children: React.ReactNode;
@@ -49,6 +51,7 @@ interface DashboardHeaderProps {
   onLastEditInfoClick: () => null;
   onSave: () => null;
   setDashboardAttribute: (prop: string, value: string) => null;
+  setPageTitleTemplate: (titleTemplate: string) => void;
 }
 
 const DashboardHeader = ({
@@ -62,6 +65,8 @@ const DashboardHeader = ({
   isEditing,
   isNavBarOpen,
   dashboard,
+  dataAppNavItem,
+  pageTitleTemplate,
   isLastEditInfoVisible,
   children,
   onHeaderModalDone,
@@ -69,6 +74,7 @@ const DashboardHeader = ({
   onLastEditInfoClick,
   onSave,
   setDashboardAttribute,
+  setPageTitleTemplate,
 }: DashboardHeaderProps) => {
   const [headerHeight, setHeaderHeight] = useState(0);
   const [showSubHeader, setShowSubHeader] = useState(true);
@@ -144,12 +150,14 @@ const DashboardHeader = ({
             {isDataApp ? (
               <DataAppPageCaption
                 key={dashboard.name}
+                value={pageTitleTemplate}
                 page={dashboard}
+                navItem={dataAppNavItem}
                 isEditing={isEditing}
                 isDisabled={!isEditing}
                 placeholder={t`Add title`}
                 data-testid="dashboard-name-heading"
-                onChange={handleUpdateCaption}
+                onChange={setPageTitleTemplate}
               />
             ) : (
               <HeaderCaption
