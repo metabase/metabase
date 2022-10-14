@@ -31,6 +31,9 @@ describe("scenarios > models > create", () => {
     cy.findByText("Save").click();
 
     cy.findByText("Saved");
+
+    // After saving, we land on view mode for the model
+    cy.findByText("Summarize");
   });
 });
 
