@@ -51,6 +51,7 @@ class DashboardCopyModalInner extends React.Component {
           ...dashboard,
           collection_id: initialCollectionId,
         }}
+        form={Dashboards.forms.duplicate}
         overwriteOnInitialValuesChange
         copy={object => {
           console.log("🚀", "copied");

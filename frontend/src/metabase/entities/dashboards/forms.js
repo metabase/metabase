@@ -61,6 +61,9 @@ export default {
   create: {
     fields: () => createFormTwo(),
   },
+  duplicate: {
+    fields: () => createForm(),
+  },
   edit: {
     fields: () => {
       const fields = [...createForm()];
