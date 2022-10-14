@@ -21,6 +21,10 @@ import {
   GRID_COLUMNS,
   DEFAULT_CARD_SIZE,
   MIN_ROW_HEIGHT,
+  DATA_APPS_MIN_ROW_HEIGHT,
+  DATA_APPS_ASPECT_RATIO,
+  DATA_APPS_MAX_WIDTH,
+  DATA_APPS_GRID_MARGIN,
 } from "metabase/lib/dashboard_grid";
 import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
 import { DashboardCard } from "./DashboardGrid.styled";
@@ -188,15 +192,22 @@ class DashboardGrid extends Component {
   }
 
   getRowHeight() {
-    const { width } = this.props;
+    const { width, dashboard } = this.props;
 
     const contentViewportElement = this.context;
     const hasScroll =
       contentViewportElement?.clientHeight <
       contentViewportElement?.scrollHeight;
 
-    const aspectHeight = width / GRID_WIDTH / GRID_ASPECT_RATIO;
-    const actualHeight = Math.max(aspectHeight, MIN_ROW_HEIGHT);
+    const aspect = dashboard.is_app_page
+      ? DATA_APPS_ASPECT_RATIO
+      : GRID_ASPECT_RATIO;
+    const minHeight = dashboard.is_app_page
+      ? DATA_APPS_MIN_ROW_HEIGHT
+      : MIN_ROW_HEIGHT;
+
+    const aspectHeight = width / GRID_WIDTH / aspect;
+    const actualHeight = Math.max(aspectHeight, minHeight);
 
     // prevent infinite re-rendering when the scroll bar appears/disappears
     // https://github.com/metabase/metabase/issues/17229
@@ -354,7 +365,7 @@ class DashboardGrid extends Component {
   );
 
   renderGrid() {
-    const { dashboard } = this.props;
+    const { dashboard, width } = this.props;
     const { layouts } = this.state;
     const rowHeight = this.getRowHeight();
     return (
@@ -366,8 +377,12 @@ class DashboardGrid extends Component {
         layouts={layouts}
         breakpoints={GRID_BREAKPOINTS}
         cols={GRID_COLUMNS}
-        width={1200}
-        margin={{ desktop: [32, 18], mobile: [6, 10] }}
+        width={dashboard.is_app_page ? DATA_APPS_MAX_WIDTH : width}
+        margin={
+          dashboard.is_app_page
+            ? DATA_APPS_GRID_MARGIN
+            : { desktop: [6, 6], mobile: [6, 10] }
+        }
         containerPadding={[0, 0]}
         rowHeight={rowHeight}
         onLayoutChange={this.onLayoutChange}
