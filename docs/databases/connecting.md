@@ -126,8 +126,6 @@ During the scan, Metabase also takes a sample of each table to look for URLs, JS
 1. Go to **Admin settings** > **Databases** > your database.
 2. Click on **Sync database schema now**.
 
-![Database Manual Sync](./images/DatabaseManualSync.png)
-
 ### Manually scanning column values
 
 To scan values from all the columns in a table:
