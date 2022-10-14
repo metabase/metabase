@@ -330,10 +330,22 @@
               (is (partial= {:groups {(:id (perms-group/all-users)) {(:collection_id response1) :none
                                                                      (:collection_id response2) :none}}}
                             (graph/graph :apps)))
-              (mt/user-http-request :crowberto :put 200 "app/global-graph"
-                                    (assoc-in (mt/user-http-request :crowberto :get 200 "app/global-graph")
-                                              [:groups (:id (perms-group/all-users))]
-                                              {:root :write}))
-              (is (partial= {:groups {(:id (perms-group/all-users)) {(:collection_id response1) :write
-                                                                     (:collection_id response2) :write}}}
-                            (graph/graph :apps))))))))))
+              (testing "''All Users'' can't see these apps"
+                (is (= "You don't have permissions to do that."
+                       (mt/user-http-request :rasta :get 403 (str "app/" (:id response1)))))
+                (is (= "You don't have permissions to do that."
+                       (mt/user-http-request :rasta :get 403 (str "app/" (:id response2))))))
+              (is (partial= {:groups {(:id (perms-group/all-users)) {:root "write"}}}
+                            (mt/user-http-request :crowberto :put 200 "app/global-graph"
+                                                  (assoc-in (mt/user-http-request :crowberto :get 200 "app/global-graph")
+                                                            [:groups (:id (perms-group/all-users))]
+                                                            {:root :write}))))
+              (is (partial= {:groups {(:id (perms-group/all-users)) {(:collection_id response1) :none
+                                                                     (:collection_id response2) :none}}}
+                            (graph/graph :apps))
+                  "collection permissions shouldn't change")
+              (testing "Now ''All Users'' can see these apps"
+                (is (partial= response1
+                              (mt/user-http-request :rasta :get 200 (str "app/" (:id response1)))))
+                (is (partial= response2
+                              (mt/user-http-request :rasta :get 200 (str "app/" (:id response2)))))))))))))

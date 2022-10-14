@@ -48,8 +48,7 @@
                         {:group-ids (keys changes)
                          :status-code 400})))
       (db/transaction
-       (doseq [collection-id (cons :root (db/select-field :collection_id 'App))]
-         (graph/update-collection-permissions! group-id collection-id permission))
-       (perms/save-perms-revision!
-        CollectionPermissionGraphRevision (:revision old-graph) old-graph changes)
-       (global-graph)))))
+        (graph/update-collection-permissions! :apps group-id :root permission)
+        (perms/save-perms-revision!
+         CollectionPermissionGraphRevision (:revision old-graph) old-graph changes)
+        (global-graph)))))

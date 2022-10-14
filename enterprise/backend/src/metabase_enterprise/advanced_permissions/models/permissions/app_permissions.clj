@@ -14,7 +14,6 @@
             [toucan.db :as db]))
 
 (defn- check-advanced-permissions []
-  (log/fatal "checking advanced permsissions")
   (when-not (premium-features/has-feature? :advanced-permissions)
     (throw (ex-info (i18n/tru "The granular app permission functionality is only enabled if you have a premium token with the advanced-permissions feature.")
                     {:status-code 402}))))
