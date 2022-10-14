@@ -38,7 +38,7 @@ function DataAppPageTitle({
   const onSelect = useCallback(
     (columnName: string) => {
       const token = `{{ data.${selectedCardName}.${columnName} }}`;
-      onChange?.(`${titleTemplate} ${token}`);
+      onChange?.(titleTemplate + token);
       setSelectedCardName("");
     },
     [selectedCardName, titleTemplate, onChange],
