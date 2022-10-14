@@ -7,7 +7,6 @@ import { getMainElement } from "metabase/lib/dom";
 
 import DashboardHeader from "metabase/dashboard/containers/DashboardHeader";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
-import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import { getValuePopulatedParameters } from "metabase-lib/lib/parameters/utils/parameter-values";
 
 import DashboardControls from "../../hoc/DashboardControls";
@@ -26,6 +25,15 @@ import DashboardEmptyState from "./DashboardEmptyState/DashboardEmptyState";
 import { updateParametersWidgetStickiness } from "./stickyParameters";
 
 const SCROLL_THROTTLE_INTERVAL = 1000 / 24;
+
+function getVisibleParameters(parameters, { dashboard, isEditing }) {
+  if (!dashboard?.is_app_page) {
+    return parameters;
+  }
+  // In data apps, ID parameters are hidden by default
+  // But we want to expose them in page editing mode
+  return isEditing ? parameters : parameters.filter(p => !p.hidden);
+}
 
 // NOTE: move DashboardControls HoC to container
 
@@ -102,8 +110,14 @@ class Dashboard extends Component {
     this.parametersAndCardsContainerRef = React.createRef();
   }
 
-  static getDerivedStateFromProps({ parameters }, { parametersListLength }) {
-    const visibleParameters = getVisibleParameters(parameters);
+  static getDerivedStateFromProps(
+    { dashboard, parameters, isEditing },
+    { parametersListLength },
+  ) {
+    const visibleParameters = getVisibleParameters(parameters, {
+      dashboard,
+      isEditing,
+    });
     return visibleParameters.length !== parametersListLength
       ? { parametersListLength: visibleParameters.length }
       : null;
@@ -223,7 +237,10 @@ class Dashboard extends Component {
 
     const shouldRenderAsNightMode = isNightMode && isFullscreen;
     const dashboardHasCards = dashboard => dashboard.ordered_cards.length > 0;
-    const visibleParameters = getVisibleParameters(parameters);
+    const visibleParameters = getVisibleParameters(parameters, {
+      dashboard,
+      isEditing,
+    });
 
     const parametersWidget = (
       <SyncedParametersList
