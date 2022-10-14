@@ -162,7 +162,9 @@ To forget the data that Metabase has stored from previous [database scans](#sync
 
 Go to **Admin settings** > **Databases** > your database and click **Remove this database**.
 
-![Database Manual Sync](./images/DatabaseManualSync.png)
+## Restoring the Sample Database
+
+If you've deleted the Metabase [Sample Database](https://www.metabase.com/glossary/sample_database), go to **Admin settings** > **Databases** and click **Bring the Sample Database back**.
 
 ## Troubleshooting
 
