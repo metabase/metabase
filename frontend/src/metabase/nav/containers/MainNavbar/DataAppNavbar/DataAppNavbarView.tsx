@@ -3,10 +3,11 @@ import _ from "underscore";
 
 import type { DataApp, DataAppPage, DataAppNavItem } from "metabase-types/api";
 
-import * as Urls from "metabase/lib/urls";
 import Link from "metabase/core/components/Link";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
+
+import * as Urls from "metabase/lib/urls";
 
 import { MainNavbarProps, SelectedItem } from "../types";
 import DataAppActionPanel from "./DataAppActionPanel";
