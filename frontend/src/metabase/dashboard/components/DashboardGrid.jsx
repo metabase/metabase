@@ -72,7 +72,7 @@ class DashboardGrid extends Component {
   };
 
   static defaultProps = {
-    width: 1200,
+    width: 0,
     isEditing: false,
     isEditingParameter: false,
   };
