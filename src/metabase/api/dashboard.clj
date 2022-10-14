@@ -266,12 +266,18 @@
                              (-> id id->new-card :id))]
                 (-> dashboard-card
                     (update :card_id new-id)
-                    (update :card update :id new-id)
-                    (update :series (fn [series]
-                                      (keep (fn [card]
-                                              (when-let [id' (new-id (:id card))]
-                                                (assoc card :id id')))
-                                            series)))))))
+                    (assoc :card (-> dashboard-card :card_id id->new-card))
+                    (m/update-existing :parameter_mappings
+                                       (fn [pms]
+                                         (map (fn [pm]
+                                                (m/update-existing pm :card_id new-id))
+                                              pms)))
+                    (m/update-existing :series
+                                       (fn [series]
+                                         (keep (fn [card]
+                                                 (when-let [id' (new-id (:id card))]
+                                                   (assoc card :id id')))
+                                               series)))))))
           ordered-cards)))
 
 (api/defendpoint POST "/:from-dashboard-id/copy"
