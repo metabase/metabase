@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import { t } from "ttag";
 
 import TippyPopover from "metabase/components/Popover/TippyPopover";
+import Radio from "metabase/core/components/Radio";
 
-import { PopoverRoot, PopoverTitle } from "./ChartSettingsWidgetPopover.styled";
+import { PopoverRoot, PopoverTabs } from "./ChartSettingsWidgetPopover.styled";
 
 interface Widget {
   id: string;
@@ -13,21 +14,35 @@ interface Widget {
 interface ChartSettingsWidgetPopoverProps {
   anchor: HTMLElement;
   handleEndShowWidget: () => void;
-  widget: Widget;
+  formattingWidget: Widget;
+  styleWidget: Widget;
 }
 
 const ChartSettingsWidgetPopover = ({
   anchor,
   handleEndShowWidget,
-  widget,
+  formattingWidget,
+  styleWidget,
 }: ChartSettingsWidgetPopoverProps) => {
+  const TABS = [
+    styleWidget && "style",
+    formattingWidget && "formatting",
+  ].filter(x => !!x);
+  const [currentTab, setCurrentTab] = useState(TABS[0]);
+
   return (
     <TippyPopover
       reference={anchor}
       content={
         <PopoverRoot>
-          <PopoverTitle>{t`Settings`}</PopoverTitle>
-          {widget}
+          <PopoverTabs
+            value={currentTab}
+            options={TABS.map(t => ({ name: t, value: t }))}
+            onChange={tab => setCurrentTab(tab)}
+            variant="underlined"
+          />
+          {currentTab === "formatting" && formattingWidget}
+          {currentTab === "style" && styleWidget}
         </PopoverRoot>
       }
       visible={!!anchor}

@@ -222,10 +222,11 @@ function isDefaultOption<TValue>(
 
 export default Object.assign(Radio, {
   RadioGroupVariants: [RadioGroupBubble, RadioGroupNormal],
-  RadioLabelVariants: [RadioLabelBubble, RadioLabelNormal, RadioLabelText],
+  RadioLabelVariants: [RadioLabelBubble, RadioLabelNormal],
   RadioContainerVariants: [
     RadioContainerBubble,
     RadioContainerNormal,
     RadioContainerUnderlined,
   ],
+  RadioLabelText,
 });

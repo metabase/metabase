@@ -37,6 +37,19 @@ export function seriesSetting({
       },
     },
     display: {
+      widget: "segmentedControl",
+      title: t`Display type`,
+      props: {
+        options: [
+          { value: "line", icon: "line" },
+          { value: "area", icon: "area" },
+          { value: "bar", icon: "bar" },
+        ],
+      },
+      getHidden: (single, settings, { series }) =>
+        ["line", "area", "bar", "combo"].includes(single.card.display) &&
+        settings["stackable.stack_type"] != null,
+
       getDefault: (single, settings, { series }) => {
         if (single.card.display === "combo") {
           const index = series.indexOf(single);
@@ -141,9 +154,10 @@ export function seriesSetting({
 
   return {
     ...nestedSettings(settingId, {
+      hidden: true,
       objectName: "series",
-      getHidden: ([{ card }], settings, extraProps) =>
-        card.display === "waterfall",
+      // getHidden: ([{ card }], settings, extraProps) =>
+      //   card.display === "waterfall",
       getObjects: (series, settings) => series,
       getObjectKey: keyForSingleSeries,
       getSettingDefintionsForObject: getSettingDefintionsForSingleSeries,
