@@ -3,7 +3,6 @@
   on the app collections."
   (:require [clojure.data :as data]
             [clojure.set :as set]
-            [clojure.tools.logging :as log]
             [metabase.models.collection-permission-graph-revision :as c-perm-revision
              :refer [CollectionPermissionGraphRevision]]
             [metabase.models.collection.graph :as graph]
