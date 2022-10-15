@@ -57,7 +57,7 @@
    dashboard_id (s/maybe su/IntGreaterThanOrEqualToZero)
    options (s/maybe su/Map)
    nav_items (s/maybe [(s/maybe su/Map)])}
-  (api/write-check Collection (db/select-one-field :collection_id App :id app-id))
+  (api/write-check App app-id)
   (db/update! App app-id (select-keys body [:dashboard_id :options :nav_items]))
   (hydrate-details (db/select-one App :id app-id)))
 
@@ -287,6 +287,7 @@
 (api/defendpoint POST "/:app-id/scaffold"
   "Endpoint to scaffold a new table onto an existing data-app"
   [app-id :as {{:keys [table-ids]} :body}]
+  (api/write-check App app-id)
   (db/transaction
     (let [{app-id :id app-name :name nav-items :nav_items {collection-id :id} :collection} (hydrate-details (db/select-one App :id app-id))
           ;; We can scaffold this as a new app, but use the existing collection-id and nav-items to merge into the existing app
