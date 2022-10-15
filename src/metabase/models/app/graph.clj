@@ -49,6 +49,6 @@
                          :status-code 400})))
       (db/transaction
         (graph/update-collection-permissions! :apps group-id :root permission)
-        (perms/save-perms-revision!
-         CollectionPermissionGraphRevision (:revision old-graph) old-graph changes)
+        (perms/save-perms-revision! CollectionPermissionGraphRevision (:revision old-graph)
+                                    (assoc old-graph :namespace :apps) changes)
         (global-graph)))))

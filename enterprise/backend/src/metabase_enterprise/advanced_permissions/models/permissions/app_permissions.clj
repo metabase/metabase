@@ -18,22 +18,15 @@
                     {:status-code 402}))))
 
 (defn- replace-collection-ids
-  "Convert the collection group permission graph `g` into an app group
-  permission graph or vice versa by removing the root collection and replacing
-  the collection IDs by app IDs according to `mapping`.
-
-  Note that the app permission graph never contains the root collection. So it's
-  removed when converting a collection graph to an app graph and plays no role
-  when converting an app graph to a collection graph."
-  [g mapping]
-  (update-vals g (fn [group-permissions]
-                   (-> group-permissions
-                       (dissoc :root)
-                       (update-keys mapping)))))
-
-(defn- merge-graphs
-  [base override]
-  (merge-with merge base override))
+  "Convert the collection group permission graph `permission-graph` into an
+  app group permission graph or vice versa by replacing the collection IDs
+  by app IDs according to `mapping`."
+  [group-permissions mapping]
+  (letfn [(full-mapping [collection-id]
+            (if (= collection-id :root)
+              :root
+              (mapping collection-id)))]
+    (update-vals group-permissions #(update-keys % full-mapping))))
 
 (s/defn graph :- graph/PermissionsGraph
   "Returns the app permission graph. Throws an exception if the
@@ -47,29 +40,6 @@
          (graph/collection-permission-graph :apps)
          (update :groups replace-collection-ids collection-id->app-id)))))
 
-(defn update-collection-graph!
-  "Update the Collections permissions graph for Collections of `collection-namespace` (default `nil`, the 'default'
-  namespace). This works just like [[metabase.models.permission/update-data-perms-graph!]], but for Collections;
-  refer to that function's extensive documentation to get a sense for how this works."
-  [old-graph new-graph]
-  (let [old-perms          (:groups old-graph)
-        new-perms          (:groups new-graph)
-        ;; filter out any groups not in the old graph
-        new-perms          (select-keys new-perms (keys old-perms))
-        ;; filter out any collections not in the old graph
-        new-perms          (into {} (for [[group-id collection-id->perms] new-perms]
-                                      [group-id (select-keys collection-id->perms (keys (get old-perms group-id)))]))
-        [diff-old changes] (data/diff old-perms new-perms)]
-    (perms/log-permissions-changes diff-old changes)
-    (perms/check-revision-numbers old-graph new-graph)
-    (when (seq changes)
-      (db/transaction
-        (doseq [[group-id new-group-perms] changes
-                [collection-id new-perms] new-group-perms]
-          (graph/update-collection-permissions! :apps group-id collection-id new-perms))
-        (perms/save-perms-revision! CollectionPermissionGraphRevision (:revision old-graph)
-                                    (assoc old-graph :namespace nil) changes)))))
-
 (s/defn update-graph! :- graph/PermissionsGraph
   "Updates the app permissions according to `new-graph` and returns the
   resulting graph as read from the database. Throws an exception if the
@@ -77,14 +47,25 @@
   [new-graph :- graph/PermissionsGraph]
   (check-advanced-permissions)
   (db/transaction
-    (let [{:keys [revision groups]} new-graph
-          app-id->collection-id (db/select-id->field :collection_id 'App)
-          collection-ids (vals app-id->collection-id)
-          old-graph (graph/graph :apps)
-          new-graph (-> old-graph
-                        (assoc :revision revision)
-                        (update :groups update-vals (fn [group-permissions]
-                                                      (apply dissoc group-permissions collection-ids)))
-                        (update :groups merge-graphs (replace-collection-ids groups app-id->collection-id)))]
-      (update-collection-graph! old-graph new-graph))
+    (let [old-graph (graph)
+          old-perms (:groups old-graph)
+          new-perms (:groups new-graph)
+          ;; filter out any groups not in the old graph
+          new-perms (select-keys new-perms (keys old-perms))
+          ;; filter out any collections not in the old graph
+          new-perms (into {} (for [[group-id collection-id->perms] new-perms]
+                               [group-id (select-keys collection-id->perms
+                                                      (keys (get old-perms group-id)))]))
+          [diff-old changes] (data/diff old-perms new-perms)]
+      (perms/log-permissions-changes diff-old changes)
+      (perms/check-revision-numbers old-graph new-graph)
+      (when (seq changes)
+        (let [app-id->collection-id
+              (assoc (db/select-id->field :collection_id 'App) :root :root)]
+          (doseq [[group-id new-group-perms] changes
+                  [app-id new-perms] new-group-perms
+                  :let [collection-id (app-id->collection-id app-id)]]
+            (graph/update-collection-permissions! :apps group-id collection-id new-perms))
+          (perms/save-perms-revision! CollectionPermissionGraphRevision (:revision old-graph)
+                                      (assoc old-graph :namespace :apps) changes))))
     (graph)))
