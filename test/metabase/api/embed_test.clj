@@ -170,7 +170,7 @@
         (is (= "Embedding is not enabled."
                (http/client :get 400 (card-url card))))))))
 
-(deftest check-that-if-embedding--is--enabled-globally-but-not-for-the-card-the-request-fails
+(deftest check-that-if-embedding-is-enabled-globally-but-not-for-the-card-the-request-fails
   (with-embedding-enabled-and-new-secret-key
     (with-temp-card [card]
       (is (= "Embedding is not enabled for this object."
