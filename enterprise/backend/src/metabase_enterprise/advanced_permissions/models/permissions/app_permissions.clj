@@ -3,8 +3,8 @@
   on the app collections."
   (:require [clojure.data :as data]
             [clojure.set :as set]
-            [metabase.models.collection-permission-graph-revision :as c-perm-revision
-             :refer [CollectionPermissionGraphRevision]]
+            [metabase.models.app-permission-graph-revision :as app-perm-revision
+             :refer [AppPermissionGraphRevision]]
             [metabase.models.collection.graph :as graph]
             [metabase.models.permissions :as perms]
             [metabase.public-settings.premium-features :as premium-features]
@@ -71,6 +71,6 @@
                   [app-id new-perms] new-group-perms
                   :let [collection-id (app-id->collection-id app-id)]]
             (graph/update-collection-permissions! :apps group-id collection-id new-perms))
-          (perms/save-perms-revision! CollectionPermissionGraphRevision (:revision old-graph)
-                                      (assoc old-graph :namespace :apps) changes))))
+          (perms/save-perms-revision! AppPermissionGraphRevision (:revision old-graph)
+                                      old-graph changes))))
     (graph)))

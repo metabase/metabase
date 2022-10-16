@@ -1227,7 +1227,8 @@
   "Save changes made to permission graph for logging/auditing purposes.
   This doesn't do anything if `*current-user-id*` is unset (e.g. for testing or REPL usage).
   *  `model`   -- revision model, should be one of
-                  [PermissionsRevision, CollectionPermissionGraphRevision, ApplicationPermissionsRevision]
+                  [PermissionsRevision, CollectionPermissionGraphRevision, ApplicationPermissionsRevision
+                   AppPermissionGraphRevision]
   *  `before`  -- the graph before the changes
   *  `changes` -- set of changes applied in this revision."
   [model current-revision before changes]

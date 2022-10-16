@@ -2,8 +2,8 @@
   "Code for generating and updating the App permissions graph. App permissions
   are based on the permissions of the app's collection."
   (:require [clojure.data :as data]
-            [metabase.models.collection-permission-graph-revision :as c-perm-revision
-             :refer [CollectionPermissionGraphRevision]]
+            [metabase.models.app-permission-graph-revision :as app-perm-revision
+             :refer [AppPermissionGraphRevision]]
             [metabase.models.collection.graph :as graph]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
@@ -53,6 +53,6 @@
                          :status-code 400})))
       (db/transaction
         (graph/update-collection-permissions! :apps group-id :root permission)
-        (perms/save-perms-revision! CollectionPermissionGraphRevision (:revision old-graph)
-                                    (assoc old-graph :namespace :apps) changes)
+        (perms/save-perms-revision! AppPermissionGraphRevision (:revision old-graph)
+                                    old-graph changes)
         (global-graph)))))
