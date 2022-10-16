@@ -5,7 +5,7 @@
             [honeysql.core :as hsql]
             [metabase.api.collection :as api.collection]
             [metabase.models :refer [App Card Collection Dashboard DashboardCard ModerationReview NativeQuerySnippet
-                                     Permissions PermissionsGroup PermissionsGroupMembership
+                                     PermissionsGroup PermissionsGroupMembership
                                      Pulse PulseCard PulseChannel
                                      PulseChannelRecipient Revision Timeline TimelineEvent User]]
             [metabase.models.collection :as collection]
@@ -346,13 +346,12 @@
                 (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection))))))))
 
     (testing "check that we can see app collection details"
-      (mt/with-temp* [Permissions [_ {:group_id (:id (perms-group/all-users))
-                                      :object "/collection/namespace/apps/root/read/"}]
-                      Collection [collection {:name "Coin Collection", :namespace :apps}]
-                      App [{app-id :id} {:collection_id (:id collection)}]]
-        (is (= ["Coin Collection" app-id]
-               ((juxt :name :app_id)
-                (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection))))))))
+      (mt/with-all-users-app-root-permission :read
+        (mt/with-temp* [Collection [collection {:name "Coin Collection", :namespace :apps}]
+                        App [{app-id :id} {:collection_id (:id collection)}]]
+          (is (= ["Coin Collection" app-id]
+                 ((juxt :name :app_id)
+                  (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection)))))))))
 
     (testing "check that collections detail properly checks permissions"
       (mt/with-non-admin-groups-no-root-collection-perms

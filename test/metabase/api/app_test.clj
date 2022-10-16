@@ -36,8 +36,7 @@
                             (graph/graph :apps))
                   "''All Users'' should have the default permission on the app collection"))))
         (testing "Create app in the root"
-          (mt/with-temp* [Permissions [_ {:group_id (:id (perms-group/all-users))
-                                          :object "/collection/namespace/apps/root/read/"}]]
+          (mt/with-all-users-app-root-permission :read
             (let [response (mt/user-http-request :crowberto :post 200 "app" {:collection base-params})]
               (is (pos-int? (:id response)))
               (is (pos-int? (:collection_id response)))
@@ -47,16 +46,15 @@
                             (graph/graph :apps))
                   "''All Users'' should have the default permission on the app collection"))))
         (testing "With initial dashboard and nav_items"
-          (mt/with-temp* [Permissions [_ {:group_id (:id (perms-group/all-users))
-                                          :object "/collection/namespace/apps/root/"}]
-                          Dashboard [{dashboard-id :id}]]
-            (let [nav_items [{:options {:click_behavior {}}}]]
-              (is (partial= {:collection (assoc base-params :location "/")
-                             :dashboard_id dashboard-id
-                             :nav_items nav_items}
-                            (mt/user-http-request :rasta :post 200 "app" {:collection base-params
-                                                                          :dashboard_id dashboard-id
-                                                                          :nav_items nav_items}))))))))))
+          (mt/with-all-users-app-root-permission :write
+            (mt/with-temp* [Dashboard [{dashboard-id :id}]]
+              (let [nav_items [{:options {:click_behavior {}}}]]
+                (is (partial= {:collection (assoc base-params :location "/")
+                               :dashboard_id dashboard-id
+                               :nav_items nav_items}
+                              (mt/user-http-request :rasta :post 200 "app" {:collection base-params
+                                                                            :dashboard_id dashboard-id
+                                                                            :nav_items nav_items})))))))))))
 
 (deftest update-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
@@ -82,12 +80,11 @@
                       App [{app_id :id} {:collection_id collection_id}]]
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :put 403 (str "app/" app_id) {}))))
-      (mt/with-temp* [Permissions [_ {:group_id (:id (perms-group/all-users))
-                                      :object "/collection/namespace/apps/root/"}]
-                      Collection [{collection_id :id} {:namespace :apps}]
-                      App [{app_id :id} {:collection_id collection_id}]]
-        (is (partial= {:collection_id collection_id}
-                      (mt/user-http-request :rasta :put 200 (str "app/" app_id) {})))))))
+      (mt/with-all-users-app-root-permission :write
+        (mt/with-temp* [Collection [{collection_id :id} {:namespace :apps}]
+                        App [{app_id :id} {:collection_id collection_id}]]
+          (is (partial= {:collection_id collection_id}
+                        (mt/user-http-request :rasta :put 200 (str "app/" app_id) {}))))))))
 
 (deftest list-apps-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
@@ -123,31 +120,30 @@
                             (mt/user-http-request :rasta :get 200 "app")))))))
       (testing "archives"
         (mt/with-model-cleanup [Permissions]
-          (mt/with-temp* [Permissions [_ {:group_id (:id (perms-group/all-users))
-                                          :object "/collection/namespace/apps/root/"}]
-                          Collection [collection-1 {:name "Collection 1", :namespace :apps}]
-                          Collection [collection-2 {:name "Collection 2", :namespace :apps, :archived true}]
-                          Dashboard [{dashboard_id :id}]
-                          App [{app-1-id :id} (assoc app-data :collection_id (:id collection-1) :dashboard_id dashboard_id)]
-                          App [{app-2-id :id} (assoc app-data :collection_id (:id collection-2) :dashboard_id dashboard_id)]]
-            (testing "listing normal apps"
-              (let [expected (merge app-data {:id app-1-id
-                                              :collection_id (:id collection-1)
-                                              :dashboard_id dashboard_id
-                                              :collection (-> collection-1
-                                                              (assoc :can_write true)
-                                                              (update :namespace name))})]
-                (is (partial= [expected]
-                              (mt/user-http-request :rasta :get 200 "app")))))
-            (testing "listing archived"
-              (let [expected (merge app-data {:id app-2-id
-                                              :collection_id (:id collection-2)
-                                              :dashboard_id dashboard_id
-                                              :collection (-> collection-2
-                                                              (assoc :can_write true)
-                                                              (update :namespace name))})]
-                (is (partial= [expected]
-                              (mt/user-http-request :rasta :get 200 "app/?archived=true")))))))))))
+          (mt/with-all-users-app-root-permission :write
+            (mt/with-temp* [Collection [collection-1 {:name "Collection 1", :namespace :apps}]
+                            Collection [collection-2 {:name "Collection 2", :namespace :apps, :archived true}]
+                            Dashboard [{dashboard_id :id}]
+                            App [{app-1-id :id} (assoc app-data :collection_id (:id collection-1) :dashboard_id dashboard_id)]
+                            App [{app-2-id :id} (assoc app-data :collection_id (:id collection-2) :dashboard_id dashboard_id)]]
+              (testing "listing normal apps"
+                (let [expected (merge app-data {:id app-1-id
+                                                :collection_id (:id collection-1)
+                                                :dashboard_id dashboard_id
+                                                :collection (-> collection-1
+                                                                (assoc :can_write true)
+                                                                (update :namespace name))})]
+                  (is (partial= [expected]
+                                (mt/user-http-request :rasta :get 200 "app")))))
+              (testing "listing archived"
+                (let [expected (merge app-data {:id app-2-id
+                                                :collection_id (:id collection-2)
+                                                :dashboard_id dashboard_id
+                                                :collection (-> collection-2
+                                                                (assoc :can_write true)
+                                                                (update :namespace name))})]
+                  (is (partial= [expected]
+                                (mt/user-http-request :rasta :get 200 "app/?archived=true"))))))))))))
 
 (deftest fetch-app-test
   (let [app-data {:nav_items [{:options {:item "stuff"}}]
@@ -185,9 +181,8 @@
 
 (deftest scaffold-test
   (mt/with-model-cleanup [Card Dashboard Collection Permissions]
-    (testing "Golden path"
-      (mt/with-temp* [Permissions [_ {:group_id (:id (perms-group/all-users))
-                                      :object "/collection/namespace/apps/root/read/"}]]
+    (mt/with-all-users-app-root-permission :read
+      (testing "Golden path"
         (let [app (mt/user-http-request
                    :crowberto :post 200 "app/scaffold"
                    {:table-ids [(data/id :venues)]
@@ -221,16 +216,17 @@
                         (graph/graph :apps))
               "''All Users'' should have the default permission on the app collection")
           (is (= (scaffolded-models app)
-                 (api-models app))))))
-    (testing "Bad or duplicate tables"
-      (is (= (format "Some tables could not be found. Given: (%s %s) Found: (%s)"
-                     (data/id :venues)
-                     Integer/MAX_VALUE
-                     (data/id :venues))
-             (mt/user-http-request
-              :crowberto :post 400 "app/scaffold"
-              {:table-ids [(data/id :venues) (data/id :venues) Integer/MAX_VALUE]
-               :app-name (str "My test app " (gensym))}))))))
+                 (api-models app)))))
+
+      (testing "Bad or duplicate tables"
+        (is (= (format "Some tables could not be found. Given: (%s %s) Found: (%s)"
+                       (data/id :venues)
+                       Integer/MAX_VALUE
+                       (data/id :venues))
+               (mt/user-http-request
+                :crowberto :post 400 "app/scaffold"
+                {:table-ids [(data/id :venues) (data/id :venues) Integer/MAX_VALUE]
+                 :app-name (str "My test app " (gensym))})))))))
 
 (deftest scaffold-app-test
   (mt/with-model-cleanup [Card Dashboard]

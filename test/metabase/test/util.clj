@@ -806,6 +806,25 @@
            :namespace (name ~collection-namespace))
     (fn [] ~@body)))
 
+(defn do-with-all-users-app-root-permission
+  "Call `f without arguments in a context where the ''All Users'' group
+  is granted the global app permission `permission`. `permission` can be one of
+  :read or :write."
+  [permission f]
+  (when-not (#{:read :write} permission)
+    (throw (ex-info (str "Unexpected app permission " permission)
+                    {:permission permission})))
+  (tt/with-temp Permissions [_ {:group_id (:id (perms-group/all-users))
+                                :object (cond-> "/collection/namespace/apps/root/"
+                                          (= permission :read) (str "read/"))}]
+    (f)))
+
+(defmacro with-all-users-app-root-permission
+  "Run `body` with the ''All Users'' group being granted the global app
+  permission `permission`. `permission` can be one of :read or :write."
+  [permission & body]
+  `(do-with-all-users-app-root-permission ~permission (fn [] ~@body)))
+
 (defn doall-recursive
   "Like `doall`, but recursively calls doall on map values and nested sequences, giving you a fully non-lazy object.
   Useful for tests when you need the entire object to be realized in the body of a `binding`, `with-redefs`, or
