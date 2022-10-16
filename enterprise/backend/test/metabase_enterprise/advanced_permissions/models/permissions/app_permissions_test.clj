@@ -40,8 +40,10 @@
                          (:id (perms-group/all-users)) {app-id "none"}
                          group-id {app-id "none"}}
                         group-perms))
-          (is (= #{app-id :root} (into #{} (mapcat keys) (vals group-perms)))
-              "Shouldn't confuse collection IDs and app IDs"))))))
+          (let [app-ids (into #{} (mapcat keys) (vals group-perms))]
+            (is (every? #(contains? app-ids %) [:root app-id]))
+            (is (not (contains? app-ids app-coll-id))
+                "Shouldn't confuse collection IDs and app IDs")))))))
 
 (deftest graph-update-test
   (testing "PUT /api/app/graph works only with advanced permissions"

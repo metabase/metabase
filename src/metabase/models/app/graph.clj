@@ -22,9 +22,13 @@
    :groups   {su/IntGreaterThanZero RootPermissions}})
 
 (s/defn global-graph :- GlobalPermissionsGraph
-  "Fetch the global app permission graph."
+  "Fetch the global app permission graph.
+
+  This works by reading the permissions for app collections, restricting
+  the groups to admin and ''All Users'' and the collections to the root."
   []
   (-> (graph/graph :apps)
+      (assoc :revision (app-perm-revision/latest-id))
       (update :groups (fn [group-perms]
                         (-> group-perms
                             (select-keys [(:id (perms-group/admin))

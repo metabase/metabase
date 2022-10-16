@@ -20,25 +20,30 @@
 (defn- replace-collection-ids
   "Convert the collection group permission graph `permission-graph` into an
   app group permission graph or vice versa by replacing the collection IDs
-  by app IDs according to `mapping`."
+  by app IDs according to `mapping`.
+  Stray collections in the :apps namespace are ignored."
   [group-permissions mapping]
-  (letfn [(full-mapping [collection-id]
-            (if (= collection-id :root)
-              :root
-              (mapping collection-id)))]
-    (update-vals group-permissions #(update-keys % full-mapping))))
+  (let [full-mapping (assoc mapping :root :root)]
+    (update-vals group-permissions (fn [coll-perms]
+                                     (into {}
+                                           (for [[coll-id perm] coll-perms
+                                                 :let [app-id (full-mapping coll-id)]
+                                                 :when app-id]
+                                             [app-id perm]))))))
 
 (s/defn graph :- graph/PermissionsGraph
   "Returns the app permission graph. Throws an exception if the
-  advanced-permissions feature is not enabled."
+  advanced-permissions feature is not enabled.
+
+  This works by reading the permissions for app collections and replacing
+  the IDs of the collections with the corresponding app IDs."
   []
   (check-advanced-permissions)
   (db/transaction
-   (let [collection-id->app-id (set/map-invert (db/select-id->field :collection_id 'App))]
-     (-> collection-id->app-id
-         keys
-         (graph/collection-permission-graph :apps)
-         (update :groups replace-collection-ids collection-id->app-id)))))
+    (let [collection-id->app-id (set/map-invert (db/select-id->field :collection_id 'App))]
+      (-> (graph/graph :apps)
+          (assoc :revision (app-perm-revision/latest-id))
+          (update :groups replace-collection-ids collection-id->app-id)))))
 
 (s/defn update-graph! :- graph/PermissionsGraph
   "Updates the app permissions according to `new-graph` and returns the

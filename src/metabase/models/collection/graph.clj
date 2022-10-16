@@ -69,7 +69,7 @@
                                                  [:not [:like :location (hx/literal (format "/%d/%%" collection-id))]]))}]
     (set (map :id (db/query honeysql-form)))))
 
-(defn collection-permission-graph
+(defn- collection-permission-graph
   "Return the permission graph for the collections with id in `collection-ids` and the root collection."
   ([collection-ids] (collection-permission-graph collection-ids nil))
   ([collection-ids collection-namespace]
