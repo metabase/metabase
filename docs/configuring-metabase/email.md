@@ -1,7 +1,7 @@
 ---
 title: Email
 redirect_from:
-  - /docs/latest/administration-guide/02-setting-up-email.html
+  - /docs/latest/administration-guide/02-setting-up-email
 ---
 
 # Email
