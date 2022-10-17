@@ -90,16 +90,13 @@ const Dashboards = createEntity({
     )(
       (entityObject, overrides, { notify } = {}) =>
         async (dispatch, getState) => {
-          console.log("🚀", { entityObject, overrides, notify });
-          const copyStyle = overrides.shallow_copy ? "shallow" : "deep";
           const result = Dashboards.normalize(
             await Dashboards.api.copy({
               id: entityObject.id,
               ...overrides,
-              "copy-style": copyStyle,
+              is_deep_copy: !overrides.is_shallow_copy,
             }),
           );
-          console.log("🚀", { result });
           if (notify) {
             dispatch(addUndo(notify));
           }

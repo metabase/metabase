@@ -33,7 +33,7 @@ function createCollectionIdField() {
 
 function createShallowCopyField() {
   return {
-    name: "shallow_copy",
+    name: "is_shallow_copy",
     type: "checkbox",
     label: t`Only duplicate the dashboard`,
     tooltip: t`This is a tooltip`,
