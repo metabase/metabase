@@ -1,10 +1,12 @@
 import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
+import type { LocationDescriptor } from "history";
 
-import type { DataApp, DataAppPage, DataAppNavItem } from "metabase-types/api";
+import type { DataApp } from "metabase-types/api";
 
 import Link from "metabase/core/components/Link";
+import Radio from "metabase/core/components/Radio";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 
@@ -13,15 +15,14 @@ import * as Urls from "metabase/lib/urls";
 import { MainNavbarProps, SelectedItem } from "../types";
 import DataAppActionPanel from "./DataAppActionPanel";
 
-import DataAppPageSidebarLink from "./DataAppPageSidebarLink";
-
-interface Props extends MainNavbarProps {
+interface Props extends Omit<MainNavbarProps, "location" | "params"> {
   dataApp: DataApp;
   pages: any[];
   selectedItems: SelectedItem[];
   onEditAppSettings: () => void;
   onAddData: () => void;
   onNewPage: () => void;
+  onChangeLocation: (location: LocationDescriptor) => void;
 }
 
 function DataAppNavbarView({
@@ -31,6 +32,7 @@ function DataAppNavbarView({
   onEditAppSettings,
   onAddData,
   onNewPage,
+  onChangeLocation,
 }: Props) {
   const { "data-app-page": dataAppPage } = _.indexBy(
     selectedItems,
@@ -48,40 +50,47 @@ function DataAppNavbarView({
     return pagesWithoutNavItems.map(pageId => pageMap[pageId]);
   }, [dataApp.nav_items, pages, pageMap]);
 
-  const renderPage = useCallback(
-    (page: DataAppPage, indent = 0) => (
-      <DataAppPageSidebarLink
-        key={page.id}
-        dataApp={dataApp}
-        page={page}
-        isSelected={dataAppPage?.id === page.id}
-        indent={indent}
-      />
-    ),
-    [dataApp, dataAppPage],
-  );
+  const navOptions = useMemo(() => {
+    const options = dataApp.nav_items
+      .filter(navItem => !navItem.hidden && pageMap[navItem.page_id])
+      .map(navItem => {
+        const page = pageMap[navItem.page_id];
+        return {
+          name: page.name,
+          value: page.id,
+        };
+      });
 
-  const renderNavItem = useCallback(
-    (navItem: DataAppNavItem) => {
-      const page = pageMap[navItem.page_id];
+    options.push(
+      ...pagesWithoutNavItems.map(page => ({
+        name: page.name,
+        value: page.id,
+      })),
+    );
 
-      if (!page || navItem.hidden) {
-        return null;
-      }
+    return options;
+  }, [dataApp, pagesWithoutNavItems, pageMap]);
 
-      return renderPage(page, navItem.indent);
+  const onNavItemClick = useCallback(
+    pageId => {
+      const page = pageMap[Number(pageId)];
+      const path = Urls.dataAppPage(dataApp, page);
+      console.log({ pageId, onChangeLocation, dataApp, page, path });
+      onChangeLocation(path);
     },
-    [pageMap, renderPage],
+    [dataApp, pageMap, onChangeLocation],
   );
 
   const exitAppPath = Urls.dataApp(dataApp, { mode: "preview" });
 
   return (
     <div className="flex align-center">
-      <ul className="flex align-center">
-        {dataApp.nav_items.map(renderNavItem)}
-        {pagesWithoutNavItems.map(page => renderPage(page))}
-      </ul>
+      <Radio
+        value={dataAppPage?.id}
+        options={navOptions}
+        onOptionClick={onNavItemClick}
+        variant="underlined"
+      />
       <div className="flex align-center ml-auto">
         <DataAppActionPanel
           dataApp={dataApp}

@@ -220,7 +220,6 @@ class Dashboard extends Component {
       setEditingParameter,
       isHeaderVisible,
       embedOptions,
-      params,
     } = this.props;
 
     const { error, isParametersWidgetSticky } = this.state;
@@ -270,10 +269,7 @@ class Dashboard extends Component {
                 {isDataApp && !isEditing && (
                   <div className="bg-white border-bottom py1">
                     <div className="px2">
-                      <DataAppNavbarContainer
-                        params={params}
-                        selectedItems={[]}
-                      />
+                      <DataAppNavbarContainer />
                     </div>
                   </div>
                 )}

@@ -1,6 +1,10 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
-import { LocationDescriptor } from "history";
+import _ from "underscore";
+import { withRouter } from "react-router";
+import { push } from "react-router-redux";
+import { connect } from "react-redux";
+import type { LocationDescriptor } from "history";
 
 import Modal from "metabase/components/Modal";
 
@@ -30,16 +34,24 @@ type NavbarModal =
   | "MODAL_NEW_PAGE"
   | null;
 
-interface DataAppNavbarContainerProps extends MainNavbarProps {
+interface DataAppNavbarContainerOwnProps extends MainNavbarProps {
   dataApp: DataApp;
   pages: any[];
-  selectedItems: SelectedItem[];
+}
+
+interface DataAppNavbarContainerDispatchProps {
   onChangeLocation: (location: LocationDescriptor) => void;
 }
 
-type DataAppNavbarContainerLoaderProps = DataAppNavbarContainerProps & {
-  dataApp?: DataApp;
-};
+type DataAppNavbarContainerProps = DataAppNavbarContainerOwnProps &
+  DataAppNavbarContainerDispatchProps & {
+    onReloadNavbar: () => Promise<void>;
+  };
+
+type DataAppNavbarContainerLoaderProps = DataAppNavbarContainerOwnProps &
+  DataAppNavbarContainerDispatchProps & {
+    dataApp?: DataApp;
+  };
 
 type SearchRenderProps = {
   list: any[];
@@ -47,19 +59,24 @@ type SearchRenderProps = {
   reload: () => Promise<void>;
 };
 
+const mapDispatchToProps = {
+  onChangeLocation: push,
+};
+
 function DataAppNavbarContainer({
   dataApp,
   pages,
-  selectedItems,
+  location,
+  params,
   onReloadNavbar,
   onChangeLocation,
   ...props
-}: DataAppNavbarContainerProps & { onReloadNavbar: () => Promise<void> }) {
+}: DataAppNavbarContainerProps) {
   const [modal, setModal] = useState<NavbarModal>(null);
 
-  const finalSelectedItems: SelectedItem[] = useMemo(
-    () => getSelectedItems({ dataApp, pages, selectedItems }),
-    [dataApp, pages, selectedItems],
+  const selectedItems: SelectedItem[] = useMemo(
+    () => getSelectedItems({ dataApp, pages, location, params }),
+    [dataApp, pages, location, params],
   );
 
   const handleNewDataAdded = useCallback(
@@ -142,10 +159,11 @@ function DataAppNavbarContainer({
         {...props}
         dataApp={dataApp}
         pages={pages}
-        selectedItems={finalSelectedItems}
+        selectedItems={selectedItems}
         onAddData={onAddData}
         onNewPage={onNewPage}
         onEditAppSettings={onEditAppSettings}
+        onChangeLocation={onChangeLocation}
       />
       {modal && <Modal onClose={closeModal}>{renderModalContent()}</Modal>}
     </>
@@ -198,6 +216,8 @@ function getDataAppId(state: State, props: MainNavbarOwnProps) {
   return Urls.extractEntityId(props.params.slug);
 }
 
-export default DataApps.load({ id: getDataAppId })(
-  DataAppNavbarContainerLoader,
-);
+export default _.compose(
+  withRouter,
+  DataApps.load({ id: getDataAppId }),
+  connect(null, mapDispatchToProps),
+)(DataAppNavbarContainerLoader);
