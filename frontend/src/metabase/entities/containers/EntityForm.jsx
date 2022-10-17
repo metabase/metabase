@@ -36,7 +36,6 @@ const EForm = ({
       />
     );
   }
-  console.log("🚀", { entityDef, entityObject, form, props });
 
   return (
     <Form

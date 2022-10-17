@@ -55,13 +55,14 @@ class DashboardCopyModalInner extends React.Component {
         form={Dashboards.forms.duplicate}
         overwriteOnInitialValuesChange
         copy={object => {
-          copyDashboard({ id: initialDashboardId }, dissoc(object, "id"));
+          console.log("🚀", { object });
+          return copyDashboard(
+            { id: initialDashboardId },
+            dissoc(object, "id"),
+          );
         }}
         onClose={onClose}
         onSaved={dashboard => {
-          /* eslint-disable */
-          console.log("🚀", "pretend it's saved");
-          return;
           onReplaceLocation(Urls.dashboard(dashboard));
         }}
         {...props}

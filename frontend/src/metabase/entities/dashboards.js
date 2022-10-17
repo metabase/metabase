@@ -90,12 +90,16 @@ const Dashboards = createEntity({
     )(
       (entityObject, overrides, { notify } = {}) =>
         async (dispatch, getState) => {
+          console.log("🚀", { entityObject, overrides, notify });
+          const copyStyle = overrides.shallow_copy ? "shallow" : "deep";
           const result = Dashboards.normalize(
             await Dashboards.api.copy({
               id: entityObject.id,
               ...overrides,
+              "copy-style": copyStyle,
             }),
           );
+          console.log("🚀", { result });
           if (notify) {
             dispatch(addUndo(notify));
           }
@@ -113,16 +117,6 @@ const Dashboards = createEntity({
         type: "metabase/entities/dashboards/SAVE_DASHBOARD",
         payload: savedDashboard,
       };
-    },
-
-    copy: dashboard => async dispatch => {
-      console.log("🚀", "In the copy function");
-      // const savedDashboard = await Dashboards.api.save(dashboard);
-      // dispatch({ type: Dashboards.actionTypes.INVALIDATE_LISTS_ACTION });
-      // return {
-      //   type: "metabase/entities/dashboards/SAVE_DASHBOARD",
-      //   payload: savedDashboard,
-      // };
     },
   },
 
