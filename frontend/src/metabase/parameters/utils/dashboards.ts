@@ -66,6 +66,10 @@ export function setParameterName(
   };
 }
 
+export function getIsMultiSelect(parameter: Parameter): boolean {
+  return parameter.isMultiSelect == null ? true : parameter.isMultiSelect;
+}
+
 export function hasMapping(parameter: Parameter, dashboard: Dashboard) {
   return dashboard.ordered_cards.some(ordered_card => {
     return ordered_card?.parameter_mappings?.some(parameter_mapping => {

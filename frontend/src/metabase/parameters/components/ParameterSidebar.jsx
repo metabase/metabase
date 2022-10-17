@@ -18,6 +18,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget";
 import Sidebar from "metabase/dashboard/components/Sidebar";
+import { getIsMultiSelect } from "metabase/parameters/utils/dashboards";
 
 const LINKED_FILTER = "linked-filters";
 const TABS = [
@@ -96,11 +97,7 @@ class ParameterSidebar extends React.Component {
               </div>
               <label className="mt2 mb1 block text-bold">{t`Users can pick`}</label>
               <Radio
-                value={
-                  parameter.isMultiSelect == null
-                    ? true
-                    : parameter.isMultiSelect
-                } // TODO: should the default be somewhere else?
+                value={getIsMultiSelect(parameter)}
                 onChange={setIsMultiSelect}
                 options={[
                   { name: t`Multiple values`, value: true },
