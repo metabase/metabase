@@ -25,6 +25,7 @@
           host: localhost
           port: 5432
           name: test-data
+          password: {{ env MY_POSTGRES_PASSWORD }}
       settings:
         my-setting: 1234
 
@@ -52,9 +53,16 @@
   If we want to introduce a breaking change that should not be backwards-compatible, such as introducing a new
   template type, we can increment the major version to `2.0`.
 
+  ### Spec validation
+
+  The contents of each section are automatically validated against the [[section-spec]] for that section. This
+  validation is done before template expansion to avoid leaking sensitive values in the error messages that get
+  logged.
+
   ### TEMPLATES
 
-  TODO
+  After spec validation, the config map is walked and `{{template}}` forms are expanded. This uses the same code used
+  to parse template tags in SQL queries, i.e. [[metabase.driver.common.parameters.parse]], which
   "
   (:require
    [camel-snake-kebab.core :as csk]
@@ -66,7 +74,6 @@
    [environ.core :as env]
    [metabase.driver.common.parameters]
    [metabase.driver.common.parameters.parse :as params.parse]
-   [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.i18n :refer [trs]]
@@ -81,7 +88,10 @@
   is [[any?]].
 
   Sections are validated BEFORE template expansion, so as to avoid leaking any sensitive values in spec errors. Write
-  your specs accordingly!"
+  your specs accordingly!
+
+  Implementations of this method live in other namespaces. For example, the section spec for the `:users` section
+  lives in [[metabase.models.user]]."
   {:arglists '([section-name])}
   keyword)
 
@@ -145,7 +155,8 @@
 
 (defmethod expand-parsed-template-form :default
   [form]
-  (throw (ex-info (trs "Don''t know how to expand template form: {0}" (pr-str form)))))
+  (throw (ex-info (trs "Don''t know how to expand template form: {0}" (pr-str form))
+                  {:form form})))
 
 (defmethod expand-parsed-template-form 'env
   [[_template-type env-var-name]]
@@ -179,6 +190,12 @@
       (s/assert* ::template-form obj)
       (expand-parsed-template-form obj))))
 
+(defmethod expand-template-str-part metabase.driver.common.parameters.Optional
+  [{:keys [args]}]
+  (let [parts (map expand-template-str-part args)]
+    (when (every? seq parts)
+      (str/join parts))))
+
 (defn- expand-templates-in-str [s]
   (str/join (map expand-template-str-part (params.parse/parse s))))
 
@@ -197,13 +214,12 @@
     (s/assert* ::config m)
     (expand-templates m)))
 
-(defmulti initialize-object!
-  ;; TODO
-  {:arglists '([model properties])}
-  mi/dispatch-on-model)
-
 (defmulti initialize-section!
-  ;; TODO
+  "Execute initialization code for the section of the init config file with the key `section-name` and value
+  `section-config`.
+
+  Implementations of this method live in other namespaces, for example the method for the `:users` section (to
+  initialize Users) lives in [[metabase.models.user]]."
   {:arglists '([section-name section-config])}
   (fn [section-name _section-config]
     (keyword section-name)))
@@ -213,16 +229,6 @@
 (defmethod initialize-section! :default
   [section-name _section-config]
   (log/warn (u/colorize :yellow (trs "Ignoring unknown config section {0}." (pr-str section-name)))))
-
-#_(defmethod initialize-section! :databases
-  [_section-name databases]
-  (doseq [database databases]
-    (initialize-object! 'Database database)))
-
-#_(defmethod initialize-section! :settings
-  [_section-name settings]
-  (doseq [setting settings]
-    (initialize-object! 'Setting setting)))
 
 (defn ^{:added "0.45.0"} initialize!
   "Initialize Metabase according to the directives in the config file, if it exists."

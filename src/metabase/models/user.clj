@@ -393,8 +393,8 @@
   [_section]
   (s/spec (s/* ::config-file-spec)))
 
-(defmethod config.file/initialize-object! User
-  [_model user]
+(defn- init-from-config-file!
+  [user]
   ;; TODO -- should we disallow certain keys, like ID?
   ;;
   ;; TODO -- if this is the FIRST user, we should probably make them a superuser, right?
@@ -411,4 +411,4 @@
 (defmethod config.file/initialize-section! :users
   [_section-name users]
   (doseq [user users]
-    (config.file/initialize-object! User user)))
+    (init-from-config-file! user)))

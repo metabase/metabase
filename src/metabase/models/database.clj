@@ -335,8 +335,8 @@
   [_section]
   (s/spec (s/* ::config-file-spec)))
 
-(defmethod config.file/initialize-object! Database
-  [_model database]
+(defn- init-from-config-file!
+  [database]
   (if-let [existing-database-id (db/select-one-id Database :engine (:engine database), :name (:name database))]
     (do
       (log/info (u/colorize :blue (trs "Updating Database {0} {1}" (:engine database) (pr-str (:name database)))))
@@ -349,4 +349,4 @@
 (defmethod config.file/initialize-section! :databases
   [_section-name databases]
   (doseq [database databases]
-    (config.file/initialize-object! Database database)))
+    (init-from-config-file! database)))

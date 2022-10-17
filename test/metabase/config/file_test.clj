@@ -5,6 +5,7 @@
    [clojure.walk :as walk]
    [metabase.config.file :as config.file]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [yaml.core :as yaml]))
 
 (use-fixtures :each (fn [thunk]
@@ -139,7 +140,31 @@
           ;; wrong env var type
           "{{env :SOME_ENV_VAR}}"             (re-quote "SOME_ENV_VAR - failed: symbol?"))))))
 
-;;; TODO -- OPTIONAL template tag
+(deftest ^:parallel optional-template-test
+  (testing "[[optional {{template}}]] values"
+    (binding [config.file/*env* (assoc @#'config.file/*env* :my-sensitive-password "~~~SeCrEt123~~~")]
+      (testing "env var exists"
+        (binding [config.file/*config* (mock-config-with-setting "[[{{env MY_SENSITIVE_PASSWORD}}]]")]
+          (is (= (mock-config-with-setting "~~~SeCrEt123~~~")
+                 (#'config.file/config))))
+        (binding [config.file/*config* (mock-config-with-setting "password__[[{{env MY_SENSITIVE_PASSWORD}}]]")]
+          (is (= (mock-config-with-setting "password__~~~SeCrEt123~~~")
+                 (#'config.file/config))))
+        (testing "with text inside optional brackets before/after the templated part"
+          (binding [config.file/*config* (mock-config-with-setting "[[before__{{env MY_SENSITIVE_PASSWORD}}__after]]")]
+            (is (= (mock-config-with-setting "before__~~~SeCrEt123~~~__after")
+                   (#'config.file/config))))))
+      (testing "env var does not exist"
+        (binding [config.file/*config* (mock-config-with-setting "[[{{env MY_OTHER_SENSITIVE_PASSWORD}}]]")]
+          (is (= (mock-config-with-setting "")
+                 (#'config.file/config))))
+        (binding [config.file/*config* (mock-config-with-setting "password__[[{{env MY_OTHER_SENSITIVE_PASSWORD}}]]")]
+          (is (= (mock-config-with-setting "password__")
+                 (#'config.file/config))))
+        (testing "with text inside optional brackets before/after the templated part"
+          (binding [config.file/*config* (mock-config-with-setting "[[before__{{env MY_OTHER_SENSITIVE_PASSWORD}}__after]]")]
+            (is (= (mock-config-with-setting "")
+                   (#'config.file/config)))))))))
 
 (deftest initialize-section-test
   (testing "Ignore unknown sections"
@@ -147,17 +172,16 @@
       (let [log-messages (mt/with-log-messages-for-level [metabase.config.file :warn]
                            (is (= :ok
                                   (config.file/initialize!))))]
-        (is (= [[:warn nil "Ignoring unknown config section :unknown-section."]]
+        (is (= [[:warn nil (u/colorize :yellow "Ignoring unknown config section :unknown-section.")]]
                log-messages))))))
 
 (deftest ^:parallel error-validation-do-not-leak-env-vars-test
   (testing "spec errors should not include contents of env vars -- expand templates after spec validation."
-    (binding [config.file/*supported-versions* {:min 1, :max 1}
-              config.file/*env*                (assoc @#'config.file/*env* :my-sensitive-password "~~~SeCrEt123~~~")
-              config.file/*config*             {:version 1
-                                                :config  {:users [{:first_name "Cam"
-                                                                   :last_name  "Era"
-                                                                   :password   "{{env MY_SENSITIVE_PASSWORD}}"}]}}]
+    (binding [config.file/*env*    (assoc @#'config.file/*env* :my-sensitive-password "~~~SeCrEt123~~~")
+              config.file/*config* {:version 1
+                                    :config  {:users [{:first_name "Cam"
+                                                       :last_name  "Era"
+                                                       :password   "{{env MY_SENSITIVE_PASSWORD}}"}]}}]
       (is (thrown?
            clojure.lang.ExceptionInfo
            (#'config.file/config)))
