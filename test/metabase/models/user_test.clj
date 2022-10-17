@@ -1,33 +1,34 @@
 (ns metabase.models.user-test
-  (:require [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.http-client :as client]
-            [metabase.models
-             :refer
-             [Collection
-              Database
-              PermissionsGroup
-              PermissionsGroupMembership
-              Pulse
-              PulseChannel
-              PulseChannelRecipient
-              Session
-              Table
-              User]]
-            [metabase.models.collection :as collection]
-            [metabase.models.collection-test :as collection-test]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.user :as user]
-            [metabase.test :as mt]
-            [metabase.test.data.users :as test.users]
-            [metabase.test.integrations.ldap :as ldap.test]
-            [metabase.util :as u]
-            [metabase.util.password :as u.password]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.config.file :as config.file]
+   [metabase.http-client :as client]
+   [metabase.models
+    :refer [Collection
+            Database
+            PermissionsGroup
+            PermissionsGroupMembership
+            Pulse
+            PulseChannel
+            PulseChannelRecipient
+            Session
+            Table
+            User]]
+   [metabase.models.collection :as collection]
+   [metabase.models.collection-test :as collection-test]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.user :as user]
+   [metabase.test :as mt]
+   [metabase.test.data.users :as test.users]
+   [metabase.test.integrations.ldap :as ldap.test]
+   [metabase.util :as u]
+   [metabase.util.password :as u.password]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 ;;; Tests for permissions-set
 
@@ -476,3 +477,66 @@
       (is (= "e8d63472"
              (serdes.hash/raw-hash ["fred@flintston.es"])
              (serdes.hash/identity-hash user))))))
+
+(deftest init-from-config-file-test
+  (mt/with-model-cleanup [User]
+    (binding [config.file/*config* {:version 1
+                                    :config  {:users [{:first_name "Cam"
+                                                       :last_name  "Era"
+                                                       :email      "cam+config-file-test@metabase.com"
+                                                       :password   "2cans"}]}}]
+      (testing "Create a User if it does not already exist"
+        (is (= :ok
+               (config.file/initialize!)))
+        (is (partial= {:first_name "Cam"
+                       :last_name  "Era"
+                       :email      "cam+config-file-test@metabase.com"}
+                      (db/select-one User :email "cam+config-file-test@metabase.com")))
+        (is (= 1
+               (db/count User :email "cam+config-file-test@metabase.com"))))
+      (testing "upsert if User already exists"
+        (binding [config.file/*config* {:version 1
+                                        :config  {:users [{:first_name "Cam"
+                                                           :last_name  "Saul"
+                                                           :email      "cam+config-file-test@metabase.com"
+                                                           :password   "2cans"}]}}]
+          (is (= :ok
+                 (config.file/initialize!)))
+          (is (= 1
+                 (db/count User :email "cam+config-file-test@metabase.com")))
+          (is (partial= {:first_name "Cam"
+                         :last_name  "Saul"
+                         :email      "cam+config-file-test@metabase.com"}
+                        (db/select-one User :email "cam+config-file-test@metabase.com"))))))))
+
+(deftest ^:parallel init-from-config-file-validation-test
+  (binding [config.file/*supported-versions* {:min 1, :max 1}]
+    (are [user error-pattern] (thrown-with-msg?
+                               clojure.lang.ExceptionInfo
+                               error-pattern
+                               (binding [config.file/*config* {:version 1
+                                                               :config  {:users [user]}}]
+                                 (#'config.file/config)))
+      ;; missing email
+      {:first_name "Cam"
+       :last_name  "Era"
+       :password   "2cans"}
+      (re-pattern (java.util.regex.Pattern/quote "failed: (contains? % :email)"))
+
+      ;; missing first name
+      {:last_name  "Era"
+       :email      "cam+config-file-test@metabase.com"
+       :password   "2cans"}
+      (re-pattern (java.util.regex.Pattern/quote "failed: (contains? % :first_name)"))
+
+      ;; missing last name
+      {:first_name "Cam"
+       :email      "cam+config-file-test@metabase.com"
+       :password   "2cans"}
+      (re-pattern (java.util.regex.Pattern/quote "failed: (contains? % :last_name)"))
+
+      ;; missing password
+      {:first_name "Cam"
+       :last_name  "Era"
+       :email      "cam+config-file-test@metabase.com"}
+      (re-pattern (java.util.regex.Pattern/quote "failed: (contains? % :password)")))))
