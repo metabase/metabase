@@ -15,7 +15,7 @@
             [metabase.events :as events]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.card :refer [Card]]
-            [metabase.models.collection :as collection :refer [Collection]]
+            [metabase.models.collection :as collection]
             [metabase.models.dashboard :as dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
             [metabase.models.field :refer [Field]]
