@@ -7,6 +7,7 @@
             [metabase.api.common.validation :as validation]
             [metabase.api.permission-graph :as api.permission-graph]
             [metabase.models :refer [PermissionsGroupMembership User]]
+            [metabase.models.action :as action]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group :refer [PermissionsGroup]]
             [metabase.public-settings.premium-features :as premium-features]
@@ -221,6 +222,7 @@
   "Fetch a graph of execution permissions."
   []
   (api/check-superuser)
+  (action/check-data-apps-enabled)
   (perms/execution-perms-graph))
 
 (api/defendpoint PUT "/execution/graph"
@@ -233,6 +235,7 @@
   [:as {body :body}]
   {body su/Map}
   (api/check-superuser)
+  (action/check-data-apps-enabled)
   (let [graph (api.permission-graph/converted-json->graph ::api.permission-graph/execution-permissions-graph body)]
     (when (= graph :clojure.spec.alpha/invalid)
       (throw (ex-info (tru "Invalid execution permission graph: {0}"
