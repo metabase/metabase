@@ -792,7 +792,8 @@
                                                  :font-weight   700
                                                  :padding-right :16px})}
                         (trs "Nothing to compare to.")]]
-         :render/text (str last-value "\n" (trs "Nothing to compare to."))}))))
+         :render/text (str (format-cell timezone-id last-value metric-col viz-settings)
+                           "\n" (trs "Nothing to compare to."))}))))
 
 (s/defmethod render :waterfall :- common/RenderedPulseCard
   [_ render-type _timezone-id card dashcard {:keys [rows cols viz-settings] :as data}]

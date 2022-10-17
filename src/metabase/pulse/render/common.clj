@@ -42,7 +42,7 @@
   (if (zero? value)
     0
     (let [val-string (-> (condp = (type value)
-                           java.math.BigDecimal (.toPlainString value)
+                           java.math.BigDecimal (.toPlainString ^BigDecimal value)
                            java.lang.Double (format "%.20f" value)
                            java.lang.Float (format "%.20f" value)
                            (str value))
