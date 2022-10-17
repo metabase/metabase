@@ -244,27 +244,6 @@ describe("scenarios > question > native", () => {
     });
   });
 
-  it("should link correctly from the variables sidebar (metabase#16212)", () => {
-    cy.createNativeQuestion({
-      name: "test-question",
-      native: { query: 'select 1 as "a", 2 as "b"' },
-    }).then(({ body: { id: questionId } }) => {
-      openNativeEditor().type(`{{#${questionId}}}`, {
-        parseSpecialCharSequences: false,
-      });
-      cy.get(".NativeQueryEditor .Icon-play").click();
-      cy.get(".Visualization").within(() => {
-        cy.findByText("a");
-        cy.findByText("b");
-        cy.findByText("1");
-        cy.findByText("2");
-      });
-      cy.findByRole("link", { name: `Question #${questionId}` })
-        .should("have.attr", "href")
-        .and("eq", `/question/${questionId}-test-question`);
-    });
-  });
-
   it("should not autorun ad-hoc native queries by default", () => {
     visitQuestionAdhoc(
       {
