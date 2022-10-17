@@ -87,28 +87,6 @@ export function isMappedExplicitActionButton(
   );
 }
 
-export function isValidImplicitActionClickBehavior(
-  clickBehavior?: ClickBehavior,
-) {
-  if (
-    !clickBehavior ||
-    clickBehavior.type !== "action" ||
-    !("actionType" in clickBehavior)
-  ) {
-    return false;
-  }
-  if (clickBehavior.actionType === "insert") {
-    return clickBehavior.tableId != null;
-  }
-  if (
-    clickBehavior.actionType === "update" ||
-    clickBehavior.actionType === "delete"
-  ) {
-    return typeof clickBehavior.objectDetailDashCardId === "number";
-  }
-  return false;
-}
-
 export function getActionButtonLabel(dashCard: ActionDashboardCard) {
   const label = dashCard.visualization_settings?.["button.label"];
   return label || "";
