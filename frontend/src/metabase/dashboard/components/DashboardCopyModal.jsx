@@ -42,8 +42,9 @@ class DashboardCopyModalInner extends React.Component {
       params,
       ...props
     } = this.props;
+
     const initialDashboardId = Urls.extractEntityId(params.slug);
-    console.log("🚀", { props });
+
     return (
       <EntityCopyModal
         entityType="dashboards"
@@ -54,13 +55,11 @@ class DashboardCopyModalInner extends React.Component {
         form={Dashboards.forms.duplicate}
         overwriteOnInitialValuesChange
         copy={object => {
-          console.log("🚀", "copied");
-          /* eslint-disable */
-          return;
           copyDashboard({ id: initialDashboardId }, dissoc(object, "id"));
         }}
         onClose={onClose}
         onSaved={dashboard => {
+          /* eslint-disable */
           console.log("🚀", "pretend it's saved");
           return;
           onReplaceLocation(Urls.dashboard(dashboard));

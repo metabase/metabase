@@ -114,6 +114,16 @@ const Dashboards = createEntity({
         payload: savedDashboard,
       };
     },
+
+    copy: dashboard => async dispatch => {
+      console.log("🚀", "In the copy function");
+      // const savedDashboard = await Dashboards.api.save(dashboard);
+      // dispatch({ type: Dashboards.actionTypes.INVALIDATE_LISTS_ACTION });
+      // return {
+      //   type: "metabase/entities/dashboards/SAVE_DASHBOARD",
+      //   payload: savedDashboard,
+      // };
+    },
   },
 
   reducer: (state = {}, { type, payload, error }) => {
