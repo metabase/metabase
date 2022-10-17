@@ -58,6 +58,7 @@
             max-app-id (:id (db/select-one [App [:%max.id :id]]))]
         (mt/with-temp* [Collection [{coll0-id :id} {:location "/", :namespace :apps}]
                         Collection [{coll1-id :id} {:location "/", :namespace :apps}]
+                        ;; make sure that the :id and :collection_id of the app are different
                         App [{app-id :id :as app} {:collection_id (if (= max-app-id max-coll-id)
                                                                     coll1-id
                                                                     coll0-id)}]

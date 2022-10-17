@@ -8,7 +8,7 @@
     [metabase.api.collection :as api.collection]
     [metabase.api.common :as api]
     [metabase.mbql.schema :as mbql.s]
-    [metabase.models :refer [App Collection Dashboard ModelAction Table]]
+    [metabase.models :refer [App Dashboard ModelAction Table]]
     [metabase.models.app.graph :as app.graph]
     [metabase.models.collection :as collection]
     [metabase.models.dashboard :as dashboard]

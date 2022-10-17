@@ -12996,6 +12996,7 @@ databaseChangeLog:
   - changeSet:
       id: v45.00-044
       author: metamben
+      comment: Added 0.45.0 -- create app permission graph revision table
       changes:
         - createTable:
             tableName: app_permission_graph_revision
@@ -13010,13 +13011,13 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: before
-                  type: text
+                  type: ${text.type}
                   remarks: 'Serialized JSON of the apps graph before the changes.'
                   constraints:
                     nullable: false
               - column:
                   name: after
-                  type: text
+                  type: ${text.type}
                   remarks: 'Serialized JSON of the apps graph after the changes.'
                   constraints:
                     nullable: false
@@ -13037,7 +13038,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: remark
-                  type: text
+                  type: ${text.type}
                   remarks: 'Optional remarks explaining why these changes were made.'
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<

@@ -30,6 +30,7 @@
    su/IntGreaterThanZero  CollectionPermissions}) ; be present, which is why it's *optional*
 
 (def PermissionsGraph
+  "A versioned map of group permissions. See [[GroupPermissionsGraph]]."
   {:revision s/Int
    :groups   {su/IntGreaterThanZero GroupPermissionsGraph}})
 
