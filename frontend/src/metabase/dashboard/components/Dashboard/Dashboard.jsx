@@ -24,6 +24,7 @@ import {
   ParametersWidgetContainer,
 } from "./Dashboard.styled";
 import DashboardEmptyState from "./DashboardEmptyState/DashboardEmptyState";
+import DataAppEditPageButton from "./DataAppEditPageButton";
 import { updateParametersWidgetStickiness } from "./stickyParameters";
 
 const SCROLL_THROTTLE_INTERVAL = 1000 / 24;
@@ -324,6 +325,10 @@ class Dashboard extends Component {
                   )}
                 </CardsContainer>
               </ParametersAndCardsContainer>
+
+              {isDataApp && !isEditing && (
+                <DataAppEditPageButton onClick={() => this.setEditing(true)} />
+              )}
 
               <DashboardSidebars
                 {...this.props}
