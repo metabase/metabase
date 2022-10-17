@@ -54,10 +54,6 @@ describe("parameters/utils/ui", () => {
         id: "4",
         slug: "qux",
       }),
-      createMockUiParameter({
-        id: "5",
-        hidden: true,
-      }),
     ];
 
     const hiddenParameterSlugs = "bar,baz";
