@@ -147,23 +147,6 @@
   [form]
   (throw (ex-info (trs "Don''t know how to expand template form: {0}" (pr-str form)))))
 
-;;; TODO -- consider whether we should defer the resolution of env var values, so that we can make sure they don't show
-;;; up in error logs.
-
-#_(p.types/defrecord+ EnvVarValue [env-var-name]
-    jdbc/ISQLParameter
-    (set-parameter [_this stmt i]
-      (let [env-var-value (get *env* env-var-name)]
-        (jdbc/set-parameter env-var-value stmt i)))
-
-    pretty/PrettyPrintable
-    (pretty [_this]
-      (list `->EnvVarValue env-var-name)))
-
-#_(defmethod expand-parsed-template-form 'env
-  [[_template-type env-var-name]]
-  (->EnvVarValue (csk/->kebab-case-keyword env-var-name)))
-
 (defmethod expand-parsed-template-form 'env
   [[_template-type env-var-name]]
   (get *env* (csk/->kebab-case-keyword env-var-name)))
