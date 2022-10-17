@@ -292,8 +292,6 @@
    is_deep_copy           (s/maybe s/Bool)}
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
   (collection/check-write-perms-for-collection collection_id)
-  (when collection_id
-    (api/read-check Collection collection_id))
   (let [existing-dashboard (get-dashboard from-dashboard-id)
         dashboard-data {:name                (or name (:name existing-dashboard))
                         :description         (or description (:description existing-dashboard))
