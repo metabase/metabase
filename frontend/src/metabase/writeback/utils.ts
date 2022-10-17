@@ -109,19 +109,6 @@ export function isValidImplicitActionClickBehavior(
   return false;
 }
 
-export function isImplicitActionButton(
-  dashCard: BaseDashboardOrderedCard,
-): boolean {
-  const isAction = isActionDashCard(dashCard);
-  return (
-    isAction &&
-    dashCard.action_id == null &&
-    isValidImplicitActionClickBehavior(
-      dashCard.visualization_settings?.click_behavior,
-    )
-  );
-}
-
 export function getActionButtonLabel(dashCard: ActionDashboardCard) {
   const label = dashCard.visualization_settings?.["button.label"];
   return label || "";

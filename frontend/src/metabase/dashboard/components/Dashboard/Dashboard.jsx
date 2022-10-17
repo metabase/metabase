@@ -7,8 +7,9 @@ import { getMainElement } from "metabase/lib/dom";
 
 import DashboardHeader from "metabase/dashboard/containers/DashboardHeader";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
-import { getValuePopulatedParameters } from "metabase/parameters/utils/parameter-values";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
+import { getValuePopulatedParameters } from "metabase-lib/lib/parameters/utils/parameter-values";
+
 import DashboardControls from "../../hoc/DashboardControls";
 import { DashboardSidebars } from "../DashboardSidebars";
 import DashboardGrid from "../DashboardGrid";
@@ -87,8 +88,6 @@ class Dashboard extends Component {
       props: PropTypes.object,
     }).isRequired,
     closeSidebar: PropTypes.func.isRequired,
-    openAddQuestionSidebar: PropTypes.func.isRequired,
-    showAddQuestionSidebar: PropTypes.bool.isRequired,
     embedOptions: PropTypes.object,
   };
 
@@ -192,14 +191,6 @@ class Dashboard extends Component {
     });
   };
 
-  onToggleAddQuestionSidebar = () => {
-    if (this.props.showAddQuestionSidebar) {
-      this.props.closeSidebar();
-    } else {
-      this.props.openAddQuestionSidebar();
-    }
-  };
-
   onCancel = () => {
     this.props.setSharing(false);
   };
@@ -220,7 +211,6 @@ class Dashboard extends Component {
       parameters,
       parameterValues,
       isNavbarOpen,
-      showAddQuestionSidebar,
       editingParameter,
       setParameterValue,
       setParameterIndex,
@@ -282,9 +272,6 @@ class Dashboard extends Component {
                   addParameter={addParameter}
                   parametersWidget={parametersWidget}
                   onSharingClick={this.onSharingClick}
-                  onToggleAddQuestionSidebar={this.onToggleAddQuestionSidebar}
-                  showAddQuestionSidebar={showAddQuestionSidebar}
-                  isDataApp={dashboard.is_app_page}
                 />
 
                 {shouldRenderParametersWidgetInEditMode && (
@@ -336,7 +323,6 @@ class Dashboard extends Component {
               <DashboardSidebars
                 {...this.props}
                 onCancel={this.onCancel}
-                showAddQuestionSidebar={showAddQuestionSidebar}
                 setDashboardAttribute={this.setDashboardAttribute}
               />
             </DashboardBody>

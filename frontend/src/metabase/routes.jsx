@@ -201,7 +201,7 @@ export const getRoutes = store => (
 
       {/* MAIN */}
       <Route component={IsAuthenticated}>
-        {/* The global all hands rotues, things in here are for all the folks */}
+        {/* The global all hands routes, things in here are for all the folks */}
         <Route
           path="/"
           component={HomePage}

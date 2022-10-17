@@ -443,7 +443,7 @@
         ;; key
         :children)))
 
-(s/defn ^:private descendant-ids :- (s/maybe #{su/IntGreaterThanZero})
+(s/defn descendant-ids :- (s/maybe #{su/IntGreaterThanZero})
   "Return a set of IDs of all descendant Collections of a `collection`."
   [collection :- CollectionWithLocationAndIDOrRoot]
   (db/select-ids Collection :location [:like (str (children-location collection) \%)]))
@@ -891,6 +891,10 @@
      (serdes.hash/identity-hash (db/select-one Collection :id parent-id))
      "ROOT")))
 
+(defmethod serdes.hash/identity-hash-fields Collection
+  [_collection]
+  [:name :namespace parent-identity-hash])
+
 (u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Collection)
   models/IModel
   (merge models/IModelDefaults
@@ -901,19 +905,16 @@
           :pre-insert     pre-insert
           :post-insert    post-insert
           :pre-update     pre-update
-          :pre-delete     pre-delete})
-
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [:name :namespace parent-identity-hash])})
+          :pre-delete     pre-delete}))
 
 (defn- collection-query [maybe-user]
   (serdes.base/raw-reducible-query
-    "Collection"
-    {:where [:and
-             [:= :archived false]
-             (if (nil? maybe-user)
-               [:is :personal_owner_id nil]
-               [:= :personal_owner_id maybe-user])]}))
+   "Collection"
+   {:where [:and
+            [:= :archived false]
+            (if (nil? maybe-user)
+              [:is :personal_owner_id nil]
+              [:= :personal_owner_id maybe-user])]}))
 
 (defmethod serdes.base/extract-query "Collection" [_ {:keys [user]}]
   (let [unowned (collection-query nil)]

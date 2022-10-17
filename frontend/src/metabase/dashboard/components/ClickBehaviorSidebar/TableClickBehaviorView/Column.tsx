@@ -2,8 +2,6 @@ import React from "react";
 import { t, jt, ngettext, msgid } from "ttag";
 
 import { color } from "metabase/lib/colors";
-import { getIconForField } from "metabase/lib/schema_metadata";
-
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
 
@@ -13,6 +11,7 @@ import type {
   EntityCustomDestinationClickBehavior,
 } from "metabase-types/api";
 import type { Column as IColumn } from "metabase-types/types/Dataset";
+import { getIconForField } from "metabase-lib/lib/metadata/utils/fields";
 
 import { SidebarItem } from "../SidebarItem";
 

@@ -5,7 +5,7 @@ import {
   CardId,
   StructuredDatasetQuery,
 } from "metabase-types/types/Card";
-import { getQuestionVirtualTableId } from "metabase/lib/saved-questions";
+import { getQuestionVirtualTableId } from "metabase-lib/lib/metadata/utils/saved-questions";
 import Database from "metabase-lib/lib/metadata/Database";
 import Question from "metabase-lib/lib/Question";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";

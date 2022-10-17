@@ -15,13 +15,25 @@ export default class Confirm extends Component {
   static propTypes = {
     action: PropTypes.func.isRequired,
     title: PropTypes.string.isRequired,
+    message: PropTypes.string,
+    confirmButtonText: PropTypes.string,
+    cancelButtonText: PropTypes.string,
     children: PropTypes.any,
     content: PropTypes.any,
     triggerClasses: PropTypes.string,
   };
 
   render() {
-    const { action, children, title, content, triggerClasses } = this.props;
+    const {
+      action,
+      children,
+      title,
+      content,
+      message,
+      confirmButtonText,
+      cancelButtonText,
+      triggerClasses,
+    } = this.props;
     return (
       <ModalWithTrigger
         ref={this.modal}
@@ -31,6 +43,9 @@ export default class Confirm extends Component {
         <ConfirmContent
           title={title}
           content={content}
+          message={message}
+          confirmButtonText={confirmButtonText}
+          cancelButtonText={cancelButtonText}
           onClose={() => {
             this.modal.current.close();
           }}

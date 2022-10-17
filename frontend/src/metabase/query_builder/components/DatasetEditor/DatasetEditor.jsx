@@ -20,6 +20,7 @@ import { calcInitialEditorHeight } from "metabase/query_builder/components/Nativ
 import { setDatasetEditorTab } from "metabase/query_builder/actions";
 import {
   getDatasetEditorTab,
+  getResultsMetadata,
   isResultsMetadataDirty,
 } from "metabase/query_builder/selectors";
 
@@ -51,6 +52,7 @@ const propTypes = {
   question: PropTypes.object.isRequired,
   datasetEditorTab: PropTypes.oneOf(["query", "metadata"]).isRequired,
   metadata: PropTypes.object,
+  resultsMetadata: PropTypes.shape({ columns: PropTypes.array }),
   isMetadataDirty: PropTypes.bool.isRequired,
   result: PropTypes.object,
   height: PropTypes.number,
@@ -82,6 +84,7 @@ function mapStateToProps(state) {
   return {
     datasetEditorTab: getDatasetEditorTab(state),
     isMetadataDirty: isResultsMetadataDirty(state),
+    resultsMetadata: getResultsMetadata(state),
   };
 }
 
@@ -170,6 +173,7 @@ function DatasetEditor(props) {
     question: dataset,
     datasetEditorTab,
     result,
+    resultsMetadata,
     metadata,
     isMetadataDirty,
     height,
@@ -193,12 +197,13 @@ function DatasetEditor(props) {
     const virtualCardColumns = (virtualCardTable?.fields ?? []).map(field =>
       field.column(),
     );
-    // Columns in results_metadata contain all the necessary metadata
+    // Columns in resultsMetadata contain all the necessary metadata
     // orderedColumns contain properly sorted columns, but they only contain field names and refs.
-    // Normally, columns in results_metadata are ordered too,
+    // Normally, columns in resultsMetadata are ordered too,
     // but they only get updated after running a query (which is not triggered after reordering columns).
     // This ensures metadata rich columns are sorted correctly not to break the "Tab" key navigation behavior.
-    const columns = result?.data?.results_metadata?.columns;
+    const columns = resultsMetadata?.columns;
+
     if (!Array.isArray(columns)) {
       return [];
     }
@@ -212,7 +217,7 @@ function DatasetEditor(props) {
           virtualCardColumns.find(c => isSameField(c.field_ref, col.fieldRef)),
       )
       .filter(Boolean);
-  }, [dataset, orderedColumns, result?.data?.results_metadata?.columns]);
+  }, [dataset, orderedColumns, resultsMetadata]);
 
   const isEditingQuery = datasetEditorTab === "query";
   const isEditingMetadata = datasetEditorTab === "metadata";
@@ -425,7 +430,12 @@ function DatasetEditor(props) {
             onChange={onChangeEditorTab}
             options={[
               { id: "query", name: t`Query`, icon: "notebook" },
-              { id: "metadata", name: t`Metadata`, icon: "label" },
+              {
+                id: "metadata",
+                name: t`Metadata`,
+                icon: "label",
+                disabled: !resultsMetadata,
+              },
             ]}
           />
         }
@@ -440,7 +450,9 @@ function DatasetEditor(props) {
             <Confirm
               key="cancel"
               action={handleCancelCreate}
-              title={t`Cancel creating model`}
+              title={t`Discard changes?`}
+              message={t`Your model won't be created.`}
+              confirmButtonText={t`Discard`}
             >
               <Button small>{t`Cancel`}</Button>
             </Confirm>

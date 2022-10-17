@@ -13,10 +13,11 @@
 (u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class PulseCard)
   models/IModel
   (merge models/IModelDefaults
-         {:properties (constantly {:entity_id true})})
+         {:properties (constantly {:entity_id true})}))
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [(serdes.hash/hydrated-hash :pulse) (serdes.hash/hydrated-hash :card)])})
+(defmethod serdes.hash/identity-hash-fields PulseCard
+  [_pulse-card]
+  [(serdes.hash/hydrated-hash :pulse) (serdes.hash/hydrated-hash :card)])
 
 (defn next-position-for
   "Return the next available `pulse_card.position` for the given `pulse`"

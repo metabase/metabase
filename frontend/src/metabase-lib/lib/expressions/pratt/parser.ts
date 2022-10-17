@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { tokenize, TOKEN, OPERATOR } from "../tokenizer";
 import {
   ADD,
   ARG_LIST,
@@ -24,17 +25,8 @@ import {
   STRING,
   SUB,
   WS,
-} from "metabase/lib/expressions/pratt/syntax";
-import {
-  assert,
-  CompileError,
-  NodeType,
-  Token,
-  Node,
-  Hooks,
-} from "metabase/lib/expressions/pratt/types";
-
-import { tokenize, TOKEN, OPERATOR } from "metabase/lib/expressions/tokenizer";
+} from "./syntax";
+import { assert, CompileError, NodeType, Token, Node, Hooks } from "./types";
 
 interface ParserOptions {
   hooks?: Hooks;

@@ -193,10 +193,11 @@
                                        :settings          :json
                                        :nfc_path          :json})
           :properties     (constantly {:timestamped? true})
-          :pre-insert     pre-insert})
+          :pre-insert     pre-insert}))
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :table)])})
+(defmethod serdes.hash/identity-hash-fields Field
+  [_field]
+  [:name (serdes.hash/hydrated-hash :table)])
 
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------

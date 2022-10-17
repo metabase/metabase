@@ -1,10 +1,7 @@
 import _ from "underscore";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import Dimension, {
-  AggregationDimension,
-  FieldDimension,
-} from "metabase-lib/lib/Dimension";
+import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
 
 export const datasetContainsNoResults = data =>
   data.rows == null || data.rows.length === 0;
@@ -36,36 +33,6 @@ export function fieldRefWithOption(fieldRef, key, value) {
   const dimension = FieldDimension.parseMBQLOrWarn(fieldRef);
   return dimension && dimension.withOption(key, value).mbql();
 }
-
-export const keyForColumn = column => {
-  let fieldRef = column.field_ref;
-  if (!fieldRef) {
-    console.error("column is missing field_ref", column);
-    fieldRef = new FieldDimension(column.name).mbql();
-  }
-
-  let dimension = Dimension.parseMBQL(fieldRef);
-  if (!dimension) {
-    console.warn("Unknown field_ref", fieldRef);
-    return JSON.stringify(fieldRef);
-  }
-
-  dimension = dimension.baseDimension();
-
-  // match bug where field w/ join alias returned field w/o join alias instead
-  if (dimension instanceof FieldDimension) {
-    dimension = dimension.withoutOptions("join-alias");
-  }
-
-  // match legacy behavior which didn't have "field-literal" or "aggregation" field refs
-  const isLegacyRef =
-    (dimension instanceof FieldDimension && dimension.isStringFieldName()) ||
-    dimension instanceof AggregationDimension;
-
-  return JSON.stringify(
-    isLegacyRef ? ["name", column.name] : ["ref", dimension.mbql()],
-  );
-};
 
 /**
  * finds the column object from the dataset results for the given `table.columns` column setting

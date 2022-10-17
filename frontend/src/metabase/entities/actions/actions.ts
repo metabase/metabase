@@ -1,10 +1,6 @@
 import { createEntity } from "metabase/lib/entities";
 
-import type {
-  ActionFormSettings,
-  ModelAction,
-  WritebackAction,
-} from "metabase-types/api";
+import type { ActionFormSettings, WritebackAction } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
 import { ActionsApi, CardApi, ModelActionsApi } from "metabase/services";
@@ -122,9 +118,9 @@ const Actions = createEntity({
     list: async (params: any) => {
       const actions = await ActionsApi.list(params);
 
-      return actions.map((action: ModelAction | WritebackAction) => ({
+      return actions.map((action: WritebackAction) => ({
         ...action,
-        id: action.id ?? `implicit-${action.slug}`,
+        id: action.id ?? `implicit-${action.slug}-${action.model_id}`,
         name: action.name ?? action.slug,
       }));
     },

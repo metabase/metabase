@@ -78,14 +78,6 @@ describe("NativeQuery", () => {
         expect(makeMongoQuery("").supportsNativeParameters()).toBe(false);
       });
     });
-    describe("aceMode()", () => {
-      it("Mongo gets JSON mode ", () => {
-        expect(makeMongoQuery("").aceMode()).toBe("ace/mode/json");
-      });
-      it("H2 gets generic SQL mode in the editor", () => {
-        expect(query.aceMode()).toBe("ace/mode/sql");
-      });
-    });
   });
 
   describe("Queries have some helpful status checks", () => {

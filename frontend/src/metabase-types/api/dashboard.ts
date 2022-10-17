@@ -4,7 +4,9 @@ import type {
   ParameterId,
   Parameter,
 } from "metabase-types/types/Parameter";
+
 import type { CardId, SavedCard } from "metabase-types/types/Card";
+import type { WritebackAction } from "./writeback";
 
 import type { Dataset } from "./dataset";
 
@@ -41,6 +43,7 @@ export type DashboardOrderedCard = BaseDashboardOrderedCard & {
   card: SavedCard;
   parameter_mappings?: DashboardParameterMapping[] | null;
   series?: SavedCard[];
+  action?: WritebackAction;
 };
 
 export type DashboardParameterMapping = {

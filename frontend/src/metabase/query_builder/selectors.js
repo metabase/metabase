@@ -24,6 +24,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { getAlerts } from "metabase/alert/selectors";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { parseTimestamp } from "metabase/lib/time";
+import { getMode as getQuestionMode } from "metabase/modes/lib/modes";
 import { getSortedTimelines } from "metabase/lib/timelines";
 import { getSetting } from "metabase/selectors/settings";
 import {
@@ -559,7 +560,9 @@ const isZoomingRow = createSelector(
 export const getMode = createSelector(
   [getLastRunQuestion, isZoomingRow],
   (question, isZoomingRow) =>
-    isZoomingRow ? new Mode(question, ObjectMode) : question && question.mode(),
+    isZoomingRow
+      ? new Mode(question, ObjectMode)
+      : question && getQuestionMode(question),
 );
 
 export const getIsObjectDetail = createSelector(

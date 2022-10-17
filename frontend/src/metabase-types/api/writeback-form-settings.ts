@@ -1,6 +1,6 @@
 import type { ParameterId } from "./parameters";
 
-export type FormType = "inline" | "modal";
+export type ActionDisplayType = "form" | "button";
 export type FieldType = "string" | "number" | "date" | "category";
 
 export type DateInputType = "date" | "datetime" | "monthyear" | "quarteryear";
@@ -38,7 +38,7 @@ export interface FieldSettings {
 export type FieldSettingsMap = Record<ParameterId, FieldSettings>;
 export interface ActionFormSettings {
   name?: string;
-  type: FormType;
+  type: ActionDisplayType;
   description?: string;
   fields: FieldSettingsMap;
   submitButtonLabel?: string;
