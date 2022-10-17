@@ -1,18 +1,17 @@
 import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import type { LocationDescriptor } from "history";
 
-import type { DataApp } from "metabase-types/api";
+import type { DataApp, DataAppNavItem } from "metabase-types/api";
 
 import Link from "metabase/core/components/Link";
-import Radio from "metabase/core/components/Radio";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 
 import * as Urls from "metabase/lib/urls";
 
 import { MainNavbarProps, SelectedItem } from "../types";
+import DataAppPageLink from "./DataAppPageLink";
 import DataAppActionPanel from "./DataAppActionPanel";
 
 interface Props extends Omit<MainNavbarProps, "location" | "params"> {
@@ -22,7 +21,6 @@ interface Props extends Omit<MainNavbarProps, "location" | "params"> {
   onEditAppSettings: () => void;
   onAddData: () => void;
   onNewPage: () => void;
-  onChangeLocation: (location: LocationDescriptor) => void;
 }
 
 function DataAppNavbarView({
@@ -32,7 +30,6 @@ function DataAppNavbarView({
   onEditAppSettings,
   onAddData,
   onNewPage,
-  onChangeLocation,
 }: Props) {
   const { "data-app-page": dataAppPage } = _.indexBy(
     selectedItems,
@@ -50,47 +47,33 @@ function DataAppNavbarView({
     return pagesWithoutNavItems.map(pageId => pageMap[pageId]);
   }, [dataApp.nav_items, pages, pageMap]);
 
-  const navOptions = useMemo(() => {
-    const options = dataApp.nav_items
-      .filter(navItem => !navItem.hidden && pageMap[navItem.page_id])
-      .map(navItem => {
-        const page = pageMap[navItem.page_id];
-        return {
-          name: page.name,
-          value: page.id,
-        };
-      });
-
-    options.push(
-      ...pagesWithoutNavItems.map(page => ({
-        name: page.name,
-        value: page.id,
-      })),
+  const navItems = useMemo(() => {
+    const items = dataApp.nav_items.filter(
+      navItem => !navItem.hidden && pageMap[navItem.page_id],
     );
 
-    return options;
+    items.push(...pagesWithoutNavItems.map(page => ({ page_id: page.id })));
+
+    return items;
   }, [dataApp, pagesWithoutNavItems, pageMap]);
 
-  const onNavItemClick = useCallback(
-    pageId => {
-      const page = pageMap[Number(pageId)];
-      const path = Urls.dataAppPage(dataApp, page);
-      console.log({ pageId, onChangeLocation, dataApp, page, path });
-      onChangeLocation(path);
-    },
-    [dataApp, pageMap, onChangeLocation],
+  const renderNavItem = useCallback(
+    (navItem: DataAppNavItem) => (
+      <DataAppPageLink
+        key={navItem.page_id}
+        dataApp={dataApp}
+        page={pageMap[navItem.page_id]}
+        isSelected={dataAppPage?.id === navItem.page_id}
+      />
+    ),
+    [dataApp, pageMap, dataAppPage],
   );
 
   const exitAppPath = Urls.dataApp(dataApp, { mode: "preview" });
 
   return (
     <div className="flex align-center">
-      <Radio
-        value={dataAppPage?.id}
-        options={navOptions}
-        onOptionClick={onNavItemClick}
-        variant="underlined"
-      />
+      {navItems.map(renderNavItem)}
       <div className="flex align-center ml-auto">
         <DataAppActionPanel
           dataApp={dataApp}

@@ -1,8 +1,9 @@
 import styled from "@emotion/styled";
 import { SidebarLink } from "../../SidebarItems";
-import { PaddedSidebarLink } from "../../MainNavbar.styled";
 
-export const DataAppPageLink = styled(PaddedSidebarLink)<{ indent: number }>`
+export const DataAppPageLink = styled(SidebarLink)<{ indent: number }>`
+  padding-left: 0.5rem;
+
   ${SidebarLink.NameContainers.join(",")} {
     margin-left: calc(${props => props.indent} * 1rem);
   }

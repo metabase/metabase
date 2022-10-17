@@ -34,7 +34,7 @@ function DataAppPageLanding({ isEditing, ...props }: DataAppPageLandingProps) {
   return (
     <>
       {!isEditing && (
-        <div className="bg-white border-bottom pt1">
+        <div className="bg-white border-bottom py1">
           <div className="px2">
             <DataAppNavbarContainer />
           </div>
