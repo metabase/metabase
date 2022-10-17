@@ -1,6 +1,6 @@
 import { QueryMode } from "metabase-types/types/Visualization";
 import Question from "metabase-lib/lib/Question";
-import { getMode as getModeFromLib } from "metabase-lib/lib/Mode";
+import Mode, { getModeType } from "metabase-lib/lib/Mode";
 import {
   MODE_TYPE_ACTION,
   MODE_TYPE_NATIVE,
@@ -19,8 +19,13 @@ import PivotMode from "../components/modes/PivotMode";
 import NativeMode from "../components/modes/NativeMode";
 import DefaultMode from "../components/modes/DefaultMode";
 
-export function getMode(question: Question): QueryMode | any | null {
-  const mode = getModeFromLib(question);
+export function getMode(question: Question): Mode | null {
+  const queryMode = getQueryMode(question);
+  return queryMode ? new Mode(question, queryMode) : null;
+}
+
+export function getQueryMode(question: Question): QueryMode | any | null {
+  const mode = getModeType(question);
   if (!mode) {
     return null;
   }

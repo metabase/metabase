@@ -10,6 +10,7 @@
   If the model is not exported, add it to the exclusion lists in the tests. Every model should be explicitly listed as
   exported or not, and a test enforces this so serialization isn't forgotten for new models."
   (:require [clojure.tools.logging :as log]
+            [metabase.models.interface :as mi]
             [metabase.models.serialization.hash :as serdes.hash]
             [toucan.db :as db]
             [toucan.models :as models]))
@@ -231,7 +232,7 @@
   - Convert to a vanilla Clojure map.
   - Add `:serdes/meta` by calling [[serdes-generate-path]].
   - Drop the primary key.
-  - Making :created_at and :updated_at into UTC-based LocalDateTimes.
+  - Drop :updated_at; it's noisy in git and not really used anywhere.
 
   Returns the Clojure map."
   [model-name entity]
@@ -239,7 +240,7 @@
         pk    (models/primary-key model)]
     (-> entity
       (assoc :serdes/meta (serdes-generate-path model-name entity))
-      (dissoc pk))))
+      (dissoc pk :updated_at))))
 
 (defmethod extract-one :default [model-name _opts entity]
   (extract-one-basics model-name entity))
@@ -376,14 +377,18 @@
   (fn [model _ _] model))
 
 (defmethod load-update! :default [model-name ingested local]
-  (let [model (db/resolve-model (symbol model-name))
-        pk    (models/primary-key model)
-        id    (get local pk)]
+  (let [model    (db/resolve-model (symbol model-name))
+        pk       (models/primary-key model)
+        id       (get local pk)
+        adjusted (if (-> model models/properties :timestamped?)
+                   (assoc ingested :updated_at (mi/now))
+                   ingested)]
     (log/tracef "Upserting %s %d: old %s new %s" model-name id (pr-str local) (pr-str ingested))
-    ; Using the two-argument form of [[db/update!]] that takes the model and a HoneySQL form for the actual update.
-    ; It works differently from the more typical `(db/update! 'Model id updates...)` form: this form doesn't run any of
-    ; the pre-update magic, it just updates the database directly.
-    (db/update! (symbol model-name) {:where [:= pk id] :set ingested})
+    ;; Using the two-argument form of [[db/update!]] that takes the model and a HoneySQL form for the actual update.
+    ;; It works differently from the more typical `(db/update! 'Model id updates...)` form: this form doesn't run any of
+    ;; the pre-update magic, it just updates the database directly.
+    ;; Therefore we manually set the :updated_at time.
+    (db/update! model {:where [:= pk id] :set adjusted})
     id))
 
 (defmulti load-insert!
@@ -404,7 +409,12 @@
   (log/tracef "Inserting %s: %s" model (pr-str ingested))
   ; Toucan's simple-insert! actually does the right thing for our purposes: it doesn't call pre-insert or post-insert,
   ; and it returns the new primary key.
-  (db/simple-insert! (symbol model) ingested))
+  (let [model    (db/resolve-model (symbol model))
+        adjusted (if (-> model models/properties :timestamped?)
+                   (let [now (mi/now)]
+                     (assoc ingested :created_at now :updated_at now))
+                   ingested)]
+    (db/simple-insert! model adjusted)))
 
 (defmulti load-one!
   "Black box for integrating a deserialized entity into this appdb.
@@ -468,7 +478,9 @@
 (defn entity-id?
   "Checks if the given string is a 21-character NanoID. Useful for telling entity IDs apart from identity hashes."
   [id-str]
-  (boolean (and id-str (re-matches #"^[A-Za-z0-9_-]{21}$" id-str))))
+  (boolean (and id-str
+                (string? id-str)
+                (re-matches #"^[A-Za-z0-9_-]{21}$" id-str))))
 
 (defn- find-by-identity-hash
   "Given a model and a target identity hash, this scans the appdb for any instance of the model corresponding to the

@@ -4,10 +4,10 @@ import PropTypes from "prop-types";
 
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import Schemas from "metabase/entities/schemas";
-import { getCollectionVirtualSchemaId } from "metabase/lib/saved-questions";
 import EmptyState from "metabase/components/EmptyState";
 
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
+import { getCollectionVirtualSchemaId } from "metabase-lib/lib/metadata/utils/saved-questions";
 import {
   SavedQuestionListRoot,
   SavedQuestionListItem,

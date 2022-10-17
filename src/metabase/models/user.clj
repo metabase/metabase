@@ -144,9 +144,11 @@
           :pre-update     pre-update
           :post-select    post-select
           :types          (constantly {:login_attributes :json-no-keywordization
-                                       :settings         :encrypted-json})})
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [:email])})
+                                       :settings         :encrypted-json})}))
+
+(defmethod serdes.hash/identity-hash-fields User
+  [_user]
+  [:email])
 
 (defn group-ids
   "Fetch set of IDs of PermissionsGroup a User belongs to."

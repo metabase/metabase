@@ -1,4 +1,3 @@
-import { getMode } from "metabase/modes/lib/modes";
 import {
   ClickAction,
   ClickObject,
@@ -13,16 +12,6 @@ export default class Mode {
   constructor(question: Question, queryMode: QueryMode) {
     this._question = question;
     this._queryMode = queryMode;
-  }
-
-  static forQuestion(question: Question): Mode | null {
-    // TODO Atte Keinänen 6/22/17: Move getMode here and refactor it after writing tests
-    const queryMode = getMode(question);
-    if (queryMode) {
-      return new Mode(question, queryMode);
-    }
-
-    return null;
   }
 
   queryMode() {

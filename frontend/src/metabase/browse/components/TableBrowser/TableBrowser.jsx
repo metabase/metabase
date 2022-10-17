@@ -4,14 +4,14 @@ import { t } from "ttag";
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
 import { isSyncInProgress } from "metabase/lib/syncing";
-import {
-  isVirtualCardId,
-  SAVED_QUESTIONS_VIRTUAL_DB_ID,
-} from "metabase/lib/saved-questions";
 import Database from "metabase/entities/databases";
 import EntityItem from "metabase/components/EntityItem";
 import Icon from "metabase/components/Icon";
 import { Grid } from "metabase/components/Grid";
+import {
+  isVirtualCardId,
+  SAVED_QUESTIONS_VIRTUAL_DB_ID,
+} from "metabase-lib/lib/metadata/utils/saved-questions";
 
 import { ANALYTICS_CONTEXT } from "../../constants";
 import BrowseHeader from "../BrowseHeader";

@@ -1,32 +1,29 @@
 import _ from "underscore";
 
 import { generateParameterId } from "metabase/parameters/utils/parameter-id";
-import {
-  getParameterTargetField,
-  isVariableTarget,
-} from "metabase/parameters/utils/targets";
 import { isFieldFilterParameter } from "metabase/parameters/utils/parameter-type";
 import { slugify } from "metabase/lib/formatting";
-import {
+import type {
   UiParameter,
   FieldFilterUiParameter,
   ParameterWithTarget,
 } from "metabase/parameters/types";
-import {
+import type {
   Parameter,
   ParameterMappingOptions,
-  ParameterDimensionTarget,
-  ParameterVariableTarget,
 } from "metabase-types/types/Parameter";
-import {
+import type {
   Dashboard,
   DashboardParameterMapping,
   DashboardOrderedCard,
 } from "metabase-types/api";
-import { SavedCard } from "metabase-types/types/Card";
-import Question from "metabase-lib/lib/Question";
-import Metadata from "metabase-lib/lib/metadata/Metadata";
-import Field from "metabase-lib/lib/metadata/Field";
+import type { SavedCard } from "metabase-types/types/Card";
+import {
+  getTargetFieldFromCard,
+  isVariableTarget,
+} from "metabase-lib/lib/parameters/utils/targets";
+import type Metadata from "metabase-lib/lib/metadata/Metadata";
+import type Field from "metabase-lib/lib/metadata/Field";
 
 type ExtendedMapping = DashboardParameterMapping & {
   dashcard_id: number;
@@ -151,7 +148,7 @@ function buildFieldFilterUiParameter(
   );
   const mappedFields = mappingsForParameter.map(mapping => {
     const { target, card } = mapping;
-    return getTargetField(target, card, metadata);
+    return getTargetFieldFromCard(target, card, metadata);
   });
   const fields = mappedFields.filter((field): field is Field => field != null);
   const hasVariableTemplateTagTarget = mappingsForParameter.some(mapping => {
@@ -167,20 +164,6 @@ function buildFieldFilterUiParameter(
     fields: uniqueFieldsWithFKResolved,
     hasVariableTemplateTagTarget,
   };
-}
-
-export function getTargetField(
-  target: ParameterVariableTarget | ParameterDimensionTarget,
-  card: SavedCard,
-  metadata: Metadata,
-) {
-  if (!card?.dataset_query) {
-    return null;
-  }
-
-  const question = new Question(card, metadata);
-  const field = getParameterTargetField(target, metadata, question);
-  return field ?? null;
 }
 
 export function getParametersMappedToDashcard(

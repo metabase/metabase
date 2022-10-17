@@ -48,14 +48,15 @@
                                    :entity_id    true})
           :types      (constantly {:parameter_mappings     :parameters-list
                                    :visualization_settings :visualization-settings})
-          :pre-insert pre-insert})
+          :pre-insert pre-insert}))
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [(serdes.hash/hydrated-hash :card)
-                                      (comp serdes.hash/identity-hash
-                                            #(db/select-one 'Dashboard :id %)
-                                            :dashboard_id)
-                                      :visualization_settings])})
+(defmethod serdes.hash/identity-hash-fields DashboardCard
+  [_dashboard-card]
+  [(serdes.hash/hydrated-hash :card)
+   (comp serdes.hash/identity-hash
+         #(db/select-one 'Dashboard :id %)
+         :dashboard_id)
+   :visualization_settings])
 
 
 ;;; --------------------------------------------------- HYDRATION ----------------------------------------------------
@@ -137,19 +138,24 @@
 (s/defn update-dashboard-card!
   "Update an existing DashboardCard` including all DashboardCardSeries.
    Returns the updated DashboardCard or throws an Exception."
-  [{:keys [id action_id parameter_mappings visualization_settings] :as dashboard-card} :- DashboardCardUpdates]
+  [{:keys [id card_id action_id parameter_mappings visualization_settings] :as dashboard-card} :- DashboardCardUpdates]
   (let [{:keys [size_x size_y row col series]} (merge {:series []} dashboard-card)]
     (db/transaction
      ;; update the dashcard itself (positional attributes)
      (when (and size_x size_y row col)
        (db/update-non-nil-keys! DashboardCard id
-                                :action_id              action_id
-                                :size_x                 size_x
-                                :size_y                 size_y
-                                :row                    row
-                                :col                    col
-                                :parameter_mappings     parameter_mappings
-                                :visualization_settings visualization_settings))
+                                (cond->
+                                  {:action_id              action_id
+                                   :size_x                 size_x
+                                   :size_y                 size_y
+                                   :row                    row
+                                   :col                    col
+                                   :parameter_mappings     parameter_mappings
+                                   :visualization_settings visualization_settings}
+                                  ;; Allow changing card for model_actions
+                                  ;; This is to preserve the existing behavior of questions and card_id
+                                  ;; I don't know why card_id couldn't be changed for questions though.
+                                  (:action_slug visualization_settings) (assoc :card_id card_id))))
      ;; update series (only if they changed)
      (when-not (= series (map :card_id (db/select [DashboardCardSeries :card_id]
                                                   :dashboardcard_id id
@@ -229,8 +235,8 @@
   [{:keys [card_id dashboard_id parameter_mappings visualization_settings]}]
   (->> (mapcat serdes.util/mbql-deps parameter_mappings)
        (concat (serdes.util/visualization-settings-deps visualization_settings))
-       (concat #{[{:model "Dashboard" :id dashboard_id}]
-                 [{:model "Card"      :id card_id}]})
+       (concat #{[{:model "Dashboard" :id dashboard_id}] })
+       (concat (when card_id #{[{:model "Card" :id card_id}]}))
        set))
 
 (defmethod serdes.base/serdes-generate-path "DashboardCard" [_ dashcard]
@@ -255,5 +261,6 @@
 
 (defmethod serdes.base/serdes-descendants "DashboardCard" [_model-name id]
   (let [{:keys [card_id dashboard_id]} (db/select-one DashboardCard :id id)]
-    #{["Card"      card_id]
-      ["Dashboard" dashboard_id]}))
+    (cond-> #{["Dashboard" dashboard_id]}
+      ;; card_id is nil for text cards; in that case there's no Card to depend on.
+      card_id (conj ["Card" card_id]))))

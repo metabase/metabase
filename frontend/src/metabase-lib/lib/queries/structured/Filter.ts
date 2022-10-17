@@ -8,8 +8,8 @@ import {
   Field,
 } from "metabase-types/types/Query";
 import { FilterOperator } from "metabase-types/types/Metadata";
-import { isExpression } from "metabase/lib/expressions";
-import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
+import { isExpression } from "metabase-lib/lib/expressions";
+import { getFilterArgumentFormatOptions } from "metabase-lib/lib/operators/utils";
 import {
   generateTimeFilterValuesDescriptions,
   getRelativeDatetimeField,

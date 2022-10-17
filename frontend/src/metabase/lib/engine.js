@@ -17,6 +17,10 @@ export function getEngineNativeType(engine) {
   }
 }
 
+export function getNativeQueryLanguage(engine) {
+  return getEngineNativeType(engine).toUpperCase();
+}
+
 export function getEngineNativeAceMode(engine) {
   switch (engine) {
     case "mongo":
@@ -72,10 +76,6 @@ export function getElevatedEngines() {
     "bigquery-cloud-sdk",
     "snowflake",
   ];
-}
-
-export function getEngineNativeRequiresTable(engine) {
-  return engine === "mongo";
 }
 
 export function getEngineSupportsFirewall(engine) {

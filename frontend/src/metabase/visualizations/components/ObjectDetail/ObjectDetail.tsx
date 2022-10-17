@@ -2,8 +2,6 @@ import React, { useState, useEffect, useCallback } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-import { isPK } from "metabase/lib/schema_metadata";
-
 import { State } from "metabase-types/store";
 import type { ForeignKey, ConcreteTableId } from "metabase-types/api";
 import { DatasetData } from "metabase-types/types/Dataset";
@@ -32,7 +30,8 @@ import {
   getCanZoomNextRow,
 } from "metabase/query_builder/selectors";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import { isVirtualCardId } from "metabase/lib/saved-questions";
+import { isVirtualCardId } from "metabase-lib/lib/metadata/utils/saved-questions";
+import { isPK } from "metabase-lib/lib/types/utils/isa";
 import Table from "metabase-lib/lib/metadata/Table";
 import Question from "metabase-lib/lib/Question";
 import { ObjectId, OnVisualizationClickType } from "./types";
@@ -107,6 +106,7 @@ export interface ObjectDetailProps {
   canZoom: boolean;
   canZoomPreviousRow: boolean;
   canZoomNextRow: boolean;
+  isDataApp?: boolean;
   showActions?: boolean;
   showRelations?: boolean;
   onVisualizationClick: OnVisualizationClickType;
@@ -131,6 +131,7 @@ export function ObjectDetailFn({
   canZoom,
   canZoomPreviousRow,
   canZoomNextRow,
+  isDataApp = false,
   showActions = true,
   showRelations = true,
   onVisualizationClick,
@@ -249,17 +250,19 @@ export function ObjectDetailFn({
         </ErrorWrapper>
       ) : (
         <div className="ObjectDetail" data-testid="object-detail">
-          <ObjectDetailHeader
-            canZoom={canZoom && (canZoomNextRow || canZoomPreviousRow)}
-            objectName={objectName}
-            objectId={displayId}
-            canZoomPreviousRow={canZoomPreviousRow}
-            canZoomNextRow={canZoomNextRow}
-            showActions={showActions}
-            viewPreviousObjectDetail={viewPreviousObjectDetail}
-            viewNextObjectDetail={viewNextObjectDetail}
-            closeObjectDetail={closeObjectDetail}
-          />
+          {!isDataApp && (
+            <ObjectDetailHeader
+              canZoom={canZoom && (canZoomNextRow || canZoomPreviousRow)}
+              objectName={objectName}
+              objectId={displayId}
+              canZoomPreviousRow={canZoomPreviousRow}
+              canZoomNextRow={canZoomNextRow}
+              showActions={showActions}
+              viewPreviousObjectDetail={viewPreviousObjectDetail}
+              viewNextObjectDetail={viewNextObjectDetail}
+              closeObjectDetail={closeObjectDetail}
+            />
+          )}
           <ObjectDetailBodyWrapper>
             <ObjectDetailBody
               data={data}
@@ -304,6 +307,7 @@ function ObjectDetailWrapper({
         showActions={false}
         showRelations={false}
         closeObjectDetail={closeObjectDetail}
+        isDataApp={isDataApp}
       />
     );
   }

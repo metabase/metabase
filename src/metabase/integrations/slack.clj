@@ -91,9 +91,8 @@
       ;; being used)
       (when (slack-token-valid?) (messages/send-slack-token-error-emails!))
       (slack-token-valid?! false))
-    (if invalid-token?
-      (log/warn (u/pprint-to-str 'red (trs "🔒 Your Slack authorization token is invalid or has been revoked. Please update your integration in Admin Settings -> Slack.")))
-      (log/warn (u/pprint-to-str 'red error)))
+    (when invalid-token?
+      (log/warn (u/pprint-to-str 'red (trs "🔒 Your Slack authorization token is invalid or has been revoked. Please update your integration in Admin Settings -> Slack."))))
     (throw (ex-info message error))))
 
 (defn- handle-response [{:keys [status body]}]
@@ -122,7 +121,7 @@
         (try
           (handle-response (request-fn url request))
           (catch Throwable e
-            (throw (ex-info (.getMessage e) (merge (ex-data e) {:url url, :request request}) e))))))))
+            (throw (ex-info (.getMessage e) (merge (ex-data e) {:url url}) e))))))))
 
 (defn- GET
   "Make a GET request to the Slack API."

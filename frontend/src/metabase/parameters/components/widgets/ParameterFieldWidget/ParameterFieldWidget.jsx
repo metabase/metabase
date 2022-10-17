@@ -5,17 +5,17 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
-import { deriveFieldOperatorFromParameter } from "metabase/parameters/utils/operators";
-import {
-  getFilterArgumentFormatOptions,
-  isEqualsOperator,
-  isFuzzyOperator,
-} from "metabase/lib/schema_metadata";
 import {
   WidgetRoot,
   Footer,
   UpdateButton,
 } from "metabase/parameters/components/widgets/Widget.styled";
+import { deriveFieldOperatorFromParameter } from "metabase-lib/lib/parameters/utils/operators";
+import {
+  getFilterArgumentFormatOptions,
+  isEqualsOperator,
+  isFuzzyOperator,
+} from "metabase-lib/lib/operators/utils";
 
 import { normalizeValue } from "./normalizeValue";
 

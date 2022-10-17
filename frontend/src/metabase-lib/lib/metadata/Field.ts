@@ -4,6 +4,8 @@ import _ from "underscore";
 import moment from "moment-timezone";
 
 import { formatField, stripId } from "metabase/lib/formatting";
+import type { FieldFingerprint } from "metabase-types/api/field";
+import type { Field as FieldRef } from "metabase-types/types/Query";
 import {
   isDate,
   isTime,
@@ -28,11 +30,8 @@ import {
   isPK,
   isFK,
   isEntityName,
-  getIconForField,
-  getFilterOperators,
-} from "metabase/lib/schema_metadata";
-import type { FieldFingerprint } from "metabase-types/api/field";
-import type { Field as FieldRef } from "metabase-types/types/Query";
+} from "metabase-lib/lib/types/utils/isa";
+import { getFilterOperators } from "metabase-lib/lib/operators/utils";
 import { getFieldValues } from "metabase-lib/lib/queries/utils/field";
 import { createLookupByProperty, memoizeClass } from "metabase-lib/lib/utils";
 import type StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
@@ -41,7 +40,7 @@ import { FieldDimension } from "../Dimension";
 import Base from "./Base";
 import type Table from "./Table";
 import type Metadata from "./Metadata";
-import { getUniqueFieldId } from "./utils";
+import { getIconForField, getUniqueFieldId } from "./utils/fields";
 
 export const LONG_TEXT_MIN = 80;
 
@@ -439,6 +438,22 @@ class FieldInner extends Base {
       ...extra,
     });
   }
+
+  remappingOptions = () => {
+    const table = this.table;
+    if (!table) {
+      return [];
+    }
+
+    const { fks } = table.query().fieldOptions();
+    return fks
+      .filter(({ field }) => field.id === this.id)
+      .map(({ field, dimension, dimensions }) => ({
+        field,
+        dimension,
+        dimensions: dimensions.filter(d => d.isValidFKRemappingTarget()),
+      }));
+  };
 
   clone(fieldMetadata) {
     if (fieldMetadata instanceof Field) {

@@ -1,25 +1,13 @@
-/* eslint-disable react/prop-types */
 import { t } from "ttag";
-import { TYPE, isa } from "metabase/lib/types";
-
-const DENYLIST_TYPES = [
-  TYPE.PK,
-  TYPE.SerializedJSON,
-  TYPE.Description,
-  TYPE.Comment,
-];
+import {
+  distributionDrill,
+  distributionDrillQuestion,
+} from "metabase-lib/lib/queries/drills/distribution-drill";
 
 export default ({ question, clicked }) => {
-  if (
-    !clicked ||
-    !clicked.column ||
-    clicked.value !== undefined ||
-    DENYLIST_TYPES.some(t => isa(clicked.column.semantic_type, t)) ||
-    !question.query().isEditable()
-  ) {
+  if (!distributionDrill({ question, clicked })) {
     return [];
   }
-  const { column } = clicked;
 
   return [
     {
@@ -28,7 +16,7 @@ export default ({ question, clicked }) => {
       buttonType: "horizontal",
       section: "summarize",
       icon: "bar",
-      question: () => question.distribution(column),
+      question: () => distributionDrillQuestion({ question, clicked }),
     },
   ];
 };

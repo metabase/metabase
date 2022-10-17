@@ -5,14 +5,6 @@ import _ from "underscore";
 
 import ChartNestedSettingColumns from "metabase/visualizations/components/settings/ChartNestedSettingColumns";
 
-import {
-  isDate,
-  isNumber,
-  isCoordinate,
-  isCurrency,
-  isDateWithoutTime,
-} from "metabase/lib/schema_metadata";
-
 // HACK: cyclical dependency causing errors in unit tests
 // import { getVisualizationRaw } from "metabase/visualizations";
 function getVisualizationRaw(...args) {
@@ -41,7 +33,7 @@ export function columnSettings({
     section: t`Formatting`,
     objectName: "column",
     getObjects: getColumns,
-    getObjectKey: keyForColumn,
+    getObjectKey: getColumnKey,
     getSettingDefintionsForObject: getSettingDefintionsForColumn,
     component: ChartNestedSettingColumns,
     getInheritedSettingsForObject: getInhertiedSettingsForColumn,
@@ -51,7 +43,14 @@ export function columnSettings({
 }
 
 import MetabaseSettings from "metabase/lib/settings";
-import { keyForColumn } from "metabase-lib/lib/queries/utils/dataset";
+import {
+  isDate,
+  isNumber,
+  isCoordinate,
+  isCurrency,
+  isDateWithoutTime,
+} from "metabase-lib/lib/types/utils/isa";
+import { getColumnKey } from "metabase-lib/lib/queries/utils/get-column-key";
 import { nestedSettings } from "./nested";
 
 export function getGlobalSettingsForColumn(column) {

@@ -194,10 +194,11 @@
                                  :entity_id    true})
     :pre-delete     pre-delete
     :pre-insert     validate-email-domains
-    :pre-update     validate-email-domains})
+    :pre-update     validate-email-domains}))
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [(serdes.hash/hydrated-hash :pulse) :channel_type :details])})
+(defmethod serdes.hash/identity-hash-fields PulseChannel
+  [_pulse-channel]
+  [(serdes.hash/hydrated-hash :pulse) :channel_type :details])
 
 (defn will-delete-recipient
   "This function is called by [[metabase.models.pulse-channel-recipient/pre-delete]] when a `PulseChannelRecipient` is
@@ -383,11 +384,13 @@
 
 ;; Customized load-insert! and load-update! to handle the embedded recipients field - it's really a separate table.
 (defmethod serdes.base/load-insert! "PulseChannel" [_ ingested]
-  (let [id (db/simple-insert! PulseChannel (dissoc ingested :recipients))]
+  (let [;; Call through to the default load-insert!
+        id ((get-method serdes.base/load-insert! "") "PulseChannel" (dissoc ingested :recipients))]
     (import-recipients id (:recipients ingested))))
 
 (defmethod serdes.base/load-update! "PulseChannel" [_ ingested local]
-  (db/update! PulseChannel {:where [:= :id (:id local)] :set (dissoc ingested :recipients)})
+  ;; Call through to the default load-update!
+  ((get-method serdes.base/load-update! "") "PulseChannel" (dissoc ingested :recipients) local)
   (import-recipients (:id local) (:recipients ingested))
   (:id local))
 

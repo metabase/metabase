@@ -6,12 +6,12 @@ import inflection from "inflection";
 
 import { stripId } from "metabase/lib/formatting";
 
-import { format as formatExpression } from "metabase/lib/expressions/format";
+import { format as formatExpression } from "metabase-lib/lib/expressions/format";
 
 import * as AGGREGATION from "./aggregation";
 import * as QUERY from "./query";
 import * as FIELD_REF from "./field-ref";
-import { FilterClause, MetricClause } from "./description.styled";
+import { FilterClause, MetricClause } from "./description.styled.tsx";
 
 // NOTE: This doesn't support every MBQL clause, e.x. joins. It should also be moved to StructuredQuery.
 

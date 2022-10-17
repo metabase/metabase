@@ -67,6 +67,7 @@ class QueryModals extends React.Component {
       initialCollectionId,
       onCloseModal,
       onOpenModal,
+      setQueryBuilderMode,
     } = this.props;
 
     return modal === MODAL_TYPES.SAVE ? (
@@ -83,7 +84,12 @@ class QueryModals extends React.Component {
           }}
           onCreate={async card => {
             await this.props.onCreate(card);
-            onOpenModal(MODAL_TYPES.SAVED);
+            if (question.isDataset()) {
+              onCloseModal();
+              setQueryBuilderMode("view");
+            } else {
+              onOpenModal(MODAL_TYPES.SAVED);
+            }
           }}
           onClose={onCloseModal}
         />
