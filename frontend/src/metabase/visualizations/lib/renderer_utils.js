@@ -3,13 +3,13 @@
 import _ from "underscore";
 import { getIn } from "icepick";
 
-import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { parseTimestamp } from "metabase/lib/time";
 import {
   NULL_DISPLAY_VALUE,
   NULL_NUMERIC_VALUE,
   TOTAL_ORDINAL_VALUE,
 } from "metabase/lib/constants";
+import { datasetContainsNoResults } from "metabase-lib/lib/queries/utils/dataset";
 
 import {
   computeTimeseriesDataInverval,

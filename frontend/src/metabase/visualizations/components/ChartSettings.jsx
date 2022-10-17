@@ -19,8 +19,13 @@ import {
 import {
   updateSettings,
   getClickBehaviorSettings,
+  getComputedSettings,
+  getSettingsWidgets,
 } from "metabase/visualizations/lib/settings";
+
+import { getSettingDefintionsForColumn } from "metabase/visualizations/lib/settings/column";
 import ChartSettingsWidget from "./ChartSettingsWidget";
+import ChartSettingsWidgetList from "./ChartSettingsWidgetList";
 import ChartSettingsWidgetPopover from "./ChartSettingsWidgetPopover";
 import { SectionContainer, SectionWarnings } from "./ChartSettings.styled";
 
@@ -176,17 +181,23 @@ class ChartSettings extends Component {
     return transformedSeries;
   }
 
+  columnHasSettings(col) {
+    const { series } = this.props;
+    const settings = this._getSettings() || {};
+    const settingsDefs = getSettingDefintionsForColumn(series, col);
+    const computedSettings = getComputedSettings(settingsDefs, col, settings);
+
+    return getSettingsWidgets(
+      settingsDefs,
+      settings,
+      computedSettings,
+      col,
+    ).some(widget => !widget.hidden);
+  }
+
   render() {
-    const {
-      className,
-      question,
-      addField,
-      noPreview,
-      children,
-      setSidebarPropsOverride,
-      dashboard,
-      isDashboard,
-    } = this.props;
+    const { className, question, addField, noPreview, dashboard, isDashboard } =
+      this.props;
     const { currentWidget, popoverRef } = this.state;
 
     const settings = this._getSettings();
@@ -218,7 +229,6 @@ class ChartSettings extends Component {
       "data",
       "display",
       "axes",
-      "labels",
       // include all section names so any forgotten sections are sorted to the end
       ...sectionNames.map(x => x.toLowerCase()),
     ];
@@ -251,6 +261,7 @@ class ChartSettings extends Component {
       onShowWidget: this.handleShowWidget,
       onEndShowWidget: this.handleEndShowWidget,
       currentSectionHasColumnSettings,
+      columnHasSettings: col => this.columnHasSettings(col),
     };
 
     const sectionPicker = (
@@ -267,31 +278,10 @@ class ChartSettings extends Component {
       </SectionContainer>
     );
 
-    const widgetList = visibleWidgets.map(widget => (
-      <ChartSettingsWidget
-        key={widget.id}
-        {...widget}
-        {...extraWidgetProps}
-        setSidebarPropsOverride={setSidebarPropsOverride}
-      />
-    ));
-
     const onReset =
       !_.isEqual(settings, {}) && (settings || {}).virtual_card == null // resetting virtual cards wipes the text and broke the UI (metabase#14644)
         ? this.handleResetSettings
         : null;
-
-    // custom render prop layout:
-    if (children) {
-      return children({
-        sectionNames,
-        sectionPicker,
-        widgetList,
-        onDone: this.handleDone,
-        onCancel: this.handleCancel,
-        onReset: onReset,
-      });
-    }
 
     const showSectionPicker =
       // don't show section tabs for a single section
@@ -318,7 +308,10 @@ class ChartSettings extends Component {
         )}
         {noPreview ? (
           <div className="full-height relative scroll-y scroll-show pt2 pb4">
-            {widgetList}
+            <ChartSettingsWidgetList
+              widgets={visibleWidgets}
+              extraWidgetProps={extraWidgetProps}
+            />
           </div>
         ) : (
           <div className="Grid flex-full">
@@ -326,7 +319,10 @@ class ChartSettings extends Component {
               className="Grid-cell Cell--1of3 scroll-y scroll-show border-right py4"
               data-testid="chartsettings-sidebar"
             >
-              {widgetList}
+              <ChartSettingsWidgetList
+                widgets={visibleWidgets}
+                extraWidgetProps={extraWidgetProps}
+              />
             </div>
             <div className="Grid-cell flex flex-column pt2">
               <div className="mx4 flex flex-column">

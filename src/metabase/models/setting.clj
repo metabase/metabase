@@ -143,14 +143,15 @@
   models/IModel
   (merge models/IModelDefaults
          {:types       (constantly {:value :encrypted-text})
-          :primary-key (constantly :key)})
+          :primary-key (constantly :key)}))
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [:key])})
+(defmethod serdes.hash/identity-hash-fields Setting
+  [_setting]
+  [:key])
 
 (defmethod serdes.base/extract-all "Setting" [_model _opts]
   (for [{:keys [key value]} (admin-writable-site-wide-settings
-                              :getter (partial get-value-of-type :string))]
+                             :getter (partial get-value-of-type :string))]
     {:serdes/meta [{:model "Setting" :id (name key)}]
      :key key
      :value value}))

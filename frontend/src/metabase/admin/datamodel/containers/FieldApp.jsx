@@ -23,7 +23,6 @@ import AdminLayout from "metabase/components/AdminLayout";
 import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
 
 import { is_coerceable, coercions_for_type } from "cljs/metabase.types";
-import { isFK } from "metabase/lib/types";
 
 import ColumnSettings from "metabase/visualizations/components/ColumnSettings";
 
@@ -35,11 +34,11 @@ import { getMetadata } from "metabase/selectors/metadata";
 // LIB
 import { has_field_values_options } from "metabase/lib/core";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
-import { isCurrency } from "metabase/lib/schema_metadata";
 
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import Fields from "metabase/entities/fields";
+import { isTypeFK, isCurrency } from "metabase-lib/lib/types/utils/isa";
 import { rescanFieldValues, discardFieldValues } from "../field";
 import UpdateCachedFieldValues from "../components/UpdateCachedFieldValues";
 import FieldRemapping from "../components/FieldRemapping";
@@ -298,7 +297,7 @@ const FieldGeneralPane = ({
       />
     </Section>
 
-    {!isFK(field.semantic_type) && is_coerceable(field.base_type) && (
+    {!isTypeFK(field.semantic_type) && is_coerceable(field.base_type) && (
       <Section>
         <SectionHeader title={t`Cast to a specific data type`} />
         <Select
@@ -353,6 +352,7 @@ const FieldGeneralPane = ({
         field={field}
         table={table}
         fields={metadata.fields}
+        metadata={metadata}
         fieldsError={fieldsError}
         updateFieldProperties={onUpdateFieldProperties}
         updateFieldValues={onUpdateFieldValues}

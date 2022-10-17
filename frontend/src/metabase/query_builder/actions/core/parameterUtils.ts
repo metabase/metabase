@@ -1,10 +1,5 @@
 import _ from "underscore";
 
-import {
-  cardIsEquivalent,
-  cardParametersAreEquivalent,
-} from "metabase/meta/Card";
-
 import { DashboardApi } from "metabase/services";
 
 import { setErrorPage } from "metabase/redux/app";
@@ -18,6 +13,10 @@ import { Dispatch, GetState } from "metabase-types/store";
 
 import { Card, SavedCard } from "metabase-types/types/Card";
 import { Parameter } from "metabase-types/types/Parameter";
+import {
+  cardIsEquivalent,
+  cardParametersAreEquivalent,
+} from "metabase-lib/lib/queries/utils/card";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 
 type BlankQueryOptions = {

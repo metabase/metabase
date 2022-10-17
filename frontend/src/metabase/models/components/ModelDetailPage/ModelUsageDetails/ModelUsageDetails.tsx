@@ -10,20 +10,19 @@ import Questions, {
   getIcon as getQuestionIcon,
 } from "metabase/entities/questions";
 
-import { getQuestionVirtualTableId } from "metabase/lib/saved-questions";
-
 import type { Card } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 import type { Card as LegacyCardType } from "metabase-types/types/Card";
+import { getQuestionVirtualTableId } from "metabase-lib/lib/metadata/utils/saved-questions";
 import type Question from "metabase-lib/lib/Question";
 
-import { isQuestionUsingModel } from "./utils";
 import {
-  CardListItem,
-  CardTitle,
   EmptyStateContainer,
   EmptyStateTitle,
-} from "./ModelUsageDetails.styled";
+} from "../ModelDetailPage.styled";
+
+import { isQuestionUsingModel } from "./utils";
+import { CardListItem, CardTitle } from "./ModelUsageDetails.styled";
 
 interface OwnProps {
   model: Question;

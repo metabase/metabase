@@ -3,13 +3,10 @@ import React from "react";
 import { t, jt } from "ttag";
 import _ from "underscore";
 
-import { isDate } from "metabase/lib/schema_metadata";
 import { formatNumber, formatValue } from "metabase/lib/formatting";
 import { color } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
-
-import { formatBucketing } from "metabase/lib/query_time";
 
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { NoBreakoutError } from "metabase/visualizations/lib/errors";
@@ -18,6 +15,8 @@ import ScalarValue, {
   ScalarWrapper,
   ScalarTitle,
 } from "metabase/visualizations/components/ScalarValue";
+import { isDate } from "metabase-lib/lib/types/utils/isa";
+import { formatBucketing } from "metabase-lib/lib/queries/utils/query-time";
 
 import {
   PreviousValueContainer,

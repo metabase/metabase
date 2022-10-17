@@ -2,6 +2,7 @@
 
 import d3 from "d3";
 import { createSelector } from "reselect";
+import createCachedSelector from "re-reselect";
 import _ from "underscore";
 import { assocIn, getIn, merge, updateIn } from "icepick";
 
@@ -15,9 +16,6 @@ import { MetabaseApi } from "metabase/services";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { getCardUiParameters } from "metabase/parameters/utils/cards";
 import { normalizeParameterValue } from "metabase/parameters/utils/parameter-values";
-import { isPK } from "metabase/lib/schema_metadata";
-
-import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
 
 import Databases from "metabase/entities/databases";
 import Timelines from "metabase/entities/timelines";
@@ -26,6 +24,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { getAlerts } from "metabase/alert/selectors";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { parseTimestamp } from "metabase/lib/time";
+import { getMode as getQuestionMode } from "metabase/modes/lib/modes";
 import { getSortedTimelines } from "metabase/lib/timelines";
 import { getSetting } from "metabase/selectors/settings";
 import {
@@ -35,9 +34,11 @@ import {
 import ObjectMode from "metabase/modes/components/modes/ObjectMode";
 
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
+import { isPK } from "metabase-lib/lib/types/utils/isa";
 import Mode from "metabase-lib/lib/Mode";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import Question from "metabase-lib/lib/Question";
+import { isAdHocModelQuestion } from "metabase-lib/lib/metadata/utils/models";
 
 export const getUiControls = state => state.qb.uiControls;
 const getQueryStatus = state => state.qb.queryStatus;
@@ -329,6 +330,14 @@ export const getQuestion = createSelector(
   },
 );
 
+// This jsdoc keeps the TS typechecker happy.
+// Otherwise TS thinks this `getQuestionFromCard` requires two args.
+/** @type {function(unknown, unknown): Question} */
+export const getQuestionFromCard = createCachedSelector(
+  [getMetadata, (_state, card) => card],
+  (metadata, card) => new Question(card, metadata),
+)((_state, card) => card.id);
+
 function normalizeClause(clause) {
   return typeof clause?.raw === "function" ? clause.raw() : clause;
 }
@@ -551,7 +560,9 @@ const isZoomingRow = createSelector(
 export const getMode = createSelector(
   [getLastRunQuestion, isZoomingRow],
   (question, isZoomingRow) =>
-    isZoomingRow ? new Mode(question, ObjectMode) : question && question.mode(),
+    isZoomingRow
+      ? new Mode(question, ObjectMode)
+      : question && getQuestionMode(question),
 );
 
 export const getIsObjectDetail = createSelector(

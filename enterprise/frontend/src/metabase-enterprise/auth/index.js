@@ -51,7 +51,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
       description: t`When enabled, users can additionally log in with email and password.`,
       type: "boolean",
       getHidden: settings =>
-        !settings["google-auth-client-id"] &&
+        !settings["google-auth-enabled"] &&
         !settings["ldap-enabled"] &&
         !settings["saml-enabled"] &&
         !settings["jwt-enabled"],
@@ -62,7 +62,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
       description: t`When enabled, administrators will receive an email the first time a user uses Single Sign-On.`,
       type: "boolean",
       getHidden: settings =>
-        !settings["google-auth-client-id"] &&
+        !settings["google-auth-enabled"] &&
         !settings["ldap-enabled"] &&
         !settings["saml-enabled"] &&
         !settings["jwt-enabled"],
@@ -304,6 +304,8 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
     settings: [
       {
         key: "google-auth-client-id",
+        required: true,
+        autoFocus: true,
       },
       {
         // Default to OSS fields if enterprise SSO is not enabled

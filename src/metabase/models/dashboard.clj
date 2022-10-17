@@ -141,26 +141,25 @@
           :pre-insert  pre-insert
           :pre-update  pre-update
           :post-update post-update
-          :post-select public-settings/remove-public-uuid-if-public-sharing-is-disabled})
+          :post-select public-settings/remove-public-uuid-if-public-sharing-is-disabled}))
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :collection)])})
+(defmethod serdes.hash/identity-hash-fields Dashboard
+  [_dashboard]
+  [:name (serdes.hash/hydrated-hash :collection)])
 
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
-(defn serialize-dashboard
-  "Serialize a Dashboard for use in a Revision."
-  [dashboard]
+(defmethod revision/serialize-instance Dashboard
+  [_model _id dashboard]
   (-> dashboard
       (select-keys [:description :name :cache_ttl])
       (assoc :cards (vec (for [dashboard-card (ordered-cards dashboard)]
                            (-> (select-keys dashboard-card [:size_x :size_y :row :col :id :card_id])
                                (assoc :series (mapv :id (dashboard-card/series dashboard-card)))))))))
 
-(defn- revert-dashboard!
-  "Revert a Dashboard to the state defined by `serialized-dashboard`."
-  [_ dashboard-id user-id serialized-dashboard]
+(defmethod revision/revert-to-revision! Dashboard
+  [_model dashboard-id user-id serialized-dashboard]
   ;; Update the dashboard description / name / permissions
   (db/update! Dashboard dashboard-id, (dissoc serialized-dashboard :cards))
   ;; Now update the cards as needed
@@ -188,9 +187,8 @@
 
   serialized-dashboard)
 
-(defn- diff-dashboards-str
-  "Describe the difference between two Dashboard instances."
-  [_ dashboard1 dashboard2]
+(defmethod revision/diff-str Dashboard
+  [_model dashboard1 dashboard2]
   (let [[removals changes]  (diff dashboard1 dashboard2)
         check-series-change (fn [idx card-changes]
                               (when (and (:series card-changes)
@@ -230,13 +228,6 @@
         (concat (map-indexed check-series-change (:cards changes)))
         (->> (filter identity)
              build-sentence))))
-
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Dashboard)
-  revision/IRevisioned
-  (merge revision/IRevisionedDefaults
-         {:serialize-instance  (fn [_ _ dashboard] (serialize-dashboard dashboard))
-          :revert-to-revision! revert-dashboard!
-          :diff-str            diff-dashboards-str}))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -433,15 +424,17 @@
 (defmethod serdes.base/extract-one "Dashboard"
   [_model-name _opts dash]
   (-> (serdes.base/extract-one-basics "Dashboard" dash)
-      (update :collection_id serdes.util/export-fk 'Collection)
-      (update :creator_id    serdes.util/export-user)))
+      (update :collection_id     serdes.util/export-fk 'Collection)
+      (update :creator_id        serdes.util/export-user)
+      (update :made_public_by_id serdes.util/export-user)))
 
 (defmethod serdes.base/load-xform "Dashboard"
   [dash]
   (-> dash
       serdes.base/load-xform-basics
-      (update :collection_id serdes.util/import-fk 'Collection)
-      (update :creator_id    serdes.util/import-user)))
+      (update :collection_id     serdes.util/import-fk 'Collection)
+      (update :creator_id        serdes.util/import-user)
+      (update :made_public_by_id serdes.util/import-user)))
 
 (defmethod serdes.base/serdes-dependencies "Dashboard"
   [{:keys [collection_id]}]

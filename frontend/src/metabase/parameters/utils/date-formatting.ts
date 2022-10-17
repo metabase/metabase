@@ -2,15 +2,15 @@ import { t } from "ttag";
 import _ from "underscore";
 import moment from "moment-timezone";
 
-import { DATE_MBQL_FILTER_MAPPING } from "metabase/parameters/constants";
-import { dateParameterValueToMBQL } from "metabase/parameters/utils/mbql";
 import { DATE_OPERATORS } from "metabase/query_builder/components/filters/pickers/DatePicker/DatePicker";
+import { EXCLUDE_OPERATORS } from "metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker";
+import { dateParameterValueToMBQL } from "metabase-lib/lib/parameters/utils/mbql";
+import { DATE_MBQL_FILTER_MAPPING } from "metabase-lib/lib/parameters/constants";
 import {
   generateTimeFilterValuesDescriptions,
   getRelativeDatetimeInterval,
   getStartingFrom,
-} from "metabase/lib/query_time";
-import { EXCLUDE_OPERATORS } from "metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker";
+} from "metabase-lib/lib/queries/utils/query-time";
 
 import { UiParameter } from "../types";
 

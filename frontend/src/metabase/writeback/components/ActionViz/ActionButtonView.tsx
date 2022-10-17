@@ -1,4 +1,5 @@
 import React from "react";
+import { t } from "ttag";
 
 import type { VisualizationProps } from "metabase-types/types/Visualization";
 
@@ -28,7 +29,7 @@ function ActionButtonView({
       isFullHeight={isFullHeight}
       {...variantProps}
     >
-      {label}
+      {label ?? t`Click me`}
     </StyledButton>
   );
 }

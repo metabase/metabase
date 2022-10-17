@@ -6,13 +6,6 @@
 import _ from "underscore";
 import { chain, updateIn } from "icepick";
 import { t } from "ttag";
-import * as Q from "metabase/lib/query/query";
-import { getUniqueExpressionName } from "metabase/lib/query/expression";
-import {
-  format as formatExpression,
-  DISPLAY_QUOTES,
-} from "metabase/lib/expressions/format";
-import { isCompatibleAggregationOperatorForField } from "metabase/lib/schema_metadata";
 import {
   StructuredQuery as StructuredQueryObject,
   Aggregation,
@@ -27,16 +20,23 @@ import {
   StructuredDatasetQuery,
 } from "metabase-types/types/Card";
 import { AggregationOperator } from "metabase-types/types/Metadata";
-import { isSegment } from "metabase/lib/query/filter";
 import { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
 import { TableId } from "metabase-types/types/Table";
 import { Column } from "metabase-types/types/Dataset";
-import { TYPE } from "metabase/lib/types";
-import { fieldRefForColumn } from "metabase/lib/dataset";
+import {
+  format as formatExpression,
+  DISPLAY_QUOTES,
+} from "metabase-lib/lib/expressions/format";
 import {
   isVirtualCardId,
   getQuestionIdFromVirtualTableId,
-} from "metabase/lib/saved-questions";
+} from "metabase-lib/lib/metadata/utils/saved-questions";
+import { isCompatibleAggregationOperatorForField } from "metabase-lib/lib/operators/utils";
+import { TYPE } from "metabase-lib/lib/types/constants";
+import { fieldRefForColumn } from "metabase-lib/lib/queries/utils/dataset";
+import { isSegment } from "metabase-lib/lib/queries/utils/filter";
+import { getUniqueExpressionName } from "metabase-lib/lib/queries/utils/expression";
+import * as Q from "metabase-lib/lib/queries/utils/query";
 import { memoizeClass } from "metabase-lib/lib/utils";
 import Dimension, {
   FieldDimension,
@@ -1569,16 +1569,18 @@ class StructuredQueryInner extends AtomicQuery {
    * returns the corresponding {Dimension} in the sourceQuery, if any
    */
   dimensionForSourceQuery(dimension: Dimension): Dimension | null | undefined {
-    if (dimension instanceof FieldDimension && dimension.isStringFieldName()) {
+    if (dimension instanceof FieldDimension) {
       const sourceQuery = this.sourceQuery();
 
       if (sourceQuery) {
-        const index = sourceQuery
-          .columnNames()
-          .indexOf(dimension.fieldIdOrName());
+        const fieldIdOrName = dimension.fieldIdOrName();
 
-        if (index >= 0) {
-          return sourceQuery.columnDimensions()[index];
+        const columnIndex = sourceQuery
+          .columns()
+          .findIndex(c => c.id === fieldIdOrName || c.name === fieldIdOrName);
+
+        if (columnIndex >= 0) {
+          return sourceQuery.columnDimensions()[columnIndex];
         }
       }
     }

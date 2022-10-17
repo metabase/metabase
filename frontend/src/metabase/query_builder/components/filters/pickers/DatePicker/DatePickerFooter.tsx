@@ -11,7 +11,7 @@ import {
   setTimeComponent,
   TIME_SELECTOR_DEFAULT_HOUR,
   TIME_SELECTOR_DEFAULT_MINUTE,
-} from "metabase/lib/query_time";
+} from "metabase-lib/lib/queries/utils/query-time";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 
 import { Container, Interval, ToggleButton } from "./DatePickerFooter.styled";
