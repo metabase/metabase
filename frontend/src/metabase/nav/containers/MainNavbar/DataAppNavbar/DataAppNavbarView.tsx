@@ -13,6 +13,7 @@ import * as Urls from "metabase/lib/urls";
 import { MainNavbarProps, SelectedItem } from "../types";
 import DataAppPageLink from "./DataAppPageLink";
 import DataAppActionPanel from "./DataAppActionPanel";
+import { NavItemsList } from "./DataAppNavbarView.styled";
 
 interface Props extends Omit<MainNavbarProps, "location" | "params"> {
   dataApp: DataApp;
@@ -59,12 +60,13 @@ function DataAppNavbarView({
 
   const renderNavItem = useCallback(
     (navItem: DataAppNavItem) => (
-      <DataAppPageLink
-        key={navItem.page_id}
-        dataApp={dataApp}
-        page={pageMap[navItem.page_id]}
-        isSelected={dataAppPage?.id === navItem.page_id}
-      />
+      <li key={navItem.page_id}>
+        <DataAppPageLink
+          dataApp={dataApp}
+          page={pageMap[navItem.page_id]}
+          isSelected={dataAppPage?.id === navItem.page_id}
+        />
+      </li>
     ),
     [dataApp, pageMap, dataAppPage],
   );
@@ -73,7 +75,7 @@ function DataAppNavbarView({
 
   return (
     <div className="flex align-center">
-      {navItems.map(renderNavItem)}
+      <NavItemsList>{navItems.map(renderNavItem)}</NavItemsList>
       <div className="flex align-center ml-auto">
         <DataAppActionPanel
           dataApp={dataApp}
