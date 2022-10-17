@@ -393,40 +393,37 @@ export const isMonthOfYearDateFilter = testTemporalUnit("month-of-year");
 export const isQuarterofYearDateFilter = testTemporalUnit("quarter-of-year");
 export const isHourOfDayDateFilter = testTemporalUnit("hour-of-day");
 
-export function getDateFilterValue(filter: any[]) {
-  const [_op, _field, value] = filter;
+export function getDateFilterValue(mbql: any[]) {
+  const [_op, _field, value] = mbql;
   return value;
 }
 
-export function setDateFilterValue(filter: any[], newValue: string | null) {
-  const [op, field] = filter;
+export function setDateFilterValue(mbql: any[], newValue: string | null) {
+  const [op, field] = mbql;
   return [op, field, newValue];
 }
 
-export function clearDateFilterTime(filter: any[]) {
-  return setDateFilterValue(
-    filter,
-    setTimeComponent(getDateFilterValue(filter)),
-  );
+export function clearDateFilterTime(mbql: any[]) {
+  return setDateFilterValue(mbql, setTimeComponent(getDateFilterValue(mbql)));
 }
 
-export function getDateRangeFilterValue(filter: any[]) {
-  const [_op, _field, startValue, endValue] = filter;
+export function getDateRangeFilterValue(mbql: any[]) {
+  const [_op, _field, startValue, endValue] = mbql;
   return [startValue, endValue];
 }
 
 export function setDateRangeFilterValue(
-  filter: any[],
+  mbql: any[],
   [startValue, endValue]: [string | null, string | null],
 ) {
-  const [op, field] = filter;
+  const [op, field] = mbql;
   return [op, field, startValue, endValue];
 }
 
-export function clearDateRangeFilterTime(filter: any[]) {
-  const [startValue, endValue] = getDateRangeFilterValue(filter);
+export function clearDateRangeFilterTime(mbql: any[]) {
+  const [startValue, endValue] = getDateRangeFilterValue(mbql);
 
-  return setDateRangeFilterValue(filter, [
+  return setDateRangeFilterValue(mbql, [
     setTimeComponent(startValue),
     setTimeComponent(endValue),
   ]);
