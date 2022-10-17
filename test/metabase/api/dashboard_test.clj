@@ -753,8 +753,8 @@
                                            (format "dashboard/%d/copy" (:id dashboard))
                                            {:name        "New dashboard"
                                             :description "A new description"
-                                            :copy-style :deep
-                                            :destination-collection (u/the-id dest-coll)})]
+                                            :is_deep_copy true
+                                            :collection_id (u/the-id dest-coll)})]
             (is (= (:collection_id resp) (u/the-id dest-coll))
                 "Dashboard should go into the destination collection")
             (is (= 3 (count (db/select 'Card :collection_id (u/the-id source-coll)))))
@@ -833,8 +833,8 @@
                                              (format "dashboard/%d/copy" (:id dashboard))
                                              {:name        "New dashboard"
                                               :description "A new description"
-                                              :copy-style :deep
-                                              :destination-collection (u/the-id dest-coll)})]
+                                              :is_deep_copy true
+                                              :collection_id (u/the-id dest-coll)})]
               (is (= (:collection_id resp) (u/the-id dest-coll))
                   "Dashboard should go into the destination collection")
               (let [copied-cards (db/select 'Card :collection_id (u/the-id dest-coll))
@@ -903,8 +903,8 @@
                                               (format "dashboard/%d/copy" (:id dashboard))
                                               {:name        "New dashboard"
                                                :description "A new description"
-                                               :copy-style :deep
-                                               :destination-collection (u/the-id source-coll)})
+                                               :is_deep_copy true
+                                               :collection_id (u/the-id source-coll)})
                   cards-in-coll (db/select 'Card :collection_id (u/the-id source-coll))]
               ;; original 3 plust 3 duplicates
               (is (= 6 (count cards-in-coll)) "Not all cards were copied")
