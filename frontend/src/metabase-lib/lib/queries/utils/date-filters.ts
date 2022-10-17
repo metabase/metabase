@@ -393,17 +393,36 @@ export const isMonthOfYearDateFilter = testTemporalUnit("month-of-year");
 export const isQuarterofYearDateFilter = testTemporalUnit("quarter-of-year");
 export const isHourOfDayDateFilter = testTemporalUnit("hour-of-day");
 
-export function getDateFilterValue(filter: Filter) {
+export function getDateFilterValue(filter: any[]) {
   const [_op, _field, value] = filter;
   return value;
 }
 
-export function setDateFilterValue(filter: Filter, newValue: string | null) {
+export function setDateFilterValue(filter: any[], newValue: string | null) {
   const [op, field] = filter;
   return [op, field, newValue];
 }
 
-export function clearDateFilterTime(filter: Filter) {
+export function clearDateFilterTime(filter: any[]) {
   const [op, field, value] = filter;
   return [op, field, setTimeComponent(value)];
+}
+
+export function getDateRangeFilterValue(filter: any[]) {
+  const [_op, _field, startValue, endValue] = filter;
+  return { startValue, endValue };
+}
+
+export function setDateRangeFilterValue(
+  filter: any[],
+  newValue: { startValue?: string | null; endValue?: string | null },
+) {
+  const [op, field, oldStartValue, oldEndValue] = filter;
+  const { startValue = oldStartValue, endValue = oldEndValue } = newValue;
+  return [op, field, startValue, endValue];
+}
+
+export function clearDateRangeFilterTime(filter: any[]) {
+  const [op, field, startValue, endValue] = filter;
+  return [op, field, setTimeComponent(startValue), setTimeComponent(endValue)];
 }
