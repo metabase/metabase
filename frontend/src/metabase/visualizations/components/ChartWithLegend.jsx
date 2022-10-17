@@ -16,6 +16,7 @@ class ChartWithLegend extends Component {
   static defaultProps = {
     aspectRatio: 1,
     style: {},
+    showLegend: true,
   };
 
   render() {
@@ -52,12 +53,11 @@ class ChartWithLegend extends Component {
     let type;
     let LegendComponent;
     const isHorizontal = gridSize.width > gridSize.height / GRID_ASPECT_RATIO;
-    if (showLegend === false) {
+    if (!showLegend) {
       type = "small";
     } else if (
       !gridSize ||
-      (isHorizontal &&
-        (showLegend || gridSize.width > 4 || gridSize.height > 4))
+      (isHorizontal && (gridSize.width > 4 || gridSize.height > 4))
     ) {
       type = "horizontal";
       LegendComponent = LegendVertical;
@@ -73,10 +73,7 @@ class ChartWithLegend extends Component {
         chartWidth = desiredWidth;
       }
       chartHeight = height;
-    } else if (
-      !isHorizontal &&
-      (showLegend || (gridSize.height > 3 && gridSize.width > 2))
-    ) {
+    } else if (!isHorizontal && gridSize.height > 3 && gridSize.width > 2) {
       type = "vertical";
       LegendComponent = LegendHorizontal;
       legendTitles = legendTitles.map(title =>
@@ -84,7 +81,6 @@ class ChartWithLegend extends Component {
       );
       const desiredHeight = width * (1 / aspectRatio);
       if (desiredHeight > height * (3 / 4)) {
-        // chartHeight = height * (3 / 4);
         flexChart = true;
       } else {
         chartHeight = desiredHeight;
