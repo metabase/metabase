@@ -8,8 +8,7 @@ import {
   getActionButtonLabel,
 } from "metabase/writeback/utils";
 
-import type { DashboardOrderedCard } from "metabase-types/api";
-import type { Column } from "metabase-types/types/Dataset";
+import type { DashboardOrderedCard, DatasetColumn } from "metabase-types/api";
 
 import { isTableDisplay } from "metabase/lib/click-behavior";
 import { Heading, SidebarHeader } from "../ClickBehaviorSidebar.styled";
@@ -29,7 +28,7 @@ function DefaultHeader({ children }: { children: React.ReactNode }) {
 
 interface Props {
   dashcard: DashboardOrderedCard;
-  selectedColumn?: Column | null;
+  selectedColumn?: DatasetColumn | null;
   onUnsetColumn: () => void;
 }
 

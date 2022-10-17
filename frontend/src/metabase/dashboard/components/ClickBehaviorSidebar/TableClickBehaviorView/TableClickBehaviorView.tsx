@@ -6,8 +6,8 @@ import type {
   DashboardOrderedCard,
   ClickBehavior,
   ClickBehaviorType,
+  DatasetColumn,
 } from "metabase-types/api";
-import type { Column as IColumn } from "metabase-types/types/Dataset";
 
 import { hasActionsMenu } from "metabase/lib/click-behavior";
 import Column from "./Column";
@@ -33,10 +33,12 @@ function explainClickBehaviorType(
 }
 
 interface Props {
-  columns: IColumn[];
+  columns: DatasetColumn[];
   dashcard: DashboardOrderedCard;
-  getClickBehaviorForColumn: (column: IColumn) => ClickBehavior | undefined;
-  onColumnClick: (column: IColumn) => void;
+  getClickBehaviorForColumn: (
+    column: DatasetColumn,
+  ) => ClickBehavior | undefined;
+  onColumnClick: (column: DatasetColumn) => void;
 }
 
 function TableClickBehaviorView({

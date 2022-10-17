@@ -6,15 +6,13 @@ import {
   EXCLUDE_OPTIONS,
   EXCLUDE_UNITS,
 } from "metabase-lib/lib/queries/utils/query-time";
-import Dimension, {
-  FieldDimension,
-  TemplateTagDimension,
-} from "metabase-lib/lib/Dimension";
+import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
 import { isDimensionTarget } from "metabase-lib/lib/parameters/utils/targets";
 import {
   getParameterSubType,
   isDateParameter,
 } from "metabase-lib/lib/parameters/utils/parameter-type";
+import { isTemplateTagReference } from "metabase-lib/lib/references";
 import { getParameterOperatorName } from "metabase-lib/lib/parameters/utils/operators";
 import { hasParameterValue } from "metabase-lib/lib/parameters/utils/parameter-values";
 
@@ -168,8 +166,7 @@ export function isFieldFilterParameterConveratableToMBQL(parameter) {
   const hasValue = hasParameterValue(value);
   const hasWellFormedTarget = Array.isArray(target?.[1]);
   const hasFieldDimensionTarget =
-    isDimensionTarget(target) &&
-    !TemplateTagDimension.isTemplateTagClause(target[1]);
+    isDimensionTarget(target) && !isTemplateTagReference(target[1]);
 
   return hasValue && hasWellFormedTarget && hasFieldDimensionTarget;
 }
