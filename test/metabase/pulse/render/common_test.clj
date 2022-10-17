@@ -17,7 +17,7 @@
       (is (= "12,345.54" (fmt nil)))
       (is (= "12*345^54" (fmt {::mb.viz/number-separators "^*"})))
       (is (= "prefix12,345.54suffix" (fmt {::mb.viz/prefix "prefix"
-                                             ::mb.viz/suffix "suffix"})))
+                                           ::mb.viz/suffix "suffix"})))
       (is (= "12,345.54" (fmt {::mb.viz/decimals 2})))
       (is (= "12,345.5432000" (fmt {::mb.viz/decimals 7})))
       (is (= "12,346" (fmt {::mb.viz/decimals 0})))
@@ -63,6 +63,15 @@
       (is (= "10%" (format 0.1 {::mb.viz/number-style "percent"})))
       (is (= "1%" (format 0.01 {::mb.viz/number-style "percent"})))
       (is (= "0.00001%" (format 0.0000001 {::mb.viz/number-style "percent"}))))
+    (testing "Match UI behavior for decimal values with no column formatting present"
+      (is (= ["2"    "0"]      [(format 2 nil) (format 0 nil)]))
+      (is (= ["2.1"  "0.1"]    [(format 2.1 nil) (format 0.1 nil)]))
+      (is (= ["2.01" "0.01"]   [(format 2.01 nil) (format 0.01 nil)]))
+      (is (= ["2"    "0.001"]  [(format 2.001 nil) (format 0.001 nil)]))
+      ;; Notice that (BigDecimal. 2.005) -> 2.0049999999... etc. so we have precision problems unless we
+      ;; send a BigDecimal in right away, which, as far as I can tell, is what we'll get from the query processor
+      (is (= ["2.01" "0.005"]  [(format 2.005M nil) (format 0.005 nil)]))
+      (is (= ["2"    "0.0049"] [(format 2.0049 nil) (format 0.0049 nil)])))
     (testing "Column Settings"
       (letfn [(fmt-with-type [type value]
                 (let [fmt-fn (common/number-formatter {:id 1 :effective_type type}
@@ -72,11 +81,11 @@
                   (str (fmt-fn value))))]
         (is (= "3" (fmt-with-type :type/Integer 3)))
         (is (= "3" (fmt-with-type :type/Integer 3.0)))
-        (is (= "3.00" (fmt-with-type :type/Decimal 3)))
-        (is (= "3.00" (fmt-with-type :type/Decimal 3.0)))
-        (is (= "3.10" (fmt-with-type :type/Decimal 3.1)))
+        (is (= "3" (fmt-with-type :type/Decimal 3)))
+        (is (= "3" (fmt-with-type :type/Decimal 3.0)))
+        (is (= "3.1" (fmt-with-type :type/Decimal 3.1)))
         (is (= "3.01" (fmt-with-type :type/Decimal 3.010)))
-        (is (= "0.25" (fmt-with-type :type/Decimal 0.254)))))
+        (is (= "0.254" (fmt-with-type :type/Decimal 0.254)))))
     (testing "Does not throw on nils"
         (is (nil?
              ((common/number-formatter {:id 1}

@@ -8,6 +8,7 @@
             [potemkin.types :as p.types]
             [schema.core :as s])
   (:import java.net.URL
+           java.math.RoundingMode
            (java.text DecimalFormat DecimalFormatSymbols)))
 
 ;; Fool Eastwood into thinking this namespace is used
@@ -26,43 +27,58 @@
   Object
   (toString [_] num-str))
 
+(defn- strip-trailing-zeroes
+  [num-as-string]
+  (if (str/includes? num-as-string ".")
+    (-> num-as-string
+        (str/split #"0+$")
+        first
+        (str/split #"\.$")
+        first)
+    num-as-string))
+
 (defn- digits-after-decimal
   [value]
-  (let [val-string (if (instance? java.math.BigDecimal value)
-                     (.toPlainString value)
-                     (str value))
-        [_n d] (str/split val-string #"[^\d*]")]
-    (count d)))
+  (if (zero? value)
+    0
+    (let [val-string (-> (condp = (type value)
+                           java.math.BigDecimal (.toPlainString value)
+                           java.lang.Double (format "%.20f" value)
+                           java.lang.Float (format "%.20f" value)
+                           (str value))
+                         strip-trailing-zeroes)
+          [_n d] (str/split val-string #"[^\d*]")]
+      (count d))))
 
 (defn number-formatter
   "Return a function that will take a number and format it according to its column viz settings. Useful to compute the
   format string once and then apply it over many values."
   [{:keys [effective_type base_type] col-id :id field-ref :field_ref col-name :name :as _column} viz-settings]
   (let [col-id (or col-id (second field-ref))
-        column-settings (-> (get viz-settings ::mb.viz/column-settings)
-                            (update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))
-        column-settings (or (get column-settings {::mb.viz/field-id col-id})
-                            (get column-settings {::mb.viz/column-name col-name}))
-        global-settings (::mb.viz/global-column-settings viz-settings)
-        currency?       (boolean (or (= (::mb.viz/number-style column-settings) "currency")
-                                     (and (nil? (::mb.viz/number-style column-settings))
-                                          (or
-                                            (::mb.viz/currency-style column-settings)
-                                            (::mb.viz/currency column-settings)))))
-        {::mb.viz/keys [number-separators decimals scale number-style
-                        prefix suffix currency-style currency]} (merge
-                                                                  (when currency?
-                                                                    (:type/Currency global-settings))
-                                                                  (:type/Number global-settings)
-                                                                  column-settings)
-        integral?       (isa? (or effective_type base_type) :type/Integer)
-        percent?        (= number-style "percent")
-        scientific?     (= number-style "scientific")
-        [decimal grouping] (or number-separators ".,")
-        symbols            (doto (DecimalFormatSymbols.)
-                             (cond-> decimal (.setDecimalSeparator decimal))
-                             (cond-> grouping (.setGroupingSeparator grouping)))
-        base               (if (= number-style "scientific") "0" "#,##0")]
+            column-settings (-> (get viz-settings ::mb.viz/column-settings)
+                                (update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))
+            column-settings (or (get column-settings {::mb.viz/field-id col-id})
+                                (get column-settings {::mb.viz/column-name col-name}))
+            global-settings (::mb.viz/global-column-settings viz-settings)
+            currency?       (boolean (or (= (::mb.viz/number-style column-settings) "currency")
+                                         (and (nil? (::mb.viz/number-style column-settings))
+                                              (or
+                                               (::mb.viz/currency-style column-settings)
+                                               (::mb.viz/currency column-settings)))))
+            {::mb.viz/keys [number-separators decimals scale number-style
+                            prefix suffix currency-style currency]} (merge
+                                                                     (when currency?
+                                                                       (:type/Currency global-settings))
+                                                                     (:type/Number global-settings)
+                                                                     column-settings)
+            integral?       (isa? (or effective_type base_type) :type/Integer)
+            percent?        (= number-style "percent")
+            scientific?     (= number-style "scientific")
+            [decimal grouping] (or number-separators ".,")
+            symbols            (doto (DecimalFormatSymbols.)
+                                 (cond-> decimal (.setDecimalSeparator decimal))
+                                 (cond-> grouping (.setGroupingSeparator grouping)))
+            base               (if (= number-style "scientific") "0" "#,##0")]
     (fn [value]
       (if (number? value)
         (let [scaled-value (* value (or scale 1))
@@ -77,12 +93,11 @@
                                               (>= scaled-value 1))
                                        (min 2 decimals-in-value)
                                        decimals-in-value))
-            fmt-str (cond-> base
-                      (not (zero? decimal-digits)) (str "." (apply str (repeat decimal-digits "0")))
-                      scientific? (str "E0")
-                      percent?    (str "%"))
-            _ (println "val:" value "decimals-in-value: " decimals-in-value "decimal-digits: " decimal-digits "fmt-str: " fmt-str)
-              fmtr (DecimalFormat. fmt-str symbols)]
+              fmt-str (cond-> base
+                        (not (zero? decimal-digits)) (str "." (apply str (repeat decimal-digits "0")))
+                        scientific? (str "E0")
+                        percent?    (str "%"))
+              fmtr (doto (DecimalFormat. fmt-str symbols) (.setRoundingMode RoundingMode/HALF_UP))]
           (NumericWrapper.
            (str (when prefix prefix)
                 (when (and currency? (or (nil? currency-style)
@@ -90,7 +105,8 @@
                   (get-in currency/currency [(keyword (or currency "USD")) :symbol]))
                 (when (and currency? (= currency-style "code"))
                   (str (get-in currency/currency [(keyword (or currency "USD")) :code]) \space))
-                (.format fmtr scaled-value)
+                (cond-> (.format fmtr scaled-value)
+                  (not decimals) strip-trailing-zeroes)
                 (when (and currency? (= currency-style "name"))
                   (str \space (get-in currency/currency [(keyword (or currency "USD")) :name_plural])))
                 (when suffix suffix))))
