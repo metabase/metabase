@@ -7,13 +7,15 @@ import DataAppNavbarContainer from "metabase/nav/containers/MainNavbar/DataAppNa
 
 import { getIsEditing } from "metabase/dashboard/selectors";
 
+import type { DataAppPageId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 interface DataAppPageLandingOwnProps {
+  dashboardId?: DataAppPageId;
   location: Location;
   params: {
     slug: string; // data app ID
-    pageId: string;
+    pageId?: string;
   };
 }
 
