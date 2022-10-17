@@ -26,7 +26,7 @@ export const BetweenPicker = ({
   hideTimeSelectors,
   onFilterChange,
 }: BetweenPickerProps) => {
-  const { startValue, endValue } = getDateRangeFilterValue(filter);
+  const [startValue, endValue] = getDateRangeFilterValue(filter);
   const [isStartDateActive, setIsStartDateActive] = useState(true);
 
   const handleStartDateFocus = useCallback(() => {
@@ -40,22 +40,11 @@ export const BetweenPicker = ({
   const handleDateClick = useCallback(
     (newValue: string, newDate: Moment) => {
       if (isStartDateActive) {
-        const newFilter = setDateRangeFilterValue(filter, {
-          startValue: newValue,
-          endValue: null,
-        });
-        onFilterChange(newFilter);
+        onFilterChange(setDateRangeFilterValue(filter, [newValue, null]));
       } else if (newDate.isBefore(startValue)) {
-        const newFilter = setDateRangeFilterValue(filter, {
-          startValue: newValue,
-          endValue: startValue,
-        });
-        onFilterChange(newFilter);
+        onFilterChange(setDateRangeFilterValue(filter, [newValue, startValue]));
       } else {
-        const newFilter = setDateRangeFilterValue(filter, {
-          endValue: newValue,
-        });
-        onFilterChange(newFilter);
+        onFilterChange(setDateRangeFilterValue(filter, [startValue, newValue]));
       }
       setIsStartDateActive(isActive => !isActive);
     },
@@ -63,21 +52,19 @@ export const BetweenPicker = ({
   );
 
   const handleStartDateChange = useCallback(
-    (startValue: string | null) => {
-      const newFilter = setDateRangeFilterValue(filter, { startValue });
-      onFilterChange(newFilter);
+    (newValue: string | null) => {
+      onFilterChange(setDateRangeFilterValue(filter, [newValue, endValue]));
       setIsStartDateActive(isActive => !isActive);
     },
-    [filter, onFilterChange],
+    [filter, endValue, onFilterChange],
   );
 
   const handleEndDateChange = useCallback(
-    (endValue: string | null) => {
-      const newFilter = setDateRangeFilterValue(filter, { endValue });
-      onFilterChange(newFilter);
+    (newValue: string | null) => {
+      onFilterChange(setDateRangeFilterValue(filter, [startValue, newValue]));
       setIsStartDateActive(isActive => !isActive);
     },
-    [filter, onFilterChange],
+    [filter, startValue, onFilterChange],
   );
 
   const handleEndDateClear = useCallback(() => {

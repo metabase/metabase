@@ -404,25 +404,30 @@ export function setDateFilterValue(filter: any[], newValue: string | null) {
 }
 
 export function clearDateFilterTime(filter: any[]) {
-  const [op, field, value] = filter;
-  return [op, field, setTimeComponent(value)];
+  return setDateFilterValue(
+    filter,
+    setTimeComponent(getDateFilterValue(filter)),
+  );
 }
 
 export function getDateRangeFilterValue(filter: any[]) {
   const [_op, _field, startValue, endValue] = filter;
-  return { startValue, endValue };
+  return [startValue, endValue];
 }
 
 export function setDateRangeFilterValue(
   filter: any[],
-  newValue: { startValue?: string | null; endValue?: string | null },
+  [startValue, endValue]: [string | null, string | null],
 ) {
-  const [op, field, oldStartValue, oldEndValue] = filter;
-  const { startValue = oldStartValue, endValue = oldEndValue } = newValue;
+  const [op, field] = filter;
   return [op, field, startValue, endValue];
 }
 
 export function clearDateRangeFilterTime(filter: any[]) {
-  const [op, field, startValue, endValue] = filter;
-  return [op, field, setTimeComponent(startValue), setTimeComponent(endValue)];
+  const [startValue, endValue] = getDateRangeFilterValue(filter);
+
+  return setDateRangeFilterValue(filter, [
+    setTimeComponent(startValue),
+    setTimeComponent(endValue),
+  ]);
 }
