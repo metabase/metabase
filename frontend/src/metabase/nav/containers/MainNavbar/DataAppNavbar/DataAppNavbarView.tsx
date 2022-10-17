@@ -4,7 +4,6 @@ import _ from "underscore";
 
 import type { DataApp, DataAppNavItem } from "metabase-types/api";
 
-import Link from "metabase/core/components/Link";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 
@@ -13,7 +12,13 @@ import * as Urls from "metabase/lib/urls";
 import { MainNavbarProps, SelectedItem } from "../types";
 import DataAppPageLink from "./DataAppPageLink";
 import DataAppActionPanel from "./DataAppActionPanel";
-import { NavItemsList } from "./DataAppNavbarView.styled";
+
+import {
+  Root,
+  NavItemsList,
+  ActionPanelContainer,
+  ExitAppLink,
+} from "./DataAppNavbarView.styled";
 
 interface Props extends Omit<MainNavbarProps, "location" | "params"> {
   dataApp: DataApp;
@@ -74,9 +79,9 @@ function DataAppNavbarView({
   const exitAppPath = Urls.dataApp(dataApp, { mode: "preview" });
 
   return (
-    <div className="flex align-center">
+    <Root>
       <NavItemsList>{navItems.map(renderNavItem)}</NavItemsList>
-      <div className="flex align-center ml-auto">
+      <ActionPanelContainer>
         <DataAppActionPanel
           dataApp={dataApp}
           onAddData={onAddData}
@@ -84,12 +89,12 @@ function DataAppNavbarView({
           onEditAppSettings={onEditAppSettings}
         />
         <Tooltip tooltip={t`App elements`}>
-          <Link to={exitAppPath} className="ml2">
+          <ExitAppLink to={exitAppPath}>
             <Icon name="list" />
-          </Link>
+          </ExitAppLink>
         </Tooltip>
-      </div>
-    </div>
+      </ActionPanelContainer>
+    </Root>
   );
 }
 
