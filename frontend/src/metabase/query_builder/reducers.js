@@ -66,7 +66,7 @@ import {
 } from "./actions";
 
 const DEFAULT_UI_CONTROLS = {
-  dataReferenceStack: [],
+  dataReferenceStack: null,
   isShowingDataReference: false,
   isShowingTemplateTagsEditor: false,
   isShowingNewbModal: false,
@@ -170,7 +170,7 @@ export const uiControls = handleActions(
     [PUSH_DATA_REFERENCE_STACK]: {
       next: (state, { payload }) => ({
         ...state,
-        dataReferenceStack: state.dataReferenceStack.concat([payload]),
+        dataReferenceStack: (state.dataReferenceStack || []).concat([payload]),
       }),
     },
     [OPEN_DATA_REFERENCE_AT_QUESTION]: {

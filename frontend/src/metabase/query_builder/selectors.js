@@ -947,7 +947,7 @@ export const getAutocompleteResultsFn = state => {
 export const getDataReferenceStack = createSelector(
   [getUiControls, getDatabaseId],
   (uiControls, dbId) =>
-    uiControls.dataReferenceStack.length
+    uiControls.dataReferenceStack
       ? uiControls.dataReferenceStack
       : dbId
       ? [{ type: "database", item: { id: dbId } }]
