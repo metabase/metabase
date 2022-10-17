@@ -392,3 +392,18 @@ export const isDayOfWeekDateFilter = testTemporalUnit("day-of-week");
 export const isMonthOfYearDateFilter = testTemporalUnit("month-of-year");
 export const isQuarterofYearDateFilter = testTemporalUnit("quarter-of-year");
 export const isHourOfDayDateFilter = testTemporalUnit("hour-of-day");
+
+export function getDateFilterValue(filter: Filter) {
+  const [_op, _field, value] = filter;
+  return value;
+}
+
+export function setDateFilterValue(filter: Filter, newValue: string | null) {
+  const [op, field] = filter;
+  return [op, field, newValue];
+}
+
+export function clearDateFilterTime(filter: Filter) {
+  const [op, field, value] = filter;
+  return [op, field, setTimeComponent(value)];
+}
