@@ -322,7 +322,7 @@ class FieldValuesWidgetInner extends Component {
             isDashboardFilter={parameter}
             placeholder={tokenFieldPlaceholder}
             value={value.filter(v => v != null)}
-            isMultiSelect={getIsMultiSelect(parameter)}
+            isMultiSelect={getIsMultiSelect(parameter)} // TODO: this probably needs changing, but it's an example of how the isMultiSelect property can be passed to the UI
             onChange={onChange}
             options={options}
             optionRenderer={optionRenderer}
