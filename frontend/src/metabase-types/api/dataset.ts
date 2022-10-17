@@ -1,4 +1,7 @@
-import type { DatetimeUnit } from "metabase-types/api/query";
+import type {
+  DatetimeUnit,
+  DimensionReference,
+} from "metabase-types/api/query";
 import { DatabaseId } from "./database";
 import { DownloadPermission } from "./permissions";
 
@@ -12,7 +15,7 @@ export interface DatasetColumn {
   name: string;
   remapped_to_column?: DatasetColumn;
   unit?: DatetimeUnit;
-  field_ref?: any;
+  field_ref?: DimensionReference;
   expression_name?: any;
 }
 

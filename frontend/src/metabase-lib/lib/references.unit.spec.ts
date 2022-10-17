@@ -109,14 +109,16 @@ describe("normalizeReferenceOptions", () => {
   it("should remove null/undefined keys", () => {
     expect(
       normalizeReferenceOptions({
-        "temporal-unit": false,
-        binning: null,
+        "temporal-unit": undefined,
+        binning: { strategy: "default" },
         "base-type": undefined,
       }),
     ).toEqual({ "temporal-unit": false });
   });
   it("should recursively normalize maps options", () => {
-    expect(normalizeReferenceOptions({ binning: { x: null } })).toBe(null);
+    expect(
+      normalizeReferenceOptions({ binning: { strategy: "default" } }),
+    ).toBe(null);
   });
   // TODO -- it should also remove empty arrays, but we currently don't have any situations where there might be
   // one.

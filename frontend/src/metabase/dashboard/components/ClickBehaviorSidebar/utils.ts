@@ -4,8 +4,8 @@ import { getIn } from "icepick";
 import type {
   ClickBehaviorType,
   DashboardOrderedCard,
+  DatasetColumn,
 } from "metabase-types/api";
-import type { Column } from "metabase-types/types/Dataset";
 import { hasActionsMenu } from "metabase/lib/click-behavior";
 import { getColumnKey } from "metabase-lib/lib/queries/utils/get-column-key";
 
@@ -42,7 +42,7 @@ export function getClickBehaviorOptionName(
 }
 export function getClickBehaviorForColumn(
   dashcard: DashboardOrderedCard,
-  column: Column,
+  column: DatasetColumn,
 ) {
   return getIn(dashcard, [
     "visualization_settings",

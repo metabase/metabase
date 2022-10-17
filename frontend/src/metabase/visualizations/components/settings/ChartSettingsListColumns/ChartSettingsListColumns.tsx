@@ -4,9 +4,9 @@ import _ from "underscore";
 
 import Button from "metabase/core/components/Button";
 
-import { Column } from "metabase-types/types/Dataset";
 import { FieldId } from "metabase-types/types/Field";
 import { ConcreteField } from "metabase-types/types/Query";
+import { DatasetColumn } from "metabase-types/api";
 import { getColumnKey } from "metabase-lib/lib/queries/utils/get-column-key";
 import Question from "metabase-lib/lib/Question";
 
@@ -25,7 +25,7 @@ type SettingValue = {
 
 interface Props {
   value: SettingValue;
-  columns: Column[];
+  columns: DatasetColumn[];
   question: Question;
   onChange: (value: SettingValue) => void;
   onShowWidget: (config: unknown, targetElement: HTMLElement | null) => void;

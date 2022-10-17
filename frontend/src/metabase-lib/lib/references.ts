@@ -9,7 +9,7 @@ import {
   FieldReference,
   ReferenceOptions,
   TemplateTagReference,
-} from "metabase-types/api/mbql";
+} from "metabase-types/api/query";
 
 export const isFieldReference = (mbql: any): mbql is FieldReference => {
   return Array.isArray(mbql) && mbql.length === 3 && mbql[0] === "field";
@@ -49,8 +49,8 @@ export const isValidDimensionReference = (
 };
 
 export const normalizeReferenceOptions = (
-  options?: ReferenceOptions,
-): ReferenceOptions => {
+  options?: ReferenceOptions | null,
+): ReferenceOptions | null => {
   if (!options) {
     return null;
   }
