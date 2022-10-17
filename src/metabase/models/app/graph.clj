@@ -43,8 +43,8 @@
         [diff-old changes] (data/diff (:groups old-graph) (:groups new-graph))]
     (perms/log-permissions-changes diff-old changes)
     (perms/check-revision-numbers old-graph new-graph)
-    (when-let [[[group-id [[root permission] & other-colls]] & other-groups] (seq changes)]
-      (when (or (not= group-id (:id (perms-group/all-users)))
+    (when-let [[[all-users-group-id [[root permission] & other-colls]] & other-groups] (seq changes)]
+      (when (or (not= all-users-group-id (:id (perms-group/all-users)))
                 (not= root :root)
                 (seq other-colls)
                 (seq other-groups))
@@ -52,7 +52,7 @@
                         {:group-ids (keys changes)
                          :status-code 400})))
       (db/transaction
-        (graph/update-collection-permissions! :apps group-id :root permission)
+        (graph/update-collection-permissions! :apps all-users-group-id root permission)
         (perms/save-perms-revision! AppPermissionGraphRevision (:revision old-graph)
                                     old-graph changes)
         (global-graph)))))
