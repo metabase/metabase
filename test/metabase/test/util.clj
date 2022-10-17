@@ -807,7 +807,7 @@
     (fn [] ~@body)))
 
 (defn do-with-all-users-app-root-permission
-  "Call `f without arguments in a context where the ''All Users'' group
+  "Call `f` without arguments in a context where the ''All Users'' group
   is granted the global app permission `permission`. `permission` can be one of
   :read or :write."
   [permission f]
