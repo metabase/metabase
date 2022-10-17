@@ -195,7 +195,7 @@ In the Environment Properties section, you'll be able to set or change the varia
 
 ## Increase the query timeout
 
-By default, you will get an "Your question took too long" error if the query takes longer than 60 seconds.  This is due to a Load Balancer default when your Elastic Beanstalk application is created.  If you want to increase this timeout:
+AWS Elastic Load Balancer has a default timeout of 60 seconds, while Metabase ships with a timeout of 10 minutes for the nginx configuration.  If a query takes longer than 60 seconds, a user will see a "Your question took too long" error message.  Follow these steps to increase the ELB timeout for your Elastic Beanstalk Metabase application: 
 
 1. In AWS, go to the "EC2" page and click on "Load Balancers" in the side navigation.
 2. Select the load balancer for your metabase application.  If you have multiple load balancers, finding the correct one might be based on your setup, but yours might have a "Tag" of "elasticbeanstalk:environment-name" which equals "Metabase-env".
