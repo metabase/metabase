@@ -248,8 +248,12 @@
 (defn update-cards-for-copy
   "Update ordered-cards in a dashboard for copying. If shallow copy, returns the cards. If deep copy, replaces ids with
   id from the newly-copied cards. If there is no new id, it means user lacked curate permissions for the cards
-  collections and it is omitted."
-  [ordered-cards deep? id->new-card]
+  collections and it is omitted. Dashboard-id is only needed for useful errors."
+  [dashboard-id ordered-cards deep? id->new-card]
+  (when (and deep? (nil? id->new-card))
+    (throw (ex-info (tru "No copied card information found")
+                    {:user-id api/*current-user-id*
+                     :dashboard-id dashboard-id})))
   (if-not deep?
     ordered-cards
     (keep (fn [dashboard-card]
@@ -309,7 +313,8 @@
                           ;; Get cards from existing dashboard and associate to copied dashboard
                           (let [id->new-card (when is_deep_copy
                                                (duplicate-cards existing-dashboard collection_id))]
-                            (doseq [card (update-cards-for-copy (:ordered_cards existing-dashboard)
+                            (doseq [card (update-cards-for-copy from-dashboard-id
+                                                                (:ordered_cards existing-dashboard)
                                                                 is_deep_copy
                                                                 id->new-card)]
                               (api/check-500 (dashboard/add-dashcard! <> (:card_id card) card))))))]
