@@ -248,8 +248,8 @@
   "Update ordered-cards in a dashboard for copying. If shallow copy, returns the cards. If deep copy, replaces ids with
   id from the newly-copied cards. If there is no new id, it means user lacked curate permissions for the cards
   collections and it is omitted."
-  [ordered-cards copy-style id->new-card]
-  (if (not= copy-style "deep")
+  [ordered-cards deep? id->new-card]
+  (if-not deep?
     ordered-cards
     (keep (fn [dashboard-card]
             (cond
@@ -283,26 +283,22 @@
 (api/defendpoint POST "/:from-dashboard-id/copy"
   "Copy a Dashboard."
   [from-dashboard-id :as {{:keys [name description collection_id collection_position
-                                  copy-style destination-collection], :as _dashboard} :body}]
+                                  is_deep_copy], :as _dashboard} :body}]
   {name                   (s/maybe su/NonBlankString)
    description            (s/maybe s/Str)
    collection_id          (s/maybe su/IntGreaterThanZero)
    collection_position    (s/maybe su/IntGreaterThanZero)
-   copy-style             (s/maybe (s/enum "deep" "shallow"))
-   ;; todo: do we want an explicit destination to override the provided collection_id?
-   ;; don't know how the FE likes to work
-   destination-collection (s/maybe su/IntGreaterThanZero)}
+   is_deep_copy           (s/maybe s/Bool)}
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
   (collection/check-write-perms-for-collection collection_id)
-  (when destination-collection
-    (api/read-check Collection destination-collection))
-  (let [dest-coll-id   destination-collection ; if we want to change the api nothing downstream affected
-        existing-dashboard (get-dashboard from-dashboard-id)
+  (when collection_id
+    (api/read-check Collection collection_id))
+  (let [existing-dashboard (get-dashboard from-dashboard-id)
         dashboard-data {:name                (or name (:name existing-dashboard))
                         :description         (or description (:description existing-dashboard))
                         :parameters          (or (:parameters existing-dashboard) [])
                         :creator_id          api/*current-user-id*
-                        :collection_id       (or dest-coll-id collection_id)
+                        :collection_id       collection_id
                         :collection_position collection_position
                         :is_app_page         (:is_app_page existing-dashboard)}
         dashboard      (db/transaction
@@ -312,10 +308,10 @@
                         ;; Ok, now save the Dashboard
                         (u/prog1 (db/insert! Dashboard dashboard-data)
                           ;; Get cards from existing dashboard and associate to copied dashboard
-                          (let [id->new-card (when (= copy-style "deep")
-                                               (duplicate-cards existing-dashboard dest-coll-id))]
+                          (let [id->new-card (when is_deep_copy
+                                               (duplicate-cards existing-dashboard collection_id))]
                             (doseq [card (update-cards-for-copy (:ordered_cards existing-dashboard)
-                                                                copy-style
+                                                                is_deep_copy
                                                                 id->new-card)]
                               (api/check-500 (dashboard/add-dashcard! <> (:card_id card) card))))))]
     (snowplow/track-event! ::snowplow/dashboard-created api/*current-user-id* {:dashboard-id (u/the-id dashboard)})
