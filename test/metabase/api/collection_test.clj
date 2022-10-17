@@ -139,11 +139,11 @@
                       App [{app2-id :id} {:collection_id coll2-id}]]
         (letfn [(remove-other-collections [collections]
                   (filter (fn [{collection-name :name}]
-                            (or (#{"Our analytics" "Archived Collection" "Regular Collection"} collection-name)
+                            (or (#{"All apps" "Archived Collection" "Regular Collection"} collection-name)
                                 (str/includes? collection-name "Personal Collection")))
                           collections))]
           (testing "check that we don't see collections if they're archived"
-            (is (= [["Our analytics" nil]
+            (is (= [["All apps" nil]
                     ["Regular Collection" app2-id]]
                    (->> (mt/user-http-request :crowberto :get 200 "collection?namespace=apps")
                         remove-other-collections

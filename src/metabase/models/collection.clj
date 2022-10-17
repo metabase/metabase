@@ -192,6 +192,7 @@
   (m/assoc-some root-collection
                 :name (case (keyword collection-namespace)
                         :snippets (tru "Top folder")
+                        :apps (tru "All apps")
                         (tru "Our analytics"))
                 :namespace collection-namespace
                 :id   "root"))
