@@ -14,7 +14,7 @@ import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthC
 
 interface TypeForItemsThatRespondToNavBarOpen {
   isNavBarOpen: boolean;
-  isDataApp: boolean | undefined;
+  isDataApp?: boolean;
 }
 
 export const HeaderRoot = styled(
