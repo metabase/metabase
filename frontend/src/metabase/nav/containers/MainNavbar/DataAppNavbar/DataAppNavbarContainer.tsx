@@ -163,7 +163,6 @@ function DataAppNavbarContainer({
         onAddData={onAddData}
         onNewPage={onNewPage}
         onEditAppSettings={onEditAppSettings}
-        onChangeLocation={onChangeLocation}
       />
       {modal && <Modal onClose={closeModal}>{renderModalContent()}</Modal>}
     </>
