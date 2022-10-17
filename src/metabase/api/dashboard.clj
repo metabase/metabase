@@ -697,24 +697,27 @@
     "value must be a parameter map with an 'id' key"))
 
 
-(def ParameterWithTarget
-  "Schema for a parameter map with an mbql `:target`."
-  (su/with-api-error-message
-    {:target   [s/Any]
-     s/Keyword s/Any}
-    "value must be a parameter map with a 'target' key"))
-
 ;;; ---------------------------------- Executing the action associated with a Dashcard -------------------------------
+(api/defendpoint GET "/:dashboard-id/dashcard/:dashcard-id/execute/:slug"
+  "Fetches the values for filling in execution parameters."
+  [dashboard-id dashcard-id slug]
+  {dashboard-id su/IntGreaterThanZero
+   dashcard-id su/IntGreaterThanZero
+   slug su/NonBlankString}
+  (throw (UnsupportedOperationException. "Not implemented")))
 
-(api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/action/execute"
+(api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/execute/:slug"
   "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
 
    `parameters` should be the mapped dashboard parameters with values.
    `extra_parameters` should be the extra, user entered parameter values."
-  [dashboard-id dashcard-id :as {{:keys [parameters extra_parameters], :as _body} :body}]
-  {parameters (s/maybe [ParameterWithID])
-   extra_parameters (s/maybe [ParameterWithTarget])}
-  (actions.execution/execute-dashcard! dashboard-id dashcard-id parameters extra_parameters))
+  [dashboard-id dashcard-id slug :as {{:keys [parameters], :as _body} :body}]
+  {dashboard-id su/IntGreaterThanZero
+   dashcard-id su/IntGreaterThanZero
+   slug su/NonBlankString
+   parameters (s/maybe {s/Keyword s/Any})}
+  ;; Undo middleware string->keyword coercion
+  (actions.execution/execute-dashcard! dashboard-id dashcard-id slug (update-keys parameters name)))
 
 ;;; ---------------------------------- Running the query associated with a Dashcard ----------------------------------
 

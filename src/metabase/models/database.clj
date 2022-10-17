@@ -211,10 +211,11 @@
           :post-select    post-select
           :pre-insert     pre-insert
           :pre-update     pre-update
-          :pre-delete     pre-delete})
+          :pre-delete     pre-delete}))
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [:name :engine])})
+(defmethod serdes.hash/identity-hash-fields Database
+  [_database]
+  [:name :engine])
 
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------

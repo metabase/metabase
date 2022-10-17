@@ -9,10 +9,10 @@ import _ from "underscore";
 
 import { color } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting";
-import { isNumeric } from "metabase/lib/schema_metadata";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import ChartSettingGaugeSegments from "metabase/visualizations/components/settings/ChartSettingGaugeSegments";
+import { isNumeric } from "metabase-lib/lib/types/utils/isa";
 import { GaugeArcPath } from "./Gauge.styled";
 
 const MAX_WIDTH = 500;

@@ -1,6 +1,6 @@
 import Tables from "metabase/entities/tables";
 import Questions from "metabase/entities/questions";
-import { convertSavedQuestionToVirtualTable } from "metabase/lib/saved-questions";
+import { convertSavedQuestionToVirtualTable } from "metabase-lib/lib/metadata/utils/saved-questions";
 
 describe("table entity", () => {
   describe("saved questions | reducer", () => {

@@ -137,11 +137,28 @@
                                                   (json/generate-string (:colors settings))))]
     (svg-string->bytes svg-string)))
 
+(defn row-chart
+  "Clojure entrypoint to render a row chart."
+  [settings data]
+  (let [svg-string (.asString (js/execute-fn-name @context "row_chart"
+                                                  (json/generate-string settings)
+                                                  (json/generate-string data)))]
+    (svg-string->bytes svg-string)))
+
 (defn categorical-donut
   "Clojure entrypoint to render a categorical donut chart. Rows should be tuples of [category numeric-value]. Returns a
   byte array of a png file"
   [rows colors]
   (let [svg-string (.asString (js/execute-fn-name @context "categorical_donut" rows (seq colors)))]
+    (svg-string->bytes svg-string)))
+
+(defn gauge
+  "Clojure entrypoint to render a gauge chart. Returns a byte array of a png file"
+  [card data]
+  (let [js-res (js/execute-fn-name @context "gauge"
+                                   (json/generate-string card)
+                                   (json/generate-string data))
+        svg-string (.asString js-res)]
     (svg-string->bytes svg-string)))
 
 (defn progress

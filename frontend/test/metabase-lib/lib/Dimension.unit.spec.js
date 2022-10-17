@@ -213,31 +213,6 @@ describe("Dimension", () => {
       metadata,
     );
 
-    describe("STATIC METHODS", () => {
-      describe("normalizeOptions()", () => {
-        it("should remove empty options map", () => {
-          expect(FieldDimension.normalizeOptions(null)).toEqual(null);
-          expect(FieldDimension.normalizeOptions({})).toEqual(null);
-        });
-        it("should remove null/undefined keys", () => {
-          expect(
-            FieldDimension.normalizeOptions({
-              x: false,
-              y: null,
-              z: undefined,
-            }),
-          ).toEqual({ x: false });
-        });
-        it("should recursively normalize maps options", () => {
-          expect(
-            FieldDimension.normalizeOptions({ binning: { x: null } }),
-          ).toBe(null);
-        });
-        // TODO -- it should also remove empty arrays, but we currently don't have any situations where there might be
-        // one.
-      });
-    });
-
     describe("INSTANCE METHODS", () => {
       describe("mbql()", () => {
         it(
@@ -940,24 +915,6 @@ describe("Dimension", () => {
             ).toBeNull();
           });
         });
-
-        describe("isTemplateTagClause", () => {
-          it("returns false for a field clause", () => {
-            expect(
-              TemplateTagDimension.isTemplateTagClause(["field", 123, null]),
-            ).toBe(false);
-          });
-
-          it("returns false for a non-array clause", () => {
-            expect(TemplateTagDimension.isTemplateTagClause("foo")).toBe(false);
-          });
-
-          it("returns true for a template tag clause", () => {
-            expect(
-              TemplateTagDimension.isTemplateTagClause(templateTagClause),
-            ).toBe(true);
-          });
-        });
       });
 
       describe("INSTANCE METHODS", () => {
@@ -1093,24 +1050,6 @@ describe("Dimension", () => {
             expect(
               TemplateTagDimension.parseMBQL(["field", 123, null], metadata),
             ).toBeNull();
-          });
-        });
-
-        describe("isTemplateTagClause", () => {
-          it("returns false for a field clause", () => {
-            expect(
-              TemplateTagDimension.isTemplateTagClause(["field", 123, null]),
-            ).toBe(false);
-          });
-
-          it("returns false for a non-array clause", () => {
-            expect(TemplateTagDimension.isTemplateTagClause("foo")).toBe(false);
-          });
-
-          it("returns true for a template tag clause", () => {
-            expect(
-              TemplateTagDimension.isTemplateTagClause(templateTagClause),
-            ).toBe(true);
           });
         });
       });

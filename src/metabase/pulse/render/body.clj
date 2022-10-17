@@ -695,6 +695,37 @@
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]]}))
 
+(s/defmethod render :gauge :- common/RenderedPulseCard
+  [_chart-type render-type _timezone-id :- (s/maybe s/Str) card _dashcard data]
+  (let [image-bundle (image-bundle/make-image-bundle
+                      render-type
+                      (js-svg/gauge card data))]
+    {:attachments
+     (when image-bundle
+       (image-bundle/image-bundle->attachment image-bundle))
+
+     :content
+     [:div
+      [:img {:style (style/style {:display :block :width :100%})
+             :src   (:image-src image-bundle)}]]}))
+
+(s/defmethod render :row :- common/RenderedPulseCard
+  [_ render-type _timezone-id card _dashcard {:keys [rows cols] :as _data}]
+  (let [viz-settings (get-in card [:visualization_settings])
+        data {:rows rows
+              :cols cols}
+        image-bundle   (image-bundle/make-image-bundle
+                        render-type
+                        (js-svg/row-chart viz-settings data))]
+    {:attachments
+     (when image-bundle
+       (image-bundle/image-bundle->attachment image-bundle))
+
+     :content
+     [:div
+      [:img {:style (style/style {:display :block :width :100%})
+             :src   (:image-src image-bundle)}]]}))
+
 (s/defmethod render :scalar :- common/RenderedPulseCard
   [_chart-type _render-type timezone-id _card dashcard {:keys [cols rows viz-settings]}]
   (let [viz-settings (merge viz-settings (:visualization_settings dashcard))

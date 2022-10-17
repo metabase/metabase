@@ -1,11 +1,9 @@
-import _ from "underscore";
-
 import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
-import getGAMetadata from "promise-loader?global!metabase/lib/ga-metadata"; // eslint-disable-line import/default
 
 import Question from "metabase-lib/lib/Question";
-import { FieldDimension } from "metabase-lib/lib/Dimension";
+import { getPivotColumnSplit } from "metabase-lib/lib/queries/utils/pivot";
+import { injectTableMetadata } from "metabase-lib/lib/metadata/utils/tables";
 
 // use different endpoints for embed previews
 const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
@@ -48,39 +46,16 @@ export const StoreApi = {
 // Those endpoints take the query along with `pivot_rows` and `pivot_cols` to return the subtotal data.
 // If we add breakout/grouping sets to MBQL in the future we can remove this API switching.
 export function maybeUsePivotEndpoint(api, card, metadata) {
-  function canonicalFieldRef(ref) {
-    // Field refs between the query and setting might differ slightly.
-    // This function trims binned dimensions to just the field-id
-    const dimension = FieldDimension.parseMBQL(ref);
-    if (!dimension) {
-      return ref;
-    }
-    return dimension.withoutOptions("binning").mbql();
-  }
-
   const question = new Question(card, metadata);
 
   function wrap(api) {
     return (params, ...rest) => {
-      const setting = question.setting("pivot_table.column_split");
-      const breakout =
-        (question.isStructured() && question.query().breakouts()) || [];
-      const { rows: pivot_rows, columns: pivot_cols } = _.mapObject(
-        setting,
-        fieldRefs =>
-          fieldRefs
-            .map(field_ref =>
-              breakout.findIndex(b =>
-                _.isEqual(canonicalFieldRef(b), canonicalFieldRef(field_ref)),
-              ),
-            )
-            .filter(index => index !== -1),
-      );
+      const { pivot_rows, pivot_cols } = getPivotColumnSplit(question);
       return api({ ...params, pivot_rows, pivot_cols }, ...rest);
     };
   }
   if (
-    card.display !== "pivot" ||
+    question.display() !== "pivot" ||
     !question.isStructured() ||
     // if we have metadata for the db, check if it supports pivots
     (question.database() && !question.database().supportsPivots())
@@ -294,47 +269,7 @@ export const MetabaseApi = {
   // table_reorder_fields:       POST("/api/table/:tableId/reorder"),
   table_query_metadata: GET(
     "/api/table/:tableId/query_metadata",
-    async table => {
-      // HACK: inject GA metadata that we don't have intergrated on the backend yet
-      if (table && table.db && table.db.engine === "googleanalytics") {
-        const GA = await getGAMetadata();
-        table.fields = table.fields.map(field => ({
-          ...field,
-          ...GA.fields[field.name],
-        }));
-        table.metrics.push(
-          ...GA.metrics.map(metric => ({
-            ...metric,
-            table_id: table.id,
-            googleAnalyics: true,
-          })),
-        );
-        table.segments.push(
-          ...GA.segments.map(segment => ({
-            ...segment,
-            table_id: table.id,
-            googleAnalyics: true,
-          })),
-        );
-      }
-
-      if (table && table.fields) {
-        // replace dimension_options IDs with objects
-        for (const field of table.fields) {
-          if (field.dimension_options) {
-            field.dimension_options = field.dimension_options.map(
-              id => table.dimension_options[id],
-            );
-          }
-          if (field.default_dimension_option) {
-            field.default_dimension_option =
-              table.dimension_options[field.default_dimension_option];
-          }
-        }
-      }
-
-      return table;
-    },
+    injectTableMetadata,
   ),
   // table_sync_metadata:        POST("/api/table/:tableId/sync"),
   table_rescan_values: POST("/api/table/:tableId/rescan_values"),
@@ -541,12 +476,20 @@ function setParamsEndpoints(prefix) {
 }
 
 export const ActionsApi = {
+  list: GET("/api/action"),
   create: POST("/api/action/row/create"),
   update: POST("/api/action/row/update"),
   delete: POST("/api/action/row/delete"),
   bulkUpdate: POST("/api/action/bulk/update/:tableId"),
   bulkDelete: POST("/api/action/bulk/delete/:tableId"),
   execute: POST(
-    "/api/dashboard/:dashboardId/dashcard/:dashcardId/action/execute",
+    "/api/dashboard/:dashboardId/dashcard/:dashcardId/execute/:slug",
   ),
+};
+
+export const ModelActionsApi = {
+  connectActionToModel: POST("/api/model-action"),
+  createImplicitAction: POST("/api/model-action"),
+  updateConnection: PUT("/api/model-action/:id"),
+  disconnectActionFromModel: POST("/api/model-action"),
 };

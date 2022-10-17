@@ -1,7 +1,7 @@
 import {
   getAggregationOperator,
   isCompatibleAggregationOperatorForField,
-} from "metabase/lib/schema_metadata";
+} from "metabase-lib/lib/operators/utils";
 import { fieldRefForColumn } from "metabase-lib/lib/queries/utils/dataset";
 
 export function summarizeColumnByTimeDrill({ question, clicked }) {

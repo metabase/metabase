@@ -56,12 +56,11 @@
     (cond
       (= url "app/assets/img/logo.svg") "http://static.metabase.com/email_logo.png"
 
-      :else nil
+      :else nil)))
       ;; NOTE: disabling whitelabeled URLs for now since some email clients don't render them correctly
       ;; We need to extract them and embed as attachments like we do in metabase.pulse.render.image-bundle
       ;; (data-uri-svg? url)               (themed-image-url url color)
       ;; :else                             url
-      )))
 
 (defn- icon-bundle
   [icon-name]
@@ -172,15 +171,17 @@
 
 (defn send-password-reset-email!
   "Format and send an email informing the user how to reset their password."
-  [email google-auth? password-reset-url is-active?]
+  [email google-auth? non-google-sso? password-reset-url is-active?]
   {:pre [(m/boolean? google-auth?)
+         (m/boolean? non-google-sso?)
          (u/email? email)
-         (string? password-reset-url)]}
+         ((some-fn string? nil?) password-reset-url)]}
   (let [message-body (stencil/render-file
                       "metabase/email/password_reset"
                       (merge (common-context)
                              {:emailType        "password_reset"
-                              :sso              google-auth?
+                              :google           google-auth?
+                              :nonGoogleSSO     non-google-sso?
                               :passwordResetUrl password-reset-url
                               :logoHeader       true
                               :isActive         is-active?
@@ -458,14 +459,14 @@
                  filters)
         rows    (partition 2 2 nil cells)]
     (html
-      [:table {:style (style/style {:table-layout :fixed
-                                    :border-collapse :collapse
-                                    :cellpadding "0"
-                                    :cellspacing "0"
-                                    :width "100%"
-                                    :font-size  "12px"
-                                    :font-weight 700
-                                    :margin-top "8px"})}
+     [:table {:style (style/style {:table-layout :fixed
+                                   :border-collapse :collapse
+                                   :cellpadding "0"
+                                   :cellspacing "0"
+                                   :width "100%"
+                                   :font-size  "12px"
+                                   :font-weight 700
+                                   :margin-top "8px"})}
       (for [row rows]
         [:tr {} row])])))
 

@@ -13,7 +13,7 @@ import {
 } from "metabase-lib/lib/Mode/constants";
 import { ModeType } from "./types";
 
-export function getMode(question: Question): ModeType | null {
+export function getModeType(question: Question): ModeType | null {
   if (!question) {
     return null;
   }

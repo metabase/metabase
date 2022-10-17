@@ -2,19 +2,23 @@ import { tag_names } from "cljs/metabase.shared.parameters.parameters";
 import { isActionCard } from "metabase/writeback/utils";
 import Question from "metabase-lib/lib/Question";
 import { ExpressionDimension } from "metabase-lib/lib/Dimension";
-
 import {
   dimensionFilterForParameter,
   getTagOperatorFilterForParameter,
   variableFilterForParameter,
-} from "./filters";
+} from "metabase-lib/lib/parameters/utils/filters";
+import {
+  buildDimensionTarget,
+  buildTemplateTagVariableTarget,
+  buildTextTagTarget,
+} from "metabase-lib/lib/parameters/utils/targets";
 
 function buildStructuredQuerySectionOptions(section) {
   return section.items.map(({ dimension }) => ({
     sectionName: section.name,
     name: dimension.displayName(),
     icon: dimension.icon(),
-    target: ["dimension", dimension.mbql()],
+    target: buildDimensionTarget(dimension),
     // these methods don't exist on instances of ExpressionDimension
     isForeign: !!(dimension instanceof ExpressionDimension
       ? false
@@ -27,7 +31,7 @@ function buildNativeQuerySectionOptions(section) {
     name: dimension.displayName(),
     icon: dimension.icon(),
     isForeign: false,
-    target: ["dimension", dimension.mbql()],
+    target: buildDimensionTarget(dimension),
   }));
 }
 
@@ -36,7 +40,7 @@ function buildVariableOption(variable) {
     name: variable.displayName(),
     icon: variable.icon(),
     isForeign: false,
-    target: ["variable", variable.mbql()],
+    target: buildTemplateTagVariableTarget(variable),
   };
 }
 
@@ -45,7 +49,7 @@ function buildTextTagOption(tagName) {
     name: tagName,
     icon: "string",
     isForeign: false,
-    target: ["text-tag", tagName],
+    target: buildTextTagTarget(tagName),
   };
 }
 

@@ -14,10 +14,7 @@ import {
   getParameterValuesBySlug,
   getParameterValuesByIdFromQueryParams,
 } from "metabase/parameters/utils/parameter-values";
-import {
-  getParametersFromCard,
-  getCardUiParameters,
-} from "metabase/parameters/utils/cards";
+import { getCardUiParameters } from "metabase/parameters/utils/cards";
 
 import {
   PublicApi,
@@ -32,6 +29,7 @@ import { addParamValues, addFields } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import PublicMode from "metabase/modes/components/modes/PublicMode";
+import { getParametersFromCard } from "metabase-lib/lib/parameters/utils/template-tags";
 import { applyParameters } from "metabase-lib/lib/queries/utils/card";
 import EmbedFrame from "../components/EmbedFrame";
 

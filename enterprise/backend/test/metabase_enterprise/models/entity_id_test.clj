@@ -72,9 +72,9 @@
     metabase_enterprise.sandbox.models.group_table_access_policy.GroupTableAccessPolicyInstance})
 
 (deftest comprehensive-entity-id-test
-  (doseq [model (->> (extenders IModel)
-                     (remove entities-not-exported)
-                     (remove entities-external-name))]
+  (doseq [^Class model (->> (extenders IModel)
+                            (remove entities-not-exported)
+                            (remove entities-external-name))]
     (testing (format "Model %s should either: have the :entity_id property, or be explicitly listed as having an external name, or explicitly listed as excluded from serialization"
                      (.getSimpleName model))
       (is (= true (-> (.newInstance model)
@@ -82,7 +82,10 @@
                       :entity_id))))))
 
 (deftest comprehensive-identity-hash-test
-  (doseq [model (->> (extenders IModel)
-                     (remove entities-not-exported))]
-    (testing (format "Model %s should implement IdentityHashable" (.getSimpleName model))
-      (is (extends? serdes.hash/IdentityHashable model)))))
+  (doseq [^Class model (->> (extenders IModel)
+                            (remove entities-not-exported))]
+    (testing (format "Model %s should implement identity-hash-fields" (.getSimpleName model))
+      (is (some? (try
+                   (serdes.hash/identity-hash-fields (.newInstance model))
+                   (catch java.lang.IllegalArgumentException _
+                     nil)))))))

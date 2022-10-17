@@ -1,7 +1,7 @@
 import {
   getQuestionIdFromVirtualTableId,
   getQuestionVirtualTableId,
-} from "metabase/lib/saved-questions";
+} from "metabase-lib/lib/metadata/utils/saved-questions";
 import type Table from "metabase-lib/lib/metadata/Table";
 import type Question from "metabase-lib/lib/Question";
 import type StructuredQuery from "../StructuredQuery";

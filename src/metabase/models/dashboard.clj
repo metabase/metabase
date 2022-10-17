@@ -141,10 +141,11 @@
           :pre-insert  pre-insert
           :pre-update  pre-update
           :post-update post-update
-          :post-select public-settings/remove-public-uuid-if-public-sharing-is-disabled})
+          :post-select public-settings/remove-public-uuid-if-public-sharing-is-disabled}))
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :collection)])})
+(defmethod serdes.hash/identity-hash-fields Dashboard
+  [_dashboard]
+  [:name (serdes.hash/hydrated-hash :collection)])
 
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
@@ -423,15 +424,17 @@
 (defmethod serdes.base/extract-one "Dashboard"
   [_model-name _opts dash]
   (-> (serdes.base/extract-one-basics "Dashboard" dash)
-      (update :collection_id serdes.util/export-fk 'Collection)
-      (update :creator_id    serdes.util/export-user)))
+      (update :collection_id     serdes.util/export-fk 'Collection)
+      (update :creator_id        serdes.util/export-user)
+      (update :made_public_by_id serdes.util/export-user)))
 
 (defmethod serdes.base/load-xform "Dashboard"
   [dash]
   (-> dash
       serdes.base/load-xform-basics
-      (update :collection_id serdes.util/import-fk 'Collection)
-      (update :creator_id    serdes.util/import-user)))
+      (update :collection_id     serdes.util/import-fk 'Collection)
+      (update :creator_id        serdes.util/import-user)
+      (update :made_public_by_id serdes.util/import-user)))
 
 (defmethod serdes.base/serdes-dependencies "Dashboard"
   [{:keys [collection_id]}]

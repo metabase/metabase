@@ -7,11 +7,11 @@ import { createThunkAction } from "metabase/lib/redux";
 import Utils from "metabase/lib/utils";
 
 import Questions from "metabase/entities/questions";
+import { getMetadata } from "metabase/selectors/metadata";
 import {
   getTemplateTagsForParameters,
   getTemplateTagParameters,
-} from "metabase/parameters/utils/cards";
-import { getMetadata } from "metabase/selectors/metadata";
+} from "metabase-lib/lib/parameters/utils/template-tags";
 import {
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
