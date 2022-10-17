@@ -42,15 +42,7 @@ function getSelectedItems({
       },
     ];
   }
-  if (isDataAppPagePath) {
-    return [
-      {
-        id: parseInt(params.pageId as string),
-        type: "data-app-page",
-      },
-    ];
-  }
-  if (isDataAppPath) {
+  if (isDataAppPath || isDataAppPagePath) {
     return [
       {
         id: Urls.extractEntityId(slug),

@@ -3,7 +3,7 @@ import { css } from "@emotion/react";
 
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 
-import { alpha, color } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import {
   breakpointMaxSmall,
   breakpointMinSmall,
@@ -14,7 +14,7 @@ import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthC
 
 interface TypeForItemsThatRespondToNavBarOpen {
   isNavBarOpen: boolean;
-  isDataApp: boolean | undefined;
+  isDataApp?: boolean;
 }
 
 export const HeaderRoot = styled(

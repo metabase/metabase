@@ -63,6 +63,10 @@ export function isDataAppPath(pathname: string) {
   return isLaunchedDataAppPath(pathname) || isDataAppPreviewPath(pathname);
 }
 
+export function isDataAppHomepagePath(pathname: string) {
+  return isLaunchedDataAppPath(pathname) && !pathname.includes("/page/");
+}
+
 export function isDataAppPagePath(pathname: string) {
   return DATA_APP_PAGE_URL_PATTERN.test(pathname);
 }

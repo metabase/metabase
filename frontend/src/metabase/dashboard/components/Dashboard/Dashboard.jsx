@@ -6,7 +6,6 @@ import _ from "underscore";
 import { getMainElement } from "metabase/lib/dom";
 
 import DashboardHeader from "metabase/dashboard/containers/DashboardHeader";
-import DataAppNavbarContainer from "metabase/nav/containers/MainNavbar/DataAppNavbar";
 
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
@@ -25,6 +24,7 @@ import {
   ParametersWidgetContainer,
 } from "./Dashboard.styled";
 import DashboardEmptyState from "./DashboardEmptyState/DashboardEmptyState";
+import DataAppEditPageButton from "./DataAppEditPageButton";
 import { updateParametersWidgetStickiness } from "./stickyParameters";
 
 const SCROLL_THROTTLE_INTERVAL = 1000 / 24;
@@ -220,7 +220,6 @@ class Dashboard extends Component {
       setEditingParameter,
       isHeaderVisible,
       embedOptions,
-      params,
     } = this.props;
 
     const { error, isParametersWidgetSticky } = this.state;
@@ -266,41 +265,29 @@ class Dashboard extends Component {
         {() => (
           <DashboardStyled>
             {isHeaderVisible && (
-              <>
-                {isDataApp && !isEditing && (
-                  <div className="bg-white border-bottom py1">
-                    <div className="px2">
-                      <DataAppNavbarContainer
-                        params={params}
-                        selectedItems={[]}
-                      />
-                    </div>
-                  </div>
-                )}
-                <HeaderContainer
-                  isFullscreen={isFullscreen}
-                  isNightMode={shouldRenderAsNightMode}
-                  isDataApp={isDataApp}
-                >
-                  <DashboardHeader
-                    {...this.props}
-                    onEditingChange={this.setEditing}
-                    setDashboardAttribute={this.setDashboardAttribute}
-                    addParameter={addParameter}
-                    parametersWidget={parametersWidget}
-                    onSharingClick={this.onSharingClick}
-                  />
+              <HeaderContainer
+                isFullscreen={isFullscreen}
+                isNightMode={shouldRenderAsNightMode}
+                isDataApp={isDataApp}
+              >
+                <DashboardHeader
+                  {...this.props}
+                  onEditingChange={this.setEditing}
+                  setDashboardAttribute={this.setDashboardAttribute}
+                  addParameter={addParameter}
+                  parametersWidget={parametersWidget}
+                  onSharingClick={this.onSharingClick}
+                />
 
-                  {shouldRenderParametersWidgetInEditMode && (
-                    <ParametersWidgetContainer
-                      data-testid="edit-dashboard-parameters-widget-container"
-                      isEditing={isEditing}
-                    >
-                      {parametersWidget}
-                    </ParametersWidgetContainer>
-                  )}
-                </HeaderContainer>
-              </>
+                {shouldRenderParametersWidgetInEditMode && (
+                  <ParametersWidgetContainer
+                    data-testid="edit-dashboard-parameters-widget-container"
+                    isEditing={isEditing}
+                  >
+                    {parametersWidget}
+                  </ParametersWidgetContainer>
+                )}
+              </HeaderContainer>
             )}
 
             <DashboardBody isEditingOrSharing={isEditing || isSharing}>
@@ -338,6 +325,10 @@ class Dashboard extends Component {
                   )}
                 </CardsContainer>
               </ParametersAndCardsContainer>
+
+              {isDataApp && !isEditing && (
+                <DataAppEditPageButton onClick={() => this.setEditing(true)} />
+              )}
 
               <DashboardSidebars
                 {...this.props}

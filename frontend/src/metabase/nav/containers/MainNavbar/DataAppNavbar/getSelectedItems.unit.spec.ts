@@ -1,12 +1,22 @@
+import type { Location } from "history";
+
+import * as Urls from "metabase/lib/urls";
+
 import {
   createMockDataApp,
   createMockDataAppPage,
 } from "metabase-types/api/mocks";
 import getSelectedItems from "./getSelectedItems";
 
+function getMockLocation(pathname: string): Location {
+  return { pathname } as Location;
+}
+
 describe("getSelectedItems", () => {
+  const homepage = createMockDataAppPage({ id: 2 });
+
   const dataApp = createMockDataApp({
-    dashboard_id: 2,
+    dashboard_id: homepage.id,
     nav_items: [
       { page_id: 1 },
       { page_id: 2 },
@@ -17,70 +27,97 @@ describe("getSelectedItems", () => {
 
   const pages = [
     createMockDataAppPage({ id: 1 }),
-    createMockDataAppPage({ id: 2 }),
+    homepage,
     createMockDataAppPage({ id: 3 }),
     createMockDataAppPage({ id: 4 }),
   ];
 
   it("should select the homepage when no page is selected explicitly", () => {
+    const location = getMockLocation(
+      Urls.dataApp(dataApp, { mode: "internal" }),
+    );
+
     expect(
       getSelectedItems({
         dataApp,
         pages,
-        selectedItems: [{ type: "data-app", id: dataApp.id }],
+        location,
+        params: { slug: String(dataApp.id) },
       }),
     ).toEqual([{ type: "data-app-page", id: dataApp.dashboard_id }]);
   });
 
   it("should select the homepage when it's explicitly selected", () => {
+    const location = getMockLocation(Urls.dataAppPage(dataApp, homepage));
+
     expect(
       getSelectedItems({
         dataApp,
         pages,
-        selectedItems: [
-          { type: "data-app-page", id: dataApp.dashboard_id as number },
-        ],
+        location,
+        params: {
+          slug: String(dataApp.id),
+          pageId: String(dataApp.dashboard_id),
+        },
       }),
     ).toEqual([{ type: "data-app-page", id: dataApp.dashboard_id }]);
   });
 
   it("should select the first page when no page is selected explicitly and homepage is not set", () => {
+    const location = getMockLocation(
+      Urls.dataApp(dataApp, { mode: "internal" }),
+    );
+
     expect(
       getSelectedItems({
         dataApp: { ...dataApp, dashboard_id: null },
         pages,
-        selectedItems: [{ type: "data-app", id: dataApp.id }],
+        location,
+        params: { slug: String(dataApp.id) },
       }),
     ).toEqual([{ type: "data-app-page", id: pages[0].id }]);
   });
 
   it("should select a regular top-level page", () => {
+    const [page] = pages;
+    const location = getMockLocation(Urls.dataAppPage(dataApp, page));
+
     expect(
       getSelectedItems({
         dataApp,
         pages,
-        selectedItems: [{ type: "data-app-page", id: pages[0].id }],
+        location,
+        params: { slug: String(dataApp.id), pageId: String(page.id) },
       }),
-    ).toEqual([{ type: "data-app-page", id: pages[0].id }]);
+    ).toEqual([{ type: "data-app-page", id: page.id }]);
   });
 
   it("should select a regular nested page", () => {
+    const page = pages[3];
+    const location = getMockLocation(Urls.dataAppPage(dataApp, page));
+
     expect(
       getSelectedItems({
         dataApp,
         pages,
-        selectedItems: [{ type: "data-app-page", id: pages[3].id }],
+        location,
+        params: { slug: String(dataApp.id), pageId: String(page.id) },
       }),
-    ).toEqual([{ type: "data-app-page", id: pages[3].id }]);
+    ).toEqual([{ type: "data-app-page", id: page.id }]);
   });
 
   it("should select a parent page when hidden page is open", () => {
+    const page = pages[2];
+    const parentPage = pages[1];
+    const location = getMockLocation(Urls.dataAppPage(dataApp, page));
+
     expect(
       getSelectedItems({
         dataApp,
         pages,
-        selectedItems: [{ type: "data-app-page", id: pages[2].id }],
+        location,
+        params: { slug: String(dataApp.id), pageId: String(page.id) },
       }),
-    ).toEqual([{ type: "data-app-page", id: pages[1].id }]);
+    ).toEqual([{ type: "data-app-page", id: parentPage.id }]);
   });
 });

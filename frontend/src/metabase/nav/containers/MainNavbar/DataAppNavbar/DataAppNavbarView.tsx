@@ -1,19 +1,26 @@
 import React, { useCallback, useMemo } from "react";
+import { t } from "ttag";
 import _ from "underscore";
 
-import type { DataApp, DataAppPage, DataAppNavItem } from "metabase-types/api";
+import type { DataApp, DataAppNavItem } from "metabase-types/api";
 
-import * as Urls from "metabase/lib/urls";
-import Link from "metabase/core/components/Link";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 
+import * as Urls from "metabase/lib/urls";
+
 import { MainNavbarProps, SelectedItem } from "../types";
+import DataAppPageLink from "./DataAppPageLink";
 import DataAppActionPanel from "./DataAppActionPanel";
 
-import DataAppPageSidebarLink from "./DataAppPageSidebarLink";
+import {
+  Root,
+  NavItemsList,
+  ActionPanelContainer,
+  ExitAppLink,
+} from "./DataAppNavbarView.styled";
 
-interface Props extends MainNavbarProps {
+interface Props extends Omit<MainNavbarProps, "location" | "params"> {
   dataApp: DataApp;
   pages: any[];
   selectedItems: SelectedItem[];
@@ -46,52 +53,48 @@ function DataAppNavbarView({
     return pagesWithoutNavItems.map(pageId => pageMap[pageId]);
   }, [dataApp.nav_items, pages, pageMap]);
 
-  const renderPage = useCallback(
-    (page: DataAppPage, indent = 0) => (
-      <DataAppPageSidebarLink
-        key={page.id}
-        dataApp={dataApp}
-        page={page}
-        isSelected={dataAppPage?.id === page.id}
-        indent={indent}
-      />
-    ),
-    [dataApp, dataAppPage],
-  );
+  const navItems = useMemo(() => {
+    const items = dataApp.nav_items.filter(
+      navItem => !navItem.hidden && pageMap[navItem.page_id],
+    );
+
+    items.push(...pagesWithoutNavItems.map(page => ({ page_id: page.id })));
+
+    return items;
+  }, [dataApp, pagesWithoutNavItems, pageMap]);
 
   const renderNavItem = useCallback(
-    (navItem: DataAppNavItem) => {
-      const page = pageMap[navItem.page_id];
-
-      if (!page || navItem.hidden) {
-        return null;
-      }
-
-      return renderPage(page, navItem.indent);
-    },
-    [pageMap, renderPage],
+    (navItem: DataAppNavItem) => (
+      <li key={navItem.page_id}>
+        <DataAppPageLink
+          dataApp={dataApp}
+          page={pageMap[navItem.page_id]}
+          isSelected={dataAppPage?.id === navItem.page_id}
+        />
+      </li>
+    ),
+    [dataApp, pageMap, dataAppPage],
   );
 
+  const exitAppPath = Urls.dataApp(dataApp, { mode: "preview" });
+
   return (
-    <div className="flex align-center">
-      <ul className="flex align-center">
-        {dataApp.nav_items.map(renderNavItem)}
-        {pagesWithoutNavItems.map(page => renderPage(page))}
-      </ul>
-      <div className="flex align-center ml-auto">
+    <Root>
+      <NavItemsList>{navItems.map(renderNavItem)}</NavItemsList>
+      <ActionPanelContainer>
         <DataAppActionPanel
           dataApp={dataApp}
           onAddData={onAddData}
           onNewPage={onNewPage}
           onEditAppSettings={onEditAppSettings}
         />
-        <Tooltip tooltip={`App elements`}>
-          <Link to={Urls.dataApp(dataApp, { mode: "preview" })} className="ml2">
+        <Tooltip tooltip={t`App elements`}>
+          <ExitAppLink to={exitAppPath}>
             <Icon name="list" />
-          </Link>
+          </ExitAppLink>
         </Tooltip>
-      </div>
-    </div>
+      </ActionPanelContainer>
+    </Root>
   );
 }
 
