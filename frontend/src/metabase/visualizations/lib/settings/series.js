@@ -23,7 +23,7 @@ export function seriesSetting({
   const colorSettingId = "series_settings.colors";
 
   const COMMON_SETTINGS = {
-    // title, display, and color don't need widgets because they're handled direclty in ChartNestedSettingSeries
+    // title, and color don't need widgets because they're handled direclty in ChartNestedSettingSeries
     title: {
       getDefault: (single, settings, { series, settings: vizSettings }) => {
         const legacyTitles = vizSettings["graph.series_labels"];

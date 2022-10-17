@@ -24,6 +24,7 @@ import {
 } from "metabase/visualizations/lib/settings";
 
 import { keyForColumn } from "metabase-lib/lib/queries/utils/dataset";
+import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
 
 import { getSettingDefintionsForColumn } from "metabase/visualizations/lib/settings/column";
 import ChartSettingsWidget from "./ChartSettingsWidget";
@@ -234,24 +235,41 @@ class ChartSettings extends Component {
       currentWidget && widgets.find(w => w.id === "series_settings");
 
     if (seriesSettingsWidget) {
-      const initialKey = currentWidget.props?.initialKey;
-      const columnSeries = series.find(
-        single => keyForColumn(single.data.cols[1]) === initialKey,
-      );
-
-      if (columnSeries) {
+      if (currentWidget.props?.seriesKey) {
         return (
           <ChartSettingsWidget
             key={seriesSettingsWidget.id}
             {...seriesSettingsWidget}
             props={{
               ...seriesSettingsWidget.props,
-              initialKey:
-                columnSeries.card._seriesKey || String(columnSeries.card.name),
+              initialKey: currentWidget.props.seriesKey,
             }}
             hidden={false}
           />
         );
+      } else if (currentWidget.props?.initialKey) {
+        console.log(series, currentWidget.props?.initialKey);
+        const singleSeriesForColumn = series.find(
+          single =>
+            keyForColumn(single.data.cols[1]) ===
+            currentWidget.props.initialKey,
+        );
+
+        const isBreakout = series.some(single => single.card._breakoutColumn);
+
+        if (singleSeriesForColumn && !isBreakout) {
+          return (
+            <ChartSettingsWidget
+              key={seriesSettingsWidget.id}
+              {...seriesSettingsWidget}
+              props={{
+                ...seriesSettingsWidget.props,
+                initialKey: keyForSingleSeries(singleSeriesForColumn),
+              }}
+              hidden={false}
+            />
+          );
+        }
       }
     }
 

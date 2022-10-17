@@ -1,8 +1,9 @@
 import { updateIn } from "icepick";
 import React from "react";
 import { t } from "ttag";
-
+import { keyForColumn } from "metabase-lib/lib/queries/utils/dataset";
 import { ChartSettingOrderedItems } from "./ChartSettingOrderedItems";
+import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
 
 import {
   ChartSettingMessage,
@@ -25,6 +26,8 @@ export const ChartSettingOrderedSimple = ({
   onChange,
   items,
   value: orderedItems,
+  series,
+  onShowWidget,
 }: ChartSettingOrderedSimpleProps) => {
   const toggleDisplay = (selectedItem: SortableItem) => {
     const index = orderedItems.findIndex(
@@ -49,6 +52,21 @@ export const ChartSettingOrderedSimple = ({
     return items[item.originalIndex]?.name || "Unknown";
   };
 
+  const handleOnEdit = (item, ref) => {
+    console.log(item, ref, series);
+
+    const single = series[item.originalIndex];
+    console.log(keyForSingleSeries(single));
+    onShowWidget(
+      {
+        props: {
+          seriesKey: keyForSingleSeries(single),
+        },
+      },
+      ref,
+    );
+  };
+
   return (
     <ChartSettingOrderedSimpleRoot>
       {orderedItems.length > 0 ? (
@@ -58,6 +76,7 @@ export const ChartSettingOrderedSimple = ({
           onRemove={toggleDisplay}
           onEnable={toggleDisplay}
           onSortEnd={handleSortEnd}
+          onEdit={handleOnEdit}
           distance={5}
         />
       ) : (

@@ -180,6 +180,7 @@ export const GRAPH_DATA_SETTINGS = {
           name: seriesSettings[key]?.title || key,
           originalIndex: index,
         })),
+        series,
       };
     },
     getHidden: (series, settings) => {

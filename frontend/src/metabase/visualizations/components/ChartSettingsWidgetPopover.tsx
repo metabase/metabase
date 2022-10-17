@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { t } from "ttag";
 
 import TippyPopover from "metabase/components/Popover/TippyPopover";
@@ -24,11 +24,19 @@ const ChartSettingsWidgetPopover = ({
   formattingWidget,
   styleWidget,
 }: ChartSettingsWidgetPopoverProps) => {
-  const TABS = [
-    styleWidget && "style",
-    formattingWidget && "formatting",
-  ].filter(x => !!x);
+  const TABS = useMemo(
+    () =>
+      [styleWidget && "style", formattingWidget && "formatting"].filter(
+        x => !!x,
+      ),
+    [styleWidget, formattingWidget],
+  );
+
   const [currentTab, setCurrentTab] = useState(TABS[0]);
+
+  useEffect(() => {
+    setCurrentTab(TABS[0]);
+  }, [TABS]);
 
   return (
     <TippyPopover
