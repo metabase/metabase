@@ -6,6 +6,8 @@ import type {
   DashboardOrderedCard,
   ClickBehavior,
 } from "metabase-types/api";
+import { isActionDashboardCard } from "metabase-types/guards";
+
 import type { UiParameter } from "metabase-lib/parameters/types";
 
 import { clickBehaviorOptions, getClickBehaviorOptionName } from "../utils";
@@ -21,7 +23,7 @@ import {
 interface ClickBehaviorOptionsProps {
   clickBehavior: ClickBehavior;
   dashboard: Dashboard;
-  dashcard: DashboardOrderedCard;
+  dashcard: DashboardOrderedCard | ActionDashboardCard;
   parameters: UiParameter[];
   updateSettings: (settings: Partial<ClickBehavior>) => void;
 }
@@ -33,13 +35,8 @@ function ClickBehaviorOptions({
   parameters,
   updateSettings,
 }: ClickBehaviorOptionsProps) {
-  if (dashcard.action) {
-    return (
-      <ActionOptions
-        dashcard={dashcard as ActionDashboardCard}
-        parameters={parameters}
-      />
-    );
+  if (isActionDashboardCard(dashcard)) {
+    return <ActionOptions dashcard={dashcard} parameters={parameters} />;
   }
   if (clickBehavior.type === "link") {
     return (
@@ -91,7 +88,7 @@ function ClickBehaviorSidebarMainView({
 
   return (
     <>
-      {!dashcard.action && (
+      {!isActionDashboardCard(dashcard) && (
         <SidebarContentBordered>
           <SidebarItem.Selectable
             onClick={handleShowTypeSelector}
