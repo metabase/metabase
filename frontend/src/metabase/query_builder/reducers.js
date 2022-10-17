@@ -6,7 +6,6 @@ import Utils from "metabase/lib/utils";
 import {
   RESET_QB,
   INITIALIZE_QB,
-  SET_DATA_REFERENCE_STACK,
   POP_DATA_REFERENCE_STACK,
   PUSH_DATA_REFERENCE_STACK,
   OPEN_DATA_REFERENCE_AT_QUESTION,
@@ -160,12 +159,6 @@ export const uiControls = handleActions(
         ...state,
         ...CLOSED_NATIVE_EDITOR_SIDEBARS,
         isShowingDataReference: !state.isShowingDataReference,
-      }),
-    },
-    [SET_DATA_REFERENCE_STACK]: {
-      next: (state, { payload }) => ({
-        ...state,
-        dataReferenceStack: payload,
       }),
     },
     [POP_DATA_REFERENCE_STACK]: {

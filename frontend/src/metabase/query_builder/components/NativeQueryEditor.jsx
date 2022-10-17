@@ -28,7 +28,6 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 
 import Snippets from "metabase/entities/snippets";
 import SnippetCollections from "metabase/entities/snippet-collections";
-import { setDataReferenceStack } from "metabase/query_builder/actions";
 import SnippetModal from "metabase/query_builder/components/template_tags/SnippetModal";
 import Questions from "metabase/entities/questions";
 import { CARD_TAG_REGEX } from "metabase-lib/lib/queries/NativeQuery";
@@ -458,10 +457,9 @@ class NativeQueryEditor extends Component {
 
   /// Change the Database we're currently editing a query for.
   setDatabaseId = databaseId => {
-    const { query, setDatasetQuery, setDataReferenceStack } = this.props;
+    const { query, setDatasetQuery } = this.props;
     if (query.databaseId() !== databaseId) {
       setDatasetQuery(query.setDatabaseId(databaseId).setDefaultCollection());
-      setDataReferenceStack([{ type: "database", item: { id: databaseId } }]);
       if (this._editor && !this.props.readOnly) {
         // HACK: the cursor doesn't blink without this intended small delay
         setTimeout(() => this._editor.focus(), 50);
@@ -601,7 +599,6 @@ class NativeQueryEditor extends Component {
 }
 
 const mapDispatchToProps = dispatch => ({
-  setDataReferenceStack: stack => dispatch(setDataReferenceStack(stack)),
   fetchQuestion: async id => {
     const action = await dispatch(
       Questions.actions.fetch(

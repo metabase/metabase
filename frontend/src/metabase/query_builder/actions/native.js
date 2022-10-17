@@ -27,9 +27,6 @@ export const toggleDataReference = createAction(TOGGLE_DATA_REFERENCE, () => {
   MetabaseAnalytics.trackStructEvent("QueryBuilder", "Toggle Data Reference");
 });
 
-export const SET_DATA_REFERENCE_STACK = "metabase/qb/SET_DATA_REFERENCE_STACK";
-export const setDataReferenceStack = createAction(SET_DATA_REFERENCE_STACK);
-
 export const POP_DATA_REFERENCE_STACK = "metabase/qb/POP_DATA_REFERENCE_STACK";
 export const popDataReferenceStack = createAction(POP_DATA_REFERENCE_STACK);
 
