@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo } from "react";
+import { t } from "ttag";
 import _ from "underscore";
 
 import type { DataApp, DataAppPage, DataAppNavItem } from "metabase-types/api";
@@ -73,6 +74,8 @@ function DataAppNavbarView({
     [pageMap, renderPage],
   );
 
+  const exitAppPath = Urls.dataApp(dataApp, { mode: "preview" });
+
   return (
     <div className="flex align-center">
       <ul className="flex align-center">
@@ -86,8 +89,8 @@ function DataAppNavbarView({
           onNewPage={onNewPage}
           onEditAppSettings={onEditAppSettings}
         />
-        <Tooltip tooltip={`App elements`}>
-          <Link to={Urls.dataApp(dataApp, { mode: "preview" })} className="ml2">
+        <Tooltip tooltip={t`App elements`}>
+          <Link to={exitAppPath} className="ml2">
             <Icon name="list" />
           </Link>
         </Tooltip>
