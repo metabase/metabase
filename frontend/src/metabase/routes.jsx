@@ -89,8 +89,6 @@ import SearchApp from "metabase/home/containers/SearchApp";
 import { trackPageView } from "metabase/lib/analytics";
 import { getAdminPaths } from "metabase/admin/app/selectors";
 
-import ModelDetailPage from "metabase/models/containers/ModelDetailPage";
-
 const MetabaseIsSetup = UserAuthWrapper({
   predicate: authData => authData.hasUserSetup,
   failureRedirectPath: "/setup",
@@ -250,8 +248,6 @@ export const getRoutes = store => (
           <Route path=":slug/notebook" component={QueryBuilder} />
           <Route path=":slug/:objectId" component={QueryBuilder} />
         </Route>
-
-        <Route path="/model/:slug/detail" component={ModelDetailPage} />
 
         <Route path="/model">
           <IndexRoute component={QueryBuilder} />
