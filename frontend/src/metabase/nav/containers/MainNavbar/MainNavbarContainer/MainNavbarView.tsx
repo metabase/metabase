@@ -13,14 +13,10 @@ import {
 import { isSmallScreen } from "metabase/lib/dom";
 import * as Urls from "metabase/lib/urls";
 
-import type { Bookmark, Collection, DataApp, User } from "metabase-types/api";
+import type { Bookmark, Collection, User } from "metabase-types/api";
 
 import { SelectedItem } from "../types";
-import {
-  SidebarCollectionLink,
-  SidebarDataAppLink,
-  SidebarLink,
-} from "../SidebarItems";
+import { SidebarCollectionLink, SidebarLink } from "../SidebarItems";
 
 import {
   AddYourOwnDataLink,
@@ -49,7 +45,6 @@ type Props = {
   hasDataAccess: boolean;
   hasOwnDatabase: boolean;
   collections: CollectionTreeItem[];
-  dataApps: DataApp[];
   selectedItems: SelectedItem[];
   handleCloseNavbar: () => void;
   handleLogout: () => void;
@@ -73,7 +68,6 @@ function MainNavbarView({
   currentUser,
   bookmarks,
   collections,
-  dataApps,
   hasOwnDatabase,
   selectedItems,
   hasDataAccess,
@@ -85,7 +79,6 @@ function MainNavbarView({
     card: cardItem,
     collection: collectionItem,
     dashboard: dashboardItem,
-    "data-app": dataAppItem,
     "non-entity": nonEntityItem,
   } = _.indexBy(selectedItems, item => item.type);
 
@@ -115,9 +108,7 @@ function MainNavbarView({
           <SidebarSection>
             <BookmarkList
               bookmarks={bookmarks}
-              selectedItem={
-                cardItem ?? dashboardItem ?? dataAppItem ?? collectionItem
-              }
+              selectedItem={cardItem ?? dashboardItem ?? collectionItem}
               onSelect={onItemSelect}
               reorderBookmarks={reorderBookmarks}
             />
@@ -137,23 +128,6 @@ function MainNavbarView({
             role="tree"
           />
         </SidebarSection>
-
-        {dataApps.length > 0 && (
-          <SidebarSection>
-            <SidebarHeadingWrapper>
-              <SidebarHeading>{t`Apps`}</SidebarHeading>
-            </SidebarHeadingWrapper>
-            <ul>
-              {dataApps.map(app => (
-                <SidebarDataAppLink
-                  key={`app-${app.id}`}
-                  dataApp={app}
-                  isSelected={dataAppItem?.id === app.id}
-                />
-              ))}
-            </ul>
-          </SidebarSection>
-        )}
 
         {hasDataAccess && (
           <SidebarSection>
