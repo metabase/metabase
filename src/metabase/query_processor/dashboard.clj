@@ -17,18 +17,22 @@
             [schema.core :as s]
             [toucan.db :as db]))
 
-(defn- check-card-is-in-dashboard
-  "Check that the Card with `card-id` is in Dashboard with `dashboard-id`, either in a DashboardCard at the top level or
-  as a series, or throw an Exception. If not such relationship exists this will throw a 404 Exception."
-  [card-id dashboard-id]
+(defn- check-card-and-dashcard-are-in-dashboard
+  "Check that the Card with `card-id` is in Dashboard with `dashboard-id`, either in the DashboardCard with
+  `dashcard-id` at the top level or as a series. If not such relationship exists this will throw a 404 Exception."
+  [dashboard-id card-id dashcard-id]
   (api/check-404
    (or (db/exists? DashboardCard
+         :id           dashcard-id
          :dashboard_id dashboard-id
          :card_id      card-id)
-       (when-let [dashcard-ids (db/select-ids DashboardCard :dashboard_id dashboard-id)]
-         (db/exists? DashboardCardSeries
-           :card_id          card-id
-           :dashboardcard_id [:in dashcard-ids])))))
+       (and
+        (db/exists? DashboardCard
+          :id           dashcard-id
+          :dashboard_id dashboard-id)
+        (db/exists? DashboardCardSeries
+          :card_id          card-id
+          :dashboardcard_id dashcard-id)))))
 
 (defn- resolve-param-for-card
   [card-id dashcard-id param-id->param {param-id :id, :as request-param}]
@@ -156,7 +160,7 @@
   ;; make sure we can read this Dashboard. Card will get read-checked later on inside
   ;; [[qp.card/run-query-for-card-async]]
   (api/read-check Dashboard dashboard-id)
-  (check-card-is-in-dashboard card-id dashboard-id)
+  (check-card-and-dashcard-are-in-dashboard dashboard-id card-id dashcard-id)
   (let [resolved-params (resolve-params-for-query dashboard-id card-id dashcard-id parameters)
         options         (merge
                          {:ignore_cache false
