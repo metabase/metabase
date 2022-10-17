@@ -26,8 +26,7 @@
             [schema.core :as s]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]
-            [toucan.models :as models]
-            [metabase.models.collection :as collection])
+            [toucan.models :as models])
   (:import metabase.models.collection.root.RootCollection))
 
 (comment collection.root/keep-me)
@@ -883,7 +882,7 @@
       ;; Collections in the "apps" namespace use the permissions of the root unless advanced permissions are enabled
       (and (= (u/qualified-name (:namespace collection)) "apps")
            (not (premium-features/has-feature? :advanced-permissions)))
-      #{(let [root (assoc collection/root-collection :namespace :apps)]
+      #{(let [root (assoc root-collection :namespace :apps)]
           (case read-or-write
             :read  (perms/collection-read-path root)
             :write (perms/collection-readwrite-path root)))}
