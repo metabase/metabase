@@ -53,6 +53,7 @@ class ParameterSidebar extends React.Component {
       done,
       setName,
       setDefaultValue,
+      setIsMultiSelect,
       setFilteringParameters,
     } = this.props;
     const { currentTab } = this.state;
@@ -93,9 +94,23 @@ class ParameterSidebar extends React.Component {
                   className="input bg-white"
                 />
               </div>
+              <label className="mt2 mb1 block text-bold">{t`Users can pick`}</label>
+              <Radio
+                value={
+                  parameter.isMultiSelect == null
+                    ? true
+                    : parameter.isMultiSelect
+                } // TODO: should the default be somewhere else?
+                onChange={setIsMultiSelect}
+                options={[
+                  { name: t`Multiple values`, value: true },
+                  { name: t`A single value`, value: false },
+                ]}
+                vertical
+              />
               <a
                 borderless
-                className="mt2 block text-medium text-error-hover text-bold"
+                className="mt4 block text-medium text-error-hover text-bold"
                 onClick={remove}
               >
                 {t`Remove`}

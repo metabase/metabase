@@ -66,16 +66,6 @@ export function setParameterName(
   };
 }
 
-export function setParameterDefaultValue(
-  parameter: Parameter,
-  value: any,
-): Parameter {
-  return {
-    ...parameter,
-    default: value,
-  };
-}
-
 export function hasMapping(parameter: Parameter, dashboard: Dashboard) {
   return dashboard.ordered_cards.some(ordered_card => {
     return ordered_card?.parameter_mappings?.some(parameter_mapping => {
