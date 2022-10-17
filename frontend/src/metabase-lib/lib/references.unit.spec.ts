@@ -113,12 +113,18 @@ describe("normalizeReferenceOptions", () => {
         binning: { strategy: "default" },
         "base-type": undefined,
       }),
-    ).toEqual({ "temporal-unit": false });
+    ).toEqual({
+      binning: { strategy: "default" },
+    });
   });
   it("should recursively normalize maps options", () => {
     expect(
-      normalizeReferenceOptions({ binning: { strategy: "default" } }),
-    ).toBe(null);
+      normalizeReferenceOptions({
+        binning: { strategy: "default", other: null } as any,
+      }),
+    ).toStrictEqual({
+      binning: { strategy: "default" },
+    });
   });
   // TODO -- it should also remove empty arrays, but we currently don't have any situations where there might be
   // one.
