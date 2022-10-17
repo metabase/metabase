@@ -1,6 +1,5 @@
 import {
   restore,
-  popover,
   modal,
   openNativeEditor,
   visitQuestionAdhoc,
@@ -40,42 +39,6 @@ describe("scenarios > question > native", () => {
     );
     cy.get(".NativeQueryEditor .Icon-play").click();
     cy.contains('Table "ORD" not found');
-  });
-
-  it("should show referenced cards in the template tag sidebar", () => {
-    openNativeEditor()
-      // start typing a question referenced
-      .type("select * from {{#}}", {
-        parseSpecialCharSequences: false,
-      });
-
-    cy.contains("Question #…")
-      .parent()
-      .parent()
-      .contains("Pick a question or a model")
-      .click({ force: true });
-
-    // selecting a question should update the query
-    popover().contains("Orders").click();
-
-    cy.contains("select * from {{#1-orders}}");
-
-    // run query and see that a value from the results appears
-    cy.get(".NativeQueryEditor .Icon-play").click();
-    cy.contains("37.65");
-
-    // update the text of the query to reference question 2
-    // :visible is needed because there is an unused .ace_content present in the DOM
-    cy.get(".ace_content:visible").type(
-      "{leftarrow}{leftarrow}{backspace}{backspace}{backspace}{backspace}{backspace}{backspace}{backspace}{backspace}2",
-    );
-
-    // sidebar should show updated question title and name
-    cy.contains("Question #2").parent().parent().contains("Orders, Count");
-
-    // run query again and see new result
-    cy.get(".NativeQueryEditor .Icon-play").click();
-    cy.contains("18,760");
   });
 
   it("should handle template tags", () => {
