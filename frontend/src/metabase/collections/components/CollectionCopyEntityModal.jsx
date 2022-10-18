@@ -10,6 +10,7 @@ import { entityTypeForObject } from "metabase/lib/schema";
 
 import Link from "metabase/core/components/Link";
 
+import Dashboards from "metabase/entities/dashboards";
 import Collections from "metabase/entities/collections";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 
@@ -37,6 +38,7 @@ function CollectionCopyEntityModal({
         ...entityObject,
         collection_id: initialCollectionId,
       }}
+      form={Dashboards.forms.duplicate}
       copy={async values => {
         return entityObject.copy(dissoc(values, "id"));
       }}
