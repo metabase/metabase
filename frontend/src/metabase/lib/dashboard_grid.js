@@ -1,6 +1,11 @@
 export const GRID_WIDTH = 18;
 export const GRID_ASPECT_RATIO = 4 / 3;
 
+export const DATA_APPS_ASPECT_RATIO = 21 / 9;
+export const DATA_APPS_MAX_WIDTH = 1200;
+export const DATA_APPS_MIN_ROW_HEIGHT = 42;
+export const DATA_APPS_GRID_MARGIN = { desktop: [32, 18], mobile: [6, 10] };
+
 const MOBILE_BREAKPOINT = 752;
 
 export const GRID_BREAKPOINTS = {

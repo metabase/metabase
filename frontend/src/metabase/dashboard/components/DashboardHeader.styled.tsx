@@ -3,7 +3,7 @@ import { css } from "@emotion/react";
 
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 
-import { alpha, color } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import {
   breakpointMaxSmall,
   breakpointMinSmall,
@@ -14,6 +14,7 @@ import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthC
 
 interface TypeForItemsThatRespondToNavBarOpen {
   isNavBarOpen: boolean;
+  isDataApp?: boolean;
 }
 
 export const HeaderRoot = styled(
@@ -30,6 +31,15 @@ export const HeaderRoot = styled(
         align-items: baseline;
       `}
   }
+
+  ${props =>
+    props.isDataApp &&
+    css`
+      width: 1200px;
+      margin-left: auto;
+      margin-right: auto;
+      padding: 0;
+    `}
 
   ${breakpointMaxSmall} {
     flex-direction: column;

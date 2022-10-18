@@ -1,3 +1,7 @@
+import type { Location } from "history";
+
+import * as Urls from "metabase/lib/urls";
+
 import {
   getDataAppHomePageId,
   getParentDataAppPageId,
@@ -7,28 +11,23 @@ import type { DataApp, Dashboard } from "metabase-types/api";
 
 import { SelectedItem } from "../types";
 
-function isAtDataAppHomePage(selectedItems: SelectedItem[]) {
-  const [selectedItem] = selectedItems;
-  return selectedItems.length === 1 && selectedItem.type === "data-app";
-}
-
-function isDataAppPageSelected(selectedItems: SelectedItem[]) {
-  const [selectedItem] = selectedItems;
-  return selectedItems.length === 1 && selectedItem.type === "data-app-page";
-}
-
 type Opts = {
   dataApp: DataApp;
   pages: Dashboard[];
-  selectedItems: SelectedItem[];
+  location: Location;
+  params: {
+    slug?: string;
+    pageId?: string;
+  };
 };
 
 function getSelectedItems({
+  location,
+  params,
   dataApp,
   pages,
-  selectedItems,
 }: Opts): SelectedItem[] {
-  const isHomepage = isAtDataAppHomePage(selectedItems);
+  const isHomepage = Urls.isDataAppHomepagePath(location.pathname);
 
   // Once a data app is launched, the first view is going to be the app homepage
   // Homepage is an app page specified by a user or picked automatically (just the first one)
@@ -43,17 +42,18 @@ function getSelectedItems({
     ];
   }
 
-  if (isDataAppPageSelected(selectedItems)) {
-    const [selectedPage] = selectedItems;
+  if (Urls.isDataAppPagePath(location.pathname)) {
+    const selectedPageId = Number(params.pageId);
+
     const navItem = dataApp.nav_items.find(
-      item => item.page_id === selectedPage.id,
+      item => item.page_id === selectedPageId,
     );
 
     // If the selected page is hidden, there's nothing to highlight,
     // so we want to highlight the parent
     if (navItem?.hidden) {
       const parentPageId = getParentDataAppPageId(
-        selectedPage.id as number,
+        selectedPageId,
         dataApp.nav_items,
       );
       return [
@@ -63,9 +63,16 @@ function getSelectedItems({
         },
       ];
     }
+
+    return [
+      {
+        type: "data-app-page",
+        id: selectedPageId,
+      },
+    ];
   }
 
-  return selectedItems;
+  return [];
 }
 
 export default getSelectedItems;

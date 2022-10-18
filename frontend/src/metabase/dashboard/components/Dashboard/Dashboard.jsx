@@ -6,6 +6,7 @@ import _ from "underscore";
 import { getMainElement } from "metabase/lib/dom";
 
 import DashboardHeader from "metabase/dashboard/containers/DashboardHeader";
+
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import { getValuePopulatedParameters } from "metabase-lib/lib/parameters/utils/parameter-values";
 
@@ -22,6 +23,7 @@ import {
   ParametersWidgetContainer,
 } from "./Dashboard.styled";
 import DashboardEmptyState from "./DashboardEmptyState/DashboardEmptyState";
+import DataAppEditPageButton from "./DataAppEditPageButton";
 import { updateParametersWidgetStickiness } from "./stickyParameters";
 
 const SCROLL_THROTTLE_INTERVAL = 1000 / 24;
@@ -97,6 +99,7 @@ class Dashboard extends Component {
     }).isRequired,
     closeSidebar: PropTypes.func.isRequired,
     embedOptions: PropTypes.object,
+    params: PropTypes.object,
   };
 
   static defaultProps = {
@@ -266,6 +269,8 @@ class Dashboard extends Component {
       !shouldRenderParametersWidgetInViewMode &&
       (!isEditing || isEditingParameter);
 
+    const isDataApp = dashboard && dashboard.is_app_page;
+
     return (
       <DashboardLoadingAndErrorWrapper
         isFullHeight={isEditing || isSharing}
@@ -280,7 +285,7 @@ class Dashboard extends Component {
               <HeaderContainer
                 isFullscreen={isFullscreen}
                 isNightMode={shouldRenderAsNightMode}
-                isDataApp={dashboard.is_app_page}
+                isDataApp={isDataApp}
               >
                 <DashboardHeader
                   {...this.props}
@@ -313,6 +318,7 @@ class Dashboard extends Component {
                     ref={element => (this.parametersWidgetRef = element)}
                     isNavbarOpen={isNavbarOpen}
                     isSticky={isParametersWidgetSticky}
+                    isDataApp={isDataApp}
                     topNav={embedOptions?.top_nav}
                   >
                     {parametersWidget}
@@ -330,12 +336,16 @@ class Dashboard extends Component {
                     />
                   ) : (
                     <DashboardEmptyState
-                      isDataApp={dashboard.is_app_page}
+                      isDataApp={isDataApp}
                       isNightMode={shouldRenderAsNightMode}
                     />
                   )}
                 </CardsContainer>
               </ParametersAndCardsContainer>
+
+              {isDataApp && !isEditing && (
+                <DataAppEditPageButton onClick={() => this.setEditing(true)} />
+              )}
 
               <DashboardSidebars
                 {...this.props}
