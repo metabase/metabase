@@ -28,7 +28,6 @@ import { getSettingDefintionsForColumn } from "metabase/visualizations/lib/setti
 
 import { keyForColumn } from "metabase-lib/lib/queries/utils/dataset";
 
-import ChartSettingsWidget from "./ChartSettingsWidget";
 import ChartSettingsWidgetList from "./ChartSettingsWidgetList";
 import ChartSettingsWidgetPopover from "./ChartSettingsWidgetPopover";
 import { SectionContainer, SectionWarnings } from "./ChartSettings.styled";
@@ -186,17 +185,13 @@ class ChartSettings extends Component {
 
     if (seriesSettingsWidget) {
       if (currentWidget.props?.seriesKey) {
-        return (
-          <ChartSettingsWidget
-            key={seriesSettingsWidget.id}
-            {...seriesSettingsWidget}
-            props={{
-              ...seriesSettingsWidget.props,
-              initialKey: currentWidget.props.seriesKey,
-            }}
-            hidden={false}
-          />
-        );
+        return {
+          ...seriesSettingsWidget,
+          props: {
+            ...seriesSettingsWidget.props,
+            initialKey: currentWidget.props.seriesKey,
+          },
+        };
       } else if (currentWidget.props?.initialKey) {
         const settings = this._getSettings();
         const singleSeriesForColumn = series.find(
@@ -208,17 +203,13 @@ class ChartSettings extends Component {
         const isBreakout = settings["graph.dimensions"]?.length > 1;
 
         if (singleSeriesForColumn && !isBreakout) {
-          return (
-            <ChartSettingsWidget
-              key={seriesSettingsWidget.id}
-              {...seriesSettingsWidget}
-              props={{
-                ...seriesSettingsWidget.props,
-                initialKey: keyForSingleSeries(singleSeriesForColumn),
-              }}
-              hidden={false}
-            />
-          );
+          return {
+            ...seriesSettingsWidget,
+            props: {
+              ...seriesSettingsWidget.props,
+              initialKey: keyForSingleSeries(singleSeriesForColumn),
+            },
+          };
         }
       }
     }
@@ -233,18 +224,7 @@ class ChartSettings extends Component {
       currentWidget && widgets.find(widget => widget.id === currentWidget.id);
 
     if (widget) {
-      return (
-        <ChartSettingsWidget
-          key={widget.id}
-          {...widget}
-          props={{
-            ...widget.props,
-            ...currentWidget.props,
-          }}
-          hidden={false}
-          {...extraWidgetProps}
-        />
-      );
+      return { ...widget, props: { ...widget.props, ...currentWidget.props } };
     }
 
     return null;
@@ -411,8 +391,10 @@ class ChartSettings extends Component {
         )}
         <ChartSettingsWidgetPopover
           anchor={popoverRef}
-          formattingWidget={this.getFormattingWidget(extraWidgetProps)}
-          styleWidget={this.getStyleWidget()}
+          widgets={[
+            this.getFormattingWidget(extraWidgetProps),
+            this.getStyleWidget(),
+          ].filter(x => !!x)}
           handleEndShowWidget={this.handleEndShowWidget}
         />
       </div>

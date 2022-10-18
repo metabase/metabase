@@ -1,10 +1,12 @@
 import React, { useState, useMemo, useEffect } from "react";
+import _ from "underscore";
 import { t } from "ttag";
 
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import Radio from "metabase/core/components/Radio";
 
 import { PopoverRoot, PopoverTabs } from "./ChartSettingsWidgetPopover.styled";
+import ChartSettingsWidget from "./ChartSettingsWidget";
 
 interface Widget {
   id: string;
@@ -14,44 +16,44 @@ interface Widget {
 interface ChartSettingsWidgetPopoverProps {
   anchor: HTMLElement;
   handleEndShowWidget: () => void;
-  formattingWidget: Widget;
-  styleWidget: Widget;
+  widgets: Widget[];
 }
 
 const ChartSettingsWidgetPopover = ({
   anchor,
   handleEndShowWidget,
-  formattingWidget,
-  styleWidget,
+  widgets,
 }: ChartSettingsWidgetPopoverProps) => {
-  const TABS = useMemo(
-    () =>
-      [styleWidget && "style", formattingWidget && "formatting"].filter(
-        x => !!x,
-      ),
-    [styleWidget, formattingWidget],
-  );
+  const sections = useMemo(() => {
+    return _.groupBy(widgets, "section");
+  }, [widgets]);
 
-  const [currentTab, setCurrentTab] = useState(TABS[0]);
+  const [currentSection, setCurrentSection] = useState<React.Key>("");
 
   useEffect(() => {
-    setCurrentTab(TABS[0]);
-  }, [TABS]);
+    setCurrentSection(Object.keys(sections)[0]);
+  }, [sections]);
 
   return (
     <TippyPopover
       reference={anchor}
       content={
-        <PopoverRoot>
-          <PopoverTabs
-            value={currentTab}
-            options={TABS.map(t => ({ name: t, value: t }))}
-            onChange={tab => setCurrentTab(tab)}
-            variant="underlined"
-          />
-          {currentTab === "formatting" && formattingWidget}
-          {currentTab === "style" && styleWidget}
-        </PopoverRoot>
+        widgets.length > 0 ? (
+          <PopoverRoot>
+            <PopoverTabs
+              value={currentSection}
+              options={Object.keys(sections).map((sectionName: string) => ({
+                name: sectionName,
+                value: sectionName,
+              }))}
+              onChange={tab => setCurrentSection(tab)}
+              variant="underlined"
+            />
+            {sections[currentSection]?.map(widget => (
+              <ChartSettingsWidget key={widget.id} {...widget} hidden={false} />
+            ))}
+          </PopoverRoot>
+        ) : null
       }
       visible={!!anchor}
       onClose={handleEndShowWidget}

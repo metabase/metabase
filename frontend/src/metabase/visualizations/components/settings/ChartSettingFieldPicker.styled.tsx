@@ -47,7 +47,7 @@ export const ChartSettingFieldPickerRoot = styled.div<ChartSettingFieldPickerRoo
   }
 
   ${SelectButton.Root} {
-    ${props => props.disabled && `background-color: ${color("white")};`}
+    background-color: ${color("white")};
   }
 `;
 
