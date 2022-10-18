@@ -138,7 +138,7 @@
                  (->> (map second))
                  (->> (take (count (first rows))))))))
     (testing "Column format settings are respected in render."
-      (is (= ["10%" "9,000" "12/10/2022" "0.123" "0.667"]
+      (is (= ["10%" "9,000" "12/10/2022" "0.12" "0.667"]
              (-> rows
                  (render.tu/make-card-and-data :table)
                  (render.tu/make-column-settings [{:number-style "percent"}
