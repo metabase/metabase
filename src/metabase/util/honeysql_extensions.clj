@@ -166,7 +166,9 @@
                                      su/NonBlankString
                                      (fn [s]
                                        (= s (str/lower-case s)))
-                                     "lowercased string")})
+                                     "lowercased string")
+   (s/optional-key ::convert-timezone) {:source-timezone su/NonBlankString
+                                        :target-timezone su/NonBlankString}})
 
 (s/defn ^:private normalize-type-info :- NormalizedTypeInfo
   "Normalize the values in the `type-info` for a `TypedHoneySQLForm` for easy comparisons (e.g., normalize
@@ -205,6 +207,12 @@
   [type-info]
   {:added "0.39.0"}
   (::database-type type-info))
+
+(defn type-info->convert-timezone-info
+  "For a given type-info, returns the `convert-timezone`."
+  [type-info]
+  {:added "0.45.0"}
+  (::convert-timezone type-info))
 
 (defn is-of-type?
   "Is `honeysql-form` a typed form with `database-type`?

@@ -347,13 +347,46 @@
 
 (deftest nested-convert-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
-    (mt/dataset times-mixed
-      (testing "convert-timezone nested with datetime extract"
-        (is (= 18
-               (test-date-convert [:get-hour [:convert-timezone [:field (mt/id :times :dt) nil]
-                                              (offset->zone "+09:00")]]))))
-      (testing "convert-timezone nested with date-math, date-extract"
-        (is (= 20
-               (test-date-convert [:get-hour [:date-add [:convert-timezone [:field (mt/id :times :dt) nil]
-                                                         (offset->zone "+09:00")]
-                                              2 :hour]])))))))
+    (mt/with-report-timezone-id "UTC"
+      (mt/dataset times-mixed
+        (testing "convert-timezone nested with datetime extract"
+          (is (= 18
+                 (test-date-convert [:get-hour [:convert-timezone [:field (mt/id :times :dt) nil]
+                                                (offset->zone "+09:00")]]))))
+        (testing "convert-timezone nested with date-math, date-extract"
+          (is (= 20
+                 (test-date-convert [:get-hour [:date-add [:convert-timezone [:field (mt/id :times :dt) nil]
+                                                           (offset->zone "+09:00")]
+                                                2 :hour]]))))
+        (testing "filter a converted-timezone column"
+          (is (= [[1]]
+                 (->> (mt/mbql-query times
+                                     {:expressions {"expr" [:get-hour [:convert-timezone [:field (mt/id :times :dt) nil]
+                                                                       (offset->zone "+09:00")]]}
+                                      :filter [:between [:expression "expr"] 17 18]
+                                      :fields  [[:field (mt/id :times :index) nil]]})
+                      mt/process-query
+                      (mt/formatted-rows [int]))))
+          (is (= [[1]]
+                 (->> (mt/mbql-query times
+                                     {:expressions {"expr" [:get-hour [:convert-timezone [:field (mt/id :times :dt) nil]
+                                                                       (offset->zone "+09:00")]]}
+                                      :filter [:= [:expression "expr"] 18]
+                                      :fields  [[:field (mt/id :times :index) nil]]})
+                      mt/process-query
+                      (mt/formatted-rows [int])))))
+
+        (testing "convert-timezone twice should works"
+          (is (= ["2004-03-19T16:19:09+07:00"
+                  "2004-03-19T18:19:09+09:00"]
+                 (->> (mt/mbql-query times
+                                     {:expressions {"to-07" [:convert-timezone [:field (mt/id :times :dt) nil]
+                                                                        (offset->zone "+07:00")]
+                                                    "to-07-to-09"
+                                                    [:convert-timezone [:expression "to-07"] (offset->zone "+09:00")]}
+                                      :filter [:= [:field (mt/id :times :index)] 1]
+                                      :fields  [[:expression "to-07"]
+                                                [:expression "to-07-to-09"]]})
+                      mt/process-query
+                      mt/rows
+                      first))))))))
