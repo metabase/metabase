@@ -8,7 +8,7 @@ import { splice } from "icepick";
 
 import Label from "metabase/components/type/Label";
 
-import { keyForColumn } from "metabase-lib/lib/queries/utils/dataset";
+import { getColumnKey } from "metabase-lib/lib/queries/utils/get-column-key";
 import {
   DroppableContainer,
   FieldPartitionColumn,
@@ -40,7 +40,7 @@ class ChartSettingFieldsPartition extends React.Component {
         {
           id: "column_settings",
           props: {
-            initialKey: keyForColumn(column),
+            initialKey: getColumnKey(column),
           },
         },
         targetElement,

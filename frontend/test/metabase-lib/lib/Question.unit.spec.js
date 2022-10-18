@@ -171,9 +171,6 @@ describe("Question", () => {
       it("has correct display settings", () => {
         expect(question.display()).toBe("table");
       });
-      it("has correct mode", () => {
-        expect(question.mode().name()).toBe("segment");
-      });
     });
 
     describe("Question.create(...)", () => {
@@ -381,31 +378,6 @@ describe("Question", () => {
   // At the same time, the choice that which actions are visible depend on the question's properties
   // as actions are filtered using those
   describe("METHODS FOR DRILL-THROUGH / ACTION WIDGET", () => {
-    const rawDataQuestion = new Question(orders_raw_card, metadata);
-    const timeBreakoutQuestion = Question.create({
-      databaseId: SAMPLE_DATABASE.id,
-      tableId: ORDERS.id,
-      metadata,
-    })
-      .query()
-      .aggregate(["count"])
-      .breakout(["field", 1, { "temporal-unit": "day" }])
-      .question()
-      .setDisplay("table");
-
-    describe("mode()", () => {
-      describe("for a new question with Orders table and Raw data aggregation", () => {
-        it("returns the correct mode", () => {
-          expect(rawDataQuestion.mode().name()).toBe("segment");
-        });
-      });
-      describe("for a question with an aggregation and a time breakout", () => {
-        it("returns the correct mode", () => {
-          expect(timeBreakoutQuestion.mode().name()).toBe("timeseries");
-        });
-      });
-    });
-
     describe("aggregate(...)", () => {
       const question = new Question(orders_raw_card, metadata);
       it("returns the correct query for a summarization of a raw data table", () => {

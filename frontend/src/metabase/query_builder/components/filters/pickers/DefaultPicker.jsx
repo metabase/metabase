@@ -13,7 +13,7 @@ import {
   isFuzzyOperator,
 } from "metabase-lib/lib/operators/utils";
 import { isCurrency } from "metabase-lib/lib/types/utils/isa";
-import { keyForColumn } from "metabase-lib/lib/queries/utils/dataset";
+import { getColumnKey } from "metabase-lib/lib/queries/utils/get-column-key";
 import TextPicker from "./TextPicker";
 import SelectPicker from "./SelectPicker";
 import NumberPicker from "./NumberPicker";
@@ -66,7 +66,7 @@ export default function DefaultPicker({
 
   const visualizationSettings = filter?.query()?.question()?.settings();
 
-  const key = keyForColumn(dimension.column());
+  const key = getColumnKey(dimension.column());
   const columnSettings = visualizationSettings?.column_settings?.[key];
 
   const fieldMetadata = field?.metadata?.fields[field?.id];

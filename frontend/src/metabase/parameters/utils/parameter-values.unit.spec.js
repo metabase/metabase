@@ -1,5 +1,4 @@
 import {
-  getValuePopulatedParameters,
   getParameterValueFromQueryParams,
   getParameterValuesByIdFromQueryParams,
   getParameterValuesBySlug,
@@ -107,35 +106,6 @@ describe("parameters/utils/parameter-values", () => {
       [parameter2.id]: "parameter2 parameterValue",
       [parameter3.id]: "parameter3 default value",
     };
-  });
-
-  describe("getValuePopulatedParameters", () => {
-    it("should return an array of parameter objects with the `value` property set if it exists in the given `parameterValues` id, value map", () => {
-      expect(
-        getValuePopulatedParameters(parameters, {
-          [parameter1.id]: "parameter1 value",
-          [parameter2.id]: "parameter2 value",
-        }),
-      ).toEqual([
-        {
-          ...parameter1,
-          value: "parameter1 value",
-        },
-        {
-          ...parameter2,
-          value: "parameter2 value",
-        },
-        parameter3,
-        parameter4,
-      ]);
-    });
-
-    it("should handle there being an undefined or null parameterValues object", () => {
-      expect(getValuePopulatedParameters(parameters, undefined)).toEqual(
-        parameters,
-      );
-      expect(getValuePopulatedParameters(parameters, null)).toEqual(parameters);
-    });
   });
 
   describe("getParameterValueFromQueryParams", () => {

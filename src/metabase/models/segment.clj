@@ -44,10 +44,11 @@
     :properties     (constantly {:timestamped? true
                                  :entity_id    true})
     :hydration-keys (constantly [:segment])
-    :pre-update     pre-update})
+    :pre-update     pre-update}))
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :table)])})
+(defmethod serdes.hash/identity-hash-fields Segment
+  [_segment]
+  [:name (serdes.hash/hydrated-hash :table)])
 
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------

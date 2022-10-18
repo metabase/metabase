@@ -7,7 +7,7 @@ import { t } from "ttag";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
 import { updateSettings } from "metabase/visualizations/lib/settings";
-import { keyForColumn } from "metabase-lib/lib/queries/utils/dataset";
+import { getColumnKey } from "metabase-lib/lib/queries/utils/get-column-key";
 
 export default ({ question, clicked }) => {
   if (
@@ -56,7 +56,7 @@ export default ({ question, clicked }) => {
                 ...columnSettingsWidget,
                 props: {
                   ...columnSettingsWidget.props,
-                  initialKey: keyForColumn(column),
+                  initialKey: getColumnKey(column),
                 },
               }}
               hidden={false}

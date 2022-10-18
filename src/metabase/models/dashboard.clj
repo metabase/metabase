@@ -141,10 +141,11 @@
           :pre-insert  pre-insert
           :pre-update  pre-update
           :post-update post-update
-          :post-select public-settings/remove-public-uuid-if-public-sharing-is-disabled})
+          :post-select public-settings/remove-public-uuid-if-public-sharing-is-disabled}))
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :collection)])})
+(defmethod serdes.hash/identity-hash-fields Dashboard
+  [_dashboard]
+  [:name (serdes.hash/hydrated-hash :collection)])
 
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------

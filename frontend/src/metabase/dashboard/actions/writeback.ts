@@ -33,18 +33,6 @@ import { getCardData } from "../selectors";
 import { setDashCardAttributes } from "./core";
 import { reloadDashboardCards } from "./data-fetching";
 
-export const OPEN_ACTION_PARAMETERS_MODAL =
-  "metabase/data-app/OPEN_ACTION_PARAMETERS_MODAL";
-export const openActionParametersModal = createAction(
-  OPEN_ACTION_PARAMETERS_MODAL,
-);
-
-export const CLOSE_ACTION_PARAMETERS_MODAL =
-  "metabase/data-app/CLOSE_ACTION_PARAMETERS_MODAL";
-export const closeActionParametersModal = createAction(
-  CLOSE_ACTION_PARAMETERS_MODAL,
-);
-
 interface DashboardAttributes {
   card_id?: number | null;
   action?: WritebackAction | null;

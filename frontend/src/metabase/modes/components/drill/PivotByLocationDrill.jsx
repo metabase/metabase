@@ -17,7 +17,9 @@ export default ({ question, clicked }) => {
       name: "pivot-by-location",
       section: "breakout",
       buttonType: "token",
-      title: (
+      title: clicked ? (
+        t`Location`
+      ) : (
         <span>
           {jt`Break out by ${(
             <span className="text-dark">{t`location`}</span>

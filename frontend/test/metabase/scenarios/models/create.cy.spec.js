@@ -14,10 +14,13 @@ describe("scenarios > models > create", () => {
 
     // Cancel creation with confirmation modal
     cy.findByText("Cancel").click();
-    cy.findByText("Yes").click();
+    cy.findByText("Discard").click();
 
     // Now we will create a model
     goFromHomePageToNewNativeQueryModelPage();
+
+    // Clicking on metadata should not work until we run a query
+    cy.findByTestId("editor-tabs-metadata").should("be.disabled");
 
     cy.get(".ace_editor").should("be.visible").type("select * from ORDERS");
 
@@ -28,6 +31,9 @@ describe("scenarios > models > create", () => {
     cy.findByText("Save").click();
 
     cy.findByText("Saved");
+
+    // After saving, we land on view mode for the model
+    cy.findByText("Summarize");
   });
 });
 

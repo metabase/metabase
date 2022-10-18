@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { unescapeString } from "metabase/lib/expressions/index";
+import { unescapeString } from "../index";
 import {
   /* ALL_ASTYPES */ ADD,
   FIELD,
@@ -20,13 +20,8 @@ import {
   IDENTIFIER,
   ROOT,
   ARG_LIST,
-} from "metabase/lib/expressions/pratt/syntax";
-import {
-  assert,
-  NodeType,
-  Node,
-  CompileError,
-} from "metabase/lib/expressions/pratt/types";
+} from "./syntax";
+import { assert, NodeType, Node, CompileError } from "./types";
 
 export type Expr =
   | number
