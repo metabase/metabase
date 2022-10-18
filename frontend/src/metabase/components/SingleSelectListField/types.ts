@@ -1,6 +1,6 @@
 export type Option = any[];
 
-export interface ListFieldProps {
+export interface SingleSelectListFieldProps {
   onChange: (value: string[]) => void;
   value: string[];
   options: Option;
