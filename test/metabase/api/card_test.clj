@@ -24,7 +24,6 @@
                                      PulseCard
                                      PulseChannel
                                      PulseChannelRecipient
-                                     QueryAction
                                      Table
                                      Timeline
                                      TimelineEvent

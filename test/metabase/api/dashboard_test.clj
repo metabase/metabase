@@ -22,7 +22,6 @@
                                      PermissionsGroup
                                      PermissionsGroupMembership
                                      Pulse
-                                     QueryAction
                                      Revision
                                      Table
                                      User]]
