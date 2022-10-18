@@ -50,6 +50,19 @@
           [_n d] (str/split val-string #"[^\d*]")]
       (count d))))
 
+(defn- sig-figs-after-decimal
+  [value]
+  (if (zero? value)
+    0
+    (let [val-string (-> (condp = (type value)
+                           java.math.BigDecimal (.toPlainString ^BigDecimal value)
+                           java.lang.Double (format "%.20f" value)
+                           java.lang.Float (format "%.20f" value)
+                           (str value))
+                         strip-trailing-zeroes)
+          figs (last (str/split val-string #"[\.0]+"))]
+      (count figs))))
+
 (defn number-formatter
   "Return a function that will take a number and format it according to its column viz settings. Useful to compute the
   format string once and then apply it over many values."
@@ -92,7 +105,10 @@
                                :else (if (and scaled-value
                                               (>= scaled-value 1))
                                        (min 2 decimals-in-value)
-                                       decimals-in-value))
+                                       (let [n-figs (sig-figs-after-decimal scaled-value)]
+                                         (if (> n-figs 2)
+                                           (max 2 (- decimals-in-value (dec n-figs)))
+                                           decimals-in-value))))
               fmt-str (cond-> base
                         (not (zero? decimal-digits)) (str "." (apply str (repeat decimal-digits "0")))
                         scientific? (str "E0")

@@ -71,7 +71,8 @@
       ;; Notice that (BigDecimal. 2.005) -> 2.0049999999... etc. so we have precision problems unless we
       ;; send a BigDecimal in right away, which, as far as I can tell, is what we'll get from the query processor
       (is (= ["2.01" "0.005"]  [(format 2.005M nil) (format 0.005 nil)]))
-      (is (= ["2"    "0.0049"] [(format 2.0049 nil) (format 0.0049 nil)])))
+      (is (= ["2"    "0.0049"] [(format 2.0049 nil) (format 0.0049 nil)]))
+      (is (= ["2"    "0.005"] [(format 2.00499 nil) (format 0.00499 nil)])))
     (testing "Column Settings"
       (letfn [(fmt-with-type [type value]
                 (let [fmt-fn (common/number-formatter {:id 1 :effective_type type}
@@ -85,7 +86,7 @@
         (is (= "3" (fmt-with-type :type/Decimal 3.0)))
         (is (= "3.1" (fmt-with-type :type/Decimal 3.1)))
         (is (= "3.01" (fmt-with-type :type/Decimal 3.010)))
-        (is (= "0.254" (fmt-with-type :type/Decimal 0.254)))))
+        (is (= "0.25" (fmt-with-type :type/Decimal 0.254)))))
     (testing "Does not throw on nils"
         (is (nil?
              ((common/number-formatter {:id 1}
