@@ -91,11 +91,13 @@ function shouldTemplateTagEditorBeVisible({
   const nextTags = newQuestion.isNative()
     ? (newQuestion.query() as NativeQuery).variableTemplateTags()
     : [];
-  return nextTags.length > previousTags.length
-    ? true
-    : nextTags.length === 0
-    ? false
-    : isVisible;
+  if (nextTags.length > previousTags.length) {
+    return true;
+  } else if (nextTags.length === 0) {
+    return false;
+  } else {
+    return isVisible;
+  }
 }
 
 type UpdateQuestionOpts = {
