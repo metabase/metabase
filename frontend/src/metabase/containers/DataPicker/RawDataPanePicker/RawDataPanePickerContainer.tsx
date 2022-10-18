@@ -24,7 +24,13 @@ type RawDataPickerSelectedItem = {
   id: string | number;
 };
 
-function RawDataPanePicker({ databases }: DatabaseListLoaderProps) {
+interface RawDataPanePickerOwnProps {
+  onTablesChange?: (tableIds: Table["id"][]) => void;
+}
+
+type Props = RawDataPanePickerOwnProps & DatabaseListLoaderProps;
+
+function RawDataPanePicker({ databases, onTablesChange }: Props) {
   const [selectedDatabaseId, setSelectedDatabaseId] = useState<
     Database["id"] | undefined
   >();
@@ -83,7 +89,10 @@ function RawDataPanePicker({ databases }: DatabaseListLoaderProps) {
   const handleSelectedDatabaseIdChange = useCallback(
     (id: Database["id"]) => {
       const database = databases.find(db => db.id === id);
-      const schemas = database?.getSchemas() ?? [];
+      if (!database) {
+        return;
+      }
+      const schemas = database.getSchemas() ?? [];
       const hasSchemasLoaded = schemas.length > 0;
       if (hasSchemasLoaded) {
         const hasSingleSchema = schemas.length === 1;
@@ -95,6 +104,14 @@ function RawDataPanePicker({ databases }: DatabaseListLoaderProps) {
       setSelectedDatabaseId(id);
     },
     [databases, handleSelectedSchemaIdChange],
+  );
+
+  const handleSelectedTablesChange = useCallback(
+    (tableId: Table["id"]) => {
+      const tableIds = toggleTableIdSelection(tableId);
+      onTablesChange?.(tableIds);
+    },
+    [toggleTableIdSelection, onTablesChange],
   );
 
   const onDatabaseSchemasLoaded = useCallback(() => {
@@ -117,7 +134,7 @@ function RawDataPanePicker({ databases }: DatabaseListLoaderProps) {
           selectedItems={selectedItems}
           onSelectDatabase={handleSelectedDatabaseIdChange}
           onSelectSchema={handleSelectedSchemaIdChange}
-          onSelectedTable={toggleTableIdSelection}
+          onSelectedTable={handleSelectedTablesChange}
         />
       );
     },
@@ -126,7 +143,7 @@ function RawDataPanePicker({ databases }: DatabaseListLoaderProps) {
       selectedItems,
       handleSelectedDatabaseIdChange,
       handleSelectedSchemaIdChange,
-      toggleTableIdSelection,
+      handleSelectedTablesChange,
     ],
   );
 

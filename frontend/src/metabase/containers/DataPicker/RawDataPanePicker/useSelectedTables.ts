@@ -17,20 +17,24 @@ function useSelectedTables({
 
   const addSelectedTableId = useCallback(
     (id: TableId) => {
-      if (mode === "multiple") {
-        setSelectedTableIds(prev => new Set([...prev, id]));
-      } else {
-        setSelectedTableIds(new Set([id]));
-      }
+      const nextState =
+        mode === "multiple"
+          ? new Set([...selectedTableIds, id])
+          : new Set([id]);
+      setSelectedTableIds(nextState);
+      return Array.from(nextState);
     },
-    [mode],
+    [selectedTableIds, mode],
   );
 
   const removeSelectedTableId = useCallback(
     (id: TableId) => {
       if (selectedTableIds.has(id)) {
-        setSelectedTableIds(prev => new Set([...prev].filter(i => i !== id)));
+        const nextState = new Set([...selectedTableIds].filter(i => i !== id));
+        setSelectedTableIds(nextState);
+        return Array.from(nextState);
       }
+      return Array.from(selectedTableIds);
     },
     [selectedTableIds],
   );
@@ -38,9 +42,9 @@ function useSelectedTables({
   const toggleTableIdSelection = useCallback(
     (id: TableId) => {
       if (selectedTableIds.has(id)) {
-        removeSelectedTableId(id);
+        return removeSelectedTableId(id);
       } else {
-        addSelectedTableId(id);
+        return addSelectedTableId(id);
       }
     },
     [selectedTableIds, addSelectedTableId, removeSelectedTableId],
