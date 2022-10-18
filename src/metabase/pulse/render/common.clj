@@ -9,6 +9,7 @@
   (:import java.net.URL
            (java.text DecimalFormat DecimalFormatSymbols)))
 
+;; HEY
 ;; Fool Eastwood into thinking this namespace is used
 (comment hiccup.util/keep-me)
 
