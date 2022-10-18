@@ -36,9 +36,13 @@ export function deriveFieldOperatorFromParameter(parameter: Parameter) {
   const subtype = getParameterSubType(parameter);
   const operatorType = getParameterOperatorType(type);
   const operatorName = getParameterOperatorName(subtype);
-
   const operator = getOperatorByTypeAndName(operatorType, operatorName);
-  return { ...operator, multi: operator.multi && getIsMultiSelect(parameter) };
+  return (
+    operator && {
+      ...operator,
+      multi: operator.multi && getIsMultiSelect(parameter),
+    }
+  );
 }
 
 function getParameterOperatorType(parameterType?: string) {
