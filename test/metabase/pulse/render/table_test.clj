@@ -1,8 +1,10 @@
 (ns metabase.pulse.render.table-test
   (:require [clojure.test :refer :all]
+            [metabase.public-settings :as public-settings]
             [metabase.pulse.render.color :as color]
             [metabase.pulse.render.table :as table]
             [metabase.pulse.render.test-util :as render.tu]
+            [metabase.test :as mt]
             [metabase.test.util :as tu]))
 
 (defn- query-results->header+rows
@@ -150,4 +152,22 @@
                  render.tu/remove-attrs
                  (render.tu/nodes-with-tag :td)
                  (->> (map second))
-                 (->> (take (count (first rows))))))))))
+                 (->> (take (count (first rows))))))))
+    (testing "Site Localization Settings are respected in columns."
+      (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_style      "D/M/YYYY"
+                                                                            :date_separator  "-"
+                                                                            :date_abbreviate false}
+                                                            :type/Number   {:number_separators ",."}}]
+        (is (= ["10%" "9.000" "12-10-2022" "0,12" "0,667"]
+             (-> rows
+                 (render.tu/make-card-and-data :table)
+                 (render.tu/make-column-settings [{:number-style "percent"}
+                                                  {}
+                                                  {}
+                                                  {}
+                                                  {:decimals 3}])
+                 render.tu/render-as-hiccup
+                 render.tu/remove-attrs
+                 (render.tu/nodes-with-tag :td)
+                 (->> (map second))
+                 (->> (take (count (first rows)))))))))))

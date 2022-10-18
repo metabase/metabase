@@ -59,8 +59,9 @@
    (let [{date-style     :date_style
           abbreviate     :date_abbreviate
           date-separator :date_separator
-          time-style     :time_style} (merge (:type/Temporal (public-settings/custom-formatting))
-                                             col-viz-settings)
+          time-style     :time_style} (if (seq col-viz-settings)
+                                        col-viz-settings
+                                        (:type/Temporal (public-settings/custom-formatting)))
          date-style (cond-> date-style
                       date-separator (str/replace #"/" date-separator)
                       abbreviate (-> (str/replace #"MMMM" "MMM") (str/replace #"DDD" "D")))]

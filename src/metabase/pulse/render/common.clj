@@ -29,30 +29,32 @@
   (toString [_] num-str))
 
 (defn- strip-trailing-zeroes
-  [num-as-string]
-  (if (str/includes? num-as-string ".")
-    (-> num-as-string
-        (str/split #"0+$")
-        first
-        (str/split #"\.$")
-        first)
+  [num-as-string decimal]
+  (if (str/includes? num-as-string (str decimal))
+    (let [pattern (re-pattern (str/escape (str decimal \$) {\. "\\."}))]
+      (-> num-as-string
+          (str/split #"0+$")
+          first
+          (str/split pattern)
+          first))
     num-as-string))
 
 (defn- digits-after-decimal
-  [value]
-  (if (zero? value)
-    0
-    (let [val-string (-> (condp = (type value)
-                           java.math.BigDecimal (.toPlainString ^BigDecimal value)
-                           java.lang.Double (format "%.20f" value)
-                           java.lang.Float (format "%.20f" value)
-                           (str value))
-                         strip-trailing-zeroes)
-          [_n d] (str/split val-string #"[^\d*]")]
-      (count d))))
+  ([value] (digits-after-decimal value "."))
+  ([value decimal]
+   (if (zero? value)
+     0
+     (let [val-string (-> (condp = (type value)
+                            java.math.BigDecimal (.toPlainString ^BigDecimal value)
+                            java.lang.Double (format "%.20f" value)
+                            java.lang.Float (format "%.20f" value)
+                            (str value))
+                          (strip-trailing-zeroes (str decimal)))
+           [_n d] (str/split val-string #"[^\d*]")]
+       (count d)))))
 
 (defn- sig-figs-after-decimal
-  [value]
+  [value decimal]
   (if (zero? value)
     0
     (let [val-string (-> (condp = (type value)
@@ -60,7 +62,7 @@
                            java.lang.Double (format "%.20f" value)
                            java.lang.Float (format "%.20f" value)
                            (str value))
-                         strip-trailing-zeroes)
+                         (strip-trailing-zeroes (str decimal)))
           figs (last (str/split val-string #"[\.0]+"))]
       (count figs))))
 
@@ -109,7 +111,7 @@
                                :else (if (and scaled-value
                                               (>= scaled-value 1))
                                        (min 2 decimals-in-value)
-                                       (let [n-figs (sig-figs-after-decimal scaled-value)]
+                                       (let [n-figs (sig-figs-after-decimal scaled-value decimal)]
                                          (if (> n-figs 2)
                                            (max 2 (- decimals-in-value (dec n-figs)))
                                            decimals-in-value))))
@@ -126,7 +128,7 @@
                 (when (and currency? (= currency-style "code"))
                   (str (get-in currency/currency [(keyword (or currency "USD")) :code]) \space))
                 (cond-> (.format fmtr scaled-value)
-                  (not decimals) strip-trailing-zeroes)
+                  (not decimals) (strip-trailing-zeroes decimal))
                 (when (and currency? (= currency-style "name"))
                   (str \space (get-in currency/currency [(keyword (or currency "USD")) :name_plural])))
                 (when suffix suffix))))
