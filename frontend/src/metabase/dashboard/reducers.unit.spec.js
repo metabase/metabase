@@ -36,6 +36,7 @@ describe("dashboard reducers", () => {
       slowCards: {},
       loadingControls: {},
       missingActionParameters: null,
+      titleTemplateChange: null,
     });
   });
 

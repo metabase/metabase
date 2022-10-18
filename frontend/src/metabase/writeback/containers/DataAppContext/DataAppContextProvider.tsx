@@ -1,13 +1,53 @@
 import React, { useCallback, useMemo, useState } from "react";
+import { connect } from "react-redux";
 import _ from "lodash";
+import { getIn } from "icepick";
 
-import { DataAppContext, DataAppContextType } from "./DataAppContext";
+import {
+  getDashcards,
+  getCardData,
+  getIsLoadingComplete,
+} from "metabase/dashboard/selectors";
 
-interface DataAppContextProviderProps {
+import { CardId } from "metabase-types/types/Card";
+import { DashCard, DashCardId } from "metabase-types/types/Dashboard";
+import { Dataset } from "metabase-types/types/Dataset";
+import { State } from "metabase-types/store";
+
+import {
+  DataAppContext,
+  DataAppContextType,
+  DataContextType,
+} from "./DataAppContext";
+import { formatDataAppString, turnRawDataIntoObjectDetail } from "./utils";
+
+interface DataAppContextProviderOwnProps {
   children: React.ReactNode;
 }
 
-function DataAppContextProvider({ children }: DataAppContextProviderProps) {
+interface DataAppContextProviderStateProps {
+  dashCards: Record<DashCardId, DashCard>;
+  dashCardData: Record<DashCardId, Record<CardId, Dataset>>;
+  isLoaded: boolean;
+}
+
+type DataAppContextProviderProps = DataAppContextProviderOwnProps &
+  DataAppContextProviderStateProps;
+
+function mapStateToProps(state: State) {
+  return {
+    dashCards: getDashcards(state),
+    dashCardData: getCardData(state),
+    isLoaded: getIsLoadingComplete(state),
+  };
+}
+
+function DataAppContextProvider({
+  dashCards = [],
+  dashCardData = {},
+  isLoaded,
+  children,
+}: DataAppContextProviderProps) {
   const [bulkActionCardId, setBulkActionCardId] = useState<number | null>(null);
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
 
@@ -39,8 +79,32 @@ function DataAppContextProvider({ children }: DataAppContextProviderProps) {
     setBulkActionCardId(null);
   }, []);
 
-  const context: DataAppContextType = useMemo(
-    () => ({
+  const objectDetails = useMemo(
+    () =>
+      Object.values(dashCards).filter(
+        dashCard => dashCard.card.display === "object",
+      ),
+    [dashCards],
+  );
+
+  const dataContext = useMemo(() => {
+    const context: DataContextType = {};
+
+    objectDetails.forEach(dashCard => {
+      const formattedCardName = _.camelCase(dashCard.card.name);
+      const data = getIn(dashCardData, [dashCard.id, dashCard.card.id]);
+      if (data) {
+        context[formattedCardName] = turnRawDataIntoObjectDetail(data);
+      }
+    });
+
+    return context;
+  }, [objectDetails, dashCardData]);
+
+  const context: DataAppContextType = useMemo(() => {
+    const value: DataAppContextType = {
+      data: dataContext,
+      isLoaded,
       bulkActions: {
         cardId: bulkActionCardId,
         selectedRowIndexes: selectedRows,
@@ -48,15 +112,21 @@ function DataAppContextProvider({ children }: DataAppContextProviderProps) {
         removeRow: handleRowDeselected,
         clearSelection: handleClearSelection,
       },
-    }),
-    [
-      bulkActionCardId,
-      selectedRows,
-      handleRowSelected,
-      handleRowDeselected,
-      handleClearSelection,
-    ],
-  );
+      format: (text: string) => text,
+    };
+
+    value.format = (text: string) => formatDataAppString(text, value);
+
+    return value;
+  }, [
+    dataContext,
+    isLoaded,
+    bulkActionCardId,
+    selectedRows,
+    handleRowSelected,
+    handleRowDeselected,
+    handleClearSelection,
+  ]);
 
   return (
     <DataAppContext.Provider value={context}>
@@ -65,4 +135,9 @@ function DataAppContextProvider({ children }: DataAppContextProviderProps) {
   );
 }
 
-export default DataAppContextProvider;
+export default connect<
+  DataAppContextProviderStateProps,
+  unknown,
+  DataAppContextProviderStateProps,
+  State
+>(mapStateToProps)(DataAppContextProvider);

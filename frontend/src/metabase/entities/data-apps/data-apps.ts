@@ -67,7 +67,9 @@ const DataApps = createEntity({
       collection_id,
       ...rest
     }: UpdateDataAppParams) => {
-      await CollectionsApi.update({ ...collection, id: collection_id });
+      if (typeof collection_id === "number") {
+        await CollectionsApi.update({ ...collection, id: collection_id });
+      }
       return DataAppsApi.update({ id, ...rest });
     },
   },

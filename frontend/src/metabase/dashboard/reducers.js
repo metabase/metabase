@@ -37,6 +37,7 @@ import {
   SET_SHOW_LOADING_COMPLETE_FAVICON,
   RESET,
   SET_PARAMETER_VALUES,
+  SET_PAGE_TITLE_TEMPLATE,
 } from "./actions";
 
 import { isVirtualDashCard, syncParametersAndEmbeddingParams } from "./utils";
@@ -409,6 +410,24 @@ const sidebar = handleActions(
   DEFAULT_SIDEBAR,
 );
 
+const titleTemplateChange = handleActions(
+  {
+    [INITIALIZE]: {
+      next: () => null,
+    },
+    [SET_PAGE_TITLE_TEMPLATE]: {
+      next: (state, { payload }) => payload,
+    },
+    [SET_EDITING_DASHBOARD]: {
+      next: (state, { payload: isEditing }) => (isEditing ? state : null),
+    },
+    [RESET]: {
+      next: () => null,
+    },
+  },
+  null,
+);
+
 const missingActionParameters = handleActions(
   {
     [INITIALIZE]: {
@@ -435,4 +454,5 @@ export default combineReducers({
   sidebar,
   parameterValuesSearchCache,
   missingActionParameters,
+  titleTemplateChange,
 });

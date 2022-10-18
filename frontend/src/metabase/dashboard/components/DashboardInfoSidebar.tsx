@@ -2,6 +2,7 @@ import React, { useCallback, useMemo } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 import { connect } from "react-redux";
+import type { Location } from "history";
 
 import { PLUGIN_CACHING } from "metabase/plugins";
 import MetabaseSettings from "metabase/lib/settings";
@@ -26,19 +27,26 @@ import {
 
 interface DashboardInfoSidebarProps {
   dashboard: Dashboard;
-  setDashboardAttribute: (name: string, value: string | number | null) => void;
-  saveDashboardAndCards: (id: number) => void;
   revisions: RevisionType[];
   currentUser: User;
+  location?: Location;
+  params?: Record<string, string>;
+  setDashboardAttribute: (name: string, value: string | number | null) => void;
+  saveDashboardAndCards: (
+    id: number,
+    routerOpts: { location?: Location; params?: Record<string, string> },
+  ) => void;
   revertToRevision: (revision: RevisionType) => void;
 }
 
 const DashboardInfoSidebar = ({
   dashboard,
-  setDashboardAttribute,
-  saveDashboardAndCards,
   revisions,
   currentUser,
+  location,
+  params,
+  setDashboardAttribute,
+  saveDashboardAndCards,
   revertToRevision,
 }: DashboardInfoSidebarProps) => {
   const canWrite = dashboard.can_write;
@@ -49,14 +57,14 @@ const DashboardInfoSidebar = ({
   const handleDescriptionChange = useCallback(
     async (description: string) => {
       await setDashboardAttribute("description", description);
-      saveDashboardAndCards(dashboard.id);
+      saveDashboardAndCards(dashboard.id, { location, params });
     },
-    [setDashboardAttribute, saveDashboardAndCards, dashboard],
+    [setDashboardAttribute, saveDashboardAndCards, dashboard, location, params],
   );
 
   const handleUpdateCacheTTL = async (cache_ttl: number | null) => {
     await setDashboardAttribute("cache_ttl", cache_ttl);
-    saveDashboardAndCards(dashboard.id);
+    saveDashboardAndCards(dashboard.id, { location, params });
   };
 
   const events = useMemo(

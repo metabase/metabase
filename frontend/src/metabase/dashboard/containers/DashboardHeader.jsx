@@ -24,8 +24,10 @@ import TippyPopover from "metabase/components/Popover/TippyPopover";
 import {
   getIsBookmarked,
   getIsShowDashboardInfoSidebar,
+  getDataAppNavItem,
+  getPageTitleTemplateChange,
 } from "metabase/dashboard/selectors";
-import { toggleSidebar } from "../actions";
+import { toggleSidebar, setPageTitleTemplate } from "../actions";
 
 import Header from "../components/DashboardHeader";
 import { SIDEBAR_NAME } from "../constants";
@@ -35,14 +37,21 @@ import {
 } from "./DashboardHeader.styled";
 
 const mapStateToProps = (state, props) => {
-  const isDataApp = props.dashboard.is_app_page;
-  const isShowingDashboardInfoSidebar =
-    !isDataApp && getIsShowDashboardInfoSidebar(state);
-  return {
+  const stateProps = {
     isBookmarked: getIsBookmarked(state, props),
     isNavBarOpen: getIsNavbarOpen(state),
-    isShowingDashboardInfoSidebar,
   };
+
+  const isDataApp = props.dashboard.is_app_page;
+  stateProps.isShowingDashboardInfoSidebar =
+    !isDataApp && getIsShowDashboardInfoSidebar(state);
+
+  if (isDataApp) {
+    stateProps.pageTitleTemplate = getPageTitleTemplateChange(state);
+    stateProps.dataAppNavItem = getDataAppNavItem(state, props.params);
+  }
+
+  return stateProps;
 };
 
 const mapDispatchToProps = {
@@ -52,6 +61,7 @@ const mapDispatchToProps = {
     Bookmark.actions.delete({ id, type: "dashboard" }),
   onChangeLocation: push,
   toggleSidebar,
+  setPageTitleTemplate,
 };
 
 class DashboardHeader extends Component {
@@ -68,6 +78,8 @@ class DashboardHeader extends Component {
 
   static propTypes = {
     dashboard: PropTypes.object.isRequired,
+    dataAppNavItem: PropTypes.object,
+    pageTitleTemplate: PropTypes.string,
     isEditable: PropTypes.bool.isRequired,
     isEditing: PropTypes.oneOfType([PropTypes.bool, PropTypes.object])
       .isRequired,
@@ -98,6 +110,8 @@ class DashboardHeader extends Component {
     sidebar: PropTypes.string.isRequired,
     setSidebar: PropTypes.func.isRequired,
     closeSidebar: PropTypes.func.isRequired,
+
+    setPageTitleTemplate: PropTypes.func.isRequired,
   };
 
   handleEdit(dashboard) {
@@ -135,7 +149,8 @@ class DashboardHeader extends Component {
   }
 
   async onSave() {
-    await this.props.saveDashboardAndCards(this.props.dashboard.id);
+    const { dashboard, location, params, saveDashboardAndCards } = this.props;
+    await saveDashboardAndCards(dashboard.id, { location, params });
     this.onDoneEditing();
   }
 
@@ -162,6 +177,12 @@ class DashboardHeader extends Component {
   }
 
   getEditingButtons() {
+    const { dashboard, pageTitleTemplate } = this.props;
+
+    const isDataAppPage = dashboard.is_app_page;
+    const canSave =
+      !isDataAppPage || pageTitleTemplate === null || pageTitleTemplate !== "";
+
     return [
       <Button
         data-metabase-event="Dashboard;Cancel Edits"
@@ -174,6 +195,7 @@ class DashboardHeader extends Component {
       <ActionButton
         key="save"
         actionFn={() => this.onSave()}
+        disabled={!canSave}
         className="Button Button--primary Button--small"
         normalText={t`Save`}
         activeText={t`Saving…`}
@@ -409,11 +431,14 @@ class DashboardHeader extends Component {
   render() {
     const {
       dashboard,
+      dataAppNavItem,
+      pageTitleTemplate,
       isEditing,
       isFullscreen,
       isAdditionalInfoVisible,
       setDashboardAttribute,
       setSidebar,
+      setPageTitleTemplate,
     } = this.props;
 
     const isDataAppPage = dashboard.is_app_page;
@@ -425,6 +450,8 @@ class DashboardHeader extends Component {
         objectType="dashboard"
         analyticsContext="Dashboard"
         dashboard={dashboard}
+        dataAppNavItem={dataAppNavItem}
+        pageTitleTemplate={pageTitleTemplate}
         isEditing={isEditing}
         isBadgeVisible={!isEditing && !isFullscreen && isAdditionalInfoVisible}
         isLastEditInfoVisible={
@@ -445,6 +472,7 @@ class DashboardHeader extends Component {
         setDashboardAttribute={setDashboardAttribute}
         onLastEditInfoClick={() => setSidebar({ name: SIDEBAR_NAME.info })}
         onSave={() => this.onSave()}
+        setPageTitleTemplate={setPageTitleTemplate}
       />
     );
   }
