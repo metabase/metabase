@@ -56,9 +56,14 @@
   ([timezone-id s col] (format-temporal-str timezone-id s col {}))
   ([timezone-id s col col-viz-settings]
    (Locale/setDefault (Locale. (public-settings/site-locale)))
-   (let [{date-style :date_style
-          abbreviate :date_abbreviate
-          time-style :time_style} col-viz-settings]
+   (let [{date-style     :date_style
+          abbreviate     :date_abbreviate
+          date-separator :date_separator
+          time-style     :time_style} (merge (:type/Temporal (public-settings/custom-formatting))
+                                             col-viz-settings)
+         date-style (cond-> date-style
+                      date-separator (str/replace #"/" date-separator)
+                      abbreviate (-> (str/replace #"MMMM" "MMM") (str/replace #"DDD" "D")))]
      (cond (str/blank? s) ""
 
            (isa? (or (:effective_type col) (:base_type col)) :type/Time)

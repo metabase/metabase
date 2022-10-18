@@ -2,6 +2,7 @@
   (:require [clojure.pprint :refer [cl-format]]
             [clojure.string :as str]
             hiccup.util
+            [metabase.public-settings :as public-settings]
             [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.shared.util.currency :as currency]
             [metabase.util.ui-logic :as ui-logic]
@@ -68,30 +69,33 @@
   format string once and then apply it over many values."
   [{:keys [effective_type base_type] col-id :id field-ref :field_ref col-name :name :as _column} viz-settings]
   (let [col-id (or col-id (second field-ref))
-            column-settings (-> (get viz-settings ::mb.viz/column-settings)
-                                (update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))
-            column-settings (or (get column-settings {::mb.viz/field-id col-id})
-                                (get column-settings {::mb.viz/column-name col-name}))
-            global-settings (::mb.viz/global-column-settings viz-settings)
-            currency?       (boolean (or (= (::mb.viz/number-style column-settings) "currency")
-                                         (and (nil? (::mb.viz/number-style column-settings))
-                                              (or
-                                               (::mb.viz/currency-style column-settings)
-                                               (::mb.viz/currency column-settings)))))
-            {::mb.viz/keys [number-separators decimals scale number-style
-                            prefix suffix currency-style currency]} (merge
-                                                                     (when currency?
-                                                                       (:type/Currency global-settings))
-                                                                     (:type/Number global-settings)
-                                                                     column-settings)
-            integral?       (isa? (or effective_type base_type) :type/Integer)
-            percent?        (= number-style "percent")
-            scientific?     (= number-style "scientific")
-            [decimal grouping] (or number-separators ".,")
-            symbols            (doto (DecimalFormatSymbols.)
-                                 (cond-> decimal (.setDecimalSeparator decimal))
-                                 (cond-> grouping (.setGroupingSeparator grouping)))
-            base               (if (= number-style "scientific") "0" "#,##0")]
+        column-settings (-> (get viz-settings ::mb.viz/column-settings)
+                            (update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))
+        column-settings (or (get column-settings {::mb.viz/field-id col-id})
+                            (get column-settings {::mb.viz/column-name col-name}))
+        global-settings (::mb.viz/global-column-settings viz-settings)
+        currency?       (boolean (or (= (::mb.viz/number-style column-settings) "currency")
+                                     (and (nil? (::mb.viz/number-style column-settings))
+                                          (or
+                                           (::mb.viz/currency-style column-settings)
+                                           (::mb.viz/currency column-settings)))))
+        {::mb.viz/keys [number-separators decimals scale number-style
+                        prefix suffix currency-style currency]} (merge
+                                                                 (when currency?
+                                                                   (:type/Currency global-settings))
+                                                                 (:type/Number global-settings)
+                                                                 column-settings)
+        integral?       (isa? (or effective_type base_type) :type/Integer)
+        percent?        (= number-style "percent")
+        scientific?     (= number-style "scientific")
+        [decimal grouping] (or number-separators
+                               (get-in (public-settings/custom-formatting) [:type/Number :number_separators])
+                               ".,")
+        symbols            (doto (DecimalFormatSymbols.)
+                             (cond-> decimal (.setDecimalSeparator decimal))
+                             (cond-> grouping (.setGroupingSeparator grouping)))
+        base               (cond-> (if (= number-style "scientific") "0" "#,##0")
+                             (not grouping) (str/replace #"," ""))]
     (fn [value]
       (if (number? value)
         (let [scaled-value (* value (or scale 1))
