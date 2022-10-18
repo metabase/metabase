@@ -46,7 +46,7 @@ export const ChartSettingFieldPickerRoot = styled.div<ChartSettingFieldPickerRoo
     color: ${color("text-dark")};
   }
 
-  ${SelectButton.Root} {
+  ${SelectButton.Root}:disabled {
     background-color: ${color("white")};
   }
 `;

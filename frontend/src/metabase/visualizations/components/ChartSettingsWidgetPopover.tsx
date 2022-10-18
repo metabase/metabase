@@ -17,22 +17,28 @@ interface ChartSettingsWidgetPopoverProps {
   anchor: HTMLElement;
   handleEndShowWidget: () => void;
   widgets: Widget[];
+  currentWidgetKey: string;
 }
 
 const ChartSettingsWidgetPopover = ({
   anchor,
   handleEndShowWidget,
   widgets,
+  currentWidgetKey,
 }: ChartSettingsWidgetPopoverProps) => {
   const sections = useMemo(() => {
     return _.groupBy(widgets, "section");
   }, [widgets]);
 
   const [currentSection, setCurrentSection] = useState<React.Key>("");
+  const [widgetKey, setWidgetKey] = useState(currentWidgetKey);
 
   useEffect(() => {
-    setCurrentSection(Object.keys(sections)[0]);
-  }, [sections]);
+    if (currentWidgetKey !== widgetKey) {
+      setCurrentSection(Object.keys(sections)[0]);
+      setWidgetKey(currentWidgetKey);
+    }
+  }, [currentWidgetKey, widgetKey, sections]);
 
   return (
     <TippyPopover

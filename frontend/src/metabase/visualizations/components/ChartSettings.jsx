@@ -233,7 +233,7 @@ class ChartSettings extends Component {
   render() {
     const { className, question, addField, noPreview, dashboard, isDashboard } =
       this.props;
-    const { popoverRef } = this.state;
+    const { popoverRef, currentWidget } = this.state;
 
     const settings = this._getSettings();
     const widgets = this._getWidgets();
@@ -390,6 +390,9 @@ class ChartSettings extends Component {
           </div>
         )}
         <ChartSettingsWidgetPopover
+          currentWidgetKey={
+            currentWidget?.props?.initialKey || currentWidget?.props?.seriesKey
+          }
           anchor={popoverRef}
           widgets={[
             this.getFormattingWidget(extraWidgetProps),
