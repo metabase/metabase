@@ -418,6 +418,9 @@ const titleTemplateChange = handleActions(
     [SET_PAGE_TITLE_TEMPLATE]: {
       next: (state, { payload }) => payload,
     },
+    [SET_EDITING_DASHBOARD]: {
+      next: (state, { payload: isEditing }) => (isEditing ? state : null),
+    },
     [RESET]: {
       next: () => null,
     },
