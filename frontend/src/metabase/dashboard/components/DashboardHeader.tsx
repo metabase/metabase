@@ -135,6 +135,7 @@ const DashboardHeader = ({
       <HeaderRoot
         isNavBarOpen={isNavBarOpen}
         className={cx("QueryBuilder-section", headerClassName)}
+        isDataApp={isDataApp}
         ref={header}
       >
         <HeaderContent hasSubHeader={!isDataApp} showSubHeader={showSubHeader}>

@@ -14,7 +14,6 @@ import {
   ActionGroup,
   DataAppActionsContainer,
   DataAppActionButton,
-  ExitDataAppButton,
 } from "../MainNavbar.styled";
 
 interface Props {
@@ -65,10 +64,6 @@ function DataAppActionPanel({
           </Tooltip>
         </ActionGroup.Cell>
       </ActionGroup>
-      <ExitDataAppButton
-        as={Link}
-        to={Urls.dataApp(dataApp, { mode: "preview" })}
-      >{t`Exit app`}</ExitDataAppButton>
     </DataAppActionsContainer>
   );
 }

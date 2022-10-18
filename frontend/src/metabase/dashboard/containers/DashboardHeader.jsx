@@ -432,7 +432,9 @@ class DashboardHeader extends Component {
         }
         isEditingInfo={isEditing}
         isNavBarOpen={this.props.isNavBarOpen}
-        headerButtons={this.getHeaderButtons()}
+        headerButtons={
+          dashboard.is_app_page && !isEditing ? [] : this.getHeaderButtons()
+        }
         editWarning={this.getEditWarning(dashboard)}
         editingTitle={
           dashboard.is_app_page

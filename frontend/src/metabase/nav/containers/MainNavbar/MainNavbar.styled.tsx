@@ -157,7 +157,7 @@ export const ExitDataAppButton = styled(Button)`
   margin-left: ${space(2)};
 `;
 
-export const DataAppActionsContainer = styled(SidebarSection)`
+export const DataAppActionsContainer = styled.div`
   display: flex;
   align-items: center;
 `;
