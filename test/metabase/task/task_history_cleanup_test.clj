@@ -1,6 +1,5 @@
 (ns metabase.task.task-history-cleanup-test
-  (:require [clojure.set :as set]
-            [clojure.test :refer :all]
+  (:require [clojure.test :refer :all]
             [java-time :as t]
             [metabase.models.task-history :refer [TaskHistory]]
             [metabase.models.task-history-test :as tht]
@@ -33,11 +32,11 @@
         (do-with-tasks
          {:rows-to-keep 2}
          (fn []
-           (is (set/subset? #{task-2 task-3 "task-history-cleanup"}
-                            (task-history-tasks))))))
+           (is (= #{task-2 task-3 "task-history-cleanup"}
+                  (task-history-tasks))))))
       (testing "When the task runs and nothing is removed, it should still insert a new TaskHistory row"
         (do-with-tasks
          {:rows-to-keep 10}
          (fn []
-           (is (set/subset? #{task-1 task-2 task-3 "task-history-cleanup"}
-                            (task-history-tasks)))))))))
+           (is (= #{task-1 task-2 task-3 "task-history-cleanup"}
+                  (task-history-tasks)))))))))

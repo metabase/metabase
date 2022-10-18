@@ -41,9 +41,6 @@
 
 ;;; ------------------------------------------------- Datetime Stuff -------------------------------------------------
 
-;; `:day-of-week` depends on the [[metabase.public-settings/start-of-week]] Setting, by default Sunday.
-;; 1 = first day of the week (e.g. Sunday)
-;; 7 = last day of the week (e.g. Saturday)
 (def date-bucketing-units
   "Set of valid units for bucketing or comparing against a *date* Field."
   #{:default :day :day-of-week :day-of-month :day-of-year :week :week-of-year
