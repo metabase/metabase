@@ -4,21 +4,26 @@ import _ from "underscore";
 import { createThunkAction } from "metabase/lib/redux";
 
 import Dashboards from "metabase/entities/dashboards";
+import DataApps from "metabase/entities/data-apps";
 
 import { DashboardApi, CardApi } from "metabase/services";
 import { clickBehaviorIsValid } from "metabase-lib/lib/parameters/utils/click-behavior";
 
-import { getDashboardBeforeEditing } from "../selectors";
+import {
+  getDashboardBeforeEditing,
+  getPageTitleTemplateChange,
+} from "../selectors";
 
 import { updateDashcardId } from "./core";
 import { fetchDashboard } from "./data-fetching";
+import { setPageTitleTemplate } from "./writeback";
 
 export const SAVE_DASHBOARD_AND_CARDS =
   "metabase/dashboard/SAVE_DASHBOARD_AND_CARDS";
 
 export const saveDashboardAndCards = createThunkAction(
   SAVE_DASHBOARD_AND_CARDS,
-  function () {
+  function (dashboardId, { params } = {}) {
     return async function (dispatch, getState) {
       const state = getState();
       const { dashboards, dashcards, dashboardId } = state.dashboard;
@@ -156,6 +161,22 @@ export const saveDashboardAndCards = createThunkAction(
         }
       }
 
+      const pageTitleTemplateChange = getPageTitleTemplateChange(state);
+      if (dashboard.is_app_page && pageTitleTemplateChange) {
+        const dataAppId = Number(params.slug);
+        const dataApp = DataApps.selectors.getObject(state, {
+          entityId: dataAppId,
+        });
+        await dispatch(
+          updateDataAppPageTitle(
+            dataApp,
+            dashboard.id,
+            pageTitleTemplateChange,
+          ),
+        );
+        dispatch(setPageTitleTemplate(null));
+      }
+
       await dispatch(Dashboards.actions.update(dashboard));
 
       if (dashboard.is_app_page) {
@@ -167,3 +188,16 @@ export const saveDashboardAndCards = createThunkAction(
     };
   },
 );
+
+function updateDataAppPageTitle(dataApp, pageId, titleTemplate) {
+  const navItems = dataApp.nav_items.map(navItem => {
+    if (navItem.page_id === pageId) {
+      return {
+        ...navItem,
+        title_template: titleTemplate,
+      };
+    }
+    return navItem;
+  });
+  return DataApps.actions.update({ id: dataApp.id, nav_items: navItems });
+}

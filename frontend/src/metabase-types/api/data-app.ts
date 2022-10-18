@@ -7,7 +7,6 @@ import {
 } from "./dashboard";
 import { WritebackAction } from "./writeback";
 import { ActionDisplayType } from "./writeback-form-settings";
-import { Card } from "./card";
 
 export type DataAppId = number;
 export type DataAppPage = Dashboard;
@@ -15,6 +14,7 @@ export type DataAppPageId = Dashboard["id"];
 
 export interface DataAppNavItem {
   page_id: DataAppPageId;
+  title_template?: string;
   indent?: number;
   hidden?: boolean;
 }

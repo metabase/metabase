@@ -33,6 +33,10 @@ import { getCardData } from "../selectors";
 import { setDashCardAttributes } from "./core";
 import { reloadDashboardCards } from "./data-fetching";
 
+export const SET_PAGE_TITLE_TEMPLATE =
+  "metabase/data-app/SET_PAGE_TITLE_TEMPLATE";
+export const setPageTitleTemplate = createAction(SET_PAGE_TITLE_TEMPLATE);
+
 interface DashboardAttributes {
   card_id?: number | null;
   action?: WritebackAction | null;
