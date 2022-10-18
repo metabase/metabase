@@ -2,6 +2,7 @@
   "Loading is the interesting part of deserialization: integrating the maps \"ingested\" from files into the appdb.
   See the detailed breakdown of the (de)serialization processes in [[metabase.models.serialization.base]]."
   (:require [medley.core :as m]
+            [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
             [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
             [metabase.models.serialization.base :as serdes.base]))
 
@@ -59,6 +60,7 @@
   [ingestion]
   ;; We proceed in the arbitrary order of ingest-list, deserializing all the files. Their declared dependencies guide
   ;; the import, and make sure all containers are imported before contents, etc.
+  (serdes.backfill/backfill-ids)
   (let [contents (serdes.ingest/ingest-list ingestion)]
     (reduce load-one {:expanding #{}
                       :seen      #{}
