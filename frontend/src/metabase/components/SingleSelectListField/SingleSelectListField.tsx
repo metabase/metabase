@@ -3,15 +3,14 @@ import _ from "underscore";
 import { t } from "ttag";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import Checkbox from "metabase/core/components/CheckBox";
 import EmptyState from "metabase/components/EmptyState";
 
 import {
   OptionContainer,
-  LabelWrapper,
   OptionsList,
   EmptyStateContainer,
   FilterInput,
+  OptionItem,
 } from "./SingleSelectListField.styled";
 import { SingleSelectListFieldProps, Option } from "./types";
 import { isValidOptionItem } from "./utils";
@@ -33,7 +32,7 @@ const SingleSelectListField = ({
   isDashboardFilter,
   checkedColor,
 }: SingleSelectListFieldProps) => {
-  const [selectedValues, setSelectedValues] = useState(new Set(value));
+  const [selectedValue, setSelectedValue] = useState(value?.[0]);
   const [addedOptions, setAddedOptions] = useState<Option>(() =>
     createOptionsFromValuesWithoutOptions(value, options),
   );
@@ -43,12 +42,13 @@ const SingleSelectListField = ({
   }, [addedOptions, options]);
 
   const sortedOptions = useMemo(() => {
-    if (selectedValues.size === 0) {
+    if (selectedValue) {
       return augmentedOptions;
     }
 
-    const [selected, unselected] = _.partition(augmentedOptions, option =>
-      selectedValues.has(option[0]),
+    const [selected, unselected] = _.partition(
+      augmentedOptions,
+      option => selectedValue === option[0],
     );
 
     return [...selected, ...unselected];
@@ -86,13 +86,11 @@ const SingleSelectListField = ({
   const shouldShowEmptyState =
     augmentedOptions.length > 0 && filteredOptions.length === 0;
 
-  const handleToggleOption = (option: any) => {
-    const newSelectedValues = selectedValues.has(option)
-      ? Array.from(selectedValues).filter(value => value !== option)
-      : [...selectedValues, option];
-
-    setSelectedValues(new Set(newSelectedValues));
-    onChange?.(newSelectedValues);
+  const onClickOption = (option: any) => {
+    if (selectedValue !== option) {
+      setSelectedValue(option);
+      onChange?.([option]);
+    }
   };
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
@@ -128,15 +126,17 @@ const SingleSelectListField = ({
       <OptionsList isDashboardFilter={isDashboardFilter}>
         {filteredOptions.map(option => (
           <OptionContainer key={option[0]}>
-            <Checkbox
+            <OptionItem
               data-testid={`${option[0]}-filter-value`}
-              checkedColor={
+              selectedColor={
                 checkedColor ?? isDashboardFilter ? "brand" : "filter"
               }
-              checked={selectedValues.has(option[0])}
-              label={<LabelWrapper>{optionRenderer(option)}</LabelWrapper>}
-              onChange={() => handleToggleOption(option[0])}
-            />
+              selected={selectedValue === option[0]}
+              onClick={e => onClickOption(option[0])}
+              onMouseDown={e => e.preventDefault()}
+            >
+              {optionRenderer(option)}
+            </OptionItem>
           </OptionContainer>
         ))}
       </OptionsList>

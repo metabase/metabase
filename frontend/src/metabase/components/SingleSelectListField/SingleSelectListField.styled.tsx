@@ -31,6 +31,20 @@ export const OptionContainer = styled.li`
   padding: 0.5rem 0.125rem;
 `;
 
-export const LabelWrapper = styled.div`
-  padding-left: 0.5rem;
+interface OptionItemProps {
+  selected?: boolean;
+  selectedColor: string;
+}
+
+export const OptionItem = styled.div<OptionItemProps>`
+  border-radius: var(--default-border-radius);
+  display: inline-block;
+  width: 100%;
+  cursor: pointer;
+  &:hover {
+    background-color: ${props =>
+      color(props.selected ? props.selectedColor : "var(--color-bg-light)")};
+  }
+  background-color: ${props =>
+    color(props.selected ? props.selectedColor : "bg-white")};
 `;
