@@ -42,7 +42,9 @@ class DashboardCopyModalInner extends React.Component {
       params,
       ...props
     } = this.props;
+
     const initialDashboardId = Urls.extractEntityId(params.slug);
+
     return (
       <EntityCopyModal
         entityType="dashboards"
@@ -50,6 +52,7 @@ class DashboardCopyModalInner extends React.Component {
           ...dashboard,
           collection_id: initialCollectionId,
         }}
+        form={Dashboards.forms.duplicate}
         overwriteOnInitialValuesChange
         copy={object =>
           copyDashboard({ id: initialDashboardId }, dissoc(object, "id"))

@@ -31,6 +31,24 @@ function createCollectionIdField() {
   };
 }
 
+function createShallowCopyField() {
+  return {
+    name: "is_shallow_copy",
+    type: "checkbox",
+    label: t`Only duplicate the dashboard`,
+    tooltip: t`This is a tooltip`,
+  };
+}
+
+function duplicateForm() {
+  return [
+    createNameField(),
+    createDescriptionField(),
+    createCollectionIdField(),
+    createShallowCopyField(),
+  ];
+}
+
 function createForm() {
   return [
     createNameField(),
@@ -42,6 +60,9 @@ function createForm() {
 export default {
   create: {
     fields: createForm,
+  },
+  duplicate: {
+    fields: duplicateForm,
   },
   edit: {
     fields: () => {
