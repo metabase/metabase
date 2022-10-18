@@ -8,7 +8,8 @@
             [metabase.models.pulse-card :as pulse-card :refer [PulseCard]]
             [metabase.models.serialization.hash :as serdes.hash]
             [metabase.test :as mt]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt])
+  (:import java.time.LocalDateTime))
 
 (deftest test-next-position-for
   (testing "No existing cards"
@@ -27,11 +28,12 @@
 
 (deftest identity-hash-test
   (testing "Pulse card hashes are composed of the pulse's hash and the card's hash"
-    (mt/with-temp* [Collection  [coll1      {:name "field-db" :location "/"}]
-                    Collection  [coll2      {:name "other collection" :location "/"}]
-                    Card        [card       {:name "the card" :collection_id (:id coll1)}]
-                    Pulse       [pulse      {:name "my pulse" :collection_id (:id coll2)}]
-                    PulseCard   [pulse-card {:card_id (:id card) :pulse_id (:id pulse)}]]
-      (is (= "cd532201"
-             (serdes.hash/raw-hash [(serdes.hash/identity-hash pulse) (serdes.hash/identity-hash card)])
-             (serdes.hash/identity-hash pulse-card))))))
+    (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
+      (mt/with-temp* [Collection  [coll1      {:name "field-db" :location "/" :created_at now}]
+                      Collection  [coll2      {:name "other collection" :location "/" :created_at now}]
+                      Card        [card       {:name "the card" :collection_id (:id coll1) :created_at now}]
+                      Pulse       [pulse      {:name "my pulse" :collection_id (:id coll2) :created_at now}]
+                      PulseCard   [pulse-card {:card_id (:id card) :pulse_id (:id pulse) :position 4}]]
+        (is (= "9ad1b5a4"
+               (serdes.hash/raw-hash [(serdes.hash/identity-hash pulse) (serdes.hash/identity-hash card) 4])
+               (serdes.hash/identity-hash pulse-card)))))))

@@ -56,7 +56,9 @@
    (comp serdes.hash/identity-hash
          #(db/select-one 'Dashboard :id %)
          :dashboard_id)
-   :visualization_settings])
+   :visualization_settings
+   :row :col
+   :created_at])
 
 
 ;;; --------------------------------------------------- HYDRATION ----------------------------------------------------

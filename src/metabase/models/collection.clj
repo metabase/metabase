@@ -893,7 +893,7 @@
 
 (defmethod serdes.hash/identity-hash-fields Collection
   [_collection]
-  [:name :namespace parent-identity-hash])
+  [:name :namespace parent-identity-hash :created_at])
 
 (u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Collection)
   models/IModel
