@@ -71,6 +71,8 @@ const defaultConfig = {
     config.env.SOURCE_VERSION = sourceVersion;
     config.env.TARGET_VERSION = targetVersion;
 
+    require("@deploysentinel/cypress-debugger/plugin")(on, config);
+
     return config;
   },
   supportFile: "frontend/test/__support__/e2e/cypress.js",

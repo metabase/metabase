@@ -1,3 +1,5 @@
+import "@deploysentinel/cypress-debugger/support";
+
 require("cypress-grep")();
 
 import addContext from "mochawesome/addContext";
