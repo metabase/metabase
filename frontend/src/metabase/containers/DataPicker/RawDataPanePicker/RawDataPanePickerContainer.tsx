@@ -82,11 +82,31 @@ function RawDataPanePicker({ databases }: DatabaseListLoaderProps) {
 
   const handleSelectedDatabaseIdChange = useCallback(
     (id: Database["id"]) => {
-      handleSelectedSchemaIdChange(undefined);
+      const database = databases.find(db => db.id === id);
+      const schemas = database?.getSchemas() ?? [];
+      const hasSchemasLoaded = schemas.length > 0;
+      if (hasSchemasLoaded) {
+        const hasSingleSchema = schemas.length === 1;
+        const nextSchemaId = hasSingleSchema ? schemas[0].id : undefined;
+        handleSelectedSchemaIdChange(nextSchemaId);
+      } else {
+        handleSelectedSchemaIdChange(undefined);
+      }
       setSelectedDatabaseId(id);
     },
-    [handleSelectedSchemaIdChange],
+    [databases, handleSelectedSchemaIdChange],
   );
+
+  const onDatabaseSchemasLoaded = useCallback(() => {
+    if (!selectedSchemaId) {
+      const schemas = selectedDatabase?.getSchemas() ?? [];
+      const hasSingleSchema = schemas.length === 1;
+      if (hasSingleSchema) {
+        const [schema] = schemas;
+        handleSelectedSchemaIdChange(schema.id);
+      }
+    }
+  }, [selectedDatabase, selectedSchemaId, handleSelectedSchemaIdChange]);
 
   const renderPicker = useCallback(
     ({ tables }: { tables?: Table[] } = {}) => {
@@ -115,6 +135,7 @@ function RawDataPanePicker({ databases }: DatabaseListLoaderProps) {
       <Schemas.ListLoader
         query={{ dbId: selectedDatabaseId }}
         loadingAndErrorWrapper={false}
+        onLoaded={onDatabaseSchemasLoaded}
       >
         {() => {
           if (!selectedSchema) {

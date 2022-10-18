@@ -34,11 +34,17 @@ function schemaToTreeItem(schema: Schema): ITreeNodeItem {
 }
 
 function dbToTreeItem(database: Database): ITreeNodeItem {
+  const schemas = database.getSchemas();
+  const hasSingleSchema = schemas.length === 1;
   return {
     id: database.id,
     name: database.name,
     icon: "database",
-    children: database.getSchemas().map(schemaToTreeItem),
+
+    // If a database has a single schema,
+    // we just want to automatically select it
+    // and exclude it from the tree picker
+    children: hasSingleSchema ? [] : schemas.map(schemaToTreeItem),
   };
 }
 
@@ -93,6 +99,25 @@ function RawDataPanePickerView({
       };
     }, [selectedItems]);
 
+  const selectedDatabase = useMemo(
+    () => databases.find(db => db.id === selectedDatabaseId),
+    [databases, selectedDatabaseId],
+  );
+
+  const isSelectedDatabaseSingleSchema = useMemo(
+    () => selectedDatabase?.getSchemas().length === 1,
+    [selectedDatabase],
+  );
+
+  const selectedTreeItemId = useMemo(() => {
+    if (selectedSchemaId) {
+      return isSelectedDatabaseSingleSchema
+        ? selectedDatabaseId
+        : selectedSchemaId;
+    }
+    return selectedDatabaseId;
+  }, [selectedDatabaseId, selectedSchemaId, isSelectedDatabaseSingleSchema]);
+
   const handlePanePickerSelect = useCallback(
     (item: ITreeNodeItem) => {
       if (item.icon === "database") {
@@ -120,7 +145,7 @@ function RawDataPanePickerView({
   return (
     <PanePicker
       data={treeData}
-      selectedId={selectedSchemaId || selectedDatabaseId}
+      selectedId={selectedTreeItemId}
       onSelect={handlePanePickerSelect}
     >
       <SelectList>{tables?.map?.(renderTable)}</SelectList>
