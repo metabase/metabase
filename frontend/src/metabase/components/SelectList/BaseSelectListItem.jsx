@@ -6,7 +6,7 @@ import { useScrollOnMount } from "metabase/hooks/use-scroll-on-mount";
 import { BaseItemRoot } from "./SelectListItem.styled";
 
 const propTypes = {
-  id: PropTypes.string.isRequired,
+  id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
   name: PropTypes.string.isRequired,
   onSelect: PropTypes.func.isRequired,
   isSelected: PropTypes.bool,

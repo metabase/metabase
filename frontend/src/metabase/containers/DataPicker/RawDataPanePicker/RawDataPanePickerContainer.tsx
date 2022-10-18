@@ -8,6 +8,7 @@ import Tables from "metabase/entities/tables";
 import type Database from "metabase-lib/lib/metadata/Database";
 import type Table from "metabase-lib/lib/metadata/Table";
 
+import useSelectedTables from "./useSelectedTables";
 import RawDataPanePickerView from "./RawDataPanePickerView";
 
 interface DatabaseListLoaderProps {
@@ -28,9 +29,12 @@ function RawDataPanePicker({ databases }: DatabaseListLoaderProps) {
     Database["id"] | undefined
   >();
 
-  const [selectedSchemaId, handleSelectedSchemaIdChange] = useState<
+  const [selectedSchemaId, setSelectedSchemaId] = useState<
     string | undefined
   >();
+
+  const { selectedTableIds, toggleTableIdSelection, clearSelectedTables } =
+    useSelectedTables({ mode: "multiple" });
 
   const selectedDatabase = useMemo(() => {
     if (!selectedDatabaseId) {
@@ -49,19 +53,40 @@ function RawDataPanePicker({ databases }: DatabaseListLoaderProps) {
 
   const selectedItems = useMemo(() => {
     const items: RawDataPickerSelectedItem[] = [];
+
     if (selectedDatabaseId) {
       items.push({ type: "database", id: selectedDatabaseId });
     }
+
     if (selectedSchemaId) {
       items.push({ type: "schema", id: selectedSchemaId });
     }
-    return items;
-  }, [selectedDatabaseId, selectedSchemaId]);
 
-  const handleSelectedDatabaseIdChange = useCallback((id: Database["id"]) => {
-    handleSelectedSchemaIdChange(undefined);
-    setSelectedDatabaseId(id);
-  }, []);
+    const tables: RawDataPickerSelectedItem[] = selectedTableIds.map(id => ({
+      type: "table",
+      id,
+    }));
+
+    items.push(...tables);
+
+    return items;
+  }, [selectedDatabaseId, selectedSchemaId, selectedTableIds]);
+
+  const handleSelectedSchemaIdChange = useCallback(
+    (id?: string) => {
+      clearSelectedTables();
+      setSelectedSchemaId(id);
+    },
+    [clearSelectedTables],
+  );
+
+  const handleSelectedDatabaseIdChange = useCallback(
+    (id: Database["id"]) => {
+      handleSelectedSchemaIdChange(undefined);
+      setSelectedDatabaseId(id);
+    },
+    [handleSelectedSchemaIdChange],
+  );
 
   const renderPicker = useCallback(
     ({ tables }: { tables?: Table[] } = {}) => {
@@ -72,11 +97,17 @@ function RawDataPanePicker({ databases }: DatabaseListLoaderProps) {
           selectedItems={selectedItems}
           onSelectDatabase={handleSelectedDatabaseIdChange}
           onSelectSchema={handleSelectedSchemaIdChange}
-          onSelectedTable={_.noop}
+          onSelectedTable={toggleTableIdSelection}
         />
       );
     },
-    [databases, selectedItems, handleSelectedDatabaseIdChange],
+    [
+      databases,
+      selectedItems,
+      handleSelectedDatabaseIdChange,
+      handleSelectedSchemaIdChange,
+      toggleTableIdSelection,
+    ],
   );
 
   if (selectedDatabaseId) {

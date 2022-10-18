@@ -54,7 +54,7 @@ function TableSelectListItem({
   const name = table.displayName();
   return (
     <SelectList.Item
-      id={String(table.id)}
+      id={table.id}
       name={name}
       isSelected={isSelected}
       icon="table2"
@@ -111,10 +111,10 @@ function RawDataPanePickerView({
         key={table.id}
         table={table}
         isSelected={selectedTableIds.includes(table.id)}
-        onSelect={_.noop}
+        onSelect={onSelectedTable}
       />
     ),
-    [selectedTableIds],
+    [selectedTableIds, onSelectedTable],
   );
 
   return (
