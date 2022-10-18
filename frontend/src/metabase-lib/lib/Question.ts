@@ -27,14 +27,7 @@ import { memoizeClass, sortObject } from "metabase-lib/lib/utils";
 
 // TODO: remove these dependencies
 import * as Urls from "metabase/lib/urls";
-import {
-  getCardUiParameters,
-  remapParameterValuesToTemplateTags,
-} from "metabase/parameters/utils/cards";
-import {
-  normalizeParameterValue,
-  getParameterValuesBySlug,
-} from "metabase/parameters/utils/parameter-values";
+import { getCardUiParameters } from "metabase/parameters/utils/cards";
 import {
   DashboardApi,
   CardApi,
@@ -58,6 +51,11 @@ import { DependentMetadataItem } from "metabase-types/types/Query";
 import { utf8_to_b64url } from "metabase/lib/encoding";
 import { CollectionId } from "metabase-types/api";
 
+import {
+  normalizeParameterValue,
+  getParameterValuesBySlug,
+} from "metabase-lib/lib/parameters/utils/parameter-values";
+import { remapParameterValuesToTemplateTags } from "metabase-lib/lib/parameters/utils/template-tags";
 import { fieldFilterParameterToMBQLFilter } from "metabase-lib/lib/parameters/utils/mbql";
 import { getQuestionVirtualTableId } from "metabase-lib/lib/metadata/utils/saved-questions";
 import {

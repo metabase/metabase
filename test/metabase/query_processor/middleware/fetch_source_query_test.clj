@@ -123,7 +123,10 @@
                   (qp/query->expected-cols (mt/mbql-query venues)))
                  (assoc-in [:query :source-query :source-metadata]
                            (mt/derecordize (qp/query->expected-cols (mt/mbql-query venues))))
-                 (assoc :info {:card-id (u/the-id card-2)}))
+                 (assoc :info {:card-id (u/the-id card-2)})
+                 (update-in [:query :source-metadata] (fn [fields]
+                                                        (mapv #(assoc-in % [:options :nested/outer] true)
+                                                              fields))))
              (resolve-card-id-source-tables
               (wrap-inner-query
                {:source-table (str "card__" (u/the-id card-2)), :limit 25}))))))

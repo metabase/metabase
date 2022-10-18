@@ -73,8 +73,10 @@
                      ["25°"                             11 "Burger"]
                      ["33 Taps"                          7 "Bar"]
                      ["800 Degrees Neapolitan Pizzeria" 58 "Pizza"]]
-              :cols [(mt/col :venues :name)
+              :cols [(-> (mt/col :venues :name)
+                         (assoc-in [:options :nested/outer] true))
                      (-> (mt/col :venues :category_id)
+                         (assoc-in [:options :nested/outer] true)
                          (assoc :remapped_to "Category ID [internal remap]"))
                      (#'qp.add-dimension-projections/create-remapped-col
                       "Category ID [internal remap]"
