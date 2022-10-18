@@ -320,16 +320,21 @@
   without the necessary constraints. (Marking parameters in optional blocks as required doesn't
   seem to be useful any way, but if the user said it is required, we honor this flag.)"
   [text template-tags]
-  (let [obligatory-params (into #{}
-                                (comp (filter params/Param?)
-                                      (map :k))
-                                (params.parse/parse text))]
-    (and (every? #(or (#{:dimension :snippet} (:type %))
-                      (:default %))
-                 (map template-tags obligatory-params))
-         (every? #(or (not (:required %))
-                      (:default %))
-                 (vals template-tags)))))
+  (try
+    (let [obligatory-params (into #{}
+                                  (comp (filter params/Param?)
+                                        (map :k))
+                                  (params.parse/parse text))]
+      (and (every? #(or (#{:dimension :snippet} (:type %))
+                        (:default %))
+                   (map template-tags obligatory-params))
+           (every? #(or (not (:required %))
+                        (:default %))
+                   (vals template-tags))))
+    (catch clojure.lang.ExceptionInfo _
+      ;; An exception might be thrown during parameter parsing if the syntax is invalid. In this case we return
+      ;; true so that we still can try to generate a preview for the query and display an error.
+      false)))
 
 (defn- fully-parametrized-query? [row]
   (let [native-query (-> row :dataset_query json/parse-string mbql.normalize/normalize :native)]
