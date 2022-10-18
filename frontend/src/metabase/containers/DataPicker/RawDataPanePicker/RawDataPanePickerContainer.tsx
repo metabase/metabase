@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo } from "react";
 import _ from "underscore";
 
 import Databases from "metabase/entities/databases";
@@ -7,6 +7,8 @@ import Tables from "metabase/entities/tables";
 
 import type Database from "metabase-lib/lib/metadata/Database";
 import type Table from "metabase-lib/lib/metadata/Table";
+
+import { DataPickerProps } from "../types";
 
 import useSelectedTables from "./useSelectedTables";
 import RawDataPanePickerView from "./RawDataPanePickerView";
@@ -24,23 +26,19 @@ type RawDataPickerSelectedItem = {
   id: string | number;
 };
 
-interface RawDataPanePickerOwnProps {
-  onTablesChange?: (tableIds: Table["id"][]) => void;
-}
+type RawDataPanePickerProps = DataPickerProps & DatabaseListLoaderProps;
 
-type Props = RawDataPanePickerOwnProps & DatabaseListLoaderProps;
+function RawDataPanePicker({
+  value,
+  databases,
+  onChange,
+}: RawDataPanePickerProps) {
+  const { databaseId: selectedDatabaseId, schemaId: selectedSchemaId } = value;
 
-function RawDataPanePicker({ databases, onTablesChange }: Props) {
-  const [selectedDatabaseId, setSelectedDatabaseId] = useState<
-    Database["id"] | undefined
-  >();
-
-  const [selectedSchemaId, setSelectedSchemaId] = useState<
-    string | undefined
-  >();
-
-  const { selectedTableIds, toggleTableIdSelection, clearSelectedTables } =
-    useSelectedTables({ mode: "multiple" });
+  const { selectedTableIds, toggleTableIdSelection } = useSelectedTables({
+    initialValues: value.tableIds,
+    mode: "multiple",
+  });
 
   const selectedDatabase = useMemo(() => {
     if (!selectedDatabaseId) {
@@ -79,39 +77,36 @@ function RawDataPanePicker({ databases, onTablesChange }: Props) {
   }, [selectedDatabaseId, selectedSchemaId, selectedTableIds]);
 
   const handleSelectedSchemaIdChange = useCallback(
-    (id?: string) => {
-      clearSelectedTables();
-      setSelectedSchemaId(id);
+    (schemaId?: string) => {
+      onChange({ ...value, schemaId, tableIds: [] });
     },
-    [clearSelectedTables],
+    [value, onChange],
   );
 
   const handleSelectedDatabaseIdChange = useCallback(
-    (id: Database["id"]) => {
-      const database = databases.find(db => db.id === id);
+    (databaseId: Database["id"]) => {
+      const database = databases.find(db => db.id === databaseId);
       if (!database) {
         return;
       }
+      let nextSchemaId = undefined;
       const schemas = database.getSchemas() ?? [];
       const hasSchemasLoaded = schemas.length > 0;
       if (hasSchemasLoaded) {
         const hasSingleSchema = schemas.length === 1;
-        const nextSchemaId = hasSingleSchema ? schemas[0].id : undefined;
-        handleSelectedSchemaIdChange(nextSchemaId);
-      } else {
-        handleSelectedSchemaIdChange(undefined);
+        nextSchemaId = hasSingleSchema ? schemas[0].id : undefined;
       }
-      setSelectedDatabaseId(id);
+      onChange({ databaseId, schemaId: nextSchemaId, tableIds: [] });
     },
-    [databases, handleSelectedSchemaIdChange],
+    [databases, onChange],
   );
 
   const handleSelectedTablesChange = useCallback(
     (tableId: Table["id"]) => {
       const tableIds = toggleTableIdSelection(tableId);
-      onTablesChange?.(tableIds);
+      onChange({ ...value, tableIds });
     },
-    [toggleTableIdSelection, onTablesChange],
+    [value, toggleTableIdSelection, onChange],
   );
 
   const onDatabaseSchemasLoaded = useCallback(() => {
