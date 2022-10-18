@@ -11,6 +11,8 @@ import type Schema from "metabase-lib/lib/metadata/Schema";
 
 import PanePicker from "../PanePicker";
 
+import { StyledSelectList } from "./RawDataPanePickerView.styled";
+
 type RawDataPickerSelectedItem = {
   type: "database" | "schema" | "table";
   id: string | number;
@@ -63,7 +65,7 @@ function TableSelectListItem({
       id={table.id}
       name={name}
       isSelected={isSelected}
-      icon="table2"
+      icon={isSelected ? "check" : "table2"}
       onSelect={onSelect}
     >
       {name}
@@ -148,7 +150,7 @@ function RawDataPanePickerView({
       selectedId={selectedTreeItemId}
       onSelect={handlePanePickerSelect}
     >
-      <SelectList>{tables?.map?.(renderTable)}</SelectList>
+      <StyledSelectList>{tables?.map?.(renderTable)}</StyledSelectList>
     </PanePicker>
   );
 }

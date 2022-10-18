@@ -11,6 +11,7 @@ import {
   LeftPaneContainer,
   TreeContainer,
   BackButton,
+  RightPaneContainer,
 } from "./PanePicker.styled";
 
 interface PanePickerProps {
@@ -41,7 +42,7 @@ function PanePicker({
           <Tree selectedId={selectedId} data={data} onSelect={onSelect} />
         </TreeContainer>
       </LeftPaneContainer>
-      {children}
+      <RightPaneContainer>{children}</RightPaneContainer>
     </Root>
   );
 }

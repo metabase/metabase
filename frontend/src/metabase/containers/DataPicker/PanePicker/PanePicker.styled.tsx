@@ -1,32 +1,36 @@
 import styled from "@emotion/styled";
 
+import { Tree } from "metabase/components/tree";
+
 import { color } from "metabase/lib/colors";
 
 import { breakpointMaxSmall } from "metabase/styled-components/theme/media-queries";
 
 export const Root = styled.div`
   display: flex;
-  width: 620px;
+  flex: 1;
   overflow: hidden;
-  border-top: 1px solid ${color("border")};
 
   ${breakpointMaxSmall} {
     flex-direction: column;
-    width: 300px;
     overflow: auto;
   }
 `;
 
 export const LeftPaneContainer = styled.div`
   display: flex;
+  flex: 1;
   flex-direction: column;
-  min-width: 310px;
-  background-color: ${color("bg-light")};
   overflow: auto;
 
-  ${breakpointMaxSmall} {
-    min-height: 220px;
-    border-bottom: 1px solid ${color("border")};
+  border-right: 1px solid ${color("border")};
+
+  ${Tree.Node.Root} {
+    border-radius: 6px;
+  }
+
+  ${Tree.NodeList.Root} {
+    padding: 0 1rem;
   }
 `;
 
@@ -44,6 +48,9 @@ export const BackButton = styled.a`
   }
 `;
 
-export const TreeContainer = styled.div`
-  margin: 0.5rem 0;
+export const TreeContainer = styled.div``;
+
+export const RightPaneContainer = styled.div`
+  display: flex;
+  flex: 1;
 `;
