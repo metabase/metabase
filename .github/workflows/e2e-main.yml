@@ -147,6 +147,7 @@ jobs:
           --ci-build-id "${{ github.run_id }}-${{ github.run_attempt }}"
       env:
         TERM: xterm
+        CYPRESS_DEPLOYSENTINEL_KEY: ${{ secrets.CYPRESS_DEPLOYSENTINEL_KEY }}
 
     - name: Run Cypress tests on ${{ matrix.folder }}
       if: ${{ github.ref != 'refs/heads/master' }}
@@ -155,6 +156,7 @@ jobs:
           --folder ${{ matrix.folder }}
       env:
         TERM: xterm
+        CYPRESS_DEPLOYSENTINEL_KEY: ${{ secrets.CYPRESS_DEPLOYSENTINEL_KEY }}
 
     - name: Upload Cypress Artifacts upon failure
       uses: actions/upload-artifact@v2

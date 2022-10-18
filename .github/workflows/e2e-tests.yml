@@ -151,6 +151,7 @@ jobs:
         --spec './frontend/test/metabase/scenarios/**/*.cy.spec.js'
       env:
         TERM: xterm
+        CYPRESS_DEPLOYSENTINEL_KEY: ${{ secrets.CYPRESS_DEPLOYSENTINEL_KEY }}
 
     - name: Run EE Cypress tests on ${{ matrix.folder }}
       if: matrix.edition == 'ee'
@@ -160,6 +161,7 @@ jobs:
         --folder ${{ matrix.folder }}
       env:
         TERM: xterm
+        CYPRESS_DEPLOYSENTINEL_KEY: ${{ secrets.CYPRESS_DEPLOYSENTINEL_KEY }}
 
     - name: Upload Cypress Artifacts upon failure
       uses: actions/upload-artifact@v2
