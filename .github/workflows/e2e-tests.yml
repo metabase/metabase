@@ -152,6 +152,7 @@ jobs:
       env:
         TERM: xterm
         CYPRESS_DEPLOYSENTINEL_KEY: ${{ secrets.CYPRESS_DEPLOYSENTINEL_KEY }}
+        ELECTRON_EXTRA_LAUNCH_ARGS: '--remote-debugging-port=40500'
 
     - name: Run EE Cypress tests on ${{ matrix.folder }}
       if: matrix.edition == 'ee'
@@ -162,6 +163,7 @@ jobs:
       env:
         TERM: xterm
         CYPRESS_DEPLOYSENTINEL_KEY: ${{ secrets.CYPRESS_DEPLOYSENTINEL_KEY }}
+        ELECTRON_EXTRA_LAUNCH_ARGS: '--remote-debugging-port=40500'
 
     - name: Upload Cypress Artifacts upon failure
       uses: actions/upload-artifact@v2
