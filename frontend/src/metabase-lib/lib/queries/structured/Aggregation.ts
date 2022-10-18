@@ -48,11 +48,6 @@ export default class Aggregation extends MBQLClause {
    * Returns the display name for the aggregation
    */
   displayName() {
-    // DEPRECATED: "rows" is equivalent to no aggregations
-    if (this && this[0] === "rows") {
-      return t`Raw data`;
-    }
-
     const displayName = this.options()["display-name"];
 
     if (displayName) {

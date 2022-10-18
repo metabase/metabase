@@ -1,8 +1,10 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import PropTypes from "prop-types";
+import { t } from "ttag";
 
 import ControlledPopoverWithTrigger from "metabase/components/PopoverWithTrigger/ControlledPopoverWithTrigger";
+import { isRows } from "metabase-lib/lib/queries/utils/aggregation";
 import Clearable from "./Clearable";
 import AggregationPopover from "./AggregationPopover";
 import { AggregationLabel } from "./AggregationWidget.styled";
@@ -56,7 +58,7 @@ export default class AggregationWidget extends React.Component {
         }
       >
         <AggregationLabel className={className}>
-          {aggregation.displayName()}
+          {isRows(aggregation) ? t`Raw data` : aggregation.displayName()}
         </AggregationLabel>
       </Clearable>
     ) : (
