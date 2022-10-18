@@ -3,11 +3,35 @@
   (:require [clojure.test :refer :all]
             [metabase.models :refer [App Card Collection Dashboard
                                      Permissions PermissionsGroup PermissionsGroupMembership]]
+            [metabase.models.interface :as mi]
             [metabase.models.permissions-group :as perms-group]
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.test :as mt]
             [metabase.test.data :as data]
             [toucan.db :as db]))
+
+(deftest permission-set-test
+  (premium-features-test/with-premium-features #{}
+    (testing "App permission set without advanced permission feature"
+      (is (= #{"/collection/namespace/apps/root/"}
+             (mi/perms-objects-set (mi/instance App) :write)))
+      (is (= #{"/collection/namespace/apps/root/read/"}
+             (mi/perms-objects-set (mi/instance App) :read)))
+      (is (= #{"/collection/namespace/apps/root/read/"}
+             (mi/perms-objects-set (mi/instance App {:collection_id 1}) :read)))
+      (is (= #{"/collection/namespace/apps/root/"}
+             (mi/perms-objects-set (mi/instance App {:collection_id 1}) :write)))))
+
+  (premium-features-test/with-premium-features #{:advanced-permissions}
+    (testing "App permission set with advanced permission feature"
+      (is (= #{"/collection/namespace/apps/root/"}
+             (mi/perms-objects-set (mi/instance App) :write)))
+      (is (= #{"/collection/namespace/apps/root/read/"}
+             (mi/perms-objects-set (mi/instance App) :read)))
+      (is (= #{"/collection/1/read/"}
+             (mi/perms-objects-set (mi/instance App {:collection_id 1}) :read)))
+      (is (= #{"/collection/1/"}
+             (mi/perms-objects-set (mi/instance App {:collection_id 1}) :write))))))
 
 (deftest graph-test
   (testing "GET /api/app/graph works only with advanced permissions"

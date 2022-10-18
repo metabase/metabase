@@ -36,7 +36,7 @@
                             (graph/graph :apps))
                   "''All Users'' should have the default permission on the app collection"))))
         (testing "Create app in the root"
-          (mt/with-all-users-app-root-permission :read
+          (mt/with-all-users-permission (perms/app-root-collection-permission :read)
             (let [response (mt/user-http-request :crowberto :post 200 "app" {:collection base-params})]
               (is (pos-int? (:id response)))
               (is (pos-int? (:collection_id response)))
@@ -46,7 +46,7 @@
                             (graph/graph :apps))
                   "''All Users'' should have the default permission on the app collection"))))
         (testing "With initial dashboard and nav_items"
-          (mt/with-all-users-app-root-permission :write
+          (mt/with-all-users-permission (perms/app-root-collection-permission :write)
             (mt/with-temp* [Dashboard [{dashboard-id :id}]]
               (let [nav_items [{:options {:click_behavior {}}}]]
                 (is (partial= {:collection (assoc base-params :location "/")
@@ -80,7 +80,7 @@
                       App [{app_id :id} {:collection_id collection_id}]]
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :put 403 (str "app/" app_id) {}))))
-      (mt/with-all-users-app-root-permission :write
+      (mt/with-all-users-permission (perms/app-root-collection-permission :write)
         (mt/with-temp* [Collection [{collection_id :id} {:namespace :apps}]
                         App [{app_id :id} {:collection_id collection_id}]]
           (is (partial= {:collection_id collection_id}
@@ -120,7 +120,7 @@
                             (mt/user-http-request :rasta :get 200 "app")))))))
       (testing "archives"
         (mt/with-model-cleanup [Permissions]
-          (mt/with-all-users-app-root-permission :write
+          (mt/with-all-users-permission (perms/app-root-collection-permission :write)
             (mt/with-temp* [Collection [collection-1 {:name "Collection 1", :namespace :apps}]
                             Collection [collection-2 {:name "Collection 2", :namespace :apps, :archived true}]
                             Dashboard [{dashboard_id :id}]
@@ -181,7 +181,7 @@
 
 (deftest scaffold-test
   (mt/with-model-cleanup [Card Dashboard Collection Permissions]
-    (mt/with-all-users-app-root-permission :read
+    (mt/with-all-users-permission (perms/app-root-collection-permission :read)
       (testing "Golden path"
         (let [app (mt/user-http-request
                    :crowberto :post 200 "app/scaffold"

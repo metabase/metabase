@@ -806,24 +806,24 @@
            :namespace (name ~collection-namespace))
     (fn [] ~@body)))
 
-(defn do-with-all-users-app-root-permission
+(defn do-with-all-users-permission
   "Call `f` without arguments in a context where the ''All Users'' group
-  is granted the global app permission `permission`. `permission` can be one of
-  :read or :write."
-  [permission f]
-  (when-not (#{:read :write} permission)
-    (throw (ex-info (str "Unexpected app permission " permission)
-                    {:permission permission})))
+  is granted the permission specified by `permission-path`.
+
+  For most use cases see the macro [[with-all-users-permission]]."
+  [permission-path f]
   (tt/with-temp Permissions [_ {:group_id (:id (perms-group/all-users))
-                                :object (cond-> "/collection/namespace/apps/root/"
-                                          (= permission :read) (str "read/"))}]
+                                :object permission-path}]
     (f)))
 
-(defmacro with-all-users-app-root-permission
-  "Run `body` with the ''All Users'' group being granted the global app
-  permission `permission`. `permission` can be one of :read or :write."
-  [permission & body]
-  `(do-with-all-users-app-root-permission ~permission (fn [] ~@body)))
+(defmacro with-all-users-permission
+  "Run `body` with the ''All Users'' group being granted the permission
+  specified by `permission-path`.
+
+  (mt/with-all-users-permission (perms/app-root-collection-permission :read)
+    ...)"
+  [permission-path & body]
+  `(do-with-all-users-permission ~permission-path (fn [] ~@body)))
 
 (defn doall-recursive
   "Like `doall`, but recursively calls doall on map values and nested sequences, giving you a fully non-lazy object.

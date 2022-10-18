@@ -346,7 +346,7 @@
                 (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection))))))))
 
     (testing "check that we can see app collection details"
-      (mt/with-all-users-app-root-permission :read
+      (mt/with-all-users-permission (perms/app-root-collection-permission :read)
         (mt/with-temp* [Collection [collection {:name "Coin Collection", :namespace :apps}]
                         App [{app-id :id} {:collection_id (:id collection)}]]
           (is (= ["Coin Collection" app-id]

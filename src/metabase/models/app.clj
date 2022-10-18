@@ -1,5 +1,6 @@
 (ns metabase.models.app
-  (:require [metabase.models.interface :as mi]
+  (:require [metabase.models.collection :as collection :refer [Collection]]
+            [metabase.models.interface :as mi]
             [metabase.models.query :as query]
             [metabase.models.serialization.hash :as serdes.hash]
             [metabase.util :as u]
@@ -15,7 +16,9 @@
 
 (defmethod mi/perms-objects-set App
   [instance read-or-write]
-  (let [collection (db/select-one 'Collection :id (:collection_id instance))]
+  (let [collection (if-let [collection-id (:collection_id instance)]
+                     (mi/instance Collection {:id collection-id, :namespace :apps})
+                     (assoc collection/root-collection :namespace :apps))]
     (mi/perms-objects-set collection read-or-write)))
 
 (u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class App)

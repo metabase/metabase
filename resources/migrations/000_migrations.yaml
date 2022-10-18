@@ -13032,8 +13032,9 @@ databaseChangeLog:
                     foreignKeyName: fk_app_permission_graph_revision_user_id
               - column:
                   name: created_at
-                  type: datetime
+                  type: ${timestamp_type}
                   remarks: 'The timestamp of when these changes were made.'
+                  defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
               - column:
