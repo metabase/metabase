@@ -1,6 +1,5 @@
 (ns metabase.pulse.render.table-test
   (:require [clojure.test :refer :all]
-            [metabase.public-settings :as public-settings]
             [metabase.pulse.render.color :as color]
             [metabase.pulse.render.table :as table]
             [metabase.pulse.render.test-util :as render.tu]
