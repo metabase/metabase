@@ -4,6 +4,7 @@ import { ChartSettingNumericInput } from "./ChartSettingInputNumeric.styled";
 interface ChartSettingInputProps {
   value: number;
   onChange: (value: number | undefined) => void;
+  onChangeSettings: () => void;
 }
 
 const ChartSettingInputNumeric = ({
@@ -13,10 +14,12 @@ const ChartSettingInputNumeric = ({
 }: ChartSettingInputProps) => {
   const [internalValue, setInternalValue] = useState(value);
 
+  const { onChangeSettings, ...inputProps } = props;
+
   return (
     <ChartSettingNumericInput
       type="number"
-      {...props}
+      {...inputProps}
       error={!!internalValue && isNaN(internalValue)}
       value={internalValue}
       onChange={(e: React.ChangeEvent<HTMLInputElement>) => {

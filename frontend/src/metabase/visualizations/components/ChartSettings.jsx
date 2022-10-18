@@ -23,10 +23,11 @@ import {
   getSettingsWidgets,
 } from "metabase/visualizations/lib/settings";
 
-import { keyForColumn } from "metabase-lib/lib/queries/utils/dataset";
 import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
-
 import { getSettingDefintionsForColumn } from "metabase/visualizations/lib/settings/column";
+
+import { keyForColumn } from "metabase-lib/lib/queries/utils/dataset";
+
 import ChartSettingsWidget from "./ChartSettingsWidget";
 import ChartSettingsWidgetList from "./ChartSettingsWidgetList";
 import ChartSettingsWidgetPopover from "./ChartSettingsWidgetPopover";
@@ -34,57 +35,6 @@ import { SectionContainer, SectionWarnings } from "./ChartSettings.styled";
 
 // section names are localized
 const DEFAULT_TAB_PRIORITY = [t`Display`];
-
-// const getFormattingWidget = (
-//   widgets,
-//   currentWidget,
-//   extraWidgetProps,
-//   series,
-// ) => {
-//   const widget =
-//     currentWidget && widgets.find(widget => widget.id === currentWidget.id);
-
-//   if (widget) {
-//     const seriesSettingsWidget = widgets.find(w => w.id === "series_settings");
-
-//     const initialKey = currentWidget.props.initialKey;
-
-//     const columnSeries = series.find(
-//       single => keyForColumn(single.data.cols[1]) === initialKey,
-//     );
-
-//     console.log(columnSeries, series);
-//     return (
-//       <>
-//         <ChartSettingsWidget
-//           key={widget.id}
-//           {...widget}
-//           props={{
-//             ...widget.props,
-//             ...currentWidget.props,
-//           }}
-//           hidden={false}
-//           {...extraWidgetProps}
-//         />
-//         {columnSeries && (
-//           <ChartSettingsWidget
-//             key={seriesSettingsWidget.id}
-//             {...seriesSettingsWidget}
-//             props={{
-//               ...seriesSettingsWidget.props,
-//               initialKey:
-//                 columnSeries.card._seriesKey || String(columnSeries.card.name),
-//             }}
-//             hidden={false}
-//             {...extraWidgetProps}
-//           />
-//         )}
-//       </>
-//     );
-//   }
-
-//   return undefined;
-// };
 
 const withTransientSettingState = ComposedComponent =>
   class extends React.Component {
@@ -248,14 +198,14 @@ class ChartSettings extends Component {
           />
         );
       } else if (currentWidget.props?.initialKey) {
-        console.log(series, currentWidget.props?.initialKey);
+        const settings = this._getSettings();
         const singleSeriesForColumn = series.find(
           single =>
             keyForColumn(single.data.cols[1]) ===
             currentWidget.props.initialKey,
         );
 
-        const isBreakout = series.some(single => single.card._breakoutColumn);
+        const isBreakout = settings["graph.dimensions"]?.length > 1;
 
         if (singleSeriesForColumn && !isBreakout) {
           return (

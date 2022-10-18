@@ -1,10 +1,10 @@
 import { updateIn } from "icepick";
 import React from "react";
 import { t } from "ttag";
-import { keyForColumn } from "metabase-lib/lib/queries/utils/dataset";
-import { ChartSettingOrderedItems } from "./ChartSettingOrderedItems";
 import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
+import { Series } from "metabase-types/types/Visualization";
 
+import { ChartSettingOrderedItems } from "./ChartSettingOrderedItems";
 import {
   ChartSettingMessage,
   ChartSettingOrderedSimpleRoot,
@@ -20,6 +20,11 @@ interface ChartSettingOrderedSimpleProps {
   onChange: (rows: SortableItem[]) => void;
   items: SortableItem[];
   value: SortableItem[];
+  onShowWidget: (
+    widget: { props: { seriesKey: string } },
+    ref: HTMLElement | undefined,
+  ) => void;
+  series: Series;
 }
 
 export const ChartSettingOrderedSimple = ({
@@ -52,11 +57,8 @@ export const ChartSettingOrderedSimple = ({
     return items[item.originalIndex]?.name || "Unknown";
   };
 
-  const handleOnEdit = (item, ref) => {
-    console.log(item, ref, series);
-
+  const handleOnEdit = (item: SortableItem, ref: HTMLElement | undefined) => {
     const single = series[item.originalIndex];
-    console.log(keyForSingleSeries(single));
     onShowWidget(
       {
         props: {
