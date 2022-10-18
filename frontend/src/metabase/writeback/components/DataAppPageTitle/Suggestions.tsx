@@ -1,5 +1,6 @@
 import React from "react";
 import _ from "lodash";
+import { t } from "ttag";
 
 import SelectList from "metabase/components/SelectList";
 
@@ -13,6 +14,7 @@ export interface SuggestionsProps {
   selectedCardName?: CardName;
   onSelectCard: (cardName: CardName) => void;
   onSelectColumn: (columnName: ColumnName) => void;
+  onBack?: () => void;
 }
 
 function humanizeCamelCase(str: string) {
@@ -25,6 +27,7 @@ function Suggestions({
   selectedCardName,
   onSelectCard,
   onSelectColumn,
+  onBack,
 }: SuggestionsProps) {
   const options = selectedCardName
     ? suggestions[selectedCardName]
@@ -34,6 +37,16 @@ function Suggestions({
 
   return (
     <OptionsList>
+      {typeof onBack === "function" && (
+        <SelectList.Item
+          id="back"
+          name={t`Back`}
+          icon="chevronleft"
+          onSelect={onBack}
+        >
+          {t`Back`}
+        </SelectList.Item>
+      )}
       {options.map(option => {
         const name = humanizeCamelCase(option);
         return (

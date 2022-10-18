@@ -44,6 +44,10 @@ function DataAppPageTitle({
     [selectedCardName, titleTemplate, onChange],
   );
 
+  const handleBack = selectedCardName
+    ? () => setSelectedCardName("")
+    : undefined;
+
   return (
     <TippyPopoverWithTrigger
       renderTrigger={({ onClick: handleShowPopover }) => (
@@ -78,6 +82,7 @@ function DataAppPageTitle({
             onSelect(columnName);
             closePopover();
           }}
+          onBack={handleBack}
         />
       )}
     />
