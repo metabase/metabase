@@ -155,6 +155,13 @@ export const TYPE_SUPPORTS_LINKED_FILTERS = [
   "location",
 ];
 
+export const SINGLE_OR_MULTI_SELECTABLE_TYPES = [
+  "string",
+  "category",
+  "id",
+  "location",
+];
+
 export const FIELD_FILTER_PARAMETER_TYPES = [
   "date",
   "string",

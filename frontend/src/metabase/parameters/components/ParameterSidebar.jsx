@@ -17,6 +17,7 @@ import InputBlurChange from "metabase/components/InputBlurChange";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget";
+import { isSingleOrMultiSelectable } from "metabase/parameters/utils/parameter-type";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 import { getIsMultiSelect } from "metabase/parameters/utils/dashboards";
 
@@ -95,19 +96,23 @@ class ParameterSidebar extends React.Component {
                   className="input bg-white"
                 />
               </div>
-              <label className="mt2 mb1 block text-bold">{t`Users can pick`}</label>
-              <Radio
-                value={getIsMultiSelect(parameter)}
-                onChange={setIsMultiSelect}
-                options={[
-                  { name: t`Multiple values`, value: true },
-                  { name: t`A single value`, value: false },
-                ]}
-                vertical
-              />
+              {isSingleOrMultiSelectable(parameter) && (
+                <div className="pb2">
+                  <label className="mt2 mb1 block text-bold">{t`Users can pick`}</label>
+                  <Radio
+                    value={getIsMultiSelect(parameter)}
+                    onChange={setIsMultiSelect}
+                    options={[
+                      { name: t`Multiple values`, value: true },
+                      { name: t`A single value`, value: false },
+                    ]}
+                    vertical
+                  />
+                </div>
+              )}
               <a
                 borderless
-                className="mt4 block text-medium text-error-hover text-bold"
+                className="mt2 block text-medium text-error-hover text-bold"
                 onClick={remove}
               >
                 {t`Remove`}

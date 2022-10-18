@@ -20,7 +20,6 @@ import { addRemappings, fetchFieldValues } from "metabase/redux/metadata";
 import { defer } from "metabase/lib/promise";
 import { stripId } from "metabase/lib/formatting";
 import { fetchDashboardParameterValues } from "metabase/dashboard/actions";
-import { getIsMultiSelect } from "metabase/parameters/utils/dashboards";
 
 import Fields from "metabase/entities/fields";
 
@@ -322,7 +321,7 @@ class FieldValuesWidgetInner extends Component {
             isDashboardFilter={parameter}
             placeholder={tokenFieldPlaceholder}
             value={value.filter(v => v != null)}
-            isMultiSelect={getIsMultiSelect(parameter)} // TODO: this probably needs changing, but it's an example of how the isMultiSelect property can be passed to the UI
+            multi={multi} // TODO: this probably needs changing, but it's an example of how the isMultiSelect property can be passed to the UI
             onChange={onChange}
             options={options}
             optionRenderer={optionRenderer}
