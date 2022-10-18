@@ -145,18 +145,6 @@
         http-actions (normalize-http-actions http)]
     (sort-by :updated_at (concat query-actions http-actions))))
 
-(defn action
-  "Hydrates Action from Emitter"
-  {:batched-hydrate :action}
-  [emitters]
-  ;; emitters apparently might actually be `[nil]` (not 100% sure why) so just make sure we're not doing anything dumb
-  ;; if this is the case.
-  (if-let [action-id-by-emitter-id (not-empty (into {} (map (juxt :id :action_id) (filter :id emitters))))]
-    (let [actions-by-id (m/index-by :id (select-actions :id [:in (map val action-id-by-emitter-id)]))]
-      (for [{emitter-id :id, :as emitter} emitters]
-        (some-> emitter (assoc :action (get actions-by-id (get action-id-by-emitter-id emitter-id))))))
-    emitters))
-
 (defn cards-by-action-id
   "Hydrates action_id from Card for is_write cards"
   {:batched-hydrate :card/action-id}
