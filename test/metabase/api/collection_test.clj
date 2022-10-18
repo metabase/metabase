@@ -264,7 +264,7 @@
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) child-collection)
           (is (= [{:name "Child", :children []}]
                  (collection-tree-view (map :id [parent-collection child-collection])
-                                             (mt/user-http-request :rasta :get 200 "collection/tree")))))))
+                                       (mt/user-http-request :rasta :get 200 "collection/tree")))))))
 
     (testing "Namespace parameter"
       (mt/with-temp* [Collection [{normal-id :id} {:name "Normal Collection"}]
@@ -1165,6 +1165,15 @@
                           :entity_id           (:entity_id card)
                           :model               "card"
                           :fully_parametrized  false}]
+                        (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))))))
+
+      (testing "is true if invalid parameter syntax causes a parsing exception to be thrown"
+        (mt/with-temp Card [card {:name          "Business Card"
+                                  :dataset_query {:native {:query "select [[]]"}}}]
+          (is (partial= [{:name                "Business Card"
+                          :entity_id           (:entity_id card)
+                          :model               "card"
+                          :fully_parametrized  true}]
                         (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))))))
 
       (testing "is true if all obligatory parameters have defaults"
