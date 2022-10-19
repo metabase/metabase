@@ -135,7 +135,7 @@
                                         :display                "table"
                                         :archived               true
                                         :visualization_settings {}}]
-                  Collection [{coll-id :id} {:namespace :apps}]
+                  Collection [{coll-id :id} {}]
                   App [{app-id :id} {:collection_id coll-id}]
                   Dashboard [page {:name        "rand-name"
                                    :description "rand-name"
@@ -186,7 +186,7 @@
                   Dashboard [dash1 {:name        "rand-name"
                                     :description "rand-name"
                                     :creator_id  (mt/user->id :crowberto)}]
-                  Collection [{coll-id :id} {:namespace :apps}]
+                  Collection [{coll-id :id} {}]
                   App [{app-id :id} {:collection_id coll-id}]
                   Dashboard [dash2 {:name        "other-dashboard"
                                     :description "just another dashboard"

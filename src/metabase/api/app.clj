@@ -9,11 +9,9 @@
     [metabase.api.collection :as api.collection]
     [metabase.api.common :as api]
     [metabase.mbql.schema :as mbql.s]
-    [metabase.models :refer [App Dashboard ModelAction Table]]
-    [metabase.models.app.graph :as app.graph]
+    [metabase.models :refer [App Collection Dashboard ModelAction Table]]
     [metabase.models.collection :as collection]
     [metabase.models.dashboard :as dashboard]
-    [metabase.plugins.classloader :as classloader]
     [metabase.util :as u]
     [metabase.util.i18n :as i18n]
     [metabase.util.schema :as su]
@@ -27,9 +25,8 @@
 
 (defn- create-app! [{:keys [collection] :as app}]
   (db/transaction
-   (let [coll-params (select-keys collection [:name :color :description :authority_level])
-         collection-instance (api.collection/create-collection!
-                              (assoc coll-params :namespace :apps))
+   (let [coll-params (select-keys collection [:name :color :description :namespace :authority_level])
+         collection-instance (api.collection/create-collection! coll-params)
          app-params (-> app
                         (select-keys [:dashboard_id :options :nav_items])
                         (assoc :collection_id (:id collection-instance)))
@@ -58,7 +55,7 @@
    dashboard_id (s/maybe su/IntGreaterThanOrEqualToZero)
    options (s/maybe su/Map)
    nav_items (s/maybe [(s/maybe su/Map)])}
-  (api/write-check App app-id)
+  (api/write-check Collection (db/select-one-field :collection_id App :id app-id))
   (db/update! App app-id (select-keys body [:dashboard_id :options :nav_items]))
   (hydrate-details (db/select-one App :id app-id)))
 
@@ -288,7 +285,6 @@
 (api/defendpoint POST "/:app-id/scaffold"
   "Endpoint to scaffold a new table onto an existing data-app"
   [app-id :as {{:keys [table-ids]} :body}]
-  (api/write-check App app-id)
   (db/transaction
     (let [{app-id :id app-name :name nav-items :nav_items {collection-id :id} :collection} (hydrate-details (db/select-one App :id app-id))
           ;; We can scaffold this as a new app, but use the existing collection-id and nav-items to merge into the existing app
@@ -300,73 +296,5 @@
       (db/update! App app-id {:nav_items (vec (concat nav-items (:nav_items app)))})
       (create-scaffold-dashcards! scaffold-target->id pages)
       (hydrate-details (db/select-one App :id app-id)))))
-
-
-;;; ------------------------------------------------ GRAPH ENDPOINTS -------------------------------------------------
-
-(api/defendpoint GET "/global-graph"
-  "Fetch the global graph of all App Permissions."
-  []
-  (api/check-superuser)
-  (app.graph/global-graph))
-
-(defn- resolve-advanced-app-permission-function
-  "Resolve `fn-name` in the advanced app permission namespace. `fn-name` can be
-  a string or an instance of clojure.lang.Named.
-  Throws an exception if `fn-name` cannot be resolved."
-  [fn-name]
-  (or (u/ignore-exceptions
-       (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions.app-permissions)
-       (resolve (symbol "metabase-enterprise.advanced-permissions.models.permissions.app-permissions"
-                        (name fn-name))))
-      (ex-info
-       (i18n/tru "The granular app permission functionality is only enabled if you have a premium token with the advanced-permissions feature.")
-       {:status-code 402})))
-
-(api/defendpoint GET "/graph"
-  "Fetch the graph of all App Permissions."
-  []
-  (api/check-superuser)
-  (let [graph (resolve-advanced-app-permission-function 'graph)]
-    (graph)))
-
-(defn- ->int [id] (parse-long (name id)))
-
-(defn- dejsonify-with [f m]
-  (into {}
-        (map (fn [[k v]]
-               [(or (->int k) k) (f v)]))
-        m))
-
-(defn- dejsonify-id->permission-map [m]
-  (dejsonify-with keyword m))
-
-(defn- dejsonify-groups-map [m]
-  (dejsonify-with dejsonify-id->permission-map m))
-
-(defn- dejsonify-graph
-  "Fix the types in the graph when it comes in from the API, e.g. converting things like `\"none\"` to `:none` and
-  parsing object keys as integers."
-  [graph]
-  (update graph :groups dejsonify-groups-map))
-
-(api/defendpoint PUT "/global-graph"
-  "Do a batch update of the global App Permissions by passing in a modified graph."
-  [:as {body :body}]
-  {body su/Map}
-  (api/check-superuser)
-  (-> body
-      dejsonify-graph
-      app.graph/update-global-graph!))
-
-(api/defendpoint PUT "/graph"
-  "Do a batch update of the advanced App Permissions by passing in a modified graph."
-  [:as {body :body}]
-  {body su/Map}
-  (api/check-superuser)
-  (let [update-graph! (resolve-advanced-app-permission-function 'update-graph!)]
-    (-> body
-        dejsonify-graph
-        update-graph!)))
 
 (api/define-routes actions/+check-data-apps-enabled)
