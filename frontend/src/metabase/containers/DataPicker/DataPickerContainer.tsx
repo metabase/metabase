@@ -17,7 +17,7 @@ import type {
   DataPickerDataType,
 } from "./types";
 
-import { getDataTypes } from "./utils";
+import { getDataTypes, DEFAULT_DATA_PICKER_FILTERS } from "./utils";
 
 import DataPickerView from "./DataPickerView";
 
@@ -43,19 +43,28 @@ function mapStateToProps(state: State) {
 
 function DataPicker({
   search: modelLookupResult,
+  filters: customFilters = {},
   hasNestedQueriesEnabled,
   hasDataAccess,
   ...props
 }: DataPickerProps) {
   const { onChange } = props;
 
+  const filters = useMemo(
+    () => ({
+      ...DEFAULT_DATA_PICKER_FILTERS,
+      ...customFilters,
+    }),
+    [customFilters],
+  );
+
   const dataTypes = useMemo(
     () =>
       getDataTypes({
         hasModels: modelLookupResult.length > 0,
         hasNestedQueriesEnabled,
-      }),
-    [modelLookupResult, hasNestedQueriesEnabled],
+      }).filter(type => filters.types(type.id)),
+    [filters, modelLookupResult, hasNestedQueriesEnabled],
   );
 
   const handleDataTypeChange = useCallback(

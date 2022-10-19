@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import type { DataPickerDataType } from "./types";
+import type { DataPickerDataType, DataPickerFilters } from "./types";
 
 export type DataTypeInfoItem = {
   id: DataPickerDataType;
@@ -45,3 +45,10 @@ export function getDataTypes({
 
   return dataTypes;
 }
+
+export const DEFAULT_DATA_PICKER_FILTERS: DataPickerFilters = {
+  types: () => true,
+  databases: () => true,
+  schemas: () => true,
+  tables: () => true,
+};
