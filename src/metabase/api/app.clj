@@ -12,6 +12,7 @@
     [metabase.models :refer [App Collection Dashboard ModelAction Table]]
     [metabase.models.collection :as collection]
     [metabase.models.dashboard :as dashboard]
+    [metabase.util :as u]
     [metabase.util.i18n :as i18n]
     [metabase.util.schema :as su]
     [schema.core :as s]

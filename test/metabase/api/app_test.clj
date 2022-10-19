@@ -191,7 +191,7 @@
                                                           [:= :collection_id (:collection_id app)]
                                                           [:= :dataset true]]}]
                                          :order-by [:id]}))))
-          (is (partial= {:groups {(:id (perms-group/all-users)) {(:collection_id app) :read}}}
+          (is (partial= {:groups {(:id (perms-group/all-users)) {(:collection_id app) :write}}}
                         (graph/graph))
               "''All Users'' should have the default permission on the app collection")
           (is (= (scaffolded-models app)

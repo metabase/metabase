@@ -2060,8 +2060,8 @@
                 (is (= "Actions are not enabled."
                        (mt/user-http-request :crowberto :post 400 execute-path
                                              {:parameters {"id" 1}}))))
-            (testing "Without admin"
-              (actions.test-util/with-actions-enabled
-                (is (= "You don't have permissions to do that."
-                       (mt/user-http-request :rasta :post 403 execute-path
-                                             {:parameters [{:id "my_id" :type :number/= :value 1}]}))))))))))))
+              (testing "Without admin"
+                (actions.test-util/with-actions-enabled
+                  (is (= "You don't have permissions to do that."
+                         (mt/user-http-request :rasta :post 403 execute-path
+                                               {:parameters {"id" 1}}))))))))))))

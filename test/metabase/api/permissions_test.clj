@@ -116,25 +116,29 @@
 (deftest update-perms-graph-test
   (testing "PUT /api/permissions/graph"
     (testing "make sure we can update the perms graph from the API"
-      (mt/with-temp PermissionsGroup [group]
-        (mt/user-http-request
-         :crowberto :put 200 "permissions/graph"
-         (assoc-in (perms/data-perms-graph)
-                   [:groups (u/the-id group) (mt/id) :data :schemas]
-                   {"PUBLIC" {(mt/id :venues) :all}}))
-        (is (= {(mt/id :venues) :all}
-               (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas "PUBLIC"]))))
-
-      (testing "Table-specific perms"
+      ;; do not inline db-id, the DB should exist when we query the data-perms-graph
+      (let [db-id (mt/id :venues)]
         (mt/with-temp PermissionsGroup [group]
           (mt/user-http-request
            :crowberto :put 200 "permissions/graph"
            (assoc-in (perms/data-perms-graph)
                      [:groups (u/the-id group) (mt/id) :data :schemas]
-                     {"PUBLIC" {(mt/id :venues) {:read :all, :query :segmented}}}))
-          (is (= {(mt/id :venues) {:read  :all
-                                   :query :segmented}}
-                 (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas "PUBLIC"]))))))
+                     {"PUBLIC" {db-id :all}}))
+          (is (= {db-id :all}
+                 (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas "PUBLIC"])))))
+
+      (testing "Table-specific perms"
+        ;; do not inline db-id, the DB should exist when we query the data-perms-graph
+        (let [db-id (mt/id :venues)]
+          (mt/with-temp PermissionsGroup [group]
+            (mt/user-http-request
+             :crowberto :put 200 "permissions/graph"
+             (assoc-in (perms/data-perms-graph)
+                       [:groups (u/the-id group) (mt/id) :data :schemas]
+                       {"PUBLIC" {db-id {:read :all, :query :segmented}}}))
+            (is (= {db-id {:read  :all
+                           :query :segmented}}
+                   (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas "PUBLIC"])))))))
 
     (testing "permissions for new db"
       (mt/with-temp* [PermissionsGroup [group]

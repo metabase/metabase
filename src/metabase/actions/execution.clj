@@ -41,7 +41,7 @@
     (catch Throwable e
       (throw (ex-info (tru "Error executing Action: {0}" (ex-message e))
                       {:action     action
-                       :parameters parameters}
+                       :parameters request-parameters}
                       e)))))
 
 (defn- execute-custom-action [action-id request-parameters]
