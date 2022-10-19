@@ -36,14 +36,6 @@
   [[_ x]]
   x)
 
-(defmethod convert :global-execute
-  [[_ x]]
-  x)
-
-(defmethod convert :db-exeute
-  [[_ x]]
-  x)
-
 ;;; --------------------------------------------------- Common ----------------------------------------------------
 
 ;; ids come in asa keywordized numbers
@@ -92,12 +84,20 @@
 ;; language used on the frontend.
 (s/def ::details (s/or :str->kw #{"yes" "no"}))
 
+(s/def ::execute (s/or :str->kw #{"all" "none"}))
+
 (s/def ::db-perms (s/keys :opt-un [::data ::download ::data-model ::details ::execute]))
 
 (s/def ::db-graph
-  (s/map-of ::id
-            ::db-perms
-            :conform-keys true))
+  (s/and (s/map-of (s/or :global-execute #{:execute}
+                         :db-perms ::id)
+                   (s/or :global-execute ::execute
+                         :db-perms ::db-perms)
+                   :conform-keys true)
+         (s/conformer (fn [m]
+                        (if (every? (fn [[[key-tag] [value-tag]]] (= key-tag value-tag)) m)
+                          (into {} (map (partial mapv second)) m)
+                          :clojure.spec.alpha/invalid)))))
 
 (s/def :metabase.api.permission-graph.data/groups
   (s/map-of ::id ::db-graph
@@ -122,23 +122,6 @@
 
 (s/def ::collection-permissions-graph
   (s/keys :req-un [:metabase.api.permission-graph.collection/groups]))
-
-;;; --------------------------------------------- Execution Permissions ----------------------------------------------
-
-(s/def ::execute (s/or :str->kw #{"all" "none"}))
-
-(s/def ::execute-graph
-  (s/or :global-execute ::execute
-        :db-exeute      (s/map-of ::id ::execute
-                                  :conform-keys true)))
-
-(s/def :metabase.api.permission-graph.execution/groups
-  (s/map-of ::id
-            ::execute-graph
-            :conform-keys true))
-
-(s/def ::execution-permissions-graph
-  (s/keys :req-un [:metabase.api.permission-graph.execution/groups]))
 
 (defn converted-json->graph
   "The permissions graph is received as JSON. That JSON is naively converted. This performs a further conversion to
