@@ -125,7 +125,7 @@
       requires_pk
       (assoc :prefetch-parameters [{:target [:dimension [:field (:id pk-field) nil]]
                                     :type "id"
-                                    :value [1]}]))))
+                                    :value [(get simple-parameters pk-field-name)]}]))))
 
 (defn- model-action->implicit-action [model-action]
   (cond
