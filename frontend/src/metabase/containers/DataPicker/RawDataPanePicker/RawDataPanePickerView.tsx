@@ -21,6 +21,7 @@ interface RawDataPanePickerViewProps {
   onSelectDatabase: (id: Database["id"]) => void;
   onSelectSchema: (id: Schema["id"]) => void;
   onSelectedTable: (id: Table["id"]) => void;
+  onBack?: () => void;
 }
 
 function schemaToTreeItem(schema: Schema): ITreeNodeItem {
@@ -76,6 +77,7 @@ function RawDataPanePickerView({
   onSelectDatabase,
   onSelectSchema,
   onSelectedTable,
+  onBack,
 }: RawDataPanePickerViewProps) {
   const treeData = useMemo(() => databases.map(dbToTreeItem), [databases]);
 
@@ -145,6 +147,7 @@ function RawDataPanePickerView({
       data={treeData}
       selectedId={selectedTreeItemId}
       onSelect={handlePanePickerSelect}
+      onBack={onBack}
     >
       <StyledSelectList>{tables?.map?.(renderTable)}</StyledSelectList>
     </PanePicker>

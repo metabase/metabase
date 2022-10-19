@@ -25,11 +25,20 @@ function DataPicker(props: DataPickerProps) {
     [onChange],
   );
 
+  const handleBack = useCallback(() => {
+    onChange({
+      type: undefined,
+      databaseId: undefined,
+      schemaId: undefined,
+      tableIds: [],
+    });
+  }, [onChange]);
+
   if (!value.type) {
     return <DataTypePicker onChange={handleDataTypeChange} />;
   }
 
-  return <RawDataPanePicker {...props} />;
+  return <RawDataPanePicker {...props} onBack={handleBack} />;
 }
 
 export default DataPicker;

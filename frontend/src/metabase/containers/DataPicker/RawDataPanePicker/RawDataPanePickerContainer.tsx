@@ -22,12 +22,17 @@ interface TableListLoaderProps {
   tables: Table[];
 }
 
-type RawDataPanePickerProps = DataPickerProps & DatabaseListLoaderProps;
+interface RawDataPanePickerOwnProps extends DataPickerProps {
+  onBack?: () => void;
+}
+type RawDataPanePickerProps = RawDataPanePickerOwnProps &
+  DatabaseListLoaderProps;
 
 function RawDataPanePicker({
   value,
   databases,
   onChange,
+  onBack,
 }: RawDataPanePickerProps) {
   const { databaseId: selectedDatabaseId, schemaId: selectedSchemaId } = value;
 
@@ -92,9 +97,9 @@ function RawDataPanePicker({
         const hasSingleSchema = schemas.length === 1;
         nextSchemaId = hasSingleSchema ? schemas[0].id : undefined;
       }
-      onChange({ databaseId, schemaId: nextSchemaId, tableIds: [] });
+      onChange({ ...value, databaseId, schemaId: nextSchemaId, tableIds: [] });
     },
-    [databases, onChange],
+    [value, databases, onChange],
   );
 
   const handleSelectedTablesChange = useCallback(
@@ -126,6 +131,7 @@ function RawDataPanePicker({
           onSelectDatabase={handleSelectedDatabaseIdChange}
           onSelectSchema={handleSelectedSchemaIdChange}
           onSelectedTable={handleSelectedTablesChange}
+          onBack={onBack}
         />
       );
     },
@@ -135,6 +141,7 @@ function RawDataPanePicker({
       handleSelectedDatabaseIdChange,
       handleSelectedSchemaIdChange,
       handleSelectedTablesChange,
+      onBack,
     ],
   );
 
