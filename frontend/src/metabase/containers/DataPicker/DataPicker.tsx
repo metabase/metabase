@@ -1,8 +1,10 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/lib/metadata/utils/saved-questions";
 
 import type { DataPickerProps, DataPickerDataType } from "./types";
+
+import { getDataTypes } from "./utils";
 
 import CardPicker from "./CardPicker";
 import DataTypePicker from "./DataTypePicker";
@@ -10,6 +12,8 @@ import RawDataPicker from "./RawDataPicker";
 
 function DataPicker(props: DataPickerProps) {
   const { value, onChange } = props;
+
+  const dataTypes = useMemo(() => getDataTypes(), []);
 
   const handleDataTypeChange = useCallback(
     (type: DataPickerDataType) => {
@@ -36,7 +40,7 @@ function DataPicker(props: DataPickerProps) {
   }, [onChange]);
 
   if (!value.type) {
-    return <DataTypePicker onChange={handleDataTypeChange} />;
+    return <DataTypePicker types={dataTypes} onChange={handleDataTypeChange} />;
   }
 
   if (value.type === "raw-data") {
