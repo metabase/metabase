@@ -1,9 +1,14 @@
 import React, { useCallback, useMemo } from "react";
+import { t } from "ttag";
 import { connect } from "react-redux";
 import _ from "underscore";
 
-import { getSetting } from "metabase/selectors/settings";
+import EmptyState from "metabase/components/EmptyState";
 
+import { getSetting } from "metabase/selectors/settings";
+import { getHasDataAccess } from "metabase/new_query/selectors";
+
+import Databases from "metabase/entities/databases";
 import Search from "metabase/entities/search";
 
 import type { State } from "metabase-types/store";
@@ -23,6 +28,7 @@ import RawDataPicker from "./RawDataPicker";
 
 interface DataPickerStateProps {
   hasNestedQueriesEnabled: boolean;
+  hasDataAccess: boolean;
 }
 
 interface SearchListLoaderProps {
@@ -36,12 +42,14 @@ type DataPickerProps = DataPickerOwnProps &
 function mapStateToProps(state: State) {
   return {
     hasNestedQueriesEnabled: getSetting(state, "enable-nested-queries"),
+    hasDataAccess: getHasDataAccess(state),
   };
 }
 
 function DataPicker({
   search: modelLookupResult,
   hasNestedQueriesEnabled,
+  hasDataAccess,
   ...props
 }: DataPickerProps) {
   const { value, onChange } = props;
@@ -79,6 +87,15 @@ function DataPicker({
     });
   }, [onChange]);
 
+  if (!hasDataAccess) {
+    return (
+      <EmptyState
+        message={t`To pick some data, you'll need to add some first`}
+        icon="database"
+      />
+    );
+  }
+
   if (!value.type) {
     return <DataTypePicker types={dataTypes} onChange={handleDataTypeChange} />;
   }
@@ -99,13 +116,17 @@ function DataPicker({
 }
 
 export default _.compose(
+  // Required for `hasDataAccess` check
+  Databases.loadList(),
+
+  // Lets the picker check there is
+  // at least one model, to offer for selection
   Search.loadList({
-    // Lets the picker check there is
-    // at least one model, to offer for selection
     query: {
       models: "dataset",
       limit: 1,
     },
   }),
+
   connect(mapStateToProps),
 )(DataPicker);
