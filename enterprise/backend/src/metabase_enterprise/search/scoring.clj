@@ -22,9 +22,9 @@
   :feature :any
   [result]
   (conj (scoring/weights-and-scores result)
-        {:weight 2
+        {:weight 5
          :score  (official-collection-score result)
          :name   "official collection score"}
-        {:weight 2
+        {:weight 5
          :score  (verified-score result)
          :name   "verified"}))

@@ -440,13 +440,10 @@
                              query)} sql-alias]]
        :order-by order-clause})))
 
-(s/defn ^:private search
-  "Builds a search query that includes all of the searchable entities and runs it"
-  [search-ctx :- SearchContext]
-  (letfn [(bit->boolean [v]
-            (if (number? v)
-              (not (zero? v))
-              v))]
+(letfn [(bit->boolean [v] (case v 1 true 0 false v))]
+  (defn ^:private search
+    "Builds a search query that includes all of the searchable entities and runs it"
+    [search-ctx]
     (let [search-query      (full-search-query search-ctx)
           _                 (log/tracef "Searching with query:\n%s" (u/pprint-to-str search-query))
           reducible-results (db/reducible-query search-query :max-rows search-config/*db-max-results*)

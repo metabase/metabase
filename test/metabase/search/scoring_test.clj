@@ -297,8 +297,8 @@
           result {:name          "card"
                   :model         "card"
                   :dataset_query (json/generate-string query)}]
-      (is (= query (-> result (#'scoring/serialize {} {}) :dataset_query)))))
+      (is (= query (-> result (#'scoring/serialize {} {} 1) :dataset_query)))))
   (testing "Doesn't error on other models without a query"
     (is (nil? (-> {:name "dash" :model "dashboard"}
-                  (#'scoring/serialize {} {})
+                  (#'scoring/serialize {} {} 1)
                   :dataset_query)))))
