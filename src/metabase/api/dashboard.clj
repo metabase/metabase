@@ -13,6 +13,7 @@
             [metabase.automagic-dashboards.populate :as populate]
             [metabase.events :as events]
             [metabase.mbql.util :as mbql.u]
+            [metabase.models.action :as action]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :as collection]
             [metabase.models.dashboard :as dashboard :refer [Dashboard]]
@@ -76,6 +77,7 @@
    collection_id       (s/maybe su/IntGreaterThanZero)
    collection_position (s/maybe su/IntGreaterThanZero)
    is_app_page         (s/maybe s/Bool)}
+  (when is_app_page (action/check-data-apps-enabled))
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
   (collection/check-write-perms-for-collection collection_id)
   (let [dashboard-data {:name                name
@@ -287,6 +289,7 @@
    collection_position     (s/maybe su/IntGreaterThanZero)
    cache_ttl               (s/maybe su/IntGreaterThanZero)
    is_app_page             (s/maybe s/Bool)}
+  (when is_app_page (action/check-data-apps-enabled))
   (let [dash-before-update (api/write-check Dashboard id)]
     ;; Do various permissions checks as needed
     (collection/check-allowed-to-change-collection dash-before-update dash-updates)
@@ -704,6 +707,7 @@
   {dashboard-id su/IntGreaterThanZero
    dashcard-id su/IntGreaterThanZero
    slug su/NonBlankString}
+  (action/check-data-apps-enabled)
   (throw (UnsupportedOperationException. "Not implemented")))
 
 (api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/execute/:slug"
@@ -716,6 +720,7 @@
    dashcard-id su/IntGreaterThanZero
    slug su/NonBlankString
    parameters (s/maybe {s/Keyword s/Any})}
+  (action/check-data-apps-enabled)
   ;; Undo middleware string->keyword coercion
   (actions.execution/execute-dashcard! dashboard-id dashcard-id slug (update-keys parameters name)))
 

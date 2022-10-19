@@ -110,4 +110,4 @@
   (db/update! HTTPAction id action)
   (first (hydrate (action/select-actions :id id) :action/emitter-usages)))
 
-(api/define-routes actions/+check-actions-enabled)
+(api/define-routes actions/+check-actions-enabled actions/+check-data-apps-enabled)
