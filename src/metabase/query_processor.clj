@@ -36,7 +36,6 @@
             [metabase.query-processor.middleware.format-rows :as format-rows]
             [metabase.query-processor.middleware.large-int-id :as large-int-id]
             [metabase.query-processor.middleware.limit :as limit]
-            [metabase.query-processor.middleware.mark-outer-fields :as qp.mark-outer-fields]
             [metabase.query-processor.middleware.mbql-to-native :as mbql-to-native]
             [metabase.query-processor.middleware.normalize-query :as normalize]
             [metabase.query-processor.middleware.optimize-temporal-filters :as optimize-temporal-filters]
@@ -105,7 +104,6 @@
    #'resolve-joins/resolve-joins
    #'resolve-joined-fields/resolve-joined-fields
    #'fix-bad-refs/fix-bad-references
-   #'qp.mark-outer-fields/mark-outer-fields
    #'escape-join-aliases/escape-join-aliases
    ;; yes, this is called a second time, because we need to handle any joins that got added
    (resolve 'ee.sandbox.rows/apply-sandboxing)
