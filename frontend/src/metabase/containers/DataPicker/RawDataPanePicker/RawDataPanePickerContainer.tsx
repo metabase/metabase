@@ -25,6 +25,7 @@ interface TableListLoaderProps {
 interface RawDataPanePickerOwnProps extends DataPickerProps {
   onBack?: () => void;
 }
+
 type RawDataPanePickerProps = RawDataPanePickerOwnProps &
   DatabaseListLoaderProps;
 

@@ -4,6 +4,7 @@ import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/lib/metadata/utils/s
 
 import type { DataPickerProps, DataPickerDataType } from "./types";
 
+import CardPicker from "./CardPicker";
 import DataTypePicker from "./DataTypePicker";
 import RawDataPanePicker from "./RawDataPanePicker";
 
@@ -38,7 +39,19 @@ function DataPicker(props: DataPickerProps) {
     return <DataTypePicker onChange={handleDataTypeChange} />;
   }
 
-  return <RawDataPanePicker {...props} onBack={handleBack} />;
+  if (value.type === "raw-data") {
+    return <RawDataPanePicker {...props} onBack={handleBack} />;
+  }
+
+  if (value.type === "models") {
+    return <CardPicker {...props} targetModel="model" onBack={handleBack} />;
+  }
+
+  if (value.type === "questions") {
+    return <CardPicker {...props} targetModel="question" onBack={handleBack} />;
+  }
+
+  return null;
 }
 
 export default DataPicker;
