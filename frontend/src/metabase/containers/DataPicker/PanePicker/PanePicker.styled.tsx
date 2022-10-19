@@ -41,7 +41,7 @@ export const BackButton = styled.a`
   color: ${color("text-dark")};
   font-weight: 700;
 
-  margin-left: 1.8rem;
+  margin-left: 1rem;
   padding-bottom: 1rem;
 
   &:hover {
