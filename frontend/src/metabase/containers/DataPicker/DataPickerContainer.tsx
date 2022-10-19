@@ -5,6 +5,8 @@ import _ from "underscore";
 import { getSetting } from "metabase/selectors/settings";
 import { getHasDataAccess } from "metabase/new_query/selectors";
 
+import { useOnMount } from "metabase/hooks/use-on-mount";
+
 import Databases from "metabase/entities/databases";
 import Search from "metabase/entities/search";
 
@@ -81,6 +83,12 @@ function DataPicker({
     },
     [onChange],
   );
+
+  useOnMount(() => {
+    if (dataTypes.length === 1) {
+      handleDataTypeChange(dataTypes[0].id);
+    }
+  });
 
   const handleBack = useCallback(() => {
     onChange({
