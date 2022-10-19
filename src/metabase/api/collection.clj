@@ -760,17 +760,16 @@
 (defn- write-check-collection-or-root-collection
   "Check that you're allowed to write Collection with `collection-id`; if `collection-id` is `nil`, check that you have
   Root Collection perms."
-  [collection-id collection-namespace]
+  [collection-id]
   (api/write-check (if collection-id
                      (db/select-one Collection :id collection-id)
-                     (cond-> collection/root-collection
-                       collection-namespace (assoc :namespace collection-namespace)))))
+                     collection/root-collection)))
 
 (defn create-collection!
   "Create a new collection."
   [{:keys [name color description parent_id namespace authority_level]}]
   ;; To create a new collection, you need write perms for the location you are going to be putting it in...
-  (write-check-collection-or-root-collection parent_id namespace)
+  (write-check-collection-or-root-collection parent_id)
   ;; Now create the new Collection :)
   (api/check-403 (or (nil? authority_level)
                      (and api/*is-superuser?* authority_level)))

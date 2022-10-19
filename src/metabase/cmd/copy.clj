@@ -11,7 +11,6 @@
             [metabase.db.setup :as mdb.setup]
             [metabase.models :refer [Activity
                                      App
-                                     AppPermissionGraphRevision
                                      ApplicationPermissionsRevision
                                      BookmarkOrdering
                                      Card
@@ -25,7 +24,6 @@
                                      DashboardCardSeries
                                      Database
                                      Dimension
-                                     Emitter
                                      Field
                                      FieldValues
                                      LoginHistory
@@ -100,7 +98,6 @@
    Card
    CardBookmark
    DashboardBookmark
-   Emitter
    ModelAction
    CollectionBookmark
    BookmarkOrdering
@@ -108,7 +105,6 @@
    DashboardCardSeries
    Activity
    App
-   AppPermissionGraphRevision
    Pulse
    PulseCard
    PulseChannel

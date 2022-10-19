@@ -161,9 +161,8 @@
                           :last_query_start
                           :collection [:moderation_reviews :moderator_details])
                  (cond-> ;; card
-                   api/*is-superuser?* (hydrate [:emitters [:action :card]])
                    (:dataset raw-card) (hydrate :persisted)
-                   (:is_write raw-card) (hydrate :card/emitter-usages :card/action-id))
+                   (:is_write raw-card) (hydrate :card/action-id))
                  api/read-check
                  (last-edit/with-last-edit-info :card))]
     (u/prog1 card
@@ -261,6 +260,8 @@
            after  (:is_write card-updates)]
        (log/tracef "is_write value will change from %s => %s" (pr-str before) (pr-str after))
        (when-not (= before after)
+         ;; make sure current User is a superuser
+         (api/check-superuser)
          (try
            ;; make sure Card is not a Dataset
            (when (:dataset (merge card-updates card-before-update))
@@ -596,7 +597,7 @@ saved later when it is ready."
                  :collection [:moderation_reviews :moderator_details])
         (cond-> ;; card
           (:dataset card) (hydrate :persisted)
-          (:is_write card) (hydrate :card/emitter-usages :card/action-id))
+          (:is_write card) (hydrate :card/action-id))
         (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
 
 (api/defendpoint PUT "/:id"
