@@ -59,11 +59,38 @@
   validation is done before template expansion to avoid leaking sensitive values in the error messages that get
   logged.
 
-  ### TEMPLATES
+  ### Templates
 
   After spec validation, the config map is walked and `{{template}}` forms are expanded. This uses the same code used
-  to parse template tags in SQL queries, i.e. [[metabase.driver.common.parameters.parse]], which
-  "
+  to parse template tags in SQL queries, i.e. [[metabase.driver.common.parameters.parse]], which means that
+  `[[optional {{templates}}]]` work as well, if there is some reason you might need them.
+
+  A template form like `{{env MY_ENV_VAR}}` is wrapped in parens and parsed as EDN, and then the result is passed
+  to [[expand-parsed-template-form]], which dispatches off of the first form, as a symbol. e.g.
+
+  ```
+  {{env BIRD_TYPE}} => (expand-parsed-template-form '(env BIRD_TYPE)) => \"toucan\"
+  ```
+
+  At the time of this writing, `env` is the only supported template type; more can be added in the future as the need
+  arises.
+
+  #### `env`
+
+  ```yaml
+  {{env MY_ENV_VAR}}
+  ```
+
+  Replaces the template with the value of an environment variable. The template consisting of two parts: the word
+  `env` and then the name of an environment variable. It uses [[environ.core/env]] under the hood, after passing the
+  symbol thru [[csk/->kebab-case-keyword]]. This means it is case-insensitive and `lisp-case`/`snake_case`
+  insensitive, and Java system properties are supported as well, provided you replace dots in their names with slashes
+  or underscores. In other words, this works as well:
+
+  ```yaml
+  # Java system property user.dir
+  {{env user-dir}}
+  ```"
   (:require
    [camel-snake-kebab.core :as csk]
    [clojure.edn :as edn]
