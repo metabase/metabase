@@ -69,17 +69,6 @@
                                                  [:not [:like :location (hx/literal (format "/%d/%%" collection-id))]]))}]
     (set (map :id (db/query honeysql-form)))))
 
-(defn collection-permission-graph
-  "Return the permission graph for the collections with id in `collection-ids` and the root collection."
-  ([collection-ids] (collection-permission-graph collection-ids nil))
-  ([collection-ids collection-namespace]
-   (let [group-id->perms (group-id->permissions-set)]
-     {:revision (c-perm-revision/latest-id)
-      :groups   (into {} (for [group-id (db/select-ids PermissionsGroup)]
-                           {group-id (group-permissions-graph collection-namespace
-                                                              (group-id->perms group-id)
-                                                              collection-ids)}))})))
-
 (s/defn graph :- PermissionsGraph
   "Fetch a graph representing the current permissions status for every group and all permissioned collections. This
   works just like the function of the same name in `metabase.models.permissions`; see also the documentation for that
@@ -97,10 +86,11 @@
    (graph nil))
 
   ([collection-namespace :- (s/maybe su/KeywordOrString)]
-   (db/transaction
-     (-> collection-namespace
-         non-personal-collection-ids
-         (collection-permission-graph collection-namespace)))))
+   (let [group-id->perms (group-id->permissions-set)
+         collection-ids  (non-personal-collection-ids collection-namespace)]
+     {:revision (c-perm-revision/latest-id)
+      :groups   (into {} (for [group-id (db/select-ids PermissionsGroup)]
+                           {group-id (group-permissions-graph collection-namespace (group-id->perms group-id) collection-ids)}))})))
 
 
 ;;; -------------------------------------------------- Update Graph --------------------------------------------------
@@ -162,8 +152,8 @@
          [diff-old changes] (data/diff old-perms new-perms)]
      (perms/log-permissions-changes diff-old changes)
      (perms/check-revision-numbers old-graph new-graph)
+     (check-no-app-collections changes)
      (when (seq changes)
-       (check-no-app-collections changes)
        (db/transaction
          (doseq [[group-id changes] changes]
            (update-group-permissions! collection-namespace group-id changes))
