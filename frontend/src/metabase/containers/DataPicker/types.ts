@@ -12,3 +12,8 @@ export interface DataPickerProps {
   value: DataPickerValue;
   onChange: (value: DataPickerValue) => void;
 }
+
+export type DataPickerSelectedItem = {
+  type: "database" | "schema" | "table";
+  id: string | number;
+};

@@ -8,7 +8,7 @@ import Tables from "metabase/entities/tables";
 import type Database from "metabase-lib/lib/metadata/Database";
 import type Table from "metabase-lib/lib/metadata/Table";
 
-import { DataPickerProps } from "../types";
+import { DataPickerProps, DataPickerSelectedItem } from "../types";
 
 import useSelectedTables from "../useSelectedTables";
 
@@ -21,11 +21,6 @@ interface DatabaseListLoaderProps {
 interface TableListLoaderProps {
   tables: Table[];
 }
-
-type RawDataPickerSelectedItem = {
-  type: "database" | "schema" | "table";
-  id: string | number;
-};
 
 type RawDataPanePickerProps = DataPickerProps & DatabaseListLoaderProps;
 
@@ -57,7 +52,7 @@ function RawDataPanePicker({
   }, [selectedDatabase, selectedSchemaId]);
 
   const selectedItems = useMemo(() => {
-    const items: RawDataPickerSelectedItem[] = [];
+    const items: DataPickerSelectedItem[] = [];
 
     if (selectedDatabaseId) {
       items.push({ type: "database", id: selectedDatabaseId });
@@ -67,7 +62,7 @@ function RawDataPanePicker({
       items.push({ type: "schema", id: selectedSchemaId });
     }
 
-    const tables: RawDataPickerSelectedItem[] = selectedTableIds.map(id => ({
+    const tables: DataPickerSelectedItem[] = selectedTableIds.map(id => ({
       type: "table",
       id,
     }));
