@@ -2060,17 +2060,8 @@
                 (is (= "Actions are not enabled."
                        (mt/user-http-request :crowberto :post 400 execute-path
                                              {:parameters {"id" 1}}))))
-              (testing "Without execute rights on the DB"
-                (actions.test-util/with-actions-enabled
-                  (is (= "You don't have permissions to do that."
-                         (mt/user-http-request :rasta :post 403 execute-path
-                                               {:parameters {"id" 1}})))))
-              (testing "With execute rights on the DB"
-                (perms/update-global-execution-permission (:id (perms-group/all-users)) :all)
-                (try
-                  (actions.test-util/with-actions-enabled
-                    (is (= {:rows-affected 1}
-                           (mt/user-http-request :rasta :post 200 execute-path
-                                                 {:parameters {"id" 1}}))))
-                  (finally
-                    (perms/update-global-execution-permission (:id (perms-group/all-users)) :none)))))))))))
+            (testing "Without admin"
+              (actions.test-util/with-actions-enabled
+                (is (= "You don't have permissions to do that."
+                       (mt/user-http-request :rasta :post 403 execute-path
+                                             {:parameters [{:id "my_id" :type :number/= :value 1}]}))))))))))))

@@ -157,20 +157,8 @@
                    [:groups (u/the-id group) db-id :data :schemas]
                    :all))
         (is (= :all
-               (get-in (perms/data-perms-graph) [:groups (u/the-id group) db-id :data :schemas])))))
+               (get-in (perms/data-perms-graph) [:groups (u/the-id group) db-id :data :schemas])))))))
 
-    (testing "global execute permission"
-      (let [group-id (:id (perms-group/all-users))]
-        (try
-          (mt/user-http-request
-           :crowberto :put 200 "permissions/graph"
-           (assoc-in (perms/data-perms-graph)
-                     [:groups group-id :execute]
-                     :all))
-          (is (= :all
-                 (get-in (perms/data-perms-graph) [:groups group-id :execute])))
-          (finally
-            (perms/update-global-execution-permission group-id :none)))))))
 
 ;;; +---------------------------------------------- permissions membership apis -----------------------------------------------------------+
 

@@ -13,10 +13,9 @@
 
 (def ^:private grammar
   "Describes permission strings like /db/3/ or /collection/root/read/"
-  "permission = ( all | <'/'> execute | db | block | download | data-model | details | collection )
+  "permission = ( all | db | block | download | data-model | details | collection )
   all         = <'/'>
-  db          = <'/db/'> #'\\d+' <'/'> ( native | execute | schemas )?
-  execute     = <'execute/'>
+  db          = <'/db/'> #'\\d+' <'/'> ( native | schemas )?
   native      = <'native/'>
   schemas     = <'schema/'> schema?
   schema      = schema-name <'/'> table?
@@ -90,7 +89,6 @@
                                       "read"            [:read :all]
                                       "query"           [:query :all]
                                       "query/segmented" [:query :segmented])
-    [:execute]                     [:execute :all]
     [:native]                      [:data :native :write]
     ;; block perms. Parse something like /block/db/1/ to {:db {1 {:schemas :block}}}
     [:block db-id]                 [:db (Long/parseUnsignedLong db-id) :data :schemas :block]
