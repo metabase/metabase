@@ -1,9 +1,6 @@
 import React, { useCallback, useMemo } from "react";
-import { t } from "ttag";
 import { connect } from "react-redux";
 import _ from "underscore";
-
-import EmptyState from "metabase/components/EmptyState";
 
 import { getSetting } from "metabase/selectors/settings";
 import { getHasDataAccess } from "metabase/new_query/selectors";
@@ -22,9 +19,7 @@ import type {
 
 import { getDataTypes } from "./utils";
 
-import CardPicker from "./CardPicker";
-import DataTypePicker from "./DataTypePicker";
-import RawDataPicker from "./RawDataPicker";
+import DataPickerView from "./DataPickerView";
 
 interface DataPickerStateProps {
   hasNestedQueriesEnabled: boolean;
@@ -52,7 +47,7 @@ function DataPicker({
   hasDataAccess,
   ...props
 }: DataPickerProps) {
-  const { value, onChange } = props;
+  const { onChange } = props;
 
   const dataTypes = useMemo(
     () =>
@@ -87,32 +82,15 @@ function DataPicker({
     });
   }, [onChange]);
 
-  if (!hasDataAccess) {
-    return (
-      <EmptyState
-        message={t`To pick some data, you'll need to add some first`}
-        icon="database"
-      />
-    );
-  }
-
-  if (!value.type) {
-    return <DataTypePicker types={dataTypes} onChange={handleDataTypeChange} />;
-  }
-
-  if (value.type === "raw-data") {
-    return <RawDataPicker {...props} onBack={handleBack} />;
-  }
-
-  if (value.type === "models") {
-    return <CardPicker {...props} targetModel="model" onBack={handleBack} />;
-  }
-
-  if (value.type === "questions") {
-    return <CardPicker {...props} targetModel="question" onBack={handleBack} />;
-  }
-
-  return null;
+  return (
+    <DataPickerView
+      {...props}
+      dataTypes={dataTypes}
+      hasDataAccess={hasDataAccess}
+      onDataTypeChange={handleDataTypeChange}
+      onBack={handleBack}
+    />
+  );
 }
 
 export default _.compose(
