@@ -67,14 +67,8 @@ export function recognizeTemplateTags(queryText: string): string[] {
   return _.uniq(tagNames);
 }
 
-// needs to match logically with `cardTagRegexFromId`
 // matches '#123-foo-bar' and '#123' but not '#123foo'
 const CARD_TAG_NAME_REGEX: RegExp = /^#([0-9]*)(-[a-z0-9-]*)?$/;
-
-// needs to match logically with `CARD_TAG_NAME_REGEX`
-function cardTagRegexFromId(cardId: number): RegExp {
-  return new RegExp(`{{\\s*#${cardId}(-[a-z0-9-]*)?\\s*}}`, "g");
-}
 
 function tagRegex(tagName: string): RegExp {
   return new RegExp(`{{\\s*${tagName}\\s*}}`, "g");
@@ -88,19 +82,6 @@ function replaceTagName(
   const queryText = query
     .queryText()
     .replace(tagRegex(oldTagName), `{{${newTagName}}}`);
-  return query.setQueryText(queryText);
-}
-
-// replaces template tag with given cardId with a new tag name
-// the new tag name could reference a completely different card
-export function replaceCardTagNameById(
-  query: NativeQuery,
-  cardId: number,
-  newTagName: string,
-): NativeQuery {
-  const queryText = query
-    .queryText()
-    .replace(cardTagRegexFromId(cardId), `{{${newTagName}}}`);
   return query.setQueryText(queryText);
 }
 
