@@ -31,6 +31,13 @@ const SortableParameterWidgetList = SortableContainer(
   StaticParameterWidgetList,
 );
 
+function DashboardParameterWidget({ parameter, ...props }) {
+  if (parameter.hidden) {
+    return null;
+  }
+  return <StaticParameterWidget parameter={parameter} {...props} />;
+}
+
 function ParametersList({
   className,
 
@@ -47,7 +54,6 @@ function ParametersList({
 
   setParameterValue,
   setParameterIndex,
-  removeParameter,
   setEditingParameter,
 }) {
   const handleSortStart = () => {
@@ -72,7 +78,7 @@ function ParametersList({
     ParameterWidget = SortableParameterWidget;
     ParameterWidgetList = SortableParameterWidgetList;
   } else {
-    ParameterWidget = StaticParameterWidget;
+    ParameterWidget = DashboardParameterWidget;
     ParameterWidgetList = StaticParameterWidgetList;
   }
 

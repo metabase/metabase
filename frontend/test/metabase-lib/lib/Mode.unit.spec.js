@@ -6,6 +6,7 @@ import {
   PEOPLE,
 } from "__support__/sample_database_fixture";
 
+import { getMode } from "metabase/modes/lib/modes";
 import Question from "metabase-lib/lib/Question";
 
 describe("Mode", () => {
@@ -17,25 +18,27 @@ describe("Mode", () => {
       // testbed for generative testing? see http://leebyron.com/testcheck-js
 
       it("returns `segment` mode with raw data", () => {
-        const mode = rawDataQuery.question().mode();
+        const question = rawDataQuery.question();
+        const mode = getMode(question);
         expect(mode && mode.name()).toEqual("segment");
       });
 
       it("returns `metric` mode with >= 1 aggregations", () => {
-        const mode = rawDataQuery.aggregate(["count"]).question().mode();
+        const question = rawDataQuery.aggregate(["count"]).question();
+        const mode = getMode(question);
         expect(mode && mode.name()).toEqual("metric");
       });
 
       it("returns `timeseries` mode with >=1 aggregations and date breakout", () => {
-        const mode = rawDataQuery
+        const question = rawDataQuery
           .aggregate(["count"])
           .breakout(["field", ORDERS.CREATED_AT.id, { "temporal-unit": "day" }])
-          .question()
-          .mode();
+          .question();
+        const mode = getMode(question);
         expect(mode && mode.name()).toEqual("timeseries");
       });
       it("returns `timeseries` mode with >=1 aggregations and date + category breakout", () => {
-        const mode = rawDataQuery
+        const question = rawDataQuery
           .aggregate(["count"])
           .breakout(["field", ORDERS.CREATED_AT.id, { "temporal-unit": "day" }])
           .breakout([
@@ -43,26 +46,26 @@ describe("Mode", () => {
             PRODUCTS.CATEGORY.id,
             { "source-field": ORDERS.PRODUCT_ID.id },
           ])
-          .question()
-          .mode();
+          .question();
+        const mode = getMode(question);
         expect(mode && mode.name()).toEqual("timeseries");
       });
 
       it("returns `geo` mode with >=1 aggregations and an address breakout", () => {
-        const mode = rawDataQuery
+        const question = rawDataQuery
           .aggregate(["count"])
           .breakout([
             "field",
             PEOPLE.STATE.id,
             { "source-field": ORDERS.USER_ID.id },
           ])
-          .question()
-          .mode();
+          .question();
+        const mode = getMode(question);
         expect(mode && mode.name()).toEqual("geo");
       });
 
       it("returns `pivot` mode with >=1 aggregations and 1-2 category breakouts", () => {
-        const mode = rawDataQuery
+        const question = rawDataQuery
           .aggregate(["count"])
           .breakout([
             "field",
@@ -74,21 +77,21 @@ describe("Mode", () => {
             PEOPLE.STATE.id,
             { "source-field": ORDERS.USER_ID.id },
           ])
-          .question()
-          .mode();
+          .question();
+        const mode = getMode(question);
         expect(mode && mode.name()).toEqual("pivot");
       });
 
       it("returns `segment` mode with pk filter", () => {
-        const mode = rawDataQuery
+        const question = rawDataQuery
           .filter(["=", ["field", ORDERS.ID.id, null], 42])
-          .question()
-          .mode();
+          .question();
+        const mode = getMode(question);
         expect(mode && mode.name()).toEqual("segment");
       });
 
       it("returns `default` mode with >=0 aggregations and >=3 breakouts", () => {
-        const mode = rawDataQuery
+        const question = rawDataQuery
           .aggregate(["count"])
           .breakout(["field", ORDERS.CREATED_AT.id, { "temporal-unit": "day" }])
           .breakout([
@@ -101,8 +104,8 @@ describe("Mode", () => {
             PEOPLE.STATE.id,
             { "source-field": ORDERS.USER_ID.id },
           ])
-          .question()
-          .mode();
+          .question();
+        const mode = getMode(question);
         expect(mode && mode.name()).toEqual("default");
       });
       it("returns `default` mode with >=1 aggregations and >=1 breakouts when first neither date or category", () => {});
@@ -126,7 +129,7 @@ describe("Mode", () => {
     // this is action-specific so just rudimentary tests here showing that the actionsForClick logic works
     // Action-specific tests would optimally be in their respective test files
     describe("for a question with an aggregation and a time breakout", () => {
-      const timeBreakoutQuestionMode = Question.create({
+      const question = Question.create({
         databaseId: SAMPLE_DATABASE.id,
         tableId: ORDERS.id,
         metadata,
@@ -135,16 +138,12 @@ describe("Mode", () => {
         .aggregate(["count"])
         .breakout(["field", 1, { "temporal-unit": "day" }])
         .question()
-        .setDisplay("table")
-        .mode();
+        .setDisplay("table");
+      const mode = getMode(question);
 
       it("has pivot as mode actions 1 and 2", () => {
-        expect(timeBreakoutQuestionMode.actionsForClick()[0].name).toBe(
-          "pivot-by-category",
-        );
-        expect(timeBreakoutQuestionMode.actionsForClick()[1].name).toBe(
-          "pivot-by-location",
-        );
+        expect(mode.actionsForClick()[0].name).toBe("pivot-by-category");
+        expect(mode.actionsForClick()[1].name).toBe("pivot-by-location");
       });
     });
   });

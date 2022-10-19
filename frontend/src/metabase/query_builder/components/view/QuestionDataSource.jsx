@@ -3,16 +3,16 @@ import { t } from "ttag";
 import PropTypes from "prop-types";
 
 import { color } from "metabase/lib/colors";
-import {
-  isVirtualCardId,
-  getQuestionIdFromVirtualTableId,
-} from "metabase/lib/saved-questions";
 import * as Urls from "metabase/lib/urls";
 import Questions from "metabase/entities/questions";
 
 import Tooltip from "metabase/components/Tooltip";
 
 import TableInfoPopover from "metabase/components/MetadataInfo/TableInfoPopover";
+import {
+  isVirtualCardId,
+  getQuestionIdFromVirtualTableId,
+} from "metabase-lib/lib/metadata/utils/saved-questions";
 
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
 import { TablesDivider } from "./QuestionDataSource.styled";
@@ -200,12 +200,6 @@ function getDataSourceParts({ question, subHead, isObjectDetail }) {
         isLast={!isObjectDetail}
       />,
     );
-  }
-
-  if (isObjectDetail) {
-    parts.push({
-      name: question.objectDetailPK(),
-    });
   }
 
   return parts.filter(

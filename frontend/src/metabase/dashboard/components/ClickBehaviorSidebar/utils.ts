@@ -1,13 +1,12 @@
 import { t } from "ttag";
 import { getIn } from "icepick";
 
-import { hasActionsMenu } from "metabase/lib/click-behavior";
-
 import type {
   ClickBehaviorType,
   DashboardOrderedCard,
 } from "metabase-types/api";
 import type { Column } from "metabase-types/types/Dataset";
+import { hasActionsMenu } from "metabase/lib/click-behavior";
 import { keyForColumn } from "metabase-lib/lib/queries/utils/dataset";
 
 type ClickBehaviorOption = {
@@ -19,7 +18,6 @@ export const clickBehaviorOptions: ClickBehaviorOption[] = [
   { value: "menu", icon: "popover" },
   { value: "link", icon: "link" },
   { value: "crossfilter", icon: "filter" },
-  { value: "action", icon: "play" },
 ];
 
 export function getClickBehaviorOptionName(

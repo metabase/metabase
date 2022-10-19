@@ -24,7 +24,10 @@ import TippyPopover from "metabase/components/Popover/TippyPopover";
 import {
   getIsBookmarked,
   getIsShowDashboardInfoSidebar,
+  getDataAppNavItem,
+  getPageTitleTemplateChange,
 } from "metabase/dashboard/selectors";
+import { toggleSidebar, setPageTitleTemplate } from "../actions";
 
 import Header from "../components/DashboardHeader";
 import { SIDEBAR_NAME } from "../constants";
@@ -34,14 +37,21 @@ import {
 } from "./DashboardHeader.styled";
 
 const mapStateToProps = (state, props) => {
-  const isDataApp = props.dashboard.is_app_page;
-  const isShowingDashboardInfoSidebar =
-    !isDataApp && getIsShowDashboardInfoSidebar(state);
-  return {
+  const stateProps = {
     isBookmarked: getIsBookmarked(state, props),
     isNavBarOpen: getIsNavbarOpen(state),
-    isShowingDashboardInfoSidebar,
   };
+
+  const isDataApp = props.dashboard.is_app_page;
+  stateProps.isShowingDashboardInfoSidebar =
+    !isDataApp && getIsShowDashboardInfoSidebar(state);
+
+  if (isDataApp) {
+    stateProps.pageTitleTemplate = getPageTitleTemplateChange(state);
+    stateProps.dataAppNavItem = getDataAppNavItem(state, props.params);
+  }
+
+  return stateProps;
 };
 
 const mapDispatchToProps = {
@@ -50,6 +60,8 @@ const mapDispatchToProps = {
   deleteBookmark: ({ id }) =>
     Bookmark.actions.delete({ id, type: "dashboard" }),
   onChangeLocation: push,
+  toggleSidebar,
+  setPageTitleTemplate,
 };
 
 class DashboardHeader extends Component {
@@ -66,6 +78,8 @@ class DashboardHeader extends Component {
 
   static propTypes = {
     dashboard: PropTypes.object.isRequired,
+    dataAppNavItem: PropTypes.object,
+    pageTitleTemplate: PropTypes.string,
     isEditable: PropTypes.bool.isRequired,
     isEditing: PropTypes.oneOfType([PropTypes.bool, PropTypes.object])
       .isRequired,
@@ -92,8 +106,12 @@ class DashboardHeader extends Component {
 
     onChangeLocation: PropTypes.func.isRequired,
 
+    toggleSidebar: PropTypes.func.isRequired,
+    sidebar: PropTypes.string.isRequired,
     setSidebar: PropTypes.func.isRequired,
     closeSidebar: PropTypes.func.isRequired,
+
+    setPageTitleTemplate: PropTypes.func.isRequired,
   };
 
   handleEdit(dashboard) {
@@ -131,7 +149,8 @@ class DashboardHeader extends Component {
   }
 
   async onSave() {
-    await this.props.saveDashboardAndCards(this.props.dashboard.id);
+    const { dashboard, location, params, saveDashboardAndCards } = this.props;
+    await saveDashboardAndCards(dashboard.id, { location, params });
     this.onDoneEditing();
   }
 
@@ -158,6 +177,12 @@ class DashboardHeader extends Component {
   }
 
   getEditingButtons() {
+    const { dashboard, pageTitleTemplate } = this.props;
+
+    const isDataAppPage = dashboard.is_app_page;
+    const canSave =
+      !isDataAppPage || pageTitleTemplate === null || pageTitleTemplate !== "";
+
     return [
       <Button
         data-metabase-event="Dashboard;Cancel Edits"
@@ -170,6 +195,7 @@ class DashboardHeader extends Component {
       <ActionButton
         key="save"
         actionFn={() => this.onSave()}
+        disabled={!canSave}
         className="Button Button--primary Button--small"
         normalText={t`Save`}
         activeText={t`Saving…`}
@@ -189,12 +215,12 @@ class DashboardHeader extends Component {
       isFullscreen,
       isEditable,
       location,
-      onToggleAddQuestionSidebar,
-      showAddQuestionSidebar,
       onFullscreenChange,
       createBookmark,
       deleteBookmark,
+      sidebar,
       setSidebar,
+      toggleSidebar,
       isShowingDashboardInfoSidebar,
       closeSidebar,
     } = this.props;
@@ -210,16 +236,18 @@ class DashboardHeader extends Component {
     }
 
     if (isEditing) {
-      const addQuestionButtonHint = showAddQuestionSidebar
-        ? t`Close sidebar`
-        : t`Add questions`;
+      const activeSidebarName = sidebar.name;
+      const addQuestionButtonHint =
+        activeSidebarName === SIDEBAR_NAME.addQuestion
+          ? t`Close sidebar`
+          : t`Add questions`;
 
       buttons.push(
         <Tooltip tooltip={addQuestionButtonHint}>
           <DashboardHeaderButton
             icon="add"
-            isActive={showAddQuestionSidebar}
-            onClick={onToggleAddQuestionSidebar}
+            isActive={activeSidebarName === SIDEBAR_NAME.addQuestion}
+            onClick={() => toggleSidebar(SIDEBAR_NAME.addQuestion)}
             data-metabase-event="Dashboard;Add Card Sidebar"
           />
         </Tooltip>,
@@ -240,23 +268,6 @@ class DashboardHeader extends Component {
           </a>
         </Tooltip>,
       );
-
-      if (isAdmin && dashboard.is_app_page) {
-        buttons.push(
-          <Tooltip key="add-action" tooltip={t`Add action`}>
-            <a
-              data-metabase-event="Dashboard;Add Action"
-              key="add-action"
-              className="text-brand-hover cursor-pointer"
-              onClick={() => this.onAddAction()}
-            >
-              <DashboardHeaderButton>
-                <Icon name="play" size={18} />
-              </DashboardHeaderButton>
-            </a>
-          </Tooltip>,
-        );
-      }
 
       const {
         isAddParameterPopoverOpen,
@@ -292,6 +303,32 @@ class DashboardHeader extends Component {
           </TippyPopover>
         </span>,
       );
+
+      if (isAdmin && dashboard.is_app_page) {
+        buttons.push(
+          <>
+            <DashboardHeaderActionDivider />
+            <Tooltip key="add-action-form" tooltip={t`Add action form`}>
+              <DashboardHeaderButton
+                isActive={activeSidebarName === SIDEBAR_NAME.addActionForm}
+                onClick={() => toggleSidebar(SIDEBAR_NAME.addActionForm)}
+                data-metabase-event="Dashboard;Add Card Sidebar"
+              >
+                <Icon name="list" size={18} />
+              </DashboardHeaderButton>
+            </Tooltip>
+            <Tooltip key="add-action-button" tooltip={t`Add action button`}>
+              <DashboardHeaderButton
+                isActive={activeSidebarName === SIDEBAR_NAME.addActionButton}
+                onClick={() => toggleSidebar(SIDEBAR_NAME.addActionButton)}
+                data-metabase-event="Dashboard;Add Card Sidebar"
+              >
+                <Icon name="click" size={18} />
+              </DashboardHeaderButton>
+            </Tooltip>
+          </>,
+        );
+      }
 
       extraButtons.push({
         title: t`Revision history`,
@@ -394,11 +431,14 @@ class DashboardHeader extends Component {
   render() {
     const {
       dashboard,
+      dataAppNavItem,
+      pageTitleTemplate,
       isEditing,
       isFullscreen,
       isAdditionalInfoVisible,
       setDashboardAttribute,
       setSidebar,
+      setPageTitleTemplate,
     } = this.props;
 
     const isDataAppPage = dashboard.is_app_page;
@@ -410,6 +450,8 @@ class DashboardHeader extends Component {
         objectType="dashboard"
         analyticsContext="Dashboard"
         dashboard={dashboard}
+        dataAppNavItem={dataAppNavItem}
+        pageTitleTemplate={pageTitleTemplate}
         isEditing={isEditing}
         isBadgeVisible={!isEditing && !isFullscreen && isAdditionalInfoVisible}
         isLastEditInfoVisible={
@@ -417,7 +459,9 @@ class DashboardHeader extends Component {
         }
         isEditingInfo={isEditing}
         isNavBarOpen={this.props.isNavBarOpen}
-        headerButtons={this.getHeaderButtons()}
+        headerButtons={
+          dashboard.is_app_page && !isEditing ? [] : this.getHeaderButtons()
+        }
         editWarning={this.getEditWarning(dashboard)}
         editingTitle={
           dashboard.is_app_page
@@ -428,6 +472,7 @@ class DashboardHeader extends Component {
         setDashboardAttribute={setDashboardAttribute}
         onLastEditInfoClick={() => setSidebar({ name: SIDEBAR_NAME.info })}
         onSave={() => this.onSave()}
+        setPageTitleTemplate={setPageTitleTemplate}
       />
     );
   }

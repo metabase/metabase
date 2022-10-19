@@ -1,14 +1,13 @@
 import _ from "underscore";
 import { assocIn } from "icepick";
 
-import {
-  getTemplateTagsForParameters,
-  getTemplateTagParameters,
-} from "metabase/parameters/utils/cards";
-
 import { Dataset } from "metabase-types/api";
 import { Series } from "metabase-types/types/Visualization";
 import { Dispatch, GetState, QueryBuilderMode } from "metabase-types/store";
+import {
+  getTemplateTagsForParameters,
+  getTemplateTagParameters,
+} from "metabase-lib/lib/parameters/utils/template-tags";
 import Question from "metabase-lib/lib/Question";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";

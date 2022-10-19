@@ -26,7 +26,6 @@ import Mode from "metabase-lib/lib/Mode";
 import { isStandard } from "metabase-lib/lib/queries/utils/filter";
 import { isFK } from "metabase-lib/lib/types/utils/isa";
 import { memoizeClass, sortObject } from "metabase-lib/lib/utils";
-/* eslint-enable import/order */
 
 // TODO: remove these dependencies
 import * as Urls from "metabase/lib/urls";
@@ -34,7 +33,6 @@ import {
   getCardUiParameters,
   remapParameterValuesToTemplateTags,
 } from "metabase/parameters/utils/cards";
-import { fieldFilterParameterToMBQLFilter } from "metabase/parameters/utils/mbql";
 import {
   normalizeParameterValue,
   getParameterValuesBySlug,
@@ -62,7 +60,8 @@ import { DependentMetadataItem } from "metabase-types/types/Query";
 import { utf8_to_b64url } from "metabase/lib/encoding";
 import { CollectionId } from "metabase-types/api";
 
-import { getQuestionVirtualTableId } from "metabase/lib/saved-questions/saved-questions";
+import { fieldFilterParameterToMBQLFilter } from "metabase-lib/lib/parameters/utils/mbql";
+import { getQuestionVirtualTableId } from "metabase-lib/lib/metadata/utils/saved-questions";
 import {
   aggregate,
   breakout,
@@ -820,32 +819,6 @@ class QuestionInner {
     }
   }
 
-  mode(): Mode | null | undefined {
-    return Mode.forQuestion(this);
-  }
-
-  /**
-   * Returns true if, based on filters and table columns, the expected result is a single row.
-   * However, it might not be true when a PK column is not unique, leading to multiple rows.
-   * Because of that, always check query results in addition to this property.
-   */
-  isObjectDetail(): boolean {
-    const mode = this.mode();
-    return mode ? mode.name() === "object" : false;
-  }
-
-  objectDetailPK(): any {
-    const query = this.query();
-
-    if (this.isObjectDetail() && query instanceof StructuredQuery) {
-      const filters = query.filters();
-
-      if (filters[0] && isStandard(filters[0])) {
-        return filters[0][2];
-      }
-    }
-  }
-
   /**
    * A user-defined name for the question
    */
@@ -1329,10 +1302,9 @@ class QuestionInner {
   }
 }
 
-export default class Question extends memoizeClass<QuestionInner>(
-  "query",
-  "mode",
-)(QuestionInner) {
+export default class Question extends memoizeClass<QuestionInner>("query")(
+  QuestionInner,
+) {
   /**
    * TODO Atte Keinänen 6/13/17: Discussed with Tom that we could use the default Question constructor instead,
    * but it would require changing the constructor signature so that `card` is an optional parameter and has a default value

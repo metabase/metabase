@@ -1,8 +1,6 @@
 import React, { useMemo } from "react";
 import { getIn } from "icepick";
 
-import { isTableDisplay } from "metabase/lib/click-behavior";
-
 import { isMappedExplicitActionButton } from "metabase/writeback/utils";
 
 import type { UiParameter } from "metabase/parameters/types";
@@ -16,6 +14,7 @@ import type {
 } from "metabase-types/api";
 import type { Column } from "metabase-types/types/Dataset";
 
+import { isTableDisplay } from "metabase/lib/click-behavior";
 import { getClickBehaviorForColumn } from "./utils";
 import ClickBehaviorSidebarMainView from "./ClickBehaviorSidebarMainView";
 import TableClickBehaviorView from "./TableClickBehaviorView";

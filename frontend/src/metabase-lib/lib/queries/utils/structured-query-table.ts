@@ -1,5 +1,5 @@
 import type { Field as FieldRef } from "metabase-types/types/Query";
-import { isVirtualCardId } from "metabase/lib/saved-questions";
+import { isVirtualCardId } from "metabase-lib/lib/metadata/utils/saved-questions";
 import type Field from "metabase-lib/lib/metadata/Field";
 import type Table from "metabase-lib/lib/metadata/Table";
 

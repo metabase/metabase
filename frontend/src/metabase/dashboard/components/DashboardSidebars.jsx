@@ -10,6 +10,7 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import ClickBehaviorSidebar from "./ClickBehaviorSidebar";
 import DashboardInfoSidebar from "./DashboardInfoSidebar";
 import { AddCardSidebar } from "./add-card-sidebar/AddCardSidebar";
+import { AddActionSidebar } from "./AddActionSidebar";
 
 DashboardSidebars.propTypes = {
   dashboard: PropTypes.object,
@@ -19,7 +20,6 @@ DashboardSidebars.propTypes = {
   addCardToDashboard: PropTypes.func.isRequired,
   editingParameter: PropTypes.object,
   isEditingParameter: PropTypes.bool.isRequired,
-  showAddQuestionSidebar: PropTypes.bool.isRequired,
   clickBehaviorSidebarDashcard: PropTypes.object, // only defined when click-behavior sidebar is open
   onReplaceAllDashCardVisualizationSettings: PropTypes.func.isRequired,
   onUpdateDashCardVisualizationSettings: PropTypes.func.isRequired,
@@ -35,6 +35,7 @@ DashboardSidebars.propTypes = {
   isFullscreen: PropTypes.bool.isRequired,
   onCancel: PropTypes.func.isRequired,
   params: PropTypes.object,
+  location: PropTypes.object,
   sidebar: PropTypes.shape({
     name: PropTypes.string,
     props: PropTypes.object,
@@ -51,22 +52,18 @@ export function DashboardSidebars({
   removeParameter,
   addCardToDashboard,
   editingParameter,
-  isEditingParameter,
-  showAddQuestionSidebar,
   clickBehaviorSidebarDashcard,
   onReplaceAllDashCardVisualizationSettings,
   onUpdateDashCardVisualizationSettings,
   onUpdateDashCardColumnSettings,
-  setEditingParameter,
   setParameter,
   setParameterName,
   setParameterDefaultValue,
   dashcardData,
   setParameterFilteringParameters,
-  isSharing,
-  isEditing,
   isFullscreen,
   onCancel,
+  location,
   params,
   sidebar,
   closeSidebar,
@@ -94,6 +91,16 @@ export function DashboardSidebars({
         <AddCardSidebar
           initialCollection={dashboard.collection_id}
           onSelect={handleAddCard}
+        />
+      );
+    case SIDEBAR_NAME.addActionForm:
+    case SIDEBAR_NAME.addActionButton:
+      return (
+        <AddActionSidebar
+          dashboard={dashboard}
+          displayType={
+            sidebar.name === SIDEBAR_NAME.addActionForm ? "form" : "button"
+          }
         />
       );
     case SIDEBAR_NAME.clickBehavior:
@@ -152,6 +159,8 @@ export function DashboardSidebars({
       return (
         <DashboardInfoSidebar
           dashboard={dashboard}
+          location={location}
+          params={params}
           saveDashboardAndCards={saveDashboardAndCards}
           setDashboardAttribute={setDashboardAttribute}
         />

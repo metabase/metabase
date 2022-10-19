@@ -27,12 +27,12 @@ import Tooltip from "metabase/components/Tooltip";
 import { isVirtualDashCard } from "metabase/dashboard/utils";
 
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
-import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
 
 import { isActionCard } from "metabase/writeback/utils";
 
 import { getParameterValuesBySlug } from "metabase/parameters/utils/parameter-values";
 import Utils from "metabase/lib/utils";
+import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
 import DashCardParameterMapper from "./DashCardParameterMapper";
 import { DashCardRoot } from "./DashCard.styled";
 

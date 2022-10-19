@@ -71,6 +71,7 @@ import FieldListContainer from "metabase/reference/databases/FieldListContainer"
 import FieldDetailContainer from "metabase/reference/databases/FieldDetailContainer";
 
 import DataAppLanding from "metabase/writeback/containers/DataAppLanding";
+import DataAppPageLanding from "metabase/writeback/containers/DataAppPageLanding";
 
 import getAccountRoutes from "metabase/account/routes";
 import getAdminRoutes from "metabase/admin/routes";
@@ -201,7 +202,7 @@ export const getRoutes = store => (
 
       {/* MAIN */}
       <Route component={IsAuthenticated}>
-        {/* The global all hands rotues, things in here are for all the folks */}
+        {/* The global all hands routes, things in here are for all the folks */}
         <Route
           path="/"
           component={HomePage}
@@ -248,7 +249,7 @@ export const getRoutes = store => (
           <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
           {getCollectionTimelineRoutes()}
 
-          <Route path="page/:pageId" component={DashboardApp}>
+          <Route path="page/:pageId" component={DataAppPageLanding}>
             <ModalRoute path="move" modal={DashboardMoveModal} />
             <ModalRoute path="copy" modal={DashboardCopyModal} />
             <ModalRoute path="archive" modal={ArchiveDashboardModal} />

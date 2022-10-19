@@ -77,10 +77,11 @@
                                        :field_order     :keyword})
           :properties     (constantly {:timestamped? true})
           :pre-insert     pre-insert
-          :pre-delete     pre-delete})
+          :pre-delete     pre-delete}))
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [:schema :name (serdes.hash/hydrated-hash :db)])})
+(defmethod serdes.hash/identity-hash-fields Table
+  [_table]
+  [:schema :name (serdes.hash/hydrated-hash :db)])
 
 
 ;;; ------------------------------------------------ Field ordering -------------------------------------------------

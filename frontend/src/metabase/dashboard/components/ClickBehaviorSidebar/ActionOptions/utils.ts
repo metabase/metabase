@@ -1,4 +1,5 @@
 import _ from "underscore";
+import { humanize } from "metabase/lib/formatting";
 
 import type {
   ActionDashboardCard,
@@ -78,6 +79,6 @@ export function ensureParamsHaveNames(
 ): WritebackParameter[] {
   return parameters.map(parameter => ({
     ...parameter,
-    name: parameter.name ?? parameter.id,
+    name: parameter.name ?? humanize(parameter.id),
   }));
 }

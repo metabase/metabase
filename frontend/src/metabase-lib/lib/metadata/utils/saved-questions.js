@@ -1,4 +1,4 @@
-import { generateSchemaId } from "metabase/lib/schema";
+import { generateSchemaId } from "metabase-lib/lib/metadata/utils/schema";
 
 export const SAVED_QUESTIONS_VIRTUAL_DB_ID = -1337;
 export const ROOT_COLLECTION_VIRTUAL_SCHEMA_NAME = "Everything else";

@@ -16,7 +16,7 @@ export const getDefaultFormSettings = (
   overrides: Partial<ActionFormSettings> = {},
 ): ActionFormSettings => ({
   name: "",
-  type: "modal",
+  type: "button",
   description: "",
   fields: {},
   confirmMessage: "",
@@ -108,7 +108,10 @@ export const getFormFieldForParameter = (
 });
 
 export const getFormTitle = (action: WritebackAction): string =>
-  action.visualization_settings?.name || action.name || "Action form";
+  action.visualization_settings?.name ||
+  action.name ||
+  action.slug ||
+  "Action form";
 
 export const getSubmitButtonLabel = (action: WritebackAction): string =>
   action.visualization_settings?.submitButtonLabel || t`Save`;

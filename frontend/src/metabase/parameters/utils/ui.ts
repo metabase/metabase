@@ -37,9 +37,7 @@ export function getVisibleParameters(
   const hiddenParametersSlugSet =
     buildHiddenParametersSlugSet(hiddenParameterSlugs);
 
-  return parameters.filter(
-    p => !hiddenParametersSlugSet.has(p.slug) && !p.hidden,
-  );
+  return parameters.filter(p => !hiddenParametersSlugSet.has(p.slug));
 }
 
 export function getParameterWidgetTitle(parameter: UiParameter) {

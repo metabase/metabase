@@ -1,4 +1,4 @@
-import { getQuestionVirtualTableId } from "metabase/lib/saved-questions";
+import { getQuestionVirtualTableId } from "metabase-lib/lib/metadata/utils/saved-questions";
 
 export function convertSearchResultToTableLikeItem(searchResultItem) {
   // NOTE: in the entire application when we want to use saved questions as tables

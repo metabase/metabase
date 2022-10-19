@@ -44,10 +44,11 @@
    {:types      (constantly {:definition :metric-segment-definition})
     :properties (constantly {:timestamped? true
                              :entity_id    true})
-    :pre-update pre-update})
+    :pre-update pre-update}))
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :table)])})
+(defmethod serdes.hash/identity-hash-fields Metric
+  [_metric]
+  [:name (serdes.hash/hydrated-hash :table)])
 
 
 ;;; --------------------------------------------------- REVISIONS ----------------------------------------------------
@@ -80,6 +81,9 @@
   [_ metric]
   (let [base (serdes.base/infer-self-path "Metric" metric)]
     [(assoc base :label (:name metric))]))
+
+(defmethod serdes.base/extract-query "Metric" [_model-name _opts]
+  (serdes.base/raw-reducible-query "Metric" {:where [:= :archived false]}))
 
 (defmethod serdes.base/extract-one "Metric"
   [_model-name _opts metric]

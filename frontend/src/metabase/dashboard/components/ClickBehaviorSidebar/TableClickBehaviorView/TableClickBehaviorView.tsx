@@ -2,8 +2,6 @@ import React, { useMemo, useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { hasActionsMenu } from "metabase/lib/click-behavior";
-
 import type {
   DashboardOrderedCard,
   ClickBehavior,
@@ -11,6 +9,7 @@ import type {
 } from "metabase-types/api";
 import type { Column as IColumn } from "metabase-types/types/Dataset";
 
+import { hasActionsMenu } from "metabase/lib/click-behavior";
 import Column from "./Column";
 
 const COLUMN_SORTING_ORDER_BY_CLICK_BEHAVIOR_TYPE = [

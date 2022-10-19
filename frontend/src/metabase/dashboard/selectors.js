@@ -4,6 +4,8 @@ import { createSelector } from "reselect";
 import { getMetadata } from "metabase/selectors/metadata";
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 
+import DataApps from "metabase/entities/data-apps";
+
 import {
   getDashboardUiParameters,
   getFilteringParameterValuesMap,
@@ -238,20 +240,16 @@ export const getIsAdditionalInfoVisible = createSelector(
   (isEmbedded, embedOptions) => !isEmbedded || embedOptions.additional_info,
 );
 
-const getMissingActionParametersModalState = state =>
-  state.dashboard.missingActionParameters;
+export const getDataApp = (state, routerParams) => {
+  const dataAppId = Number(routerParams.slug);
+  return DataApps.selectors.getObject(state, { entityId: dataAppId });
+};
 
-export const getActionParametersModalAction = createSelector(
-  [getDashboardComplete, getMissingActionParametersModalState],
-  (dashboard, missingActionParametersModalState) => {
-    const dashcardId = missingActionParametersModalState?.dashcardId;
-    const dashcard = dashboard?.ordered_cards.find(dc => dc.id === dashcardId);
-    return dashcard?.action;
-  },
-);
+export const getDataAppNavItem = (state, routerParams) => {
+  const dashboard = getDashboardComplete(state);
+  const dataApp = getDataApp(state, routerParams);
+  return dataApp?.nav_items.find(navItem => navItem.page_id === dashboard.id);
+};
 
-export const getActionParametersModalFormProps = createSelector(
-  [getMissingActionParametersModalState],
-  missingActionParametersModalState =>
-    missingActionParametersModalState?.props || {},
-);
+export const getPageTitleTemplateChange = state =>
+  state.dashboard.titleTemplateChange;

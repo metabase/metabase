@@ -30,7 +30,7 @@ import { Column } from "metabase-types/types/Dataset";
 import {
   isVirtualCardId,
   getQuestionIdFromVirtualTableId,
-} from "metabase/lib/saved-questions";
+} from "metabase-lib/lib/metadata/utils/saved-questions";
 import { isCompatibleAggregationOperatorForField } from "metabase-lib/lib/operators/utils";
 import { TYPE } from "metabase-lib/lib/types/constants";
 import { fieldRefForColumn } from "metabase-lib/lib/queries/utils/dataset";

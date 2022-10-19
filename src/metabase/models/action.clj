@@ -62,10 +62,13 @@
   (merge models/IModelDefaults
          {:properties (constantly {:entity_id    true})
           :types      (constantly {:parameter_mappings     :parameters-list
-                                   :visualization_settings :visualization-settings})})
+                                   :visualization_settings :visualization-settings})}))
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields [:entity_id]})
+;;; TODO -- this doesn't seem right. [[serdes.hash/identity-hash-fields]] is used to calculate `entity_id`, so we
+;;; shouldn't use it in the calculation. We can fix this later
+(defmethod serdes.hash/identity-hash-fields ModelAction
+  [_model-action]
+  [:entity_id])
 
 (defn insert!
   "Inserts an Action and related HTTPAction or QueryAction. Returns the action id."

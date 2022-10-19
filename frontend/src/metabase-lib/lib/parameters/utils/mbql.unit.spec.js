@@ -6,7 +6,7 @@ import {
   stringParameterValueToMBQL,
   numberParameterValueToMBQL,
   fieldFilterParameterToMBQLFilter,
-} from "./mbql";
+} from "metabase-lib/lib/parameters/utils/mbql";
 
 describe("parameters/utils/mbql", () => {
   describe("dateParameterValueToMBQL", () => {

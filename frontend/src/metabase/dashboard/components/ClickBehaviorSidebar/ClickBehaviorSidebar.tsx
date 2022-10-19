@@ -1,11 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { getIn } from "icepick";
 
-import {
-  isTableDisplay,
-  clickBehaviorIsValid,
-} from "metabase/lib/click-behavior";
-
 import { useOnMount } from "metabase/hooks/use-on-mount";
 import { usePrevious } from "metabase/hooks/use-previous";
 
@@ -23,6 +18,8 @@ import type {
   DatasetData,
 } from "metabase-types/api";
 import type { Column } from "metabase-types/types/Dataset";
+import { isTableDisplay } from "metabase/lib/click-behavior";
+import { clickBehaviorIsValid } from "metabase-lib/lib/parameters/utils/click-behavior";
 import { keyForColumn } from "metabase-lib/lib/queries/utils/dataset";
 
 import { getClickBehaviorForColumn } from "./utils";

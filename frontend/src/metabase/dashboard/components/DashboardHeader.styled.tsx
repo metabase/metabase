@@ -1,19 +1,22 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
+import EditableText from "metabase/core/components/EditableText";
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 
-import { alpha, color } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import {
   breakpointMaxSmall,
   breakpointMinSmall,
   breakpointMaxMedium,
 } from "metabase/styled-components/theme";
-import EditableText from "metabase/core/components/EditableText";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
+
+import DataAppPageTitle from "metabase/writeback/containers/DataAppPageTitle";
 
 interface TypeForItemsThatRespondToNavBarOpen {
   isNavBarOpen: boolean;
+  isDataApp?: boolean;
 }
 
 export const HeaderRoot = styled(
@@ -31,6 +34,15 @@ export const HeaderRoot = styled(
       `}
   }
 
+  ${props =>
+    props.isDataApp &&
+    css`
+      width: 1200px;
+      margin-left: auto;
+      margin-right: auto;
+      padding: 0;
+    `}
+
   ${breakpointMaxSmall} {
     flex-direction: column;
     align-items: baseline;
@@ -47,10 +59,19 @@ export const HeaderCaptionContainer = styled.div`
   right: 0.25rem;
 `;
 
-export const HeaderCaption = styled(EditableText)`
+const headerCaptionStyle = css`
   font-size: 1.25rem;
   font-weight: 700;
   line-height: 1.5rem;
+  min-width: 200px;
+`;
+
+export const HeaderCaption = styled(EditableText)`
+  ${headerCaptionStyle};
+`;
+
+export const DataAppPageCaption = styled(DataAppPageTitle)`
+  ${headerCaptionStyle};
 `;
 
 export const HeaderBadges = styled.div`
