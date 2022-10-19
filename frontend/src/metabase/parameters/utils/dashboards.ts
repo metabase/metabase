@@ -4,11 +4,6 @@ import { generateParameterId } from "metabase/parameters/utils/parameter-id";
 import { isFieldFilterParameter } from "metabase/parameters/utils/parameter-type";
 import { slugify } from "metabase/lib/formatting";
 import type {
-  UiParameter,
-  FieldFilterUiParameter,
-  ParameterWithTarget,
-} from "metabase/parameters/types";
-import type {
   Parameter,
   ParameterMappingOptions,
 } from "metabase-types/types/Parameter";
@@ -18,6 +13,11 @@ import type {
   DashboardOrderedCard,
 } from "metabase-types/api";
 import type { SavedCard } from "metabase-types/types/Card";
+import type {
+  UiParameter,
+  FieldFilterUiParameter,
+  ParameterWithTarget,
+} from "metabase-lib/lib/parameters/types";
 import {
   getTargetFieldFromCard,
   isVariableTarget,

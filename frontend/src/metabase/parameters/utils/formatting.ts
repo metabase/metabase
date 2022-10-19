@@ -3,7 +3,7 @@ import { ngettext, msgid } from "ttag";
 import { formatValue } from "metabase/lib/formatting";
 import { getParameterType } from "metabase-lib/lib/parameters/utils/parameter-type";
 
-import { UiParameter } from "../types";
+import { UiParameter } from "metabase-lib/lib/parameters/types";
 import { isFieldFilterParameter } from "./parameter-type";
 import { formatDateValue } from "./date-formatting";
 

@@ -12,7 +12,7 @@ import {
   getStartingFrom,
 } from "metabase-lib/lib/queries/utils/query-time";
 
-import { UiParameter } from "../types";
+import { UiParameter } from "metabase-lib/lib/parameters/types";
 
 // Use a placeholder value as field references are not used in dashboard filters
 const noopRef = null;
