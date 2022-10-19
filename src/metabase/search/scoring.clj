@@ -152,17 +152,21 @@
    0
    (map vector query-string item-string)))
 
-(let [count-token-chars
-      ^{:doc "Tokens is a seq of strings, like [\"abc\" \"def\"]"}
-      (fn count-token-chars [tokens]
-        (reduce (fn [cnt x] (+ cnt (count x))) 0 tokens))]
-  (defn prefix-scorer
-    "How much does the search query match the beginning of the result? "
-    [query-tokens match-tokens]
-    (let [query (str/join " " query-tokens)
-          match (str/join " " match-tokens)
-          prefixed (prefix-counter query match)]
-      (/ prefixed (count-token-chars query-tokens)))))
+(defn- count-token-chars
+  "Tokens is a seq of strings, like [\"abc\" \"def\"]"
+  [tokens]
+  (reduce
+   (fn [cnt x] (+ cnt (count x)))
+   0
+   tokens))
+
+(defn prefix-scorer
+  "How much does the search query match the beginning of the result? "
+  [query-tokens match-tokens]
+  (let [query (str/lower-case (str/join " " query-tokens))
+        match (str/lower-case (str/join " " match-tokens))]
+    (/ (prefix-counter query match)
+       (count-token-chars query-tokens))))
 
 (def ^:private match-based-scorers
   [{:scorer exact-match-scorer :name "exact-match" :weight 4}

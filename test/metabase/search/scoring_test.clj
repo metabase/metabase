@@ -28,7 +28,8 @@
 (defn- scorer->score
   [scorer]
   (comp :score
-        (partial #'scoring/text-score-with [{:weight 1 :scorer scorer}])))
+        first
+        (partial #'scoring/text-scores-with [{:weight 1 :scorer scorer}])))
 
 (deftest ^:parallel consecutivity-scorer-test
   (let [score (scorer->score #'scoring/consecutivity-scorer)]
@@ -122,6 +123,17 @@
     (is (= 1
            (score ["rasta" "the" "toucan"]
                   (result-row "Rasta the toucan"))))))
+
+(deftest ^:parallel prefix-match-scorer-test
+  (let [score (scorer->score #'scoring/prefix-scorer)]
+    (is (= 5/9 (score ["Crowberto" "the" "toucan"]
+                      (result-row "Crowberto el tucan"))))
+    (is (= 3/7
+           (score ["rasta" "the" "toucan"]
+                  (result-row "Rasta el tucan"))))
+    (is (= 0
+           (score ["rasta" "the" "toucan"]
+                  (result-row "Crowberto the toucan"))))))
 
 (deftest ^:parallel top-results-test
   (let [xf (map identity)]
