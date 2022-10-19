@@ -40,7 +40,7 @@
                             :card {:is_write true}
                             :type "query"
                             :name "Query Example"}
-                           {:slug "insert" :action_id nil :parameters [{:id "name"}] :type "implicit"}
+                           {:slug "insert" :action_id nil :parameters [{:id "id"} {:id "name"}] :type "implicit"}
                            {:slug "update" :action_id nil :parameters [{:id "id"} {:id "name"}] :type "implicit"}
                            {:slug "delete" :action_id nil :parameters [{:id "id"}] :type "implicit"}]
                           response))
