@@ -144,7 +144,7 @@
       (/ (occurrences query-tokens match-tokens matches-in?)
          match-token-count))))
 
-(defn prefix-counter
+(defn- prefix-counter
   [query-string item-string]
   (reduce
    (fn [cnt [a b]]
@@ -235,7 +235,7 @@
 
 (defn- serialize
   "Massage the raw result from the DB and match data into something more useful for the client"
-  [result all-scores relevant-scores total-score]
+  [result all-scores relevant-scores]
   (let [{:keys [name display_name collection_id collection_name collection_authority_level collection_app_id]} result
         column              (first (keep :column relevant-scores))
         match-context-thunk (first (keep :match-context-thunk relevant-scores))]
@@ -288,17 +288,17 @@
 (defn score-and-result
   "Returns a map with the normalized, combined score from relevant-scores as `:score` and `:result`."
   ([raw-search-string result]
-   (let [text-matches (text-scores-with-match raw-search-string result)
+   (let [text-matches     (text-scores-with-match raw-search-string result)
          text-match-score (reduce + (map :score text-matches))
-         all-scores (vec (concat (score-result result) text-matches))
-         relevant-scores (remove #(= 0 (:score %)) all-scores)
-         total-score (compute-normalized-score relevant-scores)]
+         all-scores       (vec (concat (score-result result) text-matches))
+         relevant-scores  (remove #(= 0 (:score %)) all-scores)
+         total-score      (compute-normalized-score relevant-scores)]
      ;; Searches with a blank search string mean "show me everything, ranked";
      ;; see https://github.com/metabase/metabase/pull/15604 for archived search.
      ;; If the search string is non-blank, results with no text match have a score of zero.
      (if (or (str/blank? raw-search-string) (pos? text-match-score))
-       {:score total-score
-        :result (serialize result all-scores relevant-scores total-score)}
+       {:score  total-score
+        :result (serialize result all-scores relevant-scores)}
        {:score 0}))))
 
 (defn top-results

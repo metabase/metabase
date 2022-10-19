@@ -1,13 +1,13 @@
 (ns metabase-enterprise.search.scoring-test
   (:require [cheshire.core :as json]
             [clojure.math.combinatorics :as math.combo]
+            [clojure.string :as str]
             [clojure.test :refer :all]
             [java-time :as t]
             [metabase-enterprise.search.scoring :as ee-scoring]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.search.scoring :as scoring]
-            [metabase.util :as u]
-            [clojure.string :as str]))
+            [metabase.util :as u]))
 
 (deftest ^:parallel verified-score-test
   (let [score #'ee-scoring/verified-score
