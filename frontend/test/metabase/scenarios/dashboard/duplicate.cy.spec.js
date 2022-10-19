@@ -18,8 +18,10 @@ describe("scenarios > dashboard > duplicate", () => {
     });
 
     cy.findByText("Duplicate").click();
+    cy.findByText('Duplicate "Orders in a dashboard" and its questions');
 
     cy.findByRole("checkbox").click();
+    cy.findByText('Duplicate "Orders in a dashboard"');
 
     cy.button("Duplicate").click();
 

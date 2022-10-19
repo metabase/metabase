@@ -33,6 +33,7 @@ interface FormContainerProps<Values extends BaseFieldValues>
   initial?: () => void;
   normalize?: () => void;
 
+  onValuesChange?: (newValues: Record<string, any>) => void;
   onSubmit: (
     values: Values,
     formikHelpers?: FormikHelpers<Values>,
@@ -92,12 +93,18 @@ function Form<Values extends BaseFieldValues>({
   validate,
   initial,
   normalize,
+  onValuesChange,
   onSubmit,
   onSubmitSuccess,
   ...props
 }: FormContainerProps<Values>) {
   const [error, setError] = useState<string | null>(null);
   const [values, setValues] = useState({});
+
+  const handleValuesChange = (newValues: any) => {
+    onValuesChange?.(newValues);
+    setValues(newValues);
+  };
 
   const { inlineFields, registerFormField, unregisterFormField } =
     useInlineFields();
@@ -249,7 +256,7 @@ function Form<Values extends BaseFieldValues>({
           error={error}
           registerFormField={registerFormField}
           unregisterFormField={unregisterFormField}
-          onValuesChange={setValues}
+          onValuesChange={handleValuesChange}
         />
       )}
     </Formik>
