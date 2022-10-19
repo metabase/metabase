@@ -6,6 +6,47 @@ describe("scenarios > question > native subquery", () => {
     cy.signInAsAdmin();
   });
 
+  it("typing a card tag should open the data reference", () => {
+    cy.createNativeQuestion({
+      name: "A People Question",
+      native: { query: "SELECT id AS a_unique_column_name FROM PEOPLE" },
+    }).then(({ body: { id: questionId1 } }) => {
+      cy.createNativeQuestion({
+        name: "A People Model",
+        native: {
+          query: "SELECT id AS another_unique_column_name FROM PEOPLE",
+        },
+        dataset: true,
+      }).then(({ body: { id: questionId2 } }) => {
+        const tagName1 = `#${questionId1}-a-people-question`;
+        const queryText = `{{${tagName1}}}`;
+        // create a question with a template tag
+        cy.createNativeQuestion({
+          name: "Count of People",
+          native: { query: queryText },
+        }).then(({ body: { id: questionId3 } }) => {
+          cy.wrap(questionId3).as("toplevelQuestionId");
+          cy.visit(`/question/${questionId3}`);
+          // Refresh the state, so previously created questions need to be loaded again.
+          cy.reload();
+          cy.findByText("Open Editor").click();
+          // placing the cursor inside an existing template tag should open the data reference
+          cy.get(".ace_content:visible").type("{leftarrow}");
+          cy.findByText("A People Question");
+          // subsequently moving the cursor out from the tag should keep the data reference open
+          cy.get(".ace_content:visible").type("{rightarrow}");
+          cy.findByText("A People Question");
+          // typing a template tag id should open the editor
+          cy.get(".ace_editor:not(.ace_autocomplete)")
+            .type(" ")
+            .type(`{{#`, { parseSpecialCharSequences: false })
+            .type(`{leftarrow}{leftarrow}${questionId2}`);
+          cy.findByText("A People Model");
+        });
+      });
+    });
+  });
+
   it("autocomplete should work for question slugs inside template tags", () => {
     // Create two saved questions, the first will be referenced in the query when it is opened, and the second will be added to the query after it is opened.
     cy.createNativeQuestion({

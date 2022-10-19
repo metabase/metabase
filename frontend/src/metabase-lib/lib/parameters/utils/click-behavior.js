@@ -3,7 +3,6 @@ import { getIn } from "icepick";
 
 import { parseTimestamp } from "metabase/lib/time";
 import { formatDateTimeForParameter } from "metabase/lib/formatting/date";
-import { isValidImplicitActionClickBehavior } from "metabase/writeback/utils";
 import {
   dimensionFilterForParameter,
   variableFilterForParameter,
@@ -228,6 +227,26 @@ export function clickBehaviorIsValid(clickBehavior) {
     return targetId != null;
   }
   // we've picked "link" without picking a link type
+  return false;
+}
+
+function isValidImplicitActionClickBehavior(clickBehavior) {
+  if (
+    !clickBehavior ||
+    clickBehavior.type !== "action" ||
+    !("actionType" in clickBehavior)
+  ) {
+    return false;
+  }
+  if (clickBehavior.actionType === "insert") {
+    return clickBehavior.tableId != null;
+  }
+  if (
+    clickBehavior.actionType === "update" ||
+    clickBehavior.actionType === "delete"
+  ) {
+    return typeof clickBehavior.objectDetailDashCardId === "number";
+  }
   return false;
 }
 

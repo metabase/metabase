@@ -6,6 +6,8 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { createThunkAction } from "metabase/lib/redux";
 import Utils from "metabase/lib/utils";
 
+import Questions from "metabase/entities/questions";
+import { getMetadata } from "metabase/selectors/metadata";
 import {
   getTemplateTagsForParameters,
   getTemplateTagParameters,
@@ -24,6 +26,35 @@ export const TOGGLE_DATA_REFERENCE = "metabase/qb/TOGGLE_DATA_REFERENCE";
 export const toggleDataReference = createAction(TOGGLE_DATA_REFERENCE, () => {
   MetabaseAnalytics.trackStructEvent("QueryBuilder", "Toggle Data Reference");
 });
+
+export const POP_DATA_REFERENCE_STACK = "metabase/qb/POP_DATA_REFERENCE_STACK";
+export const popDataReferenceStack = createAction(POP_DATA_REFERENCE_STACK);
+
+export const PUSH_DATA_REFERENCE_STACK =
+  "metabase/qb/PUSH_DATA_REFERENCE_STACK";
+export const pushDataReferenceStack = createAction(PUSH_DATA_REFERENCE_STACK);
+
+export const OPEN_DATA_REFERENCE_AT_QUESTION =
+  "metabase/qb/OPEN_DATA_REFERENCE_AT_QUESTION";
+export const openDataReferenceAtQuestion = createThunkAction(
+  OPEN_DATA_REFERENCE_AT_QUESTION,
+  id => async (dispatch, getState) => {
+    const action = await dispatch(
+      Questions.actions.fetch(
+        { id },
+        { noEvent: true, useCachedForbiddenError: true },
+      ),
+    );
+    const question = Questions.HACK_getObjectFromAction(action);
+    if (question) {
+      const database = getMetadata(getState()).database(question.database_id);
+      return [
+        { type: "database", item: database },
+        { type: "question", item: question },
+      ];
+    }
+  },
+);
 
 export const TOGGLE_TEMPLATE_TAGS_EDITOR =
   "metabase/qb/TOGGLE_TEMPLATE_TAGS_EDITOR";

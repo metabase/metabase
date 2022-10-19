@@ -29,7 +29,8 @@
   {(s/optional-key :root) CollectionPermissions   ; when doing a delta between old graph and new graph root won't always
    su/IntGreaterThanZero  CollectionPermissions}) ; be present, which is why it's *optional*
 
-(def ^:private PermissionsGraph
+(def PermissionsGraph
+  "A versioned map of group permissions. See [[GroupPermissionsGraph]]."
   {:revision s/Int
    :groups   {su/IntGreaterThanZero GroupPermissionsGraph}})
 
@@ -69,7 +70,7 @@
                                                  [:not [:like :location (hx/literal (format "/%d/%%" collection-id))]]))}]
     (set (map :id (db/query honeysql-form)))))
 
-(defn collection-permission-graph
+(defn- collection-permission-graph
   "Return the permission graph for the collections with id in `collection-ids` and the root collection."
   ([collection-ids] (collection-permission-graph collection-ids nil))
   ([collection-ids collection-namespace]
@@ -120,21 +121,19 @@
 (s/defn update-collection-permissions!
   "Update the permissions for group ID with `group-id` on collection with ID
   `collection-id` in the optional `collection-namespace` to `new-collection-perms`."
-  ([group-id collection-id new-collection-perms]
-   (update-collection-permissions! nil group-id collection-id new-collection-perms))
-  ([collection-namespace :- (s/maybe su/KeywordOrString)
-    group-id             :- su/IntGreaterThanZero
-    collection-id        :- (s/cond-pre (s/eq :root) su/IntGreaterThanZero)
-    new-collection-perms :- CollectionPermissions]
-   (let [collection-id (if (= collection-id :root)
-                         (assoc collection/root-collection :namespace collection-namespace)
-                         collection-id)]
-     ;; remove whatever entry is already there (if any) and add a new entry if applicable
-     (perms/revoke-collection-permissions! group-id collection-id)
-     (case new-collection-perms
-       :write (perms/grant-collection-readwrite-permissions! group-id collection-id)
-       :read  (perms/grant-collection-read-permissions! group-id collection-id)
-       :none  nil))))
+  [collection-namespace :- (s/maybe su/KeywordOrString)
+   group-id             :- su/IntGreaterThanZero
+   collection-id        :- (s/cond-pre (s/eq :root) su/IntGreaterThanZero)
+   new-collection-perms :- CollectionPermissions]
+  (let [collection-id (if (= collection-id :root)
+                        (assoc collection/root-collection :namespace collection-namespace)
+                        collection-id)]
+    ;; remove whatever entry is already there (if any) and add a new entry if applicable
+    (perms/revoke-collection-permissions! group-id collection-id)
+    (case new-collection-perms
+      :write (perms/grant-collection-readwrite-permissions! group-id collection-id)
+      :read  (perms/grant-collection-read-permissions! group-id collection-id)
+      :none  nil)))
 
 (s/defn ^:private update-group-permissions!
   [collection-namespace :- (s/maybe su/KeywordOrString)

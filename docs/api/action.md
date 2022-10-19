@@ -18,6 +18,10 @@ summary: |
 
 Returns cards that can be used for QueryActions.
 
+### PARAMS:
+
+*  **`model-id`** value must be an integer greater than zero.
+
 ## `GET /api/action/:action-id`
 
 ### PARAMS:
