@@ -39,12 +39,13 @@ function getDataTypes(): Omit<ListItemProps, "onSelect">[] {
       name: t`Raw Data`,
       description: t`Unaltered tables in connected databases.`,
     },
-    {
-      id: "questions",
-      name: t`Saved Questions`,
-      icon: "folder",
-      description: t`Use any question’s results to start a new question.`,
-    },
+    // TODO enable when DataPicker has items filtering API
+    // {
+    //   id: "questions",
+    //   name: t`Saved Questions`,
+    //   icon: "folder",
+    //   description: t`Use any question’s results to start a new question.`,
+    // },
   ];
 }
 
