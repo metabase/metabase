@@ -10,7 +10,8 @@ import type Table from "metabase-lib/lib/metadata/Table";
 
 import { DataPickerProps } from "../types";
 
-import useSelectedTables from "./useSelectedTables";
+import useSelectedTables from "../useSelectedTables";
+
 import RawDataPanePickerView from "./RawDataPanePickerView";
 
 interface DatabaseListLoaderProps {
