@@ -11,8 +11,10 @@ export type DataTypeInfoItem = {
 
 export function getDataTypes({
   hasNestedQueriesEnabled,
+  hasModels,
 }: {
   hasNestedQueriesEnabled: boolean;
+  hasModels: boolean;
 }): DataTypeInfoItem[] {
   const dataTypes: DataTypeInfoItem[] = [
     {
@@ -24,12 +26,14 @@ export function getDataTypes({
   ];
 
   if (hasNestedQueriesEnabled) {
-    dataTypes.unshift({
-      id: "models",
-      icon: "model",
-      name: t`Models`,
-      description: t`The best starting place for new questions.`,
-    });
+    if (hasModels) {
+      dataTypes.unshift({
+        id: "models",
+        icon: "model",
+        name: t`Models`,
+        description: t`The best starting place for new questions.`,
+      });
+    }
 
     // TODO enable when DataPicker has items filtering API
     // dataTypes.push({

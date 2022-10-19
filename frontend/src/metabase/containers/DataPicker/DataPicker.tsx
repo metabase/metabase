@@ -1,7 +1,10 @@
 import React, { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
+import _ from "underscore";
 
 import { getSetting } from "metabase/selectors/settings";
+
+import Search from "metabase/entities/search";
 
 import type { State } from "metabase-types/store";
 
@@ -22,7 +25,13 @@ interface DataPickerStateProps {
   hasNestedQueriesEnabled: boolean;
 }
 
-type DataPickerProps = DataPickerOwnProps & DataPickerStateProps;
+interface SearchListLoaderProps {
+  search: unknown[];
+}
+
+type DataPickerProps = DataPickerOwnProps &
+  DataPickerStateProps &
+  SearchListLoaderProps;
 
 function mapStateToProps(state: State) {
   return {
@@ -30,12 +39,20 @@ function mapStateToProps(state: State) {
   };
 }
 
-function DataPicker({ hasNestedQueriesEnabled, ...props }: DataPickerProps) {
+function DataPicker({
+  search: modelLookupResult,
+  hasNestedQueriesEnabled,
+  ...props
+}: DataPickerProps) {
   const { value, onChange } = props;
 
   const dataTypes = useMemo(
-    () => getDataTypes({ hasNestedQueriesEnabled }),
-    [hasNestedQueriesEnabled],
+    () =>
+      getDataTypes({
+        hasModels: modelLookupResult.length > 0,
+        hasNestedQueriesEnabled,
+      }),
+    [modelLookupResult, hasNestedQueriesEnabled],
   );
 
   const handleDataTypeChange = useCallback(
@@ -81,4 +98,14 @@ function DataPicker({ hasNestedQueriesEnabled, ...props }: DataPickerProps) {
   return null;
 }
 
-export default connect(mapStateToProps)(DataPicker);
+export default _.compose(
+  Search.loadList({
+    // Lets the picker check there is
+    // at least one model, to offer for selection
+    query: {
+      models: "dataset",
+      limit: 1,
+    },
+  }),
+  connect(mapStateToProps),
+)(DataPicker);
