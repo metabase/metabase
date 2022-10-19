@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 
 import type {
   ActionDashboardCard,
-  Dashboard,
+  DataAppPage,
   ParametersForActionExecution,
   WritebackQueryAction,
 } from "metabase-types/api";
@@ -22,19 +22,18 @@ import { generateFieldSettingsFromParameters } from "../ActionCreator/FormCreato
 import { StyledButton } from "./ActionButton.styled";
 
 import LinkButton from "./LinkButton";
-import ImplicitActionButton from "./ImplicitActionButton";
 import ActionForm from "./ActionForm";
 
 interface ActionProps extends VisualizationProps {
   dashcard: ActionDashboardCard;
-  dashboard: Dashboard;
+  dashboard: DataAppPage;
   dispatch: Dispatch;
   parameterValues: { [id: string]: ParameterValueOrArray };
 }
 
 function ActionComponent({
   dashcard,
-  dashboard,
+  dashboard: page,
   dispatch,
   isSettings,
   settings,
@@ -73,18 +72,18 @@ function ActionComponent({
 
       const paramsForExecution = setNumericValues(
         params,
-        generateFieldSettingsFromParameters(dashcard?.action?.parameters),
+        generateFieldSettingsFromParameters(dashcard?.action?.parameters ?? []),
       );
 
       return executeRowAction({
-        dashboard,
+        page,
         dashcard,
         parameters: paramsForExecution,
         dispatch,
         shouldToast: shouldDisplayButton,
       });
     },
-    [dashboard, dashcard, dashcardParamValues, dispatch, shouldDisplayButton],
+    [page, dashcard, dashcardParamValues, dispatch, shouldDisplayButton],
   );
 
   if (dashcard.action) {
@@ -92,7 +91,7 @@ function ActionComponent({
       <ActionForm
         onSubmit={onSubmit}
         dashcard={dashcard}
-        dashboard={dashboard}
+        page={page}
         missingParameters={missingParameters}
         dashcardParamValues={dashcardParamValues}
         action={dashcard.action as WritebackQueryAction}

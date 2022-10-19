@@ -3,7 +3,6 @@ import { t } from "ttag";
 import Form from "metabase/containers/FormikForm";
 
 import {
-  getFormFieldForParameter,
   getSubmitButtonLabel,
   generateFieldSettingsFromParameters,
   getFormFromParameters,
@@ -14,7 +13,7 @@ import type {
   WritebackParameter,
   WritebackQueryAction,
   OnSubmitActionForm,
-  Dashboard,
+  DataAppPage,
   ActionDashboardCard,
   ParametersForActionExecution,
 } from "metabase-types/api";
@@ -34,7 +33,7 @@ interface Props {
   dashcardParamValues: ParametersForActionExecution;
 
   action: WritebackQueryAction;
-  dashboard?: Dashboard;
+  page?: DataAppPage;
   dashcard?: ActionDashboardCard;
   onSubmit: OnSubmitActionForm;
   onSubmitSuccess?: () => void;
@@ -44,7 +43,7 @@ function ActionParametersInputForm({
   missingParameters,
   dashcardParamValues,
   action,
-  dashboard,
+  page,
   dashcard,
   onSubmit,
   onSubmitSuccess,
@@ -57,30 +56,24 @@ function ActionParametersInputForm({
   const fetchInitialValues = useCallback(
     () =>
       ActionsApi.prefetchValues({
-        dashboardId: dashboard?.id,
+        dashboardId: page?.id,
         dashcardId: dashcard?.id,
         slug: action.slug,
         parameters: JSON.stringify(dashcardParamValues),
       }).then(setPrefetchValues),
-    [action.slug, dashboard?.id, dashcard?.id, dashcardParamValues],
+    [action.slug, page?.id, dashcard?.id, dashcardParamValues],
   );
 
   useEffect(() => {
     // we need at least 1 parameter value (a PK) to fetch initial values
     const canPrefetch =
-      Object.keys(dashcardParamValues).length > 0 && dashboard && dashcard;
+      Object.keys(dashcardParamValues).length > 0 && page && dashcard;
 
     if (shouldPrefetch) {
       setPrefetchValues({});
       canPrefetch && fetchInitialValues();
     }
-  }, [
-    shouldPrefetch,
-    dashboard,
-    dashcard,
-    dashcardParamValues,
-    fetchInitialValues,
-  ]);
+  }, [shouldPrefetch, page, dashcard, dashcardParamValues, fetchInitialValues]);
 
   const fieldSettings = useMemo(
     () =>
