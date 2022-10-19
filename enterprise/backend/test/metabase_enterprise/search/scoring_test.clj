@@ -115,13 +115,6 @@
   {:pre [(> 10 (count values))]}
   (mapv vec (mapcat math.combo/permutations (math.combo/subsets values))))
 
-(defn- top-2-results
-  "Given a reducible collection (i.e., from `jdbc/reducible-query`) and a transforming function for it, applies the
-  transformation and returns a seq of the results sorted by score. The transforming function is expected to output
-  maps with `:score` and `:result` keys."
-  [reducible-results xf]
-  (->> reducible-results (transduce xf (u/sorted-take 2 scoring/compare-score-and-result)) rseq (map #(update % :score double))))
-
 (defn test-corups [words]
   (let [corpus (->> words
                     all-permutations-all-orders
@@ -133,7 +126,9 @@
     (doseq [search-string corpus]
       (is (= search-string
              (-> results
-                 (top-2-results (map #(metabase.search.scoring/score-and-result search-string %)))
+                 (scoring/top-results
+                  2
+                  #(metabase.search.scoring/score-and-result search-string %))
                  first
                  :result
                  :name))))))
