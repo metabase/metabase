@@ -8,12 +8,13 @@
 
 (defn- backend-message? [{:keys [source-references]}]
   (boolean
-   (let [paths (->> source-references
-                    ;; Sometimes 2 paths exist in a single string, space separated
-                    (mapcat #(str/split % #" "))
-                    ;; Strip off the line number at the end of some paths
-                    (map #(str/split % #":"))
-                    (map first))]
+   (let [paths (eduction
+                ;; Sometimes 2 paths exist in a single string, space separated
+                (mapcat #(str/split % #" "))
+                ;; Strip off the line number at the end of some paths
+                (map #(str/split % #":"))
+                (map first)
+                source-references)]
      (some (fn [path]
              (some
               (fn [suffix]
