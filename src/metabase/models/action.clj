@@ -180,25 +180,28 @@
 
 (defn- implicit-action-parameters
   [cards]
-  (let [card-id-by-table-id (into {}
-                                  (for [card cards
-                                        :let [{:keys [table-id]} (query/query->database-and-table-ids (:dataset_query card))]
-                                        :when table-id]
-                                    [table-id (:id card)]))
-        tables (when-let [table-ids (seq (keys card-id-by-table-id))]
+  (let [card-by-table-id (into {}
+                               (for [card cards
+                                     :let [{:keys [table-id]} (query/query->database-and-table-ids (:dataset_query card))]
+                                     :when table-id]
+                                 [table-id card]))
+        tables (when-let [table-ids (seq (keys card-by-table-id))]
                  (hydrate (db/select 'Table :id [:in table-ids]) :fields))]
     (into {}
           (for [table tables
                 :let [fields (:fields table)]
                 ;; Skip tables for have conflicting slugified columns i.e. table has "name" and "NAME" columns.
                 :when (unique-field-slugs? fields)
-                :let [parameters (->> fields
+                :let [card (get card-by-table-id (:id table))
+                      exposed-fields (set (map (juxt :table_id :id) (remove (comp nil? :id) (:result_metadata card))))
+                      parameters (->> fields
+                                      (filter #(contains? exposed-fields [(:id table) (:id %)]))
                                       (map (fn [field]
                                              {:id (u/slugify (:name field))
                                               :target [:variable [:template-tag (u/slugify (:name field))]]
                                               :type (:base_type field)
                                               ::pk? (isa? (:semantic_type field) :type/PK)})))]]
-            [(get card-id-by-table-id (:id table)) parameters]))))
+            [(:id card) parameters]))))
 
 (defn merged-model-action
   "Find model-actions given options and merge in the referenced action or generate implicit parameters for execution.
@@ -226,12 +229,11 @@
                 action (get actions-by-id (:action_id model-action))
                 implicit-action (when-let [parameters (get parameters-by-model-id (:card_id model-action))]
                                   {:parameters (cond->> parameters
-                                                 (not (:requires_pk model-action)) (remove #(::pk? %))
                                                  (= "delete" (:slug model-action)) (filter #(::pk? %))
                                                  :always (map #(dissoc % ::pk?)))
                                    :type "implicit"})]]
       (m/deep-merge (-> model-action
-                        (select-keys [:card_id :slug :action_id :visualization_settings :parameter_mappings])
+                        (select-keys [:card_id :slug :action_id :visualization_settings :parameter_mappings :requires_pk])
                         (set/rename-keys {:card_id :model_id}))
                     implicit-action
                     action))))

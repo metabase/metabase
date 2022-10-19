@@ -2434,7 +2434,7 @@
             (testing "Extra parameter should fail gracefully"
               (is (partial= {:message "No destination parameter found for #{\"extra\"}. Found: #{\"id\" \"name\"}"}
                             (mt/user-http-request :crowberto :post 400 execute-path
-                                                  {:parameters {"extra" 1}}))))
+                                                  {:parameters {"extra" 1 "id" 1}}))))
             (testing "Missing pk parameter should fail gracefully"
               (is (partial= "Missing primary key parameter: \"id\""
                             (mt/user-http-request :crowberto :post 400 execute-path
@@ -2456,9 +2456,9 @@
                      (mt/user-http-request :crowberto :post 200 execute-path
                                            {:parameters {"id" 1}}))))
             (testing "Extra parameter should fail gracefully"
-              (is (partial= {:message "No destination parameter found for #{\"extra\"}. Found: #{\"id\" \"name\"}"}
+              (is (partial= {:message "No destination parameter found for #{\"extra\"}. Found: #{\"id\"}"}
                             (mt/user-http-request :crowberto :post 400 execute-path
-                                                  {:parameters {"extra" 1}}))))
+                                                  {:parameters {"extra" 1 "id" 1}}))))
             (testing "Missing pk parameter should fail gracefully"
               (is (partial= "Missing primary key parameter: \"id\""
                             (mt/user-http-request :crowberto :post 400 execute-path
@@ -2485,4 +2485,110 @@
                 (actions.test-util/with-actions-enabled
                   (is (= "You don't have permissions to do that."
                          (mt/user-http-request :rasta :post 403 execute-path
-                                               {:parameters {"id" 1}}))))))))))))
+                                               {:parameters {"id" 1}})))))
+              (testing "With execute rights on the DB"
+                (perms/update-global-execution-permission! (:id (perms-group/all-users)) :all)
+                (try
+                  (actions.test-util/with-actions-enabled
+                    (is (= {:rows-affected 1}
+                           (mt/user-http-request :rasta :post 200 execute-path
+                                                 {:parameters {"id" 1}}))))
+                  (finally
+                    (perms/update-global-execution-permission! (:id (perms-group/all-users)) :none)))))))))))
+
+(deftest dashcard-execution-fetch-prefill-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+    (actions.test-util/with-actions-test-data-and-actions-enabled
+      (testing "Prefetching dashcard update"
+        (mt/with-temp* [Card [{card-id :id} {:dataset true :dataset_query (mt/mbql-query categories)}]
+                        ModelAction [_ {:slug "update" :card_id card-id :requires_pk true}]
+                        Dashboard [{dashboard-id :id}]
+                        DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
+                                                          :card_id card-id
+                                                          :visualization_settings {:action_slug "update"}}]]
+          (is (partial= {:id 1 :name "African"}
+                        (mt/user-http-request
+                          :crowberto :get 200
+                          (format "dashboard/%s/dashcard/%s/execute/update?parameters=%s" dashboard-id dashcard-id (json/encode {"id" 1})))))
+          (testing "Missing pk parameter should fail gracefully"
+            (is (partial= "Missing primary key parameter: \"id\""
+                          (mt/user-http-request
+                            :crowberto :get 400
+                            (format "dashboard/%s/dashcard/%s/execute/update?parameters=%s" dashboard-id dashcard-id (json/encode {"name" 1})))))))))))
+
+(deftest dashcard-implicit-action-only-expose-and-allow-model-fields
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+    (actions.test-util/with-actions-test-data-tables #{"venues" "categories"}
+      (actions.test-util/with-actions-test-data-and-actions-enabled
+        (mt/with-temp* [Card [{card-id :id} {:dataset true :dataset_query (mt/mbql-query venues {:fields [$id $name]})}]
+                        ModelAction [_ {:slug "update" :card_id card-id :requires_pk true}]
+                        Dashboard [{dashboard-id :id}]
+                        DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
+                                                          :card_id card-id
+                                                          :visualization_settings {:action_slug "update"}}]]
+          (testing "Dashcard should only have id and name params"
+            (is (partial= {:ordered_cards [{:action {:parameters [{:id "id"} {:id "name"}]}}]}
+                          (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id)))))
+          (let [execute-path (format "dashboard/%s/dashcard/%s/execute/update" dashboard-id dashcard-id)]
+            (testing "Prefetch should limit to id and name"
+              (let [values (mt/user-http-request :crowberto :get 200 (str execute-path "?parameters=" (json/encode {:id 1})))]
+                (is (= {:id 1 :name "Red Medicine"} values))))
+            (testing "Update should only allow name"
+              (is (= {:rows-updated [1]}
+                     (mt/user-http-request :crowberto :post 200 execute-path {:parameters {"id" 1 "name" "Blueberries"}})))
+              (is (partial= {:message "No destination parameter found for #{\"price\"}. Found: #{\"id\" \"name\"}"}
+                            (mt/user-http-request :crowberto :post 400 execute-path {:parameters {"id" 1 "name" "Blueberries" "price" 1234}}))))))))))
+
+(defn- ee-features-enabled? []
+  (u/ignore-exceptions
+   (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
+   (some? (resolve 'metabase-enterprise.advanced-permissions.models.permissions/update-db-execute-permissions!))))
+
+(deftest dashcard-action-execution-granular-auth-test
+  (when (ee-features-enabled?)
+    (mt/with-temp-copy-of-db
+      (actions.test-util/with-actions-enabled
+        (actions.test-util/with-actions-test-data
+          (actions.test-util/with-action [{:keys [action-id]} {}]
+            (testing "Executing dashcard with action"
+              (mt/with-temp* [Dashboard [{dashboard-id :id}]
+                              Card [{card-id :id} {:dataset true}]
+                              ModelAction [_ {:action_id action-id :card_id card-id :slug "custom"}]
+                              DashboardCard [{dashcard-id :id}
+                                             {:dashboard_id dashboard-id
+                                              :card_id card-id
+                                              :visualization_settings {:action_slug "custom"}}]]
+                (let [execute-path (format "dashboard/%s/dashcard/%s/execute/custom"
+                                           dashboard-id
+                                           dashcard-id)]
+                  (testing "with :advanced-permissions feature flag"
+                    (premium-features-test/with-premium-features #{:advanced-permissions}
+                      (testing "for non-magic group"
+                        (mt/with-temp* [PermissionsGroup [{group-id :id}]
+                                        PermissionsGroupMembership [_ {:user_id  (mt/user->id :rasta)
+                                                                       :group_id group-id}]]
+                          (is (= "You don't have permissions to do that."
+                                 (mt/user-http-request :rasta :post 403 execute-path
+                                                       {:parameters {"id" 1}}))
+                              "Execution permission should be required")
+
+                          (mt/user-http-request
+                           :crowberto :put 200 "permissions/execution/graph"
+                           (assoc-in (perms/execution-perms-graph) [:groups group-id (mt/id)] :all))
+                          (is (= :all
+                                 (get-in (perms/execution-perms-graph) [:groups group-id (mt/id)]))
+                              "Should be able to set execution permission")
+                          (is (= {:rows-affected 1}
+                                 (mt/user-http-request :rasta :post 200 execute-path
+                                                       {:parameters {"id" 1}}))
+                              "Execution and data permissions should be enough")
+
+                          (perms/update-data-perms-graph! [group-id (mt/id) :data]
+                                                          {:schemas :block})
+                          (perms/update-data-perms-graph! [(:id (perms-group/all-users)) (mt/id) :data]
+                                                          {:schemas :block})
+                          (is (= "You don't have permissions to do that."
+                                 (mt/user-http-request :rasta :post 403 execute-path
+                                                       {:parameters {"id" 1}}))
+                              "Data permissions should be required"))))))))))))))
+>>>>>>> Implicit action pre-fetch values (#25940)

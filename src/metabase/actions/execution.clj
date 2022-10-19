@@ -6,9 +6,12 @@
     [metabase.actions :as actions]
     [metabase.actions.http-action :as http-action]
     [metabase.api.common :as api]
-    [metabase.models :refer [Card Dashboard DashboardCard ModelAction Table]]
+    [metabase.models :refer [Card Dashboard DashboardCard Table]]
     [metabase.models.action :as action]
+    [metabase.models.persisted-info :as persisted-info]
     [metabase.models.query :as query]
+    [metabase.query-processor :as qp]
+    [metabase.query-processor.card :as qp.card]
     [metabase.query-processor.error-type :as qp.error-type]
     [metabase.query-processor.writeback :as qp.writeback]
     [metabase.util :as u]
@@ -72,12 +75,16 @@
         {:keys [table-id]} (query/query->database-and-table-ids (:dataset_query card))]
     (hydrate (db/select-one Table :id table-id) :fields)))
 
-(defn- execute-implicit-action
-  [{:keys [card_id slug requires_pk] :as _model-action} request-parameters]
-  (let [{database-id :db_id table-id :id :as table} (implicit-action-table card_id)
-        pk-fields (filterv #(isa? (:semantic_type %) :type/PK) (:fields table))
-        slug->field-name (into {} (map (juxt (comp u/slugify :name) :name)) (:fields table))
-        _ (api/check (action/unique-field-slugs? (:fields table))
+(defn- build-implicit-query
+  [{:keys [model_id requires_pk parameters] :as _model-action} implicit-action request-parameters]
+  (let [{database-id :db_id table-id :id :as table} (implicit-action-table model_id)
+        table-fields (:fields table)
+        pk-fields (filterv #(isa? (:semantic_type %) :type/PK) table-fields)
+        slug->field-name (->> table-fields
+                              (map (juxt (comp u/slugify :name) :name))
+                              (into {})
+                              (m/filter-keys (set (map :id parameters))))
+        _ (api/check (action/unique-field-slugs? table-fields)
                      400
                      (tru "Cannot execute implicit action on a table with ambiguous column names."))
         _ (api/check (= (count pk-fields) 1)
@@ -85,40 +92,53 @@
                      (tru "Must execute implicit action on a table with a single primary key."))
         extra-parameters (set/difference (set (keys request-parameters))
                                          (set (keys slug->field-name)))
-
         pk-field (first pk-fields)
         simple-parameters (update-keys request-parameters (comp keyword slug->field-name))
         pk-field-name (keyword (:name pk-field))
-        _ (api/check (empty? extra-parameters)
-                     400
-                     {:message (tru "No destination parameter found for {0}. Found: {1}"
-                                    (pr-str extra-parameters)
-                                    (pr-str (set (keys slug->field-name))))
-                      :parameters request-parameters
-                      :destination-parameters (keys slug->field-name)})
-
-        _ (api/check (or (not requires_pk)
-                         (some? (get simple-parameters pk-field-name)))
-                     400
-                     (tru "Missing primary key parameter: {0}"
-                          (pr-str (u/slugify (:name pk-field)))))
-        query (cond-> {:database database-id,
-                       :type :query,
-                       :query {:source-table table-id}}
-                requires_pk
-                (assoc-in [:query :filter]
-                          [:= [:field (:id pk-field) nil] (get simple-parameters pk-field-name)]))
-        implicit-action (cond
-                          (= slug "delete")
-                          :row/delete
-
-                          requires_pk
-                          :row/update
-
-                          :else
-                          :row/create)
         row-parameters (cond-> simple-parameters
-                         (not= implicit-action :row/create) (dissoc pk-field-name))
+                         (not= implicit-action :row/create) (dissoc pk-field-name))]
+    (api/check (or (not requires_pk)
+                   (some? (get simple-parameters pk-field-name)))
+               400
+               (tru "Missing primary key parameter: {0}"
+                    (pr-str (u/slugify (:name pk-field)))))
+    (api/check (empty? extra-parameters)
+               400
+               {:message (tru "No destination parameter found for {0}. Found: {1}"
+                              (pr-str extra-parameters)
+                              (pr-str (set (keys slug->field-name))))
+                :parameters request-parameters
+                :destination-parameters (keys slug->field-name)})
+    (cond->
+      {:query {:database database-id,
+               :type :query,
+               :query {:source-table table-id}}
+       :row-parameters row-parameters}
+
+      requires_pk
+      (assoc-in [:query :query :filter]
+                [:= [:field (:id pk-field) nil] (get simple-parameters pk-field-name)])
+
+      requires_pk
+      (assoc :prefetch-parameters [{:target [:dimension [:field (:id pk-field) nil]]
+                                    :type "id"
+                                    :value [(get simple-parameters pk-field-name)]}]))))
+
+(defn- model-action->implicit-action [model-action]
+  (cond
+    (= (:slug model-action) "delete")
+    :row/delete
+
+    (:requires_pk model-action)
+    :row/update
+
+    :else
+    :row/create))
+
+(defn- execute-implicit-action
+  [model-action request-parameters]
+  (let [implicit-action (model-action->implicit-action model-action)
+        {:keys [query row-parameters]} (build-implicit-query model-action implicit-action request-parameters)
         _ (api/check (or (= implicit-action :row/delete) (seq row-parameters))
                      400
                      (tru "Implicit parameters must be provided."))
@@ -140,7 +160,42 @@
   (let [dashcard (api/check-404 (db/select-one DashboardCard
                                                :id dashcard-id
                                                :dashboard_id dashboard-id))
-        model-action (api/check-404 (db/select-one ModelAction :card_id (:card_id dashcard) :slug slug))]
+        model-action (api/check-404 (first (action/merged-model-action nil :card_id (:card_id dashcard) :slug slug)))]
     (if-let [action-id (:action_id model-action)]
       (execute-custom-action action-id request-parameters)
       (execute-implicit-action model-action request-parameters))))
+
+(defn- fetch-implicit-action-values
+  [dashboard-id model-action request-parameters]
+  (api/check (:requires_pk model-action) 400 (tru "Values can only be fetched for actions that require a Primary Key."))
+  (let [implicit-action (model-action->implicit-action model-action)
+        {:keys [prefetch-parameters]} (build-implicit-query model-action implicit-action request-parameters)
+        info {:executed-by api/*current-user-id*
+              :context :question
+              :dashboard-id dashboard-id}
+        card (db/select-one Card :id (:model_id model-action))
+        ;; prefilling a form with day old data would be bad
+        result (binding [persisted-info/*allow-persisted-substitution* false]
+                 (qp/process-query-and-save-execution!
+                   (qp.card/query-for-card card prefetch-parameters nil nil)
+                   info))
+        exposed-params (set (map :id (:parameters model-action)))]
+    (m/filter-keys
+      #(contains? exposed-params %)
+      (zipmap
+        (map (comp u/slugify :name) (get-in result [:data :cols]))
+        (first (get-in result [:data :rows]))))))
+
+(defn fetch-values
+  "Fetch values to pre-fill implicit action execution - custom actions will return no values.
+   Must pass in parameters of shape `{<parameter-id> <value>}` for primary keys."
+  [dashboard-id dashcard-id slug request-parameters]
+  (actions/check-actions-enabled)
+  (api/read-check Dashboard dashboard-id)
+  (let [dashcard (api/check-404 (db/select-one DashboardCard
+                                               :id dashcard-id
+                                               :dashboard_id dashboard-id))
+        model-action (api/check-404 (first (action/merged-model-action nil :card_id (:card_id dashcard) :slug slug)))]
+    (if (:action_id model-action)
+      {}
+      (fetch-implicit-action-values dashboard-id model-action request-parameters))))
