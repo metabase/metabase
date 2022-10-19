@@ -31,7 +31,9 @@
                                      User]]
             [metabase.models.dashboard-card :as dashboard-card]
             [metabase.models.dashboard-test :as dashboard-test]
+            [metabase.models.dispatch :as models.dispatch]
             [metabase.models.field-values :as field-values]
+            [metabase.models.interface :as mi]
             [metabase.models.params.chain-filter-test :as chain-filter-test]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
@@ -872,7 +874,10 @@
                          (into #{} (map :name) copied-cards))
                       "Should preserve the titles of the original cards"))
                 (testing "Should not create dashboardcardseries because the base card lacks permissions"
-                  (is (empty? (db/select DashboardCardSeries :card_id [:in (map :id copied-cards)])))))))))
+                  (is (empty? (db/select DashboardCardSeries :card_id [:in (map :id copied-cards)]))))
+                (testing "Response includes uncopied cards"
+                  (is (= #{"Total orders per month" "Average orders per month"}
+                         (->> resp :uncopied (map :name) set)))))))))
       (testing "When source and destination are the same"
         (mt/with-temp* [Collection [source-coll {:name "Source collection"}]
                         Dashboard  [dashboard {:name          "Dashboard to be Copied"
@@ -937,6 +942,47 @@
                            [total-card avg-card card])
                      (set (map :name cards-in-coll)))
                   "Cards should have \"-- Duplicate\" appended"))))))))
+
+(def ^:dynamic ^:private
+  ^{:doc "Set of ids that will report [[mi/can-write]] as true."}
+  *writable-card-ids* #{})
+
+(defmethod mi/can-write? ::dispatches-on-dynamic
+  ([fake-model]
+   (contains? *writable-card-ids* (:id fake-model)))
+  ([_fake-model id]
+   (contains? *writable-card-ids* id)))
+
+(defn- card-model
+  "Return a card \"model\" that reports as a `::dispatches-on-dynamic` model type, and checking `mi/can-write?` checks
+  if the `:id` is in the dynamic variable `*writable-card-ids*."
+  [card]
+  (with-meta card {`models.dispatch/model
+                   (fn [_] ::dispatches-on-dynamic)}))
+
+(deftest cards-to-copy-test
+  (testing "Identifies all cards to be copied"
+    (let [ordered-cards [{:card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
+                         {:card_id 3 :card (card-model{:id 3})}]]
+      (binding [*writable-card-ids* #{1 2 3}]
+        (is (= {:copy {1 {:id 1} 2 {:id 2} 3 {:id 3}}
+                :discard []}
+               (#'api.dashboard/cards-to-copy ordered-cards))))))
+  (testing "Identifies cards which cannot be copied"
+    (testing "If they are in a series"
+      (let [ordered-cards [{:card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
+                           {:card_id 3 :card (card-model{:id 3})}]]
+        (binding [*writable-card-ids* #{1 3}]
+          (is (= {:copy {1 {:id 1} 3 {:id 3}}
+                  :discard [{:id 2}]}
+                 (#'api.dashboard/cards-to-copy ordered-cards))))))
+    (testing "When the base of a series lacks permissions"
+      (let [ordered-cards [{:card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
+                           {:card_id 3 :card (card-model{:id 3})}]]
+        (binding [*writable-card-ids* #{3}]
+          (is (= {:copy {3 {:id 3}}
+                  :discard [{:id 1} {:id 2}]}
+                 (#'api.dashboard/cards-to-copy ordered-cards))))))))
 
 (deftest update-cards-for-copy-test
   (testing "When copy style is shallow returns original ordered-cards"

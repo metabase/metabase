@@ -216,23 +216,37 @@
       hide-unreadable-cards
       add-query-average-durations))
 
+(defn- cards-to-copy
+  "Returns a map of which cards we need to copy and which are not to be copied. The `:copy` key is a map from id to
+  card. The `:discard` key is a vector of cards which were not copied due to permissions."
+  [ordered-cards]
+  (letfn [(split-cards [{:keys [card series] :as db-card}]
+            (cond
+              (nil? (:card_id db-card)) ;; text card
+              []
+
+              (mi/can-write? card)
+              (let [{writable true unwritable false} (group-by (comp boolean mi/can-write?)
+                                                               series)]
+                [(into [card] writable) unwritable])
+              ;; if you can't write the base, we don't have anywhere to put the series
+              :else
+              [[] (into [card] series)]))]
+    (reduce (fn [acc db-card]
+              (let [[retain discard] (split-cards db-card)]
+                (-> acc
+                    (update :copy merge (m/index-by :id retain))
+                    (update :discard concat discard))))
+            {:copy {}
+             :discard []}
+            ordered-cards)))
+
 (defn- duplicate-cards
   "Takes a dashboard id, and duplicates the cards both on the dashboard's cards and dashcardseries. Returns a map of
   {old-card-id duplicated-card} so that the new dashboard can adjust accordingly."
   [dashboard dest-coll-id]
   (let [same-collection? (= (:collection_id dashboard) dest-coll-id)
-        card-ids (into #{} (comp
-                            (mapcat (fn [{:keys [card series]}]
-                                      ;; if there are series on top of a card they cannot write (ie, don't have curate
-                                      ;; perms for collection) the series can't be copied either
-                                      (when (and (:id card) (mi/can-write? card))
-                                        (into [(:id card)]
-                                              (comp (filter mi/can-write?)
-                                                    (map :id))
-                                              series))))
-                            (keep identity))
-                       (:ordered_cards dashboard))
-        id->card (m/index-by :id (db/select 'Card :id [:in card-ids]))]
+        {:keys [copy discard]} (cards-to-copy (:ordered_cards dashboard))]
     (reduce (fn [m [id card]]
               (assoc m id
                      (if (:dataset card)
@@ -241,8 +255,8 @@
                         (cond-> (assoc card :collection_id dest-coll-id)
                           same-collection?
                           (update :name #(str % " -- " (tru "Duplicate"))))))))
-            {}
-            id->card)))
+            {:uncopied discard}
+            copy)))
 
 (defn update-cards-for-copy
   "Update ordered-cards in a dashboard for copying. If shallow copy, returns the cards. If deep copy, replaces ids with
@@ -308,15 +322,17 @@
                         ;; collection to change position, check that and fix up if needed
                         (api/maybe-reconcile-collection-position! dashboard-data)
                         ;; Ok, now save the Dashboard
-                        (u/prog1 (db/insert! Dashboard dashboard-data)
-                          ;; Get cards from existing dashboard and associate to copied dashboard
-                          (let [id->new-card (when is_deep_copy
-                                               (duplicate-cards existing-dashboard collection_id))]
-                            (doseq [card (update-cards-for-copy from-dashboard-id
-                                                                (:ordered_cards existing-dashboard)
-                                                                is_deep_copy
-                                                                id->new-card)]
-                              (api/check-500 (dashboard/add-dashcard! <> (:card_id card) card))))))]
+                        (let [dash (db/insert! Dashboard dashboard-data)
+                              id->new-card (when is_deep_copy
+                                             (duplicate-cards existing-dashboard collection_id))]
+                          (doseq [card (update-cards-for-copy from-dashboard-id
+                                                              (:ordered_cards existing-dashboard)
+                                                              is_deep_copy
+                                                              id->new-card)]
+                            (api/check-500 (dashboard/add-dashcard! dash (:card_id card) card)))
+                          (cond-> dash
+                            (:uncopied id->new-card)
+                            (assoc :uncopied (:uncopied id->new-card)))))]
     (snowplow/track-event! ::snowplow/dashboard-created api/*current-user-id* {:dashboard-id (u/the-id dashboard)})
     (events/publish-event! :dashboard-create dashboard)))
 

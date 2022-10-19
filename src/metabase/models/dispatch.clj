@@ -35,6 +35,7 @@
           (format "instance of a %s" (name model))))
 
 (p/defprotocol+ Model
+  :extend-via-metadata true ;; useful for testing. Not used in application proper
   (model [this]
     "Given either a Toucan model or a Toucan instance, return the Toucan model. Otherwise return `nil`."))
 
