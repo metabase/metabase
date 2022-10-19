@@ -9,8 +9,7 @@
 (defn- backend-message? [{:keys [source-references]}]
   (boolean
    (let [paths (->> source-references
-                    ;; sometimes 2 paths exist in a single string, space separated
-                    ;; if a backend path is second, it is missed if we don't str/split
+                    ;; Sometimes 2 paths exist in a single string, space separated
                     (mapcat #(str/split % #" "))
                     ;; Strip off the line number at the end of some paths
                     (map #(str/split % #":"))
