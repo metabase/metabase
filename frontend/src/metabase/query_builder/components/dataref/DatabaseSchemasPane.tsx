@@ -16,6 +16,7 @@ import {
   NodeListTitleText,
   QuestionId,
 } from "./NodeList.styled";
+import { PaneContent } from "./Pane.styled";
 
 interface DatabaseSchemasPaneProps {
   onBack: () => void;
@@ -44,56 +45,58 @@ const DatabaseSchemasPane = ({
       onBack={onBack}
       onClose={onClose}
     >
-      <NodeListContainer>
-        {sortedModels.length ? (
-          <>
-            <NodeListTitle>
-              <NodeListIcon name="model" />
-              <NodeListTitleText>
-                {ngettext(
-                  msgid`${sortedModels.length} model`,
-                  `${sortedModels.length} models`,
-                  sortedModels.length,
-                )}
-              </NodeListTitleText>
-            </NodeListTitle>
-            <ul>
-              {sortedModels.map(model => (
-                <li key={model.id}>
-                  <NodeListItemLink
-                    onClick={() => onItemClick("question", model)}
-                  >
-                    <NodeListItemIcon name="model" />
-                    <NodeListItemName>{model.name}</NodeListItemName>
-                    <QuestionId>{`#${model.id}`}</QuestionId>
-                  </NodeListItemLink>
-                </li>
-              ))}
-            </ul>
-            <br></br>
-          </>
-        ) : null}
-        <NodeListTitle>
-          <NodeListIcon name="folder" />
-          <NodeListTitleText>
-            {ngettext(
-              msgid`${schemas.length} schema`,
-              `${schemas.length} schemas`,
-              schemas.length,
-            )}
-          </NodeListTitleText>
-        </NodeListTitle>
-        <ul>
-          {schemas.map(schema => (
-            <li key={schema.id}>
-              <NodeListItemLink onClick={() => onItemClick("schema", schema)}>
-                <NodeListItemIcon name="folder" />
-                <NodeListItemName>{schema.name}</NodeListItemName>
-              </NodeListItemLink>
-            </li>
-          ))}
-        </ul>
-      </NodeListContainer>
+      <PaneContent>
+        <NodeListContainer>
+          {sortedModels.length ? (
+            <>
+              <NodeListTitle>
+                <NodeListIcon name="model" />
+                <NodeListTitleText>
+                  {ngettext(
+                    msgid`${sortedModels.length} model`,
+                    `${sortedModels.length} models`,
+                    sortedModels.length,
+                  )}
+                </NodeListTitleText>
+              </NodeListTitle>
+              <ul>
+                {sortedModels.map(model => (
+                  <li key={model.id}>
+                    <NodeListItemLink
+                      onClick={() => onItemClick("question", model)}
+                    >
+                      <NodeListItemIcon name="model" />
+                      <NodeListItemName>{model.name}</NodeListItemName>
+                      <QuestionId>{`#${model.id}`}</QuestionId>
+                    </NodeListItemLink>
+                  </li>
+                ))}
+              </ul>
+              <br></br>
+            </>
+          ) : null}
+          <NodeListTitle>
+            <NodeListIcon name="folder" />
+            <NodeListTitleText>
+              {ngettext(
+                msgid`${schemas.length} schema`,
+                `${schemas.length} schemas`,
+                schemas.length,
+              )}
+            </NodeListTitleText>
+          </NodeListTitle>
+          <ul>
+            {schemas.map(schema => (
+              <li key={schema.id}>
+                <NodeListItemLink onClick={() => onItemClick("schema", schema)}>
+                  <NodeListItemIcon name="folder" />
+                  <NodeListItemName>{schema.name}</NodeListItemName>
+                </NodeListItemLink>
+              </li>
+            ))}
+          </ul>
+        </NodeListContainer>
+      </PaneContent>
     </SidebarContent>
   );
 };
