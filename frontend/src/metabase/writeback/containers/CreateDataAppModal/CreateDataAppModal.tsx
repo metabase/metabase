@@ -10,7 +10,8 @@ import * as Urls from "metabase/lib/urls";
 
 import DataApps, { ScaffoldNewAppParams } from "metabase/entities/data-apps";
 
-import DataPicker, { useDataPickerValue } from "metabase/containers/DataPicker";
+import { useDataPickerValue } from "metabase/containers/DataPicker";
+import DataAppScaffoldingDataPicker from "metabase/writeback/components/DataAppScaffoldingDataPicker";
 
 import type { DataApp } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
@@ -69,7 +70,7 @@ function CreateDataAppModal({ onCreate, onChangeLocation, onClose }: Props) {
         <ModalTitle>{t`Pick your starting data`}</ModalTitle>
       </ModalHeader>
       <ModalBody>
-        <DataPicker value={value} onChange={setValue} />
+        <DataAppScaffoldingDataPicker value={value} onChange={setValue} />
       </ModalBody>
       <ModalFooter>
         <Button onClick={onClose}>{t`Cancel`}</Button>
