@@ -15,14 +15,11 @@
                                      Dashboard
                                      DashboardCard
                                      DashboardCardSeries
-                                     DashboardEmitter
                                      Database
-                                     Emitter
                                      Field
                                      FieldValues
                                      ModelAction
                                      Pulse
-                                     QueryAction
                                      Revision
                                      Table
                                      User]]
@@ -346,22 +343,6 @@
                                                                  :position         0}]]
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (format "dashboard/%d" dashboard-id)))))))))
-
-(deftest fetch-dashboard-emitter-test
-  (testing "GET /api/dashboard/:id"
-    (testing "Fetch dashboard with an emitter"
-      (mt/with-temp* [Dashboard [dashboard {:name "Test Dashboard"}]
-                      Card [write-card {:is_write true :name "Test Write Card"}]
-                      Emitter [{emitter-id :id} {:action_id (u/the-id (db/select-one-field :action_id QueryAction :card_id (u/the-id write-card)))}]]
-        (db/insert! DashboardEmitter {:emitter_id emitter-id
-                                      :dashboard_id (u/the-id dashboard)})
-        (testing "admin sees emitters"
-          (is (partial=
-               {:emitters [{:action {:type "query" :card {:name "Test Write Card"}}}]}
-               (dashboard-response (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (u/the-id dashboard)))))))
-        (testing "non-admin does not see emitters"
-          (is (nil?
-               (:emitters (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" (u/the-id dashboard))))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             PUT /api/dashboard/:id                                             |
@@ -1948,7 +1929,7 @@
             (let [execute-path (format "dashboard/%s/dashcard/%s/execute/custom"
                                        dashboard-id
                                        dashcard-id)]
-              (testing "Should be able to execute an emitter"
+              (testing "Should be able to execute an action"
                 (is (= {:the_parameter 1}
                        (mt/user-http-request :crowberto :post 200 execute-path
                                              {:parameters {"id" 1}}))))

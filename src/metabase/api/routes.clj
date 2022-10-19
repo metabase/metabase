@@ -14,7 +14,6 @@
             [metabase.api.dataset :as api.dataset]
             [metabase.api.email :as api.email]
             [metabase.api.embed :as api.embed]
-            [metabase.api.emitter :as api.emitter]
             [metabase.api.field :as api.field]
             [metabase.api.geojson :as api.geojson]
             [metabase.api.google :as api.google]
@@ -79,7 +78,6 @@
   (context "/dataset"              [] (+auth api.dataset/routes))
   (context "/email"                [] (+auth api.email/routes))
   (context "/embed"                [] (+message-only-exceptions api.embed/routes))
-  (context "/emitter"              [] (+auth api.emitter/routes))
   (context "/field"                [] (+auth api.field/routes))
   (context "/geojson"              [] api.geojson/routes)
   (context "/google"               [] (+auth api.google/routes))
