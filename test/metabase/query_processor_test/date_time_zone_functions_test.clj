@@ -273,25 +273,17 @@
 
 (defn- test-date-convert
   [convert-tz-expression &
-   {:keys [aggregation breakout expressions fields filter limit]
+   {:keys [aggregation expressions fields filter limit]
     :or   {expressions {"expr" convert-tz-expression}
            filter      [:= [:field (mt/id :times :index) nil] 1]
            fields      [[:expression "expr"]]}}]
-  (if breakout
-    (->> (mt/run-mbql-query times {:expressions expressions
-                                   :aggregation aggregation
-                                   :limit       limit
-                                   :filter      filter
-                                   :breakout    breakout})
-         mt/rows
-         ffirst)
-    (->> (mt/run-mbql-query times {:expressions expressions
-                                   :aggregation aggregation
-                                   :limit       limit
-                                   :filter      filter
-                                   :fields      fields})
-         mt/rows
-         ffirst)))
+  (->> (mt/run-mbql-query times {:expressions expressions
+                                 :aggregation aggregation
+                                 :limit       limit
+                                 :filter      filter
+                                 :fields      fields})
+       mt/rows
+       ffirst))
 
 (def offset->zone
   "A map of all Offset to a zone-id.
