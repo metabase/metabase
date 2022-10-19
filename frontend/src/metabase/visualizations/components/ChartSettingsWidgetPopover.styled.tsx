@@ -3,11 +3,17 @@ import Radio from "metabase/core/components/Radio";
 
 import { color } from "metabase/lib/colors";
 
-export const PopoverRoot = styled.div`
-  padding-bottom: 1rem;
+interface PopoverRootProps {
+  noTopPadding: boolean;
+}
+
+export const PopoverRoot = styled.div<PopoverRootProps>`
+  padding: 1.5rem 0 1rem;
   overflow-y: auto;
   max-height: 600px;
   min-width: 336px;
+
+  ${({ noTopPadding }) => noTopPadding && "padding-top: 0;"}
 `;
 
 export const PopoverTabs = styled(Radio)`

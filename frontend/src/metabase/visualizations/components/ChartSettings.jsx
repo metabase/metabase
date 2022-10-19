@@ -25,15 +25,14 @@ import {
 
 import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
 import { getSettingDefintionsForColumn } from "metabase/visualizations/lib/settings/column";
-
-import { keyForColumn } from "metabase-lib/lib/queries/utils/dataset";
+import { getColumnKey } from "metabase-lib/lib/queries/utils/get-column-key";
 
 import ChartSettingsWidgetList from "./ChartSettingsWidgetList";
 import ChartSettingsWidgetPopover from "./ChartSettingsWidgetPopover";
 import { SectionContainer, SectionWarnings } from "./ChartSettings.styled";
 
 // section names are localized
-const DEFAULT_TAB_PRIORITY = [t`Display`];
+const DEFAULT_TAB_PRIORITY = [t`Data`];
 
 const withTransientSettingState = ComposedComponent =>
   class extends React.Component {
@@ -196,7 +195,7 @@ class ChartSettings extends Component {
         const settings = this._getSettings();
         const singleSeriesForColumn = series.find(
           single =>
-            keyForColumn(single.data.cols[1]) ===
+            getColumnKey(single.data.cols[1]) ===
             currentWidget.props.initialKey,
         );
 

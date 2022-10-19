@@ -1,9 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import _ from "underscore";
-import { t } from "ttag";
-
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-import Radio from "metabase/core/components/Radio";
 
 import { PopoverRoot, PopoverTabs } from "./ChartSettingsWidgetPopover.styled";
 import ChartSettingsWidget from "./ChartSettingsWidget";
@@ -40,21 +37,26 @@ const ChartSettingsWidgetPopover = ({
     }
   }, [currentWidgetKey, widgetKey, sections]);
 
+  const sectionNames = Object.keys(sections) || [];
+  const hasMultipleSections = sectionNames.length > 1;
+
   return (
     <TippyPopover
       reference={anchor}
       content={
         widgets.length > 0 ? (
-          <PopoverRoot>
-            <PopoverTabs
-              value={currentSection}
-              options={Object.keys(sections).map((sectionName: string) => ({
-                name: sectionName,
-                value: sectionName,
-              }))}
-              onChange={tab => setCurrentSection(tab)}
-              variant="underlined"
-            />
+          <PopoverRoot noTopPadding={hasMultipleSections}>
+            {hasMultipleSections && (
+              <PopoverTabs
+                value={currentSection}
+                options={Object.keys(sections).map((sectionName: string) => ({
+                  name: sectionName,
+                  value: sectionName,
+                }))}
+                onChange={tab => setCurrentSection(tab)}
+                variant="underlined"
+              />
+            )}
             {sections[currentSection]?.map(widget => (
               <ChartSettingsWidget key={widget.id} {...widget} hidden={false} />
             ))}
