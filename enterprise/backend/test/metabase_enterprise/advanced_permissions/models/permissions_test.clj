@@ -234,31 +234,6 @@
                (ee-perms/update-db-details-permissions! group-id (mt/id) :yes))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                          DB execute permissions                                                |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- execute-perms-by-group-id [group-id]
-  (get-in (perms/execution-perms-graph) [:groups group-id (mt/id)]))
-
-(deftest update-db-execute-permissions-test
-  (mt/with-model-cleanup [Permissions]
-    (mt/with-temp PermissionsGroup [{group-id :id}]
-      (premium-features-test/with-premium-features #{:advanced-permissions}
-        (testing "Execute perms for a DB can be set and revoked"
-          (ee-perms/update-db-execute-permissions! group-id (mt/id) :all)
-          (is (= :all (execute-perms-by-group-id group-id)))
-
-          (ee-perms/update-db-execute-permissions! group-id (mt/id) :none)
-          (is (nil? (execute-perms-by-group-id group-id)))))
-
-      (premium-features-test/with-premium-features #{}
-        (testing "Execute permissions cannot be modified without the :advanced-permissions feature flag"
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"The execute permissions functionality is only enabled if you have a premium token with the advanced-permissions feature."
-               (ee-perms/update-db-execute-permissions! group-id (mt/id) :all))))))))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    Graph                                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
