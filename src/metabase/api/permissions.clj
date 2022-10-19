@@ -7,7 +7,6 @@
             [metabase.api.common.validation :as validation]
             [metabase.api.permission-graph :as api.permission-graph]
             [metabase.models :refer [PermissionsGroupMembership User]]
-            [metabase.models.action :as action]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group :refer [PermissionsGroup]]
             [metabase.public-settings.premium-features :as premium-features]

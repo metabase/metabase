@@ -21,8 +21,6 @@
                                      Field
                                      FieldValues
                                      ModelAction
-                                     PermissionsGroup
-                                     PermissionsGroupMembership
                                      Pulse
                                      QueryAction
                                      Revision
