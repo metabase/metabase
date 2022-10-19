@@ -1,17 +1,10 @@
 (ns metabase.api.action-test
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.actions :as actions]
+  (:require [clojure.test :refer :all]
             [metabase.actions.test-util :as actions.test-util]
             [metabase.api.action :as api.action]
-            [metabase.driver :as driver]
             [metabase.models :refer [Card ModelAction]]
             [metabase.models.action :refer [Action]]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.table :refer [Table]]
-            [metabase.query-processor :as qp]
             [metabase.test :as mt]
-            [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
