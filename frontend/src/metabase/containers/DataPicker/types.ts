@@ -11,6 +11,14 @@ export type DataPickerValue = {
   tableIds: Table["id"][];
 };
 
+export interface VirtualTable {
+  id: Table["id"];
+  display_name: string;
+  schema: {
+    id: Schema["id"];
+  };
+}
+
 export interface DataPickerProps {
   value: DataPickerValue;
   onChange: (value: DataPickerValue) => void;

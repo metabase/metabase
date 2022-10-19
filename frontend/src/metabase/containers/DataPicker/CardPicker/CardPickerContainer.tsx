@@ -15,10 +15,13 @@ import type Schema from "metabase-lib/lib/metadata/Schema";
 
 import { getCollectionVirtualSchemaId } from "metabase-lib/lib/metadata/utils/saved-questions";
 
-import type { DataPickerProps, DataPickerSelectedItem } from "../types";
+import type {
+  DataPickerProps,
+  DataPickerSelectedItem,
+  VirtualTable,
+} from "../types";
 import useSelectedTables from "../useSelectedTables";
 
-import type { VirtualTable } from "./types";
 import { buildCollectionTree } from "./utils";
 
 import CardPickerView from "./CardPickerView";

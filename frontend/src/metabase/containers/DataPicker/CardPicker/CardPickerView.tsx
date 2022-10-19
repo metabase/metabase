@@ -9,10 +9,8 @@ import type { ITreeNodeItem } from "metabase/components/tree/types";
 import type { Collection } from "metabase-types/api";
 import type Table from "metabase-lib/lib/metadata/Table";
 
-import type { DataPickerSelectedItem } from "../types";
+import type { DataPickerSelectedItem, VirtualTable } from "../types";
 import PanePicker from "../PanePicker";
-
-import type { VirtualTable } from "./types";
 
 import { StyledSelectList } from "./CardPicker.styled";
 
