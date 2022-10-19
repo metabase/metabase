@@ -149,6 +149,9 @@ export const RowChart = <TDatum,>({
             innerHeight,
             seriesColors,
             xScaleType,
+            theme,
+            xTickFormatter,
+            labelsFormatter,
           })
         : calculateNonStackedBars<TDatum>({
             data: trimmedData,
@@ -158,6 +161,9 @@ export const RowChart = <TDatum,>({
             innerHeight,
             seriesColors,
             xScaleType,
+            theme,
+            xTickFormatter,
+            labelsFormatter,
           }),
     [
       additionalXValues,
@@ -168,6 +174,9 @@ export const RowChart = <TDatum,>({
       stackOffset,
       trimmedData,
       xScaleType,
+      theme,
+      xTickFormatter,
+      labelsFormatter,
     ],
   );
 

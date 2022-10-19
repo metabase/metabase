@@ -7,7 +7,11 @@ import {
   GRAPH_DATA_SETTINGS,
   GRAPH_GOAL_SETTINGS,
 } from "metabase/visualizations/lib/settings/graph";
-import { DatasetData, VisualizationSettings } from "metabase-types/api";
+import {
+  Dataset,
+  DatasetData,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 import {
   getChartColumns,
@@ -52,8 +56,6 @@ import {
   RowLegendCaption,
 } from "./RowChart.styled";
 
-type $FIXME = any;
-
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 const RowChartRenderer = ExplicitSize({
@@ -72,8 +74,8 @@ interface RowChartVisualizationProps extends Record<string, any> {
   height: number;
   data: DatasetData;
   settings: VisualizationSettings;
-  visualizationIsClickable: $FIXME;
-  onVisualizationClick: $FIXME;
+  visualizationIsClickable: (data: Record<string, unknown>) => boolean;
+  onVisualizationClick: (data: Record<string, unknown>) => void;
 }
 
 const RowChartVisualization = ({
@@ -151,6 +153,10 @@ const RowChartVisualization = ({
       chartColumns,
       data.cols,
     );
+
+    if (!visualizationIsClickable(clickData)) {
+      return;
+    }
 
     onVisualizationClick({ ...clickData, element: event.target });
   };
@@ -315,7 +321,7 @@ RowChartVisualization.settings = {
     section: t`Display`,
     title: t`Auto formatting`,
     widget: "segmentedControl",
-    getHidden: (series: any, vizSettings: any) =>
+    getHidden: (_series: any, vizSettings: any) =>
       vizSettings["graph.show_values"] !== true ||
       vizSettings["stackable.stack_type"] === "normalized",
     props: {
@@ -333,7 +339,7 @@ RowChartVisualization.settings = {
   ...GRAPH_AXIS_SETTINGS,
 };
 
-RowChartVisualization.isSensible = ({ cols, rows }: $FIXME) => {
+RowChartVisualization.isSensible = ({ cols, rows }: DatasetData) => {
   return (
     rows.length > 1 &&
     cols.length >= 2 &&
@@ -388,14 +394,14 @@ RowChartVisualization.transformSeries = (originalMultipleSeries: any) => {
 };
 
 RowChartVisualization.checkRenderable = (
-  series: $FIXME,
+  series: any[],
   settings: VisualizationSettings,
 ) => {
   if (!hasValidColumnsSelected(settings, series[0].data)) {
     throw new MinRowsError(1, 0);
   }
 
-  const singleSeriesHasNoRows = ({ data: { cols, rows } }: $FIXME) =>
+  const singleSeriesHasNoRows = ({ data: { rows } }: Dataset) =>
     rows.length < 1;
   if (_.every(series, singleSeriesHasNoRows)) {
     throw new MinRowsError(1, 0);

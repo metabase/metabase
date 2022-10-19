@@ -16,9 +16,10 @@ import {
 } from "metabase/visualizations/shared/types/style";
 import { ChartGoal } from "metabase/visualizations/shared/types/settings";
 import { LABEL_PADDING } from "../constants";
-import { Series } from "../types";
+import { RowChartTheme, Series } from "../types";
 import { createXScale, createYScale } from "./scale";
 import { createStackedXDomain, createXDomain } from "./domain";
+import { ValueFormatter } from "metabase/visualizations/shared/types/format";
 
 const CHART_PADDING = 10;
 const RIGHT_PADDING = 30;
@@ -141,6 +142,9 @@ type CalculatedStackedChartInput<TDatum> = {
   innerHeight: number;
   seriesColors: Record<string, string>;
   xScaleType: ContinuousScaleType;
+  theme: RowChartTheme;
+  xTickFormatter: ValueFormatter
+  labelsFormatter: ValueFormatter
 };
 
 export const calculateStackedBars = <TDatum>({
@@ -152,11 +156,17 @@ export const calculateStackedBars = <TDatum>({
   innerHeight,
   seriesColors,
   xScaleType,
+  theme,
+  xTickFormatter,
+  labelsFormatter
 }: CalculatedStackedChartInput<TDatum>) => {
-  const seriesByKey = multipleSeries.reduce((acc, series) => {
-    acc[series.seriesKey] = series;
-    return acc;
-  }, {} as Record<string, Series<TDatum>>);
+  const seriesByKey = multipleSeries.reduce<Record<string, Series<TDatum>>>(
+    (acc, series) => {
+      acc[series.seriesKey] = series;
+      return acc;
+    },
+    {},
+  );
 
   const d3Stack = stack<TDatum>()
     .keys(multipleSeries.map(s => s.seriesKey))
@@ -186,7 +196,7 @@ export const calculateStackedBars = <TDatum>({
     return data.map((_datum, datumIndex) => {
       const stackedDatum = stackedSeries[seriesIndex][datumIndex];
       const shouldIncludeValue =
-        seriesIndex === multipleSeries.length - 1 && stackOffset === "none";
+        seriesIndex === multipleSeries.length - 1 && stackOffset !== "expand";
 
       return getStackedBar(
         stackedDatum,
@@ -251,6 +261,9 @@ type CalculatedNonStackedChartInput<TDatum> = {
   innerHeight: number;
   seriesColors: Record<string, string>;
   xScaleType: ContinuousScaleType;
+  theme: RowChartTheme;
+  xTickFormatter: ValueFormatter
+  labelsFormatter: ValueFormatter
 };
 
 export const calculateNonStackedBars = <TDatum>({
@@ -261,6 +274,9 @@ export const calculateNonStackedBars = <TDatum>({
   innerHeight,
   seriesColors,
   xScaleType,
+  theme,
+  xTickFormatter,
+  labelsFormatter
 }: CalculatedNonStackedChartInput<TDatum>) => {
   const yScale = createYScale(data, multipleSeries, innerHeight);
   const xDomain = createXDomain(
@@ -312,6 +328,10 @@ export const getScaleSidePadding = (
   return Math.max(requiredLabelSpace, requiredTickSpace);
 };
 
+const adjustXScale = (measureText: TextMeasurer, xScale: ScaleLinear<number, number, never>) => {
+
+}
+
 export const getRowChartGoal = (
   goal: ChartGoal | null | undefined,
   style: GoalStyle,
@@ -336,3 +356,4 @@ export const getRowChartGoal = (
     position,
   };
 };
+
