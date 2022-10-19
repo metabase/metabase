@@ -4,7 +4,6 @@
     [clojure.walk :as walk]
     [compojure.core :refer [POST PUT]]
     [medley.core :as m]
-    [metabase.actions :as actions]
     [metabase.api.card :as api.card]
     [metabase.api.collection :as api.collection]
     [metabase.api.common :as api]
@@ -369,4 +368,4 @@
         dejsonify-graph
         update-graph!)))
 
-(api/define-routes actions/+check-data-apps-enabled)
+(api/define-routes)

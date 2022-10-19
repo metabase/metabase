@@ -1,6 +1,5 @@
 (ns metabase.models.app
-  (:require [metabase.models.action :as action]
-            [metabase.models.collection :as collection :refer [Collection]]
+  (:require [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.interface :as mi]
             [metabase.models.query :as query]
             [metabase.models.serialization.hash :as serdes.hash]
@@ -25,8 +24,7 @@
 (u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class App)
   models/IModel
   (merge models/IModelDefaults
-         {:pre-insert (fn [app] (action/check-data-apps-enabled) app)
-          :types (constantly {:options :json
+         {:types (constantly {:options :json
                               :nav_items :json})
           :properties (constantly {:timestamped? true
                                    :entity_id    true})}))
