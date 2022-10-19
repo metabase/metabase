@@ -35,7 +35,7 @@ import {
 } from "./DashboardHeader.styled";
 
 const mapStateToProps = (state, props) => {
-  const isDataApp = false;
+  const isDataApp = props.dashboard.is_app_page;
   const isShowingDashboardInfoSidebar =
     !isDataApp && getIsShowDashboardInfoSidebar(state);
   return {
@@ -188,6 +188,7 @@ class DashboardHeader extends Component {
       dashboard,
       parametersWidget,
       isBookmarked,
+      isAdmin,
       isEditing,
       isFullscreen,
       isEditable,
@@ -202,7 +203,7 @@ class DashboardHeader extends Component {
       closeSidebar,
     } = this.props;
 
-    const isDataAppPage = false;
+    const isDataAppPage = dashboard.is_app_page;
     const canEdit = dashboard.can_write && isEditable && !!dashboard;
 
     const buttons = [];
@@ -281,6 +282,32 @@ class DashboardHeader extends Component {
         </span>,
       );
 
+      if (isAdmin && dashboard.is_app_page) {
+        buttons.push(
+          <>
+            <DashboardHeaderActionDivider />
+            <Tooltip key="add-action-form" tooltip={t`Add action form`}>
+              <DashboardHeaderButton
+                isActive={activeSidebarName === SIDEBAR_NAME.addActionForm}
+                onClick={() => toggleSidebar(SIDEBAR_NAME.addActionForm)}
+                data-metabase-event="Dashboard;Add Card Sidebar"
+              >
+                <Icon name="list" size={18} />
+              </DashboardHeaderButton>
+            </Tooltip>
+            <Tooltip key="add-action-button" tooltip={t`Add action button`}>
+              <DashboardHeaderButton
+                isActive={activeSidebarName === SIDEBAR_NAME.addActionButton}
+                onClick={() => toggleSidebar(SIDEBAR_NAME.addActionButton)}
+                data-metabase-event="Dashboard;Add Card Sidebar"
+              >
+                <Icon name="click" size={18} />
+              </DashboardHeaderButton>
+            </Tooltip>
+          </>,
+        );
+      }
+
       extraButtons.push({
         title: t`Revision history`,
         icon: "history",
@@ -291,7 +318,10 @@ class DashboardHeader extends Component {
 
     if (!isFullscreen && !isEditing && canEdit) {
       buttons.push(
-        <Tooltip key="edit-dashboard" tooltip={t`Edit dashboard`}>
+        <Tooltip
+          key="edit-dashboard"
+          tooltip={dashboard.is_app_page ? t`Edit page` : t`Edit dashboard`}
+        >
           <DashboardHeaderButton
             key="edit"
             data-metabase-event="Dashboard;Edit"
@@ -304,12 +334,14 @@ class DashboardHeader extends Component {
     }
 
     if (!isFullscreen && !isEditing) {
-      extraButtons.push({
-        title: t`Enter fullscreen`,
-        icon: "expand",
-        action: e => onFullscreenChange(!isFullscreen, !e.altKey),
-        event: `Dashboard;Fullscreen Mode;${!isFullscreen}`,
-      });
+      if (!dashboard.is_app_page) {
+        extraButtons.push({
+          title: t`Enter fullscreen`,
+          icon: "expand",
+          action: e => onFullscreenChange(!isFullscreen, !e.altKey),
+          event: `Dashboard;Fullscreen Mode;${!isFullscreen}`,
+        });
+      }
 
       extraButtons.push({
         title: t`Duplicate`,
@@ -384,7 +416,7 @@ class DashboardHeader extends Component {
       setSidebar,
     } = this.props;
 
-    const isDataAppPage = false;
+    const isDataAppPage = dashboard.is_app_page;
     const hasLastEditInfo = dashboard["last-edit-info"] != null;
 
     return (
@@ -402,7 +434,11 @@ class DashboardHeader extends Component {
         isNavBarOpen={this.props.isNavBarOpen}
         headerButtons={this.getHeaderButtons()}
         editWarning={this.getEditWarning(dashboard)}
-        editingTitle={t`You're editing this dashboard.`}
+        editingTitle={
+          dashboard.is_app_page
+            ? t`You're editing this page.`
+            : t`You're editing this dashboard.`
+        }
         editingButtons={this.getEditingButtons()}
         setDashboardAttribute={setDashboardAttribute}
         onLastEditInfoClick={() => setSidebar({ name: SIDEBAR_NAME.info })}

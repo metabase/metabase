@@ -113,7 +113,7 @@ const DashboardHeader = ({
     return () => clearTimeout(timerId);
   });
 
-  const isDataApp = false;
+  const isDataApp = dashboard.is_app_page;
 
   return (
     <div>
