@@ -9,26 +9,36 @@ export type DataTypeInfoItem = {
   description: string;
 };
 
-export function getDataTypes(): DataTypeInfoItem[] {
-  return [
-    {
-      id: "models",
-      icon: "model",
-      name: t`Models`,
-      description: t`The best starting place for new questions.`,
-    },
+export function getDataTypes({
+  hasNestedQueriesEnabled,
+}: {
+  hasNestedQueriesEnabled: boolean;
+}): DataTypeInfoItem[] {
+  const dataTypes: DataTypeInfoItem[] = [
     {
       id: "raw-data",
       icon: "database",
       name: t`Raw Data`,
       description: t`Unaltered tables in connected databases.`,
     },
+  ];
+
+  if (hasNestedQueriesEnabled) {
+    dataTypes.unshift({
+      id: "models",
+      icon: "model",
+      name: t`Models`,
+      description: t`The best starting place for new questions.`,
+    });
+
     // TODO enable when DataPicker has items filtering API
-    // {
+    // dataTypes.push({
     //   id: "questions",
     //   name: t`Saved Questions`,
     //   icon: "folder",
     //   description: t`Use any question’s results to start a new question.`,
-    // },
-  ];
+    // });
+  }
+
+  return dataTypes;
 }

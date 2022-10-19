@@ -1,8 +1,16 @@
 import React, { useCallback, useMemo } from "react";
+import { connect } from "react-redux";
+
+import { getSetting } from "metabase/selectors/settings";
+
+import type { State } from "metabase-types/store";
 
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/lib/metadata/utils/saved-questions";
 
-import type { DataPickerProps, DataPickerDataType } from "./types";
+import type {
+  DataPickerProps as DataPickerOwnProps,
+  DataPickerDataType,
+} from "./types";
 
 import { getDataTypes } from "./utils";
 
@@ -10,10 +18,25 @@ import CardPicker from "./CardPicker";
 import DataTypePicker from "./DataTypePicker";
 import RawDataPicker from "./RawDataPicker";
 
-function DataPicker(props: DataPickerProps) {
+interface DataPickerStateProps {
+  hasNestedQueriesEnabled: boolean;
+}
+
+type DataPickerProps = DataPickerOwnProps & DataPickerStateProps;
+
+function mapStateToProps(state: State) {
+  return {
+    hasNestedQueriesEnabled: getSetting(state, "enable-nested-queries"),
+  };
+}
+
+function DataPicker({ hasNestedQueriesEnabled, ...props }: DataPickerProps) {
   const { value, onChange } = props;
 
-  const dataTypes = useMemo(() => getDataTypes(), []);
+  const dataTypes = useMemo(
+    () => getDataTypes({ hasNestedQueriesEnabled }),
+    [hasNestedQueriesEnabled],
+  );
 
   const handleDataTypeChange = useCallback(
     (type: DataPickerDataType) => {
@@ -58,4 +81,4 @@ function DataPicker(props: DataPickerProps) {
   return null;
 }
 
-export default DataPicker;
+export default connect(mapStateToProps)(DataPicker);
