@@ -14,7 +14,7 @@ const questionDetails = {
   },
 };
 
-describe("issue 22519", () => {
+describe.skip("issue 22519", () => {
   beforeEach(() => {
     cy.intercept("PUT", "/api/field/*").as("updateField");
     cy.intercept("POST", "/api/dataset").as("dataset");
@@ -36,6 +36,7 @@ describe("issue 22519", () => {
 
     turnIntoModel();
 
+    cy.wait("@dataset");
     cy.findByText("xavier");
   });
 });
