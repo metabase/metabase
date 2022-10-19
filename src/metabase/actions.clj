@@ -7,7 +7,6 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.action :as action]
    [metabase.models.database :refer [Database]]
    [metabase.models.setting :as setting]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -44,17 +43,6 @@
       (handler request respond raise)
       (raise (ex-info (i18n/tru "Actions are not enabled.")
                       {:status-code 400})))))
-
-(defn +check-data-apps-enabled
-  "Ring middleware that checks that the [[metabase.model.action/check-data-apps-enabled]], and
-  returns a 400 response if not"
-  [handler]
-  (fn [request respond raise]
-    (try
-      (action/check-data-apps-enabled)
-      (catch Exception e
-        (raise e)))
-    (handler request respond raise)))
 
 (defmulti normalize-action-arg-map
   "Normalize the `arg-map` passed to [[perform-action!]] for a specific `action`."

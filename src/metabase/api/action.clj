@@ -94,4 +94,4 @@
   (db/update! HTTPAction id action)
   (first (action/select-actions :id id)))
 
-(api/define-routes actions/+check-actions-enabled actions/+check-data-apps-enabled)
+(api/define-routes actions/+check-actions-enabled)
