@@ -58,4 +58,3 @@
       ;; Invalid or empty references
       []                                                                            false
       ["foo"]                                                                       false)))
-
