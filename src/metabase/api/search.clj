@@ -454,7 +454,7 @@
                              (map #(update % :archived bit->boolean))
                              (map (partial scoring/score-and-result (:search-string search-ctx)))
                              (filter #(pos? (:score %))))
-          total-results     (scoring/top-results reducible-results xf)]
+          total-results     (scoring/top-results reducible-results search-config/max-filtered-results xf)]
       ;; We get to do this slicing and dicing with the result data because
       ;; the pagination of search is for UI improvement, not for performance.
       ;; We intend for the cardinality of the search results to be below the default max before this slicing occurs

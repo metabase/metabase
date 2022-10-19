@@ -235,15 +235,19 @@
 
 (defn- serialize
   "Massage the raw result from the DB and match data into something more useful for the client"
-  [result all-scores relevant-scores]
+  [result all-scores relevant-scores total-score]
   (let [{:keys [name display_name collection_id collection_name collection_authority_level collection_app_id]} result
         column              (first (keep :column relevant-scores))
         match-context-thunk (first (keep :match-context-thunk relevant-scores))]
     (-> result
         (assoc
-         :name           (if (or (= column :name) (nil? display_name))
-                           name
-                           display_name)
+         :name           (str
+                          total-score " | "
+                          (pr-str (mapv (fn [{:keys [name weight score]}] [name (* weight score)]) relevant-scores))
+                          " <> "
+                          (if (or (= column :name) (nil? display_name))
+                                name
+                                display_name))
          :context        (when (and (not (contains? search-config/displayed-columns column))
                                     match-context-thunk)
                            (match-context-thunk))
@@ -298,16 +302,14 @@
      ;; If the search string is non-blank, results with no text match have a score of zero.
      (if (or (str/blank? raw-search-string) (pos? text-match-score))
        {:score  total-score
-        :result (serialize result all-scores relevant-scores)}
+        :result (serialize result all-scores relevant-scores total-score)}
        {:score 0}))))
 
 (defn top-results
   "Given a reducible collection (i.e., from `jdbc/reducible-query`) and a transforming function for it, applies the
   transformation and returns a seq of the results sorted by score. The transforming function is expected to output
   maps with `:score` and `:result` keys."
-  [reducible-results xf]
+  [reducible-results max-results xf]
   (->> reducible-results
-       (transduce xf (u/sorted-take search-config/max-filtered-results compare-score-and-result))
-       ;; Make it descending: high scores first
-       rseq
+       (transduce xf (u/sorted-take max-results compare-score-and-result))
        (map :result)))

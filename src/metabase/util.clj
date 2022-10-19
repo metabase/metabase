@@ -921,7 +921,7 @@
      (loop [acc []]
        (if-let [x (.poll q)]
          (recur (conj acc x))
-         acc)))
+         (rseq acc))))
     ([^PriorityQueue q item]
      (if (>= (.size q) size)
        (let [smallest (.peek q)]

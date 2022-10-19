@@ -144,7 +144,7 @@
                               {:score  [2 2 i]
                                :result (str "item " i)})))]
         (is (= (map :result items)
-               (scoring/top-results items xf)))))
+               (scoring/top-results items 20 xf)))))
     (testing "a full queue only saves the top items"
       (let [sorted-items (->> (+ 10 search-config/max-filtered-results)
                               range
@@ -155,7 +155,7 @@
         (is (= (->> sorted-items
                     (take search-config/max-filtered-results)
                     (map :result))
-               (scoring/top-results (shuffle sorted-items) xf)))))))
+               (scoring/top-results (shuffle sorted-items) 20 xf)))))))
 
 (deftest ^:parallel match-context-test
   (let [context  #'scoring/match-context
@@ -309,8 +309,8 @@
           result {:name          "card"
                   :model         "card"
                   :dataset_query (json/generate-string query)}]
-      (is (= query (-> result (#'scoring/serialize {} {} 1) :dataset_query)))))
+      (is (= query (-> result (#'scoring/serialize {} {}) :dataset_query)))))
   (testing "Doesn't error on other models without a query"
     (is (nil? (-> {:name "dash" :model "dashboard"}
-                  (#'scoring/serialize {} {} 1)
+                  (#'scoring/serialize {} {})
                   :dataset_query)))))
