@@ -48,7 +48,7 @@ function SidebarContent({
             onClose={onClose}
           />
         )}
-        <div className="px3">{children}</div>
+        {children}
       </SidebarContentMain>
       {footer}
     </SidebarContentRoot>

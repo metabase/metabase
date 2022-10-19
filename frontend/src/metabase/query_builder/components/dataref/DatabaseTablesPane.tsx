@@ -16,6 +16,7 @@ import {
   NodeListTitleText,
   QuestionId,
 } from "./NodeList.styled";
+import { PaneContent } from "./Pane.styled";
 
 interface DatabaseTablesPaneProps {
   onBack: () => void;
@@ -53,56 +54,58 @@ const DatabaseTablesPane = ({
       onBack={onBack}
       onClose={onClose}
     >
-      <NodeListContainer>
-        {models.length ? (
-          <>
-            <NodeListTitle>
-              <NodeListIcon name="model" />
-              <NodeListTitleText>
-                {ngettext(
-                  msgid`${models.length} model`,
-                  `${models.length} models`,
-                  models.length,
-                )}
-              </NodeListTitleText>
-            </NodeListTitle>
-            <ul>
-              {models.map(model => (
-                <li key={model.id}>
-                  <NodeListItemLink
-                    onClick={() => onItemClick("question", model)}
-                  >
-                    <NodeListItemIcon name="model" />
-                    <NodeListItemName>{model.name}</NodeListItemName>
-                    <QuestionId>{`#${model.id}`}</QuestionId>
-                  </NodeListItemLink>
-                </li>
-              ))}
-            </ul>
-            <br></br>
-          </>
-        ) : null}
-        <NodeListTitle>
-          <NodeListIcon name="table" />
-          <NodeListTitleText>
-            {ngettext(
-              msgid`${tables.length} table`,
-              `${tables.length} tables`,
-              tables.length,
-            )}
-          </NodeListTitleText>
-        </NodeListTitle>
-        <ul>
-          {tables.map(table => (
-            <li key={table.id}>
-              <NodeListItemLink onClick={() => onItemClick("table", table)}>
-                <NodeListItemIcon name="table" />
-                <NodeListItemName>{table.table_name}</NodeListItemName>
-              </NodeListItemLink>
-            </li>
-          ))}
-        </ul>
-      </NodeListContainer>
+      <PaneContent>
+        <NodeListContainer>
+          {models.length ? (
+            <>
+              <NodeListTitle>
+                <NodeListIcon name="model" />
+                <NodeListTitleText>
+                  {ngettext(
+                    msgid`${models.length} model`,
+                    `${models.length} models`,
+                    models.length,
+                  )}
+                </NodeListTitleText>
+              </NodeListTitle>
+              <ul>
+                {models.map(model => (
+                  <li key={model.id}>
+                    <NodeListItemLink
+                      onClick={() => onItemClick("question", model)}
+                    >
+                      <NodeListItemIcon name="model" />
+                      <NodeListItemName>{model.name}</NodeListItemName>
+                      <QuestionId>{`#${model.id}`}</QuestionId>
+                    </NodeListItemLink>
+                  </li>
+                ))}
+              </ul>
+              <br></br>
+            </>
+          ) : null}
+          <NodeListTitle>
+            <NodeListIcon name="table" />
+            <NodeListTitleText>
+              {ngettext(
+                msgid`${tables.length} table`,
+                `${tables.length} tables`,
+                tables.length,
+              )}
+            </NodeListTitleText>
+          </NodeListTitle>
+          <ul>
+            {tables.map(table => (
+              <li key={table.id}>
+                <NodeListItemLink onClick={() => onItemClick("table", table)}>
+                  <NodeListItemIcon name="table" />
+                  <NodeListItemName>{table.table_name}</NodeListItemName>
+                </NodeListItemLink>
+              </li>
+            ))}
+          </ul>
+        </NodeListContainer>
+      </PaneContent>
     </SidebarContent>
   );
 };

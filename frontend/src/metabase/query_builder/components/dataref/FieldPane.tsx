@@ -3,6 +3,7 @@ import React from "react";
 import DimensionInfo from "metabase/components/MetadataInfo/DimensionInfo";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import Field from "metabase-lib/lib/metadata/Field";
+import { PaneContent } from "./Pane.styled";
 
 interface FieldPaneProps {
   onBack: () => void;
@@ -18,7 +19,9 @@ const FieldPane = ({ onBack, onClose, field }: FieldPaneProps) => {
       onBack={onBack}
       onClose={onClose}
     >
-      <DimensionInfo dimension={field.dimension()} showAllFieldValues />
+      <PaneContent>
+        <DimensionInfo dimension={field.dimension()} showAllFieldValues />
+      </PaneContent>
     </SidebarContent>
   );
 };
