@@ -10,23 +10,28 @@ import {
   NodeListItemName,
   NodeListItemIcon,
 } from "./NodeList.styled";
+import { PaneContent } from "./Pane.styled";
 
 const MainPane = ({ databases, onClose, onItemClick }) => (
   <SidebarContent title={t`Data Reference`} onClose={onClose}>
-    <p className="mt2 mb3 text-spaced">
-      {t`Browse the contents of your databases, tables, and columns. Pick a database to get started.`}
-    </p>
-    <ul>
-      {databases &&
-        databases.map(database => (
-          <li key={database.id}>
-            <NodeListItemLink onClick={() => onItemClick("database", database)}>
-              <NodeListItemIcon name="database" />
-              <NodeListItemName>{database.name}</NodeListItemName>
-            </NodeListItemLink>
-          </li>
-        ))}
-    </ul>
+    <PaneContent>
+      <p className="mt2 mb3 text-spaced">
+        {t`Browse the contents of your databases, tables, and columns. Pick a database to get started.`}
+      </p>
+      <ul>
+        {databases &&
+          databases.map(database => (
+            <li key={database.id}>
+              <NodeListItemLink
+                onClick={() => onItemClick("database", database)}
+              >
+                <NodeListItemIcon name="database" />
+                <NodeListItemName>{database.name}</NodeListItemName>
+              </NodeListItemLink>
+            </li>
+          ))}
+      </ul>
+    </PaneContent>
   </SidebarContent>
 );
 

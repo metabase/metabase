@@ -14,6 +14,7 @@ import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import type Table from "metabase-lib/lib/metadata/Table";
 import TableInfoLoader from "./TableInfoLoader";
 import FieldList from "./FieldList";
+import { PaneContent } from "./Pane.styled";
 
 interface TablePaneProps {
   onBack: () => void;
@@ -33,31 +34,33 @@ const TablePane = ({ table, onItemClick, onBack, onClose }: TablePaneProps) => (
     onBack={onBack}
     onClose={onClose}
   >
-    <TableInfoLoader table={table}>
-      <div className="ml1">
-        {table.description ? (
-          <Description>{table.description}</Description>
-        ) : (
-          <EmptyDescription>{t`No description`}</EmptyDescription>
-        )}
-      </div>
-      <div className="my2">
-        {table.fields.length ? (
-          <>
-            <FieldList
-              fields={table.fields}
-              onFieldClick={f => onItemClick("field", f)}
-            />
-            {table.connectedTables() && (
-              <ConnectedTableList
-                tables={table.connectedTables()}
-                onTableClick={t => onItemClick("table", t)}
+    <PaneContent>
+      <TableInfoLoader table={table}>
+        <div className="ml1">
+          {table.description ? (
+            <Description>{table.description}</Description>
+          ) : (
+            <EmptyDescription>{t`No description`}</EmptyDescription>
+          )}
+        </div>
+        <div className="my2">
+          {table.fields.length ? (
+            <>
+              <FieldList
+                fields={table.fields}
+                onFieldClick={f => onItemClick("field", f)}
               />
-            )}
-          </>
-        ) : null}
-      </div>
-    </TableInfoLoader>
+              {table.connectedTables() && (
+                <ConnectedTableList
+                  tables={table.connectedTables()}
+                  onTableClick={t => onItemClick("table", t)}
+                />
+              )}
+            </>
+          ) : null}
+        </div>
+      </TableInfoLoader>
+    </PaneContent>
   </SidebarContent>
 );
 

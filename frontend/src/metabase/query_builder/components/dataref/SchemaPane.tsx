@@ -14,6 +14,7 @@ import {
   NodeListIcon,
   NodeListTitleText,
 } from "./NodeList.styled";
+import { PaneContent } from "./Pane.styled";
 
 interface SchemaPaneProps {
   onBack: () => void;
@@ -39,28 +40,30 @@ const SchemaPane = ({
       onBack={onBack}
       onClose={onClose}
     >
-      <NodeListContainer>
-        <NodeListTitle>
-          <NodeListIcon name="table" />
-          <NodeListTitleText>
-            {ngettext(
-              msgid`${tables.length} table`,
-              `${tables.length} tables`,
-              tables.length,
-            )}
-          </NodeListTitleText>
-        </NodeListTitle>
-        <ul>
-          {tables.map(table => (
-            <li key={table.id}>
-              <NodeListItemLink onClick={() => onItemClick("table", table)}>
-                <NodeListItemIcon name="table" />
-                <NodeListItemName>{table.name}</NodeListItemName>
-              </NodeListItemLink>
-            </li>
-          ))}
-        </ul>
-      </NodeListContainer>
+      <PaneContent>
+        <NodeListContainer>
+          <NodeListTitle>
+            <NodeListIcon name="table" />
+            <NodeListTitleText>
+              {ngettext(
+                msgid`${tables.length} table`,
+                `${tables.length} tables`,
+                tables.length,
+              )}
+            </NodeListTitleText>
+          </NodeListTitle>
+          <ul>
+            {tables.map(table => (
+              <li key={table.id}>
+                <NodeListItemLink onClick={() => onItemClick("table", table)}>
+                  <NodeListItemIcon name="table" />
+                  <NodeListItemName>{table.name}</NodeListItemName>
+                </NodeListItemLink>
+              </li>
+            ))}
+          </ul>
+        </NodeListContainer>
+      </PaneContent>
     </SidebarContent>
   );
 };
