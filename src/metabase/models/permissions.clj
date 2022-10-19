@@ -408,6 +408,14 @@
   [collection-or-id :- MapOrID]
   (str (collection-readwrite-path collection-or-id) "read/"))
 
+(s/defn app-root-collection-permission :- Path
+  "Return path for the app root collection permission `read-or-write`."
+  [read-or-write :- (s/enum :read :write)]
+  (let [app-root-collection {:metabase.models.collection.root/is-root? true, :namespace :apps}]
+    (case read-or-write
+      :write (collection-readwrite-path app-root-collection)
+      :read  (collection-read-path app-root-collection))))
+
 (s/defn table-read-path :- Path
   "Return the permissions path required to fetch the Metadata for a Table."
   ([table-or-id]
@@ -1227,7 +1235,8 @@
   "Save changes made to permission graph for logging/auditing purposes.
   This doesn't do anything if `*current-user-id*` is unset (e.g. for testing or REPL usage).
   *  `model`   -- revision model, should be one of
-                  [PermissionsRevision, CollectionPermissionGraphRevision, ApplicationPermissionsRevision]
+                  [PermissionsRevision, CollectionPermissionGraphRevision, ApplicationPermissionsRevision
+                   AppPermissionGraphRevision]
   *  `before`  -- the graph before the changes
   *  `changes` -- set of changes applied in this revision."
   [model current-revision before changes]

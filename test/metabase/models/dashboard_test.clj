@@ -270,7 +270,7 @@
         (try
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"A Dashboard can only go in Collections in the \"default\" namespace"
+               #"A Dashboard can only go in Collections in the \"default\" or :apps namespace"
                (db/insert! Dashboard (assoc (tt/with-temp-defaults Dashboard) :collection_id collection-id, :name dashboard-name))))
           (finally
             (db/delete! Dashboard :name dashboard-name)))))
@@ -279,7 +279,7 @@
       (mt/with-temp Dashboard [{card-id :id}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"A Dashboard can only go in Collections in the \"default\" namespace"
+             #"A Dashboard can only go in Collections in the \"default\" or :apps namespace"
              (db/update! Dashboard card-id {:collection_id collection-id})))))))
 
 (deftest validate-parameters-test
