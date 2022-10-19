@@ -7,6 +7,8 @@ const BABEL_CONFIG = {
   cacheDirectory: process.env.BABEL_DISABLE_CACHE ? null : ".babel_cache",
 };
 
+const shouldDisableMinimization = process.env.DISABLE_MINIMIZATION === 'true'
+
 module.exports = {
   mode: "production",
   context: SRC_PATH,
@@ -47,4 +49,7 @@ module.exports = {
       "metabase-lib": LIB_SRC_PATH,
     },
   },
+  optimization: {
+    minimize: !shouldDisableMinimization
+  }
 };
