@@ -67,14 +67,8 @@ export function recognizeTemplateTags(queryText: string): string[] {
   return _.uniq(tagNames);
 }
 
-// needs to match logically with `cardTagRegexFromId`
 // matches '#123-foo-bar' and '#123' but not '#123foo'
 const CARD_TAG_NAME_REGEX: RegExp = /^#([0-9]*)(-[a-z0-9-]*)?$/;
-
-// needs to match logically with `CARD_TAG_NAME_REGEX`
-function cardTagRegexFromId(cardId: number): RegExp {
-  return new RegExp(`{{\\s*#${cardId}(-[a-z0-9-]*)?\\s*}}`, "g");
-}
 
 function tagRegex(tagName: string): RegExp {
   return new RegExp(`{{\\s*${tagName}\\s*}}`, "g");
