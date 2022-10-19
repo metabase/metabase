@@ -192,7 +192,6 @@
   (m/assoc-some root-collection
                 :name (case (keyword collection-namespace)
                         :snippets (tru "Top folder")
-                        :apps (tru "All apps")
                         (tru "Our analytics"))
                 :namespace collection-namespace
                 :id   "root"))
@@ -872,25 +871,14 @@
   (let [collection (if (integer? collection-or-id)
                      (db/select-one [Collection :id :namespace] :id (collection-or-id))
                      collection-or-id)]
-    (cond
-      ;; HACK Collections in the "snippets" namespace have no-op permissions unless EE enhancements are enabled
-      ;;
-      ;; TODO -- Pretty sure snippet perms should be feature flagged by `advanced-permissions` instead
-      (and (= (u/qualified-name (:namespace collection)) "snippets")
-           (not (premium-features/enable-enhancements?)))
+    ;; HACK Collections in the "snippets" namespace have no-op permissions unless EE enhancements are enabled
+    ;;
+    ;; TODO -- Pretty sure snippet perms should be feature flagged by `advanced-permissions` instead
+    (if (and (= (u/qualified-name (:namespace collection)) "snippets")
+             (not (premium-features/enable-enhancements?)))
       #{}
-
-      ;; Collections in the "apps" namespace use the permissions of the root unless advanced permissions are enabled
-      (and (= (u/qualified-name (:namespace collection)) "apps")
-           (not (premium-features/has-feature? :advanced-permissions)))
-      #{(let [root (assoc root-collection :namespace :apps)]
-          (case read-or-write
-            :read  (perms/collection-read-path root)
-            :write (perms/collection-readwrite-path root)))}
-
       ;; This is not entirely accurate as you need to be a superuser to modifiy a collection itself (e.g., changing its
       ;; name) but if you have write perms you can add/remove cards
-      :else
       #{(case read-or-write
           :read  (perms/collection-read-path collection-or-id)
           :write (perms/collection-readwrite-path collection-or-id))})))
@@ -1143,7 +1131,7 @@
 
 (defmethod allowed-namespaces :default
   [_]
-  #{nil :apps})
+  #{nil})
 
 (defn check-collection-namespace
   "Check that object's `:collection_id` refers to a Collection in an allowed namespace (see
