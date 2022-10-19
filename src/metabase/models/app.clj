@@ -25,8 +25,7 @@
 (u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class App)
   models/IModel
   (merge models/IModelDefaults
-         {:pre-insert (fn [app] (action/check-data-apps-enabled) app)
-          :types (constantly {:options :json
+         {:types (constantly {:options :json
                               :nav_items :json})
           :properties (constantly {:timestamped? true
                                    :entity_id    true})}))

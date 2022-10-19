@@ -2602,4 +2602,3 @@
                                         (mt/user-http-request :rasta :post 403 execute-path
                                                               {:parameters {"id" 1}}))
                               "Data permissions should be required"))))))))))))))
->>>>>>> Implicit action pre-fetch values (#25940)
