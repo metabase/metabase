@@ -15,18 +15,15 @@
             [metabase.http-client :as client]
             [metabase.models :refer [Card
                                      CardBookmark
-                                     CardEmitter
                                      Collection
                                      Dashboard
                                      Database
-                                     Emitter
                                      ModerationReview
                                      PersistedInfo
                                      Pulse
                                      PulseCard
                                      PulseChannel
                                      PulseChannelRecipient
-                                     QueryAction
                                      Table
                                      Timeline
                                      TimelineEvent
@@ -773,22 +770,6 @@
                           mt/boolean-ids-and-timestamps
                           :moderation_reviews
                           (map clean)))))))))))
-
-(deftest fetch-card-emitter-test
-  (testing "GET /api/card/:id"
-    (testing "Fetch card with an emitter"
-      (mt/with-temp* [Card [read-card {:name "Test Read Card"}]
-                      Card [write-card {:is_write true :name "Test Write Card"}]
-                      Emitter [{emitter-id :id} {:action_id (u/the-id (db/select-one-field :action_id QueryAction :card_id (u/the-id write-card)))}]]
-        (db/insert! CardEmitter {:emitter_id emitter-id
-                                 :card_id (u/the-id read-card)})
-        (testing "admin sees emitters"
-          (is (partial=
-               {:emitters [{:action {:type "query" :card {:name "Test Write Card"}}}]}
-               (mt/user-http-request :crowberto :get 200 (format "card/%d" (u/the-id read-card))))))
-        (testing "non-admin does not see emitters"
-          (is (nil?
-               (:emitters (mt/user-http-request :rasta :get 200 (format "card/%d" (u/the-id read-card)))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       UPDATING A CARD (PUT /api/card/:id)
