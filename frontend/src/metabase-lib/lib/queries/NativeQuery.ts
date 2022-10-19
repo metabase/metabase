@@ -91,19 +91,6 @@ function replaceTagName(
   return query.setQueryText(queryText);
 }
 
-// replaces template tag with given cardId with a new tag name
-// the new tag name could reference a completely different card
-export function replaceCardTagNameById(
-  query: NativeQuery,
-  cardId: number,
-  newTagName: string,
-): NativeQuery {
-  const queryText = query
-    .queryText()
-    .replace(cardTagRegexFromId(cardId), `{{${newTagName}}}`);
-  return query.setQueryText(queryText);
-}
-
 export function cardIdFromTagName(name: string): number | null {
   const match = name.match(CARD_TAG_NAME_REGEX);
   return parseInt(match?.[1]) || null;
