@@ -22,7 +22,11 @@ export function getDashcardParamValues(
   dashcard: ActionDashboardCard,
   parameterValues: { [id: string]: ParameterValueOrArray },
 ): ParametersForActionExecution {
-  if (!dashcard.action || !dashcard?.parameter_mappings?.length) {
+  if (
+    !dashcard.action ||
+    !dashcard?.parameter_mappings?.length ||
+    !parameterValues
+  ) {
     return {};
   }
   const { action, parameter_mappings } = dashcard;
@@ -39,6 +43,9 @@ export function prepareParameter(
   action: WritebackAction,
   parameterValues: { [id: string]: ParameterValueOrArray },
 ): ActionParameterTuple | undefined {
+  if (!action?.parameters?.length) {
+    return;
+  }
   const { parameter_id: sourceParameterId, target: actionParameterTarget } =
     mapping;
 
