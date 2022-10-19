@@ -12,7 +12,7 @@ import { DataPickerProps, DataPickerSelectedItem } from "../types";
 
 import useSelectedTables from "../useSelectedTables";
 
-import RawDataPanePickerView from "./RawDataPanePickerView";
+import RawDataPickerView from "./RawDataPickerView";
 
 interface DatabaseListLoaderProps {
   databases: Database[];
@@ -22,19 +22,18 @@ interface TableListLoaderProps {
   tables: Table[];
 }
 
-interface RawDataPanePickerOwnProps extends DataPickerProps {
+interface RawDataPickerOwnProps extends DataPickerProps {
   onBack?: () => void;
 }
 
-type RawDataPanePickerProps = RawDataPanePickerOwnProps &
-  DatabaseListLoaderProps;
+type RawDataPickerProps = RawDataPickerOwnProps & DatabaseListLoaderProps;
 
-function RawDataPanePicker({
+function RawDataPicker({
   value,
   databases,
   onChange,
   onBack,
-}: RawDataPanePickerProps) {
+}: RawDataPickerProps) {
   const { databaseId: selectedDatabaseId, schemaId: selectedSchemaId } = value;
 
   const { selectedTableIds, toggleTableIdSelection } = useSelectedTables({
@@ -125,7 +124,7 @@ function RawDataPanePicker({
   const renderPicker = useCallback(
     ({ tables }: { tables?: Table[] } = {}) => {
       return (
-        <RawDataPanePickerView
+        <RawDataPickerView
           databases={databases}
           tables={tables}
           selectedItems={selectedItems}
@@ -177,5 +176,5 @@ function RawDataPanePicker({
 }
 
 export default Databases.loadList({ loadingAndErrorWrapper: false })(
-  RawDataPanePicker,
+  RawDataPicker,
 );
