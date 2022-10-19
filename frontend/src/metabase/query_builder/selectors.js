@@ -945,3 +945,13 @@ export const getAutocompleteResultsFn = state => {
     return apiCall;
   };
 };
+
+export const getDataReferenceStack = createSelector(
+  [getUiControls, getDatabaseId],
+  (uiControls, dbId) =>
+    uiControls.dataReferenceStack
+      ? uiControls.dataReferenceStack
+      : dbId
+      ? [{ type: "database", item: { id: dbId } }]
+      : [],
+);

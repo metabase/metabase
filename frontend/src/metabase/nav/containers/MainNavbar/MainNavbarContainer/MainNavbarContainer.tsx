@@ -8,10 +8,10 @@ import Modal from "metabase/components/Modal";
 
 import * as Urls from "metabase/lib/urls";
 
-import type { Bookmark, Collection, DataApp, User } from "metabase-types/api";
+import type { Bookmark, Collection, User } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import DataApps, { isDataAppCollection } from "metabase/entities/data-apps";
+import { isDataAppCollection } from "metabase/entities/data-apps";
 import Bookmarks, { getOrderedBookmarks } from "metabase/entities/bookmarks";
 import Collections, {
   buildCollectionTree,
@@ -65,7 +65,6 @@ interface Props extends MainNavbarProps {
   bookmarks: Bookmark[];
   collections: Collection[];
   rootCollection: Collection;
-  dataApps: DataApp[];
   hasDataAccess: boolean;
   hasOwnDatabase: boolean;
   allFetched: boolean;
@@ -83,7 +82,6 @@ function MainNavbarContainer({
   hasOwnDatabase,
   collections = [],
   rootCollection,
-  dataApps = [],
   hasDataAccess,
   allFetched,
   location,
@@ -173,7 +171,6 @@ function MainNavbarContainer({
         isOpen={isOpen}
         currentUser={currentUser}
         collections={collectionTree}
-        dataApps={dataApps}
         hasOwnDatabase={hasOwnDatabase}
         selectedItems={selectedItems}
         hasDataAccess={hasDataAccess}
@@ -199,9 +196,6 @@ export default _.compose(
   }),
   Collections.loadList({
     query: () => ({ tree: true, "exclude-archived": true }),
-    loadingAndErrorWrapper: false,
-  }),
-  DataApps.loadList({
     loadingAndErrorWrapper: false,
   }),
   connect(mapStateToProps, mapDispatchToProps),

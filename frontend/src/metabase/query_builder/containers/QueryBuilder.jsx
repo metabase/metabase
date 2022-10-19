@@ -40,6 +40,7 @@ import View from "../components/view/View";
 import {
   getCard,
   getDatabasesList,
+  getDataReferenceStack,
   getOriginalCard,
   getLastRunCard,
   getFirstQueryResult,
@@ -139,6 +140,7 @@ const mapStateToProps = (state, props) => {
 
     uiControls: getUiControls(state),
     ...state.qb.uiControls,
+    dataReferenceStack: getDataReferenceStack(state),
     isAnySidebarOpen: getIsAnySidebarOpen(state),
 
     isBookmarked: getIsBookmarked(state, props),

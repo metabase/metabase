@@ -32,7 +32,6 @@ function LinkTypeOptions({
   const linkTypeOptions: LinkTypeOption[] = [
     { type: "dashboard", icon: "dashboard", name: t`Dashboard` },
     { type: "question", icon: "bar", name: t`Saved question` },
-    { type: "page", icon: "document", name: t`Page` },
     { type: "url", icon: "link", name: t`URL` },
   ];
   return (

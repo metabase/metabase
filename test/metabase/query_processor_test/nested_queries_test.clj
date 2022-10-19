@@ -31,9 +31,7 @@
                      [4 "Wurstküche"                   29 33.9997 -118.465 2]
                      [5 "Brite Spot Family Restaurant" 20 34.0778 -118.261 2]]
               :cols (mapv
-                     (fn [col]
-                       (-> (qp.test/col :venues col)
-                           (assoc-in [:options :nested/outer] true)))
+                     (partial qp.test/col :venues)
                      [:id :name :category_id :latitude :longitude :price])}
              (qp.test/rows-and-cols
                (mt/format-rows-by :venues
@@ -70,9 +68,6 @@
           [3 13]
           [4  6]]
    :cols [(cond-> (qp.test/breakout-col (qp.test/col :venues :price))
-            (not native-source?)
-            (assoc-in [:options :nested/outer] true)
-
             native-source?
             (-> (assoc :field_ref [:field "PRICE" {:base-type :type/Integer}]
                        :effective_type :type/Integer)
@@ -138,11 +133,8 @@
                      [1 3 13]
                      [1 4 8]
                      [1 5 10]]
-              :cols [(-> (qp.test/fk-col :checkins :venue_id :venues :price)
-                         qp.test/breakout-col)
-                     (-> (qp.test/col :checkins :user_id)
-                         qp.test/breakout-col
-                         (assoc-in [:options :nested/outer] true))
+              :cols [(qp.test/breakout-col (qp.test/fk-col :checkins :venue_id :venues :price))
+                     (qp.test/breakout-col (qp.test/col :checkins :user_id))
                      (qp.test/aggregate-col :count)]}
              (qp.test/rows-and-cols
                (mt/format-rows-by [int int int]
@@ -197,54 +189,6 @@
                                                        {:info {:metadata/dataset-metadata (:result_metadata card)}}))))))))))))
 
 
-
-(deftest nested-with-coerced-fields
-  (testing "Coerced fields are cast only once (#22519)"
-    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
-      (mt/dataset sample-dataset
-        (mt/with-temp-vals-in-db Field (mt/id :reviews :rating) {:coercion_strategy :Coercion/UNIXSeconds->DateTime
-                                                                 :effective_type    :type/Instant}
-          (mt/with-temp Card [{card-id :id}
-                              {:dataset_query
-                               (mt/mbql-query reviews
-                                 {:fields [$rating]
-                                  :limit  1})}]
-            (testing "with all inherited fields"
-              (is (= :completed
-                     (:status (qp/process-query {:type     :query
-                                                 :database (mt/id)
-                                                 :query    {:source-table (str "card__" card-id)}})))))
-            (testing "with explicit top-level fields"
-              (is (= :completed
-                     (:status (qp/process-query {:type     :query
-                                                 :database (mt/id)
-                                                 :query    {:fields       [(mt/id :reviews :rating)]
-                                                            :source-table (str "card__" card-id)}})))))
-            (testing "with breakout and order-by"
-              (is (= :completed
-                     (:status (qp/process-query {:type     :query
-                                                 :database (mt/id)
-                                                 :query    {:source-table (str "card__" card-id)
-                                                            :aggregation [:count]
-                                                            :breakout [(mt/id :reviews :rating)]}})))))))))
-    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
-      (mt/dataset sample-dataset
-        (mt/with-temp-vals-in-db Field (mt/id :reviews :rating) {:coercion_strategy :Coercion/UNIXSeconds->DateTime
-                                                                 :effective_type    :type/Instant}
-          (testing "with join"
-            (mt/with-temp Card [{card-id :id}
-                                {:dataset_query
-                                 (mt/mbql-query products
-                                   {:fields [$id]
-                                    :joins  [{:source-table $$reviews
-                                              :alias        "R"
-                                              :fields       [&R.reviews.rating]
-                                              :condition    [:= $id &R.reviews.product_id]}]
-                                    :limit  1})}]
-              (is (= :completed
-                     (:status (qp/process-query {:type     :query
-                                                 :database (mt/id)
-                                                 :query    {:source-table (str "card__" card-id)}})))))))))))
 
 (deftest sql-source-query-breakout-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
@@ -366,9 +310,7 @@
 (deftest filter-by-field-literal-test
   (testing "make sure we can filter by a field literal"
     (is (= {:rows [[1 "Red Medicine" 4 10.0646 -165.374 3]]
-            :cols (mapv (fn [col]
-                          (-> (qp.test/col :venues col)
-                              (assoc-in [:options :nested/outer] true)))
+            :cols (mapv (partial qp.test/col :venues)
                         [:id :name :category_id :latitude :longitude :price])}
            (qp.test/rows-and-cols
              (mt/run-mbql-query venues
@@ -523,9 +465,7 @@
 
 (deftest correct-column-metadata-test
   (testing "make sure a query using a source query comes back with the correct columns metadata"
-    (is (= (map (fn [col]
-                  (-> (qp.test/col :venues col)
-                      (assoc-in [:options :nested/outer] true)))
+    (is (= (map (partial qp.test/col :venues)
                 [:id :name :category_id :latitude :longitude :price])
            ;; todo: i don't know why the results don't have the information
            (mt/cols
@@ -533,8 +473,7 @@
                (qp/process-query (query-with-source-card card)))))))
 
   (testing "make sure a breakout/aggregate query using a source query comes back with the correct columns metadata"
-    (is (= [(qp.test/breakout-col (-> (qp.test/col :venues :price)
-                                      (assoc-in [:options :nested/outer] true)))
+    (is (= [(qp.test/breakout-col (qp.test/col :venues :price))
             (qp.test/aggregate-col :count)]
            (mt/cols
              (mt/with-temp Card [card (venues-mbql-card-def)]

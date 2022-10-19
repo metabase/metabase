@@ -14,7 +14,7 @@ import {
 
 interface FieldListProps {
   fields: Field[];
-  onFieldClick: (field: Field) => any;
+  onFieldClick: (field: Field) => void;
 }
 
 const FieldList = ({ fields, onFieldClick }: FieldListProps) => (
