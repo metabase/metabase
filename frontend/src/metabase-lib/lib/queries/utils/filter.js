@@ -3,7 +3,7 @@ import {
   STANDARD_FILTERS,
   FILTER_OPERATORS,
   isLiteral,
-} from "metabase/lib/expressions";
+} from "metabase-lib/lib/expressions";
 import { getOperatorByTypeAndName } from "metabase-lib/lib/operators/utils";
 import { STRING } from "metabase-lib/lib/types/constants";
 import { isStartingFrom } from "metabase-lib/lib/queries/utils/query-time";

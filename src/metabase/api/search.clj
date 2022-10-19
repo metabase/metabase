@@ -230,7 +230,9 @@
                                   visible-collections)
         honeysql-query           (-> honeysql-query
                                      (hh/merge-where collection-filter-clause)
-                                     (hh/merge-where [:= :collection.namespace nil]))]
+                                     (hh/merge-where [:or
+                                                      [:= :collection.namespace nil]
+                                                      [:= :collection.namespace "apps"]]))]
     ;; add a JOIN against Collection *unless* the source table is already Collection
     (cond-> honeysql-query
       (not= collection-id-column :collection.id)

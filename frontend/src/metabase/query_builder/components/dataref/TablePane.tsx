@@ -10,23 +10,29 @@ import {
   EmptyDescription,
 } from "metabase/components/MetadataInfo/MetadataInfo.styled";
 import ConnectedTableList from "metabase/query_builder/components/dataref/ConnectedTableList";
+import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import type Table from "metabase-lib/lib/metadata/Table";
 import TableInfoLoader from "./TableInfoLoader";
 import FieldList from "./FieldList";
 
-const mapStateToProps = (state: State, props: TablePaneProps) => ({
-  table: Tables.selectors.getObject(state, {
-    entityId: props.table.id,
-  }),
-});
-
 interface TablePaneProps {
-  show: (type: string, item: unknown) => void;
+  onBack: () => void;
+  onClose: () => void;
+  onItemClick: (type: string, item: unknown) => void;
   table: Table;
 }
 
-const TablePane = ({ table, show }: TablePaneProps) => {
-  return table ? (
+const mapStateToProps = (state: State, props: TablePaneProps) => ({
+  table: Tables.selectors.getObject(state, { entityId: props.table.id }),
+});
+
+const TablePane = ({ table, onItemClick, onBack, onClose }: TablePaneProps) => (
+  <SidebarContent
+    title={table.name}
+    icon={"table"}
+    onBack={onBack}
+    onClose={onClose}
+  >
     <TableInfoLoader table={table}>
       <div className="ml1">
         {table.description ? (
@@ -36,27 +42,28 @@ const TablePane = ({ table, show }: TablePaneProps) => {
         )}
       </div>
       <div className="my2">
-        {table.fields && (
-          <FieldList
-            fields={table.fields}
-            onFieldClick={f => show("field", f)}
-          />
-        )}
-        {table.connectedTables() && (
-          <ConnectedTableList
-            tables={table.connectedTables()}
-            onTableClick={t => show("table", t)}
-          />
-        )}
+        {table.fields.length ? (
+          <>
+            <FieldList
+              fields={table.fields}
+              onFieldClick={f => onItemClick("field", f)}
+            />
+            {table.connectedTables() && (
+              <ConnectedTableList
+                tables={table.connectedTables()}
+                onTableClick={t => onItemClick("table", t)}
+              />
+            )}
+          </>
+        ) : null}
       </div>
     </TableInfoLoader>
-  ) : null;
-};
+  </SidebarContent>
+);
 
 export default _.compose(
   Tables.load({
     id: (_state: State, props: TablePaneProps) => props.table.id,
-    wrapped: true,
   }),
   connect(mapStateToProps),
 )(TablePane);

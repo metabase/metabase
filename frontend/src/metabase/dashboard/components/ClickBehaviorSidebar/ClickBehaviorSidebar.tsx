@@ -16,12 +16,12 @@ import type {
   CardId,
   ClickBehavior,
   DatasetData,
+  DatasetColumn,
 } from "metabase-types/api";
-import type { Column } from "metabase-types/types/Dataset";
 import { isTableDisplay } from "metabase/lib/click-behavior";
 import { clickBehaviorIsValid } from "metabase-lib/lib/parameters/utils/click-behavior";
-import { keyForColumn } from "metabase-lib/lib/queries/utils/dataset";
 
+import { getColumnKey } from "metabase-lib/lib/queries/utils/get-column-key";
 import { getClickBehaviorForColumn } from "./utils";
 import ClickBehaviorSidebarContent from "./ClickBehaviorSidebarContent";
 import ClickBehaviorSidebarHeader from "./ClickBehaviorSidebarHeader";
@@ -67,7 +67,9 @@ function ClickBehaviorSidebar({
     boolean | null
   >(null);
 
-  const [selectedColumn, setSelectedColumn] = useState<Column | null>(null);
+  const [selectedColumn, setSelectedColumn] = useState<DatasetColumn | null>(
+    null,
+  );
 
   const [originalVizSettings, setOriginalVizSettings] = useState<
     VizSettings | undefined | null
@@ -105,7 +107,7 @@ function ClickBehaviorSidebar({
           click_behavior: nextClickBehavior,
         });
       } else {
-        onUpdateDashCardColumnSettings(id, keyForColumn(selectedColumn), {
+        onUpdateDashCardColumnSettings(id, getColumnKey(selectedColumn), {
           click_behavior: nextClickBehavior,
         });
       }

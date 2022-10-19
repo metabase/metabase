@@ -1,45 +1,70 @@
+import { ngettext, msgid } from "ttag";
 import React, { useMemo } from "react";
-import Icon from "metabase/components/Icon";
+
 import Schemas from "metabase/entities/schemas";
+import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { State } from "metabase-types/store";
 import Schema from "metabase-lib/lib/metadata/Schema";
+import {
+  NodeListItemLink,
+  NodeListItemName,
+  NodeListItemIcon,
+  NodeListTitle,
+  NodeListContainer,
+  NodeListIcon,
+  NodeListTitleText,
+} from "./NodeList.styled";
 
-interface Props {
-  show: (type: string, item: unknown) => void;
+interface SchemaPaneProps {
+  onBack: () => void;
+  onClose: () => void;
+  onItemClick: (type: string, item: unknown) => void;
   schema: Schema;
 }
 
-const SchemaPaneInner = ({ schema, show }: Props) => {
+const SchemaPane = ({
+  onBack,
+  onClose,
+  onItemClick,
+  schema,
+}: SchemaPaneProps) => {
   const tables = useMemo(
     () => schema.tables.sort((a, b) => a.name.localeCompare(b.name)),
     [schema.tables],
   );
   return (
-    <div>
-      <div className="ml1 my2 flex align-center justify-between border-bottom pb1">
-        <div className="flex align-center">
-          <Icon name="table2" className="text-light pr1" size={12} />
-          <span className="text-medium">{tables.length}</span>
-        </div>
-      </div>
-      <ul>
-        {tables.map(table => (
-          <li key={table.id}>
-            <a
-              className="flex-full flex p1 text-bold text-brand text-wrap no-decoration bg-medium-hover"
-              onClick={() => show("table", table)}
-            >
-              {table.name}
-            </a>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <SidebarContent
+      title={schema.name}
+      icon={"folder"}
+      onBack={onBack}
+      onClose={onClose}
+    >
+      <NodeListContainer>
+        <NodeListTitle>
+          <NodeListIcon name="table" />
+          <NodeListTitleText>
+            {ngettext(
+              msgid`${tables.length} table`,
+              `${tables.length} tables`,
+              tables.length,
+            )}
+          </NodeListTitleText>
+        </NodeListTitle>
+        <ul>
+          {tables.map(table => (
+            <li key={table.id}>
+              <NodeListItemLink onClick={() => onItemClick("table", table)}>
+                <NodeListItemIcon name="table" />
+                <NodeListItemName>{table.name}</NodeListItemName>
+              </NodeListItemLink>
+            </li>
+          ))}
+        </ul>
+      </NodeListContainer>
+    </SidebarContent>
   );
 };
 
-const SchemaPane = Schemas.load({
-  id: (_state: State, { schema }: Props) => schema.id,
-})(SchemaPaneInner);
-
-export default SchemaPane;
+export default Schemas.load({
+  id: (_state: State, props: SchemaPaneProps) => props.schema.id,
+})(SchemaPane);

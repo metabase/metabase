@@ -7,6 +7,8 @@ import type {
 } from "metabase-types/types/Parameter";
 import type { Card } from "metabase-types/types/Card";
 import type { TemplateTag } from "metabase-types/types/Query";
+import { getTemplateTagFromTarget } from "metabase-lib/lib/parameters/utils/targets";
+import { hasParameterValue } from "metabase-lib/lib/parameters/utils/parameter-values";
 
 export function getTemplateTagType(tag: TemplateTag) {
   const { type } = tag;
@@ -81,4 +83,37 @@ export function getParametersFromCard(
 
   const tags = getTemplateTagsForParameters(card);
   return getTemplateTagParameters(tags);
+}
+
+// when navigating from dashboard --> saved native question,
+// we are given dashboard parameters and a map of dashboard parameter ids to parameter values
+// we need to transform this into a map of template tag ids to parameter values
+// so that we popoulate the template tags in the native editor
+export function remapParameterValuesToTemplateTags(
+  templateTags: TemplateTag[],
+  dashboardParameters: ParameterWithTarget[],
+  parameterValuesByDashboardParameterId: {
+    [key: string]: any;
+  },
+) {
+  const parameterValues: {
+    [key: string]: any;
+  } = {};
+  const templateTagParametersByName = _.indexBy(templateTags, "name");
+
+  dashboardParameters.forEach(dashboardParameter => {
+    const { target } = dashboardParameter;
+    const tag = getTemplateTagFromTarget(target);
+
+    if (tag != null && templateTagParametersByName[tag]) {
+      const templateTagParameter = templateTagParametersByName[tag];
+      const parameterValue =
+        parameterValuesByDashboardParameterId[dashboardParameter.id];
+      if (hasParameterValue(parameterValue)) {
+        parameterValues[templateTagParameter.name] = parameterValue;
+      }
+    }
+  });
+
+  return parameterValues;
 }

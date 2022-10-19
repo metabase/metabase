@@ -1,16 +1,9 @@
 import { t } from "ttag";
 
-import {
-  parse,
-  adjustBooleans,
-} from "metabase/lib/expressions/recursive-parser";
-import { resolve } from "metabase/lib/expressions/resolver";
+import { parse, adjustBooleans } from "./recursive-parser";
+import { resolve } from "./resolver";
 
-import {
-  parseDimension,
-  parseMetric,
-  parseSegment,
-} from "metabase/lib/expressions/";
+import { parseDimension, parseMetric, parseSegment } from ".";
 
 export function processSource(options) {
   const resolveMBQLField = (kind, name) => {

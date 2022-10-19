@@ -1,17 +1,26 @@
 import React from "react";
 
 import DimensionInfo from "metabase/components/MetadataInfo/DimensionInfo";
-import Icon from "metabase/components/Icon";
+import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import Field from "metabase-lib/lib/metadata/Field";
 
-type Props = { field: Field };
-
-function FieldPane({ field }: Props) {
-  const dimension = field.dimension();
-
-  return dimension ? (
-    <DimensionInfo dimension={dimension} showAllFieldValues />
-  ) : null;
+interface FieldPaneProps {
+  onBack: () => void;
+  onClose: () => void;
+  field: Field;
 }
+
+const FieldPane = ({ onBack, onClose, field }: FieldPaneProps) => {
+  return (
+    <SidebarContent
+      title={field.name}
+      icon={"field"}
+      onBack={onBack}
+      onClose={onClose}
+    >
+      <DimensionInfo dimension={field.dimension()} showAllFieldValues />
+    </SidebarContent>
+  );
+};
 
 export default FieldPane;

@@ -17,7 +17,9 @@ export default ({ question, clicked }) => {
       name: "pivot-by-time",
       section: "breakout",
       buttonType: "token",
-      title: (
+      title: clicked ? (
+        t`Time`
+      ) : (
         <span>
           {jt`Break out by ${(<span className="text-dark">{t`time`}</span>)}`}
         </span>

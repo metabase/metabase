@@ -49,6 +49,8 @@ export default Object.assign(ListViz, {
   identifier: "list",
   iconName: "list",
 
+  hidden: true,
+
   minSize: {
     width: 4,
     height: 3,
