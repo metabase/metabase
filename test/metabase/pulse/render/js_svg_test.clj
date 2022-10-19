@@ -47,7 +47,7 @@
     (is (.hasAttribute line "fill-opacity"))
     (is (= (.getAttribute line "fill-opacity") "0.0"))))
 
-(def ^Context context (@#'js-svg/context))
+(def ^Context context (#'js-svg/context))
 
 (defn document-tag-seq [^SVGOMDocument document]
   (map #(.getNodeName ^Node %)

@@ -31,7 +31,7 @@
     (js/load-resource bundle-path)
     (js/load-resource interface-path)))
 
-(def ^:private ^Context static-viz-context-delay
+(def ^:private static-viz-context-delay
   "Delay containing a graal js context. It has the chart bundle and the above `src-api` in its environment suitable
   for creating charts."
   ;; todo is this thread safe? Should we have a resource pool on top of this? Or create them fresh for each invocation
@@ -40,7 +40,7 @@
 (defn- context
   "Returns a static viz context. In dev mode, this will be a new context each time. In prod or test modes, it will
   return the derefed contents of `static-viz-context-delay`."
-  []
+  ^Context []
   (if config/is-dev?
     (load-viz-bundle (js/context))
     @static-viz-context-delay))
