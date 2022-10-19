@@ -10,6 +10,8 @@ import CardPicker from "./CardPicker";
 import DataTypePicker from "./DataTypePicker";
 import RawDataPicker from "./RawDataPicker";
 
+import { Root, EmptyStateContainer } from "./DataPickerView.styled";
+
 interface DataPickerViewProps extends DataPickerProps {
   dataTypes: DataTypeInfoItem[];
   hasDataAccess: boolean;
@@ -17,7 +19,7 @@ interface DataPickerViewProps extends DataPickerProps {
   onBack?: () => void;
 }
 
-function DataPickerView({
+function DataPickerViewContent({
   dataTypes,
   hasDataAccess,
   onDataTypeChange,
@@ -27,10 +29,12 @@ function DataPickerView({
 
   if (!hasDataAccess) {
     return (
-      <EmptyState
-        message={t`To pick some data, you'll need to add some first`}
-        icon="database"
-      />
+      <EmptyStateContainer>
+        <EmptyState
+          message={t`To pick some data, you'll need to add some first`}
+          icon="database"
+        />
+      </EmptyStateContainer>
     );
   }
 
@@ -51,6 +55,14 @@ function DataPickerView({
   }
 
   return null;
+}
+
+function DataPickerView(props: DataPickerViewProps) {
+  return (
+    <Root>
+      <DataPickerViewContent {...props} />
+    </Root>
+  );
 }
 
 export default DataPickerView;
