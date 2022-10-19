@@ -1,0 +1,158 @@
+import React, { useCallback, useMemo } from "react";
+import _ from "underscore";
+
+import SelectList from "metabase/components/SelectList";
+
+import type { ITreeNodeItem } from "metabase/components/tree/types";
+
+import type Database from "metabase-lib/lib/metadata/Database";
+import type Table from "metabase-lib/lib/metadata/Table";
+import type Schema from "metabase-lib/lib/metadata/Schema";
+
+import PanePicker from "../PanePicker";
+
+import { StyledSelectList } from "./RawDataPanePickerView.styled";
+
+type RawDataPickerSelectedItem = {
+  type: "database" | "schema" | "table";
+  id: string | number;
+};
+
+interface RawDataPanePickerViewProps {
+  databases: Database[];
+  tables?: Table[];
+  selectedItems: RawDataPickerSelectedItem[];
+  onSelectDatabase: (id: Database["id"]) => void;
+  onSelectSchema: (id: Schema["id"]) => void;
+  onSelectedTable: (id: Table["id"]) => void;
+}
+
+function schemaToTreeItem(schema: Schema): ITreeNodeItem {
+  return {
+    id: String(schema.id),
+    name: schema.name,
+    icon: "folder",
+  };
+}
+
+function dbToTreeItem(database: Database): ITreeNodeItem {
+  const schemas = database.getSchemas();
+  const hasSingleSchema = schemas.length === 1;
+  return {
+    id: database.id,
+    name: database.name,
+    icon: "database",
+
+    // If a database has a single schema,
+    // we just want to automatically select it
+    // and exclude it from the tree picker
+    children: hasSingleSchema ? [] : schemas.map(schemaToTreeItem),
+  };
+}
+
+function TableSelectListItem({
+  table,
+  isSelected,
+  onSelect,
+}: {
+  table: Table;
+  isSelected: boolean;
+  onSelect: (id: Table["id"]) => void;
+}) {
+  const name = table.displayName();
+  return (
+    <SelectList.Item
+      id={table.id}
+      name={name}
+      isSelected={isSelected}
+      icon={isSelected ? "check" : "table2"}
+      onSelect={onSelect}
+    >
+      {name}
+    </SelectList.Item>
+  );
+}
+
+function RawDataPanePickerView({
+  databases,
+  tables,
+  selectedItems,
+  onSelectDatabase,
+  onSelectSchema,
+  onSelectedTable,
+}: RawDataPanePickerViewProps) {
+  const treeData = useMemo(() => databases.map(dbToTreeItem), [databases]);
+
+  const { selectedDatabaseId, selectedSchemaId, selectedTableIds } =
+    useMemo(() => {
+      const {
+        database: databases = [],
+        schema: schemas = [],
+        table: tables = [],
+      } = _.groupBy(selectedItems, "type");
+
+      const [db] = databases;
+      const [schema] = schemas;
+
+      return {
+        selectedDatabaseId: db?.id,
+        selectedSchemaId: schema?.id,
+        selectedTableIds: tables.map(table => table.id),
+      };
+    }, [selectedItems]);
+
+  const selectedDatabase = useMemo(
+    () => databases.find(db => db.id === selectedDatabaseId),
+    [databases, selectedDatabaseId],
+  );
+
+  const isSelectedDatabaseSingleSchema = useMemo(
+    () => selectedDatabase?.getSchemas().length === 1,
+    [selectedDatabase],
+  );
+
+  const selectedTreeItemId = useMemo(() => {
+    if (selectedSchemaId) {
+      return isSelectedDatabaseSingleSchema
+        ? selectedDatabaseId
+        : selectedSchemaId;
+    }
+    return selectedDatabaseId;
+  }, [selectedDatabaseId, selectedSchemaId, isSelectedDatabaseSingleSchema]);
+
+  const handlePanePickerSelect = useCallback(
+    (item: ITreeNodeItem) => {
+      if (item.icon === "database") {
+        return onSelectDatabase(Number(item.id));
+      }
+      if (item.icon === "folder") {
+        return onSelectSchema(String(item.id));
+      }
+    },
+    [onSelectDatabase, onSelectSchema],
+  );
+
+  const renderTable = useCallback(
+    (table: Table) => (
+      <TableSelectListItem
+        key={table.id}
+        table={table}
+        isSelected={selectedTableIds.includes(table.id)}
+        onSelect={onSelectedTable}
+      />
+    ),
+    [selectedTableIds, onSelectedTable],
+  );
+
+  return (
+    <PanePicker
+      data={treeData}
+      selectedId={selectedTreeItemId}
+      onSelect={handlePanePickerSelect}
+    >
+      <StyledSelectList>{tables?.map?.(renderTable)}</StyledSelectList>
+    </PanePicker>
+  );
+}
+
+export default RawDataPanePickerView;

@@ -10,7 +10,7 @@ import * as Urls from "metabase/lib/urls";
 
 import DataApps, { ScaffoldNewAppParams } from "metabase/entities/data-apps";
 
-import DataAppDataPicker from "metabase/writeback/components/DataAppDataPicker";
+import RawDataPanePicker from "metabase/containers/DataPicker/RawDataPanePicker";
 
 import type { DataApp, TableId } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
@@ -48,16 +48,18 @@ function mapDispatchToProps(dispatch: Dispatch) {
 }
 
 function CreateDataAppModal({ onCreate, onChangeLocation, onClose }: Props) {
-  const [tableId, setTableId] = useState<TableId | null>(null);
+  const [tableIds, setTableIds] = useState<TableId[]>([]);
 
   const handleCreate = useCallback(async () => {
     const dataApp = await onCreate({
       name: t`New App`,
-      tables: [tableId] as number[],
+      tables: tableIds as number[],
     });
     onClose();
     onChangeLocation(Urls.dataApp(dataApp));
-  }, [tableId, onCreate, onChangeLocation, onClose]);
+  }, [tableIds, onCreate, onChangeLocation, onClose]);
+
+  const canSubmit = tableIds.length > 0;
 
   return (
     <ModalRoot>
@@ -65,13 +67,13 @@ function CreateDataAppModal({ onCreate, onChangeLocation, onClose }: Props) {
         <ModalTitle>{t`Pick your starting data`}</ModalTitle>
       </ModalHeader>
       <ModalBody>
-        <DataAppDataPicker tableId={tableId} onTableChange={setTableId} />
+        <RawDataPanePicker onTablesChange={setTableIds} />
       </ModalBody>
       <ModalFooter>
         <Button onClick={onClose}>{t`Cancel`}</Button>
         <Button
           primary
-          disabled={tableId == null}
+          disabled={!canSubmit}
           onClick={handleCreate}
         >{t`Create`}</Button>
       </ModalFooter>
