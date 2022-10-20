@@ -19,6 +19,8 @@
                                      Field
                                      FieldValues
                                      ModelAction
+                                     PermissionsGroup
+                                     PermissionsGroupMembership
                                      Pulse
                                      Revision
                                      Table
@@ -30,6 +32,8 @@
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.revision :as revision]
+            [metabase.plugins.classloader :as classloader]
+            [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.query-processor.streaming.test-util :as streaming.test-util]
             [metabase.server.middleware.util :as mw.util]
             [metabase.test :as mt]
@@ -2039,7 +2043,7 @@
                 (is (= "Actions are not enabled."
                        (mt/user-http-request :crowberto :post 400 execute-path
                                              {:parameters {"id" 1}}))))
-              (testing "Without admin"
+              (testing "Without execute rights on the DB"
                 (actions.test-util/with-actions-enabled
                   (is (= "You don't have permissions to do that."
                          (mt/user-http-request :rasta :post 403 execute-path
