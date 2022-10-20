@@ -6,8 +6,7 @@
             [java-time :as t]
             [metabase-enterprise.search.scoring :as ee-scoring]
             [metabase.public-settings.premium-features :as premium-features]
-            [metabase.search.scoring :as scoring]
-            [metabase.util :as u]))
+            [metabase.search.scoring :as scoring]))
 
 (deftest ^:parallel verified-score-test
   (let [score #'ee-scoring/verified-score
