@@ -76,7 +76,7 @@ Locked parameters will apply the selected filter values to your original dashboa
 If your [locked parameter](#restricting-data-in-a-signed-embed) is linked to a:
 
 - dashboard filter, change the filter type to a [dropdown filter](../dashboards/filters.md#choosing-between-a-dropdown-or-autocomplete-for-your-filter). 
-- SQL question, [change the SQL variable type](/docs/latest/questions/native-editor/sql-parameters.md#filter-widget-with-dropdown-menu-and-search).
+- SQL question, [change the SQL variable type](../questions/native-editor/sql-parameters.md#filter-widget-with-dropdown-menu-and-search).
 
 For example, let's say you have a text box filter on your original dashboard called "Breakfast" with the values "Scrambled eggs", "Bacon", and "Waffles". With this setup, you'll be able to choose _one_ of "Scrambled eggs", "Bacon", or "Waffles" for a locked parameter linked to the "Breakfast" filter. If you want to provide the values "Scrambled eggs" _and_ "Bacon to the locked parameter, change the original "Breakfast" filter on your dashboard to a dropdown filter.
 
