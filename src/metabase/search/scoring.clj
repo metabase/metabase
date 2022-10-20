@@ -235,19 +235,15 @@
 
 (defn- serialize
   "Massage the raw result from the DB and match data into something more useful for the client"
-  [result all-scores relevant-scores total-score]
+  [result all-scores relevant-scores]
   (let [{:keys [name display_name collection_id collection_name collection_authority_level collection_app_id]} result
         column              (first (keep :column relevant-scores))
         match-context-thunk (first (keep :match-context-thunk relevant-scores))]
     (-> result
         (assoc
-         :name           (str
-                          total-score " | "
-                          (pr-str (mapv (fn [{:keys [name weight score]}] [name (* weight score)]) relevant-scores))
-                          " <> "
-                          (if (or (= column :name) (nil? display_name))
-                                name
-                                display_name))
+         :name           (if (or (= column :name) (nil? display_name))
+                           name
+                           display_name)
          :context        (when (and (not (contains? search-config/displayed-columns column))
                                     match-context-thunk)
                            (match-context-thunk))
@@ -302,7 +298,7 @@
      ;; If the search string is non-blank, results with no text match have a score of zero.
      (if (or (str/blank? raw-search-string) (pos? text-match-score))
        {:score  total-score
-        :result (serialize result all-scores relevant-scores total-score)}
+        :result (serialize result all-scores relevant-scores)}
        {:score 0}))))
 
 (defn top-results
