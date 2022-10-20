@@ -42,7 +42,7 @@ export const StoreApi = {
 };
 
 // Pivot tables need extra data beyond what's described in the MBQL query itself.
-// To fetch that extra data we rely on specific APIs for pivot tables that mirrow the normal endpoints.
+// To fetch that extra data we rely on specific APIs for pivot tables that mirror the normal endpoints.
 // Those endpoints take the query along with `pivot_rows` and `pivot_cols` to return the subtotal data.
 // If we add breakout/grouping sets to MBQL in the future we can remove this API switching.
 export function maybeUsePivotEndpoint(api, card, metadata) {
@@ -287,7 +287,6 @@ export const MetabaseApi = {
   field_remapping: GET("/api/field/:fieldId/remapping/:remappedFieldId"),
   dataset: POST("/api/dataset"),
   dataset_pivot: POST("/api/dataset/pivot"),
-  dataset_duration: POST("/api/dataset/duration"),
   native: POST("/api/dataset/native"),
 
   // to support audit app  allow the endpoint to be provided in the query

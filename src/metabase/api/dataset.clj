@@ -91,7 +91,7 @@
 
 (def export-format-regex
   "Regex for matching valid export formats (e.g., `json`) for queries.
-   Inteneded for use in an endpoint definition:
+   Intended for use in an endpoint definition:
 
      (api/defendpoint POST [\"/:export-format\", :export-format export-format-regex]"
   (re-pattern (str "(" (str/join "|" (map u/qualified-name (qp.streaming/export-formats))) ")")))
@@ -133,19 +133,6 @@
 
 
 ;;; ------------------------------------------------ Other Endpoints -------------------------------------------------
-
-;; TODO - this is no longer used. Should we remove it?
-(api/defendpoint POST "/duration"
-  "Get historical query execution duration."
-  [:as {{:keys [database], :as query} :body}]
-  (api/read-check Database database)
-  ;; try calculating the average for the query as it was given to us, otherwise with the default constraints if
-  ;; there's no data there. If we still can't find relevant info, just default to 0
-  {:average (or
-             (some (comp query/average-execution-time-ms qp.util/query-hash)
-                   [query
-                    (assoc query :constraints (qp.constraints/default-query-constraints))])
-             0)})
 
 (api/defendpoint POST "/native"
   "Fetch a native version of an MBQL query."
