@@ -1,8 +1,11 @@
 import _ from "underscore";
 
-import { ParameterWithTarget, UiParameter } from "metabase/parameters/types";
 import { Parameter, ParameterTarget } from "metabase-types/types/Parameter";
 import { Card } from "metabase-types/types/Card";
+import {
+  ParameterWithTarget,
+  UiParameter,
+} from "metabase-lib/lib/parameters/types";
 import { getValuePopulatedParameters } from "metabase-lib/lib/parameters/utils/parameter-values";
 import { getParameterTargetField } from "metabase-lib/lib/parameters/utils/targets";
 import Question from "metabase-lib/lib/Question";

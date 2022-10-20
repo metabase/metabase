@@ -10,7 +10,6 @@ import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import TagEditorParam from "./TagEditorParam";
-import CardTagEditor from "./CardTagEditor";
 import TagEditorHelp from "./TagEditorHelp";
 
 export default class TagEditorSidebar extends React.Component {
@@ -85,8 +84,6 @@ export default class TagEditorSidebar extends React.Component {
               databaseFields={databaseFields}
               database={database}
               databases={databases}
-              query={query}
-              setDatasetQuery={setDatasetQuery}
               setTemplateTag={setTemplateTag}
               setParameterValue={setParameterValue}
             />
@@ -110,31 +107,22 @@ const SettingsPane = ({
   databaseFields,
   database,
   databases,
-  query,
-  setDatasetQuery,
   setTemplateTag,
   setParameterValue,
 }) => (
   <div>
     {tags.map(tag => (
       <div key={tags.name}>
-        {tag.type === "card" ? (
-          <CardTagEditor
-            query={query}
-            setDatasetQuery={setDatasetQuery}
-            tag={tag}
-          />
-        ) : (
-          <TagEditorParam
-            tag={tag}
-            parameter={parametersById[tag.id]}
-            databaseFields={databaseFields}
-            database={database}
-            databases={databases}
-            setTemplateTag={setTemplateTag}
-            setParameterValue={setParameterValue}
-          />
-        )}
+        <TagEditorParam
+          tag={tag}
+          key={tags.name}
+          parameter={parametersById[tag.id]}
+          databaseFields={databaseFields}
+          database={database}
+          databases={databases}
+          setTemplateTag={setTemplateTag}
+          setParameterValue={setParameterValue}
+        />
       </div>
     ))}
   </div>

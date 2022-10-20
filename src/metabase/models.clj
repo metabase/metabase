@@ -2,7 +2,6 @@
   (:require [metabase.models.action :as action]
             [metabase.models.activity :as activity]
             [metabase.models.app :as app]
-            [metabase.models.app-permission-graph-revision :as app-perm-revision]
             [metabase.models.application-permissions-revision :as a-perm-revision]
             [metabase.models.bookmark :as bookmark]
             [metabase.models.card :as card]
@@ -13,7 +12,6 @@
             [metabase.models.dashboard-card-series :as dashboard-card-series]
             [metabase.models.database :as database]
             [metabase.models.dimension :as dimension]
-            [metabase.models.emitter :as emitter]
             [metabase.models.field :as field]
             [metabase.models.field-values :as field-values]
             [metabase.models.login-history :as login-history]
@@ -49,7 +47,6 @@
 (comment action/keep-me
          activity/keep-me
          app/keep-me
-         app-perm-revision/keep-me
          card/keep-me
          bookmark/keep-me
          collection/keep-me
@@ -59,7 +56,6 @@
          dashboard-card-series/keep-me
          database/keep-me
          dimension/keep-me
-         emitter/keep-me
          field/keep-me
          field-values/keep-me
          a-perm-revision/keep-me
@@ -95,7 +91,6 @@
  [action Action HTTPAction ModelAction QueryAction]
  [activity Activity]
  [app App]
- [app-perm-revision AppPermissionGraphRevision]
  [bookmark CardBookmark]
  [bookmark DashboardBookmark]
  [bookmark CollectionBookmark]
@@ -108,9 +103,6 @@
  [dashboard-card-series DashboardCardSeries]
  [database Database]
  [dimension Dimension]
- [emitter CardEmitter]
- [emitter DashboardEmitter]
- [emitter Emitter]
  [field Field]
  [field-values FieldValues]
  [login-history LoginHistory]

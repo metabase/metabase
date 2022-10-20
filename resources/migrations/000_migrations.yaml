@@ -13042,6 +13042,30 @@ databaseChangeLog:
                   type: ${text.type}
                   remarks: 'Optional remarks explaining why these changes were made.'
 
+  - changeSet:
+      id: v45.00-045
+      author: snoe
+      comment: Added 0.45.0 - writeback drop card_emitter
+      changes:
+        - dropTable:
+            tableName: card_emitter
+
+  - changeSet:
+      id: v45.00-046
+      author: snoe
+      comment: Added 0.45.0 - writeback drop dashboard_emitter
+      changes:
+        - dropTable:
+            tableName: dashboard_emitter
+
+  - changeSet:
+      id: v45.00-047
+      author: snoe
+      comment: Added 0.45.0 - writeback drop emitter
+      changes:
+        - dropTable:
+            tableName: emitter
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

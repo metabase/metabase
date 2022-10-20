@@ -35,7 +35,6 @@
     metabase.models.action.HTTPActionInstance
     metabase.models.action.QueryActionInstance
     metabase.models.activity.ActivityInstance
-    metabase.models.app_permission_graph_revision.AppPermissionGraphRevisionInstance
     metabase.models.application_permissions_revision.ApplicationPermissionsRevisionInstance
     metabase.models.bookmark.BookmarkOrderingInstance
     metabase.models.bookmark.CardBookmarkInstance
@@ -44,9 +43,6 @@
     metabase.models.collection.root.RootCollection
     metabase.models.collection_permission_graph_revision.CollectionPermissionGraphRevisionInstance
     metabase.models.dashboard_card_series.DashboardCardSeriesInstance
-    metabase.models.emitter.CardEmitterInstance
-    metabase.models.emitter.DashboardEmitterInstance
-    metabase.models.emitter.EmitterInstance
     metabase.models.field_values.FieldValuesInstance
     metabase.models.login_history.LoginHistoryInstance
     metabase.models.metric_important_field.MetricImportantFieldInstance
