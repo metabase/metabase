@@ -109,27 +109,17 @@
               :when remapped_from]
           [remapped_from col-idx])))
 
-(defn- ref-key-with-id?
-  "True if the `settings-key` is a ref and matches the id. The key will look something like:
-  [\"ref\" [\"field-ref\" id {:maybe more}]]"
-  [settings-key id]
-  (and (= "ref" (first settings-key))
-       (= id (get-in settings-key [1 1]))))
-
 (defn- column-name
   "Returns first column name from a hierarchy of possible column names"
   [card col]
-  (let [column-settings (some->> (get-in card [:visualization_settings :column_settings])
-                                 (m/map-keys (comp vec json/parse-string name)))]
-    (name (or (when-let [[_ id _] (:field_ref col)]
-                ;; field-ref keys can come in with additional stuff like :meta-data or unit maps,
-                ;; so we just use the field_ref ID number to try find the settings for this particular column
-                (->> column-settings
-                     (filter #(ref-key-with-id? (first %) id))
-                     first
-                     second
-                     :column_title))
-              (get-in column-settings [["name" (:name col)] :column_title])
+  (let [col-settings (-> (mb.viz/db->norm (:visualization_settings card))
+                         ::mb.viz/column-settings
+                         ;; field-ref keys can come in with additional stuff like :meta-data or unit maps,
+                         ;; so we select only those keys we CAN use to match with by using select-keys
+                         (update-keys #(select-keys % [::mb.viz/column-name ::mb.viz/field-id])))]
+    (name (or (when-let [[_ id] (:field_ref col)]
+                (get-in col-settings [{::mb.viz/field-id id} ::mb.viz/column-title]))
+              (get-in col-settings [{::mb.viz/column-name (:name col)} ::mb.viz/column-title])
               (:display_name col)
               (:name col)))))
 
