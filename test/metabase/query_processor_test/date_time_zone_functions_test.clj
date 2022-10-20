@@ -272,7 +272,6 @@
       (mt/dataset useful-dates
         (testing "year"
           (is (= (case driver/*driver*
-                   :bigquery-cloud-sdk [[1] [2] [1]]
                    [[1] [2] [0]])
                  (mt/rows (mt/process-query (datetimediff-of :year))))))
         (testing "month"
@@ -289,7 +288,7 @@
     (mt/dataset useful-dates
       (testing "Can compare across dates, datetimes, and with timezones"
         ;; these particular numbers are not important, just that we can compare between dates, datetimes, etc.
-        (is (= [[428 396 31]]
+        (is (= [[428 397 31]]
                (mt/rows
                 (mt/run-mbql-query datediff-mixed-types
                                    {:fields [[:expression "tz,dt"]
