@@ -56,6 +56,8 @@ function DataPicker({
 }: DataPickerProps) {
   const { onChange } = props;
 
+  const { search } = useDataPicker();
+
   const filters = useMemo(
     () => ({
       ...DEFAULT_DATA_PICKER_FILTERS,
@@ -118,6 +120,7 @@ function DataPicker({
     <DataPickerView
       {...props}
       dataTypes={dataTypes}
+      searchQuery={search.query}
       hasDataAccess={hasDataAccess}
       onDataTypeChange={handleDataTypeChange}
       onBack={handleBack}
