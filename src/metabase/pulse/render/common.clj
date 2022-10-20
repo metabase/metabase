@@ -101,19 +101,21 @@
     (fn [value]
       (if (number? value)
         (let [scaled-value (* value (or scale 1))
+              percent-scaled-value (* 100 scaled-value)
               decimals-in-value (digits-after-decimal (if (= number-style "percent")
                                                         (* 100 scaled-value)
                                                         scaled-value))
               decimal-digits (cond
-                               decimals decimals
+                               decimals decimals ;; if user ever specifies # of decimals, use that
                                integral? 0
                                currency? (get-in currency/currency [(keyword (or currency "USD")) :decimal_digits])
-                               :else (if (and scaled-value
-                                              (>= scaled-value 1))
-                                       (min 2 decimals-in-value)
+                               (and percent? (> percent-scaled-value 100))   (min 2 decimals-in-value) ;; 5.5432 -> %554.32
+                               (and percent? (> 100 percent-scaled-value 1)) (min 0 decimals-in-value) ;; 0.2555 -> %26
+                               :else (if (>= scaled-value 1)
+                                       (min 2 decimals-in-value) ;; values greater than 1 round to 2 decimal places
                                        (let [n-figs (sig-figs-after-decimal scaled-value decimal)]
                                          (if (> n-figs 2)
-                                           (max 2 (- decimals-in-value (dec n-figs)))
+                                           (max 2 (- decimals-in-value (- n-figs 2))) ;; values less than 1 round to 2 sig-dig
                                            decimals-in-value))))
               fmt-str (cond-> base
                         (not (zero? decimal-digits)) (str "." (apply str (repeat decimal-digits "0")))
