@@ -41,16 +41,20 @@ const DashboardCopyModalInner = ({
   params,
   ...props
 }) => {
-  const [title, setTitle] = useState("");
+  const [isShallowCopy, setIsShallowCopy] = useState(true);
   const initialDashboardId = Urls.extractEntityId(params.slug);
 
   const handleValuesChange = ({ is_shallow_copy }) => {
-    if (!dashboard) {
-      setTitle("");
-    } else if (is_shallow_copy) {
-      setTitle(t`Duplicate "${dashboard.name}"`);
+    setIsShallowCopy(is_shallow_copy);
+  };
+
+  const getTitle = () => {
+    if (!dashboard || !dashboard?.name) {
+      return "";
+    } else if (isShallowCopy) {
+      return t`Duplicate "${dashboard.name}"`;
     } else {
-      setTitle(t`Duplicate "${dashboard.name}" and its questions`);
+      return t`Duplicate "${dashboard.name}" and its questions`;
     }
   };
 
@@ -62,7 +66,7 @@ const DashboardCopyModalInner = ({
         collection_id: initialCollectionId,
       }}
       form={Dashboards.forms.duplicate}
-      title={title}
+      title={getTitle()}
       overwriteOnInitialValuesChange
       copy={object =>
         copyDashboard({ id: initialDashboardId }, dissoc(object, "id"))
