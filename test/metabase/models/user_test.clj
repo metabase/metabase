@@ -552,6 +552,29 @@
       (finally (db/delete! User :email [:in #{"cam+config-file-admin-test@metabase.com"
                                               "cam+config-file-admin-test-2@metabase.com"}])))))
 
+(deftest init-from-config-file-env-var-for-password-test
+  (testing "Ensure that we can set User password using {{env ...}} templates"
+    (try
+      (binding [config.file/*supported-versions* {:min 1, :max 1}
+                config.file/*config*             {:version 1
+                                                  :config  {:users [{:first_name "Cam"
+                                                                     :last_name  "Era"
+                                                                     :email      "cam+config-file-password-test@metabase.com"
+                                                                     :password   "{{env USER_PASSWORD}}"}]}}
+                config.file/*env*                (assoc @#'config.file/*env* :user-password "1234cans")]
+        (testing "Create a User if it does not already exist"
+          (is (= :ok
+                 (config.file/initialize!)))
+          (let [user (db/select-one [User :first_name :last_name :email :password_salt :password]
+                       :email "cam+config-file-password-test@metabase.com")]
+            (is (partial= {:first_name "Cam"
+                           :last_name  "Era"
+                           :email      "cam+config-file-password-test@metabase.com"}
+                          user))
+            (is (u.password/verify-password "1234cans" (:password_salt user) (:password user))))))
+      (finally
+        (db/delete! User :email "cam+config-file-password-test@metabase.com")))))
+
 (deftest ^:parallel init-from-config-file-validation-test
   (binding [config.file/*supported-versions* {:min 1, :max 1}]
     (are [user error-pattern] (thrown-with-msg?
