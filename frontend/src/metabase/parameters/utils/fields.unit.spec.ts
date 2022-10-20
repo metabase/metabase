@@ -1,4 +1,4 @@
-import { createMockUiParameter } from "metabase/parameters/mock";
+import { createMockUiParameter } from "metabase-lib/lib/parameters/mock";
 import Field from "metabase-lib/lib/metadata/Field";
 import { hasFieldValues, hasFields } from "./fields";
 
