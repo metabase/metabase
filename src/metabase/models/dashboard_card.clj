@@ -136,7 +136,7 @@
    s/Keyword                                s/Any})
 
 (s/defn update-dashboard-card!
-  "Update an existing DashboardCard` including all DashboardCardSeries.
+  "Update an existing DashboardCard including all DashboardCardSeries.
    Returns the updated DashboardCard or throws an Exception."
   [{:keys [id card_id action_id parameter_mappings visualization_settings] :as dashboard-card} :- DashboardCardUpdates]
   (let [{:keys [size_x size_y row col series]} (merge {:series []} dashboard-card)]
