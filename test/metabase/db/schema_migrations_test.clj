@@ -13,19 +13,31 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time :as t]
    [metabase.db.schema-migrations-test.impl :as impl]
    [metabase.driver :as driver]
-   [metabase.models :refer [Card Collection Dashboard Database Field Permissions PermissionsGroup Pulse Setting Table User]]
+   [metabase.models
+    :refer [Card
+            Collection
+            Dashboard
+            Database
+            Field
+            Permissions
+            PermissionsGroup
+            Pulse
+            Setting
+            Table
+            User]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
    [metabase.util :as u]
-   [toucan.db :as db]
-   [java-time :as t])
-  (:import java.sql.Connection
-           java.util.UUID))
+   [toucan.db :as db])
+  (:import
+   (java.sql Connection)
+   (java.util UUID)))
 
 (use-fixtures :once (fixtures/initialize :db))
 
