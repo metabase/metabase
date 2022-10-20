@@ -183,7 +183,7 @@
         ;; TODO -- need to check permissions once we have Actions-specific perms in place. For now just make sure the
         ;; current User is an admin. This check is only done if [[api/*current-user*]] is bound (which will always be
         ;; the case when invoked from an API endpoint) to make Actions testable separately from the API endpoints.
-        (when api/*current-user*
+        (when @api/*current-user*
           (api/check-superuser))
         ;; Ok, now we can hand off to [[perform-action!*]]
         (perform-action!* driver action db arg-map)))))
