@@ -77,7 +77,7 @@ class NewDatasetOptions extends Component {
               <NewQueryOption
                 image="app/img/notebook_mode_illustration"
                 title={t`Use the notebook editor`}
-                description={t`Use the advanced notebook editor to join data, create custom columns, do math, and more.`}
+                description={t`This automatically inherits metadata from your source tables, and gives your models drill-through.`}
                 width={180}
                 to={Urls.newQuestion({
                   mode: "query",
@@ -93,7 +93,7 @@ class NewDatasetOptions extends Component {
               <NewQueryOption
                 image="app/img/sql_illustration"
                 title={t`Use a native query`}
-                description={t`For more complicated questions, you can write your own SQL or native query.`}
+                description={t`You can always fall back to a SQL or native query, which is a bit more manual.`}
                 to={Urls.newQuestion({
                   mode: "query",
                   type: "native",
