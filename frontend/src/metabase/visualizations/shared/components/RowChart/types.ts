@@ -11,6 +11,22 @@ export type Series<TDatum, TSeriesInfo = unknown> = {
   seriesInfo?: TSeriesInfo;
 };
 
+export type BarData<TDatum> = {
+  xStartValue: number;
+  xEndValue: number;
+  yValue: string;
+  isNegative: boolean;
+  originalDatum: TDatum;
+  datumIndex: number;
+};
+
+export type SeriesData<TDatum> = {
+  key: string;
+  color: string;
+  bars: BarData<TDatum>[];
+  canShowValues: boolean;
+};
+
 export type RowChartTheme = {
   axis: AxisStyle;
   dataLabels: ChartFont;
@@ -19,3 +35,5 @@ export type RowChartTheme = {
     color: string;
   };
 };
+
+export type StackOffset = "diverging" | "expand" | null;

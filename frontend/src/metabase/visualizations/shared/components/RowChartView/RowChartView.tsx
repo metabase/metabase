@@ -2,21 +2,26 @@ import React from "react";
 import { Group } from "@visx/group";
 import { AxisBottom, AxisLeft } from "@visx/axis";
 import { Bar } from "@visx/shape";
-import type { NumberValue, ScaleBand, ScaleLinear } from "d3-scale";
+import type {
+  NumberValue,
+  ScaleBand,
+  ScaleContinuousNumeric,
+  ScaleLinear,
+} from "d3-scale";
 import { Text } from "@visx/text";
 import { GridColumns } from "@visx/grid";
+import { scaleBand } from "@visx/scale";
 import { HoveredData } from "metabase/visualizations/shared/types/events";
 import { Margin } from "metabase/visualizations/shared/types/layout";
-import { ChartBar } from "../RowChart/utils/layout";
 import { VerticalGoalLine } from "../VerticalGoalLine/VerticalGoalLine";
-import { RowChartTheme } from "../RowChart/types";
+import { RowChartTheme, SeriesData } from "../RowChart/types";
 
 export interface RowChartViewProps {
   width: number;
   height: number;
   yScale: ScaleBand<string>;
-  xScale: ScaleLinear<number, number, never>;
-  barsSeries: (ChartBar | null)[][];
+  xScale: ScaleContinuousNumeric<number, number, never>;
+  seriesData: SeriesData<unknown>[];
   labelsFormatter: (value: NumberValue) => string;
   yTickFormatter: (value: string | number) => string;
   xTickFormatter: (value: NumberValue) => string;
@@ -33,6 +38,7 @@ export interface RowChartViewProps {
   shouldShowDataLabels?: boolean;
   xLabel?: string | null;
   yLabel?: string | null;
+  isStacked?: boolean;
   style?: React.CSSProperties;
   hoveredData?: HoveredData | null;
   onHover?: (
@@ -53,7 +59,7 @@ export const RowChartView = ({
   innerHeight,
   xScale,
   yScale,
-  barsSeries,
+  seriesData,
   goal,
   theme,
   margin,
@@ -64,6 +70,7 @@ export const RowChartView = ({
   shouldShowDataLabels,
   yLabel,
   xLabel,
+  isStacked,
   style,
   hoveredData,
   onHover,
@@ -89,6 +96,13 @@ export const RowChartView = ({
     onClick?.(event, seriesIndex, datumIndex);
   };
 
+  const innerBarScale = isStacked
+    ? null
+    : scaleBand({
+        domain: seriesData.map((_, index) => index),
+        range: [0, yScale.bandwidth()],
+      });
+
   const goalLineX = xScale(goal?.value ?? 0);
 
   return (
@@ -101,29 +115,40 @@ export const RowChartView = ({
           tickValues={xTicks}
         />
 
-        {barsSeries.map((series, seriesIndex) => {
-          return series.map((bar, datumIndex) => {
-            if (bar == null) {
+        {seriesData.map((series, seriesIndex) => {
+          return series.bars.map(bar => {
+            const { xStartValue, xEndValue, isNegative, yValue, datumIndex } =
+              bar;
+
+            let y = yScale(yValue);
+
+            if (y == null) {
               return null;
             }
 
-            const { x, y, width, height, value, color } = bar;
+            y += innerBarScale?.(seriesIndex) ?? 0;
+
+            const x = xScale(xStartValue);
+            const width = xScale(xEndValue) - x;
 
             const hasSeriesHover = hoveredData != null;
             const isSeriesHovered = hoveredData?.seriesIndex === seriesIndex;
             const isDatumHovered = hoveredData?.datumIndex === datumIndex;
 
             const shouldHighlightBar =
-              barsSeries.length === 1 && isDatumHovered;
+              seriesData.length === 1 && isDatumHovered;
             const shouldHighlightSeries =
-              barsSeries.length > 1 && isSeriesHovered;
+              seriesData.length > 1 && isSeriesHovered;
 
             const opacity =
               !hasSeriesHover || shouldHighlightSeries || shouldHighlightBar
                 ? 1
                 : 0.4;
 
-            const isLabelVisible = shouldShowDataLabels && value != null;
+            const isLabelVisible = shouldShowDataLabels && series.canShowValues;
+
+            const height = innerBarScale?.bandwidth() ?? yScale.bandwidth();
+            const value = isNegative ? xStartValue : xEndValue;
 
             return (
               <>
@@ -134,7 +159,7 @@ export const RowChartView = ({
                   y={y}
                   width={width}
                   height={height}
-                  fill={color}
+                  fill={series.color}
                   opacity={opacity}
                   onClick={event => handleClick(event, seriesIndex, datumIndex)}
                   onMouseEnter={event =>
@@ -144,11 +169,12 @@ export const RowChartView = ({
                 />
                 {isLabelVisible && (
                   <Text
+                    textAnchor={isNegative ? "end" : "start"}
                     fontSize={theme.dataLabels.size}
                     fill={theme.dataLabels.color}
                     fontWeight={theme.dataLabels.weight}
-                    dx="0.33em"
-                    x={x + width}
+                    dx={`${isNegative ? "-" : ""}0.33em`}
+                    x={xScale(value)}
                     y={y + height / 2}
                     verticalAnchor="middle"
                   >

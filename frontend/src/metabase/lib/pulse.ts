@@ -9,6 +9,7 @@ import {
   Pulse,
   PulseParameter,
 } from "metabase-types/api";
+import { isNotEmpty } from "metabase/core/utils/is-not-empty";
 import {
   hasDefaultParameterValue,
   hasParameterValue,
@@ -219,5 +220,5 @@ export function getActivePulseParameters(
           : parameter.default,
       };
     })
-    .filter(Boolean);
+    .filter(isNotEmpty);
 }

@@ -1,5 +1,6 @@
 import d3 from "d3";
 import type { Series as D3Series } from "d3-shape";
+import { isNotEmpty } from "metabase/core/utils/is-not-empty";
 import {
   ContinuousDomain,
   ContinuousScaleType,
@@ -20,11 +21,8 @@ export const createXDomain = <TDatum>(
   additionalValues: number[],
   xScaleType: ContinuousScaleType,
 ): ContinuousDomain => {
-  const allXValues = series.flatMap(
-    series =>
-      data
-        .map(datum => series.xAccessor(datum))
-        .filter(value => value != null) as number[],
+  const allXValues = series.flatMap(series =>
+    data.map(datum => series.xAccessor(datum)).filter(isNotEmpty),
   );
   const [min, max] = d3.extent([...allXValues, ...additionalValues]);
 

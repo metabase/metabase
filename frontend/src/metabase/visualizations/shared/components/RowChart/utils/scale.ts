@@ -6,10 +6,13 @@ import {
   scalePower,
 } from "@visx/scale";
 import type { ScaleContinuousNumeric } from "d3-scale";
+import { ValueFormatter } from "metabase/visualizations/shared/types/format";
+import { TextMeasurer } from "metabase/visualizations/shared/types/measure-text";
 import {
   ContinuousScaleType,
   Range,
 } from "metabase/visualizations/shared/types/scale";
+import { ChartFont } from "metabase/visualizations/shared/types/style";
 import { Series } from "../types";
 import { createYDomain } from "./domain";
 
@@ -62,4 +65,69 @@ export const addScalePadding = (
   const adjustedDomainEnd = scale.invert(end + paddingEnd);
 
   return scale.domain([adjustedDomainStart, adjustedDomainEnd]);
+};
+
+const getTickInfo = (
+  tick: number,
+  tickFormatter: ValueFormatter,
+  tickFont: ChartFont,
+  measureText: TextMeasurer,
+  xScale: ScaleContinuousNumeric<number, number, never>,
+) => {
+  return {
+    value: tick,
+    tickX: xScale(tick),
+    formatted: tickFormatter(tick),
+    tickWidth: measureText(tickFormatter(tick), tickFont),
+  };
+};
+
+export const addSideSpacingForXScale = (
+  xScale: ScaleContinuousNumeric<number, number, never>,
+  measureText: TextMeasurer,
+  ticks: number[],
+  tickFont: ChartFont,
+  tickFormatter: ValueFormatter,
+  labelFont: ChartFont,
+  labelFormatter: ValueFormatter,
+  shouldShowLabels?: boolean,
+) => {
+  const [rangeMin, rangeMax] = xScale.range();
+  const [domainMin, domainMax] = xScale.domain();
+  let [leftPadding, rightPadding] = [0, 0];
+
+  const minTick = getTickInfo(
+    ticks[0],
+    tickFormatter,
+    tickFont,
+    measureText,
+    xScale,
+  );
+
+  if (minTick.value < 0) {
+    const minTickOverflow = rangeMin - (minTick.tickX - minTick.tickWidth / 2);
+    const leftLabelOverflow = shouldShowLabels
+      ? rangeMin -
+        (xScale(domainMin) - measureText(labelFormatter(domainMin), labelFont))
+      : 0;
+    leftPadding = Math.max(0, minTickOverflow, leftLabelOverflow);
+  }
+
+  const maxTick = getTickInfo(
+    ticks[ticks.length - 1],
+    tickFormatter,
+    tickFont,
+    measureText,
+    xScale,
+  );
+  const maxTickOverflow = maxTick.tickX + maxTick.tickWidth / 2 - rangeMax;
+  const rightLabelOverflow = shouldShowLabels
+    ? xScale(domainMax) +
+      measureText(labelFormatter(domainMax), labelFont) -
+      rangeMax
+    : 0;
+
+  rightPadding = Math.max(0, maxTickOverflow, rightLabelOverflow);
+
+  return addScalePadding(xScale, leftPadding, rightPadding);
 };

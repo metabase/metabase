@@ -12,13 +12,12 @@ import { ContinuousScaleType } from "../../types/scale";
 import {
   getMaxYValuesCount,
   getChartMargin,
-  StackOffset,
-  calculateStackedBars,
-  calculateNonStackedBars,
   getRowChartGoal,
 } from "./utils/layout";
 import { getXTicks } from "./utils/ticks";
-import { RowChartTheme, Series } from "./types";
+import { RowChartTheme, Series, StackOffset } from "./types";
+import { calculateNonStackedBars, calculateStackedBars } from "./utils/data";
+import { addSideSpacingForXScale } from "./utils/scale";
 
 const MIN_BAR_HEIGHT = 24;
 
@@ -137,7 +136,7 @@ export const RowChart = <TDatum,>({
     [goal],
   );
 
-  const { xScale, yScale, bars } = useMemo(
+  const { xScale, yScale, seriesData } = useMemo(
     () =>
       stackOffset != null
         ? calculateStackedBars<TDatum>({
@@ -149,9 +148,6 @@ export const RowChart = <TDatum,>({
             innerHeight,
             seriesColors,
             xScaleType,
-            theme,
-            xTickFormatter,
-            labelsFormatter,
           })
         : calculateNonStackedBars<TDatum>({
             data: trimmedData,
@@ -161,9 +157,6 @@ export const RowChart = <TDatum,>({
             innerHeight,
             seriesColors,
             xScaleType,
-            theme,
-            xTickFormatter,
-            labelsFormatter,
           }),
     [
       additionalXValues,
@@ -174,9 +167,6 @@ export const RowChart = <TDatum,>({
       stackOffset,
       trimmedData,
       xScaleType,
-      theme,
-      xTickFormatter,
-      labelsFormatter,
     ],
   );
 
@@ -200,6 +190,30 @@ export const RowChart = <TDatum,>({
     ],
   );
 
+  const paddedXScale = useMemo(
+    () =>
+      addSideSpacingForXScale(
+        xScale,
+        measureText,
+        xTicks,
+        theme.axis.ticks,
+        xTickFormatter,
+        theme.dataLabels,
+        labelsFormatter,
+        shouldShowDataLabels,
+      ),
+    [
+      labelsFormatter,
+      measureText,
+      shouldShowDataLabels,
+      theme.axis.ticks,
+      theme.dataLabels,
+      xScale,
+      xTickFormatter,
+      xTicks,
+    ],
+  );
+
   const rowChartGoal = useMemo(
     () => getRowChartGoal(goal, theme.goal, measureText, xScale),
     [goal, measureText, theme.goal, xScale],
@@ -208,14 +222,15 @@ export const RowChart = <TDatum,>({
   return (
     <RowChartView
       style={style}
-      barsSeries={bars}
+      isStacked={stackOffset != null}
+      seriesData={seriesData}
       innerHeight={innerHeight}
       innerWidth={innerWidth}
       margin={margin}
       theme={theme}
       width={width}
       height={height}
-      xScale={xScale}
+      xScale={paddedXScale}
       yScale={yScale}
       goal={rowChartGoal}
       hoveredData={hoveredData}
