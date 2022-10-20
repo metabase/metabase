@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { TableId } from "metabase-types/api";
 
@@ -14,6 +14,10 @@ function useSelectedTables({
   const [selectedTableIds, setSelectedTableIds] = useState(
     new Set(initialValues),
   );
+
+  useEffect(() => {
+    setSelectedTableIds(new Set(initialValues));
+  }, [initialValues]);
 
   const addSelectedTableId = useCallback(
     (id: TableId) => {

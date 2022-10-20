@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
@@ -10,9 +10,9 @@ import * as Urls from "metabase/lib/urls";
 
 import DataApps, { ScaffoldNewAppParams } from "metabase/entities/data-apps";
 
-import RawDataPanePicker from "metabase/containers/DataPicker/RawDataPanePicker";
+import DataPicker, { useDataPickerValue } from "metabase/containers/DataPicker";
 
-import type { DataApp, TableId } from "metabase-types/api";
+import type { DataApp } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
 
 import {
@@ -48,7 +48,9 @@ function mapDispatchToProps(dispatch: Dispatch) {
 }
 
 function CreateDataAppModal({ onCreate, onChangeLocation, onClose }: Props) {
-  const [tableIds, setTableIds] = useState<TableId[]>([]);
+  const [value, setValue] = useDataPickerValue();
+
+  const { tableIds } = value;
 
   const handleCreate = useCallback(async () => {
     const dataApp = await onCreate({
@@ -67,7 +69,7 @@ function CreateDataAppModal({ onCreate, onChangeLocation, onClose }: Props) {
         <ModalTitle>{t`Pick your starting data`}</ModalTitle>
       </ModalHeader>
       <ModalBody>
-        <RawDataPanePicker onTablesChange={setTableIds} />
+        <DataPicker value={value} onChange={setValue} />
       </ModalBody>
       <ModalFooter>
         <Button onClick={onClose}>{t`Cancel`}</Button>
