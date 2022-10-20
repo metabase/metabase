@@ -337,6 +337,8 @@
 
 (defn- init-from-config-file!
   [database]
+  ;; assert that we are able to connect to this Database. Otherwise, throw an Exception.
+  (driver.u/can-connect-with-details? (keyword (:engine database)) (:details database) :throw-exceptions)
   (if-let [existing-database-id (db/select-one-id Database :engine (:engine database), :name (:name database))]
     (do
       (log/info (u/colorize :blue (trs "Updating Database {0} {1}" (:engine database) (pr-str (:name database)))))

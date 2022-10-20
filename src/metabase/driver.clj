@@ -680,7 +680,7 @@
   Much of the implementation for this method is shared across drivers and lives in the
   `metabase.driver.common.parameters.*` namespaces. See the `:sql` and `:mongo` drivers for sample implementations of
   this method.`Driver-agnostic end-to-end native parameter tests live in
-  `metabase.query-processor-test.parameters-test` and other namespaces."
+  [[metabase.query-processor-test.parameters-test]] and other namespaces."
   {:arglists '([driver inner-query])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
