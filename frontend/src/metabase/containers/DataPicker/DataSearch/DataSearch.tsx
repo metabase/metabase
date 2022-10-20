@@ -76,11 +76,9 @@ function getNextValue(table: TableSearchResult): DataPickerValue {
     : getValueForRawTable(table);
 }
 
-function DataSearch({ value, searchQuery, onChange }: DataSearchProps) {
+function DataSearch({ searchQuery, onChange }: DataSearchProps) {
   const { search } = useDataPicker();
   const { setQuery } = search;
-
-  const databaseId = value.databaseId ? String(value.databaseId) : null;
 
   const onSelect = useCallback(
     (table: TableSearchResult) => {
@@ -95,7 +93,6 @@ function DataSearch({ value, searchQuery, onChange }: DataSearchProps) {
     <SearchResults
       searchModels={SEARCH_MODELS as any}
       searchQuery={searchQuery.trim()}
-      databaseId={databaseId}
       onSelect={onSelect}
     />
   );
