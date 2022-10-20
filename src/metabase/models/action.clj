@@ -163,7 +163,8 @@
   [fields]
   (empty? (m/filter-vals #(not= % 1) (frequencies (map (comp u/slugify :name) fields)))))
 
-(defn- implicit-action-parameters
+(defn implicit-action-parameters
+  "Return a set of parameters for the given models"
   [cards]
   (let [card-by-table-id (into {}
                                (for [card cards
@@ -214,7 +215,7 @@
                 action (get actions-by-id (:action_id model-action))
                 implicit-action (when-let [parameters (get parameters-by-model-id (:card_id model-action))]
                                   {:parameters (cond->> parameters
-                                                 (= "delete" (:slug model-action)) (filter #(::pk? %))
+                                                 (= "delete" (:slug model-action)) (filter ::pk?)
                                                  :always (map #(dissoc % ::pk?)))
                                    :type "implicit"})]]
       (m/deep-merge (-> model-action
