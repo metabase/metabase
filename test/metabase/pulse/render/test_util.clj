@@ -17,6 +17,7 @@
             [metabase.pulse.render.datetime :as datetime]
             [metabase.pulse.render.image-bundle :as image-bundle]
             [metabase.pulse.render.js-svg :as js-svg]
+            [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.util :as u])
   (:import [org.apache.batik.anim.dom SVGOMDocument]
            [org.w3c.dom Element Node]))
@@ -181,7 +182,7 @@
   "Merges the provided column-settings into the `[:data :column-settings]` path of the `card-and-data` map."
   [card-and-data column-settings]
   (update-in card-and-data [:data :viz-settings
-                            :metabase.shared.models.visualization-settings/column-settings]
+                            ::mb.viz/column-settings]
              (fn [a b] (merge-with merge a b)) (-> column-settings
                                                    (update-vals lisp-keys)
                                                    (update-vals viz-namespaced-keys))))
@@ -203,7 +204,7 @@
   (let [[_ id] field-ref]
     (case destination
       :data ;; goes in  [:data :viz-settings :column-settings]
-      {{:metabase.shared.models.visualization-settings/field-id id} settings}
+      {{::mb.viz/field-id id} settings}
 
       :card ;; this goes in [:card :visualization_settings :column_settings]
       {(json/generate-string ["ref" ["field" id nil]]) settings})))

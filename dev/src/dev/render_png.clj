@@ -3,19 +3,15 @@
   pulses and subscriptions and open those images without needing to send them to slack or email."
   (:require [clojure.java.io :as io]
             [clojure.java.shell :as sh]
-            [clojure.string :as str]
             [hiccup.core :as hiccup]
             [metabase.models.card :as card]
             [metabase.models.user :as user]
             [metabase.pulse :as pulse]
             [metabase.pulse.render :as render]
-            [metabase.pulse.render.js-svg :as js-svg]
-            [metabase.pulse.render.png :as png]
             [metabase.pulse.render.test-util :as render.tu]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.permissions :as qp.perms]
-            [toucan.db :as db])
-  (:import org.fit.cssbox.misc.Base64Coder))
+            [toucan.db :as db]))
 
 ;; taken from https://github.com/aysylu/loom/blob/master/src/loom/io.clj
 (defn- os
@@ -69,17 +65,6 @@
     (.deleteOnExit tmp-file)
     (open tmp-file)))
 
-(defn open-png-bytes [bytes]
-  (let [tmp-file (java.io.File/createTempFile "card-png" ".png")]
-    (with-open [w (java.io.FileOutputStream. tmp-file)]
-      (.write w ^bytes bytes))
-    (.deleteOnExit tmp-file)
-    (open tmp-file)))
-
-#_(defn writelines [file-path lines]
-  (with-open [wtr (clojure.java.io/writer file-path)]
-    (doseq [line lines] (.write wtr line))))
-
 (defn open-hiccup-as-html [hiccup]
   (let [html-str (hiccup/html hiccup)
         tmp-file (java.io.File/createTempFile "card-html" ".html")]
@@ -91,13 +76,7 @@
 (comment
   (render-card-to-png 1)
 
-  (-> [["As" "Bs"]
-       ["aa" "bb"]
-       ["aaa" "bbb"]]
-      (render.tu/make-viz-data :table {:hidden-columns nil})
-      :viz-tree
-      open-hiccup-as-html)
-
+  ;; open viz in your browser
   (-> [["A" "B"]
        [1 2]
        [30 20]]
@@ -112,26 +91,6 @@
       (render.tu/make-viz-data :table {:reordered-columns   {:order [2 3 1 0 4]}
                                        :custom-column-names {:names ["-A-" "-B-" "-C-" "-D-"]}
                                        :hidden-columns      {:hide [0 2]}})
-                    :viz-tree
-                    open-hiccup-as-html)
-
-  (-> [["As" "Bs"]
-       ["aa" "bb"]
-       ["aaa" "bbb"]]
-      (render.tu/make-viz-data :table {})
-      (render.tu/make-column-settings [{:column-title "WWWWWW"} {} {} {} {}])
       :viz-tree
       open-hiccup-as-html)
-
-  (->  [["A" "B" "C"]
-        [0.1 9000 "2022-10-12T00:00:00Z"]]
-       (render.tu/make-card-and-data :table)
-       (render.tu/make-column-settings [{:column-title "Eh"}
-                                        {:column-title "Bee"}
-                                        {:column-title "Sea"}])
-       render.tu/render-as-hiccup
-       render.tu/remove-attrs
-       (render.tu/nodes-with-tag :td)
-       (->> (map second))
-       (->> (take 3)))
   )

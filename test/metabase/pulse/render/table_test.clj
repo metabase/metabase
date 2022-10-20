@@ -3,8 +3,7 @@
             [metabase.pulse.render.color :as color]
             [metabase.pulse.render.table :as table]
             [metabase.pulse.render.test-util :as render.tu]
-            [metabase.test :as mt]
-            [metabase.test.util :as tu]))
+            [metabase.test :as mt]))
 
 (defn- query-results->header+rows
   "Makes pulse header and data rows with no bar-width. Including bar-width just adds extra HTML that will be ignored."
@@ -18,7 +17,7 @@
   results."
   [pred collect-fn form]
   (let [results (atom [])]
-    (tu/postwalk-pred pred
+    (mt/postwalk-pred pred
                       (fn [node]
                         (when-let [result (collect-fn node)]
                           (swap! results conj result))
@@ -85,9 +84,6 @@
       (is (= "A..." (subs long-rendered (- (count long-rendered) 4) (count long-rendered))))
       (is (not= long-heading long-rendered)))))
 
-;; question: is this kind of test strictly necessary? The frontend already doesn't send hidden rows
-;; and sends rows already reordered
-;; this DOES show that the rendering pipeline respects the order of columns passed in, so not completely useless
 (deftest table-columns-test
   (let [rows [["As" "Bs" "Cs" "Ds" "Es"]
               ["a" "b" "c" "d" "e"]

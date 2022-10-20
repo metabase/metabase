@@ -29,14 +29,18 @@
         (is (= "$12,345.54" (fmt {::mb.viz/currency-style "symbol"}))))
       (testing "Defaults to currency when there is a currency"
         (is (= "$12,345.54" (fmt {::mb.viz/currency "USD"}))))
+      (testing "respects the number of decimal places when specified"
+        (is (= "$12,345.54320" (fmt {::mb.viz/currency "USD"
+                                     ::mb.viz/decimals 5}))))
       (testing "Other currencies"
         (is (= "AED12,345.54" (fmt {::mb.viz/currency "AED"})))
-        (is (= "Af12,346" (fmt {::mb.viz/currency "AFN"})))
-        (is (= "₡12,346" (fmt {::mb.viz/currency "CRC"})))
-        (is (= "ZK12,346" (fmt {::mb.viz/currency "ZMK"})))
         (is (= "12,345.54 Cape Verdean escudos"
                (fmt {::mb.viz/currency       "CVE"
-                     ::mb.viz/currency-style "name"}))))
+                     ::mb.viz/currency-style "name"})))
+        (testing "which have no 'cents' and thus no decimal places"
+          (is (= "Af12,346" (fmt {::mb.viz/currency "AFN"})))
+          (is (= "₡12,346" (fmt {::mb.viz/currency "CRC"})))
+          (is (= "ZK12,346" (fmt {::mb.viz/currency "ZMK"})))))
       (testing "Understands name, code, and symbol"
         (doseq [[style expected] [["name" "12,345.54 Czech Republic korunas"]
                                   ["symbol" "Kč12,345.54"]
@@ -70,18 +74,23 @@
       (is (= ["2"    "0.001"]  [(format 2.001 nil) (format 0.001 nil)]))
       ;; Notice that (BigDecimal. 2.005) -> 2.0049999999... etc. so we have precision problems unless we
       ;; send a BigDecimal in right away, which, as far as I can tell, is what we'll get from the query processor
-      (is (= ["2.01" "0.005"]  [(format 2.005M nil) (format 0.005 nil)]))
+      (is (= ["2.01" "0.006"]  [(format 2.006 nil) (format 0.006 nil)]))
       (is (= ["2"    "0.0049"] [(format 2.0049 nil) (format 0.0049 nil)]))
       (is (= ["2"    "0.005"] [(format 2.00499 nil) (format 0.00499 nil)])))
     (testing "Column Settings"
-      (letfn [(fmt-with-type [type value]
-                (let [fmt-fn (common/number-formatter {:id 1 :effective_type type}
-                                                      {::mb.viz/column-settings
-                                                       {{::mb.viz/column-id 1}
-                                                        {:effective_type type}}})]
-                  (str (fmt-fn value))))]
+      (letfn [(fmt-with-type
+                ([type value] (fmt-with-type type value nil))
+                ([type value decimals]
+                 (let [fmt-fn (common/number-formatter {:id 1 :effective_type type}
+                                                       {::mb.viz/column-settings
+                                                        {{::mb.viz/field-id 1}
+                                                         (merge
+                                                          {:effective_type type}
+                                                          (when decimals {::mb.viz/decimals decimals}))}})]
+                   (str (fmt-fn value)))))]
         (is (= "3" (fmt-with-type :type/Integer 3)))
         (is (= "3" (fmt-with-type :type/Integer 3.0)))
+        (is (= "3.0" (fmt-with-type :type/Integer 3 1)))
         (is (= "3" (fmt-with-type :type/Decimal 3)))
         (is (= "3" (fmt-with-type :type/Decimal 3.0)))
         (is (= "3.1" (fmt-with-type :type/Decimal 3.1)))

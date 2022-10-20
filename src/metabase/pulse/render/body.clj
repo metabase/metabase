@@ -78,28 +78,13 @@
     :else
     (str value)))
 
-(defn- viz-settings-for-col
-  [col viz-settings]
-  (let [[_ field-id _]    (:field_ref col)
-        strip-ns          (fn [v] (if (map? v)
-                           (update-keys v #(keyword (name %)))
-                           v))
-        all-cols-settings (-> (update-keys viz-settings #(keyword (name %)))
-                              :column-settings
-                              (update-keys strip-ns)
-                              (update-keys #(into {} (take 2 %))) ;; throw out any unit/metadata to make key matching simpler
-                              (update-vals strip-ns))]
-    (-> (or (all-cols-settings {:field-id field-id})
-            (all-cols-settings {:column-name field-id}))
-        (update-keys (fn [k] (-> k name (str/replace #"-" "_") keyword))))))
-
 (s/defn ^:private get-format
   [timezone-id :- (s/maybe s/Str) col visualization-settings]
   (cond
     ;; for numbers, return a format function that has already computed the differences.
     ;; todo: do the same for temporal strings
     (types/temporal-field? col)
-    #(datetime/format-temporal-str timezone-id % col (viz-settings-for-col col visualization-settings))
+    #(datetime/format-temporal-str timezone-id % col visualization-settings)
 
     ;; todo integer columns with a unit
     (or (isa? (:effective_type col) :type/Number)
@@ -391,9 +376,7 @@
   "Returns `true` if `:graph.x_axis.labels_enabled` (or y_axis) is `true`, not present, or nil.
   The only time labels are not enabled is when the key is explicitly set to false."
   [viz-settings axis-key]
-  (if (contains? viz-settings axis-key)
-    (boolean (get viz-settings axis-key))
-    true))
+  (boolean (get viz-settings axis-key true)))
 
 (defn- combo-label-info
   "X and Y axis labels passed into the `labels` argument needs to be different
@@ -511,7 +494,7 @@
                                  timezone-id
                                  (first row)
                                  (x-axis-rowfn cols)
-                                 label-viz-settings)
+                                 viz-settings)
                                 label)}))
              rows))]}))
 

@@ -105,9 +105,9 @@
                                                         (* 100 scaled-value)
                                                         scaled-value))
               decimal-digits (cond
+                               decimals decimals
                                integral? 0
                                currency? (get-in currency/currency [(keyword (or currency "USD")) :decimal_digits])
-                               decimals decimals
                                :else (if (and scaled-value
                                               (>= scaled-value 1))
                                        (min 2 decimals-in-value)
