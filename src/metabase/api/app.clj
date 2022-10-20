@@ -9,9 +9,11 @@
     [metabase.api.collection :as api.collection]
     [metabase.api.common :as api]
     [metabase.mbql.schema :as mbql.s]
-    [metabase.models :refer [App Collection Dashboard ModelAction Table]]
+    [metabase.models :refer [App Dashboard ModelAction Table]]
+    [metabase.models.app.graph :as app.graph]
     [metabase.models.collection :as collection]
     [metabase.models.dashboard :as dashboard]
+    [metabase.plugins.classloader :as classloader]
     [metabase.util :as u]
     [metabase.util.i18n :as i18n]
     [metabase.util.schema :as su]
@@ -25,8 +27,9 @@
 
 (defn- create-app! [{:keys [collection] :as app}]
   (db/transaction
-   (let [coll-params (select-keys collection [:name :color :description :namespace :authority_level])
-         collection-instance (api.collection/create-collection! coll-params)
+   (let [coll-params (select-keys collection [:name :color :description :authority_level])
+         collection-instance (api.collection/create-collection!
+                              (assoc coll-params :namespace :apps))
          app-params (-> app
                         (select-keys [:dashboard_id :options :nav_items])
                         (assoc :collection_id (:id collection-instance)))
@@ -55,7 +58,7 @@
    dashboard_id (s/maybe su/IntGreaterThanOrEqualToZero)
    options (s/maybe su/Map)
    nav_items (s/maybe [(s/maybe su/Map)])}
-  (api/write-check Collection (db/select-one-field :collection_id App :id app-id))
+  (api/write-check App app-id)
   (db/update! App app-id (select-keys body [:dashboard_id :options :nav_items]))
   (hydrate-details (db/select-one App :id app-id)))
 
@@ -285,6 +288,7 @@
 (api/defendpoint POST "/:app-id/scaffold"
   "Endpoint to scaffold a new table onto an existing data-app"
   [app-id :as {{:keys [table-ids]} :body}]
+  (api/write-check App app-id)
   (db/transaction
     (let [{app-id :id app-name :name nav-items :nav_items {collection-id :id} :collection} (hydrate-details (db/select-one App :id app-id))
           ;; We can scaffold this as a new app, but use the existing collection-id and nav-items to merge into the existing app

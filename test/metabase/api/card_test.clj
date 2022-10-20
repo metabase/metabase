@@ -2341,16 +2341,6 @@
                      (is (= {:errors {:is_write "Cannot mark Saved Question as 'is_write': Saved Question is a Dataset."}}
                             result)))})))
 
-(deftest set-is-write-user-is-not-admin-test
-  (with-actions-enabled
-    (doseq [f [test-update-is-write-card
-               test-create-is-write-card]]
-      (f {:status-code 403
-          :user                 :rasta
-          :result-fn            (fn [result _]
-                                  (is (= "You don't have permissions to do that."
-                                         result)))}))))
-
 (deftest set-is-write-card-query-is-not-native-query-test
   (with-actions-enabled
     (doseq [f [test-update-is-write-card

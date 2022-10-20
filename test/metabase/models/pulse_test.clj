@@ -401,7 +401,7 @@
         (try
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"A Pulse can only go in Collections in the \"default\" namespace"
+               #"A Pulse can only go in Collections in the \"default\" or :apps namespace"
                (db/insert! Pulse (assoc (tt/with-temp-defaults Pulse) :collection_id collection-id, :name pulse-name))))
           (finally
             (db/delete! Pulse :name pulse-name)))))
@@ -410,7 +410,7 @@
       (mt/with-temp Pulse [{card-id :id}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"A Pulse can only go in Collections in the \"default\" namespace"
+             #"A Pulse can only go in Collections in the \"default\" or :apps namespace"
              (db/update! Pulse card-id {:collection_id collection-id})))))))
 
 

@@ -273,8 +273,6 @@
            after  (:is_write card-updates)]
        (log/tracef "is_write value will change from %s => %s" (pr-str before) (pr-str after))
        (when-not (= before after)
-         ;; make sure current User is a superuser
-         (api/check-superuser)
          (try
            ;; make sure Card is not a Dataset
            (when (:dataset (merge card-updates card-before-update))
