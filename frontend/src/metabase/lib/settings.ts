@@ -79,7 +79,7 @@ export type SettingName =
   | "is-hosted?"
   | "ldap-enabled"
   | "ldap-configured?"
-  | "other-sso-configured?"
+  | "other-sso-enabled?"
   | "enable-password-login"
   | "map-tile-server-url"
   | "password-complexity"

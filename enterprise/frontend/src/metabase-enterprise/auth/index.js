@@ -255,7 +255,7 @@ const SSO_PROVIDER = {
 };
 
 PLUGIN_AUTH_PROVIDERS.push(providers => {
-  if (MetabaseSettings.get("other-sso-configured?")) {
+  if (MetabaseSettings.get("other-sso-enabled?")) {
     providers = [SSO_PROVIDER, ...providers];
   }
   if (
