@@ -201,13 +201,14 @@
   The key will look like {:field-id 0} for :data
   The key will be a json-stringified version of [\"ref\" [\"field\" 0 nil]] for :card."
   [{field-ref :field_ref} settings destination]
-  (let [[_ id] field-ref]
+  (let [[_ id] field-ref
+        norm-ref {::mb.viz/field-id id}]
     (case destination
       :data ;; goes in  [:data :viz-settings :column-settings]
-      {{::mb.viz/field-id id} settings}
+      {norm-ref settings}
 
       :card ;; this goes in [:card :visualization_settings :column_settings]
-      {(json/generate-string ["ref" ["field" id nil]]) settings})))
+      {(mb.viz/norm->db-column-ref norm-ref) settings})))
 
 (defn make-column-settings
   "Makes and adds each map in the `column-settings` vector to the appropriate columns in `card-and-data`."
