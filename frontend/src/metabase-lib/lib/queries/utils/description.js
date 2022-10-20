@@ -6,7 +6,7 @@ import inflection from "inflection";
 
 import { stripId } from "metabase/lib/formatting";
 
-import { format as formatExpression } from "metabase/lib/expressions/format";
+import { format as formatExpression } from "metabase-lib/lib/expressions/format";
 
 import * as AGGREGATION from "./aggregation";
 import * as QUERY from "./query";

@@ -322,16 +322,21 @@
   without the necessary constraints. (Marking parameters in optional blocks as required doesn't
   seem to be useful any way, but if the user said it is required, we honor this flag.)"
   [text template-tags]
-  (let [obligatory-params (into #{}
-                                (comp (filter params/Param?)
-                                      (map :k))
-                                (params.parse/parse text))]
-    (and (every? #(or (#{:dimension :snippet} (:type %))
-                      (:default %))
-                 (map template-tags obligatory-params))
-         (every? #(or (not (:required %))
-                      (:default %))
-                 (vals template-tags)))))
+  (try
+    (let [obligatory-params (into #{}
+                                  (comp (filter params/Param?)
+                                        (map :k))
+                                  (params.parse/parse text))]
+      (and (every? #(or (#{:dimension :snippet} (:type %))
+                        (:default %))
+                   (map template-tags obligatory-params))
+           (every? #(or (not (:required %))
+                        (:default %))
+                   (vals template-tags))))
+    (catch clojure.lang.ExceptionInfo _
+      ;; An exception might be thrown during parameter parsing if the syntax is invalid. In this case we return
+      ;; true so that we still can try to generate a preview for the query and display an error.
+      false)))
 
 (defn- fully-parametrized-query? [row]
   (let [native-query (-> row :dataset_query json/parse-string mbql.normalize/normalize :native)]
@@ -755,16 +760,17 @@
 (defn- write-check-collection-or-root-collection
   "Check that you're allowed to write Collection with `collection-id`; if `collection-id` is `nil`, check that you have
   Root Collection perms."
-  [collection-id]
+  [collection-id collection-namespace]
   (api/write-check (if collection-id
                      (db/select-one Collection :id collection-id)
-                     collection/root-collection)))
+                     (cond-> collection/root-collection
+                       collection-namespace (assoc :namespace collection-namespace)))))
 
 (defn create-collection!
   "Create a new collection."
   [{:keys [name color description parent_id namespace authority_level]}]
   ;; To create a new collection, you need write perms for the location you are going to be putting it in...
-  (write-check-collection-or-root-collection parent_id)
+  (write-check-collection-or-root-collection parent_id namespace)
   ;; Now create the new Collection :)
   (api/check-403 (or (nil? authority_level)
                      (and api/*is-superuser?* authority_level)))
@@ -854,7 +860,7 @@
     ;; if we're trying to *archive* the Collection, make sure we're allowed to do that
     (check-allowed-to-archive-or-unarchive collection-before-update collection-updates)
     (when (and (contains? collection-updates :authority_level)
-                    (not= authority_level (:authority_level collection-before-update)))
+               (not= authority_level (:authority_level collection-before-update)))
       (api/check-403 (and api/*is-superuser?*
                           ;; pre-update of model checks if the collection is a personal collection and rejects changes
                           ;; to authority_level, but it doesn't check if it is a sub-collection of a personal one so we add that

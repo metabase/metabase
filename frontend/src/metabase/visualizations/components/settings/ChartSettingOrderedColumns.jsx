@@ -4,10 +4,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
-import {
-  keyForColumn,
-  findColumnForColumnSetting,
-} from "metabase-lib/lib/queries/utils/dataset";
+import { getColumnKey } from "metabase-lib/lib/queries/utils/get-column-key";
+import { findColumnForColumnSetting } from "metabase-lib/lib/queries/utils/dataset";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 import ColumnItem from "./ColumnItem";
@@ -45,7 +43,7 @@ export default class ChartSettingOrderedColumns extends Component {
         {
           id: "column_settings",
           props: {
-            initialKey: keyForColumn(column),
+            initialKey: getColumnKey(column),
           },
         },
         targetElement,

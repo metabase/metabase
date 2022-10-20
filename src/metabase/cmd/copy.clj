@@ -11,6 +11,7 @@
             [metabase.db.setup :as mdb.setup]
             [metabase.models :refer [Activity
                                      App
+                                     AppPermissionGraphRevision
                                      ApplicationPermissionsRevision
                                      BookmarkOrdering
                                      Card
@@ -107,6 +108,7 @@
    DashboardCardSeries
    Activity
    App
+   AppPermissionGraphRevision
    Pulse
    PulseCard
    PulseChannel

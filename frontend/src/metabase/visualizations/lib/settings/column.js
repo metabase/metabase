@@ -33,7 +33,7 @@ export function columnSettings({
     section: t`Formatting`,
     objectName: "column",
     getObjects: getColumns,
-    getObjectKey: keyForColumn,
+    getObjectKey: getColumnKey,
     getSettingDefintionsForObject: getSettingDefintionsForColumn,
     component: ChartNestedSettingColumns,
     getInheritedSettingsForObject: getInhertiedSettingsForColumn,
@@ -50,7 +50,7 @@ import {
   isCurrency,
   isDateWithoutTime,
 } from "metabase-lib/lib/types/utils/isa";
-import { keyForColumn } from "metabase-lib/lib/queries/utils/dataset";
+import { getColumnKey } from "metabase-lib/lib/queries/utils/get-column-key";
 import { nestedSettings } from "./nested";
 
 export function getGlobalSettingsForColumn(column) {
