@@ -85,39 +85,28 @@
       (is (not= long-heading long-rendered)))))
 
 (deftest table-columns-test
-  (let [rows [["As" "Bs" "Cs" "Ds" "Es"]
-              ["a" "b" "c" "d" "e"]
-              ["aa" "bb" "cc" "dd" "ee"]]]
+  (let [rows [["As" "Bs" "Cs"]
+              ["a" "b" "c"]]]
     (testing "Column reordering is applied correctly to the table"
       (let [{:keys [viz-tree]} (render.tu/make-viz-data
-                                rows :table {:reordered-columns {:order [3 4 1 0 2]}})]
-        (is (= ["Ds" "Es" "Bs" "As" "Cs"]
+                                rows :table {:reordered-columns {:order [1 0 2]}})]
+        (is (= ["Bs" "As" "Cs" "b" "a" "c"]
                (-> viz-tree
                    render.tu/remove-attrs
-                   (render.tu/nodes-with-tag :th)
-                   (->> (map second))
-                   (->> (take 5)))))
-        (is (= ["d" "e" "b" "a" "c"]
-               (-> viz-tree
-                   render.tu/remove-attrs
-                   (render.tu/nodes-with-tag :td)
-                   (->> (map second))
-                   (->> (take 5)))))))
+                   ((juxt #(render.tu/nodes-with-tag % :th)
+                          #(render.tu/nodes-with-tag % :td)))
+                   (->> (apply concat))
+                   (->> (map second)))))))
     (testing "A table with hidden columns does not render hidden columns"
       (let [{:keys [viz-tree]} (render.tu/make-viz-data
-                                rows :table {:hidden-columns {:hide [0 2 4]}})]
-        (is (= ["Bs" "Ds"]
+                                rows :table {:hidden-columns {:hide [1]}})]
+        (is (= ["As" "Cs" "a" "c"]
                (-> viz-tree
                    render.tu/remove-attrs
-                   (render.tu/nodes-with-tag :th)
-                   (->> (map second))
-                   (->> (take 2)))))
-        (is (= ["b" "d"]
-               (-> viz-tree
-                   render.tu/remove-attrs
-                   (render.tu/nodes-with-tag :td)
-                   (->> (map second))
-                   (->> (take 2)))))))))
+                   ((juxt #(render.tu/nodes-with-tag % :th)
+                          #(render.tu/nodes-with-tag % :td)))
+                   (->> (apply concat))
+                   (->> (map second)))))))))
 
 (deftest table-column-formatting-test
   (let [rows [["A" "B" "C" "D" "E"]
