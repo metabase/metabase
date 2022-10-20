@@ -1,12 +1,12 @@
 import _ from "underscore";
 
-import type { ParameterWithTarget } from "metabase/parameters/types";
 import type {
   Parameter,
   ParameterTarget,
 } from "metabase-types/types/Parameter";
 import type { Card } from "metabase-types/types/Card";
 import type { TemplateTag } from "metabase-types/types/Query";
+import type { ParameterWithTarget } from "metabase-lib/lib/parameters/types";
 import { getTemplateTagFromTarget } from "metabase-lib/lib/parameters/utils/targets";
 import { hasParameterValue } from "metabase-lib/lib/parameters/utils/parameter-values";
 
