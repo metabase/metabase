@@ -521,46 +521,57 @@
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :datetimediff]
   [driver [_ x y unit :as clause]]
-  (case unit
-    ;; the default week implementation gave incorrect results in tests
-    :week
-    (->> (hsql/call :/ (sql.qp/->honeysql driver [:datetimediff x y :day]) 7)
-         (hsql/call :floor)
-         (hx/cast :integer))
+  (let [x'               (sql.qp/->honeysql driver x)
+        y'               (sql.qp/->honeysql driver y)
+        types            [(temporal-type x') (temporal-type y')]
+        disallowed-types (->> types (keep identity) (remove #{:timestamp :datetime :date}))]
+    (when (seq disallowed-types)
+      (throw
+       (ex-info (tru "Only datetime, timestamp, or date types allowed. Found {0}"
+                     (pr-str disallowed-types))
+                {:allowed #{:timestamp :datetime :date}
+                 :found   disallowed-types})))
+    (case unit
+      ;; the default week implementation gave incorrect results in tests
+      (:year :month :day)
+      (let [maybe-cast (fn [clause current]
+                         (cond->> clause
+                           (not= current :datetime)
+                           (hx/cast :datetime)))
+            x'          (maybe-cast x' (first types))
+            y'          (maybe-cast y' (second types))
+            unit'       (hsql/raw (name unit))
+            positive-diff (fn [a b]
+                            (hsql/call :-
+                              (hsql/call :datetime_diff b a unit')
+                              (hx/cast :integer (hsql/call :>
+                                                  (hsql/call :datetime_diff a (hsql/call :date_trunc a unit') (hsql/raw "day"))
+                                                  (hsql/call :datetime_diff b (hsql/call :date_trunc b unit') (hsql/raw "day"))))))]
+        (hsql/call :case (hsql/call :<= x' y') (positive-diff x' y') :else (hsql/call :* -1 (positive-diff y' x'))))
 
-    (:year :month :day :hour :minute :second)
-    (let [x'                  (sql.qp/->honeysql driver x)
-          y'                  (sql.qp/->honeysql driver y)
-          types               [(temporal-type x') (temporal-type y')]
-          disallowed-types    (->> types (keep identity) (remove #{:timestamp :datetime :date}))
-          [bq-fn target-type] (cond
-                                (seq disallowed-types)
-                                (throw
-                                 (ex-info (tru "Only datetime, timestamp, or date types allowed. Found {0}"
-                                               (pr-str disallowed-types))
-                                          {:allowed #{:timestamp :datetime :date}
-                                           :found   disallowed-types}))
-                                ;; bigquery doesn't support year and month timestamp_diff so drop back to datetime
-                                (and (some #{:timestamp} types)
-                                     (#{:year :month} unit)) [:datetime_diff :datetime]
-                                (some #{:timestamp} types)   [:timestamp_diff :timestamp]
-                                (some #{:datetime} types)    [:datetime_diff :datetime]
-                                (some #{:date} types)        [:date_diff :date]
-                                :else                        (throw
-                                                              (ex-info (tru "Unrecognized types")
-                                                                       {:clause clause
-                                                                        :arg-1  (first types)
-                                                                        :arg-2  (second types)})))
-          maybe-cast          (fn [clause current]
-                                (cond->> clause
-                                  (not= current target-type)
-                                  (hx/cast target-type)))]
-      ;; select one of datetime_diff, timestamp_diff, date_diff and ensure types are compatible.
-      (hsql/call bq-fn (maybe-cast x' (first types)) (maybe-cast y' (second types))
-                 (hsql/raw (name unit))))
-    (throw (ex-info (tru "Unsupported datetimediff unit {0}" unit)
-                    {:clause          clause
-                     :supported-units [:year :month :week :day :hour :minute :second]}))))
+      :week
+      (->> (hsql/call :/ (sql.qp/->honeysql driver [:datetimediff x y :day]) 7)
+           (hsql/call :floor)
+           (hx/cast :integer))
+
+      (:hour :minute :second)
+      (let [[bq-fn target-type] (cond
+                                  ;; bigquery doesn't support year and month timestamp_diff so drop back to datetime
+                                  (and (some #{:timestamp} types)
+                                       (#{:year :month} unit)) [:datetime_diff :datetime]
+                                  (some #{:timestamp} types)   [:timestamp_diff :timestamp]
+                                  (some #{:datetime} types)    [:datetime_diff :datetime]
+                                  (some #{:date} types)        [:date_diff :date])
+            maybe-cast          (fn [clause current]
+                                  (cond->> clause
+                                    (not= current target-type)
+                                    (hx/cast target-type)))]
+        ;; select one of datetime_diff, timestamp_diff, date_diff and ensure types are compatible.
+        (hsql/call bq-fn (maybe-cast x' (first types)) (maybe-cast y' (second types))
+          (hsql/raw (name unit))))
+      (throw (ex-info (tru "Unsupported datetimediff unit {0}" unit)
+                      {:clause          clause
+                       :supported-units [:year :month :week :day :hour :minute :second]})))))
 
 (defmethod driver/escape-alias :bigquery-cloud-sdk
   [driver s]
