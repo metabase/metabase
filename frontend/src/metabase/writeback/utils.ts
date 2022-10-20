@@ -3,6 +3,7 @@ import type {
   BaseDashboardOrderedCard,
   ClickBehavior,
   Database as IDatabase,
+  WritebackAction,
 } from "metabase-types/api";
 import type { SavedCard } from "metabase-types/types/Card";
 import { TYPE } from "metabase-lib/lib/types/constants";
@@ -81,41 +82,8 @@ export function isMappedExplicitActionButton(
   dashCard: BaseDashboardOrderedCard,
 ): dashCard is ActionDashboardCard {
   const isAction = isActionDashCard(dashCard);
-  return isAction && typeof dashCard.action_id === "number";
-}
-
-export function isValidImplicitActionClickBehavior(
-  clickBehavior?: ClickBehavior,
-) {
-  if (
-    !clickBehavior ||
-    clickBehavior.type !== "action" ||
-    !("actionType" in clickBehavior)
-  ) {
-    return false;
-  }
-  if (clickBehavior.actionType === "insert") {
-    return clickBehavior.tableId != null;
-  }
-  if (
-    clickBehavior.actionType === "update" ||
-    clickBehavior.actionType === "delete"
-  ) {
-    return typeof clickBehavior.objectDetailDashCardId === "number";
-  }
-  return false;
-}
-
-export function isImplicitActionButton(
-  dashCard: BaseDashboardOrderedCard,
-): boolean {
-  const isAction = isActionDashCard(dashCard);
   return (
-    isAction &&
-    dashCard.action_id == null &&
-    isValidImplicitActionClickBehavior(
-      dashCard.visualization_settings?.click_behavior,
-    )
+    isAction && typeof dashCard.visualization_settings.action_slug === "string"
   );
 }
 
@@ -123,3 +91,9 @@ export function getActionButtonLabel(dashCard: ActionDashboardCard) {
   const label = dashCard.visualization_settings?.["button.label"];
   return label || "";
 }
+
+export const hasImplicitActions = (actions: WritebackAction[]): boolean =>
+  actions.some(isImplicitAction);
+
+export const isImplicitAction = (action: WritebackAction): boolean =>
+  action.type === "implicit";

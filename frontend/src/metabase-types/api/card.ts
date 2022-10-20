@@ -27,7 +27,45 @@ export interface UnsavedCard {
   visualization_settings: VisualizationSettings;
 }
 
+export type SeriesSettings = {
+  title: string;
+  color?: string;
+};
+
+export type SeriesOrderSetting = {
+  name: string;
+  originalIndex: number;
+  enabled: boolean;
+};
+
 export type VisualizationSettings = {
+  "graph.show_values"?: boolean;
+  "stackable.stack_type"?: "stacked" | "normalized" | null;
+
+  // X-axis
+  "graph.x_axis.title_text"?: string;
+  "graph.x_axis.scale"?: "ordinal";
+  "graph.x_axis.axis_enabled"?: "compact";
+
+  // Y-axis
+  "graph.y_axis.title_text"?: string;
+  "graph.y_axis.scale"?: "linear" | "pow" | "log";
+  "graph.y_axis.axis_enabled"?: true;
+
+  // Goal
+  "graph.goal_value"?: number;
+  "graph.show_goal"?: boolean;
+  "graph.goal_label"?: string;
+
+  // Series
+  "graph.dimensions"?: string[];
+  "graph.metrics"?: string[];
+
+  // Series settings
+  series_settings?: Record<string, SeriesSettings>;
+
+  "graph.series_order"?: SeriesOrderSetting[];
+
   [key: string]: any;
 };
 

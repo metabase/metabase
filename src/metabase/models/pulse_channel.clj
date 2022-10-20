@@ -194,10 +194,11 @@
                                  :entity_id    true})
     :pre-delete     pre-delete
     :pre-insert     validate-email-domains
-    :pre-update     validate-email-domains})
+    :pre-update     validate-email-domains}))
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [(serdes.hash/hydrated-hash :pulse) :channel_type :details])})
+(defmethod serdes.hash/identity-hash-fields PulseChannel
+  [_pulse-channel]
+  [(serdes.hash/hydrated-hash :pulse) :channel_type :details])
 
 (defn will-delete-recipient
   "This function is called by [[metabase.models.pulse-channel-recipient/pre-delete]] when a `PulseChannelRecipient` is

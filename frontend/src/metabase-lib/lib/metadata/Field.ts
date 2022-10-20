@@ -4,7 +4,6 @@ import _ from "underscore";
 import moment from "moment-timezone";
 
 import { formatField, stripId } from "metabase/lib/formatting";
-import { getIconForField } from "metabase/lib/schema_metadata";
 import type { FieldFingerprint } from "metabase-types/api/field";
 import type { Field as FieldRef } from "metabase-types/types/Query";
 import {
@@ -41,7 +40,7 @@ import { FieldDimension } from "../Dimension";
 import Base from "./Base";
 import type Table from "./Table";
 import type Metadata from "./Metadata";
-import { getUniqueFieldId } from "./utils";
+import { getIconForField, getUniqueFieldId } from "./utils/fields";
 
 export const LONG_TEXT_MIN = 80;
 

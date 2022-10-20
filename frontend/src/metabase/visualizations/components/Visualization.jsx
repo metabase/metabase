@@ -25,6 +25,7 @@ import { isSameSeries } from "metabase/visualizations/lib/utils";
 import { performDefaultAction } from "metabase/visualizations/lib/action";
 import { getFont } from "metabase/styled-components/selectors";
 
+import { getMode } from "metabase/modes/lib/modes";
 import Utils from "metabase/lib/utils";
 
 import {
@@ -222,7 +223,9 @@ class Visualization extends React.PureComponent {
       return new Mode(question, maybeModeOrQueryMode);
     }
 
-    return question?.mode();
+    if (question) {
+      return getMode(question);
+    }
   }
 
   getClickActions(clicked) {

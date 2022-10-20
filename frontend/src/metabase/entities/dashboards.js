@@ -133,12 +133,7 @@ const Dashboards = createEntity({
     getUrl: dashboard => dashboard && Urls.dashboard(dashboard),
     getCollection: dashboard =>
       dashboard && normalizedCollection(dashboard.collection),
-    getIcon: dashboard => ({
-      name:
-        dashboard.is_app_page || dashboard.model === "page"
-          ? "document"
-          : "dashboard",
-    }),
+    getIcon: () => ({ name: "dashboard" }),
     getColor: () => color("dashboard"),
   },
 

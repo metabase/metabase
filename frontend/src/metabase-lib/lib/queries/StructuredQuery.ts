@@ -7,10 +7,6 @@ import _ from "underscore";
 import { chain, updateIn } from "icepick";
 import { t } from "ttag";
 import {
-  format as formatExpression,
-  DISPLAY_QUOTES,
-} from "metabase/lib/expressions/format";
-import {
   StructuredQuery as StructuredQueryObject,
   Aggregation,
   Breakout,
@@ -28,9 +24,13 @@ import { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
 import { TableId } from "metabase-types/types/Table";
 import { Column } from "metabase-types/types/Dataset";
 import {
+  format as formatExpression,
+  DISPLAY_QUOTES,
+} from "metabase-lib/lib/expressions/format";
+import {
   isVirtualCardId,
   getQuestionIdFromVirtualTableId,
-} from "metabase/lib/saved-questions";
+} from "metabase-lib/lib/metadata/utils/saved-questions";
 import { isCompatibleAggregationOperatorForField } from "metabase-lib/lib/operators/utils";
 import { TYPE } from "metabase-lib/lib/types/constants";
 import { fieldRefForColumn } from "metabase-lib/lib/queries/utils/dataset";

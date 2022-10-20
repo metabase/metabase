@@ -12,10 +12,15 @@
   (encode [data]
     (u.date/format data)))
 
+(defn- generate-yaml [obj]
+  (yaml/generate-string (into (sorted-map) obj)
+                        :dumper-options {:flow-style  :block
+                                         :split-lines false}))
+
 (defn- spit-yaml
   [file obj]
   (io/make-parents file)
-  (spit (io/file file) (yaml/generate-string (into (sorted-map) obj) :dumper-options {:flow-style :block})))
+  (spit (io/file file) (generate-yaml obj)))
 
 (defn- store-entity! [{:keys [root-dir]} entity]
   (spit-yaml (u.yaml/hierarchy->file root-dir (serdes.base/serdes-path entity))

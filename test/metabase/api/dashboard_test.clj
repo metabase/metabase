@@ -15,15 +15,11 @@
                                      Dashboard
                                      DashboardCard
                                      DashboardCardSeries
-                                     DashboardEmitter
                                      Database
-                                     Emitter
                                      Field
                                      FieldValues
-                                     PermissionsGroup
-                                     PermissionsGroupMembership
+                                     ModelAction
                                      Pulse
-                                     QueryAction
                                      Revision
                                      Table
                                      User]]
@@ -34,8 +30,6 @@
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.revision :as revision]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.query-processor.streaming.test-util :as streaming.test-util]
             [metabase.server.middleware.util :as mw.util]
             [metabase.test :as mt]
@@ -349,22 +343,6 @@
                                                                  :position         0}]]
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (format "dashboard/%d" dashboard-id)))))))))
-
-(deftest fetch-dashboard-emitter-test
-  (testing "GET /api/dashboard/:id"
-    (testing "Fetch dashboard with an emitter"
-      (mt/with-temp* [Dashboard [dashboard {:name "Test Dashboard"}]
-                      Card [write-card {:is_write true :name "Test Write Card"}]
-                      Emitter [{emitter-id :id} {:action_id (u/the-id (db/select-one-field :action_id QueryAction :card_id (u/the-id write-card)))}]]
-        (db/insert! DashboardEmitter {:emitter_id emitter-id
-                                      :dashboard_id (u/the-id dashboard)})
-        (testing "admin sees emitters"
-          (is (partial=
-               {:emitters [{:action {:type "query" :card {:name "Test Write Card"}}}]}
-               (dashboard-response (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (u/the-id dashboard)))))))
-        (testing "non-admin does not see emitters"
-          (is (nil?
-               (:emitters (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" (u/the-id dashboard))))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             PUT /api/dashboard/:id                                             |
@@ -1049,6 +1027,28 @@
                 :updated_at             true}
                (remove-ids-and-booleanize-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id-2))))))))
 
+(deftest update-action-cards-test
+  (actions.test-util/with-actions-enabled
+    (testing "PUT /api/dashboard/:id/cards"
+      ;; fetch a dashboard WITH a dashboard card on it
+      (mt/with-temp* [Dashboard     [{dashboard-id :id}]
+                      Card          [{model-id :id} {:dataset true}]
+                      Card          [{model-id-2 :id} {:dataset true}]
+                      ModelAction   [_ {:card_id model-id :slug "insert"}]
+                      ModelAction   [_ {:card_id model-id-2 :slug "insert"}]
+                      DashboardCard [action-card {:dashboard_id dashboard-id,
+                                                  :card_id model-id
+                                                  :visualization_settings {:action_slug "insert"}}]
+                      DashboardCard [question-card {:dashboard_id dashboard-id, :card_id model-id}]]
+        (with-dashboards-in-writeable-collection [dashboard-id]
+          (is (= {:status "ok"}
+                 (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
+                                       {:cards [(assoc action-card :card_id model-id-2)
+                                                (assoc question-card :card_id model-id-2)]})))
+          ;; Only action card should change
+          (is (partial= [{:card_id model-id-2}
+                         {:card_id model-id}]
+                        (db/select DashboardCard :dashboard_id dashboard-id {:order-by [:id]}))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        GET /api/dashboard/:id/revisions                                        |
@@ -1857,19 +1857,16 @@
     (actions.test-util/with-actions-test-data-and-actions-enabled
       (actions.test-util/with-action [{:keys [action-id]} {}]
         (testing "Creating dashcard with action"
-          (mt/with-temp* [Dashboard [{dashboard-id :id}]]
-            (is (partial= {:action_id action-id}
+          (mt/with-temp* [Card [{card-id :id} {:dataset true}]
+                          ModelAction [_ {:card_id card-id :action_id action-id :slug "insert" :visualization_settings {:hello true}}]
+                          Dashboard [{dashboard-id :id}]]
+            (is (partial= {:visualization_settings {:action_slug "insert"}}
                           (mt/user-http-request :crowberto :post 200 (format "dashboard/%s/cards" dashboard-id)
-                                                {:size_x 1 :size_y 1 :row 1 :col 1 :action_id action-id})))
-            (is (partial= {:ordered_cards [{:action_id action-id :action {:id action-id}}]}
-                          (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id))))))
-        (testing "Updating dashcard action"
-          (mt/with-temp* [Dashboard [{dashboard-id :id}]
-                          DashboardCard [dashcard {:dashboard_id dashboard-id}]]
-            (is (partial= {:status "ok"}
-                          (mt/user-http-request :crowberto :put 200 (format "dashboard/%s/cards" dashboard-id)
-                                                {:cards [(assoc dashcard :action_id action-id)]})))
-            (is (partial= {:ordered_cards [{:action_id action-id :action {:id action-id}}]}
+                                                {:size_x 1 :size_y 1 :row 1 :col 1 :cardId card-id
+                                                 :visualization_settings {:action_slug "insert"}})))
+            (is (partial= {:ordered_cards [{:action {:visualization_settings {:hello true :inline true}
+                                                     :parameters []
+                                                     :slug "insert"}}]}
                           (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id))))))))))
 
 (deftest dashcard-query-action-execution-test
@@ -1877,168 +1874,173 @@
     (actions.test-util/with-actions-test-data-and-actions-enabled
       (actions.test-util/with-action [{:keys [action-id]} {}]
         (testing "Executing dashcard with action"
-          (mt/with-temp* [Dashboard [{dashboard-id :id}]
+          (mt/with-temp* [Card [{card-id :id} {:dataset true}]
+                          ModelAction [_ {:slug "custom" :card_id card-id :action_id action-id}]
+                          Dashboard [{dashboard-id :id}]
                           DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
-                                                            :action_id action-id
-                                                            :parameter_mappings [{:parameter_id "my_id"
-                                                                                  :target [:variable [:template-tag "id"]]}]}]]
-            (let [execute-path (format "dashboard/%s/dashcard/%s/action/execute"
+                                                            :card_id card-id}]]
+            (let [execute-path (format "dashboard/%s/dashcard/%s/execute/custom"
                                        dashboard-id
                                        dashcard-id)]
               (testing "Dashcard parameter"
                 (is (partial= {:rows-affected 1}
                               (mt/user-http-request :crowberto :post 200 execute-path
-                                                    {:parameters [{:id "my_id" :type "id" :value 1}]})))
+                                                    {:parameters {"id" 1}})))
                 (is (= [1 "Shop"]
                        (mt/first-row
                          (mt/run-mbql-query categories {:filter [:= $id 1]})))))
               (testing "Extra target parameter"
                 (is (partial= {:rows-affected 1}
                               (mt/user-http-request :crowberto :post 200 execute-path
-                                                    {:parameters [{:id "my_id" :type "id" :value 1}]
-                                                     :extra_parameters [{:target [:variable [:template-tag "name"]]
-                                                                         :type "text"
-                                                                         :value "Bird"}]})))
+                                                    {:parameters {"id" 1 "name" "Bird"}})))
                 (is (= [1 "Bird Shop"]
                        (mt/first-row
                          (mt/run-mbql-query categories {:filter [:= $id 1]})))))
               (testing "Should affect 0 rows if id is out of range"
                 (is (= {:rows-affected 0}
                        (mt/user-http-request :crowberto :post 200 execute-path
-                                             {:parameters [{:id "my_id" :type  :number/= :value Integer/MAX_VALUE}]}))))
+                                             {:parameters {"id" Integer/MAX_VALUE}}))))
               (testing "Should 404 if bad dashcard-id"
                 (is (= "Not found."
-                       (mt/user-http-request :crowberto :post 404 (format "dashboard/%d/dashcard/%s/action/execute"
+                       (mt/user-http-request :crowberto :post 404 (format "dashboard/%d/dashcard/%s/execute/custom"
                                                                           dashboard-id
                                                                           Integer/MAX_VALUE)
                                              {}))))
               (testing "Missing parameter should fail gracefully"
                 (is (partial= {:message "Error executing Action: Error building query parameter map: Error determining value for parameter \"id\": You'll need to pick a value for 'ID' before this query can run."}
                               (mt/user-http-request :crowberto :post 500 execute-path
-                                                    {:parameters []}))))
+                                                    {:parameters {}}))))
               (testing "Sending an invalid number should fail gracefully"
 
                 (is (partial= {:message "Error executing Action: Error building query parameter map: Error determining value for parameter \"id\": Unparseable number: \"BAD\""}
                               (mt/user-http-request :crowberto :post 500 execute-path
-                                                    {:parameters [{:id "my_id" :type :number/= :value "BAD"}]})))))))))))
+                                                    {:parameters {"id" "BAD"}})))))))))))
 
 (deftest dashcard-http-action-execution-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (actions.test-util/with-actions-test-data-and-actions-enabled
       (actions.test-util/with-action [{:keys [action-id]} {:type :http}]
         (testing "Executing dashcard with action"
-          (mt/with-temp* [Dashboard [{dashboard-id :id}]
+          (mt/with-temp* [Card [{card-id :id} {:dataset true}]
+                          ModelAction [_ {:slug "custom" :card_id card-id :action_id action-id}]
+                          Dashboard [{dashboard-id :id}]
                           DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
-                                                            :action_id action-id
-                                                            :parameter_mappings [{:parameter_id "my_id"
-                                                                                  :target [:template-tag "id"]}
-                                                                                 {:parameter_id "my_fail"
-                                                                                  :target [:template-tag "fail"]}]}]]
-            (let [execute-path (format "dashboard/%s/dashcard/%s/action/execute"
+                                                            :card_id card-id}]]
+            (let [execute-path (format "dashboard/%s/dashcard/%s/execute/custom"
                                        dashboard-id
                                        dashcard-id)]
-              (testing "Should be able to execute an emitter"
+              (testing "Should be able to execute an action"
                 (is (= {:the_parameter 1}
                        (mt/user-http-request :crowberto :post 200 execute-path
-                                             {:parameters [{:id "my_id" :type :number/= :value 1}]}))))
+                                             {:parameters {"id" 1}}))))
               (testing "Should handle errors"
                 (is (= {:remote-status 400}
                        (mt/user-http-request :crowberto :post 400 execute-path
-                                             {:parameters [{:id "my_id" :type :number/= :value 1}
-                                                           {:id "my_fail" :type :text :value "true"}]}))))
+                                             {:parameters {"id" 1 "fail" "true"}}))))
               (testing "Extra parameter should fail gracefully"
-                (is (partial= {:message "No parameter mapping found for parameter \"extra\". Found: #{\"my_id\" \"my_fail\"}"}
+                (is (partial= {:message "No destination parameter found for id \"extra\". Found: #{\"id\" \"fail\"}"}
                               (mt/user-http-request :crowberto :post 400 execute-path
-                                                    {:parameters [{:id "extra" :type :number/= :value 1}]}))))
+                                                    {:parameters {"extra" 1}}))))
               (testing "Missing parameter should fail gracefully"
                 (is (partial= {:message "Problem building request: Cannot call the service: missing required parameters: #{\"id\"}"}
                               (mt/user-http-request :crowberto :post 500 execute-path
-                                                    {:parameters []}))))
+                                                    {:parameters {}}))))
               (testing "Sending an invalid number should fail gracefully"
                 (is (str/starts-with? (:message (mt/user-http-request :crowberto :post 500 execute-path
-                                                                      {:parameters [{:id "my_id" :type :number/= :value "BAD"}]}))
+                                                                      {:parameters {"id" "BAD"}}))
                                       "Problem building request:"))))))))))
+
+(deftest dashcard-implicit-action-execution-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+    (actions.test-util/with-actions-test-data-and-actions-enabled
+      (testing "Executing dashcard insert"
+        (mt/with-temp* [Card [{card-id :id} {:dataset true :dataset_query (mt/mbql-query categories)}]
+                        ModelAction [_ {:slug "insert" :card_id card-id :requires_pk false}]
+                        Dashboard [{dashboard-id :id}]
+                        DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
+                                                          :card_id card-id
+                                                          :visualization_settings {:action_slug "insert"}}]]
+          (let [execute-path (format "dashboard/%s/dashcard/%s/execute/insert" dashboard-id dashcard-id)
+                new-row (-> (mt/user-http-request :crowberto :post 200 execute-path
+                                                  {:parameters {"name" "Birds"}})
+                            :created-row
+                            (update-keys (comp keyword str/lower-case name)))]
+            (testing "Should be able to insert"
+              (is (pos? (:id new-row)))
+              (is (partial= {:name "Birds"}
+                            new-row)))
+            (testing "Extra parameter should fail gracefully"
+              (is (partial= {:message "No destination parameter found for #{\"extra\"}. Found: #{\"id\" \"name\"}"}
+                            (mt/user-http-request :crowberto :post 400 execute-path
+                                                  {:parameters {"extra" 1}}))))
+            (testing "Missing other parameters should fail gracefully"
+              (is (partial= "Implicit parameters must be provided."
+                            (mt/user-http-request :crowberto :post 400 execute-path
+                                                  {:parameters {}})))))))
+      (testing "Executing dashcard update"
+        (mt/with-temp* [Card [{card-id :id} {:dataset true :dataset_query (mt/mbql-query categories)}]
+                        ModelAction [_ {:slug "update" :card_id card-id :requires_pk true}]
+                        Dashboard [{dashboard-id :id}]
+                        DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
+                                                          :card_id card-id
+                                                          :visualization_settings {:action_slug "update"}}]]
+          (let [execute-path (format "dashboard/%s/dashcard/%s/execute/update" dashboard-id dashcard-id)]
+            (testing "Should be able to update"
+              (is (= {:rows-updated [1]}
+                     (mt/user-http-request :crowberto :post 200 execute-path
+                                           {:parameters {"id" 1 "name" "Birds"}}))))
+            (testing "Extra parameter should fail gracefully"
+              (is (partial= {:message "No destination parameter found for #{\"extra\"}. Found: #{\"id\" \"name\"}"}
+                            (mt/user-http-request :crowberto :post 400 execute-path
+                                                  {:parameters {"extra" 1}}))))
+            (testing "Missing pk parameter should fail gracefully"
+              (is (partial= "Missing primary key parameter: \"id\""
+                            (mt/user-http-request :crowberto :post 400 execute-path
+                                                  {:parameters {"name" "Birds"}}))))
+            (testing "Missing other parameters should fail gracefully"
+              (is (partial= "Implicit parameters must be provided."
+                            (mt/user-http-request :crowberto :post 400 execute-path
+                                                  {:parameters {"id" 1}})))))))
+      (testing "Executing dashcard delete"
+        (mt/with-temp* [Card [{card-id :id} {:dataset true :dataset_query (mt/mbql-query categories)}]
+                        ModelAction [_ {:slug "delete" :card_id card-id :requires_pk true}]
+                        Dashboard [{dashboard-id :id}]
+                        DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
+                                                          :card_id card-id
+                                                          :visualization_settings {:action_slug "delete"}}]]
+          (let [execute-path (format "dashboard/%s/dashcard/%s/execute/delete" dashboard-id dashcard-id)]
+            (testing "Should be able to delete"
+              (is (= {:rows-deleted [1]}
+                     (mt/user-http-request :crowberto :post 200 execute-path
+                                           {:parameters {"id" 1}}))))
+            (testing "Extra parameter should fail gracefully"
+              (is (partial= {:message "No destination parameter found for #{\"extra\"}. Found: #{\"id\" \"name\"}"}
+                            (mt/user-http-request :crowberto :post 400 execute-path
+                                                  {:parameters {"extra" 1}}))))
+            (testing "Missing pk parameter should fail gracefully"
+              (is (partial= "Missing primary key parameter: \"id\""
+                            (mt/user-http-request :crowberto :post 400 execute-path
+                                                  {:parameters {"name" "Birds"}}))))))))))
 
 (deftest dashcard-action-execution-auth-test
   (mt/with-temp-copy-of-db
     (actions.test-util/with-actions-test-data
       (actions.test-util/with-action [{:keys [action-id]} {}]
         (testing "Executing dashcard with action"
-          (mt/with-temp* [Dashboard [{dashboard-id :id}]
+          (mt/with-temp* [Card [{card-id :id} {:dataset true}]
+                          ModelAction [_ {:slug "custom" :card_id card-id :action_id action-id}]
+                          Dashboard [{dashboard-id :id}]
                           DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
-                                                            :action_id action-id
-                                                            :parameter_mappings [{:parameter_id "my_id"
-                                                                                  :target [:variable [:template-tag "id"]]}]}]]
-            (let [execute-path (format "dashboard/%s/dashcard/%s/action/execute"
+                                                            :card_id card-id}]]
+            (let [execute-path (format "dashboard/%s/dashcard/%s/execute/custom"
                                        dashboard-id
                                        dashcard-id)]
               (testing "Without actions enabled"
                 (is (= "Actions are not enabled."
                        (mt/user-http-request :crowberto :post 400 execute-path
-                                             {:parameters [{:id "my_id" :type :number/= :value 1}]}))))
-              (testing "Without execute rights on the DB"
+                                             {:parameters {"id" 1}}))))
+              (testing "Without admin"
                 (actions.test-util/with-actions-enabled
                   (is (= "You don't have permissions to do that."
                          (mt/user-http-request :rasta :post 403 execute-path
-                                               {:parameters [{:id "my_id" :type :number/= :value 1}]})))))
-              (testing "With execute rights on the DB"
-                (perms/update-global-execution-permission! (:id (perms-group/all-users)) :all)
-                (try
-                  (actions.test-util/with-actions-enabled
-                    (is (= {:rows-affected 1}
-                           (mt/user-http-request :rasta :post 200 execute-path
-                                                 {:parameters [{:id "my_id" :type :number/= :value 1}]}))))
-                  (finally
-                    (perms/update-global-execution-permission! (:id (perms-group/all-users)) :none)))))))))))
-
-(defn- ee-features-enabled? []
-  (u/ignore-exceptions
-   (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
-   (some? (resolve 'metabase-enterprise.advanced-permissions.models.permissions/update-db-execute-permissions!))))
-
-(deftest dashcard-action-execution-granular-auth-test
-  (when (ee-features-enabled?)
-    (mt/with-temp-copy-of-db
-      (actions.test-util/with-actions-enabled
-        (actions.test-util/with-actions-test-data
-          (actions.test-util/with-action [{:keys [action-id]} {}]
-            (testing "Executing dashcard with action"
-              (mt/with-temp* [Dashboard [{dashboard-id :id}]
-                              DashboardCard [{dashcard-id :id}
-                                             {:dashboard_id dashboard-id
-                                              :action_id action-id
-                                              :parameter_mappings [{:parameter_id "my_id"
-                                                                    :target [:variable [:template-tag "id"]]}]}]]
-                (let [execute-path (format "dashboard/%s/dashcard/%s/action/execute"
-                                           dashboard-id
-                                           dashcard-id)]
-                  (testing "with :advanced-permissions feature flag"
-                    (premium-features-test/with-premium-features #{:advanced-permissions}
-                      (testing "for non-magic group"
-                        (mt/with-temp* [PermissionsGroup [{group-id :id}]
-                                        PermissionsGroupMembership [_ {:user_id  (mt/user->id :rasta)
-                                                                       :group_id group-id}]]
-                          (is (= "You don't have permissions to do that."
-                                 (mt/user-http-request :rasta :post 403 execute-path
-                                                       {:parameters [{:id "my_id" :type :number/= :value 1}]}))
-                              "Execution permission should be required")
-
-                          (mt/user-http-request
-                           :crowberto :put 200 "permissions/execution/graph"
-                           (assoc-in (perms/execution-perms-graph) [:groups group-id (mt/id)] :all))
-                          (is (= :all
-                                 (get-in (perms/execution-perms-graph) [:groups group-id (mt/id)]))
-                              "Should be able to set execution permission")
-                          (is (= {:rows-affected 1}
-                                 (mt/user-http-request :rasta :post 200 execute-path
-                                                       {:parameters [{:id "my_id" :type :number/= :value 1}]}))
-                              "Execution and data permissions should be enough")
-
-                          (perms/update-data-perms-graph! [group-id (mt/id) :data]
-                                                          {:schemas :block})
-                          (perms/update-data-perms-graph! [(:id (perms-group/all-users)) (mt/id) :data]
-                                                          {:schemas :block})
-                          (is (= "You don't have permissions to do that."
-                                 (mt/user-http-request :rasta :post 403 execute-path
-                                                       {:parameters [{:id "my_id" :type :number/= :value 1}]}))
-                              "Data permissions should be required"))))))))))))))
+                                               {:parameters {"id" 1}}))))))))))))

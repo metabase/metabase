@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { connect } from "react-redux";
@@ -7,6 +7,7 @@ import { push } from "react-router-redux";
 import Actions from "metabase/entities/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import { createQuestionFromAction } from "metabase/writeback/selectors";
+
 import type {
   WritebackQueryAction,
   ActionFormSettings,
@@ -66,8 +67,15 @@ function ActionCreatorComponent({
 
   useEffect(() => {
     setQuestion(passedQuestion ?? newQuestion(metadata));
+
     // we do not want to update this any time the props or metadata change, only if action id changes
   }, [actionId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const defaultModelId: number | undefined = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    const modelId = params.get("model-id");
+    return modelId ? Number(modelId) : undefined;
+  }, []);
 
   if (!question || !metadata) {
     return null;
@@ -110,12 +118,12 @@ function ActionCreatorComponent({
         <Modal onClose={handleClose}>
           <Actions.ModalForm
             title={isNew ? t`New action` : t`Save action`}
-            form={Actions.forms.saveForm}
+            form={isNew ? Actions.forms.saveForm : Actions.forms.updateForm}
             action={{
               id: (question.card() as SavedCard).id,
               name: question.displayName(),
               description: question.description(),
-              collection_id: question.collectionId(),
+              model_id: defaultModelId,
               formSettings,
               question,
             }}

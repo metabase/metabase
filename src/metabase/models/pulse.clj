@@ -133,10 +133,11 @@
                                  :entity_id    true})
     :pre-insert     pre-insert
     :pre-update     pre-update
-    :types          (constantly {:parameters :json})})
+    :types          (constantly {:parameters :json})}))
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :collection)])})
+(defmethod serdes.hash/identity-hash-fields Pulse
+  [_pulse]
+  [:name (serdes.hash/hydrated-hash :collection)])
 
 (def ^:private ^:dynamic *automatically-archive-when-last-channel-is-deleted*
   "Should we automatically archive a Pulse when its last `PulseChannel` is deleted? Normally we do, but this is disabled

@@ -3,8 +3,8 @@ import _ from "underscore";
 import { State } from "metabase-types/store";
 import Groups from "metabase/entities/groups";
 import { diffDataPermissions } from "metabase/admin/permissions/utils/graph";
-import { isVirtualCardId } from "metabase/lib/saved-questions/saved-questions";
 import { Group } from "metabase-types/api";
+import { isVirtualCardId } from "metabase-lib/lib/metadata/utils/saved-questions";
 
 const getDatabasesWithTables = createSelector(
   (state: State) => state.entities.databases,

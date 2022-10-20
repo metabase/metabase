@@ -476,12 +476,20 @@ function setParamsEndpoints(prefix) {
 }
 
 export const ActionsApi = {
+  list: GET("/api/action"),
   create: POST("/api/action/row/create"),
   update: POST("/api/action/row/update"),
   delete: POST("/api/action/row/delete"),
   bulkUpdate: POST("/api/action/bulk/update/:tableId"),
   bulkDelete: POST("/api/action/bulk/delete/:tableId"),
   execute: POST(
-    "/api/dashboard/:dashboardId/dashcard/:dashcardId/action/execute",
+    "/api/dashboard/:dashboardId/dashcard/:dashcardId/execute/:slug",
   ),
+};
+
+export const ModelActionsApi = {
+  connectActionToModel: POST("/api/model-action"),
+  createImplicitAction: POST("/api/model-action"),
+  updateConnection: PUT("/api/model-action/:id"),
+  disconnectActionFromModel: POST("/api/model-action"),
 };
