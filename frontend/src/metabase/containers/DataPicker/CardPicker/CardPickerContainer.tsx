@@ -40,9 +40,14 @@ interface CollectionsLoaderProps {
   rootCollection: Collection;
 }
 
+interface SchemaLoaderProps {
+  schema?: Schema & { tables: VirtualTable[] };
+}
+
 type CardPickerProps = CardPickerOwnProps &
   CardPickerStateProps &
-  CollectionsLoaderProps;
+  CollectionsLoaderProps &
+  SchemaLoaderProps;
 
 function mapStateToProps(state: State) {
   return {
@@ -54,13 +59,12 @@ function CardPickerContainer({
   value,
   collections,
   rootCollection,
+  schema: selectedSchema,
   currentUser,
   targetModel,
   onChange,
   onBack,
 }: CardPickerProps) {
-  const { schemaId } = value;
-
   const [selectedCollectionId, setSelectedCollectionId] = useState<
     Collection["id"] | undefined
   >();
@@ -125,41 +129,16 @@ function CardPickerContainer({
     [value, toggleTableIdSelection, onChange],
   );
 
-  const renderPicker = useCallback(
-    ({ schema }: { schema?: Schema } = {}) => {
-      const tables = schema?.tables
-        ? (schema.tables as VirtualTable[])
-        : undefined;
-      return (
-        <CardPickerView
-          collectionTree={collectionTree}
-          virtualTables={tables}
-          selectedItems={selectedItems}
-          targetModel={targetModel}
-          onSelectCollection={handleSelectedCollectionChange}
-          onSelectedVirtualTable={handleSelectedTablesChange}
-          onBack={onBack}
-        />
-      );
-    },
-    [
-      collectionTree,
-      selectedItems,
-      targetModel,
-      handleSelectedCollectionChange,
-      handleSelectedTablesChange,
-      onBack,
-    ],
-  );
-
-  if (!schemaId) {
-    return renderPicker();
-  }
-
   return (
-    <Schemas.Loader id={schemaId} loadingAndErrorWrapper={false}>
-      {({ schema }: { schema?: Schema }) => renderPicker({ schema })}
-    </Schemas.Loader>
+    <CardPickerView
+      collectionTree={collectionTree}
+      virtualTables={selectedSchema?.tables}
+      selectedItems={selectedItems}
+      targetModel={targetModel}
+      onSelectCollection={handleSelectedCollectionChange}
+      onSelectedVirtualTable={handleSelectedTablesChange}
+      onBack={onBack}
+    />
   );
 }
 
@@ -171,6 +150,10 @@ export default _.compose(
   }),
   Collections.loadList({
     query: () => ({ tree: true }),
+  }),
+  Schemas.load({
+    id: (state: State, props: CardPickerOwnProps) => props.value.schemaId,
+    loadingAndErrorWrapper: false,
   }),
   connect(mapStateToProps),
 )(CardPickerContainer);
