@@ -10,7 +10,10 @@ import * as Urls from "metabase/lib/urls";
 
 import DataApps, { ScaffoldNewAppParams } from "metabase/entities/data-apps";
 
-import { useDataPickerValue } from "metabase/containers/DataPicker";
+import DataPicker, {
+  useDataPicker,
+  useDataPickerValue,
+} from "metabase/containers/DataPicker";
 import DataAppScaffoldingDataPicker from "metabase/writeback/components/DataAppScaffoldingDataPicker";
 
 import type { DataApp } from "metabase-types/api";
@@ -48,6 +51,17 @@ function mapDispatchToProps(dispatch: Dispatch) {
   };
 }
 
+function DataPickerSearchInput() {
+  const { search } = useDataPicker();
+  return (
+    <input
+      value={search.query}
+      onChange={e => search.setQuery(e.target.value)}
+      placeholder={t`Search`}
+    />
+  );
+}
+
 function CreateDataAppModal({ onCreate, onChangeLocation, onClose }: Props) {
   const [value, setValue] = useDataPickerValue();
 
@@ -65,22 +79,25 @@ function CreateDataAppModal({ onCreate, onChangeLocation, onClose }: Props) {
   const canSubmit = tableIds.length > 0;
 
   return (
-    <ModalRoot>
-      <ModalHeader>
-        <ModalTitle>{t`Pick your starting data`}</ModalTitle>
-      </ModalHeader>
-      <ModalBody>
-        <DataAppScaffoldingDataPicker value={value} onChange={setValue} />
-      </ModalBody>
-      <ModalFooter>
-        <Button onClick={onClose}>{t`Cancel`}</Button>
-        <Button
-          primary
-          disabled={!canSubmit}
-          onClick={handleCreate}
-        >{t`Create`}</Button>
-      </ModalFooter>
-    </ModalRoot>
+    <DataPicker.Provider>
+      <ModalRoot>
+        <ModalHeader>
+          <ModalTitle>{t`Pick your starting data`}</ModalTitle>
+          <DataPickerSearchInput />
+        </ModalHeader>
+        <ModalBody>
+          <DataAppScaffoldingDataPicker value={value} onChange={setValue} />
+        </ModalBody>
+        <ModalFooter>
+          <Button onClick={onClose}>{t`Cancel`}</Button>
+          <Button
+            primary
+            disabled={!canSubmit}
+            onClick={handleCreate}
+          >{t`Create`}</Button>
+        </ModalFooter>
+      </ModalRoot>
+    </DataPicker.Provider>
   );
 }
 
