@@ -28,6 +28,9 @@ const defaultConfig = {
     // `config` is the resolved Cypress config
     require("cypress-grep/src/plugin")(config);
 
+    // Cypress analytics and the alternative to Cypress dashboard
+    require("@deploysentinel/cypress-debugger/plugin")(on, config);
+
     /********************************************************************
      **                        PREPROCESSOR                            **
      ********************************************************************/
