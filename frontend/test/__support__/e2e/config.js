@@ -28,9 +28,6 @@ const defaultConfig = {
     // `config` is the resolved Cypress config
     require("cypress-grep/src/plugin")(config);
 
-    // Cypress analytics and the alternative to Cypress dashboard
-    require("@deploysentinel/cypress-debugger/plugin")(on, config);
-
     /********************************************************************
      **                        PREPROCESSOR                            **
      ********************************************************************/
@@ -73,6 +70,10 @@ const defaultConfig = {
     config.env.SNOWPLOW_MICRO_URL = snowplowMicroUrl;
     config.env.SOURCE_VERSION = sourceVersion;
     config.env.TARGET_VERSION = targetVersion;
+
+    // Cypress analytics and the alternative to Cypress dashboard
+    // Needs to be the very last thing in the config!
+    require("@deploysentinel/cypress-debugger/plugin")(on, config);
 
     return config;
   },
