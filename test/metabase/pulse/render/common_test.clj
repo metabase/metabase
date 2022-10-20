@@ -67,16 +67,18 @@
       (is (= "10%" (format 0.1 {::mb.viz/number-style "percent"})))
       (is (= "1%" (format 0.01 {::mb.viz/number-style "percent"})))
       (is (= "0.00001%" (format 0.0000001 {::mb.viz/number-style "percent"}))))
-    (testing "Match UI behavior for decimal values with no column formatting present"
-      (is (= ["2"    "0"]      [(format 2 nil) (format 0 nil)]))
-      (is (= ["2.1"  "0.1"]    [(format 2.1 nil) (format 0.1 nil)]))
-      (is (= ["2.01" "0.01"]   [(format 2.01 nil) (format 0.01 nil)]))
-      (is (= ["2"    "0.001"]  [(format 2.001 nil) (format 0.001 nil)]))
-      ;; Notice that (BigDecimal. 2.005) -> 2.0049999999... etc. so we have precision problems unless we
-      ;; send a BigDecimal in right away, which, as far as I can tell, is what we'll get from the query processor
-      (is (= ["2.01" "0.006"]  [(format 2.006 nil) (format 0.006 nil)]))
-      (is (= ["2"    "0.0049"] [(format 2.0049 nil) (format 0.0049 nil)]))
-      (is (= ["2"    "0.005"] [(format 2.00499 nil) (format 0.00499 nil)])))
+    (testing "Match UI 'natural formatting' behavior for decimal values with no column formatting present"
+      ;; basically, for numbers greater than 1, round to 2 decimal places,
+      ;; and do not display decimals if they end up as zeroes
+      ;; for numbers less than 1, round to 2 significant-figures,
+      ;; and show as many decimals as necessary to display these 2 sig-figs
+      (is (= ["2"    "0"]      [(format 2 nil)       (format 0 nil)]))
+      (is (= ["2.1"  "0.1"]    [(format 2.1 nil)     (format 0.1 nil)]))
+      (is (= ["2.01" "0.01"]   [(format 2.01 nil)    (format 0.01 nil)]))
+      (is (= ["2"    "0.001"]  [(format 2.001 nil)   (format 0.001 nil)]))
+      (is (= ["2.01" "0.006"]  [(format 2.006 nil)   (format 0.006 nil)]))
+      (is (= ["2"    "0.0049"] [(format 2.0049 nil)  (format 0.0049 nil)]))
+      (is (= ["2"    "0.005"]  [(format 2.00499 nil) (format 0.00499 nil)])))
     (testing "Column Settings"
       (letfn [(fmt-with-type
                 ([type value] (fmt-with-type type value nil))
