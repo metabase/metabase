@@ -36,7 +36,7 @@
       ;; Simple .clj and .cljc files with and without line numbers
       ["test.clj"]                                                                  true
       ["test.clj:123"]                                                              true
-      ["test.clj"]                                                                  true
+      ["test.cljc"]                                                                 true
       ["test.cljc:123"]                                                             true
       ;; Assorted real backend paths from the .po file
       ["src/metabase/query_processor/streaming/xlsx.clj"]                           true
