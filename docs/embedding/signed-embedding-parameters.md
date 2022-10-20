@@ -71,9 +71,7 @@ You can use locked parameters to display filtered data based on attributes captu
 
 **Locked** parameters will apply the selected filter values to your original dashboard or SQL question, but they won't be displayed as filter widgets on your embed. Locked parameters may also limit the values that are shown in your [embedded filter widgets](#adding-a-filter-widget-to-a-signed-embed).
 
-Note that you can only add filter values that match the filter type on the original dashboard or SQL question. 
-
-For example, let's say you have a text box filter on your original dashboard called "Test" with the values "A", "B", and "Control". With this setup, you'll be able to choose _one_ of "A", "B", or "Control" for your locked parameter. If you want to provide multiple filter values to the parameter, like "A" _and_ "B", you'll need to change the original filter to a [dropdown filter](../dashboards/filters.md#choosing-between-a-dropdown-or-autocomplete-for-your-filter) first.
+Note that you can only add filter values that match the filter type on the original dashboard or SQL question. For example, let's say you have a text box filter on your original dashboard called "Test" with the values "A", "B", and "Control". With this setup, you'll be able to choose _one_ of "A", "B", or "Control" for your locked parameter. If you want to provide multiple filter values to the parameter, like "A" _and_ "B", you'll need to change the original filter to a [dropdown filter](../dashboards/filters.md#choosing-between-a-dropdown-or-autocomplete-for-your-filter) first.
 
 ## Hiding filter widgets from a signed embed
 
