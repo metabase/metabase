@@ -1,6 +1,9 @@
+import React from "react";
 import { t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_CACHING } from "metabase/plugins";
+
+import DashboardCopyModalShallowCheckboxLabel from "metabase/dashboard/components/DashboardCopyModal/DashboardCopyModalShallowCheckboxLabel";
 
 function createNameField() {
   return {
@@ -35,8 +38,7 @@ function createShallowCopyField() {
   return {
     name: "is_shallow_copy",
     type: "checkbox",
-    label: t`Only duplicate the dashboard`,
-    tooltip: t`This is a tooltip`,
+    label: <DashboardCopyModalShallowCheckboxLabel />,
   };
 }
 
