@@ -9,8 +9,7 @@
   1. build a minimal card and query result dataset for different visualization types and settings (scenarios)
   2. run the real rendering pipeline, but, return a hiccup tree instead of png bytes
   3. provide quick ways to 'query' the tree for different content, to confirm that elements are properly rendered."
-  (:require [cheshire.core :as json]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
             [clojure.zip :as zip]
             [metabase.pulse.render :as render]
             [metabase.pulse.render.body :as body]
