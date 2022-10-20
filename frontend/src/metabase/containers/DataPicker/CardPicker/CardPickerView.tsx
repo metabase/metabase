@@ -14,14 +14,29 @@ import PanePicker from "../PanePicker";
 
 import { StyledSelectList } from "./CardPicker.styled";
 
+type TargetModel = "model" | "question";
+
 interface CardPickerViewProps {
   collectionTree: ITreeNodeItem[];
   virtualTables?: VirtualTable[];
   selectedItems: DataPickerSelectedItem[];
-  targetModel: "model" | "question";
+  targetModel: TargetModel;
   onSelectCollection: (id: Collection["id"]) => void;
   onSelectedVirtualTable: (id: Table["id"]) => void;
   onBack?: () => void;
+}
+
+function getTableIcon({
+  isSelected,
+  targetModel,
+}: {
+  isSelected: boolean;
+  targetModel: TargetModel;
+}) {
+  if (isSelected) {
+    return "check";
+  }
+  return targetModel === "model" ? "model" : "table2";
 }
 
 function TableSelectListItem({
@@ -35,19 +50,12 @@ function TableSelectListItem({
   isSelected: boolean;
   onSelect: (id: Table["id"]) => void;
 }) {
-  const icon = useMemo(() => {
-    if (isSelected) {
-      return "check";
-    }
-    return targetModel === "model" ? "model" : "table2";
-  }, [isSelected, targetModel]);
-
   return (
     <SelectList.Item
       id={table.id}
       name={table.display_name}
       isSelected={isSelected}
-      icon={icon}
+      icon={getTableIcon({ isSelected, targetModel })}
       onSelect={onSelect}
     >
       {table.display_name}
